@@ -83,3 +83,24 @@ eas build --profile development --platform android   # or ios
 - [ ] Post a product → lands on the Page
 - [ ] Same from Growth → Integrations → Facebook and → Instagram
 - [ ] Expo Go: tapping Connect falls back to the web flow (no crash)
+
+## "Still not connecting" — diagnose (2026-09-04)
+
+The connect screens now show the **real** failure text in a red banner
+(previously every failure showed the same generic "Could not connect…" Alert,
+so there was nothing to go on). Map the banner text → fix:
+
+| Banner says | Cause | Fix (owner) |
+|---|---|---|
+| `Social publishing is not configured yet` | `META_APP_ID` / `META_APP_SECRET` not set on the **API** service (Railway `supportive-love`) or in the F-012 secrets table | Set both. `META_APP_ID` **must** equal the `appID` in `app.json` → `react-native-fbsdk-next` (`1758308975480748`). `META_APP_SECRET` = that app's secret. |
+| `Failed to obtain a long-lived token` | Server app id/secret belong to a **different** Meta app than the one the mobile SDK logged into | Make them the same app. |
+| `No Facebook Pages found on this account…` | Login succeeded but the token has no `pages_show_list` — either the FB account admins **no Page**, or the Meta app is in **Development mode** and that FB account has **no role** on the app | Add a Page to that FB account; OR add the tester as a **Role** on the Meta app (Roles → Testers/Developers); OR switch the app to **Live** + get App Review for `pages_*` / `business_management`. |
+| `No Instagram Business account is linked to your Facebook Page…` | The Page has no linked IG **Professional** account | Link one in the Facebook app (Page → Linked accounts), then retry. |
+| `Facebook returned no access token. …key hash / bundle ID…` | The Android **release key hash** or iOS **bundle ID** is not on the Meta app | `eas credentials` → copy the SHA-1 → base64 → Meta app → Settings → Basic → Android → **Key hashes**. Bundle/package = `app.kanchuki.retailer`. |
+| `Facebook SDK failed to initialise: …` | Config plugin didn't run / bad `appID`/`clientToken` in `app.json` | Verify the `react-native-fbsdk-next` plugin block, rebuild with `eas build`. |
+| `Invalid key hash` / `App not active` (SDK text) | Meta app in Dev mode, or missing key hash | Same as the key-hash / Live-mode rows above. |
+
+**Retailer-facing method** = the 1-click "Continue as…" native SSO only. The
+"Advanced / Manual Token Entry" (Page ID + Page access token) is a
+developer-only fallback and is collapsed by default — retailers never need it
+once the Meta app config above is done.

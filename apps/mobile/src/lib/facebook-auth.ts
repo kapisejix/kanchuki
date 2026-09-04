@@ -57,16 +57,24 @@ export async function loginWithFacebook(
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     fbsdk = require('react-native-fbsdk-next');
   } catch {
+    // Genuinely absent → Expo Go. Callers fall back to the web flow.
     throw new FacebookAuthUnavailable();
   }
 
   // isAutoInitEnabled is false in app.json (a bad appID in Application.onCreate
   // crashes app launch before the splash). Init here instead — idempotent, runs
   // only when the retailer actually taps Connect Facebook.
+  // NOTE: the module IS present here (EAS build), so an init failure is a real
+  // misconfig (bad appID/clientToken, plugin didn't run) — surface it, don't
+  // masquerade as "unavailable" and silently drop to the mock web flow.
   try {
     fbsdk.Settings.initializeSDK();
-  } catch {
-    throw new FacebookAuthUnavailable();
+  } catch (err) {
+    throw new Error(
+      `Facebook SDK failed to initialise: ${
+        err instanceof Error ? err.message : String(err)
+      }. Check the react-native-fbsdk-next appID/clientToken in app.json and rebuild.`,
+    );
   }
 
   const result = await fbsdk.LoginManager.logInWithPermissions(
@@ -76,7 +84,9 @@ export async function loginWithFacebook(
 
   const token = await fbsdk.AccessToken.getCurrentAccessToken();
   if (!token?.accessToken) {
-    throw new Error('Facebook did not return an access token. Please try again.');
+    throw new Error(
+      'Facebook returned no access token. This usually means the Android release key hash / bundle ID is not registered on the Meta app, or the app is not in Live mode.',
+    );
   }
   return token.accessToken;
 }

@@ -51,6 +51,7 @@ export default function InstagramConfigScreen() {
   const [handle, setHandle] = useState(currentInstagram?.handle ?? '')
   const [autoPublishReels, setAutoPublishReels] = useState(true)
   const [connecting, setConnecting] = useState(false)
+  const [connectError, setConnectError] = useState<string | null>(null)
   const [showManual, setShowManual] = useState(false)
   const [saving, setSaving] = useState(false)
   const [testing, setTesting] = useState(false)
@@ -118,33 +119,23 @@ export default function InstagramConfigScreen() {
     Alert.alert('Connected!', `Instagram account ${finalHandle} connected.`)
   }
 
-  // Fallback for builds without the native SDK (Expo Go): old web OAuth-URL flow.
-  // https redirect (API default) so Meta accepts the dialog (#9).
+  // Fallback for builds without the native SDK (Expo Go only): open the real web
+  // OAuth URL. https redirect (API default) so Meta accepts the dialog (#9).
+  // No mock/simulated success — if OAuth can't start, the error is shown.
   const connectViaWeb = async () => {
     const res = await socialApi.getConnectUrl('instagram')
     const authUrl = res.data?.auth_url
-    if (authUrl) {
-      const canOpen = await Linking.canOpenURL(authUrl).catch(() => true)
-      if (canOpen) {
-        await Linking.openURL(authUrl)
-        return
-      }
+    if (!authUrl) {
+      throw new Error('Server did not return an Instagram login URL (social publishing not configured).')
     }
-    const mockRes = await socialApi.autoConnect({
-      code: 'simulated_meta_code',
-      state: res.data?.state || 'simulated_state',
-      provider: 'instagram',
-    })
-    await applyConnected(
-      mockRes.data?.handle || '@kanchuki_luxury_boutique',
-      mockRes.data?.account_id || '17841400998877',
-    )
+    await Linking.openURL(authUrl)
   }
 
   // 1-Click Connect Action — Instagram publishing runs through the linked
   // Facebook Page, so this is the same native FB login with IG scopes added.
   const handleOneClickConnect = async () => {
     setConnecting(true)
+    setConnectError(null)
     try {
       const token = await loginWithFacebook('instagram')
       const res = await socialApi.connectWithToken(token, 'instagram')
@@ -160,11 +151,13 @@ export default function InstagramConfigScreen() {
         try {
           await connectViaWeb()
         } catch (webErr) {
-          showError(webErr, 'Could not initiate Instagram connection')
+          setConnectError(webErr instanceof Error ? webErr.message : 'Could not initiate Instagram connection')
         }
         return
       }
-      showError(err, 'Could not connect your Instagram account')
+      // Surface the real reason — from our API (e.g. "No Instagram Business
+      // account is linked to your Facebook Page…") or the Facebook SDK.
+      setConnectError(err instanceof Error ? err.message : 'Could not connect your Instagram account')
     } finally {
       setConnecting(false)
     }
@@ -357,6 +350,13 @@ export default function InstagramConfigScreen() {
                 </>
               )}
             </AnimatedPressable>
+          )}
+
+          {connectError && !isConnected && (
+            <View className="mt-3 rounded-2xl bg-rose-50 border border-rose-200 px-4 py-3">
+              <Text className="text-xs font-bold text-rose-700 mb-0.5">Could not connect</Text>
+              <Text className="text-[11px] text-rose-600 leading-relaxed">{connectError}</Text>
+            </View>
           )}
 
           <View className="flex-row items-center gap-1.5 mt-3 justify-center">

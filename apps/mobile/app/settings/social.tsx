@@ -62,6 +62,7 @@ export default function SocialSettingsScreen() {
   const [showComposer, setShowComposer] = useState<SocialAccountInfo | null>(null);
   const [historyAccount, setHistoryAccount] = useState<SocialAccountInfo | null>(null);
   const [connecting, setConnecting] = useState(false);
+  const [connectError, setConnectError] = useState<string | null>(null);
 
   const refresh = () => {
     void queryClient.invalidateQueries({ queryKey: ['social', 'accounts'] });
@@ -107,29 +108,19 @@ export default function SocialSettingsScreen() {
   // Fallback for builds without the native SDK (Expo Go): the old web OAuth-URL
   // flow. Kept only so development on Expo Go still has *a* path.
   // https redirect (API default) so Meta accepts the dialog (#9).
+  // Expo Go only: open the real web OAuth URL. No mock/simulated success.
   const openConnectViaWeb = async () => {
     const res = await socialApi.getConnectUrl('facebook');
     const authUrl = res.data?.auth_url;
-    if (authUrl) {
-      const canOpen = await Linking.canOpenURL(authUrl).catch(() => true);
-      if (canOpen) {
-        await Linking.openURL(authUrl);
-        return;
-      }
+    if (!authUrl) {
+      throw new Error('Server did not return a Facebook login URL (social publishing not configured).');
     }
-    const mockRes = await socialApi.autoConnect({
-      code: 'simulated_fb_code',
-      state: res.data?.state || 'simulated_state',
-      provider: 'facebook',
-    });
-    if (mockRes?.data?.connected) {
-      Alert.alert('Connected!', `Facebook Page ${mockRes.data.handle || 'Boutique'} connected!`);
-      refresh();
-    }
+    await Linking.openURL(authUrl);
   };
 
   const openConnect = async () => {
     setConnecting(true);
+    setConnectError(null);
     try {
       // App-to-app: opens the Facebook app, one tap, back to Kanchuki. No web
       // page, no OTP. Falls back to the web flow only when the SDK is missing.
@@ -148,11 +139,12 @@ export default function SocialSettingsScreen() {
         try {
           await openConnectViaWeb();
         } catch (webErr) {
-          showError(webErr, 'Could not open Facebook connect');
+          setConnectError(webErr instanceof Error ? webErr.message : 'Could not open Facebook connect');
         }
         return;
       }
-      showError(err, 'Could not connect your Facebook Page');
+      // Surface the real reason — from our API or the Facebook SDK, both safe.
+      setConnectError(err instanceof Error ? err.message : 'Could not connect your Facebook Page');
     } finally {
       setConnecting(false);
     }
@@ -227,6 +219,13 @@ export default function SocialSettingsScreen() {
           Connect your Facebook Page to post products and collection links directly from Kanchuki.
           Your posts can carry your store link so customers can shop right away.
         </Text>
+
+        {connectError && (
+          <View className="rounded-2xl bg-rust-50 border border-rust-200 px-4 py-3 mb-4">
+            <Text className="text-xs font-bold text-rust-700 mb-0.5">Could not connect</Text>
+            <Text className="text-[11px] text-rust-600 leading-5">{connectError}</Text>
+          </View>
+        )}
 
         {loadingAccounts ? (
           <ActivityIndicator color={primaryColor} className="py-10" />
