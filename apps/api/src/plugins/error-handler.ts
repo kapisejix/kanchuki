@@ -116,6 +116,25 @@ export function errorHandler(
     return;
   }
 
+  // Domain errors like MetaApiError (meta-graph.ts) carry a numeric `status`
+  // (not Fastify's `statusCode`) — honor it for 4xx so e.g. the fan-out's
+  // PUBLISH_FAILED surfaces as 400, not a misleading 500. When the domain
+  // error attaches per-target `results` (the fan-out's all-failed rows), pass
+  // them through so the client can show WHY each account failed (T-7.2).
+  const errStatus = (error as unknown as { status?: unknown }).status;
+  if (typeof errStatus === 'number' && errStatus >= 400 && errStatus < 500) {
+    const results = (error as unknown as { results?: unknown }).results;
+    void reply.status(errStatus).send({
+      error: {
+        code: error.code ?? 'BAD_REQUEST',
+        message: error.message,
+        status: errStatus,
+        ...(Array.isArray(results) ? { results } : {}),
+      },
+    });
+    return;
+  }
+
   // Generic server error — don't leak internals in production
   reply.log.error(error);
   // Report to Sentry (no-op until SENTRY_DSN is set). AppError / validation /

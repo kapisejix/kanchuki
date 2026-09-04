@@ -6,6 +6,7 @@ import { growthInventoryRoutes } from './growth-inventory.js';
 import { growthPromotionRoutes } from './growth-promotions.js';
 import { growthSeasonalRoutes } from './growth-seasonal.js';
 import { growthSizeRoutes } from './growth-sizes.js';
+import { growthSocialCaptionSuggestRoutes } from './growth-social-caption-suggest.js';
 import { growthSocialTemplateRoutes } from './growth-social-templates.js';
 import { growthTranslateRoutes } from './growth-translate.js';
 import { growthVideoRoutes } from './growth-videos.js';
@@ -33,4 +34,5 @@ export const growthRoutes: FastifyPluginAsync = async (server) => {
   await server.register(growthTranslateRoutes);
   await server.register(growthSeasonalRoutes); // R — seasonal analytics
   await server.register(growthSocialTemplateRoutes); // Phase 5 — AI social media templates
+  await server.register(growthSocialCaptionSuggestRoutes); // T-6.1 — AI caption suggest (R-9)
 };

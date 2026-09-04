@@ -5,12 +5,9 @@ import {
   Check,
   ChevronLeft,
   Facebook,
-  Image,
   Instagram,
-  Link2,
   Loader2,
   RefreshCw,
-  Share2,
   X,
 } from 'lucide-react-native';
 import * as ExpoLinking from 'expo-linking';
@@ -27,7 +24,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AnimatedPressable } from '../../src/components/AnimatedPressable';
 import { GradientButton } from '../../src/components/GradientButton';
-import { collectionApi, productApi, socialApi } from '../../src/lib/api';
+import { socialApi } from '../../src/lib/api';
 import type { SocialAccountInfo, SocialPostInfo } from '../../src/lib/api/social';
 import { showError } from '../../src/lib/errors';
 import {
@@ -36,14 +33,6 @@ import {
   loginWithFacebook,
 } from '../../src/lib/facebook-auth';
 import { useTheme } from '../../src/lib/theme';
-
-type PickerTarget = 'product' | 'collection' | null;
-
-interface PickerItem {
-  id: string;
-  label: string;
-  subtitle?: string;
-}
 
 export default function SocialSettingsScreen() {
   const { primaryColor, colors } = useTheme();
@@ -56,10 +45,6 @@ export default function SocialSettingsScreen() {
   });
   const accounts: SocialAccountInfo[] = (accountsData as { data: SocialAccountInfo[] } | undefined)?.data ?? [];
 
-  const [pickerTarget, setPickerTarget] = useState<PickerTarget>(null);
-  const [posting, setPosting] = useState<string | null>(null);
-  const [postCaption, setPostCaption] = useState('');
-  const [showComposer, setShowComposer] = useState<SocialAccountInfo | null>(null);
   const [historyAccount, setHistoryAccount] = useState<SocialAccountInfo | null>(null);
   const [connecting, setConnecting] = useState(false);
   const [connectError, setConnectError] = useState<string | null>(null);
@@ -172,28 +157,6 @@ export default function SocialSettingsScreen() {
     );
   };
 
-  const publish = async (target: 'product' | 'collection', itemId: string) => {
-    if (!showComposer) return;
-    setPosting(itemId);
-    try {
-      if (target === 'product') {
-        await socialApi.publishProduct(showComposer.id, itemId, postCaption.trim() || undefined);
-      } else {
-        await socialApi.publishCollection(showComposer.id, itemId, postCaption.trim() || undefined);
-      }
-      Alert.alert('Posted!', `Your ${target === 'product' ? 'product' : 'collection'} was posted to ${showComposer.account_name}.`, [
-        { text: 'OK', onPress: () => setShowComposer(null) },
-      ]);
-      setPostCaption('');
-      setPickerTarget(null);
-      refresh();
-    } catch (err) {
-      showError(err, 'Post failed');
-    } finally {
-      setPosting(null);
-    }
-  };
-
   return (
     <View className="flex-1 bg-ink-50">
       {/* Header */}
@@ -264,8 +227,8 @@ export default function SocialSettingsScreen() {
                         </Text>
                       </View>
                       <AnimatedPressable
-                        onPress={() => setShowComposer(account)}
-                        accessibilityLabel={`Post to ${account.account_name}`}
+                        onPress={() => router.push('/social/create')}
+                        accessibilityLabel={`Create a social post`}
                         accessibilityRole="button"
                         className="bg-ink-600 px-3.5 py-2 rounded-xl"
                       >
@@ -311,23 +274,6 @@ export default function SocialSettingsScreen() {
         )}
       </ScrollView>
 
-      {/* Composer */}
-      <ComposerModal
-        visible={!!showComposer}
-        account={showComposer}
-        caption={postCaption}
-        setCaption={setPostCaption}
-        posting={posting}
-        pickerTarget={pickerTarget}
-        setPickerTarget={setPickerTarget}
-        onPublish={publish}
-        onClose={() => {
-          setShowComposer(null);
-          setPickerTarget(null);
-          setPostCaption('');
-        }}
-      />
-
       {/* History */}
       <HistoryModal
         visible={!!historyAccount}
@@ -335,154 +281,6 @@ export default function SocialSettingsScreen() {
         onClose={() => setHistoryAccount(null)}
       />
     </View>
-  );
-}
-
-// ─── Composer ──────────────────────────────────────────────────────
-
-function ComposerModal({
-  visible,
-  account,
-  caption,
-  setCaption,
-  posting,
-  pickerTarget,
-  setPickerTarget,
-  onPublish,
-  onClose,
-}: {
-  visible: boolean;
-  account: SocialAccountInfo | null;
-  caption: string;
-  setCaption: (v: string) => void;
-  posting: string | null;
-  pickerTarget: PickerTarget;
-  setPickerTarget: (v: PickerTarget) => void;
-  onPublish: (target: 'product' | 'collection', itemId: string) => void;
-  onClose: () => void;
-}) {
-  const { colors } = useTheme();
-
-  const { data: productsData, isLoading: loadingProducts } = useQuery({
-    queryKey: ['products', 'all'],
-    queryFn: () => productApi.list({ status: 'AVAILABLE', limit: 50 }),
-    enabled: visible && pickerTarget === 'product',
-  });
-  const products: PickerItem[] = (
-    (productsData as { data: { id: string; name?: string; price?: number }[] } | undefined)?.data ?? []
-  ).map((p) => ({
-    id: p.id,
-    label: p.name ?? 'Untitled product',
-    subtitle: p.price ? `₹${p.price}` : undefined,
-  }));
-
-  const { data: collectionsData, isLoading: loadingCollections } = useQuery({
-    queryKey: ['collections', 'all'],
-    queryFn: () => collectionApi.list(),
-    enabled: visible && pickerTarget === 'collection',
-  });
-  const collections: PickerItem[] = (
-    (collectionsData as { data: { id: string; title?: string; name?: string }[] } | undefined)?.data ?? []
-  ).map((c) => ({
-    id: c.id,
-    label: c.title ?? c.name ?? 'Untitled collection',
-  }));
-
-  if (!account) return null;
-
-  const pickerItems = pickerTarget === 'product' ? products : collections;
-  const loading = pickerTarget === 'product' ? loadingProducts : loadingCollections;
-
-  return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View className="flex-1 bg-black/50 justify-end">
-        <View className="bg-white rounded-t-3xl w-full p-5 max-h-[90%]">
-          <View className="flex-row items-center justify-between mb-3">
-            <Text className="text-lg font-bold text-sand-900">Post to {account.account_name}</Text>
-            <AnimatedPressable onPress={onClose} accessibilityLabel="Close" accessibilityRole="button">
-              <X size={20} color={colors.sand[400]} />
-            </AnimatedPressable>
-          </View>
-
-          {!pickerTarget ? (
-            <>
-              <Text className="text-xs text-sand-500 mb-4">What would you like to post?</Text>
-              <AnimatedPressable
-                onPress={() => setPickerTarget('product')}
-                className="flex-row items-center bg-sand-50 rounded-2xl p-4 mb-3"
-              >
-                <Image size={18} color={colors.sand[700]} />
-                <Text className="text-sm font-semibold text-sand-900 ml-3 flex-1">
-                  Post a product
-                </Text>
-                <Text className="text-xs text-sand-400">Single photo + caption</Text>
-              </AnimatedPressable>
-              <AnimatedPressable
-                onPress={() => setPickerTarget('collection')}
-                className="flex-row items-center bg-sand-50 rounded-2xl p-4 mb-3"
-              >
-                <Link2 size={18} color={colors.sand[700]} />
-                <Text className="text-sm font-semibold text-sand-900 ml-3 flex-1">
-                  Post a collection link
-                </Text>
-                <Text className="text-xs text-sand-400">Store URL + caption</Text>
-              </AnimatedPressable>
-            </>
-          ) : (
-            <>
-              <View className="flex-row items-center justify-between mb-2">
-                <Text className="text-sm font-semibold text-sand-900">
-                  {pickerTarget === 'product' ? 'Choose a product' : 'Choose a collection'}
-                </Text>
-                <AnimatedPressable onPress={() => setPickerTarget(null)} hitSlop={8}>
-                  <Text className="text-xs font-semibold text-sand-400">Back</Text>
-                </AnimatedPressable>
-              </View>
-
-              {loading ? (
-                <ActivityIndicator color={colors.sand[400]} className="py-8" />
-              ) : pickerItems.length === 0 ? (
-                <Text className="text-xs text-sand-400 py-6 text-center">
-                  {pickerTarget === 'product' ? 'No available products yet' : 'No collections yet'}
-                </Text>
-              ) : (
-                <ScrollView className="max-h-64 mb-3">
-                  {pickerItems.map((item) => (
-                    <AnimatedPressable
-                      key={item.id}
-                      onPress={() => void onPublish(pickerTarget, item.id)}
-                      disabled={!!posting}
-                      className="flex-row items-center bg-sand-50 rounded-xl px-4 py-3 mb-2"
-                    >
-                      <Text className="text-sm font-semibold text-sand-900 flex-1">{item.label}</Text>
-                      {item.subtitle && (
-                        <Text className="text-xs text-sand-400 mr-2">{item.subtitle}</Text>
-                      )}
-                      {posting === item.id ? (
-                        <ActivityIndicator size="small" color={colors.sand[600]} />
-                      ) : (
-                        <Share2 size={16} color={colors.sand[600]} />
-                      )}
-                    </AnimatedPressable>
-                  ))}
-                </ScrollView>
-              )}
-
-              <Text className="text-xs text-sand-500 mb-1.5">Caption (optional — auto-filled if empty)</Text>
-              <TextInput
-                value={caption}
-                onChangeText={setCaption}
-                multiline
-                className="bg-sand-50 px-4 py-3 rounded-xl text-sm text-sand-900 min-h-[70px]"
-                placeholderTextColor={colors.sand[400]}
-                placeholder="e.g. New arrival! Shop this on WhatsApp"
-                maxLength={2200}
-              />
-            </>
-          )}
-        </View>
-      </View>
-    </Modal>
   );
 }
 

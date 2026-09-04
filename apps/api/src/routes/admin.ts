@@ -29,6 +29,7 @@ import {
   adminModerationRoutes,
   adminPhotoCleanupRoutes,
   adminPlansRoutes,
+  adminPostTemplatesRoutes,
   adminRatingsRoutes,
   adminResourcePacksRoutes,
   adminRetailersRoutes,
@@ -208,6 +209,8 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
   await server.register(adminFestivalsRoutes);
   // admin-whatsapp-catalog — Phase II WhatsApp catalog sync monitor
   await server.register(adminWhatsAppCatalogRoutes);
+  // admin-post-templates — Create Post Composer v2 post-template library (§11)
+  await server.register(adminPostTemplatesRoutes);
   // admin-social-templates — AI Social Media Templates management
   await server.register(adminSocialTemplateRoutes);
   // admin-gst — GST report dashboard + transaction list

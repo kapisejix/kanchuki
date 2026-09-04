@@ -8,6 +8,7 @@ import {
   publishPhotoPost,
   publishVideoPost,
 } from '../../../lib/meta-graph.js';
+import { resolvePostTemplate } from '../../../lib/post-template-placeholders.js';
 import { buildCollectionUrl } from '../../../lib/store-urls.js';
 import { isRealOwner } from '../../../plugins/auth.js';
 import { AppError, forbidden, notFound, validationError } from '../../../plugins/error-handler.js';
@@ -56,6 +57,7 @@ export const retailersSocialPostsRoutes: FastifyPluginAsync = async (server) => 
             id: true,
             name: true,
             price_min: true,
+            category: true,
             photos: { where: { is_primary: true }, take: 1 },
             videos: { where: { is_main: true }, take: 1 },
           },
@@ -66,10 +68,23 @@ export const retailersSocialPostsRoutes: FastifyPluginAsync = async (server) => 
         if (!photo && !video) throw validationError('This product has no photo to post');
 
         productIds = [product.id];
+        const retailer = await prisma.retailer.findUnique({
+          where: { id: request.retailerId },
+          select: { shop_name: true, public_slug: true },
+        });
         if (!caption) {
-          // price_min is stored in paise (₹1500 = 150000).
-          const price = product.price_min ? ` — ₹${product.price_min / 100}` : '';
-          caption = `${product.name ?? 'New arrival'}${price}\n\nShop the collection on WhatsApp: ${'https://kanchuki.app'}`;
+          // price_min is stored in paise (₹1500 = 150000); {price} is
+          // formatted by resolvePostTemplate.
+          const defaultTemplate = `₹{price} {product_name}{category}
+              \r\n
+              Shop the collection on WhatsApp: ${'https://kanchuki.app'}`;
+          caption = resolvePostTemplate(defaultTemplate, {
+            productName: product.name,
+            pricePaise: product.price_min ?? undefined,
+            category: product.category ?? undefined,
+            storeName: retailer?.shop_name ?? undefined,
+            link: retailer?.public_slug ? buildCollectionUrl(retailer.public_slug, '') : undefined,
+          });
         }
         // F-033 Slice 2: a video (uploaded or Ken-Burns-generated) posts as
         // video — more engaging than a photo post — falling back to photo.
@@ -106,11 +121,20 @@ export const retailersSocialPostsRoutes: FastifyPluginAsync = async (server) => 
         // legacy /c/{slug} fallback when the store has no public slug).
         const retailer = await prisma.retailer.findUnique({
           where: { id: request.retailerId },
-          select: { public_slug: true },
+          select: { public_slug: true, shop_name: true },
         });
         const link = buildCollectionUrl(retailer?.public_slug ?? null, collection.slug);
 
-        if (!caption) caption = `Shop ${collection.title} — new collection on WhatsApp. ${link}`;
+        if (!caption) {
+          const defaultTemplate = `New collection: {product_name} — ₹{price}
+              \r\n
+              Shop ${collection.title} on WhatsApp: ${link}`;
+          caption = resolvePostTemplate(defaultTemplate, {
+            productName: collection.title,
+            storeName: retailer?.shop_name ?? undefined,
+            link: link,
+          });
+        }
         if (account.platform === 'FACEBOOK') {
           const { postId } = await publishLinkPost(
             account.platform_account_id,

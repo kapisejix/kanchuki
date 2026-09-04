@@ -28,6 +28,9 @@ export class ApiError extends Error {
     public readonly code: string,
     message: string,
     public readonly status: number,
+    /** Optional structured payload from the server error envelope — e.g.
+     * per-target FAILED results on an all-failed social publish (T-7.2). */
+    public readonly results?: unknown[] | null,
   ) {
     super(message)
     this.name = 'ApiError'
@@ -131,7 +134,12 @@ export async function request<T>(
 
     if (err instanceof ApiError) throw err
     if (code && status) {
-      throw new ApiError(code, err instanceof Error ? err.message : 'Request failed', status)
+      throw new ApiError(
+        code,
+        err instanceof Error ? err.message : 'Request failed',
+        status,
+        (err as { results?: unknown[] | null } | null)?.results ?? null,
+      )
     }
     // Re-wrap raw fetch errors as ApiError. Name the exact URL the device
     // tried — a bare "Network request failed" gives no clue whether the app

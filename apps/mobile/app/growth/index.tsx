@@ -12,6 +12,7 @@ import {
   Percent,
   Plug,
   Receipt,
+  Share2,
   Star,
   Users,
   Video,
@@ -34,6 +35,7 @@ const TYPE_LABEL: Record<CampaignType, string> = {
 
 // Growth modules — only features that remain after the teardown
 const GROWTH_MODULES = [
+  { icon: Share2, label: 'Create Social Post', hint: 'Post to Facebook & Instagram', href: '/social/create?source=growth' as const },
   { icon: Wand2, label: 'AI Campaign Assistant', hint: 'Type a command, get a campaign', href: '/growth/ai-campaign' as const },
   { icon: Users, label: 'Customer List', hint: 'Manage your customers', href: '/customers' as const },
   { icon: Percent, label: 'Promotions', hint: 'Discount codes & offers', href: '/growth/promotions' as const },

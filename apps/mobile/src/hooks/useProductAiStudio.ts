@@ -284,6 +284,19 @@ export function useProductAiStudio({
     [studioResult, product, queryClient, handleCloseStudioModal],
   )
 
+  // Post-to-social (R-7): close the modal, then open the composer prefilled
+  // with this product + the studio photo as its media. The photo row already
+  // exists (the job created it), so there is nothing to persist — the
+  // composer's photo_id deep-link override picks it from the product's
+  // photos on load.
+  const handlePostStudioResultToSocial = useCallback(() => {
+    const res = studioResult
+    handleCloseStudioModal()
+    if (res && product) {
+      router.push(`/social/create?product_id=${product.id}&photo_id=${res.photoId}&source=studio`)
+    }
+  }, [studioResult, product, handleCloseStudioModal])
+
   const handleSetBackground = async (bgId: string | null) => {
     if (!product || !currentPhoto || currentPhotoIsOriginal || backgroundSaving) return
     setBackgroundSaving(true)
@@ -438,6 +451,7 @@ export function useProductAiStudio({
     resetStudioFlow,
     handleCloseStudioModal,
     handleUseStudioResult,
+    handlePostStudioResultToSocial,
     handleSetPrimary,
     settingPrimaryId,
     backgroundImages,

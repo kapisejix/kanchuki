@@ -304,3 +304,194 @@ export async function publishLinkPost(
   }
   return { postId: body.id as string };
 }
+
+/**
+ * Publish a multi-photo (carousel) post to a Page. Two steps, mirroring the
+ * Graph API's required flow:
+ *   1. Upload each image with `published=false` → collect { media_fbid }.
+ *   2. POST /{page-id}/feed with `attached_media[i]` entries + message (+
+ *      optional link card).
+ * Fail closed: any non-2xx throws MetaApiError; nothing is reported as
+ * published unless the feed POST returns an id.
+ */
+export async function publishFacebookCarousel(
+  pageId: string,
+  pageToken: string,
+  images: string[],
+  caption: string,
+  link?: string,
+): Promise<{ postId: string }> {
+  if (images.length === 0) {
+    throw new MetaApiError('A carousel needs at least one image', 400, 'EMPTY_CAROUSEL');
+  }
+
+  const mediaFbids: string[] = [];
+  for (const url of images) {
+    const res = await fetch(
+      `${GRAPH_BASE}/${pageId}/photos?${new URLSearchParams({
+        access_token: pageToken,
+        url,
+        published: 'false',
+      })}`,
+      { method: 'POST' },
+    );
+    const body = (await res.json()) as Record<string, unknown>;
+    if (!res.ok || typeof body.id !== 'string') {
+      throw new MetaApiError('Facebook rejected a carousel photo', 400, 'PUBLISH_FAILED');
+    }
+    mediaFbids.push(body.id as string);
+  }
+
+  const params = new URLSearchParams({ access_token: pageToken, message: caption });
+  mediaFbids.forEach((mediaFbid, i) => {
+    params.set(`attached_media[${i}]`, JSON.stringify({ media_fbid: mediaFbid }));
+  });
+  if (link) params.set('link', link);
+
+  const res = await fetch(`${GRAPH_BASE}/${pageId}/feed?${params.toString()}`, { method: 'POST' });
+  const body = (await res.json()) as Record<string, unknown>;
+  if (!res.ok || typeof body.id !== 'string') {
+    throw new MetaApiError('Facebook rejected the carousel post', 400, 'PUBLISH_FAILED');
+  }
+  return { postId: body.id as string };
+}
+
+/**
+ * Publish a photo carousel to an Instagram Business account. Flow:
+ *   1. Create each child container (`is_carousel_item=true`), polling the
+ *      returned id until its status_code leaves IN_PROGRESS.
+ *   2. Create the CAROUSEL parent container with `children` + caption (also
+ *      polled — IG is async for video; photos are usually instant).
+ *   3. Publish the parent via /media_publish.
+ *   4. Best-effort permalink fetch (fail-open: the post IS live, a permalink
+ *      miss must not surface as a failure and risk a double-publish).
+ * Fail closed on the publish-critical steps: container ERROR/EXPIRED or a
+ * non-2xx on create/publish throws MetaApiError.
+ */
+export async function publishInstagramCarousel(
+  igUserId: string,
+  accessToken: string,
+  images: string[],
+  caption: string,
+): Promise<{ postId: string; permalink: string }> {
+  if (images.length === 0) {
+    throw new MetaApiError('A carousel needs at least one image', 400, 'EMPTY_CAROUSEL');
+  }
+
+  const childIds: string[] = [];
+  for (const url of images) {
+    const res = await fetch(
+      `${GRAPH_BASE}/${igUserId}/media?${new URLSearchParams({
+        access_token: accessToken,
+        image_url: url,
+        is_carousel_item: 'true',
+      })}`,
+      { method: 'POST' },
+    );
+    const body = (await res.json()) as Record<string, unknown>;
+    if (!res.ok || typeof body.id !== 'string') {
+      throw new MetaApiError(
+        'Instagram rejected a carousel child',
+        400,
+        'INSTAGRAM_CONTAINER_FAILED',
+      );
+    }
+    const childId = body.id as string;
+    // The create response often already carries a terminal status (photos are
+    // instant); only poll when it is still IN_PROGRESS (or missing).
+    await ensureIgContainerReady(childId, accessToken, body.status_code);
+    childIds.push(childId);
+  }
+
+  const parentRes = await fetch(
+    `${GRAPH_BASE}/${igUserId}/media?${new URLSearchParams({
+      access_token: accessToken,
+      media_type: 'CAROUSEL',
+      children: childIds.join(','),
+      caption,
+    })}`,
+    { method: 'POST' },
+  );
+  const parentBody = (await parentRes.json()) as Record<string, unknown>;
+  if (!parentRes.ok || typeof parentBody.id !== 'string') {
+    throw new MetaApiError('Instagram rejected the carousel', 400, 'INSTAGRAM_CONTAINER_FAILED');
+  }
+  const parentId = parentBody.id as string;
+  await ensureIgContainerReady(parentId, accessToken, parentBody.status_code);
+
+  const publishRes = await fetch(
+    `${GRAPH_BASE}/${igUserId}/media_publish?${new URLSearchParams({
+      access_token: accessToken,
+      creation_id: parentId,
+    })}`,
+    { method: 'POST' },
+  );
+  const publishBody = (await publishRes.json()) as Record<string, unknown>;
+  if (!publishRes.ok || typeof publishBody.id !== 'string') {
+    throw new MetaApiError('Instagram rejected the media publish', 400, 'INSTAGRAM_PUBLISH_FAILED');
+  }
+  const postId = publishBody.id as string;
+
+  // Permalink is presentational — fail-open.
+  let permalink = '';
+  try {
+    const linkRes = await fetch(
+      `${GRAPH_BASE}/${postId}?${new URLSearchParams({ access_token: accessToken, fields: 'permalink' })}`,
+    );
+    const linkBody = (await linkRes.json()) as Record<string, unknown>;
+    if (linkRes.ok && typeof linkBody.permalink === 'string') {
+      permalink = linkBody.permalink as string;
+    }
+  } catch {
+    permalink = '';
+  }
+
+  return { postId, permalink };
+}
+
+const IG_POLL_ATTEMPTS = 10;
+const IG_POLL_DELAY_MS = 2000;
+
+/**
+ * Ensure an IG container is ready to publish. A create response that already
+ * reports FINISHED skips the poll entirely (photos are usually instant).
+ * IN_PROGRESS (or an absent status) triggers a bounded status_code poll;
+ * ERROR/EXPIRED fail closed.
+ */
+async function ensureIgContainerReady(
+  containerId: string,
+  accessToken: string,
+  initialStatusCode?: unknown,
+): Promise<void> {
+  if (initialStatusCode === 'FINISHED') return;
+  if (initialStatusCode === 'ERROR' || initialStatusCode === 'EXPIRED') {
+    throw new MetaApiError('Instagram container failed', 400, 'INSTAGRAM_CONTAINER_FAILED');
+  }
+  for (let attempt = 0; attempt < IG_POLL_ATTEMPTS; attempt++) {
+    const res = await fetch(
+      `${GRAPH_BASE}/${containerId}?${new URLSearchParams({
+        access_token: accessToken,
+        fields: 'status_code',
+      })}`,
+    );
+    const body = (await res.json()) as Record<string, unknown>;
+    if (!res.ok) {
+      throw new MetaApiError(
+        'Instagram container status check failed',
+        400,
+        'INSTAGRAM_CONTAINER_FAILED',
+      );
+    }
+    if (body.status_code === 'FINISHED') return;
+    if (body.status_code === 'ERROR' || body.status_code === 'EXPIRED') {
+      throw new MetaApiError('Instagram container failed', 400, 'INSTAGRAM_CONTAINER_FAILED');
+    }
+    // IN_PROGRESS (or a transient missing status) — poll again after a delay.
+    await new Promise((resolve) => setTimeout(resolve, IG_POLL_DELAY_MS));
+  }
+  throw new MetaApiError(
+    'Instagram container did not finish in time',
+    400,
+    'INSTAGRAM_CONTAINER_FAILED',
+  );
+}

@@ -47,6 +47,9 @@ class RequestError extends Error {
     public readonly code: string,
     message: string,
     public readonly status: number,
+    /** Optional structured payload forwarded from the server error envelope
+     * (e.g. per-target results on an all-failed social publish, T-7.2). */
+    public readonly results?: unknown[] | null,
   ) {
     super(message)
     this.name = 'RequestError'
@@ -136,12 +139,13 @@ export async function cachedJsonRequest<T>(
   const response = await cachedFetch(url, init)
   if (!response.ok) {
     const body = (await response.json().catch(() => ({}))) as {
-      error?: { code?: string; message?: string }
+      error?: { code?: string; message?: string; results?: unknown[] | null }
     }
     throw new RequestError(
       body.error?.code ?? 'UNKNOWN',
       body.error?.message ?? `Request failed (${response.status})`,
       response.status,
+      body.error?.results ?? null,
     )
   }
 

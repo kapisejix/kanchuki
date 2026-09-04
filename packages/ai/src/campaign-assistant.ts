@@ -1,4 +1,4 @@
-import { runVisionAsk, type VisionAskRequest } from './providers.js';
+import { runVisionAsk, type ProviderUsedInfo, type VisionAskRequest } from './providers.js';
 import type { AiJsonSchema } from './providers.js';
 
 // ─── Types ────────────────────────────────────────────────────────────
@@ -265,6 +265,99 @@ Requirements:
 };
 
 // ─── Public API ───────────────────────────────────────────────────────
+
+// ─── Social post caption (Create Post Composer, R-9 / T-6.1) ────────
+
+export interface SocialCaptionInput {
+  productNames: string[];
+  category?: string;
+  priceRange?: string; // e.g. "₹1,999" or "₹999 – ₹2,499"
+  storeName?: string;
+  festival?: string;
+  postType: 'SINGLE_PRODUCT' | 'CAROUSEL' | 'COLLECTION_LINK';
+  // Optional usage hook (F-023) — fired with the real serving provider.
+  onProviderUsed?: (info: ProviderUsedInfo) => void;
+}
+
+export interface SocialCaptionResult {
+  caption: string;
+  hashtags: string[];
+}
+
+const CAPTION_SCHEMA: AiJsonSchema = {
+  name: 'generate_social_post_caption',
+  description: 'Generate a Facebook/Instagram post caption for an Indian clothing retailer',
+  schema: {
+    type: 'object',
+    properties: {
+      caption: {
+        type: 'string',
+        description:
+          '2–3 line social post caption. Warm, sales-friendly, no more than 1800 chars. Never use {{}} placeholders — write concrete text. Mention the festival only if one was provided.',
+        maxLength: 1800,
+      },
+      hashtags: {
+        type: 'array',
+        items: { type: 'string' },
+        description: '5–8 relevant hashtags without the # character (e.g. "newarrivals")',
+      },
+    },
+    required: ['caption', 'hashtags'],
+  },
+};
+
+const CAPTION_SYSTEM = `You are a social media copywriter for an Indian small clothing store. You write Instagram and Facebook captions that feel real, warm, and sales-friendly — never corporate, never fluff words like "stunning" or "must-have".
+
+Rules:
+- 2–3 short lines, under 1800 characters total.
+- Mention the product(s) concretely (name, colour, category) and the price.
+- If a festival was provided, weave it in naturally (e.g. "Diwali ready ✨").
+- Never use placeholders like {{name}} or {price} — write actual text.
+- End with an invitation to shop (visit the store / DM / WhatsApp).
+- 5–8 hashtags, relevant to Indian fashion (e.g. #indianfashion #festivewear).`;
+
+const CAPTION_USER = (input: SocialCaptionInput): string => `Write a social post caption for:
+
+Post type: ${input.postType === 'COLLECTION_LINK' ? 'a collection link post (no product media)' : input.postType === 'CAROUSEL' ? 'a carousel of products' : 'a single product'}
+Products: ${input.productNames.join(', ') || 'not specified'}
+${input.category ? `Category: ${input.category}\n` : ''}${input.priceRange ? `Price: ${input.priceRange}\n` : ''}${input.festival ? `Occasion: ${input.festival}\n` : ''}${input.storeName ? `Store: ${input.storeName}\n` : ''}
+
+Return structured JSON with caption + hashtags.`;
+
+export async function generateSocialPostCaption(
+  input: SocialCaptionInput,
+): Promise<SocialCaptionResult> {
+  const req: VisionAskRequest = {
+    images: [],
+    systemPrompt: CAPTION_SYSTEM,
+    userPrompt: CAPTION_USER(input),
+    maxTokens: 1024,
+    resourceType: 'AI_TAGGING_CALL',
+    ...(input.onProviderUsed ? { onProviderUsed: input.onProviderUsed } : {}),
+  };
+
+  const raw = await runVisionAsk(req);
+  const cleaned = raw.trim();
+
+  try {
+    const parsed = JSON.parse(cleaned) as {
+      caption?: unknown;
+      hashtags?: unknown;
+    };
+    if (typeof parsed.caption === 'string' && parsed.caption.trim()) {
+      const hashtags = Array.isArray(parsed.hashtags)
+        ? parsed.hashtags.filter((h): h is string => typeof h === 'string').slice(0, 8)
+        : [];
+      return { caption: parsed.caption.trim(), hashtags };
+    }
+  } catch {
+    // fall through to raw-text fallback
+  }
+
+  // Fallback: wrap raw text as the caption if JSON parsing fails (same
+  // fail-open pattern as generateCampaignMessage).
+  return { caption: cleaned.slice(0, 1800), hashtags: [] };
+}
 
 export async function parseCampaignIntent(prompt: string): Promise<CampaignIntent> {
   const req: VisionAskRequest = {

@@ -100,6 +100,43 @@ PATCH /retailers/me/onboarding  # Update onboarding progress flags
 
 ---
 
+### Social Publishing (composer fan-out, post templates, caption AI — built 2026-09-04)
+
+> Multi-target publish from the mobile composer (`/social/create`) to every connected FB/IG
+> account. Legacy single-account publish (`/retailers/accounts/:id/posts`, F-031 Phase 1) still
+> serves post history; new posts go through the fan-out below. Access tokens never leave the
+> server. Spec: `docs/tasks/social-create-post-composer.md`.
+
+```
+POST   /retailers/me/social/posts        # Fan-out publish: { post_type: SINGLE|CAROUSEL|COLLECTION_LINK,
+                                          #   product_ids/collection_id, media_overrides, link_type, caption,
+                                          #   hashtags, target_account_ids, client_post_id, template_id? }
+                                          # → 200 { results: [{ social_account_id, platform, status,
+                                          #   external_post_url?, error_message? }] } — partial success is 200;
+                                          #   ALL targets failed → 400 PUBLISH_FAILED with the same results array
+                                          #   in the error envelope. Idempotent on client_post_id (Redis SET-NX
+                                          #   + DB unique) — safe to retry.
+
+GET    /retailers/me/social/posts         # Post history (per-account rows)
+
+GET    /post-templates?context=POST|CAMPAIGN|BOTH   # Retailer template library (PUBLISHED + plan-gated)
+                                          #   used by the composer Templates section + campaign composer
+
+POST   /growth/social/caption-suggest     # Caption AI: { product_ids, occasion? } → { caption, hashtags }
+                                          #   Fail-open to the templated caption on AI/quota failure
+```
+
+Admin post-template management (super-admin, audit-logged):
+
+```
+GET/POST    /admin/post-templates             # List / create (status, context, plan gating, occasion,
+                                              #   caption_template, hashtags, thumbnail)
+PATCH/DELETE /admin/post-templates/:id        # Update / delete
+POST        /admin/post-templates/thumbnail-url  # Presigned R2 upload URL for the thumbnail
+```
+
+---
+
 ### Store Structure
 
 Sections live under the retailer resource:

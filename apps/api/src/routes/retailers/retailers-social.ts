@@ -1,6 +1,7 @@
 import type { FastifyPluginAsync } from 'fastify';
 import { retailersSocialAccountsRoutes } from './retailers-social/retailers-social-accounts.js';
 import { retailersSocialConnectRoutes } from './retailers-social/retailers-social-connect.js';
+import { retailersSocialFanoutRoutes } from './retailers-social/retailers-social-fanout.js';
 import { retailersSocialPostsRoutes } from './retailers-social/retailers-social-posts.js';
 
 // F-031 Social Media Publishing (Phase 1: Facebook Page).
@@ -18,6 +19,9 @@ import { retailersSocialPostsRoutes } from './retailers-social/retailers-social-
 //      selected Page (encrypted token via F-012) under a new SocialAccount row.
 //   4. POST /retailers/me/social/accounts/:id/posts — publish a post to the
 //      connected Page (SINGLE_PRODUCT or COLLECTION_LINK).
+//   4b. POST /retailers/me/social/posts — composer-v2 fan-out: one post to
+//      MANY accounts in a single request (T-3.1, deprecated-by-default path
+//      is the per-account route above).
 //   5. GET /retailers/me/social/accounts (list, masked) + GET .../:id/posts (history)
 //   6. DELETE /retailers/me/social/accounts/:id — disconnect.
 //
@@ -30,9 +34,11 @@ import { retailersSocialPostsRoutes } from './retailers-social/retailers-social-
 //   - Every post stores a SocialPost history row with status POSTED/FAILED.
 //
 // Split into domain modules under routes/retailers/retailers-social/ (2026-09-03):
-// connect / accounts / posts. Shared helpers live in retailers-social-helpers.ts.
+// connect / accounts / posts + fanout (composer v2). Shared helpers live in
+// retailers-social-helpers.ts.
 export const retailersSocialRoutes: FastifyPluginAsync = async (server) => {
   await server.register(retailersSocialConnectRoutes);
   await server.register(retailersSocialAccountsRoutes);
   await server.register(retailersSocialPostsRoutes);
+  await server.register(retailersSocialFanoutRoutes);
 };

@@ -9,7 +9,7 @@ import {
 import { Image } from 'expo-image'
 import { useQuery } from '@tanstack/react-query'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { X, Sparkles, Wand2, CheckCircle2, AlertTriangle } from 'lucide-react-native'
+import { X, Sparkles, Wand2, CheckCircle2, AlertTriangle, Send } from 'lucide-react-native'
 import { STUDIO_CREDITS_PER_IMAGE, demographicForCategory } from '@kanchuki/shared'
 import { productApi } from '../../lib/api'
 import { AnimatedPressable } from '../AnimatedPressable'
@@ -34,6 +34,7 @@ interface ProductStudioModalProps {
   result: { photoId: string; url: string } | null
   onRetry: () => void
   onUseResult: (setAsMain: boolean) => void
+  onPostToSocial: () => void
   // Product context for demographic filter on MODEL tab
   productCategory?: string
   productName?: string
@@ -55,6 +56,7 @@ export function ProductStudioModal({
   result,
   onRetry,
   onUseResult,
+  onPostToSocial,
   productCategory,
   productName,
 }: ProductStudioModalProps) {
@@ -174,6 +176,17 @@ export function ProductStudioModal({
               onPress={() => onUseResult(true)}
               colors={[primaryColor, colors.ink[800]]}
             />
+            {/* R-7: post the studio shot straight to the social composer — the
+                photo row already exists, so this is a plain navigation. */}
+            <AnimatedPressable
+              onPress={onPostToSocial}
+              className="py-3 items-center rounded-xl border border-sand-200 flex-row justify-center gap-2"
+              accessibilityLabel="Post to social media"
+              accessibilityRole="button"
+            >
+              <Send size={15} color={colors.ink[800]} />
+              <Text className="text-xs font-bold text-sand-600">Post to social</Text>
+            </AnimatedPressable>
             <AnimatedPressable
               onPress={() => onUseResult(false)}
               className="py-3 items-center rounded-xl border border-sand-200"

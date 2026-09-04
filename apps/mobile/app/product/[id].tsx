@@ -13,7 +13,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Image } from 'expo-image'
 import { VideoView } from 'expo-video'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { ChevronLeft, Clapperboard, Heart, Star } from 'lucide-react-native'
+import { ChevronLeft, Clapperboard, Heart, Share2, Star } from 'lucide-react-native'
 import Gallery, { type GalleryRef } from 'react-native-awesome-gallery'
 import type { ProductDetail } from '@kanchuki/shared'
 
@@ -286,6 +286,19 @@ export default function ProductDetailScreen() {
           Product Details
         </Text>
         <View className="flex-row items-center gap-2">
+          {/* Share to social — Create Post composer entry (R-6). The composer
+              itself shows the connect-empty state when no accounts exist. */}
+          <AnimatedPressable
+            onPress={() =>
+              router.push(`/social/create?product_id=${product.id}&source=catalog`)
+            }
+            className="w-10 h-10 rounded-full bg-lavender-100 items-center justify-center border border-lavender-200"
+            hitSlop={8}
+            accessibilityLabel="Post product to social media"
+            accessibilityRole="button"
+          >
+            <Share2 size={18} color="#231F48" />
+          </AnimatedPressable>
           {form.isDirty ? (
             <AnimatedPressable
               onPress={() => void form.handleSave(categories)}
@@ -598,6 +611,7 @@ export default function ProductDetailScreen() {
         result={studio.studioResult}
         onRetry={studio.resetStudioFlow}
         onUseResult={studio.handleUseStudioResult}
+        onPostToSocial={studio.handlePostStudioResultToSocial}
         productCategory={product.category ?? undefined}
         productName={product.name ?? undefined}
       />

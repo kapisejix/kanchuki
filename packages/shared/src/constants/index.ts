@@ -283,6 +283,8 @@ export const R2_PATHS = {
     `retailers/${retailerId}/products/${productId}/spin/frame-${frameIndex}.jpg`,
   backgroundImage: (filename: string) => `admin/background-images/${filename}`,
   studioStyleThumb: (filename: string) => `admin/studio-styles/${filename}`,
+  // Post-template admin preview thumbnails (admin-post-templates.ts).
+  postTemplateThumb: (filename: string) => `admin/post-templates/${filename}`,
   categoryImage: (retailerId: string, filename: string) =>
     `retailers/${retailerId}/categories/${filename}`,
   retailerBanner: (retailerId: string, filename: string) =>

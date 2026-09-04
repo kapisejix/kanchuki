@@ -22,3 +22,12 @@ export function buildCollectionUrl(
     ? `${webBase()}/${publicSlug}/${collectionSlug}`
     : `${webBase()}/c/${collectionSlug}`;
 }
+
+export function buildProductUrl(
+  publicSlug: string | null | undefined,
+  collectionSlug: string,
+  productId: string,
+): string {
+  const base = publicSlug ? `${webBase()}/${publicSlug}` : `${webBase()}/c`;
+  return `${base}/${collectionSlug}/product/${productId}`;
+}

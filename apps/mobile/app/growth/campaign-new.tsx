@@ -16,7 +16,9 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { GradientButton } from '../../src/components/GradientButton'
-import { productApi } from '../../src/lib/api'
+import { TemplatePicker } from '../../src/components/social'
+import { productApi, socialApi } from '../../src/lib/api'
+import type { PostTemplateInfo } from '../../src/lib/api/social'
 import {
   growthApi,
   type AudienceSpec,
@@ -200,6 +202,8 @@ export default function CampaignFormScreen() {
   const [message, setMessage] = useState('')
   // Cursor tracking so placeholder taps insert at the cursor, not just append.
   const messageSelectionRef = useRef({ start: 0, end: 0 })
+  // Admin campaign post template (T-9.7) — tracks which card is selected.
+  const [campaignTemplateId, setCampaignTemplateId] = useState<string | null>(null)
   const [messageSelection, setMessageSelection] = useState<{ start: number; end: number } | undefined>(undefined)
   // Numeric auto-increment festival id (admin-managed calendar).
   const [festivalId, setFestivalId] = useState<number | null>(null)
@@ -271,6 +275,31 @@ export default function CampaignFormScreen() {
     enabled: type === 'FESTIVAL',
   })
   const festivals = festivalsData?.data ?? []
+
+  // Admin campaign post templates (T-9.7). The API's context filter is
+  // CAMPAIGN-inclusive-of-BOTH, so a campaign template (or one marked for
+  // both surfaces) appears here. The shared TemplatePicker card tap prefills
+  // the WhatsApp message draft below with campaign-token placeholders.
+  const { data: campaignTemplatesData } = useQuery({
+    queryKey: ['social', 'post-templates', 'campaign'],
+    queryFn: () => socialApi.listPostTemplates('CAMPAIGN'),
+  })
+  const campaignTemplates = campaignTemplatesData?.data ?? []
+
+  // Post-template tokens are single-brace ({store_name}); campaign messages
+  // fill {{...}} tokens at send time (fillTemplate). Convert the shared
+  // placeholders so the prefilled draft resolves when the campaign sends.
+  const applyCampaignTemplate = (t: PostTemplateInfo | null) => {
+    setCampaignTemplateId(t?.id ?? null)
+    if (!t) return
+    const text = t.caption_template
+      .replace(/\{store_name\}/g, '{{shop}}')
+      .replace(/\{link\}/g, '{{link}}')
+      .replace(/\{festival\}/g, '{{festival}}')
+    setMessage(text)
+    messageSelectionRef.current = { start: text.length, end: text.length }
+    setMessageSelection(undefined)
+  }
 
   // Products for the A/B collection picker (roadmap S). The modal keeps a
   // working Set locally and only commits it to the variant on Done.
@@ -511,7 +540,20 @@ export default function CampaignFormScreen() {
           {/* Message template */}
           {type !== 'AB_TEST' && (
             <Section title="WhatsApp Message Draft">
-              <Text className="text-xs font-bold text-heliotrope-500 uppercase tracking-wider mb-2">
+              {campaignTemplates.length > 0 ? (
+                <>
+                  <Text className="text-xs font-bold text-heliotrope-500 uppercase tracking-wider mb-2">
+                    Team Templates
+                  </Text>
+                  <TemplatePicker
+                    templates={campaignTemplates}
+                    selectedId={campaignTemplateId}
+                    onSelect={applyCampaignTemplate}
+                    colors={colors}
+                  />
+                </>
+              ) : null}
+              <Text className="text-xs font-bold text-heliotrope-500 uppercase tracking-wider mb-2 mt-3">
                 Quick Templates
               </Text>
               <View className="flex-row flex-wrap gap-2 mb-3.5">

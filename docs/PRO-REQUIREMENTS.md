@@ -1610,17 +1610,18 @@ Three post types, ascending effort:
 - Post history (what was posted, when, link to the live post)
 - Meta app review submission for `pages_manage_posts` (parallel with build)
 
-**Phase 2 — Instagram + richer posts:**
-- Instagram Business connect (via the linked FB Page; guide personal-account retailers to convert)
-- Multi-product carousel posts
-- Auto-generated captions from existing product data (name + price + emoji + "Order via WhatsApp")
-- Per-platform CTA: Instagram → "DM us / link in bio"; Facebook → clickable collection link
-- **Non-API fallback for personal-account retailers**: "copy ready-made caption + share photo to the Instagram app" (works, but not automated — document the tradeoff)
+**Phase 2 — Instagram + richer posts: ✅ BUILT + LIVE 2026-09-04** — the Social Create-Post Composer (`docs/tasks/social-create-post-composer.md`) supersedes this phase's piecemeal scope with one shipped whole:
+- Instagram Business connect + **multi-target fan-out**: one composer screen posts to *every* connected FB/IG account (`POST /v1/retailers/me/social/posts`, per-target dispatch, partial-success results)
+- Multi-product **carousel** posts (migrations 090/092) + single photo/video + link-card posts
+- **Auto-generated captions**: templated server-side captions + admin-curated **Post Templates** (plan-gated, `usage_count`) + **Caption AI** (`POST /v1/growth/social/caption-suggest` — `@kanchuki/ai`, debounced composer prefill, always fail-open)
+- Per-platform CTA: Instagram → no clickable caption links handled per-platform; Facebook → clickable collection link (server-owned link resolution)
+- 5 composer entry points: Settings → Social Media Post button, product detail header, AI Studio result, collection detail header, Growth hub tile
+- **Non-API fallback for personal-account retailers**: still open (personal IG has no Business API path — documented tradeoff)
 
 **Phase 3 — Automation & attribution:**
-- "Post to all connected accounts" (one tap → FB + IG, later Google Business Profile via shared engine)
-- Opt-in auto-post on new arrivals (mirror of F-022; default OFF, preview-first, never silently auto-post)
-- UTM-tagged collection links (`?utm_source=instagram&utm_campaign=...`) for visit attribution
+- ~~"Post to all connected accounts"~~ — **delivered by the fan-out composer** (2026-09-04); Google Business Profile sharing stays with F-022's shared engine when that ships
+- Opt-in auto-post on new arrivals (mirror of F-022; default OFF, preview-first, never silently auto-post) — still open
+- UTM-tagged collection links (`?utm_source=instagram&utm_campaign=...`) for visit attribution — still open
 
 **Phase 4 — Stretch (decide later):** Instagram Stories link sticker, YouTube Shorts, scheduling (draft + pick time).
 

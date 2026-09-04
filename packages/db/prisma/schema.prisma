@@ -1457,6 +1457,15 @@ model SocialPost {
   collection_id    String?
   caption          String
 
+  // Create Post Composer v2 (migration 090): resolved link + media snapshot
+  // so history survives later edits/deletes, and the client-post id that
+  // dedupes retries (R-13). `client_post_id` has a per-retailer unique index
+  // (Postgres treats NULLs as distinct, so legacy rows are unaffected).
+  link_url        String?
+  link_type       String? // none | collection | storefront | product
+  media           Json?   // [{ product_id, photo_id|video_id, kind, url }]
+  client_post_id  String?
+
   // Platform-side result.
   external_post_id  String?
   external_post_url String?
@@ -1766,6 +1775,51 @@ enum SocialTemplateType {
   FACEBOOK_POST
   FACEBOOK_STORY
   PDF_FLYER
+}
+
+// ─── ADMIN POST TEMPLATES (Create Post Composer v2 §11, migration 091) ──
+// Admin-owned, plan-gated TEXT templates (caption + hashtags + post-type
+// hint) that retailers pick in the Create Post composer and in campaign
+// creation. Distinct from the retailer-scoped SocialTemplate (069, AI image
+// generation) — do NOT retrofit that model. Follows the studio_styles /
+// background_images admin-catalog pattern:
+//   status DRAFT|PUBLISHED|HIDDEN  (DRAFT/HIDDEN invisible to retailers)
+//   plans  SubscriptionPlan[]      ([] = nobody; PUBLISHED + plans has
+//                                   retailer.plan = visible)
+// The caption_template holds {placeholders} (product_name, price, link…)
+// resolved server-side at publish time (lib/post-template-placeholders.ts).
+model PostTemplate {
+  id               String               @id @default(cuid())
+  name             String               // shown to the retailer in the picker
+  description      String?
+  context          PostTemplateContext  @default(POST) // POST | CAMPAIGN | BOTH
+  post_type        SocialPostType?      // optional hint; null = retailer decides
+  caption_template String               // with {placeholders}, see §11.2
+  hashtags         String[]             @default([])
+  occasion         String?              // "Diwali", "Wedding", "General"… picker filter
+  thumbnail_url    String?              // optional visual preview in the picker
+  status           PostTemplateStatus   @default(DRAFT) // DRAFT | PUBLISHED | HIDDEN
+  plans            SubscriptionPlan[]   @default([])    // [] = nobody
+  sort_order       Int                  @default(0)
+  usage_count      Int                  @default(0)
+  created_at       DateTime             @default(now())
+  updated_at       DateTime             @updatedAt
+
+  @@index([status])
+  @@index([occasion])
+  @@map("post_templates")
+}
+
+enum PostTemplateStatus {
+  DRAFT
+  PUBLISHED
+  HIDDEN
+}
+
+enum PostTemplateContext {
+  POST
+  CAMPAIGN
+  BOTH
 }
 
 // ─── AGGREGATOR / MARKETPLACE SYNC ───────────────────────────────
