@@ -1853,7 +1853,7 @@ Read the live API service (`supportive-love`) env via the Railway MCP. Result:
 | `RAZORPAY_WEBHOOK_SECRET` | real generated base64 value (not the old `kanchuki-webhook-secret` dictionary string); keys are `rzp_live_*`. Closes **S-009**. |
 | `REVALIDATION_SECRET` | set on API. **Gap:** missing on the **web** service (`magnificent-liberation`) → `apps/web/src/app/api/revalidate/route.ts` reads `process.env.REVALIDATION_SECRET` at runtime and was returning 401 on every call from the API (on-demand ISR revalidation dead, 60s fallback only). Owner added it to the web service the same day. Closes **B-009**. |
 
-Still open (not part of this batch): B-002 read replica points at primary, B-003 `ADMIN_PASSWORD_HASH` format, B-004 admin TOTP.
+Still open (not part of this batch): B-002 read replica points at primary. (B-003 `ADMIN_PASSWORD_HASH` scrypt-rehashed + set on Railway 2026-09-03; B-004 admin TOTP descoped 2026-09-04 by owner decision — no admin-login TOTP field, see LAUNCH-READINESS-AUDIT §0c.2.)
 
 No code change — verification + one owner-side env addition.
 

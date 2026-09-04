@@ -132,71 +132,71 @@ widget deployed with `NEXT_PUBLIC_MSG91_*`; `admin.login.test.ts` 9/9,
   `SENTRY_ORG`/`SENTRY_PROJECT`/`SENTRY_AUTH_TOKEN` on the web build for
   source-map upload.
 
-### 2. B-003 + B-004 (admin hash format + admin TOTP) — ⏳ OWNER (one command)
+### 2. Admin password hash + admin TOTP — CLOSED (no further work)
 
-Cannot be done by the agent — needs the chosen admin password as input, and
-writes a prod secret. Run locally:
+- **B-003 — DONE 2026-09-03.** `ADMIN_PASSWORD_HASH` regenerated in scrypt format
+  (`scripts/generate-admin-hash.ts`) and set on the API Railway service by the
+  owner. See `docs/tasks/2026-09-03-ci-pr23-and-launch-checklist.md` §checklist.
+- **B-004 — DESCOPED (owner decision 2026-09-04).** Admin TOTP stays off. The
+  admin login screen has no `totp_code` field, so setting `ADMIN_TOTP_SECRET`
+  locks admin out. Re-enabling later means adding the TOTP input to
+  `LoginScreen.tsx` first, then setting the secret. The server treats TOTP as
+  optional when the var is unset. Not tracked as an open item.
+
+### 3. Supabase backups + restore drill — DONE
+
+Automated backups are configured and surfaced in the admin dashboard
+(`apps/api/src/routes/admin/admin-backups.ts` → `/admin/database` UI). No
+further action for launch. A periodic restore drill is still good hygiene but is
+not a blocker.
+
+### 4. `_prisma_migrations` bookkeeping drift — ⏳ OWNER (5 min, low risk)
+
+Migrations `083`–`089` are applied to prod (schema objects verified 2026-09-04 —
+none of the 7 appear in `public._prisma_migrations`). Deploys run
+`pnpm exec prisma migrate deploy` (see `docs/DEPLOY.md`), so the **next** deploy
+that adds a migration will also try to replay these 7 — some are idempotent
+(`086` uses `IF NOT EXISTS`, `083`/`084` are `GRANT`s), `085` (`DROP COLUMN
+annual_paise`) would error since the column is already gone.
+
+**Fix — mark them applied without running them.** Point `DATABASE_URL` at prod
+and run, once per migration:
 
 ```
-npx tsx scripts/generate-admin-hash.ts '<your-admin-password>' --totp
+cd packages/db
+DATABASE_URL="<prod-url>" pnpm exec prisma migrate resolve --applied 083_grant_delete_product_photos
+DATABASE_URL="<prod-url>" pnpm exec prisma migrate resolve --applied 084_grant_delete_purge_role
+DATABASE_URL="<prod-url>" pnpm exec prisma migrate resolve --applied 085_drop_annual_paise
+DATABASE_URL="<prod-url>" pnpm exec prisma migrate resolve --applied 086_gst_columns_and_invoice_sequence
+DATABASE_URL="<prod-url>" pnpm exec prisma migrate resolve --applied 087_gst_invoice_r2_key
+DATABASE_URL="<prod-url>" pnpm exec prisma migrate resolve --applied 088_platform_gst_profile
+DATABASE_URL="<prod-url>" pnpm exec prisma migrate resolve --applied 089_resource_packs
 ```
 
-Prints the new-format `ADMIN_PASSWORD_HASH` and a scannable `ADMIN_TOTP_SECRET`
-URI. Set both in the API Railway env (`supportive-love`), scan the TOTP URI into
-an authenticator, redeploy, then run `npx vitest run src/routes/admin.login.test.ts`.
-Closes B-003 + B-004.
+`resolve --applied` only writes a `_prisma_migrations` row — it runs no DDL, so
+it can't damage the schema. Verify after with
+`DATABASE_URL="<prod-url>" pnpm exec prisma migrate status` (should say "up to
+date"). Do this before the next schema migration.
 
-### 3. Supabase backups + restore drill — ⏳ OWNER (dashboard)
+### 5. Stray `.kilo/worktrees` — ⏳ OWNER
 
-- Supabase dashboard → Project → Database → Backups: confirm daily automated
-  backups are **on** and PITR retention is set (Pro plan gives 7-day PITR).
-- Do one restore drill: create a throwaway branch/project from the latest
-  backup, confirm row counts on `retailers` / `products` / `subscription_payments`
-  match prod, then delete it. Record the date here when done.
-
-### 4. `_prisma_migrations` bookkeeping drift — ⏳ OWNER (admin dashboard or approved SQL)
-
-Migrations `083`–`089` are applied to prod (schema objects verified — checked
-2026-09-04, none of the 7 appear in `public._prisma_migrations`) — the
-admin-dashboard migration runner applies DDL without inserting a bookkeeping row.
-Harmless while deploys stay admin-dashboard-only (per the operational policy),
-but any `prisma migrate deploy` would try to replay all 7. Reconcile by inserting
-resolved rows (run from the admin dashboard SQL path, with approval — not ad hoc
-against prod):
-
-```sql
--- one row per applied migration; checksum '' is fine for a resolve marker
-insert into public._prisma_migrations
-  (id, checksum, finished_at, migration_name, logs, rolled_back_at, started_at, applied_steps_count)
-select gen_random_uuid()::text, '', now(), m, null, null, now(), 1
-from (values
-  ('083_grant_delete_product_photos'),
-  ('084_grant_delete_purge_role'),
-  ('085_drop_annual_paise'),
-  ('086_gst_columns_and_invoice_sequence'),
-  ('087_gst_invoice_r2_key'),
-  ('088_platform_gst_profile'),
-  ('089_resource_packs')
-) as t(m)
-where not exists (select 1 from public._prisma_migrations where migration_name = t.m);
-```
-
-Alternative: `prisma migrate resolve --applied <name>` per migration against the
-prod URL (also owner-run).
-
-### 5. Stray `.kilo/worktrees` — ⚠️ NOT removed (uncommitted WIP present)
-
-`git worktree list` shows two:
-- `.kilo/worktrees/aquatic-animal` [aquatic-animal] — **dirty**: ~13 modified +
-  untracked files, a growth AI-campaign feature in progress.
-- `.kilo/worktrees/small-mood` [implement-photo-feature] — **dirty**: add-product
+`git worktree list` shows two, both with uncommitted work:
+- `.kilo/worktrees/aquatic-animal` [aquatic-animal] — ~13 modified + untracked
+  files, a growth AI-campaign feature in progress.
+- `.kilo/worktrees/small-mood` [implement-photo-feature] — add-product
   photo-feature WIP + a `.backup` file.
 
-Neither is ahead of `main` by any commit, but both hold real uncommitted work, so
-they were left in place. They only cause noise when a test command is run from the
-repo root (duplicate `*.test.ts` discovery) — scope test runs to `apps/api` /
-`apps/web` to avoid it. Owner: land or discard that work, then
-`git worktree remove <path>`.
+Neither is ahead of `main` by any commit. They only cause noise when a test
+command runs from the repo root (duplicate `*.test.ts` discovery) — scope test
+runs to `apps/api` / `apps/web` to avoid it.
+
+**To remove — decide per worktree first:**
+- *Keep the work:* `cd` into the worktree, `git add -A && git commit`, then from
+  the main checkout `git worktree remove .kilo/worktrees/<name>`.
+- *Discard the work:* `git worktree remove --force .kilo/worktrees/<name>`
+  (the `--force` is required because the tree is dirty). Then delete the now-
+  orphaned branch if unwanted: `git branch -D <branch>`.
+- After both: `git worktree prune` to clear any stale admin entries.
 
 ---
 
@@ -253,8 +253,8 @@ Deduplicated from `PROGRESS.md` + `omp-review.md`. Everything not listed here as
 | — | Collection share link uses LAN IP, not a real hyperlink | 🔴 Open — config only, fix by setting `WEB_URL` to your real domain at deploy time |
 | — | QR code export is PNG-only, no JPG/PDF | 🟡 Open, cosmetic, P2 |
 | B-002 | `DATABASE_URL_REPLICA` currently points at the primary DB, not a real replica | 🔴 Open |
-| B-003 | `ADMIN_PASSWORD_HASH` still in legacy HMAC format | 🔴 Open — owner: one command in §0c.2 |
-| B-004 | Admin TOTP (2FA) not enabled (`ADMIN_TOTP_SECRET` unset) | 🔴 Open — owner: same command as B-003 (§0c.2) |
+| B-003 | `ADMIN_PASSWORD_HASH` legacy HMAC format | ✅ Resolved 2026-09-03 — regenerated in scrypt format, set on Railway (§0c.2) |
+| B-004 | Admin TOTP (2FA) not enabled | ⚪ Descoped 2026-09-04 — owner decision, no admin-login TOTP UI (§0c.2) |
 | B-005 | `VAULT_DATABASE_URL` not configured — Deletion Vault has nowhere to write | ✅ Resolved 2026-09-03 — set (`vault_app` insert-only role), verified live (§0b) |
 | B-007 | `DATABASE_URL` still uses the Supabase superuser role, not the restricted `kanchuki_app` role | ✅ Resolved 2026-09-03 — `DATABASE_URL` uses `kanchuki_app.*`, verified live (§0b) |
 | B-008 | `TEAM_JWT_SECRET` missing — **staff login is broken** until this is set | ✅ Resolved 2026-09-03 — `TEAM_JWT_SECRET` set on API service (§0b) |
@@ -267,7 +267,7 @@ Deduplicated from `PROGRESS.md` + `omp-review.md`. Everything not listed here as
 | ~~—~~ | ~~Rate limiter is in-memory, breaks under >1 API instance~~ | ✅ **Correction (2026-08-01):** checked `apps/api/src/index.ts` — `@fastify/rate-limit` is already registered with `redis: getRedis()`. Already multi-instance-safe. SECURITY.md's in-memory claim was stale. |
 | — | **New finding (2026-08-01, fixed same day):** `COOKIE_SECRET` had no production guard — if unset, admin CSRF cookie signing key was regenerated from `Date.now()` on every process restart, silently invalidating every admin session/CSRF cookie on each deploy | ✅ Fixed in `apps/api/src/index.ts` — now throws at startup in production if `COOKIE_SECRET` is unset, so misconfiguration is loud instead of silent |
 
-All credential items above (B-003/004/005/007/008/009, S-009) are the same root task: **rotate/set the missing env vars in your real hosting environment.** That's one deploy-day checklist item (§6), not six separate engineering tasks. — **B-005 / B-007 / B-008 / B-009 / S-009 done + verified live 2026-09-03 (§0b); B-003 (`ADMIN_PASSWORD_HASH` format) and B-004 (admin TOTP) still open.**
+All credential items above (B-003/004/005/007/008/009, S-009) are the same root task: **rotate/set the missing env vars in your real hosting environment.** — **B-003 / B-005 / B-007 / B-008 / B-009 / S-009 done + verified live 2026-09-03 (§0b, §0c.2); B-004 (admin TOTP) descoped 2026-09-04 by owner decision (§0c.2). All credential items closed.**
 
 ---
 
@@ -296,8 +296,8 @@ All credential items above (B-003/004/005/007/008/009, S-009) are the same root 
 - [ ] Point `DATABASE_URL_REPLICA` at an actual read replica, or remove replica-only code paths (admin query console, reports) from relying on isolation you don't have yet. *Not required to unblock a 12-retailer pilot — replica-only paths are admin tooling, not the retailer/customer flow.*
 
 **P1 — should do soon after launch:**
-- [ ] Rehash `ADMIN_PASSWORD_HASH` out of the legacy HMAC format.
-- [ ] Enable admin TOTP (2FA) — currently off.
+- [x] Rehash `ADMIN_PASSWORD_HASH` out of the legacy HMAC format — done 2026-09-03 (§0c.2).
+- [~] Admin TOTP (2FA) — descoped 2026-09-04 (owner decision, no login-screen TOTP field; §0c.2).
 - [ ] Fix the CI vault-test false-pass (see §3) so CI stays a trustworthy gate.
 - [ ] Legal review pass on training-data consent copy (flagged, not done).
 - [ ] Retailer-facing data-retention/deletion notice for training photos (flagged, not built).
@@ -393,7 +393,7 @@ Pull this straight from `DEPLOY.md`'s own (currently all-unchecked) production c
 Do these in order. Nothing below requires touching CI/CD config or running a migration blind — where an action needs Railway/Supabase dashboard access, that's called out (per this project's own operational policy, I don't touch production env vars, deployments, or migrations directly).
 
 1. ~~**Set the P0 secrets in Railway (§5).**~~ ✅ **Done + verified live 2026-09-03 (§0b).** `COOKIE_SECRET`, `TEAM_JWT_SECRET`, `REVALIDATION_SECRET` (API + web), `RAZORPAY_WEBHOOK_SECRET`, `VAULT_DATABASE_URL` all set; `DATABASE_URL` on the `kanchuki_app.*` role. Fixed B-005, B-007, B-008, B-009, S-009.
-   - **Still to do:** `ADMIN_PASSWORD_HASH` + `ADMIN_TOTP_SECRET` — run `npx tsx scripts/generate-admin-hash.ts '<your-chosen-password>' --totp` yourself (needs your password as input) — prints the hash + a QR-scannable TOTP URI. Closes B-003 + B-004.
+   - `ADMIN_PASSWORD_HASH` — regenerated in scrypt format + set on Railway, done 2026-09-03 (B-003 closed). Admin TOTP (B-004) descoped 2026-09-04 by owner decision — see §0c.2.
 
 2. **Switch `DATABASE_URL` to the `kanchuki_app` role — on staging/a test deploy first, not directly on the pilot deploy.** SQL is already written in `docs/SECURITY.md` §19.1. This is the one change with real "could break the server" risk if some code path assumes superuser privileges it doesn't actually need — validate it doesn't 500 on a basic retailer/product/order flow before pointing the pilot's `DATABASE_URL` at it.
 
