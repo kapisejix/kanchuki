@@ -1,4 +1,5 @@
 import type { FastifyError, FastifyReply, FastifyRequest } from 'fastify';
+import { Sentry } from '../instrument.js';
 
 export class AppError extends Error {
   constructor(
@@ -117,6 +118,9 @@ export function errorHandler(
 
   // Generic server error — don't leak internals in production
   reply.log.error(error);
+  // Report to Sentry (no-op until SENTRY_DSN is set). AppError / validation /
+  // 4xx branches above have already returned, so only genuine 500s reach here.
+  Sentry.captureException(error);
   const isDev = process.env.NODE_ENV === 'development';
   const message = isDev ? (error.message ?? 'Something went wrong') : 'Something went wrong';
   void reply.status(500).send({

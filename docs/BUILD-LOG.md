@@ -1806,7 +1806,7 @@ Also: removed the dead `TRY_ON` addon resource from the `/billing/addon-checkout
 
 New tests: `billing.test.ts` — 4 webhook cases (single allocation, duplicate-charge idempotency, activated-no-allocation, bad signature). API tsc clean; `billing.test.ts` 20/20, `gst.test.ts` 10/10, `gst-invoice-number.test.ts` 8/8, `security.test.ts` 6/6, `admin.login.test.ts` 14/14.
 
-**Migrations to apply (admin dashboard):** `086` (GST columns + `gst_invoice_sequences`), `087` (`subscription_payments.invoice_r2_key`), `088` (`platform_gst_profile` — see §59.2).
+**Migrations `086` (GST columns + `gst_invoice_sequences`), `087` (`subscription_payments.invoice_r2_key`), `088` (`platform_gst_profile` — see §59.2) — applied in prod 2026-09-04.**
 
 ### §59.2 — GST launch fixes (2026-09-02, PRs #18 + #19)
 
@@ -1819,7 +1819,7 @@ New tests: `billing.test.ts` — 4 webhook cases (single allocation, duplicate-c
 
 **Deploy note:** PR #18 → web service redeployed (`8beecf8b`, RUNNING) and picked up the crash fix. PR #19 touched only `packages/db/migrations` + `scripts/` (outside web/api watch patterns) — no redeploy. `quality` CI has been red on `main` since before these PRs (pre-existing stale web test-mock types: `latitude`/`longitude` on `PublicCollection`); both PRs merged with `--admin` to match how `main` already operates. `unit-web` passes.
 
-**Operator sequence to finish GST launch:** apply migrations `086` → `087` → `088` (admin dashboard) → run `scripts/set-gst-profile.ps1` → verify the printed profile.
+**Operator sequence to finish GST launch:** ✅ done 2026-09-04 — migrations `086` → `087` → `088` applied + `scripts/set-gst-profile.ps1` run + profile verified.
 
 ### §59.3 — Razorpay plan ids move to Admin → Integrations (2026-09-02)
 
@@ -1853,7 +1853,7 @@ Read the live API service (`supportive-love`) env via the Railway MCP. Result:
 | `RAZORPAY_WEBHOOK_SECRET` | real generated base64 value (not the old `kanchuki-webhook-secret` dictionary string); keys are `rzp_live_*`. Closes **S-009**. |
 | `REVALIDATION_SECRET` | set on API. **Gap:** missing on the **web** service (`magnificent-liberation`) → `apps/web/src/app/api/revalidate/route.ts` reads `process.env.REVALIDATION_SECRET` at runtime and was returning 401 on every call from the API (on-demand ISR revalidation dead, 60s fallback only). Owner added it to the web service the same day. Closes **B-009**. |
 
-Still open (not part of this batch): B-002 read replica points at primary, B-003 `ADMIN_PASSWORD_HASH` format, B-004 admin TOTP.
+Still open (not part of this batch): B-002 read replica points at primary. (B-003 `ADMIN_PASSWORD_HASH` scrypt-rehashed + set on Railway 2026-09-03; B-004 admin TOTP descoped 2026-09-04 by owner decision — no admin-login TOTP field, see LAUNCH-READINESS-AUDIT §0c.2.)
 
 No code change — verification + one owner-side env addition.
 

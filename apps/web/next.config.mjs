@@ -1,6 +1,7 @@
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import withSerwistInit from '@serwist/next'
+import { withSentryConfig } from '@sentry/nextjs/config'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -32,6 +33,11 @@ const nextConfig = {
 
   // Transpile workspace packages — web only imports shared directly
   transpilePackages: ['@kanchuki/shared'],
+
+  // Required for instrumentation.ts to run on Next 14.2 (default-on from 15).
+  experimental: {
+    instrumentationHook: true,
+  },
 
   images: {
     remotePatterns: [
@@ -67,4 +73,13 @@ const nextConfig = {
   },
 }
 
-export default withSerwist(nextConfig)
+// Sentry build integration: injects the client/server/edge configs and, when
+// SENTRY_AUTH_TOKEN + SENTRY_ORG + SENTRY_PROJECT are set at build time,
+// uploads source maps. All optional — without them the build just skips upload.
+export default withSentryConfig(withSerwist(nextConfig), {
+  silent: !process.env.CI,
+  widenClientFileUpload: true,
+  // Don't tunnel through the app: keep bundle lean; ad-blockers dropping a few
+  // client events is an acceptable trade for pilot scale.
+})
+

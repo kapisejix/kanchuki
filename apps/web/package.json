@@ -18,6 +18,7 @@
   "dependencies": {
     "@kanchuki/shared": "workspace:*",
     "@monaco-editor/react": "^4.7.0",
+    "@sentry/nextjs": "^10.73.0",
     "@serwist/next": "9",
     "@serwist/sw": "9",
     "@tailwindcss/typography": "^0.5.13",

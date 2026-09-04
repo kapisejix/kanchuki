@@ -309,11 +309,15 @@ git push → GitHub Actions
 **Fix:** Provision an actual read replica or a separate Postgres instance for admin queries, and set `DATABASE_URL_REPLICA` to a distinct connection string.
 
 ### B-003 — HIGH: ADMIN_PASSWORD_HASH uses legacy HMAC-SHA256 format
+**✅ RESOLVED 2026-09-03** — regenerated in scrypt format via `scripts/generate-admin-hash.ts`, set on the API Railway service. Original finding below.
+
 **File:** `apps/api/.env` line 3  
 **Evidence:** Hash value `b5a6bb8409242efe...` has no `:` separator, which means the auth code in `admin.ts:118-136` falls into the legacy HMAC-SHA256 branch and logs a deprecation warning on every login. HMAC-SHA256 with a static key `'admin-password'` is far weaker than scrypt.  
 **Fix:** Run `node scripts/generate-admin-hash.ts <password>` to generate a proper scrypt hash, then update `ADMIN_PASSWORD_HASH` in all environments.
 
 ### B-004 — HIGH: Admin TOTP is disabled
+**⚪ DESCOPED 2026-09-04 (owner decision)** — admin login screen has no `totp_code` field, so setting `ADMIN_TOTP_SECRET` locks admin out. Re-enable = build the TOTP input in `LoginScreen.tsx` first. Not tracked as an open item. Original finding below.
+
 **File:** `apps/api/.env` — `ADMIN_TOTP_SECRET` not set  
 **Problem:** `admin.ts:142-153` only enforces TOTP when `ADMIN_TOTP_SECRET` is set. Without it, admin login is single-factor (email + weak HMAC password). The security architecture (`docs/SECURITY.md §8`) explicitly requires TOTP.  
 **Fix:** Generate a TOTP secret with `node scripts/generate-admin-hash.ts --totp`, enroll in Google Authenticator, set `ADMIN_TOTP_SECRET` in all environments.
@@ -528,7 +532,7 @@ Same finding as B-012 above — already fail-closed with a logged warning, and `
 | Read replica isolation | `DATABASE_URL_REPLICA` for admin | Points to primary (B-002) |
 | DB guardrail triggers | Migration 037 applied | Not deployed to Supabase |
 | Deletion Vault | VAULT_DATABASE_URL set | Env var missing (B-005) |
-| Admin TOTP | Required per §8 | Not configured (B-004) |
+| Admin TOTP | Required per §8 | Descoped 2026-09-04 (owner) — no login TOTP UI; SECURITY §8 to be updated |
 | Staff login | TEAM_JWT_SECRET set | Missing (B-008) |
 | ISR revalidation | REVALIDATION_SECRET set | Missing (B-009) |
 | Pre-commit secrets hook | Documented in §15.4 | Not implemented |
@@ -607,8 +611,8 @@ Same finding as B-012 above — already fail-closed with a logged warning, and `
 ### Blocked by operational policy — needs a human to run these (env vars / prod secrets / migrations)
 
 - [ ] Rotate all credentials listed in §13 (Anthropic, OpenAI, Supabase, R2, Redis keys)
-- [ ] **B-003**: Generate scrypt admin password hash, replace ADMIN_PASSWORD_HASH
-- [ ] **B-004**: Configure ADMIN_TOTP_SECRET, enforce 2FA
+- [x] **B-003**: scrypt admin password hash generated + set on Railway (2026-09-03)
+- [~] **B-004**: DESCOPED 2026-09-04 (owner) — no admin-login TOTP UI; re-enable = build the field first
 - [ ] **B-005**: Set VAULT_DATABASE_URL to Railway Postgres-PYkI
 - [x] **B-006**: Migration 037 applied via Supabase SQL Editor (2026-07-28) — guard triggers on all 8 tables confirmed via `information_schema.triggers`. Applied as an idempotent `DROP TRIGGER IF EXISTS` + `CREATE TRIGGER` variant since some triggers had partially landed from an earlier attempt.
 - [ ] **B-007**: Switch DATABASE_URL to kanchuki_app restricted role
