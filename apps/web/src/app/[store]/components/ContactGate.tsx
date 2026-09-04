@@ -143,6 +143,7 @@ export function ContactGate({ slug, profile, onSuccess, children }: Props) {
     // Already submitted details for this store before — skip
     const alreadySubmitted = localStorage.getItem(leadKey(slug));
     if (alreadySubmitted) {
+      setLoading(false);
       proceed();
       return;
     }
@@ -321,18 +322,21 @@ export function ContactGate({ slug, profile, onSuccess, children }: Props) {
     }
   };
 
+  // #4: gate passed (any path) — reveal the catalog children in place instead
+  // of navigating to a separate segment. Checked BEFORE `loading` so a
+  // returning shopper whose lead is already in localStorage (proceed() fires
+  // from the mount effect before the passport check clears `loading`) doesn't
+  // stay stuck on the spinner.
+  if (revealed || justBrowsing) {
+    return <>{children}</>;
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#F8F7FC] flex items-center justify-center">
         <Loader2 size={24} className="animate-spin text-[#BB3F95]" />
       </div>
     );
-  }
-
-  // #4: gate passed (any path) — reveal the catalog children in place instead
-  // of navigating to a separate segment.
-  if (revealed || justBrowsing) {
-    return <>{children}</>;
   }
 
   // Returning shopper — PassportSheet overlay above the already-rendered
