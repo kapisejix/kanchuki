@@ -28,7 +28,25 @@ Compare with the routes that got this right: `checkout-flow.ts:37` and `checkout
 
 **Fix (root-cause, one line, not three):** since nothing legitimately relies on `x-retailer-id`, drop it — change the global `keyGenerator` to always use `request.ip`. That fixes every current and future route in one place instead of chasing per-route overrides. I have not applied this — it's a security-sensitive route change, say the word and I'll make the one-line edit + rerun `security.test.ts`.
 
-### 🔴 NEW P0 — CI has been red on `main` for the last 3 pushes; the F-017 DB-guardrail check would fail too
+### ✅ RESOLVED 2026-09-04 — CI `quality` gate green again
+
+`pnpm lint` failed the `quality` job on **one** Biome formatter error — a
+`where: { … }` object literal on a 108-char line over the 100 `lineWidth` in
+`apps/api/src/routes/products/products-media.ts`. Wrapped it (PR #25, merged
+`509b9f4`). CI now fully green: `quality` + `build` + `e2e-web` + `unit-web` all
+pass, so `check-delete-guard.sh` / `check-secrets-guard.sh` / `check-route-size.sh`
+/ `check-v1-fetch-guard.sh` and the full `pnpm test` suite run again on every PR
+(all verified passing locally + in CI). The `check-delete-guard.sh`
+`SQL_ALLOWLIST` gap noted below no longer applies — the guard passes as-is.
+Remaining: 182 `warn`-level Biome diagnostics in `apps/api` (`noNonNullAssertion`
+×161, `noDelete` ×18) — `biome.json` sets these to `warn`, they do not fail
+`biome check`; clean up post-launch, not a gate.
+
+Original finding below (pre-2026-09-04):
+
+---
+
+### 🔴 (was) NEW P0 — CI has been red on `main` for the last 3 pushes; the F-017 DB-guardrail check would fail too
 
 Checked via `gh run list` / `gh run view`, not assumed:
 
@@ -360,7 +378,7 @@ Recommendation: build the **minimum viable** version (one settings page, few fie
 Pull this straight from `DEPLOY.md`'s own (currently all-unchecked) production checklist plus what this audit found:
 
 **Code**
-- [ ] `pnpm typecheck && pnpm lint && pnpm test` clean across all workspaces (currently clean per CI, but see the vault-test caveat in §3).
+- [x] `pnpm typecheck && pnpm lint && pnpm test` clean across all workspaces — verified 2026-09-04 (locally + CI `quality`/`build`/`e2e-web`/`unit-web` all green after PR #25). 182 `warn`-level Biome diagnostics remain in `apps/api` but don't fail the gate.
 - [ ] Fix the CI vault-test issue so a green CI run is actually trustworthy.
 - [ ] Run `/code-review ultra` (or the individual reviewer subagents) on the full branch before merge to main.
 
