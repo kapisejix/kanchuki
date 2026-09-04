@@ -13,7 +13,7 @@ export const COOKIE_NAME = 'kanchuki_passport';
 // Not exported — SESSION_TTL_SEC (its only consumer) derives from it.
 const SESSION_TTL_DAYS = 180;
 export const SESSION_TTL_SEC = SESSION_TTL_DAYS * 24 * 60 * 60;
-export const COOKIE_DOMAIN = process.env.COOKIE_DOMAIN || 'kanchuki.com';
+export const COOKIE_DOMAIN = process.env.COOKIE_DOMAIN || 'kanchuki.app';
 export const COOKIE_SECURE = process.env.NODE_ENV === 'production';
 export const CURRENT_NOTICE_VERSION = getCurrentNoticeVersion();
 
@@ -78,7 +78,7 @@ export function setPassportCookie(
   reply: { header: (name: string, value: string) => void },
   sessionId: string,
 ): void {
-  // HttpOnly, Secure, SameSite=Lax, Domain=kanchuki.com — survives Safari ITP.
+  // HttpOnly, Secure, SameSite=Lax, Domain=kanchuki.app — survives Safari ITP.
   // No PII in the cookie — just an opaque session id.
   const parts = [
     `${COOKIE_NAME}=${sessionId}`,
