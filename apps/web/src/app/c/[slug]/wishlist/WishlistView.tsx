@@ -42,11 +42,19 @@ export function WishlistView({ collection, slug, store, backHref }: Props) {
     const message = buildEnquiryMessage({
       shopName: collection.retailer.shop_name,
       collectionTitle: collection.title,
-      products: savedProducts.length > 0 ? savedProducts : collection.products.slice(0, 3),
+      // Deep link each saved product to its shared page so the retailer can
+      // open it directly instead of matching by name alone.
+      products: (savedProducts.length > 0 ? savedProducts : collection.products.slice(0, 3)).map(
+        (p) => ({
+          name: p.name,
+          price_min: p.price_min,
+          product_url: `${window.location.origin}${basePath}/product/${p.id}`,
+        }),
+      ),
     });
     const url = buildWhatsAppEnquiryLink(collection.retailer.phone, message);
     window.open(url, '_blank');
-  }, [collection, savedProducts]);
+  }, [collection, savedProducts, basePath]);
 
   if (savedMap === null) return null;
 

@@ -111,14 +111,28 @@ export function buildWhatsAppEnquiryLink(
   return `https://wa.me/${fullPhone}?text=${encoded}`
 }
 
-/** Build pre-filled WhatsApp enquiry message */
+/**
+ * Build pre-filled WhatsApp enquiry message.
+ *
+ * Each product can carry an optional `product_url` (a deep link to the product's
+ * own shared page) so the retailer can open the product in one tap instead of
+ * hunting for it by name. When present it is appended on its own line right
+ * under the bullet, so WhatsApp auto-linkifies it.
+ */
 export function buildEnquiryMessage(params: {
   shopName: string
   collectionTitle: string
-  products: Array<{ name: string | null; price_min: number | null }>
+  products: Array<{
+    name: string | null
+    price_min: number | null
+    product_url?: string | null
+  }>
 }): string {
   const productList = params.products
-    .map((p) => `• ${p.name ?? 'Product'} ${p.price_min ? `- ${formatPrice(p.price_min)}` : ''}`)
+    .map((p) => {
+      const line = `• ${p.name ?? 'Product'} ${p.price_min ? `- ${formatPrice(p.price_min)}` : ''}`
+      return p.product_url ? `${line}\n  ${p.product_url}` : line
+    })
     .join('\n')
 
   return `Namaste! I saw your collection "${params.collectionTitle}" from ${params.shopName}.

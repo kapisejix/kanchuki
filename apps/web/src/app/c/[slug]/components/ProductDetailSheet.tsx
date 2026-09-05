@@ -342,14 +342,25 @@ export function ProductDetailSheet({
     }
   }, [basePhotos.length, goTo])
 
+  // Canonical product deep link (/{store}/{collection}/product/{id}, legacy
+  // /c/{collection}/product/{id}) — the dedicated shared-product page whose OG
+  // image is the product's own photo. Shared by WhatsApp share, the enquiry
+  // message, and the consent modal so the retailer always gets a tappable URL.
+  const productUrlFor = useCallback(
+    (productId: string) => {
+      const basePath = store ? `/${store}/${slug}` : `/c/${slug}`
+      return `${window.location.origin}${basePath}/product/${productId}`
+    },
+    [store, slug],
+  )
+
   // Share THIS product, not the whole collection — the link lands on the
   // dedicated shared-product page (/{store}/{collection}/product/{id}) whose
   // OG image is the product's own photo, so WhatsApp link previews show the
   // product instead of a bare URL. Recipients get a "View Full Catalog" CTA
   // from that page back into the collection.
   const handleShare = useCallback(async () => {
-    const basePath = store ? `/${store}/${slug}` : `/c/${slug}`
-    const url = `${window.location.origin}${basePath}/product/${product.id}`
+    const url = productUrlFor(product.id)
     const title = product.name ?? product.category ?? 'Product'
     const text = `Check out ${title} — ${formatPriceRange(product.price_min, product.price_max)} from ${retailer.shop_name}`
     if (navigator.share) {
@@ -357,14 +368,20 @@ export function ProductDetailSheet({
     } else {
       await navigator.clipboard.writeText(url)
     }
-  }, [product.id, product.name, product.category, product.price_min, product.price_max, slug, store, retailer.shop_name])
+  }, [product.id, product.name, product.category, product.price_min, product.price_max, productUrlFor, retailer.shop_name])
 
   const handleEnquire = () => {
     if (isSold) return
     const message = buildEnquiryMessage({
       shopName: retailer.shop_name,
       collectionTitle,
-      products: [product],
+      products: [
+        {
+          name: product.name,
+          price_min: product.price_min,
+          product_url: productUrlFor(product.id),
+        },
+      ],
     })
     const url = buildWhatsAppEnquiryLink(retailer.phone, message)
     window.open(url, '_blank')
@@ -973,6 +990,7 @@ export function ProductDetailSheet({
           product={detail ?? product}
           retailer={retailer}
           collectionTitle={collectionTitle}
+          productUrl={productUrlFor(product.id)}
           onClose={() => setShowConsentModal(false)}
         />
       )}

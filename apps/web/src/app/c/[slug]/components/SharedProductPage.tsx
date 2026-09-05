@@ -285,6 +285,10 @@ export function SharedProductPage({ collection, product, collectionPath }: Props
           product={product}
           retailer={collection.retailer}
           collectionTitle={collection.title}
+          // This page IS the product's shared URL (canonicalized by the route) —
+          // reuse it (minus any ?review=1 query) so the enquiry message links
+          // the retailer straight back here.
+          productUrl={`${window.location.origin}${window.location.pathname}`}
           onClose={() => setShowConsentModal(false)}
         />
       )}

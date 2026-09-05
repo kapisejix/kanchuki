@@ -262,11 +262,19 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
     const message = buildEnquiryMessage({
       shopName: collection.retailer.shop_name,
       collectionTitle: collection.title,
-      products: favoriteProducts.length > 0 ? favoriteProducts : products.slice(0, 3),
+      // Deep link each listed product to its shared page so the retailer can
+      // open it directly instead of matching by name alone.
+      products: (favoriteProducts.length > 0 ? favoriteProducts : products.slice(0, 3)).map(
+        (p) => ({
+          name: p.name,
+          price_min: p.price_min,
+          product_url: `${window.location.origin}${basePath}/product/${p.id}`,
+        }),
+      ),
     });
     const url = buildWhatsAppEnquiryLink(collection.retailer.phone, message);
     window.open(url, '_blank');
-  }, [collection, favoriteProducts, products]);
+  }, [collection, favoriteProducts, products, basePath]);
 
   const handleShare = useCallback(async () => {
     const url = window.location.href;

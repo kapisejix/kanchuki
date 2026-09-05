@@ -10,11 +10,12 @@ import {
   Alert,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { router, useLocalSearchParams } from 'expo-router'
+import { router, useLocalSearchParams, useRootNavigation } from 'expo-router'
 import { normalizeIndianPhone } from '@kanchuki/shared'
 import { authApi, setToken, ApiError, type VerifyOtpResult } from '../../src/lib/api'
 import { showError } from '../../src/lib/errors'
 import { setItem, deleteItem } from '../../src/lib/storage'
+import { resetRootTo } from '../../src/lib/root-navigation'
 import { GradientButton } from '../../src/components/GradientButton'
 import {
   extractMsg91AccessToken,
@@ -26,8 +27,17 @@ import {
 /**
  * Apply the login result returned by the backend — identical for the widget
  * and legacy paths. Stores the session + staff/retailer context and routes.
+ *
+ * Routing resets the ROOT stack (resetRootTo) instead of router.replace:
+ * auth/phone sits at the bottom of the root stack from the cold-start
+ * redirect, so a plain replace leaves the Login screen *beneath* the
+ * dashboard — Android's hardware back then pops to Login before the
+ * dashboard's double-tap-to-exit handler can run.
  */
-async function completeLogin(result: VerifyOtpResult) {
+async function completeLogin(
+  result: VerifyOtpResult,
+  rootNav: ReturnType<typeof useRootNavigation>,
+) {
   try {
     await setToken(result.access_token)
     // TeamMember logins have no Supabase session → no refresh token (their team
@@ -53,20 +63,27 @@ async function completeLogin(result: VerifyOtpResult) {
         result.retailer.onboarding_completed === true &&
         Boolean(result.retailer.shop_name && result.retailer.shop_name.trim().length > 0)
 
-      router.replace(hasCompletedOnboarding ? '/(tabs)' : '/onboarding')
+      const dest = hasCompletedOnboarding ? '(tabs)' : 'onboarding'
+      if (!resetRootTo(rootNav, dest)) {
+        router.replace(hasCompletedOnboarding ? '/(tabs)' : '/onboarding')
+      }
     } else if (result.is_staff && result.staff) {
       // Staff (retailer's own shop employee) login — store staff context
       await setItem('staff_role', result.staff.role)
       await setItem('staff_name', result.staff.name)
       await setItem('staff_retailer_id', result.staff.retailer_id)
       await setItem('retailer_id', result.staff.retailer_id)
-      router.replace('/staff')
+      if (!resetRootTo(rootNav, 'staff')) {
+        router.replace('/staff')
+      }
     } else if (result.is_staff && result.team_member) {
       // TeamMember login
       await setItem('staff_role', result.team_member.role)
       await setItem('staff_name', result.team_member.name)
       await Promise.all([deleteItem('staff_retailer_id'), deleteItem('retailer_id')])
-      router.replace('/staff')
+      if (!resetRootTo(rootNav, 'staff')) {
+        router.replace('/staff')
+      }
     } else {
       // Brand new retailer / Demo bypass without a retailer profile yet
       await Promise.all([
@@ -74,7 +91,9 @@ async function completeLogin(result: VerifyOtpResult) {
         deleteItem('staff_name'),
         deleteItem('staff_retailer_id'),
       ])
-      router.replace('/onboarding')
+      if (!resetRootTo(rootNav, 'onboarding')) {
+        router.replace('/onboarding')
+      }
     }
   } catch (err) {
     console.error('[auth] Error in completeLogin:', err)
@@ -82,13 +101,18 @@ async function completeLogin(result: VerifyOtpResult) {
 }
 
 /** Exchange a MSG91 widget access token for a backend session. */
-async function verifyWithMsg91Token(phone: string, accessToken: string) {
+async function verifyWithMsg91Token(
+  phone: string,
+  accessToken: string,
+  rootNav: ReturnType<typeof useRootNavigation>,
+) {
   const { data: result } = await authApi.verifyMsg91(phone, accessToken)
-  await completeLogin(result)
+  await completeLogin(result, rootNav)
 }
 
 export default function OtpScreen() {
   const insets = useSafeAreaInsets()
+  const rootNav = useRootNavigation()
   const { phone, reqId, token, bypass } = useLocalSearchParams<{
     phone: string
     reqId?: string
@@ -125,7 +149,7 @@ export default function OtpScreen() {
       if (bypass === 'true') {
         // Railway Demo / Test Phone Bypass: verify directly with backend API
         const { data: result } = await authApi.verifyOtp(digits, code)
-        await completeLogin(result)
+        await completeLogin(result, rootNav)
         return
       }
 
@@ -136,7 +160,7 @@ export default function OtpScreen() {
           const response = await verifyMsg91Otp(reqId, code)
           const accessToken = extractMsg91AccessToken(response)
           if (accessToken) {
-            await verifyWithMsg91Token(digits, accessToken)
+            await verifyWithMsg91Token(digits, accessToken, rootNav)
             verified = true
           }
         } catch (widgetErr) {
@@ -145,7 +169,7 @@ export default function OtpScreen() {
       }
       if (!verified) {
         const { data: result } = await authApi.verifyOtp(digits, code)
-        await completeLogin(result)
+        await completeLogin(result, rootNav)
       }
     } catch (err) {
       isVerifyingRef.current = false
@@ -189,7 +213,7 @@ export default function OtpScreen() {
 
     if (token) {
       setLoading(true)
-      verifyWithMsg91Token(phone, token).catch((err) => {
+      verifyWithMsg91Token(phone, token, rootNav).catch((err) => {
         console.warn('Auto-verify with pre-issued token failed:', err)
         setLoading(false)
       })
@@ -208,7 +232,7 @@ export default function OtpScreen() {
         if (!accessToken) throw new Error('no token returned')
         return authApi.verifyMsg91(phone, accessToken)
       })
-      .then(({ data }) => completeLogin(data))
+      .then(({ data }) => completeLogin(data, rootNav))
       .catch((err) => {
         // Not invisible mode (or already consumed) — show the OTP input.
         if (!(err instanceof Error && err.message === 'invisible verify timed out')) {
@@ -218,7 +242,7 @@ export default function OtpScreen() {
       })
     // autoVerifyAttempted.current guards against re-runs, so the param deps
     // are safe to declare. completeLogin/verifyWithMsg91Token are module-level.
-  }, [phone, msg91, reqId, token, bypass])
+  }, [phone, msg91, reqId, token, bypass, rootNav])
 
   const handleResend = async () => {
     if (!phone || resendTimer > 0) return

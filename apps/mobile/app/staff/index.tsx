@@ -4,7 +4,7 @@ import {
   View, Text, ScrollView, RefreshControl,
   ActivityIndicator, Alert,
 } from 'react-native'
-import { router } from 'expo-router'
+import { router, useRootNavigation } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -15,12 +15,14 @@ import {
 import { teamApi, type TeamMemberInfo, type TerritoryRetailer, type SupportTicketStats } from '../../src/lib/team-api'
 import { getItem, deleteItem } from '../../src/lib/storage'
 import { clearToken, clearRequestCache } from '../../src/lib/api'
+import { resetRootTo } from '../../src/lib/root-navigation'
 import { useTheme } from '../../src/lib/theme'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 
 // ─── Staff Dashboard ─────────────────────────────────────────────
 
 export default function StaffDashboard() {
+  const rootNav = useRootNavigation()
   const { primaryColor, colors } = useTheme()
   const insets = useSafeAreaInsets()
   const [staffInfo, setStaffInfo] = useState<{ name: string; role: string } | null>(null)
@@ -76,11 +78,15 @@ export default function StaffDashboard() {
             deleteItem('admin_key'),
           ])
           clearRequestCache()
-          router.replace('/auth/phone')
+          // Reset (not replace) so no stale authenticated screen lingers under
+          // the Login screen after sign-out.
+          if (!resetRootTo(rootNav, 'auth/phone')) {
+            router.replace('/auth/phone')
+          }
         },
       },
     ])
-  }, [])
+  }, [rootNav])
 
   const isLoading = meLoading || retailersLoading || ticketStatsLoading || loadingInfo
   const totalTickets = ticketStats

@@ -10,6 +10,9 @@ interface Props {
   product: PublicProduct | PublicProductDetail
   retailer: PublicCollection['retailer']
   collectionTitle: string
+  // Canonical deep link to this product's shared page — embedded in the
+  // WhatsApp enquiry message so the retailer can open the product in a tap.
+  productUrl?: string
   onClose: () => void
 }
 
@@ -17,6 +20,7 @@ export function CustomerConsentModal({
   product,
   retailer,
   collectionTitle,
+  productUrl,
   onClose,
 }: Props) {
   const [name, setName] = useState('')
@@ -50,7 +54,13 @@ export function CustomerConsentModal({
     const customMessage = buildEnquiryMessage({
       shopName: retailer.shop_name,
       collectionTitle,
-      products: [product as any],
+      products: [
+        {
+          name: (product as any).name ?? null,
+          price_min: (product as any).price_min ?? null,
+          product_url: productUrl,
+        },
+      ],
     })
 
     const prefix = name.trim() ? `Hello, I am ${name.trim()}.\n\n` : ''

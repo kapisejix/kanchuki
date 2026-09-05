@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
+import { router, useRootNavigation } from 'expo-router';
 import * as Location from 'expo-location';
 import {
   Building2,
@@ -32,6 +32,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AnimatedPressable } from '../src/components/AnimatedPressable';
 import { GradientButton } from '../src/components/GradientButton';
+import { resetRootTo } from '../src/lib/root-navigation';
 import { billingApi, retailerApi } from '../src/lib/api';
 import { WEB_URL } from '../src/lib/web-url';
 
@@ -184,6 +185,7 @@ function StepIndicator({
 export default function OnboardingScreen() {
   const queryClient = useQueryClient();
   const insets = useSafeAreaInsets();
+  const rootNav = useRootNavigation();
   const [step, setStep] = useState<Step>(1);
   const [saving, setSaving] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
@@ -303,7 +305,12 @@ export default function OnboardingScreen() {
       await saveFinalStep();
       setShowConfetti(true);
       setTimeout(() => {
-        router.replace('/(tabs)');
+        // Reset the root stack so onboarding can't linger beneath the
+        // dashboard — otherwise Android's hardware back would pop to this
+        // screen instead of triggering double-tap-to-exit on Home.
+        if (!resetRootTo(rootNav, '(tabs)')) {
+          router.replace('/(tabs)');
+        }
       }, 1500);
     } catch {
       Alert.alert('Error', 'Could not save details. Please check your connection and try again.');
