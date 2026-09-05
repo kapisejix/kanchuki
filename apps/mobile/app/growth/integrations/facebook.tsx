@@ -142,8 +142,14 @@ export default function FacebookConfigScreen() {
     } catch (err) {
       if (err instanceof FacebookAuthCancelled) return
       if (err instanceof FacebookAuthUnavailable) {
+        // Native SDK module isn't linked in this build — log the real reason
+        // instead of silently opening the browser with no on-screen trace.
+        console.warn('[facebook-connect] native SDK unavailable, falling back to web OAuth:', err.message)
         try {
           await connectViaWeb()
+          setConnectError(
+            `Facebook app login isn't available in this build (${err.message}). Opened browser login instead — if that also fails, this Meta app needs Live mode or a tester Role.`,
+          )
         } catch (webErr) {
           setConnectError(webErr instanceof Error ? webErr.message : 'Could not initiate Facebook connection')
         }

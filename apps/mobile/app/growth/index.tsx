@@ -90,6 +90,7 @@ export default function GrowthHubScreen({ isTab = false }: { isTab?: boolean }) 
   const openedTotal = stats?.by_type
     ? Object.values(stats.by_type).reduce((s, t) => s + t.opened, 0)
     : campaigns.reduce((s, c) => s + c.opened_count, 0)
+  const ctrPct = sentTotal > 0 ? ((openedTotal / sentTotal) * 100).toFixed(1) : null
   const inactive = reactivationQuery.data?.data.total_inactive ?? 0
   const loading = campaignsQuery.isLoading || statsQuery.isLoading
 
@@ -162,18 +163,20 @@ export default function GrowthHubScreen({ isTab = false }: { isTab?: boolean }) 
         >
           <View className="flex-row justify-between items-start mb-2">
             <Text className="text-[10px] uppercase tracking-wider font-extrabold text-lavender-200/80">
-              {campaigns[0]?.name ?? 'Festival Blast Engine'}
+              {campaigns[0]?.name ?? 'No active campaign'}
             </Text>
-            <View className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400">
-              <Text className="text-emerald-300 text-[10px] font-extrabold">LIVE</Text>
-            </View>
+            {campaigns[0] ? (
+              <View className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400">
+                <Text className="text-emerald-300 text-[10px] font-extrabold">LIVE</Text>
+              </View>
+            ) : null}
           </View>
           <View className="flex-row items-baseline gap-2">
             <Text
               style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
               className="text-3xl font-extrabold text-white tracking-tight"
             >
-              42.8%
+              {ctrPct !== null ? `${ctrPct}%` : '—'}
             </Text>
             <Text className="text-xs text-lavender-200/80 font-medium">WhatsApp CTR</Text>
           </View>
@@ -194,7 +197,7 @@ export default function GrowthHubScreen({ isTab = false }: { isTab?: boolean }) 
                 SENT
               </Text>
               <Text className="text-white font-bold text-xs mt-0.5">
-                {sentTotal > 0 ? sentTotal.toLocaleString('en-IN') : '1,250'}
+                {sentTotal.toLocaleString('en-IN')}
               </Text>
             </View>
             <View className="flex-1 items-center">
@@ -202,14 +205,14 @@ export default function GrowthHubScreen({ isTab = false }: { isTab?: boolean }) 
                 OPENED
               </Text>
               <Text className="text-white font-bold text-xs mt-0.5">
-                {openedTotal > 0 ? openedTotal.toLocaleString('en-IN') : '980'}
+                {openedTotal.toLocaleString('en-IN')}
               </Text>
             </View>
             <View className="flex-1 items-center">
               <Text className="text-[9px] text-lavender-200/70 uppercase tracking-wider font-bold block">
-                ORDERS
+                CAMPAIGNS
               </Text>
-              <Text className="text-amber-300 font-bold text-xs mt-0.5">54</Text>
+              <Text className="text-amber-300 font-bold text-xs mt-0.5">{campaigns.length}</Text>
             </View>
           </View>
         </LinearGradient>
