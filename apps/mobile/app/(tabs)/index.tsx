@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import {
   BarChart3,
   Camera,
@@ -13,7 +13,7 @@ import {
   QrCode,
   Settings,
 } from 'lucide-react-native';
-import { useEffect, useRef } from 'react';
+import { useCallback, useRef } from 'react';
 import { BackHandler, Platform, RefreshControl, ScrollView, Text, ToastAndroid, View } from 'react-native';
 import { AnimatedPressable } from '../../src/components/AnimatedPressable';
 import { GradientButton } from '../../src/components/GradientButton';
@@ -75,21 +75,26 @@ export default function HomeScreen() {
 
   // Home is the root tab (nothing to pop back to) — Android's hardware back
   // must not fall through to any wrong screen. Standard double-tap-to-exit.
+  // Gated on focus: (tabs) stays mounted underneath any pushed screen
+  // (product/add, settings, …), so a plain useEffect listener would keep
+  // intercepting hardware back everywhere instead of just on Home.
   const lastBackPressRef = useRef(0);
-  useEffect(() => {
-    if (Platform.OS !== 'android') return;
-    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      const now = Date.now();
-      if (now - lastBackPressRef.current < 2000) {
-        BackHandler.exitApp();
+  useFocusEffect(
+    useCallback(() => {
+      if (Platform.OS !== 'android') return;
+      const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+        const now = Date.now();
+        if (now - lastBackPressRef.current < 2000) {
+          BackHandler.exitApp();
+          return true;
+        }
+        lastBackPressRef.current = now;
+        ToastAndroid.show('Press back again to exit', ToastAndroid.SHORT);
         return true;
-      }
-      lastBackPressRef.current = now;
-      ToastAndroid.show('Press back again to exit', ToastAndroid.SHORT);
-      return true;
-    });
-    return () => sub.remove();
-  }, []);
+      });
+      return () => sub.remove();
+    }, []),
+  );
 
   if (isLoading) {
     return <HomeScreenSkeleton />;

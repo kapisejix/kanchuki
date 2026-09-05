@@ -5,7 +5,6 @@ import {
   Text,
   TextInput,
   ScrollView,
-  Alert,
   ActivityIndicator,
   StyleSheet,
   Switch,
@@ -520,17 +519,7 @@ export default function AddProductScreen() {
       void queryClient.invalidateQueries({ queryKey: ['products'] })
       void queryClient.invalidateQueries({ queryKey: ['retailer', 'stats'] })
 
-      Alert.alert(
-        'Product Added!',
-        'AI is tagging your product in the background. Want to add a 360° spin view now?',
-        [
-          { text: 'Skip', style: 'cancel', onPress: () => router.replace('/(tabs)/catalog') },
-          {
-            text: 'Add Spin View',
-            onPress: () => router.replace(`/product/${productId}/spin-video`),
-          },
-        ],
-      )
+      router.replace('/(tabs)/catalog')
     } catch (err) {
       saveRunningRef.current = false
       setStep('edit')
