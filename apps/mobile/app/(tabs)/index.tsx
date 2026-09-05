@@ -13,7 +13,8 @@ import {
   QrCode,
   Settings,
 } from 'lucide-react-native';
-import { RefreshControl, ScrollView, Text, View } from 'react-native';
+import { useEffect, useRef } from 'react';
+import { BackHandler, Platform, RefreshControl, ScrollView, Text, ToastAndroid, View } from 'react-native';
 import { AnimatedPressable } from '../../src/components/AnimatedPressable';
 import { GradientButton } from '../../src/components/GradientButton';
 import { HomeScreenSkeleton } from '../../src/components/Skeleton';
@@ -71,6 +72,24 @@ export default function HomeScreen() {
   const stats = (statsData as { data: Stats } | undefined)?.data;
   const categories = categoriesData?.data ?? [];
   const isLoading = meLoading || statsLoading;
+
+  // Home is the root tab (nothing to pop back to) — Android's hardware back
+  // must not fall through to any wrong screen. Standard double-tap-to-exit.
+  const lastBackPressRef = useRef(0);
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      const now = Date.now();
+      if (now - lastBackPressRef.current < 2000) {
+        BackHandler.exitApp();
+        return true;
+      }
+      lastBackPressRef.current = now;
+      ToastAndroid.show('Press back again to exit', ToastAndroid.SHORT);
+      return true;
+    });
+    return () => sub.remove();
+  }, []);
 
   if (isLoading) {
     return <HomeScreenSkeleton />;

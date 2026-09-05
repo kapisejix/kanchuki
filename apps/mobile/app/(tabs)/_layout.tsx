@@ -20,7 +20,6 @@ export default function TabsLayout() {
     data: meData,
     isLoading: meLoading,
     isFetching: meFetching,
-    isError: meError,
   } = useQuery({
     queryKey: ['retailer', 'me'],
     queryFn: () => retailerApi.getMe(),
@@ -34,23 +33,27 @@ export default function TabsLayout() {
   // dropped-off signup) that triggers a background refetch can't bounce a
   // user who just completed onboarding back to step 1 — the refetch lands
   // first and renders the dashboard.
+  //
+  // A getMe() error here must NOT bounce to Login — a real expired/invalid
+  // session already gets redirectToAuth() from client.ts's 401 handler
+  // (src/lib/api/client.ts). This effect used to treat ANY error (network
+  // blip, API cold start, timeout) as "logged out", which kicked retailers
+  // to Login on a transient hiccup — most visibly right after a hardware
+  // back-press backgrounds/refocuses the app and the stale retailer/me query
+  // refetches into a flaky connection. Only onboarding-incomplete is a real
+  // navigation signal here.
   useEffect(() => {
-    if (!meLoading && !meFetching) {
-      if (meError) {
-        // getMe failed — token cleared (logout) or invalid. Go to Login, NOT
-        // the onboarding/Setup-Shop screen (that's only for a real signup that
-        // hasn't finished the form).
-        router.replace('/auth/phone')
-      } else if (onboardingCompleted === false) {
-        router.replace('/onboarding')
-      }
+    if (!meLoading && !meFetching && onboardingCompleted === false) {
+      router.replace('/onboarding')
     }
-  }, [meLoading, meFetching, meError, onboardingCompleted])
+  }, [meLoading, meFetching, onboardingCompleted])
 
   // Only block the first load. A background refetch (staleTime expiry) must not
   // unmount <Tabs> — doing so swallowed the tap that triggered it, forcing a
-  // second tap to actually navigate.
-  if (meLoading || onboardingCompleted === false || meError) {
+  // second tap to actually navigate. A refetch error with no data ever loaded
+  // also isn't blocked on — the offline-first design means Tabs/screens must
+  // tolerate a missing profile rather than stall behind a spinner forever.
+  if (meLoading || onboardingCompleted === false) {
     return (
       <View className="flex-1 items-center justify-center bg-[#F8F7FC]">
         <ActivityIndicator color={primaryColor} />
