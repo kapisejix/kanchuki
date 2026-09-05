@@ -31,6 +31,11 @@ import { AppError } from '../plugins/error-handler.js';
 
 const MSG91_BASE = 'https://control.msg91.com/api/v5';
 
+// Node's global fetch has NO default timeout — a hanging MSG91 call would block
+// the OTP route until the mobile client's own 30s abort fires (surfaced as
+// "The OTP server took too long to respond"). Bound every outbound MSG91 call.
+const MSG91_FETCH_TIMEOUT_MS = 8_000;
+
 // 10-minute OTP lifetime, max 5 attempts — consumed atomically via GETDEL.
 const OTP_TTL_SEC = 600;
 const OTP_MAX_ATTEMPTS = 5;
@@ -191,6 +196,7 @@ export async function sendOtpViaMsg91(
     const res = await fetch(`${MSG91_BASE}/otp?${params.toString()}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      signal: AbortSignal.timeout(MSG91_FETCH_TIMEOUT_MS),
     });
     let ok = res.ok;
     if (ok) {
@@ -313,9 +319,15 @@ export async function verifyMsg91WidgetToken(token: string, expectedPhone: strin
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ authkey, 'access-token': token }),
+      signal: AbortSignal.timeout(MSG91_FETCH_TIMEOUT_MS),
     });
     json = (await res.json()) as Record<string, unknown>;
-  } catch {
+  } catch (err) {
+    // A vendor timeout is not a bad code — surface it as 503, not INVALID_OTP
+    // (which the mobile client reports as "Incorrect OTP" and clears the input).
+    if (err instanceof DOMException && err.name === 'TimeoutError') {
+      throw new AppError('OTP_VERIFY_FAILED', 'Verification timed out. Try again.', 503);
+    }
     throw new AppError('INVALID_OTP', 'Could not verify the OTP. Try again.', 401);
   }
 
