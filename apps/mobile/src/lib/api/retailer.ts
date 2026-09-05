@@ -8,6 +8,11 @@ export const retailerApi = {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
+  sendWhatsappNumberOtp: (whatsapp_number: string) =>
+    request<{ data: { sent_to: string } }>('/v1/retailers/me/whatsapp-number/otp', {
+      method: 'POST',
+      body: JSON.stringify({ whatsapp_number }),
+    }),
   updateOnboarding: (
     step: number,
     completed?: boolean,

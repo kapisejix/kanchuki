@@ -397,11 +397,36 @@ function WhatsAppModal({
   onSaved: () => void;
 }) {
   const [number, setNumber] = useState(current);
+  const [otp, setOtp] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
+  const [sendingOtp, setSendingOtp] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     setNumber(current);
+    setOtp("");
+    setOtpSent(false);
   }, [current, visible]);
+
+  const handleSendOtp = async () => {
+    const digits = number.replace(/\D/g, "");
+    if (digits.length !== 10) {
+      Alert.alert(
+        "Invalid Number",
+        "Please enter a valid 10-digit Indian mobile number",
+      );
+      return;
+    }
+    setSendingOtp(true);
+    try {
+      await retailerApi.sendWhatsappNumberOtp(digits);
+      setOtpSent(true);
+    } catch (err) {
+      showError(err, "Failed to send OTP");
+    } finally {
+      setSendingOtp(false);
+    }
+  };
 
   const handleSave = async () => {
     const digits = number.replace(/\D/g, "");
@@ -412,9 +437,13 @@ function WhatsAppModal({
       );
       return;
     }
+    if (otp.length !== 6) {
+      Alert.alert("Enter OTP", "Enter the 6-digit code sent to this number");
+      return;
+    }
     setSaving(true);
     try {
-      await retailerApi.update({ whatsapp_number: digits });
+      await retailerApi.update({ whatsapp_number: digits, whatsapp_otp: otp });
       onSaved();
       onClose();
     } catch (err) {
@@ -443,24 +472,45 @@ function WhatsAppModal({
           <Field
             label="WhatsApp Number"
             value={number}
-            onChange={setNumber}
+            onChange={(v) => {
+              setNumber(v);
+              setOtpSent(false);
+              setOtp("");
+            }}
             placeholder="9876543210"
             keyboardType="numeric"
           />
+          {otpSent && (
+            <Field
+              label="OTP"
+              value={otp}
+              onChange={setOtp}
+              placeholder="6-digit code"
+              keyboardType="numeric"
+            />
+          )}
           <View className="flex-row gap-3 mt-2">
             <AnimatedPressable
               onPress={onClose}
-              disabled={saving}
+              disabled={saving || sendingOtp}
               className="flex-1 bg-sand-100 py-3.5 rounded-2xl items-center"
             >
               <Text className="text-sand-700 font-semibold">Cancel</Text>
             </AnimatedPressable>
             <View className="flex-1">
-              <GradientButton
-                label="Save"
-                onPress={() => void handleSave()}
-                loading={saving}
-              />
+              {otpSent ? (
+                <GradientButton
+                  label="Verify & Save"
+                  onPress={() => void handleSave()}
+                  loading={saving}
+                />
+              ) : (
+                <GradientButton
+                  label="Send OTP"
+                  onPress={() => void handleSendOtp()}
+                  loading={sendingOtp}
+                />
+              )}
             </View>
           </View>
         </View>

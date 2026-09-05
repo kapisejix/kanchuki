@@ -3,6 +3,9 @@ import { generateCollectionSlug } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { notFound, validationError } from '../../plugins/error-handler.js';
+import { sendOtpViaMsg91, verifyStoredOtp } from '../../lib/msg91-otp.js';
+
+const WhatsAppNumberSchema = z.string().regex(/^[6-9]\d{9}$/, 'Must be a valid 10-digit Indian mobile number');
 
 const UpdateRetailerSchema = z.object({
   shop_name: z.string().min(1).max(200).optional(),
@@ -27,13 +30,10 @@ const UpdateRetailerSchema = z.object({
     .optional(),
   categories: z.array(z.string().max(50)).max(10).optional(),
   // F-009: separate WhatsApp business number (falls back to phone if unset)
-  whatsapp_number: z
-    .union([
-      z.string().regex(/^[6-9]\d{9}$/, 'Must be a valid 10-digit Indian mobile number'),
-      z.literal(''),
-    ])
-    .nullable()
-    .optional(),
+  whatsapp_number: z.union([WhatsAppNumberSchema, z.literal('')]).nullable().optional(),
+  // Required whenever whatsapp_number is being set to a NEW value — verified
+  // against POST /me/whatsapp-number/otp before the change is applied.
+  whatsapp_otp: z.string().regex(/^\d{6}$/).optional(),
   // F-018: optional, skippable — a salesperson's referral code entered at self-serve signup
   referral_code: z.string().max(20).nullable().optional(),
   // Roadmap M — preferred locale for the retailer app UI (ISO 639-1 + region, e.g. 'en-IN', 'hi-IN')
@@ -73,6 +73,19 @@ export const retailersProfileRoutes: FastifyPluginAsync = async (server) => {
     };
   });
 
+  // ─── POST /retailers/me/whatsapp-number/otp ──────────────────────
+  // Sends an OTP to a NEW WhatsApp number before PUT /me will accept it as
+  // whatsapp_number — the retailer's own login phone never changes without
+  // OTP, and this number gets the same rule even though it's a separate field.
+  server.post('/me/whatsapp-number/otp', async (request) => {
+    const body = z.object({ whatsapp_number: WhatsAppNumberSchema }).safeParse(request.body);
+    if (!body.success) {
+      throw validationError(body.error.issues[0]?.message ?? 'Validation failed');
+    }
+    const masked = await sendOtpViaMsg91(body.data.whatsapp_number, 'stepup');
+    return { data: { sent_to: masked } };
+  });
+
   // ─── PUT /retailers/me ──────────────────────────────────────────
   server.put('/me', async (request) => {
     const body = UpdateRetailerSchema.safeParse(request.body);
@@ -80,15 +93,35 @@ export const retailersProfileRoutes: FastifyPluginAsync = async (server) => {
       throw validationError(body.error.issues[0]?.message ?? 'Validation failed');
     }
 
-    const { referral_code, ...profileFields } = body.data;
+    const { referral_code, whatsapp_otp, ...profileFields } = body.data;
 
     // One current-row fetch serves both the F-018 referral resolution and the
     // public_slug auto-regeneration below.
     const current = await prisma.retailer.findUnique({
       where: { id: request.retailerId },
-      select: { onboarded_by_id: true, shop_name: true, public_slug: true },
+      select: { onboarded_by_id: true, shop_name: true, public_slug: true, whatsapp_number: true },
     });
     if (!current) throw notFound('Retailer');
+
+    // WhatsApp number changes are a phone-number change like any other — never
+    // apply one without OTP verification of the NEW number, even though this
+    // isn't the retailer's login phone.
+    const newWhatsappNumber = profileFields.whatsapp_number || null;
+    const whatsappNumberChanging =
+      profileFields.whatsapp_number !== undefined && newWhatsappNumber !== current.whatsapp_number;
+    if (whatsappNumberChanging && newWhatsappNumber) {
+      if (!whatsapp_otp) {
+        throw validationError('OTP verification is required to change the WhatsApp number.');
+      }
+      const result = await verifyStoredOtp(newWhatsappNumber, whatsapp_otp, 'stepup');
+      if (result !== 'verified') {
+        throw validationError(
+          result === 'locked'
+            ? 'Too many wrong attempts. Request a new OTP.'
+            : 'Invalid or expired OTP. Request a new one.',
+        );
+      }
+    }
 
     // F-018: resolve a self-serve referral code to onboarded_by_id. Silently
     // ignored if invalid/blank, and never overwrites existing attribution
