@@ -11,6 +11,8 @@ const {
   mockCollectionFindFirst,
   mockPostCreate,
   mockPostFindMany,
+  mockPostFindFirst,
+  mockPostUpdate,
   mockDecryptSecret,
   mockPublishPhoto,
   mockPublishVideo,
@@ -29,6 +31,8 @@ const {
   mockCollectionFindFirst: vi.fn(),
   mockPostCreate: vi.fn(),
   mockPostFindMany: vi.fn(),
+  mockPostFindFirst: vi.fn(),
+  mockPostUpdate: vi.fn(),
   mockDecryptSecret: vi.fn(),
   mockPublishPhoto: vi.fn(),
   mockPublishVideo: vi.fn(),
@@ -49,7 +53,12 @@ vi.mock('@kanchuki/db', () => ({
     product: { findMany: mockProductFindMany },
     collectionProduct: { findMany: mockCollectionProductFindMany },
     collection: { findFirst: mockCollectionFindFirst },
-    socialPost: { create: mockPostCreate, findMany: mockPostFindMany },
+    socialPost: {
+      create: mockPostCreate,
+      findMany: mockPostFindMany,
+      findFirst: mockPostFindFirst,
+      update: mockPostUpdate,
+    },
     postTemplate: { findFirst: mockTemplateFindFirst, update: mockTemplateUpdate },
   },
 }));
@@ -169,6 +178,14 @@ beforeEach(() => {
   });
   mockPublishInstagramPhoto.mockResolvedValue({ postId: 'ig_post_1' });
   mockPostCreate.mockImplementation(async (args: { data: Record<string, unknown> }) => ({
+    id: 'sp_1',
+    ...args.data,
+  }));
+  // The prior-attempt check queries every request (idempotency R-13) — default
+  // to no prior rows so fresh publishes proceed to the fan-out.
+  mockPostFindMany.mockResolvedValue([]);
+  mockPostFindFirst.mockResolvedValue(null);
+  mockPostUpdate.mockImplementation(async (args: { data: Record<string, unknown> }) => ({
     id: 'sp_1',
     ...args.data,
   }));
@@ -421,6 +438,188 @@ describe('per-target fan-out', () => {
     ]);
     expect(mockPublishPhoto).not.toHaveBeenCalled();
     expect(mockPostCreate).not.toHaveBeenCalled();
+  });
+});
+
+// ── idempotency hardening — finding 1 (DB-first dedupe + P2002 reconcile, §12) ─
+// Tests the 2026-09-05 fix: a Redis-down double or a concurrent twin must
+// never 500 and never double-post to Meta. See docs/tasks/social-create-post-composer.md §12.
+function twinRow(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 'sp_twin',
+    retailer_id: RETAILER_ID,
+    social_account_id: 'fb_1',
+    client_post_id: 'client-uuid-1',
+    platform: 'FACEBOOK',
+    status: 'POSTED',
+    external_post_id: 'fb_post_twin',
+    external_post_url: 'https://www.facebook.com/page_101/posts/fb_post_twin',
+    error_message: null,
+    ...overrides,
+  };
+}
+
+function uniqueViolation(): Error & { code: string } {
+  return Object.assign(new Error('Unique constraint failed'), {
+    code: 'P2002',
+  });
+}
+
+describe('idempotency hardening (finding 1, §12)', () => {
+  it('(a) duplicate Redis claim with existing rows replays — no Meta call, no new row', async () => {
+    mockClaimSocialPostId.mockResolvedValue({ isNew: false, degradedReason: null });
+    // A FAILED + a POSTED row both replay as they were recorded.
+    mockPostFindMany.mockResolvedValue([
+      twinRow({ id: 'sp_posted', status: 'POSTED' }),
+      twinRow({ id: 'sp_failed', status: 'FAILED', error_message: 'IG container failed' }),
+    ]);
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/me/social/posts',
+      payload: captionPayload(),
+    });
+    expect(res.statusCode).toBe(200);
+    const { results } = res.json().data;
+    expect(results).toHaveLength(2);
+    expect(results.map((r: { status: string }) => r.status)).toEqual(['POSTED', 'FAILED']);
+    expect(results.every((r: { deduplicated?: boolean }) => r.deduplicated === true)).toBe(true);
+    expect(mockPublishPhoto).not.toHaveBeenCalled();
+    expect(mockPostCreate).not.toHaveBeenCalled();
+  });
+
+  it('(a2) duplicate claim with NO rows yet (concurrent twin mid-flight) returns the empty replay — never falls through to publish', async () => {
+    mockClaimSocialPostId.mockResolvedValue({ isNew: false, degradedReason: null });
+    mockPostFindMany.mockResolvedValue([]); // twin still publishing
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/me/social/posts',
+      payload: captionPayload(),
+    });
+    // Safe outcome: empty replay, NO Meta call, NO row — the winner's rows
+    // appear when the twin finishes. Falling through here would double-post.
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data.results).toEqual([]);
+    expect(mockPublishPhoto).not.toHaveBeenCalled();
+    expect(mockPostCreate).not.toHaveBeenCalled();
+  });
+
+  it('(b) new claim but prior rows exist (Redis-down first attempt) replays — no publish', async () => {
+    // claim isNew defaults to true (Redis up, marker never set because the
+    // first attempt ran while Redis was down) — but the DB already has the row.
+    mockPostFindMany.mockResolvedValue([twinRow({ id: 'sp_redis_down' })]);
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/me/social/posts',
+      payload: captionPayload(),
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data.results).toEqual([
+      expect.objectContaining({
+        social_account_id: 'fb_1',
+        social_post_id: 'sp_redis_down',
+        status: 'POSTED',
+        deduplicated: true,
+      }),
+    ]);
+    expect(mockPublishPhoto).not.toHaveBeenCalled();
+    expect(mockPostCreate).not.toHaveBeenCalled();
+  });
+
+  it('(c) P2002 on POSTED create where twin row is FAILED upgrades the twin to POSTED with our ids', async () => {
+    const twin = twinRow({
+      id: 'sp_twin_failed',
+      status: 'FAILED',
+      error_message: 'transient graph error',
+    });
+    mockPostCreate.mockRejectedValueOnce(uniqueViolation());
+    mockPostFindFirst.mockResolvedValue(twin);
+    mockPostUpdate.mockResolvedValue({
+      ...twin,
+      status: 'POSTED',
+      external_post_id: 'fb_post_new',
+      external_post_url: 'https://www.facebook.com/page_101/posts/fb_post_new',
+      error_message: null,
+    });
+    mockPublishPhoto.mockResolvedValue({ postId: 'fb_post_new' });
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/me/social/posts',
+      payload: captionPayload(),
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data.results[0]).toMatchObject({
+      social_account_id: 'fb_1',
+      status: 'POSTED',
+      external_post_url: 'https://www.facebook.com/page_101/posts/fb_post_new',
+      deduplicated: true,
+    });
+    // The twin FAILED row was upgraded to POSTED with OUR platform ids.
+    expect(mockPostUpdate).toHaveBeenCalledWith({
+      where: { id: 'sp_twin_failed' },
+      data: {
+        status: 'POSTED',
+        external_post_id: 'fb_post_new',
+        external_post_url: 'https://www.facebook.com/page_101/posts/fb_post_new',
+        error_message: null,
+      },
+    });
+    // No second create → no 500 from the catch's FAILED-row write.
+    expect(mockPostCreate).toHaveBeenCalledTimes(1);
+  });
+
+  it('(d) P2002 on POSTED create where twin row is POSTED surfaces the twin deduplicated — exactly one row', async () => {
+    const twin = twinRow({ id: 'sp_twin_posted' });
+    mockPostCreate.mockRejectedValueOnce(uniqueViolation());
+    mockPostFindFirst.mockResolvedValue(twin);
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/me/social/posts',
+      payload: captionPayload(),
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data.results[0]).toMatchObject({
+      social_account_id: 'fb_1',
+      social_post_id: 'sp_twin_posted',
+      status: 'POSTED',
+      deduplicated: true,
+    });
+    expect(mockPostUpdate).not.toHaveBeenCalled();
+    expect(mockPostCreate).toHaveBeenCalledTimes(1);
+  });
+
+  it('(e) P2002 on the FAILED catch-path write (Meta failed + twin row exists) does not 500', async () => {
+    const twin = twinRow({
+      id: 'sp_twin_failed',
+      status: 'FAILED',
+      error_message: 'graph exploded',
+    });
+    mockPublishPhoto.mockRejectedValueOnce(new Error('graph exploded'));
+    mockPostCreate.mockRejectedValueOnce(uniqueViolation()); // FAILED-row write collides
+    mockPostFindFirst.mockResolvedValue(twin);
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/me/social/posts',
+      payload: captionPayload(),
+    });
+    // All failed → PUBLISH_FAILED 400 with the reconciled row in the envelope;
+    // the unhandled 500 the second P2002 used to cause is gone.
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.code).toBe('PUBLISH_FAILED');
+    expect(res.json().error.results[0]).toMatchObject({
+      social_account_id: 'fb_1',
+      social_post_id: 'sp_twin_failed',
+      status: 'FAILED',
+      error_message: 'graph exploded',
+      deduplicated: true,
+    });
+    expect(mockPostUpdate).not.toHaveBeenCalled();
+    expect(mockPostCreate).toHaveBeenCalledTimes(1);
   });
 });
 

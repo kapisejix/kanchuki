@@ -485,11 +485,45 @@ export default function CreateSocialPostScreen() {
     [postType, postTypeCtx, templateValues],
   )
 
+  // ── Idempotency across retries (R-13, finding 2 §12) ─────────────
+  // One client_post_id per LOGICAL publish. The ref keeps the id minted for
+  // the current payload signature; we reuse it when the retailer taps
+  // Publish again on an unchanged post, and mint a fresh id only when the
+  // signature changed (a genuinely different post) or the previous attempt
+  // reached a DEFINITIVE outcome (rows came back — result sheet shown / an
+  // all-failed 400 with rows) so the id is spent. A transient failure
+  // (network/timeout/5xx, no rows) must NOT clear the id — the retry has to
+  // dedupe against the in-flight-or-landed first attempt, or a timeout that
+  // actually published gets double-posted.
+  const publishAttemptRef = useRef<{ signature: string; clientPostId: string } | null>(null)
+
+  const payloadSignature = useMemo(() => {
+    const itemSig = items
+      .map(({ product, media }) =>
+        media.kind === 'photo'
+          ? `${product.id}:${media.photo_id}`
+          : `${product.id}:v${media.video_id}`,
+      )
+      .join(',')
+    return [
+      postType,
+      // Targets compared as a set — checkbox order is not part of the post.
+      [...targetIds].sort().join('|'),
+      itemSig,
+      linkType,
+      linkType === 'collection' ? linkCollection?.id ?? '' : '',
+      postType === 'COLLECTION_LINK' ? collectionLink?.id ?? '' : '',
+      linkType === 'product' && selected.length === 1 ? selected[0].id : '',
+      caption.trim(),
+      templateId ?? '',
+    ].join('\u0001')
+  }, [postType, targetIds, items, linkType, linkCollection, collectionLink, caption, selected, templateId])
+
   // ── Publish (T-4.8) ───────────────────────────────────────────────
-  const buildPayload = useCallback((): CreateSocialPostInput => {
+  const buildPayload = useCallback((clientPostId: string): CreateSocialPostInput => {
     if (postType === 'COLLECTION_LINK') {
       return {
-        client_post_id: newClientPostId(),
+        client_post_id: clientPostId,
         post_type: 'COLLECTION_LINK',
         targets: targetIds,
         items: [],
@@ -500,7 +534,7 @@ export default function CreateSocialPostScreen() {
       }
     }
     return {
-      client_post_id: newClientPostId(),
+      client_post_id: clientPostId,
       post_type: postType,
       targets: targetIds,
       items: items.map(({ product, media }) =>
@@ -520,11 +554,31 @@ export default function CreateSocialPostScreen() {
 
   const handlePublish = async () => {
     if (problems.length > 0 || publishing) return
+    const signature = payloadSignature
+    const prev = publishAttemptRef.current
+    let clientPostId: string
+    if (prev && prev.signature === signature) {
+      // Same logical publish as the last tap and no definitive outcome yet
+      // (ref would have been cleared) — reuse the id so a retry dedupes
+      // server-side against the in-flight-or-landed first attempt.
+      clientPostId = prev.clientPostId
+    } else {
+      // First tap on this content, the composition changed, or the previous
+      // attempt reached a definitive outcome — mint fresh.
+      clientPostId = newClientPostId()
+      publishAttemptRef.current = { signature, clientPostId }
+    }
     setPublishing(true)
-    const payload = buildPayload()
+    const payload = buildPayload(clientPostId)
+    let definitiveOutcome = false
     try {
       const res = await socialApi.createPost(payload)
       const results = (res as { data?: { results?: SocialPostTargetResult[] } }).data?.results ?? []
+      // Rows came back (posted or recorded per-target failure) — the id is
+      // spent; the next Publish tap starts a genuinely new post. An EMPTY
+      // results array is the mid-flight dedupe replay (a twin still writing)
+      // — no rows yet, so keep the id for the retry instead of re-minting.
+      if (results.length > 0) definitiveOutcome = true
       setResult(results)
       // Refresh each target's post history so the new rows show immediately.
       payload.targets.forEach((id) => {
@@ -536,11 +590,15 @@ export default function CreateSocialPostScreen() {
       // the retailer sees WHY each account failed, not a generic alert.
       const results = (err as { results?: unknown[] | null } | null)?.results
       if (Array.isArray(results) && results.length > 0) {
+        definitiveOutcome = true
         setResult(results as SocialPostTargetResult[])
       } else {
+        // Transient failure (network/timeout/5xx) with NO rows — keep the id
+        // in the ref so a retry dedupes against the possibly-landed attempt.
         showError(err, 'Could not publish the post. Try again.')
       }
     } finally {
+      if (definitiveOutcome) publishAttemptRef.current = null
       setPublishing(false)
     }
   }

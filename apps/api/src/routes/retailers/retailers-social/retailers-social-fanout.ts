@@ -363,8 +363,16 @@ export const retailersSocialFanoutRoutes: FastifyPluginAsync = async (server) =>
     }
 
     // ── Idempotency (R-13): a retry with the same client_post_id returns
-    // the first attempt's rows instead of re-publishing. DB unique
-    // constraint (092) is the backstop for a concurrent double.
+    // the first attempt's rows instead of re-publishing.
+    //   • Redis duplicate (isNew=false) → always replay. A concurrent twin may
+    //     still be mid-flight with no rows written yet; returning the (possibly
+    //     empty) replay is the safe outcome — we must NOT fall through and
+    //     double-publish. The original caller's rows appear once the winner
+    //     finishes.
+    //   • Redis unavailable (degraded fail-open) → the marker was never set,
+    //     so a second attempt claims as new. The DB is the record of truth:
+    //     if rows for this id already exist (a prior attempt published while
+    //     Redis was down), replay them instead of publishing again.
     const claim = await claimSocialPostId(body.client_post_id);
     if (!claim.isNew) {
       const existing = await prisma.socialPost.findMany({
@@ -373,17 +381,17 @@ export const retailersSocialFanoutRoutes: FastifyPluginAsync = async (server) =>
         take: 20,
       });
       return {
-        data: {
-          results: existing.map((p) => ({
-            social_account_id: p.social_account_id,
-            platform: p.platform,
-            status: p.status,
-            external_post_url: p.external_post_url,
-            social_post_id: p.id,
-            error_message: p.error_message,
-            deduplicated: true,
-          })),
-        },
+        data: { results: existing.map((p) => toResultRow(p, { deduplicated: true })) },
+      };
+    }
+    const priorAttempt = await prisma.socialPost.findMany({
+      where: { retailer_id: request.retailerId, client_post_id: body.client_post_id },
+      orderBy: { created_at: 'asc' },
+      take: 20,
+    });
+    if (priorAttempt.length > 0) {
+      return {
+        data: { results: priorAttempt.map((p) => toResultRow(p, { deduplicated: true })) },
       };
     }
 
@@ -478,58 +486,65 @@ export const retailersSocialFanoutRoutes: FastifyPluginAsync = async (server) =>
           }
         }
 
-        const post = await prisma.socialPost.create({
-          data: {
-            retailer_id: request.retailerId,
-            social_account_id: account.id,
-            platform: account.platform,
-            post_type: body.post_type,
-            product_ids: snapshots.map((s) => s.product_id),
-            collection_id: body.post_type === 'COLLECTION_LINK' ? body.collection_id : undefined,
-            caption,
-            media: snapshotJson as unknown as object[],
-            link_url: linkUrl,
-            link_type: resolvedLinkType,
-            client_post_id: body.client_post_id,
-            external_post_id: externalPostId,
-            external_post_url: externalPostUrl,
-            status: 'POSTED',
-          },
+        // Record the outcome. The unique index (retailer, account,
+        // client_post_id) is the backstop for a concurrent double that slips
+        // between the idempotency claim and this write — a P2002 here means a
+        // twin already owns the row, so reconcile (load it, upgrade a FAILED
+        // twin row when OUR publish actually landed) instead of crashing into a
+        // second violation from the catch's FAILED-row write (which used to 500).
+        const { post, deduplicated } = await createOrReconcilePost({
+          retailer_id: request.retailerId,
+          social_account_id: account.id,
+          platform: account.platform,
+          post_type: body.post_type,
+          product_ids: snapshots.map((s) => s.product_id),
+          collection_id: body.post_type === 'COLLECTION_LINK' ? body.collection_id : undefined,
+          caption,
+          media: snapshotJson as unknown as object[],
+          link_url: linkUrl,
+          link_type: resolvedLinkType,
+          client_post_id: body.client_post_id,
+          status: 'POSTED',
+          external_post_id: externalPostId,
+          external_post_url: externalPostUrl,
+          error_message: null,
         });
         results.push({
           social_account_id: account.id,
           platform: account.platform,
-          status: 'POSTED',
-          external_post_url: externalPostUrl,
+          status: post.status,
+          external_post_url: post.external_post_url,
           social_post_id: post.id,
-          error_message: null,
+          error_message: post.error_message,
+          ...(deduplicated ? { deduplicated: true } : {}),
         });
       } catch (err) {
         const safeMessage = err instanceof Error ? err.message : 'Post failed';
-        const post = await prisma.socialPost.create({
-          data: {
-            retailer_id: request.retailerId,
-            social_account_id: account.id,
-            platform: account.platform,
-            post_type: body.post_type,
-            product_ids: snapshots.map((s) => s.product_id),
-            collection_id: body.post_type === 'COLLECTION_LINK' ? body.collection_id : undefined,
-            caption: caption || '—',
-            media: snapshotJson as unknown as object[],
-            link_url: linkUrl,
-            link_type: resolvedLinkType,
-            client_post_id: body.client_post_id,
-            status: 'FAILED',
-            error_message: safeMessage,
-          },
+        const { post, deduplicated } = await createOrReconcilePost({
+          retailer_id: request.retailerId,
+          social_account_id: account.id,
+          platform: account.platform,
+          post_type: body.post_type,
+          product_ids: snapshots.map((s) => s.product_id),
+          collection_id: body.post_type === 'COLLECTION_LINK' ? body.collection_id : undefined,
+          caption: caption || '—',
+          media: snapshotJson as unknown as object[],
+          link_url: linkUrl,
+          link_type: resolvedLinkType,
+          client_post_id: body.client_post_id,
+          status: 'FAILED',
+          external_post_id: null,
+          external_post_url: null,
+          error_message: safeMessage,
         });
         results.push({
           social_account_id: account.id,
           platform: account.platform,
-          status: 'FAILED',
-          external_post_url: null,
+          status: post.status,
+          external_post_url: post.external_post_url,
           social_post_id: post.id,
-          error_message: safeMessage,
+          error_message: post.error_message,
+          ...(deduplicated ? { deduplicated: true } : {}),
         });
       }
     }
@@ -570,4 +585,92 @@ function productFallbackPhoto(
   if (!product) return null;
   const photo = product.photos.find((p) => p.is_primary) ?? product.photos[0];
   return photo ? { url: photo.url } : null;
+}
+
+/** One history row → the per-target result shape (shared by fresh publishes,
+ * Redis dedupe replays and P2002 reconciliations so every path speaks the
+ * same wire format). */
+function toResultRow(
+  p: {
+    id: string;
+    social_account_id: string;
+    platform: string;
+    status: string;
+    external_post_url: string | null;
+    error_message: string | null;
+  },
+  opts: { deduplicated: boolean },
+): Record<string, unknown> {
+  return {
+    social_account_id: p.social_account_id,
+    platform: p.platform,
+    status: p.status,
+    external_post_url: p.external_post_url,
+    social_post_id: p.id,
+    error_message: p.error_message,
+    ...(opts.deduplicated ? { deduplicated: true } : {}),
+  };
+}
+
+// The SocialPost create data we fan out — typed as Prisma's unchecked create
+// input so the reconciling write accepts it without per-call casts.
+type PostRowDraft = Parameters<typeof prisma.socialPost.create>[0]['data'];
+
+// A draft + the platform-side outcome fields attached after publish.
+type PostRowDraftWithOutcome = PostRowDraft & {
+  external_post_id?: string | null;
+  external_post_url?: string | null;
+};
+
+/**
+ * Write one target's SocialPost row, reconciling a DB unique violation
+ * (P2002 — a concurrent twin already owns this (retailer, account,
+ * client_post_id) row). Reconcile instead of failing:
+ *   • twin row is POSTED  → the post is already live (we or the twin put it
+ *     there); surface it deduplicated, never write a second row.
+ *   • twin row is FAILED + our attempt actually POSTED → the post IS live,
+ *     so upgrade the row (history must not claim failure for a live post).
+ *   • twin row is FAILED + we failed too → surface the existing FAILED row.
+ * Returns { post, deduplicated } matching toResultRow's input shape.
+ */
+async function createOrReconcilePost(
+  draft: PostRowDraft,
+): Promise<{ post: PostRowDraftWithOutcome & { id: string }; deduplicated: boolean }> {
+  try {
+    const created = await prisma.socialPost.create({ data: draft });
+    return { post: created as PostRowDraftWithOutcome & { id: string }, deduplicated: false };
+  } catch (err) {
+    const isUniqueViolation =
+      typeof err === 'object' && err !== null && (err as { code?: string }).code === 'P2002';
+    if (!isUniqueViolation) throw err;
+    const existing = await prisma.socialPost.findFirst({
+      where: {
+        retailer_id: draft.retailer_id,
+        social_account_id: draft.social_account_id,
+        client_post_id: draft.client_post_id,
+      },
+    });
+    if (!existing) throw err; // vanished between create + read — surface original
+    if (existing.status === 'FAILED' && draft.status === 'POSTED') {
+      // Our publish landed but the twin's row says FAILED — upgrade it so the
+      // live post is recorded as POSTED with the platform ids we received.
+      const upgraded = await prisma.socialPost.update({
+        where: { id: existing.id },
+        data: {
+          status: 'POSTED',
+          external_post_id: draft.external_post_id ?? null,
+          external_post_url: draft.external_post_url ?? null,
+          error_message: null,
+        },
+      });
+      return {
+        post: upgraded as PostRowDraftWithOutcome & { id: string },
+        deduplicated: true,
+      };
+    }
+    return {
+      post: existing as PostRowDraftWithOutcome & { id: string },
+      deduplicated: true,
+    };
+  }
 }

@@ -412,3 +412,133 @@ enum PostTemplateContext { POST CAMPAIGN BOTH }
 ### 11.7 Task breakdown
 
 See **Phase 9** in [§9 Task breakdown](#9-task-breakdown) (T-9.1 → T-9.8).
+
+---
+
+## 12. Review pass — idempotency hardening (session handoff, 2026-09-05)
+
+> **Status: ✅ Complete (findings 1 + 2 fixed 2026-09-05).** The composer
+> feature shipped as commit `dabebf5c` (Phases 0–9). A post-ship end-to-end
+> review of the fan-out publish path (`retailers-social-fanout.ts` +
+> `meta-graph.ts` + `error-handler.ts` + helpers + 18-test suite) found 5
+> issues. Owner chose to fix **findings 1 + 2 (idempotency)** — both are now
+> implemented, tested and committed on branch
+> `fix/social-connect-surface-errors`. **Findings 3–5 stay open** (recorded
+> below, not scheduled).
+>
+> **⚠️ EAS-build gate:** an EAS build compiles the *committed* mobile code.
+> The mobile half of finding 2 (client_post_id reuse) is now committed, so
+> the next `eas build` ships WITH retry-dedupe hardening. Order of work:
+> the fix is committed → **then** `eas build` → then T-8.2 manual
+> real-account verification on that build. Do not EAS-build mid-fix.
+
+### 🚀 Resume prompt — (COMPLETED 2026-09-05 — kept for the record)
+
+```
+Resume on branch fix/social-connect-surface-errors (composer idempotency
+fix, findings 1+2). Read docs/tasks/social-create-post-composer.md §12 first
+— it is the canonical handoff. Remaining: (1) finish the new fan-out test
+cases (5 scenarios listed in §12), (2) implement mobile client_post_id reuse
+in apps/mobile/app/social/create.tsx (finding 2 — currently mints a fresh id
+every tap, so a timeout-retry can double-post), (3) run pnpm typecheck + API
+suite + mobile suite + expo lint on touched files + CRLF check, (4) flip §12
+to ✅ (findings 3–5 stay open), commit on this branch. Then the EAS build is
+unblocked; T-8.2 (real-account manual verification) comes after the build.
+```
+
+**✅ All four steps done 2026-09-05:** the 5 test scenarios (a)–(e) plus the
+mid-flight empty-replay case are written and green (fan-out suite 24/24;
+full API 783/783), the composer reuses `client_post_id` across retries of an
+unchanged payload and only re-mints after a definitive outcome, typecheck +
+API/mobile suites + `expo lint` + CRLF checks all pass, and this section is
+flipped to ✅. **Open: T-8.2 manual EAS verification (after `eas build`),
+findings 3–5 below.**
+
+### Findings from the review (all 5, for the record)
+
+1. **Redis-down + concurrent duplicate → 500, and can double-post to Meta.**
+   Claim fail-opens when Redis is down, so two same-id requests both fan out
+   and both call Meta before the DB write; the loser hits the DB unique on
+   `socialPost.create` (P2002) *inside* the try → per-target catch writes a
+   FAILED row with the same `client_post_id` → second P2002 → unhandled 500.
+2. **Fresh `client_post_id` per publish attempt defeats the timeout-retry
+   case.** Composer mints a new id every tap — right after a server-confirmed
+   all-failed, but a client-side timeout where the server actually published →
+   retry with a new id → legitimate double post. Id should be reused for
+   retries of the same logical publish.
+3. **IG single-photo permalink is fabricated.** `instagram.com/p/${postId}`
+   uses the media id, not a shortcode — likely 404s in history/"View post".
+   Carousel path fetches the real `permalink`; single-photo helper returns
+   only `postId`.
+4. **Non-Meta error messages leak into rows + responses.** Catch stores
+   `err.message` verbatim in `social_post.error_message` + results envelope
+   (hostnames/connection detail for DB/network errors). Also a Meta success +
+   DB-write failure is recorded FAILED for a post that is live.
+5. **Minor:** IG caption can exceed Meta's 2,200-char limit when the server
+   appends `\n\n` + link URL to a near-max caption; IG-video→primary-photo
+   fallback is silent (media snapshot says video, live post is a photo).
+
+**Owner decision 2026-09-05:** fix **1 + 2 only** — ✅ **done 2026-09-05**.
+Findings 3–5 recorded, not scheduled (open).
+
+### ✅ Findings 1 + 2 — fixed (committed 2026-09-05, branch `fix/social-connect-surface-errors`)
+
+**Server — `apps/api/src/routes/retailers/retailers-social/retailers-social-fanout.ts`**
+(`tsc --noEmit` clean):
+
+- **DB-first dedupe (finding 1, sequential-retry half):** after the Redis
+  claim, the route now checks `socialPost` rows for the `client_post_id` on
+  EVERY request. Redis duplicate claim (`!isNew`) → always replay existing
+  rows (never fall through — a concurrent twin mid-flight returns the empty
+  replay, which is safe). Rows exist under a *new* claim → a prior attempt
+  published while Redis was down (marker never set) → replay instead of
+  publishing again.
+- **P2002 reconciliation (finding 1, crash half):** both the POSTED and the
+  FAILED row writes now go through `createOrReconcilePost()` — on a P2002 it
+  loads the existing (retailer, account, client_post_id) row and reconciles:
+  twin POSTED → surface deduplicated; twin FAILED + our attempt POSTED →
+  upgrade the row to POSTED with our platform ids; both FAILED → surface the
+  existing FAILED row. No second write → no 500. Result rows built by a
+  shared `toResultRow()` so fresh/replay/reconcile paths speak one wire
+  format. FAILED drafts now carry `external_post_id/url: null` explicitly.
+
+**Tests — `...fanout.test.ts`:** 6 new cases green (scenarios (a)–(e) from
+below + the concurrent-twin mid-flight empty-replay). Fan-out suite 24/24;
+full API suite 783/783 (three consecutive clean full runs).
+
+**Mobile — `apps/mobile/app/social/create.tsx` (finding 2):**
+`buildPayload(clientPostId)` now receives the id instead of minting one.
+`handlePublish` keeps a `publishAttemptRef` of the last id + a
+`payloadSignature` (post_type / targets-as-a-set / items-with-media / link
+resolution / trimmed caption / template). A tap reuses the id when the
+signature is unchanged AND no definitive outcome yet; it re-mints when the
+composition changed or the previous attempt reached a definitive outcome
+(rows came back — result sheet shown / all-failed 400 with rows) so the id
+is spent. A transient failure (network/timeout/5xx, no rows — incl. the 200
+mid-flight dedupe replay with an EMPTY results array) keeps the id so the
+retry dedupes against the in-flight-or-landed first attempt. Mobile
+typecheck + `expo lint` clean, 43/43 tests.
+
+### ✅ NEXT SESSION — done (completed 2026-09-05)
+
+1. **Write the new server tests** in `retailers-social-fanout.test.ts`:
+   (a) duplicate Redis claim with existing rows → replays, no Meta call, no
+   new row; (b) *new* claim but prior rows exist (Redis-down first attempt) →
+   replays, no publish; (c) P2002 on POSTED create where twin row is FAILED →
+   row upgraded to POSTED with our ids, result `deduplicated`/POSTED;
+   (d) P2002 on POSTED create where twin row is POSTED → surface twin
+   deduplicated, exactly one row; (e) P2002 on the FAILED catch-path write
+   (Meta failed + twin row exists) → no 500. — **✅ all written + green**
+   (plus (a2) concurrent-twin empty-replay).
+2. **Mobile client (finding 2)** — `apps/mobile/app/social/create.tsx`:
+   `buildPayload()` mints `newClientPostId()` on every call. Change to reuse
+   the id across retries of the same logical publish. — **✅ done** (see
+   above).
+3. **Full gates:** `pnpm typecheck`, API suite, mobile suite, `expo lint` on
+   the two touched files. CRLF check on both edited files. — **✅ all green:**
+   API typecheck clean + 783/783, mobile typecheck clean + 43/43, `expo
+   lint` exit 0 on `app/social/create.tsx`, Biome format fixed on the two API
+   files (4 pre-existing warn-level `noNonNullAssertion` remain), no mixed
+   line endings in any touched file.
+4. **Docs:** flip this section to ✅ and note findings 3–5 remain open, then
+   commit (branch `fix/social-connect-surface-errors`). — **✅ this commit.**
