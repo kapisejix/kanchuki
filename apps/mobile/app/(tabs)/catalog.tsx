@@ -23,6 +23,7 @@ import {
   ScanLine,
   Camera,
   Search,
+  CheckSquare,
 } from 'lucide-react-native'
 import ProductCard from '../../src/components/ProductCard'
 import { useGridColumns } from '../../src/hooks/useIsTablet'
@@ -177,7 +178,10 @@ export default function CatalogScreen() {
   const retailerProfile = (retailerData as { data: Record<string, any> } | undefined)?.data as Record<string, any> | undefined
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
-  const selectionMode = selectedIds.size > 0
+  // Explicit toggle so retailers can enter tap-to-select without discovering
+  // the long-press gesture (which still works too, unchanged).
+  const [selectModeOn, setSelectModeOn] = useState(false)
+  const selectionMode = selectModeOn || selectedIds.size > 0
   const [deleting, setDeleting] = useState(false)
 
   const [searchQuery, setSearchQuery] = useState('')
@@ -304,7 +308,10 @@ export default function CatalogScreen() {
     })
   }, [])
 
-  const clearSelection = useCallback(() => setSelectedIds(new Set()), [])
+  const clearSelection = useCallback(() => {
+    setSelectedIds(new Set())
+    setSelectModeOn(false)
+  }, [])
 
   const handleBulkDelete = useCallback(() => {
     const count = selectedIds.size
@@ -422,6 +429,16 @@ export default function CatalogScreen() {
         </View>
 
         <View className="flex-row items-center gap-2">
+          <AnimatedPressable
+            onPress={() => (selectionMode ? clearSelection() : setSelectModeOn(true))}
+            className={`w-10 h-10 rounded-2xl items-center justify-center border ${
+              selectionMode ? 'bg-spaceCadet-900 border-spaceCadet-900' : 'bg-white border-lavender-200 shadow-sm'
+            }`}
+            accessibilityLabel={selectionMode ? 'Cancel selection' : 'Select products to delete'}
+            accessibilityRole="button"
+          >
+            {selectionMode ? <X size={18} color="white" /> : <CheckSquare size={18} color="#231F48" />}
+          </AnimatedPressable>
           <AnimatedPressable
             onPress={() => router.push('/product/scan')}
             className="w-10 h-10 rounded-2xl items-center justify-center bg-white border border-lavender-200 shadow-sm"
@@ -611,11 +628,14 @@ export default function CatalogScreen() {
           <AnimatedPressable onPress={clearSelection} disabled={deleting}>
             <Text className="text-lavender-200 text-xs font-bold uppercase tracking-wider">Cancel</Text>
           </AnimatedPressable>
-          <Text className="text-white text-sm font-bold font-marcellus">{selectedIds.size} Selected</Text>
+          <Text className="text-white text-sm font-bold font-marcellus">
+            {selectedIds.size > 0 ? `${selectedIds.size} Selected` : 'Tap products to select'}
+          </Text>
           <AnimatedPressable
             onPress={handleBulkDelete}
-            disabled={deleting}
+            disabled={deleting || selectedIds.size === 0}
             className="flex-row items-center gap-1.5 bg-red-600 px-3.5 py-2 rounded-2xl"
+            style={{ opacity: selectedIds.size === 0 ? 0.4 : 1 }}
           >
             {deleting ? (
               <ActivityIndicator size="small" color="white" />

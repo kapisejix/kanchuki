@@ -72,6 +72,13 @@ export default function PlanSelectScreen() {
   const isTrial = planStatus === 'TRIAL';
   const isActive = planStatus === 'ACTIVE';
   const isCancelled = planStatus === 'CANCELLED';
+  // A Subscription row stays status 'TRIAL' until Razorpay's first charge, so
+  // checking planStatus === 'ACTIVE' alone missed a retailer who already
+  // picked a paid plan during their trial — tapping another plan skipped the
+  // cancel-first flow entirely and created a second live Razorpay
+  // subscription. Any non-cancelled row means "already has one".
+  const subscriptionRowStatus = (sub?.subscription as { status?: string } | null | undefined)?.status;
+  const hasLiveSubscription = subscriptionRowStatus === 'TRIAL' || subscriptionRowStatus === 'ACTIVE';
 
   const handleSelectPlan = async (plan: PlanKey) => {
     if (plan === currentPlan && !isCancelled) {
@@ -79,8 +86,9 @@ export default function PlanSelectScreen() {
       return;
     }
 
-    if (isActive && sub?.subscription) {
-      // Active paid subscription — need to cancel first, then subscribe to new plan
+    if (hasLiveSubscription) {
+      // A live subscription (trial or active) already exists — cancel it
+      // first, then subscribe to the new plan.
       Alert.alert(
         'Switch Plan',
         `To switch to ${PLAN_UI[plan].name}, you'll need to cancel your current ${PLAN_UI[currentPlan].name} subscription first. Your current plan stays active until the billing period ends.\n\nProceed to cancel and switch?`,

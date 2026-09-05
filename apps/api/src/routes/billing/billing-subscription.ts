@@ -51,11 +51,22 @@ export const billingSubscriptionRoutes: FastifyPluginAsync = async (server) => {
 
     const retailer = await prisma.retailer.findUnique({
       where: { id: request.retailerId },
-      select: { trial_ends_at: true, razorpay_subscription_id: true, plan_status: true },
+      select: { trial_ends_at: true },
     });
     if (!retailer) throw notFound('Retailer');
-    if (retailer.plan_status === 'ACTIVE' && retailer.razorpay_subscription_id) {
-      throw validationError('Subscription already active. Cancel it before changing plans.');
+
+    // A Subscription row stays 'TRIAL' until Razorpay's first charge — that
+    // status alone isn't proof there's no live subscription yet. Gating only
+    // on plan_status === 'ACTIVE' let a retailer tap a second/third plan
+    // while still in trial and create another real Razorpay subscription
+    // each time, with nothing cancelling the earlier one — GET /subscription
+    // then returns whichever row was created last, so the "selected" plan
+    // flips unpredictably. Block on ANY non-cancelled row instead.
+    const existingSubscription = await prisma.subscription.findFirst({
+      where: { retailer_id: request.retailerId, status: { in: ['TRIAL', 'ACTIVE'] } },
+    });
+    if (existingSubscription) {
+      throw validationError('You already have a subscription in progress. Cancel it before changing plans.');
     }
 
     // First charge lands when the 14-day trial runs out (or now if already over)
