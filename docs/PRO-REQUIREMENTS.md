@@ -1616,6 +1616,7 @@ Three post types, ascending effort:
 - **Auto-generated captions**: templated server-side captions + admin-curated **Post Templates** (plan-gated, `usage_count`) + **Caption AI** (`POST /v1/growth/social/caption-suggest` — `@kanchuki/ai`, debounced composer prefill, always fail-open)
 - Per-platform CTA: Instagram → no clickable caption links handled per-platform; Facebook → clickable collection link (server-owned link resolution)
 - 5 composer entry points: Settings → Social Media Post button, product detail header, AI Studio result, collection detail header, Growth hub tile
+- **Idempotency hardening (2026-09-05, task doc §12 review findings 1+2):** fan-out route dedupes on `socialPost` rows in addition to the Redis marker (a concurrent twin or Redis-down retry replays instead of double-posting; a P2002 reconcile upgrades FAILED twin rows when our publish actually landed — no 500), and the composer reuses `client_post_id` across retries of an unchanged payload (re-mints only after a definitive outcome). Review findings 3–5 remain open.
 - **Non-API fallback for personal-account retailers**: still open (personal IG has no Business API path — documented tradeoff)
 
 **Phase 3 — Automation & attribution:**
