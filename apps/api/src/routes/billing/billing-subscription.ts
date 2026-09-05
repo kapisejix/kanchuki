@@ -69,9 +69,26 @@ export const billingSubscriptionRoutes: FastifyPluginAsync = async (server) => {
       throw validationError('You already have a subscription in progress. Cancel it before changing plans.');
     }
 
+    // Model A (switch takes effect next cycle, no proration — see
+    // docs/PRO-REQUIREMENTS.md §6 Billing Rules): a plan SWITCH cancels the
+    // old Razorpay subscription first (POST /billing/cancel), which defers
+    // to Razorpay's own period end rather than cancelling immediately. If
+    // the new subscription were then started ~now (the old trial-only
+    // floor), it would overlap and double-charge the retailer during the
+    // old plan's remaining paid period. Floor the new start_at at the most
+    // recent subscription's current_period_end too, so the new plan begins
+    // exactly when the old one's paid period actually ends. A first-ever
+    // subscribe has no prior row, so this floor is 0 and behaves as before.
+    const priorSubscription = await prisma.subscription.findFirst({
+      where: { retailer_id: request.retailerId },
+      orderBy: { created_at: 'desc' },
+      select: { current_period_end: true },
+    });
+    const priorPeriodEnd = priorSubscription?.current_period_end?.getTime() ?? 0;
+
     // First charge lands when the 14-day trial runs out (or now if already over)
     const trialEnd = retailer.trial_ends_at?.getTime() ?? 0;
-    const startAt = Math.max(trialEnd, Date.now() + 5 * 60 * 1000); // Razorpay needs a future ts
+    const startAt = Math.max(trialEnd, priorPeriodEnd, Date.now() + 5 * 60 * 1000); // Razorpay needs a future ts
 
     const rzpSub = await razorpay<RazorpaySubscription>('/subscriptions', {
       method: 'POST',
