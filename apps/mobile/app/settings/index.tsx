@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as ImageManipulator from "expo-image-manipulator";
 import * as ImagePicker from "expo-image-picker";
-import { router, useRootNavigation } from "expo-router";
+import { router } from "expo-router";
 import {
   AlertTriangle,
   BarChart2,
@@ -53,7 +53,7 @@ import {
 } from "../../src/lib/api";
 import { showError } from "../../src/lib/errors";
 import { clearPersistedCache } from "../../src/lib/offline-persister";
-import { resetRootTo } from "../../src/lib/root-navigation";
+import { useAuth } from "../../src/lib/auth-context";
 import { deleteItem, getItem } from "../../src/lib/storage";
 import { useTheme } from "../../src/lib/theme";
 import { WEB_URL } from "../../src/lib/web-url";
@@ -1150,7 +1150,7 @@ function UsageSection() {
 export default function SettingsScreen() {
   const { primaryColor, colors } = useTheme();
   const insets = useSafeAreaInsets();
-  const rootNav = useRootNavigation();
+  const { signOut } = useAuth();
   const queryClient = useQueryClient();
 
   const { data: meData, isLoading } = useQuery({
@@ -1188,25 +1188,12 @@ export default function SettingsScreen() {
         text: "Logout",
         style: "destructive",
         onPress: async () => {
-          await clearToken();
-          // Clear staff context too — otherwise the next login on this device
-          // (e.g. the owner, on a shared shop tablet) would inherit a stale
-          // staff_role and get incorrectly restricted.
-          await Promise.all([
-            deleteItem("refresh_token"),
-            deleteItem("retailer_id"),
-            deleteItem("staff_role"),
-            deleteItem("staff_name"),
-            deleteItem("staff_retailer_id"),
-          ]);
-          clearRequestCache();
           queryClient.clear();
           await clearPersistedCache();
-          // Reset (not replace) so no stale authenticated screen lingers under
-          // the Login screen after logout.
-          if (!resetRootTo(rootNav, "auth/phone")) {
-            router.replace("/auth/phone");
-          }
+          // signOut clears every auth key and flips the guards — auth/phone
+          // becomes the only route, so no stale authenticated screen can
+          // linger under Login (or be reached via back).
+          await signOut();
         },
       },
     ]);
@@ -1611,18 +1598,9 @@ export default function SettingsScreen() {
         onClose={() => setShowDelete(false)}
         onDeleted={async () => {
           setShowDelete(false);
-          await clearToken();
-          await deleteItem("refresh_token");
-          await deleteItem("retailer_id");
-          await deleteItem("staff_role");
-          clearRequestCache();
           queryClient.clear();
           clearPersistedCache();
-          // Reset (not replace) so no stale authenticated screen lingers under
-          // the Login screen after account deletion.
-          if (!resetRootTo(rootNav, "auth/phone")) {
-            router.replace("/auth/phone");
-          }
+          await signOut();
         }}
       />
 

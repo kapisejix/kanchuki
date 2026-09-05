@@ -3,6 +3,7 @@
 import { router } from 'expo-router'
 import { File } from 'expo-file-system'
 import * as LegacyFileSystem from 'expo-file-system/legacy'
+import { emitAuthChange } from '../auth-events'
 import { getItem, setItem, deleteItem } from '../storage'
 import { cachedJsonRequest, clearRequestCache } from '../request-cache'
 import { compressImageForUpload } from '../compress-image'
@@ -46,6 +47,10 @@ export function redirectToAuth() {
   if (isRedirectingToAuth) return
   isRedirectingToAuth = true
   try {
+    // Flip the Stack.Protected guards: with the token cleared, auth/phone
+    // becomes the only route in the root stack. router.replace below is a
+    // best-effort fallback for when the AuthProvider isn't mounted yet.
+    emitAuthChange({ authed: false })
     router.replace('/auth/phone')
   } catch {
     // router might not be ready yet

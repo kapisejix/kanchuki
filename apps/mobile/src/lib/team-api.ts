@@ -1,4 +1,5 @@
 import { router } from 'expo-router'
+import { emitAuthChange } from './auth-events'
 import { getItem, deleteItem } from './storage'
 import { clearToken, clearRequestCache } from './api'
 
@@ -49,6 +50,9 @@ async function teamRequest<T>(
         await deleteItem('staff_name')
         await deleteItem('staff_retailer_id')
         clearRequestCache()
+        // Flip the guards — auth/phone becomes the only route. The replace is
+        // a best-effort fallback when the AuthProvider isn't mounted yet.
+        emitAuthChange({ authed: false })
         router.replace('/auth/phone')
       }
       const body = await res.json().catch(() => ({ error: { message: 'Request failed' } }))

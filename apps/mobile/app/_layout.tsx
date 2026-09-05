@@ -13,7 +13,7 @@ import {
   QueryClientProvider,
   focusManager,
 } from "@tanstack/react-query";
-import { Stack, router, useRootNavigationState } from "expo-router";
+import { Stack } from "expo-router";
 import * as ExpoSplashScreen from "expo-splash-screen";
 import { vars } from "nativewind";
 import { useEffect, useRef, useState } from "react";
@@ -25,7 +25,7 @@ import { CatalogDelegateBanner } from "../src/components/CatalogDelegateBanner";
 import { ErrorBoundary } from "../src/components/ErrorBoundary";
 import { NetworkBanner } from "../src/components/NetworkBanner";
 import { useSyncQueue } from "../src/hooks/useSyncQueue";
-import { getToken } from "../src/lib/api";
+import { AuthProvider, useAuth } from "../src/lib/auth-context";
 import {
   persistQueryCache,
   restoreQueryCache,
@@ -118,6 +118,16 @@ function AppShell() {
     surfaceColor,
     colors,
   } = useTheme();
+  const { status, isStaff } = useAuth();
+
+  // Never mount the Stack before the session is hydrated: with every
+  // Stack.Protected guard still false the navigator has zero routeNames and
+  // crashes on getInitialState. The native splash stays up until then (see
+  // AppContent's hide gate).
+  if (status === "loading") return null;
+
+  const isAuthed = status === "authenticated";
+
   return (
     <View
       className="flex-1 bg-cotton"
@@ -146,38 +156,96 @@ function AppShell() {
           headerShadowVisible: false,
         }}
       >
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="auth/phone" options={{ headerShown: false }} />
-        <Stack.Screen name="auth/otp" options={{ headerShown: false }} />
-        <Stack.Screen name="onboarding" options={{ headerShown: false }} />
-        <Stack.Screen name="staff" options={{ headerShown: false }} />
-        <Stack.Screen name="product/add" options={{ presentation: "modal" }} />
-        <Stack.Screen name="product/scan" options={{ presentation: "modal" }} />
-        <Stack.Screen name="product/bulk" options={{ presentation: "modal" }} />
-        <Stack.Screen name="product/[id]" />
-        <Stack.Screen name="collection/new" />
-        <Stack.Screen name="collection/[id]" />
-        <Stack.Screen name="category/new" />
-        <Stack.Screen name="category/[id]" />
-        <Stack.Screen name="customer/add" options={{ presentation: "modal" }} />
-        <Stack.Screen name="customer/[id]" />
-        <Stack.Screen name="growth/index" />
-        <Stack.Screen name="growth/campaigns" />
-        <Stack.Screen
-          name="growth/campaign-new"
-          options={{ presentation: "modal" }}
-        />
-        <Stack.Screen name="growth/campaign/[id]" />
-        <Stack.Screen name="growth/promotions" />
-        <Stack.Screen
-          name="growth/promotion-form"
-          options={{ presentation: "modal" }}
-        />
-        <Stack.Screen name="growth/inventory" />
-        <Stack.Screen name="growth/videos" />
-        <Stack.Screen name="growth/translate" />
-        <Stack.Screen name="growth/analytics" />
-        <Stack.Screen name="ai-search" />
+        {/* Authenticated retailer-only routes (dashboard, onboarding, plan
+            select, settings, billing, growth, …). Guards are structural: when
+            a guard flips, expo-router filters the route OUT of the navigation
+            state, so auth screens can never sit in the back stack beneath
+            these — hardware back pops to nothing (the dashboard's
+            double-tap-to-exit handler) instead of to Login. */}
+        <Stack.Protected guard={isAuthed && !isStaff}>
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+          <Stack.Screen name="plan-select" options={{ headerShown: false }} />
+          <Stack.Screen name="ai-search" />
+          <Stack.Screen name="analytics" />
+          <Stack.Screen name="billing" />
+          <Stack.Screen name="store-profile" />
+          <Stack.Screen name="social/create" />
+          <Stack.Screen name="growth/index" />
+          <Stack.Screen name="growth/campaigns" />
+          <Stack.Screen
+            name="growth/campaign-new"
+            options={{ presentation: "modal" }}
+          />
+          <Stack.Screen name="growth/campaign/[id]" />
+          <Stack.Screen name="growth/promotions" />
+          <Stack.Screen
+            name="growth/promotion-form"
+            options={{ presentation: "modal" }}
+          />
+          <Stack.Screen name="growth/inventory" />
+          <Stack.Screen name="growth/videos" />
+          <Stack.Screen name="growth/translate" />
+          <Stack.Screen name="growth/analytics" />
+          <Stack.Screen name="growth/aggregators" />
+          <Stack.Screen name="growth/ai-campaign" />
+          <Stack.Screen name="growth/gst" />
+          <Stack.Screen name="growth/integrations" />
+          <Stack.Screen name="growth/integrations/facebook" />
+          <Stack.Screen name="growth/integrations/fb-ads" />
+          <Stack.Screen name="growth/integrations/gmb" />
+          <Stack.Screen name="growth/integrations/google-ads" />
+          <Stack.Screen name="growth/integrations/instagram" />
+          <Stack.Screen name="growth/integrations/pinterest" />
+          <Stack.Screen name="growth/integrations/whatsapp" />
+          <Stack.Screen name="growth/integrations/x" />
+          <Stack.Screen name="growth/integrations/youtube" />
+          <Stack.Screen name="growth/ratings" />
+          <Stack.Screen name="growth/templates" />
+          <Stack.Screen name="settings/index" />
+          <Stack.Screen name="settings/catalog-upload" />
+          <Stack.Screen name="settings/deleted-products" />
+          <Stack.Screen name="settings/social" />
+          <Stack.Screen name="settings/staff" />
+          <Stack.Screen name="settings/whatsapp-catalog" />
+        </Stack.Protected>
+
+        {/* Staff dashboard (nested stack: index, catalog-tickets, retailer-onboard).
+            Guarded by staff role so staff land here and can't be pushed into the
+            retailer tab stack. Declared before the shared catalog block so a
+            staff cold-start auto-focuses /staff, not a product screen. */}
+        <Stack.Protected guard={isStaff}>
+          <Stack.Screen name="staff" options={{ headerShown: false }} />
+        </Stack.Protected>
+
+        {/* Shared authenticated catalog screens — retailers AND staff both use
+            these (staff run delegated on-site catalog uploads from
+            staff/catalog-tickets → product/add | product/bulk-onboard). */}
+        <Stack.Protected guard={isAuthed}>
+          <Stack.Screen name="product/add" options={{ presentation: "modal" }} />
+          <Stack.Screen name="product/scan" options={{ presentation: "modal" }} />
+          <Stack.Screen name="product/bulk" options={{ presentation: "modal" }} />
+          <Stack.Screen name="product/bulk-onboard" />
+          <Stack.Screen name="product/catalog-import" />
+          <Stack.Screen name="product/[id]" />
+          <Stack.Screen name="product/[id]/add-color" />
+          <Stack.Screen name="product/[id]/add-photos" />
+          <Stack.Screen name="collection/new" />
+          <Stack.Screen name="collection/[id]" />
+          <Stack.Screen name="category/new" />
+          <Stack.Screen name="category/[id]" />
+          <Stack.Screen name="category/[id]/add-products" />
+          <Stack.Screen name="customer/add" options={{ presentation: "modal" }} />
+          <Stack.Screen name="customer/[id]" />
+        </Stack.Protected>
+
+        {/* Auth screens — reachable ONLY while logged out. Once a session
+            exists the guard flips and these routes are removed from the
+            navigation state entirely: hardware back can never return to them. */}
+        <Stack.Protected guard={!isAuthed}>
+          <Stack.Screen name="auth/phone" options={{ headerShown: false }} />
+          <Stack.Screen name="auth/otp" options={{ headerShown: false }} />
+        </Stack.Protected>
       </Stack>
     </View>
   );
@@ -234,32 +302,6 @@ function RootLayoutInner() {
     });
   }, []);
 
-  // ── Auth redirect ─────────────────────────────────────────────
-  // router.replace() before the navigator's ref attaches throws "Couldn't
-  // find a navigation context" — wait for rootNavigationState.key first.
-  const rootNavigationState = useRootNavigationState();
-  const authRedirectDone = useRef(false);
-  useEffect(() => {
-    if (!rootNavigationState?.key || authRedirectDone.current) return;
-    authRedirectDone.current = true;
-    getToken()
-      .then(async (token) => {
-        if (!token) {
-          router.replace("/auth/phone");
-          return;
-        }
-        // Check if this is a staff member — if so, redirect to staff dashboard
-        const staffRole = await getItem("staff_role").catch(() => null);
-        if (staffRole) {
-          router.replace("/staff");
-        }
-      })
-      .catch(() => {
-        // SecureStore unavailable — treat as unauthenticated
-        router.replace("/auth/phone");
-      });
-  }, [rootNavigationState?.key]);
-
   // ── Persist cache on background + pause/resume queries ────────
   useEffect(() => {
     if (Platform.OS === "web") return;
@@ -293,28 +335,51 @@ function RootLayoutInner() {
   // never painted. Never block first paint on an unreliable native call —
   // render immediately with defaults, theme/fonts apply once ready.
   //
-  // Use expo-splash-screen to keep the native splash visible until both
-  // fonts AND palette are ready, then hide it so the themed UI appears
-  // without a flash.
-  useEffect(() => {
-    if (fontsLoaded && paletteReady) {
-      ExpoSplashScreen.hideAsync();
-    }
-  }, [fontsLoaded, paletteReady]);
+  // The native splash stays visible until fonts, palette AND the auth
+  // session are all resolved (see AppContent) so the themed, guarded UI
+  // appears without a flash.
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <QueryClientProvider client={queryClient}>
-          <SyncQueueGate />
-          <ErrorBoundary>
-            <ThemeProvider initialPalette={initialPalette}>
-              <AppShell />
-            </ThemeProvider>
-          </ErrorBoundary>
-        </QueryClientProvider>
+        <AuthProvider>
+          <AppContent
+            appReady={fontsLoaded && paletteReady}
+            initialPalette={initialPalette}
+          />
+        </AuthProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
+  );
+}
+
+// Rendered inside AuthProvider so it can read the session status. Owns the
+// splash-hide gate (fonts + palette + auth all ready) and the provider tree
+// that AppShell's guarded Stack needs.
+function AppContent({
+  appReady,
+  initialPalette,
+}: {
+  appReady: boolean
+  initialPalette: PlatformTheme | null
+}) {
+  const { status } = useAuth();
+
+  useEffect(() => {
+    if (appReady && status !== "loading") {
+      ExpoSplashScreen.hideAsync();
+    }
+  }, [appReady, status]);
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <SyncQueueGate />
+      <ErrorBoundary>
+        <ThemeProvider initialPalette={initialPalette}>
+          <AppShell />
+        </ThemeProvider>
+      </ErrorBoundary>
+    </QueryClientProvider>
   );
 }
 

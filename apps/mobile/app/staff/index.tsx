@@ -4,7 +4,7 @@ import {
   View, Text, ScrollView, RefreshControl,
   ActivityIndicator, Alert,
 } from 'react-native'
-import { router, useRootNavigation } from 'expo-router'
+import { router } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -13,16 +13,15 @@ import {
   CheckCircle2, AlertCircle, Navigation,
 } from 'lucide-react-native'
 import { teamApi, type TeamMemberInfo, type TerritoryRetailer, type SupportTicketStats } from '../../src/lib/team-api'
-import { getItem, deleteItem } from '../../src/lib/storage'
-import { clearToken, clearRequestCache } from '../../src/lib/api'
-import { resetRootTo } from '../../src/lib/root-navigation'
+import { getItem } from '../../src/lib/storage'
+import { useAuth } from '../../src/lib/auth-context'
 import { useTheme } from '../../src/lib/theme'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 
 // ─── Staff Dashboard ─────────────────────────────────────────────
 
 export default function StaffDashboard() {
-  const rootNav = useRootNavigation()
+  const { signOut } = useAuth()
   const { primaryColor, colors } = useTheme()
   const insets = useSafeAreaInsets()
   const [staffInfo, setStaffInfo] = useState<{ name: string; role: string } | null>(null)
@@ -67,26 +66,13 @@ export default function StaffDashboard() {
         text: 'Sign Out',
         style: 'destructive',
         onPress: async () => {
-          await Promise.all([
-            clearToken(),
-            deleteItem('auth_token'),
-            deleteItem('refresh_token'),
-            deleteItem('staff_role'),
-            deleteItem('staff_name'),
-            deleteItem('staff_retailer_id'),
-            deleteItem('retailer_id'),
-            deleteItem('admin_key'),
-          ])
-          clearRequestCache()
-          // Reset (not replace) so no stale authenticated screen lingers under
-          // the Login screen after sign-out.
-          if (!resetRootTo(rootNav, 'auth/phone')) {
-            router.replace('/auth/phone')
-          }
+          // Clears every auth key and flips the guards — auth/phone becomes the
+          // only route, so no stale authenticated screen can linger beneath it.
+          await signOut()
         },
       },
     ])
-  }, [rootNav])
+  }, [signOut])
 
   const isLoading = meLoading || retailersLoading || ticketStatsLoading || loadingInfo
   const totalTickets = ticketStats

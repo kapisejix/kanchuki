@@ -10,12 +10,12 @@ import {
   Alert,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { router, useLocalSearchParams, useRootNavigation } from 'expo-router'
+import { router, useLocalSearchParams } from 'expo-router'
 import { normalizeIndianPhone } from '@kanchuki/shared'
 import { authApi, setToken, ApiError, type VerifyOtpResult } from '../../src/lib/api'
 import { showError } from '../../src/lib/errors'
 import { setItem, deleteItem } from '../../src/lib/storage'
-import { resetRootTo } from '../../src/lib/root-navigation'
+import { emitAuthChange } from '../../src/lib/auth-events'
 import { GradientButton } from '../../src/components/GradientButton'
 import {
   extractMsg91AccessToken,
@@ -26,18 +26,17 @@ import {
 
 /**
  * Apply the login result returned by the backend — identical for the widget
- * and legacy paths. Stores the session + staff/retailer context and routes.
+ * and legacy paths. Stores the session + staff/retailer context, then emits
+ * an auth change so the root Stack.Protected guards flip.
  *
- * Routing resets the ROOT stack (resetRootTo) instead of router.replace:
- * auth/phone sits at the bottom of the root stack from the cold-start
- * redirect, so a plain replace leaves the Login screen *beneath* the
- * dashboard — Android's hardware back then pops to Login before the
- * dashboard's double-tap-to-exit handler can run.
+ * No manual navigation is needed for the common cases: when the guard flips,
+ * expo-router FILTERS the auth routes out of the navigation state and focuses
+ * the first remaining screen — (tabs) for retailers, staff for employees — so
+ * the Login screens structurally cannot linger beneath the dashboard and
+ * hardware back can never return to them. A brand-new retailer gets a pending
+ * navigateTo so the provider sends them to onboarding once the guards flip.
  */
-async function completeLogin(
-  result: VerifyOtpResult,
-  rootNav: ReturnType<typeof useRootNavigation>,
-) {
+export async function completeLogin(result: VerifyOtpResult) {
   try {
     await setToken(result.access_token)
     // TeamMember logins have no Supabase session → no refresh token (their team
@@ -63,27 +62,26 @@ async function completeLogin(
         result.retailer.onboarding_completed === true &&
         Boolean(result.retailer.shop_name && result.retailer.shop_name.trim().length > 0)
 
-      const dest = hasCompletedOnboarding ? '(tabs)' : 'onboarding'
-      if (!resetRootTo(rootNav, dest)) {
-        router.replace(hasCompletedOnboarding ? '/(tabs)' : '/onboarding')
-      }
+      // Guards flip → (tabs) is auto-focused. New retailers are routed to
+      // onboarding via the provider's pending-navigation mechanism.
+      emitAuthChange({
+        authed: true,
+        navigateTo: hasCompletedOnboarding ? undefined : '/onboarding',
+      })
     } else if (result.is_staff && result.staff) {
       // Staff (retailer's own shop employee) login — store staff context
       await setItem('staff_role', result.staff.role)
       await setItem('staff_name', result.staff.name)
       await setItem('staff_retailer_id', result.staff.retailer_id)
       await setItem('retailer_id', result.staff.retailer_id)
-      if (!resetRootTo(rootNav, 'staff')) {
-        router.replace('/staff')
-      }
+      // Guards flip → the staff block (the only staff-role route) auto-focuses.
+      emitAuthChange({ authed: true })
     } else if (result.is_staff && result.team_member) {
       // TeamMember login
       await setItem('staff_role', result.team_member.role)
       await setItem('staff_name', result.team_member.name)
       await Promise.all([deleteItem('staff_retailer_id'), deleteItem('retailer_id')])
-      if (!resetRootTo(rootNav, 'staff')) {
-        router.replace('/staff')
-      }
+      emitAuthChange({ authed: true })
     } else {
       // Brand new retailer / Demo bypass without a retailer profile yet
       await Promise.all([
@@ -91,9 +89,7 @@ async function completeLogin(
         deleteItem('staff_name'),
         deleteItem('staff_retailer_id'),
       ])
-      if (!resetRootTo(rootNav, 'onboarding')) {
-        router.replace('/onboarding')
-      }
+      emitAuthChange({ authed: true, navigateTo: '/onboarding' })
     }
   } catch (err) {
     console.error('[auth] Error in completeLogin:', err)
@@ -101,18 +97,13 @@ async function completeLogin(
 }
 
 /** Exchange a MSG91 widget access token for a backend session. */
-async function verifyWithMsg91Token(
-  phone: string,
-  accessToken: string,
-  rootNav: ReturnType<typeof useRootNavigation>,
-) {
+async function verifyWithMsg91Token(phone: string, accessToken: string) {
   const { data: result } = await authApi.verifyMsg91(phone, accessToken)
-  await completeLogin(result, rootNav)
+  await completeLogin(result)
 }
 
 export default function OtpScreen() {
   const insets = useSafeAreaInsets()
-  const rootNav = useRootNavigation()
   const { phone, reqId, token, bypass } = useLocalSearchParams<{
     phone: string
     reqId?: string
@@ -149,7 +140,7 @@ export default function OtpScreen() {
       if (bypass === 'true') {
         // Railway Demo / Test Phone Bypass: verify directly with backend API
         const { data: result } = await authApi.verifyOtp(digits, code)
-        await completeLogin(result, rootNav)
+        await completeLogin(result)
         return
       }
 
@@ -160,7 +151,7 @@ export default function OtpScreen() {
           const response = await verifyMsg91Otp(reqId, code)
           const accessToken = extractMsg91AccessToken(response)
           if (accessToken) {
-            await verifyWithMsg91Token(digits, accessToken, rootNav)
+            await verifyWithMsg91Token(digits, accessToken)
             verified = true
           }
         } catch (widgetErr) {
@@ -169,7 +160,7 @@ export default function OtpScreen() {
       }
       if (!verified) {
         const { data: result } = await authApi.verifyOtp(digits, code)
-        await completeLogin(result, rootNav)
+        await completeLogin(result)
       }
     } catch (err) {
       isVerifyingRef.current = false
@@ -213,7 +204,7 @@ export default function OtpScreen() {
 
     if (token) {
       setLoading(true)
-      verifyWithMsg91Token(phone, token, rootNav).catch((err) => {
+      verifyWithMsg91Token(phone, token).catch((err) => {
         console.warn('Auto-verify with pre-issued token failed:', err)
         setLoading(false)
       })
@@ -232,7 +223,7 @@ export default function OtpScreen() {
         if (!accessToken) throw new Error('no token returned')
         return authApi.verifyMsg91(phone, accessToken)
       })
-      .then(({ data }) => completeLogin(data, rootNav))
+      .then(({ data }) => completeLogin(data))
       .catch((err) => {
         // Not invisible mode (or already consumed) — show the OTP input.
         if (!(err instanceof Error && err.message === 'invisible verify timed out')) {
@@ -242,7 +233,7 @@ export default function OtpScreen() {
       })
     // autoVerifyAttempted.current guards against re-runs, so the param deps
     // are safe to declare. completeLogin/verifyWithMsg91Token are module-level.
-  }, [phone, msg91, reqId, token, bypass, rootNav])
+  }, [phone, msg91, reqId, token, bypass])
 
   const handleResend = async () => {
     if (!phone || resendTimer > 0) return

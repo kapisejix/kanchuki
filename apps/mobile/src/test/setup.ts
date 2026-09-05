@@ -43,7 +43,7 @@ vi.mock('expo-image', () => {
 // ── expo-router ────────────────────────────────────────────────────
 
 vi.mock('expo-router', () => ({
-  router: { push: vi.fn(), back: vi.fn(), replace: vi.fn() },
+  router: { push: vi.fn(), back: vi.fn(), replace: vi.fn(), navigate: vi.fn() },
   useLocalSearchParams: vi.fn(() => ({})),
   useSegments: vi.fn(() => []),
   Stack: { Screen: () => null },
