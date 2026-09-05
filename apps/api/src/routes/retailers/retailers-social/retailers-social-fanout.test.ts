@@ -23,27 +23,44 @@ const {
   mockClaimSocialPostId,
   mockTemplateFindFirst,
   mockTemplateUpdate,
-} = vi.hoisted(() => ({
-  mockRetailerFindUniqueOrThrow: vi.fn(),
-  mockAccountFindMany: vi.fn(),
-  mockProductFindMany: vi.fn(),
-  mockCollectionProductFindMany: vi.fn(),
-  mockCollectionFindFirst: vi.fn(),
-  mockPostCreate: vi.fn(),
-  mockPostFindMany: vi.fn(),
-  mockPostFindFirst: vi.fn(),
-  mockPostUpdate: vi.fn(),
-  mockDecryptSecret: vi.fn(),
-  mockPublishPhoto: vi.fn(),
-  mockPublishVideo: vi.fn(),
-  mockPublishLink: vi.fn(),
-  mockPublishFacebookCarousel: vi.fn(),
-  mockPublishInstagramCarousel: vi.fn(),
-  mockPublishInstagramPhoto: vi.fn(),
-  mockClaimSocialPostId: vi.fn(),
-  mockTemplateFindFirst: vi.fn(),
-  mockTemplateUpdate: vi.fn(),
-}));
+  MetaApiError,
+} = vi.hoisted(() => {
+  // Mirror of the real meta-graph MetaApiError (curated platform-safe message
+  // with a numeric HTTP status + optional code) — exported from the hoisted
+  // block so tests can construct curated vs raw errors (findings 3–5, §12).
+  class MetaApiError extends Error {
+    constructor(
+      message: string,
+      public readonly status: number = 400,
+      public readonly code?: string,
+    ) {
+      super(message);
+      this.name = 'MetaApiError';
+    }
+  }
+  return {
+    mockRetailerFindUniqueOrThrow: vi.fn(),
+    mockAccountFindMany: vi.fn(),
+    mockProductFindMany: vi.fn(),
+    mockCollectionProductFindMany: vi.fn(),
+    mockCollectionFindFirst: vi.fn(),
+    mockPostCreate: vi.fn(),
+    mockPostFindMany: vi.fn(),
+    mockPostFindFirst: vi.fn(),
+    mockPostUpdate: vi.fn(),
+    mockDecryptSecret: vi.fn(),
+    mockPublishPhoto: vi.fn(),
+    mockPublishVideo: vi.fn(),
+    mockPublishLink: vi.fn(),
+    mockPublishFacebookCarousel: vi.fn(),
+    mockPublishInstagramCarousel: vi.fn(),
+    mockPublishInstagramPhoto: vi.fn(),
+    mockClaimSocialPostId: vi.fn(),
+    mockTemplateFindFirst: vi.fn(),
+    mockTemplateUpdate: vi.fn(),
+    MetaApiError,
+  };
+});
 
 vi.mock('@kanchuki/db', () => ({
   decryptSecret: mockDecryptSecret,
@@ -63,26 +80,14 @@ vi.mock('@kanchuki/db', () => ({
   },
 }));
 
-vi.mock('../../../lib/meta-graph.js', () => {
-  class MetaApiError extends Error {
-    constructor(
-      message: string,
-      public readonly status: number = 400,
-      public readonly code?: string,
-    ) {
-      super(message);
-      this.name = 'MetaApiError';
-    }
-  }
-  return {
-    MetaApiError,
-    publishPhotoPost: mockPublishPhoto,
-    publishVideoPost: mockPublishVideo,
-    publishLinkPost: mockPublishLink,
-    publishFacebookCarousel: mockPublishFacebookCarousel,
-    publishInstagramCarousel: mockPublishInstagramCarousel,
-  };
-});
+vi.mock('../../../lib/meta-graph.js', () => ({
+  MetaApiError,
+  publishPhotoPost: mockPublishPhoto,
+  publishVideoPost: mockPublishVideo,
+  publishLinkPost: mockPublishLink,
+  publishFacebookCarousel: mockPublishFacebookCarousel,
+  publishInstagramCarousel: mockPublishInstagramCarousel,
+}));
 
 vi.mock('./retailers-social-helpers.js', () => ({
   publishInstagramPhoto: mockPublishInstagramPhoto,
@@ -176,7 +181,13 @@ beforeEach(() => {
     postId: 'ig_car_1',
     permalink: 'https://www.instagram.com/p/abc123/',
   });
-  mockPublishInstagramPhoto.mockResolvedValue({ postId: 'ig_post_1' });
+  // Default IG photo publish returns a REAL permalink (finding 3 — the media
+  // id is not an instagram.com shortcode, so the helper fetches the permalink
+  // field and returns it; the route must never fabricate /p/<id>).
+  mockPublishInstagramPhoto.mockResolvedValue({
+    postId: 'ig_post_1',
+    permalink: 'https://www.instagram.com/p/Re4lSh0rtc0de/',
+  });
   mockPostCreate.mockImplementation(async (args: { data: Record<string, unknown> }) => ({
     id: 'sp_1',
     ...args.data,
@@ -368,9 +379,7 @@ describe('per-target fan-out', () => {
   it('partial success: one target failing does not roll back the winner', async () => {
     mockAccountFindMany.mockResolvedValue([FB_ACCOUNT, IG_ACCOUNT]);
     mockPublishInstagramPhoto.mockRejectedValueOnce(
-      Object.assign(new Error('Instagram rejected the media container'), {
-        code: 'INSTAGRAM_CONTAINER_FAILED',
-      }),
+      new MetaApiError('Instagram rejected the media container', 400, 'INSTAGRAM_CONTAINER_FAILED'),
     );
     const app = await buildApp();
     const res = await app.inject({
@@ -382,7 +391,11 @@ describe('per-target fan-out', () => {
     const { results } = res.json().data;
     expect(results).toHaveLength(2);
     expect(results[0]).toMatchObject({ platform: 'FACEBOOK', status: 'POSTED' });
-    expect(results[1]).toMatchObject({ platform: 'INSTAGRAM', status: 'FAILED' });
+    expect(results[1]).toMatchObject({
+      platform: 'INSTAGRAM',
+      status: 'FAILED',
+      error_message: 'Instagram rejected the media container',
+    });
     // Every target still records its own history row.
     expect(mockPostCreate.mock.calls.map((c) => c[0].data.status)).toEqual(['POSTED', 'FAILED']);
   });
@@ -623,6 +636,184 @@ describe('idempotency hardening (finding 1, §12)', () => {
   });
 });
 
+// ── findings 3–5 (docs/tasks/social-create-post-composer.md §12) ──
+// 3.  IG single-photo permalink must be the REAL permalink (the media id is
+//     NOT an instagram.com shortcode) — never fabricated /p/<id>.
+// 4.  Only MetaApiError messages are curated user-safe text; DB/network
+//     errors (hostnames, connection detail) must never leak into
+//     error_message or the envelope. A Meta success + DB-write failure is
+//     recorded as a transient 500 (row write retried), NEVER as a FAILED row
+//     for a live post.
+// 5b. An IG video item posts as its product's primary photo — the recorded
+//     media snapshot must say photo (no silent substitution).
+describe('findings 3–5 (task doc §12)', () => {
+  it('(3) IG single-photo stores the REAL permalink — never fabricated /p/<media-id>', async () => {
+    mockAccountFindMany.mockResolvedValue([IG_ACCOUNT]);
+    mockPublishInstagramPhoto.mockResolvedValue({
+      postId: 'ig_post_9',
+      permalink: 'https://www.instagram.com/p/Re4lSh0rtc0de/',
+    });
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/me/social/posts',
+      payload: captionPayload({ targets: ['ig_1'] }),
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data.results[0]).toMatchObject({
+      platform: 'INSTAGRAM',
+      status: 'POSTED',
+      external_post_url: 'https://www.instagram.com/p/Re4lSh0rtc0de/',
+    });
+    // The history row carries the real permalink, never /p/ig_post_9/.
+    const created = mockPostCreate.mock.calls[0]?.[0]?.data;
+    expect(created?.external_post_url).toBe('https://www.instagram.com/p/Re4lSh0rtc0de/');
+    expect(JSON.stringify(created)).not.toContain('/p/ig_post_9');
+  });
+
+  it('(3) IG single-photo with a permalink miss (fail-open) records a NULL URL — post is live', async () => {
+    mockAccountFindMany.mockResolvedValue([IG_ACCOUNT]);
+    mockPublishInstagramPhoto.mockResolvedValue({ postId: 'ig_post_9', permalink: '' });
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/me/social/posts',
+      payload: captionPayload({ targets: ['ig_1'] }),
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data.results[0]).toMatchObject({
+      status: 'POSTED',
+      external_post_url: null,
+    });
+    // Never fabricate /p/<id> — a null URL is truthful over a 404 one.
+    expect(JSON.stringify(mockPostCreate.mock.calls[0]?.[0]?.data)).not.toContain('/p/ig_post_9');
+  });
+
+  it('(4) a non-Meta error (DB/network) never leaks its raw message into the FAILED row or the envelope', async () => {
+    // Raw non-Meta errors carry hostnames / connection detail that must be
+    // sanitized to the generic line — never persisted or surfaced verbatim.
+    mockPublishPhoto.mockRejectedValueOnce(
+      new Error('connect ECONNREFUSED 10.0.0.5:5432 - postgres (prisma)'),
+    );
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/me/social/posts',
+      payload: captionPayload(),
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.code).toBe('PUBLISH_FAILED');
+    const generic = 'Something went wrong while posting. Please try again.';
+    expect(res.json().error.results[0].error_message).toBe(generic);
+    // The row and every envelope field stay clean of the hostname.
+    expect(JSON.stringify(res.json())).not.toContain('10.0.0.5');
+    expect(JSON.stringify(res.json())).not.toContain('ECONNREFUSED');
+    const failedDraft = mockPostCreate.mock.calls[0]?.[0]?.data;
+    expect(failedDraft?.error_message).toBe(generic);
+    expect(failedDraft?.status).toBe('FAILED');
+  });
+
+  it('(4) a curated MetaApiError message still surfaces verbatim (platform rejections are user-safe)', async () => {
+    mockPublishPhoto.mockRejectedValueOnce(
+      new MetaApiError('This photo may not meet our quality guidelines', 400, 'PHOTO_REJECTED'),
+    );
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/me/social/posts',
+      payload: captionPayload(),
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.results[0].error_message).toBe(
+      'This photo may not meet our quality guidelines',
+    );
+    expect(mockPostCreate.mock.calls[0]?.[0]?.data.error_message).toBe(
+      'This photo may not meet our quality guidelines',
+    );
+  });
+
+  it('(4) a Meta success whose POSTED row write keeps failing is a transient 500 — NEVER a FAILED row for a live post', async () => {
+    // Meta accepted the post (Phase 1 succeeds); the history-row write then
+    // keeps failing with a transient non-unique DB error. createPostedRowWithRetry
+    // retries 3x then rethrows → 500 with NO FAILED row ever created.
+    const dbBlip = new Error('connection terminated unexpectedly');
+    mockPostCreate.mockRejectedValue(dbBlip);
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/me/social/posts',
+      payload: captionPayload(),
+    });
+    expect(res.statusCode).toBe(500);
+    // Every create attempt was a POSTED draft (retried) — never a FAILED
+    // create, because the post IS live on the platform.
+    expect(mockPostCreate.mock.calls.length).toBeGreaterThanOrEqual(3);
+    for (const call of mockPostCreate.mock.calls) {
+      expect(call[0].data.status).toBe('POSTED');
+    }
+    // Meta was only ever called once for this target — no double publish.
+    expect(mockPublishPhoto).toHaveBeenCalledTimes(1);
+  });
+
+  it('(4) a Meta success whose POSTED write fails once then succeeds — retry recovers, still POSTED', async () => {
+    const dbBlip = new Error('connection terminated unexpectedly');
+    mockPostCreate.mockRejectedValueOnce(dbBlip); // attempt 1 fails
+    mockPostCreate.mockImplementation(async (args: { data: Record<string, unknown> }) => ({
+      id: 'sp_1',
+      ...args.data,
+    })); // attempt 2 succeeds
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/me/social/posts',
+      payload: captionPayload(),
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data.results[0]).toMatchObject({ status: 'POSTED' });
+    expect(mockPostCreate).toHaveBeenCalledTimes(2);
+  });
+
+  it('(5b) IG video item posts the primary photo AND the media snapshot says photo, not video', async () => {
+    mockAccountFindMany.mockResolvedValue([IG_ACCOUNT]);
+    // Product has a main video + a primary photo. SINGLE_PRODUCT defaults to
+    // the video; IG's photo-only helper falls back to the primary photo.
+    mockProductFindMany.mockResolvedValue([
+      productRow({
+        photos: [{ id: 'ph_primary', url: 'https://cdn.example/hero.jpg', is_primary: true }],
+        videos: [{ id: 'v_1', public_url: 'https://cdn.example/clip.mp4', is_main: true }],
+      }),
+    ]);
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/me/social/posts',
+      payload: captionPayload({
+        targets: ['ig_1'],
+        items: [{ product_id: 'p_1' }], // no photo/video → main video default
+      }),
+    });
+    expect(res.statusCode).toBe(200);
+    expect(mockPublishInstagramPhoto).toHaveBeenCalledWith(
+      'ig_user_55',
+      'dec:tok-ig',
+      'https://cdn.example/hero.jpg',
+      expect.any(String),
+    );
+    // The recorded snapshot matches what actually went out — a photo.
+    const media = mockPostCreate.mock.calls[0]?.[0]?.data.media as
+      | Array<Record<string, string>>
+      | undefined;
+    expect(media).toEqual([
+      {
+        product_id: 'p_1',
+        photo_id: 'ph_primary',
+        kind: 'photo',
+        url: 'https://cdn.example/hero.jpg',
+      },
+    ]);
+  });
+});
+
 // ── admin post template publish (T-9.6) ─────────────────────────
 describe('template_id publish (T-9.6)', () => {
   const TEMPLATE = {
@@ -686,7 +877,7 @@ describe('template_id publish (T-9.6)', () => {
     mockTemplateFindFirst.mockResolvedValue(TEMPLATE);
     mockAccountFindMany.mockResolvedValue([FB_ACCOUNT, IG_ACCOUNT]);
     mockPublishInstagramPhoto.mockRejectedValueOnce(
-      Object.assign(new Error('IG container failed'), { code: 'INSTAGRAM_CONTAINER_FAILED' }),
+      new MetaApiError('IG container failed', 400, 'INSTAGRAM_CONTAINER_FAILED'),
     );
     const app = await buildApp();
     const res = await app.inject({
@@ -705,7 +896,10 @@ describe('template_id publish (T-9.6)', () => {
 
   it('does not increment usage_count when every target fails', async () => {
     mockTemplateFindFirst.mockResolvedValue(TEMPLATE);
-    mockPublishPhoto.mockRejectedValueOnce(new Error('graph exploded'));
+    // Real platform rejections are MetaApiError (curated user-safe text) —
+    // finding 4 (task doc §12): a raw non-Meta error must NOT surface its
+    // message; it is sanitized to a generic line. See the findings 3–5 block.
+    mockPublishPhoto.mockRejectedValueOnce(new MetaApiError('graph exploded', 400, 'GRAPH_FAILED'));
     const app = await buildApp();
     const res = await app.inject({
       method: 'POST',

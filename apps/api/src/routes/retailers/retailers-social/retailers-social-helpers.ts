@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { Redis } from 'ioredis';
-import { MetaApiError } from '../../../lib/meta-graph.js';
+import { MetaApiError, clampIgCaption, fetchIgPermalink } from '../../../lib/meta-graph.js';
 
 // Shared helpers/constants for the retailer social route modules (split from
 // retailers/retailers-social.ts — module-level code moved verbatim by
@@ -27,13 +27,14 @@ export async function publishInstagramPhoto(
   accessToken: string,
   imageUrl: string,
   caption: string,
-): Promise<{ postId: string }> {
-  // Step 1: Create media container
+): Promise<{ postId: string; permalink: string }> {
+  // Step 1: Create media container. IG captions cap at 2,200 chars — clamp at
+  // the platform boundary (finding 5a) so an appended link can't exceed it.
   const containerRes = await fetch(`https://graph.facebook.com/v21.0/${instagramAccountId}/media`, {
     method: 'POST',
     body: new URLSearchParams({
       image_url: imageUrl,
-      caption: caption,
+      caption: clampIgCaption(caption),
       access_token: accessToken,
     }),
   });
@@ -74,7 +75,11 @@ export async function publishInstagramPhoto(
     throw new MetaApiError('No post ID returned from publish', 500, 'NO_POST_ID');
   }
 
-  return { postId: publishBody.id };
+  // The published media id is NOT an instagram.com shortcode — fabricating
+  // /p/<id> 404s in history. Fetch the real permalink field, fail-open (the
+  // post IS live; a permalink miss must never surface as a failure — finding 3).
+  const permalink = await fetchIgPermalink(publishBody.id, accessToken);
+  return { postId: publishBody.id, permalink };
 }
 
 // Short-fail Redis for the OAuth state token — same pattern as public-cache

@@ -1,5 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { MetaApiError, publishFacebookCarousel, publishInstagramCarousel } from './meta-graph.js';
+import {
+  IG_CAPTION_LIMIT,
+  MetaApiError,
+  clampIgCaption,
+  fetchIgPermalink,
+  publishFacebookCarousel,
+  publishInstagramCarousel,
+} from './meta-graph.js';
 
 // Create Post Composer v2 (docs/tasks/social-create-post-composer.md §6.2) —
 // both carousel helpers are pure fetch callers, so every branch is reachable
@@ -248,5 +255,93 @@ describe('publishInstagramCarousel', () => {
 
     expect(result).toEqual({ postId: 'pub_123', permalink: '' });
     expect(fetchMock).toHaveBeenCalledTimes(5);
+  });
+
+  // Finding 5a (docs/tasks/social-create-post-composer.md §12): IG captions cap
+  // at 2,200 chars. The helper clamps at the platform boundary so a
+  // server-appended '\n\n' + link URL can never push a near-max caption past
+  // the limit.
+  it('clamps a caption past IG\u2019s 2,200-char limit on the CAROUSEL parent', async () => {
+    const over = 'x'.repeat(IG_CAPTION_LIMIT + 500);
+    fetchMock
+      .mockResolvedValueOnce(ok({ id: 'child_1', status_code: 'FINISHED' }))
+      .mockResolvedValueOnce(ok({ id: 'child_2', status_code: 'FINISHED' }))
+      .mockResolvedValueOnce(ok({ id: 'parent_7', status_code: 'FINISHED' }))
+      .mockResolvedValueOnce(ok({ id: 'pub_123' }))
+      .mockResolvedValueOnce(ok({ permalink: 'https://www.instagram.com/p/AbCdEf/' }));
+
+    await publishInstagramCarousel(igId, token, images, over);
+
+    // Parent creation carries the CLAMPED caption (2,200 chars, no 'x' tail) —
+    // never the full 2,700-char string.
+    const parentUrl = nthUrl(2);
+    expect(parentUrl).toContain(enc('caption', 'x'.repeat(IG_CAPTION_LIMIT)));
+    expect(parentUrl).not.toContain(enc('caption', over));
+  });
+
+  it('leaves a caption under the IG limit untouched on the CAROUSEL parent', async () => {
+    fetchMock
+      .mockResolvedValueOnce(ok({ id: 'child_1', status_code: 'FINISHED' }))
+      .mockResolvedValueOnce(ok({ id: 'child_2', status_code: 'FINISHED' }))
+      .mockResolvedValueOnce(ok({ id: 'parent_7', status_code: 'FINISHED' }))
+      .mockResolvedValueOnce(ok({ id: 'pub_123' }))
+      .mockResolvedValueOnce(ok({ permalink: 'https://www.instagram.com/p/AbCdEf/' }));
+
+    await publishInstagramCarousel(igId, token, images, caption);
+
+    expect(nthUrl(2)).toContain(enc('caption', caption));
+  });
+});
+
+describe('clampIgCaption', () => {
+  it('passes a caption under the limit through untouched', () => {
+    expect(clampIgCaption('Short caption')).toBe('Short caption');
+    // Exactly at the limit is fine too.
+    expect(clampIgCaption('x'.repeat(IG_CAPTION_LIMIT))).toBe('x'.repeat(IG_CAPTION_LIMIT));
+  });
+
+  it('clamps an over-limit caption to the first 2,200 chars', () => {
+    const result = clampIgCaption('a'.repeat(IG_CAPTION_LIMIT + 300));
+    expect(result).toHaveLength(IG_CAPTION_LIMIT);
+    expect(result).toBe('a'.repeat(IG_CAPTION_LIMIT));
+  });
+
+  it('never splits an astral (emoji) code point mid-surrogate', () => {
+    // 2,200 ASCII chars + one 2-code-unit emoji = 2,201 code points but 2,202
+    // UTF-16 units. A naive .slice(0, 2200) on the UTF-16 string would cut the
+    // surrogate pair and leave a lone \uD83D high surrogate at the end — the
+    // code-point-aware clamp must drop the emoji whole instead.
+    const caption = `${'a'.repeat(IG_CAPTION_LIMIT)}\u{1F60A}`;
+    const result = clampIgCaption(caption);
+    expect(Array.from(result)).toHaveLength(IG_CAPTION_LIMIT);
+    expect(result).toBe('a'.repeat(IG_CAPTION_LIMIT));
+    expect(result).not.toContain('\uD83D');
+  });
+});
+
+describe('fetchIgPermalink', () => {
+  const mediaId = 'pub_123';
+  const token = 'tok_ig';
+
+  it('returns the real permalink when the Graph API answers', async () => {
+    fetchMock.mockResolvedValueOnce(ok({ permalink: 'https://www.instagram.com/p/AbCdEf/' }));
+    expect(await fetchIgPermalink(mediaId, token)).toBe('https://www.instagram.com/p/AbCdEf/');
+    expect(nthUrl(0)).toContain(`/${mediaId}?access_token=${token}`);
+    expect(nthUrl(0)).toContain('fields=permalink');
+  });
+
+  it('fails open (\u2018\u2019) on a non-2xx response — never throws', async () => {
+    fetchMock.mockResolvedValueOnce(bad({ error: { message: 'denied' } }));
+    expect(await fetchIgPermalink(mediaId, token)).toBe('');
+  });
+
+  it('fails open (\u2018\u2019) on a network throw — never throws', async () => {
+    fetchMock.mockRejectedValueOnce(new Error('ECONNRESET'));
+    expect(await fetchIgPermalink(mediaId, token)).toBe('');
+  });
+
+  it('fails open (\u2018\u2019) when the body has no permalink field', async () => {
+    fetchMock.mockResolvedValueOnce(ok({ id: mediaId }));
+    expect(await fetchIgPermalink(mediaId, token)).toBe('');
   });
 });

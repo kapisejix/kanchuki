@@ -98,14 +98,15 @@ export const retailersSocialPostsRoutes: FastifyPluginAsync = async (server) => 
           // INSTAGRAM
           // For Instagram, we need an image URL
           if (!photo) throw validationError('Instagram posts require a photo');
-          const { postId } = await publishInstagramPhoto(
+          const { postId, permalink } = await publishInstagramPhoto(
             account.platform_account_id,
             token,
             photo!.url,
             caption,
           );
           externalPostId = postId;
-          externalPostUrl = `https://www.instagram.com/p/${postId}/`;
+          // Real permalink, fail-open — never fabricate /p/<media-id> (finding 3).
+          externalPostUrl = permalink || null;
         }
       } else {
         // COLLECTION_LINK
@@ -203,12 +204,13 @@ export const retailersSocialPostsRoutes: FastifyPluginAsync = async (server) => 
       if (err instanceof AppError) throw err;
 
       // Publish failures record a FAILED history row with a safe message.
+      // Finding 4: only MetaApiError messages are curated user-safe text;
+      // DB/network errors (hostnames, connection detail) must never leak into
+      // the row or the response envelope.
       const safeMessage =
         err instanceof MetaApiError
           ? err.message
-          : err instanceof Error
-            ? err.message
-            : 'Post failed';
+          : 'Something went wrong while posting. Please try again.';
       await prisma.socialPost.create({
         data: {
           retailer_id: request.retailerId,

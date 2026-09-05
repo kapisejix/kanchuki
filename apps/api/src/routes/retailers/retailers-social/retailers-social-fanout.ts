@@ -399,13 +399,24 @@ export const retailersSocialFanoutRoutes: FastifyPluginAsync = async (server) =>
     const results: Array<Record<string, unknown>> = [];
 
     const snapshotJson = snapshots.map((s) => ({ ...s }));
+
     for (const targetId of body.targets) {
       const account = accountById.get(targetId)!;
-      try {
-        const token = accountToken(account.access_token_encrypted);
-        let externalPostId: string | null = null;
-        let externalPostUrl: string | null = null;
+      // Default row media = the composed items. Overridden per target when what
+      // actually went out to THAT platform differs from the composition (an IG
+      // video item posts as its product's primary photo — finding 5b: no silent
+      // substitution in the recorded snapshot).
+      let postedMedia: Array<Record<string, unknown>> = snapshotJson;
 
+      // ── Phase 1: publish to the platform. A failure HERE means the post
+      // never went out → a FAILED row is truthful. MetaApiError messages are
+      // curated platform-safe text; any other error (DB/network internals,
+      // hostnames, connection detail) is recorded as a generic message — never
+      // the raw err.message (finding 4).
+      const token = accountToken(account.access_token_encrypted);
+      let externalPostId: string | null = null;
+      let externalPostUrl: string | null = null;
+      try {
         if (account.platform === 'INSTAGRAM') {
           if (body.post_type === 'COLLECTION_LINK') {
             throw new MetaApiError(
@@ -422,24 +433,33 @@ export const retailersSocialFanoutRoutes: FastifyPluginAsync = async (server) =>
               caption,
             );
             externalPostId = postId;
-            externalPostUrl = permalink;
+            // Real permalink, fail-open — never fabricate /p/<media-id> (finding 3).
+            externalPostUrl = permalink || null;
           } else {
             // SINGLE_PRODUCT — IG photo helper is photo-only; a video item
             // falls back to the product's primary photo.
+            const first = snapshots[0];
             const photo =
-              snapshots[0]?.kind === 'photo'
-                ? snapshots[0]
-                : productFallbackPhoto(loadedProducts, snapshots[0]?.product_id);
+              first?.kind === 'photo'
+                ? first
+                : productFallbackPhoto(loadedProducts, first?.product_id);
             if (!photo)
               throw new MetaApiError('Instagram posts require a photo', 400, 'IG_PHOTO_REQUIRED');
-            const { postId } = await publishInstagramPhoto(
+            // The recorded media snapshot says what actually went out: an IG
+            // video item posts as its primary photo — no silent substitution
+            // (finding 5b).
+            if (first?.kind !== 'photo') {
+              postedMedia = [{ ...photo }];
+            }
+            const { postId, permalink } = await publishInstagramPhoto(
               account.platform_account_id,
               token,
               photo.url,
               caption,
             );
             externalPostId = postId;
-            externalPostUrl = `https://www.instagram.com/p/${postId}/`;
+            // Real permalink, fail-open — never fabricate /p/<media-id> (finding 3).
+            externalPostUrl = permalink || null;
           }
         } else {
           // FACEBOOK
@@ -485,41 +505,12 @@ export const retailersSocialFanoutRoutes: FastifyPluginAsync = async (server) =>
             }
           }
         }
-
-        // Record the outcome. The unique index (retailer, account,
-        // client_post_id) is the backstop for a concurrent double that slips
-        // between the idempotency claim and this write — a P2002 here means a
-        // twin already owns the row, so reconcile (load it, upgrade a FAILED
-        // twin row when OUR publish actually landed) instead of crashing into a
-        // second violation from the catch's FAILED-row write (which used to 500).
-        const { post, deduplicated } = await createOrReconcilePost({
-          retailer_id: request.retailerId,
-          social_account_id: account.id,
-          platform: account.platform,
-          post_type: body.post_type,
-          product_ids: snapshots.map((s) => s.product_id),
-          collection_id: body.post_type === 'COLLECTION_LINK' ? body.collection_id : undefined,
-          caption,
-          media: snapshotJson as unknown as object[],
-          link_url: linkUrl,
-          link_type: resolvedLinkType,
-          client_post_id: body.client_post_id,
-          status: 'POSTED',
-          external_post_id: externalPostId,
-          external_post_url: externalPostUrl,
-          error_message: null,
-        });
-        results.push({
-          social_account_id: account.id,
-          platform: account.platform,
-          status: post.status,
-          external_post_url: post.external_post_url,
-          social_post_id: post.id,
-          error_message: post.error_message,
-          ...(deduplicated ? { deduplicated: true } : {}),
-        });
       } catch (err) {
-        const safeMessage = err instanceof Error ? err.message : 'Post failed';
+        // Platform never accepted the post. The unique index (retailer, account,
+        // client_post_id) backstops a concurrent twin that ALSO failed into the
+        // same id — createOrReconcilePost loads and surfaces the existing FAILED
+        // row instead of a second violation (which used to 500).
+        const safeMessage = err instanceof MetaApiError ? err.message : GENERIC_PUBLISH_ERROR;
         const { post, deduplicated } = await createOrReconcilePost({
           retailer_id: request.retailerId,
           social_account_id: account.id,
@@ -546,7 +537,41 @@ export const retailersSocialFanoutRoutes: FastifyPluginAsync = async (server) =>
           error_message: post.error_message,
           ...(deduplicated ? { deduplicated: true } : {}),
         });
+        continue;
       }
+
+      // ── Phase 2: the post IS LIVE on the platform. Record the POSTED row —
+      // a row-write failure must NEVER turn this into a FAILED row (finding 4):
+      // the post went out, so history claiming failure is a lie. P2002
+      // reconciles inside createOrReconcilePost; a transient non-P2002 (DB
+      // blip) is retried briefly, then rethrown as a 500 so the caller retries
+      // with the same client_post_id (idempotency replays — no double post).
+      const { post, deduplicated } = await createPostedRowWithRetry({
+        retailer_id: request.retailerId,
+        social_account_id: account.id,
+        platform: account.platform,
+        post_type: body.post_type,
+        product_ids: snapshots.map((s) => s.product_id),
+        collection_id: body.post_type === 'COLLECTION_LINK' ? body.collection_id : undefined,
+        caption,
+        media: postedMedia as unknown as object[],
+        link_url: linkUrl,
+        link_type: resolvedLinkType,
+        client_post_id: body.client_post_id,
+        status: 'POSTED',
+        external_post_id: externalPostId,
+        external_post_url: externalPostUrl,
+        error_message: null,
+      });
+      results.push({
+        social_account_id: account.id,
+        platform: account.platform,
+        status: post.status,
+        external_post_url: post.external_post_url,
+        social_post_id: post.id,
+        error_message: post.error_message,
+        ...(deduplicated ? { deduplicated: true } : {}),
+      });
     }
 
     // T-9.6: count the template use once per publish that actually went out
@@ -572,6 +597,12 @@ export const retailersSocialFanoutRoutes: FastifyPluginAsync = async (server) =>
 
 // ── helpers ──────────────────────────────────────────────────────
 
+// Finding 4 (task doc §12): never persist a raw non-Meta error message. Only
+// MetaApiError carries a curated, user-safe message; DB/network errors
+// (hostnames, connection detail, SQL fragments) must never leak into
+// social_post.error_message or the results envelope.
+const GENERIC_PUBLISH_ERROR = 'Something went wrong while posting. Please try again.';
+
 function accountToken(encrypted: string): string {
   return decryptSecret(encrypted);
 }
@@ -579,12 +610,13 @@ function accountToken(encrypted: string): string {
 function productFallbackPhoto(
   products: Map<string, LoadedProduct>,
   productId: string | undefined,
-): { url: string } | null {
+): { product_id: string; photo_id: string; kind: 'photo'; url: string } | null {
   if (!productId) return null;
   const product = products.get(productId);
   if (!product) return null;
   const photo = product.photos.find((p) => p.is_primary) ?? product.photos[0];
-  return photo ? { url: photo.url } : null;
+  if (!photo) return null;
+  return { product_id: product.id, photo_id: photo.id, kind: 'photo', url: photo.url };
 }
 
 /** One history row → the per-target result shape (shared by fresh publishes,
@@ -673,4 +705,31 @@ async function createOrReconcilePost(
       deduplicated: true,
     };
   }
+}
+
+/**
+ * Bounded-retry wrapper for the POSTED row write only. Finding 4: once the
+ * platform accepted the post (Phase 2 reached), the post IS live — a transient
+ * DB blip must not drop the history row, and must never become a FAILED row.
+ * P2002 reconciles inside createOrReconcilePost (returns the twin, no throw),
+ * so a throw here is a genuine non-unique DB error — retry briefly, then
+ * rethrow so the caller surfaces a transient 500 (the client retries with the
+ * same client_post_id and idempotency replays — no double post).
+ */
+async function createPostedRowWithRetry(
+  draft: PostRowDraft,
+  attempts = 3,
+): Promise<{ post: PostRowDraftWithOutcome & { id: string }; deduplicated: boolean }> {
+  let lastErr: unknown;
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    try {
+      return await createOrReconcilePost(draft);
+    } catch (err) {
+      lastErr = err;
+      // P2002 never escapes createOrReconcilePost — this is a transient DB
+      // error; back off briefly and try again before giving up.
+      await new Promise((resolve) => setTimeout(resolve, 50 * (attempt + 1)));
+    }
+  }
+  throw lastErr;
 }

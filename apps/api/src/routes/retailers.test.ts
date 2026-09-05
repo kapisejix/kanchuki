@@ -41,18 +41,36 @@ const {
   mockResolveMetaCredentials,
   mockPublishPhotoPost,
   mockPublishLinkPost,
-} = vi.hoisted(() => ({
-  mockSocialAccountFindFirst: vi.fn(),
-  mockSocialAccountUpdate: vi.fn(),
-  mockSocialAccountFindMany: vi.fn(),
-  mockSocialPostCreate: vi.fn(),
-  mockSocialPostFindMany: vi.fn(),
-  mockEncryptSecret: vi.fn((v: string) => `enc:${v}`),
-  mockDecryptSecret: vi.fn((v: string) => v.replace(/^enc:/, '')),
-  mockResolveMetaCredentials: vi.fn(),
-  mockPublishPhotoPost: vi.fn(),
-  mockPublishLinkPost: vi.fn(),
-}));
+  MockMetaApiError,
+} = vi.hoisted(() => {
+  // Plain Error subclass mirroring meta-graph's MetaApiError (status + code,
+  // NOT AppError). Hoisted so the meta-graph mock factory AND tests share the
+  // same class — a rejected publish must be instanceof the class the route
+  // imports for the finding-4 MetaApiError branch to trigger.
+  class MockMetaApiError extends Error {
+    constructor(message: string, status = 400, code = 'META_ERROR') {
+      super(message);
+      this.name = 'MetaApiError';
+      this.status = status;
+      this.code = code;
+    }
+    public readonly status: number;
+    public readonly code: string;
+  }
+  return {
+    mockSocialAccountFindFirst: vi.fn(),
+    mockSocialAccountUpdate: vi.fn(),
+    mockSocialAccountFindMany: vi.fn(),
+    mockSocialPostCreate: vi.fn(),
+    mockSocialPostFindMany: vi.fn(),
+    mockEncryptSecret: vi.fn((v: string) => `enc:${v}`),
+    mockDecryptSecret: vi.fn((v: string) => v.replace(/^enc:/, '')),
+    mockResolveMetaCredentials: vi.fn(),
+    mockPublishPhotoPost: vi.fn(),
+    mockPublishLinkPost: vi.fn(),
+    MockMetaApiError,
+  };
+});
 
 vi.mock('@kanchuki/db', () => ({
   vaultDelete: vi.fn(),
@@ -98,26 +116,20 @@ vi.mock('@kanchuki/ai', () => ({
 // F-031 social publishing — Meta Graph API + Redis are mocked; the suite only
 // exercises publish/list/history/disconnect (the connect flow's Redis state is
 // covered by the meta-graph lib tests).
-vi.mock('../lib/meta-graph.js', async () => {
-  const { AppError } = await import('../plugins/error-handler.js');
-  // Extends the REAL AppError so the error handler's instanceof check works
-  // (a plain Error subclass would fall through to a 500 in this suite).
-  class MockMetaApiError extends AppError {
-    constructor(message: string, status = 400, code = 'META_ERROR') {
-      super(code, message, status);
-      this.name = 'MetaApiError';
-    }
-  }
-  return {
-    MetaApiError: MockMetaApiError,
-    resolveMetaCredentials: mockResolveMetaCredentials,
-    buildOAuthUrl: vi.fn(),
-    exchangeCodeForToken: vi.fn(),
-    listPages: vi.fn(),
-    publishPhotoPost: mockPublishPhotoPost,
-    publishLinkPost: mockPublishLinkPost,
-  };
-});
+// Mirrors the real meta-graph MetaApiError (a plain Error subclass carrying
+// status + code — NOT an AppError, matching production) so the route's
+// finding-4 message policy sees a Meta rejection exactly as prod does: the
+// curated message is recorded, the FAILED row written, and the error handler's
+// domain `status` branch (not the AppError branch) turns the rethrow into 400.
+vi.mock('../lib/meta-graph.js', () => ({
+  MetaApiError: MockMetaApiError,
+  resolveMetaCredentials: mockResolveMetaCredentials,
+  buildOAuthUrl: vi.fn(),
+  exchangeCodeForToken: vi.fn(),
+  listPages: vi.fn(),
+  publishPhotoPost: mockPublishPhotoPost,
+  publishLinkPost: mockPublishLinkPost,
+}));
 
 const RETAILER_ID = 'retailer_1';
 
@@ -719,7 +731,12 @@ describe('POST /retailers/me/banner-upload-url', () => {
 
   it('records a FAILED history row when Facebook rejects the post', async () => {
     mockSocialAccountFindFirst.mockResolvedValue(FACEBOOK_ACCOUNT);
-    mockPublishPhotoPost.mockRejectedValue(new Error('Facebook rejected the photo post'));
+    // Real graph failures are MetaApiError — the curated platform message is
+    // user-safe and recorded verbatim (finding 4, task doc §12). A raw
+    // non-Meta error would be sanitized to a generic line instead.
+    mockPublishPhotoPost.mockRejectedValue(
+      new MockMetaApiError('Facebook rejected the photo post', 400, 'FB_POST_FAILED'),
+    );
     mockSocialPostCreate.mockResolvedValue({ id: 'sp_3' });
 
     const prismaMock = (await import('@kanchuki/db')).prisma;

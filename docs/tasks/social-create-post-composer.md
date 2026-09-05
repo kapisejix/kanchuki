@@ -417,20 +417,30 @@ See **Phase 9** in [§9 Task breakdown](#9-task-breakdown) (T-9.1 → T-9.8).
 
 ## 12. Review pass — idempotency hardening (session handoff, 2026-09-05)
 
-> **Status: ✅ Complete (findings 1 + 2 fixed 2026-09-05).** The composer
+> **Status: ✅ Complete (all 5 findings fixed 2026-09-05).** The composer
 > feature shipped as commit `dabebf5c` (Phases 0–9). A post-ship end-to-end
 > review of the fan-out publish path (`retailers-social-fanout.ts` +
 > `meta-graph.ts` + `error-handler.ts` + helpers + 18-test suite) found 5
-> issues. Owner chose to fix **findings 1 + 2 (idempotency)** — both are now
-> implemented, tested and committed on branch
-> `fix/social-connect-surface-errors`. **Findings 3–5 stay open** (recorded
-> below, not scheduled).
+> issues. **Findings 1 + 2 (idempotency)** were fixed and committed first
+> (2026-09-05); **findings 3–5 were then picked up and fixed in the same
+> session** (permalink truthfulness, message-leak sanitization + live-post
+> FAILED guard, caption clamp + honest media snapshot) — all on branch
+> `fix/social-connect-surface-errors`. Nothing open except T-8.2 (manual
+> real-account verification after `eas build`).
 >
 > **⚠️ EAS-build gate:** an EAS build compiles the *committed* mobile code.
 > The mobile half of finding 2 (client_post_id reuse) is now committed, so
 > the next `eas build` ships WITH retry-dedupe hardening. Order of work:
-> the fix is committed → **then** `eas build` → then T-8.2 manual
+> all fixes committed → **then** `eas build` → then T-8.2 manual
 > real-account verification on that build. Do not EAS-build mid-fix.
+>
+> **▶ NEXT (2026-09-05, in progress on `fix/social-connect-surface-errors`):**
+> findings 3–5 implementation is code-complete and test-written (fan-out
+> 31/31, meta-graph 23/23, full API suite 799/799 green). Remaining before
+> commit: (1) re-run the full API suite once more after the last Biome
+> fix, (2) append the BUILD-LOG entry + refresh CLAUDE.md / PLAN.md /
+> PRO-REQUIREMENTS statuses, (3) commit on the branch. Then `eas build` →
+> T-8.2.
 
 ### 🚀 Resume prompt — (COMPLETED 2026-09-05 — kept for the record)
 
@@ -450,9 +460,9 @@ unblocked; T-8.2 (real-account manual verification) comes after the build.
 mid-flight empty-replay case are written and green (fan-out suite 24/24;
 full API 783/783), the composer reuses `client_post_id` across retries of an
 unchanged payload and only re-mints after a definitive outcome, typecheck +
-API/mobile suites + `expo lint` + CRLF checks all pass, and this section is
-flipped to ✅. **Open: T-8.2 manual EAS verification (after `eas build`),
-findings 3–5 below.**
+API/mobile suites + `expo lint` + CRLF checks all pass. **Findings 3–5 fixed
+in the same session** (below). **Open: T-8.2 manual EAS verification (after
+`eas build`)** — findings 3–5 are no longer open.
 
 ### Findings from the review (all 5, for the record)
 
@@ -478,8 +488,10 @@ findings 3–5 below.**
    appends `\n\n` + link URL to a near-max caption; IG-video→primary-photo
    fallback is silent (media snapshot says video, live post is a photo).
 
-**Owner decision 2026-09-05:** fix **1 + 2 only** — ✅ **done 2026-09-05**.
-Findings 3–5 recorded, not scheduled (open).
+**Owner decision 2026-09-05 (updated):** findings 1 + 2 fixed and committed
+first. Later the same day, findings **3–5 were picked up and fixed** (they
+were "not scheduled" only until then) — ✅ all done 2026-09-05. Only T-8.2
+(real-account manual EAS verification) remains open.
 
 ### ✅ Findings 1 + 2 — fixed (committed 2026-09-05, branch `fix/social-connect-surface-errors`)
 
@@ -542,3 +554,70 @@ typecheck + `expo lint` clean, 43/43 tests.
    line endings in any touched file.
 4. **Docs:** flip this section to ✅ and note findings 3–5 remain open, then
    commit (branch `fix/social-connect-surface-errors`). — **✅ this commit.**
+   (Finding 3–5 fixes landed later the same day — see the next section.)
+
+### ✅ Findings 3–5 — fixed (committed 2026-09-05, same branch)
+
+Picked up from "not scheduled" later the same day. All changes are server-side
+(no mobile impact → does not block / re-order the EAS build); the legacy
+per-account route stays API-compat-only and was hardened for parity.
+
+**Finding 3 — IG single-photo permalink is now REAL (`meta-graph.ts` +
+helpers + both routes):**
+- `meta-graph.ts` exports the shared `fetchIgPermalink(mediaId, token)`
+  (Graph API `permalink` field fetch, fail-open → `''` on any miss) and
+  `clampIgCaption` / `IG_CAPTION_LIMIT` (see finding 5a). The IG carousel
+  path now uses the shared fetcher instead of its private copy.
+- `retailers-social-helpers.ts` `publishInstagramPhoto` returns
+  `{ postId, permalink }` — real permalink via the shared fetcher, never
+  fabricated `instagram.com/p/<media-id>` (the media id is not a shortcode
+  and 404s). Fail-open: the post IS live; a permalink miss yields `''`, the
+  row records `null` — truthful over a 404 link.
+- Fan-out + legacy routes store `permalink || null` (both IG carousel AND
+  single-photo) instead of building `/p/${postId}/`.
+
+**Finding 4 — message-leak sanitization + live-post FAILED guard
+(`retailers-social-fanout.ts` + legacy route):**
+- Message policy: only `MetaApiError` messages are curated user-safe text
+  and are recorded verbatim; any other error (DB/network internals,
+  hostnames, connection detail, SQL fragments) is recorded as the generic
+  `'Something went wrong while posting. Please try again.'` — in BOTH the
+  fan-out route and the legacy per-account route (previously `err.message`
+  leaked verbatim everywhere).
+- Live-post guard (finding 4b): the fan-out publish loop is split into
+  **Phase 1 publish** (failure here → truthful FAILED row) vs **Phase 2
+  POSTED-row write** (post IS live). Phase 2 never records FAILED: P2002
+  reconciles inside `createOrReconcilePost`, and any other DB error is
+  retried 3× by `createPostedRowWithRetry` then rethrown as a transient 500
+  — the caller retries with the same `client_post_id` and idempotency
+  replays. A Meta success + DB-write failure can no longer write a FAILED
+  row for a live post.
+
+**Finding 5 — caption clamp + honest media snapshot:**
+- (5a) `clampIgCaption` (code-point aware — never splits an astral/emoji
+  surrogate pair) is applied at the platform boundary in the IG carousel
+  parent publish and in `publishInstagramPhoto`'s container, so a
+  server-appended `\n\n` + link URL can never push a near-max caption past
+  IG's 2,200-char limit.
+- (5b) IG video→primary-photo fallback is no longer silent: the per-target
+  row's `media` snapshot is rewritten to the photo actually posted
+  (`{product_id, photo_id, kind:'photo', url}`) when a video item falls
+  back — history says what went out. `productFallbackPhoto` returns the
+  full photo row (id + is_primary) instead of a bare `{url}`.
+
+**Tests:** 7 new fan-out cases + 8 meta-graph cases (clampIgCaption unit
+×3 incl. surrogate safety, fetchIgPermalink ×4, carousel clamp ×2) +
+legacy-route rejection updated to a real `MetaApiError` shape. Fan-out suite
+31/31, meta-graph 23/23, full API suite green (see gates below). `tsc
+--noEmit` clean.
+
+**Gates (findings 3–5):** API typecheck clean; full API suite 799/799;
+fan-out 31/31; meta-graph 23/23. No mobile or web files touched by findings
+3–5 (server-only), so the EAS build plan is unchanged: commit → `eas build`
+→ T-8.2.
+
+### 🔴 Still open (post-fix)
+
+- **T-8.2** — manual real-account verification on the EAS build (after
+  `eas build`; the real Facebook/Instagram accounts must be the ones the
+  retailer connects). Scope is defined at line ~276 above.

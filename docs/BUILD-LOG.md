@@ -1948,7 +1948,7 @@ Spec `docs/tasks/social-create-post-composer.md`; index row CLAUDE.md #64; plan 
 
 Spec `docs/tasks/social-create-post-composer.md` §12 (review pass); branch `fix/social-connect-surface-errors`; part of CLAUDE.md row #64.
 
-A post-ship end-to-end review of the composer fan-out path found 5 issues; owner chose to fix **1 + 2 (idempotency)** — both landed this session. Findings 3–5 stay open (recorded in task doc §12).
+A post-ship end-to-end review of the composer fan-out path found 5 issues; owner chose to fix **1 + 2 (idempotency)** — both landed this session (entry above). Findings 3–5 were picked up and fixed later the same day (entry below).
 
 | Finding | Fix | Files |
 |---|---|---|
@@ -1958,3 +1958,17 @@ A post-ship end-to-end review of the composer fan-out path found 5 issues; owner
 **Tests:** 6 new fan-out cases (a) duplicate-claim replay of mixed rows, (a2) duplicate claim + no rows yet → empty replay, (b) new claim + prior rows → replay, (c) P2002 POSTED vs FAILED twin → upgraded, (d) P2002 POSTED vs POSTED twin → surfaced deduplicated, (e) P2002 on FAILED catch-path write → no 500) — `retailers-social-fanout.test.ts` now 24/24.
 
 **Verification:** API typecheck clean + full suite **783/783** (three consecutive clean runs; one transient single-test flake observed once, not reproducible — fan-out file green in isolation and in each full rerun); mobile typecheck clean + 43/43; `expo lint` exit 0 on `app/social/create.tsx`; Biome format fixed on the two API files (4 pre-existing warn-level `noNonNullAssertion` remain, consistent with the known 182-warn baseline); no mixed line endings in any touched file. Committed on `fix/social-connect-surface-errors`; `eas build` unblocked → T-8.2 manual real-account verification after the build.
+
+## BUILT 2026-09-05 (later same day): Composer review findings 3–5 (permalink truth, message sanitization, caption clamp)
+
+Spec `docs/tasks/social-create-post-composer.md` §12 (review pass); branch `fix/social-connect-surface-errors`; part of CLAUDE.md row #64. Findings 1+2 (idempotency) shipped earlier the same day (entry above); findings 3–5 were then picked up and fixed. Server-only — no mobile/web impact, EAS-build plan unchanged.
+
+| Finding | Fix | Files |
+|---|---|---|
+| **3 — IG single-photo permalink fabricated** (`/p/<media-id>`, media id ≠ shortcode → 404s in history) | New shared `fetchIgPermalink(mediaId, token)` in `meta-graph.ts` (Graph `permalink` field, fail-open → `''`); IG carousel refactored onto it. `publishInstagramPhoto` returns `{ postId, permalink }` with the real permalink; fan-out + legacy routes store `permalink || null` for IG carousel AND single-photo — never a fabricated URL. | `meta-graph.ts`, `retailers-social-helpers.ts`, `retailers-social-fanout.ts`, `retailers-social-posts.ts` |
+| **4 — non-Meta error text leaks into rows + responses; live post recorded FAILED on DB blip** | Message policy: only `MetaApiError` messages persist/surface verbatim; DB/network errors (hostnames, connection detail) record the generic `'Something went wrong while posting. Please try again.'` — fan-out AND legacy route (was `err.message` everywhere). Live-post guard: publish loop split into Phase 1 publish (failure → truthful FAILED row) / Phase 2 POSTED-row write; Phase 2 never records FAILED — P2002 reconciles inside `createOrReconcilePost`, other DB errors retried 3× via `createPostedRowWithRetry` then rethrown as a transient 500 (client retries same `client_post_id`, idempotency replays). | `retailers-social-fanout.ts`, `retailers-social-posts.ts` |
+| **5 — minor: IG caption past 2,200-char limit; silent video→photo fallback** | (5a) `clampIgCaption` (code-point aware — astral/emoji never split) + `IG_CAPTION_LIMIT` applied at the platform boundary in the IG carousel parent publish and `publishInstagramPhoto`'s container. (5b) IG video→primary-photo fallback rewrites the per-target row `media` snapshot to the photo actually posted (`{product_id, photo_id, kind:'photo', url}`); `productFallbackPhoto` returns the full photo row. | `meta-graph.ts`, `retailers-social-helpers.ts`, `retailers-social-fanout.ts` |
+
+**Tests:** fan-out +7 new cases (real-permalink stored / permalink-miss → NULL not fabricated / raw-error sanitization / curated `MetaApiError` verbatim / POSTED-row DB failure → transient 500 with zero FAILED creates / one-blip retry recovery / video→photo media snapshot) — 31/31; `meta-graph.test.ts` +8 (clampIgCaption unit incl. surrogate safety, fetchIgPermalink ×4 fail-open, carousel clamp + under-limit ×2) — 23/23; `retailers.test.ts` legacy rejection updated to a real `MetaApiError` shape (mock class hoisted, plain-Error subclass mirroring prod).
+
+**Verification:** API typecheck clean; full API suite **799/799**; fan-out 31/31; meta-graph 23/23; Biome check 0 errors on all touched files (6 pre-existing warn-level `noNonNullAssertion` remain); no mixed line endings. Committed on `fix/social-connect-surface-errors`; `eas build` unblocked → T-8.2 manual real-account verification after the build.

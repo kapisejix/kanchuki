@@ -22,6 +22,48 @@
 const GRAPH_BASE = 'https://graph.facebook.com/v21.0';
 const OAUTH_DIALOG = 'https://www.facebook.com/v21.0/dialog/oauth';
 
+// Instagram caption hard limit (Meta platform rule). Facebook's cap is
+// 63,206 chars, so only IG targets need clamping — a server-appended
+// '\n\n' + link URL used to push a near-max caption past the limit (finding 5a
+// in docs/tasks/social-create-post-composer.md §12).
+export const IG_CAPTION_LIMIT = 2200;
+
+/**
+ * Clamp a caption to Instagram's 2,200-char limit. Code-point aware (emoji
+ * and other astral chars are never split mid-surrogate). Applied at the
+ * platform boundary in every IG publish helper so no caller can exceed the
+ * limit.
+ */
+export function clampIgCaption(caption: string): string {
+  const chars = Array.from(caption);
+  return chars.length > IG_CAPTION_LIMIT ? chars.slice(0, IG_CAPTION_LIMIT).join('') : caption;
+}
+
+/**
+ * Fetch a published IG media id's real permalink (the Graph API `permalink`
+ * field). Fail-open — the post IS live, a permalink miss must not surface as a
+ * failure or risk a double-publish (same rule the carousel path follows).
+ * Never fabricate `instagram.com/p/<media-id>` from the media id: it is not a
+ * shortcode and 404s in history / "View post" (finding 3, task doc §12).
+ */
+export async function fetchIgPermalink(mediaId: string, accessToken: string): Promise<string> {
+  try {
+    const linkRes = await fetch(
+      `${GRAPH_BASE}/${mediaId}?${new URLSearchParams({
+        access_token: accessToken,
+        fields: 'permalink',
+      })}`,
+    );
+    const linkBody = (await linkRes.json()) as Record<string, unknown>;
+    if (linkRes.ok && typeof linkBody.permalink === 'string') {
+      return linkBody.permalink as string;
+    }
+  } catch {
+    // network/parse blip — permalink is presentational, fail open
+  }
+  return '';
+}
+
 export interface MetaPage {
   id: string;
   name: string;
@@ -408,7 +450,9 @@ export async function publishInstagramCarousel(
       access_token: accessToken,
       media_type: 'CAROUSEL',
       children: childIds.join(','),
-      caption,
+      // IG captions cap at 2,200 chars — clamp at the platform boundary
+      // (finding 5a) so a server-appended link can never exceed the limit.
+      caption: clampIgCaption(caption),
     })}`,
     { method: 'POST' },
   );
@@ -431,21 +475,8 @@ export async function publishInstagramCarousel(
     throw new MetaApiError('Instagram rejected the media publish', 400, 'INSTAGRAM_PUBLISH_FAILED');
   }
   const postId = publishBody.id as string;
-
-  // Permalink is presentational — fail-open.
-  let permalink = '';
-  try {
-    const linkRes = await fetch(
-      `${GRAPH_BASE}/${postId}?${new URLSearchParams({ access_token: accessToken, fields: 'permalink' })}`,
-    );
-    const linkBody = (await linkRes.json()) as Record<string, unknown>;
-    if (linkRes.ok && typeof linkBody.permalink === 'string') {
-      permalink = linkBody.permalink as string;
-    }
-  } catch {
-    permalink = '';
-  }
-
+  // Permalink is presentational — fail-open (shared helper, finding 3).
+  const permalink = await fetchIgPermalink(postId, accessToken);
   return { postId, permalink };
 }
 
