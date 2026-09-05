@@ -1,4 +1,4 @@
-import { router } from 'expo-router'
+import { router, type Href } from 'expo-router'
 import {
   createContext,
   useCallback,
@@ -112,7 +112,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (status !== 'authenticated' || !pendingNav) return
     const dest = pendingNav
     setPendingNav(null)
-    router.navigate(dest)
+    router.navigate(dest as Href)
   }, [status, pendingNav])
 
   const signOut = useCallback(async () => {
