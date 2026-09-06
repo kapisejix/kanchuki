@@ -55,16 +55,31 @@ export const retailersIntegrationsRoutes: FastifyPluginAsync = async (server) =>
     // native/OAuth connect flow and read by the composer) — there is no
     // separate fb_page_* column. Surface it here so the integrations screen
     // reflects reality instead of always showing "not connected".
-    const fbPage = await prisma.socialAccount.findFirst({
-      where: { retailer_id: request.retailerId, platform: 'FACEBOOK', is_active: true },
-      select: {
-        id: true,
-        platform_account_id: true,
-        platform_account_name: true,
-        created_at: true,
-      },
-      orderBy: { created_at: 'desc' },
-    });
+    const [fbPage, igAccount] = await Promise.all([
+      prisma.socialAccount.findFirst({
+        where: { retailer_id: request.retailerId, platform: 'FACEBOOK', is_active: true },
+        select: {
+          id: true,
+          platform_account_id: true,
+          platform_account_name: true,
+          created_at: true,
+        },
+        orderBy: { created_at: 'desc' },
+      }),
+      // Instagram connect state also lives in SocialAccount (written by the
+      // native/OAuth connect flow). Without this the IG integrations screen
+      // always showed "not connected" even right after a successful connect.
+      prisma.socialAccount.findFirst({
+        where: { retailer_id: request.retailerId, platform: 'INSTAGRAM', is_active: true },
+        select: {
+          id: true,
+          platform_account_id: true,
+          platform_account_name: true,
+          created_at: true,
+        },
+        orderBy: { created_at: 'desc' },
+      }),
+    ]);
 
     return {
       data: {
@@ -74,6 +89,13 @@ export const retailersIntegrationsRoutes: FastifyPluginAsync = async (server) =>
           page_id: fbPage?.platform_account_id ?? null,
           page_name: fbPage?.platform_account_name ?? null,
           configured_at: fbPage?.created_at ?? null,
+        },
+        instagram: {
+          configured: !!igAccount,
+          account_id: igAccount?.id ?? null,
+          ig_user_id: igAccount?.platform_account_id ?? null,
+          handle: igAccount?.platform_account_name ?? null,
+          configured_at: igAccount?.created_at ?? null,
         },
         gmb: {
           configured: !!retailer.gmb_account_id,
@@ -102,6 +124,17 @@ export const retailersIntegrationsRoutes: FastifyPluginAsync = async (server) =>
   server.delete('/me/integrations/facebook', async (request) => {
     await prisma.socialAccount.updateMany({
       where: { retailer_id: request.retailerId, platform: 'FACEBOOK', is_active: true },
+      data: { is_active: false },
+    });
+    return { data: { configured: false } };
+  });
+
+  // ─── DELETE /retailers/me/integrations/instagram — disconnect IG ──
+  // Mirrors the Facebook disconnect above; deactivates the INSTAGRAM
+  // SocialAccount so the composer + integrations screen drop it.
+  server.delete('/me/integrations/instagram', async (request) => {
+    await prisma.socialAccount.updateMany({
+      where: { retailer_id: request.retailerId, platform: 'INSTAGRAM', is_active: true },
       data: { is_active: false },
     });
     return { data: { configured: false } };

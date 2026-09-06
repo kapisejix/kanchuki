@@ -28,6 +28,13 @@ import {
 const defaultOAuthRedirect = () =>
   `${process.env.WEB_URL ?? 'https://kanchuki.app'}/social/connect`;
 
+// Instagram content publishing needs an IG Business/Creator account that is
+// linked to a Facebook Page the retailer manages. When Graph returns none,
+// both connect paths (OAuth `code` and native SDK token) surface this exact
+// message instead of fabricating a placeholder "connected" account.
+const NO_IG_LINKED_MESSAGE =
+  'No Instagram Business account is linked to your Facebook Page. In the Instagram app switch to a Professional (Business or Creator) account, link it to a Facebook Page you manage, then try again.';
+
 export const retailersSocialConnectRoutes: FastifyPluginAsync = async (server) => {
   // ─── GET /retailers/me/social/connect — start OAuth (1-Click & Web) ──
   // Returns the Meta / Google login URL + state.
@@ -86,9 +93,15 @@ export const retailersSocialConnectRoutes: FastifyPluginAsync = async (server) =
     if (body.data.provider === 'instagram') {
       const igAccounts = await listInstagramAccounts(accessToken);
       const primaryIg = igAccounts[0];
-      const accountId = primaryIg?.id || `ig_${request.retailerId}`;
-      const handle = primaryIg?.username ? `@${primaryIg.username}` : '@instagram_store';
-      const name = primaryIg?.name || 'Instagram Business Account';
+      if (!primaryIg) {
+        // Mirror /connect-native + the Facebook NO_PAGES_FOUND branch: never
+        // fabricate a placeholder "connected" account — that surfaced a fake
+        // success in the app that then rejected every publish.
+        throw new AppError('NO_IG_FOUND', NO_IG_LINKED_MESSAGE, 404);
+      }
+      const accountId = primaryIg.id;
+      const handle = primaryIg.username ? `@${primaryIg.username}` : '@instagram_store';
+      const name = primaryIg.name || 'Instagram Business Account';
 
       // Save to SocialAccount DB table
       const encryptedToken = await encryptSecret(accessToken);
@@ -199,11 +212,7 @@ export const retailersSocialConnectRoutes: FastifyPluginAsync = async (server) =
       const igAccounts = await listInstagramAccounts(accessToken);
       const primaryIg = igAccounts[0];
       if (!primaryIg) {
-        throw new AppError(
-          'NO_IG_FOUND',
-          'No Instagram Business account is linked to your Facebook Page. Link one in the Facebook app, then try again.',
-          404,
-        );
+        throw new AppError('NO_IG_FOUND', NO_IG_LINKED_MESSAGE, 404);
       }
       const handle = primaryIg.username ? `@${primaryIg.username}` : '@instagram_store';
       const name = primaryIg.name || 'Instagram Business Account';

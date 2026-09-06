@@ -81,15 +81,13 @@ export default function InstagramConfigScreen() {
           })
 
           if (res?.data?.connected) {
-            const connectedHandle = res.data.handle || '@boutique_official'
+            // The server already stored the real encrypted token on the
+            // INSTAGRAM SocialAccount row — just refresh from it (mirrors the
+            // Facebook screen). No placeholder configure() write.
+            const connectedHandle = res.data.handle || '@instagram_store'
             setHandle(connectedHandle)
             setAccountId(res.data.account_id || '')
-            void growthApi.configureInstagram({
-              handle: connectedHandle.replace(/^@/, ''),
-              account_id: res.data.account_id || 'ig_auto',
-              access_token: 'oauth_long_lived_token',
-              auto_publish_reels: autoPublishReels,
-            })
+            await refetchIntegrations()
             void queryClient.invalidateQueries({ queryKey: ['growth', 'integrations'] })
             Alert.alert('Connected!', `Successfully linked Instagram account ${connectedHandle}!`)
           }
@@ -103,18 +101,15 @@ export default function InstagramConfigScreen() {
 
     const sub = Linking.addEventListener('url', handleDeepLink)
     return () => sub.remove()
-  }, [autoPublishReels, queryClient])
+  }, [queryClient, refetchIntegrations])
 
   const applyConnected = async (rawHandle: string, accountId: string) => {
     const finalHandle = rawHandle.startsWith('@') ? rawHandle : `@${rawHandle}`
     setHandle(finalHandle)
     setAccountId(accountId)
-    await growthApi.configureInstagram({
-      handle: finalHandle.replace(/^@/, ''),
-      account_id: accountId || '',
-      access_token: 'oauth_long_lived_token',
-      auto_publish_reels: autoPublishReels,
-    })
+    // Server already persisted the real INSTAGRAM SocialAccount + token via
+    // /social/connect-native. Just re-read it — no placeholder configure().
+    await refetchIntegrations()
     void queryClient.invalidateQueries({ queryKey: ['growth', 'integrations'] })
     Alert.alert('Connected!', `Instagram account ${finalHandle} connected.`)
   }
