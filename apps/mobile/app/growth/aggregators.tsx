@@ -19,7 +19,7 @@ import {
   TextInput,
   View,
 } from 'react-native'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useScreenInsets } from '../../src/lib/safe-area'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { GradientButton } from '../../src/components/GradientButton'
 import { growthApi, type ChannelSync, type ChannelType } from '../../src/lib/api/growth'
@@ -69,7 +69,7 @@ const fmtDate = (iso: string | null) =>
 // ─── Main Screen ──────────────────────────────────────────────────
 
 export default function AggregatorsScreen() {
-  const insets = useSafeAreaInsets()
+  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets()
   const queryClient = useQueryClient()
   const [connecting, setConnecting] = useState(false)
 
@@ -115,7 +115,7 @@ export default function AggregatorsScreen() {
       {/* Header */}
       <View
         className="bg-white border-b border-lavender-200 px-5 pb-4"
-        style={{ paddingTop: Math.max(insets.top, 24) + 12 }}
+        style={{ paddingTop: headerPaddingTop }}
       >
         <View className="flex-row items-center justify-between">
           <View className="flex-row items-center gap-3">
@@ -176,7 +176,7 @@ export default function AggregatorsScreen() {
       ) : (
         <ScrollView
           className="flex-1 px-4 pt-4"
-          contentContainerStyle={{ paddingBottom: 32 }}
+          contentContainerStyle={{ paddingBottom: screenPaddingBottom }}
           refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} />}
         >
           <View className="gap-3">
@@ -298,7 +298,7 @@ function ConnectChannelModal({
   onClose: () => void
   onSaved: () => void
 }) {
-  const insets = useSafeAreaInsets()
+  const { insets } = useScreenInsets()
 
   const [channel, setChannel] = useState<ChannelType>('MEESHO')
   const [apiKey, setApiKey] = useState('')

@@ -5,6 +5,7 @@ import { router } from 'expo-router'
 import { useQuery } from '@tanstack/react-query'
 import { Plus, Search, ChevronRight, MapPin, Users } from 'lucide-react-native'
 import { customerApi } from '../../src/lib/api'
+import { useScreenInsets } from '../../src/lib/safe-area'
 import { CustomerListSkeleton } from '../../src/components/Skeleton'
 import { useTheme } from '../../src/lib/theme'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
@@ -113,6 +114,7 @@ const CustomerCard = memo(function CustomerCard({
 
 export default function CustomersScreen() {
   const { colors } = useTheme()
+  const { tabScrollPaddingBottom } = useScreenInsets()
   const [search, setSearch] = useState('')
 
   const { data, isLoading } = useQuery({
@@ -188,7 +190,7 @@ export default function CustomersScreen() {
           data={customers}
           keyExtractor={keyExtractor}
           renderItem={renderItem}
-          contentContainerStyle={{ padding: 14, gap: 10, flexGrow: 1 }}
+          contentContainerStyle={{ padding: 14, gap: 10, flexGrow: 1, paddingBottom: tabScrollPaddingBottom }}
           ListEmptyComponent={listEmpty}
           // ── Performance props ──
           windowSize={5}

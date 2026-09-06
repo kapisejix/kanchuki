@@ -4,7 +4,7 @@ import * as ImagePicker from 'expo-image-picker'
 import { ChevronLeft, ChevronRight, Clapperboard, Sparkles, Star, Trash2, Upload, Search } from 'lucide-react-native'
 import { useState, useEffect, useRef } from 'react'
 import { ActivityIndicator, Alert, ScrollView, Text, TextInput, View } from 'react-native'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useScreenInsets } from '../../src/lib/safe-area'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { GradientButton } from '../../src/components/GradientButton'
 import { productApi } from '../../src/lib/api'
@@ -19,7 +19,7 @@ type PickedProduct = {
 }
 
 export default function VideosScreen() {
-  const insets = useSafeAreaInsets()
+  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets()
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
   const [picked, setPicked] = useState<PickedProduct | null>(null)
@@ -172,7 +172,7 @@ export default function VideosScreen() {
       {/* Header */}
       <View
         className="bg-white border-b border-lavender-200 px-5 pb-4"
-        style={{ paddingTop: Math.max(insets.top, 24) + 12 }}
+        style={{ paddingTop: headerPaddingTop }}
       >
         <View className="flex-row items-center gap-3">
           <AnimatedPressable
@@ -206,7 +206,7 @@ export default function VideosScreen() {
               className="flex-1 text-sm font-bold text-spaceCadet-900"
             />
           </View>
-          <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: 32 }}>
+          <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: screenPaddingBottom }}>
             {productsQuery.isLoading ? (
               <View className="items-center py-10">
                 <ActivityIndicator color="#BB3F95" />
@@ -250,7 +250,7 @@ export default function VideosScreen() {
           </ScrollView>
         </View>
       ) : (
-        <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: 40 }}>
+        <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: screenPaddingBottom }}>
           {videosQuery.isLoading ? (
             <View className="items-center py-10">
               <ActivityIndicator color="#BB3F95" />

@@ -14,7 +14,7 @@ import * as ImageManipulator from 'expo-image-manipulator'
 import { Image } from 'expo-image'
 import { useQueryClient } from '@tanstack/react-query'
 import { X, Check, Sparkles, Camera, AlertTriangle, FileText, Plus } from 'lucide-react-native'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useScreenInsets } from '../../src/lib/safe-area'
 import {
   catalogImportApi,
   retailerApi,
@@ -46,7 +46,7 @@ type ReviewItem = {
 
 export default function BulkOnboardScreen() {
   const { primaryColor, colors } = useTheme()
-  const insets = useSafeAreaInsets()
+  const { insets, headerPaddingTop } = useScreenInsets()
   const queryClient = useQueryClient()
   const params = useLocalSearchParams<{ target?: string }>()
   const target = params.target ? Number(params.target) : null
@@ -393,7 +393,7 @@ export default function BulkOnboardScreen() {
     <View className="flex-1 bg-sand-50">
       <View
         className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-sand-100"
-        style={{ paddingTop: Math.max(insets.top, 24) + 12 }}
+        style={{ paddingTop: headerPaddingTop }}
       >
         <AnimatedPressable
           onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}

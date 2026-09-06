@@ -3,7 +3,7 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { router } from 'expo-router'
 import { AlertTriangle, ChevronLeft, PackageSearch, TrendingUp, UserX, Zap } from 'lucide-react-native'
 import { ActivityIndicator, RefreshControl, ScrollView, Text, View } from 'react-native'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useScreenInsets } from '../../src/lib/safe-area'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { growthApi, type InventoryAlert } from '../../src/lib/api/growth'
 
@@ -90,7 +90,7 @@ function AlertCard({ alert }: { alert: InventoryAlert }) {
 }
 
 export default function InventoryScreen() {
-  const insets = useSafeAreaInsets()
+  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets()
 
   const { data, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ['growth', 'inventory-alerts'],
@@ -111,7 +111,7 @@ export default function InventoryScreen() {
       {/* Header */}
       <View
         className="bg-white border-b border-lavender-200 px-5 pb-4"
-        style={{ paddingTop: Math.max(insets.top, 24) + 12 }}
+        style={{ paddingTop: headerPaddingTop }}
       >
         <View className="flex-row items-center gap-3">
           <AnimatedPressable
@@ -134,7 +134,7 @@ export default function InventoryScreen() {
 
       <ScrollView
         className="flex-1 px-4 pt-4"
-        contentContainerStyle={{ paddingBottom: 40 }}
+        contentContainerStyle={{ paddingBottom: screenPaddingBottom }}
         refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} />}
       >
         {/* Signature Gradient Summary Hero Card */}

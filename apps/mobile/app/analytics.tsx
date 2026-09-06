@@ -6,7 +6,7 @@ import {
   RefreshControl,
 } from 'react-native'
 import { router } from 'expo-router'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useScreenInsets } from '../src/lib/safe-area'
 import { useQuery } from '@tanstack/react-query'
 import {
   Eye,
@@ -287,7 +287,7 @@ function PlanUsageBar({
 // ── Analytics Screen ───────────────────────────────────────────────
 
 export default function AnalyticsScreen() {
-  const insets = useSafeAreaInsets()
+  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets()
   const { primaryColor, colors } = useTheme()
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['analytics'],
@@ -317,7 +317,7 @@ export default function AnalyticsScreen() {
       {/* Page Header */}
       <View
         className="bg-white px-5 pb-4 border-b border-lavender-200"
-        style={{ paddingTop: insets.top + 16 }}
+        style={{ paddingTop: headerPaddingTop }}
       >
         <Text
           style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
@@ -479,7 +479,7 @@ export default function AnalyticsScreen() {
         )}
       </View>
 
-      <View style={{ height: insets.bottom + 32 }} />
+      <View style={{ height: screenPaddingBottom }} />
     </ScrollView>
   )
 }

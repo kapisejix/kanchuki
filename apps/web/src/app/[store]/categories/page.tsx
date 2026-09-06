@@ -118,7 +118,7 @@ export default async function StoreCategoriesPage({ params }: Props) {
   return (
     <div className="min-h-screen bg-[#F8F7FC] font-sans pb-20">
       {/* ── Top Header & Greeting (Spec #9 Discovery) ── */}
-      <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-[#E0E1F6]">
+      <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-[#E0E1F6] pt-safe">
         <div className="max-w-xl mx-auto px-4 py-3.5 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl overflow-hidden bg-[#E0E1F6] border border-[#E0E1F6] flex items-center justify-center shadow-sm">

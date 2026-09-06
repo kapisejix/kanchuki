@@ -2,7 +2,7 @@ import { useCallback, memo, useState, useEffect } from 'react'
 import { View, Text, FlatList, Share, ActivityIndicator, Alert, Modal, TextInput, Image } from 'react-native'
 import { router } from 'expo-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useScreenInsets } from '../../src/lib/safe-area'
 import { Plus, Eye, MessageCircle, Link2, Clock, Edit, Trash2, Send } from 'lucide-react-native'
 import { collectionApi, retailerApi } from '../../src/lib/api'
 import { CollectionListSkeleton } from '../../src/components/Skeleton'
@@ -273,7 +273,7 @@ const CollectionCard = memo(function CollectionCard({
 
 export default function CollectionsScreen() {
   const queryClient = useQueryClient()
-  const insets = useSafeAreaInsets()
+  const { headerPaddingTop, tabScrollPaddingBottom } = useScreenInsets()
   const { data: retailerData } = useQuery({
     queryKey: ['retailer', 'me'],
     queryFn: () => retailerApi.getMe(),
@@ -384,7 +384,7 @@ export default function CollectionsScreen() {
       {/* Header — store identity, matches Catalog */}
       <View
         className="bg-white px-5 pb-3 border-b border-lavender-200 flex-row items-center gap-3"
-        style={{ paddingTop: Math.max(insets.top, 24) + 12 }}
+        style={{ paddingTop: headerPaddingTop }}
       >
         <View className="w-10 h-10 rounded-2xl overflow-hidden bg-lavender-100 items-center justify-center border border-lavender-200 shadow-sm">
           {retailerProfile?.logo_url ? (
@@ -410,7 +410,7 @@ export default function CollectionsScreen() {
           data={collections}
           keyExtractor={keyExtractor}
           renderItem={renderItem}
-          contentContainerStyle={{ padding: 14, gap: 12, flexGrow: 1 }}
+          contentContainerStyle={{ padding: 14, gap: 12, flexGrow: 1, paddingBottom: tabScrollPaddingBottom }}
           ListEmptyComponent={listEmpty}
           windowSize={5}
           maxToRenderPerBatch={10}

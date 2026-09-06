@@ -5,7 +5,7 @@ import {
   ActivityIndicator, Alert,
 } from 'react-native'
 import { router } from 'expo-router'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useScreenInsets } from '../../src/lib/safe-area'
 import { useQuery } from '@tanstack/react-query'
 import {
   Store, Users, Ticket, MapPin, UserPlus, LogOut,
@@ -23,7 +23,7 @@ import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 export default function StaffDashboard() {
   const { signOut } = useAuth()
   const { primaryColor, colors } = useTheme()
-  const insets = useSafeAreaInsets()
+  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets()
   const [staffInfo, setStaffInfo] = useState<{ name: string; role: string } | null>(null)
   const [loadingInfo, setLoadingInfo] = useState(true)
 
@@ -84,7 +84,7 @@ export default function StaffDashboard() {
       {/* Header */}
       <View
         className="bg-ink-700 px-4 pb-6 rounded-b-3xl"
-        style={{ paddingTop: Math.max(insets.top, 24) + 12 }}
+        style={{ paddingTop: headerPaddingTop }}
       >
         <View className="flex-row items-center justify-between mb-4">
           <View className="flex-row items-center gap-3">
@@ -126,7 +126,7 @@ export default function StaffDashboard() {
 
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ paddingBottom: 32 }}
+        contentContainerStyle={{ paddingBottom: screenPaddingBottom }}
         refreshControl={
           <RefreshControl
             refreshing={isLoading}

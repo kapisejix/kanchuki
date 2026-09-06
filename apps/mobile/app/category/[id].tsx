@@ -3,7 +3,7 @@ import { formatPriceRange, COLORS } from '@kanchuki/shared'
 import { View, Text, FlatList, TextInput, ActivityIndicator, Alert, Image, Modal } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useScreenInsets } from '../../src/lib/safe-area'
 import * as ImagePicker from 'expo-image-picker'
 import { Plus, Trash2, Pencil, X, ImagePlus, ChevronLeft } from 'lucide-react-native'
 import ProductCard from '../../src/components/ProductCard'
@@ -158,7 +158,7 @@ function EditCategoryModal({
 }
 
 export default function CategoryDetailScreen() {
-  const insets = useSafeAreaInsets()
+  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets()
   const { id } = useLocalSearchParams<{ id: string }>()
   const columns = useGridColumns()
   const queryClient = useQueryClient()
@@ -220,7 +220,7 @@ export default function CategoryDetailScreen() {
       {/* Header */}
       <View
         className="flex-row items-center justify-between px-5 pb-3 bg-white border-b border-lavender-200"
-        style={{ paddingTop: Math.max(insets.top, 24) + 12 }}
+        style={{ paddingTop: headerPaddingTop }}
       >
         <AnimatedPressable
           onPress={() => router.back()}
@@ -289,7 +289,7 @@ export default function CategoryDetailScreen() {
           keyExtractor={(item) => item.id}
           numColumns={columns}
           columnWrapperStyle={{ gap: 14 }}
-          contentContainerStyle={{ padding: 16, gap: 14, flexGrow: 1 }}
+          contentContainerStyle={{ padding: 16, gap: 14, flexGrow: 1, paddingBottom: screenPaddingBottom }}
           renderItem={({ item }) => (
             <ProductCard
               imageUrl={item.primary_photo_url}

@@ -3,7 +3,7 @@ import { router } from 'expo-router'
 import { ChevronLeft, Megaphone, Plus } from 'lucide-react-native'
 import { useState } from 'react'
 import { ActivityIndicator, RefreshControl, ScrollView, Text, View } from 'react-native'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useScreenInsets } from '../../src/lib/safe-area'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { GradientButton } from '../../src/components/GradientButton'
 import { growthApi, type CampaignStatus, type CampaignType } from '../../src/lib/api'
@@ -34,7 +34,7 @@ function statusInfo(status: CampaignStatus) {
 }
 
 export default function CampaignsScreen() {
-  const insets = useSafeAreaInsets()
+  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets()
   const [filter, setFilter] = useState<CampaignType | 'ALL'>('ALL')
 
   const { data, isLoading, refetch, isRefetching } = useQuery({
@@ -51,7 +51,7 @@ export default function CampaignsScreen() {
       {/* Header */}
       <View
         className="bg-white border-b border-lavender-200 px-5 pb-4"
-        style={{ paddingTop: Math.max(insets.top, 24) + 12 }}
+        style={{ paddingTop: headerPaddingTop }}
       >
         <View className="flex-row items-center justify-between">
           <View className="flex-row items-center gap-3">
@@ -145,7 +145,7 @@ export default function CampaignsScreen() {
       ) : (
         <ScrollView
           className="flex-1 px-4 pt-4"
-          contentContainerStyle={{ paddingBottom: 32 }}
+          contentContainerStyle={{ paddingBottom: screenPaddingBottom }}
           refreshControl={
             <RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} />
           }

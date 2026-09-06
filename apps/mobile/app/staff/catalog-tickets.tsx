@@ -5,7 +5,7 @@ import {
   ActivityIndicator,
 } from 'react-native'
 import { router, useFocusEffect } from 'expo-router'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useScreenInsets } from '../../src/lib/safe-area'
 import { useQuery } from '@tanstack/react-query'
 import { ChevronLeft, Store, MapPin, Package, ArrowRight } from 'lucide-react-native'
 import { teamApi, type SupportTicket, type TeamMemberInfo } from '../../src/lib/team-api'
@@ -28,7 +28,7 @@ function readyForSession(ticket: SupportTicket, myId: string): boolean {
 
 export default function CatalogTicketsScreen() {
   const { primaryColor, colors } = useTheme()
-  const insets = useSafeAreaInsets()
+  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets()
   const [starting, setStarting] = useState<string | null>(null)
 
   const { data: meData } = useQuery({ queryKey: ['staff', 'me'], queryFn: () => teamApi.getMe() })
@@ -74,7 +74,7 @@ export default function CatalogTicketsScreen() {
     <View className="flex-1 bg-white">
       <View
         className="bg-white border-b border-sand-100 px-4 pb-4"
-        style={{ paddingTop: Math.max(insets.top, 24) + 12 }}
+        style={{ paddingTop: headerPaddingTop }}
       >
         <View className="flex-row items-center gap-3">
           <AnimatedPressable onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
@@ -89,7 +89,7 @@ export default function CatalogTicketsScreen() {
       ) : (
         <ScrollView
           className="flex-1 px-4"
-          contentContainerStyle={{ paddingTop: 12, paddingBottom: 40 }}
+          contentContainerStyle={{ paddingTop: 12, paddingBottom: screenPaddingBottom }}
           refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} />}
         >
           {tickets.length === 0 ? (

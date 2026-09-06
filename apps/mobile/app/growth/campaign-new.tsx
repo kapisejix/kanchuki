@@ -13,7 +13,7 @@ import {
   TextInput,
   View,
 } from 'react-native'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useScreenInsets } from '../../src/lib/safe-area'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { GradientButton } from '../../src/components/GradientButton'
 import { TemplatePicker } from '../../src/components/social'
@@ -183,7 +183,7 @@ function InlineToggle({
 
 export default function CampaignFormScreen() {
   const { primaryColor, colors } = useTheme()
-  const insets = useSafeAreaInsets()
+  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets()
   const router = useRouter()
   const queryClient = useQueryClient()
   const params = useLocalSearchParams<{ id?: string; type?: string; inactive_days?: string }>()
@@ -448,7 +448,7 @@ export default function CampaignFormScreen() {
       {/* Header */}
       <View
         className="flex-row items-center justify-between px-5 pb-4 bg-white border-b border-lavender-200"
-        style={{ paddingTop: Math.max(insets.top, 24) + 12 }}
+        style={{ paddingTop: headerPaddingTop }}
       >
         <View className="flex-row items-center gap-3">
           <AnimatedPressable
@@ -478,7 +478,7 @@ export default function CampaignFormScreen() {
         />
       </View>
 
-      <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: 40 }}>
+      <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: screenPaddingBottom }}>
         <View className="gap-4">
           {/* Type */}
           <Section title="Campaign Type">
@@ -741,7 +741,7 @@ export default function CampaignFormScreen() {
             <View className="flex-1 bg-[#F8F7FC]">
               <View
                 className="flex-row items-center justify-between px-5 pb-4 pt-5 bg-white border-b border-lavender-200"
-                style={{ paddingTop: Math.max(insets.top, 24) + 12 }}
+                style={{ paddingTop: headerPaddingTop }}
               >
                 <Text
                   style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
@@ -754,7 +754,7 @@ export default function CampaignFormScreen() {
                   onPress={commitPicker}
                 />
               </View>
-              <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: 32 }}>
+              <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: screenPaddingBottom }}>
                 <Text className="text-xs text-heliotrope-500 mb-3.5 leading-relaxed font-medium">
                   Each variant can point customers at a different set of products. Tap to select.
                 </Text>

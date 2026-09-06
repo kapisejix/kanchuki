@@ -6,7 +6,7 @@ import {
 } from 'react-native'
 import { router } from 'expo-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useScreenInsets } from '../../src/lib/safe-area'
 import { RotateCcw, Trash2, PackageX, ChevronLeft } from 'lucide-react-native'
 import { CustomerListSkeleton } from '../../src/components/Skeleton'
 import { productApi } from '../../src/lib/api'
@@ -26,7 +26,7 @@ type DeletedProduct = {
 
 export default function DeletedProductsScreen() {
   const { primaryColor, colors } = useTheme()
-  const insets = useSafeAreaInsets()
+  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets()
   const queryClient = useQueryClient()
 
   const { data, isLoading } = useQuery({
@@ -111,7 +111,7 @@ export default function DeletedProductsScreen() {
     <View className="flex-1 bg-ink-50">
       <View
         className="bg-white border-b border-sand-100 px-4 pb-4"
-        style={{ paddingTop: Math.max(insets.top, 24) + 12 }}
+        style={{ paddingTop: headerPaddingTop }}
       >
         <View className="flex-row items-center gap-3">
           <AnimatedPressable onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
@@ -136,7 +136,7 @@ export default function DeletedProductsScreen() {
             data={products}
             keyExtractor={(item) => item.id}
             renderItem={renderItem}
-            contentContainerStyle={{ gap: 8, paddingBottom: 24 }}
+            contentContainerStyle={{ gap: 8, paddingBottom: screenPaddingBottom }}
             ListHeaderComponent={
               <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-1">
                 {products.length} deleted item{products.length !== 1 ? 's' : ''}

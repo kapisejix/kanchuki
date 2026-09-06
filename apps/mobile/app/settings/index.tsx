@@ -40,7 +40,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useScreenInsets } from "../../src/lib/safe-area";
 import { AnimatedPressable } from "../../src/components/AnimatedPressable";
 import { GradientButton } from "../../src/components/GradientButton";
 import { SettingsSkeleton } from "../../src/components/Skeleton";
@@ -1149,7 +1149,7 @@ function UsageSection() {
 
 export default function SettingsScreen() {
   const { primaryColor, colors } = useTheme();
-  const insets = useSafeAreaInsets();
+  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets();
   const { signOut } = useAuth();
   const queryClient = useQueryClient();
 
@@ -1215,7 +1215,7 @@ export default function SettingsScreen() {
       {/* Header (Point 8 Settings Spec) */}
       <View
         className="bg-white border-b border-lavender-200 px-5 pb-3"
-        style={{ paddingTop: Math.max(insets.top, 24) + 12 }}
+        style={{ paddingTop: headerPaddingTop }}
       >
         <View className="flex-row items-center justify-between">
           <View className="flex-row items-center gap-3">
@@ -1242,7 +1242,7 @@ export default function SettingsScreen() {
 
       <ScrollView
         className="flex-1 px-4 pt-4"
-        contentContainerStyle={{ paddingBottom: 32 }}
+        contentContainerStyle={{ paddingBottom: screenPaddingBottom }}
       >
         {/* Store Profile Card (Point 8 Spec) */}
         <View className="bg-white rounded-3xl p-4 flex-row items-center justify-between mb-4 border border-lavender-200 shadow-sm">

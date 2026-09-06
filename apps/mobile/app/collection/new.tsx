@@ -8,7 +8,7 @@ import {
 } from 'react-native'
 import { router } from 'expo-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useScreenInsets } from '../../src/lib/safe-area'
 import { ChevronLeft } from 'lucide-react-native'
 import ProductCard from '../../src/components/ProductCard'
 import { ProductGridSkeleton } from '../../src/components/Skeleton'
@@ -36,7 +36,7 @@ export default function NewCollectionScreen() {
   const [expiresDays, setExpiresDays] = useState<number>(30)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const queryClient = useQueryClient()
-  const insets = useSafeAreaInsets()
+  const { insets, headerPaddingTop } = useScreenInsets()
 
   const { data, isLoading } = useQuery({
     queryKey: ['products', 'list', 'available'],
@@ -74,7 +74,7 @@ export default function NewCollectionScreen() {
     <View className="flex-1 bg-[#F8F7FC]">
       <View
         className="flex-row items-center px-5 pb-3 bg-white border-b border-lavender-200"
-        style={{ paddingTop: Math.max(insets.top, 24) + 12 }}
+        style={{ paddingTop: headerPaddingTop }}
       >
         <AnimatedPressable
           onPress={() => router.back()}

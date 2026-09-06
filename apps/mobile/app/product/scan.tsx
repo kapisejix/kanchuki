@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { View, Text, TextInput, Alert, ActivityIndicator } from 'react-native'
 import { CameraView, useCameraPermissions } from 'expo-camera'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useScreenInsets } from '../../src/lib/safe-area'
 import { router } from 'expo-router'
 import { X, ScanLine } from 'lucide-react-native'
 import { COLORS } from '@kanchuki/shared'
@@ -22,7 +22,7 @@ import { AnimatedPressable } from '../../src/components/AnimatedPressable'
  * existing no-owner-gate list endpoint, same as the manual status toggle.
  */
 export default function ScanScreen() {
-  const insets = useSafeAreaInsets()
+  const { insets } = useScreenInsets()
   const [permission, requestPermission] = useCameraPermissions()
   const [resolving, setResolving] = useState(false)
   const [manualSku, setManualSku] = useState('')

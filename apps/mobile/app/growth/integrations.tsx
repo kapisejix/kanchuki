@@ -16,14 +16,14 @@ import {
   Text,
   View,
 } from 'react-native'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useScreenInsets } from '../../src/lib/safe-area'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { growthApi, type IntegrationsStatus } from '../../src/lib/api/growth'
 
 type TabType = 'all' | 'social' | 'ads'
 
 export default function IntegrationsScreen() {
-  const insets = useSafeAreaInsets()
+  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets()
   const queryClient = useQueryClient()
   const [activeTab, setActiveTab] = useState<TabType>('all')
 
@@ -38,7 +38,7 @@ export default function IntegrationsScreen() {
       {/* Header */}
       <View
         className="bg-white border-b border-lavender-200 px-5 pb-4"
-        style={{ paddingTop: Math.max(insets.top, 24) + 12 }}
+        style={{ paddingTop: headerPaddingTop }}
       >
         <View className="flex-row items-center gap-3">
           <AnimatedPressable
@@ -98,7 +98,7 @@ export default function IntegrationsScreen() {
       ) : (
         <ScrollView
           className="flex-1 px-4 pt-4"
-          contentContainerStyle={{ paddingBottom: 40 }}
+          contentContainerStyle={{ paddingBottom: screenPaddingBottom }}
           refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} />}
         >
           {/* Hero Banner */}

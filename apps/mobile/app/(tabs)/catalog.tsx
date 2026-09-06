@@ -13,7 +13,7 @@ import {
 } from 'react-native'
 import { router } from 'expo-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useScreenInsets } from '../../src/lib/safe-area'
 import {
   Plus,
   MapPin,
@@ -165,7 +165,7 @@ const CatalogCard = memo(function CatalogCard({
 // ── Catalog Screen ─────────────────────────────────────────────────
 
 export default function CatalogScreen() {
-  const insets = useSafeAreaInsets()
+  const { headerPaddingTop, tabScrollPaddingBottom } = useScreenInsets()
   const { colors } = useTheme()
   const columns = useGridColumns()
 
@@ -402,7 +402,7 @@ export default function CatalogScreen() {
       {/* Header — Discovery Greeting + Scan/Filter icons */}
       <View
         className="bg-white px-5 pb-3 border-b border-lavender-200 flex-row items-center justify-between"
-        style={{ paddingTop: Math.max(insets.top, 24) + 12 }}
+        style={{ paddingTop: headerPaddingTop }}
       >
         <View className="flex-row items-center gap-3">
           <View className="w-10 h-10 rounded-2xl overflow-hidden bg-lavender-100 items-center justify-center border border-lavender-200 shadow-sm">
@@ -478,7 +478,7 @@ export default function CatalogScreen() {
           renderItem={renderItem}
           numColumns={columns}
           columnWrapperStyle={{ gap: 12 }}
-          contentContainerStyle={{ padding: 14, gap: 12, flexGrow: 1 }}
+          contentContainerStyle={{ padding: 14, gap: 12, flexGrow: 1, paddingBottom: tabScrollPaddingBottom }}
           ListEmptyComponent={listEmpty}
           ListHeaderComponent={
             <View className="gap-3 mb-1">

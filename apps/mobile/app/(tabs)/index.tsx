@@ -19,6 +19,7 @@ import { AnimatedPressable } from '../../src/components/AnimatedPressable';
 import { GradientButton } from '../../src/components/GradientButton';
 import { HomeScreenSkeleton } from '../../src/components/Skeleton';
 import { categoryApi, retailerApi } from '../../src/lib/api';
+import { useScreenInsets } from '../../src/lib/safe-area';
 import { useTheme } from '../../src/lib/theme';
 
 type RankedProduct = {
@@ -48,6 +49,7 @@ type RetailerMe = {
 };
 
 export default function HomeScreen() {
+  const { tabScrollPaddingBottom } = useScreenInsets();
   const { primaryColor, colors } = useTheme();
   const { data: meData, isLoading: meLoading } = useQuery({
     queryKey: ['retailer', 'me'],
@@ -103,6 +105,7 @@ export default function HomeScreen() {
   return (
     <ScrollView
       className="flex-1 bg-[#F8F7FC]"
+      contentContainerStyle={{ paddingBottom: tabScrollPaddingBottom }}
       refreshControl={<RefreshControl refreshing={isLoading} onRefresh={() => void refetch()} />}
     >
       {/* ── Top Retailer Header & Identity ── */}

@@ -11,7 +11,7 @@ import {
   TextInput,
   View,
 } from 'react-native'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useScreenInsets } from '../../src/lib/safe-area'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { GradientButton } from '../../src/components/GradientButton'
 import { growthApi, type AiCampaignDraft, type CampaignType, type SuggestedProduct } from '../../src/lib/api'
@@ -39,7 +39,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 export default function AiCampaignScreen() {
-  const insets = useSafeAreaInsets()
+  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets()
   const router = useRouter()
   const queryClient = useQueryClient()
 
@@ -112,7 +112,7 @@ export default function AiCampaignScreen() {
     >
       <View
         className="flex-row items-center justify-between px-5 pb-4 bg-white border-b border-lavender-200"
-        style={{ paddingTop: Math.max(insets.top, 24) + 12 }}
+        style={{ paddingTop: headerPaddingTop }}
       >
         <View className="flex-row items-center gap-3">
           <AnimatedPressable
@@ -133,7 +133,7 @@ export default function AiCampaignScreen() {
         </View>
       </View>
 
-      <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: 40 }}>
+      <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: screenPaddingBottom }}>
         <View className="gap-4">
           {/* Prompt input */}
           <Section title="Describe your campaign">

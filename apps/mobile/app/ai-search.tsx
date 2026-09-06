@@ -12,7 +12,7 @@ import {
   TextInput,
   View,
 } from 'react-native'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useScreenInsets } from '../src/lib/safe-area'
 import { AnimatedPressable } from '../src/components/AnimatedPressable'
 import { productApi } from '../src/lib/api'
 import { showError } from '../src/lib/errors'
@@ -43,7 +43,7 @@ const EXAMPLE_QUERIES = [
 ]
 
 export default function AiSearchScreen() {
-  const insets = useSafeAreaInsets()
+  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets()
   const [query, setQuery] = useState('')
   const [submitted, setSubmitted] = useState('')
 
@@ -67,7 +67,7 @@ export default function AiSearchScreen() {
       {/* Header */}
       <View
         className="bg-white border-b border-lavender-200 px-5 pb-4"
-        style={{ paddingTop: Math.max(insets.top, 24) + 12 }}
+        style={{ paddingTop: headerPaddingTop }}
       >
         <View className="flex-row items-center gap-3">
           <AnimatedPressable
@@ -117,7 +117,7 @@ export default function AiSearchScreen() {
         </Text>
       </View>
 
-      <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: 40 }}>
+      <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: screenPaddingBottom }}>
         {submitted === '' ? (
           <View>
             {/* Hero */}

@@ -14,14 +14,14 @@ import {
   View,
   Linking,
 } from 'react-native'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useScreenInsets } from '../../../src/lib/safe-area'
 import { AnimatedPressable } from '../../../src/components/AnimatedPressable'
 import { GradientButton } from '../../../src/components/GradientButton'
 import { growthApi } from '../../../src/lib/api/growth'
 import { showError } from '../../../src/lib/errors'
 
 export default function PinterestConfigScreen() {
-  const insets = useSafeAreaInsets()
+  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets()
   const queryClient = useQueryClient()
 
   const [username, setUsername] = useState('')
@@ -80,7 +80,7 @@ export default function PinterestConfigScreen() {
       {/* Header */}
       <View
         className="bg-white border-b border-lavender-200 px-5 pb-4"
-        style={{ paddingTop: Math.max(insets.top, 24) + 12 }}
+        style={{ paddingTop: headerPaddingTop }}
       >
         <View className="flex-row items-center gap-3">
           <AnimatedPressable
@@ -99,7 +99,7 @@ export default function PinterestConfigScreen() {
         </View>
       </View>
 
-      <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: 32 }}>
+      <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: screenPaddingBottom }}>
         <Text className="text-xs text-heliotrope-500 mb-4 leading-relaxed font-medium">
           Connect your Pinterest Business account to sync high-intent bridal lookbooks, lehenga
           inspirational boards, and generate fashion Rich Pins with catalog price tags.

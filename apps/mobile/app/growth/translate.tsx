@@ -13,7 +13,7 @@ import {
 } from 'lucide-react-native'
 import { useState } from 'react'
 import { ActivityIndicator, ScrollView, Text, TextInput, View } from 'react-native'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useScreenInsets } from '../../src/lib/safe-area'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { GradientButton } from '../../src/components/GradientButton'
 import { productApi } from '../../src/lib/api'
@@ -25,7 +25,7 @@ type PickedItem = { id: string; name: string | null; message?: string | null }
 type Mode = 'description' | 'message'
 
 export default function TranslateScreen() {
-  const insets = useSafeAreaInsets()
+  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets()
   const queryClient = useQueryClient()
   const params = useLocalSearchParams<{
     mode?: string
@@ -114,7 +114,7 @@ export default function TranslateScreen() {
       {/* Header */}
       <View
         className="bg-white border-b border-lavender-200 px-5 pb-4"
-        style={{ paddingTop: Math.max(insets.top, 24) + 12 }}
+        style={{ paddingTop: headerPaddingTop }}
       >
         <View className="flex-row items-center gap-3">
           <AnimatedPressable
@@ -179,7 +179,7 @@ export default function TranslateScreen() {
               className="flex-1 text-sm font-bold text-spaceCadet-900"
             />
           </View>
-          <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: 32 }}>
+          <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: screenPaddingBottom }}>
             <LinearGradient
               colors={['#231F48', '#560A39']}
               start={{ x: 0, y: 0 }}
@@ -306,7 +306,7 @@ export default function TranslateScreen() {
           </ScrollView>
         </View>
       ) : (
-        <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: 40 }}>
+        <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: screenPaddingBottom }}>
           {/* Editable message source (campaign mode) */}
           {mode === 'message' && (
             <View className="bg-white rounded-3xl p-5 border border-lavender-200 mb-4 shadow-sm">

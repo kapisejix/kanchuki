@@ -91,4 +91,20 @@ html.lenis body {
     letter-spacing: 0.02em;
     font-weight: bolder;
   }
+
+  /* PWA safe-area helpers — work ONLY once layout.tsx exports
+     viewportFit: 'cover' (otherwise every env(safe-area-inset-*) is 0).
+     .pt-safe  → sticky/fixed top headers clear the status-bar notch.
+     .pb-safe  → fixed bottom bars clear the home indicator (min 0.5rem so
+                 pre-notch devices still get breathing room).
+     .min-h-safe → full-height layouts account for top+bottom insets. */
+  .pt-safe {
+    padding-top: env(safe-area-inset-top);
+  }
+  .pb-safe {
+    padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+  }
+  .min-h-safe {
+    min-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  }
 }

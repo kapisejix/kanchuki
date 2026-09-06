@@ -25,7 +25,7 @@ import {
   AlertTriangle,
   FileText,
 } from 'lucide-react-native'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useScreenInsets } from '../../src/lib/safe-area'
 import {
   catalogImportApi,
   uploadImageToR2,
@@ -65,7 +65,7 @@ type ReviewItem = {
 
 export default function CatalogImportScreen() {
   const { primaryColor, colors } = useTheme()
-  const insets = useSafeAreaInsets()
+  const { insets, headerPaddingTop } = useScreenInsets()
   const queryClient = useQueryClient()
   const params = useLocalSearchParams<{
     sourceUrl?: string
@@ -900,7 +900,7 @@ export default function CatalogImportScreen() {
       {/* Header */}
       <View
         className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-sand-100"
-        style={{ paddingTop: Math.max(insets.top, 24) + 12 }}
+        style={{ paddingTop: headerPaddingTop }}
       >
         <AnimatedPressable
           onPress={() => {

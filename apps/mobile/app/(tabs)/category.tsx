@@ -1,7 +1,7 @@
 import { View, Text, FlatList } from 'react-native'
 import { router } from 'expo-router'
 import { useQuery } from '@tanstack/react-query'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useScreenInsets } from '../../src/lib/safe-area'
 import { Plus, FolderKanban } from 'lucide-react-native'
 import { Image } from 'expo-image'
 import { ProductGridSkeleton } from '../../src/components/Skeleton'
@@ -10,7 +10,7 @@ import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { GradientButton } from '../../src/components/GradientButton'
 
 export default function CategoryListScreen() {
-  const insets = useSafeAreaInsets()
+  const { headerPaddingTop, tabScrollPaddingBottom } = useScreenInsets()
   const columns = 2
   const { data, isLoading } = useQuery({
     queryKey: ['categories', 'list'],
@@ -29,7 +29,7 @@ export default function CategoryListScreen() {
       {/* Header — store identity, matches Catalog */}
       <View
         className="bg-white px-5 pb-3 border-b border-lavender-200 flex-row items-center gap-3"
-        style={{ paddingTop: Math.max(insets.top, 24) + 12 }}
+        style={{ paddingTop: headerPaddingTop }}
       >
         <View className="w-10 h-10 rounded-2xl overflow-hidden bg-lavender-100 items-center justify-center border border-lavender-200 shadow-sm">
           {retailerProfile?.logo_url ? (
@@ -57,7 +57,7 @@ export default function CategoryListScreen() {
           keyExtractor={(item) => item.id}
           numColumns={columns}
           columnWrapperStyle={{ gap: 14 }}
-          contentContainerStyle={{ padding: 16, paddingBottom: 96, gap: 14, flexGrow: 1 }}
+          contentContainerStyle={{ padding: 16, paddingBottom: tabScrollPaddingBottom, gap: 14, flexGrow: 1 }}
           ListHeaderComponent={
             <View className="mb-2">
               <Text

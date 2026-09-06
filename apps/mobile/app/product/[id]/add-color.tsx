@@ -6,7 +6,7 @@ import { CameraView, useCameraPermissions } from 'expo-camera'
 import * as ImagePicker from 'expo-image-picker'
 import * as ImageManipulator from 'expo-image-manipulator'
 import { Image } from 'expo-image'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useScreenInsets } from '../../../src/lib/safe-area'
 import { useQueryClient } from '@tanstack/react-query'
 import { X, ImagePlus, Check } from 'lucide-react-native'
 import { productApi, uploadImageToR2, readLocalImage } from '../../../src/lib/api'
@@ -19,7 +19,7 @@ type Step = 'camera' | 'detecting' | 'saving' | 'manual'
 
 export default function AddColorVariantScreen() {
   const { colors, primaryColor } = useTheme()
-  const insets = useSafeAreaInsets()
+  const { insets } = useScreenInsets()
   const queryClient = useQueryClient()
   const { id } = useLocalSearchParams<{ id: string }>()
   const [step, setStep] = useState<Step>('camera')

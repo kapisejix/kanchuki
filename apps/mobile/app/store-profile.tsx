@@ -5,7 +5,7 @@ import { View, Text, TextInput, ScrollView, ActivityIndicator, Share, Alert, Lin
 import * as Sharing from 'expo-sharing'
 import { router } from 'expo-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useScreenInsets } from '../src/lib/safe-area'
 import { X, Share2, Check, Download, Trash2 } from 'lucide-react-native'
 import QRCode from 'react-native-qrcode-svg'
 import { Paths } from 'expo-file-system'
@@ -28,7 +28,7 @@ type CollectionRow = { id: string; title: string; status: string; product_count:
 
 export default function StoreProfileScreen() {
   const { primaryColor, colors } = useTheme()
-  const insets = useSafeAreaInsets()
+  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets()
   const queryClient = useQueryClient()
   const qrRef = useRef<{ toDataURL: (cb: (base64: string) => void) => void } | null>(null)
   const [exporting, setExporting] = useState(false)
@@ -157,7 +157,7 @@ export default function StoreProfileScreen() {
     deleteConfirmText.trim().toLowerCase() === (me?.shop_name ?? '').trim().toLowerCase()
 
   return (
-    <ScrollView className="flex-1 bg-[#F8F7FC]" contentContainerStyle={{ paddingTop: insets.top + 16, paddingBottom: 32 }}>
+    <ScrollView className="flex-1 bg-[#F8F7FC]" contentContainerStyle={{ paddingTop: headerPaddingTop, paddingBottom: screenPaddingBottom }}>
       <View className="flex-row items-center justify-between px-5 mb-4">
         <AnimatedPressable
           onPress={closeScreen}

@@ -10,9 +10,11 @@ import { showError } from '../../src/lib/errors'
 import { useTheme } from '../../src/lib/theme'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { GradientButton } from '../../src/components/GradientButton'
+import { useScreenInsets } from '../../src/lib/safe-area'
 
 export default function NewCategoryScreen() {
   const { primaryColor, colors } = useTheme()
+  const { insets } = useScreenInsets()
   const [name, setName] = useState('')
   const [imageUrl, setImageUrl] = useState<string | null>(null)
   const [imageR2Key, setImageR2Key] = useState<string | null>(null)
@@ -142,7 +144,7 @@ export default function NewCategoryScreen() {
               <FlatList
                 data={products}
                 keyExtractor={(item) => item.id}
-                contentContainerStyle={{ padding: 12 }}
+                contentContainerStyle={{ padding: 12, paddingBottom: insets.bottom + 24 }}
                 renderItem={({ item }) => (
                   <AnimatedPressable
                     onPress={() => {
@@ -200,7 +202,7 @@ export default function NewCategoryScreen() {
                 data={productPhotos}
                 keyExtractor={(item) => item.id}
                 numColumns={3}
-                contentContainerStyle={{ padding: 12 }}
+                contentContainerStyle={{ padding: 12, paddingBottom: insets.bottom + 24 }}
                 columnWrapperStyle={{ gap: 8 }}
                 renderItem={({ item }) => (
                   <AnimatedPressable

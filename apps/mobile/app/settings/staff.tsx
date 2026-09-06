@@ -5,7 +5,7 @@ import {
   ActivityIndicator, Alert, Modal,
 } from 'react-native'
 import { router } from 'expo-router'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useScreenInsets } from '../../src/lib/safe-area'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, Trash2, X, User, ChevronLeft } from 'lucide-react-native'
 import { CustomerListSkeleton } from '../../src/components/Skeleton'
@@ -112,7 +112,7 @@ export default function StaffScreen() {
   const { colors } = useTheme()
   const [showAdd, setShowAdd] = useState(false)
   const queryClient = useQueryClient()
-  const insets = useSafeAreaInsets()
+  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets()
 
   const { data, isLoading } = useQuery({
     queryKey: ['staff'],
@@ -177,7 +177,7 @@ export default function StaffScreen() {
       {/* Header */}
       <View
         className="bg-white border-b border-sand-100 px-4 pb-4"
-        style={{ paddingTop: Math.max(insets.top, 24) + 12 }}
+        style={{ paddingTop: headerPaddingTop }}
       >
         <View className="flex-row items-center gap-3">
           <AnimatedPressable onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
@@ -208,7 +208,7 @@ export default function StaffScreen() {
             data={staff}
             keyExtractor={(item) => item.id}
             renderItem={renderItem}
-            contentContainerStyle={{ gap: 8, flexGrow: 1 }}
+            contentContainerStyle={{ gap: 8, flexGrow: 1, paddingBottom: screenPaddingBottom }}
             ListHeaderComponent={
               <View className="flex-row items-center justify-between mb-1">
                 <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide">

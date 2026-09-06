@@ -302,7 +302,7 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
     <PageTransitionWrapper>
     <div className="min-h-screen bg-[#F8F7FC] font-sans pb-24">
       {/* ── Top Header & Greeting (Spec #9 Discovery) ── */}
-      <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-[#E0E1F6]">
+      <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-[#E0E1F6] pt-safe">
         <KanchukiBrandBar />
         <div className="max-w-md mx-auto px-4 py-3.5">
           <div className="flex items-center justify-between gap-3">

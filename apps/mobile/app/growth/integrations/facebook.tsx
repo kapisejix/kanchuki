@@ -4,7 +4,7 @@ import { router } from 'expo-router';
 import { CheckCircle2, ChevronLeft, Facebook, Lock, RefreshCw, Zap } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useScreenInsets } from '../../../src/lib/safe-area';
 import { AnimatedPressable } from '../../../src/components/AnimatedPressable';
 import { type SocialAccountInfo, socialApi } from '../../../src/lib/api/social';
 import { showError } from '../../../src/lib/errors';
@@ -17,7 +17,7 @@ import {
 const ACCOUNTS_KEY = ['social', 'accounts'];
 
 export default function FacebookConfigScreen() {
-  const insets = useSafeAreaInsets();
+  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets();
   const queryClient = useQueryClient();
 
   const { data, isLoading, refetch, isRefetching } = useQuery({
@@ -135,7 +135,7 @@ export default function FacebookConfigScreen() {
     <View className="flex-1 bg-[#F8F7FC]">
       <View
         className="bg-white border-b border-lavender-200 px-5 pb-4"
-        style={{ paddingTop: Math.max(insets.top, 24) + 12 }}
+        style={{ paddingTop: headerPaddingTop }}
       >
         <View className="flex-row items-center gap-3">
           <AnimatedPressable
@@ -159,7 +159,7 @@ export default function FacebookConfigScreen() {
         </View>
       </View>
 
-      <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: 40 }}>
+      <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: screenPaddingBottom }}>
         <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm mb-4">
           <View className="flex-row items-center justify-between mb-3">
             <View className="flex-row items-center gap-2.5">

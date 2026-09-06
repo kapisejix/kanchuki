@@ -3,7 +3,7 @@ import { COLORS, isValidIndianPhone } from '@kanchuki/shared'
 import { View, Text, TextInput, ScrollView, Alert } from 'react-native'
 import { router } from 'expo-router'
 import { useQueryClient } from '@tanstack/react-query'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useScreenInsets } from '../../src/lib/safe-area'
 import { X, MapPin } from 'lucide-react-native'
 import { customerApi } from '../../src/lib/api'
 import { showError } from '../../src/lib/errors'
@@ -13,7 +13,7 @@ import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 
 export default function AddCustomerScreen() {
   const { colors } = useTheme()
-  const insets = useSafeAreaInsets()
+  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets()
   const queryClient = useQueryClient()
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
@@ -56,10 +56,10 @@ export default function AddCustomerScreen() {
   }
 
   return (
-    <ScrollView className="flex-1 bg-[#F8F7FC]">
+    <ScrollView className="flex-1 bg-[#F8F7FC]" contentContainerStyle={{ paddingBottom: screenPaddingBottom }}>
       <View
         className="flex-row items-center justify-between px-5 pb-3 bg-white border-b border-lavender-200"
-        style={{ paddingTop: Math.max(insets.top, 24) + 12 }}
+        style={{ paddingTop: headerPaddingTop }}
       >
         <AnimatedPressable
           onPress={() => router.back()}

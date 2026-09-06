@@ -3,7 +3,7 @@ import { normalizeIndianPhone, COLORS } from '@kanchuki/shared'
 import { View, Text, ScrollView, FlatList, Image, Linking, ActivityIndicator, Alert, Modal, TextInput } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useScreenInsets } from '../../src/lib/safe-area'
 import { Eye, Heart, MessageCircle, Link2, Users, Edit, Trash2, Search, Check, ChevronLeft, Share2 } from 'lucide-react-native'
 import { collectionApi, customerApi, retailerApi } from '../../src/lib/api'
 import { showError } from '../../src/lib/errors'
@@ -406,7 +406,7 @@ function ShareModal({
 }
 
 export default function CollectionDetailScreen() {
-  const insets = useSafeAreaInsets()
+  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets()
   const { id, share } = useLocalSearchParams<{ id: string; share?: string }>()
   const queryClient = useQueryClient()
   const [showEditModal, setShowEditModal] = useState(false)
@@ -462,7 +462,7 @@ export default function CollectionDetailScreen() {
       {/* Header */}
       <View
         className="flex-row items-center justify-between px-5 pb-3 bg-white border-b border-lavender-200"
-        style={{ paddingTop: Math.max(insets.top, 24) + 12 }}
+        style={{ paddingTop: headerPaddingTop }}
       >
         <AnimatedPressable
           onPress={() => router.back()}
@@ -514,7 +514,7 @@ export default function CollectionDetailScreen() {
         </View>
       </View>
 
-      <ScrollView className="flex-1 bg-[#F8F7FC]">
+      <ScrollView className="flex-1 bg-[#F8F7FC]" contentContainerStyle={{ paddingBottom: screenPaddingBottom }}>
         {/* Stats — all 4 in a single row (#6) */}
         <View className="flex-row px-4 pt-4 gap-2">
           <Stat icon={<Eye size={16} color="#BB3F95" />} label="Views" value={collection.view_count} />

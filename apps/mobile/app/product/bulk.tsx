@@ -21,7 +21,7 @@ import {
   AlertTriangle,
   Upload,
 } from 'lucide-react-native'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useScreenInsets } from '../../src/lib/safe-area'
 import { productApi, uploadImageToR2, readLocalImage } from '../../src/lib/api'
 import { logError } from '../../src/lib/errors'
 import { useTheme } from '../../src/lib/theme'
@@ -77,7 +77,7 @@ async function compressPhoto(uri: string): Promise<string> {
 
 export default function BulkImportScreen() {
   const { primaryColor, colors } = useTheme()
-  const insets = useSafeAreaInsets()
+  const { insets, headerPaddingTop } = useScreenInsets()
   const [step, setStep] = useState<Step>('pick')
   const [photos, setPhotos] = useState<PhotoItem[]>([])
   const [statuses, setStatuses] = useState<ImportStatus[]>([])
@@ -259,7 +259,7 @@ export default function BulkImportScreen() {
       {/* Header */}
       <View
         className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-sand-100"
-        style={{ paddingTop: Math.max(insets.top, 24) + 12 }}
+        style={{ paddingTop: headerPaddingTop }}
       >
         <AnimatedPressable onPress={() => (step === 'importing' ? null : router.back())} disabled={step === 'importing'} accessibilityLabel="Close" accessibilityRole="button">
           <X size={22} color={step === 'importing' ? colors.sand[300] : colors.sand[700]} />

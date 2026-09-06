@@ -2,6 +2,19 @@
 
 One file, update at end of each work session: what's done, what's next, what's blocked. Check `git log -1` and this file first thing each session.
 
+## 2026-09-06 — Safe-area spacing standardization (mobile + customer web PWA)
+
+New `apps/mobile/src/lib/safe-area.ts` `useScreenInsets()` — single source of truth for inset math (`headerPaddingTop` = old `Math.max(insets.top,24)+12` byte-identical, `screenPaddingBottom`, `tabScrollPaddingBottom` = `64 + insets.bottom + 16`).
+
+- **~68 RN screens** migrated off `useSafeAreaInsets`: catalog, growth (+ `integrations/*`, `campaign*`), settings, `product/*`, `category/*`, collections, `collection/*`, `customer/*`, `(tabs)/*` (session 1, ~50) + `ai-search`, `billing`, `plan-select`, `analytics`, `store-profile`, `staff/index`, `staff/catalog-tickets`, `social/create` (session 2, 9).
+- Every custom sticky header → `headerPaddingTop`; every scroll body → real bottom inset (many had hardcoded `32`/`40` or none). `category/new.tsx` pageSheet modal lists → `insets.bottom + 24`.
+- **Not migrated (intentional):** `(tabs)/_layout.tsx` (tab bar itself), `auth/otp`, `auth/phone`, `onboarding`, `staff/retailer-onboard` — centered forms, tuned symmetric insets, no sticky-header bug.
+- **Web PWA (7 files):** `layout.tsx` `viewportFit: 'cover'` + `.pt-safe`/`.pb-safe`/`.min-h-safe` in `globals.css`; `pt-safe` on `(shopper)/layout.tsx` + 4 shopper headers.
+
+**Verified:** mobile tsc clean + 59/59 vitest; web tsc clean + 91/91 vitest. `Math.max(insets.top,24)+12` gone from `apps/mobile/app/`. One commit, pushed to `main` → Railway auto-deploy (web). CLAUDE.md row #65 + BUILD-LOG §2026-09-06.
+
+**Next:** none — visual polish, no follow-up. Watch for any screen-specific spacing complaints after the mobile EAS build ships.
+
 ## 2026-09-03 — 03-Sep review batch: all 11 fixes shipped (commit `1843805`)
 
 User supplied `changes-03-09-2026.md` — an 11-item review + the `8872101879` phone case. Worked in 3 batches, committing once at the end. Full detail: `docs/tasks/changes-03-09-2026.md` (moved here from the repo root, marked done) + BUILD-LOG §2026-09-03.

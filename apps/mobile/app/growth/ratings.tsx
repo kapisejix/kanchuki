@@ -17,7 +17,7 @@ import {
   Text,
   View,
 } from 'react-native'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useScreenInsets } from '../../src/lib/safe-area'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { growthApi } from '../../src/lib/api/growth'
 
@@ -62,7 +62,7 @@ const timeAgo = (date: string) => {
 // ─── Main Screen ─────────────────────────────────────────────────
 
 export default function RatingsScreen() {
-  const insets = useSafeAreaInsets()
+  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets()
   const [tab, setTab] = useState<'summary' | 'product' | 'store'>('summary')
 
   const { data, isLoading, refetch, isRefetching } = useQuery({
@@ -88,7 +88,7 @@ export default function RatingsScreen() {
       {/* Header */}
       <View
         className="bg-white border-b border-lavender-200 px-5 pb-4"
-        style={{ paddingTop: Math.max(insets.top, 24) + 12 }}
+        style={{ paddingTop: headerPaddingTop }}
       >
         <View className="flex-row items-center gap-3">
           <AnimatedPressable
@@ -151,7 +151,7 @@ export default function RatingsScreen() {
       ) : (
         <ScrollView
           className="flex-1"
-          contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
+          contentContainerStyle={{ padding: 16, paddingBottom: screenPaddingBottom }}
           refreshControl={
             <RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} />
           }

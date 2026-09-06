@@ -5,7 +5,7 @@ import { CameraView, useCameraPermissions } from 'expo-camera'
 import * as ImagePicker from 'expo-image-picker'
 import * as ImageManipulator from 'expo-image-manipulator'
 import { Image } from 'expo-image'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useScreenInsets } from '../../../src/lib/safe-area'
 import { X, ImagePlus, Check } from 'lucide-react-native'
 import { productApi, uploadImageToR2, readLocalImage } from '../../../src/lib/api'
 import { showError } from '../../../src/lib/errors'
@@ -15,7 +15,7 @@ const PHOTO_LIMIT = 10
 const MAX_SHOTS_PER_SESSION = 4
 
 export default function AddPhotosScreen() {
-  const insets = useSafeAreaInsets()
+  const { insets } = useScreenInsets()
   const { id, existingCount } = useLocalSearchParams<{ id: string; existingCount?: string }>()
   const remainingSlots = Math.max(0, PHOTO_LIMIT - Number(existingCount ?? '0'))
   const maxShots = Math.min(MAX_SHOTS_PER_SESSION, remainingSlots || MAX_SHOTS_PER_SESSION)

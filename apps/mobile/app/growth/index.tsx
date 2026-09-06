@@ -19,7 +19,7 @@ import {
   Wand2,
 } from 'lucide-react-native'
 import { ActivityIndicator, Image, ScrollView, Text, View } from 'react-native'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useScreenInsets } from '../../src/lib/safe-area'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { GradientButton } from '../../src/components/GradientButton'
 import { growthApi, retailerApi, type CampaignType } from '../../src/lib/api'
@@ -54,7 +54,9 @@ function isFeatureUnavailable(err: unknown): boolean {
 
 export default function GrowthHubScreen({ isTab = false }: { isTab?: boolean }) {
   const { primaryColor, colors } = useTheme()
-  const insets = useSafeAreaInsets()
+  const { headerPaddingTop, tabScrollPaddingBottom, screenPaddingBottom } = useScreenInsets()
+
+  const bodyBottomPad = isTab ? tabScrollPaddingBottom : screenPaddingBottom
 
   const retailerQuery = useQuery({
     queryKey: ['retailer', 'me'],
@@ -100,7 +102,7 @@ export default function GrowthHubScreen({ isTab = false }: { isTab?: boolean }) 
       {isTab && (
         <View
           className="bg-white px-5 pb-3 border-b border-lavender-200 flex-row items-center gap-3"
-          style={{ paddingTop: Math.max(insets.top, 24) + 12 }}
+          style={{ paddingTop: headerPaddingTop }}
         >
           <View className="w-10 h-10 rounded-2xl overflow-hidden bg-lavender-100 items-center justify-center border border-lavender-200 shadow-sm">
             {retailerProfile?.logo_url ? (
@@ -122,7 +124,7 @@ export default function GrowthHubScreen({ isTab = false }: { isTab?: boolean }) 
       {!isTab && (
         <View
           className="bg-white border-b border-lavender-200 px-5 pb-4"
-          style={{ paddingTop: Math.max(insets.top, 24) + 12 }}
+          style={{ paddingTop: headerPaddingTop }}
         >
           <View className="flex-row items-center gap-3">
             <AnimatedPressable
@@ -144,7 +146,7 @@ export default function GrowthHubScreen({ isTab = false }: { isTab?: boolean }) 
         </View>
       )}
 
-      <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: 40 }}>
+      <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: bodyBottomPad }}>
         {/* Hero Campaign Performance Card */}
         <LinearGradient
           colors={['#231F48', '#560A39']}

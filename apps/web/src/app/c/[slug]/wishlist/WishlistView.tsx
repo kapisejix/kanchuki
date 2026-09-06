@@ -60,7 +60,7 @@ export function WishlistView({ collection, slug, store, backHref }: Props) {
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans">
-      <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-gray-100">
+      <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-gray-100 pt-safe">
         <KanchukiBrandBar />
         <div className="max-w-md mx-auto px-4 py-3.5 flex items-center gap-3">
           <Link

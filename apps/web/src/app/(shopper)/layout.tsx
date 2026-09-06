@@ -59,7 +59,7 @@ export default function ShopperLayout({
   return (
     <div className="min-h-screen bg-stone-50">
       {/* Shopper nav bar */}
-      <header className="bg-white border-b border-stone-200 sticky top-0 z-40">
+      <header className="bg-white border-b border-stone-200 sticky top-0 z-40 pt-safe">
         <div className="max-w-4xl mx-auto px-4 h-14 flex items-center justify-between">
           <Link href="/" className="font-semibold text-stone-900 text-lg">
             Kanchuki

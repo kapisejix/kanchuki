@@ -21,7 +21,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useScreenInsets } from '../../src/lib/safe-area';
 import { AnimatedPressable } from '../../src/components/AnimatedPressable';
 import { GradientButton } from '../../src/components/GradientButton';
 import { socialApi } from '../../src/lib/api';
@@ -36,7 +36,7 @@ import { useTheme } from '../../src/lib/theme';
 
 export default function SocialSettingsScreen() {
   const { primaryColor, colors } = useTheme();
-  const insets = useSafeAreaInsets();
+  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets();
   const queryClient = useQueryClient();
 
   const { data: accountsData, isLoading: loadingAccounts } = useQuery({
@@ -162,7 +162,7 @@ export default function SocialSettingsScreen() {
       {/* Header */}
       <View
         className="bg-white border-b border-sand-100 px-4 pb-4"
-        style={{ paddingTop: Math.max(insets.top, 24) + 12 }}
+        style={{ paddingTop: headerPaddingTop }}
       >
         <View className="flex-row items-center gap-3">
           <AnimatedPressable
@@ -177,7 +177,7 @@ export default function SocialSettingsScreen() {
         </View>
       </View>
 
-      <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: 40 }}>
+      <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: screenPaddingBottom }}>
         <Text className="text-xs text-sand-500 leading-5 mb-4">
           Connect your Facebook Page to post products and collection links directly from Kanchuki.
           Your posts can carry your store link so customers can shop right away.

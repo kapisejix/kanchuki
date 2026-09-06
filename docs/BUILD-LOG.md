@@ -1972,3 +1972,38 @@ Spec `docs/tasks/social-create-post-composer.md` §12 (review pass); branch `fix
 **Tests:** fan-out +7 new cases (real-permalink stored / permalink-miss → NULL not fabricated / raw-error sanitization / curated `MetaApiError` verbatim / POSTED-row DB failure → transient 500 with zero FAILED creates / one-blip retry recovery / video→photo media snapshot) — 31/31; `meta-graph.test.ts` +8 (clampIgCaption unit incl. surrogate safety, fetchIgPermalink ×4 fail-open, carousel clamp + under-limit ×2) — 23/23; `retailers.test.ts` legacy rejection updated to a real `MetaApiError` shape (mock class hoisted, plain-Error subclass mirroring prod).
 
 **Verification:** API typecheck clean; full API suite **799/799**; fan-out 31/31; meta-graph 23/23; Biome check 0 errors on all touched files (6 pre-existing warn-level `noNonNullAssertion` remain); no mixed line endings. Committed on `fix/social-connect-surface-errors`; `eas build` unblocked → T-8.2 manual real-account verification after the build.
+
+## BUILT 2026-09-06: Safe-area spacing standardization — `apps/mobile` + customer web PWA (CLAUDE.md row #65)
+
+Before: every mobile screen did its own inset math — `Math.max(insets.top, 24) + 12` copy-pasted into ~30 custom headers, scroll bodies with hardcoded `paddingBottom: 32`/`40` or none (last row tucked under the tab bar / home indicator), and a few one-off variants (`insets.top + 16`, `insets.top + 8`). Web PWA headers sat under the status-bar notch on installed iOS.
+
+### New shared helper — `apps/mobile/src/lib/safe-area.ts`
+
+`useScreenInsets()` returns:
+
+| key | value | use |
+|---|---|---|
+| `insets` | raw `useSafeAreaInsets()` | absolute-positioned overlay controls (camera screens) |
+| `headerPaddingTop` | `Math.max(insets.top, 24) + 12` | custom sticky headers — **byte-identical to the old inline expression, zero header regression** |
+| `screenPaddingBottom` | `insets.bottom + 16` | scroll bodies on root-stack screens (no tab bar under) |
+| `tabScrollPaddingBottom` | `64 + insets.bottom + 16` | scroll bodies inside `(tabs)/` — `64` = `TAB_BAR_HEIGHT`, matches `(tabs)/_layout.tsx` `tabBarStyle.height: 64 + insets.bottom` |
+
+### Migration (two sessions, one commit)
+
+- **Session 1 (~50 screens):** catalog, growth (`growth/**` incl. `integrations/*`, `campaign*`), settings, `product/*`, `category/*`, collections, `collection/*`, `customer/*` + the 5 `(tabs)/*` screens. Tab screens use `tabScrollPaddingBottom`; stack screens use `screenPaddingBottom`. `growth/index.tsx` branches `isTab ? tabScrollPaddingBottom : screenPaddingBottom`.
+- **Session 2 (9 more):** `ai-search`, `billing`, `plan-select`, `analytics`, `store-profile`, `staff/index`, `staff/catalog-tickets`, `social/create` (2 components, kept `insets` for its 3 fixed bottom bars), and `category/new.tsx` — the two pageSheet `<Modal>` FlatLists got `paddingBottom: insets.bottom + 24` so the last row clears the Android nav bar.
+- **Result:** `Math.max(insets.top, 24) + 12` no longer appears anywhere in `apps/mobile/app/`.
+
+### Deliberately NOT migrated (no sticky-header bug — helper would be churn)
+
+`(tabs)/_layout.tsx` (the tab bar itself, source of `TAB_BAR_HEIGHT`), `auth/otp.tsx`, `auth/phone.tsx`, `onboarding.tsx`, `staff/retailer-onboard.tsx` — centered forms / tuned progress flows using symmetric `insets.top + N` / `insets.bottom + N`, no sticky header, no cut-off list.
+
+### Web PWA (7 files)
+
+- `apps/web/src/app/layout.tsx` — `viewport.viewportFit: 'cover'` (without it every `env(safe-area-inset-*)` resolves to 0).
+- `apps/web/src/app/globals.css` — `.pt-safe` / `.pb-safe` (min `0.5rem`) / `.min-h-safe` utilities in `@layer utilities`.
+- `.pt-safe` added to `(shopper)/layout.tsx` nav + 4 shopper headers (`[store]/categories`, `c/[slug]` CollectionView / SharedProductPage / WishlistView).
+
+### Verification
+
+Mobile: `tsc --noEmit` clean, `vitest` 59/59. Web: `tsc --noEmit` clean, `vitest` 91/91. Header padding is byte-identical to the prior inline expression; the only behavioral change is scroll bodies gaining a correct bottom inset where they had a hardcoded value or none.

@@ -12,7 +12,7 @@ import { router, useLocalSearchParams, useFocusEffect } from 'expo-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Image } from 'expo-image'
 import { VideoView } from 'expo-video'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useScreenInsets } from '../../src/lib/safe-area'
 import { ChevronLeft, Clapperboard, Heart, Share2, Star } from 'lucide-react-native'
 import Gallery, { type GalleryRef } from 'react-native-awesome-gallery'
 import type { ProductDetail } from '@kanchuki/shared'
@@ -72,7 +72,7 @@ function ProductVideoSlide({ url, width, height }: { url: string; width: number;
 
 export default function ProductDetailScreen() {
   const { primaryColor, colors } = useTheme()
-  const insets = useSafeAreaInsets()
+  const { insets, headerPaddingTop } = useScreenInsets()
   const { id } = useLocalSearchParams<{ id: string }>()
   const queryClient = useQueryClient()
 
@@ -268,7 +268,7 @@ export default function ProductDetailScreen() {
       {/* Top App Header (Point 10 PDP Spec) */}
       <View
         className="flex-row items-center justify-between px-5 pb-3 bg-white border-b border-lavender-200"
-        style={{ paddingTop: Math.max(insets.top, 24) + 12 }}
+        style={{ paddingTop: headerPaddingTop }}
       >
         <AnimatedPressable
           onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}

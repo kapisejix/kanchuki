@@ -13,7 +13,7 @@ import {
 } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useScreenInsets } from '../../src/lib/safe-area'
 import { X, Check, Plus, Trash2, Ruler, Clock, Heart, Sparkles } from 'lucide-react-native'
 import { customerApi, collectionApi, productAttributeApi } from '../../src/lib/api'
 import { DetailScreenSkeleton } from '../../src/components/Skeleton'
@@ -60,7 +60,7 @@ type Measurement = {
 
 export default function CustomerDetailScreen() {
   const { primaryColor, colors } = useTheme()
-  const insets = useSafeAreaInsets()
+  const { insets, headerPaddingTop, screenPaddingBottom } = useScreenInsets()
   const { id } = useLocalSearchParams<{ id: string }>()
   const queryClient = useQueryClient()
   const [generatingCollection, setGeneratingCollection] = useState(false)
@@ -257,11 +257,11 @@ export default function CustomerDetailScreen() {
   }
 
   return (
-    <ScrollView className="flex-1 bg-[#F8F7FC]">
+    <ScrollView className="flex-1 bg-[#F8F7FC]" contentContainerStyle={{ paddingBottom: screenPaddingBottom }}>
       {/* Header */}
       <View
         className="flex-row items-center justify-between px-5 pb-3 bg-white border-b border-lavender-200"
-        style={{ paddingTop: Math.max(insets.top, 24) + 12 }}
+        style={{ paddingTop: headerPaddingTop }}
       >
         <AnimatedPressable
           onPress={() => router.back()}

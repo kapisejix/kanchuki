@@ -82,7 +82,7 @@ export function SharedProductPage({ collection, product, collectionPath }: Props
   return (
     <div className="min-h-screen bg-[#F8F7FC] font-sans pb-16">
       {/* ── Header — back to the catalog ── */}
-      <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-[#E0E1F6]">
+      <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-[#E0E1F6] pt-safe">
         <KanchukiBrandBar />
         <div className="max-w-md mx-auto px-4 py-3 flex items-center justify-between">
           <Link

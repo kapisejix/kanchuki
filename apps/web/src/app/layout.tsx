@@ -75,6 +75,10 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
+  // Full-bleed PWA on notched phones — without viewportFit: 'cover' every
+  // env(safe-area-inset-*) below resolves to 0 (safe-area utilities in
+  // globals.css). Required before the pt-safe/pb-safe classes do anything.
+  viewportFit: 'cover',
 }
 
 // Preconnect addresses for performance — parsed from env vars (server-side).

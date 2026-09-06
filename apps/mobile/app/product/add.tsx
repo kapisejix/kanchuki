@@ -16,7 +16,7 @@ import * as ImagePicker from 'expo-image-picker'
 import * as ImageManipulator from 'expo-image-manipulator'
 import { File } from 'expo-file-system'
 import { Image } from 'expo-image'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useScreenInsets } from '../../src/lib/safe-area'
 import { X, ImagePlus, ChevronDown, ChevronLeft, Check, Sparkles } from 'lucide-react-native'
 import {
   productApi,
@@ -62,7 +62,7 @@ const PRO_MIN_KEEP = 3
 
 export default function AddProductScreen() {
   const { colors } = useTheme()
-  const insets = useSafeAreaInsets()
+  const { insets, headerPaddingTop } = useScreenInsets()
   const queryClient = useQueryClient()
   const [step, setStep] = useState<Step>('camera')
   const [captureMode, setCaptureMode] = useState<CaptureMode>('photo')
@@ -901,7 +901,7 @@ export default function AddProductScreen() {
       <View className="flex-1 bg-ink-50">
         <View
           className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-sand-100"
-          style={{ paddingTop: Math.max(insets.top, 24) + 12 }}
+          style={{ paddingTop: headerPaddingTop }}
         >
           <AnimatedPressable
             onPress={() => setStep('pro_review')}
@@ -1079,7 +1079,7 @@ export default function AddProductScreen() {
       {/* Header — fixed outside the scroll area so back/save stay reachable */}
       <View
         className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-sand-100"
-        style={{ paddingTop: Math.max(insets.top, 24) + 12 }}
+        style={{ paddingTop: headerPaddingTop }}
       >
         <AnimatedPressable onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
           <ChevronLeft size={24} color={colors.sand[700]} />

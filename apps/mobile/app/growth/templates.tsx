@@ -24,7 +24,7 @@ import {
   View,
   Share,
 } from 'react-native'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useScreenInsets } from '../../src/lib/safe-area'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { GradientButton } from '../../src/components/GradientButton'
 import { productApi } from '../../src/lib/api'
@@ -97,7 +97,7 @@ const OCCASIONS = [
 // ─── Main Screen ──────────────────────────────────────────────────
 
 export default function TemplatesScreen() {
-  const insets = useSafeAreaInsets()
+  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets()
   const queryClient = useQueryClient()
   const [creating, setCreating] = useState(false)
   const [detail, setDetail] = useState<SocialTemplate | null>(null)
@@ -136,7 +136,7 @@ export default function TemplatesScreen() {
       {/* Header */}
       <View
         className="bg-white border-b border-lavender-200 px-5 pb-4"
-        style={{ paddingTop: Math.max(insets.top, 24) + 12 }}
+        style={{ paddingTop: headerPaddingTop }}
       >
         <View className="flex-row items-center justify-between">
           <View className="flex-row items-center gap-3">
@@ -197,7 +197,7 @@ export default function TemplatesScreen() {
       ) : (
         <ScrollView
           className="flex-1 px-4 pt-4"
-          contentContainerStyle={{ paddingBottom: 32 }}
+          contentContainerStyle={{ paddingBottom: screenPaddingBottom }}
           refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} />}
         >
           {/* Stats strip */}
@@ -397,7 +397,7 @@ function CreateTemplateModal({
   onClose: () => void
   onSaved: () => void
 }) {
-  const insets = useSafeAreaInsets()
+  const { insets, headerPaddingTop, screenPaddingBottom } = useScreenInsets()
 
   const [name, setName] = useState('')
   const [templateType, setTemplateType] = useState<SocialTemplateType>('INSTAGRAM_POST')
@@ -619,7 +619,7 @@ function CreateTemplateModal({
       {productPickerOpen && (
         <View
           className="absolute inset-0 bg-[#F8F7FC]"
-          style={{ paddingTop: Math.max(insets.top, 24) + 12 }}
+          style={{ paddingTop: headerPaddingTop }}
         >
           <View className="flex-row items-center justify-between px-5 pb-4 bg-white border-b border-lavender-200">
             <Text
@@ -637,7 +637,7 @@ function CreateTemplateModal({
               <Text className="text-sm font-bold text-fuchsia-700">Done</Text>
             </AnimatedPressable>
           </View>
-          <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: 32 }}>
+          <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: screenPaddingBottom }}>
             {productsQuery.isLoading ? (
               <View className="items-center py-10">
                 <ActivityIndicator color="#BB3F95" />
@@ -708,7 +708,7 @@ function TemplateDetailModal({
   onClose: () => void
   onRefresh: () => void
 }) {
-  const insets = useSafeAreaInsets()
+  const { insets } = useScreenInsets()
 
   const [editingCaption, setEditingCaption] = useState(false)
   const [caption, setCaption] = useState(template.caption ?? '')

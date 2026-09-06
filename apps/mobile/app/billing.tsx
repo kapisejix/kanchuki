@@ -11,7 +11,7 @@ import { ChevronLeft, CreditCard, Globe, Mail } from 'lucide-react-native';
 // in git history (and the server-side billing rails stay intact) so billing
 // can return later via web or Play Billing.
 import { Linking, ScrollView, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useScreenInsets } from '../src/lib/safe-area';
 import { AnimatedPressable } from '../src/components/AnimatedPressable';
 import { retailerApi } from '../src/lib/api';
 import { useTheme } from '../src/lib/theme';
@@ -21,7 +21,7 @@ const SUPPORT_EMAIL = 'support@kanchuki.app';
 
 export default function BillingScreen() {
   const { primaryColor } = useTheme();
-  const insets = useSafeAreaInsets();
+  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets();
 
   const { data: meData } = useQuery({
     queryKey: ['retailer', 'me'],
@@ -34,7 +34,7 @@ export default function BillingScreen() {
       {/* Header */}
       <View
         className="flex-row items-center px-5 pb-3 bg-white border-b border-lavender-200"
-        style={{ paddingTop: Math.max(insets.top, 24) + 12 }}
+        style={{ paddingTop: headerPaddingTop }}
       >
         <AnimatedPressable
           onPress={() => router.back()}
@@ -53,7 +53,10 @@ export default function BillingScreen() {
         </Text>
       </View>
 
-      <ScrollView className="flex-1 bg-[#F8F7FC] px-4 pt-4">
+      <ScrollView
+        className="flex-1 bg-[#F8F7FC] px-4 pt-4"
+        contentContainerStyle={{ paddingBottom: screenPaddingBottom }}
+      >
         {/* Current plan (read-only) */}
         <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm mb-4">
           <View className="flex-row items-center gap-2 mb-2">
