@@ -2007,3 +2007,27 @@ Before: every mobile screen did its own inset math — `Math.max(insets.top, 24)
 ### Verification
 
 Mobile: `tsc --noEmit` clean, `vitest` 59/59. Web: `tsc --noEmit` clean, `vitest` 91/91. Header padding is byte-identical to the prior inline expression; the only behavioral change is scroll bodies gaining a correct bottom inset where they had a hardcoded value or none.
+
+## FIXED 2026-09-06: Instagram connect parity with Facebook (commit `373ae899`)
+
+The Facebook connect flow was migrated to a server-driven `SocialAccount` model (BUILD-LOG note "surface it here so the integrations screen reflects reality"). Instagram never was — three gaps made it look broken next to Facebook:
+
+| # | Bug | File |
+|---|---|---|
+| 1 | **`GET /me/integrations` had no `instagram` key.** The FB block reads its `SocialAccount` row; IG was skipped, so `currentInstagram` on the mobile screen was **always `undefined`** → "not connected" even right after a successful connect, and it reverted on every refetch. | `apps/api/src/routes/retailers/retailers-integrations.ts` |
+| 2 | **`POST /me/social/auto-connect` faked success for IG.** With no linked IG Business account it saved a placeholder row (`ig_<retailerId>` / `@instagram_store`) and returned `connected: true`. The FB branch throws `NO_PAGES_FOUND`; the IG *native* branch throws `NO_IG_FOUND`; only `auto-connect` lied. | `apps/api/src/routes/retailers/retailers-social/retailers-social-connect.ts` |
+| 3 | **Mobile wrote a hardcoded fake token.** Both IG connect handlers called `growthApi.configureInstagram({ access_token: 'oauth_long_lived_token', account_id: 'ig_auto' })` → `POST /v1/retailers/me/integrations/instagram`, a route that **does not exist** (404, swallowed). `facebook.tsx` just invalidates its query and trusts the server row. | `apps/mobile/app/growth/integrations/instagram.tsx` |
+
+### Fixes
+
+- **`retailers-integrations.ts`** — `GET /me/integrations` now returns an `instagram` block (`configured` / `account_id` / `ig_user_id` / `handle` / `configured_at`) from the `INSTAGRAM` `SocialAccount` row, parallel-fetched (`Promise.all`) with the `facebook` block. Added `DELETE /me/integrations/instagram` (mirrors `DELETE /me/integrations/facebook` — deactivates the row).
+- **`retailers-social-connect.ts`** — `/auto-connect` IG branch throws `AppError('NO_IG_FOUND', …, 404)` when `listInstagramAccounts()` returns none; removed the placeholder fabrication. New module-level `NO_IG_LINKED_MESSAGE` shared with the `/connect-native` IG branch — copy now tells the retailer to switch IG to a Professional (Business/Creator) account and link it to a Page they manage.
+- **`instagram.tsx`** — dropped both placeholder `configureInstagram` writes (deep-link handler + `applyConnected`); connect handlers now `await refetchIntegrations()` + `invalidateQueries(['growth','integrations'])` so `isConnected` reflects real server state, matching `facebook.tsx`. Cleaned the stale `useEffect` dep (`autoPublishReels` → `refetchIntegrations`).
+
+### Not a code bug (Meta account setup)
+
+The "Choose the Businesses / You don't have any Businesses" wall + "Create business portfolio" push (session screenshots) are Meta's own flow because the OAuth scope set includes `business_management`, and IG publishing genuinely requires an IG Business/Creator account linked to a Facebook Page. Same class as FB needing a Page. The new `NO_IG_FOUND` message now states this instead of the app showing a fake "Connected!".
+
+### Verification
+
+`retailers.test.ts` +2 (`GET /me/integrations` instagram block present / absent) → 39/39. `retailers-social-fanout` 31/31. API + mobile `tsc --noEmit` clean. Biome: no new errors on edited files. API deploy `373ae899` **SUCCESS** on Railway (`supportive-love` service, 2026-09-06 08:59 UTC).
