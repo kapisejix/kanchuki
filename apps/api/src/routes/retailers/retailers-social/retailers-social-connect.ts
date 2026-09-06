@@ -261,7 +261,19 @@ export const retailersSocialConnectRoutes: FastifyPluginAsync = async (server) =
         404,
       );
     }
-    const pageToken = primaryPage.access_token || accessToken;
+    // A Page token is REQUIRED to publish — the user token cannot post to a
+    // Page. Falling back to it produced a connection that looked fine but
+    // rejected every post. Missing token = the granted permissions are
+    // incomplete (needs pages_show_list + pages_read_engagement +
+    // pages_manage_posts); make the retailer re-grant instead.
+    const pageToken = primaryPage.access_token;
+    if (!pageToken) {
+      throw new AppError(
+        'NO_PAGE_TOKEN',
+        'Facebook did not return a Page access token. Re-connect and grant all requested permissions (manage Posts, read engagement) so Kanchuki can publish to your Page.',
+        502,
+      );
+    }
     const account = await prisma.socialAccount.upsert({
       where: {
         retailer_id_platform_platform_account_id: {

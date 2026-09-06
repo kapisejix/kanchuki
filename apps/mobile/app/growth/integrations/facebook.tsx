@@ -1,231 +1,138 @@
-import { useEffect, useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { router } from 'expo-router'
-import {
-  CheckCircle2,
-  ChevronDown,
-  ChevronLeft,
-  ChevronUp,
-  ExternalLink,
-  Facebook,
-  Lock,
-  RefreshCw,
-  Zap,
-} from 'lucide-react-native'
-import {
-  ActivityIndicator,
-  Alert,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from 'react-native'
-import * as Linking from 'expo-linking'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { AnimatedPressable } from '../../../src/components/AnimatedPressable'
-import { GradientButton } from '../../../src/components/GradientButton'
-import { growthApi } from '../../../src/lib/api/growth'
-import { socialApi } from '../../../src/lib/api/social'
-import { showError } from '../../../src/lib/errors'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import * as Linking from 'expo-linking';
+import { router } from 'expo-router';
+import { CheckCircle2, ChevronLeft, Facebook, Lock, RefreshCw, Zap } from 'lucide-react-native';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, ScrollView, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { AnimatedPressable } from '../../../src/components/AnimatedPressable';
+import { type SocialAccountInfo, socialApi } from '../../../src/lib/api/social';
+import { showError } from '../../../src/lib/errors';
 import {
   FacebookAuthCancelled,
   FacebookAuthUnavailable,
   loginWithFacebook,
-} from '../../../src/lib/facebook-auth'
+} from '../../../src/lib/facebook-auth';
+
+const ACCOUNTS_KEY = ['social', 'accounts'];
 
 export default function FacebookConfigScreen() {
-  const insets = useSafeAreaInsets()
-  const queryClient = useQueryClient()
+  const insets = useSafeAreaInsets();
+  const queryClient = useQueryClient();
 
-  const { data: integrationsData, refetch: refetchIntegrations } = useQuery({
-    queryKey: ['growth', 'integrations'],
-    queryFn: () => growthApi.integrations(),
-  })
+  const { data, isLoading, refetch, isRefetching } = useQuery({
+    queryKey: ACCOUNTS_KEY,
+    queryFn: () => socialApi.listAccounts(),
+  });
+  const fbAccount: SocialAccountInfo | undefined = (
+    data as { data?: SocialAccountInfo[] } | undefined
+  )?.data?.find((a) => a.platform === 'FACEBOOK');
+  const isConnected = !!fbAccount;
 
-  const currentFacebook = integrationsData?.data?.facebook
+  const [connecting, setConnecting] = useState(false);
+  const [connectError, setConnectError] = useState<string | null>(null);
 
-  const [pageId, setPageId] = useState(currentFacebook?.page_id ?? '')
-  const [pageName, setPageName] = useState(currentFacebook?.page_name ?? '')
-  const [pageAccessToken, setPageAccessToken] = useState('')
-  const [connecting, setConnecting] = useState(false)
-  const [connectError, setConnectError] = useState<string | null>(null)
-  const [showManual, setShowManual] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const [testing, setTesting] = useState(false)
-  const [testResult, setTestResult] = useState<{ connected: boolean; page_name?: string } | null>(null)
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: ACCOUNTS_KEY });
 
-  const isConnected = !!currentFacebook?.configured || !!pageName.trim()
-
-  // Listen for OAuth deep-link return
+  // Web-OAuth fallback return (Expo Go / no native SDK): the browser redirects
+  // back with ?code — exchange it, then refresh the real account list.
   useEffect(() => {
-    const handleDeepLink = async (event: { url: string }) => {
+    const onUrl = async (event: { url: string }) => {
+      const url = event.url;
+      if (!url || (!url.includes('code=') && !url.includes('oauth/callback'))) return;
+      const parsed = Linking.parse(url);
+      const code = parsed.queryParams?.code as string | undefined;
+      const state = parsed.queryParams?.state as string | undefined;
+      if (!code) return;
       try {
-        const url = event.url
-        if (!url || (!url.includes('code=') && !url.includes('oauth/callback'))) return
-
-        const parsed = Linking.parse(url)
-        const code = (parsed.queryParams?.code as string) || 'auth_code_sample'
-        const state = (parsed.queryParams?.state as string) || 'sample_state'
-
-        if (code) {
-          setConnecting(true)
-          // No redirect_uri → API defaults to its https URL (matches the OAuth
-          // dialog's redirect). Facebook rejects custom schemes (#9).
-          const res = await socialApi.autoConnect({
-            code,
-            state,
-            provider: 'facebook',
-          })
-
-          if (res?.data?.connected) {
-            const finalName = res.data.handle || 'Official Facebook Page'
-            setPageName(finalName)
-            setPageId(res.data.account_id || '')
-            void growthApi.configureFacebook({
-              page_name: finalName,
-              page_id: res.data.account_id || 'fb_auto',
-              page_access_token: 'oauth_long_lived_token',
-            })
-            void queryClient.invalidateQueries({ queryKey: ['growth', 'integrations'] })
-            Alert.alert('Connected!', `Successfully linked Facebook Page ${finalName}!`)
-          }
+        setConnecting(true);
+        const res = await socialApi.autoConnect({ code, state: state ?? '', provider: 'facebook' });
+        if (res?.data?.connected) {
+          void queryClient.invalidateQueries({ queryKey: ACCOUNTS_KEY });
+          Alert.alert(
+            'Connected!',
+            `Linked ${res.data.account_name || res.data.handle || 'your Page'}.`,
+          );
         }
       } catch (err) {
-        showError(err, 'Failed to complete 1-Click Facebook connection')
+        showError(err, 'Failed to complete Facebook connection');
       } finally {
-        setConnecting(false)
+        setConnecting(false);
       }
-    }
+    };
+    const sub = Linking.addEventListener('url', onUrl);
+    return () => sub.remove();
+  }, [queryClient]);
 
-    const sub = Linking.addEventListener('url', handleDeepLink)
-    return () => sub.remove()
-  }, [queryClient])
-
-  const applyConnected = async (name: string, accountId: string) => {
-    setPageName(name)
-    setPageId(accountId)
-    await growthApi.configureFacebook({
-      page_name: name,
-      page_id: accountId || 'fb_auto',
-      page_access_token: 'oauth_long_lived_token',
-    })
-    void queryClient.invalidateQueries({ queryKey: ['growth', 'integrations'] })
-    Alert.alert('Connected!', `Facebook Page ${name} connected.`)
-  }
-
-  // Fallback for builds without the native SDK (Expo Go only): open the real
-  // web OAuth URL. https redirect (API default) so Meta accepts the dialog (#9).
-  // No mock/simulated success — if OAuth can't start, the error is shown.
   const connectViaWeb = async () => {
-    const res = await socialApi.getConnectUrl('facebook')
-    const authUrl = res.data?.auth_url
+    const res = await socialApi.getConnectUrl('facebook');
+    const authUrl = res.data?.auth_url;
     if (!authUrl) {
-      throw new Error('Server did not return a Facebook login URL (social publishing not configured).')
+      throw new Error(
+        'Server did not return a Facebook login URL (social publishing not configured).',
+      );
     }
-    await Linking.openURL(authUrl)
-  }
+    await Linking.openURL(authUrl);
+  };
 
-  const handleOneClickConnect = async () => {
-    setConnecting(true)
-    setConnectError(null)
+  const handleConnect = async () => {
+    setConnecting(true);
+    setConnectError(null);
     try {
-      // App-to-app: opens the Facebook app, one tap, back to Kanchuki. No web
-      // page, no OTP. Falls back to the web flow only when the SDK is missing.
-      const token = await loginWithFacebook('facebook')
-      const res = await socialApi.connectWithToken(token, 'facebook')
+      const token = await loginWithFacebook('facebook');
+      const res = await socialApi.connectWithToken(token, 'facebook');
       if (res.data?.connected) {
-        await applyConnected(
-          res.data.account_name || res.data.handle || 'Facebook Page',
-          res.data.account_id || '',
-        )
+        void invalidate();
+        Alert.alert(
+          'Connected!',
+          `Facebook Page ${res.data.account_name || res.data.handle || ''} connected.`,
+        );
       }
     } catch (err) {
-      if (err instanceof FacebookAuthCancelled) return
+      if (err instanceof FacebookAuthCancelled) return;
       if (err instanceof FacebookAuthUnavailable) {
-        // Native SDK module isn't linked in this build — log the real reason
-        // instead of silently opening the browser with no on-screen trace.
-        console.warn('[facebook-connect] native SDK unavailable, falling back to web OAuth:', err.message)
         try {
-          await connectViaWeb()
+          await connectViaWeb();
           setConnectError(
-            `Facebook app login isn't available in this build (${err.message}). Opened browser login instead — if that also fails, this Meta app needs Live mode or a tester Role.`,
-          )
+            `Facebook app login isn't available in this build (${err.message}). Opened browser login instead.`,
+          );
         } catch (webErr) {
-          setConnectError(webErr instanceof Error ? webErr.message : 'Could not initiate Facebook connection')
+          setConnectError(
+            webErr instanceof Error ? webErr.message : 'Could not start Facebook connection',
+          );
         }
-        return
+        return;
       }
-      // Surface the real reason — these messages come from our API (e.g. "No
-      // Facebook Pages found…", "Social publishing is not configured yet") or
-      // the Facebook SDK (e.g. "Invalid key hash…"), all retailer-safe.
-      setConnectError(err instanceof Error ? err.message : 'Could not connect your Facebook Page')
+      setConnectError(err instanceof Error ? err.message : 'Could not connect your Facebook Page');
     } finally {
-      setConnecting(false)
+      setConnecting(false);
     }
-  }
+  };
+
+  const disconnectMutation = useMutation({
+    mutationFn: (accountId: string) => socialApi.disconnect(accountId),
+    onSuccess: () => {
+      void invalidate();
+      void refetch();
+    },
+    onError: (err) => showError(err, 'Failed to disconnect'),
+  });
 
   const handleDisconnect = () => {
-    Alert.alert('Disconnect Facebook?', 'Your Facebook Page will be unlinked from auto-publishing.', [
+    if (!fbAccount) return;
+    const accountId = fbAccount.id;
+    Alert.alert('Disconnect Facebook?', 'Your Facebook Page will be unlinked from publishing.', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Disconnect',
         style: 'destructive',
-        onPress: async () => {
-          await growthApi.disconnectFacebook()
-          setPageName('')
-          setPageId('')
-          setPageAccessToken('')
-          setTestResult(null)
-          void queryClient.invalidateQueries({ queryKey: ['growth', 'integrations'] })
-          void refetchIntegrations()
-        },
+        onPress: () => void disconnectMutation.mutate(accountId),
       },
-    ])
-  }
-
-  const saveMutation = useMutation({
-    mutationFn: () =>
-      growthApi.configureFacebook({
-        page_id: pageId.trim() || pageName.trim(),
-        page_access_token: pageAccessToken.trim() || 'demo_token',
-        page_name: pageName.trim() || 'Facebook Boutique Page',
-      }),
-    onSuccess: () => {
-      setSaving(false)
-      void queryClient.invalidateQueries({ queryKey: ['growth', 'integrations'] })
-      Alert.alert('Saved!', 'Facebook Page credentials updated.', [
-        { text: 'OK', onPress: () => router.back() },
-      ])
-    },
-    onError: (err) => {
-      setSaving(false)
-      showError(err, 'Failed to save Facebook credentials')
-    },
-  })
-
-  const testMutation = useMutation({
-    mutationFn: () =>
-      growthApi.testFacebook({
-        page_id: pageId.trim() || currentFacebook?.page_id || undefined,
-        page_access_token: pageAccessToken.trim() || 'oauth_token',
-      }),
-    onMutate: () => {
-      setTesting(true)
-      setTestResult(null)
-    },
-    onSuccess: (res) => {
-      setTesting(false)
-      setTestResult(res.data)
-    },
-    onError: () => {
-      setTesting(false)
-      setTestResult({ connected: false })
-    },
-  })
+    ]);
+  };
 
   return (
     <View className="flex-1 bg-[#F8F7FC]">
-      {/* Header */}
       <View
         className="bg-white border-b border-lavender-200 px-5 pb-4"
         style={{ paddingTop: Math.max(insets.top, 24) + 12 }}
@@ -253,7 +160,6 @@ export default function FacebookConfigScreen() {
       </View>
 
       <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: 40 }}>
-        {/* 1-Click Connect Hero Card */}
         <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm mb-4">
           <View className="flex-row items-center justify-between mb-3">
             <View className="flex-row items-center gap-2.5">
@@ -278,29 +184,34 @@ export default function FacebookConfigScreen() {
           </View>
 
           <Text className="text-xs text-heliotrope-600 leading-relaxed font-medium mb-4">
-            Connect your Facebook Boutique Page in 1 click without manually copying Page IDs or developer tokens.
+            Connect your Facebook Boutique Page in 1 click without manually copying Page IDs or
+            developer tokens.
           </Text>
 
-          {isConnected ? (
+          {isLoading ? (
+            <ActivityIndicator color="#1877F2" className="py-4" />
+          ) : isConnected ? (
             <View className="bg-lavender-50 rounded-2xl p-4 border border-lavender-200 gap-2 mb-3">
               <View className="flex-row items-center justify-between">
                 <Text className="text-xs font-bold text-heliotrope-500 uppercase">Linked Page</Text>
-                <Text className="text-sm font-bold text-[#1877F2]">{pageName || 'Connected Page'}</Text>
+                <Text className="text-sm font-bold text-[#1877F2]">{fbAccount?.account_name}</Text>
               </View>
-              {pageId ? (
+              {fbAccount?.account_id ? (
                 <View className="flex-row items-center justify-between">
                   <Text className="text-xs font-bold text-heliotrope-500 uppercase">Page ID</Text>
-                  <Text className="text-xs font-semibold text-spaceCadet-700">{pageId}</Text>
+                  <Text className="text-xs font-semibold text-spaceCadet-700">
+                    {fbAccount.account_id}
+                  </Text>
                 </View>
               ) : null}
               <View className="flex-row gap-2 mt-2 pt-2 border-t border-lavender-200">
                 <View className="flex-1">
                   <AnimatedPressable
-                    onPress={() => void testMutation.mutate()}
-                    disabled={testing}
+                    onPress={() => void refetch()}
+                    disabled={isRefetching}
                     className="bg-white py-2.5 rounded-xl border border-lavender-200 items-center justify-center flex-row gap-1.5"
                   >
-                    {testing ? (
+                    {isRefetching ? (
                       <ActivityIndicator size="small" color="#1877F2" />
                     ) : (
                       <>
@@ -313,16 +224,19 @@ export default function FacebookConfigScreen() {
                 <View className="flex-1">
                   <AnimatedPressable
                     onPress={handleDisconnect}
+                    disabled={disconnectMutation.isPending}
                     className="bg-rose-50 py-2.5 rounded-xl border border-rose-200 items-center justify-center"
                   >
-                    <Text className="text-xs font-bold text-rose-700">Disconnect</Text>
+                    <Text className="text-xs font-bold text-rose-700">
+                      {disconnectMutation.isPending ? 'Disconnecting…' : 'Disconnect'}
+                    </Text>
                   </AnimatedPressable>
                 </View>
               </View>
             </View>
           ) : (
             <AnimatedPressable
-              onPress={handleOneClickConnect}
+              onPress={handleConnect}
               disabled={connecting}
               className="bg-[#1877F2] py-3.5 px-4 rounded-2xl items-center justify-center flex-row gap-2 shadow-md"
               style={{
@@ -363,99 +277,7 @@ export default function FacebookConfigScreen() {
             </Text>
           </View>
         </View>
-
-        {testResult && (
-          <View
-            className={`rounded-2xl px-4 py-3 mb-4 border ${
-              testResult.connected
-                ? 'bg-emerald-50 border-emerald-200'
-                : 'bg-rose-50 border-rose-200'
-            }`}
-          >
-            <Text
-              className={`text-xs font-bold ${
-                testResult.connected ? 'text-emerald-700' : 'text-rose-700'
-              }`}
-            >
-              {testResult.connected
-                ? `Active & Synced! Page: ${pageName.trim() || 'Verified Page'}`
-                : 'Connection test failed. Check your Page connection.'}
-            </Text>
-          </View>
-        )}
-
-        {/* Collapsible Manual Setup */}
-        <View className="bg-white rounded-3xl p-4 border border-lavender-200 mb-4 shadow-sm">
-          <AnimatedPressable
-            onPress={() => setShowManual((v) => !v)}
-            className="flex-row items-center justify-between py-1"
-          >
-            <View className="flex-row items-center gap-2">
-              <Text className="text-xs font-bold text-spaceCadet-900">
-                Advanced / Manual Token Entry
-              </Text>
-              <Text className="text-[10px] bg-lavender-100 px-2 py-0.5 rounded-full text-heliotrope-600 font-bold">
-                Optional
-              </Text>
-            </View>
-            {showManual ? <ChevronUp size={16} color="#6B4773" /> : <ChevronDown size={16} color="#6B4773" />}
-          </AnimatedPressable>
-
-          {showManual && (
-            <View className="pt-4 border-t border-lavender-100 mt-2">
-              <Label text="Facebook Page Name" />
-              <TextInput
-                value={pageName}
-                onChangeText={setPageName}
-                placeholder="e.g. Kanchuki Silk Boutique"
-                placeholderTextColor="#928EB2"
-                className="bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-2.5 text-xs font-bold text-spaceCadet-900 mb-3"
-              />
-
-              <Label text="Facebook Page ID" />
-              <TextInput
-                value={pageId}
-                onChangeText={setPageId}
-                placeholder="100089283748291"
-                placeholderTextColor="#928EB2"
-                className="bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-2.5 text-xs font-bold text-spaceCadet-900 mb-3"
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-
-              <Label text="Page Access Token" />
-              <TextInput
-                value={pageAccessToken}
-                onChangeText={setPageAccessToken}
-                placeholder="Paste Long-lived Page Access Token"
-                placeholderTextColor="#928EB2"
-                className="bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-2.5 text-xs font-bold text-spaceCadet-900 mb-3"
-                secureTextEntry
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-
-              <GradientButton
-                label={saving ? 'Saving…' : 'Save Custom Credentials'}
-                onPress={() => {
-                  setSaving(true)
-                  void saveMutation.mutate()
-                }}
-                disabled={saving || !pageName.trim()}
-              />
-            </View>
-          )}
-        </View>
       </ScrollView>
     </View>
-  )
+  );
 }
-
-function Label({ text }: { text: string }) {
-  return (
-    <Text className="text-[11px] font-bold text-heliotrope-500 uppercase tracking-wider mb-1">
-      {text}
-    </Text>
-  )
-}
-

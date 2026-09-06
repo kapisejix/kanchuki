@@ -51,8 +51,30 @@ export const retailersIntegrationsRoutes: FastifyPluginAsync = async (server) =>
     });
     if (!retailer) throw notFound('Retailer');
 
+    // Facebook Page connect state lives in SocialAccount (written by the
+    // native/OAuth connect flow and read by the composer) — there is no
+    // separate fb_page_* column. Surface it here so the integrations screen
+    // reflects reality instead of always showing "not connected".
+    const fbPage = await prisma.socialAccount.findFirst({
+      where: { retailer_id: request.retailerId, platform: 'FACEBOOK', is_active: true },
+      select: {
+        id: true,
+        platform_account_id: true,
+        platform_account_name: true,
+        created_at: true,
+      },
+      orderBy: { created_at: 'desc' },
+    });
+
     return {
       data: {
+        facebook: {
+          configured: !!fbPage,
+          account_id: fbPage?.id ?? null,
+          page_id: fbPage?.platform_account_id ?? null,
+          page_name: fbPage?.platform_account_name ?? null,
+          configured_at: fbPage?.created_at ?? null,
+        },
         gmb: {
           configured: !!retailer.gmb_account_id,
           account_id: retailer.gmb_account_id,
@@ -72,6 +94,17 @@ export const retailersIntegrationsRoutes: FastifyPluginAsync = async (server) =>
         },
       },
     };
+  });
+
+  // ─── DELETE /retailers/me/integrations/facebook — disconnect Page ──
+  // Deactivates the retailer's FACEBOOK SocialAccount (same effect as
+  // DELETE /me/social/accounts/:id). Mirrors the client's disconnectFacebook().
+  server.delete('/me/integrations/facebook', async (request) => {
+    await prisma.socialAccount.updateMany({
+      where: { retailer_id: request.retailerId, platform: 'FACEBOOK', is_active: true },
+      data: { is_active: false },
+    });
+    return { data: { configured: false } };
   });
 
   // ─── POST /retailers/me/integrations/gmb ────────────────────────

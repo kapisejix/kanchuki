@@ -83,6 +83,24 @@ export class MetaApiError extends Error {
   }
 }
 
+/**
+ * Log a Meta Graph API failure with the real error body. The MetaApiError
+ * thrown to the caller stays a generic retailer-safe line (finding 4); this
+ * puts the actual `(#code) message` + fbtrace_id in the server logs so a
+ * rejected post / connect is diagnosable.
+ */
+function logMetaError(context: string, res: Response, body: unknown): void {
+  const raw = (body ?? {}) as Record<string, unknown>;
+  const err = (raw.error ?? raw) as Record<string, unknown>;
+  console.error(`[meta-graph] ${context} failed (HTTP ${res.status})`, {
+    fb_code: err.code,
+    fb_subcode: err.error_subcode,
+    fb_type: err.type,
+    fb_message: err.message,
+    fb_trace: err.fbtrace_id,
+  });
+}
+
 interface MetaCredentials {
   appId: string;
   appSecret: string;
@@ -192,6 +210,7 @@ export async function exchangeUserTokenForLongLived(
   );
   const body = (await res.json()) as Record<string, unknown>;
   if (!res.ok || typeof body.access_token !== 'string') {
+    logMetaError('exchangeUserTokenForLongLived', res, body);
     throw new MetaApiError('Failed to obtain a long-lived token', 400, 'OAUTH_EXCHANGE_FAILED');
   }
   const expiresIn = typeof body.expires_in === 'number' ? body.expires_in : 51_840_000;
@@ -253,13 +272,20 @@ export async function listInstagramAccounts(accessToken: string): Promise<MetaIn
   }
 }
 
-/** List the Pages the user administers (from /me/accounts with a user token). */
+/** List the Pages the user administers (from /me/accounts with a user token).
+ * `access_token` must be requested explicitly — recent Graph API versions omit
+ * the per-Page token from the default field set, and without it every publish
+ * falls back to the user token, which cannot post to a Page. */
 export async function listPages(accessToken: string): Promise<MetaPage[]> {
   const res = await fetch(
-    `${GRAPH_BASE}/me/accounts?${new URLSearchParams({ access_token: accessToken })}`,
+    `${GRAPH_BASE}/me/accounts?${new URLSearchParams({
+      access_token: accessToken,
+      fields: 'id,name,access_token,category',
+    })}`,
   );
   const body = (await res.json()) as { data?: MetaPage[] };
   if (!res.ok || !Array.isArray(body.data)) {
+    logMetaError('listPages', res, body);
     throw new MetaApiError('Failed to list Facebook Pages', 400, 'PAGES_LIST_FAILED');
   }
   return body.data.filter((p) => p.id && p.name);
@@ -289,6 +315,7 @@ export async function publishPhotoPost(
   );
   const body = (await res.json()) as Record<string, unknown>;
   if (!res.ok || typeof body.id !== 'string') {
+    logMetaError('publishPhotoPost', res, body);
     throw new MetaApiError('Facebook rejected the photo post', 400, 'PUBLISH_FAILED');
   }
   return { postId: body.id as string };
@@ -318,6 +345,7 @@ export async function publishVideoPost(
   );
   const body = (await res.json()) as Record<string, unknown>;
   if (!res.ok || typeof body.id !== 'string') {
+    logMetaError('publishVideoPost', res, body);
     throw new MetaApiError('Facebook rejected the video post', 400, 'PUBLISH_FAILED');
   }
   return { postId: body.id as string };
@@ -342,6 +370,7 @@ export async function publishLinkPost(
   const res = await fetch(`${GRAPH_BASE}/${pageId}/feed?${params.toString()}`, { method: 'POST' });
   const body = (await res.json()) as Record<string, unknown>;
   if (!res.ok || typeof body.id !== 'string') {
+    logMetaError('publishLinkPost', res, body);
     throw new MetaApiError('Facebook rejected the link post', 400, 'PUBLISH_FAILED');
   }
   return { postId: body.id as string };
@@ -379,6 +408,7 @@ export async function publishFacebookCarousel(
     );
     const body = (await res.json()) as Record<string, unknown>;
     if (!res.ok || typeof body.id !== 'string') {
+      logMetaError('publishFacebookCarousel:photo', res, body);
       throw new MetaApiError('Facebook rejected a carousel photo', 400, 'PUBLISH_FAILED');
     }
     mediaFbids.push(body.id as string);
@@ -393,6 +423,7 @@ export async function publishFacebookCarousel(
   const res = await fetch(`${GRAPH_BASE}/${pageId}/feed?${params.toString()}`, { method: 'POST' });
   const body = (await res.json()) as Record<string, unknown>;
   if (!res.ok || typeof body.id !== 'string') {
+    logMetaError('publishFacebookCarousel:feed', res, body);
     throw new MetaApiError('Facebook rejected the carousel post', 400, 'PUBLISH_FAILED');
   }
   return { postId: body.id as string };
