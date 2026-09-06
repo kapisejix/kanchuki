@@ -1,6 +1,19 @@
 import { runVisionAsk, type ProviderUsedInfo, type VisionAskRequest } from './providers.js';
 import type { AiJsonSchema } from './providers.js';
 
+/** The `ask()` (free-text) path has no schema enforcement, so providers
+ * routinely wrap their JSON in a ```json … ``` fence. Strip the fence before
+ * JSON.parse so callers get structured data instead of the raw fenced string
+ * leaking into a caption/message.
+ * ponytail: fence-strip only — real structured output would need the
+ * schema-backed extract() path. */
+function parseJsonLoose<T>(raw: string): T {
+  let s = raw.trim();
+  const fenced = s.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+  if (fenced?.[1]) s = fenced[1].trim();
+  return JSON.parse(s) as T;
+}
+
 // ─── Types ────────────────────────────────────────────────────────────
 
 export interface ProductCriteria {
@@ -340,14 +353,18 @@ export async function generateSocialPostCaption(
   const cleaned = raw.trim();
 
   try {
-    const parsed = JSON.parse(cleaned) as {
+    const parsed = parseJsonLoose<{
       caption?: unknown;
       hashtags?: unknown;
-    };
+    }>(cleaned);
     if (typeof parsed.caption === 'string' && parsed.caption.trim()) {
+      // Models sometimes return hashtags as one space-joined string instead
+      // of an array — accept both.
       const hashtags = Array.isArray(parsed.hashtags)
         ? parsed.hashtags.filter((h): h is string => typeof h === 'string').slice(0, 8)
-        : [];
+        : typeof parsed.hashtags === 'string'
+          ? parsed.hashtags.split(/\s+/).filter(Boolean).slice(0, 8)
+          : [];
       return { caption: parsed.caption.trim(), hashtags };
     }
   } catch {
@@ -372,7 +389,7 @@ export async function parseCampaignIntent(prompt: string): Promise<CampaignInten
   const cleaned = raw.trim();
 
   try {
-    return JSON.parse(cleaned) as CampaignIntent;
+    return parseJsonLoose<CampaignIntent>(cleaned);
   } catch {
     throw new Error('AI returned unparseable campaign intent');
   }
@@ -394,11 +411,11 @@ export async function generateCampaignMessage(
   const cleaned = raw.trim();
 
   try {
-    const parsed = JSON.parse(cleaned) as {
+    const parsed = parseJsonLoose<{
       message_template: string;
       rationale: string;
       audience_estimate_note: string;
-    };
+    }>(cleaned);
     if (!parsed.message_template) throw new Error('Missing message_template');
     return parsed;
   } catch {

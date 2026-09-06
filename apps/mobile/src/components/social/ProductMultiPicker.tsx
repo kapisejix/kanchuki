@@ -44,7 +44,10 @@ export function ProductMultiPicker({
 
   const { data, isLoading } = useQuery({
     queryKey: ['products', 'social-picker'],
-    queryFn: () => productApi.list({ status: 'AVAILABLE', limit: 200 }),
+    // ponytail: API caps `limit` at 100 (ListProductsQuerySchema) — 200 got a
+    // 400 and left the picker empty. 100 covers every current store; wire the
+    // /search endpoint here if a catalog outgrows it.
+    queryFn: () => productApi.list({ status: 'AVAILABLE', limit: 100 }),
     staleTime: 30_000,
   })
 
