@@ -23,6 +23,8 @@ import { getSetting } from '../routes/admin-settings/settings-store.js';
 export const SHOWCASE_WATERMARK_SETTING_KEY = 'showcase_watermark';
 
 export interface ShowcaseWatermarkConfig {
+  /** Master switch — false stores the raw image as the final (no stamp). */
+  enabled: boolean;
   /** Platform/global watermark logo (R2 object key). null = fall through to the built-in logo. */
   logo_r2_key: string | null;
   /** Logo alpha multiplier, 0–1. */
@@ -35,14 +37,17 @@ export interface ShowcaseWatermarkConfig {
   strip_count: number;
 }
 
-export type ShowcaseLogoSource = 'retailer' | 'platform' | 'builtin';
+export type ShowcaseLogoSource = 'retailer' | 'platform' | 'builtin' | 'none';
 
 export interface ResolvedShowcaseWatermark extends ShowcaseWatermarkConfig {
   logoBuf: Buffer;
   logo_source: ShowcaseLogoSource;
 }
 
+// Watermark is OFF by default (raw image stored as-is). Re-enable later by
+// setting `enabled: true` in the saved settings blob (or via the admin PUT).
 export const DEFAULT_SHOWCASE_WATERMARK: ShowcaseWatermarkConfig = {
+  enabled: false,
   logo_r2_key: null,
   opacity: 0.35,
   scale: 0.18,
@@ -83,6 +88,7 @@ export function mergeShowcaseWatermark(saved: unknown): ShowcaseWatermarkConfig 
       ? (s.gravity as WatermarkGravity)
       : DEFAULT_SHOWCASE_WATERMARK.gravity;
   return {
+    enabled: typeof s.enabled === 'boolean' ? s.enabled : DEFAULT_SHOWCASE_WATERMARK.enabled,
     logo_r2_key:
       typeof s.logo_r2_key === 'string' && s.logo_r2_key.length > 0 ? s.logo_r2_key : null,
     opacity: asNumber(s.opacity, DEFAULT_SHOWCASE_WATERMARK.opacity, 0.05, 1),
@@ -168,8 +174,16 @@ export async function watermarkShowcaseDesign(input: {
   /** null = admin/global design (always platform logo). */
   ownerRetailerId: string | null;
 }): Promise<{ logo_source: ShowcaseLogoSource; width: number; height: number }> {
-  const cfg = await resolveWatermark(input.ownerRetailerId);
+  const config = await getShowcaseWatermarkConfig();
   const raw = await downloadBuffer(input.rawR2Key);
+  if (!config.enabled) {
+    // Watermark disabled — store the raw upload as the final image so the
+    // pipeline (final key / image_url / future re-stamp from original_r2_key)
+    // is unchanged, just unstamped. Skip logo resolution entirely.
+    await uploadBuffer(input.finalR2Key, raw, 'image/jpeg');
+    return { logo_source: 'none', width: 0, height: 0 };
+  }
+  const cfg = await resolveWatermark(input.ownerRetailerId);
   const { buffer, width, height } = await watermark(raw, cfg.logoBuf, {
     opacity: cfg.opacity,
     scale: cfg.scale,

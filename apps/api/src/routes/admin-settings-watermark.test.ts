@@ -110,6 +110,7 @@ describe('Admin showcase watermark config API', () => {
     });
     expect(res.statusCode).toBe(200);
     expect(res.json().data).toEqual({
+      enabled: false,
       logo_r2_key: null,
       opacity: 0.35,
       scale: 0.18,
@@ -149,6 +150,7 @@ describe('Admin showcase watermark config API', () => {
   it('PUT then GET round-trip a full config with a logo_url derived from the key', async () => {
     const app = await buildApp();
     const config = {
+      enabled: true,
       logo_r2_key: 'showcase-watermark/logo/abc123.png',
       opacity: 0.6,
       scale: 0.25,

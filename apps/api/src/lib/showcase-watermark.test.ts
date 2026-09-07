@@ -178,7 +178,9 @@ describe('watermarkShowcaseDesign', () => {
   });
 
   it('downloads the raw, composites with resolved config, uploads the final JPEG', async () => {
-    mockAuditFindFirst.mockResolvedValue({ metadata: { logo_r2_key: 'p/wm.png' } });
+    mockAuditFindFirst.mockResolvedValue({
+      metadata: { enabled: true, logo_r2_key: 'p/wm.png' },
+    });
     mockDownloadBuffer.mockResolvedValue(Buffer.from('raw.jpg'));
     mockDownloadBuffer.mockClear();
 
@@ -203,6 +205,7 @@ describe('watermarkShowcaseDesign', () => {
   });
 
   it('propagates watermark failures (invalid raw never reaches the DB)', async () => {
+    mockAuditFindFirst.mockResolvedValue({ metadata: { enabled: true } });
     mockDownloadBuffer.mockResolvedValue(Buffer.from('not-an-image'));
     const err = new Error('Source is not a decodable image');
     err.name = 'WatermarkInputError';
@@ -216,5 +219,26 @@ describe('watermarkShowcaseDesign', () => {
       }),
     ).rejects.toThrow('not a decodable image');
     expect(mockUploadBuffer).not.toHaveBeenCalled();
+  });
+
+  it('disabled config stores the raw upload as the final (no compositing, no logo fetch)', async () => {
+    // No saved blob → defaults, enabled = false.
+    mockAuditFindFirst.mockResolvedValue(null);
+    mockDownloadBuffer.mockResolvedValue(Buffer.from('raw.jpg'));
+    mockWatermark.mockClear();
+
+    const out = await watermarkShowcaseDesign({
+      rawR2Key: 'showcase-designs/global/raw/x.jpg',
+      finalR2Key: 'showcase-designs/global/x.jpg',
+      ownerRetailerId: null,
+    });
+
+    expect(mockWatermark).not.toHaveBeenCalled();
+    expect(mockUploadBuffer).toHaveBeenCalledWith(
+      'showcase-designs/global/x.jpg',
+      Buffer.from('raw.jpg'),
+      'image/jpeg',
+    );
+    expect(out).toEqual({ logo_source: 'none', width: 0, height: 0 });
   });
 });

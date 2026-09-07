@@ -25,7 +25,7 @@ import { saveSetting } from './settings-store.js';
 // Fields whose change re-stamps every existing design's image. strip_count
 // is display-only (how many thumbs show before "View more") — changing it
 // must NOT burn an R2 re-watermark pass.
-const STAMP_AFFECTING_FIELDS = ['logo_r2_key', 'opacity', 'scale', 'gravity'] as const;
+const STAMP_AFFECTING_FIELDS = ['enabled', 'logo_r2_key', 'opacity', 'scale', 'gravity'] as const;
 
 const LOGO_PREFIX = 'showcase-watermark/';
 
@@ -45,6 +45,8 @@ const GRAVITIES = [
 
 const WM_BODY_SCHEMA = z
   .object({
+    // Master switch — false stores the raw image as the final (no stamp).
+    enabled: z.boolean().optional(),
     // null clears back to the built-in Kanchuki logo (fallback in the lib).
     logo_r2_key: z.string().trim().min(1).nullable().optional(),
     // Opacity 5–100% / width 2–100% / 1–24 strip thumbs — the same safe
