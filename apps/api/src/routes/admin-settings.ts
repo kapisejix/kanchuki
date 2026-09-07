@@ -10,6 +10,7 @@ import {
   adminNotificationsRoutes,
   adminOperationsRoutes,
   adminRateLimitsRoutes,
+  adminShowcaseWatermarkRoutes,
   adminThemeRoutes,
   adminTicketReportingRoutes,
 } from './admin-settings/index.js';
@@ -30,6 +31,8 @@ export const adminSettingsRoutes: FastifyPluginAsync = async (server) => {
   await server.register(adminCatalogPromoRoutes);
   // theme — auto-split module
   await server.register(adminThemeRoutes);
+  // showcase-watermark — auto-split module (Suits Designs platform logo config)
+  await server.register(adminShowcaseWatermarkRoutes);
   // ai-config — auto-split module
   await server.register(adminAiConfigRoutes);
   // operations — auto-split module

@@ -323,9 +323,7 @@ describe('IMAGE post (standalone design image)', () => {
     expect(created?.product_ids).toEqual([]);
     expect(created?.caption).toBe('New design at Priya Cloth House');
     // The media snapshot records the URL with a null product ref.
-    expect(created?.media).toEqual([
-      { product_id: null, kind: 'photo', url: DESIGN_URL },
-    ]);
+    expect(created?.media).toEqual([{ product_id: null, kind: 'photo', url: DESIGN_URL }]);
   });
 
   it('auto caption drops the shop segment when the shop name is missing', async () => {

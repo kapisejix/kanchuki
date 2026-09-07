@@ -252,7 +252,9 @@ describe('POST /me/showcase-designs', () => {
         data: expect.objectContaining({
           retailer_id: RETAILER_ID,
           category_slug: 'suits',
-          image_url: expect.stringMatching(/^https:\/\/cdn\.test\/showcase-designs\/retailer_1\/.+\.jpg$/),
+          image_url: expect.stringMatching(
+            /^https:\/\/cdn\.test\/showcase-designs\/retailer_1\/.+\.jpg$/,
+          ),
           original_r2_key: 'showcase-designs/retailer_1/raw/raw.jpg',
         }),
       }),

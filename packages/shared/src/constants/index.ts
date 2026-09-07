@@ -295,6 +295,10 @@ export const R2_PATHS = {
   showcaseDesignRaw: (owner: string, filename: string) =>
     `showcase-designs/${owner}/raw/${filename}`,
   showcaseDesign: (owner: string, filename: string) => `showcase-designs/${owner}/${filename}`,
+  // Admin-configured platform watermark logo for Suits Designs — set via
+  // /admin/settings/theme (watermark block), stored on the
+  // SETTING_showcase_watermark KV blob (suits-designs.md §4).
+  showcaseWatermarkLogo: (filename: string) => `showcase-watermark/logo/${filename}`,
   photoCleanupTest: (filename: string) => `admin/photo-cleanup-tests/${filename}`,
   // F-032 Phase A: AI studio-shoot results. New KEY per generation (never
   // overwrites the source photo) — the result is a new ProductPhoto row the

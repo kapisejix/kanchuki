@@ -94,7 +94,11 @@ async function buildApp() {
 beforeEach(() => {
   vi.clearAllMocks();
   mockPublicUrl.mockImplementation((key: string) => `https://cdn.test/${key}`);
-  mockWatermarkShowcaseDesign.mockResolvedValue({ logo_source: 'builtin', width: 800, height: 600 });
+  mockWatermarkShowcaseDesign.mockResolvedValue({
+    logo_source: 'builtin',
+    width: 800,
+    height: 600,
+  });
   mockDeleteObject.mockResolvedValue(undefined);
   mockGetUploadPresignedUrl.mockResolvedValue('https://r2/put');
   mockAudit.mockResolvedValue({});

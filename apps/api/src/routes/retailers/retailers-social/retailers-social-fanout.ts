@@ -164,7 +164,9 @@ export const retailersSocialFanoutRoutes: FastifyPluginAsync = async (server) =>
     const itemList = body.items ?? [];
     // IMAGE items carry a URL, not a product — product refs only exist on the
     // product post types (assertPostShape already enforced the split).
-    const productIds = [...new Set(itemList.map((i) => i.product_id).filter((x): x is string => !!x))];
+    const productIds = [
+      ...new Set(itemList.map((i) => i.product_id).filter((x): x is string => !!x)),
+    ];
     const loadedProducts = new Map<string, LoadedProduct>();
 
     if (productIds.length > 0) {

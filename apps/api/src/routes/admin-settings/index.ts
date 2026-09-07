@@ -3,6 +3,7 @@ export { adminRateLimitsRoutes, getCachedRateLimits, DEFAULT_RATE_LIMITS } from 
 export { adminCatalogPromoRoutes, getCatalogUploadPromo } from './catalog-promo.js';
 export type { CatalogUploadPromo } from './catalog-promo.js';
 export { adminThemeRoutes, getTheme } from './theme.js';
+export { adminShowcaseWatermarkRoutes } from './showcase-watermark.js';
 export { adminAiConfigRoutes, DEFAULT_AI_CONFIG } from './ai-config.js';
 export { adminOperationsRoutes } from './operations.js';
 export { adminDeploymentsRoutes } from './deployments.js';

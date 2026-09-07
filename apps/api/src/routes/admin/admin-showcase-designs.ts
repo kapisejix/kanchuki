@@ -141,9 +141,7 @@ export const adminShowcaseDesignRoutes: FastifyPluginAsync = async (server) => {
       _count: { _all: true },
       orderBy: { _count: { retailer_id: 'desc' } },
     });
-    const ids = groups
-      .map((g) => g.retailer_id)
-      .filter((id): id is string => id !== null);
+    const ids = groups.map((g) => g.retailer_id).filter((id): id is string => id !== null);
     const retailers =
       ids.length === 0
         ? []

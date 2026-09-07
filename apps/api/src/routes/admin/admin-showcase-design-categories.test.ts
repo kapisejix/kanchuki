@@ -37,9 +37,7 @@ vi.mock('@kanchuki/db', () => ({
 
 vi.mock('../admin-auth.js', () => ({ adminAuthPreHandler: async () => undefined }));
 
-const { adminShowcaseDesignCategoryRoutes } = await import(
-  './admin-showcase-design-categories.js'
-);
+const { adminShowcaseDesignCategoryRoutes } = await import('./admin-showcase-design-categories.js');
 
 const SAREEROW = {
   id: 'cat_saree',
@@ -211,7 +209,10 @@ describe('DELETE /showcase-design-categories/:id', () => {
   it('refuses deletion while designs reference the category', async () => {
     mockFindUnique.mockResolvedValue({ ...SAREEROW, _count: { designs: 3 } });
     const app = await buildApp();
-    const res = await app.inject({ method: 'DELETE', url: '/showcase-design-categories/cat_saree' });
+    const res = await app.inject({
+      method: 'DELETE',
+      url: '/showcase-design-categories/cat_saree',
+    });
     expect(res.statusCode).toBe(422);
     expect(mockDelete).not.toHaveBeenCalled();
     await app.close();
@@ -221,9 +222,14 @@ describe('DELETE /showcase-design-categories/:id', () => {
     mockFindUnique.mockResolvedValue(SAREEROW);
     mockDelete.mockResolvedValue({ id: SAREEROW.id });
     const app = await buildApp();
-    const res = await app.inject({ method: 'DELETE', url: '/showcase-design-categories/cat_saree' });
+    const res = await app.inject({
+      method: 'DELETE',
+      url: '/showcase-design-categories/cat_saree',
+    });
     expect(res.statusCode).toBe(200);
-    expect(mockDelete).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 'cat_saree' } }));
+    expect(mockDelete).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 'cat_saree' } }),
+    );
     await app.close();
   });
 });
