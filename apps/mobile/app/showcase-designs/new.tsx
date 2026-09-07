@@ -6,7 +6,6 @@ import * as ImagePicker from 'expo-image-picker'
 import { ImagePlus, Check, Droplet } from 'lucide-react-native'
 import {
   showcaseDesignsApi,
-  readLocalImage,
   uploadImageToR2,
   type ShowcaseDesignCategory,
 } from '../../src/lib/api'
@@ -44,8 +43,7 @@ export default function NewShowcaseDesignScreen() {
     setUploading(true)
     try {
       // Compress + upload the RAW image (server watermarks it on create).
-      const blob = await readLocalImage(uri)
-      const uploadResult = await showcaseDesignsApi.getUploadUrl('image/jpeg', blob.size)
+      const uploadResult = await showcaseDesignsApi.getUploadUrl('image/jpeg')
       const info = uploadResult.data
       await uploadImageToR2(uri, info.upload_url, 'image/jpeg')
       setPhotoUri(info.public_url)

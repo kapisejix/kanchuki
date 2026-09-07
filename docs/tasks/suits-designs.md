@@ -1,6 +1,6 @@
 # Suits Designs — plan & analysis
 
-**Status:** ✅ Built (2026-09-07) — migrations 093–096 written + committed, prod apply pending (T1.4, owner — never `migrate deploy` locally)
+**Status:** ✅ Built (2026-09-07) — migrations 093–096 written + committed, prod apply pending (T1.4, owner — never `migrate deploy` locally). Sr-dev review + cleanup pass done 2026-09-07 (§19) — 2 mobile fixes, all suites green, EAS-ready.
 **Requested:** 2026-09-07 (revised same day — fully dynamic, view-more tab, sharing, watermark; decisions locked §14)
 **Owner surface:** retailer mobile app + admin web + customer web (product detail + browse + public permalink)
 
@@ -869,14 +869,12 @@ Legend — **S:** skills to invoke · **F:** files · **T:** test/verify · **D:
 
 ### Phase 5 — Mobile customer
 
-- [x] **T5.1 Category-resolution helper**
-  S: `superpowers:test-driven-development`
-  F: `apps/mobile/src/lib/showcase-category.ts` — product category name →
-  matched showcase category slug + related slugs (uses the `/categories`
-  payload; pure function)
-  T: `vitest` self-check — "Ladies Suit" → suits(+gala,baju); "Saree" →
-  saree(+blouse); unknown → `[]`
-  D: helper + test green
+- [x] **T5.1 Category-resolution helper** — ⚠️ SUPERSEDED, not built. The
+  public `?product_id` route resolves the product→showcase category (name
+  match + related expansion) server-side and returns `{ slug, name, related }`
+  in the payload, so a client-side `apps/mobile/src/lib/showcase-category.ts`
+  is unnecessary. `ShowcaseDesigns.tsx` reads `res.data.category.name`
+  directly. No file, no test — intentional (Sr-dev review 2026-09-07, §19).
 
 - [x] **T5.2 Product-detail strip**
   S: `vercel-react-native-skills`, `impeccable`
@@ -1021,11 +1019,25 @@ Legend — **S:** skills to invoke · **F:** files · **T:** test/verify · **D:
   T: links resolve; index row matches BUILD-LOG
   D: docs track the commits (CLAUDE.md rule #10/#11)
 
-- [x] **T8.2 Full-suite gate**
+- [x] **T8.2 Full-suite gate** (re-run 2026-09-07 after §19 cleanup)
   S: `superpowers:verification-before-completion`
-  T: `apps/api` + `apps/mobile` + `apps/web` `vitest` all green; `tsc`
-  `--noEmit` all three; Biome clean; migration 093 in prod `_prisma_migrations`
-  D: everything green
+  T + result:
+    - `@kanchuki/ai` — `watermark.test.ts` **5/5**
+    - `@kanchuki/api` showcase suites (9 files) **117/117**:
+      `lib/showcase-quota` · `lib/showcase-watermark` · `routes/admin-settings-watermark`
+      · `admin/admin-showcase-designs` · `admin/admin-showcase-design-categories`
+      · `public/public-showcase-designs` · `retailers/retailers-showcase-designs`
+      · `retailers-social/retailers-social-fanout` · `jobs/rewatermark-showcase-designs`
+    - `@kanchuki/web` showcase suites (6 files) **29/29**:
+      `c/[slug]/…/ShowcaseDesigns` (4) · `[store]/designs/[id]/page` (4)
+      · `[store]/designs/DesignsBrowse` (3) · `admin/settings/theme/ShowcaseWatermarkSettings` (5)
+      · `admin/suits-designs/page` (7) · `admin/suits-design-categories/page` (6)
+    - `@kanchuki/mobile` full **59/59** (no showcase-specific unit tests — see §19)
+    - `tsc --noEmit` **clean** on api / web / mobile / ai
+    - Biome **clean** on api + web showcase files; `next lint` (web) clean;
+      `expo lint` (mobile) — no issue on any showcase file (1 pre-existing repo
+      error in `ProductGridPicker.tsx`, unrelated, not an `eas build` gate)
+  D: everything green ✅ except prod migration apply (T1.4, owner)
 
 - [ ] **T8.3 Ship**
   S: `caveman:caveman-commit`, `superpowers:finishing-a-development-branch`
@@ -1060,3 +1072,77 @@ Legend — **S:** skills to invoke · **F:** files · **T:** test/verify · **D:
 > First step when development starts: invoke `superpowers:executing-plans` with
 > this file, create a todo per unchecked task, and work Phase 1 → Phase 8. Do
 > not start a task until the previous one's Test + review gate are green.
+
+---
+
+## 19. Sr-dev review + cleanup pass (2026-09-07)
+
+Full read of every file in the feature except the watermark helpers
+(`packages/ai/src/watermark.ts`, `apps/api/src/lib/showcase-watermark.ts`,
+`apps/api/src/routes/admin-settings/showcase-watermark.ts`,
+`apps/api/src/jobs/rewatermark-showcase-designs.ts`) — left untouched per the
+owner's "don't rewrite watermark". Scope: dead/extra code, what's left to build.
+
+### Fixed (2 mobile changes, no rewrites)
+
+1. **Dead file read.** `app/showcase-designs/new.tsx` + `[id].tsx` did
+   `const blob = await readLocalImage(uri)` purely to pass `blob.size` into
+   `showcaseDesignsApi.getUploadUrl(ct, size)` — a param the client already
+   discarded (`_sizeBytes`) and the `/upload-url` route never accepts (it takes
+   `content_type` + `filename`). `uploadImageToR2` reads + compresses the file
+   itself. Removed the read + the size arg; `getUploadUrl` is now
+   `(contentType: string)`.
+
+2. **Broken customer native share.** `app/showcase-designs/view/[id].tsx`
+   `handleShare` handed a remote R2 `https://` URL to `expo-sharing`
+   `shareAsync` — which only accepts local `file://` URIs. On a device it
+   threw, `catch {}` swallowed it, and the `Share.share` fallback was
+   unreachable behind `Sharing.isAvailableAsync()`. The native path now calls
+   RN's built-in `Share.share({ message })` with the permalink in the body
+   (same pattern as `app/store-profile.tsx`); `navigator.share` still handles
+   web. `expo-sharing` import dropped from this screen (still a repo dep —
+   used by `store-profile.tsx` + `useProductAiStudio.ts`).
+
+### Left as-is on purpose (not debt)
+
+- **Browse pagination is a stub** — `next_cursor` is always `null`, the public
+  route caps at `BROWSE_PAGE_SIZE = 24`. Fine until a store exceeds 24 active
+  designs; add a real cursor then. Consumers (`browse.tsx`, `DesignsBrowse.tsx`)
+  never read `next_cursor`.
+- **`?ref=<productId>` provenance** is wired on web (`/{store}/designs?ref=`)
+  but the mobile browse screen ignores it (takes `?store` / `?category`).
+  Provenance only — no functional effect either way.
+- **rewatermark-showcase-designs job (165 LOC)** is heavier than §2.5's
+  "`ponytail:` add when a retailer actually rebrands" note, but it is built,
+  wired to the admin watermark-config PUT (stamp-affecting fields only), and
+  tested (5/5). Ripping it out now = churn.
+- **`countActiveShowcaseDesigns` exported** from `showcase-quota.ts` for its
+  test; harmless.
+- **`getShowcaseUsage` returns `remaining: Infinity`** for unlimited plans,
+  which JSON-serialises to `null`. Mobile keys off `unlimited` / `limit`, so
+  no visible bug — cosmetic.
+- **`createHash(...)` filename minting** in `admin-showcase-designs.ts` +
+  `admin-settings/showcase-watermark.ts` where the retailer route uses
+  `createId()`. Both are collision-safe enough; not worth a change.
+- **`[id].tsx` seeds edit-form state via `setState` during render** (guarded by
+  `seeded`). Works; a `useEffect` keyed on `design?.id` would be idiomatic.
+  Left — no loop, no bug.
+
+### What's left for development
+
+| Item | Owner | Blocking? |
+|---|---|---|
+| **T1.4** — apply migrations 093 → 094 → 095 → 096 via the admin runner in prod, verify tables/enums/seed rows | owner | **YES** — `hasFeature` fails closed, so Suits Designs is OFF on every plan until 095's `plan_features` rows exist |
+| **T8.3** — commit per phase already pushed; open PR; deploy (push to main → Railway); T5/T7 manual smoke on prod | owner | to ship |
+| Browse cursor pagination | later | no — YAGNI < 24 designs/store |
+| Mobile unit tests for the showcase screens/client | later | no — `tsc` + API/web suites cover the contracts; T5.1 helper was correctly not built |
+
+### EAS compile readiness
+
+Ready. `tsc --noEmit` clean on mobile, `vitest` 59/59, `expo lint` clean on
+every showcase file, no native config (`app.json`) change from this feature's
+mobile work, no new dependency (`expo-clipboard` was the only add — already in
+`package.json` + lockfile + `node_modules`). `eas build` does not run
+`expo lint`, so the one pre-existing repo lint error
+(`src/components/social/ProductGridPicker.tsx`, from commit `23fc2eb3`) is not
+a build blocker.

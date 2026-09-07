@@ -2075,3 +2075,22 @@ A library of design / pattern reference photos (Suits, Blouse, Saree, Kurti, Gal
 ### Verification
 
 API 879/879 (incl. 8 new admin-settings-watermark route tests + showcase suites), web 120/120 (incl. 5 new ShowcaseWatermarkSettings component tests), mobile 59/59, ai 80/80; `tsc --noEmit` clean on api/web/mobile/ai/shared; session-batch files Biome-clean (full `biome check src/` on this Windows worktree additionally reports ~160 one-per-file CRLF formatter artifacts across the pre-existing checkout — CI runs on Linux/LF and is unaffected; §63's gate remains the source of truth). Not deployed: migrations 093–096 need the admin runner in prod (T1.4, owner), and the watermark applies to uploads created after the config is saved (re-watermark of existing rows on a rebrand stays a deferred job).
+
+### Sr-dev review + cleanup pass (2026-09-07, EAS-prep)
+
+Full read of every non-watermark file in the feature (watermark helpers left as-is per owner). Two real fixes, no rewrites:
+
+- **Dead file read (mobile).** `showcase-designs/new.tsx` + `[id].tsx` called `readLocalImage(uri)` only to pass `blob.size` to `showcaseDesignsApi.getUploadUrl(ct, size)` — a param the client discards (`_sizeBytes`) and the `upload-url` route never accepts. Removed the read + the arg; `uploadImageToR2` already reads + compresses the file itself. `getUploadUrl` is now `(contentType)`.
+- **Broken customer native share (mobile).** `showcase-designs/view/[id].tsx` `handleShare` passed a remote R2 `https://` URL to `expo-sharing` `shareAsync`, which only takes local `file://` URIs — it threw on-device, was swallowed by `catch {}`, and the `Share.share` fallback was unreachable behind `Sharing.isAvailableAsync()`. Native path now uses RN's built-in `Share.share({ message })` with the permalink in the body (same approach as `store-profile.tsx`); `navigator.share` still handles web. `expo-sharing` import dropped from this screen (still a dep — used elsewhere).
+
+Re-verified: mobile `tsc` clean, `vitest` 59/59, `expo lint` reports nothing on any showcase file (1 pre-existing repo error in `ProductGridPicker.tsx`, unrelated, not an `eas build` gate). API showcase suites 117/117 (9 files), web showcase suites 29/29 (6 files), ai watermark 5/5. api/web `tsc` + Biome clean.
+
+**Left as-is (intentional, not debt):**
+- Browse feed pagination is a stub — `next_cursor` is always `null`, `BROWSE_PAGE_SIZE = 24` caps the response. Fine until a single store exceeds 24 designs; add a cursor then.
+- `?ref=<productId>` provenance is plumbed on web (`/{store}/designs?ref=`) but not on the mobile browse screen (takes `?store`/`?category`). Provenance-only, no functional effect.
+- rewatermark-showcase-designs job (165 LOC) is heavier than the spec's "add when a retailer rebrands" note, but it is built, wired to the admin config PUT, and tested — removing it now would be churn.
+- No mobile unit tests for the showcase screens/client (mobile suite unchanged at 59). The `showcase-category.ts` helper (task board T5.1) was never created — the public API resolves the category server-side and returns it in the `?product_id` payload, so the client helper is genuinely unnecessary; T5.1 in the task board is stale.
+
+**Still blocking go-live:** T1.4 — migrations 093 → 094 → 095 → 096 applied via the admin runner in prod (owner-only). `hasFeature` fails closed, so Suits Designs is OFF on every plan until 095's `plan_features` rows land. T8.3 (PR + deploy) not started.
+
+**EAS compile:** ready after this pass — no native config change, no new dependency, `tsc` clean, mobile suite green. `eas build` does not run `expo lint`, so the pre-existing `ProductGridPicker.tsx` lint error is not a blocker.

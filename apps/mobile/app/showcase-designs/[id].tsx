@@ -6,7 +6,6 @@ import * as ImagePicker from 'expo-image-picker'
 import { Camera, Trash2, Share2 } from 'lucide-react-native'
 import {
   showcaseDesignsApi,
-  readLocalImage,
   uploadImageToR2,
   type ShowcaseDesignCategory,
 } from '../../src/lib/api'
@@ -61,8 +60,7 @@ export default function ShowcaseDesignDetailScreen() {
     const uri = result.assets[0].uri
     setReplacingPhoto(true)
     try {
-      const blob = await readLocalImage(uri)
-      const uploadResult = await showcaseDesignsApi.getUploadUrl('image/jpeg', blob.size)
+      const uploadResult = await showcaseDesignsApi.getUploadUrl('image/jpeg')
       const info = uploadResult.data
       await uploadImageToR2(uri, info.upload_url, 'image/jpeg')
       await showcaseDesignsApi.update(design.id, { raw_r2_key: info.r2_key })

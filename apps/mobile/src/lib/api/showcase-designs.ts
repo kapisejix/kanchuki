@@ -66,7 +66,7 @@ export const showcaseDesignsApi = {
       getCacheTtlMs: 30_000,
     }),
 
-  getUploadUrl: (contentType: string, _sizeBytes: number) =>
+  getUploadUrl: (contentType: string) =>
     request<{
       data: { upload_url: string; r2_key: string; public_url: string; expires_in: number }
     }>('/v1/retailers/me/showcase-designs/upload-url', {

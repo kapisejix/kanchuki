@@ -5,7 +5,6 @@
 import { View, Text, Image, ActivityIndicator, Alert, Linking, Platform, Share as RnShare } from 'react-native'
 import { Stack, router, useLocalSearchParams } from 'expo-router'
 import { useQuery } from '@tanstack/react-query'
-import * as Sharing from 'expo-sharing'
 import * as Clipboard from 'expo-clipboard'
 import { Share2, MessageCircle, Copy, Store } from 'lucide-react-native'
 import { useScreenInsets } from '../../../src/lib/safe-area'
@@ -41,14 +40,8 @@ export default function ShowcaseDesignViewScreen() {
         Alert.alert('Link copied', permalink)
         return
       }
-      // Native system share sheet — image + permalink.
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(design!.image_url, {
-          dialogTitle: design?.name ?? 'Design',
-          mimeType: 'image/jpeg',
-        })
-        return
-      }
+      // Native share sheet — the permalink in the message body. (expo-sharing
+      // only accepts local file:// URIs; a remote R2 URL throws there.)
       await RnShare.share({ message: `${design?.name ?? 'Design'} — ${permalink}` })
     } catch {
       // Share sheet dismissed by the user is not an error.
