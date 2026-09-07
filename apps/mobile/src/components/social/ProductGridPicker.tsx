@@ -106,7 +106,7 @@ export function ProductGridPicker({
         >
           <RefreshCw size={15} color={colors.rust[500]} />
           <Text className="text-xs text-rust-600 font-semibold">
-            Couldn't load products — tap to retry
+            Couldn&apos;t load products — tap to retry
           </Text>
         </AnimatedPressable>
       ) : filtered.length === 0 ? (
