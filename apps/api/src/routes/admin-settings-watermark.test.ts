@@ -21,6 +21,16 @@ const { mockPublicUrl, mockPresignedUrl, mockDeleteObject } = vi.hoisted(() => (
   mockDeleteObject: vi.fn(async () => undefined),
 }));
 
+// The re-watermark background job producer (jobs/rewatermark-showcase-designs.ts)
+// is fire-and-forget from the PUT route — asserted but never run in tests.
+const { mockAddRewatermarkJob } = vi.hoisted(() => ({
+  mockAddRewatermarkJob: vi.fn(async () => undefined),
+}));
+
+vi.mock('../jobs/rewatermark-showcase-designs.js', () => ({
+  addRewatermarkShowcaseDesignsJob: mockAddRewatermarkJob,
+}));
+
 vi.mock('@kanchuki/db', () => ({
   prisma: { auditLog: { findFirst: mockAuditLogFindFirst, create: mockAuditLogCreate } },
   // Import-chain requirement only (admin.js auth graph) — never exercised.
@@ -248,6 +258,46 @@ describe('Admin showcase watermark config API', () => {
       payload: { content_type: 'image/gif', filename: 'x.gif' },
     });
     expect(bad.statusCode).toBe(422);
+    await app.close();
+  });
+
+  it('enqueues the re-watermark job when a stamp-affecting field changes', async () => {
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'PUT',
+      url: '/v1/admin/settings/showcase-watermark',
+      headers: csrfHeaders(),
+      payload: { opacity: 0.5, gravity: 'southwest' },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(mockAddRewatermarkJob).toHaveBeenCalledWith({ triggered_by: 'admin-config-change' });
+    await app.close();
+  });
+
+  it('does NOT enqueue for a strip_count-only change (display-only field)', async () => {
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'PUT',
+      url: '/v1/admin/settings/showcase-watermark',
+      headers: csrfHeaders(),
+      payload: { strip_count: 9 },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(mockAddRewatermarkJob).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('does NOT enqueue when a stamp field is PUT with its current value (no-op)', async () => {
+    const app = await buildApp();
+    wmStore = { opacity: 0.5, strip_count: 6 };
+    const res = await app.inject({
+      method: 'PUT',
+      url: '/v1/admin/settings/showcase-watermark',
+      headers: csrfHeaders(),
+      payload: { opacity: 0.5 },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(mockAddRewatermarkJob).not.toHaveBeenCalled();
     await app.close();
   });
 

@@ -12,6 +12,7 @@ import { deleteObject, getUploadPresignedUrl, publicUrl } from '@kanchuki/ai';
 import { R2_PATHS } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
+import { addRewatermarkShowcaseDesignsJob } from '../../jobs/rewatermark-showcase-designs.js';
 import {
   SHOWCASE_WATERMARK_SETTING_KEY,
   type ShowcaseWatermarkConfig,
@@ -20,6 +21,11 @@ import {
 } from '../../lib/showcase-watermark.js';
 import { adminAuthPreHandler } from '../admin.js';
 import { saveSetting } from './settings-store.js';
+
+// Fields whose change re-stamps every existing design's image. strip_count
+// is display-only (how many thumbs show before "View more") — changing it
+// must NOT burn an R2 re-watermark pass.
+const STAMP_AFFECTING_FIELDS = ['logo_r2_key', 'opacity', 'scale', 'gravity'] as const;
 
 const LOGO_PREFIX = 'showcase-watermark/';
 
@@ -96,6 +102,24 @@ export const adminShowcaseWatermarkRoutes: FastifyPluginAsync = async (server) =
     }
 
     request.log.info({ merged }, 'Showcase watermark config updated');
+
+    // A stamp-affecting change (logo/opacity/scale/gravity) needs every
+    // existing design re-composited from its raw upload — deferred background
+    // job, never inline (docs/tasks/suits-designs.md §6). Best-effort: the
+    // config save has already succeeded, so a Redis/queue hiccup must not
+    // fail the admin's PUT.
+    const stampChanged = STAMP_AFFECTING_FIELDS.some(
+      (field) => body[field] !== undefined && body[field] !== current[field],
+    );
+    if (stampChanged) {
+      addRewatermarkShowcaseDesignsJob({ triggered_by: 'admin-config-change' }).catch((err) =>
+        request.log.warn(
+          { err },
+          'Failed to enqueue showcase re-watermark job after config change',
+        ),
+      );
+    }
+
     return { data: toResponse(merged) };
   });
 
