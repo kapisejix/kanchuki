@@ -245,6 +245,148 @@ describe('POST /v1/retailers/me/social/posts — auth + shape', () => {
   });
 });
 
+// ── IMAGE (Suits Designs standalone share, suits-designs.md §2.6) ─
+// A design posts from its public watermarked URL — no product ref. It fans
+// out exactly like a single-product photo (FB photo endpoint / IG photo
+// helper) and records post_type IMAGE with an empty product_ids array.
+describe('IMAGE post (standalone design image)', () => {
+  const DESIGN_URL = 'https://cdn.example/designs/watermarked-1.jpg';
+  const imagePayload = (overrides: Record<string, unknown> = {}) =>
+    captionPayload({
+      post_type: 'IMAGE',
+      items: [{ image_url: DESIGN_URL }],
+      ...overrides,
+    });
+
+  it('422 when no items or the item lacks an image_url', async () => {
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/me/social/posts',
+      payload: imagePayload({ items: [] }),
+    });
+    expect(res.statusCode).toBe(422);
+    const res2 = await app.inject({
+      method: 'POST',
+      url: '/v1/me/social/posts',
+      payload: imagePayload({ items: [{ product_id: 'p_1' }] }),
+    });
+    expect(res2.statusCode).toBe(422);
+    expect(mockPostCreate).not.toHaveBeenCalled();
+  });
+
+  it('422 when an IMAGE item also carries product media', async () => {
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/me/social/posts',
+      payload: imagePayload({
+        items: [{ image_url: DESIGN_URL, product_id: 'p_1' }],
+      }),
+    });
+    expect(res.statusCode).toBe(422);
+    expect(mockPostCreate).not.toHaveBeenCalled();
+  });
+
+  it('422 for a design in a carousel (a design image can only post alone)', async () => {
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/me/social/posts',
+      payload: captionPayload({
+        post_type: 'CAROUSEL',
+        items: [{ image_url: DESIGN_URL }, { product_id: 'p_1' }],
+      }),
+    });
+    expect(res.statusCode).toBe(422);
+    expect(mockPostCreate).not.toHaveBeenCalled();
+  });
+
+  it('FB: posts the image URL, auto-captions, and records an honest IMAGE row with empty product_ids', async () => {
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/me/social/posts',
+      payload: imagePayload(),
+    });
+    expect(res.statusCode).toBe(200);
+    expect(mockPublishPhoto).toHaveBeenCalledWith(
+      'page_101',
+      'dec:tok-fb',
+      DESIGN_URL,
+      'New design at Priya Cloth House',
+    );
+    // No product lookup was ever needed for a standalone image.
+    expect(mockProductFindMany).not.toHaveBeenCalled();
+    const created = mockPostCreate.mock.calls[0]?.[0]?.data;
+    expect(created?.post_type).toBe('IMAGE');
+    expect(created?.product_ids).toEqual([]);
+    expect(created?.caption).toBe('New design at Priya Cloth House');
+    // The media snapshot records the URL with a null product ref.
+    expect(created?.media).toEqual([
+      { product_id: null, kind: 'photo', url: DESIGN_URL },
+    ]);
+  });
+
+  it('auto caption drops the shop segment when the shop name is missing', async () => {
+    mockRetailerFindUniqueOrThrow.mockResolvedValue({
+      public_slug: 'priya-house',
+      shop_name: null,
+      plan: 'GROWTH',
+    });
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/me/social/posts',
+      payload: imagePayload(),
+    });
+    expect(res.statusCode).toBe(200);
+    const caption = mockPostCreate.mock.calls[0]?.[0].data.caption;
+    expect(caption).toBe('New design');
+    expect(caption).not.toMatch(/ at $/);
+  });
+
+  it('IG: publishes the design photo and records the REAL permalink', async () => {
+    mockAccountFindMany.mockResolvedValue([IG_ACCOUNT]);
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/me/social/posts',
+      payload: imagePayload({ targets: ['ig_1'] }),
+    });
+    expect(res.statusCode).toBe(200);
+    expect(mockPublishInstagramPhoto).toHaveBeenCalledWith(
+      'ig_user_55',
+      'dec:tok-ig',
+      DESIGN_URL,
+      expect.any(String),
+    );
+    expect(res.json().data.results[0]).toMatchObject({
+      platform: 'INSTAGRAM',
+      status: 'POSTED',
+      external_post_url: 'https://www.instagram.com/p/Re4lSh0rtc0de/',
+    });
+    // Product fallback never ran — the photo path is taken directly.
+    expect(mockProductFindMany).not.toHaveBeenCalled();
+  });
+
+  it('keeps a client-supplied caption for the design share', async () => {
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/me/social/posts',
+      payload: imagePayload({ caption: 'New kurti design — DM to order' }),
+    });
+    expect(res.statusCode).toBe(200);
+    expect(mockPublishPhoto).toHaveBeenCalledWith(
+      'page_101',
+      'dec:tok-fb',
+      DESIGN_URL,
+      'New kurti design — DM to order',
+    );
+  });
+});
+
 // ── auto caption via resolvePostTemplate (T-9.5 wiring) ──────────
 describe('auto caption resolves through resolvePostTemplate', () => {
   it('single product: name + ₹price + category + store name', async () => {

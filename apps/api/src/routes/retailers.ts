@@ -11,6 +11,7 @@ import {
   retailersRatingsRoutes,
   retailersSectionsRoutes,
   retailersSettingsRoutes,
+  retailersShowcaseDesignRoutes,
   retailersSocialRoutes,
   retailersStatsRoutes,
   retailersUploadsRoutes,
@@ -37,6 +38,8 @@ export const retailerRoutes: FastifyPluginAsync = async (server) => {
   await server.register(retailersCatalogUploadRoutes);
   // retailers-social — F-031 social media publishing
   await server.register(retailersSocialRoutes);
+  // retailers-showcase-designs — Suits Designs library (global + own)
+  await server.register(retailersShowcaseDesignRoutes);
   // retailers-aggregators — Phase 7 Aggregator / Marketplace Sync
   await server.register(retailersAggregatorRoutes);
   // retailers-integrations — Platform API credentials (GMB, FB Ads, Google Ads)

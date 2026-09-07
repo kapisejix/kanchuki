@@ -10,11 +10,15 @@
 // Contract (docs/tasks/social-create-post-composer.md §6.1):
 //   {
 //     client_post_id: uuid,            // client minted; dedupes retries (R-13)
-//     post_type: SINGLE_PRODUCT|CAROUSEL|COLLECTION_LINK,
+//     post_type: SINGLE_PRODUCT|CAROUSEL|COLLECTION_LINK|IMAGE,
 //     targets: [socialAccountId, ...], // 1..n connected accounts
-//     items?: [{ product_id, photo_id?|video_id? }],  // 1 | 2..10 | none
+//     items?: [{ product_id, photo_id?|video_id? } | { image_url }],  // 1 | 2..10 | none
 //     collection_id?, link_type?, link_product_id?, caption?
 //   }
+// IMAGE (Suits Designs social share, suits-designs.md §2.6): a standalone
+// watermarked image posted from its public URL — no product. Fans out like a
+// SINGLE_PRODUCT photo to FB + IG, records post_type IMAGE with an empty
+// product_ids array.
 // Validation errors (bad item counts, unknown media, IG+link-only, mixed
 // carousel media) throw a 400 with NO rows written. Publish failures per
 // target are recorded as FAILED rows and surfaced in the results.
@@ -42,15 +46,18 @@ import { publishInstagramPhoto } from './retailers-social-helpers.js';
 const PUBLISH_LIMIT = { max: 30, timeWindow: 60 * 60 * 1000 };
 
 const itemSchema = z.object({
-  product_id: z.string().min(1),
+  product_id: z.string().min(1).optional(),
   photo_id: z.string().optional(),
   video_id: z.string().optional(),
+  // IMAGE posts carry the watermarked design's public URL instead of a
+  // product ref (no photo/video lookup).
+  image_url: z.string().url().optional(),
 });
 
 const bodySchema = z
   .object({
     client_post_id: z.string().min(8).max(100),
-    post_type: z.enum(['SINGLE_PRODUCT', 'CAROUSEL', 'COLLECTION_LINK']),
+    post_type: z.enum(['SINGLE_PRODUCT', 'CAROUSEL', 'COLLECTION_LINK', 'IMAGE']),
     targets: z.array(z.string().min(1)).min(1),
     items: z.array(itemSchema).max(10).optional(),
     collection_id: z.string().optional(),
@@ -67,9 +74,11 @@ const bodySchema = z
 type PostBody = z.infer<typeof bodySchema>;
 
 // Cross-field rules per post_type (mirrors the composer client validation):
-//   SINGLE_PRODUCT — exactly 1 item; link resolves from items/link_* fields.
-//   CAROUSEL       — 2..10 items, photos only (R-10/R-16; video_id rejected).
+//   SINGLE_PRODUCT — exactly 1 product item; link resolves from items/link_*.
+//   CAROUSEL       — 2..10 product items, photos only (R-10/R-16; video_id
+//                    rejected).
 //   COLLECTION_LINK— no items; collection_id required; link_type 'collection'.
+//   IMAGE          — exactly 1 item carrying image_url, never a product ref.
 function assertPostShape(body: PostBody): void {
   const { post_type } = body;
   if (post_type === 'COLLECTION_LINK') {
@@ -84,8 +93,27 @@ function assertPostShape(body: PostBody): void {
     if (items.some((i) => i.video_id)) {
       throw validationError('Carousels support photos only — remove the video');
     }
-  } else if ((body.items ?? []).length !== 1) {
-    throw validationError('A single product post takes exactly one product');
+    if (items.some((i) => !i.product_id)) {
+      throw validationError('Carousels need product photos — a design image can only post alone');
+    }
+  } else if (post_type === 'IMAGE') {
+    const items = body.items ?? [];
+    const imageItem = items[0];
+    if (items.length !== 1 || !imageItem?.image_url) {
+      throw validationError('An image post takes exactly one image URL');
+    }
+    if (imageItem.product_id || imageItem.photo_id || imageItem.video_id) {
+      throw validationError('An image post takes a standalone image — no product media');
+    }
+  } else {
+    const items = body.items ?? [];
+    const productItem = items[0];
+    if (items.length !== 1 || !productItem?.product_id) {
+      throw validationError('A single product post takes exactly one product');
+    }
+    if (productItem.image_url) {
+      throw validationError('A product post takes product media — not a standalone image');
+    }
   }
 }
 
@@ -134,7 +162,9 @@ export const retailersSocialFanoutRoutes: FastifyPluginAsync = async (server) =>
     });
 
     const itemList = body.items ?? [];
-    const productIds = [...new Set(itemList.map((i) => i.product_id))];
+    // IMAGE items carry a URL, not a product — product refs only exist on the
+    // product post types (assertPostShape already enforced the split).
+    const productIds = [...new Set(itemList.map((i) => i.product_id).filter((x): x is string => !!x))];
     const loadedProducts = new Map<string, LoadedProduct>();
 
     if (productIds.length > 0) {
@@ -189,9 +219,10 @@ export const retailersSocialFanoutRoutes: FastifyPluginAsync = async (server) =>
         throw validationError('One or more selected products no longer exist');
     }
 
-    // ── Validate + snapshot each item's media (photos XOR the main video) ─
+    // ── Validate + snapshot each item's media (photos XOR the main video;
+    // IMAGE items snapshot their own URL with no product ref) ──────
     interface Snapshot {
-      product_id: string;
+      product_id: string | null;
       photo_id?: string;
       video_id?: string;
       kind: 'photo' | 'video';
@@ -199,7 +230,11 @@ export const retailersSocialFanoutRoutes: FastifyPluginAsync = async (server) =>
     }
     const snapshots: Snapshot[] = [];
     for (const item of itemList) {
-      const product = loadedProducts.get(item.product_id)!;
+      if (item.image_url) {
+        snapshots.push({ product_id: null, kind: 'photo', url: item.image_url });
+        continue;
+      }
+      const product = loadedProducts.get(item.product_id!)!;
       if (item.photo_id) {
         const photo = product.photos.find((p) => p.id === item.photo_id);
         if (!photo) throw validationError('Selected photo does not belong to the product');
@@ -311,9 +346,11 @@ export const retailersSocialFanoutRoutes: FastifyPluginAsync = async (server) =>
     // Resolved through resolvePostTemplate (T-9.5) so the fan-out speaks the
     // same authoritative placeholder language as the admin post templates —
     // fail-open: a missing value never leaves a raw {token} in a live post.
-    const firstProduct = itemList[0] ? loadedProducts.get(itemList[0].product_id) : null;
+    const firstProduct = itemList[0]?.product_id
+      ? loadedProducts.get(itemList[0].product_id)
+      : null;
     const productNames = snapshots
-      .map((s) => loadedProducts.get(s.product_id)?.name?.trim())
+      .map((s) => (s.product_id ? loadedProducts.get(s.product_id)?.name?.trim() : undefined))
       .filter((n): n is string => Boolean(n));
     const templateCtx = {
       productNames,
@@ -340,6 +377,11 @@ export const retailersSocialFanoutRoutes: FastifyPluginAsync = async (server) =>
           storeName: retailer.shop_name ?? undefined,
           link: linkUrl ?? undefined,
         });
+      } else if (body.post_type === 'IMAGE') {
+        // A standalone design image — conditional store segment so a missing
+        // shop name never leaves a dangling ' at ' in the live post.
+        const storeToken = retailer.shop_name?.trim() ? ' at {store_name}' : '';
+        caption = resolvePostTemplate(`New design${storeToken}`, templateCtx);
       } else if (productNames.length > 0) {
         // Token segments are conditional so a missing price/category/store
         // name doesn't leave dangling separators in the live post.
@@ -516,7 +558,8 @@ export const retailersSocialFanoutRoutes: FastifyPluginAsync = async (server) =>
           social_account_id: account.id,
           platform: account.platform,
           post_type: body.post_type,
-          product_ids: snapshots.map((s) => s.product_id),
+          // IMAGE rows carry no product refs — an honest empty array.
+          product_ids: productIds,
           collection_id: body.post_type === 'COLLECTION_LINK' ? body.collection_id : undefined,
           caption: caption || '—',
           media: snapshotJson as unknown as object[],
@@ -551,7 +594,8 @@ export const retailersSocialFanoutRoutes: FastifyPluginAsync = async (server) =>
         social_account_id: account.id,
         platform: account.platform,
         post_type: body.post_type,
-        product_ids: snapshots.map((s) => s.product_id),
+        // IMAGE rows carry no product refs — an honest empty array.
+        product_ids: productIds,
         collection_id: body.post_type === 'COLLECTION_LINK' ? body.collection_id : undefined,
         caption,
         media: postedMedia as unknown as object[],
@@ -609,7 +653,7 @@ function accountToken(encrypted: string): string {
 
 function productFallbackPhoto(
   products: Map<string, LoadedProduct>,
-  productId: string | undefined,
+  productId: string | null | undefined,
 ): { product_id: string; photo_id: string; kind: 'photo'; url: string } | null {
   if (!productId) return null;
   const product = products.get(productId);

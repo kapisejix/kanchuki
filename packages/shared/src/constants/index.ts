@@ -289,6 +289,12 @@ export const R2_PATHS = {
     `retailers/${retailerId}/categories/${filename}`,
   retailerBanner: (retailerId: string, filename: string) =>
     `retailers/${retailerId}/banner/${filename}`,
+  // Suits Designs (docs/tasks/suits-designs.md §4): raw client upload vs the
+  // server-watermarked final. `owner` is the retailer id, or 'global' for
+  // admin-published designs (no retailer).
+  showcaseDesignRaw: (owner: string, filename: string) =>
+    `showcase-designs/${owner}/raw/${filename}`,
+  showcaseDesign: (owner: string, filename: string) => `showcase-designs/${owner}/${filename}`,
   photoCleanupTest: (filename: string) => `admin/photo-cleanup-tests/${filename}`,
   // F-032 Phase A: AI studio-shoot results. New KEY per generation (never
   // overwrites the source photo) — the result is a new ProductPhoto row the
