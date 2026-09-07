@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronLeft, Languages, X } from 'lucide-react-native'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Check, ChevronLeft, Languages, X } from 'lucide-react-native'
 import { useEffect, useRef, useState } from 'react'
 import {
   ActivityIndicator,
@@ -21,9 +21,11 @@ import { productApi, socialApi } from '../../src/lib/api'
 import type { PostTemplateInfo } from '../../src/lib/api/social'
 import {
   growthApi,
+  TRANSLATE_LANGUAGES,
   type AudienceSpec,
   type CampaignType,
   type CustomerLeadSource,
+  type TranslateLanguage,
 } from '../../src/lib/api'
 import { showError } from '../../src/lib/errors'
 import { useTheme } from '../../src/lib/theme'
@@ -68,6 +70,14 @@ const MESSAGE_TEMPLATES: Record<CampaignType, { label: string; text: string }[]>
       label: 'Festive invite',
       text: '{{name}}, {{festival}} is here! ✨ Visit {{shop}} or browse online: {{link}}',
     },
+    {
+      label: 'Festive greeting',
+      text: 'Wishing you and your family a very happy {{festival}}, {{name}}! 🌸 — from all of us at {{shop}}. {{link}}',
+    },
+    {
+      label: 'Gift ideas',
+      text: '{{name}}, sorted for {{festival}} gifting? 🎁 Handpicked pieces at {{shop}}, every budget: {{link}}',
+    },
   ],
   REACTIVATION: [
     {
@@ -78,6 +88,14 @@ const MESSAGE_TEMPLATES: Record<CampaignType, { label: string; text: string }[]>
       label: 'Welcome back offer',
       text: '{{name}}, it\'s been a while! Come back to {{shop}} — {{offer}} waiting for you: {{link}}',
     },
+    {
+      label: 'New arrivals',
+      text: '{{name}}, new styles just arrived at {{shop}}! 🆕 Be the first to see them: {{link}}',
+    },
+    {
+      label: 'Back in stock',
+      text: 'Good news {{name}} — popular styles are back in stock at {{shop}}. Grab yours: {{link}}',
+    },
   ],
   PROMOTION: [
     {
@@ -87,6 +105,14 @@ const MESSAGE_TEMPLATES: Record<CampaignType, { label: string; text: string }[]>
     {
       label: 'Limited time',
       text: '{{name}}, don\'t miss out! {{offer}} at {{shop}} — for a limited time only. {{link}}',
+    },
+    {
+      label: 'Flat sale',
+      text: '🔥 Sale is ON at {{shop}}! {{offer}} across the store. Shop before it ends: {{link}}',
+    },
+    {
+      label: 'Clearance',
+      text: '{{name}}, end-of-season clearance at {{shop}} — {{offer}}, limited stock. {{link}}',
     },
   ],
   AB_TEST: [
@@ -208,6 +234,16 @@ export default function CampaignFormScreen() {
   // Numeric auto-increment festival id (admin-managed calendar).
   const [festivalId, setFestivalId] = useState<number | null>(null)
   const [saving, setSaving] = useState(false)
+
+  // Inline AI translate — replaces the old full-screen /growth/translate jump.
+  const [showTranslate, setShowTranslate] = useState(false)
+  const [translateLang, setTranslateLang] = useState<TranslateLanguage>('hindi')
+  const translateMut = useMutation({
+    mutationFn: () => growthApi.translateMessage(message.trim(), translateLang),
+    onError: (err) =>
+      showError(err, 'Could not translate. Try another language or shorten the text.'),
+  })
+  const translated = translateMut.data?.data?.message ?? null
 
   // Audience
   const [allAudience, setAllAudience] = useState(false)
@@ -622,17 +658,86 @@ export default function CampaignFormScreen() {
                 </Text>
               </View>
               <AnimatedPressable
-                onPress={() =>
-                  router.push(
-                    `/growth/translate?mode=message&campaignId=new&campaignName=${encodeURIComponent(name || 'New campaign')}&message=${encodeURIComponent(message)}`,
-                  )
-                }
+                onPress={() => setShowTranslate((v) => !v)}
                 accessibilityRole="button"
+                accessibilityState={{ selected: showTranslate }}
                 className="flex-row items-center justify-center gap-2 mt-3 border border-dashed border-fuchsia-400 bg-fuchsia-500/5 rounded-2xl py-2.5"
               >
                 <Languages size={15} color="#BB3F95" />
-                <Text className="text-fuchsia-800 text-xs font-bold">AI Multi-lingual Translate</Text>
+                <Text className="text-fuchsia-800 text-xs font-bold">
+                  {showTranslate ? 'Hide AI Translate' : 'AI Translate to a regional language'}
+                </Text>
               </AnimatedPressable>
+
+              {showTranslate && (
+                <View className="mt-3 bg-lavender-50 rounded-2xl p-3.5 border border-lavender-200">
+                  <View className="flex-row flex-wrap gap-2 mb-3">
+                    {TRANSLATE_LANGUAGES.map((l) => {
+                      const active = translateLang === l.key
+                      return (
+                        <AnimatedPressable
+                          key={l.key}
+                          onPress={() => {
+                            setTranslateLang(l.key)
+                            translateMut.reset()
+                          }}
+                          accessibilityRole="button"
+                          accessibilityState={{ selected: active }}
+                          className={`px-3.5 py-1.5 rounded-full border ${
+                            active
+                              ? 'bg-spaceCadet-900 border-spaceCadet-900'
+                              : 'bg-white border-lavender-200'
+                          }`}
+                        >
+                          <Text
+                            className={`text-xs font-bold ${active ? 'text-white' : 'text-spaceCadet-900'}`}
+                          >
+                            {l.label}
+                          </Text>
+                        </AnimatedPressable>
+                      )
+                    })}
+                  </View>
+                  <GradientButton
+                    label={
+                      translateMut.isPending
+                        ? 'Translating…'
+                        : `Translate to ${TRANSLATE_LANGUAGES.find((l) => l.key === translateLang)?.label}`
+                    }
+                    onPress={() => {
+                      if (!message.trim()) {
+                        Alert.alert('Nothing to translate', 'Write the message first.')
+                        return
+                      }
+                      translateMut.mutate()
+                    }}
+                    loading={translateMut.isPending}
+                  />
+                  {translated && (
+                    <View className="mt-3 bg-white rounded-2xl p-3.5 border border-lavender-200">
+                      <Text className="text-xs text-spaceCadet-900 leading-relaxed font-medium">
+                        {translated}
+                      </Text>
+                      <AnimatedPressable
+                        onPress={() => {
+                          setMessage(translated)
+                          setMessageSelection(undefined)
+                          setShowTranslate(false)
+                          translateMut.reset()
+                        }}
+                        accessibilityRole="button"
+                        className="flex-row items-center justify-center gap-1.5 mt-3 bg-spaceCadet-900 rounded-xl py-2.5"
+                      >
+                        <Check size={14} color="white" />
+                        <Text className="text-white text-xs font-bold">Replace message with this</Text>
+                      </AnimatedPressable>
+                    </View>
+                  )}
+                  <Text className="text-[11px] text-heliotrope-400 font-medium mt-2 leading-relaxed">
+                    {'{{placeholders}}'} are preserved. Your original stays until you tap Replace.
+                  </Text>
+                </View>
+              )}
             </Section>
           )}
 

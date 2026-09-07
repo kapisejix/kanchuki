@@ -25,6 +25,9 @@ const CustomerSchema = z.object({
   budget_max: z.number().int().min(0).max(100_000_000).optional(),
   usual_size: z.enum(SIZE_OPTIONS).optional().nullable(),
   notes: z.string().max(2000).optional(),
+  // Retailer attests the customer agreed (in-store) to WhatsApp offers/updates.
+  // Campaign send filters on this — false (the Prisma default) = never messaged.
+  consent_given: z.boolean().optional(),
 });
 
 export const customerRoutes: FastifyPluginAsync = async (server) => {

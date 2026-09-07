@@ -21,6 +21,7 @@ export default function AddCustomerScreen() {
   const [addressLine1, setAddressLine1] = useState('')
   const [city, setCity] = useState('')
   const [state, setState] = useState('')
+  const [consent, setConsent] = useState(false)
   const [saving, setSaving] = useState(false)
 
   const phoneValid = isValidIndianPhone(phone)
@@ -44,6 +45,7 @@ export default function AddCustomerScreen() {
         address_line1: addressLine1.trim() || undefined,
         city: city.trim() || undefined,
         state: state.trim() || undefined,
+        consent_given: consent,
       })
       void queryClient.invalidateQueries({ queryKey: ['customers'] })
       const created = (res as { data: { id: string } }).data
@@ -162,8 +164,31 @@ export default function AddCustomerScreen() {
           </View>
         </View>
 
+        <AnimatedPressable
+          onPress={() => setConsent((v) => !v)}
+          accessibilityRole="button"
+          accessibilityState={{ selected: consent }}
+          className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm flex-row items-start gap-3"
+        >
+          <View
+            className={`w-6 h-6 rounded-lg border items-center justify-center mt-0.5 ${
+              consent ? 'bg-fuchsia-600 border-fuchsia-600' : 'bg-lavender-50 border-lavender-300'
+            }`}
+          >
+            {consent ? <Text className="text-white text-xs font-bold">✓</Text> : null}
+          </View>
+          <View className="flex-1">
+            <Text className="text-sm font-bold text-spaceCadet-900">
+              Customer agreed to receive offers & updates on WhatsApp
+            </Text>
+            <Text className="text-xs text-heliotrope-500 font-medium mt-1 leading-relaxed">
+              Required to include this customer in WhatsApp campaigns. You can change it later on their profile.
+            </Text>
+          </View>
+        </AnimatedPressable>
+
         <Text className="text-xs text-heliotrope-500 font-medium px-2 leading-relaxed">
-          Preferences, budget, Fashion DNA affinities, and measurements can be updated anytime after creating the profile.
+          Preferences, budget, and measurements can be updated anytime after creating the profile.
         </Text>
       </View>
     </ScrollView>

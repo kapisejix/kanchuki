@@ -2031,3 +2031,31 @@ The "Choose the Businesses / You don't have any Businesses" wall + "Create busin
 ### Verification
 
 `retailers.test.ts` +2 (`GET /me/integrations` instagram block present / absent) → 39/39. `retailers-social-fanout` 31/31. API + mobile `tsc --noEmit` clean. Biome: no new errors on edited files. API deploy `373ae899` **SUCCESS** on Railway (`supportive-love` service, 2026-09-06 08:59 UTC).
+
+## FIXED + BUILT 2026-09-07: Campaign send blocked by missing customer consent + inline campaign translate + more Quick Templates
+
+### Root cause — campaign "send" always errored for hand-added customers
+
+`CustomerSchema` (`apps/api/src/routes/customers.ts`) had **no `consent_given` field**, and neither mobile customer form ever sent one. `customers.consent_given` Prisma default is `false` (`schema.prisma:658`), so every customer a retailer added by hand stayed unconsented. Campaign send filters the audience on `consent_given: true` (`growth-campaigns-send.ts:52`, `buildAudienceWhere` `growth-helpers.ts:95`) → the whole list resolved to zero → retailer got **"Audience is empty — no customers matched"** or **"No consented customers in the audience"**. Only storefront/QR lead-capture customers (which set `consent_given: true`) could ever receive a campaign.
+
+| File | Change |
+|---|---|
+| `apps/api/src/routes/customers.ts` | `CustomerSchema` gains `consent_given: z.boolean().optional()` — covers `POST /customers` (spread) and `PUT /customers/:id` (`CustomerSchema.partial()`). Absent on create → Prisma default `false`. |
+| `apps/mobile/app/customer/add.tsx` | Consent checkbox (default **off**, affirmative — DPDP): *"Customer agreed to receive offers & updates on WhatsApp"*, sent as `consent_given` on create. Removed the stale "Fashion DNA affinities" copy line (feature removed 2026-08-31). |
+| `apps/mobile/app/customer/[id].tsx` | Consent toggle in the identity card — `Customer` type `consent_given: boolean`, hydrated in the `useEffect`, sent in `customerApi.update`. Lets a retailer opt in existing customers without deleting + re-adding. |
+| `apps/mobile/app/growth/campaign/[id].tsx` | `sendMutation.onError` fallback text now names the cause ("…customers in this audience have WhatsApp consent turned on…") — `showError` never surfaces raw `err.message`, so the specific API validationError was invisible before. |
+
+### Inline AI translate in campaign-new — replaces the full-screen jump
+
+Before: "AI Multi-lingual Translate" pushed `/growth/translate` (a 441-line screen with a redundant Original-Message editor, explainer card, mode toggle) → generate → **Copy only** → navigate back → paste by hand (no paste affordance). User: *"no option for paste… too lengthy."*
+
+Now (`apps/mobile/app/growth/campaign-new.tsx`): the button toggles an inline block right under the message textarea — 7 language pills (`TRANSLATE_LANGUAGES`) + a "Translate to X" `GradientButton` + result card with **"Replace message with this"** (writes the translation into the `message` state, closes the block). Uses the existing `growthApi.translateMessage`. Original text is untouched until Replace is tapped. `translate.tsx` is **unchanged** — still serves product-description translation and the standalone AI Multilingual hub.
+- Skipped: an inline "Copy" button — RN's deprecated `Clipboard` is the only in-repo option and Replace lands the text straight in the editable field. Add if retailers ask.
+
+### More Quick Templates (`MESSAGE_TEMPLATES` in `campaign-new.tsx`)
+
+FESTIVAL **+Festive greeting, +Gift ideas** · REACTIVATION **+New arrivals, +Back in stock** · PROMOTION **+Flat sale, +Clearance**. English copy with `{{placeholders}}`. No new campaign type, no server change.
+
+### Verification
+
+Mobile `tsc --noEmit` clean, `vitest` 59/59. API `tsc --noEmit` clean, `growth-ab` 5/5. No dedicated `customers` / campaign-send suite exists; the API change is a single optional schema field (Prisma default + `.partial()` cover it). Not deployed yet.

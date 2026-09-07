@@ -42,6 +42,7 @@ type Customer = {
   budget_max: number | null
   usual_size: string | null
   notes: string | null
+  consent_given: boolean
   total_purchases: number
   total_spent: number
   interactions: Interaction[]
@@ -98,6 +99,7 @@ export default function CustomerDetailScreen() {
   const [city, setCity] = useState('')
   const [state, setState] = useState('')
   const [notes, setNotes] = useState('')
+  const [consent, setConsent] = useState(false)
   const [colorInput, setColorInput] = useState('')
   const [prefColors, setPrefColors] = useState<string[]>([])
   const [prefStyles, setPrefStyles] = useState<string[]>([])
@@ -161,6 +163,7 @@ export default function CustomerDetailScreen() {
     setCity(customer.city ?? '')
     setState(customer.state ?? '')
     setNotes(customer.notes ?? '')
+    setConsent(!!customer.consent_given)
     setPrefColors(customer.pref_colors ?? [])
     setPrefStyles(customer.pref_styles ?? [])
     setPrefFabrics(customer.pref_fabrics ?? [])
@@ -197,6 +200,7 @@ export default function CustomerDetailScreen() {
         budget_min: budgetMin ? Math.round(parseFloat(budgetMin) * 100) : undefined,
         budget_max: budgetMax ? Math.round(parseFloat(budgetMax) * 100) : undefined,
         usual_size: usualSize ?? undefined,
+        consent_given: consent,
       })
       void queryClient.invalidateQueries({ queryKey: ['customers'] })
       Alert.alert('Saved', 'Customer updated.')
@@ -357,6 +361,30 @@ export default function CustomerDetailScreen() {
               />
             </View>
           </View>
+
+          {/* WhatsApp consent — campaign send filters on this */}
+          <AnimatedPressable
+            onPress={() => setConsent((v) => !v)}
+            accessibilityRole="button"
+            accessibilityState={{ selected: consent }}
+            className="border-t border-lavender-200 pt-3 mt-3 flex-row items-start gap-3"
+          >
+            <View
+              className={`w-6 h-6 rounded-lg border items-center justify-center mt-0.5 ${
+                consent ? 'bg-fuchsia-600 border-fuchsia-600' : 'bg-lavender-50 border-lavender-300'
+              }`}
+            >
+              {consent ? <Text className="text-white text-xs font-bold">✓</Text> : null}
+            </View>
+            <View className="flex-1">
+              <Text className="text-sm font-bold text-spaceCadet-900">
+                Agreed to WhatsApp offers & updates
+              </Text>
+              <Text className="text-xs text-heliotrope-500 font-medium mt-0.5 leading-relaxed">
+                Off = excluded from all WhatsApp campaigns.
+              </Text>
+            </View>
+          </AnimatedPressable>
         </View>
 
         {/* Purchase summary */}

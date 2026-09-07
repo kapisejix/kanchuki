@@ -75,7 +75,11 @@ export default function CampaignDetailScreen() {
       setSendResult(res.data)
       void queryClient.invalidateQueries({ queryKey: ['growth'] })
     },
-    onError: (err) => showError(err, 'Failed to send campaign'),
+    onError: (err) =>
+      showError(
+        err,
+        'Send failed. Check that customers in this audience have WhatsApp consent turned on in their profile.',
+      ),
   })
 
   const deleteMutation = useMutation({
