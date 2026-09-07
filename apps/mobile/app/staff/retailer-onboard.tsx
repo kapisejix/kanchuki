@@ -1,14 +1,14 @@
 import { useState } from 'react'
-import { COLORS, isValidIndianPhone } from '@kanchuki/shared'
+import { isValidIndianPhone } from '@kanchuki/shared'
 import {
   View, Text, ScrollView, TextInput,
-  ActivityIndicator, Alert, KeyboardAvoidingView, Platform,
+  Alert, KeyboardAvoidingView, Platform,
 } from 'react-native'
 import { router } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import {
   Store, ChevronLeft, Phone, MapPin, User, CheckCircle2,
-  X, UserPlus,
+  UserPlus,
 } from 'lucide-react-native'
 import { teamApi } from '../../src/lib/team-api'
 import { useTheme } from '../../src/lib/theme'

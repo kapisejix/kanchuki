@@ -31,7 +31,6 @@ import {
   type CampaignType,
 } from '../../../src/lib/api'
 import { showError } from '../../../src/lib/errors'
-import { useTheme } from '../../../src/lib/theme'
 
 const TYPE_LABEL: Record<CampaignType, { label: string; icon: React.ReactNode }> = {
   FESTIVAL: { label: 'Festival', icon: null },

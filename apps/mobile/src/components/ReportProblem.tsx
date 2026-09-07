@@ -4,7 +4,6 @@ import {
   Text,
   Modal,
   TextInput,
-  TouchableOpacity,
   ScrollView,
   ActivityIndicator,
   Alert,
@@ -19,12 +18,15 @@ import {
   Camera,
   Send,
   X,
-  ChevronDown,
   AlertTriangle,
 } from "lucide-react-native";
-import { bugReportApi, type BugReportSeverity } from "../lib/api/bug-reports";
-import { readLocalImage, uploadImageToR2 } from "../lib/api";
-import { retailerApi } from "../lib/api";
+import {
+  bugReportApi,
+  readLocalImage,
+  retailerApi,
+  uploadImageToR2,
+  type BugReportSeverity,
+} from "../lib/api";
 import { showError } from "../lib/errors";
 import { COLORS } from "@kanchuki/shared";
 import { AnimatedPressable } from "./AnimatedPressable";
@@ -79,7 +81,7 @@ export function ReportProblem({
     if (errorContext?.errorMessage && !description) {
       setDescription(`Error: ${errorContext.errorMessage}`);
     }
-  }, [errorContext]);
+  }, [errorContext, description]);
 
   // Reset state when modal opens
   useEffect(() => {

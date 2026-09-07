@@ -30,7 +30,7 @@ export default function FbAdsConfigScreen() {
   const [saving, setSaving] = useState(false)
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState<{ connected: boolean; account_name?: string } | null>(null)
-  const [error, setError] = useState('')
+  const [error] = useState('')
 
   const canSave = accessToken.trim() && adAccountId.trim() && pageId.trim() && !saving
 

@@ -1,8 +1,7 @@
 import { useState, useCallback } from 'react'
-import { COLORS } from '@kanchuki/shared'
 import {
   View, Text, FlatList, TextInput,
-  ActivityIndicator, Alert, Modal,
+  Alert, Modal,
 } from 'react-native'
 import { router } from 'expo-router'
 import { useScreenInsets } from '../../src/lib/safe-area'
@@ -169,7 +168,7 @@ export default function StaffScreen() {
         </AnimatedPressable>
       </View>
     ),
-    [handleRemove],
+    [handleRemove, colors.rust],
   )
 
   return (

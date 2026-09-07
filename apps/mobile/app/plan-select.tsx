@@ -22,7 +22,7 @@ import {
 } from 'react-native';
 import { useScreenInsets } from '../src/lib/safe-area';
 import { AnimatedPressable } from '../src/components/AnimatedPressable';
-import { billingApi, retailerApi } from '../src/lib/api';
+import { billingApi } from '../src/lib/api';
 import { useTheme } from '../src/lib/theme';
 import { WEB_URL } from '../src/lib/web-url';
 

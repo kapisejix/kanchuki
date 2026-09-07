@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { formatPrice, COLORS, SIZE_OPTIONS } from '@kanchuki/shared'
+import { formatPrice, SIZE_OPTIONS } from '@kanchuki/shared'
 import {
   View,
   Text,
@@ -7,18 +7,16 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
-  Image,
   Modal,
   Platform,
 } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useScreenInsets } from '../../src/lib/safe-area'
-import { X, Check, Plus, Trash2, Ruler, Clock, Heart, Sparkles } from 'lucide-react-native'
-import { customerApi, collectionApi, productAttributeApi } from '../../src/lib/api'
+import { X, Check, Plus, Trash2, Ruler, Clock } from 'lucide-react-native'
+import { customerApi, productAttributeApi } from '../../src/lib/api'
 import { DetailScreenSkeleton } from '../../src/components/Skeleton'
 import { showError } from '../../src/lib/errors'
-import { useTheme } from '../../src/lib/theme'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 
 type Interaction = {
@@ -60,11 +58,9 @@ type Measurement = {
 }
 
 export default function CustomerDetailScreen() {
-  const { primaryColor, colors } = useTheme()
   const { insets, headerPaddingTop, screenPaddingBottom } = useScreenInsets()
   const { id } = useLocalSearchParams<{ id: string }>()
   const queryClient = useQueryClient()
-  const [generatingCollection, setGeneratingCollection] = useState(false)
 
   const { data, isLoading } = useQuery({
     queryKey: ['customers', id],
@@ -77,7 +73,6 @@ export default function CustomerDetailScreen() {
     queryFn: () => customerApi.getMeasurements(id),
   })
   const measurements = (measurementsData as { data: Measurement[] } | undefined)?.data ?? []
-  const hasMeasurement = measurements.length > 0
 
 
   // Dynamic, retailer-editable Style/Fabric taxonomy (DB-backed, same lists
@@ -229,31 +224,6 @@ export default function CustomerDetailScreen() {
         },
       },
     ])
-  }
-
-  const handleAutoSuggestCollection = async () => {
-    if (!customer) return
-    setGeneratingCollection(true)
-    try {
-      const result = await collectionApi.autoSuggest(customer.id, `AI Picks for ${customer.name}`)
-      const collectionData = result.data as { url?: string; slug?: string }
-      if (collectionData.url) {
-        Alert.alert(
-          'Collection Created!',
-          `AI collection "${customer.name}'s AI Picks" created with products matched to their preferences.`,
-          [
-            { text: 'OK', style: 'default' },
-          ],
-        )
-        void queryClient.invalidateQueries({ queryKey: ['customers', id, 'preferences'] })
-      } else {
-        Alert.alert('Not enough data', "We need more customer preferences and product interactions to suggest a collection. Add their color/style/fabric preferences and record their activity.")
-      }
-    } catch (err) {
-      showError(err, 'Failed to generate collection')
-    } finally {
-      setGeneratingCollection(false)
-    }
   }
 
   if (isLoading || !customer) {

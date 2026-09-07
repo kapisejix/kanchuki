@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
-import { PRODUCT_CATEGORIES, SIZE_OPTIONS, COLORS } from '@kanchuki/shared'
+import { SIZE_OPTIONS } from '@kanchuki/shared'
 import {
   View,
   Text,
@@ -17,7 +17,7 @@ import * as ImageManipulator from 'expo-image-manipulator'
 import { File } from 'expo-file-system'
 import { Image } from 'expo-image'
 import { useScreenInsets } from '../../src/lib/safe-area'
-import { X, ImagePlus, ChevronDown, ChevronLeft, Check, Sparkles } from 'lucide-react-native'
+import { X, ImagePlus, ChevronLeft, Check, Sparkles } from 'lucide-react-native'
 import {
   productApi,
   categoryApi,

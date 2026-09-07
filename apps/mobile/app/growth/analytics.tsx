@@ -16,14 +16,11 @@ import {
 import { ActivityIndicator, RefreshControl, ScrollView, Text, View } from 'react-native'
 import { useScreenInsets } from '../../src/lib/safe-area'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
-import { growthApi, type GrowthAnalytics, type SeasonalAnalytics, type SeasonalPeriod } from '../../src/lib/api/growth'
-import { useTheme } from '../../src/lib/theme'
+import { growthApi, type SeasonalAnalytics, type SeasonalPeriod } from '../../src/lib/api/growth'
 
 // ─── Roadmap R — campaign & commerce analytics with India-retail
 // dimensions: festival, customer segment, hour-of-day, product category,
 // video-vs-photo performance, and per-A/B-variant results + significance.
-
-type Stats = GrowthAnalytics
 
 function Section({ icon, title, children }: { icon: React.ReactNode; title: string; children: React.ReactNode }) {
   return (

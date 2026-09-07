@@ -52,10 +52,9 @@ export async function loginWithFacebook(
     };
   };
   try {
-    // Dynamic require so a missing native module doesn't blow up the JS bundle
+    // Dynamic import so a missing native module doesn't blow up the JS bundle
     // at eval time (Expo Go) — only this call path fails.
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    fbsdk = require('react-native-fbsdk-next');
+    fbsdk = (await import('react-native-fbsdk-next')) as typeof fbsdk;
   } catch {
     // Genuinely absent → Expo Go. Callers fall back to the web flow.
     throw new FacebookAuthUnavailable();

@@ -1,4 +1,3 @@
-import { COLORS } from '@kanchuki/shared';
 import { useEffect } from 'react';
 import { RefreshControl, ScrollView, View } from 'react-native';
 import Animated, {
@@ -195,16 +194,6 @@ export function HomeScreenSkeleton() {
         </View>
       </View>
     </ScrollView>
-  );
-}
-
-function StatCardSkeleton() {
-  return (
-    <View className="flex-1 bg-white rounded-2xl p-4 border border-sand-100 gap-1.5">
-      <Skeleton className="w-7 h-7 rounded-lg" />
-      <Skeleton className="h-7 w-16" />
-      <Skeleton className="h-3 w-12" />
-    </View>
   );
 }
 

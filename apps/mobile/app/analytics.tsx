@@ -17,9 +17,8 @@ import {
   BarChart3,
   Store,
 } from 'lucide-react-native'
-import { analyticsApi, retailerApi } from '../src/lib/api'
+import { analyticsApi } from '../src/lib/api'
 import { AnalyticsSkeleton } from '../src/components/Skeleton'
-import { useTheme } from '../src/lib/theme'
 import { AnimatedPressable } from '../src/components/AnimatedPressable'
 
 // ── Types ─────────────────────────────────────────────────────────
@@ -288,7 +287,6 @@ function PlanUsageBar({
 
 export default function AnalyticsScreen() {
   const { headerPaddingTop, screenPaddingBottom } = useScreenInsets()
-  const { primaryColor, colors } = useTheme()
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['analytics'],
     queryFn: () => analyticsApi.getAnalytics(),

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { formatPriceRange, COLORS } from '@kanchuki/shared'
+import { formatPriceRange } from '@kanchuki/shared'
 import { View, Text, FlatList, TextInput, ActivityIndicator, Alert, Image, Modal } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -11,7 +11,6 @@ import { DetailScreenSkeleton, ProductGridSkeleton } from '../../src/components/
 import { useGridColumns } from '../../src/hooks/useIsTablet'
 import { productApi, categoryApi, readLocalImage, uploadImageToR2, type ProductCategory } from '../../src/lib/api'
 import { showError } from '../../src/lib/errors'
-import { useTheme } from '../../src/lib/theme'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { GradientButton } from '../../src/components/GradientButton'
 
@@ -36,7 +35,6 @@ function EditCategoryModal({
   onClose: () => void
   onSaved: () => void
 }) {
-  const { primaryColor, colors } = useTheme()
   const [name, setName] = useState('')
   const [imageUrl, setImageUrl] = useState<string | null>(null)
   const [imageR2Key, setImageR2Key] = useState<string | null>(null)

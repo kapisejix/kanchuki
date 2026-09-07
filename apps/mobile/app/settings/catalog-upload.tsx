@@ -1,4 +1,3 @@
-import { COLORS } from '@kanchuki/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { Check, ChevronLeft, Clock, IndianRupee, Package } from 'lucide-react-native';

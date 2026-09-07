@@ -18,7 +18,7 @@ import {
 } from 'react-native'
 import { useScreenInsets } from '../../src/lib/safe-area'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
-import { growthApi, type IntegrationsStatus } from '../../src/lib/api/growth'
+import { growthApi } from '../../src/lib/api/growth'
 
 type TabType = 'all' | 'social' | 'ads'
 

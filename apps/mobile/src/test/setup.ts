@@ -57,17 +57,13 @@ vi.mock('expo-constants', () => ({
 
 // ── react-native-safe-area-context ─────────────────────────────────
 
-vi.mock('react-native-safe-area-context', () => {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const React = require('react')
-  return {
-    SafeAreaProvider: ({ children }: { children: React.ReactNode }) =>
-      children,
-    SafeAreaView: ({ children }: { children: React.ReactNode }) => children,
-    useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 0, left: 0 }),
-    useSafeAreaFrame: () => ({ x: 0, y: 0, width: 390, height: 844 }),
-  }
-})
+vi.mock('react-native-safe-area-context', () => ({
+  SafeAreaProvider: ({ children }: { children: import('react').ReactNode }) =>
+    children,
+  SafeAreaView: ({ children }: { children: import('react').ReactNode }) => children,
+  useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 0, left: 0 }),
+  useSafeAreaFrame: () => ({ x: 0, y: 0, width: 390, height: 844 }),
+}))
 
 // ── lucide-react-native (Proxy — catches any icon import) ──────────
 // CRITICAL: the `get` trap must return undefined for `then`/`__esModule`/non-string

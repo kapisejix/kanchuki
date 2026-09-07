@@ -10,7 +10,7 @@ import { useTheme } from '../../src/lib/theme'
 
 export default function TabsLayout() {
   const insets = useSafeAreaInsets()
-  const { primaryColor, colors } = useTheme()
+  const { primaryColor } = useTheme()
 
   // Gate: retailer must finish the registration/onboarding form before the
   // dashboard renders — otherwise a dropped-off signup (or any later relaunch)

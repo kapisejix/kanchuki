@@ -1,5 +1,4 @@
 import { useState, useCallback } from 'react'
-import { COLORS } from '@kanchuki/shared'
 import {
   View,
   Text,

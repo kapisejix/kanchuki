@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { normalizeIndianPhone, COLORS } from '@kanchuki/shared'
+import { normalizeIndianPhone } from '@kanchuki/shared'
 import { View, Text, ScrollView, FlatList, Image, Linking, ActivityIndicator, Alert, Modal, TextInput } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -8,7 +8,6 @@ import { Eye, Heart, MessageCircle, Link2, Users, Edit, Trash2, Search, Check, C
 import { collectionApi, customerApi, retailerApi } from '../../src/lib/api'
 import { showError } from '../../src/lib/errors'
 import { CollectionDetailSkeleton } from '../../src/components/Skeleton'
-import { useTheme } from '../../src/lib/theme'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { GradientButton } from '../../src/components/GradientButton'
 
@@ -56,7 +55,6 @@ function EditModal({
   onClose: () => void
   onSaved: () => void
 }) {
-  const { colors } = useTheme()
   const [title, setTitle] = useState(collection?.title ?? '')
   const [expiryDays, setExpiryDays] = useState('30')
   const [saving, setSaving] = useState(false)

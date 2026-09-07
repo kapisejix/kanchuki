@@ -1,5 +1,5 @@
 import { useCallback } from 'react'
-import { formatPriceRange, COLORS } from '@kanchuki/shared'
+import { formatPriceRange } from '@kanchuki/shared'
 import {
   View, Text, FlatList, Image,
   Alert,
@@ -104,7 +104,7 @@ export default function DeletedProductsScreen() {
         </AnimatedPressable>
       </View>
     ),
-    [restore, purge, handlePurge, primaryColor],
+    [restore, purge, handlePurge, primaryColor, colors.rust, colors.sand],
   )
 
   return (

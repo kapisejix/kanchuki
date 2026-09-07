@@ -14,13 +14,10 @@ import { Linking, ScrollView, Text, View } from 'react-native';
 import { useScreenInsets } from '../src/lib/safe-area';
 import { AnimatedPressable } from '../src/components/AnimatedPressable';
 import { retailerApi } from '../src/lib/api';
-import { useTheme } from '../src/lib/theme';
-import { WEB_URL } from '../src/lib/web-url';
 
 const SUPPORT_EMAIL = 'support@kanchuki.app';
 
 export default function BillingScreen() {
-  const { primaryColor } = useTheme();
   const { headerPaddingTop, screenPaddingBottom } = useScreenInsets();
 
   const { data: meData } = useQuery({

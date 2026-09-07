@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react'
-import { COLORS } from '@kanchuki/shared'
 import {
   View, Text, ScrollView, RefreshControl,
   ActivityIndicator, Alert,
@@ -9,8 +8,8 @@ import { useScreenInsets } from '../../src/lib/safe-area'
 import { useQuery } from '@tanstack/react-query'
 import {
   Store, Users, Ticket, MapPin, UserPlus, LogOut,
-  Package, Phone, ChevronRight, Calendar,
-  CheckCircle2, AlertCircle, Navigation,
+  Package, Phone, ChevronRight,
+  AlertCircle,
 } from 'lucide-react-native'
 import { teamApi, type TeamMemberInfo, type TerritoryRetailer, type SupportTicketStats } from '../../src/lib/team-api'
 import { getItem } from '../../src/lib/storage'

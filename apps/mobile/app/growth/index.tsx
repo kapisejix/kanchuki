@@ -24,7 +24,6 @@ import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { GradientButton } from '../../src/components/GradientButton'
 import { growthApi, retailerApi, type CampaignType } from '../../src/lib/api'
 import { ApiError } from '../../src/lib/api/client'
-import { useTheme } from '../../src/lib/theme'
 
 const TYPE_LABEL: Record<CampaignType, string> = {
   FESTIVAL: 'Festival',
@@ -53,7 +52,6 @@ function isFeatureUnavailable(err: unknown): boolean {
 }
 
 export default function GrowthHubScreen({ isTab = false }: { isTab?: boolean }) {
-  const { primaryColor, colors } = useTheme()
   const { headerPaddingTop, tabScrollPaddingBottom, screenPaddingBottom } = useScreenInsets()
 
   const bodyBottomPad = isTab ? tabScrollPaddingBottom : screenPaddingBottom

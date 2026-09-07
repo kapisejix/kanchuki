@@ -1,12 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import {
   Check,
   ChevronLeft,
   Facebook,
-  Instagram,
-  Loader2,
   RefreshCw,
   X,
 } from 'lucide-react-native';
@@ -18,7 +16,6 @@ import {
   Modal,
   ScrollView,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { useScreenInsets } from '../../src/lib/safe-area';
@@ -49,9 +46,9 @@ export default function SocialSettingsScreen() {
   const [connecting, setConnecting] = useState(false);
   const [connectError, setConnectError] = useState<string | null>(null);
 
-  const refresh = () => {
+  const refresh = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: ['social', 'accounts'] });
-  };
+  }, [queryClient]);
 
   // Listen for OAuth deep-link return (e.g. kanchuki://oauth/callback?code=...&state=...)
   useEffect(() => {
@@ -88,7 +85,7 @@ export default function SocialSettingsScreen() {
 
     const sub = Linking.addEventListener('url', handleDeepLink);
     return () => sub.remove();
-  }, [queryClient]);
+  }, [queryClient, refresh]);
 
   // Fallback for builds without the native SDK (Expo Go): the old web OAuth-URL
   // flow. Kept only so development on Expo Go still has *a* path.

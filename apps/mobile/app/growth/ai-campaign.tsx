@@ -1,9 +1,8 @@
 import { useRouter } from 'expo-router'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronLeft, Sparkles } from 'lucide-react-native'
-import { useEffect, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
+import { ChevronLeft } from 'lucide-react-native'
+import { useState } from 'react'
 import {
-  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   ScrollView,
@@ -14,9 +13,8 @@ import {
 import { useScreenInsets } from '../../src/lib/safe-area'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { GradientButton } from '../../src/components/GradientButton'
-import { growthApi, type AiCampaignDraft, type CampaignType, type SuggestedProduct } from '../../src/lib/api'
+import { growthApi, type AiCampaignDraft, type SuggestedProduct } from '../../src/lib/api'
 import { showError } from '../../src/lib/errors'
-import { useTheme } from '../../src/lib/theme'
 
 const EXAMPLE_PROMPTS = [
   'Send cotton new arrivals to customers who like office wear',

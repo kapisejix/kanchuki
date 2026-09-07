@@ -30,7 +30,7 @@ export default function GoogleAdsConfigScreen() {
   const [saving, setSaving] = useState(false)
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState<'success' | 'error' | null>(null)
-  const [error, setError] = useState('')
+  const [error] = useState('')
 
   const canSave = refreshToken.trim() && customerId.trim() && developerToken.trim() && !saving
 

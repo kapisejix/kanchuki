@@ -1,5 +1,4 @@
 import { useRef, useState } from 'react'
-import { COLORS } from '@kanchuki/shared'
 import { View, Text, TextInput, StyleSheet, ActivityIndicator } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { CameraView, useCameraPermissions } from 'expo-camera'
@@ -8,7 +7,7 @@ import * as ImageManipulator from 'expo-image-manipulator'
 import { Image } from 'expo-image'
 import { useScreenInsets } from '../../../src/lib/safe-area'
 import { useQueryClient } from '@tanstack/react-query'
-import { X, ImagePlus, Check } from 'lucide-react-native'
+import { X, ImagePlus } from 'lucide-react-native'
 import { productApi, uploadImageToR2, readLocalImage } from '../../../src/lib/api'
 import { showError } from '../../../src/lib/errors'
 import { useTheme } from '../../../src/lib/theme'
@@ -18,7 +17,7 @@ import { GradientButton } from '../../../src/components/GradientButton'
 type Step = 'camera' | 'detecting' | 'saving' | 'manual'
 
 export default function AddColorVariantScreen() {
-  const { colors, primaryColor } = useTheme()
+  const { colors } = useTheme()
   const { insets } = useScreenInsets()
   const queryClient = useQueryClient()
   const { id } = useLocalSearchParams<{ id: string }>()

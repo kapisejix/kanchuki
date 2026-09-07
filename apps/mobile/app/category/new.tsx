@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { PRODUCT_CATEGORIES, COLORS } from '@kanchuki/shared'
+import { PRODUCT_CATEGORIES } from '@kanchuki/shared'
 import { View, Text, TextInput, ActivityIndicator, Image, Modal, FlatList, Pressable } from 'react-native'
 import { Stack, router } from 'expo-router'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -7,13 +7,11 @@ import * as ImagePicker from 'expo-image-picker'
 import { ImagePlus, Check, X, Package } from 'lucide-react-native'
 import { categoryApi, productApi, readLocalImage, uploadImageToR2 } from '../../src/lib/api'
 import { showError } from '../../src/lib/errors'
-import { useTheme } from '../../src/lib/theme'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { GradientButton } from '../../src/components/GradientButton'
 import { useScreenInsets } from '../../src/lib/safe-area'
 
 export default function NewCategoryScreen() {
-  const { primaryColor, colors } = useTheme()
   const { insets } = useScreenInsets()
   const [name, setName] = useState('')
   const [imageUrl, setImageUrl] = useState<string | null>(null)
@@ -39,8 +37,8 @@ export default function NewCategoryScreen() {
     enabled: !!selectedProductId && showPhotoPicker,
   })
 
-  const products = (productsData as { data: Array<{ id: string; name: string | null; category: string | null; primary_photo_url: string | null }> } | undefined)?.data ?? []
-  const productPhotos = (productDetail as { data?: { photos?: Array<{ id: string; url: string; r2_key: string }> } } | undefined)?.data?.photos ?? []
+  const products = (productsData as { data: { id: string; name: string | null; category: string | null; primary_photo_url: string | null }[] } | undefined)?.data ?? []
+  const productPhotos = (productDetail as { data?: { photos?: { id: string; url: string; r2_key: string }[] } } | undefined)?.data?.photos ?? []
 
   const handlePickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({

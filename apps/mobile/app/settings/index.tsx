@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as ImageManipulator from "expo-image-manipulator";
 import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
@@ -13,9 +13,7 @@ import {
   FileText,
   FolderKanban,
   ImagePlus,
-  LogOut,
   MessageCircle,
-  Package,
   QrCode,
   Share2,
   ShieldCheck,
@@ -45,8 +43,6 @@ import { AnimatedPressable } from "../../src/components/AnimatedPressable";
 import { GradientButton } from "../../src/components/GradientButton";
 import { SettingsSkeleton } from "../../src/components/Skeleton";
 import {
-  clearRequestCache,
-  clearToken,
   readLocalImage,
   retailerApi,
   uploadImageToR2,
@@ -54,7 +50,7 @@ import {
 import { showError } from "../../src/lib/errors";
 import { clearPersistedCache } from "../../src/lib/offline-persister";
 import { useAuth } from "../../src/lib/auth-context";
-import { deleteItem, getItem } from "../../src/lib/storage";
+import { getItem } from "../../src/lib/storage";
 import { useTheme } from "../../src/lib/theme";
 import { WEB_URL } from "../../src/lib/web-url";
 import { ReportProblem } from "../../src/components/ReportProblem";
@@ -1057,7 +1053,6 @@ function SettingsRow({
 // ─── Usage Section (F-010) ─────────────────────────────────────────
 
 function UsageSection() {
-  const { primaryColor, colors } = useTheme();
   const { data: usageData, isLoading } = useQuery({
     queryKey: ["retailer", "usage"],
     queryFn: () => retailerApi.getUsage(),

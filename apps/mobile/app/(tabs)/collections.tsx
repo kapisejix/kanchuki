@@ -1,5 +1,5 @@
 import { useCallback, memo, useState, useEffect } from 'react'
-import { View, Text, FlatList, Share, ActivityIndicator, Alert, Modal, TextInput, Image } from 'react-native'
+import { View, Text, FlatList, Share, Alert, Modal, TextInput, Image } from 'react-native'
 import { router } from 'expo-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useScreenInsets } from '../../src/lib/safe-area'
@@ -7,7 +7,6 @@ import { Plus, Eye, MessageCircle, Link2, Clock, Edit, Trash2, Send } from 'luci
 import { collectionApi, retailerApi } from '../../src/lib/api'
 import { CollectionListSkeleton } from '../../src/components/Skeleton'
 import { showError } from '../../src/lib/errors'
-import { useTheme } from '../../src/lib/theme'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { GradientButton } from '../../src/components/GradientButton'
 
@@ -45,7 +44,6 @@ function EditCollectionModal({
   onClose: () => void
   onSaved: () => void
 }) {
-  const { colors } = useTheme()
   const [title, setTitle] = useState(collection?.title ?? '')
   const [expiryDays, setExpiryDays] = useState('30')
   const [saving, setSaving] = useState(false)

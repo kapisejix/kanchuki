@@ -85,7 +85,7 @@ export function ProductStudioModal({
   // Auto-select first style when tab or styles change
   useEffect(() => {
     setSelectedSlug(activeList[0]?.slug ?? '')
-  }, [tab, styles.length])
+  }, [tab, styles.length, activeList])
 
   const handleStart = () => {
     if (selectedSlug) onStartShoot(selectedSlug)

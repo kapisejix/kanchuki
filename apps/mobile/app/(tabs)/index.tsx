@@ -21,7 +21,6 @@ import { GradientButton } from '../../src/components/GradientButton';
 import { HomeScreenSkeleton } from '../../src/components/Skeleton';
 import { categoryApi, retailerApi } from '../../src/lib/api';
 import { useScreenInsets } from '../../src/lib/safe-area';
-import { useTheme } from '../../src/lib/theme';
 
 type RankedProduct = {
   product: {
@@ -51,7 +50,6 @@ type RetailerMe = {
 
 export default function HomeScreen() {
   const { tabScrollPaddingBottom } = useScreenInsets();
-  const { primaryColor, colors } = useTheme();
   const { data: meData, isLoading: meLoading } = useQuery({
     queryKey: ['retailer', 'me'],
     queryFn: () => retailerApi.getMe(),

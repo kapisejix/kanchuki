@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { COLORS, isValidIndianPhone } from '@kanchuki/shared'
+import { isValidIndianPhone } from '@kanchuki/shared'
 import { View, Text, TextInput, ScrollView, Alert } from 'react-native'
 import { router } from 'expo-router'
 import { useQueryClient } from '@tanstack/react-query'
@@ -7,12 +7,10 @@ import { useScreenInsets } from '../../src/lib/safe-area'
 import { X, MapPin } from 'lucide-react-native'
 import { customerApi } from '../../src/lib/api'
 import { showError } from '../../src/lib/errors'
-import { useTheme } from '../../src/lib/theme'
 import { GradientButton } from '../../src/components/GradientButton'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 
 export default function AddCustomerScreen() {
-  const { colors } = useTheme()
   const { headerPaddingTop, screenPaddingBottom } = useScreenInsets()
   const queryClient = useQueryClient()
   const [name, setName] = useState('')

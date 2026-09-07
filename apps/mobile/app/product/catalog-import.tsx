@@ -5,7 +5,6 @@ import {
   Text,
   ScrollView,
   ActivityIndicator,
-  Dimensions,
   TextInput,
   Alert,
   Switch,
@@ -73,9 +72,9 @@ export default function CatalogImportScreen() {
   }>()
 
   const [step, setStep] = useState<Step>('source')
-  const [sourceType, setSourceType] = useState<SourceType>('image')
+  const [, setSourceType] = useState<SourceType>('image')
   const [sourceUrl, setSourceUrl] = useState(params.sourceUrl ?? '')
-  const [sourceR2Key, setSourceR2Key] = useState(params.sourceR2Key ?? '')
+  const [, setSourceR2Key] = useState(params.sourceR2Key ?? '')
   const [items, setItems] = useState<ReviewItem[]>([])
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
   // Asked once per import batch — most catalogs don't list sizes, so default off.
@@ -132,6 +131,9 @@ export default function CatalogImportScreen() {
     } catch (err) {
       showError(err, 'Could not pick those photos.', 'Photo Error')
     }
+    // uploadAndDetectMultiple / uploadSource are stable useCallbacks defined below
+    // (forward reference) — intentionally omitted to avoid a TDZ + re-register loop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // ── Upload + detect multiple source photos, merge into one queue ─
@@ -233,6 +235,9 @@ export default function CatalogImportScreen() {
       setError('Upload failed. Try again.')
       setStep('source')
     }
+    // runDetection is a stable useCallback defined below (forward reference) —
+    // intentionally omitted to avoid a TDZ + re-register loop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // ── Run AI detection ──────────────────────────────────────────

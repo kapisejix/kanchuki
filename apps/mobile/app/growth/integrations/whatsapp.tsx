@@ -4,7 +4,6 @@ import { router } from 'expo-router'
 import {
   ChevronLeft,
   ExternalLink,
-  MessageCircle,
 } from 'lucide-react-native'
 import {
   ActivityIndicator,

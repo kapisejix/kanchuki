@@ -7,7 +7,6 @@ import {
   ExternalLink,
 } from 'lucide-react-native'
 import {
-  ActivityIndicator,
   Alert,
   ScrollView,
   Text,
@@ -32,7 +31,7 @@ export default function GmbConfigScreen() {
   const [saving, setSaving] = useState(false)
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState<'success' | 'error' | null>(null)
-  const [error, setError] = useState('')
+  const [error] = useState('')
 
   const canSave = accountId.trim() && locationId.trim() && accessToken.trim() && !saving
 

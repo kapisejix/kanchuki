@@ -3,7 +3,6 @@ import { useEffect, useState } from 'react'
 import { View, Text, ScrollView } from 'react-native'
 import { Image } from 'expo-image'
 import { ShoppingBag } from 'lucide-react-native'
-import { useTheme } from '../../lib/theme'
 import { AnimatedPressable } from '../AnimatedPressable'
 
 interface RelatedProduct {
@@ -28,7 +27,6 @@ export function RelatedProductsSection({
   excludeId: string
   onSelect: (id: string) => void
 }) {
-  const { primaryColor } = useTheme()
   const [related, setRelated] = useState<RelatedProduct[]>([])
   const [loadingRelated, setLoadingRelated] = useState(true)
 

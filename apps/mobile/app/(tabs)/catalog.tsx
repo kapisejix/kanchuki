@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo, memo } from 'react'
-import { formatPriceRange, COLORS } from '@kanchuki/shared'
+import { formatPriceRange } from '@kanchuki/shared'
 import {
   View,
   Text,
@@ -9,13 +9,11 @@ import {
   ActivityIndicator,
   Alert,
   Image,
-  Dimensions,
 } from 'react-native'
 import { router } from 'expo-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useScreenInsets } from '../../src/lib/safe-area'
 import {
-  Plus,
   MapPin,
   SlidersHorizontal,
   X,
@@ -32,11 +30,8 @@ import { productApi, retailerApi, whatsappCatalogApi } from '../../src/lib/api'
 import { showError } from '../../src/lib/errors'
 import { prefetchProductImages } from '../../src/lib/image-prefetch'
 import { enqueueStatusMutation } from '../../src/lib/mutation-queue'
-import { useTheme } from '../../src/lib/theme'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { GradientButton } from '../../src/components/GradientButton'
-
-const SCREEN_WIDTH = Dimensions.get('window').width
 
 type Product = {
   id: string
@@ -123,7 +118,6 @@ const CatalogCard = memo(function CatalogCard({
   selected: boolean
   catalogSyncStatus?: 'SUCCESS' | 'FAILED' | 'PARTIAL' | 'IN_PROGRESS' | null
 }) {
-  const { colors } = useTheme()
   return (
     <ProductCard
       imageUrl={product.primary_photo_url}
@@ -166,7 +160,6 @@ const CatalogCard = memo(function CatalogCard({
 
 export default function CatalogScreen() {
   const { headerPaddingTop, tabScrollPaddingBottom } = useScreenInsets()
-  const { colors } = useTheme()
   const columns = useGridColumns()
 
   // Fetch retailer profile for the header (logo, shop name, city)
@@ -199,7 +192,10 @@ export default function CatalogScreen() {
     gcTime: 24 * 60 * 60_000,
   })
 
-  const unfilteredProducts: Product[] = (listData as ListResult | undefined)?.data ?? []
+  const unfilteredProducts = useMemo<Product[]>(
+    () => (listData as ListResult | undefined)?.data ?? [],
+    [listData],
+  )
 
   // A-4: warm expo-image's disk cache so photos render offline after first load
   useEffect(() => {

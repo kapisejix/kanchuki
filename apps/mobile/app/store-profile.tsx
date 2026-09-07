@@ -1,5 +1,4 @@
 import { useRef, useState } from 'react'
-import { COLORS } from '@kanchuki/shared'
 import { LinearGradient } from 'expo-linear-gradient'
 import { View, Text, TextInput, ScrollView, ActivityIndicator, Share, Alert, Linking } from 'react-native'
 import * as Sharing from 'expo-sharing'
@@ -27,7 +26,7 @@ type RetailerMe = {
 type CollectionRow = { id: string; title: string; status: string; product_count: number }
 
 export default function StoreProfileScreen() {
-  const { primaryColor, colors } = useTheme()
+  const { colors } = useTheme()
   const { headerPaddingTop, screenPaddingBottom } = useScreenInsets()
   const queryClient = useQueryClient()
   const qrRef = useRef<{ toDataURL: (cb: (base64: string) => void) => void } | null>(null)
@@ -106,7 +105,7 @@ export default function StoreProfileScreen() {
       // that failure falls through to the share sheet. Same pattern as
       // useProductAiStudio.ts.
       try {
-        const MediaLibrary = require('expo-media-library') as typeof import('expo-media-library')
+        const MediaLibrary = await import('expo-media-library')
         const perm = await MediaLibrary.requestPermissionsAsync()
         if (perm.granted) {
           await MediaLibrary.saveToLibraryAsync(fileUri)

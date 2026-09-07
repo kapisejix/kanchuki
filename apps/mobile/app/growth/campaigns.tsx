@@ -7,7 +7,6 @@ import { useScreenInsets } from '../../src/lib/safe-area'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { GradientButton } from '../../src/components/GradientButton'
 import { growthApi, type CampaignStatus, type CampaignType } from '../../src/lib/api'
-import { useTheme } from '../../src/lib/theme'
 
 const TYPE_LABEL: Record<CampaignType, string> = {
   FESTIVAL: 'Festival',

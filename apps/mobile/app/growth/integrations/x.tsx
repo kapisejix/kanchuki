@@ -28,7 +28,7 @@ export default function XConfigScreen() {
   const [apiKey, setApiKey] = useState('')
   const [apiSecret, setApiSecret] = useState('')
   const [bearerToken, setBearerToken] = useState('')
-  const [accessToken, setAccessToken] = useState('')
+  const [accessToken] = useState('')
   const [saving, setSaving] = useState(false)
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState<{ connected: boolean; handle?: string } | null>(null)

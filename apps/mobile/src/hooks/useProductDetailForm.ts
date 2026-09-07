@@ -9,7 +9,7 @@ import { showError } from '../lib/errors'
 interface UseProductDetailFormProps {
   product: ProductDetail | undefined
   selectedPhotoIndex: number
-  displayPhotos: Array<{ url: string; is_video?: boolean }>
+  displayPhotos: { url: string; is_video?: boolean }[]
 }
 
 export function useProductDetailForm({
@@ -94,7 +94,7 @@ export function useProductDetailForm({
     void queryClient.invalidateQueries({ queryKey: ['retailer', 'stats'] })
   }, [queryClient])
 
-  const handleSave = async (categoryList?: Array<{ id: string; name: string }>) => {
+  const handleSave = async (categoryList?: { id: string; name: string }[]) => {
     if (!product) return
     setSaving(true)
     try {

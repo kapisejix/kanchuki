@@ -153,7 +153,7 @@ export default function ProductDetailScreen() {
   // Build display photos array (photos + variants + original + video)
   const displayPhotos = React.useMemo(() => {
     if (!product) return []
-    const items: Array<{
+    const items: {
       id: string
       url: string
       is_primary: boolean
@@ -162,7 +162,7 @@ export default function ProductDetailScreen() {
       variant_color?: string
       is_video?: boolean
       video_duration?: number | null
-    }> = []
+    }[] = []
 
     for (const photo of product.photos) {
       items.push({

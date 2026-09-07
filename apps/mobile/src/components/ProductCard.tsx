@@ -18,7 +18,6 @@
  */
 
 import React, { memo, useState, useEffect } from 'react'
-import { COLORS } from '@kanchuki/shared'
 import { View, Text, type ViewStyle } from 'react-native'
 import { Image } from 'expo-image'
 import { Heart } from 'lucide-react-native'

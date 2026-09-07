@@ -1,5 +1,4 @@
 import { useState, useCallback, useEffect } from 'react'
-import { COLORS } from '@kanchuki/shared'
 import {
   View,
   Text,
@@ -98,26 +97,6 @@ export default function BulkOnboardScreen() {
 
   // ── Capture + upload + detect one rack photo ────────────────────
 
-  const handleCapturePhoto = useCallback(async () => {
-    try {
-      const result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 0.85 })
-      if (result.canceled || !result.assets[0]) return
-      await runPhoto(result.assets[0].uri)
-    } catch (err) {
-      showError(err, 'Could not take that photo.', 'Camera Error')
-    }
-  }, [])
-
-  const handlePickPhoto = useCallback(async () => {
-    try {
-      const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.85 })
-      if (result.canceled || !result.assets[0]) return
-      await runPhoto(result.assets[0].uri)
-    } catch (err) {
-      showError(err, 'Could not pick that photo.', 'Photo Error')
-    }
-  }, [])
-
   const runPhoto = useCallback(async (uri: string) => {
     setStep('uploading')
     setError(null)
@@ -149,6 +128,26 @@ export default function BulkOnboardScreen() {
       setStep('location')
     }
   }, [selectedSectionId])
+
+  const handleCapturePhoto = useCallback(async () => {
+    try {
+      const result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 0.85 })
+      if (result.canceled || !result.assets[0]) return
+      await runPhoto(result.assets[0].uri)
+    } catch (err) {
+      showError(err, 'Could not take that photo.', 'Camera Error')
+    }
+  }, [runPhoto])
+
+  const handlePickPhoto = useCallback(async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.85 })
+      if (result.canceled || !result.assets[0]) return
+      await runPhoto(result.assets[0].uri)
+    } catch (err) {
+      showError(err, 'Could not pick that photo.', 'Photo Error')
+    }
+  }, [runPhoto])
 
   // ── Save this photo's approved items, then loop back ────────────
 

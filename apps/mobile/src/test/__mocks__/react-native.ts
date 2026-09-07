@@ -189,7 +189,6 @@ export const TurboModuleRegistry = {
 // ── NativeEventEmitter ─────────────────────────────────────────────
 
 export class NativeEventEmitter {
-  constructor(_nativeModule?: Record<string, unknown>) {}
   addListener = () => ({ remove: () => {} })
   removeAllListeners = () => {}
   removeSubscription = () => {}

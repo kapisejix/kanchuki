@@ -25,7 +25,7 @@ import { Image } from 'expo-image'
  *                  flood the network on first catalog load.
  */
 export async function prefetchProductImages(
-  products: Array<{ primary_photo_url?: string | null }>,
+  products: { primary_photo_url?: string | null }[],
   limit = 40,
 ): Promise<void> {
   const urls = products

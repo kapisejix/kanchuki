@@ -14,7 +14,7 @@ interface UseProductAiStudioProps {
   product: ProductDetail | undefined
   currentPhoto: { id: string; url: string; is_video?: boolean } | undefined
   currentPhotoIsOriginal: boolean
-  displayPhotos: Array<{ id: string; url: string; is_video?: boolean; is_primary?: boolean }>
+  displayPhotos: { id: string; url: string; is_video?: boolean; is_primary?: boolean }[]
   selectedPhotoIndex: number
   setSelectedPhotoIndex: (index: number) => void
   setPhotoCacheBust: React.Dispatch<React.SetStateAction<Record<string, number>>>
@@ -233,19 +233,22 @@ export function useProductAiStudio({
     return stopPolling
   }, [product, studioJob, studioStatus, queryClient, refetchStudioQuota])
 
-  const handleSetPrimary = async (photoId: string) => {
-    if (!product) return
-    setSettingPrimaryId(photoId)
-    try {
-      await productApi.setPhotoPrimary(product.id, photoId)
-      void queryClient.invalidateQueries({ queryKey: ['products', product.id] })
-      void queryClient.invalidateQueries({ queryKey: ['products'] })
-    } catch (err) {
-      showError(err, 'Failed to set main photo')
-    } finally {
-      setSettingPrimaryId(null)
-    }
-  }
+  const handleSetPrimary = useCallback(
+    async (photoId: string) => {
+      if (!product) return
+      setSettingPrimaryId(photoId)
+      try {
+        await productApi.setPhotoPrimary(product.id, photoId)
+        void queryClient.invalidateQueries({ queryKey: ['products', product.id] })
+        void queryClient.invalidateQueries({ queryKey: ['products'] })
+      } catch (err) {
+        showError(err, 'Failed to set main photo')
+      } finally {
+        setSettingPrimaryId(null)
+      }
+    },
+    [product, queryClient],
+  )
 
   // Reset the studio flow back to the picker (Try Again / after Close).
   const resetStudioFlow = useCallback(() => {
@@ -281,7 +284,7 @@ export function useProductAiStudio({
       }
       handleCloseStudioModal()
     },
-    [studioResult, product, queryClient, handleCloseStudioModal],
+    [studioResult, product, queryClient, handleCloseStudioModal, handleSetPrimary],
   )
 
   // Post-to-social (R-7): close the modal, then open the composer prefilled
@@ -358,7 +361,7 @@ export function useProductAiStudio({
       // "Cannot find native module 'ExpoMediaLibraryNext'" — lazy-require it so
       // that failure is caught and we fall through to the share sheet.
       try {
-        const MediaLibrary = require('expo-media-library') as typeof import('expo-media-library')
+        const MediaLibrary = await import('expo-media-library')
         const perm = await MediaLibrary.requestPermissionsAsync()
         if (perm.granted) {
           await MediaLibrary.saveToLibraryAsync(downloadResult.uri)
