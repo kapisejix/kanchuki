@@ -14,6 +14,7 @@ import { trackRecentlyViewed } from '../lib/recentlyViewed'
 import { NotifyWhenAvailable } from './NotifyWhenAvailable'
 import { SavedSize } from './SavedSize'
 import { DesignGallery } from './DesignGallery'
+import { ShowcaseDesigns } from './ShowcaseDesigns'
 import { FamilyProfiles } from './FamilyProfiles'
 import { CustomerConsentModal } from './CustomerConsentModal'
 
@@ -892,6 +893,11 @@ export function ProductDetailSheet({
             </div>
           </div>
         )}
+
+        {/* Suits Designs — the <Category> Designs strip (admin-configured) —
+            rendered under Related products, store-scoped (hidden when the
+            retailer has no public_slug / this is a legacy /c/ URL). */}
+        <ShowcaseDesigns productId={product.id} storeSlug={store ?? null} />
 
         <div className="pb-6" />
         </div>
