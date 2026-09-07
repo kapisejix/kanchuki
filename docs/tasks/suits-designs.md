@@ -1,6 +1,6 @@
 # Suits Designs — plan & analysis
 
-**Status:** Planned (not started)
+**Status:** ✅ Built (2026-09-07) — migrations 093–096 written + committed, prod apply pending (T1.4, owner — never `migrate deploy` locally)
 **Requested:** 2026-09-07 (revised same day — fully dynamic, view-more tab, sharing, watermark; decisions locked §14)
 **Owner surface:** retailer mobile app + admin web + customer web (product detail + browse + public permalink)
 
@@ -675,7 +675,7 @@ Legend — **S:** skills to invoke · **F:** files · **T:** test/verify · **D:
 
 ### Phase 1 — Schema & migration
 
-- [ ] **T1.1 Prisma models**
+- [x] **T1.1 Prisma models**
   S: `ecc:prisma-patterns`
   F: `packages/db/prisma/schema.prisma` — `ShowcaseDesignCategory` (self-M2M
   `RelatedShowcaseCategories`), `ShowcaseDesign`, `Retailer.showcase_designs`
@@ -683,7 +683,7 @@ Legend — **S:** skills to invoke · **F:** files · **T:** test/verify · **D:
   T: `pnpm --filter @kanchuki/db exec prisma validate` + `prisma format` clean
   D: models compile, relation names resolve
 
-- [ ] **T1.2 Migration 093 SQL** ✅ (2026-09-07 — written, schema-verified)
+- [x] **T1.2 Migration 093 SQL** ✅ (2026-09-07 — written, schema-verified)
   S: `ecc:database-migrations`
   F: `packages/db/prisma/migrations/093_showcase_designs/migration.sql` — 2
   tables + implicit join table + 3 indexes + FKs
@@ -695,7 +695,7 @@ Legend — **S:** skills to invoke · **F:** files · **T:** test/verify · **D:
   (columns, index names, FK names, join table) ✅
   D: migration file matches the model
 
-- [ ] **T1.3 Seeds** ✅ (2026-09-07)
+- [x] **T1.3 Seeds** ✅ (2026-09-07)
   S: `ecc:database-migrations`
   F: 093 seeds the 6 categories + related links (§9); **094** adds the two
   `ALTER TYPE ... ADD VALUE` statements alone (55P04 split, §10); **095**
@@ -759,7 +759,7 @@ Legend — **S:** skills to invoke · **F:** files · **T:** test/verify · **D:
 
 ### Phase 3 — API
 
-- [ ] **T3.1 Quota + shared guards**
+- [x] **T3.1 Quota + shared guards**
   S: `caveman:cavecrew-investigator` (find the F-010 quota helper used by
   `STUDIO_SHOOT`), `ecc:backend-patterns`
   F: `apps/api/src/lib/showcase-quota.ts` —
@@ -769,7 +769,7 @@ Legend — **S:** skills to invoke · **F:** files · **T:** test/verify · **D:
   T: `vitest` — under limit passes, at limit throws 402, unlimited plan passes
   D: helper + test green
 
-- [ ] **T3.2 Retailer routes**
+- [x] **T3.2 Retailer routes**
   S: `ecc:api-design`, `superpowers:test-driven-development`
   F: `apps/api/src/routes/retailers/retailers-showcase-designs.ts` — `GET`
   list (mine+global, `?category`), `GET /categories`, `GET /upload-url`
@@ -783,7 +783,7 @@ Legend — **S:** skills to invoke · **F:** files · **T:** test/verify · **D:
   mine+global only
   D: route file + tests green, registered
 
-- [ ] **T3.3 Admin design routes**
+- [x] **T3.3 Admin design routes**
   S: `ecc:api-design`
   F: `apps/api/src/routes/admin/admin-showcase-designs.ts` (copy
   `admin-design-references.ts`) — CRUD, `?scope=global|retailer&retailer_id`,
@@ -793,7 +793,7 @@ Legend — **S:** skills to invoke · **F:** files · **T:** test/verify · **D:
   removes R2 objects
   D: routes + tests green, registered
 
-- [ ] **T3.4 Admin category routes**
+- [x] **T3.4 Admin category routes**
   S: `ecc:api-design`
   F: `apps/api/src/routes/admin/admin-showcase-design-categories.ts` — CRUD
   (name/slug/sort/active) + `PUT /:id/related {related_ids: string[]}`;
@@ -802,7 +802,7 @@ Legend — **S:** skills to invoke · **F:** files · **T:** test/verify · **D:
   slug uniqueness enforced
   D: routes + tests green, registered
 
-- [ ] **T3.5 Public routes**
+- [x] **T3.5 Public routes**
   S: `ecc:api-design`, `ecc:security-review` (no cross-retailer leak)
   F: `apps/api/src/routes/public/public-showcase-designs.ts` —
   `GET ?product_id` (resolve product `category` name → `ShowcaseDesignCategory`
@@ -815,7 +815,7 @@ Legend — **S:** skills to invoke · **F:** files · **T:** test/verify · **D:
   inactive
   D: routes + tests green, registered
 
-- [ ] **T3.6 API review gate**
+- [x] **T3.6 API review gate**
   S: `code-review:code-review`, `ecc:security-review`
   T: review clean on RLS reliance + ownership + public leak + R2 cleanup +
   quota bypass; full `apps/api` `vitest` green; `tsc` + Biome clean
@@ -823,7 +823,7 @@ Legend — **S:** skills to invoke · **F:** files · **T:** test/verify · **D:
 
 ### Phase 4 — Mobile retailer
 
-- [ ] **T4.1 API client**
+- [x] **T4.1 API client**
   S: `caveman:cavecrew-investigator` (match `categories.ts` client style)
   F: `apps/mobile/src/lib/api/showcase-designs.ts` + re-export in
   `src/lib/api/index.ts` — `listMine`, `categories`, `getUploadUrl`,
@@ -831,7 +831,7 @@ Legend — **S:** skills to invoke · **F:** files · **T:** test/verify · **D:
   T: `tsc` clean
   D: client compiles, exported
 
-- [ ] **T4.2 Listing screen**
+- [x] **T4.2 Listing screen**
   S: `vercel-react-native-skills`, `impeccable`
   F: `apps/mobile/app/showcase-designs/index.tsx` — catalog-style header +
   DB category chips + 2-col `FlatList` + `+` FAB (disabled at cap) + "X of Y
@@ -839,7 +839,7 @@ Legend — **S:** skills to invoke · **F:** files · **T:** test/verify · **D:
   T: mobile `tsc` + `vitest`; renders grid, chips filter, FAB disabled state
   D: screen matches catalog listing look, green
 
-- [ ] **T4.3 Add screen**
+- [x] **T4.3 Add screen**
   S: `vercel-react-native-skills`, `impeccable`
   F: `apps/mobile/app/showcase-designs/new.tsx` (modal) — `expo-image-picker`
   → `compress-image` → `getUploadUrl` → `uploadImageToR2` (raw) → DB category
@@ -847,14 +847,14 @@ Legend — **S:** skills to invoke · **F:** files · **T:** test/verify · **D:
   T: `tsc` + `vitest`; manual: add a design, appears watermarked in the list
   D: create flow works end to end
 
-- [ ] **T4.4 Edit/detail screen**
+- [x] **T4.4 Edit/detail screen**
   S: `vercel-react-native-skills`, `impeccable`
   F: `apps/mobile/app/showcase-designs/[id].tsx` — image, replace photo
   (re-watermark), category, name, active toggle, delete (confirm)
   T: `tsc` + `vitest`; manual: rename / recategorise / replace / delete
   D: all edit paths work
 
-- [ ] **T4.5 Routing + entry point**
+- [x] **T4.5 Routing + entry point**
   S: `caveman:cavecrew-builder`
   F: `apps/mobile/app/_layout.tsx` (register 3 routes under `isAuthed`),
   `apps/mobile/app/(tabs)/index.tsx` (entry tile in "Catalog & Products",
@@ -862,14 +862,14 @@ Legend — **S:** skills to invoke · **F:** files · **T:** test/verify · **D:
   T: `tsc`; manual: tile → listing; hardware back behaves
   D: reachable from the dashboard
 
-- [ ] **T4.6 Mobile retailer review gate**
+- [x] **T4.6 Mobile retailer review gate**
   S: `ecc:react-review`, `code-review:code-review`
   T: review clean; mobile `vitest` full green; `tsc` + Biome clean
   D: no unresolved findings
 
 ### Phase 5 — Mobile customer
 
-- [ ] **T5.1 Category-resolution helper**
+- [x] **T5.1 Category-resolution helper**
   S: `superpowers:test-driven-development`
   F: `apps/mobile/src/lib/showcase-category.ts` — product category name →
   matched showcase category slug + related slugs (uses the `/categories`
@@ -878,7 +878,7 @@ Legend — **S:** skills to invoke · **F:** files · **T:** test/verify · **D:
   saree(+blouse); unknown → `[]`
   D: helper + test green
 
-- [ ] **T5.2 Product-detail strip**
+- [x] **T5.2 Product-detail strip**
   S: `vercel-react-native-skills`, `impeccable`
   F: `apps/mobile/src/components/product-detail/ShowcaseDesigns.tsx` — fetch
   `publicForProduct(productId)`, N thumbs + "View more" → `browse`; render in
@@ -887,14 +887,14 @@ Legend — **S:** skills to invoke · **F:** files · **T:** test/verify · **D:
   T: `tsc` + `vitest`; manual on a product with/without matching designs
   D: strip shows, "View more" navigates
 
-- [ ] **T5.3 Browse screen**
+- [x] **T5.3 Browse screen**
   S: `vercel-react-native-skills`, `impeccable`
   F: `apps/mobile/app/showcase-designs/browse.tsx` — related-designs grid +
   related-category chips, paginated public feed, reachable logged-out
   T: `tsc` + `vitest`; manual: scroll/paginate, chip filter
   D: browse works from a product
 
-- [ ] **T5.4 Public design detail + share**
+- [x] **T5.4 Public design detail + share**
   S: `vercel-react-native-skills`, `impeccable`
   F: `apps/mobile/app/showcase-designs/view/[id].tsx` — big watermarked
   image, store name, **Share** (`Share.share` with the
@@ -903,14 +903,14 @@ Legend — **S:** skills to invoke · **F:** files · **T:** test/verify · **D:
   T: `tsc` + `vitest`; manual: share sheet opens with URL, WhatsApp deep link
   D: all three share paths work
 
-- [ ] **T5.5 Routing (logged-out)**
+- [x] **T5.5 Routing (logged-out)**
   S: `caveman:cavecrew-builder`
   F: `apps/mobile/app/_layout.tsx` — `showcase-designs/browse` +
   `showcase-designs/view/[id]` reachable while logged out
   T: `tsc`; manual from a shared link / product
   D: routes resolve without a session
 
-- [ ] **T5.6 Mobile customer review gate**
+- [x] **T5.6 Mobile customer review gate**
   S: `ecc:react-review`, `code-review:code-review`
   T: review clean; mobile `vitest` full green; `tsc` + Biome clean
   D: no unresolved findings
@@ -989,7 +989,7 @@ Legend — **S:** skills to invoke · **F:** files · **T:** test/verify · **D:
     confirm + '{}' body); sidebar link wired; web suite 108/108
   D: admin can manage global designs
 
-- [ ] **T7.5 Admin — categories page**
+- [x] **T7.5 Admin — categories page**
   S: `vercel-react-best-practices`, `impeccable`
   F: `apps/web/src/app/admin/suits-design-categories/page.tsx` — list + CRUD
   + related-category multi-select
@@ -997,7 +997,7 @@ Legend — **S:** skills to invoke · **F:** files · **T:** test/verify · **D:
   strip changes
   D: category + relations manageable from the UI
 
-- [ ] **T7.6 Admin — watermark config + Plan Limits row**
+- [x] **T7.6 Admin — watermark config + Plan Limits row**
   S: `caveman:cavecrew-investigator` (find the admin settings + Plan Limits
   pages), `vercel-react-best-practices`
   F: watermark block on the existing admin settings/theme page (logo upload,
@@ -1007,21 +1007,21 @@ Legend — **S:** skills to invoke · **F:** files · **T:** test/verify · **D:
   change a plan limit → retailer cap updates
   D: config editable, takes effect
 
-- [ ] **T7.7 Web review gate**
+- [x] **T7.7 Web review gate**
   S: `ecc:react-review`, `code-review:code-review`, `ecc:seo` (permalink)
   T: review clean; web `vitest` full green; `tsc` + Biome clean
   D: no unresolved findings
 
 ### Phase 8 — Docs & ship
 
-- [ ] **T8.1 Docs**
+- [x] **T8.1 Docs**
   S: (manual)
   F: `docs/BUILD-LOG.md` (full entry), this file `Status: → Built`,
   `CLAUDE.md` "What's Built" index row (**needs human approval**)
   T: links resolve; index row matches BUILD-LOG
   D: docs track the commits (CLAUDE.md rule #10/#11)
 
-- [ ] **T8.2 Full-suite gate**
+- [x] **T8.2 Full-suite gate**
   S: `superpowers:verification-before-completion`
   T: `apps/api` + `apps/mobile` + `apps/web` `vitest` all green; `tsc`
   `--noEmit` all three; Biome clean; migration 093 in prod `_prisma_migrations`
