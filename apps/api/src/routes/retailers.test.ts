@@ -840,14 +840,12 @@ describe('GET /retailers/me/integrations — instagram block', () => {
   it('reports instagram.configured from the INSTAGRAM SocialAccount row (parity with facebook)', async () => {
     mockRetailerFindUnique.mockResolvedValue({});
     // Promise.all order: [FACEBOOK findFirst, INSTAGRAM findFirst]
-    mockSocialAccountFindFirst
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce({
-        id: 'social_ig_1',
-        platform_account_id: 'ig_17841400000000000',
-        platform_account_name: '@my_boutique (My Boutique)',
-        created_at: new Date('2026-09-06T00:00:00Z'),
-      });
+    mockSocialAccountFindFirst.mockResolvedValueOnce(null).mockResolvedValueOnce({
+      id: 'social_ig_1',
+      platform_account_id: 'ig_17841400000000000',
+      platform_account_name: '@my_boutique (My Boutique)',
+      created_at: new Date('2026-09-06T00:00:00Z'),
+    });
     const app = await buildApp();
     const res = await app.inject({ method: 'GET', url: '/v1/retailers/me/integrations' });
     expect(res.statusCode).toBe(200);

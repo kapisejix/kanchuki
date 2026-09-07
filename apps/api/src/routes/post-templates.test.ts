@@ -88,8 +88,7 @@ describe('GET /v1/post-templates', () => {
     mockTemplateFindMany.mockResolvedValueOnce([]);
     const app = await buildApp();
     await app.inject({ method: 'GET', url: '/v1/post-templates' });
-    const args =
-      mockTemplateFindMany.mock.calls[0]?.[0] ?? { where: { status: '' }, select: {} };
+    const args = mockTemplateFindMany.mock.calls[0]?.[0] ?? { where: { status: '' }, select: {} };
     const { where, select } = args;
     expect(where.status).toBe('PUBLISHED');
     expect(select).not.toHaveProperty('status');

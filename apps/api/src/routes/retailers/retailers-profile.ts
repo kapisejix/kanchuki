@@ -2,10 +2,12 @@ import { type Prisma, prisma } from '@kanchuki/db';
 import { generateCollectionSlug } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
-import { notFound, validationError } from '../../plugins/error-handler.js';
 import { sendOtpViaMsg91, verifyStoredOtp } from '../../lib/msg91-otp.js';
+import { notFound, validationError } from '../../plugins/error-handler.js';
 
-const WhatsAppNumberSchema = z.string().regex(/^[6-9]\d{9}$/, 'Must be a valid 10-digit Indian mobile number');
+const WhatsAppNumberSchema = z
+  .string()
+  .regex(/^[6-9]\d{9}$/, 'Must be a valid 10-digit Indian mobile number');
 
 const UpdateRetailerSchema = z.object({
   shop_name: z.string().min(1).max(200).optional(),
@@ -30,10 +32,16 @@ const UpdateRetailerSchema = z.object({
     .optional(),
   categories: z.array(z.string().max(50)).max(10).optional(),
   // F-009: separate WhatsApp business number (falls back to phone if unset)
-  whatsapp_number: z.union([WhatsAppNumberSchema, z.literal('')]).nullable().optional(),
+  whatsapp_number: z
+    .union([WhatsAppNumberSchema, z.literal('')])
+    .nullable()
+    .optional(),
   // Required whenever whatsapp_number is being set to a NEW value — verified
   // against POST /me/whatsapp-number/otp before the change is applied.
-  whatsapp_otp: z.string().regex(/^\d{6}$/).optional(),
+  whatsapp_otp: z
+    .string()
+    .regex(/^\d{6}$/)
+    .optional(),
   // F-018: optional, skippable — a salesperson's referral code entered at self-serve signup
   referral_code: z.string().max(20).nullable().optional(),
   // Roadmap M — preferred locale for the retailer app UI (ISO 639-1 + region, e.g. 'en-IN', 'hi-IN')

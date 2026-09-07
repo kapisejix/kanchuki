@@ -68,12 +68,9 @@ const ANY_TOKEN = /\{[a-z0-9_]+\}/gi;
  * Resolve {placeholders} in a post-template caption against the given
  * context. Never throws; never leaves a raw token in the output.
  */
-export function resolvePostTemplate(
-  template: string,
-  ctx: PostTemplateContext = {},
-): string {
+export function resolvePostTemplate(template: string, ctx: PostTemplateContext = {}): string {
   const values = resolveValues(ctx);
-  const substituted = template.replace(KNOWN_TOKEN, (match, key: string) => values[key] ?? '');
+  const substituted = template.replace(KNOWN_TOKEN, (_match, key: string) => values[key] ?? '');
   const noUnknownTokens = substituted.replace(ANY_TOKEN, '');
   return noUnknownTokens.replace(/ {2,}/g, ' ').trim();
 }

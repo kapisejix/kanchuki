@@ -2094,3 +2094,15 @@ Re-verified: mobile `tsc` clean, `vitest` 59/59, `expo lint` reports nothing on 
 **Still blocking go-live:** T1.4 — migrations 093 → 094 → 095 → 096 applied via the admin runner in prod (owner-only). `hasFeature` fails closed, so Suits Designs is OFF on every plan until 095's `plan_features` rows land. T8.3 (PR + deploy) not started.
 
 **EAS compile:** ready after this pass — no native config change, no new dependency, `tsc` clean, mobile suite green. `eas build` does not run `expo lint`, so the pre-existing `ProductGridPicker.tsx` lint error is not a blocker.
+
+---
+
+## CLEANUP 2026-09-07: CI quality gate + Deploy workflow green-up (owner-approved CI/CD change)
+
+Two pre-existing reds on `main` (noted in the Suits Designs prod-smoke report, §2026-09-07 above), both fixed this session:
+
+1. **`quality` job red at `pnpm lint` → apps/api Biome errors.** Since 2026-09-06, `biome check src/` errored on 16 diagnostics across 12 files (format diffs, unsorted imports, one `noUnusedVariables`, one `useTemplate`). Most were non-semantic formatting drift in recently landed social/post-template/suits files (missing trailing newline at EOF, line-wrap diffs, import order); two were real-but-trivial lint violations:
+   - `lib/post-template-placeholders.ts` — unused `match` callback param in the `KNOWN_TOKEN` replace (renamed `_match`).
+   - `routes/growth/growth-social-caption-suggest.ts` — string-concat range caption collapsed into one nested template literal.
+   Fixed with `biome check --write` on the 12 files + the two manual edits. **Verification:** `biome check` on an LF worktree of `apps/api/src` exits 0 (the local Windows worktree false-positives CRLF formatter diffs — `core.autocrlf` checkout — which is exactly why CI was red while local runs looked noisy; CI checks out LF). API `tsc --noEmit` clean, full API suite **888/888**, all four guard scripts pass (delete/route-size/secrets/v1-fetch).
+2. **`Deploy to Railway` workflow red → `deploy-api` "Run pending migrations" P1001.** The step ran `prisma migrate deploy` from the GH runner against the Supabase pooler; Supabase Network Restrictions drop GH-runner egress (P1001 on every push since 2026-09-01), and even reachable it ran as the app role which has no DDL grants — so it could never apply migrations. It also killed this backup workflow's own `railway up` deploy step (never ran since Sep 1). **Fix (owner-approved, CLAUDE.md operational note lifted):** removed the step + the now-dead `PROD_DATABASE_URL` GitHub-secret reference from `.github/workflows/deploy.yml`, with a comment explaining the removal. Prod migrations continue through the sanctioned path only — admin dashboard / Supabase SQL Editor with the migrator role (SECURITY.md §12.2/§19) — never a CI step.

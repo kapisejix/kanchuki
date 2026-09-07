@@ -37,9 +37,17 @@ on:
 #                                 (URL: /project/{p}/service/{this_id})
 #   RAILWAY_WEB_SERVICE_ID     — Service ID from Railway Web service
 #   RAILWAY_VTONE_SERVICE_ID   — Service ID from Railway V-Tone service
-#   PROD_DATABASE_URL          — Supabase production connection string,
-#                                 used to run `prisma migrate deploy`
-#                                 before the new API version goes live
+#
+# NOTE — no migration step here: production migrations are applied ONLY
+# through the admin dashboard / Supabase SQL Editor per SECURITY.md + the
+# CLAUDE.md operational policy (human-owned, kanchuki_migrator role). A
+# previous `prisma migrate deploy` step in this job was removed on
+# 2026-09-07 because GH-runner egress to the Supabase pooler is dropped by
+# Supabase Network Restrictions (P1001, failing on every main push since
+# 2026-09-01), and even when reachable it would run as the app role, which
+# has no DDL grants. The step was also killing this backup pipeline before
+# its `railway up` deploy step could run. Railway native auto-deploy is the
+# sanctioned primary path.
 #
 # ⚠️ NEVER run `railway up` from a local machine. This workflow exists
 #    because Railway's GitHub integration may not be configured. Once it is,
@@ -105,11 +113,6 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
-
-      - name: Run pending migrations
-        env:
-          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
-        run: pnpm --filter @kanchuki/db exec prisma migrate deploy
 
       - name: Install Railway CLI
         run: |

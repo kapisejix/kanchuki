@@ -66,7 +66,9 @@ export const billingSubscriptionRoutes: FastifyPluginAsync = async (server) => {
       where: { retailer_id: request.retailerId, status: { in: ['TRIAL', 'ACTIVE'] } },
     });
     if (existingSubscription) {
-      throw validationError('You already have a subscription in progress. Cancel it before changing plans.');
+      throw validationError(
+        'You already have a subscription in progress. Cancel it before changing plans.',
+      );
     }
 
     // Model A (switch takes effect next cycle, no proration — see

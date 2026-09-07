@@ -72,7 +72,13 @@ beforeEach(() => {
 describe('POST /v1/growth/social-caption-suggest', () => {
   it('returns an AI caption + hashtags with real product/store context', async () => {
     mockProductFindMany.mockResolvedValue([
-      { id: 'p1', name: 'Banarasi Silk Saree', category: 'Saree', price_min: 199900, price_max: 199900 },
+      {
+        id: 'p1',
+        name: 'Banarasi Silk Saree',
+        category: 'Saree',
+        price_min: 199900,
+        price_max: 199900,
+      },
     ]);
     mockGenerateCaption.mockResolvedValue({
       caption: 'New Banarasi silk sarees just landed ✨',

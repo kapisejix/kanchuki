@@ -9,8 +9,8 @@ import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { recordAiUsage } from '../../lib/ai-usage.js';
 import { hasFeature } from '../../lib/features.js';
-import { checkQuota } from '../../lib/quota.js';
 import { resolvePostTemplate } from '../../lib/post-template-placeholders.js';
+import { checkQuota } from '../../lib/quota.js';
 import { featureUnavailable, validationError } from '../../plugins/error-handler.js';
 
 const SUGGEST_SCHEMA = z.object({
@@ -51,13 +51,11 @@ export const growthSocialCaptionSuggestRoutes: FastifyPluginAsync = async (serve
     });
 
     const names = products.map((p) => p.name?.trim()).filter(Boolean) as string[];
-    const prices = products
-      .map((p) => p.price_min)
-      .filter((v): v is number => v != null);
-    const priceRange = prices.length > 0
-      ? `₹${formatBarePrice(Math.min(...prices))}` +
-        (prices.some((v) => v !== Math.min(...prices)) ? ` – ₹${formatBarePrice(Math.max(...prices))}` : '')
-      : undefined;
+    const prices = products.map((p) => p.price_min).filter((v): v is number => v != null);
+    const priceRange =
+      prices.length > 0
+        ? `₹${formatBarePrice(Math.min(...prices))}${prices.some((v) => v !== Math.min(...prices)) ? ` – ₹${formatBarePrice(Math.max(...prices))}` : ''}`
+        : undefined;
 
     // AI generation, fail-open. Quota exhaustion (AI_TAGGING_CALL) must NOT
     // break the suggest button — fall through to the template caption.

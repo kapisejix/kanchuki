@@ -38,13 +38,15 @@ describe('resolvePostTemplate', () => {
   });
 
   it('ignores blank names in {product_names}', () => {
-    expect(resolvePostTemplate('{product_names}', { productNames: ['A', null, '', 'B'] })).toBe('A, B');
+    expect(resolvePostTemplate('{product_names}', { productNames: ['A', null, '', 'B'] })).toBe(
+      'A, B',
+    );
   });
 
   it('falls back to the first product name for {product_name}', () => {
-    expect(
-      resolvePostTemplate('{product_name}', { productNames: ['Kurti', 'Lehenga'] }),
-    ).toBe('Kurti');
+    expect(resolvePostTemplate('{product_name}', { productNames: ['Kurti', 'Lehenga'] })).toBe(
+      'Kurti',
+    );
   });
 
   it('resolves {festival} and {store_name} for campaign context', () => {
