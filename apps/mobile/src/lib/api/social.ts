@@ -16,7 +16,7 @@ export interface SocialAccountInfo {
 
 export interface SocialPostInfo {
   id: string
-  post_type: 'SINGLE_PRODUCT' | 'COLLECTION_LINK' | 'CAROUSEL'
+  post_type: 'SINGLE_PRODUCT' | 'COLLECTION_LINK' | 'CAROUSEL' | 'IMAGE'
   caption: string
   status: 'POSTED' | 'FAILED'
   external_post_url: string | null
@@ -30,17 +30,20 @@ export interface SocialPostInfo {
 // Types mirror the API bodySchema + per-target result rows (§6.1). The
 // client mints `client_post_id` so a retry of the same tap dedupes (R-13).
 
-/** Post shapes the composer can produce. */
-export type SocialPostComposeType = 'SINGLE_PRODUCT' | 'CAROUSEL' | 'COLLECTION_LINK'
+/** Post shapes the composer can produce. IMAGE = a standalone image (e.g. a
+ * watermarked Suits Design) posted from its public URL — no product. */
+export type SocialPostComposeType = 'SINGLE_PRODUCT' | 'CAROUSEL' | 'COLLECTION_LINK' | 'IMAGE'
 
 /** What the post's link card resolves to (server-owned resolution, R-11). */
 export type SocialLinkType = 'none' | 'collection' | 'storefront' | 'product'
 
-/** One media item inside a fan-out payload — a photo XOR a video. */
+/** One media item inside a fan-out payload — a product photo XOR a video, or
+ * a standalone image_url (IMAGE posts carry no product ref). */
 export interface SocialPostItem {
-  product_id: string
+  product_id?: string
   photo_id?: string
   video_id?: string
+  image_url?: string
 }
 
 /** Payload for POST /me/social/posts. */

@@ -28,3 +28,4 @@ export * from "./theme";
 export * from "./growth";
 export * from "./whatsapp-catalog";
 export * from "./bug-reports";
+export * from "./showcase-designs";

@@ -12,7 +12,16 @@ import {
   XCircle,
 } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Linking, Modal, ScrollView, Text, TextInput, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Image,
+  Linking,
+  Modal,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { useScreenInsets } from '../../src/lib/safe-area';
 import { AnimatedPressable } from '../../src/components/AnimatedPressable';
 import { GradientButton } from '../../src/components/GradientButton';
@@ -28,7 +37,13 @@ import {
 } from '../../src/components/social';
 import { collectionProductsToCarouselItems } from '../../src/components/social/collection-carousel';
 import type { ComposeMedia, ComposeProduct } from '../../src/components/social/types';
-import { collectionApi, productApi, retailerApi, socialApi } from '../../src/lib/api';
+import {
+  collectionApi,
+  productApi,
+  retailerApi,
+  showcaseDesignsApi,
+  socialApi,
+} from '../../src/lib/api';
 import type {
   CreateSocialPostInput,
   PostTemplateInfo,
@@ -37,6 +52,7 @@ import type {
   SocialPostComposeType,
   SocialPostTargetResult,
 } from '../../src/lib/api/social';
+import type { ShowcaseDesignRow } from '../../src/lib/api/showcase-designs';
 import { showError } from '../../src/lib/errors';
 import { useTheme } from '../../src/lib/theme';
 import { WEB_URL } from '../../src/lib/web-url';
@@ -53,8 +69,21 @@ interface CollectionSummary {
 interface DeepIntent {
   productIds: string[];
   collectionId: string | null;
+  /** Suits Design deep link (T-6.2): the composer posts the design's
+   * watermarked image as an IMAGE post — no product selection. */
+  designId: string | null;
   photoId: string | null;
   videoId: string | null;
+}
+
+/** A design picked via deep link — the standalone image an IMAGE post fans
+ * out (suits-designs.md §2.6). Only ever set by the design_id entry; the
+ * composer never lets a retailer reach IMAGE mode on their own (there is no
+ * arbitrary-image picker, so the type stays internal to the design flow). */
+interface DesignPost {
+  id: string;
+  name: string | null;
+  url: string;
 }
 
 /** Client-generated uuid for retry dedupe (R-13). crypto.randomUUID isn't
@@ -107,6 +136,7 @@ export default function CreateSocialPostScreen() {
     product_id?: string;
     product_ids?: string;
     collection_id?: string;
+    design_id?: string;
     photo_id?: string;
     video_id?: string;
   }>();
@@ -141,6 +171,8 @@ export default function CreateSocialPostScreen() {
   // ── Composer state ────────────────────────────────────────────────
   const [postType, setPostType] = useState<SocialPostComposeType>('SINGLE_PRODUCT');
   const [templateId, setTemplateId] = useState<string | null>(null);
+  // The deep-linked design in IMAGE mode (null = product composer).
+  const [designPost, setDesignPost] = useState<DesignPost | null>(null);
   const [selected, setSelected] = useState<ComposeProduct[]>([]);
   const [mediaOverride, setMediaOverride] = useState<Record<string, ComposeMedia>>({});
   const [collectionLink, setCollectionLink] = useState<CollectionSummary | null>(null);
@@ -171,15 +203,20 @@ export default function CreateSocialPostScreen() {
   // Content signature that should carry an AI caption (T-6.2 / R-9).
   const suggestSignature = useMemo(
     () =>
-      postType === 'COLLECTION_LINK'
-        ? `collection:${collectionLink?.id ?? ''}`
-        : `${postType}:${selected.map((p) => p.id).join(',')}`,
-    [postType, selected, collectionLink],
+      postType === 'IMAGE'
+        ? `image:${designPost?.id ?? ''}`
+        : postType === 'COLLECTION_LINK'
+          ? `collection:${collectionLink?.id ?? ''}`
+          : `${postType}:${selected.map((p) => p.id).join(',')}`,
+    [postType, selected, collectionLink, designPost],
   );
 
   const runCaptionSuggest = useCallback(async () => {
     if (suggestingCaption || publishing) return;
     // COLLECTION_LINK still suggests from nothing but the collection id.
+    // IMAGE posts caption-suggest with no products (designs have no AI
+    // context server-side) — skip and let the server auto-caption.
+    if (postType === 'IMAGE') return;
     if (postType !== 'COLLECTION_LINK' && selected.length === 0) return;
     setSuggestingCaption(true);
     try {
@@ -233,6 +270,7 @@ export default function CreateSocialPostScreen() {
             .filter(Boolean)
         : [],
       collectionId: params.collection_id ?? null,
+      designId: params.design_id ?? null,
       photoId: params.photo_id ?? null,
       videoId: params.video_id ?? null,
     };
@@ -279,10 +317,30 @@ export default function CreateSocialPostScreen() {
     [collectionDetailQuery.data],
   );
 
-  // Deep-link prefill — products + forced media for single-product entries.
+  // Deep-link prefill — products + forced media for single-product entries,
+  // OR the design image for design_id entries (T-6.2).
   useEffect(() => {
     if (appliedDeepLink.current) return;
     if (intent.productIds.length === 0) {
+      if (intent.designId) {
+        // Design-only entry: lock the composer to IMAGE with the design's
+        // watermarked photo. Best-effort — a miss leaves the product composer.
+        appliedDeepLink.current = true;
+        void (async () => {
+          try {
+            const list = (
+              (await showcaseDesignsApi.listMine()) as { data?: ShowcaseDesignRow[] } | undefined
+            )?.data;
+            const row = list?.find((d) => d.id === intent.designId);
+            if (!row) return;
+            setDesignPost({ id: row.id, name: row.name, url: row.image_url });
+            setPostType('IMAGE');
+          } catch {
+            // Best-effort prefill — the retailer can post products instead.
+          }
+        })();
+        return;
+      }
       // Collection-only entry (R-8): route to link mode, pick the collection.
       if (intent.collectionId) {
         appliedDeepLink.current = true;
@@ -373,6 +431,7 @@ export default function CreateSocialPostScreen() {
         // bare link) is dropped. The Format toggle re-adds IG for 'carousel'.
         setSelected([]);
         setMediaOverride({});
+        setDesignPost(null);
         setCollectionFormat('link');
         setTargetIds((cur) => {
           const ig = new Set(accounts.filter((a) => a.platform === 'INSTAGRAM').map((a) => a.id));
@@ -389,6 +448,9 @@ export default function CreateSocialPostScreen() {
         } else {
           setSelected((cur) => cur.slice(0, 1));
         }
+        // Leaving the design flow returns the retailer to the product
+        // composer — the design photo must not linger in IMAGE state.
+        if (next !== 'IMAGE') setDesignPost(null);
         if (linkType === 'product') setLinkType('none');
       }
     },
@@ -462,16 +524,28 @@ export default function CreateSocialPostScreen() {
   );
 
   const items = useMemo(() => {
-    if (postType === 'COLLECTION_LINK') return [];
+    if (postType === 'COLLECTION_LINK' || postType === 'IMAGE') return [];
     return selected
       .map((p) => ({ product: p, media: resolveMedia(p.id) }))
       .filter((x): x is { product: ComposeProduct; media: ComposeMedia } => !!x.media);
   }, [postType, selected, resolveMedia]);
 
+  // Media the preview renders. IMAGE mode shows the design's own photo — the
+  // one the fan-out actually posts (products contribute nothing here).
+  const previewMedia = useMemo<ComposeMedia[]>(() => {
+    if (postType === 'IMAGE') {
+      return designPost ? [{ kind: 'photo', url: designPost.url }] : [];
+    }
+    return items.map((x) => x.media);
+  }, [postType, designPost, items]);
+
   // ── Validation (T-4.7) ────────────────────────────────────────────
   const problems = useMemo(() => {
     const list: string[] = [];
-    if (postType === 'COLLECTION_LINK') {
+    if (postType === 'IMAGE') {
+      // The design photo is the whole post — nothing product-like to gate on.
+      if (!designPost) list.push('The design photo is still loading — hang on.');
+    } else if (postType === 'COLLECTION_LINK') {
       if (!collectionLink) {
         list.push('Choose a collection to share.');
       } else if (collectionFormat === 'carousel') {
@@ -503,6 +577,7 @@ export default function CreateSocialPostScreen() {
     return list;
   }, [
     postType,
+    designPost,
     collectionLink,
     collectionFormat,
     collectionDetailQuery.isLoading,
@@ -582,6 +657,8 @@ export default function CreateSocialPostScreen() {
       .join(',');
     return [
       postType,
+      // IMAGE posts key on the design id — a different design is a new post.
+      postType === 'IMAGE' ? (designPost?.id ?? '') : '',
       // Targets compared as a set — checkbox order is not part of the post.
       [...targetIds]
         .sort()
@@ -600,6 +677,7 @@ export default function CreateSocialPostScreen() {
     ].join('\u0001');
   }, [
     postType,
+    designPost,
     targetIds,
     items,
     linkType,
@@ -615,6 +693,18 @@ export default function CreateSocialPostScreen() {
   // ── Publish (T-4.8) ───────────────────────────────────────────────
   const buildPayload = useCallback(
     (clientPostId: string): CreateSocialPostInput => {
+      if (postType === 'IMAGE') {
+        // A standalone design image — item carries image_url only; the server
+        // records post_type IMAGE with an honest empty product_ids array.
+        return {
+          client_post_id: clientPostId,
+          post_type: 'IMAGE',
+          targets: targetIds,
+          items: designPost ? [{ image_url: designPost.url }] : [],
+          caption: caption.trim() || undefined,
+          template_id: templateId ?? undefined,
+        };
+      }
       if (postType === 'COLLECTION_LINK') {
         // Photo carousel: reuse the CAROUSEL fan-out with the collection's own
         // products; link_type 'collection' makes the server append the
@@ -664,6 +754,7 @@ export default function CreateSocialPostScreen() {
     },
     [
       postType,
+      designPost,
       targetIds,
       items,
       linkType,
@@ -797,7 +888,7 @@ export default function CreateSocialPostScreen() {
             contentContainerStyle={{ paddingBottom: insets.bottom + 130 }}
             keyboardShouldPersistTaps="handled"
           >
-            {templates.length > 0 ? (
+            {templates.length > 0 && postType !== 'IMAGE' ? (
               <>
                 {sectionTitle('0', 'Templates', 'Start from a ready-made caption')}
                 <TemplatePicker
@@ -809,10 +900,46 @@ export default function CreateSocialPostScreen() {
               </>
             ) : null}
 
-            {sectionTitle('1', 'Post type', 'Change anytime — your picks adapt')}
-            <PostTypePicker value={postType} onChange={postTypeCtx} />
+            {postType !== 'IMAGE' ? (
+              <>
+                {sectionTitle('1', 'Post type', 'Change anytime — your picks adapt')}
+                <PostTypePicker value={postType} onChange={postTypeCtx} />
+              </>
+            ) : null}
 
-            {postType === 'COLLECTION_LINK' ? (
+            {postType === 'IMAGE' ? (
+              // Suits Design share (T-6.2) — the watermarked photo IS the post.
+              // No type picker, no product grid, no link card: the retailer
+              // just writes a caption and picks the accounts.
+              <>
+                {sectionTitle('2', 'Design')}
+                <View className="bg-white rounded-2xl border border-sand-100 overflow-hidden">
+                  {designPost ? (
+                    <>
+                      <View className="bg-sand-50 border-b border-sand-100">
+                        <Image
+                          source={{ uri: designPost.url }}
+                          className="w-full aspect-[3/4]"
+                          resizeMode="cover"
+                        />
+                      </View>
+                      <View className="px-4 py-3">
+                        <Text className="text-sm font-bold text-sand-900" numberOfLines={1}>
+                          {designPost.name || 'Design'}
+                        </Text>
+                        <Text className="text-[10px] text-sand-400 mt-0.5">
+                          This watermarked photo will be shared as a standalone post.
+                        </Text>
+                      </View>
+                    </>
+                  ) : (
+                    <Text className="text-xs text-sand-400 p-5 text-center">
+                      Loading the design…
+                    </Text>
+                  )}
+                </View>
+              </>
+            ) : postType === 'COLLECTION_LINK' ? (
               <>
                 {sectionTitle('2', 'Collection to share')}
                 <View className="bg-white rounded-2xl border border-sand-100 overflow-hidden">
@@ -1024,7 +1151,7 @@ export default function CreateSocialPostScreen() {
               </>
             )}
 
-            {sectionTitle(postType === 'COLLECTION_LINK' ? '4' : '5', 'Caption')}
+            {sectionTitle(postType === 'COLLECTION_LINK' ? '4' : postType === 'IMAGE' ? '3' : '5', 'Caption')}
             <View className="bg-white rounded-2xl border border-sand-100 p-3.5">
               <TextInput
                 value={caption}
@@ -1056,7 +1183,7 @@ export default function CreateSocialPostScreen() {
             </View>
 
             {sectionTitle(
-              postType === 'COLLECTION_LINK' ? '5' : '6',
+              postType === 'COLLECTION_LINK' ? '5' : postType === 'IMAGE' ? '4' : '6',
               'Post to',
               `${targetIds.length} selected`,
             )}
@@ -1071,11 +1198,11 @@ export default function CreateSocialPostScreen() {
               disabledReason={targetDisabledReason}
             />
 
-            {sectionTitle(postType === 'COLLECTION_LINK' ? '6' : '7', 'Preview')}
+            {sectionTitle(postType === 'COLLECTION_LINK' ? '6' : postType === 'IMAGE' ? '5' : '7', 'Preview')}
             <PostPreview
               platforms={previewPlatforms}
               postType={postType}
-              media={items.map((x) => x.media)}
+              media={previewMedia}
               caption={caption}
               linkLabel={linkLabel}
             />

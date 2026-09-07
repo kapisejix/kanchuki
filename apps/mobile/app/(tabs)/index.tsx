@@ -5,6 +5,7 @@ import {
   BarChart3,
   Camera,
   FolderKanban,
+  Image,
   Link2,
   Megaphone,
   MessageCircle,
@@ -338,6 +339,15 @@ export default function HomeScreen() {
               label="New Collection"
               sublabel="Share on WhatsApp"
               onPress={() => router.push('/collection/new')}
+              accent="#E0E1F6"
+            />
+          </View>
+          <View className="flex-row gap-3">
+            <QuickAction
+              icon={<Image size={20} color="#BB3F95" />}
+              label="Suits Designs"
+              sublabel="Design photos for your store"
+              onPress={() => router.push('/showcase-designs')}
               accent="#E0E1F6"
             />
           </View>
