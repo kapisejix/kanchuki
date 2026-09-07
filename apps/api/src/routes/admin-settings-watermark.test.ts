@@ -115,7 +115,7 @@ describe('Admin showcase watermark config API', () => {
       opacity: 0.35,
       scale: 0.18,
       gravity: 'southeast',
-      strip_count: 6,
+      strip_count: 5,
       logo_url: null,
     });
     await app.close();
@@ -134,7 +134,7 @@ describe('Admin showcase watermark config API', () => {
     expect(data.opacity).toBe(0.5);
     expect(data.scale).toBe(0.18);
     expect(data.gravity).toBe('southeast');
-    expect(data.strip_count).toBe(6);
+    expect(data.strip_count).toBe(5);
     expect(mockAuditLogCreate).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({

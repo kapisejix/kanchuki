@@ -52,7 +52,7 @@ export const DEFAULT_SHOWCASE_WATERMARK: ShowcaseWatermarkConfig = {
   opacity: 0.35,
   scale: 0.18,
   gravity: 'southeast',
-  strip_count: 6,
+  strip_count: 5,
 };
 
 const VALID_GRAVITIES: WatermarkGravity[] = [

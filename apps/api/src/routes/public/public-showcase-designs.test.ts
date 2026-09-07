@@ -6,6 +6,7 @@ import { errorHandler } from '../../plugins/error-handler.js';
 const {
   mockProductFindFirst,
   mockCategoryFindFirst,
+  mockCategoryFindMany,
   mockDesignFindMany,
   mockDesignFindFirst,
   mockRetailerFindFirst,
@@ -14,6 +15,7 @@ const {
 } = vi.hoisted(() => ({
   mockProductFindFirst: vi.fn(),
   mockCategoryFindFirst: vi.fn(),
+  mockCategoryFindMany: vi.fn(),
   mockDesignFindMany: vi.fn(),
   mockDesignFindFirst: vi.fn(),
   mockRetailerFindFirst: vi.fn(),
@@ -24,7 +26,7 @@ const {
 vi.mock('@kanchuki/db', () => ({
   prisma: {
     product: { findFirst: mockProductFindFirst },
-    showcaseDesignCategory: { findFirst: mockCategoryFindFirst },
+    showcaseDesignCategory: { findFirst: mockCategoryFindFirst, findMany: mockCategoryFindMany },
     showcaseDesign: { findMany: mockDesignFindMany, findFirst: mockDesignFindFirst },
     retailer: { findFirst: mockRetailerFindFirst },
   },
@@ -58,12 +60,10 @@ beforeEach(() => {
 describe('GET /showcase-designs?product_id= (product-detail strip)', () => {
   it('a Saree product expands related (saree + blouse) and returns only global + own rows', async () => {
     mockProductFindFirst.mockResolvedValue({ category: 'Saree', retailer_id: 'r1' });
-    mockCategoryFindFirst.mockResolvedValue({
-      slug: 'saree',
-      name: 'Saree',
-      related_to: [{ slug: 'blouse' }],
-      related_from: [],
-    });
+    mockCategoryFindMany.mockResolvedValue([
+      { name: 'Saree', slug: 'saree', related_to: [{ slug: 'blouse' }], related_from: [] },
+      { name: 'Suits', slug: 'suits', related_to: [], related_from: [] },
+    ]);
     mockDesignFindMany.mockResolvedValue([
       {
         id: 'd1',
@@ -116,13 +116,34 @@ describe('GET /showcase-designs?product_id= (product-detail strip)', () => {
 
   it('unknown product category → empty strip (no guesswork)', async () => {
     mockProductFindFirst.mockResolvedValue({ category: 'Footwear', retailer_id: 'r1' });
-    mockCategoryFindFirst.mockResolvedValue(null);
+    mockCategoryFindMany.mockResolvedValue([
+      { name: 'Saree', slug: 'saree', related_to: [], related_from: [] },
+      { name: 'Suits', slug: 'suits', related_to: [], related_from: [] },
+    ]);
     const app = await buildApp();
     const res = await app.inject({ method: 'GET', url: '/showcase-designs?product_id=p1' });
     expect(res.statusCode).toBe(200);
     expect(res.json().data.designs).toEqual([]);
     expect(res.json().data.category).toBeNull();
     expect(mockDesignFindMany).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('loose match: "Ladies Suit" / "Salwar Suits" resolve to the "Suits" category', async () => {
+    mockProductFindFirst.mockResolvedValue({ category: 'Ladies Suit', retailer_id: 'r1' });
+    mockCategoryFindMany.mockResolvedValue([
+      { name: 'Saree', slug: 'saree', related_to: [], related_from: [] },
+      { name: 'Suits', slug: 'suits', related_to: [{ slug: 'gala' }], related_from: [] },
+    ]);
+    mockDesignFindMany.mockResolvedValue([]);
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/showcase-designs?product_id=p1' });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data.category).toEqual({
+      slug: 'suits',
+      name: 'Suits',
+      related: ['suits', 'gala'],
+    });
     await app.close();
   });
 

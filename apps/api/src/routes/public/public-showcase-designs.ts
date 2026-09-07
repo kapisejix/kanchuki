@@ -32,24 +32,59 @@ function expandSlugs(slug: string, related: { slug: string }[]): string[] {
   return out;
 }
 
-/** Match a product-category string to an active showcase category. */
+/** Normalise a category string for loose matching: lowercase, alnum-only
+ *  words, each de-pluralised (trailing "s" dropped when the word is long
+ *  enough and not "…ss"). "Ladies Suit" → "ladie suit", "Sarees" → "saree",
+ *  "Kurtis" → "kurti". ponytail: naive singulariser; fine for garment nouns. */
+function normaliseCategory(raw: string): string {
+  return raw
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]+/g, ' ')
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((w) => (w.length > 3 && w.endsWith('s') && !w.endsWith('ss') ? w.slice(0, -1) : w))
+    .join(' ');
+}
+
+/** Match a product-category string to an active showcase category.
+ *  Exact name first, then a loose contains-either-way match on the
+ *  de-pluralised forms, so "Ladies Suit" / "Salwar Suits" hit "Suits",
+ *  "Sarees" hits "Saree", etc. Most specific (longest name) wins. */
 async function matchShowcaseCategory(
   productCategory: string,
 ): Promise<{ slug: string; name: string; expandedSlugs: string[] } | null> {
-  const category = await prisma.showcaseDesignCategory.findFirst({
-    where: { name: { equals: productCategory, mode: 'insensitive' }, is_active: true },
+  const categories = await prisma.showcaseDesignCategory.findMany({
+    where: { is_active: true },
     select: {
-      slug: true,
       name: true,
+      slug: true,
       related_to: { select: { slug: true } },
       related_from: { select: { slug: true } },
     },
   });
-  if (!category) return null;
+  if (categories.length === 0) return null;
+
+  const prod = normaliseCategory(productCategory);
+  const scored = categories
+    .map((c) => {
+      const cat = normaliseCategory(c.name);
+      const hit =
+        cat === prod ||
+        ` ${prod} `.includes(` ${cat} `) ||
+        ` ${cat} `.includes(` ${prod} `) ||
+        prod.includes(cat) ||
+        cat.includes(prod);
+      return hit ? { c, len: cat.length } : null;
+    })
+    .filter((x): x is { c: (typeof categories)[number]; len: number } => x !== null)
+    .sort((a, b) => b.len - a.len);
+
+  const match = scored[0]?.c;
+  if (!match) return null;
   return {
-    slug: category.slug,
-    name: category.name,
-    expandedSlugs: expandSlugs(category.slug, [...category.related_to, ...category.related_from]),
+    slug: match.slug,
+    name: match.name,
+    expandedSlugs: expandSlugs(match.slug, [...match.related_to, ...match.related_from]),
   };
 }
 
