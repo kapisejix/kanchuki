@@ -120,6 +120,7 @@ enum PlanFeatureKey {
   VIRTUAL_TRY_ON
   WHATSAPP_BUSINESS_API
   WHATSAPP_CATALOG_SYNC
+  SHOWCASE_DESIGNS
   // @deprecated - removed in migration 082
   CHECKOUT_CART
   DATA_EXPORT_CSV
@@ -154,6 +155,7 @@ enum QuotaResourceType {
   BG_REMOVAL
   API_REQUEST
   STUDIO_SHOOT
+  SHOWCASE_DESIGNS
 }
 
 enum QuotaPeriod {
@@ -338,6 +340,7 @@ model Retailer {
   product_reviews       ProductReview[]
   store_reviews         StoreReview[]
   bug_reports         BugReport[]
+  showcase_designs     ShowcaseDesign[]
 
   @@index([phone])
   @@index([city])
@@ -1437,6 +1440,7 @@ enum SocialPostType {
   SINGLE_PRODUCT   // one product's hero photo + caption
   COLLECTION_LINK  // collection page link post
   CAROUSEL         // multi-product carousel (Phase 2)
+  IMAGE            // one standalone image from a URL (Suits Designs social share)
 }
 
 enum SocialPostStatus {
@@ -1974,6 +1978,60 @@ enum BugReportStatus {
   IN_PROGRESS
   RESOLVED
   DISMISSED
+}
+
+// ─── SUITS DESIGNS (showcase designs — retailer + admin managed) ─────────
+// A library of design / pattern reference photos shown on the customer
+// product-detail page under Related products, filtered by garment category.
+// Distinct from the Unstitched Design Gallery (DesignReference, admin-only
+// storefront references) — these are retailer-managed + admin-global
+// "showcase" designs: a watermarked image + a category + a name, no price /
+// stock / enquiry flow. doc: docs/tasks/suits-designs.md. Categories AND the
+// category → related-category links ("a Saree product also shows Blouse
+// designs") are DB rows an admin edits — nothing hardcoded.
+
+model ShowcaseDesignCategory {
+  id         String  @id @default(cuid())
+  name       String  @unique // "Saree"
+  slug       String  @unique // "saree"
+  sort_order Int     @default(0)
+  is_active  Boolean @default(true)
+
+  // "a Saree product also shows Blouse designs" — admin-managed self-M2M.
+  // Prisma implicit join table: "_RelatedShowcaseCategories"
+  related_to   ShowcaseDesignCategory[] @relation("RelatedShowcaseCategories")
+  related_from ShowcaseDesignCategory[] @relation("RelatedShowcaseCategories")
+
+  designs ShowcaseDesign[]
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@map("showcase_design_categories")
+}
+
+model ShowcaseDesign {
+  id              String  @id @default(cuid())
+  retailer_id     String? // NULL = global (admin-published, every store)
+  category_id     String
+  category_slug   String // denormalised for fast public filtering
+  name            String?
+  image_url       String // watermarked final image (R2 public URL)
+  r2_key          String // watermarked object key
+  original_r2_key String? // raw upload, kept so a logo change can re-watermark
+  sort_order      Int     @default(0)
+  is_active       Boolean @default(true)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  retailer Retailer?              @relation(fields: [retailer_id], references: [id], onDelete: Cascade)
+  category ShowcaseDesignCategory @relation(fields: [category_id], references: [id])
+
+  @@index([retailer_id])
+  @@index([category_slug, is_active])
+  @@index([retailer_id, category_slug, is_active])
+  @@map("showcase_designs")
 }
 
 model BugReport {

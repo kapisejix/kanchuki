@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import PhonePreview from './PhonePreview';
+import ShowcaseWatermarkSettings from './ShowcaseWatermarkSettings';
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
 
@@ -387,6 +388,11 @@ export default function ThemeSettingsPage() {
           </div>
         </div>
       )}
+
+      {/* Suits Designs watermark — the platform logo + stamping config that
+          every new design upload is composited with (docs/tasks/suits-designs.md
+          §2.2.4). Code defaults until an admin saves here. */}
+      <ShowcaseWatermarkSettings />
 
       <div className="flex items-start gap-2 bg-gray-50/80 border border-gray-200 rounded-xl px-4 py-3">
         <Smartphone size={14} className="text-gray-400 mt-0.5 shrink-0" />

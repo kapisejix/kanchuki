@@ -26,6 +26,11 @@ import {
   getStudioShootQueue,
   getTaggingQueue,
 } from './queue.js';
+import {
+  type RewatermarkShowcaseDesignsJobData,
+  addRewatermarkShowcaseDesignsJob,
+  handleRewatermarkShowcaseDesigns,
+} from './rewatermark-showcase-designs.js';
 import { handleStudioShoot } from './studio-shoot.js';
 import type { StudioShootJobData } from './studio-shoot.js';
 import { handleTagProduct } from './tag-product.js';
@@ -187,6 +192,10 @@ export async function startWorkers(): Promise<void> {
         }
         case 'backfill-gst-invoices':
           return handleBackfillGstInvoices(addGenerateGstInvoiceJob);
+        case 'rewatermark-showcase-designs': {
+          const data = (job.data ?? {}) as RewatermarkShowcaseDesignsJobData;
+          return handleRewatermarkShowcaseDesigns(data);
+        }
         default:
           throw new Error(`[jobs] unknown maintenance job: ${job.name}`);
       }

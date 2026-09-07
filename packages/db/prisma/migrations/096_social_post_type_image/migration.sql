@@ -1,0 +1,11 @@
+-- 096: Social Post Composer — add IMAGE to SocialPostType.
+--
+-- Standalone image post (Suits Designs social share, docs/tasks/suits-designs.md
+-- §2.6): one watermarked design image posted from its public URL, no product.
+-- A media post fans out exactly like a SINGLE_PRODUCT photo but carries no
+-- product_id, so history records post_type IMAGE + an empty product_ids array.
+--
+-- The ADD VALUE is its own statement and nothing in this migration USES the new
+-- value, so there is no 55P04 risk (same pattern as 090's SocialPostStatus
+-- additions).
+ALTER TYPE "SocialPostType" ADD VALUE 'IMAGE';

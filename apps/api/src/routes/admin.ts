@@ -33,6 +33,8 @@ import {
   adminRatingsRoutes,
   adminResourcePacksRoutes,
   adminRetailersRoutes,
+  adminShowcaseDesignCategoryRoutes,
+  adminShowcaseDesignRoutes,
   adminSocialRoutes,
   adminSocialTemplateRoutes,
   adminStorageRoutes,
@@ -226,6 +228,9 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
   await server.register(adminRatingsRoutes);
   // admin-design-references — Unstitched Design Gallery management
   await server.register(adminDesignReferenceRoutes);
+  // admin-showcase-designs + categories — Suits Designs library
+  await server.register(adminShowcaseDesignRoutes);
+  await server.register(adminShowcaseDesignCategoryRoutes);
   // admin-bug-reports — retailer-submitted bug reports
   await server.register(adminBugReportRoutes);
 };

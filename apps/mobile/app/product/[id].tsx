@@ -24,6 +24,7 @@ import { useTheme } from '../../src/lib/theme'
 import { useSafeVideoPlayer } from '../../src/lib/safe-video-player'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { RelatedProductsSection } from '../../src/components/product-detail/RelatedProducts'
+import { ShowcaseDesignsSection } from '../../src/components/product-detail/ShowcaseDesigns'
 import { SkuTagModal } from '../../src/components/product-detail/SkuTagModal'
 import { ProductMediaCarousel } from '../../src/components/product-detail/ProductMediaCarousel'
 import { ProductPhotoControls } from '../../src/components/product-detail/ProductPhotoControls'
@@ -454,6 +455,11 @@ export default function ProductDetailScreen() {
             excludeId={product.id}
             onSelect={(selectedId) => router.push(`/product/${selectedId}`)}
           />
+        </View>
+
+        {/* Suits Designs — the <Category> Designs strip (admin-configured) */}
+        <View className="px-4 pb-2">
+          <ShowcaseDesignsSection productId={product.id} storeSlug={publicSlug} />
         </View>
 
         {/* Ask for Review — retailer sends the customer a WhatsApp link that

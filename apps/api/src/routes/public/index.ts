@@ -9,6 +9,7 @@ export { publicStoresRoutes } from './public-stores.js';
 export { publicReviewsRoutes } from './public-reviews.js';
 export { publicStylistRoutes } from './public-stylist.js';
 export { publicDesignRoutes } from './public-designs.js';
+export { publicShowcaseDesignsRoutes } from './public-showcase-designs.js';
 export { passportRoutes } from './passport.js';
 export { publicSearchRoutes } from './public-search.js';
 export { discoverStoresRoutes } from './discover-stores.js';

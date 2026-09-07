@@ -208,6 +208,12 @@ function AppShell() {
           <Stack.Screen name="settings/social" />
           <Stack.Screen name="settings/staff" />
           <Stack.Screen name="settings/whatsapp-catalog" />
+          <Stack.Screen name="showcase-designs/index" />
+          <Stack.Screen
+            name="showcase-designs/new"
+            options={{ presentation: "modal" }}
+          />
+          <Stack.Screen name="showcase-designs/[id]" />
         </Stack.Protected>
 
         {/* Staff dashboard (nested stack: index, catalog-tickets, retailer-onboard).
@@ -237,6 +243,8 @@ function AppShell() {
           <Stack.Screen name="category/[id]/add-products" />
           <Stack.Screen name="customer/add" options={{ presentation: "modal" }} />
           <Stack.Screen name="customer/[id]" />
+          <Stack.Screen name="showcase-designs/browse" />
+          <Stack.Screen name="showcase-designs/view/[id]" />
         </Stack.Protected>
 
         {/* Auth screens — reachable ONLY while logged out. Once a session

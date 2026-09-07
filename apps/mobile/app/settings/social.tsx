@@ -328,7 +328,9 @@ function HistoryModal({
                         ? 'Product post'
                         : post.post_type === 'COLLECTION_LINK'
                           ? 'Collection link'
-                          : 'Carousel'}
+                          : post.post_type === 'IMAGE'
+                            ? 'Design post'
+                            : 'Carousel'}
                     </Text>
                     {post.status === 'POSTED' ? (
                       <View className="flex-row items-center gap-1">

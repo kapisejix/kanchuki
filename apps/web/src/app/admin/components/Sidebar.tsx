@@ -92,6 +92,8 @@ const NAV_ITEMS: NavItem[] = [
       { label: 'Default Categories', href: '/admin/default-categories', icon: LayoutGrid },
       { label: 'Default Attributes', href: '/admin/default-attributes', icon: Tags },
       { label: 'Backgrounds', href: '/admin/background-images', icon: ImageIcon },
+      { label: 'Suits Designs', href: '/admin/suits-designs', icon: Sparkles },
+      { label: 'Design Categories', href: '/admin/suits-design-categories', icon: Tags },
       { label: 'Festivals', href: '/admin/festivals', icon: CalendarDays },
       { label: 'Social Templates', href: '/admin/social-templates', icon: Share2 },
       { label: 'Social Publishing', href: '/admin/social', icon: Megaphone },

@@ -308,7 +308,13 @@ export default function SocialPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-gray-600 text-xs">
-                        {post.post_type === 'SINGLE_PRODUCT' ? '📸 Product' : '🔗 Collection'}
+                        {post.post_type === 'SINGLE_PRODUCT'
+                          ? '📸 Product'
+                          : post.post_type === 'CAROUSEL'
+                            ? '🎠 Carousel'
+                            : post.post_type === 'IMAGE'
+                              ? '🖼️ Design'
+                              : '🔗 Collection'}
                       </td>
                       <td className="px-4 py-3 text-gray-600 text-xs max-w-[200px] truncate">
                         {post.caption ?? '—'}
