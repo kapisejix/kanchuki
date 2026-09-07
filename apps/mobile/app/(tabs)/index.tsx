@@ -5,7 +5,6 @@ import {
   BarChart3,
   Camera,
   FolderKanban,
-  Image,
   Link2,
   Megaphone,
   MessageCircle,
@@ -340,7 +339,11 @@ export default function HomeScreen() {
               accent="#E0E1F6"
             />
           </View>
-          <View className="flex-row gap-3">
+          {/* Suits Designs — retailer entry hidden by owner decision
+              (2026-09-07). Only admin-uploaded (global) designs show to
+              customers. Screens + route stay registered; restore this tile
+              to re-enable retailer uploads. */}
+          {/* <View className="flex-row gap-3">
             <QuickAction
               icon={<Image size={20} color="#BB3F95" />}
               label="Suits Designs"
@@ -348,7 +351,7 @@ export default function HomeScreen() {
               onPress={() => router.push('/showcase-designs')}
               accent="#E0E1F6"
             />
-          </View>
+          </View> */}
         </View>
       </View>
 
