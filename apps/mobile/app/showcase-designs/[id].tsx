@@ -3,7 +3,7 @@ import { View, Text, TextInput, ActivityIndicator, Image, ScrollView, Alert, Swi
 import { Stack, router, useLocalSearchParams } from 'expo-router'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as ImagePicker from 'expo-image-picker'
-import { Camera, Trash2, Share2 } from 'lucide-react-native'
+import { Camera, Trash2, Share2, Sparkles } from 'lucide-react-native'
 import {
   showcaseDesignsApi,
   uploadImageToR2,
@@ -37,6 +37,8 @@ export default function ShowcaseDesignDetailScreen() {
   const [name, setName] = useState<string | null>(null)
   const [isActive, setIsActive] = useState<boolean | null>(null)
   const [replacingPhoto, setReplacingPhoto] = useState(false)
+  const [suggesting, setSuggesting] = useState(false)
+  const [detectedColor, setDetectedColor] = useState<string | null>(null)
 
   // Seed editable state once the row loads (global rows are read-only).
   const seeded = categoryId !== null
@@ -65,6 +67,18 @@ export default function ShowcaseDesignDetailScreen() {
       await uploadImageToR2(uri, info.upload_url, 'image/jpeg')
       await showcaseDesignsApi.update(design.id, { raw_r2_key: info.r2_key })
       void queryClient.invalidateQueries({ queryKey: ['showcase-designs'] })
+      // Re-suggest a fresh name + color for the new photo (AI, fail-open).
+      setSuggesting(true)
+      try {
+        const suggestion = await showcaseDesignsApi.suggest(info.r2_key)
+        const s = suggestion.data
+        if (s.color) setDetectedColor(s.color)
+        if (s.name) setName(s.name)
+      } catch {
+        // AI unavailable — keep the existing name for manual edit.
+      } finally {
+        setSuggesting(false)
+      }
     } catch (err) {
       showError(err, 'Failed to replace photo')
     } finally {
@@ -179,17 +193,37 @@ export default function ShowcaseDesignDetailScreen() {
               </View>
             </View>
 
-            {/* Name */}
+            {/* Name — re-suggested by AI after a photo replace */}
             <View>
               <Text className="text-xs font-bold text-heliotrope-600 uppercase tracking-wide mb-1.5">Name</Text>
               <TextInput
                 value={name ?? ''}
                 onChangeText={setName}
-                placeholder="e.g. Anarkali floor-length"
+                placeholder={
+                  suggesting ? 'Detecting name…' : 'e.g. Anarkali floor-length'
+                }
                 placeholderTextColor="#928EB2"
                 className="bg-white px-4 py-3 rounded-2xl text-sm font-bold text-spaceCadet-900 border border-lavender-200"
                 maxLength={150}
+                editable={!suggesting}
               />
+              <View className="flex-row items-center gap-2 mt-1.5">
+                {suggesting ? (
+                  <View className="flex-row items-center gap-1.5">
+                    <ActivityIndicator size={12} color="#BB3F95" />
+                    <Text className="text-[11px] text-heliotrope-500 font-medium">
+                      Auto-detecting name &amp; color…
+                    </Text>
+                  </View>
+                ) : detectedColor ? (
+                  <View className="flex-row items-center gap-1.5 bg-lavender-100 px-2.5 py-1 rounded-full border border-lavender-200">
+                    <Sparkles size={12} color="#6B4773" />
+                    <Text className="text-[11px] text-heliotrope-600 font-bold">
+                      Detected color: {detectedColor}
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
             </View>
 
             {/* Active toggle */}

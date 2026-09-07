@@ -55,6 +55,8 @@ export default function SuitsDesignsPage() {
   // the name is optional and stays blank → row.name = null.
   const [selectedCategory, setSelectedCategory] = useState('')
   const [designName, setDesignName] = useState('')
+  const [suggesting, setSuggesting] = useState(false)
+  const [detectedColor, setDetectedColor] = useState<string | null>(null)
 
   const load = async (activeScope: Scope, activeOwner: string | null) => {
     const params = new URLSearchParams()
@@ -129,6 +131,26 @@ export default function SuitsDesignsPage() {
       })
       if (!put.ok) throw new Error('Upload to storage failed')
 
+      // Auto-suggest a retail-ready name + color from the photo (AI, fail-open).
+      setSuggesting(true)
+      let suggestedName: string | null = null
+      try {
+        const sug = await fetch(`${API_URL}/v1/admin/showcase-designs/suggest`, {
+          ...(await adminMutateOptions()),
+          method: 'POST',
+          body: JSON.stringify({ raw_r2_key: data.r2_key }),
+        })
+        const sugJson = await sug.json().catch(() => null)
+        suggestedName = sugJson?.data?.name ?? null
+        const color = sugJson?.data?.color ?? null
+        if (color) setDetectedColor(color)
+        if (suggestedName && !designName.trim()) setDesignName(suggestedName)
+      } catch {
+        // AI unavailable — leave the name blank for manual entry.
+      } finally {
+        setSuggesting(false)
+      }
+
       // Server watermarks the raw upload (showcase-watermark.ts) — the admin
       // only ever sends the raw R2 key + category; owner defaults to global.
       const create = await fetch(`${API_URL}/v1/admin/showcase-designs`, {
@@ -136,7 +158,7 @@ export default function SuitsDesignsPage() {
         method: 'POST',
         body: JSON.stringify({
           category_id: selectedCategory,
-          ...(designName.trim() ? { name: designName.trim() } : {}),
+          ...((designName.trim() || suggestedName) ? { name: (designName.trim() || suggestedName)! } : {}),
           raw_r2_key: data.r2_key,
         }),
       })
@@ -147,6 +169,7 @@ export default function SuitsDesignsPage() {
       const { data: created } = await create.json()
 
       setDesignName('')
+      setDetectedColor(null)
       setStatus(`✅ Design ${created?.name ? `"${created.name}" ` : ''}added (Global)`)
       await load(scope, ownerId)
     } catch (err) {
@@ -252,9 +275,24 @@ export default function SuitsDesignsPage() {
               id="design-name"
               value={designName}
               onChange={(e) => setDesignName(e.target.value)}
-              placeholder="e.g. Anarkali Suit — Maroon"
-              className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 bg-white text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
+              placeholder={suggesting ? 'Detecting name…' : 'e.g. Anarkali Suit — Maroon'}
+              disabled={suggesting}
+              className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 bg-white text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/30 disabled:opacity-60"
             />
+            {(suggesting || detectedColor) && (
+              <div className="flex items-center gap-1.5 mt-1.5">
+                {suggesting ? (
+                  <Loader2 size={12} className="animate-spin text-cyan-500" />
+                ) : (
+                  <Sparkles size={12} className="text-cyan-500" />
+                )}
+                <span className="text-xs text-gray-500">
+                  {suggesting
+                    ? 'Auto-detecting name &amp; color…'
+                    : `Detected color: ${detectedColor}`}
+                </span>
+              </div>
+            )}
           </div>
           <div>
             <input
@@ -270,7 +308,7 @@ export default function SuitsDesignsPage() {
               className="flex items-center gap-2 px-4 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-medium rounded-xl disabled:opacity-60 transition-colors"
             >
               {uploading ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
-              {uploading ? 'Watermarking…' : 'Upload design'}
+              {uploading ? (suggesting ? 'Detecting name…' : 'Watermarking…') : 'Upload design'}
             </button>
           </div>
         </div>

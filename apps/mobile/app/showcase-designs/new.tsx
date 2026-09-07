@@ -3,7 +3,7 @@ import { View, Text, TextInput, ActivityIndicator, Image, ScrollView } from 'rea
 import { Stack, router } from 'expo-router'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as ImagePicker from 'expo-image-picker'
-import { ImagePlus, Check, Droplet } from 'lucide-react-native'
+import { ImagePlus, Check, Droplet, Sparkles } from 'lucide-react-native'
 import {
   showcaseDesignsApi,
   uploadImageToR2,
@@ -22,6 +22,8 @@ export default function NewShowcaseDesignScreen() {
   const [uploading, setUploading] = useState(false)
   const [categoryId, setCategoryId] = useState<string | null>(null)
   const [name, setName] = useState('')
+  const [suggesting, setSuggesting] = useState(false)
+  const [detectedColor, setDetectedColor] = useState<string | null>(null)
 
   const { data: categoriesData } = useQuery({
     queryKey: ['showcase-designs', 'categories'],
@@ -48,6 +50,18 @@ export default function NewShowcaseDesignScreen() {
       await uploadImageToR2(uri, info.upload_url, 'image/jpeg')
       setPhotoUri(info.public_url)
       setRawR2Key(info.r2_key)
+      // Auto-suggest a retail-ready name + color from the photo (AI, fail-open).
+      setSuggesting(true)
+      try {
+        const suggestion = await showcaseDesignsApi.suggest(info.r2_key)
+        const s = suggestion.data
+        if (s.color) setDetectedColor(s.color)
+        if (s.name) setName((prev) => (prev.trim() ? prev : s.name!))
+      } catch {
+        // AI unavailable — leave the name blank for manual entry.
+      } finally {
+        setSuggesting(false)
+      }
     } catch (err) {
       showError(err, 'Failed to upload photo')
     } finally {
@@ -135,7 +149,7 @@ export default function NewShowcaseDesignScreen() {
           )}
         </View>
 
-        {/* Name (optional) */}
+        {/* Name (optional) — AI auto-suggested when the photo is added */}
         <View>
           <Text className="text-xs font-bold text-heliotrope-600 uppercase tracking-wide mb-1.5">
             Name (optional)
@@ -143,11 +157,31 @@ export default function NewShowcaseDesignScreen() {
           <TextInput
             value={name}
             onChangeText={setName}
-            placeholder="e.g. Anarkali floor-length"
+            placeholder={
+              suggesting ? 'Detecting name…' : 'e.g. Anarkali floor-length'
+            }
             placeholderTextColor="#928EB2"
             className="bg-white px-4 py-3 rounded-2xl text-sm font-bold text-spaceCadet-900 border border-lavender-200"
             maxLength={150}
+            editable={!suggesting}
           />
+          <View className="flex-row items-center gap-2 mt-1.5">
+            {suggesting ? (
+              <View className="flex-row items-center gap-1.5">
+                <ActivityIndicator size={12} color="#BB3F95" />
+                <Text className="text-[11px] text-heliotrope-500 font-medium">
+                  Auto-detecting name &amp; color…
+                </Text>
+              </View>
+            ) : detectedColor ? (
+              <View className="flex-row items-center gap-1.5 bg-lavender-100 px-2.5 py-1 rounded-full border border-lavender-200">
+                <Sparkles size={12} color="#6B4773" />
+                <Text className="text-[11px] text-heliotrope-600 font-bold">
+                  Detected color: {detectedColor}
+                </Text>
+              </View>
+            ) : null}
+          </View>
         </View>
 
         <GradientButton label="Save Design" disabled={!canSave} loading={create.isPending} onPress={() => create.mutate()} />

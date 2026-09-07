@@ -409,6 +409,80 @@ export async function extractDominantColorFromBuffer(buffer: Buffer): Promise<st
   }
 }
 
+// ─── Showcase design name + color suggestion ────────────────────────────
+// Used by the Suits Designs (showcase-designs) upload: when a retailer saves a
+// design without a name, we auto-generate a retail-ready title + the dominant
+// color from the photo (e.g. "Pink Blouse - Deep Neck", "Teal Anarkali with
+// Gota Patti"). Same multi-provider failover + usage attribution as product
+// tagging, but a single lighter schema.
+
+const DESIGN_SUGGEST_SCHEMA: AiJsonSchema = {
+  name: 'suggest_design_name',
+  description: 'Suggest a retail-ready design name and dominant color from a fashion design photo',
+  schema: {
+    type: 'object' as const,
+    properties: {
+      name: {
+        type: 'string',
+        description:
+          'Retail-ready design title combining dominant color + garment/design type + a notable ' +
+          'design detail, e.g. "Pink Blouse - Deep Neck", "Teal Anarkali with Gota Patti", ' +
+          '"Maroon Lehenga with Zari Border". 3-7 words, factual, no marketing fluff.',
+      },
+      color: {
+        type: 'string',
+        description:
+          'Dominant color of the design, e.g. "Pink", "Bottle Green", "Mustard Yellow", "Ivory".',
+      },
+    },
+    required: ['name', 'color'],
+  },
+}
+
+const DESIGN_SUGGEST_SYSTEM_PROMPT = `You are an expert in Indian ethnic fashion design with deep knowledge of garments, colors, and design details.
+Look at this design photo and suggest:
+- name: a concise retail-ready title that combines the dominant color, the garment/design type, and one notable design detail (neck style, embroidery, pattern, silhouette). Example: "Pink Blouse - Deep Neck".
+- color: the dominant color of the design (e.g. "Bottle Green", "Rani Pink", "Mustard Yellow").
+Keep the name factual and specific. Never use marketing fluff like "stunning" or "must-have".`
+
+export interface ShowcaseDesignSuggestion {
+  name: string | null
+  color: string | null
+}
+
+/**
+ * Suggest a retail-ready name + dominant color for a showcase design image.
+ * Fail-open: returns { name: null, color: null } on any error (fetch, quota,
+ * provider outage) so the caller can fall back to a blank/manual name rather
+ * than blocking the upload. Usage is attributed (AI_TAGGING_CALL bucket)
+ * through onProviderUsed but not quota-gated — same as detectColor.
+ */
+export async function suggestDesignNameAndColor(
+  imageUrl: string,
+  opts?: TaggingCallOpts,
+): Promise<ShowcaseDesignSuggestion> {
+  try {
+    const image = await fetchTaggableImage(imageUrl)
+    const raw = await runVisionExtract({
+      images: [image],
+      systemPrompt: DESIGN_SUGGEST_SYSTEM_PROMPT,
+      userPrompt:
+        'Suggest a retail-ready design name and the dominant color. Return the JSON matching the schema.',
+      maxTokens: 200,
+      schema: DESIGN_SUGGEST_SCHEMA,
+      ...(opts?.onProviderUsed ? { onProviderUsed: opts.onProviderUsed } : {}),
+    })
+    const nullable = (v: unknown): string | null =>
+      v == null || v === 'null' ? null : (v as string)
+    const name = nullable(raw['name'])?.trim() || null
+    const color = nullable(raw['color'])?.trim() || null
+    if (!name && !color) return { name: null, color: null }
+    return { name, color }
+  } catch {
+    return { name: null, color: null }
+  }
+}
+
 /**
  * Quick color-only detection with multi-provider failover and image-buffer fallback.
  * Always returns a valid color name so the color variant can be saved automatically.

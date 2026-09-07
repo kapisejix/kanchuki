@@ -19,6 +19,7 @@ const {
   mockDeleteObject,
   mockGetUploadPresignedUrl,
   mockPublicUrl,
+  mockSuggestDesignNameAndColor,
 } = vi.hoisted(() => ({
   mockFindMany: vi.fn(),
   mockFindUnique: vi.fn(),
@@ -35,6 +36,7 @@ const {
   mockDeleteObject: vi.fn(),
   mockGetUploadPresignedUrl: vi.fn(),
   mockPublicUrl: vi.fn(),
+  mockSuggestDesignNameAndColor: vi.fn(),
 }));
 
 vi.mock('@kanchuki/db', () => ({
@@ -58,6 +60,7 @@ vi.mock('@kanchuki/ai', () => ({
   getUploadPresignedUrl: mockGetUploadPresignedUrl,
   publicUrl: mockPublicUrl,
   deleteObject: mockDeleteObject,
+  suggestDesignNameAndColor: mockSuggestDesignNameAndColor,
 }));
 
 vi.mock('../../lib/showcase-watermark.js', () => ({
@@ -102,6 +105,7 @@ beforeEach(() => {
   mockDeleteObject.mockResolvedValue(undefined);
   mockGetUploadPresignedUrl.mockResolvedValue('https://r2/put');
   mockAudit.mockResolvedValue({});
+  mockSuggestDesignNameAndColor.mockResolvedValue({ name: null, color: null });
 });
 
 describe('GET /showcase-designs', () => {
@@ -214,6 +218,52 @@ describe('GET /showcase-designs/stats', () => {
   });
 });
 
+describe('POST /showcase-designs/suggest', () => {
+  it('returns the AI-suggested name + color for a raw design photo', async () => {
+    mockSuggestDesignNameAndColor.mockResolvedValue({
+      name: 'Pink Blouse - Deep Neck',
+      color: 'Pink',
+    });
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/showcase-designs/suggest',
+      payload: { raw_r2_key: 'showcase-designs/global/raw/raw.jpg' },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data).toEqual({ name: 'Pink Blouse - Deep Neck', color: 'Pink' });
+    expect(mockSuggestDesignNameAndColor).toHaveBeenCalledWith(
+      'https://cdn.test/showcase-designs/global/raw/raw.jpg',
+    );
+    await app.close();
+  });
+
+  it('fail-opens to nulls when AI is unavailable', async () => {
+    mockSuggestDesignNameAndColor.mockResolvedValue({ name: null, color: null });
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/showcase-designs/suggest',
+      payload: { raw_r2_key: 'showcase-designs/global/raw/raw.jpg' },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data).toEqual({ name: null, color: null });
+    await app.close();
+  });
+
+  it('rejects a key outside the showcase-designs namespace', async () => {
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/showcase-designs/suggest',
+      payload: { raw_r2_key: 'products/victim.jpg' },
+    });
+    expect(res.statusCode).toBe(422);
+    expect(mockSuggestDesignNameAndColor).not.toHaveBeenCalled();
+    await app.close();
+  });
+});
+
 describe('POST /showcase-designs', () => {
   it('create defaults to global and runs the watermark with owner null', async () => {
     mockCategoryFindUnique.mockResolvedValue({ id: 'cat_suits', slug: 'suits' });
@@ -268,6 +318,47 @@ describe('POST /showcase-designs', () => {
     expect(mockCreate).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ retailer_id: 'ret_1' }) }),
     );
+    await app.close();
+  });
+
+  it('auto-suggests an AI name when the admin saves without one', async () => {
+    mockCategoryFindUnique.mockResolvedValue({ id: 'cat_suits', slug: 'suits' });
+    mockCreate.mockResolvedValue({ ...GLOBAL_ROW, category: { name: 'Suits' } });
+    mockSuggestDesignNameAndColor.mockResolvedValue({
+      name: 'Pink Blouse - Deep Neck',
+      color: 'Pink',
+    });
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/showcase-designs',
+      payload: { category_id: 'cat_suits', raw_r2_key: 'showcase-designs/global/raw/raw.jpg' },
+    });
+    expect(res.statusCode).toBe(201);
+    expect(mockSuggestDesignNameAndColor).toHaveBeenCalledTimes(1);
+    expect(mockCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ name: 'Pink Blouse - Deep Neck' }),
+      }),
+    );
+    await app.close();
+  });
+
+  it('skips AI suggestion when a name is provided', async () => {
+    mockCategoryFindUnique.mockResolvedValue({ id: 'cat_suits', slug: 'suits' });
+    mockCreate.mockResolvedValue({ ...GLOBAL_ROW, category: { name: 'Suits' } });
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/showcase-designs',
+      payload: {
+        category_id: 'cat_suits',
+        name: 'Hand-Typed Suit',
+        raw_r2_key: 'showcase-designs/global/raw/raw.jpg',
+      },
+    });
+    expect(res.statusCode).toBe(201);
+    expect(mockSuggestDesignNameAndColor).not.toHaveBeenCalled();
     await app.close();
   });
 

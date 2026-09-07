@@ -10,8 +10,14 @@
 // count vs the plan's SHOWCASE_DESIGNS plan_limits row (delete/inactive frees
 // a slot) — see lib/showcase-quota.ts.
 
-import { deleteObject, getUploadPresignedUrl, publicUrl } from '@kanchuki/ai';
+import {
+  deleteObject,
+  getUploadPresignedUrl,
+  publicUrl,
+  suggestDesignNameAndColor,
+} from '@kanchuki/ai';
 import { type Prisma, prisma } from '@kanchuki/db';
+import { recordAiUsage } from '../../lib/ai-usage.js';
 import { R2_PATHS } from '@kanchuki/shared';
 import { createId } from '@paralleldrive/cuid2';
 import type { FastifyPluginAsync } from 'fastify';
@@ -164,6 +170,26 @@ export const retailersShowcaseDesignRoutes: FastifyPluginAsync = async (server) 
     });
   });
 
+  // ─── POST /me/showcase-designs/suggest — AI name + color ──────────
+  // Lightweight AI suggestion for the upload screen: given an already-uploaded
+  // raw design photo (and optional category), returns a retail-ready name +
+  // dominant color (e.g. "Pink Blouse - Deep Neck"). Fail-open — an AI outage
+  // or fetch error returns nulls so the retailer can still type a name.
+  server.post('/me/showcase-designs/suggest', async (request, reply) => {
+    await gate(request.retailerId);
+    const body = z
+      .object({ raw_r2_key: z.string().min(1) })
+      .safeParse(request.body);
+    if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
+
+    assertOwnRawKey(body.data.raw_r2_key, request.retailerId);
+
+    const suggestion = await suggestDesignNameAndColor(publicUrl(body.data.raw_r2_key), {
+      onProviderUsed: recordAiUsage(request.retailerId),
+    });
+    return reply.status(200).send({ data: suggestion });
+  });
+
   // ─── POST /me/showcase-designs — quota → watermark → create ───────
   server.post('/me/showcase-designs', async (request, reply) => {
     await gate(request.retailerId);
@@ -173,6 +199,17 @@ export const retailersShowcaseDesignRoutes: FastifyPluginAsync = async (server) 
     assertOwnRawKey(body.data.raw_r2_key, request.retailerId);
     await assertShowcaseQuota(request.retailerId);
     const category = await categoryForUpdate(body.data.category_id);
+
+    // Auto-suggest a name when the retailer saved without one (AI, fail-open
+    // to null so a blank name never blocks the upload). Reuses the same
+    // multi-provider vision call + usage attribution as product tagging.
+    let name = body.data.name ?? null;
+    if (!name) {
+      const suggestion = await suggestDesignNameAndColor(publicUrl(body.data.raw_r2_key), {
+        onProviderUsed: recordAiUsage(request.retailerId),
+      });
+      name = suggestion.name;
+    }
 
     const finalR2Key = R2_PATHS.showcaseDesign(request.retailerId, `${createId()}.jpg`);
     await watermarkShowcaseDesign({
@@ -186,7 +223,7 @@ export const retailersShowcaseDesignRoutes: FastifyPluginAsync = async (server) 
         retailer_id: request.retailerId,
         category_id: category.id,
         category_slug: category.slug,
-        name: body.data.name ?? null,
+        name: name,
         image_url: publicUrl(finalR2Key),
         r2_key: finalR2Key,
         original_r2_key: body.data.raw_r2_key,

@@ -23,6 +23,8 @@ const {
   mockDownloadBuffer,
   mockUploadBuffer,
   mockWatermark,
+  mockSuggestDesignNameAndColor,
+  mockRecordAiUsage,
 } = vi.hoisted(() => ({
   mockShowcaseDesignFindMany: vi.fn(),
   mockShowcaseDesignCreate: vi.fn(),
@@ -42,6 +44,8 @@ const {
   mockDownloadBuffer: vi.fn(),
   mockUploadBuffer: vi.fn(),
   mockWatermark: vi.fn(),
+  mockSuggestDesignNameAndColor: vi.fn(),
+  mockRecordAiUsage: vi.fn(),
 }));
 
 vi.mock('@kanchuki/db', () => ({
@@ -69,8 +73,10 @@ vi.mock('@kanchuki/ai', () => ({
   downloadBuffer: mockDownloadBuffer,
   uploadBuffer: mockUploadBuffer,
   watermark: mockWatermark,
+  suggestDesignNameAndColor: mockSuggestDesignNameAndColor,
 }));
 
+vi.mock('../../lib/ai-usage.js', () => ({ recordAiUsage: mockRecordAiUsage }));
 vi.mock('../../lib/features.js', () => ({ hasFeature: mockHasFeature }));
 vi.mock('../../lib/showcase-quota.js', () => ({
   assertShowcaseQuota: mockAssertQuota,
@@ -120,6 +126,8 @@ beforeEach(() => {
     height: 600,
   });
   mockAuditLogCreate.mockResolvedValue({});
+  mockSuggestDesignNameAndColor.mockResolvedValue({ name: null, color: null });
+  mockRecordAiUsage.mockReturnValue(() => {});
 });
 
 describe('feature gate', () => {
@@ -264,6 +272,104 @@ describe('POST /me/showcase-designs', () => {
     );
     await app.close();
   });
+
+  it('auto-suggests an AI name when the retailer saves without one', async () => {
+    mockCategoryFindUnique.mockResolvedValue({ id: 'cat_suits', slug: 'suits' });
+    mockShowcaseDesignCreate.mockResolvedValue({ ...OWN_ROW, category: { name: 'Suits' } });
+    mockSuggestDesignNameAndColor.mockResolvedValue({ name: 'Pink Blouse - Deep Neck', color: 'Pink' });
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/me/showcase-designs',
+      headers: { 'content-type': 'application/json' },
+      payload: {
+        category_id: 'cat_suits',
+        // no name — let AI fill it
+        raw_r2_key: 'showcase-designs/retailer_1/raw/raw.jpg',
+      },
+    });
+    expect(res.statusCode).toBe(201);
+    expect(mockSuggestDesignNameAndColor).toHaveBeenCalledTimes(1);
+    expect(mockSuggestDesignNameAndColor).toHaveBeenCalledWith(
+      'https://cdn.test/showcase-designs/retailer_1/raw/raw.jpg',
+      expect.any(Object),
+    );
+    expect(mockShowcaseDesignCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ name: 'Pink Blouse - Deep Neck' }),
+      }),
+    );
+    await app.close();
+  });
+
+  it('skips AI suggestion when a name is provided', async () => {
+    mockCategoryFindUnique.mockResolvedValue({ id: 'cat_suits', slug: 'suits' });
+    mockShowcaseDesignCreate.mockResolvedValue({ ...OWN_ROW, category: { name: 'Suits' } });
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/me/showcase-designs',
+      headers: { 'content-type': 'application/json' },
+      payload: {
+        category_id: 'cat_suits',
+        name: 'Hand-Typed Suit',
+        raw_r2_key: 'showcase-designs/retailer_1/raw/raw.jpg',
+      },
+    });
+    expect(res.statusCode).toBe(201);
+    expect(mockSuggestDesignNameAndColor).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+describe('POST /me/showcase-designs/suggest', () => {
+  it('returns the AI-suggested name + color and attributes usage', async () => {
+    mockSuggestDesignNameAndColor.mockResolvedValue({
+      name: 'Pink Blouse - Deep Neck',
+      color: 'Pink',
+    });
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/me/showcase-designs/suggest',
+      headers: { 'content-type': 'application/json' },
+      payload: { raw_r2_key: 'showcase-designs/retailer_1/raw/raw.jpg' },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data).toEqual({
+      name: 'Pink Blouse - Deep Neck',
+      color: 'Pink',
+    });
+    expect(mockSuggestDesignNameAndColor).toHaveBeenCalledTimes(1);
+    await app.close();
+  });
+
+  it('fail-opens to nulls when AI is unavailable', async () => {
+    mockSuggestDesignNameAndColor.mockResolvedValue({ name: null, color: null });
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/me/showcase-designs/suggest',
+      headers: { 'content-type': 'application/json' },
+      payload: { raw_r2_key: 'showcase-designs/retailer_1/raw/raw.jpg' },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data).toEqual({ name: null, color: null });
+    await app.close();
+  });
+
+  it('rejects a raw_r2_key outside the caller’s own prefix', async () => {
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/me/showcase-designs/suggest',
+      headers: { 'content-type': 'application/json' },
+      payload: { raw_r2_key: 'showcase-designs/retailer_2/raw/victim.jpg' },
+    });
+    expect(res.statusCode).toBe(422);
+    expect(mockSuggestDesignNameAndColor).not.toHaveBeenCalled();
+    await app.close();
+  });
+});
 
   it('rejects an unknown category before watermarking', async () => {
     mockCategoryFindUnique.mockResolvedValue(null);

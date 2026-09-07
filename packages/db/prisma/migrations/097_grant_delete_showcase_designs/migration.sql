@@ -1,0 +1,12 @@
+-- 097: Grant DELETE on showcase_designs to kanchuki_app
+-- Issue: DELETE /v1/admin/showcase-designs/:id 500s with
+--   "42501: permission denied for table showcase_designs"
+-- Root cause: kanchuki_app role has SELECT/INSERT/UPDATE only (§19.1),
+--   but the admin hard-delete handler (and the retailer delete handler,
+--   same table) need DELETE. showcase_designs was created in migration
+--   093 AFTER the role's original grant-setup, so it never received the
+--   DELETE grant — create/edit work (INSERT/UPDATE) but delete 500s.
+--   Same bug class as migration 083 (product_photos).
+-- NOTE: narrows the §19.1 invariant for one table. If soft-delete is
+--   added later (deleted_at column), this GRANT can be revoked.
+GRANT DELETE ON showcase_designs TO kanchuki_app;

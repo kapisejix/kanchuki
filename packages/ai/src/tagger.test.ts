@@ -22,9 +22,13 @@ vi.mock('node:dns/promises', () => {
   return { lookup, default: { lookup } }
 })
 
-const { tagProductImages, tagProductImageUrl, tagProductImageUrls, imageHash } = await import(
-  './tagger.js'
-)
+const {
+  tagProductImages,
+  tagProductImageUrl,
+  tagProductImageUrls,
+  imageHash,
+  suggestDesignNameAndColor,
+} = await import('./tagger.js')
 
 function toolUseResponse(input: Record<string, unknown>) {
   return { content: [{ type: 'tool_use', input }] }
@@ -191,6 +195,43 @@ describe('tagProductImages', () => {
     const result = await tagProductImages([{ buffer: Buffer.from('x'), mediaType: 'image/jpeg' }])
     expect(result.product_name).toBeNull()
     expect(result.short_description).toBeNull()
+  })
+})
+
+describe('suggestDesignNameAndColor', () => {
+  beforeEach(() => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      headers: { get: () => 'image/jpeg' },
+      arrayBuffer: async () => new TextEncoder().encode('design-bytes').buffer,
+    }) as unknown as typeof fetch
+  })
+
+  it('returns the suggested name + color from a design photo', async () => {
+    mockCreate.mockResolvedValue(
+      toolUseResponse({ name: 'Pink Blouse - Deep Neck', color: 'Pink' }),
+    )
+    const result = await suggestDesignNameAndColor('https://cdn.example.com/design.jpg')
+    expect(result).toEqual({ name: 'Pink Blouse - Deep Neck', color: 'Pink' })
+    expect(mockCreate).toHaveBeenCalledTimes(1)
+  })
+
+  it('trims and normalises the returned fields', async () => {
+    mockCreate.mockResolvedValue(toolUseResponse({ name: '  Teal Anarkali  ', color: '  Teal ' }))
+    const result = await suggestDesignNameAndColor('https://cdn.example.com/design.jpg')
+    expect(result).toEqual({ name: 'Teal Anarkali', color: 'Teal' })
+  })
+
+  it('returns nulls when the model omits both fields', async () => {
+    mockCreate.mockResolvedValue(toolUseResponse({}))
+    const result = await suggestDesignNameAndColor('https://cdn.example.com/design.jpg')
+    expect(result).toEqual({ name: null, color: null })
+  })
+
+  it('fail-opens to nulls when the AI provider throws', async () => {
+    mockCreate.mockRejectedValue(new Error('provider down'))
+    const result = await suggestDesignNameAndColor('https://cdn.example.com/design.jpg')
+    expect(result).toEqual({ name: null, color: null })
   })
 })
 

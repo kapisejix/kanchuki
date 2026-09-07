@@ -75,6 +75,17 @@ export const showcaseDesignsApi = {
       timeoutMs: 30_000,
     }),
 
+  /** AI auto-suggested name + color for a just-uploaded raw design photo. */
+  suggest: (rawR2Key: string) =>
+    request<{ data: { name: string | null; color: string | null } }>(
+      '/v1/retailers/me/showcase-designs/suggest',
+      {
+        method: 'POST',
+        body: JSON.stringify({ raw_r2_key: rawR2Key }),
+        timeoutMs: 45_000,
+      },
+    ),
+
   create: (data: { category_id: string; name?: string | null; raw_r2_key: string }) =>
     request<{ data: ShowcaseDesignRow }>('/v1/retailers/me/showcase-designs', {
       method: 'POST',

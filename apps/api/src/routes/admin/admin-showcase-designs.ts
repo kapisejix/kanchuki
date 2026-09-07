@@ -10,7 +10,12 @@
 // - DELETE hard-removes the row + both R2 objects (best effort).
 
 import { createHash } from 'node:crypto';
-import { deleteObject, getUploadPresignedUrl, publicUrl } from '@kanchuki/ai';
+import {
+  deleteObject,
+  getUploadPresignedUrl,
+  publicUrl,
+  suggestDesignNameAndColor,
+} from '@kanchuki/ai';
 import { type Prisma, prisma } from '@kanchuki/db';
 import { R2_PATHS } from '@kanchuki/shared';
 import { createId } from '@paralleldrive/cuid2';
@@ -208,15 +213,36 @@ export const adminShowcaseDesignRoutes: FastifyPluginAsync = async (server) => {
     };
   });
 
+  // ─── POST /admin/showcase-designs/suggest — AI name + color ───────
+  // Admin equivalent of the retailer suggest route: pre-fill the upload form
+  // with an AI-generated retail-ready name + dominant color (e.g.
+  // "Pink Blouse - Deep Neck") from an already-uploaded raw design photo.
+  // Fail-open — an AI outage returns nulls so the admin can type a name.
+  server.post('/showcase-designs/suggest', async (request, reply) => {
+    const body = z
+      .object({ raw_r2_key: z.string().min(1) })
+      .safeParse(request.body);
+    if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
+    assertShowcaseRawKey(body.data.raw_r2_key);
+    const suggestion = await suggestDesignNameAndColor(publicUrl(body.data.raw_r2_key));
+    return reply.status(200).send({ data: suggestion });
+  });
+
   // ─── POST /admin/showcase-designs ────────────────────────────────
   // Create runs the same watermark step the retailer route runs — owner is
   // retailer_id when provided (design shown under that store), else global.
+  // A missing name is auto-filled by AI (fail-open to null).
   server.post('/showcase-designs', async (request, reply) => {
     const body = CreateSchema.safeParse(request.body);
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
 
     assertShowcaseRawKey(body.data.raw_r2_key);
     const category = await categoryForWrite(body.data.category_id);
+    let name = body.data.name ?? null;
+    if (!name) {
+      const suggestion = await suggestDesignNameAndColor(publicUrl(body.data.raw_r2_key));
+      name = suggestion.name;
+    }
     const ownerRetailerId = body.data.retailer_id ?? null;
     if (ownerRetailerId) {
       const retailer = await prisma.retailer.findUnique({
@@ -235,7 +261,7 @@ export const adminShowcaseDesignRoutes: FastifyPluginAsync = async (server) => {
         retailer_id: ownerRetailerId,
         category_id: category.id,
         category_slug: category.slug,
-        name: body.data.name ?? null,
+        name: name,
         image_url: publicUrl(finalR2Key),
         r2_key: finalR2Key,
         original_r2_key: body.data.raw_r2_key,
