@@ -289,7 +289,7 @@ export default function CategoryDetailScreen() {
           keyExtractor={(item) => item.id}
           numColumns={columns}
           columnWrapperStyle={{ gap: 14 }}
-          contentContainerStyle={{ padding: 16, gap: 14, flexGrow: 1, paddingBottom: screenPaddingBottom }}
+          contentContainerStyle={{ padding: 16, gap: 14, flexGrow: 1, paddingBottom: screenPaddingBottom + 72 }}
           renderItem={({ item }) => (
             <ProductCard
               imageUrl={item.primary_photo_url}

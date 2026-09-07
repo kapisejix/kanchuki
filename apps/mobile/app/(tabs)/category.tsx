@@ -58,19 +58,6 @@ export default function CategoryListScreen() {
           numColumns={columns}
           columnWrapperStyle={{ gap: 14 }}
           contentContainerStyle={{ padding: 16, paddingBottom: tabScrollPaddingBottom, gap: 14, flexGrow: 1 }}
-          ListHeaderComponent={
-            <View className="mb-2">
-              <Text
-                style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-                className="text-2xl font-extrabold text-spaceCadet-900 leading-tight"
-              >
-                Curated Collections{'\n'}for your store
-              </Text>
-              <Text className="text-xs text-heliotrope-500 font-medium mt-1">
-                {categories.length} {categories.length === 1 ? 'category' : 'categories'} configured
-              </Text>
-            </View>
-          }
           renderItem={({ item }: { item: ProductCategory }) => (
             <AnimatedPressable
               onPress={() => router.push(`/category/${item.id}`)}
