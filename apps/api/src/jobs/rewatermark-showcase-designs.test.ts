@@ -77,6 +77,7 @@ describe('handleRewatermarkShowcaseDesigns', () => {
     vi.clearAllMocks();
     // Must be `delete`, not `= undefined` — Node coerces the latter to the
     // truthy STRING 'undefined' (compress-r2-images test note).
+    // biome-ignore lint/performance/noDelete: env var must be removed, not set undefined
     delete process.env.R2_ACCOUNT_ID;
     mockUpdate.mockImplementation(async (args: UpdateArgs) => ({
       id: args.where?.id,

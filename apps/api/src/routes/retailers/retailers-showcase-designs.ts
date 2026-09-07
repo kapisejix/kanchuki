@@ -38,6 +38,21 @@ const UpdateSchema = z.object({
   raw_r2_key: z.string().min(1).optional(),
 });
 
+/**
+ * The client hands us the R2 key it PUT the raw upload to. It must be one this
+ * retailer's own `upload-url` minted — otherwise a retailer could point
+ * `raw_r2_key` at ANY object in the bucket (another store's design, a product
+ * photo, an admin asset) and the server would download it, re-watermark it with
+ * this retailer's logo, and publish/own it (and later free-delete it on row
+ * delete via `original_r2_key`). Scope it to `showcase-designs/<self>/raw/`.
+ */
+function assertOwnRawKey(rawKey: string, retailerId: string): void {
+  const prefix = R2_PATHS.showcaseDesignRaw(retailerId, '');
+  if (!rawKey.startsWith(prefix) || rawKey.includes('..')) {
+    throw validationError('Invalid upload reference');
+  }
+}
+
 /** Resolve a design's category and keep the denormalised slug in sync. */
 async function categoryForUpdate(categoryId: string): Promise<{ id: string; slug: string }> {
   const category = await prisma.showcaseDesignCategory.findUnique({
@@ -155,6 +170,7 @@ export const retailersShowcaseDesignRoutes: FastifyPluginAsync = async (server) 
     const body = CreateSchema.safeParse(request.body);
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
 
+    assertOwnRawKey(body.data.raw_r2_key, request.retailerId);
     await assertShowcaseQuota(request.retailerId);
     const category = await categoryForUpdate(body.data.category_id);
 
@@ -216,6 +232,7 @@ export const retailersShowcaseDesignRoutes: FastifyPluginAsync = async (server) 
     // Photo replace: watermark the new raw → swap r2_key/image_url, then
     // best-effort delete the OLD final + OLD raw (new raw is the caller's).
     if (body.data.raw_r2_key) {
+      assertOwnRawKey(body.data.raw_r2_key, request.retailerId);
       const finalR2Key = R2_PATHS.showcaseDesign(request.retailerId, `${createId()}.jpg`);
       await watermarkShowcaseDesign({
         rawR2Key: body.data.raw_r2_key,

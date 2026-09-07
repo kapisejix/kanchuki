@@ -282,6 +282,25 @@ describe('POST /me/showcase-designs', () => {
     expect(mockShowcaseDesignCreate).not.toHaveBeenCalled();
     await app.close();
   });
+
+  it('rejects a raw_r2_key outside the caller’s own upload prefix (no cross-tenant republish)', async () => {
+    mockCategoryFindUnique.mockResolvedValue({ id: 'cat_suits', slug: 'suits' });
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/me/showcase-designs',
+      headers: { 'content-type': 'application/json' },
+      payload: {
+        category_id: 'cat_suits',
+        // another retailer's raw upload
+        raw_r2_key: 'showcase-designs/retailer_2/raw/victim.jpg',
+      },
+    });
+    expect(res.statusCode).toBe(422);
+    expect(mockWatermarkShowcaseDesign).not.toHaveBeenCalled();
+    expect(mockShowcaseDesignCreate).not.toHaveBeenCalled();
+    await app.close();
+  });
 });
 
 describe('PUT /me/showcase-designs/:id', () => {
