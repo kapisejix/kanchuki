@@ -1,5 +1,5 @@
 import { getUploadPresignedUrl, publicUrl } from '@kanchuki/ai';
-import { prisma } from '@kanchuki/db';
+import { getPurgePrisma, prisma } from '@kanchuki/db';
 import { R2_PATHS } from '@kanchuki/shared';
 import { createId } from '@paralleldrive/cuid2';
 import type { FastifyPluginAsync } from 'fastify';
@@ -243,6 +243,11 @@ export const categoryRoutes: FastifyPluginAsync = async (server) => {
   // ─── DELETE /categories/:id ─────────────────────────────────────────
   // Products in this category are not deleted — category_id is cleared via
   // the FK's ON DELETE SET NULL (see 030_product_categories migration).
+  // F-017 guardrail: product_categories is a hard-delete table under SECURITY
+  // §19 — kanchuki_app has DELETE revoked and (once triggers cover it) a
+  // BEFORE DELETE guardrail fires without the session flag. Same pattern as
+  // products-trash.ts / products-variants.ts: scoped purge role +
+  // app.allow_hard_delete inside the transaction.
   server.delete('/:id', async (request, reply) => {
     const { id } = request.params as { id: string };
 
@@ -251,7 +256,24 @@ export const categoryRoutes: FastifyPluginAsync = async (server) => {
     });
     if (!existing) throw notFound('Category');
 
-    await prisma.productCategory.delete({ where: { id } });
+    const purgeDb = getPurgePrisma();
+    await purgeDb.$transaction([
+      purgeDb.$executeRawUnsafe(`SET app.allow_hard_delete = 'true';`),
+      purgeDb.productCategory.delete({ where: { id } }),
+    ]);
+
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'retailer',
+        actor_id: request.retailerId,
+        action: 'delete',
+        resource_type: 'ProductCategory',
+        resource_id: id,
+        metadata: { name: existing.name },
+        ip_address: request.ip,
+      },
+    });
+
     return reply.status(204).send();
   });
 
