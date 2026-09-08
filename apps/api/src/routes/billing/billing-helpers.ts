@@ -17,11 +17,17 @@ export function razorpayPlanId(plan: Plan): Promise<string | undefined> {
 }
 
 // ponytail: raw fetch instead of razorpay SDK — we need 2 endpoints, SDK adds a dep
+// AbortSignal.timeout: a hung/rate-limited Razorpay call must NOT leave the
+// route hanging — the mobile client aborts at 10s and reports "Request timed
+// out (/v1/billing/subscription)" while the server is still awaiting Razorpay.
+const RAZORPAY_TIMEOUT_MS = 20_000;
 export async function razorpay<T>(path: string, init?: RequestInit): Promise<T> {
   const keyId = (await getSecret('RAZORPAY_KEY_ID')) ?? '';
   const keySecret = (await getSecret('RAZORPAY_KEY_SECRET')) ?? '';
   const res = await fetch(`https://api.razorpay.com/v1${path}`, {
     ...init,
+    // Never override a caller-provided signal; default to a bounded timeout.
+    signal: init?.signal ?? AbortSignal.timeout(RAZORPAY_TIMEOUT_MS),
     headers: {
       Authorization: `Basic ${Buffer.from(`${keyId}:${keySecret}`).toString('base64')}`,
       'Content-Type': 'application/json',

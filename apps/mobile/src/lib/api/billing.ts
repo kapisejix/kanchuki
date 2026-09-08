@@ -31,18 +31,24 @@ export const billingApi = {
       };
     }>('/v1/billing/subscription', { getCacheTtlMs: 30_000 }),
 
+  // POST /billing/subscription creates a real Razorpay subscription — an
+  // external call that can take several seconds. The default 10s client
+  // timeout aborts it mid-flight and surfaces the misleading "Request timed
+  // out (/v1/billing/subscription)" error, so these get a generous budget.
   subscribe: (plan: string) =>
     request<{ data: { razorpay_subscription_id: string; checkout_url: string } }>(
       '/v1/billing/subscription',
       {
         method: 'POST',
         body: JSON.stringify({ plan }),
+        timeoutMs: 60_000,
       },
     ),
 
   cancel: () =>
     request<{ data: { plan_status: string; cancelled_at: string } }>('/v1/billing/cancel', {
       method: 'POST',
+      timeoutMs: 60_000,
     }),
 
   /** F-010: Get addon pricing packs for all resource types */
