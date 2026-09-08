@@ -10,6 +10,72 @@
 
 ---
 
+## RC-011 — Switch-Plans request times out because the server's Razorpay call has no timeout
+
+- **Component:** `apps/api/src/routes/billing/billing-helpers.ts` (`razorpay()`), `apps/mobile/src/lib/api/billing.ts` (`subscribe`/`cancel`)
+- **Commit:** `54970c5a`
+- **Symptom:** switching plans showed "Error — Request timed out (/v1/billing/subscription). Check that the API server is running at https://api.kanchuki.app and try again." — a client-side timeout message that made it look like the API was down.
+- **Root cause:** `POST /v1/billing/subscription` creates a real Razorpay subscription through a raw `fetch` with **no timeout**. When Razorpay was slow or hung, the route stayed open past the mobile client's default 10s abort (`AbortSignal`), so the client killed the request and reported a misleading "API server not running" timeout even though the server was fine and still awaiting Razorpay.
+- **Fix (two-sided):**
+  - Server: `razorpay()` now defaults to `AbortSignal.timeout(20_000)` unless the caller passes its own `signal` — a hung external call can no longer hold a route open indefinitely.
+  - Mobile: `subscribe` + `cancel` (both real external calls) get a 60s `timeoutMs` budget instead of the default 10s, so legitimate slow Razorpay responses aren't aborted client-side.
+- **Prevention lesson:** every outbound call to a third-party API needs a bounded timeout at the caller, and the client's timeout must be larger than the server's external-call budget. A client-side timeout on a server that's legitimately awaiting an upstream is a latency bug dressed as an outage.
+
+---
+
+## RC-010 — Logo/banner/profile saves fail because the unchanged stored GSTIN is re-sent and can't round-trip
+
+- **Component:** `apps/mobile/app/settings/index.tsx` (Edit Profile modal `handleSave`), server rule `apps/api/src/routes/retailers/retailers-profile.ts`
+- **Commit:** `91214791`
+- **Symptom:** "Error when adding logo to retailer profile" — picking a logo (or editing any profile field) and saving failed.
+- **Root cause:** `handleSave` always sent `gstin: gstin.trim() || undefined` on **every** save, echoing the value the API returned. The server GSTIN regex is strict (uppercase 15-char format, `UpdateRetailerSchema`); a GSTIN captured once during onboarding — e.g. lowercased, or a value that predates the strict format — can't round-trip. Re-sending the stored value 422'd the whole `PUT /me` request, so an unrelated logo/banner/profile save failed too. The error surfaced was also masked by a generic fallback (see the RC-003 pattern).
+- **Fix:** only send GSTIN when it actually changed — omit when untouched, send `''` when cleared:
+  ```ts
+  const gstinChanged = (gstin.trim() || "") !== String(retailer?.gstin ?? "").trim()
+  ...(gstinChanged ? { gstin: gstin.trim() || "" } : {})
+  ```
+  and surface the real `ApiError.message` instead of "Failed to update profile".
+- **Proof:** `apps/api/src/routes/retailers.test.ts` — "accepts a logo-only save with no GSTIN field" and "rejects a malformed GSTIN (the round-trip failure that broke logo saves)". Mobile tsc + 59/59 tests green.
+- **Prevention lesson:** never echo server-owned fields back unchanged just because a form pre-fills them. Round-trip a stored value only if the form can represent every stored state; otherwise compare-and-omit. (A follow-up hardening: onboarding should store GSTIN already normalized to the strict format, and the schema could accept the lowercased input by uppercasing server-side.)
+
+---
+
+## RC-009 — "Failed to add team member" hides every real staff-add rejection
+
+- **Component:** `apps/mobile/app/settings/staff.tsx` (`AddStaffModal` mutation onError)
+- **Commit:** `91214791`
+- **Symptom:** adding a team member failed and the screen always showed the constant "Failed to add team member", so the retailer couldn't tell if the phone was a duplicate, a seat limit was hit, or the phone already belongs to a retailer account.
+- **Root cause:** the mutation `onError` discarded the thrown error and passed only a hardcoded fallback string to `showError`. The server sends a specific, user-actionable 422/402 message for every predictable rejection (duplicate active staff phone, plan seat limit, phone already registered as a retailer account — the last two deliberately block the add per the security note in `staff.ts`), but the screen never surfaced any of them. Same swallowed-error class as RC-003 / RC-010.
+- **Fix:** surface `ApiError.message` when the thrown error is an `ApiError`; keep "Failed to add team member" only as a true fallback.
+- **Proof:** new `apps/api/src/routes/staff.test.ts` pins the whole server contract — happy path 201 with normalized phone, invalid phone 422, seat-limit 402 (`PLAN_LIMIT_EXCEEDED`), duplicate active-staff phone 422, retailer-account phone 422, GET list. (The earlier draft test also caught a real test-infra trap: `vi.clearAllMocks()` doesn't clear `mockResolvedValueOnce` queues — must use `vi.resetAllMocks()`.)
+- **Prevention lesson:** see RC-003 — a catch block that replaces the error with a constant string is the bug. When a screen performs a mutation with several distinguishable server rejections, the real message is the product.
+
+---
+
+## RC-008 — GST report crashes on `estimated_*` fields the server renamed to `cgst`/`sgst`/`igst`
+
+- **Component:** `apps/mobile/app/growth/gst.tsx` + `apps/mobile/src/lib/api/growth.ts` (`GstSummary`)
+- **Commit:** `df63010d`
+- **Symptom:** tapping the GST report (Growth) showed "Error: Cannot read property 'toLocalString' of undefined".
+- **Root cause:** the monthly-only-pricing GST engine (BUILD-LOG §59) writes real CGST/SGST/IGST columns and the **server** summary route returns `cgst`/`sgst`/`igst` — and the admin GST report was fixed to match (§59.2, field mismatch `estimated_cgst`→`cgst`). But the **mobile** `GstSummary` type and screen still read `summary.estimated_cgst` / `estimated_sgst` / `estimated_igst`. Those fields are absent from the response, so `summary.estimated_cgst` was `undefined`, and `inr()` called `.toLocaleString('en-IN')` on it → crash. Two compounding faults: a stale field-name contract (same one that broke the admin report) and an unguarded formatter.
+- **Fix:** rename the type fields to the real server names (`cgst`/`sgst`/`igst`) and make `inr()` defensive — return `₹0` for `null`/`undefined`/`NaN` instead of dereferencing.
+- **Proof:** server route confirmed to return `cgst`/`sgst`/`igst` (`apps/api/src/routes/growth/growth-gst.ts`); mobile tsc clean, 59/59 mobile tests green.
+- **Prevention lesson:** the field-name contract between API and client is exactly the thing TypeScript can't check across the wire. When a server response shape changes (a column rename, an aggregation field), grep every client that reads the OLD name — the admin panel was fixed days before the mobile screen still crashed on the same mismatch.
+
+---
+
+## RC-007 — Customer detail screen crashes on `interactions`/purchase totals the teardown removed
+
+- **Component:** `apps/mobile/app/customer/[id].tsx`
+- **Commit:** `df63010d`
+- **Symptom:** opening a single customer from the customer list showed "Error: Cannot read property 'length' of undefined".
+- **Root cause:** the customer-detail screen still treated `interactions`, `total_purchases` and `total_spent` as required fields, but the 2026-08-31 feature teardown (migration 082) dropped the `customer_interactions` table and the checkout/orders data those fields came from — the API now returns a raw customer row without them. `customer.interactions.length` threw immediately, and the stat cards would have hit the same `undefined` crash on the purchase fields.
+- **Fix:** make the three fields optional on the local `Customer` type, null-coalesce the stat-card reads (`?? 0`), and gate the "Recent Activity" section on a hoisted `recentInteractions = customer.interactions ?? []` so it hides cleanly when the API returns no interactions instead of crashing.
+- **Proof:** mobile tsc clean + 59/59 tests green. The section simply renders nothing for a post-teardown customer instead of erroring.
+- **Prevention lesson:** when a feature is removed server-side, screens that consumed its data must be swept in the same change — an orphaned read of a removed field is a guaranteed crash, not a cosmetic gap. The teardown migration should have come with a mobile sweep for the tables it dropped (same lesson as RC-008's field rename).
+
+---
+
 ## RC-006 — Suits Designs permalink links "go nowhere" from the product detail sheet
 
 - **Component:** `apps/web/src/app/c/[slug]/components/ProductDetailSheet.tsx`

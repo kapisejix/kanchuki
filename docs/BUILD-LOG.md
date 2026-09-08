@@ -2128,3 +2128,27 @@ Three unrelated bug-fix commits landed in one session; each has a tracked root c
 - **RC-006** — Suits Designs permalink links "went nowhere": the sheet pushes a history entry on mount and its unmount cleanup called `window.history.back()` unconditionally, instantly undoing the `<Link>` navigation to `/{store}/designs/{id}`. Cleanup now only rolls back when the sheet's own entry is still the top-most history state. Heading also renamed "Related suits" → "Related Products". 2 new web tests.
 
 **Verification:** ai 91/91, api growth suite 25/25 + categories 4/4, web 122/122 (incl. 2 new ProductDetailSheet tests); `tsc --noEmit` clean on ai/api/mobile/web; no new Biome diagnostics vs baseline.
+
+## BUILT 2026-09-08 (later): Mobile bug-fix batch #5–#9 (4 commits — customer detail, GST report, team member, logo save, switch plans)
+
+Five retailer-reported mobile errors fixed in one session, root causes tracked in `docs/root-cause/root-cause issues.md` (RC-007…RC-011).
+
+### `df63010d` fix(mobile): customer detail + GST report tolerate teardown-removed fields
+
+- **RC-007 (#5)** — opening a single customer crashed: `Cannot read property 'length' of undefined`. `apps/mobile/app/customer/[id].tsx` dereferenced `customer.interactions.length` + `total_purchases`/`total_spent`, all removed by the 2026-08-31 teardown (migration 082 dropped `customer_interactions` and checkout data). Fields now optional, stat reads null-coalesce (`?? 0`), Recent Activity gated on hoisted `recentInteractions = customer.interactions ?? []`.
+- **RC-008 (#6)** — GST report (Growth) crashed: `Cannot read property 'toLocalString' of undefined`. The mobile `GstSummary` type + screen still read `estimated_cgst`/`estimated_sgst`/`estimated_igst` while the server summary route (and the already-fixed admin report, §59.2) returns `cgst`/`sgst`/`igst` — stale field-name contract across the wire + unguarded `inr()` formatter. Type renamed to real names; `inr()` now returns `₹0` on null/undefined/NaN.
+
+### `91214791` fix(mobile): surface real API errors on team-member + profile/logo save
+
+- **RC-009 (#7)** — adding a team member always showed the constant "Failed to add team member". `settings/staff.tsx` mutation `onError` discarded the real `ApiError` (duplicate phone, seat limit, phone already a retailer account). Now surfaces `ApiError.message`, generic only as fallback.
+- **RC-010 (#8)** — "Error when adding logo to retailer profile": the Edit Profile modal (`settings/index.tsx`) re-sent the stored GSTIN on **every** save, and a GSTIN captured once during onboarding can't round-trip the strict uppercase server regex — the whole `PUT /me` 422'd, failing unrelated logo/banner/profile saves. GSTIN now omitted when unchanged (`gstinChanged`), sent as `''` when cleared; upload + save catch blocks also surface real errors.
+
+### `54970c5a` fix(api,mobile): bound Razorpay calls — stop switch-plan request timeouts
+
+- **RC-011 (#9)** — Switch Plans: "Request timed out (/v1/billing/subscription). Check that the API server is running". The server's raw Razorpay `fetch` had no timeout, so a slow/hung Razorpay kept the route open past the mobile client's 10s abort → misleading outage message. Server `razorpay()` now defaults to `AbortSignal.timeout(20s)` (caller signal still honored); mobile `subscribe` + `cancel` get a 60s `timeoutMs` budget.
+
+### `86440221` test(api): pin POST /v1/staff contract + GSTIN/profile logo-save rules
+
+New `staff.test.ts` (happy path + invalid phone 422 + seat limit 402 + duplicate active-staff phone 422 + retailer-account phone 422 + GET list) and 2 `retailers.test.ts` cases (logo-only save with GSTIN omitted → 200; malformed GSTIN → 422 "Invalid GSTIN format"). Draft test also surfaced a vitest trap: `vi.clearAllMocks()` doesn't clear `mockResolvedValueOnce` queues — `vi.resetAllMocks()` required.
+
+**Verification:** api **913/913** tests (72 files; staff 6/6, retailers 41/41), mobile **59/59**, `tsc --noEmit` clean on api + mobile.
