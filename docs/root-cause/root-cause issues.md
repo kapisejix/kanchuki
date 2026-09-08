@@ -43,6 +43,7 @@
 - **Fix (two-sided):**
   - Server: `razorpay()` now defaults to `AbortSignal.timeout(20_000)` unless the caller passes its own `signal` — a hung external call can no longer hold a route open indefinitely.
   - Mobile: `subscribe` + `cancel` (both real external calls) get a 60s `timeoutMs` budget instead of the default 10s, so legitimate slow Razorpay responses aren't aborted client-side.
+- **Proof/regression test:** `apps/api/src/routes/billing.test.ts` — `describe('razorpay() AbortSignal.timeout default')` pins both halves of the server fix: (1) no caller signal → fetch gets `AbortSignal.timeout(20_000)` (spied on the static factory — this Node build doesn't expose `.timeout` on the returned signal, so the exact deadline is asserted at the factory call), and (2) a caller-provided signal is passed through untouched and `AbortSignal.timeout` is never invoked. Billing suite 22/22.
 - **Prevention lesson:** every outbound call to a third-party API needs a bounded timeout at the caller, and the client's timeout must be larger than the server's external-call budget. A client-side timeout on a server that's legitimately awaiting an upstream is a latency bug dressed as an outage.
 
 ---

@@ -3,6 +3,7 @@ import Fastify from 'fastify';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { errorHandler } from '../plugins/error-handler.js';
 import { billingRoutes } from './billing.js';
+import { razorpay } from './billing/billing-helpers.js';
 
 // ─── Mock Prisma ─────────────────────────────────────────────────
 
@@ -680,5 +681,67 @@ describe('POST /v1/billing/webhook', () => {
     });
     expect(res.statusCode).toBe(401);
     await app.close();
+  });
+});
+
+// ─── razorpay() external-call guardrail (RC-011) ──────────────────
+// Regression for the switch-plan timeout fix: a hung/rate-limited Razorpay
+// call must be bounded by AbortSignal.timeout(20s) by default, and a
+// caller-provided signal must never be overridden (e.g. the webhook or a
+// future caller that needs its own abort semantics).
+
+describe('razorpay() AbortSignal.timeout default', () => {
+  it('defaults the fetch signal to AbortSignal.timeout(20_000) when none is passed', async () => {
+    const originalFetch = globalThis.fetch;
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ id: 'sub_test' }),
+    });
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    // Spy on the static factory (Node here doesn't expose `.timeout` on the
+    // returned signal) so we can pin the exact deadline without waiting 20s.
+    const timeoutSpy = vi
+      .spyOn(AbortSignal, 'timeout')
+      .mockReturnValue(new AbortController().signal);
+
+    try {
+      await razorpay('/subscriptions', { method: 'POST', body: '{}' });
+
+      expect(timeoutSpy).toHaveBeenCalledTimes(1);
+      expect(timeoutSpy).toHaveBeenCalledWith(20_000);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+      expect(init.signal).toBeInstanceOf(AbortSignal);
+    } finally {
+      timeoutSpy.mockRestore();
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it('never overrides a caller-provided signal', async () => {
+    const originalFetch = globalThis.fetch;
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ id: 'sub_test' }),
+    });
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    const timeoutSpy = vi
+      .spyOn(AbortSignal, 'timeout')
+      .mockReturnValue(new AbortController().signal);
+
+    try {
+      const customSignal = new AbortController().signal;
+      await razorpay('/subscriptions', { signal: customSignal });
+
+      // A caller signal short-circuits the default entirely.
+      expect(timeoutSpy).not.toHaveBeenCalled();
+      const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+      expect(init.signal).toBe(customSignal);
+    } finally {
+      timeoutSpy.mockRestore();
+      globalThis.fetch = originalFetch;
+    }
   });
 });
