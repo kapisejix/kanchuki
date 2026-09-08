@@ -15,7 +15,7 @@ const execFileAsync = promisify(execFile);
 const FFMPEG_BIN = process.env.FFMPEG_BIN ?? (ffmpegPath as unknown as string) ?? 'ffmpeg';
 
 const MAX_PHOTOS = 3;
-const TOTAL_MAX_SEC = 6.0; // Max 6 seconds total video duration
+const TOTAL_MAX_SEC = 12.0; // Max 12 seconds total video duration
 const FPS = 25;
 const CANVAS_W = 1080;
 const CANVAS_H = 1350; // 4:5 — matches Facebook/Instagram feed video crop

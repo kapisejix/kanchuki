@@ -207,14 +207,14 @@ export function ProductMediaCarousel({
           </View>
         )}
 
-        {/* AI Try-On badge (top-left) */}
+        {/* AI Shoot badge (top-left) */}
         <AnimatedPressable
           onPress={() => setStudioModalOpen(true)}
           className="absolute top-3 left-3 px-3 py-1 rounded-full bg-[#231F48]/85 border border-white/20 flex-row items-center gap-1.5 shadow-lg"
           style={{ zIndex: 10 }}
         >
           <Sparkles size={13} color="#BB3F95" />
-          <Text className="text-white text-[10px] font-extrabold tracking-wider">AI Try-On</Text>
+          <Text className="text-white text-[10px] font-extrabold tracking-wider">AI Shoot</Text>
         </AnimatedPressable>
 
         {/* Video duration badge */}
@@ -222,7 +222,7 @@ export function ProductMediaCarousel({
           <View className="absolute top-10 left-3 bg-spaceCadet-900/90 px-3 py-1 rounded-full flex-row items-center gap-1.5 shadow-sm border border-white/20">
             <Clapperboard size={12} color="#BB3F95" />
             <Text className="text-white text-xs font-bold">
-              Product Video ({currentPhoto.video_duration ?? 6}s)
+              Product Video ({currentPhoto.video_duration ?? 12}s)
             </Text>
           </View>
         )}
