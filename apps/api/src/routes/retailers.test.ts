@@ -304,6 +304,63 @@ describe('PUT /retailers/me', () => {
     expect(callArg.data).not.toHaveProperty('onboarded_by_id');
     await app.close();
   });
+
+  // Mobile #8 regression (2026-09-08): "Error when adding logo to retailer
+  // profile". The settings screen used to re-send the stored GSTIN on every
+  // save; a GSTIN captured once during onboarding (e.g. lowercase, or an
+  // empty string stored against the strict uppercase regex) can't round-trip,
+  // so the whole PUT 422'd and an unrelated logo/banner save failed too. The
+  // client now omits an unchanged GSTIN — these tests pin the server contract
+  // that makes that safe: GSTIN is optional, and a malformed GSTIN is the
+  // only thing that can still 422 the request.
+  it('accepts a logo-only save with no GSTIN field (unchanged GSTIN omitted)', async () => {
+    mockRetailerFindUnique.mockResolvedValue({
+      onboarded_by_id: null,
+      shop_name: 'Test Shop',
+      public_slug: null,
+    });
+    mockRetailerUpdate.mockResolvedValue({
+      shop_name: 'Test Shop',
+      logo_url: 'https://cdn.example.com/logo.jpg',
+    });
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'PUT',
+      url: '/v1/retailers/me',
+      payload: {
+        shop_name: 'Test Shop',
+        logo_url: 'https://cdn.example.com/logo.jpg',
+        logo_r2_key: 'retailer_1/logo/x1.jpg',
+      },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const callArg = mockRetailerUpdate.mock.calls[0]?.[0];
+    expect(callArg.data).toHaveProperty('logo_url');
+    expect(callArg.data).not.toHaveProperty('gstin');
+    await app.close();
+  });
+
+  it('rejects a malformed GSTIN (the round-trip failure that broke logo saves)', async () => {
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'PUT',
+      url: '/v1/retailers/me',
+      payload: {
+        shop_name: 'Test Shop',
+        // Lowercase gstin stored from an earlier onboarding — the exact value
+        // the pre-fix client re-sent on every save.
+        gstin: '27aabcu9603r1zm',
+        logo_url: 'https://cdn.example.com/logo.jpg',
+      },
+    });
+
+    expect(res.statusCode).toBe(422);
+    expect(res.json().error.message).toContain('Invalid GSTIN format');
+    expect(mockRetailerUpdate).not.toHaveBeenCalled();
+    await app.close();
+  });
 });
 
 describe('F-019: POST /retailers/me/catalog-upload-request/:id/pay', () => {
