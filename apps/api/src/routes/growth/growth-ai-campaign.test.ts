@@ -5,7 +5,7 @@ import { growthAiCampaignRoutes } from './growth-ai-campaign.js';
 
 const {
   mockProductFindMany,
-  mockFestivalFindFirst,
+  mockFestivalFindMany,
   mockCustomerFindMany,
   mockCampaignCreate,
   mockHasFeature,
@@ -14,7 +14,7 @@ const {
   mockRunVisionAsk,
 } = vi.hoisted(() => ({
   mockProductFindMany: vi.fn(),
-  mockFestivalFindFirst: vi.fn(),
+  mockFestivalFindMany: vi.fn(),
   mockCustomerFindMany: vi.fn(),
   mockCampaignCreate: vi.fn(),
   mockHasFeature: vi.fn(),
@@ -26,7 +26,7 @@ const {
 vi.mock('@kanchuki/db', () => ({
   prisma: {
     product: { findMany: mockProductFindMany },
-    festival: { findFirst: mockFestivalFindFirst },
+    festival: { findMany: mockFestivalFindMany },
     customer: { findMany: mockCustomerFindMany },
     campaign: { create: mockCampaignCreate },
   },
@@ -104,6 +104,12 @@ describe('POST /v1/growth/ai-campaign', () => {
     ]);
 
     mockCustomerFindMany.mockResolvedValue([{ id: 'c1' }, { id: 'c2' }, { id: 'c3' }]);
+    // FESTIVAL intent with null festival_id — the route must resolve it by
+    // matching the festival name in the prompt against the calendar.
+    mockFestivalFindMany.mockResolvedValue([
+      { id: 7, name: 'Diwali' },
+      { id: 3, name: 'Navratri' },
+    ]);
 
     const app = await buildApp();
     const res = await app.inject({
@@ -121,6 +127,9 @@ describe('POST /v1/growth/ai-campaign', () => {
     expect(data.audience_count).toBe(3);
     expect(data.message_template).toContain('{{name}}');
     expect(data.rationale).toBe('Targets wedding shoppers');
+    // Festival resolved by name-in-prompt match, not the old first-3-words
+    // exact match that never matched anything.
+    expect(data.festival_id).toBe(7);
     await app.close();
   });
 
@@ -146,6 +155,111 @@ describe('POST /v1/growth/ai-campaign', () => {
       payload: { prompt: '' },
     });
     expect(res.statusCode).toBe(422);
+    await app.close();
+  });
+
+  it('resolves festival_id by matching the festival name anywhere in the prompt', async () => {
+    // The old implementation matched prompt.split(' ').slice(0, 3) exactly
+    // against the festival name — "Create a Diwali collection" would look for
+    // a festival literally named "Create a Diwali" and always miss. The fixed
+    // route matches any festival whose name appears in the prompt.
+    mockRunVisionAsk
+      .mockResolvedValueOnce({
+        campaign_type: 'FESTIVAL',
+        name: 'Diwali blast',
+        festival_id: null,
+        audience: {},
+        product_criteria: {},
+        message_tone: 'festive',
+        schedule_hint: null,
+      })
+      .mockResolvedValueOnce({
+        message_template: 'Diwali special at {{shop}} {{link}}',
+        rationale: 'Festive blast',
+        audience_estimate_note: '',
+      });
+    mockProductFindMany.mockResolvedValue([]);
+    mockCustomerFindMany.mockResolvedValue([]);
+    mockFestivalFindMany.mockResolvedValue([
+      { id: 11, name: 'Navratri' },
+      { id: 12, name: 'Diwali' },
+    ]);
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/growth/ai-campaign',
+      headers: { 'content-type': 'application/json' },
+      payload: { prompt: 'Create a Diwali collection for our best customers' },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data.festival_id).toBe(12);
+    await app.close();
+  });
+
+  it('leaves festival_id null when no calendar festival name appears in the prompt', async () => {
+    mockRunVisionAsk
+      .mockResolvedValueOnce({
+        campaign_type: 'FESTIVAL',
+        name: 'Festive saree offer',
+        festival_id: null,
+        audience: {},
+        product_criteria: {},
+        message_tone: 'festive',
+        schedule_hint: null,
+      })
+      .mockResolvedValueOnce({
+        message_template: 'Festive saree offer at {{shop}} {{link}}',
+        rationale: 'Festive push',
+        audience_estimate_note: '',
+      });
+    mockProductFindMany.mockResolvedValue([]);
+    mockCustomerFindMany.mockResolvedValue([]);
+    mockFestivalFindMany.mockResolvedValue([{ id: 12, name: 'Diwali' }]);
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/growth/ai-campaign',
+      headers: { 'content-type': 'application/json' },
+      payload: { prompt: 'Send a festive saree offer to everyone' },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data.festival_id).toBeNull();
+    await app.close();
+  });
+
+  it('does not query the festival table for non-FESTIVAL intents', async () => {
+    mockRunVisionAsk
+      .mockResolvedValueOnce({
+        campaign_type: 'PROMOTION',
+        name: 'Kurti sale',
+        festival_id: null,
+        audience: {},
+        product_criteria: {},
+        message_tone: 'casual',
+        schedule_hint: null,
+      })
+      .mockResolvedValueOnce({
+        message_template: 'Kurti sale at {{shop}} {{link}}',
+        rationale: 'Promotion',
+        audience_estimate_note: '',
+      });
+    mockProductFindMany.mockResolvedValue([]);
+    mockCustomerFindMany.mockResolvedValue([]);
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/growth/ai-campaign',
+      headers: { 'content-type': 'application/json' },
+      payload: { prompt: 'Run a kurti sale for everyone' },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(mockFestivalFindMany).not.toHaveBeenCalled();
     await app.close();
   });
 

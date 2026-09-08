@@ -376,6 +376,162 @@ export async function generateSocialPostCaption(
   return { caption: cleaned.slice(0, 1800), hashtags: [] };
 }
 
+// ─── Intent normalization ──────────────────────────────────────────────
+// parseCampaignIntent uses the free-text `ask()` path — no schema enforcement —
+// so models return shapes the DB route cannot safely dereference: missing
+// product_criteria/audience objects, nested JSON strings, enums outside the
+// union, numbers as strings, comma-joined arrays. Every one of those used to
+// crash POST /v1/growth/ai-campaign with an unhandled 500 ("Failed to
+// generate campaign" on the AI Campaign Assistant screen). Normalize
+// everything here so the route always receives a well-typed CampaignIntent.
+
+function asTrimmedString(v: unknown): string | undefined {
+  if (typeof v === 'string') {
+    const t = v.trim();
+    return t.length > 0 ? t : undefined;
+  }
+  if (typeof v === 'number' && Number.isFinite(v)) return String(v);
+  return undefined;
+}
+
+function asStringArray(v: unknown): string[] | undefined {
+  if (v == null) return undefined;
+  // Model may return one comma-joined string instead of an array.
+  if (typeof v === 'string') {
+    const parts = v
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    return parts.length > 0 ? parts : undefined;
+  }
+  if (Array.isArray(v)) {
+    const parts = v
+      .map((item) => asTrimmedString(item))
+      .filter((s): s is string => s != null);
+    return parts.length > 0 ? parts : undefined;
+  }
+  return undefined;
+}
+
+function asNumber(v: unknown): number | undefined {
+  if (typeof v === 'number' && Number.isFinite(v)) return v;
+  if (typeof v === 'string' && v.trim() !== '') {
+    const n = Number(v.replace(/[₹,\s]/g, ''));
+    if (Number.isFinite(n)) return n;
+  }
+  return undefined;
+}
+
+/** Possibly-stringified nested object (models love "product_criteria": "{...}"). */
+function asJsonObject(v: unknown): Record<string, unknown> | undefined {
+  if (v == null) return undefined;
+  if (typeof v === 'object' && !Array.isArray(v)) return v as Record<string, unknown>;
+  if (typeof v === 'string' && v.trim().startsWith('{')) {
+    try {
+      const parsed: unknown = JSON.parse(v);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        return parsed as Record<string, unknown>;
+      }
+    } catch {
+      // fell out of the fence — treat as absent
+    }
+  }
+  return undefined;
+}
+
+const CAMPAIGN_TYPES = ['FESTIVAL', 'REACTIVATION', 'PROMOTION'] as const;
+const MESSAGE_TONES = ['formal', 'casual', 'urgent', 'festive'] as const;
+const AUDIENCE_SOURCES = ['MANUAL', 'QR_SCAN', 'STORE_SCAN', 'REFERRAL', 'CAMPAIGN'] as const;
+
+/**
+ * Coerce an arbitrary AI response into a valid CampaignIntent.
+ * Never throws for shape problems — missing/invalid fields become safe
+ * defaults so the route can always build a draft the retailer can edit.
+ */
+export function normalizeCampaignIntent(raw: unknown): CampaignIntent {
+  const obj = asJsonObject(raw);
+  if (!obj) throw new Error('AI returned unparseable campaign intent');
+
+  // Nested stringified objects are re-parsed before field reads.
+  const audienceRaw = asJsonObject(obj.audience);
+  const criteriaRaw = asJsonObject(obj.product_criteria);
+
+  const rawType = asTrimmedString(obj.campaign_type)?.toUpperCase() ?? '';
+  const campaignType = (CAMPAIGN_TYPES as readonly string[]).includes(rawType)
+    ? (rawType as CampaignIntent['campaign_type'])
+    : 'PROMOTION';
+
+  const rawTone = asTrimmedString(obj.message_tone)?.toLowerCase() ?? '';
+  const tone = (MESSAGE_TONES as readonly string[]).includes(rawTone)
+    ? (rawTone as CampaignIntent['message_tone'])
+    : 'casual';
+
+  const name = asTrimmedString(obj.name)?.slice(0, 120) ?? 'AI campaign';
+
+  // festival_id may arrive as a number, numeric string, or null.
+  const festivalIdNum = asNumber(obj.festival_id);
+
+  const scheduleHint = asTrimmedString(obj.schedule_hint) ?? null;
+
+  // Audience filters — only keep well-formed values.
+  const audience: AudienceFilters = {};
+  if (audienceRaw) {
+    if (audienceRaw.all === true) audience.all = true;
+    const colors = asStringArray(audienceRaw.colors);
+    if (colors) audience.colors = colors;
+    const styles = asStringArray(audienceRaw.styles);
+    if (styles) audience.styles = styles;
+    const fabrics = asStringArray(audienceRaw.fabrics);
+    if (fabrics) audience.fabrics = fabrics;
+    const minSpent = asNumber(audienceRaw.min_total_spent_paise);
+    if (minSpent != null && minSpent >= 0) audience.min_total_spent_paise = Math.round(minSpent);
+    const maxBudget = asNumber(audienceRaw.max_budget_paise);
+    if (maxBudget != null && maxBudget >= 0) audience.max_budget_paise = Math.round(maxBudget);
+    const inactive = asNumber(audienceRaw.inactive_days);
+    if (inactive != null && inactive >= 1)
+      audience.inactive_days = Math.min(Math.round(inactive), 3650);
+    if (audienceRaw.never_purchased === true) audience.never_purchased = true;
+    const sources = asStringArray(audienceRaw.sources);
+    if (sources) {
+      const valid = sources.filter((s): s is (typeof AUDIENCE_SOURCES)[number] =>
+        (AUDIENCE_SOURCES as readonly string[]).includes(s),
+      );
+      if (valid.length > 0) {
+        audience.sources = valid;
+      }
+    }
+  }
+
+  // Product criteria — same treatment, plus bounded limit.
+  const criteria: ProductCriteria = {};
+  if (criteriaRaw) {
+    const category = asTrimmedString(criteriaRaw.category);
+    if (category) criteria.category = category.slice(0, 100);
+    const colors = asStringArray(criteriaRaw.colors);
+    if (colors) criteria.colors = colors;
+    const styles = asStringArray(criteriaRaw.styles);
+    if (styles) criteria.styles = styles;
+    const fabrics = asStringArray(criteriaRaw.fabrics);
+    if (fabrics) criteria.fabrics = fabrics;
+    const maxPrice = asNumber(criteriaRaw.max_price_paise);
+    if (maxPrice != null && maxPrice >= 0) criteria.max_price_paise = Math.round(maxPrice);
+    const minPrice = asNumber(criteriaRaw.min_price_paise);
+    if (minPrice != null && minPrice >= 0) criteria.min_price_paise = Math.round(minPrice);
+    const limit = asNumber(criteriaRaw.limit);
+    if (limit != null && limit >= 1) criteria.limit = Math.min(Math.round(limit), 20);
+  }
+
+  return {
+    campaign_type: campaignType,
+    name,
+    festival_id: festivalIdNum != null && Number.isInteger(festivalIdNum) ? festivalIdNum : null,
+    audience,
+    product_criteria: criteria,
+    message_tone: tone,
+    schedule_hint: scheduleHint,
+  };
+}
+
 export async function parseCampaignIntent(prompt: string): Promise<CampaignIntent> {
   const req: VisionAskRequest = {
     images: [],
@@ -389,7 +545,7 @@ export async function parseCampaignIntent(prompt: string): Promise<CampaignInten
   const cleaned = raw.trim();
 
   try {
-    return parseJsonLoose<CampaignIntent>(cleaned);
+    return normalizeCampaignIntent(parseJsonLoose<unknown>(cleaned));
   } catch {
     throw new Error('AI returned unparseable campaign intent');
   }

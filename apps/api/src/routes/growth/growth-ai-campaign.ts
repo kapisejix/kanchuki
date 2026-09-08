@@ -137,14 +137,23 @@ export const growthAiCampaignRoutes: FastifyPluginAsync = async (server) => {
     const customerIds = await resolveAudienceCustomerIds(retailerId, intent.audience);
     const audienceCount = customerIds.length;
 
-    // Step 5: Build festival_id if campaign_type is FESTIVAL but AI didn't fill it
+    // Step 5: Resolve festival_id for FESTIVAL campaigns.
+    // The AI has no festival table access, so festival_id is always null —
+    // match the festival by name against the retailers' festival calendar.
+    // Match any festival whose name appears in the prompt (e.g. "Create a
+    // Diwali collection" → Diwali), newest-starting first, instead of the old
+    // first-3-words exact match that never matched anything.
     let festivalId = intent.festival_id;
     if (festivalId == null && intent.campaign_type === 'FESTIVAL') {
-      const festival = await prisma.festival.findFirst({
-        where: { name: { equals: prompt.split(' ').slice(0, 3).join(' '), mode: 'insensitive' } },
-        select: { id: true },
+      const candidates = await prisma.festival.findMany({
+        where: { deleted_at: null },
+        select: { id: true, name: true },
+        orderBy: { starts_at: 'desc' },
+        take: 50,
       });
-      if (festival) festivalId = festival.id;
+      const lowerPrompt = prompt.toLowerCase();
+      const match = candidates.find((f) => lowerPrompt.includes(f.name.toLowerCase()));
+      if (match) festivalId = match.id;
     }
 
     const draft: AiCampaignDraft = {

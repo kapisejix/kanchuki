@@ -14,6 +14,7 @@ import { useScreenInsets } from '../../src/lib/safe-area'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { GradientButton } from '../../src/components/GradientButton'
 import { growthApi, type AiCampaignDraft, type SuggestedProduct } from '../../src/lib/api'
+import { ApiError } from '../../src/lib/api/client'
 import { showError } from '../../src/lib/errors'
 
 const EXAMPLE_PROMPTS = [
@@ -55,7 +56,12 @@ export default function AiCampaignScreen() {
       const res = await growthApi.aiCampaign(prompt.trim())
       setDraft(res.data)
     } catch (err) {
-      showError(err, 'Failed to generate campaign')
+      // The API sends a specific, user-safe message for every predictable
+      // failure (plan/quota gate, AI-provider outage, unparseable AI reply) —
+      // show it instead of a blanket "Failed to generate campaign" so the
+      // retailer knows whether to upgrade, retry, or reword the prompt.
+      const apiMsg = err instanceof ApiError && err.message ? err.message : null
+      showError(err, apiMsg ?? 'Failed to generate campaign')
     } finally {
       setGenerating(false)
     }
