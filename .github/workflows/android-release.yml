@@ -41,8 +41,9 @@ jobs:
 
       # ponytail: inject release signing via a Gradle init script instead of
       # patching the prebuild-regenerated android/app/build.gradle. Survives
-      # every `expo prebuild`. Upgrade path: a proper expo config plugin if
-      # signing needs get more complex.
+      # every `expo prebuild`. Uses androidComponents.finalizeDsl — the only
+      # hook AGP 8 allows for adding signing configs (afterEvaluate is too late,
+      # the DSL is already locked). Upgrade path: a proper expo config plugin.
       - name: Configure release signing
         run: |
           mkdir -p "$HOME/.gradle/init.d"
@@ -50,13 +51,15 @@ jobs:
           cat > "$HOME/.gradle/init.d/signing.gradle" <<'EOF'
           allprojects { p ->
             p.plugins.withId('com.android.application') {
-              p.afterEvaluate {
-                def sc = p.android.signingConfigs.maybeCreate('release')
-                sc.storeFile p.file(System.getenv('ANDROID_KEYSTORE_PATH'))
-                sc.storePassword System.getenv('ANDROID_KEYSTORE_PASSWORD')
-                sc.keyAlias System.getenv('ANDROID_KEY_ALIAS')
-                sc.keyPassword System.getenv('ANDROID_KEY_PASSWORD')
-                p.android.buildTypes.release.signingConfig sc
+              p.extensions.configure('androidComponents') { ac ->
+                ac.finalizeDsl { android ->
+                  def sc = android.signingConfigs.maybeCreate('release')
+                  sc.storeFile p.file(System.getenv('ANDROID_KEYSTORE_PATH'))
+                  sc.storePassword System.getenv('ANDROID_KEYSTORE_PASSWORD')
+                  sc.keyAlias System.getenv('ANDROID_KEY_ALIAS')
+                  sc.keyPassword System.getenv('ANDROID_KEY_PASSWORD')
+                  android.buildTypes.getByName('release').signingConfig = sc
+                }
               }
             }
           }
