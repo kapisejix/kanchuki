@@ -9,6 +9,7 @@
     "icon": "./assets/icon.png",
     "android": {
       "package": "app.kanchuki.retailer",
+      "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#FFFFFF"
