@@ -515,7 +515,7 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
               slug={slug}
               store={store ?? null}
               onFavorite={toggleFavorite}
-
+              onSelectProduct={(p) => setSelectedProduct(p)}
               onClose={() => setSelectedProduct(null)}
           />
       )}

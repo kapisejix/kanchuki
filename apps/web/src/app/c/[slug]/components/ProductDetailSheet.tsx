@@ -50,6 +50,9 @@ interface Props {
   onFavorite: (id: string) => void
   onTryOn?: () => void
   onClose: () => void
+  // Open another product in this same sheet (used by the Related Products
+  // strip — in-place swap, same as AIStylist's onProductTap).
+  onSelectProduct?: (product: PublicProduct) => void
 }
 
 export function ProductDetailSheet({
@@ -63,6 +66,7 @@ export function ProductDetailSheet({
   onFavorite,
   onTryOn,
   onClose,
+  onSelectProduct,
 }: Props) {
   const router = useRouter()
   const [photoIndex, setPhotoIndex] = useState(0)
@@ -128,6 +132,23 @@ export function ProductDetailSheet({
   const panStartOffsetRef = useRef({ x: 0, y: 0 })
   const currentScaleRef = useRef(1)
 
+  // Related-strip / AIStylist swaps the product in place (sheet stays
+  // mounted) — reset per-product view state so the new product doesn't
+  // inherit the old one's photo index, variant selection, or stale detail.
+  // (Placed after the zoom state declarations so the setters/ref are in
+  // scope above this callback.)
+  useEffect(() => {
+    setPhotoIndex(0)
+    setVariantPhotoUrl(null)
+    setVariantColor(null)
+    setDetail(null)
+    setIsZoomed(false)
+    setScaleAnim(1)
+    setPanX(0)
+    setPanY(0)
+    currentScaleRef.current = 1
+  }, [product.id])
+
   // ── Fullscreen image viewer ─────────────────────────────────────
   const [fullscreenOpen, setFullscreenOpen] = useState(false)
   const fsTouchStartX = useRef<number | null>(null)
@@ -155,7 +176,14 @@ export function ProductDetailSheet({
     window.addEventListener('popstate', handlePopState)
     return () => {
       window.removeEventListener('popstate', handlePopState)
-      if (!poppedByUser) window.history.back()
+      // Only roll back our own pushed entry while it is still the top-most
+      // one. Clicking an in-sheet Link (e.g. a Suits Designs permalink or a
+      // related-product swap) pushes a NEW history entry and unmounts this
+      // sheet — an unconditional history.back() here would instantly undo
+      // that navigation, making the link appear to "go nowhere".
+      if (!poppedByUser && window.history.state?.kanchukiProductSheet === true) {
+        window.history.back()
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -848,18 +876,14 @@ export function ProductDetailSheet({
             <div className="border-t border-gray-100 pt-4 mb-3">
               <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
                 <ShoppingCart size={14} className="text-cyan-600" />
-                Related suits
+                Related Products
               </h3>
             </div>
             <div className="flex gap-3 overflow-x-auto -mx-4 px-4 pb-2 scrollbar-hide snap-x snap-mandatory">
               {relatedProducts.map((rp) => (
                 <button
                   key={rp.id}
-                  onClick={() => {
-                    // Close current sheet, open the related product — triggers
-                    // a full re-render with the new product's data.
-                    onClose()
-                  }}
+                  onClick={() => onSelectProduct?.(rp)}
                   className="flex-shrink-0 w-28 snap-start group"
                 >
                   <div className="relative w-28 h-36 rounded-xl overflow-hidden bg-gray-50 border border-gray-100 group-hover:border-cyan-200 group-hover:shadow-soft transition-all">
