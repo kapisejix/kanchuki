@@ -8,7 +8,7 @@ import { useScreenInsets } from '../../src/lib/safe-area'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, Trash2, X, User, ChevronLeft } from 'lucide-react-native'
 import { CustomerListSkeleton } from '../../src/components/Skeleton'
-import { staffApi, type StaffMember } from '../../src/lib/api'
+import { ApiError, staffApi, type StaffMember } from '../../src/lib/api'
 import { showError } from '../../src/lib/errors'
 import { useTheme } from '../../src/lib/theme'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
@@ -42,7 +42,12 @@ function AddStaffModal({
       setPhone('')
     },
     onError: (err: Error) => {
-      showError(err, 'Failed to add team member')
+      // Surface the real server reason (duplicate phone, seat limit reached,
+      // phone already a retailer account) — the generic fallback only when
+      // the error isn't an API response. Without this every failure reads as
+      // the same dead "Failed to add team member".
+      const msg = err instanceof ApiError ? err.message : 'Failed to add team member'
+      showError(err, msg)
     },
   })
 

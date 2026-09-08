@@ -43,6 +43,7 @@ import { AnimatedPressable } from "../../src/components/AnimatedPressable";
 import { GradientButton } from "../../src/components/GradientButton";
 import { SettingsSkeleton } from "../../src/components/Skeleton";
 import {
+  ApiError,
   readLocalImage,
   retailerApi,
   uploadImageToR2,
@@ -131,7 +132,9 @@ function ProfileEditModal({
       setLogoUrl(info.public_url);
       setLogoR2Key(info.r2_key);
     } catch (err) {
-      showError(err, "Failed to upload logo");
+      const msg =
+        err instanceof ApiError ? err.message : "Failed to upload logo";
+      showError(err, msg);
     } finally {
       setUploadingLogo(false);
     }
@@ -170,6 +173,14 @@ function ProfileEditModal({
     }
   };
 
+  // Only send GSTIN when it actually changed. The server's GSTIN regex is
+  // strict (uppercase 15-char format), and a GSTIN entered once during
+  // onboarding (e.g. lowercase) can't round-trip: re-sending the stored value
+  // on every save 422s the whole request, which makes an unrelated logo/
+  // banner/profile save fail too. Unchanged → omit; cleared → send ''.
+  const gstinChanged =
+    (gstin.trim() || "") !== String(retailer?.gstin ?? "").trim();
+
   const handleSave = async () => {
     if (!canSave) return;
     setSaving(true);
@@ -180,7 +191,9 @@ function ProfileEditModal({
         city: city.trim() || undefined,
         state: stateVal.trim() || undefined,
         address_line1: addressLine1.trim() || undefined,
-        gstin: gstin.trim() || undefined,
+        ...(gstinChanged
+          ? { gstin: gstin.trim() || "" }
+          : {}),
         ...(logoUrl
           ? { logo_url: logoUrl, logo_r2_key: logoR2Key }
           : { logo_url: null, logo_r2_key: null }),
@@ -198,7 +211,9 @@ function ProfileEditModal({
       onSaved();
       onClose();
     } catch (err) {
-      showError(err, "Failed to update profile");
+      const msg =
+        err instanceof ApiError ? err.message : "Failed to update profile";
+      showError(err, msg);
     } finally {
       setSaving(false);
     }
