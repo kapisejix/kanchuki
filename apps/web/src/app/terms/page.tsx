@@ -15,7 +15,7 @@ export default function TermsOfServicePage() {
         </Link>
 
         <h1 className="mt-6 font-display text-3xl font-semibold">Terms of Service</h1>
-        <p className="mt-2 text-sm text-carbon/50">Last updated: September 2, 2026</p>
+        <p className="mt-2 text-sm text-carbon/50">Last updated: September 8, 2026</p>
 
         <div className="mt-8 space-y-6 text-carbon/70">
           <p>
@@ -37,9 +37,10 @@ export default function TermsOfServicePage() {
             <h2 className="font-display text-xl font-semibold text-carbon">2. The service</h2>
             <p>
               Kanchuki provides tools to catalogue products, auto-tag and enhance product photos
-              using AI, manage customers, publish a storefront, share collections via WhatsApp, and
-              receive enquiries from your customers. Features may change over time; we will
-              communicate material changes.
+              using AI, generate promotional images and videos, manage customers, publish a
+              storefront and design galleries, publish posts to social accounts you connect, share
+              collections via WhatsApp, and receive enquiries from your customers. Features may
+              change over time; we will communicate material changes.
             </p>
           </section>
 

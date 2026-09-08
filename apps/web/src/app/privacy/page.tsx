@@ -15,7 +15,7 @@ export default function PrivacyPolicyPage() {
         </Link>
 
         <h1 className="mt-6 font-display text-3xl font-semibold">Privacy Policy</h1>
-        <p className="mt-2 text-sm text-carbon/50">Last updated: September 2, 2026</p>
+        <p className="mt-2 text-sm text-carbon/50">Last updated: September 8, 2026</p>
 
         <div className="mt-8 space-y-6 text-carbon/70">
           <p>
@@ -41,8 +41,16 @@ export default function PrivacyPolicyPage() {
               <li>
                 <strong>Product photos:</strong> uploaded by retailers to build their catalog.
                 Photos are processed by AI vision providers (e.g. Anthropic Claude, OpenAI, Google
-                Gemini) to auto-tag category, color, and fabric, and by AI image-generation providers
-                to remove or replace backgrounds and to generate studio-style catalog images.
+                Gemini) to auto-tag category, color, and fabric, and by AI image- and
+                video-generation providers to remove or replace backgrounds, generate studio-style
+                catalog images, and produce short promotional videos (photo slideshows or
+                AI-generated motion) that a retailer may publish to their storefront or connected
+                social accounts.
+              </li>
+              <li>
+                <strong>Design reference photos:</strong> retailers may upload design images (for
+                example &ldquo;Suits Designs&rdquo; and other design galleries) that are watermarked
+                and shown on their public storefront. These are handled like product photos.
               </li>
               <li>
                 <strong>KYC documents:</strong> GST certificates and Aadhaar card images you upload
