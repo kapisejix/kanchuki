@@ -23,7 +23,6 @@ export const analyticsApi = {
           plan_status: string
           max_products: number
           max_customers: number
-          try_on_credits: number
         } | null
       }
     }>('/v1/retailers/me/analytics', { getCacheTtlMs: 60_000 }),

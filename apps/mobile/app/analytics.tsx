@@ -43,7 +43,6 @@ type Analytics = {
     plan_status: string
     max_products: number
     max_customers: number
-    try_on_credits: number
   } | null
 }
 

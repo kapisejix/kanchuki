@@ -52,14 +52,12 @@ const PLAN_META: Record<PaidPlanKey, { name: string; icon: typeof Star; color: s
 function planFeatureLine(limits: {
   max_products: number | null;
   max_customers: number | null;
-  try_on_credits: number;
 }): string {
   const parts: string[] = [
     limits.max_products == null
       ? 'Unlimited products'
       : `${limits.max_products.toLocaleString('en-IN')} products`,
   ];
-  if (limits.try_on_credits > 0) parts.push(`${limits.try_on_credits} try-ons`);
   parts.push('WhatsApp sharing');
   return parts.join(' · ');
 }

@@ -38,12 +38,10 @@ type PlanKey = keyof typeof PLAN_UI;
 function buildHighlights(limits?: {
   max_products: number | null;
   max_customers: number | null;
-  try_on_credits: number;
 }): string[] {
   if (!limits) return [];
   const h: string[] = [];
   h.push(limits.max_products == null ? 'Unlimited Products' : `${limits.max_products.toLocaleString('en-IN')} Products`);
-  if (limits.try_on_credits > 0) h.push(`${limits.try_on_credits} Try-On Credits/mo`);
   h.push('Basic AI Tagging');
   h.push('WhatsApp Sharing');
   return h;

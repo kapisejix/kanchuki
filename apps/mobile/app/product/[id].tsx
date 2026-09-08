@@ -91,7 +91,6 @@ export default function ProductDetailScreen() {
       const p = (query.state.data as { data: ProductDetail } | undefined)?.data
       if (!p) return 3_000
       if (!p.ai_tagged && !p.ai_tag_error) return 3_000
-      if (p.spin_status === 'processing') return 3_000
       return false
     },
   })
@@ -139,16 +138,12 @@ export default function ProductDetailScreen() {
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(0)
   const [carouselWidth, setCarouselWidth] = useState(SCREEN_WIDTH)
   const [fullscreenOpen, setFullscreenOpen] = useState(false)
-  const [spinViewerOpen, setSpinViewerOpen] = useState(false)
-  const [spinFrameIndex, setSpinFrameIndex] = useState(0)
   const [skuTagOpen, setSkuTagOpen] = useState(false)
   const [imageErrors, setImageErrors] = useState<Set<string>>(new Set())
   const [photoCacheBust, setPhotoCacheBust] = useState<Record<string, number>>({})
   const [isFavorite, setIsFavorite] = useState(false)
 
   const galleryRef = useRef<GalleryRef>(null)
-  const spinTouchStartX = useRef<number | null>(null)
-  const spinStartFrameRef = useRef<number>(0)
 
   // Build display photos array (photos + variants + original + video)
   const displayPhotos = React.useMemo(() => {
@@ -240,25 +235,6 @@ export default function ProductDetailScreen() {
     setSelectedPhotoIndex,
     setPhotoCacheBust,
   })
-
-  // Spin touch handlers
-  const handleSpinTouchStart = (e: any) => {
-    spinTouchStartX.current = e.nativeEvent.pageX
-    spinStartFrameRef.current = spinFrameIndex
-  }
-
-  const handleSpinTouchMove = (e: any) => {
-    if (spinTouchStartX.current === null || !product?.spin_frames?.length) return
-    const dx = e.nativeEvent.pageX - spinTouchStartX.current
-    const frameCount = product.spin_frames.length
-    const frameDelta = Math.floor(dx / 12)
-    const newIndex = (((spinStartFrameRef.current - frameDelta) % frameCount) + frameCount) % frameCount
-    setSpinFrameIndex(newIndex)
-  }
-
-  const handleSpinTouchEnd = () => {
-    spinTouchStartX.current = null
-  }
 
   if (isLoading || !product) {
     return <DetailScreenSkeleton />
@@ -537,58 +513,6 @@ export default function ProductDetailScreen() {
               )}
             />
           )}
-        </View>
-      </Modal>
-
-      {/* Fullscreen 360 Spin Modal */}
-      <Modal
-        visible={spinViewerOpen}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setSpinViewerOpen(false)}
-      >
-        <View style={{ flex: 1, backgroundColor: 'black' }}>
-          <AnimatedPressable
-            onPress={() => setSpinViewerOpen(false)}
-            accessibilityLabel="Close 360 spin viewer"
-            accessibilityRole="button"
-            hitSlop={8}
-            style={{
-              position: 'absolute',
-              top: insets.top + 12,
-              left: 16,
-              zIndex: 20,
-              width: 40,
-              height: 40,
-              borderRadius: 20,
-              backgroundColor: 'rgba(255,255,255,0.15)',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <ChevronLeft size={26} color="white" />
-          </AnimatedPressable>
-
-          <View
-            style={{ flex: 1 }}
-            onTouchStart={handleSpinTouchStart}
-            onTouchMove={handleSpinTouchMove}
-            onTouchEnd={handleSpinTouchEnd}
-          >
-            {(product.spin_frames ?? []).map((frame, i) => (
-              <Image
-                key={frame.id}
-                source={{ uri: frame.url }}
-                style={{
-                  position: 'absolute',
-                  width: '100%',
-                  height: '100%',
-                  opacity: i === spinFrameIndex ? 1 : 0,
-                }}
-                contentFit="contain"
-              />
-            ))}
-          </View>
         </View>
       </Modal>
 

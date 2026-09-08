@@ -15,7 +15,6 @@ export const billingApi = {
         limits: {
           max_products: number | null;
           max_customers: number | null;
-          try_on_credits: number;
         };
       }[];
     }>('/v1/billing/plans', { getCacheTtlMs: 300_000 }), // plans rarely change
