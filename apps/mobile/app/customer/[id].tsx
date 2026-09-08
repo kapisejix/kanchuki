@@ -1,30 +1,15 @@
 import { useEffect, useState } from 'react'
 import { formatPrice, SIZE_OPTIONS } from '@kanchuki/shared'
-import {
-  View,
-  Text,
-  TextInput,
-  ScrollView,
-  Alert,
-  ActivityIndicator,
-  Modal,
-  Platform,
-} from 'react-native'
+import { View, Text, TextInput, ScrollView, Alert, ActivityIndicator } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useScreenInsets } from '../../src/lib/safe-area'
-import { X, Check, Plus, Trash2, Ruler, Clock } from 'lucide-react-native'
+import { X, Check, Plus, Trash2 } from 'lucide-react-native'
 import { customerApi, productAttributeApi } from '../../src/lib/api'
 import { DetailScreenSkeleton } from '../../src/components/Skeleton'
 import { showError } from '../../src/lib/errors'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 
-type Interaction = {
-  id: string
-  type: string
-  created_at: string
-  product: { category: string | null; primary_color: string | null } | null
-}
 type Customer = {
   id: string
   name: string
@@ -41,27 +26,15 @@ type Customer = {
   usual_size: string | null
   notes: string | null
   consent_given: boolean
-  // Removed in the 2026-08-31 feature teardown (migration 082 dropped
-  // customer_interactions + checkout/orders) — the API no longer returns
-  // these, so every read must tolerate their absence instead of crashing.
+  // total_purchases / total_spent columns still exist but now read 0 — the
+  // 2026-08-31 teardown dropped checkout/orders. Kept optional because some
+  // payloads (e.g. the aggregated list) omit them.
   total_purchases?: number
   total_spent?: number
-  interactions?: Interaction[]
-}
-type Measurement = {
-  id: string
-  source: 'MANUAL' | 'PHOTO'
-  height_cm: number
-  bust_cm: number | null
-  waist_cm: number | null
-  hip_cm: number | null
-  confidence_score: number | null
-  photo_deleted_at: string | null
-  created_at: string
 }
 
 export default function CustomerDetailScreen() {
-  const { insets, headerPaddingTop, screenPaddingBottom } = useScreenInsets()
+  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets()
   const { id } = useLocalSearchParams<{ id: string }>()
   const queryClient = useQueryClient()
 
@@ -70,13 +43,6 @@ export default function CustomerDetailScreen() {
     queryFn: () => customerApi.get(id),
   })
   const customer = (data as { data: Customer } | undefined)?.data
-
-  const { data: measurementsData } = useQuery({
-    queryKey: ['customers', id, 'measurements'],
-    queryFn: () => customerApi.getMeasurements(id),
-  })
-  const measurements = (measurementsData as { data: Measurement[] } | undefined)?.data ?? []
-
 
   // Dynamic, retailer-editable Style/Fabric taxonomy (DB-backed, same lists
   // the product-add screen uses — no hardcoded option lists).
@@ -106,52 +72,6 @@ export default function CustomerDetailScreen() {
   const [budgetMax, setBudgetMax] = useState('')
   const [usualSize, setUsualSize] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
-
-  // ── Manual measurement entry ────────────────────────────────────
-  const [showManualForm, setShowManualForm] = useState(false)
-  const [manualHeight, setManualHeight] = useState('')
-  const [manualBust, setManualBust] = useState('')
-  const [manualWaist, setManualWaist] = useState('')
-  const [manualHip, setManualHip] = useState('')
-  const [manualPantWaist, setManualPantWaist] = useState('')
-  const [manualPantHip, setManualPantHip] = useState('')
-  const [manualInseam, setManualInseam] = useState('')
-  const [savingManual, setSavingManual] = useState(false)
-
-  const handleSaveManualMeasurement = async () => {
-    const heightNum = parseFloat(manualHeight)
-    if (!heightNum || heightNum < 50 || heightNum > 250) {
-      Alert.alert('Height required', 'Enter a valid height between 50–250 cm.')
-      return
-    }
-    setSavingManual(true)
-    try {
-      if (!customer) return
-      await customerApi.createManualMeasurement(customer.id, {
-        height_cm: heightNum,
-        bust_cm: manualBust ? parseFloat(manualBust) : undefined,
-        waist_cm: manualWaist ? parseFloat(manualWaist) : undefined,
-        hip_cm: manualHip ? parseFloat(manualHip) : undefined,
-        pant_waist_cm: manualPantWaist ? parseFloat(manualPantWaist) : undefined,
-        pant_hip_cm: manualPantHip ? parseFloat(manualPantHip) : undefined,
-        inseam_cm: manualInseam ? parseFloat(manualInseam) : undefined,
-      })
-      void queryClient.invalidateQueries({ queryKey: ['customers', id, 'measurements'] })
-      setShowManualForm(false)
-      setManualHeight('')
-      setManualBust('')
-      setManualWaist('')
-      setManualHip('')
-      setManualPantWaist('')
-      setManualPantHip('')
-      setManualInseam('')
-      Alert.alert('Saved', 'Manual measurements recorded.')
-    } catch (err) {
-      showError(err, 'Failed to save measurements')
-    } finally {
-      setSavingManual(false)
-    }
-  }
 
   useEffect(() => {
     if (!customer) return
@@ -232,11 +152,6 @@ export default function CustomerDetailScreen() {
   if (isLoading || !customer) {
     return <DetailScreenSkeleton withPhoto={false} />
   }
-
-  // Recent activity — hidden when the API returns no interactions (the
-  // interactions table was removed in the 2026-08-31 teardown, so the field
-  // is simply absent now instead of an empty array).
-  const recentInteractions = customer.interactions ?? []
 
   return (
     <ScrollView className="flex-1 bg-[#F8F7FC]" contentContainerStyle={{ paddingBottom: screenPaddingBottom }}>
@@ -535,90 +450,6 @@ export default function CustomerDetailScreen() {
           </View>
         </View>
 
-        {/* Measurements */}
-        <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
-          <View className="flex-row items-center justify-between mb-3.5">
-            <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider">
-              Measurements
-            </Text>
-            <View className="flex-row gap-2">
-              <AnimatedPressable
-                onPress={() => setShowManualForm(true)}
-                className="flex-row items-center gap-1 bg-lavender-100 border border-lavender-200 px-3 py-1 rounded-full"
-              >
-                <Text className="text-spaceCadet-900 text-xs font-bold">Manual</Text>
-              </AnimatedPressable>
-              <AnimatedPressable
-                onPress={() => router.push(`/customer/${customer.id}/measurement`)}
-                className="flex-row items-center gap-1 bg-fuchsia-500/15 border border-fuchsia-500/30 px-3 py-1 rounded-full"
-              >
-                <Ruler size={12} color="#BB3F95" />
-                <Text className="text-fuchsia-700 text-xs font-bold">Camera</Text>
-              </AnimatedPressable>
-            </View>
-          </View>
-
-          {measurements.length === 0 ? (
-            <Text className="text-xs text-heliotrope-500 font-medium">No measurements recorded yet.</Text>
-          ) : (
-            <View className="gap-2">
-              {measurements.slice(0, 3).map((m) => (
-                <View key={m.id} className="bg-lavender-50 border border-lavender-200 rounded-2xl p-3">
-                  <View className="flex-row items-center justify-between">
-                    <View className="flex-row items-center gap-1.5">
-                      <View className={`px-2 py-0.5 rounded-full ${m.source === 'PHOTO' ? 'bg-fuchsia-500/20' : 'bg-spaceCadet-900/15'}`}>
-                        <Text className={`text-[10px] font-bold ${m.source === 'PHOTO' ? 'text-fuchsia-700' : 'text-spaceCadet-900'}`}>
-                          {m.source === 'PHOTO' ? 'AI CAM' : 'TAPE'}
-                        </Text>
-                      </View>
-                      <Text className="text-[10px] text-heliotrope-500 font-medium">
-                        {new Date(m.created_at).toLocaleDateString('en-IN')}
-                      </Text>
-                    </View>
-                  </View>
-                  <Text className="text-xs font-bold text-spaceCadet-900 mt-1.5">
-                    Height {m.height_cm}cm
-                    {m.bust_cm ? ` · Bust ${m.bust_cm}cm` : ''}
-                    {m.waist_cm ? ` · Waist ${m.waist_cm}cm` : ''}
-                    {m.hip_cm ? ` · Hip ${m.hip_cm}cm` : ''}
-                  </Text>
-                  {m.source === 'PHOTO' && !m.bust_cm && (
-                    <Text className="text-[10px] text-fuchsia-600 mt-1 font-medium">AI Processing...</Text>
-                  )}
-                </View>
-              ))}
-              {measurements.length > 3 && (
-                <Text className="text-[10px] text-heliotrope-500 text-center font-medium">
-                  +{measurements.length - 3} more
-                </Text>
-              )}
-            </View>
-          )}
-
-        </View>
-
-        {recentInteractions.length > 0 && (
-          <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
-            <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider mb-3">
-              Recent Activity
-            </Text>
-            <View className="gap-2.5">
-              {recentInteractions.slice(0, 8).map((i) => (
-                <View key={i.id} className="flex-row items-center gap-2">
-                  <Clock size={13} color="#928EB2" />
-                  <Text className="text-xs text-spaceCadet-900 font-semibold flex-1">
-                    {i.type}
-                    {i.product ? ` · ${i.product.category ?? ''} ${i.product.primary_color ?? ''}` : ''}
-                  </Text>
-                  <Text className="text-[10px] text-heliotrope-500 font-medium">
-                    {new Date(i.created_at).toLocaleDateString('en-IN')}
-                  </Text>
-                </View>
-              ))}
-            </View>
-          </View>
-        )}
-
         {/* Notes */}
         <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
           <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider mb-2">
@@ -644,154 +475,6 @@ export default function CustomerDetailScreen() {
           <Text className="text-red-700 font-bold text-xs uppercase tracking-wider">Delete Customer</Text>
         </AnimatedPressable>
       </View>
-
-      {/* ── Manual Measurement Modal ─────────────────────────────── */}
-      <Modal
-        visible={showManualForm}
-        animationType="slide"
-        {...(Platform.OS === 'ios' ? { presentationStyle: 'pageSheet' } : {})}
-        onRequestClose={() => setShowManualForm(false)}
-      >
-        <View className="flex-1 bg-[#F8F7FC]" style={{ paddingTop: insets.top + 16 }}>
-          {/* Modal Header */}
-          <View className="flex-row items-center justify-between px-5 pb-4 border-b border-lavender-200 bg-white">
-            <AnimatedPressable
-              onPress={() => setShowManualForm(false)}
-              className="w-10 h-10 rounded-full bg-lavender-100 items-center justify-center border border-lavender-200"
-              accessibilityLabel="Close"
-              accessibilityRole="button"
-            >
-              <X size={20} color="#231F48" />
-            </AnimatedPressable>
-            <Text
-              style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-              className="text-base font-bold text-spaceCadet-900"
-            >
-              Manual Measurements
-            </Text>
-            <AnimatedPressable
-              onPress={() => void handleSaveManualMeasurement()}
-              disabled={savingManual}
-              className="bg-spaceCadet-900 px-4 py-2 rounded-2xl"
-            >
-              {savingManual ? (
-                <ActivityIndicator size="small" color="white" />
-              ) : (
-                <Text className="text-white font-bold text-xs uppercase tracking-wider">Save</Text>
-              )}
-            </AnimatedPressable>
-          </View>
-
-          <ScrollView className="flex-1 px-4 py-4" keyboardShouldPersistTaps="handled">
-            {/* Height — required */}
-            <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm mb-3">
-              <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider mb-2">
-                Height (cm) *
-              </Text>
-              <TextInput
-                value={manualHeight}
-                onChangeText={setManualHeight}
-                placeholder="e.g. 162"
-                keyboardType="numeric"
-                className="text-lg font-bold text-spaceCadet-900 bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3"
-                placeholderTextColor="#928EB2"
-              />
-            </View>
-
-            {/* Upper body */}
-            <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm mb-3">
-              <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider mb-3">
-                Upper Body (cm, optional)
-              </Text>
-              <View className="gap-3">
-                <View>
-                  <Text className="text-xs font-bold text-heliotrope-500 mb-1">Bust</Text>
-                  <TextInput
-                    value={manualBust}
-                    onChangeText={setManualBust}
-                    placeholder="e.g. 92"
-                    keyboardType="numeric"
-                    className="text-sm font-bold text-spaceCadet-900 bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3"
-                    placeholderTextColor="#928EB2"
-                  />
-                </View>
-                <View>
-                  <Text className="text-xs font-bold text-heliotrope-500 mb-1">Waist</Text>
-                  <TextInput
-                    value={manualWaist}
-                    onChangeText={setManualWaist}
-                    placeholder="e.g. 76"
-                    keyboardType="numeric"
-                    className="text-sm font-bold text-spaceCadet-900 bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3"
-                    placeholderTextColor="#928EB2"
-                  />
-                </View>
-                <View>
-                  <Text className="text-xs font-bold text-heliotrope-500 mb-1">Hip</Text>
-                  <TextInput
-                    value={manualHip}
-                    onChangeText={setManualHip}
-                    placeholder="e.g. 100"
-                    keyboardType="numeric"
-                    className="text-sm font-bold text-spaceCadet-900 bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3"
-                    placeholderTextColor="#928EB2"
-                  />
-                </View>
-              </View>
-            </View>
-
-            {/* Lower body */}
-            <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm mb-3">
-              <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider mb-3">
-                Lower Body (cm, optional)
-              </Text>
-              <View className="gap-3">
-                <View>
-                  <Text className="text-xs font-bold text-heliotrope-500 mb-1">Pant Waist</Text>
-                  <TextInput
-                    value={manualPantWaist}
-                    onChangeText={setManualPantWaist}
-                    placeholder="e.g. 78"
-                    keyboardType="numeric"
-                    className="text-sm font-bold text-spaceCadet-900 bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3"
-                    placeholderTextColor="#928EB2"
-                  />
-                </View>
-                <View>
-                  <Text className="text-xs font-bold text-heliotrope-500 mb-1">Pant Hip</Text>
-                  <TextInput
-                    value={manualPantHip}
-                    onChangeText={setManualPantHip}
-                    placeholder="e.g. 102"
-                    keyboardType="numeric"
-                    className="text-sm font-bold text-spaceCadet-900 bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3"
-                    placeholderTextColor="#928EB2"
-                  />
-                </View>
-                <View>
-                  <Text className="text-xs font-bold text-heliotrope-500 mb-1">Inseam</Text>
-                  <TextInput
-                    value={manualInseam}
-                    onChangeText={setManualInseam}
-                    placeholder="e.g. 78"
-                    keyboardType="numeric"
-                    className="text-sm font-bold text-spaceCadet-900 bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3"
-                    placeholderTextColor="#928EB2"
-                  />
-                </View>
-              </View>
-            </View>
-
-            <View className="bg-lavender-100 rounded-2xl p-3.5 border border-lavender-200 mb-6">
-              <Text className="text-xs text-heliotrope-500 font-medium leading-relaxed">
-                Use a flexible measuring tape. Measure over light clothing. Keep tape snug but not tight.
-              </Text>
-            </View>
-
-            <View className="h-8" />
-          </ScrollView>
-        </View>
-      </Modal>
 
       <View className="h-12" />
     </ScrollView>

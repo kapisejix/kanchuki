@@ -23,8 +23,6 @@ type Customer = {
   budget_min: number | null
   budget_max: number | null
   last_visit_at: string | null
-  total_purchases: number
-  total_spent: number
 }
 
 // ── Memoized Customer Card ─────────────────────────────────────────
