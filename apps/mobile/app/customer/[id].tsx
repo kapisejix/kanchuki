@@ -41,9 +41,12 @@ type Customer = {
   usual_size: string | null
   notes: string | null
   consent_given: boolean
-  total_purchases: number
-  total_spent: number
-  interactions: Interaction[]
+  // Removed in the 2026-08-31 feature teardown (migration 082 dropped
+  // customer_interactions + checkout/orders) — the API no longer returns
+  // these, so every read must tolerate their absence instead of crashing.
+  total_purchases?: number
+  total_spent?: number
+  interactions?: Interaction[]
 }
 type Measurement = {
   id: string
@@ -230,6 +233,11 @@ export default function CustomerDetailScreen() {
     return <DetailScreenSkeleton withPhoto={false} />
   }
 
+  // Recent activity — hidden when the API returns no interactions (the
+  // interactions table was removed in the 2026-08-31 teardown, so the field
+  // is simply absent now instead of an empty array).
+  const recentInteractions = customer.interactions ?? []
+
   return (
     <ScrollView className="flex-1 bg-[#F8F7FC]" contentContainerStyle={{ paddingBottom: screenPaddingBottom }}>
       {/* Header */}
@@ -364,7 +372,7 @@ export default function CustomerDetailScreen() {
               style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
               className="text-2xl font-bold text-spaceCadet-900"
             >
-              {customer.total_purchases}
+              {customer.total_purchases ?? 0}
             </Text>
             <Text className="text-xs text-heliotrope-500 font-bold uppercase tracking-wider mt-0.5">Purchases</Text>
           </View>
@@ -373,7 +381,7 @@ export default function CustomerDetailScreen() {
               style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
               className="text-2xl font-bold text-spaceCadet-900"
             >
-              {formatPrice(customer.total_spent)}
+              {formatPrice(customer.total_spent ?? 0)}
             </Text>
             <Text className="text-xs text-heliotrope-500 font-bold uppercase tracking-wider mt-0.5">Total Spent</Text>
           </View>
@@ -589,14 +597,13 @@ export default function CustomerDetailScreen() {
 
         </View>
 
-        {/* Recent activity */}
-        {customer.interactions.length > 0 && (
+        {recentInteractions.length > 0 && (
           <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
             <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider mb-3">
               Recent Activity
             </Text>
             <View className="gap-2.5">
-              {customer.interactions.slice(0, 8).map((i) => (
+              {recentInteractions.slice(0, 8).map((i) => (
                 <View key={i.id} className="flex-row items-center gap-2">
                   <Clock size={13} color="#928EB2" />
                   <Text className="text-xs text-spaceCadet-900 font-semibold flex-1">

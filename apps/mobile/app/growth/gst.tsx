@@ -22,7 +22,13 @@ const MONTHS = [
   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
 ]
 
-const inr = (n: number) => `₹${n.toLocaleString('en-IN')}`
+// Defensive: the API may omit fields on empty ledgers (e.g. summary.cgst on a
+// retailer with zero payments) — never let a missing number crash the screen
+// with "Cannot read property 'toLocaleString' of undefined".
+const inr = (n?: number) => {
+  if (n == null || Number.isNaN(n)) return '₹0'
+  return `₹${n.toLocaleString('en-IN')}`
+}
 
 // ─── Main Screen ──────────────────────────────────────────────────
 
@@ -248,9 +254,9 @@ function SummaryTab({
           GST Breakdown (Estimated)
         </Text>
         <View className="gap-3">
-          <BreakdownRow label="CGST (9%)" value={inr(summary.estimated_cgst)} />
-          <BreakdownRow label="SGST (9%)" value={inr(summary.estimated_sgst)} />
-          <BreakdownRow label="IGST (18%)" value={inr(summary.estimated_igst)} />
+          <BreakdownRow label="CGST (9%)" value={inr(summary.cgst)} />
+          <BreakdownRow label="SGST (9%)" value={inr(summary.sgst)} />
+          <BreakdownRow label="IGST (18%)" value={inr(summary.igst)} />
           <View className="border-t border-lavender-200 pt-3">
             <View className="flex-row items-center justify-between">
               <Text className="text-sm font-bold text-spaceCadet-900">Total GST Liability</Text>

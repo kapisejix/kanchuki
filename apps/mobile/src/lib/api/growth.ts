@@ -663,9 +663,12 @@ export type GstSummary = {
   total_taxable: number
   total_gst: number
   total_sales: number
-  estimated_cgst: number
-  estimated_sgst: number
-  estimated_igst: number
+  // Server field names — `cgst`/`sgst`/`igst`, NOT `estimated_*` (a
+  // mismatch there crashed the mobile GST screen; fixed alongside the admin
+  // GST report field mismatch in the 2026-09-08 batch).
+  cgst: number
+  sgst: number
+  igst: number
 }
 
 export type GstMonthly = {
