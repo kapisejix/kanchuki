@@ -2152,3 +2152,12 @@ Five retailer-reported mobile errors fixed in one session, root causes tracked i
 New `staff.test.ts` (happy path + invalid phone 422 + seat limit 402 + duplicate active-staff phone 422 + retailer-account phone 422 + GET list) and 2 `retailers.test.ts` cases (logo-only save with GSTIN omitted → 200; malformed GSTIN → 422 "Invalid GSTIN format"). Draft test also surfaced a vitest trap: `vi.clearAllMocks()` doesn't clear `mockResolvedValueOnce` queues — `vi.resetAllMocks()` required.
 
 **Verification:** api **913/913** tests (72 files; staff 6/6, retailers 41/41), mobile **59/59**, `tsc --noEmit` clean on api + mobile.
+## BUILT 2026-09-09 — Post-teardown dead-code sweep of the mobile app (RC-012, RC-013)
+
+Swept `apps/mobile` for kept screens still reading fields/features the 2026-08-31 teardown (migration 082) removed — same crash class as RC-007/RC-008. Two survivors found and pruned:
+
+**RC-012 (`440b900`) — customer detail screen still shipped the deleted measurement flow.** The teardown dropped the `CustomerMeasurement` model, its endpoints, and the `/customer/:id/measurement` route, but `customer/[id].tsx` survived with the full Measurements card: Manual form modal, Camera button navigating to the now-404 route, a measurement `useQuery`, plus a Recent Activity section consuming the dropped `customer_interactions` field. Removed the card/modal/nav/query and the `Measurement`/`Interaction` types; deleted the orphaned `getMeasurements`/`createManualMeasurement`/`initPhotoMeasurement`/`extractMeasurement`/`getMatches` methods from `customerApi`; trimmed unrendered `total_purchases`/`total_spent` off the customer-list type.
+
+**RC-013 (`2c6b348`) — dead 360-spin UI and stale VTO/try-on reads.** `product/[id].tsx` carried a fullscreen spin modal + touch handlers + `spin_status`-polling refs that nothing ever opened; `productApi` had orphaned `getSpinVideoUploadUrl`/`submitSpinVideo`. Removed all of it. Cleaned the guarded-but-dead `try_on_credits` declarations/feature lines out of onboarding, plan-select, analytics and the `billing`/`analytics` API types (plans payload never sends it — verified against `jsonLimits`/`PLAN_LIMITS`).
+
+**Verification:** mobile `tsc --noEmit` clean, **59/59** vitest (11 files). Grep-proof: zero remaining `spin_*`/`measurement`-route/`try_on_credits` reads in `apps/mobile`; no `router.push` to any deleted route.

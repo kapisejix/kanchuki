@@ -10,6 +10,30 @@
 
 ---
 
+## RC-013 — Dead 360-spin UI and stale VTO/try-on reads survived the teardown in kept screens
+
+- **Component:** `apps/mobile/app/product/[id].tsx`, `apps/mobile/src/lib/api/products.ts`, `apps/mobile/app/onboarding.tsx`, `apps/mobile/app/plan-select.tsx`, `apps/mobile/app/analytics.tsx`, `apps/mobile/src/lib/api/{analytics,billing}.ts`
+- **Commit:** `2c6b348`
+- **Symptom:** no user-facing crash (nothing opened it), but the product-detail screen shipped a fullscreen 360 spin modal + drag handlers + 3s-polling refs that nothing ever triggered, the `productApi` still exposed spin-video upload/submit methods with no callers, and the plan-selection/onboarding/analytics surfaces declared and read a `try_on_credits` limit the plans API never sends.
+- **Root cause:** the 2026-08-31 feature teardown removed spin-frame capture (product_spin_frames) and VTO (TRY_ON quota resource) from the backend, but kept screens that had been built against them were only partially pruned — the dead modal/handlers/polling and the stale field declarations were left behind (same incomplete-prune class as RC-012). Reads were guarded (`> 0` on an absent field) so nothing crashed, but the UI shipped dead code and would re-introduce spin/try-on concepts if anyone trusted it.
+- **Fix:** remove the never-openable spin modal, its touch/state refs and the `spin_status === 'processing'` polling branch from `product/[id].tsx`; drop the orphaned `getSpinVideoUploadUrl`/`submitSpinVideo` methods from the `productApi` client; delete the `try_on_credits` declarations and `> 0` feature-line pushes from onboarding / plan-select / analytics (the plans payload never includes it — confirmed against `jsonLimits`/`PLAN_LIMITS`).
+- **Proof:** mobile `tsc --noEmit` clean, 59/59 vitest; grep confirms zero remaining `spin_*`/`try_on_credits` reads in `apps/mobile`.
+- **Prevention lesson:** when a teardown removes a backend feature, grep the *kept* surfaces for the removed field/route names, not just the files you delete. A dead branch that never executes (guarded `> 0`) is still a trap for the next feature that reuses its name.
+
+---
+
+## RC-012 — Customer detail screen kept a full Measurements card wired to deleted routes
+
+- **Component:** `apps/mobile/app/customer/[id].tsx`, `apps/mobile/src/lib/api/customers.ts`, `apps/mobile/app/(tabs)/customers.tsx`
+- **Commit:** `440b900`
+- **Symptom:** opening a customer showed a "Measurements" card whose Manual button opened a dead form and whose Camera button navigated to `/customer/:id/measurement` — a screen the teardown deleted, so it 404'd. A "Recent Activity" section consumed a `customer.interactions` field the API no longer returns, and the API client still exposed `getMeasurements`/`createManualMeasurement`/`initPhotoMeasurement`/`extractMeasurement`/`getMatches` with no server endpoints behind them.
+- **Root cause:** the 2026-08-31 feature teardown dropped the `CustomerMeasurement` model (migration 082), its endpoints, and the `/customer/:id/measurement` route, and deleted 376 lines from the customer API route — yet the customer-detail screen's Measurements card, manual-entry modal, dead Camera navigation, and the orphaned client methods all survived intact. The teardown claimed "removed measurement entry points" but the *entry points* (buttons on kept screens) were never pruned — only the destinations were. Same incomplete-prune class as RC-013.
+- **Fix:** delete the Measurements card, its manual-form modal, the Camera button (`router.push` to the deleted route), the measurement `useQuery`, the `Measurement`/`Interaction` types, and the always-empty Recent Activity block (its backing `customer_interactions` table is dropped, so it can never render content); remove the measurement/match methods from the `customerApi` client; trim unrendered `total_purchases`/`total_spent` off the customer-list type (detail screen keeps them optional — the columns still exist, now always 0).
+- **Proof:** mobile `tsc --noEmit` clean, 59/59 vitest; grep confirms zero remaining measurement/match client calls and no `router.push` to any deleted route in `apps/mobile`.
+- **Prevention lesson:** deleting a backend feature must include removing every UI entry point that navigates to or reads from it — grep for the route + field names across kept screens, and remember a screen can keep compiling while pointing at a 404.
+
+---
+
 ## RC-011 — Switch-Plans request times out because the server's Razorpay call has no timeout
 
 - **Component:** `apps/api/src/routes/billing/billing-helpers.ts` (`razorpay()`), `apps/mobile/src/lib/api/billing.ts` (`subscribe`/`cancel`)
