@@ -43,7 +43,7 @@
 - **Fix (two-sided):**
   - Server: `razorpay()` now defaults to `AbortSignal.timeout(20_000)` unless the caller passes its own `signal` — a hung external call can no longer hold a route open indefinitely.
   - Mobile: `subscribe` + `cancel` (both real external calls) get a 60s `timeoutMs` budget instead of the default 10s, so legitimate slow Razorpay responses aren't aborted client-side.
-- **Proof/regression test:** `apps/api/src/routes/billing.test.ts` — `describe('razorpay() AbortSignal.timeout default')` pins both halves of the server fix: (1) no caller signal → fetch gets `AbortSignal.timeout(20_000)` (spied on the static factory — this Node build doesn't expose `.timeout` on the returned signal, so the exact deadline is asserted at the factory call), and (2) a caller-provided signal is passed through untouched and `AbortSignal.timeout` is never invoked. Billing suite 22/22.
+- **Proof/regression test:** `apps/api/src/routes/billing.test.ts` — `describe('razorpay() AbortSignal.timeout default')` pins both halves of the server fix: (1) no caller signal → fetch gets `AbortSignal.timeout(20_000)` (spied on the static factory — this Node build doesn't expose `.timeout` on the returned signal, so the exact deadline is asserted at the factory call), and (2) a caller-provided signal is passed through untouched and `AbortSignal.timeout` is never invoked. Billing suite 22/22. Mobile screen smoke `apps/mobile/__tests__/smoke/rc-screens.test.tsx` "RC-011 switch plans" renders the plan cards from `billingApi.getPlans` without crashing.
 - **Prevention lesson:** every outbound call to a third-party API needs a bounded timeout at the caller, and the client's timeout must be larger than the server's external-call budget. A client-side timeout on a server that's legitimately awaiting an upstream is a latency bug dressed as an outage.
 
 ---
@@ -60,7 +60,7 @@
   ...(gstinChanged ? { gstin: gstin.trim() || "" } : {})
   ```
   and surface the real `ApiError.message` instead of "Failed to update profile".
-- **Proof:** `apps/api/src/routes/retailers.test.ts` — "accepts a logo-only save with no GSTIN field" and "rejects a malformed GSTIN (the round-trip failure that broke logo saves)". Mobile tsc + 59/59 tests green.
+- **Proof:** `apps/api/src/routes/retailers.test.ts` — "accepts a logo-only save with no GSTIN field" and "rejects a malformed GSTIN (the round-trip failure that broke logo saves)"; mobile screen smoke `apps/mobile/__tests__/smoke/rc-screens.test.tsx` "RC-010 profile / logo save" renders the Edit-Profile modal and asserts the unchanged GSTIN is omitted from the update payload (`'gstin' in payload` is false). Mobile tsc clean, 64/64 tests green.
 - **Prevention lesson:** never echo server-owned fields back unchanged just because a form pre-fills them. Round-trip a stored value only if the form can represent every stored state; otherwise compare-and-omit. (A follow-up hardening: onboarding should store GSTIN already normalized to the strict format, and the schema could accept the lowercased input by uppercasing server-side.)
 
 ---
@@ -72,7 +72,7 @@
 - **Symptom:** adding a team member failed and the screen always showed the constant "Failed to add team member", so the retailer couldn't tell if the phone was a duplicate, a seat limit was hit, or the phone already belongs to a retailer account.
 - **Root cause:** the mutation `onError` discarded the thrown error and passed only a hardcoded fallback string to `showError`. The server sends a specific, user-actionable 422/402 message for every predictable rejection (duplicate active staff phone, plan seat limit, phone already registered as a retailer account — the last two deliberately block the add per the security note in `staff.ts`), but the screen never surfaced any of them. Same swallowed-error class as RC-003 / RC-010.
 - **Fix:** surface `ApiError.message` when the thrown error is an `ApiError`; keep "Failed to add team member" only as a true fallback.
-- **Proof:** new `apps/api/src/routes/staff.test.ts` pins the whole server contract — happy path 201 with normalized phone, invalid phone 422, seat-limit 402 (`PLAN_LIMIT_EXCEEDED`), duplicate active-staff phone 422, retailer-account phone 422, GET list. (The earlier draft test also caught a real test-infra trap: `vi.clearAllMocks()` doesn't clear `mockResolvedValueOnce` queues — must use `vi.resetAllMocks()`.)
+- **Proof:** new `apps/api/src/routes/staff.test.ts` pins the whole server contract — happy path 201 with normalized phone, invalid phone 422, seat-limit 402 (`PLAN_LIMIT_EXCEEDED`), duplicate active-staff phone 422, retailer-account phone 422, GET list. (The earlier draft test also caught a real test-infra trap: `vi.clearAllMocks()` doesn't clear `mockResolvedValueOnce` queues — must use `vi.resetAllMocks()`.) Mobile screen smoke `apps/mobile/__tests__/smoke/rc-screens.test.tsx` "RC-009 add team member" drives the real `AddStaffModal`: fills the form, submits against a mocked `ApiError`, and asserts the specific server message ("This phone number already belongs to a retailer account") reaches `Alert` — and that the generic fallback does **not**.
 - **Prevention lesson:** see RC-003 — a catch block that replaces the error with a constant string is the bug. When a screen performs a mutation with several distinguishable server rejections, the real message is the product.
 
 ---
@@ -84,7 +84,7 @@
 - **Symptom:** tapping the GST report (Growth) showed "Error: Cannot read property 'toLocalString' of undefined".
 - **Root cause:** the monthly-only-pricing GST engine (BUILD-LOG §59) writes real CGST/SGST/IGST columns and the **server** summary route returns `cgst`/`sgst`/`igst` — and the admin GST report was fixed to match (§59.2, field mismatch `estimated_cgst`→`cgst`). But the **mobile** `GstSummary` type and screen still read `summary.estimated_cgst` / `estimated_sgst` / `estimated_igst`. Those fields are absent from the response, so `summary.estimated_cgst` was `undefined`, and `inr()` called `.toLocaleString('en-IN')` on it → crash. Two compounding faults: a stale field-name contract (same one that broke the admin report) and an unguarded formatter.
 - **Fix:** rename the type fields to the real server names (`cgst`/`sgst`/`igst`) and make `inr()` defensive — return `₹0` for `null`/`undefined`/`NaN` instead of dereferencing.
-- **Proof:** server route confirmed to return `cgst`/`sgst`/`igst` (`apps/api/src/routes/growth/growth-gst.ts`); mobile tsc clean, 59/59 mobile tests green.
+- **Proof:** server route confirmed to return `cgst`/`sgst`/`igst` (`apps/api/src/routes/growth/growth-gst.ts`); mobile screen smoke `apps/mobile/__tests__/smoke/rc-screens.test.tsx` "RC-008 GST report" renders the summary tab from the real `cgst`/`sgst`/`igst` fields without crashing. Mobile tsc clean, 64/64 mobile tests green.
 - **Prevention lesson:** the field-name contract between API and client is exactly the thing TypeScript can't check across the wire. When a server response shape changes (a column rename, an aggregation field), grep every client that reads the OLD name — the admin panel was fixed days before the mobile screen still crashed on the same mismatch.
 
 ---
@@ -96,7 +96,7 @@
 - **Symptom:** opening a single customer from the customer list showed "Error: Cannot read property 'length' of undefined".
 - **Root cause:** the customer-detail screen still treated `interactions`, `total_purchases` and `total_spent` as required fields, but the 2026-08-31 feature teardown (migration 082) dropped the `customer_interactions` table and the checkout/orders data those fields came from — the API now returns a raw customer row without them. `customer.interactions.length` threw immediately, and the stat cards would have hit the same `undefined` crash on the purchase fields.
 - **Fix:** make the three fields optional on the local `Customer` type, null-coalesce the stat-card reads (`?? 0`), and gate the "Recent Activity" section on a hoisted `recentInteractions = customer.interactions ?? []` so it hides cleanly when the API returns no interactions instead of crashing.
-- **Proof:** mobile tsc clean + 59/59 tests green. The section simply renders nothing for a post-teardown customer instead of erroring.
+- **Proof:** mobile tsc clean + 64/64 tests green, including the mobile screen smoke `apps/mobile/__tests__/smoke/rc-screens.test.tsx` "RC-007 customer detail" which renders a teardown-shaped customer (no `interactions`) and asserts the phone, header and purchase-summary cards all render. The section simply renders nothing for a post-teardown customer instead of erroring.
 - **Prevention lesson:** when a feature is removed server-side, screens that consumed its data must be swept in the same change — an orphaned read of a removed field is a guaranteed crash, not a cosmetic gap. The teardown migration should have come with a mobile sweep for the tables it dropped (same lesson as RC-008's field rename).
 
 ---
