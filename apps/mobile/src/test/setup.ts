@@ -194,6 +194,16 @@ vi.mock('@kanchuki/shared', () => ({
   },
 
   // Formatting
+  formatPrice: (paise: number | null | undefined) => {
+    if (paise == null) return '—'
+    const rupees = paise / 100
+    const isWhole = Number.isInteger(rupees)
+    const formatted = rupees.toLocaleString('en-IN', {
+      minimumFractionDigits: isWhole ? 0 : 2,
+      maximumFractionDigits: isWhole ? 0 : 2,
+    })
+    return `₹${formatted}/-`
+  },
   formatPriceRange: (min: number | null, max: number | null) => {
     if (min == null && max == null) return '—'
     if (min === max)
@@ -221,6 +231,20 @@ vi.mock('@kanchuki/shared', () => ({
     'Other',
   ],
   PRODUCT_TYPES: ['Unstitched', 'Semi-Stitched', 'Readymade'],
+  SIZE_OPTIONS: [
+    'XS',
+    'S',
+    'M',
+    'L',
+    'XL',
+    'XXL',
+    'XXXL',
+    '4XL',
+    '5XL',
+    '6XL',
+    '7XL',
+    '8XL',
+  ],
   PATTERN_TYPES: [
     'Plain',
     'Printed',
