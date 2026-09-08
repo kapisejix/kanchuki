@@ -2507,3 +2507,96 @@ surface — see §30 header note). **Phase 2 (retailer integration) is hard-defe
 signed off.** The F-010 credit-pack path and F-032 studio-shoot job infra are both
 live, so the retailer work is integration, not new architecture — it just waits
 for the go signal.
+
+---
+
+## 31. F-035 Kanchuki-Managed WhatsApp Sending (Meta Tech Provider + Embedded Signup) — 🔴 PLANNED, POST-LAUNCH
+
+**Written 2026-09-08 on user request.** Full dev spec, task list, skills, and
+testing plan: **`docs/tasks/whatsapp-embedded-signup-managed-sending.md`**.
+
+### 31.1 Problem
+
+Collection bulk-share and reactivation campaigns can already send one WhatsApp
+message to every selected customer in one call
+(`POST /v1/collections/:id/bulk-send`, `growth-campaigns-send.ts`) — but **only if
+the retailer has manually pasted a Meta `phone_number_id`, access token, and an
+approved template name** into Settings (`PATCH /v1/retailers/me/whatsapp-api`).
+Almost no SMB retailer can do that. Without it the app falls back to `wa.me` deep
+links, which open **one chat at a time** (an Android/WhatsApp limitation — there is
+no fan-out deep link). So "share this collection to all 40 customers" is 40 taps.
+
+### 31.2 Decision (owner, 2026-09-08) — Model A
+
+Kanchuki registers as a **Meta Tech Provider**. The retailer taps **"Connect
+WhatsApp"**, completes a ~3-minute **Embedded Signup** Facebook popup, and gets
+**their own** WhatsApp Business Account + number. Kanchuki exchanges the returned
+code for a long-lived system-user token, subscribes its app to that WABA's
+webhooks, registers the number, submits the default message templates, and stores
+the token — then the **existing** send code paths work unchanged.
+
+**Rejected: one shared Kanchuki number for all retailers.** Meta policy treats a
+WABA as one business; sending unrelated third-party shops' catalogs from Kanchuki's
+number risks template rejection and a number-wide ban, and every customer would see
+"Kanchuki" instead of their local shop. This is also the pattern every competitor
+(Wati, AiSensy, Interakt) uses.
+
+### 31.3 Scope summary
+
+- **Meta prerequisites (owner, 4–8 wk calendar):** Business Verification, WhatsApp
+  product on a (probably dedicated) Meta App, Tech Provider status, App Review for
+  `whatsapp_business_messaging` + `whatsapp_business_management`, an Embedded Signup
+  `config_id`, an app-level webhook subscription.
+- **Schema:** migration adds nullable `Retailer` columns (`whatsapp_waba_id`,
+  `whatsapp_business_id`, `whatsapp_api_token_type`, `whatsapp_display_number`,
+  `whatsapp_verified_name`, `whatsapp_quality_rating`,
+  `whatsapp_messaging_limit_tier`, `whatsapp_api_token_expires_at`) + a new
+  `whatsapp_template` table (per-retailer template status) with RLS. Existing
+  manual-config retailers backfilled `token_type='manual'`, nothing breaks.
+- **Security:** `whatsapp_api_access_token` moves to **encrypted-at-rest** (reuse
+  F-012 key); a `getDecryptedWhatsAppToken()` accessor; token never logged or
+  returned in any response.
+- **API:** `retailers-whatsapp-embedded.ts` — `GET …/start`,
+  `POST …/whatsapp-embedded-signup` (the code→token→provision callback, idempotent),
+  `…/whatsapp-templates/:name/resubmit`; extend `GET/DELETE …/whatsapp-api`;
+  `webhooks/whatsapp.ts` (HMAC-verified `message_template_status_update` /
+  `account_update` / `statuses`). Extract a shared `lib/whatsapp-cloud.ts` (drops
+  the inline `fetch` in bulk-send / campaign-send).
+- **Web:** `apps/web` `/whatsapp/embedded-signup` page hosts the FB JS SDK popup
+  (RN can't run it), captures the `code` + `WA_EMBEDDED_SIGNUP` event, POSTs to the
+  API, deep-links back to `kanchuki://settings/whatsapp?connected=1`.
+- **Mobile:** replace the 4-field form in `settings/social.tsx` with a one-tap
+  "Connect WhatsApp Business" button + connected state (verified name, number,
+  quality dot, template chips) + a "More options → enter manually" fallback. The
+  collection share sheet and campaign screens need **no change** — `apiConfigured`
+  already flips to `true` once the columns are set.
+- **Admin:** per-retailer WhatsApp panel + cross-retailer health list (RED quality,
+  rejected templates, `PENDING_DELETION`) + force-resubmit / force-disconnect.
+- **Billing (open — D-2):** either each retailer adds a payment method to their WABA
+  (Meta bills them) or Kanchuki bills centrally (OBO) and passes through
+  ₹0.38/conversation + margin via a plan allowance / credit pack + a new
+  `WHATSAPP_CONVERSATIONS` `QuotaResourceType` (F-010 pattern) with a per-tier
+  daily cap. CLAUDE.md pricing already assumes passthrough.
+
+### 31.4 Acceptance criteria
+
+- A retailer with a fresh Meta account connects WhatsApp end-to-end from inside the
+  app in under 5 minutes, with no copy-paste of IDs or tokens.
+- After connecting, "Share collection → Select all → Send" delivers to every
+  selected customer from the retailer's own number / verified name, and returns
+  `{ sent, failed_count }`.
+- Template status (PENDING / APPROVED / REJECTED) is visible to the retailer and in
+  admin; a rejected template can be re-submitted.
+- Disconnect fully removes the app's webhook subscription and nulls the stored
+  credentials; an `auditLog` row is written for connect, every send path, and
+  disconnect.
+- Existing manual-credential retailers keep working with zero changes.
+- Per-tier daily conversation cap is enforced (hard stop + remaining count shown in
+  the share sheet).
+
+### 31.5 Not doing (F-035)
+
+Two-way WhatsApp inbox in the app; WhatsApp Flows / interactive buttons /
+carousels; scheduled or drip campaigns (F-035 is one-shot sends); auto-migrating a
+retailer's personal WhatsApp number into a WABA (support-assisted manual path
+only).

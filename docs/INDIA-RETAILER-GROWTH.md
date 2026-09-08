@@ -420,6 +420,7 @@ These four gaps are where the next wave of features must land.
 | AI Campaign Assistant | High | High | **P1** | ✅ Built (NLP intent → WhatsApp message template + save-to-campaign) |
 | Instagram Business Publishing | Medium | Medium | **P1** | 🔴 Not built (F-031 = Facebook only) — see `docs/20-August-changes.md` item 7 |
 | A/B Testing | Medium | Medium | **P2** | ✅ Built (collection sets + stagger + significance) |
+| F-035 Kanchuki-Managed WhatsApp Sending (Meta Tech Provider + Embedded Signup) | High | High | **P1** | 🔴 Planned, post-launch — retailer taps "Connect WhatsApp", gets their own WABA, Kanchuki sends `bulk-send` / campaigns on their behalf (no manual token paste). Gated on Meta Business Verification + App Review (4–8 wk). Spec `docs/tasks/whatsapp-embedded-signup-managed-sending.md` |
 
 ---
 
