@@ -208,7 +208,25 @@ Payment: Razorpay (UPI first). Retailer pays base + 18% GST. **Source of truth: 
 | 65 | Safe-area spacing standardization (`apps/mobile` + customer web PWA) — new `apps/mobile/src/lib/safe-area.ts` `useScreenInsets()` is the single source of truth for inset math: `headerPaddingTop` (= old ad-hoc `Math.max(insets.top,24)+12`, byte-identical, no header regression), `screenPaddingBottom` (stack screens), `tabScrollPaddingBottom` (`TAB_BAR_HEIGHT 64` + `insets.bottom` + 16, matches `(tabs)/_layout.tsx`). ~68 RN screens migrated off `useSafeAreaInsets` — every custom sticky header now uses `headerPaddingTop`, every scroll body gets a real bottom inset (many had hardcoded `32`/`40` or none, so last row now clears the tab bar / home indicator). `category/new.tsx` pageSheet modal FlatLists got `paddingBottom: insets.bottom + 24`. Web: `layout.tsx` `viewportFit: 'cover'` + `.pt-safe`/`.pb-safe`/`.min-h-safe` utilities in `globals.css`; 4 shopper headers + `(shopper)/layout.tsx` get `pt-safe`. Deliberately NOT migrated: `(tabs)/_layout.tsx` (tab bar itself), `auth/otp`+`auth/phone`+`onboarding`+`staff/retailer-onboard` (centered forms with tuned symmetric insets, no sticky-header bug). Mobile tsc clean + 59/59 vitest; web tsc clean + 91/91 vitest. | ✅ Built | 2026-09-06 | BUILD-LOG §2026-09-06 |
 | 66 | Suits Designs (showcase-designs) — DB-driven design-photo library with server-side watermark (retailer-managed via mobile, admin-managed web incl. categories + related-category links + per-plan upload caps via `SHOWCASE_DESIGNS`, customer `/<Category> Designs` strip under Related products + storefront browse + shareable `/{store}/designs/<id>` permalink, retailer fan-out to FB/IG as a real `IMAGE` social post) + admin watermark-config block on the theme settings page | ✅ Built | 2026-09-07 | BUILD-LOG §2026-09-07, docs/tasks/suits-designs.md |
 | 67 | F-035 Kanchuki-managed WhatsApp sending — Meta Tech Provider + Embedded Signup: retailer taps "Connect WhatsApp" → 3-min Facebook popup → own WABA + number provisioned; Kanchuki holds the token, submits templates, and sends `bulk-send` / campaign messages on their behalf (no manual `phone_number_id` / token paste). The send machinery (`POST /collections/:id/bulk-send`, campaign-send) already exists behind the manual-credential path — F-035 is onboarding/provisioning only. Rejected: one shared Kanchuki number for all retailers (Meta policy + branding). | 🔴 Planned (post-launch; gated on Meta Business Verification + App Review, 4–8 wk) | 2026-09-08 | docs/tasks/whatsapp-embedded-signup-managed-sending.md |
+| 68 | Root-cause fixes batch — AI Campaign Assistant (harden `parseCampaignIntent` via `normalizeCampaignIntent` RC-001, festival resolution match RC-002, real API error surfaced on mobile RC-003), category DELETE purge-role guardrail RC-004, customer product-detail sheet (Related Products label + in-place swap RC-005, Suits Designs permalink history-back fix RC-006) — commits `70e057a8` `21be0e92` `590c2185` | ✅ Built | 2026-09-08 | BUILD-LOG §2026-09-08, `docs/root-cause/root-cause issues.md` |
  
+---
+
+## Root-Cause Tracker (RC-###)
+
+> **Every shipped bug gets a root-cause entry in `docs/root-cause/root-cause issues.md`** — one entry per ROOT CAUSE (not per symptom), newest first, with a stable `RC-###` ID referenced from commit messages and the What's-Built index. This section is the at-a-glance log of those IDs.
+
+| ID | Root cause (one line) | Fixed in |
+|----|----------------------|----------|
+| RC-001 | `parseCampaignIntent` trusts free-text LLM reply shapes → route 500s on missing/stringified/bad-enum/numeric-string fields | `70e057a8` |
+| RC-002 | Festival resolution does an exact `equals` match against the prompt's first 3 words → never matches, FESTIVAL drafts unsaveable | `70e057a8` |
+| RC-003 | Mobile catch block swaps the real API error for a constant fallback string | `70e057a8` |
+| RC-004 | Category DELETE uses main client on a hard-delete table with DELETE revoked (SECURITY §19) | `21be0e92` |
+| RC-005 | Related-product click only called `onClose()` — never opened the tapped product | `590c2185` |
+| RC-006 | Sheet unmount cleanup `history.back()` undoes in-sheet `<Link>` navigation (Suits Designs permalinks) | `590c2185` |
+
+**New bug → new RC entry:** when a fix commit lands, append the root cause to `docs/root-cause/root-cause issues.md`, add its RC row here, and reference the RC ID in the commit message.
+
 ---
 
 ## India Retailer Growth Roadmap
@@ -305,6 +323,7 @@ Payment: Razorpay (UPI first). Retailer pays base + 18% GST. **Source of truth: 
 | `docs/SKILLS-AND-MCP.md` | Claude Code skills and MCP tools in use |
 | `docs/final-research.md` | Market research foundation |
 | `docs/PROGRESS.md` | Daily working log (session-by-session detail) |
+| `docs/root-cause/root-cause issues.md` | Root-cause issue tracker (RC-### entries, newest first) — every shipped bug's root cause, fix, and proof |
 
 ---
 

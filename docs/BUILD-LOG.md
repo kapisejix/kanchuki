@@ -2106,3 +2106,25 @@ Two pre-existing reds on `main` (noted in the Suits Designs prod-smoke report, �
    - `routes/growth/growth-social-caption-suggest.ts` — string-concat range caption collapsed into one nested template literal.
    Fixed with `biome check --write` on the 12 files + the two manual edits. **Verification:** `biome check` on an LF worktree of `apps/api/src` exits 0 (the local Windows worktree false-positives CRLF formatter diffs — `core.autocrlf` checkout — which is exactly why CI was red while local runs looked noisy; CI checks out LF). API `tsc --noEmit` clean, full API suite **888/888**, all four guard scripts pass (delete/route-size/secrets/v1-fetch).
 2. **`Deploy to Railway` workflow red → `deploy-api` "Run pending migrations" P1001.** The step ran `prisma migrate deploy` from the GH runner against the Supabase pooler; Supabase Network Restrictions drop GH-runner egress (P1001 on every push since 2026-09-01), and even reachable it ran as the app role which has no DDL grants — so it could never apply migrations. It also killed this backup workflow's own `railway up` deploy step (never ran since Sep 1). **Fix (owner-approved, CLAUDE.md operational note lifted):** removed the step + the now-dead `PROD_DATABASE_URL` GitHub-secret reference from `.github/workflows/deploy.yml`, with a comment explaining the removal. Prod migrations continue through the sanctioned path only — admin dashboard / Supabase SQL Editor with the migrator role (SECURITY.md §12.2/§19) — never a CI step.
+---
+
+## BUILT 2026-09-08: Root-cause fixes batch (3 commits — AI Campaign Assistant, category delete guardrail, customer product-detail sheet)
+
+Three unrelated bug-fix commits landed in one session; each has a tracked root cause in `docs/root-cause/root-cause issues.md` (RC-001…RC-006).
+
+### `70e057a8` fix(ai): harden campaign-intent parsing + fix festival resolution + surface real errors
+
+- **RC-001** — `POST /v1/growth/ai-campaign` intermittently 500'd ("Failed to generate campaign" on mobile). `parseCampaignIntent` used the free-text `ask()` path with no schema enforcement, so provider replies arrived as missing `product_criteria`/`audience` objects, stringified nested JSON, out-of-union enums, numeric strings, or comma-joined arrays — any of which threw inside the DB route. Added `normalizeCampaignIntent()` in `packages/ai/src/campaign-assistant.ts`: never-throwing coercion (re-parses stringified objects, coerces enums/numbers/arrays, caps `limit` 20, safe defaults `PROMOTION`/`casual`). 7 new ai-package tests.
+- **RC-002** — FESTIVAL drafts always returned `festival_id: null` and couldn't be saved. Festival resolution matched `name: { equals: prompt.split(' ').slice(0,3).join(' ') }` — an exact match against the literal first three words of the prompt, which never equals a festival name. Fixed to match any festival whose name appears anywhere in the prompt (newest-starting first). 3 new route tests.
+- **RC-003** — mobile `ai-campaign.tsx` swallowed the real API error and showed the constant "Failed to generate campaign". Now surfaces `ApiError.message` when present, generic string only as fallback.
+
+### `21be0e92` fix(api): category DELETE through purge role with allow_hard_delete guardrail
+
+- **RC-004** — `DELETE /v1/categories/:id` called `prisma.productCategory.delete` through the main `kanchuki_app` client, which has DELETE revoked on `product_categories` under SECURITY §19 (hard-delete table + BEFORE DELETE guardrail). 500'd on the category screen. Now routes through `getPurgePrisma()` with `SET app.allow_hard_delete = 'true'` inside the transaction (same pattern as products-trash/products-variants) + audit-log row. 2 new route tests.
+
+### `590c2185` fix(web): customer product detail sheet — related products + design links
+
+- **RC-005** — Related-product thumbs only called `onClose()` — never opened the tapped product. Added `onSelectProduct` prop (in-place sheet swap, same as AIStylist's `onProductTap`), wired to `setSelectedProduct` in CollectionView, plus a per-product view-state reset effect.
+- **RC-006** — Suits Designs permalink links "went nowhere": the sheet pushes a history entry on mount and its unmount cleanup called `window.history.back()` unconditionally, instantly undoing the `<Link>` navigation to `/{store}/designs/{id}`. Cleanup now only rolls back when the sheet's own entry is still the top-most history state. Heading also renamed "Related suits" → "Related Products". 2 new web tests.
+
+**Verification:** ai 91/91, api growth suite 25/25 + categories 4/4, web 122/122 (incl. 2 new ProductDetailSheet tests); `tsc --noEmit` clean on ai/api/mobile/web; no new Biome diagnostics vs baseline.
