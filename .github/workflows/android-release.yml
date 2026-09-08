@@ -1,0 +1,88 @@
+name: Android Release (AAB)
+
+# Manual trigger. Builds a signed .aab for Play Store upload.
+# Signing keys come from repo secrets (see Step 4 of the setup notes).
+on:
+  workflow_dispatch:
+
+jobs:
+  build-aab:
+    runs-on: ubuntu-latest
+    env:
+      # EXPO_PUBLIC_* are inlined into the JS bundle at build time.
+      # Kept in sync with apps/mobile/eas.json -> build.production.env
+      EXPO_PUBLIC_API_URL: https://api.kanchuki.app
+      EXPO_PUBLIC_MSG91_WIDGET_ID: "366871673575383335383835"
+      EXPO_PUBLIC_MSG91_TOKEN_AUTH: 505769TIAaX1pQa6a649a52P1
+      EXPO_PUBLIC_SENTRY_DSN: https://1cf3b3ac98fe5853c643c2a7cb22ab96@o4511960130387968.ingest.de.sentry.io/4511960286494800
+      # No SENTRY_AUTH_TOKEN in CI -> skip source map upload instead of failing the build.
+      SENTRY_DISABLE_AUTO_UPLOAD: "true"
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Expo prebuild (generate android/)
+        working-directory: apps/mobile
+        run: pnpm exec expo prebuild --platform android --no-install --clean
+
+      # ponytail: inject release signing via a Gradle init script instead of
+      # patching the prebuild-regenerated android/app/build.gradle. Survives
+      # every `expo prebuild`. Upgrade path: a proper expo config plugin if
+      # signing needs get more complex.
+      - name: Configure release signing
+        run: |
+          mkdir -p "$HOME/.gradle/init.d"
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > "$RUNNER_TEMP/release.jks"
+          cat > "$HOME/.gradle/init.d/signing.gradle" <<'EOF'
+          allprojects { p ->
+            p.plugins.withId('com.android.application') {
+              p.afterEvaluate {
+                def sc = p.android.signingConfigs.maybeCreate('release')
+                sc.storeFile p.file(System.getenv('ANDROID_KEYSTORE_PATH'))
+                sc.storePassword System.getenv('ANDROID_KEYSTORE_PASSWORD')
+                sc.keyAlias System.getenv('ANDROID_KEY_ALIAS')
+                sc.keyPassword System.getenv('ANDROID_KEY_PASSWORD')
+                p.android.buildTypes.release.signingConfig sc
+              }
+            }
+          }
+          EOF
+
+      - name: Build signed AAB
+        working-directory: apps/mobile/android
+        env:
+          ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/release.jks
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          GRADLE_OPTS: -Dorg.gradle.jvmargs=-Xmx4g -Dorg.gradle.daemon=false
+        run: ./gradlew :app:bundleRelease --no-daemon --stacktrace
+
+      - name: Verify AAB is signed with the expected key
+        working-directory: apps/mobile/android
+        run: |
+          AAB=app/build/outputs/bundle/release/app-release.aab
+          test -f "$AAB" || { echo "AAB not found"; exit 1; }
+          "$ANDROID_HOME"/build-tools/*/apksigner verify --min-sdk-version 24 --verbose "$AAB" || \
+            jarsigner -verify -verbose "$AAB"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-release-aab
+          path: apps/mobile/android/app/build/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
+          retention-days: 14
