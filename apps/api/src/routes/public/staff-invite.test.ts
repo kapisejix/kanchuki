@@ -115,7 +115,7 @@ describe('GET /v1/public/staff-invite/:token', () => {
     await app.close();
   });
 
-  it('reads a used invite as 404 (already joined — app shows the login CTA)', async () => {
+  it('reads a used invite as 200 used — already joined, the join screen shows the login CTA', async () => {
     mockStaffInviteFindUnique.mockResolvedValue(pendingInvite({ status: 'used' }));
 
     const app = await buildApp();
@@ -124,7 +124,12 @@ describe('GET /v1/public/staff-invite/:token', () => {
       url: '/v1/public/staff-invite/abcdefghijklmnopqrstuvwxyz',
     });
 
-    expect(res.statusCode).toBe(404);
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.data.status).toBe('used');
+    expect(body.data.shop_name).toBe('Ramesh Textiles');
+    // Still masked — the full number never crosses the wire even for used rows.
+    expect(body.data.phone_masked).toBe('•••••• 3210');
     await app.close();
   });
 

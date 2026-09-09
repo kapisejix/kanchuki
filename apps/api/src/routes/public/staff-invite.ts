@@ -74,6 +74,22 @@ export const publicStaffInviteRoutes: FastifyPluginAsync = async (server) => {
       // Unknown + expired + revoked all read as 404 — don't leak existence.
       if (!invite) throw notFound('Invite');
       const status = derivedStatus(invite);
+      if (status === 'used') {
+        // Spec §5.3: a USED invite is not a dead end — the member already
+        // joined, so the join screen shows "already joined — just log in"
+        // instead of the misleading "ask the owner for a new invite" copy.
+        // No existence leak beyond what the token holder already knows (they
+        // hold the consumed token); expired/revoked/unknown still 404.
+        return reply.status(200).send({
+          data: {
+            shop_name: invite.staff.retailer.shop_name,
+            member_name: invite.staff.name,
+            role: invite.staff.role,
+            phone_masked: maskPhone(invite.staff.phone),
+            status: 'used',
+          },
+        });
+      }
       if (status !== 'pending') throw notFound('Invite');
 
       return reply.status(200).send({

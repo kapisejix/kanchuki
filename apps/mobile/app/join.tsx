@@ -24,6 +24,7 @@ type LoadState =
   | { kind: 'loading' }
   | { kind: 'ready'; info: StaffInviteInfo }
   | { kind: 'used' }
+  | { kind: 'error' }
   | { kind: 'dead' }
 
 export default function JoinScreen() {
@@ -31,6 +32,8 @@ export default function JoinScreen() {
   const { token } = useLocalSearchParams<{ token?: string }>()
   const [state, setState] = useState<LoadState>({ kind: 'loading' })
   const [sending, setSending] = useState(false)
+  // Bumped by the Retry button to re-run the fetch after a transient failure.
+  const [reload, setReload] = useState(0)
 
   // Fetch the invite summary when the token appears. On a deep-link cold start
   // the param may not be populated on first render — this refetches when it
@@ -39,6 +42,7 @@ export default function JoinScreen() {
     if (!token) return
     let cancelled = false
     const load = async () => {
+      setState({ kind: 'loading' })
       try {
         const { data } = await staffInviteApi.get(token)
         if (cancelled) return
@@ -47,14 +51,15 @@ export default function JoinScreen() {
         else setState({ kind: 'dead' })
       } catch (err) {
         if (cancelled) return
-        // 404 (unknown/expired/revoked — the server keeps them
-        // indistinguishable) and network failures both land on the dead end.
+        // Only a 404 (unknown/expired/revoked — the server keeps them
+        // indistinguishable) is a real dead end. Anything else is a transient
+        // failure (no connection, API hiccup): offer Retry instead of telling
+        // the member the invite is invalid when it may be perfectly fine.
         const apiErr = err instanceof ApiError ? err : null
         if (apiErr?.status === 404) {
           setState({ kind: 'dead' })
         } else {
-          showError(err, 'Could not check this invite. Check your connection and try again.')
-          setState({ kind: 'dead' })
+          setState({ kind: 'error' })
         }
       }
     }
@@ -62,7 +67,7 @@ export default function JoinScreen() {
     return () => {
       cancelled = true
     }
-  }, [token])
+  }, [token, reload])
 
   const handleContinue = async () => {
     if (!token || sending) return
@@ -143,6 +148,17 @@ export default function JoinScreen() {
           </View>
         )}
 
+        {state.kind === 'error' && (
+          <View className="mt-8 bg-white rounded-3xl p-6 border border-lavender-200">
+            <Text className="text-xl font-bold text-spaceCadet-900">
+              Couldn't check this invite
+            </Text>
+            <Text className="text-sm text-spaceCadet-600 mt-2 leading-relaxed">
+              Check your connection and try again.
+            </Text>
+          </View>
+        )}
+
         {state.kind === 'dead' && (
           <View className="mt-8 bg-white rounded-3xl p-6 border border-lavender-200">
             <Text className="text-xl font-bold text-spaceCadet-900">
@@ -166,6 +182,9 @@ export default function JoinScreen() {
         )}
         {(state.kind === 'used' || state.kind === 'dead') && (
           <GradientButton label="Log in with phone" onPress={goToLogin} />
+        )}
+        {state.kind === 'error' && (
+          <GradientButton label="Retry" onPress={() => setReload((r) => r + 1)} />
         )}
         {state.kind === 'ready' && (
           <Pressable onPress={goToLogin} className="py-3 items-center">

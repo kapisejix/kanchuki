@@ -25,9 +25,11 @@ vi.mock('../../src/lib/api', () => ({
     get: mockGet,
     sendOtp: mockSendOtp,
   },
+  // Mirrors the real src/lib/api/client.ts signature (code, message, status)
+  // so `instanceof ApiError` + `.status` behave exactly as in production.
   ApiError: class extends Error {
     status: number
-    constructor(status: number, message: string) {
+    constructor(_code: string, message: string, status: number) {
       super(message)
       this.status = status
     }
@@ -143,13 +145,43 @@ describe('app/join.tsx (staff-invite-tokens §6.1)', () => {
   })
 
   it('renders the dead-end for expired/revoked/404 invites', async () => {
-    mockGet.mockRejectedValue(
-      Object.assign(new Error('Not Found'), { status: 404 }),
-    )
+    const { ApiError } = await import('../../src/lib/api')
+    mockGet.mockRejectedValue(new ApiError('NOT_FOUND', 'Not Found', 404))
 
     const tree = await renderJoin()
     const texts = allTexts(tree).map((t) => t.props.children)
     expect(texts.join(' ')).toContain('no longer valid')
     expect(texts.join(' ')).toContain('Log in with phone')
+  })
+
+  it('shows a retry card (not the dead end) on a transient fetch failure, then recovers', async () => {
+    // Network / server hiccup — NOT a 404. The invite may still be valid, so
+    // the screen must offer Retry instead of claiming the link is dead.
+    mockGet.mockRejectedValueOnce(new Error('Network request failed'))
+    const tree = await renderJoin()
+    let texts = allTexts(tree).map((t) => t.props.children)
+    expect(texts.join(' ')).toContain("Couldn't check this invite")
+    expect(texts.join(' ')).toContain('Retry')
+    expect(texts.join(' ')).not.toContain('no longer valid')
+
+    // Retry re-runs the fetch; on success the pending summary replaces the
+    // error card.
+    mockGet.mockResolvedValueOnce({
+      data: {
+        shop_name: 'Ramesh Textiles',
+        member_name: 'Ramesh',
+        role: 'salesperson',
+        phone_masked: '•••••• 3210',
+        status: 'pending',
+      },
+    })
+    const retryLabel = allTexts(tree).find((t) => t.props.children === 'Retry')
+    expect(retryLabel).toBeTruthy()
+    await act(async () => {
+      retryLabel!.parent?.props?.onPress?.()
+    })
+    texts = allTexts(tree).map((t) => t.props.children)
+    expect(texts.join(' ')).toContain('Ramesh Textiles')
+    expect(texts.join(' ')).toContain('Continue')
   })
 })
