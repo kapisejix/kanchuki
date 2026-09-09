@@ -13,3 +13,4 @@ export { publicShowcaseDesignsRoutes } from './public-showcase-designs.js';
 export { passportRoutes } from './passport.js';
 export { publicSearchRoutes } from './public-search.js';
 export { discoverStoresRoutes } from './discover-stores.js';
+export { publicStaffInviteRoutes } from './staff-invite.js';

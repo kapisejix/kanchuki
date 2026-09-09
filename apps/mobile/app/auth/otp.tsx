@@ -12,7 +12,13 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router, useLocalSearchParams } from 'expo-router'
 import { normalizeIndianPhone } from '@kanchuki/shared'
-import { authApi, setToken, ApiError, type VerifyOtpResult } from '../../src/lib/api'
+import {
+  authApi,
+  setToken,
+  ApiError,
+  staffInviteApi,
+  type VerifyOtpResult,
+} from '../../src/lib/api'
 import { showError } from '../../src/lib/errors'
 import { setItem, deleteItem } from '../../src/lib/storage'
 import { emitAuthChange } from '../../src/lib/auth-events'
@@ -104,18 +110,26 @@ export async function completeLogin(result: VerifyOtpResult) {
 }
 
 /** Exchange a MSG91 widget access token for a backend session. */
-async function verifyWithMsg91Token(phone: string, accessToken: string) {
-  const { data: result } = await authApi.verifyMsg91(phone, accessToken)
+async function verifyWithMsg91Token(phone: string, accessToken: string, inviteToken?: string) {
+  const { data: result } = await authApi.verifyMsg91(phone, accessToken, inviteToken)
   await completeLogin(result)
 }
 
 export default function OtpScreen() {
   const insets = useSafeAreaInsets()
-  const { phone, reqId, token, bypass } = useLocalSearchParams<{
+  const { phone, reqId, token, bypass, invite_token, masked } = useLocalSearchParams<{
     phone: string
     reqId?: string
     token?: string
     bypass?: string
+    // Tokenized staff invite (staff-invite-tokens.md §6.2): carried from the
+    // join screen into the first verify so the server routes this phone to
+    // the staff join instead of a brand-new retailer. Resend goes through
+    // the public invite route (server owns the phone number). `masked` is
+    // the invite's masked bound phone (•••••• 3210) for the display line —
+    // the full number never crosses the wire (D3).
+    invite_token?: string
+    masked?: string
   }>()
   const [otp, setOtp] = useState('')
   const [loading, setLoading] = useState(false)
@@ -138,12 +152,22 @@ export default function OtpScreen() {
   const isVerifyingRef = useRef(false)
 
   const handleVerify = async (code: string) => {
-    if (code.length !== 6 || !phone || loading || isVerifyingRef.current) return
+    if (code.length !== 6 || loading || isVerifyingRef.current) return
     isVerifyingRef.current = true
     setLoading(true)
-    const digits = normalizeIndianPhone(phone)
     let verified = false
     try {
+      if (invite_token) {
+        // Staff invite flow (staff-invite-tokens.md §6.2): the server owns
+        // the bound phone (D3) — verify with the token alone, no phone. The
+        // server derived the phone from the invite before checking the OTP.
+        const { data: result } = await authApi.verifyOtp(undefined, code, invite_token)
+        await completeLogin(result)
+        return
+      }
+
+      if (!phone) return
+      const digits = normalizeIndianPhone(phone)
       if (bypass === 'true') {
         // Railway Demo / Test Phone Bypass: verify directly with backend API
         const { data: result } = await authApi.verifyOtp(digits, code)
@@ -174,8 +198,14 @@ export default function OtpScreen() {
       // Don't blanket-label every failure "Incorrect OTP" — a 500 (e.g. the
       // phone number still being released after account deletion) or a 409 is
       // NOT a wrong code, and clearing the input to retype would mislead.
+      // A 400 on the invite flow (INVITE_INVALID / INVITE_PHONE_MISMATCH)
+      // is a dead end, not a retry — route back to the join screen.
       const apiErr = err instanceof ApiError ? err : null
-      if (apiErr?.status === 401) {
+      if (apiErr?.status === 400 && invite_token) {
+        showError(err, apiErr.message, 'Invite problem', () => {
+          router.replace('/auth/phone')
+        })
+      } else if (apiErr?.status === 401) {
         showError(err, 'Invalid or expired OTP. Try again.', 'Incorrect OTP', () => {
           setOtp('')
           inputRef.current?.focus()
@@ -256,7 +286,14 @@ export default function OtpScreen() {
         }
       }
       if (!resent) {
-        await authApi.sendOtp(phone)
+        // Staff invite flow (staff-invite-tokens.md §6.2): the server owns
+        // the bound phone — resend goes through the public invite route, not
+        // /v1/auth/otp/send (which would need a client-supplied phone).
+        if (invite_token) {
+          await staffInviteApi.sendOtp(invite_token)
+        } else {
+          await authApi.sendOtp(phone)
+        }
       }
       setResendTimer(30)
       Alert.alert('OTP Sent', 'A new OTP has been sent to your number')
@@ -296,7 +333,9 @@ export default function OtpScreen() {
 
           <Text className="text-3xl font-bold text-spaceCadet-900 font-marcellus">Enter OTP</Text>
           <Text className="text-heliotrope-500 text-sm mt-2">
-            Verification code sent to +91 ****{phone?.slice(-4)}
+            {invite_token
+              ? `Verification code sent to ${masked || 'your number'}`
+              : `Verification code sent to +91 ****${phone?.slice(-4)}`}
           </Text>
 
           {/* OTP input — single hidden input drives display */}

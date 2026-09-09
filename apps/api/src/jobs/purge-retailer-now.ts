@@ -94,6 +94,10 @@ export async function hardDeleteRetailer(retailerId: string): Promise<void> {
     'DELETE FROM support_tickets WHERE retailer_id = $1;',
     'DELETE FROM ai_usage_logs WHERE retailer_id = $1;',
     'DELETE FROM quota_addon_purchases WHERE retailer_id = $1;',
+    // staff_invites (099) — ON DELETE CASCADE on both FKs makes this
+    // belt-and-suspenders, but the purge job is explicit about every table
+    // by convention. Must precede the staff delete (FK order).
+    'DELETE FROM staff_invites WHERE retailer_id = $1;',
     'DELETE FROM staff WHERE retailer_id = $1;',
     'DELETE FROM store_sections WHERE retailer_id = $1;',
     'DELETE FROM product_categories WHERE retailer_id = $1;',

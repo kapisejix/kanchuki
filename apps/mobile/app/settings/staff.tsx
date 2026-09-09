@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
   View, Text, FlatList, TextInput,
-  Alert, Modal, Pressable, Share, Platform,
+  Alert, Modal, Pressable, Share, Platform, Linking,
 } from 'react-native'
 import { router } from 'expo-router'
 import * as Clipboard from 'expo-clipboard'
@@ -11,13 +11,16 @@ import {
   Plus, Trash2, X, User, ChevronLeft, Pencil, RotateCcw, Check, MessageCircle, Copy,
 } from 'lucide-react-native'
 import { CustomerListSkeleton } from '../../src/components/Skeleton'
-import { ApiError, retailerApi, staffApi, type StaffMember } from '../../src/lib/api'
+import {
+  ApiError, retailerApi, staffApi,
+  type StaffMember, type StaffCreateResult, type StaffInvitePayload,
+} from '../../src/lib/api'
 import { showError } from '../../src/lib/errors'
 import { useTheme } from '../../src/lib/theme'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { GradientButton } from '../../src/components/GradientButton'
 import { ROLE_SUMMARY } from '../../src/lib/staff-can'
-import { buildStaffInviteMessage } from '../../src/lib/staff-invite'
+import { buildStaffInviteMessage, buildWhatsAppInviteUrl } from '../../src/lib/staff-invite'
 
 const ROLE_OPTIONS: { value: 'manager' | 'salesperson'; label: string; description: string }[] = [
   {
@@ -43,8 +46,9 @@ function AddStaffModal({
   visible: boolean
   onClose: () => void
   editing?: StaffMember | null
-  /** FR-6.1 — fired with the created member so the screen can show the invite prompt. */
-  onCreated?: (member: StaffMember) => void
+  /** FR-6.1 — fired with the created member (+ tokenized invite when one was
+   * minted) so the screen can show the invite prompt. */
+  onCreated?: (member: StaffCreateResult) => void
 }) {
   const { colors } = useTheme()
   const [name, setName] = useState('')
@@ -67,14 +71,19 @@ function AddStaffModal({
     setRole('salesperson')
   }
 
-  const save = useMutation({
-    mutationFn: () => {
+  const save = useMutation<{ data: StaffCreateResult }, Error, void>({
+    mutationFn: (): Promise<{ data: StaffCreateResult }> => {
       const payload = {
         name: name.trim(),
         phone: phone.replace(/\D/g, ''),
         role,
       }
-      return editing ? staffApi.update(editing.id, payload) : staffApi.create(payload)
+      // Edit-path response is the member row (invite omitted by the server) —
+      // onCreated only fires on the create path, so the edit result's invite
+      // field is never read. The cast keeps the mutation's return type single.
+      return editing
+        ? (staffApi.update(editing.id, payload) as unknown as Promise<{ data: StaffCreateResult }>)
+        : staffApi.create(payload)
     },
     onSuccess: (result) => {
       void queryClient.invalidateQueries({ queryKey: ['staff'] })
@@ -283,25 +292,30 @@ function PurgeModal({
   )
 }
 
-// ─── Invite prompt (FR-6.1) ───────────────────────────────────────
-// After a successful ADD, show the retailer a share sheet / copy-text so
-// they can tell the new member to log in. Client-side only — deliberately NO
-// SMS (cost + DLT registration; per docs/tasks/team-member-access-control.md
-// FR-6.1).
+// ─── Invite prompt (staff-invite-tokens.md §5.1/§3.1) ──────────────
+// After a successful ADD, show the retailer the tokenized invite — the share
+// payload is the LINK now (the phone never crosses to the client; D3).
+// Delivery: "Send on WhatsApp" (free, client-side wa.me — no MSG91 / Meta
+// API / DLT) with Copy/Share as fallbacks.
 
 function InvitePromptModal({
   member,
+  invite,
   shopName,
   onClose,
 }: {
-  member: StaffMember | null
+  member: StaffCreateResult | null
+  // Tokenized invite (staff-invite-tokens.md §5.1) — the shareable link +
+  // expiry from the POST /v1/staff / resend response.
+  invite?: StaffInvitePayload | null
   shopName: string | null
   onClose: () => void
 }) {
   const { colors } = useTheme()
-  const message = member
-    ? buildStaffInviteMessage(member.name, member.phone, shopName)
-    : ''
+  const message =
+    member && invite?.url
+      ? buildStaffInviteMessage(member.name, member.role, shopName, invite.url)
+      : ''
 
   const handleCopy = async () => {
     if (!message) return
@@ -327,6 +341,21 @@ function InvitePromptModal({
     }
   }
 
+  // Free, client-side WhatsApp delivery (no MSG91 / Meta API / DLT): open the
+  // retailer's own WhatsApp app with the invite pre-filled to the member's
+  // number — they just tap send. wa.me falls back to WhatsApp Web when the
+  // app isn't installed.
+  const handleWhatsApp = () => {
+    if (!message || !member) return
+    const waLink = buildWhatsAppInviteUrl(member.phone, message)
+    void Linking.openURL(waLink).catch(() => {
+      Alert.alert(
+        'Could not open WhatsApp',
+        'Copy the invite message and send it on WhatsApp instead.',
+      )
+    })
+  }
+
   return (
     <Modal visible={Boolean(member)} transparent animationType="fade" onRequestClose={onClose}>
       <View className="flex-1 bg-black/50 justify-center px-6">
@@ -341,10 +370,19 @@ function InvitePromptModal({
             {message}
           </Text>
           <Text className="text-xs text-sand-400 leading-relaxed">
-            Share this with them — they can log in with their phone number and start using
-            the app right away.
+            Share this link with them — they tap it, verify their number, and they're in. The link
+            expires {invite ? new Date(invite.expires_at).toLocaleDateString() : 'in 7 days'}.
           </Text>
-          <View className="flex-row gap-3 mt-2">
+          <AnimatedPressable
+            onPress={() => void handleWhatsApp()}
+            className="w-full bg-emerald-600 py-4 rounded-2xl flex-row items-center justify-center gap-2 mt-2"
+            accessibilityLabel="Send invite on WhatsApp"
+            accessibilityRole="button"
+          >
+            <MessageCircle size={18} color="white" />
+            <Text className="text-white font-semibold">Send on WhatsApp</Text>
+          </AnimatedPressable>
+          <View className="flex-row gap-3">
             <AnimatedPressable
               onPress={() => void handleCopy()}
               className="flex-1 bg-sand-100 py-3.5 rounded-2xl flex-row items-center justify-center gap-2"
@@ -378,7 +416,7 @@ export default function StaffScreen() {
   const [editing, setEditing] = useState<StaffMember | null>(null)
   const [showRemoved, setShowRemoved] = useState(false)
   const [purgeTarget, setPurgeTarget] = useState<StaffMember | null>(null)
-  const [inviteTarget, setInviteTarget] = useState<StaffMember | null>(null)
+  const [inviteTarget, setInviteTarget] = useState<StaffCreateResult | null>(null)
   const queryClient = useQueryClient()
   const { headerPaddingTop, screenPaddingBottom } = useScreenInsets()
 
@@ -454,6 +492,89 @@ export default function StaffScreen() {
     [invalidate],
   )
 
+  // staff-invite-tokens.md §6.3 — one-tap WhatsApp delivery from the member
+  // row: resend mints a fresh link (D5 replaces the token server-side), then
+  // the retailer's OWN WhatsApp app opens with the message pre-filled to the
+  // member's number (wa.me — no MSG91 / Meta API / DLT). The chip flips back
+  // to pending after the query invalidates; no modal needed.
+  const handleSendWhatsApp = useCallback(
+    async (member: StaffMember) => {
+      try {
+        // Mint a fresh link first (D5 replaces the token server-side).
+        const res = await staffApi.resendInvite(member.id)
+        invalidate()
+        const url = res.data.invite.url
+        const message = buildStaffInviteMessage(member.name, member.role, shopName, url)
+        const waLink = buildWhatsAppInviteUrl(member.phone, message)
+        // Open the retailer's OWN WhatsApp app pre-filled. wa.me falls back to
+        // WhatsApp Web when the app isn't installed, so this rarely fails —
+        // but if it does, the link was still minted (chip flipped to pending)
+        // and the retailer can Copy/Share instead.
+        await Linking.openURL(waLink)
+      } catch (err) {
+        const isLinkingFailure = err instanceof Error && !('status' in (err as object))
+        if (isLinkingFailure) {
+          Alert.alert(
+            'Could not open WhatsApp',
+            'Copy the invite message and send it on WhatsApp instead.',
+          )
+        } else {
+          showError(err, 'Failed to send invite')
+        }
+      }
+    },
+    [invalidate, shopName],
+  )
+
+  // Invite chip row (staff-invite-tokens.md §6.3): a member who has never
+  // logged in (auth_user_id null) carries a live invite — "Invite sent ·
+  // expires …" when pending, "Invite expired · Resend" past expiry. Joined
+  // members get no chip (they log in by phone alone).
+  const renderInviteChip = useCallback(
+    (member: StaffMember) => {
+      if (member.auth_user_id) return null
+      if (!member.invite) {
+        // No invite row (shouldn't happen — create/backfill always mints one)
+        // — offer WhatsApp so the retailer can always get a link out.
+        return (
+          <AnimatedPressable
+            onPress={() => void handleSendWhatsApp(member)}
+            className="mt-2 self-start bg-emerald-600 px-3 py-1.5 rounded-lg flex-row items-center gap-1.5"
+            accessibilityLabel={`Send WhatsApp invite to ${member.name}`}
+            accessibilityRole="button"
+          >
+            <MessageCircle size={13} color="white" />
+            <Text className="text-[11px] font-semibold text-white">Send on WhatsApp</Text>
+          </AnimatedPressable>
+        )
+      }
+      const isExpired = member.invite.status === 'expired'
+      return (
+        <View className="mt-2 flex-row items-center gap-2">
+          <View className={`px-2.5 py-1 rounded-lg ${isExpired ? 'bg-rust-50' : 'bg-emerald-50'}`}>
+            <Text
+              className={`text-[11px] font-semibold ${isExpired ? 'text-rust-600' : 'text-emerald-700'}`}
+            >
+              {isExpired
+                ? 'Invite expired'
+                : `Invite sent · expires ${new Date(member.invite.expires_at).toLocaleDateString()}`}
+            </Text>
+          </View>
+          <AnimatedPressable
+            onPress={() => void handleSendWhatsApp(member)}
+            className="bg-emerald-600 px-3 py-1.5 rounded-lg flex-row items-center gap-1.5"
+            accessibilityLabel={`Send WhatsApp invite to ${member.name}`}
+            accessibilityRole="button"
+          >
+            <MessageCircle size={13} color="white" />
+            <Text className="text-[11px] font-semibold text-white">WhatsApp</Text>
+          </AnimatedPressable>
+        </View>
+      )
+    },
+    [handleSendWhatsApp],
+  )
+
   const roleLabel = (role: string) =>
     role === 'manager' ? 'Manager' : role === 'salesperson' ? 'Salesperson' : role
 
@@ -500,9 +621,11 @@ export default function StaffScreen() {
             {ROLE_SUMMARY[item.role] ?? ''}
           </Text>
         </View>
+        {/* staff-invite-tokens.md §6.3 — invite status chip for never-joined members */}
+        {renderInviteChip(item)}
       </View>
     ),
-    [handleRemove, colors.rust, colors.sand, colors.ink],
+    [handleRemove, renderInviteChip, colors.rust, colors.sand, colors.ink],
   )
 
   const renderRemoved = useCallback(
@@ -626,10 +749,11 @@ export default function StaffScreen() {
           visible={showAdd}
           onClose={() => setShowAdd(false)}
           editing={editing}
-          onCreated={setInviteTarget}
+          onCreated={(m) => setInviteTarget(m)}
         />
         <InvitePromptModal
-          member={inviteTarget}
+          member={inviteTarget ?? null}
+          invite={inviteTarget?.invite ?? null}
           shopName={shopName}
           onClose={() => setInviteTarget(null)}
         />

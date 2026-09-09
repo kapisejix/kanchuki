@@ -14,6 +14,7 @@ import {
   publicReviewsRoutes,
   publicSearchRoutes,
   publicShowcaseDesignsRoutes,
+  publicStaffInviteRoutes,
   publicStoresRoutes,
   publicStylistRoutes,
 } from './public/index.js';
@@ -47,4 +48,6 @@ export const publicRoutes: FastifyPluginAsync = async (server) => {
   await server.register(publicSearchRoutes);
   // discover-stores — store discovery with affinity scores (Task 23)
   await server.register(discoverStoresRoutes);
+  // public-staff-invite — tokenized staff join (join screen + OTP send)
+  await server.register(publicStaffInviteRoutes);
 };

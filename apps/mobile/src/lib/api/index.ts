@@ -18,6 +18,7 @@ export * from "./catalog-upload";
 export * from "./products";
 export * from "./customers";
 export * from "./staff";
+export * from "./staff-invite";
 export * from "./billing";
 export * from "./catalog-import";
 export * from "./collections";

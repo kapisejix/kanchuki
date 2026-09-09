@@ -317,6 +317,7 @@ model Retailer {
   customers             Customer[]
   collections           Collection[]
   staff                 Staff[]
+  staff_invites         StaffInvite[]
   store_sections        StoreSection[]
   product_categories    ProductCategory[]
   product_attributes    ProductAttribute[]
@@ -824,11 +825,39 @@ model Staff {
 
   retailer Retailer @relation(fields: [retailer_id], references: [id])
 
+  // Tokenized invites (docs/tasks/staff-invite-tokens.md) — one live invite
+  // per staff row (D5), replaced on resend. auth_user_id null = never joined.
+  staff_invites StaffInvite[]
+
   // FR-4.3: one row per (retailer_id, phone) — re-adding a deactivated phone
   // reactivates the existing row instead of creating a duplicate.
   @@unique([retailer_id, phone])
   @@index([retailer_id])
   @@map("staff")
+}
+
+// ─── STAFF INVITES (tokenized invite system) ──────────────────────
+// docs/tasks/staff-invite-tokens.md — a single-use, onboarding-only token
+// that carries "this is a team join, not a new signup" from the invite link
+// into the first OTP verify. Never authenticates; login stays phone + OTP.
+// The raw token is never stored — only its sha256 hash (token_hash).
+model StaffInvite {
+  id            String    @id @default(cuid())
+  staff_id      String    @unique // one live invite per staff row (D5)
+  retailer_id   String             // denormalised — purge + tenant scoping
+  token_hash    String    @unique // sha256(raw token); raw is never stored
+  role_snapshot String             // role at invite time (audit only; staff.role is source of truth)
+  status        String    @default("pending") // pending | used | expired | revoked
+  expires_at    DateTime
+  accepted_at   DateTime?
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+
+  staff    Staff    @relation(fields: [staff_id], references: [id], onDelete: Cascade)
+  retailer Retailer @relation(fields: [retailer_id], references: [id], onDelete: Cascade)
+
+  @@index([retailer_id])
+  @@map("staff_invites")
 }
 
 // ─── INTERNAL TEAM (Kanchuki admin/marketing/support) ─────────────

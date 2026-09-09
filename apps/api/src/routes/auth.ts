@@ -14,6 +14,7 @@ import {
   verifyStoredOtp,
 } from '../lib/msg91-otp.js';
 import { AppError, validationError } from '../plugins/error-handler.js';
+import { hashStaffInviteToken } from '../lib/staff-invite.js';
 import { signTeamToken } from '../plugins/team-auth.js';
 
 const SendOtpSchema = z.object({
@@ -31,12 +32,17 @@ const SendOtpSchema = z.object({
 
 const OtpVerifySchema = z
   .object({
+    // phone is optional because the tokenized-invite flow (D3) never sends it:
+    // the join screen carries only the invite_token, and the server derives
+    // the bound phone from the invite row. The invite_token refine below
+    // guarantees at least one of phone / invite_token is present.
     phone: z
       .string()
       .min(10)
       .max(15)
       .refine((v) => isValidIndianPhone(v), 'Enter a valid 10-digit Indian mobile number')
-      .transform((v) => normalizeIndianPhone(v)),
+      .transform((v) => normalizeIndianPhone(v))
+      .optional(),
     // Legacy / web-billing channel: the 6-digit code the user typed. Verified
     // against the Redis entry written by /otp/send (MSG91), or against
     // Supabase when no entry exists (legacy installs/scripts).
@@ -52,8 +58,17 @@ const OtpVerifySchema = z
     // Must match the purpose passed to /otp/send so verify checks the same
     // Redis slot the code was issued into (see SendOtpSchema).
     purpose: z.enum(['login', 'stepup']).optional().default('login'),
+    // Tokenized staff invite (docs/tasks/staff-invite-tokens.md §5.5):
+    // carried from the invite link into the FIRST login so this phone is
+    // routed to the staff join instead of a brand-new retailer. Additive —
+    // absent means exactly today's behavior.
+    invite_token: z.string().min(20).optional(),
   })
-  .refine((d) => d.otp || d.msg91_token, 'Provide an OTP or a verified MSG91 token');
+  .refine((d) => d.otp || d.msg91_token, 'Provide an OTP or a verified MSG91 token')
+  .refine(
+    (d) => Boolean(d.phone || d.invite_token),
+    'Provide a phone number or an invite token',
+  );
 
 const RefreshSchema = z.object({
   refresh_token: z.string().min(1),
@@ -257,7 +272,72 @@ export const authRoutes: FastifyPluginAsync = async (server) => {
     const body = OtpVerifySchema.safeParse(request.body);
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid', 'otp');
 
-    const { phone, otp, msg91_token, purpose } = body.data;
+    let { phone, otp, msg91_token, purpose, invite_token } = body.data;
+
+    // ── 0. Resolve a tokenized staff invite BEFORE verifying the OTP ──
+    // (staff-invite-tokens.md §5.5). The invite flow NEVER sends a phone
+    // (D3 — the number is server-owned), so this is the one place the bound
+    // phone is derived: it feeds both the OTP Redis-slot lookup below and the
+    // final phone match. On ANY invalid state → 400, and crucially we do NOT
+    // fall through to retailer.upsert (the whole point: a failed invite must
+    // never silently create a junk retailer). The token is single-use +
+    // onboarding-only — after this, staff.auth_user_id is set and every
+    // future login hits the normal staff path.
+    let invite: {
+      id: string;
+      staff_id: string;
+      status: string;
+      expires_at: Date;
+      staff: {
+        id: string;
+        name: string;
+        role: string;
+        phone: string;
+        is_active: boolean;
+        retailer_id: string;
+        retailer: { id: string; deleted_at: Date | null; shop_name: string; city: string | null };
+      };
+    } | null = null;
+    if (invite_token) {
+      invite = await prisma.staffInvite.findUnique({
+        where: { token_hash: hashStaffInviteToken(invite_token) },
+        include: {
+          staff: {
+            include: {
+              retailer: { select: { id: true, deleted_at: true, shop_name: true, city: true } },
+            },
+          },
+        },
+      });
+      const inviteInvalid = () =>
+        new AppError('INVITE_INVALID', 'This invite link is no longer valid.', 400);
+
+      if (!invite || invite.status !== 'pending' || invite.expires_at.getTime() < Date.now()) {
+        throw inviteInvalid();
+      }
+      if (!invite.staff.is_active || invite.staff.retailer.deleted_at) {
+        throw inviteInvalid();
+      }
+      // D3: if a phone WAS supplied it must be the invite's bound phone — a
+      // forwarded link to a stranger can't claim the invite with their own
+      // number. (Absent phone is fine: it's derived below.)
+      if (phone && phone !== invite.staff.phone) {
+        throw new AppError(
+          'INVITE_PHONE_MISMATCH',
+          'This phone number does not match the invite. Ask the store owner to check the number.',
+          400,
+        );
+      }
+      phone = invite.staff.phone;
+    }
+
+    // With no invite_token the schema refine guarantees phone is present;
+    // with one, it was just derived above. Both paths converge on a defined
+    // phone here.
+    if (!phone) {
+      throw validationError('Enter a valid 10-digit Indian mobile number', 'phone');
+    }
+
     const e164 = `+91${phone}`;
 
     // ── 1. Verify the OTP (three channels, all server-side) ──────────
@@ -331,6 +411,43 @@ export const authRoutes: FastifyPluginAsync = async (server) => {
       }
       user = authData.user;
       session = authData.session;
+    }
+
+    // ── 1b. Complete the staff join (staff-invite-tokens.md §5.5) ────
+    // The invite was already validated in step 0 (INVITE_INVALID /
+    // INVITE_PHONE_MISMATCH would have thrown before the OTP was even
+    // checked). By here the OTP verified and the session was minted for the
+    // invite's bound phone — link the auth user, mark the invite used, and
+    // return the standard staff payload (completeLogin in the app routes by
+    // role).
+    if (invite) {
+      await prisma.$transaction([
+        prisma.staff.update({
+          where: { id: invite.staff_id },
+          data: { auth_user_id: user.id },
+        }),
+        prisma.staffInvite.update({
+          where: { id: invite.id },
+          data: { status: 'used', accepted_at: new Date() },
+        }),
+      ]);
+
+      return reply.status(200).send({
+        data: {
+          access_token: session.access_token,
+          refresh_token: session.refresh_token,
+          expires_in: session.expires_in,
+          is_staff: true,
+          staff: {
+            id: invite.staff.id,
+            name: invite.staff.name,
+            role: invite.staff.role,
+            retailer_id: invite.staff.retailer_id,
+            retailer_shop_name: invite.staff.retailer.shop_name,
+            retailer_city: invite.staff.retailer.city,
+          },
+        },
+      });
     }
 
     // ── 2. Determine Account Type (Retailer vs Staff vs TeamMember) ──

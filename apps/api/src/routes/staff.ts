@@ -2,7 +2,17 @@ import { getPurgePrisma, prisma } from '@kanchuki/db';
 import { isValidIndianPhone, normalizeIndianPhone } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
-import { notFound, planLimitExceeded, validationError } from '../plugins/error-handler.js';
+import {
+  buildStaffInviteUrl,
+  generateStaffInviteToken,
+  staffInviteExpiry,
+} from '../lib/staff-invite.js';
+import {
+  AppError,
+  notFound,
+  planLimitExceeded,
+  validationError,
+} from '../plugins/error-handler.js';
 
 // FR-1.3 (docs/tasks/team-member-access-control.md): 'owner' is a valid DB
 // value only for internal/seed use — a retailer caller can never grant it.
@@ -46,12 +56,43 @@ function assertAssignableRole(
 
 export const staffRoutes: FastifyPluginAsync = async (server) => {
   // ─── GET /staff ──────────────────────────────────────────────────
+  // Invite status rides along for the lifecycle UI (staff-invite-tokens.md
+  // §6.3): the member row carries auth_user_id (null = never logged in) plus
+  // the live invite's derived status + expiry so the app can render
+  // "Invite sent · expires …" / "Invite expired · Resend" chips. Used/
+  // revoked rows are inert — only pending matters (expired is derived from
+  // pending + past expiry).
   server.get('/', async (request) => {
     const staff = await prisma.staff.findMany({
       where: { retailer_id: request.retailerId },
       orderBy: { created_at: 'asc' },
+      include: { staff_invites: true },
     });
-    return { data: staff };
+    const now = Date.now();
+    return {
+      data: staff.map((row) => {
+        const invite = row.staff_invites[0];
+        const inviteStatus =
+          invite && invite.status === 'pending' && invite.expires_at.getTime() < now
+            ? 'expired'
+            : (invite?.status ?? null);
+        return {
+          id: row.id,
+          retailer_id: row.retailer_id,
+          auth_user_id: row.auth_user_id,
+          name: row.name,
+          phone: row.phone,
+          role: row.role,
+          is_active: row.is_active,
+          created_at: row.created_at,
+          updated_at: row.updated_at,
+          invite:
+            invite && inviteStatus
+              ? { status: inviteStatus, expires_at: invite.expires_at.toISOString() }
+              : null,
+        };
+      }),
+    };
   });
 
   // ─── POST /staff ─────────────────────────────────────────────────
@@ -102,19 +143,53 @@ export const staffRoutes: FastifyPluginAsync = async (server) => {
         'phone',
       );
 
-    let staff: { id: string; role: string; name: string };
-    if (existing) {
-      // FR-4.3 reactivate — same row comes back, seat freed by the
-      // deactivation already counted.
-      staff = await prisma.staff.update({
-        where: { id: existing.id },
-        data: { is_active: true, name: body.data.name, role: body.data.role },
-      });
-    } else {
-      staff = await prisma.staff.create({
-        data: { retailer_id: retailerId, ...body.data, phone: normalizedPhone },
-      });
-    }
+    // Tokenized invite (staff-invite-tokens.md): minted in the SAME
+    // transaction as the staff write so the response can carry a working
+    // link and a crash can't leave a staff row without its invite. A member
+    // who already joined once (auth_user_id set) needs no invite — they just
+    // log in with their phone. A member added but never logged in gets a
+    // fresh invite (replace the row — staff_id is unique, D5).
+    const invite = generateStaffInviteToken();
+    const expiresAt = staffInviteExpiry();
+
+    const staff = await prisma.$transaction(async (tx) => {
+      let row: { id: string; role: string; name: string; auth_user_id: string | null };
+      if (existing) {
+        // FR-4.3 reactivate — same row comes back, seat freed by the
+        // deactivation already counted.
+        row = await tx.staff.update({
+          where: { id: existing.id },
+          data: { is_active: true, name: body.data.name, role: body.data.role },
+        });
+      } else {
+        row = await tx.staff.create({
+          data: { retailer_id: retailerId, ...body.data, phone: normalizedPhone },
+        });
+      }
+
+      if (!row.auth_user_id) {
+        await tx.staffInvite.upsert({
+          where: { staff_id: row.id },
+          create: {
+            staff_id: row.id,
+            retailer_id: retailerId,
+            token_hash: invite.tokenHash,
+            role_snapshot: row.role,
+            status: 'pending',
+            expires_at: expiresAt,
+          },
+          update: {
+            token_hash: invite.tokenHash,
+            role_snapshot: row.role,
+            status: 'pending',
+            expires_at: expiresAt,
+            accepted_at: null,
+          },
+        });
+      }
+
+      return row;
+    });
 
     await prisma.auditLog.create({
       data: {
@@ -128,7 +203,85 @@ export const staffRoutes: FastifyPluginAsync = async (server) => {
       },
     });
 
-    return reply.status(201).send({ data: staff });
+    // Tokenized invite (staff-invite-tokens.md §5.1): the response carries
+    // the shareable link so the retailer can send it to the member. Present
+    // only when an invite was actually minted (member never logged in).
+    const data: Record<string, unknown> = { ...staff };
+    if (!staff.auth_user_id) {
+      data.invite = {
+        url: buildStaffInviteUrl(invite.raw),
+        expires_at: expiresAt.toISOString(),
+      };
+    }
+
+    return reply.status(201).send({ data });
+  });
+
+  // ─── POST /staff/:id/invite/resend ──────────────────────────────
+  // staff-invite-tokens.md §5.2 — mint a fresh token for a member who never
+  // joined (D5: replace on the same row; staff_id is unique). Owner-only by
+  // default (/v1/staff is not on the staffCanAccess allowlist). Already-joined
+  // members (auth_user_id set) just log in — no re-invite, 409.
+  server.post('/:id/invite/resend', async (request, reply) => {
+    const { id } = request.params as { id: string };
+
+    const existing = await prisma.staff.findFirst({
+      where: { id, retailer_id: request.retailerId },
+    });
+    if (!existing) throw notFound('Staff');
+    if (!existing.is_active)
+      throw validationError('Reactivate the team member before inviting', 'id');
+    if (existing.auth_user_id)
+      throw new AppError(
+        'ALREADY_JOINED',
+        'This member has already joined — they can log in with their phone.',
+        409,
+      );
+
+    const invite = generateStaffInviteToken();
+    const expiresAt = staffInviteExpiry();
+
+    // staff_id is unique (D5): upsert replaces the old token. accepted_at is
+    // cleared in case a previous link was somehow used-then-reset.
+    await prisma.staffInvite.upsert({
+      where: { staff_id: id },
+      create: {
+        staff_id: id,
+        retailer_id: request.retailerId,
+        token_hash: invite.tokenHash,
+        role_snapshot: existing.role,
+        status: 'pending',
+        expires_at: expiresAt,
+      },
+      update: {
+        token_hash: invite.tokenHash,
+        role_snapshot: existing.role,
+        status: 'pending',
+        expires_at: expiresAt,
+        accepted_at: null,
+      },
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'retailer',
+        actor_id: request.retailerId,
+        action: 'staff_invite_resend',
+        resource_type: 'Staff',
+        resource_id: id,
+        metadata: { name: existing.name },
+        ip_address: request.ip,
+      },
+    });
+
+    return reply.status(200).send({
+      data: {
+        invite: {
+          url: buildStaffInviteUrl(invite.raw),
+          expires_at: expiresAt.toISOString(),
+        },
+      },
+    });
   });
 
   // ─── PUT /staff/:id ──────────────────────────────────────────────
@@ -240,6 +393,14 @@ export const staffRoutes: FastifyPluginAsync = async (server) => {
     }
 
     await prisma.staff.update({ where: { id }, data: { is_active: false } });
+
+    // Tokenized invite: a deactivated member's pending invite is revoked so
+    // an open link stops working immediately (§5.6). Used/expired rows are
+    // left untouched — they're inert either way.
+    await prisma.staffInvite.updateMany({
+      where: { staff_id: id, status: 'pending' },
+      data: { status: 'revoked' },
+    });
 
     await prisma.auditLog.create({
       data: {

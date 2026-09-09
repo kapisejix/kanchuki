@@ -48,10 +48,16 @@ export const authApi = {
    * the MSG91 widget isn't configured in this build, and by the web billing
    * page).
    */
-  verifyOtp: (phone: string, otp: string) =>
+  verifyOtp: (phone: string | undefined, otp: string, inviteToken?: string) =>
     request<{ data: VerifyOtpResult }>('/v1/auth/otp/verify', {
       method: 'POST',
-      body: JSON.stringify({ phone, otp }),
+      body: JSON.stringify({
+        // The invite flow (staff-invite-tokens.md D3) never sends a phone —
+        // the server derives it from the invite row.
+        ...(phone ? { phone } : {}),
+        otp,
+        ...(inviteToken ? { invite_token: inviteToken } : {}),
+      }),
       timeoutMs: 30_000,
     }),
 
@@ -61,10 +67,14 @@ export const authApi = {
    * MSG91 server-side before issuing a session. Same response shape as
    * verifyOtp.
    */
-  verifyMsg91: (phone: string, msg91Token: string) =>
+  verifyMsg91: (phone: string, msg91Token: string, inviteToken?: string) =>
     request<{ data: VerifyOtpResult }>('/v1/auth/otp/verify', {
       method: 'POST',
-      body: JSON.stringify({ phone, msg91_token: msg91Token }),
+      body: JSON.stringify({
+        phone,
+        msg91_token: msg91Token,
+        ...(inviteToken ? { invite_token: inviteToken } : {}),
+      }),
       timeoutMs: 30_000,
     }),
 }

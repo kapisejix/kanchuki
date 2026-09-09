@@ -257,6 +257,9 @@ function AppShell() {
         <Stack.Protected guard={!isAuthed}>
           <Stack.Screen name="auth/phone" options={{ headerShown: false }} />
           <Stack.Screen name="auth/otp" options={{ headerShown: false }} />
+          {/* Tokenized staff invite join (staff-invite-tokens.md §6.1) — a
+              member opening kanchuki://join?token=… is not yet logged in. */}
+          <Stack.Screen name="join" options={{ headerShown: false }} />
         </Stack.Protected>
       </Stack>
     </View>

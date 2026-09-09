@@ -1,7 +1,7 @@
 # Tokenized Invite System for Retailer Staff
 
 **Date:** 2026-09-09
-**Status:** 🔴 Planned (spec only — nothing built)
+**Status:** ✅ Built — Phases 1–2 shipped 2026-09-09 (core + lifecycle UI + web `/join`). Delivery = free client-side WhatsApp `wa.me` deep link (D4 update below) — server-send stays post-launch (§10).
 **Owner ask:** _"I want a tokenized invite system for retailer staff so everything is fine and the picture is clear."_
 **Supersedes:** `docs/tasks/team-member-access-control.md` §FR-6 (the client-only "copy this text" stopgap, shipped as FR-6.1 in `dab79651`). Everything else in that doc (role picker, `staffCan`, routing, lifecycle) still stands — this doc only replaces the *invite* piece.
 
@@ -24,7 +24,7 @@ The server genuinely can't tell "new retailer signing up" from "team member whos
 | D1 | **The token never authenticates.** Login is always phone + OTP. | The SIM stays the real auth factor. A leaked link can't get anyone in. |
 | D2 | **The token is single-use and onboarding-only.** It exists only to carry state from "opened the invite link" to "passed OTP the first time." | After the first successful login, `staff.auth_user_id` is set and every future login is pure phone + OTP, routed correctly by the existing `auth.ts` logic. The token is irrelevant post-join. |
 | D3 | **OTP must succeed on the phone stored in the `staff` row**, not any phone the link-opener types. | Otherwise a forwarded link = anyone joins as that member. |
-| D4 | **Delivery stays retailer-shares-the-link.** No server-sent SMS/WhatsApp in v1. | Same constraint as FR-6.1 — per-message cost + TRAI DLT registration. Server-send is a later phase (§10). |
+| D4 | **Delivery stays retailer-shares-the-link, via WhatsApp `wa.me` deep links.** The retailer's own WhatsApp app opens with the invite pre-filled to the member's number (`buildWhatsAppInviteUrl` — same pattern as collection sharing); Copy/Share fall back for the no-WhatsApp case. Free, universal, low-volume, **no MSG91 (cost + TRAI DLT), no Meta Cloud API (₹0.38/conversation + template approval)**. Server-send is post-launch (§10). |
 | D5 | **One live invite per `staff` row.** Resend = replace the token on the same row. | `staff_invites.staff_id` is unique. Keeps the model trivial. |
 | D6 | **Custom scheme `kanchuki://join?token=…` for v1**, with an `https://kanchuki.app/join?token=…` web fallback page for the no-app case. | Universal links / associated domains aren't configured (`app.json` has only `"scheme": "kanchuki"`). Adding them is a nice-to-have (§10). |
 
@@ -274,9 +274,9 @@ if (invite_token) {
 
 | Phase | Scope | Blocks |
 |---|---|---|
-| **1 — Core** | Migration `099` (+ backfill), `POST /v1/staff` creates invite, `GET /v1/public/staff-invite/:token`, `POST /v1/public/staff-invite/:token/otp`, `invite_token` on `/v1/auth/otp/verify`, `app/join.tsx`, `auth/otp` token pass-through, tokenized share message, purge-job line. | — |
-| **2 — Lifecycle UI** | `POST /v1/staff/:id/invite/resend`, invite-status chips + Resend in `settings/staff.tsx`, web `/join` page. | Phase 1 |
-| **3 — Later** | Server-sent invite via MSG91 (needs a DLT-registered template + per-message cost sign-off), universal links / App Links, the optional onboarding fork. | Launch + DLT |
+| **1 — Core** | ✅ **Built 2026-09-09** — migration `099` (+ backfill), `POST /v1/staff` creates invite, `GET /v1/public/staff-invite/:token`, `POST /v1/public/staff-invite/:token/otp`, `invite_token` on `/v1/auth/otp/verify`, `app/join.tsx`, `auth/otp` token pass-through, tokenized share message, purge-job line. | — |
+| **2 — Lifecycle UI** | ✅ **Built 2026-09-09** — `POST /v1/staff/:id/invite/resend`, invite-status chips + WhatsApp one-tap resend in `settings/staff.tsx`, web `/join` page. | Phase 1 |
+| **3 — Later** | Server-sent WhatsApp via Meta Cloud API (F-035 managed-sending scope — needs Business Verification + approved template; the ₹0.38/conversation pass-through is in pricing math), universal links / App Links, the optional onboarding fork. | Launch + Meta approval |
 
 ---
 
