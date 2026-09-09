@@ -233,6 +233,7 @@ Payment: Razorpay (UPI first). Retailer pays base + 18% GST. **Source of truth: 
 | RC-011 | Server Razorpay `fetch` had no timeout → route hung past the mobile client's 10s abort → misleading "API server not running" timeout on Switch Plans | `54970c5a` |
 | RC-012 | Customer-detail screen kept a full Measurements card + Camera nav + Recent-Activity block wired to teardown-deleted endpoints/route (`/customer/:id/measurement`) — teardown removed destinations, not kept-screen entry points | `440b900` |
 | RC-013 | Never-openable 360-spin modal + orphaned `productApi` spin methods + stale guarded `try_on_credits` reads on onboarding/plan-select/analytics survived the teardown | `2c6b348` |
+| RC-014 | `navigator.share()` rejects `AbortError` on share-sheet dismissal; web `handleShare` (`ProductDetailSheet`, `CollectionView`) had no catch and `onClick={() => void handleShare()}` left it unhandled → Sentry Error | `9d6ca8de` |
 
 **New bug → new RC entry:** when a fix commit lands, append the root cause to `docs/root-cause/root-cause issues.md`, add its RC row here, and reference the RC ID in the commit message.
 
