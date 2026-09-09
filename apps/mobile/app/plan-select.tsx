@@ -54,12 +54,22 @@ export default function PlanSelectScreen() {
 
   const [switching, setSwitching] = useState(false);
 
-  const { data: subData, isLoading: subLoading } = useQuery({
+  const {
+    data: subData,
+    isLoading: subLoading,
+    isError: subError,
+    refetch: refetchSub,
+  } = useQuery({
     queryKey: ['billing', 'subscription'],
     queryFn: () => billingApi.getSubscription(),
   });
 
-  const { data: plansData, isLoading: plansLoading } = useQuery({
+  const {
+    data: plansData,
+    isLoading: plansLoading,
+    isError: plansError,
+    refetch: refetchPlans,
+  } = useQuery({
     queryKey: ['billing', 'plans'],
     queryFn: () => billingApi.getPlans(),
   });
@@ -136,6 +146,14 @@ export default function PlanSelectScreen() {
   };
 
   const isLoading = subLoading || plansLoading;
+  // A failed plans/subscription fetch used to fall through to the card list
+  // with empty data — every plan then rendered "—/mo" and a permanent
+  // "Loading…" that never resolved. Surface it instead.
+  const loadFailed = !isLoading && (plansError || subError);
+  const retry = () => {
+    void refetchPlans();
+    void refetchSub();
+  };
 
   return (
     <View className="flex-1 bg-[#F8F7FC]">
@@ -190,6 +208,24 @@ export default function PlanSelectScreen() {
         {isLoading ? (
           <View className="items-center py-10">
             <ActivityIndicator size="large" color={primaryColor} />
+          </View>
+        ) : loadFailed ? (
+          <View className="items-center py-10 px-4">
+            <AlertCircle size={28} color="#BB3F95" />
+            <Text className="text-sm font-bold text-spaceCadet-900 mt-3 text-center">
+              Couldn&apos;t load plans
+            </Text>
+            <Text className="text-[11px] text-heliotrope-500 mt-1 text-center font-medium">
+              Check your connection and try again. You can also manage billing on the website.
+            </Text>
+            <AnimatedPressable
+              onPress={retry}
+              className="mt-4 bg-spaceCadet-900 rounded-2xl px-6 py-3"
+              accessibilityLabel="Retry loading plans"
+              accessibilityRole="button"
+            >
+              <Text className="text-white text-xs font-bold">Retry</Text>
+            </AnimatedPressable>
           </View>
         ) : (
           <>
@@ -271,7 +307,7 @@ export default function PlanSelectScreen() {
                         className="text-[11px] mt-0.5 font-medium"
                         style={{ color: isCurrent ? '#D4B8E8' : '#6B4773' }}
                       >
-                        {price > 0 ? `${priceDisplay}/mo` : 'Loading…'}
+                        {priceDisplay}/mo
                         {isCurrent ? ' · Active' : ''}
                       </Text>
                     </View>
