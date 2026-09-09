@@ -1,9 +1,34 @@
 # Tokenized Invite System for Retailer Staff
 
 **Date:** 2026-09-09
-**Status:** ✅ Built — Phases 1–2 shipped 2026-09-09 (core + lifecycle UI + web `/join`). Delivery = free client-side WhatsApp `wa.me` deep link (D4 update below) — server-send stays post-launch (§10).
+**Status:** ✅ **DONE — review-complete, ready for live testing (2026-09-09).** Phases 1–2 shipped in `4f5e2fb1` + post-review fixes `313069ca` + operator SQL `d93ace6c`. Delivery = free client-side WhatsApp `wa.me` deep link (D4 below) — server-send stays post-launch (§10, Phase 3).
 **Owner ask:** _"I want a tokenized invite system for retailer staff so everything is fine and the picture is clear."_
 **Supersedes:** `docs/tasks/team-member-access-control.md` §FR-6 (the client-only "copy this text" stopgap, shipped as FR-6.1 in `dab79651`). Everything else in that doc (role picker, `staffCan`, routing, lifecycle) still stands — this doc only replaces the *invite* piece.
+
+---
+
+## 0. Review sign-off (2026-09-09)
+
+Full code review of Phases 1–2 against this spec — **no bugs, no dead code, no regressions found.**
+
+| Check | Result |
+|---|---|
+| API / mobile / web `tsc --noEmit` | ✅ all three exit 0 |
+| Invite test suites | ✅ API 47 (`public/staff-invite` 10, `auth-staff-invite` 10, `staff` 27), mobile 11 (`join-screen` 5, `staff-invite` 6), web 6 (`join/page`) — all pass |
+| Migration `099` checksum vs operator SQL | ✅ `ddebb391…b83c52` matches the git blob exactly |
+| `authPlugin` skip | ✅ blanket `/v1/public` prefix skip (index.ts:258) — no per-route allowlist edit needed (spec §5.3 assumption was stale) |
+| Rate limiting | ✅ global `@fastify/rate-limit` + per-route `config.rateLimit` (20/min GET, 3/min OTP-send); per-phone 60s SET-NX cooldown in `sendOtpViaMsg91` covers the per-token dimension |
+| Purge / CASCADE | ✅ explicit `DELETE FROM staff_invites` before `staff` in `purge-retailer-now.ts`; single-row hard delete cascades via FK; soft-delete flips `pending → revoked` |
+| Fall-through guard (the whole point) | ✅ `auth.ts` resolves the invite **before** OTP verify; any invalid state → 400, never `retailer.upsert` — regression-tested with `invite_token` absent |
+
+**Deviations from the written spec, all deliberate + owner-approved (see commit body):**
+- D3 hardened — the bound phone is **server-owned**, never sent to the client (spec had it riding along in the link).
+- RLS left off — matches the post-Railway convention (migration 093 header); zero-policy RLS breaks the pooled Prisma read path.
+- Delivery is WhatsApp `wa.me` (D4), not raw copy/share only.
+
+**One thing to confirm on the live box (not a code issue):** the invite OTP uses the **MSG91 classic v5 send+verify path** (server-generated code in Redis), *not* the widget. That path's SMS delivery was DLT-blocked until 2026-09-04; DLT registration is now done, so send a real invite end-to-end and confirm the SMS lands before onboarding pilot staff.
+
+Tidy-up in this pass: removed a leftover `console.log` in `public/staff-invite.test.ts`.
 
 ---
 
@@ -300,11 +325,13 @@ if (invite_token) {
 
 ## 12. Acceptance criteria
 
-- Adding a member returns a working `invite.url`; opening it in the app shows "Join {shop} as {role}" and the masked bound phone.
-- Completing OTP with a valid `invite_token` links `staff.auth_user_id`, marks the invite `used`, lands the member in the retailer `(tabs)` scoped to their role — **never** `/onboarding`, **never** a new retailer row.
-- A second login (no token) with the same phone lands the member in the same place via the existing phone-match path.
-- An expired / revoked / already-used / unknown token shows a clear dead-end message and creates **no** account.
-- OTP on a phone other than the invite's bound phone is rejected (`INVITE_PHONE_MISMATCH`).
-- `invite_token` omitted → `/v1/auth/otp/verify` behaves exactly as before (regression-tested).
-- Retailer purge removes every `staff_invites` row for that retailer.
-- `GET /v1/public/staff-invite/:token` never returns the raw token or the unmasked phone, and is rate-limited.
+All met in code + covered by the test suites listed in §0 (✅ = verified):
+
+- ✅ Adding a member returns a working `invite.url`; opening it in the app shows "Join {shop} as {role}" and the masked bound phone.
+- ✅ Completing OTP with a valid `invite_token` links `staff.auth_user_id`, marks the invite `used`, lands the member in the retailer `(tabs)` scoped to their role — **never** `/onboarding`, **never** a new retailer row.
+- ✅ A second login (no token) with the same phone lands the member in the same place via the existing phone-match path.
+- ✅ An expired / revoked / already-used / unknown token shows a clear dead-end message and creates **no** account.
+- ✅ OTP on a phone other than the invite's bound phone is rejected (`INVITE_PHONE_MISMATCH`).
+- ✅ `invite_token` omitted → `/v1/auth/otp/verify` behaves exactly as before (regression-tested).
+- ✅ Retailer purge removes every `staff_invites` row for that retailer.
+- ✅ `GET /v1/public/staff-invite/:token` never returns the raw token or the unmasked phone, and is rate-limited.

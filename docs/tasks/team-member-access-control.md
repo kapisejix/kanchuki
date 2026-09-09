@@ -252,6 +252,11 @@ Everything is **owner-only by default**; a route has to be added to an allowlist
 
 ### FR-6 — Optional: invite signal  (fixes G8, low priority)
 
+> ✅ **DONE — superseded by the tokenized invite system** (`docs/tasks/staff-invite-tokens.md`,
+> shipped 2026-09-09, `4f5e2fb1`). FR-6.1's copy-text stopgap (`dab79651`) was replaced by
+> single-use `kanchuki://join?token=…` links with server-side OTP + WhatsApp `wa.me` delivery.
+> The rest of this doc (roles, `staffCan`, routing, lifecycle) is unaffected.
+
 - **FR-6.1** After `POST /v1/staff` succeeds, show the retailer a share sheet / copy-text:
   *"{name} can now log in to the {shop} app with their phone number {phone}."* No SMS send (cost,
   DLT). Purely a client-side prompt.

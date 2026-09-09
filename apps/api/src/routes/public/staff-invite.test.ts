@@ -179,7 +179,6 @@ describe('POST /v1/public/staff-invite/:token/otp', () => {
       url: '/v1/public/staff-invite/abcdefghijklmnopqrstuvwxyz/otp',
     });
 
-    console.log('BODY:', JSON.stringify(res.json()));
     expect(res.statusCode).toBe(200);
     expect(res.json().data).toEqual({ sent_to: '****3210' });
     // The server sent to the invite's bound phone — the client never supplied
