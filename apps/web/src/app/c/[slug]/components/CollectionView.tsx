@@ -278,10 +278,17 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
 
   const handleShare = useCallback(async () => {
     const url = window.location.href;
-    if (navigator.share) {
-      await navigator.share({ title: collection.title, url });
-    } else {
-      await navigator.clipboard.writeText(url);
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: collection.title, url });
+      } else {
+        await navigator.clipboard.writeText(url);
+      }
+    } catch (err) {
+      // User dismissed the native share sheet — not an error.
+      if (err instanceof Error && err.name === "AbortError") return;
+      // Share failed otherwise — copy the link so there's always an outcome.
+      await navigator.clipboard.writeText(url).catch(() => {});
     }
   }, [collection.title]);
 

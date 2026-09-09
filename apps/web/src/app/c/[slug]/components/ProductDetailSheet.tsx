@@ -392,10 +392,18 @@ export function ProductDetailSheet({
     const url = productUrlFor(product.id)
     const title = product.name ?? product.category ?? 'Product'
     const text = `Check out ${title} — ${formatPriceRange(product.price_min, product.price_max)} from ${retailer.shop_name}`
-    if (navigator.share) {
-      await navigator.share({ title, text, url })
-    } else {
-      await navigator.clipboard.writeText(url)
+    try {
+      if (navigator.share) {
+        await navigator.share({ title, text, url })
+      } else {
+        await navigator.clipboard.writeText(url)
+      }
+    } catch (err) {
+      // User dismissed the native share sheet — not an error.
+      if (err instanceof Error && err.name === 'AbortError') return
+      // Share failed for another reason — copy the link so there's always an
+      // outcome. Guard the fallback too so it can't reject unhandled.
+      await navigator.clipboard.writeText(url).catch(() => {})
     }
   }, [product.id, product.name, product.category, product.price_min, product.price_max, productUrlFor, retailer.shop_name])
 
