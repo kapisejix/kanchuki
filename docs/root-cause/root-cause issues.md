@@ -10,6 +10,18 @@
 
 ---
 
+## RC-014 — Cancelling the native share sheet surfaces as an unhandled `AbortError`
+
+- **Component:** `apps/web/src/app/c/[slug]/components/ProductDetailSheet.tsx`, `apps/web/src/app/c/[slug]/components/CollectionView.tsx` (both `handleShare`)
+- **Commit:** `9d6ca8de`
+- **Symptom:** Sentry `KANCHUKI-WEB-1` — `AbortError: Share canceled`, level Error, unhandled, on route `/:store` (the customer storefront, which renders `CollectionView`). One event per shopper who opened a share button and then dismissed the OS share sheet.
+- **Root cause:** `navigator.share()` **rejects with `AbortError`** when the user dismisses the native share sheet — a normal outcome, not a failure. Both `handleShare` callbacks `await navigator.share(...)` with no `try/catch`, and every call site is `onClick={() => void handleShare()}` — the `void` discards the returned promise, so the rejection has no handler and becomes an unhandled promise rejection that Sentry captures as an Error. (`DesignShareActions.tsx` already handled this correctly; these two predated that pattern.)
+- **Fix:** wrap the `navigator.share`/`navigator.clipboard` block in `try/catch` in both callbacks — `return` silently when `err.name === 'AbortError'` (user dismissal), otherwise fall back to a guarded `navigator.clipboard.writeText(url).catch(() => {})` so there is always an outcome and the fallback itself can't reject unhandled. Matches the existing `DesignShareActions` shape.
+- **Proof:** web `tsc --noEmit` clean; `apps/web/src/app/c/[slug]/components/__tests__/{CollectionView,ProductDetailSheet}.test.tsx` pass (3/3).
+- **Prevention lesson:** `navigator.share()` (and `navigator.clipboard`, geolocation, permissions prompts) reject on ordinary user cancellation — every call needs a `catch` that treats `AbortError` / `NotAllowedError` as a non-event. `onClick={() => void asyncFn()}` is not error handling; the `void` silences the linter, not the rejection.
+
+---
+
 ## RC-013 — Dead 360-spin UI and stale VTO/try-on reads survived the teardown in kept screens
 
 - **Component:** `apps/mobile/app/product/[id].tsx`, `apps/mobile/src/lib/api/products.ts`, `apps/mobile/app/onboarding.tsx`, `apps/mobile/app/plan-select.tsx`, `apps/mobile/app/analytics.tsx`, `apps/mobile/src/lib/api/{analytics,billing}.ts`
