@@ -252,23 +252,27 @@ export default function HomeScreen() {
               accent="#E0E1F6"
             />
           </View>
-          {canSocial && (
-            <QuickAction
-              icon={<MessageCircle size={20} color="#BB3F95" />}
-              label="Social Media"
-              sublabel="Connect & post"
-              onPress={() => router.push('/growth/integrations')}
-              accent="#E0E1F6"
-            />
-          )}
-          {canAnalytics && (
-            <QuickAction
-              icon={<BarChart3 size={20} color="#560A39" />}
-              label="Analytics"
-              sublabel="Views, enquiries & stats"
-              onPress={() => router.push('/analytics')}
-              accent="#E0E1F6"
-            />
+          {(canSocial || canAnalytics) && (
+            <View className="flex-row gap-3">
+              {canSocial && (
+                <QuickAction
+                  icon={<MessageCircle size={20} color="#BB3F95" />}
+                  label="Social Media"
+                  sublabel="Connect & post"
+                  onPress={() => router.push('/growth/integrations')}
+                  accent="#E0E1F6"
+                />
+              )}
+              {canAnalytics && (
+                <QuickAction
+                  icon={<BarChart3 size={20} color="#560A39" />}
+                  label="Analytics"
+                  sublabel="Views, enquiries & stats"
+                  onPress={() => router.push('/analytics')}
+                  accent="#E0E1F6"
+                />
+              )}
+            </View>
           )}
         </View>
       </View>

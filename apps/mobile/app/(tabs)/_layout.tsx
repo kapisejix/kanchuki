@@ -7,22 +7,23 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { retailerApi } from '../../src/lib/api'
 import { useAuth } from '../../src/lib/auth-context'
+import { staffCan } from '../../src/lib/staff-can'
 import { useTheme } from '../../src/lib/theme'
 
 export default function TabsLayout() {
   const insets = useSafeAreaInsets()
   const { primaryColor } = useTheme()
-  const { isShopStaff, staffRole } = useAuth()
+  const { staffRole } = useAuth()
 
   // FR-3 (team-member-access-control): the retailer's shop Staff render the
-  // same tabs as the owner, gated by role to mirror the server allowlist
-  // (staffCan in src/lib/staff-can.ts). Growth has no allowlist entry for any
-  // staff role → hidden for all staff; salesperson additionally loses Add
-  // (POST products) and Collections (no collections route at all).
-  const canSeeGrowth = !isShopStaff
-  const isSalesperson = isShopStaff && staffRole === 'salesperson'
-  const canSeeAdd = !isSalesperson
-  const canSeeCollections = !isSalesperson
+  // same tabs as the owner, gated through staffCan() — the one client mirror
+  // of the server allowlist (src/lib/staff-can.ts) — so tab visibility can't
+  // drift from what the API enforces. Owner (staffRole null) passes every
+  // check; growth/analytics/social are owner-only; salesperson also loses
+  // Add (POST products) and Collections.
+  const canSeeGrowth = staffCan(staffRole, 'growth')
+  const canSeeAdd = staffCan(staffRole, 'catalog.edit')
+  const canSeeCollections = staffCan(staffRole, 'collections')
 
   // Gate: retailer must finish the registration/onboarding form before the
   // dashboard renders — otherwise a dropped-off signup (or any later relaunch)

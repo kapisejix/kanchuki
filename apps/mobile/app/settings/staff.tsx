@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
   View, Text, FlatList, TextInput,
   Alert, Modal, Pressable, Share, Platform,
@@ -213,6 +213,16 @@ function PurgeModal({
   const [confirm, setConfirm] = useState('')
   const [deleting, setDeleting] = useState(false)
   const isConfirmed = confirm.trim().toUpperCase() === 'DELETE'
+
+  // The modal stays mounted (visible toggles) — clear the typed confirmation
+  // every time it closes so the "type DELETE" gate can't be pre-satisfied on
+  // the next member's permanent-delete.
+  useEffect(() => {
+    if (!member) {
+      setConfirm('')
+      setDeleting(false)
+    }
+  }, [member])
 
   const handlePurge = async () => {
     if (!member || !isConfirmed) return

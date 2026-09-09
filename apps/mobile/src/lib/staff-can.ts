@@ -7,37 +7,32 @@
  * role === null means the real owner (or a catalog-delegate token) — owner
  * can do everything; every staff role starts deny-by-default and opts in.
  */
+// Only the features a screen actually gates today. The server allowlist
+// (staffCanAccess) is the real enforcement — everything not listed here is
+// owner-only there too, so a staff session that reaches an ungated screen
+// still gets a 403 on write. Add a feature when a screen starts gating it;
+// don't front-run with entries nothing calls.
 export type StaffFeature =
   | 'catalog.view'
   | 'catalog.edit'
-  | 'categories.edit'
   | 'collections'
-  | 'size-charts'
   | 'customers.add'
-  | 'qr-slug'
   | 'growth'
   | 'analytics'
   | 'social'
-  | 'ai-studio'
-  | 'settings.account'
 
-// Server: MANAGER_ALLOWED_ROUTES + SALESPERSON_ALLOWED_ROUTES.
-// Salesperson: GET products/categories, POST customers, GET retailers/me.
-// Manager: + write products/categories/collections/size-charts, qr-slug.
-// Everything not listed (growth, analytics, social, billing, KYC, staff
-// mgmt, account delete, WhatsApp API) is owner-only on the server — mirror
-// that here so staff never tap into a guaranteed 403.
-const ROLE_FEATURES: Record<Exclude<StaffFeature, 'catalog.view' | 'customers.add'>, 'owner' | 'manager'> = {
+// 'manager' = manager (and any non-salesperson staff role) may; 'owner' =
+// only the retailer owner. catalog.view / customers.add are allowed for
+// every role and handled in staffCan directly.
+const ROLE_FEATURES: Record<
+  Exclude<StaffFeature, 'catalog.view' | 'customers.add'>,
+  'owner' | 'manager'
+> = {
   'catalog.edit': 'manager',
-  'categories.edit': 'manager',
   collections: 'manager',
-  'size-charts': 'manager',
-  'qr-slug': 'manager',
   growth: 'owner',
   analytics: 'owner',
   social: 'owner',
-  'ai-studio': 'owner',
-  'settings.account': 'owner',
 }
 
 export function staffCan(role: string | null | undefined, feature: StaffFeature): boolean {
