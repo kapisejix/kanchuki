@@ -2,6 +2,33 @@
 
 One file, update at end of each work session: what's done, what's next, what's blocked. Check `git log -1` and this file first thing each session.
 
+## 2026-09-09 — Tokenized staff-invite review sign-off + test plan (commit `fe9b7df`)
+
+Feature was built earlier same day by a Codebuff session — commits `4f5e2fb1` (feat), `313069ca` (post-review UX fixes), `d93ace6c` (operator SQL). This session = full code review against `docs/tasks/staff-invite-tokens.md` + doc close-out + Play Store test guidance. **No push of feature code by me** — but `git push origin main` here also carried those 3 pre-existing local commits to remote (they weren't on `origin` yet).
+
+**Review result: no bugs, no dead code, no regressions.**
+- api / mobile / web `tsc --noEmit` — all exit 0
+- Invite suites green: API 47 (`public/staff-invite` 10, `auth-staff-invite` 10, `staff` 27), mobile 11 (`join-screen` 5, `staff-invite` 6), web 6 (`join/page`)
+- Migration `099` sha256 (`ddebb391…b83c52`) matches `scripts/apply-099-staff-invites.sql` exactly
+- `authPlugin` — blanket `/v1/public` prefix skip (index.ts:258), so spec §5.3's "add to allowlist" is a no-op (stale assumption, impl correct)
+- Rate limit — global `@fastify/rate-limit` + per-route `config.rateLimit` (20/min GET, 3/min OTP); per-phone 60s SET-NX cooldown in `sendOtpViaMsg91` covers per-token
+- Purge — explicit `DELETE FROM staff_invites` before `staff`; single-row hard-delete cascades via FK; soft-delete flips `pending → revoked`
+- Core guard verified — `auth.ts` resolves invite **before** OTP verify → invalid = 400, never `retailer.upsert`; regression-tested token-absent
+
+**Deliberate spec deviations (owner-approved, in commit body):** D3 hardened (phone server-owned, never sent to client), RLS off (migration 093 convention), delivery via WhatsApp `wa.me`.
+
+**Changed this session (commit `fe9b7df`):**
+- `docs/tasks/staff-invite-tokens.md` → status **DONE**, new §0 review sign-off table, §12 acceptance criteria ticked
+- `docs/tasks/team-member-access-control.md` §FR-6 → **DONE — superseded**
+- `apps/api/src/routes/public/staff-invite.test.ts` → removed one leftover `console.log`
+
+**Blocked / owner-side before live test:**
+1. **Migration 099 not applied in prod** — run `scripts/apply-099-staff-invites.sql` in the admin SQL editor (kanchuki_migrator). Until then every invite call 500s (table missing). Bottom two verify SELECTs must show `applied=true` + backfill count.
+2. Confirm the `.aab` build's API URL points at live Railway.
+3. Invite OTP uses the **MSG91 classic v5 path** (server code in Redis), not the widget — DLT-registered 2026-09-04, so send one real invite end-to-end and confirm SMS lands before onboarding pilot staff.
+
+**Next:** owner applies migration 099 → run the §3 happy-path + §4 edge-case test matrix from the chat (needs two phone numbers: retailer + staff; staff device logged out because `join.tsx` is in the `!isAuthed` guard block).
+
 ## 2026-09-06 — Safe-area spacing standardization (mobile + customer web PWA)
 
 New `apps/mobile/src/lib/safe-area.ts` `useScreenInsets()` — single source of truth for inset math (`headerPaddingTop` = old `Math.max(insets.top,24)+12` byte-identical, `screenPaddingBottom`, `tabScrollPaddingBottom` = `64 + insets.bottom + 16`).
