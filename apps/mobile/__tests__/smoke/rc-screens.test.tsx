@@ -102,6 +102,13 @@ vi.mock('expo-image-picker', () => ({
   launchImageLibraryAsync: vi.fn(async () => ({ canceled: true, assets: [] })),
 }))
 
+// staff.tsx imports expo-clipboard (FR-6.1 invite copy); mock it so the real
+// module (→ expo-modules-core, which reads __DEV__ at import time) never
+// evaluates in the Node test env.
+vi.mock('expo-clipboard', () => ({
+  setStringAsync: vi.fn(async () => true),
+}))
+
 // ── Data-driven react-query mock (overrides setup's empty-data mock) ──
 vi.mock('@tanstack/react-query', () => ({
   useQuery: ({ queryKey }: { queryKey: unknown[] }) => ({

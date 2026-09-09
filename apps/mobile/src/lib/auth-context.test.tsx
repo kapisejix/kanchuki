@@ -70,7 +70,8 @@ describe('AuthProvider', () => {
 
     expect(get()!.status).toBe('unauthenticated')
     expect(get()!.isAuthenticated).toBe(false)
-    expect(get()!.isStaff).toBe(false)
+    expect(get()!.isShopStaff).toBe(false)
+    expect(get()!.isTeamMember).toBe(false)
   })
 
   it('hydrates to authenticated (retailer) when only a token is stored', async () => {
@@ -80,17 +81,44 @@ describe('AuthProvider', () => {
 
     expect(get()!.status).toBe('authenticated')
     expect(get()!.isAuthenticated).toBe(true)
-    expect(get()!.isStaff).toBe(false)
+    expect(get()!.isShopStaff).toBe(false)
+    expect(get()!.isTeamMember).toBe(false)
   })
 
-  it('hydrates to authenticated staff when staff_role is stored', async () => {
+  it('hydrates to shop staff when staff_role + staff_retailer_id are stored (legacy session)', async () => {
     store.set('auth_token', 'tok-1')
     store.set('staff_role', 'MANAGER')
+    store.set('staff_retailer_id', 'retailer_1')
     const { get, flush } = await mount()
     await flush()
 
     expect(get()!.status).toBe('authenticated')
-    expect(get()!.isStaff).toBe(true)
+    expect(get()!.isShopStaff).toBe(true)
+    expect(get()!.isTeamMember).toBe(false)
+    expect(get()!.staffRole).toBe('MANAGER')
+  })
+
+  it('hydrates to team member when staff_role has no staff_retailer_id (internal agent)', async () => {
+    store.set('auth_token', 'tok-1')
+    store.set('staff_role', 'FIELD')
+    const { get, flush } = await mount()
+    await flush()
+
+    expect(get()!.status).toBe('authenticated')
+    expect(get()!.isShopStaff).toBe(false)
+    expect(get()!.isTeamMember).toBe(true)
+  })
+
+  it('hydrates to shop staff when staff_kind=shop is stored (new sessions)', async () => {
+    store.set('auth_token', 'tok-1')
+    store.set('staff_role', 'SALES')
+    store.set('staff_kind', 'shop')
+    const { get, flush } = await mount()
+    await flush()
+
+    expect(get()!.status).toBe('authenticated')
+    expect(get()!.isShopStaff).toBe(true)
+    expect(get()!.isTeamMember).toBe(false)
   })
 
   it('signOut clears every auth key and flips back to unauthenticated', async () => {
@@ -114,6 +142,7 @@ describe('AuthProvider', () => {
       'staff_role',
       'staff_name',
       'staff_retailer_id',
+      'staff_kind',
       'admin_key',
     ]) {
       expect(store.has(key)).toBe(false)

@@ -347,7 +347,13 @@ export const authRoutes: FastifyPluginAsync = async (server) => {
       pending = await prisma.retailer.findUnique({ where: { phone } });
     }
 
-    if (!pending && !bypassActive) {
+    // FR-2.1 (team-member-access-control): staff/team detection runs whenever
+    // this phone has no retailer row — INCLUDING when the OTP test bypass is
+    // active. Previously `!bypassActive` short-circuited the whole block, so a
+    // test phone that belonged to a staff/team row was turned into a brand-new
+    // blank Retailer (which the app then routed to /onboarding). A dummy
+    // phone that matches an active staff row must return the staff payload.
+    if (!pending) {
       // ── Staff Login Detection ────────────────────────────────────────
       // Only check Staff if this phone is not an existing retailer owner.
       const staffMember = await prisma.staff.findFirst({

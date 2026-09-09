@@ -10,6 +10,7 @@ import { errorHandler } from '../plugins/error-handler.js';
 import { authRoutes } from './auth.js';
 
 const mockStaffFindFirst = vi.hoisted(() => vi.fn());
+const mockStaffUpdate = vi.hoisted(() => vi.fn());
 const mockTeamMemberFindFirst = vi.hoisted(() => vi.fn());
 const mockRetailerFindUnique = vi.hoisted(() => vi.fn());
 const mockRetailerUpsert = vi.hoisted(() => vi.fn());
@@ -29,7 +30,7 @@ vi.mock('@kanchuki/db', () => ({
   prisma: {
     defaultProductCategory: { findMany: vi.fn().mockResolvedValue([]) },
     defaultProductAttribute: { findMany: vi.fn().mockResolvedValue([]) },
-    staff: { findFirst: mockStaffFindFirst },
+    staff: { findFirst: mockStaffFindFirst, update: mockStaffUpdate },
     teamMember: { findFirst: mockTeamMemberFindFirst },
     retailer: {
       findUnique: mockRetailerFindUnique,
@@ -204,6 +205,108 @@ describe('POST /auth/otp/verify — test bypass', () => {
 
     expect(res.statusCode).toBe(401);
     expect(res.json().error.code).toBe('INVALID_OTP');
+    await app.close();
+  });
+
+  // ── FR-2.1 regression (team-member-access-control) ────────────────
+  // Staff/TeamMember detection must run whenever the phone has no retailer
+  // row — EVEN when OTP_TEST_BYPASS is active. Before the fix, `!bypassActive`
+  // short-circuited the whole block, so a whitelisted test phone matching an
+  // active staff/team row was turned into a brand-new blank Retailer (routed
+  // to /onboarding by the app) instead of returning the staff payload.
+  it('returns the STAFF payload for a whitelisted phone with an active staff row (bypass on)', async () => {
+    mockRetailerFindUnique.mockResolvedValue(null);
+    mockStaffFindFirst.mockResolvedValue({
+      id: 'staff_1',
+      name: 'Ramesh',
+      role: 'SALES',
+      retailer_id: 'retailer_1',
+      auth_user_id: null,
+      retailer: { id: 'retailer_1', shop_name: 'Ramesh Textiles', city: 'Surat' },
+    });
+    mockRetailerUpsert.mockResolvedValue(null); // must NOT be reached
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/auth/otp/verify',
+      payload: { phone: TEST_PHONE, otp: '000000' },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data.is_staff).toBe(true);
+    expect(res.json().data.staff.role).toBe('SALES');
+    expect(res.json().data.staff.retailer_shop_name).toBe('Ramesh Textiles');
+    // No blank Retailer row may be created for a staff phone.
+    expect(mockRetailerUpsert).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('links the Supabase auth user to the staff row on first staff login', async () => {
+    mockRetailerFindUnique.mockResolvedValue(null);
+    mockStaffFindFirst.mockResolvedValue({
+      id: 'staff_1',
+      name: 'Ramesh',
+      role: 'SALES',
+      retailer_id: 'retailer_1',
+      auth_user_id: null,
+      retailer: { id: 'retailer_1', shop_name: 'Ramesh Textiles', city: 'Surat' },
+    });
+    const app = await buildApp();
+    await app.inject({
+      method: 'POST',
+      url: '/v1/auth/otp/verify',
+      payload: { phone: TEST_PHONE, otp: '000000' },
+    });
+
+    expect(mockStaffUpdate).toHaveBeenCalledWith({
+      where: { id: 'staff_1' },
+      data: { auth_user_id: 'supabase-user-1' },
+    });
+    await app.close();
+  });
+
+  it('returns the TEAM MEMBER payload for a whitelisted phone with an active team row (bypass on)', async () => {
+    mockRetailerFindUnique.mockResolvedValue(null);
+    mockStaffFindFirst.mockResolvedValue(null);
+    mockTeamMemberFindFirst.mockResolvedValue({
+      id: 'team_1',
+      name: 'Kanchuki Field Agent',
+      email: 'agent@kanchuki.app',
+      role: 'FIELD',
+      referral_code: 'KAN001',
+    });
+    mockRetailerUpsert.mockResolvedValue(null); // must NOT be reached
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/auth/otp/verify',
+      payload: { phone: TEST_PHONE, otp: '000000' },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data.is_staff).toBe(true);
+    expect(res.json().data.team_member.role).toBe('FIELD');
+    // A team phone must never create a Retailer row either.
+    expect(mockRetailerUpsert).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('keeps creating a new Retailer when bypass is on but the phone matches no staff/team row', async () => {
+    mockRetailerFindUnique.mockResolvedValue(null);
+    mockStaffFindFirst.mockResolvedValue(null);
+    mockTeamMemberFindFirst.mockResolvedValue(null);
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/auth/otp/verify',
+      payload: { phone: TEST_PHONE, otp: '000000' },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(mockRetailerUpsert).toHaveBeenCalled();
     await app.close();
   });
 });

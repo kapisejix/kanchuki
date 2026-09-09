@@ -55,6 +55,7 @@ export async function completeLogin(result: VerifyOtpResult) {
         deleteItem('staff_role'),
         deleteItem('staff_name'),
         deleteItem('staff_retailer_id'),
+        deleteItem('staff_kind'),
       ])
       await setItem('retailer_id', result.retailer.id)
       const hasCompletedOnboarding =
@@ -69,17 +70,22 @@ export async function completeLogin(result: VerifyOtpResult) {
         navigateTo: hasCompletedOnboarding ? undefined : '/onboarding',
       })
     } else if (result.is_staff && result.staff) {
-      // Staff (retailer's own shop employee) login — store staff context
+      // Staff (retailer's own shop employee) login — store staff context.
+      // FR-2.2: kind='shop' routes them to the retailer (tabs) (scoped by
+      // role), NOT app/staff/ (which is the internal TeamMember surface) and
+      // NOT onboarding (the shop already exists — owner-only flow).
       await setItem('staff_role', result.staff.role)
       await setItem('staff_name', result.staff.name)
       await setItem('staff_retailer_id', result.staff.retailer_id)
+      await setItem('staff_kind', 'shop')
       await setItem('retailer_id', result.staff.retailer_id)
-      // Guards flip → the staff block (the only staff-role route) auto-focuses.
+      // Guards flip → (tabs) is auto-focused for the shop staff session.
       emitAuthChange({ authed: true })
     } else if (result.is_staff && result.team_member) {
-      // TeamMember login
+      // TeamMember (Kanchuki's own field agent) login — stays on app/staff/.
       await setItem('staff_role', result.team_member.role)
       await setItem('staff_name', result.team_member.name)
+      await setItem('staff_kind', 'team')
       await Promise.all([deleteItem('staff_retailer_id'), deleteItem('retailer_id')])
       emitAuthChange({ authed: true })
     } else {
@@ -88,6 +94,7 @@ export async function completeLogin(result: VerifyOtpResult) {
         deleteItem('staff_role'),
         deleteItem('staff_name'),
         deleteItem('staff_retailer_id'),
+        deleteItem('staff_kind'),
       ])
       emitAuthChange({ authed: true, navigateTo: '/onboarding' })
     }

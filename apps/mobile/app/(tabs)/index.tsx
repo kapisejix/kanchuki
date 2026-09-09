@@ -19,6 +19,8 @@ import { AnimatedPressable } from '../../src/components/AnimatedPressable';
 import { GradientButton } from '../../src/components/GradientButton';
 import { HomeScreenSkeleton } from '../../src/components/Skeleton';
 import { categoryApi, retailerApi } from '../../src/lib/api';
+import { useAuth } from '../../src/lib/auth-context';
+import { staffCan } from '../../src/lib/staff-can';
 import { useScreenInsets } from '../../src/lib/safe-area';
 
 type RankedProduct = {
@@ -49,6 +51,15 @@ type RetailerMe = {
 
 export default function HomeScreen() {
   const { tabScrollPaddingBottom } = useScreenInsets();
+  // FR-3.2/3.3: staff see a role-scoped home — write/growth actions that the
+  // server allowlist blocks (staffCan mirrors apps/api plugins/auth.ts) are
+  // not rendered instead of 403ing on tap.
+  const { staffRole } = useAuth();
+  const canEditCatalog = staffCan(staffRole, 'catalog.edit');
+  const canCollections = staffCan(staffRole, 'collections');
+  const canGrowth = staffCan(staffRole, 'growth');
+  const canAnalytics = staffCan(staffRole, 'analytics');
+  const canSocial = staffCan(staffRole, 'social');
   const { data: meData, isLoading: meLoading } = useQuery({
     queryKey: ['retailer', 'me'],
     queryFn: () => retailerApi.getMe(),
@@ -241,7 +252,7 @@ export default function HomeScreen() {
               accent="#E0E1F6"
             />
           </View>
-          <View className="flex-row gap-3">
+          {canSocial && (
             <QuickAction
               icon={<MessageCircle size={20} color="#BB3F95" />}
               label="Social Media"
@@ -249,6 +260,8 @@ export default function HomeScreen() {
               onPress={() => router.push('/growth/integrations')}
               accent="#E0E1F6"
             />
+          )}
+          {canAnalytics && (
             <QuickAction
               icon={<BarChart3 size={20} color="#560A39" />}
               label="Analytics"
@@ -256,7 +269,7 @@ export default function HomeScreen() {
               onPress={() => router.push('/analytics')}
               accent="#E0E1F6"
             />
-          </View>
+          )}
         </View>
       </View>
 
@@ -308,13 +321,15 @@ export default function HomeScreen() {
         </View>
         <View className="gap-3">
           <View className="flex-row gap-3">
-            <QuickAction
-              icon={<Camera size={20} color="#BB3F95" />}
-              label="Add Product"
-              sublabel="Photo + AI tagging"
-              onPress={() => router.push('/product/add')}
-              accent="#E0E1F6"
-            />
+            {canEditCatalog && (
+              <QuickAction
+                icon={<Camera size={20} color="#BB3F95" />}
+                label="Add Product"
+                sublabel="Photo + AI tagging"
+                onPress={() => router.push('/product/add')}
+                accent="#E0E1F6"
+              />
+            )}
             <QuickAction
               icon={<FolderKanban size={20} color="#560A39" />}
               label={`${categories.length} ${categories.length === 1 ? 'Category' : 'Categories'}`}
@@ -324,20 +339,24 @@ export default function HomeScreen() {
             />
           </View>
           <View className="flex-row gap-3">
-            <QuickAction
-              icon={<PackagePlus size={20} color="#BB3F95" />}
-              label="Bulk Onboard"
-              sublabel="Rack-by-rack upload"
-              onPress={() => router.push('/product/bulk-onboard')}
-              accent="#E0E1F6"
-            />
-            <QuickAction
-              icon={<Link2 size={20} color="#560A39" />}
-              label="New Collection"
-              sublabel="Share on WhatsApp"
-              onPress={() => router.push('/collection/new')}
-              accent="#E0E1F6"
-            />
+            {canEditCatalog && (
+              <QuickAction
+                icon={<PackagePlus size={20} color="#BB3F95" />}
+                label="Bulk Onboard"
+                sublabel="Rack-by-rack upload"
+                onPress={() => router.push('/product/bulk-onboard')}
+                accent="#E0E1F6"
+              />
+            )}
+            {canCollections && (
+              <QuickAction
+                icon={<Link2 size={20} color="#560A39" />}
+                label="New Collection"
+                sublabel="Share on WhatsApp"
+                onPress={() => router.push('/collection/new')}
+                accent="#E0E1F6"
+              />
+            )}
           </View>
           {/* Suits Designs — retailer entry hidden by owner decision
               (2026-09-07). Only admin-uploaded (global) designs show to
@@ -366,20 +385,24 @@ export default function HomeScreen() {
           </Text>
         </View>
         <View className="flex-row gap-3">
-          <QuickAction
-            icon={<Megaphone size={20} color="#BB3F95" />}
-            label="Growth Tools"
-            sublabel="AI Campaigns · Referrals"
-            onPress={() => router.push('/growth')}
-            accent="#E0E1F6"
-          />
-          <QuickAction
-            icon={<BarChart3 size={20} color="#BB3F95" />}
-            label="Analytics"
-            sublabel="Views, enquiries & stats"
-            onPress={() => router.push('/analytics')}
-            accent="#E0E1F6"
-          />
+          {canGrowth && (
+            <QuickAction
+              icon={<Megaphone size={20} color="#BB3F95" />}
+              label="Growth Tools"
+              sublabel="AI Campaigns · Referrals"
+              onPress={() => router.push('/growth')}
+              accent="#E0E1F6"
+            />
+          )}
+          {canAnalytics && (
+            <QuickAction
+              icon={<BarChart3 size={20} color="#BB3F95" />}
+              label="Analytics"
+              sublabel="Views, enquiries & stats"
+              onPress={() => router.push('/analytics')}
+              accent="#E0E1F6"
+            />
+          )}
         </View>
       </View>
 

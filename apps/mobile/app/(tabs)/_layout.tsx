@@ -6,11 +6,23 @@ import { Home, Grid3X3, Plus, TrendingUp, Link2 } from 'lucide-react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { retailerApi } from '../../src/lib/api'
+import { useAuth } from '../../src/lib/auth-context'
 import { useTheme } from '../../src/lib/theme'
 
 export default function TabsLayout() {
   const insets = useSafeAreaInsets()
   const { primaryColor } = useTheme()
+  const { isShopStaff, staffRole } = useAuth()
+
+  // FR-3 (team-member-access-control): the retailer's shop Staff render the
+  // same tabs as the owner, gated by role to mirror the server allowlist
+  // (staffCan in src/lib/staff-can.ts). Growth has no allowlist entry for any
+  // staff role → hidden for all staff; salesperson additionally loses Add
+  // (POST products) and Collections (no collections route at all).
+  const canSeeGrowth = !isShopStaff
+  const isSalesperson = isShopStaff && staffRole === 'salesperson'
+  const canSeeAdd = !isSalesperson
+  const canSeeCollections = !isSalesperson
 
   // Gate: retailer must finish the registration/onboarding form before the
   // dashboard renders — otherwise a dropped-off signup (or any later relaunch)
@@ -110,6 +122,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="add"
         options={{
+          href: canSeeAdd ? undefined : null,
           title: 'Add',
           tabBarLabel: () => null,
           tabBarIcon: () => null,
@@ -151,6 +164,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="growth"
         options={{
+          href: canSeeGrowth ? undefined : null,
           title: 'Growth',
           tabBarIcon: ({ color, size }) => <TrendingUp color={color} size={size} />,
           headerShown: false,
@@ -159,6 +173,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="collections"
         options={{
+          href: canSeeCollections ? undefined : null,
           title: 'Collections',
           tabBarIcon: ({ color, size }) => <Link2 color={color} size={size} />,
           headerShown: false,
@@ -174,6 +189,7 @@ export default function TabsLayout() {
         name="category"
         options={{
           href: null,
+          headerShown: false,
         }}
       />
     </Tabs>

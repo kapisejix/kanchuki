@@ -49,6 +49,7 @@ async function teamRequest<T>(
         await deleteItem('staff_role')
         await deleteItem('staff_name')
         await deleteItem('staff_retailer_id')
+        await deleteItem('staff_kind')
         clearRequestCache()
         // Flip the guards — auth/phone becomes the only route. The replace is
         // a best-effort fallback when the AuthProvider isn't mounted yet.

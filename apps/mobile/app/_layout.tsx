@@ -118,7 +118,7 @@ function AppShell() {
     surfaceColor,
     colors,
   } = useTheme();
-  const { status, isStaff } = useAuth();
+  const { status, isTeamMember } = useAuth();
 
   // Never mount the Stack before the session is hydrated: with every
   // Stack.Protected guard still false the navigator has zero routeNames and
@@ -156,13 +156,16 @@ function AppShell() {
           headerShadowVisible: false,
         }}
       >
-        {/* Authenticated retailer-only routes (dashboard, onboarding, plan
-            select, settings, billing, growth, …). Guards are structural: when
-            a guard flips, expo-router filters the route OUT of the navigation
-            state, so auth screens can never sit in the back stack beneath
-            these — hardware back pops to nothing (the dashboard's
-            double-tap-to-exit handler) instead of to Login. */}
-        <Stack.Protected guard={isAuthed && !isStaff}>
+        {/* Authenticated retailer routes (dashboard, onboarding, plan select,
+            settings, billing, growth, …). FR-2.2: the retailer's OWN shop
+            employees (Staff — isShopStaff) render here too, scoped by role;
+            only Kanchuki's internal agents (isTeamMember) go to the /staff
+            block below. Guards are structural: when a guard flips,
+            expo-router filters the route OUT of the navigation state, so auth
+            screens can never sit in the back stack beneath these — hardware
+            back pops to nothing (the dashboard's double-tap-to-exit handler)
+            instead of to Login. */}
+        <Stack.Protected guard={isAuthed && !isTeamMember}>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="onboarding" options={{ headerShown: false }} />
           <Stack.Screen name="plan-select" options={{ headerShown: false }} />
@@ -216,11 +219,12 @@ function AppShell() {
           <Stack.Screen name="showcase-designs/[id]" />
         </Stack.Protected>
 
-        {/* Staff dashboard (nested stack: index, catalog-tickets, retailer-onboard).
-            Guarded by staff role so staff land here and can't be pushed into the
-            retailer tab stack. Declared before the shared catalog block so a
-            staff cold-start auto-focuses /staff, not a product screen. */}
-        <Stack.Protected guard={isStaff}>
+        {/* Internal-agent dashboard (nested stack: index, catalog-tickets,
+            retailer-onboard) — Kanchuki's OWN TeamMembers only (team JWT,
+            /team/* routes). The retailer's shop Staff are routed to (tabs)
+            instead (FR-2.2). Declared before the shared catalog block so a
+            team-member cold-start auto-focuses /staff, not a product screen. */}
+        <Stack.Protected guard={isTeamMember}>
           <Stack.Screen name="staff" options={{ headerShown: false }} />
         </Stack.Protected>
 

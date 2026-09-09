@@ -824,6 +824,9 @@ model Staff {
 
   retailer Retailer @relation(fields: [retailer_id], references: [id])
 
+  // FR-4.3: one row per (retailer_id, phone) — re-adding a deactivated phone
+  // reactivates the existing row instead of creating a duplicate.
+  @@unique([retailer_id, phone])
   @@index([retailer_id])
   @@map("staff")
 }

@@ -28,23 +28,25 @@ export default function CategoryListScreen() {
     <View className="flex-1 bg-[#F8F7FC]">
       {/* Header — store identity, matches Catalog */}
       <View
-        className="bg-white px-5 pb-3 border-b border-lavender-200 flex-row items-center gap-3"
+        className="bg-white px-5 pb-3 border-b border-lavender-200 flex-row items-center justify-between"
         style={{ paddingTop: headerPaddingTop }}
       >
-        <View className="w-10 h-10 rounded-2xl overflow-hidden bg-lavender-100 items-center justify-center border border-lavender-200 shadow-sm">
-          {retailerProfile?.logo_url ? (
-            <Image source={{ uri: retailerProfile.logo_url }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
-          ) : (
-            <Text className="font-bold text-spaceCadet-900 font-marcellus text-sm">
-              {(retailerProfile?.shop_name ?? 'K').slice(0, 2).toUpperCase()}
+        <View className="flex-row items-center gap-3">
+          <View className="w-10 h-10 rounded-2xl overflow-hidden bg-lavender-100 items-center justify-center border border-lavender-200 shadow-sm">
+            {retailerProfile?.logo_url ? (
+              <Image source={{ uri: retailerProfile.logo_url }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
+            ) : (
+              <Text className="font-bold text-spaceCadet-900 font-marcellus text-sm">
+                {(retailerProfile?.shop_name ?? 'K').slice(0, 2).toUpperCase()}
+              </Text>
+            )}
+          </View>
+          <View>
+            <Text className="text-sm font-bold text-spaceCadet-900">Hi, {retailerProfile?.shop_name ?? 'Store'}!</Text>
+            <Text className="text-[10px] uppercase tracking-wider text-heliotrope-500 font-bold">
+              {retailerProfile?.city ?? 'Categories'} • {categories.length} {categories.length === 1 ? 'Category' : 'Categories'}
             </Text>
-          )}
-        </View>
-        <View>
-          <Text className="text-sm font-bold text-spaceCadet-900">Hi, {retailerProfile?.shop_name ?? 'Store'}!</Text>
-          <Text className="text-[10px] uppercase tracking-wider text-heliotrope-500 font-bold">
-            {retailerProfile?.city ?? 'Categories'} • {categories.length} {categories.length === 1 ? 'Category' : 'Categories'}
-          </Text>
+          </View>
         </View>
       </View>
 

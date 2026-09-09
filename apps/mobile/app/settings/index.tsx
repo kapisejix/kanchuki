@@ -1281,13 +1281,15 @@ export default function SettingsScreen() {
               </Text>
             </View>
           </View>
-          <AnimatedPressable
-            onPress={() => setShowProfileEdit(true)}
-            className="w-8 h-8 rounded-xl bg-lavender-50 border border-lavender-200 items-center justify-center"
-            accessibilityLabel="Edit profile"
-          >
-            <User size={16} color="#6B4773" />
-          </AnimatedPressable>
+          {!isStaff && (
+            <AnimatedPressable
+              onPress={() => setShowProfileEdit(true)}
+              className="w-8 h-8 rounded-xl bg-lavender-50 border border-lavender-200 items-center justify-center"
+              accessibilityLabel="Edit profile"
+            >
+              <User size={16} color="#6B4773" />
+            </AnimatedPressable>
+          )}
         </View>
 
         {/* Store URL change notice — one-shot, shown right after a rename that
@@ -1493,12 +1495,14 @@ export default function SettingsScreen() {
             />
           )}
 
-          <SettingsRow
-            icon={<Share2 size={18} color={primaryColor} />}
-            label="Social Media"
-            subtitle="Post products to your Facebook Page"
-            onPress={() => router.push("/settings/social")}
-          />
+          {!isStaff && (
+            <SettingsRow
+              icon={<Share2 size={18} color={primaryColor} />}
+              label="Social Media"
+              subtitle="Post products to your Facebook Page"
+              onPress={() => router.push("/settings/social")}
+            />
+          )}
 
           <SettingsRow
             icon={<QrCode size={18} color={primaryColor} />}

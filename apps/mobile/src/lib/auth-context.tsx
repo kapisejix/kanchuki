@@ -23,8 +23,21 @@ export interface AuthContextValue {
   status: AuthStatus
   /** True once a token is present AND hydrated (guards for authed routes). */
   isAuthenticated: boolean
-  /** True when the current session is a shop employee / team member. */
-  isStaff: boolean
+  /**
+   * True when the current session is one of Kanchuki's OWN internal agents
+   * (TeamMember — email+phone OTP, team JWT, /team/* routes → app/staff).
+   * NOT the retailer's shop employees: those are `isShopStaff` and use the
+   * same retailer tab UI as the owner, gated by role.
+   */
+  isTeamMember: boolean
+  /**
+   * True when the current session is the retailer's own shop employee
+   * (Staff row — Supabase session, scoped by staffCanAccess to the owner's
+   * catalog). Rendered inside the retailer (tabs) with role-based gating.
+   */
+  isShopStaff: boolean
+  /** The Staff/TeamMember role string ('manager' | 'salesperson' | TeamRole), null for the owner. */
+  staffRole: string | null
   /** Clear every auth-related key and flip the guards to logged-out. */
   signOut: () => Promise<void>
 }
@@ -38,12 +51,40 @@ const AUTH_KEYS = [
   'staff_role',
   'staff_name',
   'staff_retailer_id',
+  'staff_kind',
   'admin_key',
 ] as const
 
+/**
+ * Derive the shop-staff vs internal-agent split from storage. `staff_kind`
+ * ('shop' | 'team') is written by completeLogin since 2026-09-09; sessions
+ * that predate it only have staff_role + (shop) staff_retailer_id, so fall
+ * back to: staff_retailer_id present → shop staff, absent → internal agent.
+ */
+async function readStaffContext(): Promise<{
+  staffRole: string | null
+  isTeamMember: boolean
+  isShopStaff: boolean
+}> {
+  const [role, kind, staffRetailerId] = await Promise.all([
+    getItem('staff_role').catch(() => null),
+    getItem('staff_kind').catch(() => null),
+    getItem('staff_retailer_id').catch(() => null),
+  ])
+  const isShopStaff =
+    Boolean(role) && (kind === 'shop' || (kind === null && Boolean(staffRetailerId)))
+  return {
+    staffRole: role,
+    isTeamMember: Boolean(role) && !isShopStaff,
+    isShopStaff,
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<AuthStatus>('loading')
-  const [isStaff, setIsStaff] = useState(false)
+  const [isTeamMember, setIsTeamMember] = useState(false)
+  const [isShopStaff, setIsShopStaff] = useState(false)
+  const [staffRole, setStaffRole] = useState<string | null>(null)
   // State (not a ref) so setting it re-renders and the navigation effect
   // below re-evaluates even when `status` was already 'authenticated'.
   const [pendingNav, setPendingNav] = useState<string | null>(null)
@@ -61,9 +102,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setStatus('unauthenticated')
         return
       }
-      const role = await getItem('staff_role').catch(() => null)
+      const staff = await readStaffContext()
       if (cancelled) return
-      setIsStaff(Boolean(role))
+      setStaffRole(staff.staffRole)
+      setIsTeamMember(staff.isTeamMember)
+      setIsShopStaff(staff.isShopStaff)
       setStatus('authenticated')
     })()
     // If the SecureStore read never settles, treat it as logged-out (matches
@@ -90,15 +133,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAuthChangeListener((change) => {
       if (change.authed === false) {
         setPendingNav(null)
-        setIsStaff(false)
+        setIsTeamMember(false)
+        setIsShopStaff(false)
+        setStaffRole(null)
         setStatus('unauthenticated')
         return
       }
       setPendingNav(change.navigateTo ?? null)
       void (async () => {
         const token = await getToken().catch(() => null)
-        const role = await getItem('staff_role').catch(() => null)
-        setIsStaff(Boolean(role))
+        const staff = await readStaffContext()
+        setStaffRole(staff.staffRole)
+        setIsTeamMember(staff.isTeamMember)
+        setIsShopStaff(staff.isShopStaff)
         setStatus(token ? 'authenticated' : 'unauthenticated')
       })()
     })
@@ -125,10 +172,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => ({
       status,
       isAuthenticated: status === 'authenticated',
-      isStaff,
+      isTeamMember,
+      isShopStaff,
+      staffRole,
       signOut,
     }),
-    [status, isStaff, signOut],
+    [status, isTeamMember, isShopStaff, staffRole, signOut],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
