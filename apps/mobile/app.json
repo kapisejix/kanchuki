@@ -83,7 +83,8 @@
         }
       ],
       "@sentry/react-native",
-      "expo-video"
+      "expo-video",
+      "./plugins/withRemoveAdId.js"
     ],
     "experiments": {
       "typedRoutes": true
