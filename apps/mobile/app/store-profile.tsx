@@ -106,7 +106,9 @@ export default function StoreProfileScreen() {
       // useProductAiStudio.ts.
       try {
         const MediaLibrary = await import('expo-media-library')
-        const perm = await MediaLibrary.requestPermissionsAsync()
+        // writeOnly — save-to-gallery only; never requests READ_MEDIA_IMAGES/VIDEO
+        // (blocked in app.json per Play Photo & Video Permissions policy).
+        const perm = await MediaLibrary.requestPermissionsAsync(true)
         if (perm.granted) {
           await MediaLibrary.saveToLibraryAsync(fileUri)
           Alert.alert('Saved', 'QR code saved to your photo gallery.')

@@ -362,7 +362,9 @@ export function useProductAiStudio({
       // that failure is caught and we fall through to the share sheet.
       try {
         const MediaLibrary = await import('expo-media-library')
-        const perm = await MediaLibrary.requestPermissionsAsync()
+        // writeOnly — save-to-gallery only; never requests READ_MEDIA_IMAGES/VIDEO
+        // (blocked in app.json per Play Photo & Video Permissions policy).
+        const perm = await MediaLibrary.requestPermissionsAsync(true)
         if (perm.granted) {
           await MediaLibrary.saveToLibraryAsync(downloadResult.uri)
           Alert.alert(
