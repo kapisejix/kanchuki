@@ -147,6 +147,15 @@ export default function OtpScreen() {
     return () => clearInterval(timer)
   }, [resendTimer])
 
+  // Deferred keyboard focus. `autoFocus` alone is unreliable on Android right
+  // after the stack push animation, so re-focus once the screen is idle (and
+  // again whenever an invisible-verify attempt releases `loading`).
+  useEffect(() => {
+    if (loading) return
+    const t = setTimeout(() => inputRef.current?.focus(), 200)
+    return () => clearTimeout(t)
+  }, [loading])
+
   const msg91 = isMsg91OtpConfigured() && Boolean(reqId || token) && bypass !== 'true'
 
   const isVerifyingRef = useRef(false)
@@ -338,50 +347,64 @@ export default function OtpScreen() {
               : `Verification code sent to +91 ****${phone?.slice(-4)}`}
           </Text>
 
-          {/* OTP input — single hidden input drives display */}
+          {/* OTP input — one real-sized input overlays the digit boxes.
+              ponytail: it must NOT be opacity-0 / 1px — Android (Gboard) gives
+              a zero-opacity sub-pixel input no IME connection, so the soft
+              keyboard never opens. Full-size overlay + transparent text keeps
+              it invisible while staying focusable. */}
           <View className="mt-8">
-            <View className="flex-row gap-2.5 justify-center">
-              {[0, 1, 2, 3, 4, 5].map((i) => {
-                // ponytail: per-box state goes through `style`, NOT a changing
-                // className. A className that mutates after the first render trips
-                // react-native-css-interop@0.1.22's printUpgradeWarning, whose
-                // JSON.stringify of the props deep-walks into React Navigation's
-                // NavigationStateContext default value and detonates its throwing
-                // `getKey` getter -> "Couldn't find a navigation context" crash.
-                const active = otp.length === i
-                const filled = otp.length > i
-                return (
-                  <Pressable
-                    key={i}
-                    onPress={() => inputRef.current?.focus()}
-                    className="w-12 h-14 rounded-2xl border-2 items-center justify-center"
-                    style={{
-                      borderColor: active ? '#BB3F95' : filled ? '#D65CB3' : '#E0E1F6',
-                      backgroundColor: active ? '#F2F1FA' : '#FFFFFF',
-                    }}
-                  >
-                    <Text className="text-2xl font-bold text-spaceCadet-900">
-                      {otp[i] ?? ''}
-                    </Text>
-                  </Pressable>
-                )
-              })}
-            </View>
+            <View style={{ position: 'relative' }}>
+              <View className="flex-row gap-2.5 justify-center" pointerEvents="none">
+                {[0, 1, 2, 3, 4, 5].map((i) => {
+                  // ponytail: per-box state goes through `style`, NOT a changing
+                  // className. A className that mutates after the first render trips
+                  // react-native-css-interop@0.1.22's printUpgradeWarning, whose
+                  // JSON.stringify of the props deep-walks into React Navigation's
+                  // NavigationStateContext default value and detonates its throwing
+                  // `getKey` getter -> "Couldn't find a navigation context" crash.
+                  const active = otp.length === i
+                  const filled = otp.length > i
+                  return (
+                    <View
+                      key={i}
+                      className="w-12 h-14 rounded-2xl border-2 items-center justify-center"
+                      style={{
+                        borderColor: active ? '#BB3F95' : filled ? '#D65CB3' : '#E0E1F6',
+                        backgroundColor: active ? '#F2F1FA' : '#FFFFFF',
+                      }}
+                    >
+                      <Text className="text-2xl font-bold text-spaceCadet-900">
+                        {otp[i] ?? ''}
+                      </Text>
+                    </View>
+                  )
+                })}
+              </View>
 
-            {/* Hidden real input */}
-            <TextInput
-              ref={inputRef}
-              value={otp}
-              onChangeText={(text) => {
-                const digits = text.replace(/\D/g, '').slice(0, 6)
-                setOtp(digits)
-                if (digits.length === 6) void handleVerify(digits)
-              }}
-              keyboardType="number-pad"
-              maxLength={6}
-              className="absolute opacity-0 w-px h-px"
-              autoFocus
-            />
+              {/* Real input, transparent over the boxes. Rendered last = on top,
+                  so tapping the row focuses it directly and the keyboard opens. */}
+              <TextInput
+                ref={inputRef}
+                value={otp}
+                onChangeText={(text) => {
+                  const digits = text.replace(/\D/g, '').slice(0, 6)
+                  setOtp(digits)
+                  if (digits.length === 6) void handleVerify(digits)
+                }}
+                keyboardType="number-pad"
+                maxLength={6}
+                caretHidden
+                autoFocus
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  color: 'transparent',
+                }}
+              />
+            </View>
           </View>
 
           {/* Resend */}
