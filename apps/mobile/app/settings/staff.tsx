@@ -370,7 +370,7 @@ function InvitePromptModal({
             {message}
           </Text>
           <Text className="text-xs text-sand-400 leading-relaxed">
-            Share this link with them — they tap it, verify their number, and they're in. The link
+            Share this link with them — they tap it, verify their number, and they&apos;re in. The link
             expires {invite ? new Date(invite.expires_at).toLocaleDateString() : 'in 7 days'}.
           </Text>
           <AnimatedPressable

@@ -122,7 +122,7 @@ export default function JoinScreen() {
                 {state.info.member_name}
               </Text>
               <Text className="text-heliotrope-600 text-base mt-1">
-                You've been added to {state.info.shop_name ?? 'the store'} as{' '}
+                You&apos;ve been added to {state.info.shop_name ?? 'the store'} as{' '}
                 {state.info.role === 'manager' ? 'Manager' : 'Team member'}
               </Text>
               <View className="mt-5 bg-lavender-50 rounded-2xl p-4">
@@ -130,7 +130,7 @@ export default function JoinScreen() {
                   Verification
                 </Text>
                 <Text className="text-sm text-spaceCadet-800 mt-2">
-                  We'll send a one-time password (OTP) to {state.info.phone_masked}.
+                  We&apos;ll send a one-time password (OTP) to {state.info.phone_masked}.
                 </Text>
               </View>
             </View>
@@ -140,7 +140,7 @@ export default function JoinScreen() {
         {state.kind === 'used' && (
           <View className="mt-8 bg-white rounded-3xl p-6 border border-lavender-200">
             <Text className="text-xl font-bold text-spaceCadet-900">
-              You've already joined
+              You&apos;ve already joined
             </Text>
             <Text className="text-sm text-spaceCadet-600 mt-2 leading-relaxed">
               Just log in with your phone number to open the app.
@@ -151,7 +151,7 @@ export default function JoinScreen() {
         {state.kind === 'error' && (
           <View className="mt-8 bg-white rounded-3xl p-6 border border-lavender-200">
             <Text className="text-xl font-bold text-spaceCadet-900">
-              Couldn't check this invite
+              Couldn&apos;t check this invite
             </Text>
             <Text className="text-sm text-spaceCadet-600 mt-2 leading-relaxed">
               Check your connection and try again.
