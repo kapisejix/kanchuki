@@ -219,9 +219,7 @@ export const adminShowcaseDesignRoutes: FastifyPluginAsync = async (server) => {
   // "Pink Blouse - Deep Neck") from an already-uploaded raw design photo.
   // Fail-open — an AI outage returns nulls so the admin can type a name.
   server.post('/showcase-designs/suggest', async (request, reply) => {
-    const body = z
-      .object({ raw_r2_key: z.string().min(1) })
-      .safeParse(request.body);
+    const body = z.object({ raw_r2_key: z.string().min(1) }).safeParse(request.body);
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
     assertShowcaseRawKey(body.data.raw_r2_key);
     const suggestion = await suggestDesignNameAndColor(publicUrl(body.data.raw_r2_key));

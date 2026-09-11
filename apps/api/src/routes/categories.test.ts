@@ -201,7 +201,7 @@ describe('DELETE /v1/categories/:id — purge-role guardrail', () => {
     await app.close();
   });
 
-  it('returns 404 for another retailer\'s category and never deletes', async () => {
+  it("returns 404 for another retailer's category and never deletes", async () => {
     mockProductCategoryFindFirst.mockResolvedValue(null);
 
     const app = await buildApp();

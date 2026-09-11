@@ -17,11 +17,11 @@ import {
   suggestDesignNameAndColor,
 } from '@kanchuki/ai';
 import { type Prisma, prisma } from '@kanchuki/db';
-import { recordAiUsage } from '../../lib/ai-usage.js';
 import { R2_PATHS } from '@kanchuki/shared';
 import { createId } from '@paralleldrive/cuid2';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
+import { recordAiUsage } from '../../lib/ai-usage.js';
 import { hasFeature } from '../../lib/features.js';
 import { assertShowcaseQuota, getShowcaseUsage } from '../../lib/showcase-quota.js';
 import { watermarkShowcaseDesign } from '../../lib/showcase-watermark.js';
@@ -177,9 +177,7 @@ export const retailersShowcaseDesignRoutes: FastifyPluginAsync = async (server) 
   // or fetch error returns nulls so the retailer can still type a name.
   server.post('/me/showcase-designs/suggest', async (request, reply) => {
     await gate(request.retailerId);
-    const body = z
-      .object({ raw_r2_key: z.string().min(1) })
-      .safeParse(request.body);
+    const body = z.object({ raw_r2_key: z.string().min(1) }).safeParse(request.body);
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
 
     assertOwnRawKey(body.data.raw_r2_key, request.retailerId);

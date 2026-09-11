@@ -13,8 +13,8 @@ import {
   verifyMsg91WidgetToken,
   verifyStoredOtp,
 } from '../lib/msg91-otp.js';
-import { AppError, validationError } from '../plugins/error-handler.js';
 import { hashStaffInviteToken } from '../lib/staff-invite.js';
+import { AppError, validationError } from '../plugins/error-handler.js';
 import { signTeamToken } from '../plugins/team-auth.js';
 
 const SendOtpSchema = z.object({
@@ -65,10 +65,7 @@ const OtpVerifySchema = z
     invite_token: z.string().min(20).optional(),
   })
   .refine((d) => d.otp || d.msg91_token, 'Provide an OTP or a verified MSG91 token')
-  .refine(
-    (d) => Boolean(d.phone || d.invite_token),
-    'Provide a phone number or an invite token',
-  );
+  .refine((d) => Boolean(d.phone || d.invite_token), 'Provide a phone number or an invite token');
 
 const RefreshSchema = z.object({
   refresh_token: z.string().min(1),

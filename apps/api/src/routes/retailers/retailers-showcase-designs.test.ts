@@ -276,7 +276,10 @@ describe('POST /me/showcase-designs', () => {
   it('auto-suggests an AI name when the retailer saves without one', async () => {
     mockCategoryFindUnique.mockResolvedValue({ id: 'cat_suits', slug: 'suits' });
     mockShowcaseDesignCreate.mockResolvedValue({ ...OWN_ROW, category: { name: 'Suits' } });
-    mockSuggestDesignNameAndColor.mockResolvedValue({ name: 'Pink Blouse - Deep Neck', color: 'Pink' });
+    mockSuggestDesignNameAndColor.mockResolvedValue({
+      name: 'Pink Blouse - Deep Neck',
+      color: 'Pink',
+    });
     const app = await buildApp();
     const res = await app.inject({
       method: 'POST',
@@ -321,55 +324,55 @@ describe('POST /me/showcase-designs', () => {
     await app.close();
   });
 
-describe('POST /me/showcase-designs/suggest', () => {
-  it('returns the AI-suggested name + color and attributes usage', async () => {
-    mockSuggestDesignNameAndColor.mockResolvedValue({
-      name: 'Pink Blouse - Deep Neck',
-      color: 'Pink',
+  describe('POST /me/showcase-designs/suggest', () => {
+    it('returns the AI-suggested name + color and attributes usage', async () => {
+      mockSuggestDesignNameAndColor.mockResolvedValue({
+        name: 'Pink Blouse - Deep Neck',
+        color: 'Pink',
+      });
+      const app = await buildApp();
+      const res = await app.inject({
+        method: 'POST',
+        url: '/me/showcase-designs/suggest',
+        headers: { 'content-type': 'application/json' },
+        payload: { raw_r2_key: 'showcase-designs/retailer_1/raw/raw.jpg' },
+      });
+      expect(res.statusCode).toBe(200);
+      expect(res.json().data).toEqual({
+        name: 'Pink Blouse - Deep Neck',
+        color: 'Pink',
+      });
+      expect(mockSuggestDesignNameAndColor).toHaveBeenCalledTimes(1);
+      await app.close();
     });
-    const app = await buildApp();
-    const res = await app.inject({
-      method: 'POST',
-      url: '/me/showcase-designs/suggest',
-      headers: { 'content-type': 'application/json' },
-      payload: { raw_r2_key: 'showcase-designs/retailer_1/raw/raw.jpg' },
-    });
-    expect(res.statusCode).toBe(200);
-    expect(res.json().data).toEqual({
-      name: 'Pink Blouse - Deep Neck',
-      color: 'Pink',
-    });
-    expect(mockSuggestDesignNameAndColor).toHaveBeenCalledTimes(1);
-    await app.close();
-  });
 
-  it('fail-opens to nulls when AI is unavailable', async () => {
-    mockSuggestDesignNameAndColor.mockResolvedValue({ name: null, color: null });
-    const app = await buildApp();
-    const res = await app.inject({
-      method: 'POST',
-      url: '/me/showcase-designs/suggest',
-      headers: { 'content-type': 'application/json' },
-      payload: { raw_r2_key: 'showcase-designs/retailer_1/raw/raw.jpg' },
+    it('fail-opens to nulls when AI is unavailable', async () => {
+      mockSuggestDesignNameAndColor.mockResolvedValue({ name: null, color: null });
+      const app = await buildApp();
+      const res = await app.inject({
+        method: 'POST',
+        url: '/me/showcase-designs/suggest',
+        headers: { 'content-type': 'application/json' },
+        payload: { raw_r2_key: 'showcase-designs/retailer_1/raw/raw.jpg' },
+      });
+      expect(res.statusCode).toBe(200);
+      expect(res.json().data).toEqual({ name: null, color: null });
+      await app.close();
     });
-    expect(res.statusCode).toBe(200);
-    expect(res.json().data).toEqual({ name: null, color: null });
-    await app.close();
-  });
 
-  it('rejects a raw_r2_key outside the caller’s own prefix', async () => {
-    const app = await buildApp();
-    const res = await app.inject({
-      method: 'POST',
-      url: '/me/showcase-designs/suggest',
-      headers: { 'content-type': 'application/json' },
-      payload: { raw_r2_key: 'showcase-designs/retailer_2/raw/victim.jpg' },
+    it('rejects a raw_r2_key outside the caller’s own prefix', async () => {
+      const app = await buildApp();
+      const res = await app.inject({
+        method: 'POST',
+        url: '/me/showcase-designs/suggest',
+        headers: { 'content-type': 'application/json' },
+        payload: { raw_r2_key: 'showcase-designs/retailer_2/raw/victim.jpg' },
+      });
+      expect(res.statusCode).toBe(422);
+      expect(mockSuggestDesignNameAndColor).not.toHaveBeenCalled();
+      await app.close();
     });
-    expect(res.statusCode).toBe(422);
-    expect(mockSuggestDesignNameAndColor).not.toHaveBeenCalled();
-    await app.close();
   });
-});
 
   it('rejects an unknown category before watermarking', async () => {
     mockCategoryFindUnique.mockResolvedValue(null);
