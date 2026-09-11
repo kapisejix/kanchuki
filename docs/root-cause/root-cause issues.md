@@ -10,6 +10,39 @@
 
 ---
 
+## RC-017 — AI Studio Shoot always generates the first style regardless of tap
+
+- **Component:** `apps/mobile/src/components/product-detail/ProductStudioModal.tsx`
+- **Commit:** (uncommitted — this session)
+- **Symptom:** retailer taps Product/Model tab, taps any style row — the tapped row never shows selected, only the first row does, and Generate always produces the same output regardless of what was tapped.
+- **Root cause:** a `useEffect` re-selects `activeList[0]` on every dependency change, and `activeList` (`styles.filter(...)`) is a **new array every render**. The tap's `setSelectedSlug` triggers a re-render → `activeList` gets a new reference → the effect fires again → stomps the selection back to the first item, before the user's tap is ever visible.
+- **Fix:** drop `activeList` from the effect's dependency array; only `[tab, styles.length]` should re-trigger the auto-select.
+- **Prevention lesson:** a derived array/object (`.filter()`, `.map()`, spread) is never safe as a `useEffect` dependency unless memoized — it changes reference every render and turns "reset on tab change" into "reset on every render, including the user's own state update."
+
+---
+
+## RC-016 — Reconnecting Facebook after Disconnect loops on FB's login screen
+
+- **Component:** `apps/mobile/src/lib/facebook-auth.ts` (`loginWithFacebook`)
+- **Commit:** (uncommitted — this session)
+- **Symptom:** first-time Facebook connect works and posts successfully; after tapping Disconnect and Connect again, the flow gets stuck re-showing Facebook's login screen instead of completing.
+- **Root cause:** Disconnect (`facebook.tsx` `handleDisconnect`) only calls the server to remove the stored SocialAccount row — it never calls the native FB SDK's `LoginManager.logOut()`. The SDK's on-device session/token cache survives, so the next `logInWithPermissions` tries to silently re-auth a session Facebook itself has invalidated, falling into a WebView re-consent loop instead of a clean native prompt.
+- **Fix:** call `LoginManager.logOut()` immediately before `logInWithPermissions()` on every connect attempt, forcing a fresh session each time.
+- **Prevention lesson:** a "disconnect" action that only clears server-side state, not the SDK's own local session, leaves stale native auth state for the next connect attempt to trip over — clear both sides symmetrically.
+
+---
+
+## RC-015 — OTP sent twice per request (retailer login + customer storefront gate)
+
+- **Component:** `apps/mobile/app/auth/phone.tsx` (`handleSend`), `apps/web/src/app/[store]/components/ContactGate.tsx` (`handleSendOtp`)
+- **Commit:** (uncommitted — this session)
+- **Symptom:** every OTP request sent 2 SMS / 2 MSG91 API calls; occasionally the code from the first SMS read as "expired" because the second request's `reqId` overwrote the first's in MSG91's store.
+- **Root cause:** `handleSend`/`handleSendOtp` only guarded on `!isValid`/phone-length — nothing blocked re-entrancy. On mobile, the numeric keypad's `onSubmitEditing` (Android "Done") and the submit button's `onPress` are two independent event sources that can both fire before the `loading` **state** commits (state updates aren't synchronous within the same tick), so both calls pass the guard and both dispatch. On web, a fast double-click/ghost-tap hit the same race against `otpSending` state.
+- **Fix:** a synchronous `useRef` guard (`sendingRef`/`otpSendingRef`) checked and set before the async call starts, reset in `finally` — matches the `isVerifyingRef` pattern already used in `otp.tsx`'s `handleVerify`, now applied consistently to every OTP-send entry point.
+- **Prevention lesson:** React state is not a synchronous mutex — two independent event handlers (keyboard submit + button tap, or a double-click) can both read a stale `false` before a `setState` commits. Any handler reachable from more than one UI trigger needs a ref-based re-entrancy guard, not a state-based one.
+
+---
+
 ## RC-014 — Cancelling the native share sheet surfaces as an unhandled `AbortError`
 
 - **Component:** `apps/web/src/app/c/[slug]/components/ProductDetailSheet.tsx`, `apps/web/src/app/c/[slug]/components/CollectionView.tsx` (both `handleShare`)
