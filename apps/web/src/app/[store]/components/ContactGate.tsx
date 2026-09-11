@@ -5,7 +5,7 @@ import { Loader2, Eye, ShieldCheck } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getPassport, type PassportSession } from '@/lib/passport-client';
 import {
   isMsg91WidgetConfigured,
@@ -82,6 +82,10 @@ export function ContactGate({ slug, profile, onSuccess, children }: Props) {
   const [otpPhone, setOtpPhone] = useState('');
   const [otpCode, setOtpCode] = useState('');
   const [otpSending, setOtpSending] = useState(false);
+  // Sync ref, not just the state — a double-click/ghost-tap can both read
+  // stale otpSending=false before the state update commits (same class of
+  // bug fixed in apps/mobile/app/auth/phone.tsx).
+  const otpSendingRef = useRef(false);
   const [otpVerifying, setOtpVerifying] = useState(false);
   const [otpError, setOtpError] = useState<string | null>(null);
   // #3: explicit consent on the passport OTP phone step (mirrors the legacy
@@ -206,7 +210,8 @@ export function ContactGate({ slug, profile, onSuccess, children }: Props) {
 
   // OTP send — widget first (bypasses the DLT-blocked SMS sender), API fallback.
   const handleSendOtp = async () => {
-    if (otpPhone.trim().length < 10) return;
+    if (otpPhone.trim().length < 10 || otpSendingRef.current) return;
+    otpSendingRef.current = true;
     setOtpSending(true);
     setOtpError(null);
     try {
@@ -232,6 +237,7 @@ export function ContactGate({ slug, profile, onSuccess, children }: Props) {
     } catch (err) {
       setOtpError(err instanceof Error ? err.message : 'Failed to send OTP');
     } finally {
+      otpSendingRef.current = false;
       setOtpSending(false);
     }
   };

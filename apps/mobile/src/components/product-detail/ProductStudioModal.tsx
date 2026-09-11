@@ -82,10 +82,14 @@ export function ProductStudioModal({
   const activeList = tab === 'product' ? productStyles : modelStyles
 
   const [selectedSlug, setSelectedSlug] = useState<string>(activeList[0]?.slug ?? '')
-  // Auto-select first style when tab or styles change
+  // Auto-select first style when tab or styles change. NOT activeList itself
+  // — it's a new array every render, so depending on it re-fires this every
+  // render (incl. the one from a user's own selection click) and stomps it
+  // back to the first item before Generate ever sees the pick.
   useEffect(() => {
     setSelectedSlug(activeList[0]?.slug ?? '')
-  }, [tab, styles.length, activeList])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, styles.length])
 
   const handleStart = () => {
     if (selectedSlug) onStartShoot(selectedSlug)
