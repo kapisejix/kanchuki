@@ -1,6 +1,6 @@
 import { isValidIndianPhone, normalizeIndianPhone } from '@kanchuki/shared';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   Image,
   KeyboardAvoidingView,
@@ -30,13 +30,18 @@ export default function PhoneScreen() {
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  // Sync ref, not the loading state — onSubmitEditing (keyboard "Done") and
+  // the button's onPress can both fire before a state update commits,
+  // causing two OTP sends (double MSG91 hit, mismatched reqId → "expired").
+  const sendingRef = useRef(false);
 
   // Complete validation: exactly 10 digits starting 6–9 (+91/91/0 prefix ok).
   const isValid = isValidIndianPhone(phone);
   const showPhoneError = phone.replace(/\D/g, '').length > 0 && !isValid;
 
   const handleSend = async () => {
-    if (!isValid) return;
+    if (!isValid || sendingRef.current) return;
+    sendingRef.current = true;
     setLoading(true);
     setErrorMsg(null);
     try {
@@ -86,6 +91,7 @@ export default function PhoneScreen() {
       setErrorMsg(msg);
       logError(err, 'sendOtp');
     } finally {
+      sendingRef.current = false;
       setLoading(false);
     }
   };

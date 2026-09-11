@@ -46,6 +46,7 @@ export async function loginWithFacebook(
     Settings: { initializeSDK: () => void };
     LoginManager: {
       logInWithPermissions: (p: string[]) => Promise<{ isCancelled: boolean }>;
+      logOut: () => void;
     };
     AccessToken: {
       getCurrentAccessToken: () => Promise<{ accessToken: string } | null>;
@@ -75,6 +76,12 @@ export async function loginWithFacebook(
       }. Check the react-native-fbsdk-next appID/clientToken in app.json and rebuild.`,
     );
   }
+
+  // Clear any stale cached session before logging in again — without this,
+  // a reconnect after Disconnect (which only removes the server-side row,
+  // never the on-device SDK session) can leave the SDK re-authing a dead
+  // session and stall on Facebook's login screen instead of prompting fresh.
+  fbsdk.LoginManager.logOut();
 
   const result = await fbsdk.LoginManager.logInWithPermissions(
     target === 'instagram' ? IG_PERMISSIONS : PAGE_PERMISSIONS,
