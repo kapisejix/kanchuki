@@ -235,6 +235,9 @@ Payment: Razorpay (UPI first). Retailer pays base + 18% GST. **Source of truth: 
 | RC-012 | Customer-detail screen kept a full Measurements card + Camera nav + Recent-Activity block wired to teardown-deleted endpoints/route (`/customer/:id/measurement`) — teardown removed destinations, not kept-screen entry points | `440b900` |
 | RC-013 | Never-openable 360-spin modal + orphaned `productApi` spin methods + stale guarded `try_on_credits` reads on onboarding/plan-select/analytics survived the teardown | `2c6b348` |
 | RC-014 | `navigator.share()` rejects `AbortError` on share-sheet dismissal; web `handleShare` (`ProductDetailSheet`, `CollectionView`) had no catch and `onClick={() => void handleShare()}` left it unhandled → Sentry Error | `9d6ca8de` |
+| RC-015 | OTP send handlers (`phone.tsx`, `ContactGate.tsx`) guarded only on React state, not a sync ref → keyboard-submit + button-tap (or a double-click) both fire before state commits → 2 SMS / 2 MSG91 hits per request | `faf2d64d` |
+| RC-016 | Facebook Disconnect only clears the server-side row, never calls native `LoginManager.logOut()` → stale on-device session loops on FB's login screen on reconnect | `faf2d64d` |
+| RC-017 | `ProductStudioModal` `useEffect` depends on `activeList`, a new array every render → resets selected style to tab[0] on every render, including the user's own tap | `faf2d64d` |
 
 **New bug → new RC entry:** when a fix commit lands, append the root cause to `docs/root-cause/root-cause issues.md`, add its RC row here, and reference the RC ID in the commit message.
 
