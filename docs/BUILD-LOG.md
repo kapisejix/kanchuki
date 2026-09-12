@@ -2173,3 +2173,61 @@ Replaces the FR-6.1 "copy this text" stopgap (`dab79651`): a staff member added 
 **WhatsApp delivery (owner ask — free, universal, low volume, replaces MSG91):** `buildWhatsAppInviteUrl()` (`wa.me/91<phone>?text=<invite message>`, same pattern as collection share) — the add-member modal leads with a green **Send on WhatsApp** button, and the member-row chip has a one-tap **WhatsApp** resend that mints a fresh link (`resendInvite`) and opens the retailer's own WhatsApp pre-filled. No MSG91 (DLT+cost), no Meta Cloud API (₹0.38/conversation+template), no server round-trip; Copy/Share remain for the no-WhatsApp case.
 
 **Verification:** API **960/960** (10 auth-invite + 10 public-route + 7 resend/status tests), mobile **78/78** (join screen + WhatsApp URL lib), web **128/128** (join page 6) — all three `tsc --noEmit` clean, biome clean on touched files. (The intermittent full-suite API failures are the pre-existing flaky image-upload tests under parallel load — pass in isolation and re-runs.)
+
+---
+
+## CLEANUP 2026-09-12: CI lint gate to zero (188 Biome diagnostics) + Facebook-login runbook + Play Store release provenance
+
+Three commits (`7502c4a7`, `b48bf927`, `56676dbe`) — no product behaviour changed; the first removes a blind spot in CI, the other two move Facebook/Meta and Play Console setup from tribal knowledge into the repo.
+
+### `7502c4a7` chore(api): clear all 188 Biome diagnostics
+
+The `quality` job only ever failed on **errors**, so the warning count drifted to 188 without anything going red — enough noise that a real finding would hide in it. `biome check src/` now reports 288 files / **0 diagnostics**.
+
+**Production (129) — refactored, not silenced.** `noUncheckedIndexedAccess` is on (`tsconfig.base.json`), so deleting the `!` is not an option; every site needed a real guard.
+
+- `noExplicitAny` (48): typed the provider-JSON boundary. `retailers-integrations.ts` (19 sites) got named shapes (`MetaApiErrorBody`, `MetaIdResponse`, `MetaAccountResponse`, `GoogleTokenResponse`) plus an `apiErrorMessage(body, fallback)` helper, following the existing `meta-catalog.ts` precedent. `where: any` became `Prisma.RetailerWhereInput` / `ProductWhereInput` / `ProductReviewWhereInput`; the raw vector SQL now casts to a declared `SearchRow` interface instead of `any[]`.
+- `noNonNullAssertion` (78): two clusters. Map lookups with an upstream predicate now throw explicitly (`loadedProducts.get(id)`, `accountById.get(targetId)`, `snapshots[0]`); accumulator loops (`obj[key]!`) collapsed into a shared `accumulator(map, key, factory)` helper in `growth-helpers.ts`. **A first pass used `??=`, which merely traded `noNonNullAssertion` for `noAssignInExpressions`** — hence the helper rather than the operator.
+- `retailers-ratings.ts` dropped redundant `(request as any).retailerId as string` casts: `request.retailerId` is already typed. Its query params got a typed cast matching the existing `as { category?: string }` precedent.
+- Four `biome-ignore` suppressions that the rule changes orphaned were cleared.
+
+**Tests (59) — scoped off with the reason inline.** `delete process.env.FOO` is the **only correct way** to unset an env var; the rule's suggested fix (`= undefined`) stores the literal string `"undefined"` in Node and silently breaks the test. Also scoped: `noNonNullAssertion` (`mock.calls[0]![0]` on a double the test just built) and `noExplicitAny` (`vi.fn()` callbacks, partial fixtures) — in each case the offending expression is the test's own scaffolding, so the rule is wrong for that file, not the file wrong for the rule.
+
+**Config renamed `biome.json` → `biome.jsonc`** so those reasons can be comments. Grepped first: only prose referenced the old filename, and CI never names it (`pnpm lint` resolves it), so nothing else needed changing.
+
+**Verification:** `biome check src/` 288 files / 0 diagnostics (was 188 warn-level); repo `pnpm lint` 6/6; `tsc --noEmit` clean; **960/960 API tests** (74 files). CI run `34681789887` — all four jobs green, **zero Playwright retries** (the RC-019 offline test passed first attempt).
+
+### `b48bf927` docs: Meta dashboard runbook for Facebook one-tap login
+
+New `docs/META-FACEBOOK-LOGIN-SETUP.md` — an operator runbook; the login code needed no change. Every fact in it is sourced from the repo rather than written from memory: app id `1758308975480748` and scheme (mobile `app.json` plugin block), package/bundle `app.kanchuki.retailer`, redirect URIs `/social/connect` + `/social/connect/callback` (`defaultOAuthRedirect()`, `retailers-social-connect.ts:28`; web callback at `:350`), the `PAGE_PERMISSIONS` / `IG_PERMISSIONS` lists (`facebook-auth.ts`), the `NO_PAGES_FOUND` / `NO_PAGE_TOKEN` / `NO_IG_FOUND` throws in the connect route, the signing secrets and keystore mechanics (`android-release.yml:54-88`), and the compliance URLs (all real web routes).
+
+Two findings that were the likely actual blockers — both configuration, neither fixable in code:
+
+1. **Play App Signing.** A build delivered through Play Console is **re-signed by Google**, so the certificate on the installed app is Play's app-signing key, *not* the upload keystore CI signs with. Registering only the upload keystore hash reproduces the exact reported symptom — correct code, correct build, login never completes. Both must be registered; Meta accepts a list.
+2. **Format.** Meta wants `base64(SHA-1(DER cert))`; Play Console and `eas credentials` both display colon-separated **hex**, which Meta rejects. That is a conversion problem, not a missing value.
+
+Also records that validation is **server-side**, so **no rebuild is needed** after saving a hash — the opposite of the natural assumption. And `social-connect-native.md` §2 still instructed you to "replace the three placeholders" for values that are already real; corrected to point at the runbook so there is one source of truth instead of two drifting ones.
+
+**Deliberately cut from the first draft:** two claims that could not be verified — that the SDK caches the key-hash check for the process lifetime, and that Meta "falls back to looser validation" with no Android platform entry. Neither is in the shipped doc.
+
+### `scripts/meta-android-key-hash.mjs` (new, with `b48bf927`)
+
+Does the hex → base64 conversion, and reads the certificate straight out of a **JKS**: in that container the certificate chain is plaintext DER and only the private key is encrypted, so no password and **no JDK** are needed. That matters here because release builds only happen in CI and there is no `keytool` on the dev machine. It refuses to print a value unless two checks pass — Node's own X.509 fingerprint agrees with hashing the DER it extracted, and the certificate **verifies against its own public key** (a signing certificate is self-signed, so a mis-offset read cannot pass). Also documents the `META-INF/<first-8-of-alias>.RSA` naming convention for identifying which key signed a shipped artifact.
+
+### `56676dbe` docs: Play Store release provenance
+
+`docs/PLAY-STORE-RELEASES.md` had only a versionCode and a date per row. Four `android-release.yml` runs landed on 2026-09-11 and **two produced a versionCode 3 artifact** (`34617176198` at `c14cc6f3`, `34619372677` at `0305d589`), so which was uploaded is now unreconstructable. The row is **marked ambiguous rather than guessed** — both runs contain the same code (only a docs diff), so behaviour is identical but provenance is not knowable. Adds CI-run + commit columns backfilled from the real runs, the rule *"write the run ID and SHA into the row at trigger time"*, and how to trace an installed build through the Settings build-info footer.
+
+**Upload keystore hash — extracted and confirmed two independent ways that agree exactly:**
+
+```
+SHA-1:          16:3B:21:32:B6:DB:00:C4:0D:AF:04:2F:ED:10:3D:8D:87:CC:AF:45
+META KEY HASH:  FjshMrbbAMQNrwQv7RA9jYfMr0U=
+```
+
+Path 1: the new script reading `apps/mobile/@s.numbhraal__kanchuki.jks`. Path 2: downloading the shipped `app-release.aab` from run `34619372677` and reading its signature block with `openssl` (`META-INF/F8DE0ED2.RSA`, matching the alias prefix — JAR signing names the block after the alias's first 8 characters). Two consequences GitHub secrets cannot otherwise reveal: the `ANDROID_KEYSTORE_BASE64` secret holds **this same keystore**, and `_OLD_1.jks` is **not a rotated key** (identical certificate, identical 2026-09-02 → 2054 validity), so nothing extra needs registering for it.
+
+**⚠️ Not extractable from this repo — the Play App Signing key hash.** It is Google's key and is readable only from Play Console → *Release → Setup → App signing*, or from an APK Play actually installed. The CI artifact is upload-signed (confirmed directly above), so it cannot stand in. This is the value most likely responsible for the Facebook-login symptom.
+
+**Verification:** all four guard scripts pass, including `check-secrets-guard.sh --all` (which scans the tracked tree, so it covers both new docs); `pnpm lint` 6/6.
+
