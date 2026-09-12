@@ -17,24 +17,35 @@
 | 2 | 1.0.0 | 2026-09-09 | Closed testing | `34348392715` | `6fc542ae` | media-permissions hardening, OTP keyboard fix |
 | 3 | 1.0.0 | 2026-09-11 | Open testing | `34617176198` *or* `34619372677` | `c14cc6f3` *or* `0305d589` | AD_ID strip (`b1ccefce`), OTP double-send (RC-015), FB reconnect loop (RC-016), AI Studio tab bug (RC-017), AI Studio pick-reset + FB login loop fixed (RC-017/RC-018), CI lint fully green — **see the ambiguity note below** |
 
-### 🚧 In flight — versionCode 4 is built and uploaded, blocked in Play review
+### 🚧 In flight — versionCode 5 reserved and building; versionCode 4 is superseded
 
 `apps/mobile/app.json` was bumped to **`versionCode: 4`** on 2026-09-12, and the AAB
-was built from `10c8f2d` and uploaded the same day. **Play has not accepted it** —
-the release is blocked in review by *"Incomplete advertising ID declaration"* (see
-`PLAY-STORE-LAUNCH-CHECKLIST.md` §3), so it gets **no Uploads row yet**. What this log
-records is what Play accepted, and the guard reads it. `versionCode: 4` therefore
-stays reserved — do not bump to 5 until Play accepts the release and the row is added
-in the same commit.
+was built from `10c8f2d` and uploaded the same day. **Play never accepted it** — the
+release is blocked in review by *"Incomplete advertising ID declaration"* (see
+`PLAY-STORE-LAUNCH-CHECKLIST.md` §3), so it gets **no Uploads row**. This log records
+what Play accepted, and the guard reads it.
+
+**versionCode 4 is now superseded** and `app.json` is bumped to **`versionCode: 5`**.
+Two reasons 4 could not simply be reused: `RECORD_AUDIO` was still shipping in the v4
+bundle, so the fix needs a fresh build; and **Play refuses a versionCode it has already
+received even if the release is discarded**, so 4 is spent regardless of whether it is
+ever accepted. The v5 build carries `android.permission.RECORD_AUDIO` in
+`blockedPermissions`, plus the new `scripts/check-aab-ad-id.mjs` CI step.
 
 The last accepted row above is 3, which is exactly why 4 was reserved: a rebuild at
 versionCode 3 would be rejected, the same way `34612919927` built versionCode 2 after
 2 was already used.
 
 When the build is uploaded, **add a new row above with the run ID and SHA recorded at
-trigger time, and reserve 5 in the same commit.** Do not bump to 5 before 4 has
-actually been uploaded — and if the upload is abandoned, revert `app.json` rather
-than skipping a number, so this log and the code stay in step.
+trigger time, and reserve the next number in the same commit.**
+
+**The rule this section previously stated was wrong** — *"do not bump until Play
+accepts it, and revert `app.json` rather than skip a number"* assumes an unaccepted
+release is still free to reuse. It is not: a versionCode is spent at **upload**, not at
+acceptance. So the next number is reserved as soon as a build is **triggered**, and an
+abandoned release is recorded as *superseded* rather than silently reverted. Reverting
+would point `app.json` at a number Play has already seen, and that only surfaces at the
+end of the following build cycle — the exact failure this log exists to prevent.
 
 The bump belongs in the same commit as the row because of the invariant the CI guard
 enforces: **the log holds the USED numbers, `app.json` holds the NEXT one.** The
