@@ -58,13 +58,18 @@ Same app that already holds `META_APP_ID` / `META_APP_SECRET` on the server.
 
 ### 2. `apps/mobile/app.json`
 
-Replace the three placeholders in the `react-native-fbsdk-next` plugin block:
+**Already populated** — the `react-native-fbsdk-next` plugin block holds the real
+`appID` (`1758308975480748`), the matching `clientToken`, and
+`scheme: "fb1758308975480748"`. Nothing to fill in unless the Meta app changes, in
+which case all three **plus** `META_APP_ID` / `META_APP_SECRET` on the API service
+must change together. `isAutoInitEnabled` is deliberately `false` (the SDK inits
+lazily on first tap — a bad appID in `Application.onCreate` crashes app launch; see
+the block's own `"//"` note).
 
-```jsonc
-"appID": "<Facebook App ID>",
-"clientToken": "<Client Token from Settings → Advanced>",
-"scheme": "fb<Facebook App ID>"   // literally the string "fb" + the numeric App ID
-```
+> → **Full Meta-dashboard runbook: [`docs/META-FACEBOOK-LOGIN-SETUP.md`](./META-FACEBOOK-LOGIN-SETUP.md)**
+> — key hashes (including the Play App Signing trap that is the usual real cause of
+> "still not connected"), App Roles / App Mode, OAuth redirect URIs, the App Review
+> permission list, and a layer-by-layer verification table.
 
 ### 3. Build
 
