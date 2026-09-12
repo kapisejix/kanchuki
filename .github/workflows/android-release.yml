@@ -40,6 +40,15 @@ jobs:
           node-version: 22
           cache: pnpm
 
+      # Refuse the dispatch before spending build minutes when this versionCode
+      # cannot be uploaded anyway: Play rejects a versionCode it has already
+      # accepted, and the check is one file read. Same script as CI's `quality`
+      # job, so a bump that passes review cannot fail here. Placed before the
+      # install/prebuild/Gradle steps on purpose — a doomed build should die in
+      # seconds, not after 10 minutes. Fails closed on unreadable input.
+      - name: Check versionCode is not already used on Play
+        run: node scripts/check-android-version-code.mjs
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin

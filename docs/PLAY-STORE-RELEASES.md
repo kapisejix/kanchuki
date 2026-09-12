@@ -5,6 +5,10 @@
 > the substitute source of truth. **Rule: before triggering any AAB build, read this
 > file and use `last row's versionCode + 1`.** Add a row after every successful
 > upload (Play Console accepts it, not just "build succeeded").
+>
+> **This rule is now enforced** — `scripts/check-android-version-code.mjs` fails both
+> CI and the AAB dispatch when `app.json`'s versionCode is not higher than the last
+> row below. See [CI guard](#ci-guard--the-versioncode-rule-is-enforced-not-just-documented).
 
 ## Uploads
 
@@ -20,9 +24,14 @@ uploaded row above is 3, which is exactly why: a rebuild at versionCode 3 would 
 rejected, the same way `34612919927` built versionCode 2 after 2 was already used.
 
 When the build is uploaded, **add a new row above with the run ID and SHA recorded at
-trigger time.** Do not bump to 5 until versionCode 4 has actually been uploaded — and
-if the upload is abandoned, revert `app.json` rather than skipping a number, so this
-log and the code stay in step.
+trigger time, and reserve 5 in the same commit.** Do not bump to 5 before 4 has
+actually been uploaded — and if the upload is abandoned, revert `app.json` rather
+than skipping a number, so this log and the code stay in step.
+
+The bump belongs in the same commit as the row because of the invariant the CI guard
+enforces: **the log holds the USED numbers, `app.json` holds the NEXT one.** The
+moment 4 is recorded as used without reserving 5, `app.json` names a consumed number
+and CI goes red until the next release is prepared.
 
 ### ⚠️ The versionCode 3 row is ambiguous — do not trust the commit cell
 
@@ -39,6 +48,35 @@ actually downloaded and uploaded:
 Both surviving v3 runs contain the same code (only a docs diff between them), so the
 app behaves identically either way — but the provenance is unproven. **A screenshot
 cannot tell you which one is installed; the build-info footer can** (see below).
+
+## CI guard — the versionCode rule is enforced, not just documented
+
+`scripts/check-android-version-code.mjs` compares `apps/mobile/app.json`'s
+`expo.android.versionCode` against the highest versionCode in the **Uploads** table
+above, and fails unless it is strictly higher. It runs in two places:
+
+| Where | When | Why there |
+|---|---|---|
+| `.github/workflows/ci.yml` (`quality`) | every push / PR | catches the mistake at review time, before a release is ever triggered |
+| `.github/workflows/android-release.yml` | at dispatch, before the install, prebuild and Gradle steps | a doomed build dies in seconds instead of after ~10 minutes |
+
+This exists because the failure it prevents is invisible until the worst moment: Play
+accepts or rejects an upload at the END of the cycle, so a stale number wastes the
+whole build. That has already happened twice — `34612919927` built versionCode 2 when
+2 was in use, and on 2026-09-12 `app.json` was found sitting at versionCode 3 while 3
+was already live.
+
+It **fails closed**: an unreadable `app.json`, a non-integer versionCode, a missing
+`## Uploads` section, or a table whose rows carry no upload date are all failures
+rather than silent passes. In particular a row has to carry an upload date to count,
+which is what keeps the ambiguous-builds table above from being read as an upload —
+the guard that read it as one produced a false `versionCode 34619372677`.
+
+Run it locally the same way CI does:
+
+```
+node scripts/check-android-version-code.mjs
+```
 
 ## How to trace an installed build back to its CI run
 

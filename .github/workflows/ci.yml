@@ -40,6 +40,14 @@ jobs:
       # routes/rewrites on the web origin — such calls 404 and silently
       # break features, e.g. the 2026-08-01 checkout-status bug).
       - run: bash scripts/check-v1-fetch-guard.sh
+      # Play rejects an upload whose versionCode was already used, and it does so
+      # at the END of a release cycle — after the build. That has already cost a
+      # build twice: run 34612919927 shipped v2 when 2 was in use, and app.json
+      # sat at v3 while 3 was live on Play (only caught by hand 2026-09-12).
+      # This compares app.json against the last ACCEPTED upload in
+      # docs/PLAY-STORE-RELEASES.md, so the mistake is caught at review time.
+      # Fails closed: unreadable input is a failure, never a silent pass.
+      - run: node scripts/check-android-version-code.mjs
       - run: pnpm test      # Web unit suite (vitest, jsdom): AdminLayout auth/session gate, Sidebar
   # state, and other component tests (apps/web/src/**/__tests__). Hermetic —
   # no backend, DB, or seeded data — and fast, so it runs in parallel with
