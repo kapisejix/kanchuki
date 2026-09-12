@@ -1,9 +1,13 @@
 # Kanchuki — Google Play Store Launch Checklist (consolidated)
 
-**Status snapshot: August 10, 2026.** Everything in this doc is grounded in the
-current codebase (commit `b29b316`). It consolidates the Data Safety form
-answers, the content-rating questionnaire, the closed-testing requirement, and
-the target-API timeline into one actionable checklist.
+**Status snapshot: 2026-09-12.** Re-verified this session against `c7d85382` and
+the shipped `.aab` (run `34619372677`). The original pass was 2026-08-10 against
+`b29b316`; **six answers had gone stale since** — five because later work
+contradicted them, one plain drift — each called out inline in §2, §3, §6 and §7.
+
+It consolidates the Data Safety form answers, the content-rating questionnaire,
+the closed-testing requirement, and the target-API timeline into one actionable
+checklist.
 
 **App identity**
 
@@ -59,9 +63,12 @@ User can request deletion **Yes** (Settings → Delete Account + web page).
 | Personal info — Email address | Optional | App functionality |
 | Personal info — Phone number | Required | App functionality, Account management |
 | Personal info — Address | Optional | App functionality |
-| Personal info — Other info (GSTIN, body measurements) | Optional | App functionality, Fraud prevention/security/compliance |
-| Photos & videos — Photos (product, KYC/Aadhaar, measurement) | Required | App functionality, Personalization |
+| Personal info — Other info (GSTIN) | Optional | App functionality, Fraud prevention/security/compliance |
+| Photos & videos — Photos (product, KYC/Aadhaar) | Required | App functionality, Personalization |
 | App activity — Other user-generated content (customer preferences, budget, notes) | Optional | App functionality, Personalization |
+| **Crash logs** | ✓ **DECLARED** (was missing) | App functionality — Sentry crash + native-crash reports; see the Sentry note below |
+| **Diagnostics** | ✓ **DECLARED** (was missing) | App functionality — ANR/stall tracking, frame drops, performance traces |
+| **App activity — App interactions** | ✓ **DECLARED** (was missing) | App functionality — Sentry user-interaction tracing (taps, navigation breadcrumbs) |
 
 **Location note:** `expo-location` is used only in onboarding (`app/onboarding.tsx`,
 `handleGetLocation`) — `requestForegroundPermissionsAsync` + one
@@ -70,10 +77,47 @@ stored as `retailers.latitude`/`longitude`, surfaced on `/c/[slug]` as a
 `maps/dir/?api=1&destination=` link. No background location, no tracking, no
 `ACCESS_BACKGROUND_LOCATION`.
 
+**Changed since August — the three `DECLARED` rows added above.** This doc used to
+list crash logs / diagnostics / app-interaction analytics as *not collected*, on the
+grounds that there was "no crash SDK". That stopped being true on 2026-09-04
+(`3ede356`), when `@sentry/react-native` was wired into the mobile app. It is active
+in every release build, so those rows have to be declared.
+
 **Not declared (verified — no SDK or code collects):** financial info (Razorpay
-hosted pages only), crash logs / diagnostics (no crash SDK), device IDs (no
-device-ID SDK), messages, contacts, calendar, audio (`recordAudioAndroid: false`),
-files & docs, web browsing, app-interaction analytics.
+hosted pages only), **advertising ID** (`plugins/withRemoveAdId.js` strips
+`com.google.android.gms.permission.AD_ID` — keep Play Console → Data safety →
+advertising ID set to **No**, and flip it in the *same* release that ships the
+strip, never before), device IDs (no device-ID SDK), messages, contacts, calendar,
+audio (`recordAudioAndroid: false`), files & docs, web browsing.
+
+### Sentry — what actually leaves the device (added 2026-09-12)
+
+`initSentry()` is called at **module scope** in `app/_layout.tsx`, with a live
+production DSN compiled in from `eas.json` and `android-release.yml`. It is not
+conditional on a dev flag, so treat all of this as active in production:
+
+| Enabled | Config |
+|---|---|
+| JS + native crash capture | `enableNativeCrashHandling` — exceptions, native crashes, unhandled rejections |
+| ANR / stall / frame tracking | `enableStallTracking`, `enableNativeFramesTracking` |
+| Performance tracing | `tracesSampleRate: 0.2` in production (1.0 in dev) |
+| Session Replay | `replaysSessionSampleRate: 0.1`, `replaysOnErrorSampleRate: 1.0` |
+| Screenshot + view hierarchy on error | `attachScreenshot`, `attachViewHierarchy` |
+| User-interaction tracing | `enableUserInteractionTracing` (taps, navigation breadcrumbs) |
+| Auto session tracking | `enableAutoSessionTracking`, 30s interval |
+
+Deliberately **not** sent: `sendDefaultPii: false`, so no IP address; and the
+`beforeSend` hook deletes the `Authorization` / `x-admin-key` headers and masks any
+10-digit string in breadcrumbs (phone numbers). `setSentryUser()` exists but has
+**no call sites** in the app, so no retailer id or shop name is attached to events
+today — if that is ever wired up, add **Personal info → User IDs** here.
+
+> ⚠️ **Session Replay is the one to think about before signing the form.** It
+> reconstructs the screen, and `replaysOnErrorSampleRate: 1.0` means a crash on a
+> screen showing phone numbers or GSTIN is always captured. The config sets no
+> explicit masking options, so whether that text is masked is whatever the SDK's
+> default is. Confirm it in Sentry → your project → Replay settings rather than
+> assuming — "crash logs" understates a screen recording.
 
 **AI-provider note:** photos are transmitted to Claude/OpenAI/Gemini/NVIDIA for
 tagging, background cleanup, and measurement extraction. These are service
@@ -89,15 +133,40 @@ shared**. Keep contracts on standard API ToS that exclude training.
 
 ## 3. Permissions
 
-No microphone. Location is foreground-only (store pin in onboarding):
+**The list below was stale.** It previously named `READ_MEDIA_IMAGES` and
+`READ_EXTERNAL_STORAGE` as app permissions; `8de9ff91` **blocked** both when the
+gallery save moved to write-only.
 
-`CAMERA` · `READ_MEDIA_IMAGES` · `READ_EXTERNAL_STORAGE` ·
-`ACCESS_FINE_LOCATION` · `ACCESS_COARSE_LOCATION` (auto-added by `expo-location`)
+**What `apps/mobile/app.json` declares:**
 
-The AAB uploaded for testing must come from the **next EAS build**. Play's
-automated scan compares the binary against the declared form answers — the
-location permissions must match the "Location — precise/approximate" rows
-declared in §2.
+- `android.permission.CAMERA` — explicit, from `expo-camera`
+- `ACCESS_FINE_LOCATION` · `ACCESS_COARSE_LOCATION` — auto-added by `expo-location`;
+  foreground-only, one-shot store pin in onboarding (matches §2's Location rows)
+- `WRITE_EXTERNAL_STORAGE` — from `expo-media-library` (gallery save)
+- whatever `@sentry/react-native` and `react-native-fbsdk-next` bring in
+
+**Explicitly blocked** since `8de9ff91`: `READ_MEDIA_IMAGES` ·
+`READ_MEDIA_VIDEO` · `READ_MEDIA_AUDIO` · `READ_EXTERNAL_STORAGE`. `expo-camera` is
+configured `recordAudioAndroid: false`, and `plugins/withRemoveAdId.js` strips
+`com.google.android.gms.permission.AD_ID`.
+
+> ⚠️ **Read the authoritative list from Play Console before submitting:** your app →
+> **App bundle explorer** → the uploaded version → **Permissions**. That is the list
+> the automated scan compares against your form answers, and it is the only place it
+> is trustworthy — see the note below on why the `.aab` on disk is misleading.
+>
+> **Specifically confirm `RECORD_AUDIO`.** §2 and §7 assert the app does not use the
+> microphone, and this doc previously claimed it was "trimmed" — but
+> `android.permission.RECORD_AUDIO` **is** present in the shipped `.aab`'s manifest.
+> A removed permission can still leave its name behind (that is exactly how
+> `withRemoveAdId.js` works), so that presence neither proves nor disproves anything.
+> If Console shows it active, §2 and §7 both need to change.
+
+**Why the `.aab` is not authoritative:** permissions removed via
+`tools:node="remove"` are expressed as a `<uses-permission android:name="…">` node
+carrying a removal marker, so the name remains in the manifest as a string. A scan
+of the file therefore cannot distinguish *declared* from *removed* — reading it out
+of the bundle is how this section went wrong the first time.
 
 ## 4. Content rating questionnaire (IARC)
 
@@ -153,19 +222,32 @@ already target API 36. No SDK 55 bump, no Play Console extension request.
 6. After approval: promote the same AAB to production.
 
 > The closed-test build is also the one Play's pre-review scan checks against
-> your Data Safety answers — make sure it's the post-location-removal build.
+> your Data Safety answers — make sure §2's two Location rows are declared
+> *before* uploading. Location is **back in** this build (the optional store pin,
+> `b4270e4`); this line previously said "post-location-removal build", which would
+> have left them undeclared.
 
-## 7. Launch-critical things already handled (no action)
+## 7. Launch-critical things already handled
+
+No action needed on these **except the three ⚠️ items**, which this re-verification
+surfaced and which need a Console check or a form edit before submitting.
 
 - ✅ Play Billing compliance — app has **no in-app purchases**; subscriptions/add-ons
   sold on `kanchuki.app/billing` (web OTP login). The one in-app payment
   (catalog-upload service) is a physical on-site service, Play-exempt.
 - ✅ Privacy policy — public, current, matches the Data Safety form.
 - ✅ Account deletion — in-app (Settings, typed DELETE) + web page.
-- ✅ `RECORD_AUDIO` trimmed; location trimmed (Aug 10, 2026).
+- ⚠️ **`RECORD_AUDIO` unconfirmed — verify in Console (§3).** Not to be assumed
+  either way: its name is still in the shipped `.aab`'s manifest.
+- ⚠️ **Location is NOT trimmed.** `expo-location` is still used for the optional
+  store pin (`app/onboarding.tsx`), which is why §2 declares it. This line used to
+  claim location was trimmed, which contradicted §2.
 - ✅ App signing/icon/adaptive icon/splash configured; `eas.json` production
   profile → `api.kanchuki.app`.
-- ✅ Migrations applied through 048.
+- ⚠️ Migrations **in the repo** run through `099` (`packages/db/prisma/migrations`) —
+  this line previously said 048, which was five weeks of drift. Confirm the admin
+  runner has applied them in prod (`_prisma_migrations` needed reconciling through
+  089 in the past) before building against them.
 
 ## 8. Post-launch reminders
 
