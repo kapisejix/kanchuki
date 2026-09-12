@@ -34,6 +34,25 @@ const PAGE_PERMISSIONS = [
 ];
 const IG_PERMISSIONS = [...PAGE_PERMISSIONS, 'instagram_basic', 'instagram_content_publish'];
 
+/** Message of any thrown value — some native paths reject with a string. */
+function errorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err)
+}
+
+/**
+ * True when a module-load failure means the native module simply isn't in this
+ * build (Expo Go / JS-only bundle) rather than being present-but-broken.
+ *
+ * Expo Go fails at *resolution* ("Cannot find module" / "Unable to resolve
+ * module"); a real misconfiguration fails after resolution (TurboModule
+ * registry, Metro bundling, a missing native lib in a release build). Only the
+ * former may send callers down the web-OAuth fallback — see the catch block in
+ * `loginWithFacebook`.
+ */
+export function isSdkUnavailableError(err: unknown): boolean {
+  return /cannot find module|unable to resolve module/i.test(errorMessage(err))
+}
+
 /**
  * Runs native Facebook Login and returns a short-lived user access token.
  * @throws {FacebookAuthUnavailable} in Expo Go / any build without the SDK
@@ -45,7 +64,11 @@ export async function loginWithFacebook(
   let fbsdk: {
     Settings: { initializeSDK: () => void };
     LoginManager: {
-      logInWithPermissions: (p: string[]) => Promise<{ isCancelled: boolean }>;
+      logInWithPermissions: (p: string[]) => Promise<{
+        isCancelled: boolean;
+        grantedPermissions?: string[];
+        declinedPermissions?: string[];
+      }>;
       logOut: () => void;
     };
     AccessToken: {
@@ -56,9 +79,20 @@ export async function loginWithFacebook(
     // Dynamic import so a missing native module doesn't blow up the JS bundle
     // at eval time (Expo Go) — only this call path fails.
     fbsdk = (await import('react-native-fbsdk-next')) as typeof fbsdk;
-  } catch {
-    // Genuinely absent → Expo Go. Callers fall back to the web flow.
-    throw new FacebookAuthUnavailable();
+  } catch (err) {
+    // Two very different failures used to land here and get the same answer.
+    //  · The module isn't resolvable at all (Expo Go) → a genuine "not
+    //    available in this build" case callers should fall back from.
+    //  · The module IS installed but threw while loading (Metro/bundle error,
+    //    missing native lib in a release build) → NOT an Expo Go case.
+    // Treating the second as the first silently dropped a broken release
+    // build into the web OAuth flow and hid the reason it broke.
+    if (!isSdkUnavailableError(err)) {
+      throw new Error(
+        `Facebook SDK could not be loaded in this build: ${errorMessage(err)}`,
+      );
+    }
+    throw new FacebookAuthUnavailable(errorMessage(err));
   }
 
   // isAutoInitEnabled is false in app.json (a bad appID in Application.onCreate
@@ -77,21 +111,48 @@ export async function loginWithFacebook(
     );
   }
 
-  // Clear any stale cached session before logging in again — without this,
-  // a reconnect after Disconnect (which only removes the server-side row,
-  // never the on-device SDK session) can leave the SDK re-authing a dead
-  // session and stall on Facebook's login screen instead of prompting fresh.
-  fbsdk.LoginManager.logOut();
+  const permissions = target === 'instagram' ? IG_PERMISSIONS : PAGE_PERMISSIONS;
 
-  const result = await fbsdk.LoginManager.logInWithPermissions(
-    target === 'instagram' ? IG_PERMISSIONS : PAGE_PERMISSIONS,
-  );
-  if (result.isCancelled) throw new FacebookAuthCancelled();
+  // What Facebook reported as declined on the last attempt. A login can
+  // *complete* with pages_manage_posts switched off (the consent screen hides
+  // the per-permission toggles behind "Edit access"), which looks like a
+  // successful connect on the device and only fails later as the server's
+  // NO_PAGE_TOKEN 502 — read by the retailer as "Kanchuki is broken". Keep it
+  // so the error below can name the actual missing permission instead.
+  let lastDeclined: string[] = [];
 
-  const token = await fbsdk.AccessToken.getCurrentAccessToken();
+  // Ask the SDK for a token FIRST, without clearing the on-device session.
+  // When a session already exists the SDK returns it (Facebook's one-tap
+  // "Continue as <you>" dialog, no credentials).
+  const attemptLogin = async () => {
+    const result = await fbsdk.LoginManager.logInWithPermissions(permissions);
+    if (result.isCancelled) throw new FacebookAuthCancelled();
+    lastDeclined = result.declinedPermissions ?? [];
+    return fbsdk.AccessToken.getCurrentAccessToken();
+  };
+
+  let token = await attemptLogin();
+
+  // Reconnect-after-Disconnect (RC-016): Disconnect only deletes the
+  // server-side row, so the device can still hold a session whose grant the
+  // server no longer knows about — the login then completes with no usable
+  // token. Only in that case clear the stale session and retry once.
+  //
+  // This is deliberately NOT done up front. Unconditionally calling logOut()
+  // before every login destroyed the cached session, so Facebook had to ask
+  // for credentials on every single attempt — which is the full login form
+  // retailers kept seeing instead of "Continue as <you>".
+  if (!token?.accessToken) {
+    fbsdk.LoginManager.logOut();
+    token = await attemptLogin();
+  }
+
   if (!token?.accessToken) {
     throw new Error(
-      'Facebook returned no access token. This usually means the Android release key hash / bundle ID is not registered on the Meta app, or the app is not in Live mode.',
+      'Facebook returned no access token. This usually means the Android release key hash / bundle ID is not registered on the Meta app, or the app is not in Live mode.' +
+        (lastDeclined.length > 0
+          ? ` Facebook also reported these permissions as declined: ${lastDeclined.join(', ')}.`
+          : ''),
     );
   }
   return token.accessToken;

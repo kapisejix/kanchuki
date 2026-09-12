@@ -394,7 +394,7 @@ export function ProductMediaCarousel({
           </View>
           {productVideosCount > 0 && !videoGenerating && (
             <View
-              className="absolute -top-1.5 -right-1 px-1.5 py-0.5 rounded-full bg-fuchsia-600 shadow-xs"
+              className="absolute -top-1.5 -right-1 px-1.5 py-0.5 rounded-full bg-fuchsia-600 shadow-sm"
             >
               <Text className="text-[9px] font-bold text-white">{productVideosCount}</Text>
             </View>
@@ -415,7 +415,7 @@ export function ProductMediaCarousel({
           </View>
           {!studioQuota?.unlimited && (
             <View
-              className="absolute -top-1.5 -right-1 px-1.5 py-0.5 rounded-full shadow-xs"
+              className="absolute -top-1.5 -right-1 px-1.5 py-0.5 rounded-full shadow-sm"
               style={{
                 backgroundColor:
                   (studioQuota?.remaining ?? 0) * STUDIO_CREDITS_PER_IMAGE < STUDIO_CREDITS_PER_IMAGE

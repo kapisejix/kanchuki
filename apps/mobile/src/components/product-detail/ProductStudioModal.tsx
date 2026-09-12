@@ -81,15 +81,29 @@ export function ProductStudioModal({
   )
   const activeList = tab === 'product' ? productStyles : modelStyles
 
-  const [selectedSlug, setSelectedSlug] = useState<string>(activeList[0]?.slug ?? '')
-  // Auto-select first style when tab or styles change. NOT activeList itself
-  // — it's a new array every render, so depending on it re-fires this every
-  // render (incl. the one from a user's own selection click) and stomps it
-  // back to the first item before Generate ever sees the pick.
+  // The retailer's explicit style pick, or null while they haven't picked one.
+  //
+  // This is deliberately NOT a `selectedSlug` state value derived by an
+  // auto-select effect. That shape (RC-017) meant any re-render — a React
+  // Query refetch, a parent re-render, a state change from the tap itself —
+  // could re-run the effect and stomp the pick back to row 0 before Generate
+  // read it. A *derived* selection cannot be overwritten by a render: the
+  // pick is only dropped when the retailer changes tab or reopens the modal,
+  // both of which are intentional resets (effect below). If the picked style
+  // disappears from the list (plan/demographic change), the fallback picks
+  // itself up again with no stale slug left behind.
+  const [pickedSlug, setPickedSlug] = useState<string | null>(null)
+  const selectedSlug =
+    pickedSlug && activeList.some((s) => s.slug === pickedSlug)
+      ? pickedSlug
+      : (activeList[0]?.slug ?? '')
+
+  // Reset the pick when the tab changes or the modal is reopened, so a fresh
+  // open starts on the first style of the active tab. Depends on primitives
+  // only — never on `activeList`, which is a new array on every render.
   useEffect(() => {
-    setSelectedSlug(activeList[0]?.slug ?? '')
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab, styles.length])
+    setPickedSlug(null)
+  }, [tab, visible])
 
   const handleStart = () => {
     if (selectedSlug) onStartShoot(selectedSlug)
@@ -248,7 +262,7 @@ export function ProductStudioModal({
           <AnimatedPressable
             onPress={() => setTab('product')}
             className={`flex-1 py-2 rounded-lg items-center ${
-              tab === 'product' ? 'bg-white shadow-xs' : ''
+              tab === 'product' ? 'bg-white shadow-sm' : ''
             }`}
           >
             <Text
@@ -260,7 +274,7 @@ export function ProductStudioModal({
           <AnimatedPressable
             onPress={() => setTab('models')}
             className={`flex-1 py-2 rounded-lg items-center ${
-              tab === 'models' ? 'bg-white shadow-xs' : ''
+              tab === 'models' ? 'bg-white shadow-sm' : ''
             }`}
           >
             <Text
@@ -294,7 +308,7 @@ export function ProductStudioModal({
                 return (
                   <AnimatedPressable
                     key={s.slug}
-                    onPress={() => setSelectedSlug(s.slug)}
+                    onPress={() => setPickedSlug(s.slug)}
                     className={`flex-row items-center p-3 rounded-2xl border-2 gap-3.5 ${
                       isSelected ? 'border-fuchsia-600 bg-fuchsia-50/50' : 'border-sand-100 bg-white'
                     }`}
