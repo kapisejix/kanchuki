@@ -53,7 +53,9 @@ Thumbs.db
 
 # Serwist/Workbox service worker (auto-generated)
 apps/web/public/sw.js
+apps/web/public/sw.js.map
 apps/web/public/swe-worker-*.js
+apps/web/public/swe-worker-*.js.map
 
 # Test coverage
 coverage/

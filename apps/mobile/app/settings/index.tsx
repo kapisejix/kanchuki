@@ -40,6 +40,7 @@ import {
 } from "react-native";
 import { useScreenInsets } from "../../src/lib/safe-area";
 import { AnimatedPressable } from "../../src/components/AnimatedPressable";
+import { BuildInfoFooter } from "../../src/components/BuildInfoFooter";
 import { GradientButton } from "../../src/components/GradientButton";
 import { SettingsSkeleton } from "../../src/components/Skeleton";
 import {
@@ -1576,6 +1577,10 @@ export default function SettingsScreen() {
               onPress={handleLogout}
             />
           </View>
+
+          {/* Commit + build time of the running binary — a screenshot of this
+              is what identifies the build under test (see BuildInfoFooter). */}
+          <BuildInfoFooter />
         </View>
       </ScrollView>
 

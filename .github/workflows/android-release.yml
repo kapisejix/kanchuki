@@ -21,6 +21,18 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # Stamp which commit this .aab contains into the JS bundle. Written to
+      # $GITHUB_ENV so every later step (including the Gradle/Metro bundle)
+      # inherits it. Without this, an uploaded artifact could not be tied back
+      # to a commit — the exact gap that made "the fix didn't work" rounds
+      # unresolvable on 2026-09-11. Read by src/lib/build-info.ts and shown in
+      # Settings.
+      - name: Stamp build provenance
+        run: |
+          echo "EXPO_PUBLIC_BUILD_SHA=${GITHUB_SHA}" >> "$GITHUB_ENV"
+          echo "EXPO_PUBLIC_BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
+          echo "EXPO_PUBLIC_BUILD_CHANNEL=ci" >> "$GITHUB_ENV"
+
       - uses: pnpm/action-setup@v4
 
       - uses: actions/setup-node@v4

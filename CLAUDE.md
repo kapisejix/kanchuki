@@ -237,7 +237,9 @@ Payment: Razorpay (UPI first). Retailer pays base + 18% GST. **Source of truth: 
 | RC-014 | `navigator.share()` rejects `AbortError` on share-sheet dismissal; web `handleShare` (`ProductDetailSheet`, `CollectionView`) had no catch and `onClick={() => void handleShare()}` left it unhandled → Sentry Error | `9d6ca8de` |
 | RC-015 | OTP send handlers (`phone.tsx`, `ContactGate.tsx`) guarded only on React state, not a sync ref → keyboard-submit + button-tap (or a double-click) both fire before state commits → 2 SMS / 2 MSG91 hits per request | `faf2d64d` |
 | RC-016 | Facebook Disconnect only clears the server-side row, never calls native `LoginManager.logOut()` → stale on-device session loops on FB's login screen on reconnect | `faf2d64d` |
-| RC-017 | `ProductStudioModal` `useEffect` depends on `activeList`, a new array every render → resets selected style to tab[0] on every render, including the user's own tap | `faf2d64d` |
+| RC-017 | `ProductStudioModal` `useEffect` depends on `activeList`, a new array every render → resets selected style to tab[0] on every render, including the user's own tap | `faf2d64d`, `18f0642c` |
+| RC-018 | RC-016's `logOut()` ran before *every* login → destroyed the cached on-device session, forcing Facebook's credentials form instead of one-tap "Continue as"; token is now requested first, `logOut()` only on the no-usable-token retry | `18f0642c` |
+| RC-019 | Offline e2e asserted an uncached **navigation** fell back to `/offline`, but `context.setOffline` does not cover the SW's navigation fetch (real 307 from the live server) → flaky; assertion removed as not Playwright-deterministic, replaced with a precache precondition + direct cached-document check | `7483b93f` |
 
 **New bug → new RC entry:** when a fix commit lands, append the root cause to `docs/root-cause/root-cause issues.md`, add its RC row here, and reference the RC ID in the commit message.
 
