@@ -13,6 +13,17 @@
 | 2 | 1.0.0 | 2026-09-09 | Closed testing | `34348392715` | `6fc542ae` | media-permissions hardening, AD_ID strip, OTP keyboard fix |
 | 3 | 1.0.0 | 2026-09-11 | Open testing | `34617176198` *or* `34619372677` | `c14cc6f3` *or* `0305d589` | OTP double-send (RC-015), FB reconnect loop (RC-016), AI Studio tab bug (RC-017), AI Studio pick-reset + FB login loop fixed (RC-017/RC-018), CI lint fully green — **see the ambiguity note below** |
 
+### 🚧 In flight — versionCode 4 is reserved, not yet uploaded
+
+`apps/mobile/app.json` was bumped to **`versionCode: 4`** on 2026-09-12. The last
+uploaded row above is 3, which is exactly why: a rebuild at versionCode 3 would be
+rejected, the same way `34612919927` built versionCode 2 after 2 was already used.
+
+When the build is uploaded, **add a new row above with the run ID and SHA recorded at
+trigger time.** Do not bump to 5 until versionCode 4 has actually been uploaded — and
+if the upload is abandoned, revert `app.json` rather than skipping a number, so this
+log and the code stay in step.
+
 ### ⚠️ The versionCode 3 row is ambiguous — do not trust the commit cell
 
 Four `android-release.yml` runs on 2026-09-11, and nobody recorded which artifact was
