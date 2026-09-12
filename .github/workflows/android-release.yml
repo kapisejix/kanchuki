@@ -104,6 +104,19 @@ jobs:
           "$ANDROID_HOME"/build-tools/*/apksigner verify --min-sdk-version 24 --verbose "$AAB" || \
             jarsigner -verify -verbose "$AAB"
 
+      # Refuse to publish an AAB Play will block. AD_ID arrives transitively from the
+      # Facebook Android SDK AAR (com.facebook.android:facebook-android-sdk, pulled in
+      # by react-native-fbsdk-next) and is removed by ../plugins/withRemoveAdId.js during
+      # the manifest merge. That makes it invisible to every git grep, every node_modules
+      # scan, and to `expo prebuild` — the merged manifest inside the built bundle is the
+      # only place the outcome is visible. It HAS silently regressed before: the
+      # versionCode 1 and 2 bundles declare AD_ID, versionCode 3 and 4 do not, because the
+      # plugin landed in b1ccefce, after versionCode 2. Placed after the signing check and
+      # before upload-artifact on purpose, so a blocked bundle can never be downloaded and
+      # hand-uploaded. Cost: one file read.
+      - name: Check the merged manifest is free of AD_ID
+        run: node scripts/check-aab-ad-id.mjs
+
       - uses: actions/upload-artifact@v4
         with:
           name: app-release-aab

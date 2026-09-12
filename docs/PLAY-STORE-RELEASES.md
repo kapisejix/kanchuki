@@ -14,14 +14,22 @@
 
 | versionCode | version | uploaded | track | CI run | commit | notes |
 |---|---|---|---|---|---|---|
-| 2 | 1.0.0 | 2026-09-09 | Closed testing | `34348392715` | `6fc542ae` | media-permissions hardening, AD_ID strip, OTP keyboard fix |
-| 3 | 1.0.0 | 2026-09-11 | Open testing | `34617176198` *or* `34619372677` | `c14cc6f3` *or* `0305d589` | OTP double-send (RC-015), FB reconnect loop (RC-016), AI Studio tab bug (RC-017), AI Studio pick-reset + FB login loop fixed (RC-017/RC-018), CI lint fully green — **see the ambiguity note below** |
+| 2 | 1.0.0 | 2026-09-09 | Closed testing | `34348392715` | `6fc542ae` | media-permissions hardening, OTP keyboard fix |
+| 3 | 1.0.0 | 2026-09-11 | Open testing | `34617176198` *or* `34619372677` | `c14cc6f3` *or* `0305d589` | AD_ID strip (`b1ccefce`), OTP double-send (RC-015), FB reconnect loop (RC-016), AI Studio tab bug (RC-017), AI Studio pick-reset + FB login loop fixed (RC-017/RC-018), CI lint fully green — **see the ambiguity note below** |
 
-### 🚧 In flight — versionCode 4 is reserved, not yet uploaded
+### 🚧 In flight — versionCode 4 is built and uploaded, blocked in Play review
 
-`apps/mobile/app.json` was bumped to **`versionCode: 4`** on 2026-09-12. The last
-uploaded row above is 3, which is exactly why: a rebuild at versionCode 3 would be
-rejected, the same way `34612919927` built versionCode 2 after 2 was already used.
+`apps/mobile/app.json` was bumped to **`versionCode: 4`** on 2026-09-12, and the AAB
+was built from `10c8f2d` and uploaded the same day. **Play has not accepted it** —
+the release is blocked in review by *"Incomplete advertising ID declaration"* (see
+`PLAY-STORE-LAUNCH-CHECKLIST.md` §3), so it gets **no Uploads row yet**. What this log
+records is what Play accepted, and the guard reads it. `versionCode: 4` therefore
+stays reserved — do not bump to 5 until Play accepts the release and the row is added
+in the same commit.
+
+The last accepted row above is 3, which is exactly why 4 was reserved: a rebuild at
+versionCode 3 would be rejected, the same way `34612919927` built versionCode 2 after
+2 was already used.
 
 When the build is uploaded, **add a new row above with the run ID and SHA recorded at
 trigger time, and reserve 5 in the same commit.** Do not bump to 5 before 4 has
@@ -48,6 +56,24 @@ actually downloaded and uploaded:
 Both surviving v3 runs contain the same code (only a docs diff between them), so the
 app behaves identically either way — but the provenance is unproven. **A screenshot
 cannot tell you which one is installed; the build-info footer can** (see below).
+
+### ℹ️ The AD_ID strip shipped in versionCode 3, not 2
+
+This log previously credited **versionCode 2** with the AD_ID strip. It could not have
+contained it: the plugin (`apps/mobile/plugins/withRemoveAdId.js`, `b1ccefce`) was
+committed **2026-09-10**, one day *after* versionCode 2 was uploaded on 2026-09-09, and
+`6fc542ae` is only a one-line versionCode bump. VersionCode 2 therefore shipped with
+`com.google.android.gms.permission.AD_ID` present — merged in at Gradle build time by
+the Facebook Android SDK AAR (`com.facebook.android:facebook-android-sdk:18.+` via
+`react-native-fbsdk-next`), which is why no `git` grep and no `expo prebuild` can see
+it.
+
+This matters for the Play Console advertising-ID declaration: answer **No** only for a
+release the strip actually reached (versionCode 3 onward). `android-release.yml` runs
+`expo prebuild --clean` before Gradle, so every CI-built AAB from `b1ccefce` onward
+carries it — confirm under App bundle explorer → the uploaded version →
+**Permissions**, which reads the merged manifest and is the only trustworthy place to
+check.
 
 ## CI guard — the versionCode rule is enforced, not just documented
 

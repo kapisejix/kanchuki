@@ -85,10 +85,41 @@ in every release build, so those rows have to be declared.
 
 **Not declared (verified — no SDK or code collects):** financial info (Razorpay
 hosted pages only), **advertising ID** (`plugins/withRemoveAdId.js` strips
-`com.google.android.gms.permission.AD_ID` — keep Play Console → Data safety →
-advertising ID set to **No**, and flip it in the *same* release that ships the
-strip, never before), device IDs (no device-ID SDK), messages, contacts, calendar,
-audio (`recordAudioAndroid: false`), files & docs, web browsing.
+`com.google.android.gms.permission.AD_ID` — answer **App content → Advertising ID**
+and the **Data safety** advertising-ID row **No**, and flip both in the *same*
+release that ships the strip, never before; see §3 for the exact steps and why the
+order matters), device IDs (no device-ID SDK), messages, contacts, calendar,
+audio (see "Audio" below — not collected, but the permission *is* declared), files
+& docs, web browsing.
+
+### Audio — the form answers "No" even though the permission is declared
+
+**Decision (2026-09-12): do NOT declare audio on the Data safety form.** The form asks
+what the app *collects or shares*, and no audio is captured at all — there is no
+`expo-audio` or `expo-av` dependency, no `recordAsync`, no `requestAudioPermissions`,
+and all four `CameraView` call sites (`product/add.tsx`, `product/scan.tsx`,
+`product/[id]/add-photos.tsx`, `product/[id]/add-color.tsx`) are photo/barcode capture,
+not `mode="video"`. `expo-video` is playback-only. Declaring audio would over-claim
+collection, which is its own inaccuracy.
+
+**But the permission genuinely IS declared, and `recordAudioAndroid: false` is why that
+was missed for so long.** That option removes nothing: `expo-camera`'s plugin only calls
+`AndroidConfig.Permissions.withPermissions(config, ['android.permission.CAMERA',
+recordAudioAndroid && 'android.permission.RECORD_AUDIO'].filter(Boolean))` — so when the
+flag is false it merely declines to *add* the permission. It never removes the
+declaration `expo-camera`'s own library manifest (`android/src/main/AndroidManifest.xml`)
+makes unconditionally, and a library manifest merges in regardless. The option is a
+no-op for removal, so `RECORD_AUDIO` was always going to reach the bundle. Confirmed by
+decoding the shipped bundles: it is present in versionCode 4, and since removal markers
+leave no trace (§3), its presence proves a real declaration rather than a leftover.
+Data safety is about collected/shared data, so this does *not* force an audio row — but
+the permission is not decorative either.
+
+**To actually remove it** (optional; needs a rebuild): add
+`"android.permission.RECORD_AUDIO"` to `expo.android.blockedPermissions` in
+`apps/mobile/app.json` — the same mechanism that already removes the `READ_MEDIA_*`
+group. Until then the store listing advertises a Microphone permission the app never
+exercises, which a reviewer may query.
 
 ### Sentry — what actually leaves the device (added 2026-09-12)
 
@@ -155,18 +186,101 @@ configured `recordAudioAndroid: false`, and `plugins/withRemoveAdId.js` strips
 > the automated scan compares against your form answers, and it is the only place it
 > is trustworthy — see the note below on why the `.aab` on disk is misleading.
 >
-> **Specifically confirm `RECORD_AUDIO`.** §2 and §7 assert the app does not use the
-> microphone, and this doc previously claimed it was "trimmed" — but
-> `android.permission.RECORD_AUDIO` **is** present in the shipped `.aab`'s manifest.
-> A removed permission can still leave its name behind (that is exactly how
-> `withRemoveAdId.js` works), so that presence neither proves nor disproves anything.
-> If Console shows it active, §2 and §7 both need to change.
+> **`RECORD_AUDIO` — resolved 2026-09-12: it is genuinely declared.** This doc first
+> claimed it was "trimmed", then hedged that its presence proved nothing. It does prove
+> something: removal leaves no trace (see the correction below), so the permission in
+> the shipped `.aab` is real. It comes from `expo-camera`'s library manifest, and
+> `recordAudioAndroid: false` does not strip it. §2 "Audio" has the root cause, the Data
+> safety decision, and how to remove it; §2 and §7 have both been updated.
 
-**Why the `.aab` is not authoritative:** permissions removed via
-`tools:node="remove"` are expressed as a `<uses-permission android:name="…">` node
-carrying a removal marker, so the name remains in the manifest as a string. A scan
-of the file therefore cannot distinguish *declared* from *removed* — reading it out
-of the bundle is how this section went wrong the first time.
+**Why the `.aab` **is** authoritative — corrected 2026-09-12 (this section had it backwards).**
+It previously claimed that a permission removed via `tools:node="remove"` leaves its
+name behind in the bundle as a removal marker, so a scan of the `.aab` could not tell
+*declared* from *removed*. **Measured against the real bundles, that is false.**
+`tools:*` are build-time directives the manifest merger consumes: the merged manifest
+inside the AAB declares no `tools` namespace at all, and a removed permission is
+gone completely — the same bundles prove it, because `READ_MEDIA_IMAGES` carries a
+remove marker in the source manifest and appears nowhere in the shipped versionCode 4
+manifest. So absence proves removal, and presence proves a real declaration.
+
+Decoded from `base/manifest/AndroidManifest.xml` in the downloaded CI artifacts:
+
+| AAB versionCode | `com.google.android.gms.permission.AD_ID` |
+|---|---|
+| 1 | **DECLARED** |
+| 2 | **DECLARED** |
+| 3 | absent |
+| 4 | absent |
+
+That is the expected history — the strip landed in `b1ccefce` (2026-09-10), *after*
+versionCode 2. It also settles the open `RECORD_AUDIO` question below: `RECORD_AUDIO`
+**is** present in versionCode 4, so it is genuinely declared, not a leftover marker.
+
+> The residual caveat: the `.aab` holds the *merged* manifest, which is not
+> necessarily byte-for-byte what Play's automated scan reads. App bundle explorer
+> remains the tie-breaker.
+
+**Verify it yourself, no Console needed (added 2026-09-12):**
+
+```
+node scripts/inspect-aab-manifest.mjs --aab path/to/app-release.aab
+```
+
+Decodes the merged manifest and prints the package, `versionCode`, the full
+permission list grouped by family, the AD_ID verdict, plus `--json` for a
+machine-readable dump and `--strict` to exit non-zero when AD_ID is declared.
+
+**Read permission counts carefully — a naive grep of the `.aab` is wrong in both
+directions.** For versionCode 4 the three categories are:
+
+| Category | Count | Meaning |
+|---|---|---|
+| `uses-permission` / `uses-permission-sdk-23` | **18** | actually requested — what the Data safety form is compared against |
+| `<permission>` declarations | 1 | offered to *other* apps (`…DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION`) |
+| `android:permission` on a component | 2 | required **of callers** — `DUMP` on a `<receiver>`, `BIND_JOB_SERVICE` on a `<service>` |
+
+A regex for `\.permission\.[A-Z_]+` returns 19 for this bundle, which is *neither*
+number: it over-counts the two caller requirements and misses the custom permission
+entirely (that name contains no `.permission.` segment). The two errors happen to
+cancel, so 19 looks plausible. **18 is the number that matters.**
+
+### Clearing the "Incomplete advertising ID declaration" Play block
+
+Surfaced 2026-09-12 on the versionCode 4 upload from `10c8f2d`:
+
+> Incomplete advertising ID declaration. All developers targeting Android 13 or later
+> are required to let us know if their app uses advertising ID.
+
+This is a **Console form that was never completed**, not a manifest problem — the
+strip is in the bundle. `react-native-fbsdk-next` pulls
+`com.facebook.android:facebook-android-sdk:18.+`, whose `facebook-core` AAR declares
+`com.google.android.gms.permission.AD_ID`. That AAR manifest is merged at Gradle
+time, so the permission is visible to no `git` grep and to no `expo prebuild`, and
+`plugins/withRemoveAdId.js` exists to remove it. (In `node_modules` nothing declares
+it — not even `react-native-fbsdk-next`'s own manifest, which carries only an
+`AD_SERVICES_CONFIG` property.)
+
+Resolve it in two steps, **in this order**:
+
+1. **Confirm the strip reached the bundle first.** Your app → **App bundle explorer**
+   → the uploaded version → **Permissions**. `com.google.android.gms.permission.AD_ID`
+   must be absent. This tab is the only place the *merged* manifest is readable — see
+   the note above on why the `.aab` on disk is misleading. No new build is needed:
+   versionCode 3 onward already carries the strip.
+2. **Policy → App content → Advertising ID** (the error banner links there). Answer
+   **No** and save.
+
+⚠️ **The order is not optional.** Answering **No** while the permission *is* present
+triggers the opposite and harder block: *"This version includes the
+`com.google.android.gms.permission.AD_ID` permission, but your Play Console
+declaration indicates that your app doesn't use any advertising IDs."* And an
+unanswered declaration blocks rollout outright — *"You cannot rollout releases
+targeting Android 13 until you have completed this declaration."* Both messages are
+Play policy, not repo state: [Advertising ID — Play Console
+Help](https://support.google.com/googleplay/android-developer/answer/6048248).
+
+**Data safety carries a separate advertising-ID row** (§2) — the two answers must
+agree. This block is the **App content** declaration, not the Data safety row.
 
 ## 4. Content rating questionnaire (IARC)
 
@@ -229,7 +343,7 @@ already target API 36. No SDK 55 bump, no Play Console extension request.
 
 ## 7. Launch-critical things already handled
 
-No action needed on these **except the three ⚠️ items**, which this re-verification
+No action needed on these **except the two ⚠️ items**, which this re-verification
 surfaced and which need a Console check or a form edit before submitting.
 
 - ✅ Play Billing compliance — app has **no in-app purchases**; subscriptions/add-ons
@@ -237,8 +351,12 @@ surfaced and which need a Console check or a form edit before submitting.
   (catalog-upload service) is a physical on-site service, Play-exempt.
 - ✅ Privacy policy — public, current, matches the Data Safety form.
 - ✅ Account deletion — in-app (Settings, typed DELETE) + web page.
-- ⚠️ **`RECORD_AUDIO` unconfirmed — verify in Console (§3).** Not to be assumed
-  either way: its name is still in the shipped `.aab`'s manifest.
+- ✅ **`RECORD_AUDIO` — resolved 2026-09-12: it *is* declared.** The name in the
+  shipped `.aab` is a real permission, not a leftover removal marker — removal leaves
+  no trace (§3). It comes from `expo-camera`'s library manifest, and
+  `recordAudioAndroid: false` does not strip it (§2 "Audio"). Data safety still answers
+  **No** for audio, because nothing records it. Removing the permission itself needs an
+  `app.json` `blockedPermissions` entry plus a rebuild.
 - ⚠️ **Location is NOT trimmed.** `expo-location` is still used for the optional
   store pin (`app/onboarding.tsx`), which is why §2 declares it. This line used to
   claim location was trimmed, which contradicted §2.

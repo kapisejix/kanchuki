@@ -2231,3 +2231,69 @@ Path 1: the new script reading `apps/mobile/@s.numbhraal__kanchuki.jks`. Path 2:
 
 **Verification:** all four guard scripts pass, including `check-secrets-guard.sh --all` (which scans the tracked tree, so it covers both new docs); `pnpm lint` 6/6.
 
+## BUILT 2026-09-12 (later): Android release hardening — AD_ID guard in CI, RECORD_AUDIO blocked, AAB merged-manifest inspector
+
+One symptom, three defects. `versionCode 4` (built from `10c8f2d`) was blocked in Play review with *"Incomplete advertising ID declaration"*. `com.google.android.gms.permission.AD_ID` appears nowhere in this repo — and that turned out to be the easy part. Proving it surfaced a **wrong entry in the release log**, a **config option that had never worked**, and a **verification method that gave the wrong answer in both directions at once**. No build was triggered and no `.aab` was produced; everything below is measured against the five already-downloaded CI artifacts.
+
+### 1. Where AD_ID actually comes from — and why nothing in the repo shows it
+
+`react-native-fbsdk-next` pulls `com.facebook.android:facebook-android-sdk:18.+`, whose `facebook-core` **AAR** manifest declares the permission. An AAR manifest is merged at Gradle time, so the string is invisible to `git grep`, to `node_modules/**/AndroidManifest.xml`, and to `expo prebuild`. `apps/mobile/plugins/withRemoveAdId.js` is the only thing removing it, and it is correctly registered (last entry in `app.json`'s `plugins`).
+
+### 2. The Play block is a Console form — and the checklist pointed at the wrong one
+
+*"Incomplete advertising ID declaration"* is not a manifest scan; it is the **App content → Advertising ID** questionnaire, never completed, and Play refuses to roll out a release targeting API 33+ until it is. The checklist told the reader to set this under **Data safety**, which is a *different* Console question — both now named, with a warning that they must agree.
+
+The order matters, and it is why the checklist now says to check **App bundle explorer → Permissions** first: declaring **"No"** while the permission is actually present triggers a *harder*, opposite block ("this version includes the permission, but your declaration indicates that your app doesn't use any advertising IDs").
+
+### 3. `tools:node="remove"` leaves no trace — the doc had this exactly backwards
+
+The checklist claimed a removed permission keeps its name in the bundle as a marker, so the `.aab` could not be trusted to distinguish *declared* from *removed*. **Measured across the five real bundles, that is false.** The merged manifest declares no `tools` namespace at all and contains the string `remove` zero times: the counterparts are `READ_MEDIA_IMAGES`, which carries a `tools:node="remove"` marker in the source manifest and appears **nowhere** in the versionCode 4 bundle, while versionCode 2 (pre-block) does list it. So **absence proves removal and presence proves a real declaration** — which is what makes the RECORD_AUDIO finding below conclusive rather than hedged.
+
+### 4. `recordAudioAndroid: false` was a silent no-op — RECORD_AUDIO was always shipping
+
+`expo-camera`'s library manifest declares `android.permission.RECORD_AUDIO` **unconditionally**, and its config plugin only ever *adds*:
+
+```
+AndroidConfig.Permissions.withPermissions(config,
+  ['android.permission.CAMERA', recordAudioAndroid && 'android.permission.RECORD_AUDIO'].filter(Boolean))
+```
+
+So `false` merely declines to add the permission; it never removes the library's own declaration, and a library manifest merges in regardless. The option is a **no-op for removal** — every doc that read it as "trimmed" was wrong, and the permission shipped in every release.
+
+**Decision: Data safety still answers "No" for audio.** The form asks what the app *collects or shares*, and nothing records audio — no `expo-audio`/`expo-av` dependency, no `recordAsync`, no `requestAudioPermissions`, and all four `CameraView` call sites are photo/barcode capture, never `mode="video"`. Declaring it would *over-claim* collection. The permission itself is now removed the way the `READ_MEDIA_*` group already was: `blockedPermissions` in `app.json`, which provably wins the merge (same mechanism, and `READ_EXTERNAL_STORAGE` — declared by two library manifests — is absent from v4).
+
+### 5. The guard's regex was wrong in both directions; the new decoder proved it
+
+`scripts/check-aab-ad-id.mjs` deliberately uses a substring test — for its single yes/no question that is the right trade. But as a *reported count* it was misleading, and the first draft of the new inspector's proper protobuf decode found out why:
+
+| versionCode | requested (`uses-permission*`) | declared (`<permission>`) | required **of callers** | regex says |
+|---|---|---|---|---|
+| 1 | 23 | 1 | 2 | 24 |
+| 2 (×2) | 23 | 1 | 2 | 24 |
+| 3 | 18 | 1 | 2 | 19 |
+| 4 | 18 | 1 | 2 | 19 |
+
+The regex **over**-counts `android.permission.DUMP` (an `android:permission` on a `<receiver>`) and `BIND_JOB_SERVICE` (on a `<service>`), which are permissions the *callers* must hold — the inverse of a request — and **misses** `app.kanchuki.retailer.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION` entirely, because that name contains no `.permission.` segment. The two errors happen to cancel, so 19 looked credible. **18 is the number the Data safety form is compared against.**
+
+Two bugs found in the new decoder itself, both worth recording:
+
+- **`XmlElement.child` holds `XmlNode` wrappers, not elements** (`XmlNode { 1: element, 2: text, 3: source }`). Reading a child as an element picks up its `SourcePosition` as the element *name*, yielding binary garbage — and because whitespace text nodes have no field 1, two of the five bundles then reported **0 permissions**, which reads exactly like a clean manifest. Fixed with a `decodeNode()` unwrapper.
+- The entry file's root check (`root.name !== 'manifest'`) is what makes a misparse **fail loudly** instead of silently reporting an empty, "clean" permission list.
+
+### Files
+
+| File | Change |
+|---|---|
+| `.github/workflows/android-release.yml` | New step *"Check the merged manifest is free of AD_ID"* (step 11 of 13), after the signing verification and **before** `upload-artifact` so a Play-blocked bundle can never be downloaded and hand-uploaded. Cost: one file read. |
+| `scripts/check-aab-ad-id.mjs` | **New.** Fails the release build if the shipped AAB declares AD_ID. Fails closed on every unreadable path, and requires `android.permission.CAMERA` as a read-sanity anchor so an empty extraction cannot pass as "absent". |
+| `scripts/inspect-aab-manifest.mjs` | **New.** Decodes the merged manifest and reports package, `versionCode`/`versionName`, min/target SDK, the full permission list grouped by family, and the AD_ID verdict. `--json` for machine-readable output, `--strict` to exit non-zero when AD_ID is declared. A report is not a verdict, so it exits 0 on findings unless `--strict`. |
+| `apps/mobile/app.json` | `android.permission.RECORD_AUDIO` added to `expo.android.blockedPermissions` (1-line diff). Takes effect on the next build only. |
+| `docs/PLAY-STORE-LAUNCH-CHECKLIST.md` | §2 new "Audio" subsection (decision + root cause); §3 corrected (the `.aab` **is** authoritative, `RECORD_AUDIO` resolved, both Console locations named, the fix path, the 18/1/2 breakdown); §7 realigned. |
+| `docs/PLAY-STORE-RELEASES.md` | The **versionCode 2** row falsely credited an "AD_ID strip" — impossible, since the plugin (`b1ccefce`) postdates that upload and `6fc542ae` is only a one-line versionCode bump. Credited to versionCode 3 where it belongs; "in flight" section updated (4 is built + uploaded + blocked, so it gets **no Uploads row**). |
+
+### Verification
+
+Both guards run against all five real AABs: `check-aab-ad-id.mjs` **passes versionCode 4 and fails versionCode 2** (proving it can fail), `check-android-version-code.mjs` passes (reserves 4, records 2 and 3). The inspector's decode was cross-checked against the five bundles and agrees with the regex on the AD_ID verdict in every case. Fail-closed paths exercised: empty manifest, garbage bytes, wrong root element, missing AAB, non-zip, and default-path-with-no-build all exit 1 rather than reporting a phantom clean result. `biome check` exits 0 on both new scripts — same state as the existing guard. All edited files are 100% CRLF with zero bare-LF.
+
+**Still open:** the Play Console declaration itself (*App content → Advertising ID → No*), which only the owner can answer; the RECORD_AUDIO removal is verified in the **source** manifest only (the merged proof needs a build, deliberately not triggered); and the versionCode 4 release stays blocked until the declaration is saved.
+
