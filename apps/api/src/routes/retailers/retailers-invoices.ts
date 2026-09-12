@@ -4,13 +4,16 @@ import { getDownloadPresignedUrl } from '@kanchuki/ai';
 // GET /me/invoices/:id/pdf — presigned download URL for invoice PDF
 import { prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
+import { forbidden } from '../../plugins/error-handler.js';
 
 export const retailersInvoicesRoutes: FastifyPluginAsync = async (server) => {
   // ── List invoices for the authenticated retailer ────────────────
   // List subscription invoices with GST breakdown.
-  server.get('/me/invoices', async (_request, reply) => {
-    // @ts-expectifice — auth decorator
-    const retailerId = (_request as any).retailerId as string;
+  server.get('/me/invoices', async (request, reply) => {
+    // Same guard shape as post-templates.ts — the auth hook guarantees this in
+    // practice, but the request type declares retailerId as optional.
+    if (!request.retailerId) throw forbidden('Sign in to view invoices');
+    const retailerId = request.retailerId;
 
     const payments = await prisma.subscriptionPayment.findMany({
       where: { retailer_id: retailerId },
@@ -51,8 +54,8 @@ export const retailersInvoicesRoutes: FastifyPluginAsync = async (server) => {
       },
     },
     async (request, reply) => {
-      // @ts-expectifice — auth decorator
-      const retailerId = (request as any).retailerId as string;
+      if (!request.retailerId) throw forbidden('Sign in to view invoices');
+      const retailerId = request.retailerId;
       const { id } = request.params as { id: string };
 
       const payment = await prisma.subscriptionPayment.findFirst({

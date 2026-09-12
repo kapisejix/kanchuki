@@ -4,7 +4,7 @@
 // Returns stores ranked by affinity score (nightly precomputed).
 // When no session, returns featured + same-city stores.
 
-import { prisma } from '@kanchuki/db';
+import { type Prisma, prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 
@@ -12,7 +12,7 @@ function parseCookies(cookieHeader: string): Record<string, string> {
   return Object.fromEntries(
     cookieHeader.split(';').map((c) => {
       const [key, ...val] = c.trim().split('=');
-      return [key!, val.join('=')];
+      return [key ?? '', val.join('=')];
     }),
   );
 }
@@ -50,7 +50,7 @@ export const discoverStoresRoutes: FastifyPluginAsync = async (server) => {
     }
 
     // Featured stores + same-city (StoreAffinity model dropped)
-    const where: any = { deleted_at: null, is_suspended: false };
+    const where: Prisma.RetailerWhereInput = { deleted_at: null, is_suspended: false };
     if (city) where.city = city;
 
     const allStores = await prisma.retailer.findMany({
@@ -66,7 +66,7 @@ export const discoverStoresRoutes: FastifyPluginAsync = async (server) => {
       orderBy: [{ is_featured: 'desc' }, { shop_name: 'asc' }],
       take: limit,
     });
-    const stores = allStores.map((s: any) => ({
+    const stores = allStores.map((s) => ({
       ...s,
       affinity_score: s.is_featured ? 1.0 : 0.5,
       source: s.is_featured ? 'featured' : 'directory',

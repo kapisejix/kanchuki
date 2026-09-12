@@ -108,20 +108,27 @@ export const publicNearMeRoutes: FastifyPluginAsync = async (server) => {
 
     // Step 2: Exact Haversine filter + distance calculation
     const nearby = retailers
-      .map((r) => ({
-        id: r.id,
-        shop_name: r.shop_name,
-        latitude: r.latitude,
-        longitude: r.longitude,
-        city: r.city,
-        state: r.state,
-        address: [r.address_line1, r.address_line2, r.pincode].filter(Boolean).join(', '),
-        phone: r.phone,
-        whatsapp_number: r.whatsapp_number,
-        public_slug: r.public_slug,
-        product_count: r._count.products,
-        distance_km: Math.round(haversineDistance(lat, lng, r.latitude!, r.longitude!) * 10) / 10,
-      }))
+      .map((r) => {
+        // The bounding-box filter above excludes null coordinates, but the
+        // column is nullable — fall back to the query point (distance 0) rather
+        // than asserting.
+        const shopLat = r.latitude ?? lat;
+        const shopLng = r.longitude ?? lng;
+        return {
+          id: r.id,
+          shop_name: r.shop_name,
+          latitude: r.latitude,
+          longitude: r.longitude,
+          city: r.city,
+          state: r.state,
+          address: [r.address_line1, r.address_line2, r.pincode].filter(Boolean).join(', '),
+          phone: r.phone,
+          whatsapp_number: r.whatsapp_number,
+          public_slug: r.public_slug,
+          product_count: r._count.products,
+          distance_km: Math.round(haversineDistance(lat, lng, shopLat, shopLng) * 10) / 10,
+        };
+      })
       .filter((r) => r.distance_km <= radiusKm)
       .sort((a, b) => a.distance_km - b.distance_km);
 

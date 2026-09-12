@@ -89,9 +89,25 @@ export const retailersSocialPostsRoutes: FastifyPluginAsync = async (server) => 
         // F-033 Slice 2: a video (uploaded or Ken-Burns-generated) posts as
         // video — more engaging than a photo post — falling back to photo.
         if (account.platform === 'FACEBOOK') {
-          const { postId } = video
-            ? await publishVideoPost(account.platform_account_id, token, video.public_url, caption)
-            : await publishPhotoPost(account.platform_account_id, token, photo!.url, caption);
+          // Split the ternary into a block: the photo branch needs `photo`
+          // narrowed, which a `? :` cannot do for a separate test variable.
+          let postId: string;
+          if (video) {
+            ({ postId } = await publishVideoPost(
+              account.platform_account_id,
+              token,
+              video.public_url,
+              caption,
+            ));
+          } else {
+            if (!photo) throw validationError('A Facebook post needs a photo or a video');
+            ({ postId } = await publishPhotoPost(
+              account.platform_account_id,
+              token,
+              photo.url,
+              caption,
+            ));
+          }
           externalPostId = postId;
           externalPostUrl = `https://www.facebook.com/${account.platform_account_id}/posts/${postId}`;
         } else {
@@ -101,7 +117,7 @@ export const retailersSocialPostsRoutes: FastifyPluginAsync = async (server) => 
           const { postId, permalink } = await publishInstagramPhoto(
             account.platform_account_id,
             token,
-            photo!.url,
+            photo.url,
             caption,
           );
           externalPostId = postId;

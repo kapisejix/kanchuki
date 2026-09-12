@@ -138,10 +138,12 @@ export function buildCatalogItemPayload(product: {
 }): CatalogItemCreateInput {
   const name = (product.name ?? product.sku ?? 'Product').trim().slice(0, 100);
   const hsn = resolveHsnForCatalog(product);
+  // Hoisted: used twice below (description + Meta's retailer_category).
+  const retailerCategory = product.categoryName ?? product.category;
 
   const descriptionParts = [
     product.subtype,
-    product.categoryName ?? product.category,
+    retailerCategory,
     product.fabric_estimate ?? product.fabrics?.join(', '),
     product.styles?.length ? product.styles.join(', ') : undefined,
   ].filter((v): v is string => !!v);
@@ -157,9 +159,7 @@ export function buildCatalogItemPayload(product: {
     availability: mapProductStatus(product.status),
     condition: 'new',
     ...(product.photoUrl ? { image_url: product.photoUrl } : {}),
-    ...((product.categoryName ?? product.category)
-      ? { retailer_category: (product.categoryName ?? product.category)!.slice(0, 100) }
-      : {}),
+    ...(retailerCategory ? { retailer_category: retailerCategory.slice(0, 100) } : {}),
   };
 }
 

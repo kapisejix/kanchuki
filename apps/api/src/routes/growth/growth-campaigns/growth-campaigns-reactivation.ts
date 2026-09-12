@@ -19,7 +19,9 @@ export const growthCampaignReactivationRoutes: FastifyPluginAsync = async (serve
     const inactiveDays = body.success ? body.data.inactive_days : 60;
 
     const _cutoff = new Date(Date.now() - inactiveDays * 24 * 60 * 60 * 1000);
-    const active: any[] = [];
+    // CustomerInteraction was dropped in the 2026-08-31 teardown, so this is
+    // always empty; typed rather than `any[]` so the `.map` below stays checked.
+    const active: { customer_id: string | null }[] = [];
     const activeIds = new Set(active.map((a) => a.customer_id));
 
     const customers = await prisma.customer.findMany({

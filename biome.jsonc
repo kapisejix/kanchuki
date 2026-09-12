@@ -1,0 +1,72 @@
+{
+  "$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
+  "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
+  "organizeImports": { "enabled": true },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 100
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": true,
+      "correctness": {
+        "noUnusedVariables": "error",
+        "useExhaustiveDependencies": "warn"
+      },
+      "suspicious": {
+        "noExplicitAny": "warn",
+        "noConsoleLog": "warn"
+      },
+      "style": {
+        "noNonNullAssertion": "warn",
+        "useConst": "error",
+        "useTemplate": "error"
+      },
+      "performance": {
+        "noDelete": "warn"
+      }
+    }
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "single",
+      "trailingCommas": "all",
+      "semicolons": "always"
+    }
+  },
+  "files": {
+    "ignore": [
+      "node_modules",
+      "dist",
+      "build",
+      ".next",
+      "*.generated.ts",
+      "packages/db/generated"
+    ]
+  },
+  // Test files legitimately use three patterns the rules above flag, so the
+  // three rules are scoped off for them rather than satisfied with worse code:
+  //   · `noNonNullAssertion` — `mock.calls[0]![0]`; the assertion is on a test
+  //     double whose shape the test itself just constructed.
+  //   · `noExplicitAny` — `vi.fn()` callbacks and partial fixture objects.
+  //   · `noDelete` — `delete process.env.FOO` is the ONLY correct way to unset
+  //     an env var: assigning `undefined` stores the truthy string 'undefined'
+  //     in Node, so the rule's suggested fix silently breaks the test. This is
+  //     why the rule exists as a warning and not an error.
+  // Production code is held to all three; see apps/api/src for the refactors.
+  "overrides": [
+    {
+      "include": ["**/*.test.ts", "**/*.test.tsx", "**/__tests__/**"],
+      "linter": {
+        "rules": {
+          "style": { "noNonNullAssertion": "off" },
+          "suspicious": { "noExplicitAny": "off" },
+          "performance": { "noDelete": "off" }
+        }
+      }
+    }
+  ]
+}

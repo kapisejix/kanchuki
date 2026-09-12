@@ -47,7 +47,9 @@ export const retailersSocialConnectRoutes: FastifyPluginAsync = async (server) =
     if (!meta) throw serviceUnavailable('Social publishing is not configured yet');
     const state = await createOAuthState(request.retailerId);
     return {
-      data: { auth_url: buildOAuthUrl(meta, redirectUri, state, provider as any), state, provider },
+      // No provider arg: buildOAuthUrl's 4th param is unused (its scopes are
+      // fixed), so passing one required the `as any` for no behaviour change.
+      data: { auth_url: buildOAuthUrl(meta, redirectUri, state), state, provider },
     };
   });
   // ─── POST /retailers/me/social/auto-connect — 1-Click OAuth Connect ───

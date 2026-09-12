@@ -116,6 +116,17 @@ const POLL_INTERVALS_MS = [
 ];
 
 /**
+ * Poll interval for the Nth attempt, clamped to the final (slowest) entry so
+ * long jobs stop ramping up. Keeps the indexed lookup non-nullable in one place.
+ */
+function pollIntervalMs(attempt: number): number {
+  const clamped = Math.min(attempt, POLL_INTERVALS_MS.length - 1);
+  const interval = POLL_INTERVALS_MS[clamped];
+  if (interval === undefined) throw new Error('POLL_INTERVALS_MS must not be empty');
+  return interval;
+}
+
+/**
  * The person to render for each product demographic. Fed into every
  * model scene so a male / teen / kids product no longer renders as an
  * adult woman (the old hardcoded "graceful Indian fashion model").
@@ -344,7 +355,7 @@ export async function generateStudioImage(
       };
     } catch {
       // Transient network hiccup — keep polling until the deadline.
-      await sleep(POLL_INTERVALS_MS[Math.min(pollIntervalIndex, POLL_INTERVALS_MS.length - 1)]!);
+      await sleep(pollIntervalMs(pollIntervalIndex));
       pollIntervalIndex++;
 
       // Update progress during wait
@@ -386,7 +397,7 @@ export async function generateStudioImage(
       onProgress({ progress, etaMs });
     }
 
-    await sleep(POLL_INTERVALS_MS[Math.min(pollIntervalIndex, POLL_INTERVALS_MS.length - 1)]!);
+    await sleep(pollIntervalMs(pollIntervalIndex));
     pollIntervalIndex++;
   }
 

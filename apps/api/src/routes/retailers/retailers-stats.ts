@@ -31,11 +31,12 @@ export const retailersStatsRoutes: FastifyPluginAsync = async (server) => {
       prisma.collectionEnquiry.count({
         where: { retailer_id: retailerId, created_at: { gte: monthStart } },
       }),
-      Promise.resolve([]) as any,
-      Promise.resolve([]) as any,
+      // Product view/enquiry tables were dropped in the 2026-08-31 teardown.
+      Promise.resolve([] as { product_id: string; _count: { product_id: number } }[]),
+      Promise.resolve([] as { product_id: string; _count: { product_id: number } }[]),
     ]);
 
-    const productIds = [...topViewed, ...topEnquired].map((g) => g.product_id as string);
+    const productIds = [...topViewed, ...topEnquired].map((g) => g.product_id);
     const products = productIds.length
       ? await prisma.product.findMany({
           where: { id: { in: productIds } },

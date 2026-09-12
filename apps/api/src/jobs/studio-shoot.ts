@@ -155,7 +155,11 @@ export async function handleStudioShoot(data: StudioShootJobData): Promise<void>
         : undefined,
     });
 
-    if (result.status !== 'ready' || (!result.sampleUrl && !result.base64Data)) {
+    // Resolve the payload first: `!payload` is true exactly when neither
+    // base64Data nor sampleUrl is present, so the guard's meaning is unchanged
+    // while `payload` narrows to `string` for downloadCompressAndUpload below.
+    const payload = result.base64Data || result.sampleUrl;
+    if (result.status !== 'ready' || !payload) {
       await setStudioJobStatus(job_id, {
         status: 'failed',
         error: result.error ?? 'The studio shoot could not be generated. Please try again.',
@@ -169,7 +173,6 @@ export async function handleStudioShoot(data: StudioShootJobData): Promise<void>
     const filename = `studio-${photo.id}-${createId()}.jpg`;
     const r2Key = R2_PATHS.studioShot(retailer_id, product_id, filename);
     const isBase64 = Boolean(result.base64Data);
-    const payload = result.base64Data || result.sampleUrl!;
     const uploaded = await downloadCompressAndUpload(payload, r2Key, isBase64);
 
     const newPhoto = await prisma.productPhoto.create({

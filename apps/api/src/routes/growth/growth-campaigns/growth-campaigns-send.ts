@@ -112,8 +112,10 @@ export const growthCampaignSendRoutes: FastifyPluginAsync = async (server) => {
       send_delay_min?: number;
     } | null => {
       if (!variants || variants.length !== 2) return null;
+      const [variantA, variantB] = variants;
+      if (!variantA || !variantB) return null;
       const pct = (index % 100) + 1;
-      return pct <= variants[0]!.send_pct ? variants[0]! : variants[1]!;
+      return pct <= variantA.send_pct ? variantA : variantB;
     };
 
     const messages: {
@@ -125,7 +127,8 @@ export const growthCampaignSendRoutes: FastifyPluginAsync = async (server) => {
       variantCollectionLink: string | null;
     }[] = [];
     for (let i = 0; i < customers.length; i++) {
-      const customer = customers[i]!;
+      const customer = customers[i];
+      if (!customer) continue;
       const variant = variantFor(i);
       const template = variant?.message_template ?? campaign.message_template;
       const message = fillTemplate(template, { ...baseVars, name: customer.name ?? 'there' });
@@ -171,15 +174,19 @@ export const growthCampaignSendRoutes: FastifyPluginAsync = async (server) => {
     let apiSent = 0;
     let apiFailed = 0;
 
-    if (canUseApi) {
+    // `canUseApi` is only truthy when the retailer row was found, but the
+    // compiler cannot see through the `&&` chain — narrow explicitly.
+    if (canUseApi && retailer) {
       const {
         whatsapp_api_phone_number_id,
         whatsapp_api_access_token,
         whatsapp_api_template_name,
         whatsapp_api_template_lang,
-      } = retailer!;
+      } = retailer;
       const results = await Promise.allSettled(
         messages.map(async (m, i) => {
+          const send = sends[i];
+          if (!send) throw new Error('campaignSend row missing for message');
           const res = await fetch(
             `https://graph.facebook.com/v21.0/${whatsapp_api_phone_number_id}/messages`,
             {
@@ -202,7 +209,7 @@ export const growthCampaignSendRoutes: FastifyPluginAsync = async (server) => {
           );
           if (!res.ok) throw new Error(`Meta API ${res.status}`);
           await prisma.campaignSend.update({
-            where: { id: sends[i]!.id },
+            where: { id: send.id },
             data: { status: 'SENT', sent_at: new Date() },
           });
         }),

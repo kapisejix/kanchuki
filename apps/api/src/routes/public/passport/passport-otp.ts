@@ -87,7 +87,11 @@ export const passportOtpRoutes: FastifyPluginAsync = async (server) => {
       // verifyMsg91WidgetToken throws 401 on failure — never reaches here if invalid
     } else {
       // Channel 2: SMS fallback — verify against Redis entry
-      const result = await verifyStoredOtp(phone, body.otp!, 'login');
+      const otp = body.otp;
+      if (!otp) {
+        throw new AppError('INVALID_OTP', 'Invalid or expired OTP. Try again.', 401);
+      }
+      const result = await verifyStoredOtp(phone, otp, 'login');
       if (result === 'absent') {
         throw new AppError('INVALID_OTP', 'Invalid or expired OTP. Try again.', 401);
       }

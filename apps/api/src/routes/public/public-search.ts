@@ -6,7 +6,7 @@
 // cosine(preference_vector, product) for personalized re-ranking.
 
 import { embedSearchQuery } from '@kanchuki/ai';
-import { prisma } from '@kanchuki/db';
+import { type Prisma, prisma } from '@kanchuki/db';
 import { extractBudgetFromQuery, normalizeSearchQuery } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
@@ -16,7 +16,7 @@ function parseCookies(cookieHeader: string): Record<string, string> {
   return Object.fromEntries(
     cookieHeader.split(';').map((c) => {
       const [key, ...val] = c.trim().split('=');
-      return [key!, val.join('=')];
+      return [key ?? '', val.join('=')];
     }),
   );
 }
@@ -71,7 +71,7 @@ export const publicSearchRoutes: FastifyPluginAsync = async (server) => {
     }
 
     // Build the WHERE clause
-    const where: any = {
+    const where: Prisma.ProductWhereInput = {
       status: 'AVAILABLE',
       deleted_at: null,
       retailer: { is_suspended: false, deleted_at: null },
@@ -81,12 +81,29 @@ export const publicSearchRoutes: FastifyPluginAsync = async (server) => {
     if (priceMin != null) where.price_min = { gte: priceMin };
     if (priceMax != null) where.price_max = { lte: priceMax };
 
-    let results: any[];
+    // Both search paths yield the same column set (the raw SQL aliases to the
+    // same names), so one row shape covers the vector and text-only branches.
+    interface SearchRow {
+      id: string;
+      name: string | null;
+      category: string | null;
+      primary_color: string | null;
+      price_min: number | null;
+      price_max: number | null;
+      retailer_id: string;
+      shop_name: string;
+      public_slug: string | null;
+      retailer_city: string | null;
+      photo_url: string | null;
+      embedding_raw: string | null;
+    }
+
+    let results: SearchRow[];
 
     if (queryEmbedding) {
       // Vector KNN search across all products
       const vectorLiteral = `[${queryEmbedding.join(',')}]`;
-      results = await prisma.$queryRawUnsafe(
+      results = (await prisma.$queryRawUnsafe(
         `SELECT p.id, p.name, p.category, p.primary_color, p.price_min, p.price_max,
                p.retailer_id, r.shop_name, r.public_slug, r.city as retailer_city,
                (SELECT url FROM product_photos WHERE product_id = p.id AND is_primary = true LIMIT 1) as photo_url,
@@ -99,7 +116,7 @@ export const publicSearchRoutes: FastifyPluginAsync = async (server) => {
         LIMIT $2`,
         vectorLiteral,
         limit * 2,
-      );
+      )) as SearchRow[];
     } else {
       // Text-only fallback
       const rows = await prisma.product.findMany({

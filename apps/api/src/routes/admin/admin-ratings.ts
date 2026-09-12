@@ -1,7 +1,7 @@
 // F-021: Product & Store Ratings — admin moderation routes
 // Admin can list, flag, hide, and delete reviews across all retailers
 
-import { prisma } from '@kanchuki/db';
+import { type Prisma, prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
 import { notFound } from '../../plugins/error-handler.js';
 import { adminAuthPreHandler } from '../admin-auth.js';
@@ -39,11 +39,20 @@ export const adminRatingsRoutes: FastifyPluginAsync = async (server) => {
         max_rating,
         page = 1,
         limit = 20,
-      } = request.query as any;
+      } = request.query as {
+        type?: 'all' | 'product' | 'store';
+        retailer_id?: string;
+        flagged?: boolean;
+        hidden?: boolean;
+        min_rating?: number;
+        max_rating?: number;
+        page?: number;
+        limit?: number;
+      };
       const skip = (page - 1) * limit;
 
-      const productWhere: any = {};
-      const storeWhere: any = {};
+      const productWhere: Prisma.ProductReviewWhereInput = {};
+      const storeWhere: Prisma.StoreReviewWhereInput = {};
 
       if (retailer_id) {
         productWhere.retailer_id = retailer_id;
@@ -58,15 +67,32 @@ export const adminRatingsRoutes: FastifyPluginAsync = async (server) => {
         storeWhere.is_hidden = hidden;
       }
       if (min_rating !== undefined || max_rating !== undefined) {
-        const ratingFilter: any = {};
-        if (min_rating !== undefined) ratingFilter.gte = min_rating;
-        if (max_rating !== undefined) ratingFilter.lte = max_rating;
+        // Built structurally rather than naming the filter type: the product and
+        // store rating columns may differ (Int vs Float), so one shared named
+        // type would not be assignable to both.
+        const ratingFilter = {
+          ...(min_rating !== undefined ? { gte: min_rating } : {}),
+          ...(max_rating !== undefined ? { lte: max_rating } : {}),
+        };
         productWhere.rating = ratingFilter;
         storeWhere.rating = ratingFilter;
       }
 
-      let productReviews: any[] = [];
-      let storeReviews: any[] = [];
+      type ProductReviewRow = Prisma.ProductReviewGetPayload<{
+        include: {
+          product: { select: { id: true; name: true } };
+          customer: { select: { id: true; name: true } };
+          retailer: { select: { id: true; shop_name: true } };
+        };
+      }>;
+      type StoreReviewRow = Prisma.StoreReviewGetPayload<{
+        include: {
+          customer: { select: { id: true; name: true } };
+          retailer: { select: { id: true; shop_name: true } };
+        };
+      }>;
+      let productReviews: ProductReviewRow[] = [];
+      let storeReviews: StoreReviewRow[] = [];
       let productTotal = 0;
       let storeTotal = 0;
 

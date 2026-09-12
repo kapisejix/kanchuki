@@ -141,8 +141,9 @@ export async function handleCompressR2Images(options?: {
 
   const workers = Array.from({ length: CONCURRENCY }, async () => {
     while (cursor < objects.length) {
-      const item = objects[cursor]!;
+      const item = objects[cursor];
       cursor += 1;
+      if (!item) continue;
       await processObject(item.key, item.size);
     }
   });

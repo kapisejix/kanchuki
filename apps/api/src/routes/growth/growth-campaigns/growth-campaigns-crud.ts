@@ -186,7 +186,8 @@ export const growthCampaignCrudRoutes: FastifyPluginAsync = async (server) => {
         });
       const maxOpened = Math.max(...variant_breakdown.map((v) => v.opened));
       const winners = variant_breakdown.filter((v) => v.opened > 0 && v.opened === maxOpened);
-      if (winners.length === 1) winners[0]!.winner = true;
+      const [soleWinner] = winners;
+      if (soleWinner) soleWinner.winner = true;
     }
 
     return {

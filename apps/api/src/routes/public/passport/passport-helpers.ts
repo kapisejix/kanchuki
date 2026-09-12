@@ -23,7 +23,7 @@ function parseCookies(cookieHeader: string): Record<string, string> {
   return Object.fromEntries(
     cookieHeader.split(';').map((c) => {
       const [key, ...val] = c.trim().split('=');
-      return [key!, val.join('=')];
+      return [key ?? '', val.join('=')];
     }),
   );
 }

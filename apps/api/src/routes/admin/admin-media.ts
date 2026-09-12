@@ -46,12 +46,11 @@ async function nameBackgroundScene(
       userPrompt: 'Name this backdrop scene.',
       maxTokens: 20,
     });
-    const cleaned = answer
+    const firstSegment = answer
       .trim()
       .replace(/^["']|["']$/g, '')
-      .split(/[\n.]/)[0]!
-      .trim()
-      .slice(0, 100);
+      .split(/[\n.]/)[0];
+    const cleaned = (firstSegment ?? '').trim().slice(0, 100);
     return cleaned || null;
   } catch (err) {
     log.warn({ err, url }, 'AI naming failed for background image');

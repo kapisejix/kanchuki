@@ -99,7 +99,11 @@ export async function handleBackfillMissingAiFields(cap = DEFAULT_CAP): Promise<
     }
 
     if (rows.length < BATCH_SIZE) break;
-    cursor = rows[rows.length - 1]!.id; // non-null: loop just checked rows.length > 0
+    // Past the break above, rows.length >= BATCH_SIZE, so the last row exists —
+    // the compiler cannot see that, so narrow instead of asserting.
+    const lastRow = rows[rows.length - 1];
+    if (!lastRow) break;
+    cursor = lastRow.id;
   }
 
   return { scanned, requeued, skipped_quota_or_error: skipped, done: true };

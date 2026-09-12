@@ -30,7 +30,9 @@ export type NoticeVersion = keyof typeof NOTICE_VERSIONS;
  */
 export function getCurrentNoticeVersion(): NoticeVersion {
   const versions = Object.keys(NOTICE_VERSIONS) as NoticeVersion[];
-  return versions[versions.length - 1]!;
+  const latest = versions[versions.length - 1];
+  if (!latest) throw new Error('NOTICE_VERSIONS is empty');
+  return latest;
 }
 
 /**

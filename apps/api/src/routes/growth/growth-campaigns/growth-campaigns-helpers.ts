@@ -86,13 +86,9 @@ export async function syncVariantCollections(
     variant_b_collection_id: string | null;
   } | null,
 ): Promise<{ variant_a_collection_id: string | null; variant_b_collection_id: string | null }> {
+  const [vA, vB] = abVariants ?? [];
   // No A/B variants or variants without product sets → clear any existing variant collections.
-  if (
-    !abVariants ||
-    abVariants.length !== 2 ||
-    !abVariants[0]!.product_ids?.length ||
-    !abVariants[1]!.product_ids?.length
-  ) {
+  if (abVariants?.length !== 2 || !vA?.product_ids?.length || !vB?.product_ids?.length) {
     // Archive any existing variant collections.
     for (const cid of [existing?.variant_a_collection_id, existing?.variant_b_collection_id]) {
       if (cid) {
@@ -104,15 +100,13 @@ export async function syncVariantCollections(
     return { variant_a_collection_id: null, variant_b_collection_id: null };
   }
 
-  const [vA, vB] = abVariants;
-
   async function upsertVariant(
     variant: AbVariant,
     label: string,
     existingId: string | null,
   ): Promise<string> {
     const title = `${campaignName} — ${label}`;
-    const productIds = variant.product_ids!;
+    const productIds = variant.product_ids ?? [];
 
     if (existingId) {
       // Update existing: sync products + title.
@@ -152,8 +146,8 @@ export async function syncVariantCollections(
   }
 
   const [aId, bId] = await Promise.all([
-    upsertVariant(vA!, 'Variant A', existing?.variant_a_collection_id ?? null),
-    upsertVariant(vB!, 'Variant B', existing?.variant_b_collection_id ?? null),
+    upsertVariant(vA, 'Variant A', existing?.variant_a_collection_id ?? null),
+    upsertVariant(vB, 'Variant B', existing?.variant_b_collection_id ?? null),
   ]);
 
   return { variant_a_collection_id: aId, variant_b_collection_id: bId };
@@ -172,7 +166,9 @@ export async function resolveAudienceCustomerIds(
 
   if (spec.inactive_days != null) {
     const _cutoff = new Date(Date.now() - spec.inactive_days * 24 * 60 * 60 * 1000);
-    const active: any[] = [];
+    // CustomerInteraction was dropped in the 2026-08-31 teardown, so this is
+    // always empty; typed rather than `any[]` so the `.map` below stays checked.
+    const active: { customer_id: string | null }[] = [];
     const activeIds = new Set(active.map((a) => a.customer_id));
     customerIds = customerIds.filter((id) => !activeIds.has(id));
   }

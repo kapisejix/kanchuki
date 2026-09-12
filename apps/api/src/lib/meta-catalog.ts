@@ -106,9 +106,10 @@ export async function getOrCreateCatalog(
   );
   const listBody = (await listRes.json()) as { data?: Catalog[] };
 
-  if (listRes.ok && Array.isArray(listBody.data) && listBody.data.length > 0) {
+  const firstCatalog = Array.isArray(listBody.data) ? listBody.data[0] : undefined;
+  if (listRes.ok && firstCatalog) {
     // Return the first catalog (typically retailers only have one)
-    return listBody.data[0]!.id;
+    return firstCatalog.id;
   }
 
   // Create a new catalog
@@ -379,7 +380,10 @@ export async function batchCatalogItems(
   }
 
   return body.map((result, index) => {
-    const op = operations[index]!;
+    const op = operations[index];
+    if (!op) {
+      throw new MetaApiError('Batch response longer than request', 500, 'BATCH_MISMATCH');
+    }
     return {
       retailer_id: op.retailer_id,
       id: (result.body as { id?: string })?.id,
@@ -412,9 +416,10 @@ export async function getCatalogItemByRetailerId(
   const res = await fetch(`${GRAPH_BASE}/${catalogId}/items?${params}`, { signal });
   const body = (await res.json()) as { data?: CatalogItem[] };
 
-  if (!res.ok || !Array.isArray(body.data) || body.data.length === 0) {
+  const firstItem = Array.isArray(body.data) ? body.data[0] : undefined;
+  if (!res.ok || !firstItem) {
     return null;
   }
 
-  return body.data[0]!;
+  return firstItem;
 }

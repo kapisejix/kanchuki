@@ -163,12 +163,17 @@ export const adminPhotoCleanupRoutes: FastifyPluginAsync = async (server) => {
     }
 
     const result = await generateStudioImage(body.product_url, {
-      prompt: body.prompt ?? style!.prompt,
+      // The guard above guarantees at least one of the two is present; the
+      // `?? ''` only satisfies the type checker.
+      prompt: body.prompt ?? style?.prompt ?? '',
       tab: style?.tab ?? 'MODEL',
       engine: body.engine,
       demographic: body.demographic,
     });
-    if (result.status !== 'ready' || (!result.sampleUrl && !result.base64Data)) {
+    // `!payload` is true exactly when neither field is present, so the guard's
+    // meaning is unchanged while `payload` narrows to `string` below.
+    const payload = result.base64Data || result.sampleUrl;
+    if (result.status !== 'ready' || !payload) {
       throw new AppError(
         'STUDIO_SHOOT_FAILED',
         result.error ?? 'The studio shoot could not be generated.',
@@ -177,11 +182,7 @@ export const adminPhotoCleanupRoutes: FastifyPluginAsync = async (server) => {
     }
 
     const key = R2_PATHS.photoCleanupTest(`studio-${randomUUID()}.jpg`);
-    const uploaded = await downloadCompressAndUpload(
-      result.base64Data ?? result.sampleUrl!,
-      key,
-      Boolean(result.base64Data),
-    );
+    const uploaded = await downloadCompressAndUpload(payload, key, Boolean(result.base64Data));
     return { data: { result_url: uploaded.url, slug: style?.slug ?? null } };
   });
 

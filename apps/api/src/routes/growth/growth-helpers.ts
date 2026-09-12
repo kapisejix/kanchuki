@@ -103,6 +103,25 @@ export function buildAudienceWhere(
   return where;
 }
 
+// ─── Record accumulators ──────────────────────────────────────────
+
+/**
+ * Get-or-create an entry in a `Record` accumulator — the "group by key and
+ * total up" pattern used across the growth analytics routes.
+ *
+ * A helper rather than the inline `store[key] ??= init()` idiom because that
+ * idiom is flagged twice over: `noNonNullAssertion` (the read is `T | undefined`
+ * under noUncheckedIndexedAccess) and `noAssignInExpressions`. `init` is lazy so
+ * the per-key object literal is only built when the key is genuinely new.
+ */
+export function accumulator<T>(store: Record<string, T>, key: string, init: () => T): T {
+  const existing = store[key];
+  if (existing !== undefined) return existing;
+  const created = init();
+  store[key] = created;
+  return created;
+}
+
 // ─── Message templates ────────────────────────────────────────────
 // Supported placeholders: {{name}}, {{shop}}, {{link}}, {{offer}}, {{festival}}.
 
@@ -128,7 +147,9 @@ const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // no I/L/O/0/1 ambigui
 export function generateReferralCode(prefix = 'KAN'): string {
   const rand = randomBytes(6);
   let suffix = '';
-  for (let i = 0; i < 6; i++) suffix += CODE_ALPHABET[rand[i]! % CODE_ALPHABET.length];
+  // Iterate the buffer directly: `rand[i]` is `number | undefined` under
+  // noUncheckedIndexedAccess, and `charAt` keeps the indexed lookup non-null too.
+  for (const byte of rand) suffix += CODE_ALPHABET.charAt(byte % CODE_ALPHABET.length);
   return `${prefix}-${suffix}`;
 }
 

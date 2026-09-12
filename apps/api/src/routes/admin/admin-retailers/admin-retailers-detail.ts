@@ -261,7 +261,9 @@ export const adminRetailersDetailRoutes: FastifyPluginAsync = async (server) => 
     });
     if (!customer) throw notFound('Customer');
 
-    const interactions: any[] = [];
+    // CustomerInteraction was dropped in the 2026-08-31 teardown, so this is
+    // always empty; typed rather than `any[]` so `.slice` below stays checked.
+    const interactions: { id: string; created_at: Date }[] = [];
     const totalCount = 0;
     const hasMore = false;
     const page = hasMore ? interactions.slice(0, limit) : interactions;

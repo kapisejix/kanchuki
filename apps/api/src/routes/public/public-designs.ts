@@ -60,8 +60,9 @@ export const publicDesignRoutes: FastifyPluginAsync = async (server) => {
         // Group by category for the gallery UI
         const grouped: Record<string, typeof designs> = {};
         for (const d of designs) {
-          if (!grouped[d.category]) grouped[d.category] = [];
-          grouped[d.category]!.push(d);
+          const bucket = grouped[d.category] ?? [];
+          bucket.push(d);
+          grouped[d.category] = bucket;
         }
 
         return {

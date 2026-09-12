@@ -6,7 +6,7 @@
 // arbitrary customer_id in the body would let a retailer fabricate reviews
 // attributed to any customer. Do not re-add POST /reviews/product|store here.
 
-import { prisma } from '@kanchuki/db';
+import { type Prisma, prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
 
 // ─── Helpers ─────────────────────────────────────────────────────
@@ -38,11 +38,19 @@ export const retailersRatingsRoutes: FastifyPluginAsync = async (server) => {
       },
     },
     async (request, reply) => {
-      const retailerId = (request as any).retailerId as string;
-      const { product_id, page = 1, limit = 20 } = request.query as any;
+      const retailerId = request.retailerId;
+      const {
+        product_id,
+        page = 1,
+        limit = 20,
+      } = request.query as {
+        product_id?: string;
+        page?: number;
+        limit?: number;
+      };
       const skip = (page - 1) * limit;
 
-      const where: any = {
+      const where: Prisma.ProductReviewWhereInput = {
         retailer_id: retailerId,
         is_hidden: false,
       };
@@ -84,8 +92,8 @@ export const retailersRatingsRoutes: FastifyPluginAsync = async (server) => {
       },
     },
     async (request, reply) => {
-      const retailerId = (request as any).retailerId as string;
-      const { page = 1, limit = 20 } = request.query as any;
+      const retailerId = request.retailerId;
+      const { page = 1, limit = 20 } = request.query as { page?: number; limit?: number };
       const skip = (page - 1) * limit;
 
       const [reviews, total] = await Promise.all([
@@ -115,7 +123,7 @@ export const retailersRatingsRoutes: FastifyPluginAsync = async (server) => {
 
   // ─── RETAILER: Get rating summary (product + store) ───
   server.get('/reviews/summary', async (request, reply) => {
-    const retailerId = (request as any).retailerId as string;
+    const retailerId = request.retailerId;
 
     // Store rating summary
     const storeAgg = await prisma.storeReview.aggregate({
@@ -222,8 +230,8 @@ export const retailersRatingsRoutes: FastifyPluginAsync = async (server) => {
       },
     },
     async (request, reply) => {
-      const retailerId = (request as any).retailerId as string;
-      const { google_place_id } = request.body as any;
+      const retailerId = request.retailerId;
+      const { google_place_id } = request.body;
 
       await prisma.retailer.update({
         where: { id: retailerId },

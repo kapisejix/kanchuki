@@ -9,6 +9,34 @@ import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { notFound, validationError } from '../../plugins/error-handler.js';
 
+// ─── Provider response shapes ─────────────────────────────────────
+// Meta/Google return JSON we read only a few fields from. Narrowing the
+// shape at the boundary beats casting to `any` at every read site.
+
+/** `{ error: { message } }` — both providers use this envelope on failure. */
+type ApiErrorBody = { error?: { message?: string } };
+
+/** Meta object-creation responses: `{ id }`. */
+type MetaIdResponse = { id?: string };
+
+/** Meta ad-account read response. */
+type MetaAccountResponse = {
+  name?: string;
+  account_status?: number;
+  currency?: string;
+};
+
+/** Google localPosts create response uses `name` as the post identifier. */
+type GooglePostResponse = { name?: string };
+
+/** Google OAuth token response. */
+type GoogleTokenResponse = { access_token?: string };
+
+/** Human-readable message from a provider error body, else `fallback`. */
+function apiErrorMessage(body: unknown, fallback: string): string {
+  return (body as ApiErrorBody | null)?.error?.message ?? fallback;
+}
+
 // ─── Zod Schemas ──────────────────────────────────────────────────
 
 const GmbConfigSchema = z.object({
@@ -209,7 +237,7 @@ export const retailersIntegrationsRoutes: FastifyPluginAsync = async (server) =>
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       return {
-        data: { connected: false, error: (err as any).error?.message ?? 'API request failed' },
+        data: { connected: false, error: apiErrorMessage(err, 'API request failed') },
       };
     }
 
@@ -264,11 +292,11 @@ export const retailersIntegrationsRoutes: FastifyPluginAsync = async (server) =>
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      throw validationError((err as any).error?.message ?? 'Failed to post to GMB');
+      throw validationError(apiErrorMessage(err, 'Failed to post to GMB'));
     }
 
     const result = await res.json();
-    return { data: { post_id: (result as any).name, status: 'posted' } };
+    return { data: { post_id: (result as GooglePostResponse).name, status: 'posted' } };
   });
 
   // ─── POST /retailers/me/integrations/fb-ads ─────────────────────
@@ -337,17 +365,17 @@ export const retailersIntegrationsRoutes: FastifyPluginAsync = async (server) =>
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       return {
-        data: { connected: false, error: (err as any).error?.message ?? 'API request failed' },
+        data: { connected: false, error: apiErrorMessage(err, 'API request failed') },
       };
     }
 
-    const account = await res.json();
+    const account = (await res.json()) as MetaAccountResponse;
     return {
       data: {
         connected: true,
-        account_name: (account as any).name,
-        account_status: (account as any).account_status,
-        currency: (account as any).currency,
+        account_name: account.name,
+        account_status: account.account_status,
+        currency: account.currency,
       },
     };
   });
@@ -395,9 +423,9 @@ export const retailersIntegrationsRoutes: FastifyPluginAsync = async (server) =>
     });
     if (!campaignRes.ok) {
       const err = await campaignRes.json().catch(() => ({}));
-      throw validationError((err as any).error?.message ?? 'Failed to create campaign');
+      throw validationError(apiErrorMessage(err, 'Failed to create campaign'));
     }
-    const campaign = await campaignRes.json();
+    const campaign = (await campaignRes.json()) as MetaIdResponse;
 
     // Step 2: Create ad set (local awareness with radius targeting)
     const adSetRes = await fetch(`https://graph.facebook.com/v21.0/${actId}/adsets`, {
@@ -408,7 +436,7 @@ export const retailersIntegrationsRoutes: FastifyPluginAsync = async (server) =>
       },
       body: JSON.stringify({
         name: `${body.data.name} - Ad Set`,
-        campaign_id: (campaign as any).id,
+        campaign_id: campaign.id,
         daily_budget: String(body.data.daily_budget),
         billing_event: 'IMPRESSIONS',
         optimization_goal: 'REACH',
@@ -429,9 +457,9 @@ export const retailersIntegrationsRoutes: FastifyPluginAsync = async (server) =>
     });
     if (!adSetRes.ok) {
       const err = await adSetRes.json().catch(() => ({}));
-      throw validationError((err as any).error?.message ?? 'Failed to create ad set');
+      throw validationError(apiErrorMessage(err, 'Failed to create ad set'));
     }
-    const adSet = await adSetRes.json();
+    const adSet = (await adSetRes.json()) as MetaIdResponse;
 
     // Step 3: Create ad creative
     const creativeRes = await fetch(`https://graph.facebook.com/v21.0/${actId}/adcreatives`, {
@@ -454,9 +482,9 @@ export const retailersIntegrationsRoutes: FastifyPluginAsync = async (server) =>
     });
     if (!creativeRes.ok) {
       const err = await creativeRes.json().catch(() => ({}));
-      throw validationError((err as any).error?.message ?? 'Failed to create ad creative');
+      throw validationError(apiErrorMessage(err, 'Failed to create ad creative'));
     }
-    const creative = await creativeRes.json();
+    const creative = (await creativeRes.json()) as MetaIdResponse;
 
     // Step 4: Create ad
     const adRes = await fetch(`https://graph.facebook.com/v21.0/${actId}/ads`, {
@@ -467,22 +495,22 @@ export const retailersIntegrationsRoutes: FastifyPluginAsync = async (server) =>
       },
       body: JSON.stringify({
         name: body.data.name,
-        adset_id: (adSet as any).id,
-        creative: { creative_id: (creative as any).id },
+        adset_id: adSet.id,
+        creative: { creative_id: creative.id },
         status: 'PAUSED',
       }),
     });
     if (!adRes.ok) {
       const err = await adRes.json().catch(() => ({}));
-      throw validationError((err as any).error?.message ?? 'Failed to create ad');
+      throw validationError(apiErrorMessage(err, 'Failed to create ad'));
     }
-    const ad = await adRes.json();
+    const ad = (await adRes.json()) as MetaIdResponse;
 
     return {
       data: {
-        campaign_id: (campaign as any).id,
-        adset_id: (adSet as any).id,
-        ad_id: (ad as any).id,
+        campaign_id: campaign.id,
+        adset_id: adSet.id,
+        ad_id: ad.id,
         status: 'paused',
         message: 'Campaign created (paused). Review and activate in Meta Ads Manager.',
       },
@@ -569,8 +597,8 @@ export const retailersIntegrationsRoutes: FastifyPluginAsync = async (server) =>
     if (!tokenRes.ok) {
       return { data: { connected: false, error: 'Failed to refresh Google Ads token' } };
     }
-    const tokenData = await tokenRes.json();
-    const accessToken = (tokenData as any).access_token;
+    const tokenData = (await tokenRes.json()) as GoogleTokenResponse;
+    const accessToken = tokenData.access_token;
 
     // Test by listing the customer
     const res = await fetch(
@@ -587,7 +615,7 @@ export const retailersIntegrationsRoutes: FastifyPluginAsync = async (server) =>
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       return {
-        data: { connected: false, error: (err as any).error?.message ?? 'API request failed' },
+        data: { connected: false, error: apiErrorMessage(err, 'API request failed') },
       };
     }
 

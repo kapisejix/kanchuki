@@ -91,9 +91,13 @@ function numberToWords(paise: number): string {
 
   function convertGroup(n: number): string {
     if (n === 0) return '';
-    if (n < 20) return ones[n]!;
-    if (n < 100) return tens[Math.floor(n / 10)]! + (n % 10 ? ` ${ones[n % 10]}` : '');
-    return `${ones[Math.floor(n / 100)]!} Hundred${n % 100 ? ` and ${convertGroup(n % 100)}` : ''}`;
+    if (n < 20) return ones[n] ?? '';
+    if (n < 100) {
+      const tensWord = tens[Math.floor(n / 10)] ?? '';
+      return tensWord + (n % 10 ? ` ${ones[n % 10] ?? ''}` : '');
+    }
+    const hundredsWord = ones[Math.floor(n / 100)] ?? '';
+    return `${hundredsWord} Hundred${n % 100 ? ` and ${convertGroup(n % 100)}` : ''}`;
   }
 
   let result = '';

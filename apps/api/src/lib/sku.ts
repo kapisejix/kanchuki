@@ -70,7 +70,9 @@ export function createSkuSequencer(
       });
       nextSeq.set(prefix, existing);
     }
-    const seq = nextSeq.get(prefix)! + 1;
+    // The `if (!nextSeq.has(prefix))` block above always seeds this, but the
+    // compiler can't know that — `?? 0` is unreachable-but-safe.
+    const seq = (nextSeq.get(prefix) ?? 0) + 1;
     nextSeq.set(prefix, seq);
     return `${prefix}${String(seq).padStart(4, '0')}`;
   };

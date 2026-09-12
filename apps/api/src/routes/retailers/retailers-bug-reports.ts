@@ -3,7 +3,7 @@
 import { prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
-import { validationError } from '../../plugins/error-handler.js';
+import { forbidden, validationError } from '../../plugins/error-handler.js';
 
 const BugReportCreateSchema = z.object({
   description: z.string().min(10, 'Please describe the issue in a bit more detail').max(5000),
@@ -27,6 +27,10 @@ export const retailersBugReportRoutes: FastifyPluginAsync = async (server) => {
   // ── POST /retailers/me/bug-reports ────────────────────────────────
   // Submit a bug report from the mobile app. Authenticated retailer only.
   server.post('/me/bug-reports', async (request, reply) => {
+    // Same guard shape as post-templates.ts — the auth hook guarantees this in
+    // practice, but the request type declares retailerId as optional.
+    if (!request.retailerId) throw forbidden('Sign in to submit a bug report');
+
     const body = BugReportCreateSchema.safeParse(request.body);
     if (!body.success) {
       throw validationError(body.error.issues[0]?.message ?? 'Invalid bug report');
@@ -34,7 +38,7 @@ export const retailersBugReportRoutes: FastifyPluginAsync = async (server) => {
 
     const report = await prisma.bugReport.create({
       data: {
-        retailer_id: request.retailerId!,
+        retailer_id: request.retailerId,
         description: body.data.description,
         severity: body.data.severity,
         app_version: body.data.app_version,

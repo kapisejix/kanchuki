@@ -38,7 +38,7 @@ export const passportSessionRoutes: FastifyPluginAsync = async (server) => {
     const cookies = Object.fromEntries(
       cookieHeader.split(';').map((c) => {
         const [key, ...val] = c.trim().split('=');
-        return [key!, val.join('=')];
+        return [key ?? '', val.join('=')];
       }),
     );
     const sessionId = cookies[COOKIE_NAME];

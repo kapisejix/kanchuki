@@ -65,6 +65,19 @@ function fmtPeriod(period: string): string {
   });
 }
 
+/**
+ * Heading for a newest-first period list: "Aug 2026" for one period,
+ * "Jul 2026 - Aug 2026 (2 months)" for several.
+ */
+function periodLabel(periods: string[]): string {
+  const newest = periods[0];
+  const oldest = periods[periods.length - 1];
+  if (newest === undefined || oldest === undefined) return `${periods.length} months`;
+  return periods.length === 1
+    ? fmtPeriod(newest)
+    : `${fmtPeriod(oldest)} - ${fmtPeriod(newest)} (${periods.length} months)`;
+}
+
 /** Rupees with 2 decimals (no ₹ symbol — the header says INR, avoids Excel encoding issues). */
 function fmtRs(paise: number): string {
   return (paise / 100).toFixed(2);
@@ -95,10 +108,7 @@ export function buildCommissionCsv(params: {
   const spent = expenses.reduce((sum, e) => sum + e.amount_inr, 0);
   const remaining = commission - spent;
 
-  const label =
-    periods.length === 1
-      ? fmtPeriod(periods[0]!)
-      : `${fmtPeriod(periods[periods.length - 1]!)} - ${fmtPeriod(periods[0]!)} (${periods.length} months)`;
+  const label = periodLabel(periods);
   const generated = `${new Date(Date.now() + IST_OFFSET_MS).toISOString().slice(0, 16).replace('T', ' ')} IST`;
 
   const lines: string[] = [];
@@ -146,7 +156,9 @@ export const adminCommissionRoutes: FastifyPluginAsync = async (server) => {
     for (let i = 0; i < months; i++) {
       periods.push(periodKey(new Date(now.getFullYear(), now.getMonth() - i, 1)));
     }
-    const { start } = monthRange(periods[periods.length - 1]!); // oldest period's start
+    // oldest period's start; `periods` is built from `months >= 1` above, and
+    // the fallback keeps the index read non-nullable without an assertion.
+    const { start } = monthRange(periods[periods.length - 1] ?? periodKey(now));
 
     const [payments, expenseGroups] = await Promise.all([
       prisma.subscriptionPayment.findMany({
@@ -293,7 +305,9 @@ export const adminCommissionRoutes: FastifyPluginAsync = async (server) => {
     for (let i = 0; i < months; i++) {
       periods.push(periodKey(new Date(now.getFullYear(), now.getMonth() - i, 1)));
     }
-    const { start } = monthRange(periods[periods.length - 1]!); // oldest period's start
+    // oldest period's start; `periods` is built from `months >= 1` above, and
+    // the fallback keeps the index read non-nullable without an assertion.
+    const { start } = monthRange(periods[periods.length - 1] ?? periodKey(now));
 
     const [paymentAgg, expenses] = await Promise.all([
       prisma.subscriptionPayment.aggregate({

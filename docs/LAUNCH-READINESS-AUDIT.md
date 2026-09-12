@@ -38,9 +38,17 @@ pass, so `check-delete-guard.sh` / `check-secrets-guard.sh` / `check-route-size.
 / `check-v1-fetch-guard.sh` and the full `pnpm test` suite run again on every PR
 (all verified passing locally + in CI). The `check-delete-guard.sh`
 `SQL_ALLOWLIST` gap noted below no longer applies — the guard passes as-is.
-Remaining: 182 `warn`-level Biome diagnostics in `apps/api` (`noNonNullAssertion`
-×161, `noDelete` ×18) — `biome.json` sets these to `warn`, they do not fail
-`biome check`; clean up post-launch, not a gate.
+**2026-09-11 — all diagnostics cleaned up, count is now zero.** Production code
+was refactored properly: the `noNonNullAssertion` sites got real guards or
+narrowing (no blanket casts — `noUncheckedIndexedAccess` is on, so each `!` was
+replaced with a genuine check), and the `noExplicitAny` sites were typed as
+`Prisma.*WhereInput` / `Prisma.*GetPayload`, provider response shapes, or
+`unknown`-narrowing helpers. The three rules that only fire in tests
+(`noNonNullAssertion` / `noExplicitAny` / `noDelete`) are now scoped off for
+`**/*.test.ts` in `biome.jsonc`, with the reason documented inline —
+`delete process.env.X` is the correct way to unset an env var, and assigning
+`undefined` would set the literal string `"undefined"`. `biome check` reports no
+diagnostics; `tsc --noEmit` clean; full API suite green.
 
 Original finding below (pre-2026-09-04):
 
@@ -378,7 +386,7 @@ Recommendation: build the **minimum viable** version (one settings page, few fie
 Pull this straight from `DEPLOY.md`'s own (currently all-unchecked) production checklist plus what this audit found:
 
 **Code**
-- [x] `pnpm typecheck && pnpm lint && pnpm test` clean across all workspaces — verified 2026-09-04 (locally + CI `quality`/`build`/`e2e-web`/`unit-web` all green after PR #25). 182 `warn`-level Biome diagnostics remain in `apps/api` but don't fail the gate.
+- [x] `pnpm typecheck && pnpm lint && pnpm test` clean across all workspaces — verified 2026-09-04 (locally + CI `quality`/`build`/`e2e-web`/`unit-web` all green after PR #25). the 182 `warn`-level Biome diagnostics in `apps/api` that remained then have since been driven to zero (2026-09-11, above).
 - [ ] Fix the CI vault-test issue so a green CI run is actually trustworthy.
 - [ ] Run `/code-review ultra` (or the individual reviewer subagents) on the full branch before merge to main.
 

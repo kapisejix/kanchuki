@@ -8,7 +8,7 @@ import {
   rotateImage,
   uploadBuffer,
 } from '@kanchuki/ai';
-import { prisma } from '@kanchuki/db';
+import { type Prisma, prisma } from '@kanchuki/db';
 import { R2_PATHS } from '@kanchuki/shared';
 import { createId } from '@paralleldrive/cuid2';
 import type { FastifyPluginAsync } from 'fastify';
@@ -532,12 +532,17 @@ export const productsMediaRoutes: FastifyPluginAsync = async (server) => {
         if (!photo) {
           return reply.status(200).send({ data: { success: true, deleted_id: photoId } });
         }
-        const meta = (photo.metadata as Record<string, unknown> | null) ?? {};
-        const originalR2Key = meta.original_r2_key as string | undefined;
+        // Typed as Prisma's JSON object rather than Record<string, unknown> so
+        // the remainder writes back as `metadata` without an `as any`.
+        const meta = (photo.metadata as Prisma.JsonObject | null) ?? {};
+        // Checked rather than cast: metadata is free-form JSON, so the key may
+        // be absent or non-string on rows written by an older path.
+        const originalR2Key =
+          typeof meta.original_r2_key === 'string' ? meta.original_r2_key : undefined;
         const { original_r2_key, original_url, ...restMeta } = meta;
         await prisma.productPhoto.update({
           where: { id: basePhotoId },
-          data: { metadata: restMeta as any },
+          data: { metadata: restMeta },
         });
         if (originalR2Key) {
           try {

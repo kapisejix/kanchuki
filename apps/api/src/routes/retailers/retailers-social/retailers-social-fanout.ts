@@ -236,7 +236,11 @@ export const retailersSocialFanoutRoutes: FastifyPluginAsync = async (server) =>
         snapshots.push({ product_id: null, kind: 'photo', url: item.image_url });
         continue;
       }
-      const product = loadedProducts.get(item.product_id!)!;
+      // IMAGE items were handled above, so a product ref is required here.
+      const productId = item.product_id;
+      if (!productId) throw validationError('Item is missing its product reference');
+      const product = loadedProducts.get(productId);
+      if (!product) throw validationError('Selected product no longer exists');
       if (item.photo_id) {
         const photo = product.photos.find((p) => p.id === item.photo_id);
         if (!photo) throw validationError('Selected photo does not belong to the product');
@@ -445,7 +449,8 @@ export const retailersSocialFanoutRoutes: FastifyPluginAsync = async (server) =>
     const snapshotJson = snapshots.map((s) => ({ ...s }));
 
     for (const targetId of body.targets) {
-      const account = accountById.get(targetId)!;
+      const account = accountById.get(targetId);
+      if (!account) throw validationError('One or more target accounts are not connected');
       // Default row media = the composed items. Overridden per target when what
       // actually went out to THAT platform differs from the composition (an IG
       // video item posts as its product's primary photo — finding 5b: no silent
@@ -518,16 +523,19 @@ export const retailersSocialFanoutRoutes: FastifyPluginAsync = async (server) =>
             externalPostId = postId;
             externalPostUrl = `https://www.facebook.com/${account.platform_account_id}/posts/${postId}`;
           } else if (body.post_type === 'COLLECTION_LINK') {
+            // Resolution above always sets this for COLLECTION_LINK posts.
+            if (!linkUrl) throw validationError('Collection link could not be resolved');
             const { postId } = await publishLinkPost(
               account.platform_account_id,
               token,
-              linkUrl!,
+              linkUrl,
               caption,
             );
             externalPostId = postId;
             externalPostUrl = `https://www.facebook.com/${account.platform_account_id}/posts/${postId}`;
           } else {
-            const first = snapshots[0]!;
+            const first = snapshots[0];
+            if (!first) throw validationError('Add at least one photo or video to the post');
             if (first.kind === 'video') {
               const { postId } = await publishVideoPost(
                 account.platform_account_id,

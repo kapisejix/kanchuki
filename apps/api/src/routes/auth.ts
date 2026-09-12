@@ -163,7 +163,6 @@ async function ensureSupabaseSession(phone: string): Promise<{ user: User; sessi
     if (existing) {
       const { error } = await supabase.auth.admin.updateUserById(existing.id, { password });
       if (error) {
-        // biome-ignore lint/suspicious/noConsoleLog: operator-facing diagnostics
         console.error(
           `[auth] ensureSupabaseSession: updateUserById failed for ${e164}:`,
           error.message,
@@ -178,7 +177,6 @@ async function ensureSupabaseSession(phone: string): Promise<{ user: User; sessi
       });
       if (error) {
         if (attempt === 0 && /already/i.test(error.message ?? '')) continue;
-        // biome-ignore lint/suspicious/noConsoleLog: operator-facing diagnostics
         console.error(
           `[auth] ensureSupabaseSession: createUser failed for ${e164}:`,
           error.message,
@@ -191,7 +189,6 @@ async function ensureSupabaseSession(phone: string): Promise<{ user: User; sessi
 
   const { data, error } = await supabase.auth.signInWithPassword({ phone: e164, password });
   if (error || !data.session || !data.user) {
-    // biome-ignore lint/suspicious/noConsoleLog: operator-facing diagnostics
     console.error(
       `[auth] ensureSupabaseSession: signInWithPassword failed for ${e164}:`,
       error?.message,

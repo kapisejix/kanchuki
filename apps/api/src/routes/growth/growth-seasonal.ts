@@ -7,6 +7,7 @@ import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { hasFeature } from '../../lib/features.js';
 import { featureUnavailable } from '../../plugins/error-handler.js';
+import { accumulator } from './growth-helpers.js';
 
 // ─── Seasonal Period Definitions ────────────────────────────────────
 // Wedding season in India: Oct–Feb (Diwali + wedding season + winter festivals).
@@ -20,12 +21,15 @@ function monthToDateRange(
   year: number,
 ): { start: Date; end: Date; label: string } {
   // Handle cross-year ranges (Oct–Feb spans two calendar years).
-  const firstMonth = months[0]!;
+  const firstMonth = months[0];
+  const lastMonth = months[months.length - 1];
+  if (firstMonth === undefined || lastMonth === undefined) {
+    throw new Error('monthToDateRange: months must not be empty');
+  }
   const startYear = firstMonth >= 10 ? year - 1 : year;
   const startDate = new Date(startYear, firstMonth - 1, 1);
-  const lastMonth = months[months.length - 1]!;
   const endDate = new Date(year, lastMonth, 0, 23, 59, 59, 999); // last day of month
-  const label = `${months[0]! >= 10 ? 'Wedding' : 'Daily'} ${year}`;
+  const label = `${firstMonth >= 10 ? 'Wedding' : 'Daily'} ${year}`;
   return { start: startDate, end: endDate, label };
 }
 
@@ -204,14 +208,21 @@ async function getInteractionsByCategory(
   _start: Date,
   _end: Date,
 ): Promise<{ category: string; views: number; enquiries: number }[]> {
-  const interactions: any[] = [];
+  // CustomerInteraction was dropped in the 2026-08-31 teardown, so this is
+  // always empty; the row shape is declared rather than `any[]` so the
+  // accumulator below stays typed.
+  type InteractionRow = {
+    type: string;
+    product?: { category?: string | null } | null;
+  };
+  const interactions: InteractionRow[] = [];
 
   const map: Record<string, { views: number; enquiries: number }> = {};
   for (const i of interactions) {
     const cat = i.product?.category ?? 'Uncategorised';
-    map[cat] ??= { views: 0, enquiries: 0 };
-    if (i.type === 'view') map[cat]!.views += 1;
-    else map[cat]!.enquiries += 1;
+    const bucket = accumulator(map, cat, () => ({ views: 0, enquiries: 0 }));
+    if (i.type === 'view') bucket.views += 1;
+    else bucket.enquiries += 1;
   }
 
   return Object.entries(map).map(([category, v]) => ({ category, ...v }));
@@ -281,14 +292,14 @@ function mergeCategoryData(
   const map: Record<string, { sends: number; opens: number; enquiries: number }> = {};
 
   for (const s of sends) {
-    map[s.category] ??= { sends: 0, opens: 0, enquiries: 0 };
-    map[s.category]!.sends += s.sends;
+    const bucket = accumulator(map, s.category, () => ({ sends: 0, opens: 0, enquiries: 0 }));
+    bucket.sends += s.sends;
   }
 
   for (const i of interactions) {
-    map[i.category] ??= { sends: 0, opens: 0, enquiries: 0 };
-    map[i.category]!.opens += i.views; // views = opens
-    map[i.category]!.enquiries += i.enquiries;
+    const bucket = accumulator(map, i.category, () => ({ sends: 0, opens: 0, enquiries: 0 }));
+    bucket.opens += i.views; // views = opens
+    bucket.enquiries += i.enquiries;
   }
 
   return map;

@@ -255,9 +255,17 @@ export const whatsappCatalogWebhookRoutes: FastifyPluginAsync = async (server) =
             // mapping (mapping deleted, or created Meta-side). When the product
             // is known + live, enqueue an incremental sync to recreate the
             // mapping with the Meta item id — matched on the next event.
-            if (field.endsWith('_added') && productId && productRow && !productRow.deleted_at) {
+            // `retailerId` is part of the guard: a sync job keyed to a null
+            // retailer_id would be unrunnable, so skip it instead of lying.
+            if (
+              field.endsWith('_added') &&
+              productId &&
+              productRow &&
+              !productRow.deleted_at &&
+              retailerId
+            ) {
               await addCatalogSyncJob({
-                retailer_id: retailerId!,
+                retailer_id: retailerId,
                 operation: 'single_product',
                 product_id: productId,
                 triggered_by: 'webhook',
@@ -274,7 +282,9 @@ export const whatsappCatalogWebhookRoutes: FastifyPluginAsync = async (server) =
               meta_item_id: metaItemId ?? null,
               matched: false,
               action:
-                field.endsWith('_added') && productId && productRow ? 'sync_enqueued' : undefined,
+                field.endsWith('_added') && productId && productRow && retailerId
+                  ? 'sync_enqueued'
+                  : undefined,
             });
             continue;
           }
