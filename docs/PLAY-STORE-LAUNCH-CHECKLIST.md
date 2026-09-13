@@ -115,11 +115,21 @@ leave no trace (§3), its presence proves a real declaration rather than a lefto
 Data safety is about collected/shared data, so this does *not* force an audio row — but
 the permission is not decorative either.
 
-**To actually remove it** (optional; needs a rebuild): add
-`"android.permission.RECORD_AUDIO"` to `expo.android.blockedPermissions` in
-`apps/mobile/app.json` — the same mechanism that already removes the `READ_MEDIA_*`
-group. Until then the store listing advertises a Microphone permission the app never
-exercises, which a reviewer may query.
+**Resolved 2026-09-12 — removed, and verified against a real merged manifest.**
+`"android.permission.RECORD_AUDIO"` is now in `expo.android.blockedPermissions` in
+`apps/mobile/app.json` (the same mechanism that already removes the `READ_MEDIA_*
+group`), and versionCode 5 — built from `066ee6b2` (CI run `34693579778`) — no longer
+declares it. Decoded with `scripts/inspect-aab-manifest.mjs`:
+
+| | v4 (shipped) | v5 |
+|---|---|---|
+| requested permissions | 18 | **17** |
+| `RECORD_AUDIO` | PRESENT | **absent** |
+
+v4 and v5 differ by **exactly one permission, the intended one** — nothing added.
+The microphone permission had shipped in **every** release from v1 to v4 (measured on
+all five bundles), so this is the first build without it; the store listing therefore
+advertised a Microphone permission the app never used up to and including v4.
 
 ### Sentry — what actually leaves the device (added 2026-09-12)
 
@@ -186,12 +196,14 @@ configured `recordAudioAndroid: false`, and `plugins/withRemoveAdId.js` strips
 > the automated scan compares against your form answers, and it is the only place it
 > is trustworthy — see the note below on why the `.aab` on disk is misleading.
 >
-> **`RECORD_AUDIO` — resolved 2026-09-12: it is genuinely declared.** This doc first
-> claimed it was "trimmed", then hedged that its presence proved nothing. It does prove
-> something: removal leaves no trace (see the correction below), so the permission in
-> the shipped `.aab` is real. It comes from `expo-camera`'s library manifest, and
-> `recordAudioAndroid: false` does not strip it. §2 "Audio" has the root cause, the Data
-> safety decision, and how to remove it; §2 and §7 have both been updated.
+> **`RECORD_AUDIO` — resolved 2026-09-12: it was genuinely declared, and is now
+> removed.** This doc first claimed it was "trimmed", then hedged that its presence
+> proved nothing. It does prove something: removal leaves no trace (see the correction
+> below), so the permission in the shipped `.aab` was real. It came from `expo-camera`'s
+> library manifest, and `recordAudioAndroid: false` never stripped it. It is now in
+> `blockedPermissions` and absent from versionCode 5 — verified on the built bundle, not
+> inferred. §2 "Audio" has the root cause, the Data safety decision, and the v4/v5 diff;
+> §2 and §7 have both been updated.
 
 **Why the `.aab` **is** authoritative — corrected 2026-09-12 (this section had it backwards).**
 It previously claimed that a permission removed via `tools:node="remove"` leaves its
@@ -205,12 +217,13 @@ manifest. So absence proves removal, and presence proves a real declaration.
 
 Decoded from `base/manifest/AndroidManifest.xml` in the downloaded CI artifacts:
 
-| AAB versionCode | `com.google.android.gms.permission.AD_ID` |
-|---|---|
-| 1 | **DECLARED** |
-| 2 | **DECLARED** |
-| 3 | absent |
-| 4 | absent |
+| AAB versionCode | requested | `…permission.AD_ID` | `…permission.RECORD_AUDIO` |
+|---|---|---|---|
+| 1 | 23 | **DECLARED** | present |
+| 2 | 23 | **DECLARED** | present |
+| 3 | 18 | absent | present |
+| 4 | 18 | absent | present |
+| **5** | **17** | absent | **absent** — removed |
 
 That is the expected history — the strip landed in `b1ccefce` (2026-09-10), *after*
 versionCode 2. It also settles the open `RECORD_AUDIO` question below: `RECORD_AUDIO`
@@ -351,12 +364,13 @@ surfaced and which need a Console check or a form edit before submitting.
   (catalog-upload service) is a physical on-site service, Play-exempt.
 - ✅ Privacy policy — public, current, matches the Data Safety form.
 - ✅ Account deletion — in-app (Settings, typed DELETE) + web page.
-- ✅ **`RECORD_AUDIO` — resolved 2026-09-12: it *is* declared.** The name in the
-  shipped `.aab` is a real permission, not a leftover removal marker — removal leaves
-  no trace (§3). It comes from `expo-camera`'s library manifest, and
-  `recordAudioAndroid: false` does not strip it (§2 "Audio"). Data safety still answers
-  **No** for audio, because nothing records it. Removing the permission itself needs an
-  `app.json` `blockedPermissions` entry plus a rebuild.
+- ✅ **`RECORD_AUDIO` — resolved 2026-09-12: it *was* declared, and is now removed.**
+  The name in the shipped v1–v4 bundles was a real permission, not a leftover removal
+  marker — removal leaves no trace (§3). It came from `expo-camera`'s library manifest,
+  and `recordAudioAndroid: false` never stripped it (§2 "Audio"). The
+  `app.json` `blockedPermissions` entry is in place and versionCode 5 no longer declares
+  it (17 permissions vs v4's 18). Data safety answers **No** for audio either way,
+  because nothing records it.
 - ⚠️ **Location is NOT trimmed.** `expo-location` is still used for the optional
   store pin (`app/onboarding.tsx`), which is why §2 declares it. This line used to
   claim location was trimmed, which contradicted §2.

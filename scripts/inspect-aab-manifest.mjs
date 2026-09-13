@@ -109,13 +109,22 @@ const FAMILIES = [
   {
     match: (p) => p === 'android.permission.RECORD_AUDIO',
     label: 'Microphone',
-    note: "declared by expo-camera's library manifest; blocked via app.json blockedPermissions",
+    note: "on app.json blockedPermissions (expo-camera's library manifest declares it) — this group should be EMPTY; if it appears, the block regressed",
     flag: true,
+  },
+  {
+    // Deliberately NOT blocked: Android 14's partial-access permission, which the system
+    // photo picker pairs with. Listed separately so the broad-read group below stays a
+    // reliable regression signal instead of always showing one expected member.
+    match: (p) => p === 'android.permission.READ_MEDIA_VISUAL_USER_SELECTED',
+    label: 'Media / storage — scoped access',
+    note: 'Android 14 partial access via the system photo picker — intentionally kept',
+    flag: false,
   },
   {
     match: (p) => /^android\.permission\.READ_MEDIA_|READ_EXTERNAL_STORAGE$/.test(p),
     label: 'Media / storage read',
-    note: 'blocked in app.json while the gallery save is write-only',
+    note: 'on app.json blockedPermissions — this group should be EMPTY; if it appears, the block regressed',
     flag: true,
   },
   {

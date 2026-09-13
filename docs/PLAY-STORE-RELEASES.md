@@ -17,7 +17,7 @@
 | 2 | 1.0.0 | 2026-09-09 | Closed testing | `34348392715` | `6fc542ae` | media-permissions hardening, OTP keyboard fix |
 | 3 | 1.0.0 | 2026-09-11 | Open testing | `34617176198` *or* `34619372677` | `c14cc6f3` *or* `0305d589` | AD_ID strip (`b1ccefce`), OTP double-send (RC-015), FB reconnect loop (RC-016), AI Studio tab bug (RC-017), AI Studio pick-reset + FB login loop fixed (RC-017/RC-018), CI lint fully green — **see the ambiguity note below** |
 
-### 🚧 In flight — versionCode 5 reserved and building; versionCode 4 is superseded
+### 🚧 In flight — versionCode 5 is built and merged-manifest-verified, awaiting upload; versionCode 4 is superseded
 
 `apps/mobile/app.json` was bumped to **`versionCode: 4`** on 2026-09-12, and the AAB
 was built from `10c8f2d` and uploaded the same day. **Play never accepted it** — the
@@ -31,6 +31,36 @@ bundle, so the fix needs a fresh build; and **Play refuses a versionCode it has 
 received even if the release is discarded**, so 4 is spent regardless of whether it is
 ever accepted. The v5 build carries `android.permission.RECORD_AUDIO` in
 `blockedPermissions`, plus the new `scripts/check-aab-ad-id.mjs` CI step.
+
+**v5 build — recorded at trigger time:**
+
+| Field | Value |
+|---|---|
+| CI run | `34693579778` |
+| Commit | `066ee6b2` |
+| Triggered | 2026-09-12 12:24:25 UTC |
+| Outcome | **success** (21m) — all 13 steps, including the new AD_ID guard |
+| Uploaded to Play | **not yet** |
+
+**The RECORD_AUDIO removal is now verified against the real merged manifest, not
+inferred.** Decoded from the downloaded artifact with
+`scripts/inspect-aab-manifest.mjs`:
+
+| | v4 (shipped) | v5 |
+|---|---|---|
+| requested permissions (`uses-permission*`) | 18 | **17** |
+| `android.permission.RECORD_AUDIO` | PRESENT | **absent** |
+| `com.google.android.gms.permission.AD_ID` | absent | absent |
+| min / target SDK | 24 / 36 | 24 / 36 |
+
+The permission sets differ by **exactly one entry, the intended one** — removed
+`RECORD_AUDIO`, nothing added. That also settles the residual doubt left when the
+`blockedPermissions` entry was added: a source-manifest marker only proves the plugin
+*ran*, whereas this proves it won the merge.
+
+Still no Uploads row — that is added when Play **accepts** the release, per the rule
+at the top of this file. When it is accepted, the row goes above and the next number is
+reserved in the same commit.
 
 The last accepted row above is 3, which is exactly why 4 was reserved: a rebuild at
 versionCode 3 would be rejected, the same way `34612919927` built versionCode 2 after
