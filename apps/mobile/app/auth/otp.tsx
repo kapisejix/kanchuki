@@ -382,19 +382,41 @@ export default function OtpScreen() {
               </View>
 
               {/* Real input, transparent over the boxes. Rendered last = on top,
-                  so tapping the row focuses it directly and the keyboard opens. */}
+                  so tapping the row focuses it directly and the keyboard opens.
+                  RC (versioncode-5-changes.md #1): `color: 'transparent'` alone
+                  isn't reliable — some Android OEM keyboards/autofill overlays
+                  force-render the field's actual text once autofill touches it,
+                  ignoring app styling, so the real code briefly showed on top of
+                  the digit boxes below. Autofill (SMS Retriever on Android,
+                  QuickType on iOS) must stay ON, so instead of hiding the field
+                  the field is kept ACTUALLY EMPTY: `value` is always '' — every
+                  keystroke or autofilled code is captured in onChangeText, folded
+                  into `otp` (which the boxes render), then the native input is
+                  left with nothing to ever display, on any skin. */}
               <TextInput
                 ref={inputRef}
-                value={otp}
+                value=""
                 onChangeText={(text) => {
-                  const digits = text.replace(/\D/g, '').slice(0, 6)
-                  setOtp(digits)
-                  if (digits.length === 6) void handleVerify(digits)
+                  // The field is always reset to '' below, so a normal keystroke
+                  // or a full autofilled code both arrive here as the newly
+                  // typed/inserted text alone — fold it onto the existing digits.
+                  const digits = text.replace(/\D/g, '')
+                  if (!digits) return
+                  const next = (otp + digits).slice(0, 6)
+                  setOtp(next)
+                  if (next.length === 6) void handleVerify(next)
+                }}
+                onKeyPress={({ nativeEvent }) => {
+                  // The field never visually holds a character to delete, so
+                  // Backspace has to be handled explicitly against `otp`.
+                  if (nativeEvent.key === 'Backspace') setOtp((prev) => prev.slice(0, -1))
                 }}
                 keyboardType="number-pad"
                 maxLength={6}
                 caretHidden
                 autoFocus
+                textContentType="oneTimeCode"
+                autoComplete="sms-otp"
                 style={{
                   position: 'absolute',
                   top: 0,

@@ -28,6 +28,13 @@ const SendOtpSchema = z.object({
   // step-up OTP for the same phone never overwrite each other. Defaults to
   // 'login'; step-up flows (checkout) may pass 'stepup'.
   purpose: z.enum(['login', 'stepup']).optional().default('login'),
+  // RC (versioncode-5-changes.md #2): the mobile app calls /otp/send first to
+  // check OTP_TEST_BYPASS, then — for a real phone — ALSO fires its own
+  // MSG91 Widget SDK send. Both used to dispatch a real SMS unconditionally,
+  // so every real login sent two different OTPs from two different MSG91
+  // templates/senders. `widget: true` means "the caller's native MSG91
+  // widget will send its own OTP" — skip the classic-API dispatch here.
+  widget: z.boolean().optional(),
 });
 
 const OtpVerifySchema = z
@@ -214,6 +221,17 @@ export const authRoutes: FastifyPluginAsync = async (server) => {
       console.log(`[auth] /otp/send phone=${phone} path=test-bypass`);
       return reply.status(200).send({
         data: { message: 'OTP sent', phone: `****${phone.slice(-4)}`, bypass: true },
+      });
+    }
+
+    if (body.data.widget) {
+      // The caller's native MSG91 Widget SDK sends + verifies its own OTP
+      // (auth-msg91.md flow) — this call only needed to run the bypass check
+      // above. Dispatching the classic-API OTP here too would double-send.
+      // biome-ignore lint/suspicious/noConsoleLog: operator-facing OTP diagnostics
+      console.log(`[auth] /otp/send phone=${phone} path=widget-skip-dispatch`);
+      return reply.status(200).send({
+        data: { message: 'OTP will be sent by the app', phone: `****${phone.slice(-4)}` },
       });
     }
 

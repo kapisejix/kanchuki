@@ -2,7 +2,7 @@ import { CAROUSEL_CAP } from './types';
 
 /** A collection detail row as returned by GET /v1/collections/:id. */
 interface CollectionProductRow {
-  product?: { id?: string; photos?: { id: string }[] } | null;
+  product?: { id?: string; photos?: { id: string; url?: string }[] } | null;
 }
 
 /** One fan-out item — a product plus its primary photo id. */
@@ -24,4 +24,20 @@ export function collectionProductsToCarouselItems(
     .filter((p): p is { id: string; photos: { id: string }[] } => !!p?.id && !!p.photos?.[0]?.id)
     .slice(0, CAROUSEL_CAP)
     .map((p) => ({ product_id: p.id, photo_id: p.photos[0].id }));
+}
+
+/**
+ * A cover image for a Collection-Link post (link-only format, no items in
+ * the fan-out payload — RC: the composer preview and the Facebook link post
+ * both went out with no photo because nothing here ever supplied one). Picks
+ * the first collection product that has a photo.
+ */
+export function firstCollectionProductPhotoUrl(
+  rows: CollectionProductRow[] | undefined,
+): string | null {
+  for (const row of rows ?? []) {
+    const url = row.product?.photos?.[0]?.url;
+    if (url) return url;
+  }
+  return null;
 }

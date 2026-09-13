@@ -476,6 +476,39 @@ describe('auto caption resolves through resolvePostTemplate', () => {
       'dec:tok-fb',
       'https://kanchuki.app/priya-house/festive-edit',
       caption,
+      undefined,
+    );
+  });
+
+  // RC (versioncode-5-changes.md #4): a COLLECTION_LINK post carried no
+  // `items`, so publishLinkPost was never given a picture — Facebook link
+  // posts went out with no image. The route now resolves one from the
+  // collection's own products.
+  it('collection link: resolves a cover photo from the collection and passes it to publishLinkPost', async () => {
+    mockCollectionFindFirst.mockResolvedValueOnce({
+      slug: 'festive-edit',
+      products: [
+        { product: { photos: [] } },
+        { product: { photos: [{ url: 'https://cdn/cover.jpg', is_primary: true }] } },
+      ],
+    });
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/me/social/posts',
+      payload: captionPayload({
+        post_type: 'COLLECTION_LINK',
+        collection_id: 'c_1',
+        items: [],
+      }),
+    });
+    expect(res.statusCode).toBe(200);
+    expect(mockPublishLink).toHaveBeenCalledWith(
+      'page_101',
+      'dec:tok-fb',
+      'https://kanchuki.app/priya-house/festive-edit',
+      expect.any(String),
+      'https://cdn/cover.jpg',
     );
   });
 

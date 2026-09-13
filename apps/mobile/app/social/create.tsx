@@ -22,7 +22,6 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { useScreenInsets } from '../../src/lib/safe-area';
 import { AnimatedPressable } from '../../src/components/AnimatedPressable';
 import { GradientButton } from '../../src/components/GradientButton';
 import {
@@ -35,7 +34,10 @@ import {
   TemplatePicker,
   toComposeProduct,
 } from '../../src/components/social';
-import { collectionProductsToCarouselItems } from '../../src/components/social/collection-carousel';
+import {
+  collectionProductsToCarouselItems,
+  firstCollectionProductPhotoUrl,
+} from '../../src/components/social/collection-carousel';
 import type { ComposeMedia, ComposeProduct } from '../../src/components/social/types';
 import {
   collectionApi,
@@ -44,6 +46,7 @@ import {
   showcaseDesignsApi,
   socialApi,
 } from '../../src/lib/api';
+import type { ShowcaseDesignRow } from '../../src/lib/api/showcase-designs';
 import type {
   CreateSocialPostInput,
   PostTemplateInfo,
@@ -52,8 +55,8 @@ import type {
   SocialPostComposeType,
   SocialPostTargetResult,
 } from '../../src/lib/api/social';
-import type { ShowcaseDesignRow } from '../../src/lib/api/showcase-designs';
 import { showError } from '../../src/lib/errors';
+import { useScreenInsets } from '../../src/lib/safe-area';
 import { useTheme } from '../../src/lib/theme';
 import { WEB_URL } from '../../src/lib/web-url';
 
@@ -180,7 +183,11 @@ export default function CreateSocialPostScreen() {
   // posts the collection's product photos as a real carousel (reusing the
   // CAROUSEL fan-out) with the collection URL appended to the caption.
   const [collectionFormat, setCollectionFormat] = useState<'link' | 'carousel'>('link');
-  const [linkType, setLinkType] = useState<SocialLinkType>('none');
+  // RC (versioncode-5-changes.md #4): defaulted to 'none' — most retailers
+  // never touched the link toggle, so posts went out with no way back to the
+  // shop. 'storefront' always resolves (every retailer has a public_slug),
+  // so every post carries a shop link unless the retailer turns it off.
+  const [linkType, setLinkType] = useState<SocialLinkType>('storefront');
   const [linkCollection, setLinkCollection] = useState<CollectionSummary | null>(null);
   const [caption, setCaption] = useState('');
   const [targetIds, setTargetIds] = useState<string[]>([]);
@@ -294,27 +301,37 @@ export default function CreateSocialPostScreen() {
     }
   }, [collections]);
 
-  // Collection detail — only fetched when a collection is chosen AND the
-  // retailer wants a photo carousel of it. Feeds the CAROUSEL payload
-  // (product_id + primary photo_id per item; the server resolves the media).
-  const wantCollectionCarousel =
-    postType === 'COLLECTION_LINK' && collectionFormat === 'carousel' && !!collectionLink;
+  // Collection detail — fetched whenever a collection is chosen: the
+  // 'carousel' sub-format feeds the CAROUSEL payload (product_id + primary
+  // photo_id per item), and the 'link' sub-format reuses the same data just
+  // for a cover photo (RC: link posts previously carried no product data at
+  // all, so there was nothing to show a photo from — in the preview or on
+  // Facebook).
+  const wantCollectionDetail = postType === 'COLLECTION_LINK' && !!collectionLink;
   const collectionLinkId = collectionLink?.id;
   const collectionDetailQuery = useQuery({
     queryKey: ['collection', collectionLinkId, 'social-carousel'],
     queryFn: () => collectionApi.get(collectionLinkId ?? ''),
-    enabled: wantCollectionCarousel && !!collectionLinkId,
+    enabled: wantCollectionDetail && !!collectionLinkId,
   });
+  const collectionDetailProducts = (
+    collectionDetailQuery.data as
+      | {
+          data?: {
+            products?: { product?: { id?: string; photos?: { id: string; url?: string }[] } }[];
+          };
+        }
+      | undefined
+  )?.data?.products;
   const collectionCarouselItems = useMemo(
-    () =>
-      collectionProductsToCarouselItems(
-        (
-          collectionDetailQuery.data as
-            | { data?: { products?: { product?: { id?: string; photos?: { id: string }[] } }[] } }
-            | undefined
-        )?.data?.products,
-      ),
-    [collectionDetailQuery.data],
+    () => collectionProductsToCarouselItems(collectionDetailProducts),
+    [collectionDetailProducts],
+  );
+  // Cover photo for the 'link' sub-format — the Facebook link post and the
+  // preview below both show this so what's posted matches what's shown.
+  const collectionCoverPhotoUrl = useMemo(
+    () => firstCollectionProductPhotoUrl(collectionDetailProducts),
+    [collectionDetailProducts],
   );
 
   // Deep-link prefill — products + forced media for single-product entries,
@@ -451,7 +468,10 @@ export default function CreateSocialPostScreen() {
         // Leaving the design flow returns the retailer to the product
         // composer — the design photo must not linger in IMAGE state.
         if (next !== 'IMAGE') setDesignPost(null);
-        if (linkType === 'product') setLinkType('none');
+        // A per-product link stops making sense outside a single-product post
+        // (CAROUSEL/IMAGE) — fall back to the always-valid storefront link
+        // rather than dropping the shop link entirely.
+        if (linkType === 'product' && next !== 'SINGLE_PRODUCT') setLinkType('storefront');
       }
     },
     [accounts, linkType],
@@ -536,8 +556,11 @@ export default function CreateSocialPostScreen() {
     if (postType === 'IMAGE') {
       return designPost ? [{ kind: 'photo', url: designPost.url }] : [];
     }
+    if (postType === 'COLLECTION_LINK' && collectionFormat !== 'carousel') {
+      return collectionCoverPhotoUrl ? [{ kind: 'photo', url: collectionCoverPhotoUrl }] : [];
+    }
     return items.map((x) => x.media);
-  }, [postType, designPost, items]);
+  }, [postType, designPost, items, collectionFormat, collectionCoverPhotoUrl]);
 
   // ── Validation (T-4.7) ────────────────────────────────────────────
   const problems = useMemo(() => {
@@ -1151,7 +1174,10 @@ export default function CreateSocialPostScreen() {
               </>
             )}
 
-            {sectionTitle(postType === 'COLLECTION_LINK' ? '4' : postType === 'IMAGE' ? '3' : '5', 'Caption')}
+            {sectionTitle(
+              postType === 'COLLECTION_LINK' ? '4' : postType === 'IMAGE' ? '3' : '5',
+              'Caption',
+            )}
             <View className="bg-white rounded-2xl border border-sand-100 p-3.5">
               <TextInput
                 value={caption}
@@ -1198,7 +1224,10 @@ export default function CreateSocialPostScreen() {
               disabledReason={targetDisabledReason}
             />
 
-            {sectionTitle(postType === 'COLLECTION_LINK' ? '6' : postType === 'IMAGE' ? '5' : '7', 'Preview')}
+            {sectionTitle(
+              postType === 'COLLECTION_LINK' ? '6' : postType === 'IMAGE' ? '5' : '7',
+              'Preview',
+            )}
             <PostPreview
               platforms={previewPlatforms}
               postType={postType}

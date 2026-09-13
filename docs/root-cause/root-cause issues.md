@@ -10,6 +10,56 @@
 
 ---
 
+## RC-023 — Social posts default to no shop link ("None") — most posts had no way back to the store
+
+- **Component:** `apps/mobile/app/social/create.tsx` (composer `linkType` state)
+- **Commit:** (uncommitted — this session)
+- **Symptom:** a retailer who shared a single product or carousel via the composer without manually opening the "Add link" section posted with zero way for a viewer to reach the shop — no Shop button (Meta doesn't expose one for organic photo/video posts, see RC-022) and no link at all.
+- **Root cause:** `const [linkType, setLinkType] = useState<SocialLinkType>('none')` — the composer's link card defaulted OFF, and a separate line reset it back to `'none'` whenever the post type changed away from a single product. Most retailers never opened the link toggle, so the vast majority of posts went out link-less by default.
+- **Fix:** default `linkType` to `'storefront'` (always resolves — every retailer has a `public_slug`) instead of `'none'`; the reset-on-type-change now falls back to `'storefront'` instead of `'none'` when a per-product link stops making sense (leaving SINGLE_PRODUCT for CAROUSEL/IMAGE), so a shop link survives across type switches instead of being dropped.
+- **Proof:** `apps/mobile` `tsc --noEmit` clean, `expo lint` clean.
+- **Prevention lesson:** a feature that requires the user to opt in every single time will be skipped by most users — if the goal is "every post links back to the shop," the default has to already do that.
+
+---
+
+## RC-022 — Facebook Collection-Link posts (and their in-app preview) carry no photo
+
+- **Component:** `apps/api/src/routes/retailers/retailers-social/retailers-social-fanout.ts` (`POST /me/social/posts`), `apps/mobile/app/social/create.tsx` (composer preview)
+- **Commit:** (uncommitted — this session)
+- **Symptom:** sharing a "Collection link" post (link-only sub-format) published to Facebook with no image, and the composer's own Preview section showed nothing before publishing either.
+- **Root cause:** `post_type: 'COLLECTION_LINK'` sends an empty `items` array by design (it's a link-only post) — so nothing downstream ever had a photo to work with. The API called `publishLinkPost(pageId, token, linkUrl, caption)` — a 4-arg call — even though the function accepts an optional 5th `pictureUrl` argument; the composer's `previewMedia` memo also returned `[]` whenever `post_type === 'COLLECTION_LINK'`, regardless of format. No code path ever resolved a photo for this post type at all.
+  - Separately: Meta's Graph API has **no "Shop Now" CTA button for organic Page posts** (photo, video, or link) — that capability exists only for Ads and for Facebook/Instagram Shopping catalog integration (already covered by the WhatsApp/Facebook Catalog Sync feature, BUILD-LOG §49), not the general publish endpoint this composer uses. A clickable image + link is the closest equivalent the platform allows for an organic post.
+- **Fix:** the fan-out route resolves a cover photo from the collection's own products (first product with a photo, primary preferred) and passes it as `publishLinkPost`'s `pictureUrl`; the resolved photo is also recorded in the post's `media` snapshot so post history matches what was actually posted. The composer fetches the same collection detail regardless of sub-format (previously gated to `collectionFormat === 'carousel'` only) and shows that cover photo in the Preview section for the link sub-format too.
+- **Proof:** `apps/api` — new fanout test "collection link: resolves a cover photo from the collection and passes it to publishLinkPost"; existing collection-link tests updated for the new 5th arg. 50/50 tests pass. `apps/mobile` `tsc --noEmit` clean, `expo lint` clean.
+- **Prevention lesson:** a post type with an intentionally empty `items` array still needs its own media resolution if the platform post it maps to (a Facebook link post) supports a picture — "no items" isn't the same as "no photo needed."
+
+---
+
+## RC-021 — Every real-phone login sends two different OTPs from two different MSG91 senders/templates
+
+- **Component:** `apps/api/src/routes/auth.ts` (`POST /otp/send`), `apps/mobile/app/auth/phone.tsx` (`handleSend`)
+- **Commit:** (uncommitted — this session)
+- **Symptom:** entering a real phone number produced two SMS from two different senders (e.g. `CP-KCUKI3-S` "for KANCHUKI — Sejix Technologies", the DLT-registered template, AND `CP-DSHOTP-S` "--Dash", the MSG91 widget's own default flow template) — not a duplicate of the same message (that was already fixed by RC-015's re-entrancy guard), two genuinely different codes.
+- **Root cause:** `phone.tsx`'s `handleSend` calls the backend's `/otp/send` first (to check `OTP_TEST_BYPASS`), then — for a real phone, unconditionally — also calls the native MSG91 Widget SDK's own `sendOTP`. The backend route, when the server has MSG91 credentials configured (the production case), ALREADY dispatches a real SMS via the classic v5 OTP API inside that first call (`sendOtpViaMsg91`, using `MSG91_TEMPLATE_ID` — the DLT-registered template). Nothing told the backend "the client's widget will send its own OTP, skip yours" — so both the classic-API send and the widget's independent send fired on every single real-phone request, each using its own separately-configured MSG91 template/sender.
+- **Fix:** `/otp/send` accepts an optional `widget: boolean` field. The mobile app passes `widget: true` whenever the native MSG91 widget is available (`isMsg91OtpConfigured()`); the backend then skips its own classic-API dispatch (still runs the `OTP_TEST_BYPASS` check first). If the widget's own send then fails to produce a usable `reqId`/token, the mobile app explicitly calls `/otp/send` again without the widget flag so a real OTP still goes out — exactly one SMS on both the success and fallback paths.
+- **Proof:** `apps/api` — new test "skips the classic MSG91 dispatch when widget:true, for a non-bypass phone" (`auth-otp-bypass.test.ts`); 11/11 pass. `apps/mobile` `tsc --noEmit` clean, `expo lint` clean.
+- **Prevention lesson:** when a client has two independent ways to accomplish the same side effect (a server dispatch and a client-side SDK dispatch), the client must tell the server which one it's using — "call both, whichever gets there first" isn't a valid strategy when the side effect is a real SMS that costs money and confuses the user.
+
+---
+
+## RC-020 — OTP appears to render twice (real hidden input shows its text despite `color: transparent`)
+
+- **Component:** `apps/mobile/app/auth/otp.tsx` (the invisible-overlay `TextInput`, introduced by `0c005303` "fix(mobile): OTP keyboard never opens on Android")
+- **Commit:** (uncommitted — this session)
+- **Symptom:** the OTP code appeared to show twice on screen — once in the app's own digit boxes, once elsewhere ("outside" the field).
+- **Root cause:** the real, focusable `TextInput` behind the digit-box UI mirrors the typed code as its own `value` and relies on `color: 'transparent'` alone to stay invisible. Once autofill (Android SMS Retriever / iOS QuickType) inserts the code, some Android OEM keyboards/autofill overlays force-render the field's actual text, ignoring the app's transparent color override — the real input briefly shows the code in its default styling on top of the app's own digit boxes, which are already showing the same digits from state.
+- **First attempt (reverted):** `importantForAutofill="no"` stopped the duplicate but also disabled autofill entirely on Android — not acceptable, autofill on both platforms is required.
+- **Fix:** keep autofill hints (`textContentType="oneTimeCode"` for iOS QuickType, `autoComplete="sms-otp"` for Android SMS Retriever), but stop relying on `color: transparent` to hide the field's content. The field's own `value` is now a permanent `""` — every keystroke or autofilled code arrives once via `onChangeText`, is folded into the `otp` state the digit boxes render, and the native field is left with nothing to ever visually reveal, regardless of what an OEM skin overrides. Backspace (no longer visible to delete) is handled explicitly via `onKeyPress`.
+- **Proof:** `apps/mobile` `tsc --noEmit` clean, `expo lint` clean.
+- **Prevention lesson:** `color: 'transparent'` is a style hint, not a guarantee — some Android skins re-theme autofilled fields and ignore it. To truly hide a field's content regardless of OS/OEM behavior, keep the field's actual value empty rather than merely styling it invisible.
+
+---
+
 ## RC-019 — Offline-fallback e2e test intermittently fails by reaching the real server
 
 - **Component:** `apps/web/e2e/customer-collection.spec.ts` (`collection pages work offline via the service worker`, step 7)

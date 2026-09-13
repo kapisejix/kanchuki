@@ -152,6 +152,23 @@ describe('POST /auth/otp/send — test bypass', () => {
     expect(mockSendOtpViaMsg91).toHaveBeenCalledWith(TEST_PHONE, 'login');
     await app.close();
   });
+
+  // RC (versioncode-5-changes.md #2): `widget: true` means the mobile app's
+  // native MSG91 Widget SDK will send its own OTP — the classic-API dispatch
+  // here must be skipped, or the retailer gets two different real OTPs.
+  it('skips the classic MSG91 dispatch when widget:true, for a non-bypass phone', async () => {
+    delete process.env.OTP_TEST_BYPASS;
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/auth/otp/send',
+      payload: { phone: '9876543210', widget: true },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(mockSendOtpViaMsg91).not.toHaveBeenCalled();
+    await app.close();
+  });
 });
 
 describe('POST /auth/otp/verify — test bypass', () => {

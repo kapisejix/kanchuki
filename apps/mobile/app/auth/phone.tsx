@@ -46,16 +46,21 @@ export default function PhoneScreen() {
     setErrorMsg(null);
     try {
       const digits = normalizeIndianPhone(phone);
+      const willUseWidget = isMsg91OtpConfigured();
 
-      // 1. Check with backend API (handles Railway OTP_TEST_BYPASS test phones)
-      const apiRes = await authApi.sendOtp(digits);
+      // 1. Check with backend API (handles Railway OTP_TEST_BYPASS test phones).
+      // RC (versioncode-5-changes.md #2): when the native widget will send its
+      // own OTP below, tell the backend so it skips its own classic-API
+      // dispatch — sending both used to fire two different real OTPs per
+      // login (one per MSG91 template/sender).
+      const apiRes = await authApi.sendOtp(digits, { widget: willUseWidget });
       if (apiRes.data?.bypass === true) {
         router.push({ pathname: '/auth/otp', params: { phone: digits, bypass: 'true' } });
         return;
       }
 
       // 2. Real phone number: use native MSG91 widget when configured
-      if (isMsg91OtpConfigured()) {
+      if (willUseWidget) {
         try {
           const response = await sendMsg91Otp(digits);
           const reqId = extractMsg91ReqId(response) ?? '';
@@ -67,9 +72,14 @@ export default function PhoneScreen() {
         } catch (widgetErr) {
           console.warn('[auth] MSG91 widget send error, using API OTP:', widgetErr);
         }
+        // The widget didn't produce a usable reqId/token — nothing has been
+        // sent yet (step 1 skipped its dispatch), so fall back to a real
+        // classic-API send now.
+        await authApi.sendOtp(digits);
       }
 
-      // 3. Fallback: backend already dispatched the OTP
+      // 3. Fallback: the backend has now dispatched the OTP (either the
+      // widget isn't configured, or its send just failed above).
       router.push({ pathname: '/auth/otp', params: { phone: digits } });
     } catch (err) {
       // Show the exact failure on screen — the backend's actionable message

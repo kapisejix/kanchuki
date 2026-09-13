@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { collectionProductsToCarouselItems } from './collection-carousel';
+import { collectionProductsToCarouselItems, firstCollectionProductPhotoUrl } from './collection-carousel';
 
-const row = (id: string, photoId: string | null) => ({
-  product: { id, photos: photoId ? [{ id: photoId }] : [] },
+const row = (id: string, photoId: string | null, url?: string) => ({
+  product: { id, photos: photoId ? [{ id: photoId, url }] : [] },
 });
 
 describe('collectionProductsToCarouselItems', () => {
@@ -27,5 +27,26 @@ describe('collectionProductsToCarouselItems', () => {
   it('returns [] for undefined / empty', () => {
     expect(collectionProductsToCarouselItems(undefined)).toEqual([]);
     expect(collectionProductsToCarouselItems([])).toEqual([]);
+  });
+});
+
+describe('firstCollectionProductPhotoUrl', () => {
+  it('returns the first product photo url', () => {
+    expect(
+      firstCollectionProductPhotoUrl([
+        row('p1', null),
+        row('p2', 'ph2', 'https://cdn/cover.jpg'),
+        row('p3', 'ph3', 'https://cdn/other.jpg'),
+      ]),
+    ).toBe('https://cdn/cover.jpg');
+  });
+
+  it('returns null when no product has a photo url', () => {
+    expect(firstCollectionProductPhotoUrl([row('p1', null), row('p2', 'ph2')])).toBeNull();
+  });
+
+  it('returns null for undefined / empty', () => {
+    expect(firstCollectionProductPhotoUrl(undefined)).toBeNull();
+    expect(firstCollectionProductPhotoUrl([])).toBeNull();
   });
 });

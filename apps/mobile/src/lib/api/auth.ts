@@ -36,10 +36,10 @@ export const authApi = {
    * Uses a longer timeout (30s) because SMS delivery + the exchange can be
    * slow on a cold start.
    */
-  sendOtp: (phone: string) =>
+  sendOtp: (phone: string, opts?: { widget?: boolean }) =>
     request<{ data: { message: string; phone: string; bypass?: boolean } }>('/v1/auth/otp/send', {
       method: 'POST',
-      body: JSON.stringify({ phone }),
+      body: JSON.stringify({ phone, widget: opts?.widget }),
       timeoutMs: 30_000,
     }),
 

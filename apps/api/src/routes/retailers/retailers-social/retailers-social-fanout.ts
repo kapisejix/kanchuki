@@ -293,6 +293,11 @@ export const retailersSocialFanoutRoutes: FastifyPluginAsync = async (server) =>
     // ── Resolve the link (server-owned, never a client URL — R-11) ─────
     let linkUrl: string | null = null;
     let resolvedLinkType: 'none' | 'collection' | 'storefront' | 'product' | null = null;
+    // RC (versioncode-5-changes.md #4): a COLLECTION_LINK post carries no
+    // `items`, so nothing ever supplied a photo — the Facebook link post and
+    // the composer's preview both went out with no image. Resolve a cover
+    // photo from the collection's own products so the link post isn't bare.
+    let collectionCoverPhotoUrl: string | null = null;
     if (body.post_type === 'COLLECTION_LINK') {
       const collection = await prisma.collection.findFirst({
         where: {
@@ -300,11 +305,34 @@ export const retailersSocialFanoutRoutes: FastifyPluginAsync = async (server) =>
           retailer_id: request.retailerId,
           deleted_at: null,
         },
-        select: { slug: true },
+        select: {
+          slug: true,
+          products: {
+            orderBy: { sort_order: 'asc' },
+            take: 5,
+            select: {
+              product: {
+                select: {
+                  photos: {
+                    where: { retailer_id: request.retailerId },
+                    select: { url: true, is_primary: true },
+                  },
+                },
+              },
+            },
+          },
+        },
       });
       if (!collection) throw validationError('Collection not found');
       linkUrl = buildCollectionUrl(retailer.public_slug, collection.slug);
       resolvedLinkType = 'collection';
+      for (const cp of collection.products ?? []) {
+        const photo = cp.product.photos.find((p) => p.is_primary) ?? cp.product.photos[0];
+        if (photo) {
+          collectionCoverPhotoUrl = photo.url;
+          break;
+        }
+      }
     } else if (body.link_type === 'collection') {
       // Media post + collection link card
       if (!body.collection_id) throw validationError('collection_id is required');
@@ -446,7 +474,12 @@ export const retailersSocialFanoutRoutes: FastifyPluginAsync = async (server) =>
     // ── Fan out per target ─────────────────────────────────────────────
     const results: Array<Record<string, unknown>> = [];
 
-    const snapshotJson = snapshots.map((s) => ({ ...s }));
+    // COLLECTION_LINK has no `items`, but it does carry the resolved cover
+    // photo — record it so post history matches what was actually posted.
+    const snapshotJson =
+      body.post_type === 'COLLECTION_LINK' && collectionCoverPhotoUrl
+        ? [{ product_id: null, kind: 'photo', url: collectionCoverPhotoUrl }]
+        : snapshots.map((s) => ({ ...s }));
 
     for (const targetId of body.targets) {
       const account = accountById.get(targetId);
@@ -530,6 +563,7 @@ export const retailersSocialFanoutRoutes: FastifyPluginAsync = async (server) =>
               token,
               linkUrl,
               caption,
+              collectionCoverPhotoUrl ?? undefined,
             );
             externalPostId = postId;
             externalPostUrl = `https://www.facebook.com/${account.platform_account_id}/posts/${postId}`;
