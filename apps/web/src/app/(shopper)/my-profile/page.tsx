@@ -225,13 +225,19 @@ export default function MyProfilePage() {
                 const enabled = e.target.checked
                 setPersonalizationEnabled(enabled)
                 try {
-                  await fetch('/api/passport/preferences', {
+                  const res = await fetch('/api/passport/preferences', {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ profiling_enabled: enabled }),
                   })
+                  // A non-2xx resolves rather than throwing, so without this a
+                  // 405 from a missing proxy verb (RC-026) or an expired
+                  // session looked identical to a saved preference — the box
+                  // stayed off and silently reverted on reload.
+                  if (!res.ok) throw new Error(`preferences update failed: ${res.status}`)
                 } catch {
                   setPersonalizationEnabled(!enabled)
+                  alert('Could not save your preference. Please try again.')
                 }
               }}
               className="h-4 w-4 text-amber-600 rounded"
