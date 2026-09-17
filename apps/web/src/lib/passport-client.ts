@@ -17,6 +17,13 @@ export interface PassportSession {
 let cachedSession: PassportSession | null = null;
 let cacheTimestamp = 0;
 const CACHE_TTL_MS = 30_000; // 30 seconds — short enough for consent state changes
+// Bounded, like every other outbound call in this repo (RC-011's lesson).
+// Without a deadline a hung /me leaves this promise pending forever: the
+// `(shopper)` guard never redirects and the /stores entry point never reaches
+// its decided state — no error, no toast, just a page that stays half-alive.
+// A timeout lands in the catch below, so the caller gets a definite "not signed
+// in" instead of an unbounded wait.
+const FETCH_TIMEOUT_MS = 10_000;
 
 /**
  * Check if the visitor has a valid passport session.
@@ -34,6 +41,7 @@ export async function getPassport(): Promise<PassportSession | null> {
   try {
     const res = await fetch('/api/passport/me', {
       credentials: 'include', // send cookies
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
     if (!res.ok) {
       cachedSession = null;
