@@ -2374,3 +2374,34 @@ Live, prod build + Chrome (`e2e/customer-my-stores.spec.ts`): anonymous `/my-sto
 
 **The query string is carried, not just the path.** The guard composes the target from `pathname` + `window.location.search`, so a shopper intercepted on `/my-stores?tab=orders` returns to that exact URL. It reads `window.location` rather than `useSearchParams()` — the guard runs in an effect (browser-only by definition), and `useSearchParams()` in a layout with no Suspense boundary would force every guarded route out of static rendering. The live round-trip spec enters on `/my-stores?tab=orders` and its predicate requires `tab=orders` back, so a guard that dropped the query cannot pass on the bare pathname match. Residual: the **hash** is not carried.
 
+## BUILT 2026-09-17 (later still) — `/stores` gains a state-aware shopper entry point (CLAUDE.md row #73)
+
+Phase A pointed the installed icon at `/my-stores` and the follow-up added `/login` — but `/login` was reachable **only by being intercepted** by the `(shopper)` guard. A shopper had to already want a guarded page to discover it, so an organic visitor to the store directory had no way in, and nothing on the site acknowledged an existing passport once one existed.
+
+**Scope: `apps/web` only** — no API, schema, or `apps/mobile` change.
+
+| Piece | File | What it does |
+|---|---|---|
+| Entry point (client) | `apps/web/src/app/stores/ShopperEntry.tsx` | Signed out → `Log in` → `/login`. Signed in → the shopper's own name, `· My Stores` → `/my-stores` |
+| Mount | `apps/web/src/app/stores/StoresDirectory.tsx` | +7 lines, above the search box |
+
+### Why `/stores` and not the shared `Navbar`
+
+`Navbar`/`Footer` live in `components/site/Chrome.tsx` and render on **every** marketing page, including `/`. Those pages are statically rendered, so a state-aware entry point there would cost *every* marketing page view one `/api/passport/me` call — the passport cookie is HttpOnly, so the client cannot answer "is this visitor signed in?" without asking. It would also put a customer entry point in the retailer-facing nav directly beside "Start Free Trial". `/stores` is the one genuinely shopper-facing surface on the marketing site. Owner-confirmed before building.
+
+### The in-flight state is inert, not `Log in`
+
+Until the session check answers, the component renders a reserved-height `aria-hidden` placeholder (`h-9 w-[104px]`, so the search box below does not shift) rather than `Log in`. Because the cookie is HttpOnly the state is genuinely unknown in that window, and rendering `Log in` first would tell a signed-in shopper they are signed out on every visit to the page.
+
+`href` is plain `/login`, **not** `/login?return_to=/stores`: this is an explicit "take me to my account" action rather than an interception, and `/my-stores` is the shopper's home — the same place the installed icon opens. `account.name` is nullable (the passport OTP flow never asks for one), so it falls back to `My Stores` instead of rendering an empty pill.
+
+### Verification
+
+Unit: 7 new `ShopperEntry` tests — both states, the in-flight no-flash gate, a nameless account, the `getPassportSession` failure path, and that no session check is issued twice. Web **249/249** (was 242).
+
+Live, prod build + Chrome (new `e2e/customer-stores-directory.spec.ts`): `/stores` anonymous → `Log in` with `href="/login"`; authenticated → the name with `href="/my-stores"` and **zero** `Log in` links. The directory itself still renders (search box + store card), so mounting the component did not disturb the page. Whole customer suite **12/12** across its three specs.
+
+### A stub trap worth recording
+
+This is the first call in the customer e2e suite made by the **browser** directly to the API origin — the passport calls go through the same-origin `/api/passport/*` proxy. `localhost:3100` → `127.0.0.1:3001` is cross-origin, and the stub sent no `Access-Control-Allow-Origin`, so Chrome silently dropped the response and the directory rendered its error state while the entry point (proxy-based) worked fine — a failure that looks like "the page is broken" rather than "the stub is incomplete". Diagnosed by grepping the inlined URL out of the built client chunk (`127.0.0.1:3001`, so the config pin was working and the URL was never the problem) rather than by guessing. The stub now sends CORS headers; **any future browser-side API fetch added to this suite needs it too.**
+

@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, MapPin, Search, Star, Store, X } from 'lucid
 import Link from 'next/link'
 import StoreLogo from '@/components/site/StoreLogo'
 import { ColorCard } from '@/components/site/Chrome'
+import ShopperEntry from './ShopperEntry'
 import type { StoresDirectoryData } from './page'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
@@ -73,6 +74,12 @@ export default function StoresDirectory({ initial }: { initial: StoresDirectoryD
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* Customer entry point — "Log in" when signed out, the shopper's own
+          name when they hold a passport. /stores only; see ShopperEntry. */}
+      <div className="mb-6 flex justify-end">
+        <ShopperEntry />
+      </div>
+
       {/* Search + city chips */}
       <div className="mb-10">
         <div className="relative max-w-xl mx-auto">

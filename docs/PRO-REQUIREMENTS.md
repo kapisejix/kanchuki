@@ -2759,6 +2759,22 @@ Verified live (prod build + Chrome): anonymous `/my-stores` → `/login` → OTP
 on `/my-stores` signed in (the query string rides along too). Web 242/242, API 967/967 (API untouched). Detail:
 `docs/BUILD-LOG.md` §2026-09-17 (later), `docs/tasks/return-to-post-login-redirect.md` §8.
 
+**A state-aware entry point on `/stores` (built later still).** Phase A's `/login`
+was reachable only by being *intercepted* by the guard — a shopper had to already
+want a guarded page to find it — and nothing in the site acknowledged an existing
+passport once one existed. `/stores` now carries the entry point: `Log in` →
+`/login` when signed out, the shopper's own name → `/my-stores` when signed in.
+
+It is deliberately **not** in the shared `Navbar`/`Footer`. Those render on every
+statically-rendered marketing page, so a session check there would cost *every*
+page view — including `/` — one `/api/passport/me` call (the passport cookie is
+HttpOnly, so only the API can answer), and would put a customer entry point in the
+retailer-facing nav next to "Start Free Trial". `/stores` is the one genuinely
+shopper-facing surface. While the session check is in flight the component renders
+an inert reserved-height placeholder rather than `Log in`, so a signed-in shopper
+is never briefly told they are signed out. Web **249/249**; both states verified
+live in Chrome. Detail: `docs/BUILD-LOG.md` §2026-09-17 (later still).
+
 ---
 
 ## 33. F-037 Customer Engagement Enhancements + Admin Behavior Analytics — 🔴 PLANNED
