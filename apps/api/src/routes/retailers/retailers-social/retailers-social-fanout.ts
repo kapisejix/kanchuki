@@ -22,9 +22,8 @@
 // Validation errors (bad item counts, unknown media, IG+link-only, mixed
 // carousel media) throw a 400 with NO rows written. Publish failures per
 // target are recorded as FAILED rows and surfaced in the results.
-import { decryptSecret, prisma } from '@kanchuki/db';
+import { prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
-import { z } from 'zod';
 import {
   MetaApiError,
   publishFacebookCarousel,
@@ -38,84 +37,15 @@ import { claimSocialPostId } from '../../../lib/social-post-idempotency.js';
 import { buildCollectionUrl, buildProductUrl, buildStoreUrl } from '../../../lib/store-urls.js';
 import { isRealOwner } from '../../../plugins/auth.js';
 import { forbidden, validationError } from '../../../plugins/error-handler.js';
+import {
+  GENERIC_PUBLISH_ERROR,
+  accountToken,
+  createOrReconcilePost,
+  createPostedRowWithRetry,
+  toResultRow,
+} from './retailers-social-fanout-rows.js';
+import { PUBLISH_LIMIT, assertPostShape, bodySchema } from './retailers-social-fanout-schema.js';
 import { publishInstagramPhoto } from './retailers-social-helpers.js';
-
-// R-15: 30 publish requests per retailer per hour (each fan-out request is one
-// unit regardless of target count). The DB is the record of truth; this route
-// rate limit is the coarse throttle on top of the global IP limiter.
-const PUBLISH_LIMIT = { max: 30, timeWindow: 60 * 60 * 1000 };
-
-const itemSchema = z.object({
-  product_id: z.string().min(1).optional(),
-  photo_id: z.string().optional(),
-  video_id: z.string().optional(),
-  // IMAGE posts carry the watermarked design's public URL instead of a
-  // product ref (no photo/video lookup).
-  image_url: z.string().url().optional(),
-});
-
-const bodySchema = z
-  .object({
-    client_post_id: z.string().min(8).max(100),
-    post_type: z.enum(['SINGLE_PRODUCT', 'CAROUSEL', 'COLLECTION_LINK', 'IMAGE']),
-    targets: z.array(z.string().min(1)).min(1),
-    items: z.array(itemSchema).max(10).optional(),
-    collection_id: z.string().optional(),
-    link_type: z.enum(['none', 'collection', 'storefront', 'product']).default('none'),
-    link_product_id: z.string().optional(),
-    caption: z.string().max(2200).optional(),
-    // Admin post template (T-9.6): the client prefills post_type + caption
-    // from it for display; the server re-resolves the caption authoritatively
-    // and bumps usage_count on publish (§11.2/§11.4).
-    template_id: z.string().optional(),
-  })
-  .strict();
-
-type PostBody = z.infer<typeof bodySchema>;
-
-// Cross-field rules per post_type (mirrors the composer client validation):
-//   SINGLE_PRODUCT — exactly 1 product item; link resolves from items/link_*.
-//   CAROUSEL       — 2..10 product items, photos only (R-10/R-16; video_id
-//                    rejected).
-//   COLLECTION_LINK— no items; collection_id required; link_type 'collection'.
-//   IMAGE          — exactly 1 item carrying image_url, never a product ref.
-function assertPostShape(body: PostBody): void {
-  const { post_type } = body;
-  if (post_type === 'COLLECTION_LINK') {
-    if ((body.items ?? []).length > 0)
-      throw validationError('A collection link post takes no product media');
-    if (!body.collection_id) throw validationError('collection_id is required for COLLECTION_LINK');
-  } else if (post_type === 'CAROUSEL') {
-    const items = body.items ?? [];
-    if (items.length < 2 || items.length > 10) {
-      throw validationError('A carousel needs 2–10 products');
-    }
-    if (items.some((i) => i.video_id)) {
-      throw validationError('Carousels support photos only — remove the video');
-    }
-    if (items.some((i) => !i.product_id)) {
-      throw validationError('Carousels need product photos — a design image can only post alone');
-    }
-  } else if (post_type === 'IMAGE') {
-    const items = body.items ?? [];
-    const imageItem = items[0];
-    if (items.length !== 1 || !imageItem?.image_url) {
-      throw validationError('An image post takes exactly one image URL');
-    }
-    if (imageItem.product_id || imageItem.photo_id || imageItem.video_id) {
-      throw validationError('An image post takes a standalone image — no product media');
-    }
-  } else {
-    const items = body.items ?? [];
-    const productItem = items[0];
-    if (items.length !== 1 || !productItem?.product_id) {
-      throw validationError('A single product post takes exactly one product');
-    }
-    if (productItem.image_url) {
-      throw validationError('A product post takes product media — not a standalone image');
-    }
-  }
-}
 
 interface LoadedProduct {
   id: string;
@@ -685,16 +615,6 @@ export const retailersSocialFanoutRoutes: FastifyPluginAsync = async (server) =>
 
 // ── helpers ──────────────────────────────────────────────────────
 
-// Finding 4 (task doc §12): never persist a raw non-Meta error message. Only
-// MetaApiError carries a curated, user-safe message; DB/network errors
-// (hostnames, connection detail, SQL fragments) must never leak into
-// social_post.error_message or the results envelope.
-const GENERIC_PUBLISH_ERROR = 'Something went wrong while posting. Please try again.';
-
-function accountToken(encrypted: string): string {
-  return decryptSecret(encrypted);
-}
-
 function productFallbackPhoto(
   products: Map<string, LoadedProduct>,
   productId: string | null | undefined,
@@ -705,119 +625,4 @@ function productFallbackPhoto(
   const photo = product.photos.find((p) => p.is_primary) ?? product.photos[0];
   if (!photo) return null;
   return { product_id: product.id, photo_id: photo.id, kind: 'photo', url: photo.url };
-}
-
-/** One history row → the per-target result shape (shared by fresh publishes,
- * Redis dedupe replays and P2002 reconciliations so every path speaks the
- * same wire format). */
-function toResultRow(
-  p: {
-    id: string;
-    social_account_id: string;
-    platform: string;
-    status: string;
-    external_post_url: string | null;
-    error_message: string | null;
-  },
-  opts: { deduplicated: boolean },
-): Record<string, unknown> {
-  return {
-    social_account_id: p.social_account_id,
-    platform: p.platform,
-    status: p.status,
-    external_post_url: p.external_post_url,
-    social_post_id: p.id,
-    error_message: p.error_message,
-    ...(opts.deduplicated ? { deduplicated: true } : {}),
-  };
-}
-
-// The SocialPost create data we fan out — typed as Prisma's unchecked create
-// input so the reconciling write accepts it without per-call casts.
-type PostRowDraft = Parameters<typeof prisma.socialPost.create>[0]['data'];
-
-// A draft + the platform-side outcome fields attached after publish.
-type PostRowDraftWithOutcome = PostRowDraft & {
-  external_post_id?: string | null;
-  external_post_url?: string | null;
-};
-
-/**
- * Write one target's SocialPost row, reconciling a DB unique violation
- * (P2002 — a concurrent twin already owns this (retailer, account,
- * client_post_id) row). Reconcile instead of failing:
- *   • twin row is POSTED  → the post is already live (we or the twin put it
- *     there); surface it deduplicated, never write a second row.
- *   • twin row is FAILED + our attempt actually POSTED → the post IS live,
- *     so upgrade the row (history must not claim failure for a live post).
- *   • twin row is FAILED + we failed too → surface the existing FAILED row.
- * Returns { post, deduplicated } matching toResultRow's input shape.
- */
-async function createOrReconcilePost(
-  draft: PostRowDraft,
-): Promise<{ post: PostRowDraftWithOutcome & { id: string }; deduplicated: boolean }> {
-  try {
-    const created = await prisma.socialPost.create({ data: draft });
-    return { post: created as PostRowDraftWithOutcome & { id: string }, deduplicated: false };
-  } catch (err) {
-    const isUniqueViolation =
-      typeof err === 'object' && err !== null && (err as { code?: string }).code === 'P2002';
-    if (!isUniqueViolation) throw err;
-    const existing = await prisma.socialPost.findFirst({
-      where: {
-        retailer_id: draft.retailer_id,
-        social_account_id: draft.social_account_id,
-        client_post_id: draft.client_post_id,
-      },
-    });
-    if (!existing) throw err; // vanished between create + read — surface original
-    if (existing.status === 'FAILED' && draft.status === 'POSTED') {
-      // Our publish landed but the twin's row says FAILED — upgrade it so the
-      // live post is recorded as POSTED with the platform ids we received.
-      const upgraded = await prisma.socialPost.update({
-        where: { id: existing.id },
-        data: {
-          status: 'POSTED',
-          external_post_id: draft.external_post_id ?? null,
-          external_post_url: draft.external_post_url ?? null,
-          error_message: null,
-        },
-      });
-      return {
-        post: upgraded as PostRowDraftWithOutcome & { id: string },
-        deduplicated: true,
-      };
-    }
-    return {
-      post: existing as PostRowDraftWithOutcome & { id: string },
-      deduplicated: true,
-    };
-  }
-}
-
-/**
- * Bounded-retry wrapper for the POSTED row write only. Finding 4: once the
- * platform accepted the post (Phase 2 reached), the post IS live — a transient
- * DB blip must not drop the history row, and must never become a FAILED row.
- * P2002 reconciles inside createOrReconcilePost (returns the twin, no throw),
- * so a throw here is a genuine non-unique DB error — retry briefly, then
- * rethrow so the caller surfaces a transient 500 (the client retries with the
- * same client_post_id and idempotency replays — no double post).
- */
-async function createPostedRowWithRetry(
-  draft: PostRowDraft,
-  attempts = 3,
-): Promise<{ post: PostRowDraftWithOutcome & { id: string }; deduplicated: boolean }> {
-  let lastErr: unknown;
-  for (let attempt = 0; attempt < attempts; attempt++) {
-    try {
-      return await createOrReconcilePost(draft);
-    } catch (err) {
-      lastErr = err;
-      // P2002 never escapes createOrReconcilePost — this is a transient DB
-      // error; back off briefly and try again before giving up.
-      await new Promise((resolve) => setTimeout(resolve, 50 * (attempt + 1)));
-    }
-  }
-  throw lastErr;
 }
