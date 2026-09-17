@@ -2297,3 +2297,41 @@ Both guards run against all five real AABs: `check-aab-ad-id.mjs` **passes versi
 
 **Still open:** the Play Console declaration itself (*App content → Advertising ID → No*), which only the owner can answer; the RECORD_AUDIO removal is verified in the **source** manifest only (the merged proof needs a build, deliberately not triggered); and the versionCode 4 release stays blocked until the declaration is saved.
 
+## BUILT 2026-09-17 — F-036 Phase A: customer PWA visited-store list + installable home-screen icon (CLAUDE.md row #73)
+
+Spec `docs/tasks/customer-pwa-store-list-and-push-notifications.md`; requirement `docs/PRO-REQUIREMENTS.md` §32. **Phase A only** — Phase B (Web Push) is deliberately not started, so there is no `PushSubscription` model and no `push` handler in the service worker. **Zero files under `apps/mobile`.**
+
+The feature sits on identity work already shipped (`CustomerAccount`/`CustomerStoreVisit`, migrations `079`–`081`) — Phase A is the missing *surface*, not new identity.
+
+| Piece | File | What it does |
+|---|---|---|
+| Visited-store page | `apps/web/src/app/(shopper)/my-stores/page.tsx` | Lists the passport's `CustomerStoreVisit` rows, newest first. The `My Stores` nav link in `(shopper)/layout.tsx` existed already and pointed at a 404 until this landed. |
+| Mapping / formatting | `…/my-stores/lib.ts` | Pure `mapStoreVisits` + `formatLastVisit` — drops malformed rows, never accumulates across renders, re-sorts defensively |
+| API field | `apps/api/src/routes/public/passport/passport-stores.ts` | Adds `public_slug` to the `retailer` select — the storefront key each row links to |
+| Installed-icon entry point | `apps/web/public/manifest.json` | `start_url` `/` → `/my-stores` |
+| Install CTA | `apps/web/src/lib/install-prompt.ts`, `apps/web/src/components/InstallPrompt.tsx` | Captures `beforeinstallprompt`, offers our own button |
+| CTA mount points | `PassportSheet.tsx` (below the primary action), `my-stores/page.tsx` (non-empty list), capture listener in `app/layout.tsx` | Shown at the two "just verified a visit" moments |
+| Tests | `passport-stores.test.ts` (5), `my-stores/__tests__/{lib,page}.test.tsx` (10 + 8), `install-prompt.test.ts` (20), `InstallPrompt.test.tsx` (9), `manifest.test.ts` (3) | — |
+
+### `start_url`: the plain route, not a smart redirect
+
+Chose `start_url: "/my-stores"` — the list always, **not** the "single-store visitor goes straight to that store" variant the task doc offered as the alternative. The list already handles all three cases (no visits / one row / many rows), so every installed icon follows one code path that has to work anyway; a redirect adds a second per-launch branch whose failure modes (landing on the wrong store, or a loop for a zero-visit shopper) are worse than one extra tap for the single-store case. It is also a one-line manifest change with no server work, so it could ship inside Phase A instead of waiting on a routing decision. Worth revisiting once real launch data exists.
+
+### The install event has to be captured at startup, not in an effect
+
+`beforeinstallprompt` is the only way to drive installation from our own button (`preventDefault()` suppresses Chrome's mini-infobar and keeps the event promptable), and Chrome dispatches it **once per page load**, as soon as it decides the site is installable — typically before React hydrates. Both CTA mount points render only after an async step (the passport lookup in `ContactGate`, the stores fetch on `/my-stores`), so a listener added in a component effect missed the event on exactly the visits the CTA exists for, and the button silently never appeared.
+
+Fixed by attaching the listener at **module scope** in `lib/install-prompt.ts` (`ensureInstallPromptCapture`, idempotent per target) plus an inert `InstallPromptCapture` in the root layout whose only job is to pull that module into the initial client bundle; the component now subscribes to captures instead of owning the DOM listener. `preventDefault()` is consequently called sitewide, which is intended — the omnibox install icon and the browser menu entry are unaffected by it, so holding the event costs nothing where no CTA renders, while a missed event cannot be recovered.
+
+### Verification
+
+`apps/web` tsc clean, **178/178 tests** (28 files, +15); `apps/api` tsc clean, **967/967** (75 files, incl. 5 new passport-stores tests). The startup-capture regression test was confirmed **sensitive** rather than assumed: with the module-scope registration commented out it fails (`expected "preventDefault" to be called at least once`), and passes with it restored.
+
+Task 4 confirmations: a row links to `/{public_slug}` → the pre-existing `[store]/page.tsx` (resolved by `public_slug` in `public-retailers-storefront.ts`, rendering the existing `CollectionView` behind the existing `ContactGate`) — `[store]` and `ContactGate` are **not in the diff**, so the tap-through is the same page a QR scan or a WhatsApp share opens; the diff touches **no** share/WhatsApp file; **zero** files under `apps/mobile`. Also checked rather than assumed: `/my-stores` is a static segment that outranks `[store]`, but no retailer slug can collide with it — `generateCollectionSlug` always appends a 4-char random suffix.
+
+### Known issues (filed, not fixed here)
+
+- **`return_to` is written but never read** — `docs/tasks/return-to-post-login-redirect.md`. Pre-existing and now more visible: an installed-icon launch with an expired cookie bounces to `/`, which has no login surface (the only passport OTP entry point in the customer web app is a store catalog page). Deliberately not bundled into this diff.
+- **No live browser run.** The tap-through chain is verified by reading route resolution plus unit/component tests; no one has clicked a row in a real browser, and the task's own acceptance test (anonymous → bounce → OTP → back on `/my-stores`) cannot pass until the item above is fixed.
+- **Phase C still owns iOS.** Phase A ships no "Add to Home Screen" banner; Safari 16.4+ requires the PWA be installed before it can receive push at all, so that enforcement belongs with Phase B/C.
+

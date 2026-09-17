@@ -1,5 +1,6 @@
 'use client';
 
+import { InstallPrompt } from '@/components/InstallPrompt';
 import { motion } from 'framer-motion';
 import { Loader2, ShieldCheck } from 'lucide-react';
 import Image from 'next/image';
@@ -155,6 +156,15 @@ export function PassportSheet({ slug, profile, account, onSuccess }: Props) {
             </>
           )}
         </button>
+
+        {/*
+          * F-036 Phase A: this sheet is what a shopper sees the moment their
+          * first store visit is verified — the one moment where "put Kanchuki
+          * on your home screen" is a sensible ask. Sits below the primary
+          * action so it never competes with entering the catalog, and renders
+          * nothing on browsers that cannot install (or once dismissed).
+          */}
+        <InstallPrompt className="mt-3" />
       </motion.div>
     </motion.div>
   );

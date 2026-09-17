@@ -2603,7 +2603,10 @@ only).
 
 ---
 
-## 32. F-036 Customer PWA — Home-Screen Icon, Visited-Store List & Push Notifications — 🔴 PLANNED
+## 32. F-036 Customer PWA — Home-Screen Icon, Visited-Store List & Push Notifications — 🟨 PHASE A ✅ BUILT; PHASES B–D 🔴 PLANNED
+
+**Phase A built 2026-09-17** — see §32.7. Phases B (push), C (iOS parity), and
+D (consent/mute + retailer visibility) are not started.
 
 **Written 2026-09-17 on owner request.** Full research, technical mechanics,
 platform limitations, and precedent analysis:
@@ -2687,6 +2690,51 @@ Replacing WhatsApp as the primary retailer-to-customer channel; push for
 customers without a verified passport; native app / app-store distribution;
 push delivery-guarantee SLAs (Web Push is best-effort, same as every other
 implementation of it).
+
+### 32.7 Phase A — ✅ BUILT 2026-09-17
+
+Full build detail: `docs/BUILD-LOG.md` §2026-09-17.
+
+**Shipped.** `/my-stores` lists every `CustomerStoreVisit` for the signed-in
+passport, newest first, each row tapping through to the store's existing
+`/{public_slug}` catalog. `public_slug` was added to the passport-stores API
+select so a row has something to link to. `manifest.json` `start_url` now points
+at `/my-stores`, so an installed icon opens the store list instead of the
+marketing home page. An install CTA (our own button, not the browser's) appears
+at the two moments a visit is confirmed: the returning-shopper passport sheet,
+and a non-empty store list.
+
+**`start_url` decision — plain route, not a smart redirect.** The task doc
+offered "single-store visitor → straight to that store" as an alternative; that
+was **not** taken. The list already renders all three cases (no visits / one row /
+many rows), so one code path that has to work regardless beats a second
+per-launch branch whose failure modes — landing on the wrong store, or looping
+for a zero-visit shopper — are worse than one extra tap in the single-store
+case. It is also a one-line manifest change with no server work. Revisit against
+real launch data.
+
+**Non-obvious implementation constraint — the install event is captured at
+module scope, not in a component effect.** Chrome fires `beforeinstallprompt`
+once per page load, before hydration, and both CTA mount points render only
+after an async step (the passport lookup, the stores fetch). A listener attached
+in an effect therefore missed the event on exactly the visits the CTA exists for
+and the button silently never appeared; the listener is now attached when
+`lib/install-prompt.ts` enters the client bundle, with an inert
+`InstallPromptCapture` in the root layout pulling it into the initial bundle.
+`preventDefault()` is consequently called sitewide — intended, since the omnibox
+install affordance is unaffected, while a missed event cannot be recovered.
+
+**Verification.** `apps/web` tsc clean + 178/178 tests; `apps/api` tsc clean +
+967/967. The startup-capture test was proven to fail with the fix disabled.
+`[store]` and `ContactGate` are not in the diff (the tap-through opens the same
+page a QR scan does), no WhatsApp/share file is touched, and zero files under
+`apps/mobile` changed.
+
+**Known residual (filed, not fixed):** `return_to` is written by the
+`(shopper)` layout guard and read nowhere, so an installed-icon launch with an
+expired cookie lands on `/`, which has no login surface —
+`docs/tasks/return-to-post-login-redirect.md`. Pre-existing (it also affects
+`/my-profile`) and made more visible by the `start_url` change.
 
 ---
 

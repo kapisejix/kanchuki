@@ -18,7 +18,9 @@ export const passportStoresRoutes: FastifyPluginAsync = async (server) => {
       where: { customer_account_id: session.customer_account_id },
       include: {
         retailer: {
-          select: { id: true, shop_name: true, city: true, logo_url: true },
+          // public_slug is the storefront key (apps/web `/[store]`) — the
+          // /my-stores list needs it to build each row's tap-through link.
+          select: { id: true, shop_name: true, city: true, logo_url: true, public_slug: true },
         },
       },
       orderBy: { last_visited_at: 'desc' },

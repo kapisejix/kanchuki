@@ -1,6 +1,9 @@
 import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import localFont from 'next/font/local'
+// F-036 Phase A: pulls the install-event capture listener into the initial
+// client bundle (renders nothing). See the comment in lib/install-prompt.ts.
+import { InstallPromptCapture } from '@/components/InstallPrompt'
 import './globals.css'
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' })
@@ -141,7 +144,10 @@ export default async function RootLayout({
         )}
         <style>{`:root{--color-ink:${primaryColor}}`}</style>
       </head>
-      <body className="font-sans">{children}</body>
+      <body className="font-sans">
+        <InstallPromptCapture />
+        {children}
+      </body>
     </html>
   )
 }
