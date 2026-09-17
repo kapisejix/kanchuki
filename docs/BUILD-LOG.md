@@ -2405,3 +2405,111 @@ Live, prod build + Chrome (new `e2e/customer-stores-directory.spec.ts`): `/store
 
 This is the first call in the customer e2e suite made by the **browser** directly to the API origin — the passport calls go through the same-origin `/api/passport/*` proxy. `localhost:3100` → `127.0.0.1:3001` is cross-origin, and the stub sent no `Access-Control-Allow-Origin`, so Chrome silently dropped the response and the directory rendered its error state while the entry point (proxy-based) worked fine — a failure that looks like "the page is broken" rather than "the stub is incomplete". Diagnosed by grepping the inlined URL out of the built client chunk (`127.0.0.1:3001`, so the config pin was working and the URL was never the problem) rather than by guessing. The stub now sends CORS headers; **any future browser-side API fetch added to this suite needs it too.**
 
+---
+
+## BUILT 2026-09-17 (latest) — hardening pass over the `/stores` entry point: shared e2e stub, two real defects found, phone/tablet verification
+
+Following an owner request to check for errors, bugs, lint, design consistency and root-cause-class regressions before this reaches a live run. Three of the five items below were **found by the checks**, not fixed before them.
+
+### 1. The CORS trap is now structural, not a comment (`e2e/support/api-stub.ts`)
+
+All three customer specs had grown their own copy of the stub server, and only the newest sent `Access-Control-Allow-Origin` — the trap that had already cost a debugging cycle earlier the same day. New `e2e/support/api-stub.ts` owns the plumbing: `createStubServer` applies CORS to **every** response (including 404s) and answers `OPTIONS` before any route sees it, plus `listenStub`/`closeStub` (the EADDRINUSE hint that previously lived in only one spec) and a shared `json()` helper. All three specs now build stubs through it, so a spec author **cannot forget the header** by adding a route, and the pattern anyone copies has it already. Each spec's route bodies are unchanged; the duplicated `API_STUB_PORT`/`API_STUB_ORIGIN` declarations were removed so the port is defined once (the helper's listen and the spec's request-logging can no longer disagree).
+
+### 2. Defect found — an outbound call with no deadline (`passport-client.ts`, RC-011's class)
+
+`getPassport()` awaited `fetch('/api/passport/me')` with **no timeout**. Everything awaiting it is UI state: a hung `/me` would leave the `(shopper)` guard never redirecting and the `/stores` entry point permanently on its placeholder — no error, no toast, just a page that stays half-alive. Now bounded by `AbortSignal.timeout(10_000)`, landing in the existing catch so callers get a definite “not signed in”. This helper had **no test file at all**; it now has 7 (`src/lib/__tests__/passport-client.test.ts`) covering the bound (asserted at the `AbortSignal.timeout` factory, since the returned signal doesn't expose its deadline), a timeout resolving to `null` rather than throwing, credentials/no-customer-id, and the cache's negative/positive semantics.
+
+### 3. Defect found — two off-system design states (`ShopperEntry.tsx`)
+
+- **No `focus-visible` state.** The site's own CTA pattern (`Chrome.tsx`) is `focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-<token> focus-visible:ring-offset-2`, and the search field directly below uses `cobalt-500`. The entry point was the one keyboard-reachable control on the page without a ring; it now matches, with `ring-offset-cream` (the `/stores` shell is cream via `Navbar`/`PageHero`/`Section`).
+- **36px tall, next to a 48px search field.** Bumped to 40px (`h-10`), matching the marketing pills (`px-5 py-2.5 text-sm`). The reserved-height placeholder moved with it.
+- **Residual, not fixed:** the `· My Stores` suffix uses `text-carbon/50` at `text-xs`, which is below AA contrast for small text. It is the house pattern (19 occurrences in `apps/web/src`), so changing the one instance would fork the system; it is a repo-wide contrast question, recorded rather than silently diverged from.
+
+### 4. Flake found and root-caused — the request-log assertion sampled a cache-warm first paint
+
+One of three full-suite runs failed on `GET /v1/public/stores` being absent from the stub's log while the store card was visibly rendered. Written up as **RC-024**: `/stores` is `revalidate = 300`, Next's Data Cache lives on disk (`.next/cache/fetch-cache/<hash>` — confirmed to hold that URL, and `turbo build --force` does not clear it), so a cache-warm run serves a first paint with **no network call**, leaving the client's mount fetch still in flight when the assertion sampled the log. Two competing explanations were eliminated by evidence (no `.next/` artifact contains the store name; the client effect has no `initial` guard). The assertion now `expect.poll`s the joined log — which also makes the claim stronger, since the test waits for the browser's cross-origin call instead of noticing one had arrived.
+
+### 5. Phone + tablet verification of the directory and the catalog (new, and it passes)
+
+Both surfaces are now exercised at **390×844 (phone)** and **820×1180 (tablet)**: `horizontalOverflow()` (document scroll width vs viewport) plus the real content assertions, with no horizontal overflow and no page errors on either surface at either size. Three things make that result trustworthy rather than decorative:
+
+- **The detector is proven to fail.** A dedicated test injects a 2000px element and requires the measurement to see it — necessary because this page runs **Lenis** smooth scrolling, whose stylesheet sets `overflow: hidden` in some states, and a clipped container would let `scrollWidth` report nothing while content spills. It fired as designed.
+- **Page errors are captured, not assumed.** `page.on('pageerror')` in every new test, so a component that throws while still rendering something (RC-014's shape) fails instead of passing.
+- **Stub payloads are typed.** `DIRECTORY` and `ACCOUNT` are annotated with the app's own `StoresDirectoryData`/`PassportAccount`, so a field rename fails `tsc` here rather than leaving the spec green against a shape the app no longer accepts (the RC-008 class — the spec's fixture was previously hand-written and untyped).
+
+### 6. The entry point's destinations are actually clicked (RC-005/RC-006's class)
+
+Both states now click through in the browser: `Log in` → `/login` with a usable phone field, and the shopper's name → `/my-stores` rendering a real row from the passport API. An `href` assertion alone is the shape that shipped twice in this repo as "the link goes nowhere" (RC-005, RC-006) — a unit test cannot see it.
+
+**Verification:** web tsc clean · **256/256** unit (was 249) · `pnpm lint` 6/6 · all five CI guard scripts · **19/19** customer e2e across the three specs, **twice consecutively** (RC-019: the run type that exposes a flake, not a single `-g` run). Root cause recorded as RC-024.
+
+---
+
+## BUILT 2026-09-17 (console + responsive sweep) — every customer surface checked at phone and tablet, behind a console-error backstop that found two pre-existing defects
+
+**Why:** the earlier pass verified layout with `pageerror` only, and sized two surfaces. That misses two whole classes — a console error the app *swallows* (a hydration mismatch, a rejected fetch) fails nothing and is invisible, and "the catalog" is five routes, not two.
+
+| Piece | Change |
+|---|---|
+| `e2e/support/responsive.ts` | **new** shared helper: `PHONE`/`TABLET`/`VIEWPORTS`, `watchClientErrors()` (pageerror **plus** filtered console errors, with everything ignored reprinted in every failure message), `expectNoHorizontalOverflow`, `expectFullyInViewport` |
+| three customer specs | refactored onto it, with per-surface phone/tablet checks: `/stores` directory, `/login`, `/my-stores` list, `/{store}` catalog, `/{store}/{collection}` + the product detail sheet |
+| spec stubs | `promotions` served (and `reviews/product` + `showcase-designs` in the collection spec) — real proxy routes whose missing upstream made the browser log 404s the app handles by design |
+
+**What the sweep found**
+
+1. **RC-025 · `view` tracking has never worked on the web.** `CollectionView` POSTs `{apiBasePath}/view` with a comment saying it exists "so the retailer's dashboard 'Views' stat increments"; the API endpoint, the `CollectionView` model and the dashboard reader (`retailers-stats.ts`) all exist — but the web proxy route between client and API **never did** (`git log --all` finds none). Web storefront views have never been counted. **Open** — needs a decision (restore the route, or drop the call).
+2. **RC-025 · the `checkout-status` call outlived its route.** The proxy was deleted deliberately with checkout in `76c5acdb` (#15); the effect calling it stayed behind. Dead code — it can only ever leave `checkoutEnabled` at its initial `false`.
+3. **The sheet's enquiry CTA starts below the fold on a 390×844 phone** (measured: bottom edge ~892px against an 844px viewport). It is not stranded — it is the last block inside the sheet's `overflow-y-auto` body — so the test now asserts what actually matters: `scrollIntoViewIfNeeded()` brings it fully into view. "It's inside a scroll container" would have been a claim read off the CSS, which is the sort of reading this repo has been wrong about before.
+
+**Tap-target and token checks (the "design ratio" pass):** directory entry 40px (the site's pill height), store-list row ≥44px, login phone field ≥40px, and the sheet's close button fully inside the viewport at both sizes.
+
+**Residual, deliberate:** the entry point's `· My Stores` suffix is `text-carbon/50` at `text-xs`, below AA contrast for small text — it is the house pattern (19 occurrences in `apps/web/src`), so changing one instance forks the system. Recorded rather than silently diverged from.
+
+**Verification:** web tsc clean · **256/256** unit · `pnpm lint` 6/6 · all guard scripts · **25/25** customer e2e (was 19) across three specs, **twice consecutively** (RC-019's lesson: a lone `-g` run is not a signal). Mid-pass `tsc` caught one genuine break — a `VIEWPORTS` const deleted without importing its replacement — which is why the typecheck runs before every browser run.
+
+---
+
+## FIXED 2026-09-17 — RC-025 closed: the `view` proxy route that never existed, and the `checkout-status` call that outlived its deleted route
+
+Both were found by the console-error backstop above, on the same page every shopper opens.
+
+| Piece | Change |
+|---|---|
+| `apps/web/src/app/api/[store]/[collection]/view/route.ts` | **new** — the proxy that never existed, so the retailer "Views" stat (`retailers-stats.ts` → `prisma.collectionView.count`) counts web storefront traffic for the first time |
+| `apps/web/src/app/api/c/[slug]/view/route.ts` | **new** — legacy twin; CollectionView picks the `/api/c/{slug}` base path whenever a page has no store segment |
+| `CollectionView.tsx` | dead `checkout-status` effect and its `checkoutEnabled` state removed |
+| `ProductDetailSheet.tsx` | unused `checkoutEnabled` prop removed — declared and destructured, never read, so checkout's UI was already gone and only the pointless fetch remained |
+| `sw.ts` runtime matcher | stale `checkout-status` entry dropped (it cached requests to a route that no longer exists) |
+| specs + `support/responsive.ts` | stubs serve the view endpoint; **the named RC-025 console exclusion is deleted**, so these pages are held to a clean console with no exceptions |
+| 6 new unit tests | canonical route (4) + legacy (2): upstream URL, forwarded body, bodyless POST, and 204-when-the-API-is-down |
+
+**Proof the wiring is real, not merely quiet:** `customer-my-stores.spec.ts` polls the stub's request log for a `POST /v1/public/collections/*/view`, so it fails if the ping stops crossing the proxy. That was checked for teeth — pointing the new route at a wrong upstream path failed it with its own message, then the change was reverted. Polled rather than sampled because the call is fire-and-forget: the upstream request lands *after* the route answers the browser, which is RC-024's trap.
+
+**Residual, measured rather than assumed:** a proxied view records the **web server's** `ip_hash`, not the shopper's, because the API hashes `request.ip` on its own incoming request. The count the dashboard shows is unaffected; per-shopper hashing would mean trusting `x-forwarded-for` in the API (`trustProxy`) — a separate trust-boundary decision, left alone.
+
+**Verification:** web tsc clean · **262/262** unit (was 256) · `pnpm lint` 6/6 · all guard scripts · customer e2e **25/25** with the console exclusion removed.
+
+---
+
+## BUILT 2026-09-17 (final sweep) — remaining customer surfaces sized, RC-026 filed and fixed, and the photo harness that had been letting sizing tests pass over broken images
+
+**Why:** three surfaces were still unsized, and removing the last console exclusion turned out to expose a *method* problem rather than another app bug — the suite was measuring photo grids whose photos had all failed to load.
+
+| Piece | Change |
+|---|---|
+| `customer-collection.spec.ts` | phone/tablet checks for the **legacy `/c/{slug}` redirect** (does it land on something *usable*, not merely on the right URL?) and for the **Suits-Designs browse + permalink**, the two surfaces a shared link on a phone actually reaches |
+| `customer-my-stores.spec.ts` | phone/tablet check for **`/my-profile`** |
+| `e2e/support/images.ts` | **new** `stubFixtureImages()` — serves both paths to the fixture host |
+| `e2e/support/responsive.ts` | **new** `expectRenderedImage()`; the `/cdn-e2e\.r2\.dev\|_next/image` console exclusion **deleted** |
+| `src/__tests__/e2e-api-stub.test.ts` | **new** — 11 tests guarding the harness itself (5 real requests against the stub, 3 static scans, 3 self-proofs) |
+
+**RC-026 · the personalization opt-out on `/my-profile` saved nothing and said nothing.** `/my-profile` sends `PUT /api/passport/preferences`; the proxy allowed only `GET`/`POST` and its path allowlist omitted `preferences`, so it could only ever answer `405`. The half that made it silent: **`fetch` does not throw on a non-2xx**, so the handler's `catch` never ran and the component kept the toggled state. The API side was complete throughout. Fixed by collapsing the per-verb copies into one `forward()` used by all three verbs (the duplication is exactly how `PUT` came to be missing), adding `preferences`, and making the client check `res.ok` and roll the toggle back. A DPDP-visible defect — a shopper exercised a data-protection opt-out and the platform quietly kept the older setting. Recorded as **RC-026**.
+
+**The harness finding — a green test that was checking less than it read like.** `next/image` fetches remote photos through `/_next/image`, and that fetch happens *inside `next start`*, where browser routing cannot reach it. The fixture host is fake, so the optimizer answered 500 and every product photo in a sizing test was a **broken box**: `<img>` keeps its width/height, so `toBeVisible()` passed, `expectNoHorizontalOverflow` passed, and “the catalog holds up on phone” was measured against a page whose photos had all failed. The tell was an allowlist entry excusing “the fixture photo host the harness does not serve” — the exclusion was the symptom. Both paths are now served (the optimizer, **and** the raw host, because the designs permalink deliberately renders the watermarked file with a plain `<img>` so the optimiser never re-encodes it), `expectRenderedImage` asserts decoded pixels, the exclusion is gone, and **upstream image failures in the run log went from 4+ per run to zero**.
+
+**A comment in my own work claimed a guard that did not exist.** `e2e/support/api-stub.ts` says a test “fails the build if a spec goes around this helper”. No such file existed. It does now — 5 tests making real requests to pin the CORS headers (including the preflight and a 404, since an unheadered 404 is an opaque network error to the page), plus 3 static scans. The scans are **pure functions** fed crafted sources in a self-proof block, so “this guard would actually catch it” is asserted on every run instead of being verified once by hand and trusted thereafter. The first run proved the point: the optimizer scan matched a **comment** explaining `/_next/image`, so it is now anchored on the `route(...)` call — a guard that fires on prose gets weakened to quiet it, which is how guards die.
+
+**Verification:** web tsc clean · **279/279** unit (was 262; +11 harness guard, +6 passport route) · `pnpm lint` 6/6 · all four CI guard scripts · customer e2e **32/32** across three specs, **twice consecutively**, with the console check now strict everywhere including the tap-through test — and **zero** upstream image failures (was 4+ per run).
+
+**Residual, measured not assumed:** 820×1180 portrait only (no landscape, no 320px); installability is still `in-incognito` because Chrome gives no verdict under Playwright; and the tap-through/designs photos load from a 64×80 stub, so layout is proven structurally rather than at real aspect ratios.
+
