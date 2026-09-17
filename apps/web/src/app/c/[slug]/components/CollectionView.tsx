@@ -105,19 +105,9 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
     } catch {}
   }, [slug])
 
-  // F-302: Check if the retailer has online checkout enabled.
-  // Goes through the web proxy (/api/c/[slug]/checkout-status) — a relative
-  // /v1/... fetch would 404 on the web origin (no /v1 routes/rewrites) and
-  // silently leave checkout disabled for every retailer.
-  const [checkoutEnabled, setCheckoutEnabled] = useState(false);
-  useEffect(() => {
-    fetch(`${apiBasePath}/checkout-status`)
-      .then((res) => (res.ok ? res.json() : null))
-      .then((json) => {
-        if (json?.data?.checkout_enabled) setCheckoutEnabled(true);
-      })
-      .catch(() => undefined);
-  }, [apiBasePath]);
+  // (The F-302 checkout-status probe is gone: checkout was removed, its web
+  // proxy route deleted with it in 76c5acdb, and the leftover call 404'd on
+  // every page view. See RC-025.)
 
   // Fire-and-forget view tracking so the retailer's dashboard "Views" stat
   // increments. The /view endpoint writes a CollectionView row server-side.
@@ -518,7 +508,6 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
               retailer={collection.retailer}
               collectionTitle={collection.title}
               isFavorited={favorites.has(selectedProduct.id)}
-              checkoutEnabled={checkoutEnabled}
               slug={slug}
               store={store ?? null}
               onFavorite={toggleFavorite}

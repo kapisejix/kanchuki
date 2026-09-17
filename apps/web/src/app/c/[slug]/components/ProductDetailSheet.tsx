@@ -43,7 +43,6 @@ interface Props {
   retailer: PublicCollection['retailer']
   collectionTitle: string
   isFavorited: boolean
-  checkoutEnabled: boolean
   slug: string
   // Store URL segment (public_slug). Null = legacy /c/{slug} URLs.
   store?: string | null
@@ -60,7 +59,6 @@ export function ProductDetailSheet({
   retailer,
   collectionTitle,
   isFavorited,
-  checkoutEnabled,
   slug,
   store,
   onFavorite,

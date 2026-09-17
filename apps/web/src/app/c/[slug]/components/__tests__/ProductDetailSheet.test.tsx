@@ -117,7 +117,6 @@ describe('ProductDetailSheet Related Products strip', () => {
         retailer={RETAILER}
         collectionTitle="Festive Edit"
         isFavorited={false}
-        checkoutEnabled={false}
         slug="festive-edit"
         store="meera-sarees"
         onFavorite={() => undefined}
@@ -139,7 +138,6 @@ describe('ProductDetailSheet Related Products strip', () => {
         retailer={RETAILER}
         collectionTitle="Festive Edit"
         isFavorited={false}
-        checkoutEnabled={false}
         slug="festive-edit"
         store="meera-sarees"
         onFavorite={() => undefined}

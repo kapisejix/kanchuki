@@ -105,14 +105,15 @@ describe('CollectionView favorites survive a client-side route change', () => {
   beforeEach(() => {
     nav.reset()
     localStorage.clear()
-    // CollectionView pings the checkout status + fire-and-forgets the favorite
-    // POST — both must resolve for the assertions to be deterministic.
+    // CollectionView fire-and-forgets the view track + the favorite POST — both
+    // must resolve for the assertions to be deterministic. (The checkout-status
+    // probe is gone; its route was deleted with checkout — RC-025.)
     vi.stubGlobal(
       'fetch',
       vi.fn(async () => ({
         ok: true,
         status: 200,
-        json: async () => ({ data: { checkout_enabled: false } }),
+        json: async () => ({ data: {} }),
       })),
     )
   })

@@ -49,7 +49,7 @@ const serwist = new Serwist({
     {
       matcher: ({ url }) =>
         url.pathname.startsWith('/api/c/') ||
-        /^\/api\/[^/]+\/[^/]+\/(products|favorite|checkout-status)$/.test(url.pathname) ||
+        /^\/api\/[^/]+\/[^/]+\/(products|favorite)$/.test(url.pathname) ||
         /^\/api\/[^/]+\/categories\/[^/]+\/products$/.test(url.pathname) ||
         /^\/api\/[^/]+\/products$/.test(url.pathname),
       handler: new StaleWhileRevalidate({ cacheName: 'collection-api' }),
