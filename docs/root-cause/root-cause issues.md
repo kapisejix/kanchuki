@@ -13,7 +13,7 @@
 ## RC-026 — The personalization opt-out on /my-profile saved nothing and said nothing (a DPDP consent control failing silently)
 
 - **Component:** `apps/web/src/app/api/passport/[...path]/route.ts` (the path allowlist and the exported verbs); `apps/web/src/app/(shopper)/my-profile/page.tsx` (the opt-out toggle)
-- **Commit:** found 2026-09-17 while sizing `/my-profile` for phone/tablet; **fixed the same day** (uncommitted — this session)
+- **Commit:** found 2026-09-17 while sizing `/my-profile` for phone/tablet; fixed the same day in `216a288a`
 - **Symptom:** a shopper toggles “Personalization / profiling” off on `/my-profile`, the switch shows the new position, and nothing is persisted. No error is shown, no `pageerror`, and **no console output at all** — the failure is completely invisible from the browser, the server log, and the e2e suite.
 - **Root cause:** a missing verb and a missing allowlist entry, each harmless alone.
   1. The page sends `PUT /api/passport/preferences`. The proxy’s `PASSPORT_PATHS` allowlist did not contain `preferences`, and it exported only `GET` and `POST` — so there was no handler for `PUT` and the request could only ever get a `405`.
@@ -32,7 +32,7 @@
 ## RC-025 — Storefront fires two calls that 404 on every page view: view tracking was never wired to a web proxy, and the checkout-status call outlived its deleted route
 
 - **Component:** `apps/web/src/app/c/[slug]/components/CollectionView.tsx` (the `checkout-status` and `view` effects, ~lines 109–130); the missing `apps/web/src/app/api/[store]/[collection]/view/route.ts`
-- **Commit:** found 2026-09-17 while adding console-error capture to the customer e2e suite; **fixed the same day** (uncommitted — this session)
+- **Commit:** found 2026-09-17 while adding console-error capture to the customer e2e suite; fixed the same day in `6bebc83d`
 - **Symptom:** every storefront page view logs `404 /api/{store}/{collection}/view`, `404 /api/{store}/{collection}/checkout-status` and `404 /api/{store}/promotions` to the browser console. Invisible until the new console check in `e2e/support/responsive.ts` existed, because the suite previously captured only `pageerror` — and the app swallows these fetches in `.catch(() => undefined)`, so nothing else ever surfaced them.
 - **Root cause — three separate ones, only two of them app code:**
   1. `POST {apiBasePath}/view` — the client's own comment states the purpose ("so the retailer's dashboard 'Views' stat increments"), and every other link in that chain is real: the dashboard reads it (`apps/api/src/routes/retailers/retailers-stats.ts:28,98` → `prisma.collectionView.count`), the API endpoint writes a deduped row (`POST /v1/public/collections/:slug/view`), and the `CollectionView` model is still in the schema. **The web proxy route between client and API has never existed** — `git log --all -- '*api*view/route.ts'` returns nothing — so web storefront views have never been counted at all.
@@ -50,8 +50,8 @@
 
 ## RC-024 — E2E assertion sampled a cache-warm first paint, failing intermittently while the UI was visibly correct
 
-- **Component:** `apps/web/e2e/customer-stores-directory.spec.ts` (the "signed-out visitor" test)
-- **Commit:** (uncommitted — this session)
+- **Component:** `apps/web/e2e/customer-stores-directory.spec.ts` (the "signed-out visitor" test); the shared helper it exposed lives in `apps/web/e2e/support/responsive.ts`
+- **Commit:** `32fdc097`
 - **Symptom:** `expect(state.requests.filter((r) => r === 'GET /v1/public/stores').length).toBeGreaterThan(0)` failed on **one run in three** — in the same test whose assertion immediately above it (`Meera Sarees` visible) had just passed. Same file, same commit: 18/18, then 1 failed, then 19/19. A check that red-lights on a zero-code change is the most expensive kind of CI noise (same class as RC-019).
 - **Root cause:** `/stores` is declared `export const revalidate = 300`, and its SSR `fetch(…, { next: { revalidate } })` is written to **Next's Data Cache on disk** — `.next/cache/fetch-cache/<hash>` was confirmed (by grepping the cache for `v1/public/stores`) to hold that URL's response, and `turbo build --force` does not clear it. On a **cache-warm** run the server renders the page with **no network call at all**, so the store card is in the *first paint*; the client component's mount fetch is still in flight when the assertion reads the request log, which had `/v1/public/passport/me` (settled — the entry point cannot render without it) but not `/v1/public/stores`. On a **cold-cache** run the SSR fetch reaches the stub *before* the response is served, so the entry is always logged and the test passes. Two plausible explanations were tested and eliminated first: no build artifact in `.next/` contains the store name, and the client effect has no `initial`-guard — so neither "the card is server-baked from my stub data" nor "the client skips its fetch" was true.
 - **Fix:** the assertion now `expect.poll`s the joined request log until `GET /v1/public/stores` appears (15s) instead of sampling a snapshot, and polls the *joined list* so a genuine failure prints every request the stub saw. This also makes the claim stronger — the test waits for the browser's cross-origin call rather than noticing one had happened to arrive.
@@ -63,7 +63,7 @@
 ## RC-023 — Social posts default to no shop link ("None") — most posts had no way back to the store
 
 - **Component:** `apps/mobile/app/social/create.tsx` (composer `linkType` state)
-- **Commit:** (uncommitted — this session)
+- **Commit:** `1a0b9441`
 - **Symptom:** a retailer who shared a single product or carousel via the composer without manually opening the "Add link" section posted with zero way for a viewer to reach the shop — no Shop button (Meta doesn't expose one for organic photo/video posts, see RC-022) and no link at all.
 - **Root cause:** `const [linkType, setLinkType] = useState<SocialLinkType>('none')` — the composer's link card defaulted OFF, and a separate line reset it back to `'none'` whenever the post type changed away from a single product. Most retailers never opened the link toggle, so the vast majority of posts went out link-less by default.
 - **Fix:** default `linkType` to `'storefront'` (always resolves — every retailer has a `public_slug`) instead of `'none'`; the reset-on-type-change now falls back to `'storefront'` instead of `'none'` when a per-product link stops making sense (leaving SINGLE_PRODUCT for CAROUSEL/IMAGE), so a shop link survives across type switches instead of being dropped.
@@ -75,7 +75,7 @@
 ## RC-022 — Facebook Collection-Link posts (and their in-app preview) carry no photo
 
 - **Component:** `apps/api/src/routes/retailers/retailers-social/retailers-social-fanout.ts` (`POST /me/social/posts`), `apps/mobile/app/social/create.tsx` (composer preview)
-- **Commit:** (uncommitted — this session)
+- **Commit:** `1a0b9441`
 - **Symptom:** sharing a "Collection link" post (link-only sub-format) published to Facebook with no image, and the composer's own Preview section showed nothing before publishing either.
 - **Root cause:** `post_type: 'COLLECTION_LINK'` sends an empty `items` array by design (it's a link-only post) — so nothing downstream ever had a photo to work with. The API called `publishLinkPost(pageId, token, linkUrl, caption)` — a 4-arg call — even though the function accepts an optional 5th `pictureUrl` argument; the composer's `previewMedia` memo also returned `[]` whenever `post_type === 'COLLECTION_LINK'`, regardless of format. No code path ever resolved a photo for this post type at all.
   - Separately: Meta's Graph API has **no "Shop Now" CTA button for organic Page posts** (photo, video, or link) — that capability exists only for Ads and for Facebook/Instagram Shopping catalog integration (already covered by the WhatsApp/Facebook Catalog Sync feature, BUILD-LOG §49), not the general publish endpoint this composer uses. A clickable image + link is the closest equivalent the platform allows for an organic post.
@@ -88,7 +88,7 @@
 ## RC-021 — Every real-phone login sends two different OTPs from two different MSG91 senders/templates
 
 - **Component:** `apps/api/src/routes/auth.ts` (`POST /otp/send`), `apps/mobile/app/auth/phone.tsx` (`handleSend`)
-- **Commit:** (uncommitted — this session)
+- **Commit:** `1a0b9441`
 - **Symptom:** entering a real phone number produced two SMS from two different senders (e.g. `CP-KCUKI3-S` "for KANCHUKI — Sejix Technologies", the DLT-registered template, AND `CP-DSHOTP-S` "--Dash", the MSG91 widget's own default flow template) — not a duplicate of the same message (that was already fixed by RC-015's re-entrancy guard), two genuinely different codes.
 - **Root cause:** `phone.tsx`'s `handleSend` calls the backend's `/otp/send` first (to check `OTP_TEST_BYPASS`), then — for a real phone, unconditionally — also calls the native MSG91 Widget SDK's own `sendOTP`. The backend route, when the server has MSG91 credentials configured (the production case), ALREADY dispatches a real SMS via the classic v5 OTP API inside that first call (`sendOtpViaMsg91`, using `MSG91_TEMPLATE_ID` — the DLT-registered template). Nothing told the backend "the client's widget will send its own OTP, skip yours" — so both the classic-API send and the widget's independent send fired on every single real-phone request, each using its own separately-configured MSG91 template/sender.
 - **Fix:** `/otp/send` accepts an optional `widget: boolean` field. The mobile app passes `widget: true` whenever the native MSG91 widget is available (`isMsg91OtpConfigured()`); the backend then skips its own classic-API dispatch (still runs the `OTP_TEST_BYPASS` check first). If the widget's own send then fails to produce a usable `reqId`/token, the mobile app explicitly calls `/otp/send` again without the widget flag so a real OTP still goes out — exactly one SMS on both the success and fallback paths.
@@ -100,7 +100,7 @@
 ## RC-020 — OTP appears to render twice (real hidden input shows its text despite `color: transparent`)
 
 - **Component:** `apps/mobile/app/auth/otp.tsx` (the invisible-overlay `TextInput`, introduced by `0c005303` "fix(mobile): OTP keyboard never opens on Android")
-- **Commit:** (uncommitted — this session)
+- **Commit:** `1a0b9441`
 - **Symptom:** the OTP code appeared to show twice on screen — once in the app's own digit boxes, once elsewhere ("outside" the field).
 - **Root cause:** the real, focusable `TextInput` behind the digit-box UI mirrors the typed code as its own `value` and relies on `color: 'transparent'` alone to stay invisible. Once autofill (Android SMS Retriever / iOS QuickType) inserts the code, some Android OEM keyboards/autofill overlays force-render the field's actual text, ignoring the app's transparent color override — the real input briefly shows the code in its default styling on top of the app's own digit boxes, which are already showing the same digits from state.
 - **First attempt (reverted):** `importantForAutofill="no"` stopped the duplicate but also disabled autofill entirely on Android — not acceptable, autofill on both platforms is required.
