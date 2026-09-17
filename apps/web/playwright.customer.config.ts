@@ -23,7 +23,9 @@ import { defineConfig, devices } from '@playwright/test'
 // Prefer running the admin suite first, then this one.
 export default defineConfig({
   testDir: './e2e',
-  testMatch: '**/customer-collection.spec.ts',
+  // Every customer-facing spec (collection pages + /my-stores) shares this
+  // config's prod build, Chrome channel and stub-API origin.
+  testMatch: '**/customer-*.spec.ts',
   timeout: 120_000,
   fullyParallel: false,
   workers: 1,
@@ -73,6 +75,11 @@ export default defineConfig({
       // NEXT_PUBLIC_* is inlined at build time, so this must be set here —
       // it applies to both the build step and the runtime server.
       NEXT_PUBLIC_API_URL: 'http://127.0.0.1:3001',
+      // API_URL is the SSR/runtime var (see src/lib/apiUrl.ts). Pin it too:
+      // a dev machine's .env.local sets it to `localhost:3001`, and `localhost`
+      // can resolve to ::1 — which the stub, listening on 127.0.0.1, never
+      // answers. CI has no .env.local so this matches what CI already does.
+      API_URL: 'http://127.0.0.1:3001',
     },
   },
 })

@@ -2331,7 +2331,46 @@ Task 4 confirmations: a row links to `/{public_slug}` → the pre-existing `[sto
 
 ### Known issues (filed, not fixed here)
 
-- **`return_to` is written but never read** — `docs/tasks/return-to-post-login-redirect.md`. Pre-existing and now more visible: an installed-icon launch with an expired cookie bounces to `/`, which has no login surface (the only passport OTP entry point in the customer web app is a store catalog page). Deliberately not bundled into this diff.
-- **No live browser run.** The tap-through chain is verified by reading route resolution plus unit/component tests; no one has clicked a row in a real browser, and the task's own acceptance test (anonymous → bounce → OTP → back on `/my-stores`) cannot pass until the item above is fixed.
+- **`return_to` is written but never read** — `docs/tasks/return-to-post-login-redirect.md`. Pre-existing and now more visible: an installed-icon launch with an expired cookie bounces to `/`, which has no login surface (the only passport OTP entry point in the customer web app is a store catalog page). Deliberately not bundled into this diff. **✅ Fixed later the same day — see the entry below.**
+- **No live browser run.** The tap-through chain is verified by reading route resolution plus unit/component tests; no one has clicked a row in a real browser, and the task's own acceptance test (anonymous → bounce → OTP → back on `/my-stores`) cannot pass until the item above is fixed. **✅ Closed later the same day** — a live Chrome run (prod build) now covers both the tap-through and the full acceptance test in `e2e/customer-my-stores.spec.ts`; see the entry below.
 - **Phase C still owns iOS.** Phase A ships no "Add to Home Screen" banner; Safari 16.4+ requires the PWA be installed before it can receive push at all, so that enforcement belongs with Phase B/C.
+
+---
+
+## BUILT 2026-09-17 (later) — `return_to` is now consumed: dedicated `/login` route + open-redirect validation
+
+Closes the residual filed above (`docs/tasks/return-to-post-login-redirect.md`). F-036 Phase A pointed the installed icon at `/my-stores`; the guard bounced visitors who had no passport to `/` **with `?return_to=` attached and nothing reading it** — and `/` is the retailer marketing page, so there was no login surface anywhere outside a store catalog page. An installed-icon launch with an expired cookie dead-ended.
+
+**Scope: `apps/web` only** — no API, schema, or `apps/mobile` change.
+
+| Piece | File | What it does |
+|---|---|---|
+| Open-redirect-safe validator | `apps/web/src/lib/return-to.ts` | `sanitizeReturnTo()` reduces any input to a same-origin path or `DEFAULT_RETURN_TO` (`/my-stores`); never throws |
+| Login route (server) | `apps/web/src/app/login/page.tsx` | Sanitises `?return_to=` before it reaches the client; `robots: { index: false, follow: false }` |
+| Login form (client) | `apps/web/src/app/login/LoginForm.tsx` | Phone → OTP via the existing `/api/passport/otp/{send,verify}` proxy; widget-first with API fallback; redirects to the validated target on success; sends an already-signed-in visitor straight on |
+| Guard write site | `apps/web/src/app/(shopper)/layout.tsx` | `/?return_to=…` → `/login?return_to=…`, value validated before being written |
+
+### The route is `/login`, not a form on `/`
+
+The filed task recommended adding a login entry to `/` and asked for confirmation. Confirmed as a **dedicated `/login` route** instead: `/` is the retailer-facing marketing page, so customer auth there would change that page's job and hide a shopper's only way in behind retailer copy. This also gives organic visitors a real login entry point, which did not exist outside a store catalog page.
+
+### `ContactGate` deliberately untouched
+
+The task plan threaded the return target through `ContactGate.handleVerifyOtp`. That is unnecessary — the shopper never needs a store page to log in — and skipping it means the "no pending target keeps the in-place `PassportSheet` behaviour" regression guard is satisfied **by construction**: neither `ContactGate` nor `PassportSheet` appears in the diff.
+
+### Validation rules (open redirect)
+
+`sanitizeReturnTo` rejects protocol-relative (`//host`), any backslash (browsers normalise `\` to `/`, so `/\evil.com` escapes), control characters (CR/LF), schemes (`https:`, `javascript:`, `data:`), missing leading slash, arrays/repeated params, and inputs over 512 chars. It percent-decodes **up to 3 times first** so `%2F%2Fevil.com` and `%252F%252Fevil.com` cannot hide behind an encoding layer, then resolves against a sentinel origin with `new URL()` and requires the result to stay on it — the string checks are not trusted to be exhaustive. Every rejection falls back to `/my-stores`.
+
+Applied at both ends of the round trip: the guard validates before writing, the server page validates before handing the value to the client, and the form validates again immediately before `router.replace`.
+
+### A wrong claim from the first draft, and how it was caught
+
+The initial version justified `clearPassportCache()` before navigating with "`passport-client` caches a *negative* result for 30s, so the guard would read it and bounce straight back to `/login`." **That was false.** `getPassport` guards its cache with `if (cachedSession && …)` — a stored `null` is falsy, so a negative result is never served; only positive sessions are memoised. Caught by probing the claim instead of trusting it: the live round-trip spec still passed with the cache clear removed. The call is kept (correct before a hand-off, and it stops a *stale positive* session being read mid-transition) but the comment and test now say that. `clearPassportCache` had **no callers anywhere** in the app before this — the login flow is its first.
+
+### Verification
+
+Live, prod build + Chrome (`e2e/customer-my-stores.spec.ts`): anonymous `/my-stores?tab=orders` → `/login?return_to=%2Fmy-stores%3Ftab%3Dorders` → phone + OTP → **back on `/my-stores?tab=orders`, signed in, list rendered** (the task's own acceptance test, automated, with the query string proven to survive because the post-login predicate requires `tab=orders`); and `/login?return_to=https://evil.example/phish` → completes login → stays on our origin. Unit: `lib/__tests__/return-to.test.ts` (35), `login/__tests__/{LoginForm,page}.test.tsx` (12 + 11), `(shopper)/__tests__/layout.test.tsx` (6). Gates: web tsc clean, `pnpm test` 9/9 (web **242/242**, was 178), `pnpm lint` 6/6, all five guard scripts, **10/10** customer e2e.
+
+**The query string is carried, not just the path.** The guard composes the target from `pathname` + `window.location.search`, so a shopper intercepted on `/my-stores?tab=orders` returns to that exact URL. It reads `window.location` rather than `useSearchParams()` — the guard runs in an effect (browser-only by definition), and `useSearchParams()` in a layout with no Suspense boundary would force every guarded route out of static rendering. The live round-trip spec enters on `/my-stores?tab=orders` and its predicate requires `tab=orders` back, so a guard that dropped the query cannot pass on the bare pathname match. Residual: the **hash** is not carried.
 

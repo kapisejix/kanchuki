@@ -2730,11 +2730,34 @@ install affordance is unaffected, while a missed event cannot be recovered.
 page a QR scan does), no WhatsApp/share file is touched, and zero files under
 `apps/mobile` changed.
 
-**Known residual (filed, not fixed):** `return_to` is written by the
-`(shopper)` layout guard and read nowhere, so an installed-icon launch with an
-expired cookie lands on `/`, which has no login surface —
-`docs/tasks/return-to-post-login-redirect.md`. Pre-existing (it also affects
-`/my-profile`) and made more visible by the `start_url` change.
+**`return_to` is now consumed (built later the same day).** The guard used to
+bounce a visitor without a passport to `/` with `?return_to=` attached and nothing
+reading it — and `/` is the retailer-facing marketing page, so an installed-icon
+launch with an expired cookie dead-ended with nowhere to enter an OTP. The guard
+now sends them to a dedicated **`/login`** route carrying the page they wanted, and
+a successful OTP returns them there.
+
+A new route rather than a login form on `/`: `/` is the marketing page for
+retailers, so putting customer auth there would change that page's job and bury a
+shopper's only way in. This also gives organic visitors a login entry point, which
+previously existed nowhere outside a store catalog page. `ContactGate`/`PassportSheet`
+are untouched — the shopper never needs a store page to log in, so the returning-
+shopper behaviour is preserved by construction.
+
+The target carries the whole intercepted URL — path **and** query string — so a
+shopper on `/my-stores?tab=orders` returns there exactly, not to the bare path.
+
+`return_to` is attacker-controllable, so it is validated (`apps/web/src/lib/return-to.ts`)
+at both ends of the round trip — rejected classes include protocol-relative
+`//host`, any backslash (browsers normalise `\` to `/`), control characters,
+schemes (`https:`, `javascript:`, `data:`), missing leading slash, and over-length
+input; it is percent-decoded up to 3× before judging, then resolved and required to
+stay on our origin. Everything falls back to `/my-stores`. The live suite proves the
+round trip in a browser and that a hostile target cannot leave the origin.
+
+Verified live (prod build + Chrome): anonymous `/my-stores` → `/login` → OTP → back
+on `/my-stores` signed in (the query string rides along too). Web 242/242, API 967/967 (API untouched). Detail:
+`docs/BUILD-LOG.md` §2026-09-17 (later), `docs/tasks/return-to-post-login-redirect.md` §8.
 
 ---
 

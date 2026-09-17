@@ -1,8 +1,13 @@
 // Task 18a: Cross-store shopper shell — layout + require-passport guard.
 //
 // All pages under (shopper)/ require an authenticated passport session.
-// Unauthenticated visitors are redirected to the home page with a
-// return_to query parameter so they can complete OTP and come back.
+// Unauthenticated visitors are redirected to /login with a return_to query
+// parameter naming the page they were trying to reach, so they can complete
+// OTP and land back where they were going.
+//
+// /login (not /) is the destination because / is the retailer-facing marketing
+// page and has no customer login surface — an installed-PWA launch (start_url
+// → /my-stores) had nowhere to complete login.
 
 'use client'
 
@@ -10,6 +15,7 @@ import { useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { getPassportSession } from '@/lib/passport-client'
+import { RETURN_TO_PARAM, sanitizeReturnTo } from '@/lib/return-to'
 
 interface PassportAccount {
   id: string
@@ -30,18 +36,32 @@ export default function ShopperLayout({
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    // The query string is carried too, so a shopper intercepted on
+    // `/my-stores?tab=orders` returns to that exact URL rather than to the bare
+    // path. Read from `window.location` rather than `useSearchParams()`: this
+    // runs in an effect, so it is browser-only by definition, and
+    // `useSearchParams()` in a layout with no Suspense boundary would force
+    // every guarded route out of static rendering.
+    const wanted = `${pathname}${window.location.search}`
+
+    // Pathname is same-origin by construction, but it is still the value that
+    // becomes a post-login navigation target, so it goes through the same
+    // validator — a bad value can never be written into the URL. The validator
+    // keeps a query string but refuses anything that leaves the origin.
+    const loginUrl = `/login?${RETURN_TO_PARAM}=${encodeURIComponent(sanitizeReturnTo(wanted))}`
+
     getPassportSession()
       .then((session) => {
         if (!session) {
-          // Redirect to home with return_to so they can log in and come back
-          router.replace(`/?return_to=${encodeURIComponent(pathname)}`)
+          // Not signed in — log in first, then come back to this page.
+          router.replace(loginUrl)
           return
         }
         setAccount(session)
         setLoading(false)
       })
       .catch(() => {
-        router.replace(`/?return_to=${encodeURIComponent(pathname)}`)
+        router.replace(loginUrl)
       })
   }, [router, pathname])
 
