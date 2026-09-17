@@ -2600,3 +2600,90 @@ Two-way WhatsApp inbox in the app; WhatsApp Flows / interactive buttons /
 carousels; scheduled or drip campaigns (F-035 is one-shot sends); auto-migrating a
 retailer's personal WhatsApp number into a WABA (support-assisted manual path
 only).
+
+---
+
+## 32. F-036 Customer PWA — Home-Screen Icon, Visited-Store List & Push Notifications — 🔴 PLANNED
+
+**Written 2026-09-17 on owner request.** Full research, technical mechanics,
+platform limitations, and precedent analysis:
+**`docs/tasks/customer-pwa-store-list-and-push-notifications.md`**. Builds directly
+on the identity/consent architecture in `docs/customer/customer-qr-identity-solution.md`
+("Shopper Passport" — `CustomerAccount`/`CustomerStoreVisit`, partially built via
+migrations `079_passport_core`, `080_passport_preferences`,
+`081_passport_personalization_toggle`).
+
+### 32.1 Problem
+
+Customers who scan a QR at a boutique verify by phone+OTP today but have no
+persistent, app-like way back into the stores they've visited — no icon, no list of
+"my boutiques." Retailers can only reach a customer about new stock or a new
+collection by manually sending a WhatsApp link — nothing happens automatically when
+a product is uploaded or a collection is published.
+
+### 32.2 Decision
+
+Ship as a **PWA (installable, home-screen-icon web app)** — no native app, no app
+store. Two independent halves:
+
+1. **Store directory + install icon** — a `/my-stores` page listing every
+   `CustomerStoreVisit` for the signed-in passport, tap-through to that store's
+   existing catalog exactly as today; `manifest.json` `start_url` points here
+   instead of the marketing home page so the installed icon opens straight to it.
+2. **Web Push notifications** — standard Web Push (VAPID + `web-push`, no SaaS
+   cost) fired on the existing product-create and collection-publish events, sent
+   only to customers with a verified passport who visited/consented to that
+   specific retailer. **WhatsApp share stays exactly as-is** — push is an
+   additive, free channel for routine updates, not a replacement (push engagement
+   is materially lower than WhatsApp's — see task doc §11).
+
+### 32.3 Scope summary
+
+- **DB:** new `PushSubscription` model (customer_account_id, retailer_id,
+  endpoint, keys) with RLS from day one.
+- **API:** `POST/DELETE /v1/public/passport/push/{subscribe,unsubscribe}`; a
+  send job hooked into the existing product-create / collection-publish code
+  paths, respecting per-store mute + the passport doc's 2/week/store frequency
+  cap.
+- **Web:** `/my-stores` page; `push` event handler added to
+  `apps/web/public/sw.js` (currently precache-only, no push handling); Android
+  install-prompt CTA (`beforeinstallprompt`); iOS "Add to Home Screen" banner
+  enforced **before** requesting notification permission (Apple requires the
+  PWA be installed first — Safari 16.4+, a plain tab cannot receive push at
+  all); notification settings (master + per-store mute) added to the existing
+  `/my-profile` page.
+- **Consent:** reuses the passport doc's existing per-store, unticked,
+  affirmative-opt-in consent pattern and `ConsentEvent` audit log — no new
+  compliance surface. Anonymous "just browsing" visitors are not push-eligible
+  until they verify, same as today's WhatsApp-consent gating.
+
+### 32.4 Roadmap (task doc §8)
+
+| Phase | Deliverable |
+|---|---|
+| A | `/my-stores` list + install-icon CTA (no push yet) |
+| B | Push infra (Android-first): `PushSubscription`, VAPID, service-worker handler, wired to product/collection publish events |
+| C | iOS parity: enforced "Add to Home Screen" banner ahead of the permission prompt |
+| D | Consent/mute UI on `/my-profile`; aggregate-only subscriber counts surfaced to retailers |
+
+### 32.5 Acceptance criteria
+
+- A customer with a verified passport sees `/my-stores` listing every retailer
+  they've visited, each tapping through to the live catalog.
+- Installing the PWA opens directly to `/my-stores` (or a single store if only
+  one has been visited).
+- A retailer's new product or new collection triggers a push notification only
+  to customers who (a) hold a verified passport, (b) have visited/consented to
+  that retailer, and (c) have not muted that store or exceeded the frequency
+  cap.
+- Turning off notifications (master or per-store) on `/my-profile` stops all
+  future sends for that scope, audited via `ConsentEvent`.
+- WhatsApp collection/catalog share continues to work with zero behavior
+  change.
+
+### 32.6 Not doing (F-036 v1)
+
+Replacing WhatsApp as the primary retailer-to-customer channel; push for
+customers without a verified passport; native app / app-store distribution;
+push delivery-guarantee SLAs (Web Push is best-effort, same as every other
+implementation of it).
