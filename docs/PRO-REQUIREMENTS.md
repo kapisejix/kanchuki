@@ -2687,3 +2687,89 @@ Replacing WhatsApp as the primary retailer-to-customer channel; push for
 customers without a verified passport; native app / app-store distribution;
 push delivery-guarantee SLAs (Web Push is best-effort, same as every other
 implementation of it).
+
+---
+
+## 33. F-037 Customer Engagement Enhancements + Admin Behavior Analytics — 🔴 PLANNED
+
+**Written 2026-09-17 on owner follow-up to F-036.** Full research, schema
+correction, and roadmap: **`docs/tasks/customer-engagement-and-admin-behavior-analytics.md`**.
+
+### 33.1 Schema correction (load-bearing — read before estimating this)
+
+`docs/customer/customer-qr-identity-solution.md` §15.1 claims `CustomerInteraction`
+and `CustomerFashionDNA` already exist and only need widening. **They do not.**
+Migration `082_remove_unwanted_features` (2026-08-31, one day after that doc was
+written) drops both tables plus `store_affinities`. Confirmed live in
+`packages/db/prisma/schema.prisma`: the Shopper Passport identity core
+(`CustomerAccount`, `CustomerStoreVisit`, `ConsentEvent`, `PassportSession`,
+`CustomerRecentlyViewed`, `CustomerWishlistItem`) survived and is live; the
+behavioral-tracking tables did not. Treat `CustomerInteraction` as **net-new**,
+built directly at `CustomerAccount` scope — do not plan work around "reusing" a
+table that no longer exists.
+
+### 33.2 Problem
+
+Two asks: (1) beyond F-036, what increases customer time-on-catalog; (2) how does
+admin see, per customer, time spent per store, most-liked products, search
+queries, and view history.
+
+### 33.3 Engagement recommendations (no dependency on new tracking)
+
+Recently-viewed carousel surfaced prominently, AI Stylist promoted rather than
+buried, "complete the look" cross-sell, ratings/reviews (F-021) on product cards,
+size-match filter front-and-center, prefetch/infinite-scroll perf. Full table
+with rationale: task doc §2. **Two items — personalized "For You" feed and real
+social-proof chips — depend on the tracking data in §33.4 existing first**; do not
+ship fabricated counts to simulate them early.
+
+**Explicitly not recommending:** 360° spin, Virtual Try-On, purchase-tied loyalty
+— all deliberately removed in `chore/remove-unwanted-features`; reintroducing any
+for engagement purposes needs its own owner decision, not a side effect of this
+feature.
+
+### 33.4 Admin analytics — scope
+
+- **Event capture:** client beacon logging `view` (with real dwell_ms via
+  visibility-change/unload timing, not page-load), `search` (query + filters +
+  result count), `favorite`/`unfavorite`, `enquiry`, `store_visit` (session
+  dwell, entry channel).
+- **Storage:** new `CustomerInteraction` model, `CustomerAccount`-scoped, RLS
+  from day one, 24-month raw retention (matches passport doc §13-i) with a prune
+  cron.
+- **Aggregation:** nightly rollup job — never query the raw table for dashboard
+  charts. Computes per store: dwell totals, top-viewed/top-favorited products,
+  top search terms **including zero-result searches** (doubles as a catalog-gap
+  report), view→favorite→enquiry funnel. Same precompute pattern already
+  proposed for the passport doc's `StoreAffinity` (§16.4) — one job serves both.
+- **Admin dashboard:** store-level aggregate view (default) using the existing
+  Campaign Analytics / Commission Tracker visual pattern; per-customer
+  drill-down as an on-demand, `AuditLog`-gated investigation tool, not a default
+  browsing screen.
+- **Retailer-facing view:** same data, aggregate-only, retailer's own consented
+  customers only — retailer isolation rule already locked in passport doc §18.
+
+### 33.5 Privacy
+
+This is profiling under DPDP, same consent umbrella already designed for
+personalized recommendations (passport doc §18) — default ON, one-tap off, no
+new consent flow needed, just accurate notice copy covering search/view
+recording. Per-customer drill-down by admin writes an `AuditLog` row (reuses
+F-014), so "who looked at this customer's data" always has an answer.
+
+### 33.6 Roadmap (task doc §6)
+
+| Phase | Deliverable |
+|---|---|
+| 1 | `CustomerInteraction` model + RLS; client beacon (view dwell, search, favorite, enquiry, store_visit) |
+| 2 | Nightly aggregation job (dwell totals, top products, search terms + zero-result, funnel) |
+| 3 | Admin dashboard: store-level page + `AuditLog`-gated per-customer drill-down |
+| 4 | Retailer-facing aggregate view; ship the data-dependent engagement items from §33.3 |
+
+### 33.7 Not doing (F-037 v1)
+
+Reviving the dropped retailer-scoped `CustomerInteraction`/`CustomerFashionDNA`
+tables as-is; live dashboard queries against raw interaction rows; fabricated
+social-proof numbers; a default admin view that exposes named-customer raw
+behavior without an audit trail; any re-introduction of 360°/VTO/loyalty-points
+under the engagement banner.
