@@ -1,5 +1,18 @@
 import { test, expect, type BrowserContext, type Page } from '@playwright/test'
-import { createServer, type Server } from 'node:http'
+import type { Server } from 'node:http'
+import { API_STUB_ORIGIN, closeStub, createStubServer, listenStub } from './support/api-stub'
+import { stubFixtureImages } from './support/images'
+import {
+  VIEWPORTS,
+  expectFullyInViewport,
+  expectNoHorizontalOverflow,
+  expectRenderedImage,
+  watchClientErrors,
+} from './support/responsive'
+import type {
+  PublicShowcaseDesign,
+  PublicShowcaseDesignDetail,
+} from '../src/app/[store]/designs/types'
 import type { PublicCollection, PublicProduct, PublicProductDetail } from '@kanchuki/shared'
 
 // Regression suite for the customer-facing PWA:
@@ -25,12 +38,6 @@ import type { PublicCollection, PublicProduct, PublicProductDetail } from '@kanc
 // pinned to in the customer config) serving the public collections API shape.
 // Browser-side fetches (product detail, images) are mocked with context.route,
 // which — unlike page.route — does intercept service-worker requests.
-
-const API_STUB_PORT = 3001
-// 127.0.0.1, not `localhost`, so the Next.js SSR fetch can't resolve to ::1
-// and miss the IPv4-only stub listener (NEXT_PUBLIC_API_URL is pinned to this
-// exact origin in playwright.customer.config.ts).
-const API_STUB_ORIGIN = `http://127.0.0.1:${API_STUB_PORT}`
 
 // ── Canned collection data ────────────────────────────────────────
 const PAGE_SIZE = 12
@@ -96,11 +103,36 @@ function collectionFor(slug: string, page: number): PublicCollection {
 
 const KNOWN_SLUGS = new Set(['festive-edit', 'office-edit'])
 
+// Suits Designs fixtures. Typed against the storefront pages' own contract so a
+// field rename fails `tsc` here rather than leaving this spec green against a
+// shape the app no longer accepts (the RC-008 class).
+const DESIGNS: PublicShowcaseDesign[] = [
+  {
+    id: 'design-1',
+    name: 'Festive Lehenga',
+    image_url: 'https://cdn-e2e.r2.dev/design-a.jpg',
+    category: { slug: 'suits', name: 'Suits' },
+    store: { shop_name: 'Meera Sarees', slug: STORE_SLUG },
+  },
+  {
+    id: 'design-2',
+    name: 'Office Kurti',
+    image_url: 'https://cdn-e2e.r2.dev/design-b.jpg',
+    category: { slug: 'kurtis', name: 'Kurtis' },
+    store: { shop_name: 'Meera Sarees', slug: STORE_SLUG },
+  },
+]
+
+const DESIGN_DETAIL: PublicShowcaseDesignDetail = {
+  ...DESIGNS[0]!,
+  created_at: '2026-09-01T10:00:00.000Z',
+}
+
 // ── Stub API server (serves SSR fetches inside `next start`) ─────
 let apiStub: Server | null = null
 
 test.beforeAll(async () => {
-  apiStub = createServer((req, res) => {
+  apiStub = createStubServer((req, res) => {
     const url = new URL(req.url ?? '/', API_STUB_ORIGIN)
     const collectionMatch = url.pathname.match(/^\/v1\/public\/collections\/([^/]+)$/)
     const favoriteMatch = url.pathname.match(/^\/v1\/public\/collections\/([^/]+)\/favorite$/)
@@ -134,6 +166,23 @@ test.beforeAll(async () => {
       res.end(JSON.stringify({ data: { ok: true } }))
       return
     }
+    // View tracking (RC-025) — the page's fire-and-forget ping, which now has a
+    // web proxy route to reach this endpoint through.
+    if (req.method === 'POST' && /^\/v1\/public\/collections\/[^/]+\/view$/.test(url.pathname)) {
+      res.statusCode = 204
+      res.end()
+      return
+    }
+
+    // Promotions — the storefront's PromotionBanner fetches
+    // `/api/{store}/promotions`, which proxies to this upstream. Unstubbed it
+    // answers 404, which the console check reports as a page error.
+    if (req.method === 'GET' && /^\/v1\/public\/retailers\/[^/]+\/promotions$/.test(url.pathname)) {
+      res.statusCode = 200
+      res.end(JSON.stringify({ data: [] }))
+      return
+    }
+
     if (req.method === 'GET' && collectionMatch) {
       const slug = decodeURIComponent(collectionMatch[1])
       if (KNOWN_SLUGS.has(slug)) {
@@ -143,35 +192,45 @@ test.beforeAll(async () => {
         return
       }
     }
+    // The product sheet's two public reads. Both are real proxy routes
+    // (`/api/reviews/product/[id]` and `/api/showcase-designs`) that pass the
+    // upstream status straight through — so with no upstream here the browser
+    // saw a 404 the app handles, and the console check reported it.
+    if (req.method === 'GET' && /^\/v1\/public\/reviews\/product\/[^/]+$/.test(url.pathname)) {
+      res.statusCode = 200
+      res.end(JSON.stringify({ data: [] }))
+      return
+    }
+    if (req.method === 'GET' && url.pathname === '/v1/public/showcase-designs') {
+      // Two different shapes share this endpoint, told apart by the query:
+      //   ?product_id= — the product-detail strip, which reads designs+category
+      //   ?store=      — the store-scoped browse feed (/{store}/designs)
+      // The browse feed gets real rows so the grid renders rather than the
+      // empty state, which is the layout that actually has to hold up.
+      const data = url.searchParams.get('product_id')
+        ? { designs: [], category: null }
+        : { designs: DESIGNS, related: [], next_cursor: null }
+      res.statusCode = 200
+      res.end(JSON.stringify({ data }))
+      return
+    }
+
+    // Permalink — /{store}/designs/{id} renders from the detail row.
+    if (req.method === 'GET' && url.pathname === `/v1/public/showcase-designs/${DESIGN_DETAIL.id}`) {
+      res.statusCode = 200
+      res.end(JSON.stringify({ data: DESIGN_DETAIL }))
+      return
+    }
+
     res.statusCode = 404
     res.end(JSON.stringify({ error: { code: 'NOT_FOUND', message: 'not found', status: 404 } }))
   })
 
-  await new Promise<void>((resolve, reject) => {
-    apiStub!.once('error', (err: NodeJS.ErrnoException) => {
-      if (err.code === 'EADDRINUSE') {
-        reject(
-          new Error(
-            `Port ${API_STUB_PORT} is in use — the customer e2e suite needs it free to stub the public API. Stop any dev server on :${API_STUB_PORT} and re-run.`,
-          ),
-        )
-      } else {
-        reject(err)
-      }
-    })
-    apiStub!.listen(API_STUB_PORT, '127.0.0.1', resolve)
-  })
+  await listenStub(apiStub)
 })
 
 test.afterAll(async () => {
-  if (!apiStub) return
-  await new Promise<void>((resolve) => {
-    try {
-      apiStub!.close(() => resolve())
-    } catch {
-      resolve() // never listened (beforeAll failed) — nothing to close
-    }
-  })
+  await closeStub(apiStub)
 })
 
 // ── Browser-side mocks (context.route intercepts SW requests too) ─
@@ -179,11 +238,6 @@ test.afterAll(async () => {
 // quirk with Next.js <Image> under srcset+sizes: the element reports
 // naturalWidth 0 even though the bytes decode fine (DIAG5 proved src-only
 // loads give naturalWidth 1, srcset ones 0). A real-size image avoids it.
-const TINY_PNG = Buffer.from(
-  'iVBORw0KGgoAAAANSUhEUgAAAEAAAABQCAIAAAAm3eQSAAAAkElEQVR4nO3PUQkAIBTAwBfROEY0liH8OITBAtzmrP11wwUNaEEDWtCAFjSgBQ1oQQNa0IAWNKAFDWhBA1rQgBY0oAUNaEEDWtCAFjSgBQ1oQQNa0IAWNKAFDWhBA1rQgBY0oAUNaEEDWtCAFjSgBQ1oQQNa0IAWNKAFDWhBA1rQgBY0oAUNaEEDWtCAFjx2AbehQdI93DrPAAAAAElFTkSuQmCC',
-  'base64',
-)
-
 const PRODUCT_DETAIL: PublicProductDetail = {
   ...ALL_PRODUCTS[0],
   secondary_colors: [],
@@ -220,14 +274,12 @@ async function mockBrowserNetwork(context: BrowserContext): Promise<void> {
     }
   })
 
-  // Product photos — Next.js <Image> proxies remote URLs through
-  // /_next/image?url=..., so the browser never requests the r2.dev host
-  // directly; mock the optimizer endpoint instead. The response is cached by
-  // the SW's defaultCache image entry (destination === 'image', CacheFirst)
-  // and served from cache on the offline reload.
-  await context.route('**/_next/image*', async (route) => {
-    await route.fulfill({ status: 200, contentType: 'image/png', body: TINY_PNG })
-  })
+  // Product photos — shared with the other specs so the fixture host is never
+  // left unserved, on either path (see support/images.ts). The optimizer
+  // response is cached by the SW's defaultCache image entry
+  // (destination === 'image', CacheFirst) and served from cache on the offline
+  // reload.
+  await stubFixtureImages(context)
 }
 
 // Sentinel that only survives client-side navigation (wiped by a full reload)
@@ -425,4 +477,115 @@ test('legacy /c/{slug} and /store/{slug} links redirect to canonical URLs', asyn
   await expect(page).toHaveURL(`/${STORE_SLUG}`)
   await expect(page.getByRole('heading', { name: 'Meera Sarees', exact: true })).toBeVisible()
 })
+
+// ── Phone + tablet ────────────────────────────────────────────────
+// The collection page is where a shared WhatsApp link lands, and the product
+// sheet is how a shopper on a phone actually looks at an item — so both are
+// sized for a thumb here, not only for the desktop the other tests use. The
+// sheet matters most: it's a fixed overlay, which is the one place a control can
+// render off-screen and leave the shopper stuck with no way back.
+//
+// The legacy-redirect and Suits-Designs surfaces below are sized in the same
+// loop for the same reason: they are reached from a shared link on a phone,
+// and a redirect that lands on something unusable is indistinguishable from a
+// broken link to the person holding it.
+for (const vp of VIEWPORTS) {
+  test(`a legacy /c/{slug} link lands on a usable catalog on ${vp.name}`, async ({
+    context,
+    page,
+  }) => {
+    const client = watchClientErrors(page)
+    await mockBrowserNetwork(context)
+    await page.setViewportSize({ width: vp.width, height: vp.height })
+
+    await page.goto('/c/festive-edit')
+    await expect(page).toHaveURL(`/${STORE_SLUG}/festive-edit`)
+
+    // The part a desktop-only redirect test never reaches: the page it lands on
+    // has to render its content at this size too.
+    await expect(page.getByText('Festive Edit · 24 curated items', { exact: true })).toBeVisible()
+    await expect(page.getByRole('img', { name: 'Festive Design 1', exact: true })).toBeVisible()
+    await expectNoHorizontalOverflow(page, `the redirected collection on ${vp.name}`)
+    client.expectClean(`the redirected collection on ${vp.name}`)
+  })
+
+  test(`the designs browser and a design permalink hold up on ${vp.name}`, async ({
+    context,
+    page,
+  }) => {
+    const client = watchClientErrors(page)
+    await mockBrowserNetwork(context)
+    await page.setViewportSize({ width: vp.width, height: vp.height })
+
+    await page.goto(`/${STORE_SLUG}/designs`)
+    await expect(page.getByRole('heading', { name: 'Meera Sarees Designs' })).toBeVisible()
+    // A real card from the feed, not the empty state — this is a 2-col grid on
+    // phones, and its 3:4 tiles are what could push the page sideways.
+    const card = page.locator(`a[href="/${STORE_SLUG}/designs/design-1"]`)
+    await expect(card).toBeVisible()
+    const tile = page.getByRole('img', { name: 'Festive Lehenga', exact: true })
+    await expect(tile).toBeVisible()
+    // Rendered pixels, not just a visible box — see expectRenderedImage.
+    await expectRenderedImage(tile, `the design tile on ${vp.name}`)
+    await expectNoHorizontalOverflow(page, `the designs browser on ${vp.name}`)
+
+    // The permalink is a shareable link in its own right (`/{store}/designs/{id}`),
+    // so it has to stand up reached directly rather than only by tapping through.
+    await page.goto(`/${STORE_SLUG}/designs/design-1`)
+    // exact: the permalink footer also says "Shared via Kanchuki — design
+    // inspiration for your…", so a substring match resolves to two elements.
+    await expect(page.getByText('Design inspiration', { exact: true })).toBeVisible()
+    await expect(page.getByRole('link', { name: 'Back to designs' })).toBeVisible()
+    // This page renders the watermarked file with a plain <img> on purpose, so
+    // the optimiser never re-encodes it — meaning it is the one surface that
+    // requests the fixture host directly rather than through /_next/image.
+    // Asserting decoded pixels is what keeps both paths served.
+    await expectRenderedImage(
+      page.getByRole('img', { name: 'Festive Lehenga', exact: true }),
+      `the design permalink photo on ${vp.name}`,
+    )
+    await expectNoHorizontalOverflow(page, `the design permalink on ${vp.name}`)
+    client.expectClean(`the designs pages on ${vp.name}`)
+  })
+}
+
+for (const vp of VIEWPORTS) {
+  test(`the collection and its product sheet hold up on ${vp.name}`, async ({ context, page }) => {
+    const client = watchClientErrors(page)
+    await mockBrowserNetwork(context)
+    await page.setViewportSize({ width: vp.width, height: vp.height })
+
+    await page.goto(`/${STORE_SLUG}/festive-edit`)
+    await expect(page.getByText('Festive Edit · 24 curated items', { exact: true })).toBeVisible()
+    await expect(page.getByRole('img', { name: 'Festive Design 1', exact: true })).toBeVisible()
+    await expectNoHorizontalOverflow(page, `the collection on ${vp.name}`)
+
+    await page.getByRole('img', { name: 'Festive Design 1', exact: true }).click()
+    await expect(page.getByRole('button', { name: 'Enquire Now', exact: true })).toBeVisible()
+    await expect(page.getByText('Raw Silk')).toBeVisible()
+
+    // The close control has to be on screen the moment the sheet opens — a
+    // shopper who cannot see the way out of a fixed overlay is stuck.
+    const closer = page.getByRole('button', { name: 'Close', exact: true })
+    await expectFullyInViewport(closer, `the sheet's close button on ${vp.name}`)
+    await expectNoHorizontalOverflow(page, `the collection with the sheet open on ${vp.name}`)
+
+    // The enquiry CTA is the last block inside the sheet's scrolling body, so on
+    // a phone it starts below the fold (measured: bottom edge ~892px against a
+    // 844px viewport). That is a long scroll, not a dead end — but "it's inside
+    // an overflow-y-auto div" is a claim about CSS, and this asserts the thing
+    // that actually matters: it can be brought fully into view, the way a shopper
+    // does it, by scrolling the sheet rather than the page.
+    const cta = page.getByRole('button', { name: 'Enquire Now', exact: true })
+    await cta.scrollIntoViewIfNeeded()
+    await expectFullyInViewport(cta, `the sheet's enquiry CTA on ${vp.name} after scrolling`)
+    await expectNoHorizontalOverflow(page, `the sheet scrolled to the CTA on ${vp.name}`)
+
+    // …and it tears down, leaving the grid usable rather than a dead overlay.
+    await closer.click()
+    await expect(page.getByRole('button', { name: 'Enquire Now', exact: true })).toBeHidden()
+    await expect(page.getByRole('img', { name: 'Festive Design 1', exact: true })).toBeVisible()
+    client.expectClean(`the collection on ${vp.name}`)
+  })
+}
 

@@ -1,5 +1,13 @@
 import { test, expect } from '@playwright/test'
-import { createServer, type Server } from 'node:http'
+import type { Server } from 'node:http'
+import { API_STUB_ORIGIN, closeStub, createStubServer, listenStub } from './support/api-stub'
+import { stubFixtureImages } from './support/images'
+import {
+  VIEWPORTS,
+  expectNoHorizontalOverflow,
+  expectRenderedImage,
+  watchClientErrors,
+} from './support/responsive'
 import type { PublicCollection, PublicProduct } from '@kanchuki/shared'
 
 // F-036 Phase A live verification — /my-stores tap-through + install CTA.
@@ -28,13 +36,6 @@ import type { PublicCollection, PublicProduct } from '@kanchuki/shared'
 //    event is not prevented, and the probe fails.
 // 3. Chrome's own verdict on whether the deployed build is installable at
 //    all, which is what gates the real event.
-
-const API_STUB_PORT = 3001
-// 127.0.0.1, not localhost: next start's SSR fetch must not resolve to ::1 and
-// miss the IPv4 stub listener. playwright.customer.config.ts pins both
-// NEXT_PUBLIC_API_URL (build-time, browser) and API_URL (runtime, server) to
-// this exact origin for the same reason.
-const API_STUB_ORIGIN = `http://127.0.0.1:${API_STUB_PORT}`
 
 const STORE_SLUG = 'meera-sarees'
 const SECOND_SLUG = 'gupta-textiles'
@@ -172,7 +173,7 @@ function json(res: import('node:http').ServerResponse, status: number, body: unk
 }
 
 test.beforeAll(async () => {
-  apiStub = createServer((req, res) => {
+  apiStub = createStubServer((req, res) => {
     const url = new URL(req.url ?? '/', API_STUB_ORIGIN)
     const path = url.pathname
     state.requests.push(`${req.method} ${path}`)
@@ -191,6 +192,20 @@ test.beforeAll(async () => {
           city: 'Jaipur',
         },
       })
+      return
+    }
+
+    // /my-profile reads recently-viewed on mount (through the passport proxy).
+    if (path === '/v1/public/passport/recently-viewed') {
+      json(res, 200, { items: [] })
+      return
+    }
+
+    // The personalization opt-out. RC-026: /my-profile has always PUT to this
+    // path, but the web proxy had no PUT verb and omitted `preferences` from
+    // its allowlist, so the call 405'd before it ever got here.
+    if (path === '/v1/public/passport/preferences' && req.method === 'PUT') {
+      json(res, 200, { ok: true })
       return
     }
 
@@ -251,6 +266,24 @@ test.beforeAll(async () => {
       return
     }
 
+    // View tracking. RC-025: the storefront has always POSTed this, but the web
+    // proxy route between it and the API did not exist, so every page view
+    // 404'd and the retailer "Views" stat never counted web traffic. The stub
+    // answering here is what lets the test assert the ping actually arrives.
+    if (req.method === 'POST' && /^\/v1\/public\/collections\/[^/]+\/view$/.test(path)) {
+      json(res, 204, {})
+      return
+    }
+
+    // Active promotions — the storefront's PromotionBanner fetches
+    // `/api/{store}/promotions`, which proxies to this upstream. Leaving it
+    // unstubbed made the proxy answer 404, which the console check below
+    // (correctly) reported as a page error even though the app handled it.
+    if (path.match(/^\/v1\/public\/retailers\/[^/]+\/promotions$/) && req.method === 'GET') {
+      json(res, 200, { data: [] })
+      return
+    }
+
     // Storefront product listing (page 1 of the gated catalog).
     const productsMatch = path.match(/^\/v1\/public\/retailers\/([^/]+)\/products$/)
     if (req.method === 'GET' && productsMatch) {
@@ -261,17 +294,11 @@ test.beforeAll(async () => {
     json(res, 404, { error: { code: 'NOT_FOUND', message: `No stub for ${path}` } })
   })
 
-  await new Promise<void>((resolve, reject) => {
-    apiStub?.once('error', reject)
-    apiStub?.listen(API_STUB_PORT, '127.0.0.1', resolve)
-  })
+  await listenStub(apiStub)
 })
 
 test.afterAll(async () => {
-  await new Promise<void>((resolve) => {
-    if (!apiStub) return resolve()
-    apiStub.close(() => resolve())
-  })
+  await closeStub(apiStub)
 })
 
 test.beforeEach(async ({ context }) => {
@@ -285,8 +312,15 @@ test.beforeEach(async ({ context }) => {
 // ── 1. Tap-through ────────────────────────────────────────────────
 
 test('a signed-in shopper sees their stores newest-first and a row opens the real catalog', async ({
+  context,
   page,
 }) => {
+  const client = watchClientErrors(page)
+  // The row taps through to the storefront, which renders product photos — so
+  // this test needs the fixture images served too, or its "real catalog"
+  // assertion is passing over a page whose photos all failed.
+  await stubFixtureImages(context)
+
   await page.goto('/my-stores')
 
   await expect(page.getByRole('heading', { name: 'My Stores' })).toBeVisible()
@@ -319,6 +353,12 @@ test('a signed-in shopper sees their stores newest-first and a row opens the rea
   await expect(page.getByText('Festive Design 1')).toBeVisible()
   await expect(page.getByText('Festive Design 2')).toBeVisible()
   await expect(page.getByText('2 curated items', { exact: false })).toBeVisible()
+  // …and the destination actually rendered its photos, which is what "a real
+  // catalog" means to the person who tapped the row.
+  await expectRenderedImage(
+    page.getByRole('img', { name: 'Festive Design 1', exact: true }).first(),
+    'the tapped-through catalog photo',
+  )
 
   // A shopper who already holds a passport is recognised and let straight in —
   // no re-verification prompt. (ContactGate shows the phone input only for a
@@ -327,7 +367,29 @@ test('a signed-in shopper sees their stores newest-first and a row opens the rea
 
   // The products listing was fetched server-side for the gated catalog.
   expect(state.requests).toContain(`GET /v1/public/retailers/${STORE_SLUG}/products`)
+
+  // …and the view ping reaches the API, which is the wiring RC-025 was missing:
+  // the client fired it, the route did not exist, so it 404'd and no web view
+  // was ever counted. POLLED because the call is fire-and-forget — the upstream
+  // request lands after the route answers the browser, so sampling here would
+  // be the RC-024 mistake again.
+  await expect
+    .poll(
+      () =>
+        state.requests.filter(
+          (r) => r.startsWith('POST /v1/public/collections/') && r.endsWith('/view'),
+        ).length,
+      {
+        message:
+          'the storefront view ping never reached the API — that is exactly the missing proxy route RC-025 describes',        timeout: 15_000,
+      },
+    )
+    .toBeGreaterThan(0)
+
+  client.expectClean('the tapped-through catalog')
 })
+
+
 
 // ── 2. Install CTA ────────────────────────────────────────────────
 
@@ -526,3 +588,129 @@ test('the production build meets the installability prerequisites (valid manifes
 
   await cdp.detach()
 })
+
+// RC-026: the consent control on this page called a proxy verb that did not
+// exist, so every toggle answered 405 — and `fetch` does not throw on a 405, so
+// the checkbox stayed off and silently came back on the next load. The
+// heading-level layout checks below passed the entire time, which is why this
+// asserts the request arriving at the API rather than the checkbox's own state:
+// a control that only looks switched is the failure mode, not a missing control.
+test('the personalization opt-out reaches the API instead of failing silently', async ({
+  page,
+}) => {
+  await page.goto('/my-profile')
+
+  const toggle = page.getByRole('checkbox', { name: 'Personalized recommendations' })
+  await expect(toggle).toBeChecked()
+
+  await toggle.uncheck()
+
+  // Polled, not sampled: the proxy answers the browser before the upstream
+  // request is recorded, so an immediate read races the assertion.
+  await expect
+    .poll(() => state.requests.filter((r) => r === 'PUT /v1/public/passport/preferences').length, {
+      message:
+        'the opt-out never reached the API — the passport proxy has no PUT verb for /preferences',
+    })
+    .toBeGreaterThan(0)
+
+  // And it stays off, rather than rolling back the way it would on a failure.
+  await expect(toggle).not.toBeChecked()
+})
+
+// ── Phone + tablet: the catalog a row actually opens ──────────────
+//
+// Everything above runs at the default desktop viewport, but these two pages are
+// what a shopper opens from a shared WhatsApp link or the installed icon, on a
+// phone — and the storefront deliberately serves tablet widths too. A layout
+// that only holds at desktop is invisible to every other test in this file, so
+// each size asserts the real content renders, that nothing spills sideways (a
+// horizontally scrolling storefront on a phone is the failure shoppers report
+// as "the site is broken"), that the rows stay tappable with a thumb, and that
+// the console stayed clean — `pageerror` alone misses hydration mismatches and
+// rejected fetches, which are the failures a green layout check would wave
+// through.
+for (const vp of VIEWPORTS) {
+  test(`the store list holds up on ${vp.name} (${vp.width}×${vp.height})`, async ({ page }) => {
+    const client = watchClientErrors(page)
+
+    await page.setViewportSize({ width: vp.width, height: vp.height })
+    await page.goto('/my-stores')
+
+    await expect(page.getByRole('heading', { name: 'My Stores' })).toBeVisible()
+    const row = page.locator(`ul li a[href="/${STORE_SLUG}"]`)
+    await expect(row).toBeVisible()
+
+    await expectNoHorizontalOverflow(page, `the store list on ${vp.name}`)
+
+    // The whole point of this page is tapping a row: a row that renders but is
+    // a 20px sliver is unusable on the device it exists for. 44px is the
+    // touch-target floor the mobile work in this repo already holds to.
+    const box = await row.boundingBox()
+    expect(box, 'the store row has no layout box').not.toBeNull()
+    expect(box!.height, `the store row on ${vp.name} is ${box!.height}px tall`).toBeGreaterThanOrEqual(
+      44,
+    )
+
+    // The un-published store still says so, rather than vanishing at this size.
+    await expect(page.getByText("This store hasn't published a catalog page yet.")).toBeVisible()
+    client.expectClean(`the store list on ${vp.name}`)
+  })
+
+  test(`the profile page holds up on ${vp.name} (${vp.width}×${vp.height})`, async ({ page }) => {
+    const client = watchClientErrors(page)
+
+    await page.setViewportSize({ width: vp.width, height: vp.height })
+    await page.goto('/my-profile')
+
+    // The shopper's own identity, resolved from the passport session — not an
+    // empty shell wrapped around a loading state.
+    await expect(page.getByRole('heading', { name: 'Ananya' })).toBeVisible()
+    await expect(page.getByText('••••••9999')).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Your Style' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Your Data' })).toBeVisible()
+
+    await expectNoHorizontalOverflow(page, `the profile page on ${vp.name}`)
+
+    // The style chips are this page's main control surface, and they are the
+    // site's smallest interactive element (14px text in a 6px pad, against the
+    // 40px pills elsewhere) — WCAG 2.2 AA asks for 24×24.
+    const chip = page.getByRole('button', { name: 'Festive', exact: true })
+    await expect(chip).toBeVisible()
+    const box = await chip.boundingBox()
+    expect(box, 'the style chip has no layout box').not.toBeNull()
+    expect(box!.height, `the style chip on ${vp.name} is ${box!.height}px tall`).toBeGreaterThanOrEqual(
+      24,
+    )
+    client.expectClean(`the profile page on ${vp.name}`)
+  })
+
+  test(`the catalog holds up on ${vp.name} (${vp.width}×${vp.height})`, async ({
+    context,
+    page,
+  }) => {
+    const client = watchClientErrors(page)
+    // Without this the product photos fail to load and the grid is measured
+    // with broken images in it — see support/images.ts.
+    await stubFixtureImages(context)
+
+    await page.setViewportSize({ width: vp.width, height: vp.height })
+    await page.goto(`/${STORE_SLUG}`)
+
+    // The store's real content renders at this size — products, not just the
+    // store name banner.
+    await expect(page.getByText('Festive Design 1')).toBeVisible()
+    await expect(page.getByText('Festive Design 2')).toBeVisible()
+
+    // The product photo is the widest fixed-width thing in a grid card, so it
+    // is the most likely overflow source — and a broken image would hide that
+    // while still passing every other check here.
+    await expectRenderedImage(
+      page.getByRole('img', { name: 'Festive Design 1', exact: true }).first(),
+      `the first product photo on ${vp.name}`,
+    )
+
+    await expectNoHorizontalOverflow(page, `the catalog on ${vp.name}`)
+    client.expectClean(`the catalog on ${vp.name}`)
+  })
+}

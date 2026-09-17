@@ -21,7 +21,10 @@ import { getPassportSession, type PassportAccount } from '@/lib/passport-client'
 // The passport cookie is HttpOnly, so the state cannot be known without asking
 // the API. Until the answer arrives this renders an inert placeholder rather
 // than "Log in", so a signed-in shopper is never briefly told to sign in.
-const PILL_HEIGHT = 'h-9'
+// 40px, matching the site's other pill controls (`Chrome.tsx`'s "Start Free
+// Trial" is `px-5 py-2.5 text-sm`) rather than the 36px this started at, which
+// read as undersized next to the 48px search field directly below it.
+const PILL_HEIGHT = 'h-10'
 
 export default function ShopperEntry() {
   const [account, setAccount] = useState<PassportAccount | null>(null)
@@ -59,7 +62,11 @@ export default function ShopperEntry() {
       // to my account" action rather than an interception, and /my-stores is the
       // shopper's home — the same place the installed icon opens.
       href={account ? '/my-stores' : '/login'}
-      className={`inline-flex ${PILL_HEIGHT} items-center gap-2 rounded-full border border-carbon/15 bg-white px-4 text-sm font-medium text-carbon transition hover:border-cobalt-500`}
+      // focus-visible ring copied from the marketing CTA's pattern (and the
+      // search field below uses the same cobalt-500), so the one keyboard-
+      // reachable control on this page isn't the only one without a visible
+      // focus state.
+      className={`inline-flex ${PILL_HEIGHT} items-center gap-2 rounded-full border border-carbon/15 bg-white px-4 text-sm font-medium text-carbon transition hover:border-cobalt-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cobalt-500 focus-visible:ring-offset-2 ring-offset-cream`}
     >
       <UserRound size={15} strokeWidth={1.5} className="text-carbon/50" />
       {account ? (
