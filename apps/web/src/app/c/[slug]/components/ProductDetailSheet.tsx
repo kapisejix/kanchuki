@@ -5,12 +5,13 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { X, ArrowLeft, Heart, MessageCircle, ChevronLeft, ChevronRight, Camera, Palette, MapPin, RotateCw, ShoppingCart, Share2, Sparkles, Info, Star } from 'lucide-react'
 import type { PublicProduct, PublicProductDetail, PublicCollection } from '@kanchuki/shared'
-import { formatPriceRange, buildWhatsAppEnquiryLink, buildEnquiryMessage, resolveFashionColor } from '@kanchuki/shared'
+import { formatPriceRange, resolveFashionColor } from '@kanchuki/shared'
 import { productToCartItem, saveCart, loadCart } from '../lib/cart'
 import { Product360Viewer } from './Product360Viewer'
 import { ReviewList } from './ReviewList'
 import { FabricGlossary } from './FabricGlossary'
 import { trackRecentlyViewed } from '../lib/recentlyViewed'
+import { trackPassportEvent } from '@/lib/passport-client'
 import { NotifyWhenAvailable } from './NotifyWhenAvailable'
 import { SavedSize } from './SavedSize'
 import { DesignGallery } from './DesignGallery'
@@ -115,6 +116,21 @@ export function ProductDetailSheet({
       primary_photo_url: product.primary_photo_url,
     })
   }, [product, slug])
+
+  // F-037 Phase 1 — dwell-time view event. Fires on unmount/product-swap so
+  // dwell_ms reflects real time-on-product, not just page load (§3.1). Silently
+  // dropped server-side if there is no passport session or profiling is off.
+  useEffect(() => {
+    const startedAt = Date.now()
+    return () => {
+      trackPassportEvent({
+        type: 'view',
+        product_id: product.id,
+        retailer_id: retailer.id,
+        metadata: { dwell_ms: Date.now() - startedAt },
+      })
+    }
+  }, [product.id, retailer.id])
 
   // ── Pinch/Zoom state ─────────────────────────────────────────────
   const [isZoomed, setIsZoomed] = useState(false)
@@ -404,23 +420,6 @@ export function ProductDetailSheet({
       await navigator.clipboard.writeText(url).catch(() => {})
     }
   }, [product.id, product.name, product.category, product.price_min, product.price_max, productUrlFor, retailer.shop_name])
-
-  const handleEnquire = () => {
-    if (isSold) return
-    const message = buildEnquiryMessage({
-      shopName: retailer.shop_name,
-      collectionTitle,
-      products: [
-        {
-          name: product.name,
-          price_min: product.price_min,
-          product_url: productUrlFor(product.id),
-        },
-      ],
-    })
-    const url = buildWhatsAppEnquiryLink(retailer.phone, message)
-    window.open(url, '_blank')
-  }
 
   return (
     <div

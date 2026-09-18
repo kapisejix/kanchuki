@@ -2,7 +2,7 @@
 
 **Document:** `docs/tasks/customer-engagement-and-admin-behavior-analytics.md`
 **Date:** 2026-09-17
-**Status:** Research & roadmap only — no code started, no decisions locked.
+**Status:** Phase 1 (§6) built 2026-09-18 — see `docs/BUILD-LOG.md` §2026-09-18. Phases 2–4 still research/roadmap only, no code started.
 **Answers:** owner follow-up on F-036 — (1) what else increases time-on-catalog/customer engagement, (2) how admin tracks per-customer dwell time, liked products, search terms, and view history in the admin dashboard.
 **Related:** `docs/tasks/customer-pwa-store-list-and-push-notifications.md` (F-036), `docs/customer/customer-qr-identity-solution.md` (Shopper Passport), `docs/PRO-REQUIREMENTS.md` §33.
 

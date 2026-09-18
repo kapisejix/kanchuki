@@ -28,6 +28,7 @@ import {
   saveWishlist,
   wishlistKey,
 } from '../lib/wishlist';
+import { trackPassportEvent } from '@/lib/passport-client';
 import { CategoryChips, FilterBar } from './FilterBar';
 import { KanchukiBrandBar } from './KanchukiBrandBar';
 import { PageTransitionWrapper } from '@/components/PageTransitionWrapper';
@@ -210,6 +211,7 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
         const next = new Map(prev);
         if (next.has(productId)) {
           next.delete(productId);
+          trackPassportEvent({ type: 'unfavorite', product_id: productId, retailer_id: collection.retailer.id });
         } else {
           // Store product summary at heart-click time (we have the product
           // object in hand) — this is the core F-006 fix: no more bare IDs.
@@ -229,12 +231,13 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ product_id: productId }),
           });
+          trackPassportEvent({ type: 'favorite', product_id: productId, retailer_id: collection.retailer.id });
         }
         saveWishlist(slug, next);
         return next;
       });
     },
-    [apiBasePath, slug],
+    [apiBasePath, slug, collection.retailer.id],
   );
 
   // Resolve favorite items: try stored summaries first, fall back to session cache
@@ -294,6 +297,25 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
     }
     return true;
   });
+
+  // F-037 Phase 1 — search event, debounced so a beacon isn't fired per
+  // keystroke. Fires the settled query + active filters + result count.
+  useEffect(() => {
+    if (!searchQuery.trim()) return;
+    const timer = setTimeout(() => {
+      trackPassportEvent({
+        type: 'search',
+        retailer_id: collection.retailer.id,
+        metadata: {
+          query: searchQuery.trim(),
+          filters: { category: filterCategory, price: filterPrice, color: filterColor },
+          result_count: filteredProducts.length,
+        },
+      });
+    }, 600);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery]);
 
   return (
     <PageTransitionWrapper>

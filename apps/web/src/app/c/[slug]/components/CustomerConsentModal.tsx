@@ -5,6 +5,7 @@ import Image from 'next/image'
 import { X, ArrowLeft, ShieldCheck, User, MessageSquare } from 'lucide-react'
 import { formatPriceRange, buildWhatsAppEnquiryLink, buildEnquiryMessage } from '@kanchuki/shared'
 import type { PublicProduct, PublicProductDetail, PublicCollection } from '@kanchuki/shared'
+import { trackPassportEvent } from '@/lib/passport-client'
 
 interface Props {
   product: PublicProduct | PublicProductDetail
@@ -66,7 +67,9 @@ export function CustomerConsentModal({
     const prefix = name.trim() ? `Hello, I am ${name.trim()}.\n\n` : ''
     const fullMessage = prefix + customMessage
     const url = buildWhatsAppEnquiryLink(retailer.phone, fullMessage)
-    
+
+    trackPassportEvent({ type: 'enquiry', product_id: product.id, retailer_id: retailer.id })
+
     window.open(url, '_blank')
     onClose()
   }

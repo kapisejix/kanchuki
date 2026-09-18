@@ -69,6 +69,20 @@ export const publicRetailersLeadsRoutes: FastifyPluginAsync = async (server) => 
         });
       }
 
+      // F-037 Phase 1 interaction log — behavioral writes suppressed when
+      // the shopper has opted out of profiling (same gate as the events beacon).
+      if (account.profiling_enabled) {
+        await prisma.customerInteraction
+          .create({
+            data: {
+              customer_account_id: customerId,
+              retailer_id: retailer.id,
+              type: 'STORE_VISIT',
+            },
+          })
+          .catch(() => {});
+      }
+
       if (shareContact) {
         // Write the retailer-scoped Customer from the passport identity
         const normalizedPhone = normalizeIndianPhone(account.phone);

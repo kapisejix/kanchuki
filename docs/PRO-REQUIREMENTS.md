@@ -2777,10 +2777,19 @@ live in Chrome. Detail: `docs/BUILD-LOG.md` §2026-09-17 (later still).
 
 ---
 
-## 33. F-037 Customer Engagement Enhancements + Admin Behavior Analytics — 🔴 PLANNED
+## 33. F-037 Customer Engagement Enhancements + Admin Behavior Analytics — 🟨 Phase 1 ✅ Built; 2–4 🔴 Planned
 
 **Written 2026-09-17 on owner follow-up to F-036.** Full research, schema
 correction, and roadmap: **`docs/tasks/customer-engagement-and-admin-behavior-analytics.md`**.
+
+**Phase 1 built 2026-09-18** — `CustomerInteraction` model (migration `100_customer_interaction`,
+net-new per §33.1, RLS on/default-deny) + `POST /v1/public/passport/events` now writes
+mapped rows (was a stub since the table was dropped) + a `STORE_VISIT` write on the QR
+lead-capture path (`public-retailers-leads.ts`), both gated on `profiling_enabled`. Client
+beacon wired at the four other capture points: dwell-timed `view` (`ProductDetailSheet`
+unmount), `favorite`/`unfavorite` (`CollectionView.toggleFavorite`), `enquiry`
+(`CustomerConsentModal.handleContinue`), debounced `search` (`CollectionView`, query +
+filters + result_count). API 973/973, web tsc + 279/279 — see BUILD-LOG §2026-09-18.
 
 ### 33.1 Schema correction (load-bearing — read before estimating this)
 

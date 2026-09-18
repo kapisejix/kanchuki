@@ -2513,3 +2513,27 @@ Both were found by the console-error backstop above, on the same page every shop
 
 **Residual, measured not assumed:** 820×1180 portrait only (no landscape, no 320px); installability is still `in-incognito` because Chrome gives no verdict under Playwright; and the tap-through/designs photos load from a 64×80 stub, so layout is proven structurally rather than at real aspect ratios.
 
+---
+
+## BUILT 2026-09-18 — F-037 Phase 1: CustomerInteraction event log (net-new, identity-scoped)
+
+**Why:** owner follow-up doc (`docs/tasks/customer-engagement-and-admin-behavior-analytics.md` §0) found the passport doc's claim that `CustomerInteraction`/`CustomerFashionDNA` already existed and only needed widening was false — migration `082_remove_unwanted_features` (2026-08-31) had dropped both. Phase 1 (§6 of that doc) builds the interaction log fresh at `CustomerAccount` scope rather than reviving the old retailer-scoped table.
+
+| Piece | Change |
+|---|---|
+| `packages/db/prisma/schema.prisma` | **new** `CustomerInteraction` model + `CustomerInteractionType` enum (`VIEW`/`SEARCH`/`FAVORITE`/`UNFAVORITE`/`ENQUIRY`/`STORE_VISIT`), `interactions` relation on `CustomerAccount` |
+| `packages/db/prisma/migrations/100_customer_interaction/` | **new** — table + both indexes + FK + RLS `ENABLE ROW LEVEL SECURITY` with no policies (default deny, Kanchuki-only — matches `customer_recently_viewed`/`customer_wishlist_items`; a retailer SELECT policy is Phase 4 scope, not built yet) |
+| `apps/api/.../passport/passport-activity.ts` | `POST /v1/public/passport/events` — the write was a commented-out stub since the old table was dropped (`// Interactions recording removed`); restored via a lowercase→enum `EVENT_TYPE_MAP` (type-only enum import so unrelated `@kanchuki/db` test mocks aren't forced to stub it), `createMany` per batch, unknown event names silently dropped, gated on `session.customer_account.profiling_enabled` (same DPDP opt-out `passport-preferences.ts` already uses for the preference vector) |
+| `apps/api/.../public-retailers-leads.ts` | passport-path lead capture now also writes a `STORE_VISIT` row alongside the existing `CustomerStoreVisit` upsert, same `profiling_enabled` gate |
+| `apps/web/.../ProductDetailSheet.tsx` | dwell-timed `view` event fired on unmount/product-swap (`Date.now()` delta, §3.1's "not just page load" requirement) — **also removed a dead `handleEnquire` function**, never called since the real enquiry flow is `CustomerConsentModal.handleContinue`, found while reviewing this file |
+| `apps/web/.../CustomerConsentModal.tsx` | `enquiry` event fired in `handleContinue` before the WhatsApp link opens |
+| `apps/web/.../CollectionView.tsx` | `favorite`/`unfavorite` events in `toggleFavorite`; debounced (600ms) `search` event with query + active filters + `filteredProducts.length` |
+
+**Bug found and fixed mid-build:** the enum-import approach originally used the runtime `CustomerInteractionType` object (`import { CustomerInteractionType } from '@kanchuki/db'`), which broke 4 pre-existing test files that mock `@kanchuki/db` without stubbing that enum — `passport.test.ts`, `passport-export-delete.test.ts`, `passport-otp.test.ts`, `passport-preferences.test.ts` all failed at module load. Root-cause fix (not a per-file mock patch): switched to a type-only import and plain string literals in `EVENT_TYPE_MAP`, so the module carries no runtime dependency on the enum object at all.
+
+**Also found while reviewing:** `schema.prisma` accidentally ran through `prisma format` once, which reflowed ~530 unrelated lines (pre-existing inconsistent indentation across the file) into a single diff. Reverted to a clean 31-line additive diff before this landed — the reformat was never committed.
+
+**Verification:** API tsc clean · **973/973** (was 911; +6 events-route tests, +2 leads-route tests, all failing-then-passing verified against the enum-import bug) · `biome check` clean on every touched file · web tsc clean · **279/279** unit (unchanged — `ProductDetailSheet.test.tsx`/`CollectionView.test.tsx` re-run explicitly, both still pass) · `next lint` clean on every touched file.
+
+**Not built (Phases 2–4, per the task doc's own roadmap):** nightly aggregation job, admin store-level + per-customer drill-down dashboard, retailer-facing aggregate view. Phase 1 only writes rows — nothing reads them yet.
+

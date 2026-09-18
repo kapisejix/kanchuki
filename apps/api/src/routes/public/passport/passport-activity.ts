@@ -1,8 +1,25 @@
 // passport-activity.ts — recently-viewed + event beacon (split from apps/api/src/routes/public/passport.ts — body byte-identical)
 import { prisma } from '@kanchuki/db';
+import type { CustomerInteractionType } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { getPassportSession } from './passport-helpers.js';
+
+// Client sends lowercase event names (trackPassportEvent); the DB enum is
+// uppercase. Anything not in this map is dropped, same posture as an
+// invalid Zod payload — the beacon is fire-and-forget, never surfaced.
+// Literal strings, not the CustomerInteractionType runtime object — this is
+// a type-only import, so unrelated tests that mock '@kanchuki/db' without
+// stubbing this enum aren't broken by importing this module.
+const EVENT_TYPE_MAP: Record<string, CustomerInteractionType> = {
+  view: 'VIEW',
+  search: 'SEARCH',
+  favorite: 'FAVORITE',
+  unfavorite: 'UNFAVORITE',
+  enquiry: 'ENQUIRY',
+  store_visit: 'STORE_VISIT',
+};
+
 export const passportActivityRoutes: FastifyPluginAsync = async (server) => {
   // ─── GET /passport/recently-viewed ─────────────────────────────
   // Returns recently viewed products across all stores for this passport.
@@ -109,8 +126,33 @@ export const passportActivityRoutes: FastifyPluginAsync = async (server) => {
       return reply.status(204).send(); // silently drop invalid payloads
     }
 
-    // Interactions recording removed — customerInteractions model dropped
-    // for (const event of body.data.events) { ... }
+    // profiling_enabled false ⇒ behavioral writes suppressed (DPDP opt-out,
+    // same gate passport-preferences.ts uses for the preference vector).
+    if (!session.customer_account.profiling_enabled) {
+      return reply.status(204).send();
+    }
+
+    const rows = body.data.events.flatMap((event) => {
+      const type = EVENT_TYPE_MAP[event.type];
+      if (!type) return []; // unknown event name — drop, don't 500 the beacon
+      return [
+        {
+          customer_account_id: session.customer_account_id,
+          retailer_id: event.retailer_id,
+          type,
+          product_id: event.product_id ?? null,
+          metadata: (event.collection_id
+            ? { ...event.metadata, collection_id: event.collection_id }
+            : event.metadata) as never,
+        },
+      ];
+    });
+
+    if (rows.length > 0) {
+      await prisma.customerInteraction.createMany({ data: rows }).catch(() => {
+        // Fire-and-forget beacon — never surface a DB error to the client.
+      });
+    }
 
     return reply.status(204).send();
   });
