@@ -411,4 +411,4 @@ The platform's Indian ethnic wear focus (Saree, Lehenga, Kurti, etc.) is well-se
 
 ## Implementation Tasks
 
-See [Photo Feature Implementation Tasks](../tasks/photo-feature-implementation-tasks.md) for a detailed list of recommended improvements and their priorities.
+See [AI Photo & Video Generation — Single Source of Truth](../tasks/ai-photo-generation.md) §5 R8 for the still-open items from this audit and their priorities. (The former `photo-feature-implementation-tasks.md` was merged into that file on 2026-09-18 and deleted; its Virtual Try-On items are obsolete — VTO was torn down 2026-08-31, migration `082`.)

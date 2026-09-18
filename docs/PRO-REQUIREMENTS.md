@@ -1694,7 +1694,7 @@ real code (`apps/api/src/lib/studio-shoot.ts`, `apps/api/src/jobs/studio-shoot.t
 said **"do NOT start until the user says go"** — this was never revisited
 when Phase A shipped. Full working-vs-remaining breakdown:
 `docs/photoshoots/photo-feature-audit.md` §1.3, backlog:
-`docs/tasks/photo-feature-implementation-tasks.md`. Phase B (product video)
+`docs/tasks/ai-photo-generation.md` §5 R8. Phase B (product video)
 and Phase C (AI Fashion Model) — no code found for either, §24.11's
 do-not-start still applies to those.
 
@@ -1727,7 +1727,7 @@ owner applies), managed from the **Admin → Studio Styles** page:
   `@kanchuki/shared` (Task 6). Admin bench page migrated to API fetch.
 
 Full spec: `docs/superpowers/specs/2026-08-30-studio-styles-admin-design.md`.
-Supersedes step 6 of `docs/tasks/ai-studio-shoot-models-scenes.md`.
+Supersedes step 6 of the AI Studio Shoot scene-expansion plan, now merged into `docs/tasks/ai-photo-generation.md` §2.3.
 
 ### 24.13 Engine + photo path rebuilt — ✅ Built 2026-09-18 (stages 1–3), never run against live providers
 
@@ -2400,14 +2400,14 @@ exists and just needs a working schema under it.
 ## 30. F-034 AI Image→Video for Social Promo (Reels / Shorts / Feed) — 🧪 PHASE 1 BUILT (admin bench); Phase 2 (retailer) 🔴 DEFERRED
 
 **Status 2026-09-03:** Phase 1 (admin test bench) is built — tasks 1–4 of
-`docs/tasks/image-to-video.md` (commits `17fe997`, `f57479c`) plus the task-6.1
+`docs/tasks/ai-photo-generation.md` §7 (commits `17fe997`, `f57479c`) plus the task-6.1
 admin addon-pack surface (migration `089_resource_packs`, applied; `47748a4`).
 **The owner decided 2026-09-03 to keep this feature ADMIN-TEST-ONLY for now** — the
 retailer mobile screen, queue/job, FB/IG publish and quota wiring (tasks 5–9) are
 🔴 hard-deferred until the bench is tested properly and the owner says go. Nothing
-retailer-facing ships from this spec yet; see `docs/tasks/image-to-video-phase2.md`
-for the deferred checklist (migrations renumbered 090/091 after 089 was taken by
-`resource_packs`).
+retailer-facing ships from this spec yet; see `docs/tasks/ai-photo-generation.md` §7.4–§7.5
+for the deferred checklist (that draft's migration numbers 090/091 are now taken by the
+`resource_packs` migration and the applied 090–092 social-composer set — renumber to ≥106 before building it).
 
 **Written 2026-09-02 on user request.** Supersedes **F-032 Phase B**
 (§24.4 / §24.7 "Product video") — same idea, but concrete decisions locked:
