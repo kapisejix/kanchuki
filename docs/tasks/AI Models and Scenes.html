@@ -154,7 +154,143 @@
     // ── Dataset: Diverse AI Studio Scenes and Indian Models ──
     const ITEMS = [
       // ══════════════════════════════════════════════════════════════
+      // FINALIZED SET — 2026-09-18 (docs/tasks/AI-Tools-Photo-Generation-Research.md
+      // follow-up). These 8 are the live studio_styles MODEL rows (migration
+      // 101_studio_styles_finalized_v2) — the 21 originals below them (Royal
+      // Botanical Garden .. Kids Playing Outdoors) were DELETED from the DB
+      // and stay here only as design reference, not as live templates.
+      // ══════════════════════════════════════════════════════════════
+      {
+        id: "final_studio_softbox_indoor",
+        code: "FINAL_STUDIO_SOFTBOX",
+        type: "scene",
+        categoryTag: "scene",
+        title: "Indoor Studio Softbox",
+        subtitle: "Clean seamless studio backdrop, eye-level softbox key light, full body",
+        gender: "All Genders",
+        ageGroup: "All Ages",
+        imageUrl: "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=800&auto=format&fit=crop&q=80",
+        badge: "Finalized Set",
+        badgeColor: "badge-emerald",
+        garmentFit: "All Catalog Garments, Suits, Kurtis, Sarees, Menswear",
+        description: "Clean professional indoor studio, seamless grey-beige backdrop, softbox key light, confident standing pose.",
+        prompt: "Place this garment on the model standing in a clean professional indoor studio with a seamless soft grey-beige backdrop, large softbox key light at eye level plus a subtle fill light, confident relaxed standing pose, soft natural grounding shadow. The garment's exact colour, print, embroidery, fabric texture and original length are 100% preserved — no stretching, shortening or lengthening."
+      },
+      {
+        id: "final_home_mirror_selfie",
+        code: "FINAL_MIRROR_SELFIE",
+        type: "scene",
+        categoryTag: "scene",
+        title: "Home Mirror Selfie",
+        subtitle: "Casual full-length mirror selfie, warm home interior, influencer style",
+        gender: "All Genders",
+        ageGroup: "All Ages",
+        imageUrl: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&auto=format&fit=crop&q=80",
+        badge: "Finalized Set",
+        badgeColor: "badge-fuchsia",
+        garmentFit: "Kurtis, Co-ords, Daily Ethnic, Casual Wear",
+        description: "Warm softly-lit home interior, large mirror, casual influencer-style full-length selfie pose.",
+        prompt: "Place this garment on the model taking a casual full-length mirror selfie inside a warm, softly lit home interior — a large mirror, a cosy sofa or wooden console softly out of focus behind, a potted plant nearby, soft natural window light, phone held up in one hand in a relaxed influencer-style pose. The garment's exact colour, print, embroidery, fabric texture and original length are 100% preserved."
+      },
+      {
+        id: "final_golden_hour_outdoor",
+        code: "FINAL_GOLDEN_HOUR",
+        type: "scene",
+        categoryTag: "scene",
+        title: "Golden Hour Outdoor",
+        subtitle: "Warm sunset outdoor shoot, soft blurred greenery or street, full body",
+        gender: "All Genders",
+        ageGroup: "All Ages",
+        imageUrl: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&auto=format&fit=crop&q=80",
+        badge: "Finalized Set",
+        badgeColor: "badge-amber",
+        garmentFit: "Lehengas, Kurtis, Resort Wear, Festive Wear",
+        description: "Outdoor golden-hour sunset, soft blurred greenery or street, gentle warm sun flare.",
+        prompt: "Place this garment on the model standing outdoors at warm golden-hour sunset, soft blurred greenery or an open street behind, gentle warm sun flare, relaxed natural full-body pose. The garment's exact colour, print, embroidery, fabric texture and original length are 100% preserved with no warm-tone colour shift onto the fabric itself."
+      },
+      {
+        id: "final_catwalk_runway_motion",
+        code: "FINAL_CATWALK_RUNWAY",
+        type: "scene",
+        categoryTag: "scene",
+        title: "Catwalk Runway Motion",
+        subtitle: "High-fashion runway walk, overhead spotlights, natural motion sway",
+        gender: "All Genders",
+        ageGroup: "All Ages",
+        imageUrl: "https://images.unsplash.com/photo-1509631179647-0177331693ae?w=800&auto=format&fit=crop&q=80",
+        badge: "Finalized Set",
+        badgeColor: "badge-purple",
+        garmentFit: "Couture Lehengas, Designer Gowns, Sherwanis, Runway",
+        description: "High-fashion catwalk runway, overhead spotlights, blurred audience, natural walking motion.",
+        prompt: "Place this garment on the model walking confidently down a high-fashion catwalk runway, overhead spotlights, soft blurred audience bokeh behind, natural walking motion with a slight fabric sway. The garment's exact colour, print, embroidery, fabric texture and original length are 100% preserved and stay sharp — only the background and pose show motion."
+      },
+      {
+        id: "final_editorial_closeup_rim",
+        code: "FINAL_EDITORIAL_CLOSEUP",
+        type: "scene",
+        categoryTag: "scene",
+        title: "Editorial Close-Up",
+        subtitle: "Chest-up editorial crop, dark backdrop, dramatic rim light",
+        gender: "All Genders",
+        ageGroup: "All Ages",
+        imageUrl: "https://images.unsplash.com/photo-1519699047748-de8e457a634e?w=800&auto=format&fit=crop&q=80",
+        badge: "Finalized Set",
+        badgeColor: "badge-sky",
+        garmentFit: "Blouses, Necklines, Embroidery Detail, Collars",
+        description: "Tight chest-up editorial crop, dark seamless backdrop, dramatic rim light, direct gaze.",
+        prompt: "A tight editorial close-up of the model from the chest up, wearing this garment, seamless dark studio backdrop, dramatic rim light outlining the shoulders and a soft key light on the face, confident direct gaze. The garment's exact colour, print, embroidery and fabric texture in frame are 100% preserved."
+      },
+      {
+        id: "final_marble_luxury_premium",
+        code: "FINAL_MARBLE_LUXURY",
+        type: "scene",
+        categoryTag: "scene",
+        title: "Marble Premium Luxury",
+        subtitle: "Elegant marble interior, warm ambient light, subtle gold accents",
+        gender: "All Genders",
+        ageGroup: "All Ages",
+        imageUrl: "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=800&auto=format&fit=crop&q=80",
+        badge: "Finalized Set",
+        badgeColor: "badge-amber",
+        garmentFit: "Bridal, Silk Sarees, Sherwanis, Heavy Zari Work",
+        description: "Elegant marble-clad luxury interior, warm ambient light, subtle gold accents, poised stance.",
+        prompt: "Place this garment on the model standing in an elegant marble-clad luxury interior, soft warm ambient light, subtle gold accents softly out of focus behind, poised confident stance. The garment's exact colour, print, embroidery, fabric texture and original length are 100% preserved."
+      },
+      {
+        id: "final_halfbody_top_indoor",
+        code: "FINAL_HALFBODY_TOP",
+        type: "scene",
+        categoryTag: "scene",
+        title: "Half-Body Top Shot (Kurti / T-Shirt)",
+        subtitle: "Waist-up only — for standalone tops, no invented bottomwear or legs",
+        gender: "All Genders",
+        ageGroup: "All Ages",
+        imageUrl: "https://images.unsplash.com/photo-1618244972963-dbee1a7edc95?w=800&auto=format&fit=crop&q=80",
+        badge: "Fixes bottomwear bug",
+        badgeColor: "badge-emerald",
+        garmentFit: "Kurtis, T-Shirts, Tops, Tunics, Crop Tops, Shirts",
+        description: "Clean indoor studio, waist-up crop only. Fixes the 'auto adds a bottom' complaint on top-only garments — same guard also runs automatically in code for any product whose category/name matches kurti/blouse/t-shirt/top/tunic/shirt (see isTopOnlyGarment() in studio-shoot.ts), so every MODEL template gets it, not just this one.",
+        prompt: "Place this garment on the model in a clean indoor studio with soft even key light. Frame the shot from the head down to the hip — waist-up only. Do NOT show the model's legs, hips-down, or feet, and do NOT add, invent or imply any trousers, palazzo, leggings, jeans or skirt that is not visible in the original product photo — this garment is a standalone top and must not be shown paired with a bottom that doesn't exist in the source image. The garment's exact colour, print, embroidery, fabric texture and original length are 100% preserved with no stretching or lengthening."
+      },
+      {
+        id: "final_social_post_square",
+        code: "FINAL_SOCIAL_SQUARE",
+        type: "scene",
+        categoryTag: "scene",
+        title: "Social Media Post Square",
+        subtitle: "Bright lifestyle shot, centred full body, open space for logo/text",
+        gender: "All Genders",
+        ageGroup: "All Ages",
+        imageUrl: "https://images.unsplash.com/photo-1483985988355-763728e1935b?w=800&auto=format&fit=crop&q=80",
+        badge: "Finalized Set",
+        badgeColor: "badge-purple",
+        garmentFit: "All Catalog Garments — for Instagram/Facebook posts",
+        description: "Bright uncluttered lifestyle shot, centred composition, headroom left for a store logo/badge overlay (composited server-side after generation, not drawn by the AI — logos/text render unreliably from a prompt).",
+        prompt: "Place this garment on the model standing in a bright, clean lifestyle setting suited for a social media post — soft natural light, simple uncluttered background, centred full-body composition with even margins on both sides and clear open space above the head for a logo or text overlay. The garment's exact colour, print, embroidery, fabric texture and original length are 100% preserved."
+      },
+      // ══════════════════════════════════════════════════════════════
       // SECTION 1: SCENE ENVIRONMENTS (Outdoor, Street, Beach, Nature)
+      // — reference only, not live in the DB as of 2026-09-18 —
       // ══════════════════════════════════════════════════════════════
       {
         id: "scene_botanical_garden",

@@ -150,6 +150,20 @@ function resolveDemographic(
 }
 
 /**
+ * A garment that is only ever the top half of an outfit (kurti, blouse, tee,
+ * top, tunic, crop top, shirt). MODEL scenes describe a full standing pose,
+ * so with nothing else in frame Kontext invents legs and pairs the top with
+ * trousers/palazzo/leggings that don't exist in the source photo — the
+ * "auto adds a bottom" complaint. Detected once here so every MODEL caller
+ * (retailer route, growth backgrounds, admin bench) gets the same guard,
+ * not just the one template that names it explicitly.
+ */
+const TOP_ONLY_RE = /\b(kurti|blouse|t-?shirt|tee|top|tunic|crop top|shirt)\b/i;
+function isTopOnlyGarment(category?: string | null, name?: string | null): boolean {
+  return TOP_ONLY_RE.test(`${category ?? ''} ${name ?? ''}`);
+}
+
+/**
  * Generate a studio product photo or AI fashion-model shot for a resolved
  * prompt (the caller — retailer route, job, or admin bench — pulls the prompt
  * from a `studio_styles` row).
@@ -224,6 +238,9 @@ export async function generateStudioImage(
       indianModelDesc,
     );
     basePrompt = `The person wearing this garment is ${indianModelDesc}. ${basePrompt}`;
+    if (isTopOnlyGarment(product?.category, product?.name)) {
+      basePrompt += ` This garment is a standalone top — it is NOT part of a full outfit. Frame the shot from the head down to the hip only. Do NOT show the model's legs, hips-down or feet, and do NOT add, invent or imply any trousers, palazzo, leggings, jeans or skirt that is not visible in the original product photo.`;
+    }
   }
 
   const colorEnforcement = colorSpec

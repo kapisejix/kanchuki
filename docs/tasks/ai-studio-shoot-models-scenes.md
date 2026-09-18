@@ -4,6 +4,10 @@
 **Created:** 2026-08-30
 **Owner workflow:** build steps 1–5 → owner tests every scene × demographic in the admin bench → owner finalises the subset to ship in the retailer mobile AI Studio → step 6 (mobile auto-filter) + un-draft the chosen scenes.
 
+**Finalized 2026-09-18 — MODEL set collapsed 21 → 8.** Owner review found the 21 seeded MODEL scenes (migration `078`) too similar and, separately, that every one of them let Kontext invent legs/trousers under a top-only garment (kurti/t-shirt) because the prompt only ever described a full standing pose. Migration `101_studio_styles_finalized_v2` deletes those 21 and replaces them with 8: Indoor Studio Softbox, Home Mirror Selfie, Golden Hour Outdoor, Catwalk Runway Motion, Editorial Close-Up, Marble Premium Luxury, Half-Body Top Shot (Kurti/T-Shirt — explicit waist-up crop template), Social Media Post Square. PRODUCT-tab rows (ghost/hanger/flatlay/mannequin, 8 rows) are untouched — no complaint against those. The bottomwear bug is also fixed at the code level, not just in one template: `isTopOnlyGarment()` in `apps/api/src/lib/studio-shoot.ts` detects kurti/blouse/t-shirt/tee/top/tunic/shirt from the product's category/name and appends a "waist-up only, no invented bottomwear" clause to **every** MODEL prompt automatically, so the guard applies even if a retailer picks a different template. Full prompt text + design rationale also mirrored into `docs/tasks/AI Models and Scenes.html` (marked "FINALIZED SET — 2026-09-18" at the top of the `ITEMS` array; the 21 retired scenes stay in that file as design reference only, no longer live in the DB). Follow-up research that triggered this: `docs/tasks/AI-Tools-Photo-Generation-Research.md`.
+
+**Not done in this pass (deliberately out of scope):** store logo/badge-on-product compositing and the AI Promo Video social-post crop are a post-processing step (server-side `sharp` overlay, same pattern as the F-066 Suits Designs watermark), not a prompt change — tracked for a follow-up, not built here.
+
 ---
 
 ## Goal

@@ -2537,3 +2537,35 @@ Both were found by the console-error backstop above, on the same page every shop
 
 **Not built (Phases 2–4, per the task doc's own roadmap):** nightly aggregation job, admin store-level + per-customer drill-down dashboard, retailer-facing aggregate view. Phase 1 only writes rows — nothing reads them yet.
 
+---
+
+## BUILT 2026-09-18 — AI Studio Shoot MODEL set finalized (21 → 8) + top-only-garment bottomwear fix
+
+**Why:** owner asked why paid BFL vs. free ChatGPT/Gemini prompt commands (research answer: `docs/tasks/AI-Tools-Photo-Generation-Research.md`), then followed up wanting the MODEL scene set collapsed to a curated 7–10 like a slash-command catalog, plus a fix for the concrete complaint: picking a kurti/t-shirt and generating a MODEL shot auto-added a bottom garment (palazzo/leggings) and sometimes stretched the top's length, because every seeded MODEL prompt described a full standing pose with nothing else in frame for Kontext to fill.
+
+| Piece | Change |
+|---|---|
+| `apps/api/src/lib/studio-shoot.ts` | **root-cause fix, one chokepoint** — new `isTopOnlyGarment()` (regex on category/name: kurti/blouse/t-shirt/tee/top/tunic/crop top/shirt); when true, `generateStudioImage()` appends a "waist-up only, do not invent trousers/palazzo/leggings/jeans/skirt" clause to **every** MODEL prompt, not just one template — every caller (retailer route, growth backgrounds, admin bench) gets it automatically |
+| `packages/db/prisma/migrations/101_studio_styles_finalized_v2/migration.sql` | **new** — `DELETE` the 21 original MODEL rows seeded in migration `078` (near-duplicate scene backdrops), `INSERT` 8 finalized rows: Indoor Studio Softbox, Home Mirror Selfie, Golden Hour Outdoor, Catwalk Runway Motion, Editorial Close-Up, Marble Premium Luxury, Half-Body Top Shot (Kurti/T-Shirt — explicit crop template), Social Media Post Square. All `PUBLISHED`, all 3 plan tiers. PRODUCT-tab rows (ghost/hanger/flatlay/mannequin, 8 rows) untouched. No FK from `ProductPhoto` to `studio_styles` (provenance is JSON metadata on the photo row) so the delete has no side effect on already-generated photos. **Not yet applied to prod — ships via the normal migration-deploy path, not run directly.** |
+| `docs/tasks/AI Models and Scenes.html` | the 8 finalized prompts prepended to the `ITEMS` array, marked "FINALIZED SET — 2026-09-18"; the 21 retired scenes stay below as design reference only (no longer live in the DB) |
+| `docs/tasks/ai-studio-shoot-models-scenes.md` | status note appended documenting the 21→8 collapse + the code-level fix |
+
+**Deleting the old rows also removes them from the `/admin/photo-cleanup-test` bench dropdown** (that page fetches all `studio_styles` rows regardless of status, by design, so drafts stay testable — with the rows physically gone, no frontend filter change was needed).
+
+**Deliberately not built:** store logo/badge-on-product and the social-post crop are a post-processing step — composite the retailer's logo PNG onto the generated image with `sharp` after Kontext returns it, same pattern as the F-066 Suits Designs watermark — not a prompt change, and not built in this pass. Diffusion models render logos/text unreliably from a prompt.
+
+**Verification:** `apps/api` tsc clean · `studio-shoot.test.ts` **9/9** passing.
+
+---
+
+## BUILT 2026-09-18 (later) — MODEL rows to Gemini engine + PRODUCT-tab hook-removal fix
+
+**Why:** owner compared the same prompt+photo across BFL Kontext / Gemini / ChatGPT — Kontext lost on pose/smile/lighting realism (it's a pixel-preserving diffusion editor, not a generative foundation model; Gemini is the same model behind Google Shopping's "Try It On", purpose-trained on fashion realism). Separately, PRODUCT-tab shots (hanger/mannequin/etc.) still showed the retailer's original hook/clip.
+
+| Migration | Change |
+|---|---|
+| `102_studio_styles_model_engine_gemini` | `UPDATE ... SET engine = 'imagen_3'` on the 8 MODEL rows from `101`. PRODUCT-tab rows untouched — no person in frame, Kontext's pixel-lock is still correct there. Code-level fallback (`generateStudioImage`: Gemini → Kontext → BFL direct) unchanged, so BFL keeps serving every PRODUCT generation and any MODEL generation where the Gemini key/quota is out — no engine-registry code change needed, `studio_styles.engine` was already the per-row dial (F-023 pattern). |
+| `103_studio_styles_product_hook_removal_fix` | Rewrote all 8 PRODUCT-tab prompts. Root cause, found by re-reading `078`'s original text: 6 of 8 rows asked for hook removal but as a *trailing* clause after a leading "keep 100% pixel-identical" sentence — BFL's own guidance says the change-clause should lead and fold the preserve-constraint into the same sentence, not stack two instructions. The other 2 rows (`wedding_elegant`, `warm_luxury`) **never asked for removal at all** — pure "replace the background" prompts, so Kontext correctly left the hook untouched; not a model failure. Every row now leads with an explicit "none of it may remain" removal clause and specifies lighting *direction* (angle + purpose) instead of a bare "5500K lighting" line. |
+
+**Not yet applied to prod** — both ship via the normal migration-deploy path, not run directly, same as `101`.
+
