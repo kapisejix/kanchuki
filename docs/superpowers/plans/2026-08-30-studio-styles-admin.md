@@ -19,7 +19,7 @@
 - **`npx tsc --noEmit` must be clean** in `packages/shared`, `apps/api`, and `apps/mobile` before any task is marked done.
 - **Prisma enum array filter:** `where: { plans: { has: retailerPlan } }`.
 - **Style slug regex:** `/^[a-z0-9_]{2,40}$/`, unique, immutable after create.
-- **Engine values** (the only valid `engine` strings): `flux_pro`, `imagen_3`, `imagen_3_fast`, `flux_schnell`, `bfl_kontext`. `null` = default cascade. (`idm_vton` is removed.)
+- **Engine values** (the only valid `engine` strings): `flux_pro`, `imagen_3`, `imagen_3_fast`, `flux_schnell`, `bfl_kontext`. `null` = default cascade. (`idm_vton` is removed.) — **SUPERSEDED 2026-09-18:** this list is no longer a literal anywhere; read `STUDIO_ENGINES` in `packages/shared/src/constants/index.ts`. `imagen_3` / `imagen_3_fast` were **renamed** to `gemini_image` / `gemini_image_pro` (they named an Imagen text-to-image endpoint that never received the product photo), `vton_kontext` / `vton_gemini` were added, and migration `105_studio_styles_engine_rename` normalizes the old strings in the DB. See `docs/BUILD-LOG.md` (2026-09-18, stage 3).
 - **Demographic values** (`audience` array members): `womens`, `mens`, `teen_girl`, `teen_boy`, `kids_girl`, `kids_boy`.
 - **Commit style:** Conventional Commits; end message with the repo's `Co-Authored-By` + `Claude-Session` trailer lines.
 

@@ -3,10 +3,11 @@
 import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch';
 import {
   PRODUCT_DEMOGRAPHICS,
+  STUDIO_ENGINES,
   type Demographic,
 } from '@kanchuki/shared';
 import { motion } from 'framer-motion';
-import { ArrowRight, ImageOff, Loader2, Shirt, Upload, Video, Wand2 } from 'lucide-react';
+import { ArrowRight, Columns2, ImageOff, Loader2, Shirt, Upload, Video, Wand2 } from 'lucide-react';
 import Image from 'next/image';
 import { useEffect, useRef, useState } from 'react';
 
@@ -177,6 +178,28 @@ async function uploadToR2(file: File): Promise<string> {
   return data.public_url as string;
 }
 
+/**
+ * One arm of the studio A/B — a whole pipeline plus the stages that ran. The
+ * server is strict about both arms, so a failed one arrives with the name of
+ * the stage that failed instead of a substitute image.
+ */
+type StudioAbArm = {
+  order: 'forward' | 'reversed';
+  label: string;
+  status: 'ready' | 'failed';
+  error: string | null;
+  ms: number;
+  result_url: string | null;
+  stages: { label: string; url: string }[];
+};
+
+type StudioAbResponse = {
+  engine: string;
+  slug: string | null;
+  arms: StudioAbArm[];
+  notes: string[];
+};
+
 export default function PhotoCleanupTestPage() {
   const [productFile, setProductFile] = useState<File | null>(null);
   const [sampleFile, setSampleFile] = useState<File | null>(null);
@@ -215,6 +238,34 @@ export default function PhotoCleanupTestPage() {
   const [studioSlug, setStudioSlug] = useState<string>('');
   const [studioPrompt, setStudioPrompt] = useState<string>('');
   const [studioDemographic, setStudioDemographic] = useState<'' | Demographic>('');
+  // Garment identity. The bench generates from a pasted R2 URL — there is no
+  // product row — so with these blank the API assembles a WEAKER prompt than
+  // the retailer path (no garment type, no colour clause) and neither the
+  // garment-identity nor the top-only guard can fire. See the API route.
+  const [studioGarment, setStudioGarment] = useState({
+    category: '',
+    subtype: '',
+    name: '',
+    primary_color: '',
+    fabric: '',
+    pattern: '',
+  });
+  // Engine dial. The bench previously never sent `engine` at all, so every run
+  // took the default Kontext cascade and the per-row engine could not be tested
+  // here — which is how migration 102's imagen_3 switch went unverified.
+  const [studioEngine, setStudioEngine] = useState<(typeof STUDIO_ENGINES)[number] | ''>('');
+  const [studioModelUrl, setStudioModelUrl] = useState<string>('');
+  // A/B — the same photo through BOTH pipeline orders. It has its own engine
+  // dial rather than reusing `studioEngine`: the comparison is only defined for
+  // the two two-step engines, and silently coercing whatever the form had
+  // selected is the kind of hidden behaviour this bench exists to remove.
+  const [studioAbEngine, setStudioAbEngine] = useState<'vton_kontext' | 'vton_gemini'>(
+    'vton_kontext',
+  );
+  const [studioAbBusy, setStudioAbBusy] = useState(false);
+  const [studioAb, setStudioAb] = useState<
+    (StudioAbResponse & { productUrl: string }) | null
+  >(null);
   // Fetch all admin studio styles (any status — bench tests drafts).
   useEffect(() => {
     fetch(`${API_URL}/v1/admin/studio-styles`, adminGetOptions())
@@ -250,6 +301,14 @@ export default function PhotoCleanupTestPage() {
           slug: studioSlug || undefined,
           demographic: studioDemographic || undefined,
           prompt: studioPrompt.trim() || undefined,
+          category: studioGarment.category.trim() || undefined,
+          subtype: studioGarment.subtype.trim() || undefined,
+          name: studioGarment.name.trim() || undefined,
+          primary_color: studioGarment.primary_color.trim() || undefined,
+          fabric: studioGarment.fabric.trim() || undefined,
+          pattern: studioGarment.pattern.trim() || undefined,
+          engine: studioEngine || undefined,
+          model_image_url: studioModelUrl.trim() || undefined,
         }),
       });
       const json = await res.json();
@@ -272,6 +331,40 @@ export default function PhotoCleanupTestPage() {
       setError(err instanceof Error ? err.message : 'Studio shoot failed');
     } finally {
       setStudioBusy(false);
+    }
+  };
+
+  const runStudioAb = async () => {
+    if (!productFile || studioAbBusy) return;
+    setStudioAbBusy(true);
+    setError('');
+    try {
+      const productUrl = await uploadToR2(productFile);
+      const res = await fetch(`${API_URL}/v1/admin/photo-cleanup/studio-ab`, {
+        ...(await adminMutateOptions()),
+        method: 'POST',
+        body: JSON.stringify({
+          product_url: productUrl,
+          slug: studioSlug || undefined,
+          demographic: studioDemographic || undefined,
+          prompt: studioPrompt.trim() || undefined,
+          category: studioGarment.category.trim() || undefined,
+          subtype: studioGarment.subtype.trim() || undefined,
+          name: studioGarment.name.trim() || undefined,
+          primary_color: studioGarment.primary_color.trim() || undefined,
+          fabric: studioGarment.fabric.trim() || undefined,
+          pattern: studioGarment.pattern.trim() || undefined,
+          engine: studioAbEngine,
+          model_image_url: studioModelUrl.trim() || undefined,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error?.message ?? 'A/B run failed');
+      setStudioAb({ ...(json.data as StudioAbResponse), productUrl });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'A/B run failed');
+    } finally {
+      setStudioAbBusy(false);
     }
   };
 
@@ -625,7 +718,7 @@ export default function PhotoCleanupTestPage() {
         </div>
       </div>
 
-      {/* AI Studio Shoot — FLUX Kontext / Fal / Imagen cascade (F-032) */}
+      {/* AI Studio Shoot — FLUX Kontext / Gemini / two-step VTON (F-032) */}
       <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-4 space-y-3">
         <div className="flex items-center gap-3">
           <Wand2 size={18} className="text-fuchsia-500" />
@@ -684,6 +777,82 @@ export default function PhotoCleanupTestPage() {
           </div>
 
         </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="flex flex-col gap-1">
+            <label htmlFor="studio-engine" className="text-xs text-gray-500">
+              Engine
+            </label>
+            <select
+              id="studio-engine"
+              value={studioEngine}
+              onChange={(e) =>
+                setStudioEngine(e.target.value as (typeof STUDIO_ENGINES)[number] | '')
+              }
+              className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2"
+            >
+              <option value="">— default cascade (Kontext) —</option>
+              {STUDIO_ENGINES.map((e) => (
+                <option key={e} value={e}>
+                  {e}
+                  {e === 'vton_kontext' || e === 'vton_gemini'
+                    ? ' · two-step, keeps the product'
+                    : ''}
+                  {e === 'gemini_image' || e === 'gemini_image_pro'
+                    ? ' · Gemini native image, gets the photo'
+                    : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1 sm:col-span-2">
+            <label htmlFor="studio-model-url" className="text-xs text-gray-500">
+              Model reference URL — two-step engines (vton_*) only, optional
+            </label>
+            <input
+              id="studio-model-url"
+              value={studioModelUrl}
+              onChange={(e) => setStudioModelUrl(e.target.value)}
+              placeholder="https://… — blank generates a plain frontal reference"
+              className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2"
+            />
+            <p className="text-[10px] text-gray-400">
+              Paste a previously generated scene here to test the reversed order
+              (scene first, then try-on).
+            </p>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {(
+            [
+              ['category', 'Category', 'Kurta'],
+              ['subtype', 'Subtype', 'Kurta Set'],
+              ['name', 'Product name', 'Georgette Anarkali Suit'],
+              ['primary_color', 'Primary colour', 'Maroon'],
+              ['fabric', 'Fabric', 'Georgette'],
+              ['pattern', 'Pattern', 'Floral'],
+            ] as const
+          ).map(([key, fieldLabel, placeholder]) => (
+            <div key={key} className="flex flex-col gap-1">
+              <label htmlFor={`studio-${key}`} className="text-xs text-gray-500">
+                {fieldLabel}
+              </label>
+              <input
+                id={`studio-${key}`}
+                value={studioGarment[key]}
+                onChange={(e) =>
+                  setStudioGarment((g) => ({ ...g, [key]: e.target.value }))
+                }
+                placeholder={placeholder}
+                className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2"
+              />
+            </div>
+          ))}
+        </div>
+        <p className="text-[10px] text-gray-400">
+          Garment identity — how the product row is described to the model. Leave blank and the
+          garment type is never named, which is how a salwar gets rendered as a dhoti. Real
+          products fill these from the AI tagger, so fill them to test what production sends.
+        </p>
         <div className="flex flex-col gap-1">
           <label htmlFor="studio-prompt" className="text-xs text-gray-500">
             Custom prompt (optional — overrides template & model; paste a formula from{' '}
@@ -709,6 +878,124 @@ export default function PhotoCleanupTestPage() {
           {studioBusy ? <Loader2 size={16} className="animate-spin" /> : <Wand2 size={16} />}
           Generate studio shoot
         </button>
+        <div className="rounded-2xl border border-gray-200 bg-gray-50/60 p-3 flex flex-col gap-3">
+          <div className="flex flex-col lg:flex-row lg:items-center gap-3">
+            <div className="flex flex-col gap-1">
+              <label htmlFor="studio-ab-engine" className="text-xs text-gray-500">
+                A/B scene renderer
+              </label>
+              <select
+                id="studio-ab-engine"
+                value={studioAbEngine}
+                onChange={(e) =>
+                  setStudioAbEngine(e.target.value as 'vton_kontext' | 'vton_gemini')
+                }
+                className="text-xs border border-gray-200 rounded-lg px-2 py-2 bg-white"
+              >
+                <option value="vton_kontext">Kontext finishes the scene</option>
+                <option value="vton_gemini">Gemini finishes the scene</option>
+              </select>
+            </div>
+            <button
+              type="button"
+              onClick={runStudioAb}
+              disabled={!productFile || studioAbBusy}
+              className="flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-white text-sm font-medium rounded-xl disabled:opacity-40 transition-colors"
+            >
+              {studioAbBusy ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : (
+                <Columns2 size={16} />
+              )}
+              Run A/B — both pipeline orders
+            </button>
+            <p className="text-[10px] text-gray-400 lg:max-w-lg">
+              Same photo, both orders. Forward: reference, then try-on on the product photo, then
+              the scene. Reversed: the scene render first, then try-on. Both arms are strict — no
+              fallback — and each shows its intermediate stages, so a bad result can be blamed on a
+              stage instead of on the order. Uses the same product photo, scene and garment fields
+              as the button above; about five provider calls and under a minute.
+            </p>
+          </div>
+          {studioAb && (
+            <div className="flex flex-col gap-3">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {studioAb.arms.map((arm) => (
+                  <div
+                    key={arm.order}
+                    className="bg-white rounded-2xl border border-gray-200/80 overflow-hidden"
+                  >
+                    <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-gray-100">
+                      <span className="text-xs font-medium text-gray-700">{arm.label}</span>
+                      <span
+                        className={`text-[10px] px-2 py-0.5 rounded-full ${
+                          arm.status === 'ready'
+                            ? 'bg-emerald-50 text-emerald-700'
+                            : 'bg-red-50 text-red-600'
+                        }`}
+                      >
+                        {arm.status} · {(arm.ms / 1000).toFixed(1)}s
+                      </span>
+                    </div>
+                    {arm.stages.length > 0 && (
+                      <div className="flex gap-2 px-2 py-2 bg-gray-50/70 overflow-x-auto">
+                        {arm.stages.map((s) => (
+                          <button
+                            key={s.url}
+                            type="button"
+                            className="w-20 shrink-0 flex flex-col gap-1 text-left cursor-zoom-in"
+                            title="Click to enlarge"
+                            onClick={() => setLightbox({ url: s.url, label: s.label })}
+                          >
+                            {/* eslint-disable-next-line @next/next/no-img-element -- R2 result URLs render reliably as a plain img */}
+                            <img
+                              src={s.url}
+                              alt={s.label}
+                              className="w-20 h-24 object-cover rounded-lg bg-gray-100 hover:opacity-90 transition-opacity"
+                            />
+                            <span className="text-[9px] leading-tight text-gray-400">{s.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      className="w-full aspect-[3/4] relative bg-gray-100 cursor-zoom-in hover:opacity-95 transition-opacity"
+                      title="Click to enlarge"
+                      onClick={() =>
+                        arm.result_url &&
+                        setLightbox({ url: arm.result_url, label: `${arm.label} — result` })
+                      }
+                    >
+                      {arm.result_url ? (
+                        /* eslint-disable-next-line @next/next/no-img-element -- see above */
+                        <img
+                          src={arm.result_url}
+                          alt={arm.label}
+                          className="absolute inset-0 w-full h-full object-cover"
+                        />
+                      ) : (
+                        <span className="absolute inset-0 flex items-center justify-center gap-2 text-xs text-red-500 px-4 text-center">
+                          <ImageOff size={14} /> This order produced no image
+                        </span>
+                      )}
+                    </button>
+                    {arm.error && (
+                      <p className="px-3 py-2 text-[10px] text-red-600 border-t border-gray-100 font-mono break-words">
+                        {arm.error}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <ul className="text-[10px] text-gray-500 list-disc pl-4 flex flex-col gap-0.5">
+                {studioAb.notes.map((n) => (
+                  <li key={n}>{n}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
         {studioResults.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
             {studioResults.map((r) => (

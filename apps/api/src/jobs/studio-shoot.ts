@@ -146,6 +146,9 @@ export async function handleStudioShoot(data: StudioShootJobData): Promise<void>
         ? {
             name: product.name,
             category: product.category,
+            // `subtype` is the most specific garment type the tagger produced —
+            // it is the anchor that stops the model reading a salwar as a dhoti.
+            subtype: product.subtype,
             primary_color: product.primary_color,
             secondary_colors: product.secondary_colors,
             fabric: product.fabric_estimate,

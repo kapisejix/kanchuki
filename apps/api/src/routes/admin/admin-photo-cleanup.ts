@@ -10,11 +10,16 @@ import type { FastifyPluginAsync } from 'fastify';
 
 import { compressImageToTarget, publicUrl, uploadBuffer } from '@kanchuki/ai';
 import { prisma } from '@kanchuki/db';
-import { PRODUCT_DEMOGRAPHICS, R2_PATHS } from '@kanchuki/shared';
+import { PRODUCT_DEMOGRAPHICS, R2_PATHS, STUDIO_ENGINES } from '@kanchuki/shared';
 import { z } from 'zod';
 import { generateImageToVideo } from '../../lib/fal-video.js';
 import { runPhotoCleanup, serializePhotoCleanup } from '../../lib/photo-cleanup-runner.js';
-import { downloadCompressAndUpload, generateStudioImage } from '../../lib/studio-shoot.js';
+import {
+  type StudioProduct,
+  downloadCompressAndUpload,
+  generateStudioImage,
+  generateStudioOrderAb,
+} from '../../lib/studio-shoot.js';
 import { AppError, validationError } from '../../plugins/error-handler.js';
 import { adminAuthPreHandler } from '../admin-auth.js';
 
@@ -54,6 +59,68 @@ export function parseTryOnResult(id: string, createdAt: Date, metadata: unknown)
     category: typeof m.category === 'string' ? m.category : 'tops',
     duration_ms: typeof m.duration_ms === 'number' ? m.duration_ms : null,
     ran_at: createdAt.toISOString(),
+  };
+}
+
+/**
+ * The product description both bench routes take.
+ *
+ * Shared deliberately: the A/B compares two pipeline orders over ONE product
+ * description, so a field that existed on /studio-shoot alone would let the
+ * comparison be run against a differently-described product than the shot it
+ * is meant to improve on.
+ *
+ * Garment identity matters most here — the bench generates from a pasted R2
+ * URL, so there is no product row for generateStudioImage to read, meaning an
+ * empty bench tests a WEAKER prompt than production and cannot exercise the
+ * garment-identity or top-only guards at all.
+ */
+const studioBenchFields = {
+  product_url: z.string().url(),
+  // studio_styles slug — resolved to its prompt/tab. Optional: a free-text
+  // `prompt` alone is also valid on the bench.
+  slug: z.string().optional(),
+  // Model reference for the two-step `vton_*` pipelines. Optional — when
+  // omitted, a plain frontal reference is generated for the demographic.
+  model_image_url: z.string().url().optional(),
+  // Demographic override — decides which person the scene renders.
+  // Omitted → generateStudioImage infers it from the product category.
+  demographic: z.enum(PRODUCT_DEMOGRAPHICS).optional(),
+  // Free-text prompt (paste a formula from AI Models and Scenes.html) —
+  // overrides the style's prompt. Admin test bench only.
+  prompt: z.string().min(1).max(4000).optional(),
+  name: z.string().max(200).optional(),
+  category: z.string().max(120).optional(),
+  subtype: z.string().max(120).optional(),
+  primary_color: z.string().max(60).optional(),
+  fabric: z.string().max(60).optional(),
+  pattern: z.string().max(60).optional(),
+};
+
+/**
+ * Bench body → the product shape `generateStudioImage` takes, or undefined when
+ * every garment field is blank (which keeps the pre-existing behaviour for
+ * anyone pasting a bare URL).
+ */
+function studioProductFromBench(body: {
+  name?: string;
+  category?: string;
+  subtype?: string;
+  primary_color?: string;
+  fabric?: string;
+  pattern?: string;
+}): StudioProduct | undefined {
+  const hasGarmentFields = Boolean(
+    body.name || body.category || body.subtype || body.primary_color || body.fabric || body.pattern,
+  );
+  if (!hasGarmentFields) return undefined;
+  return {
+    name: body.name ?? null,
+    category: body.category ?? null,
+    subtype: body.subtype ?? null,
+    primary_color: body.primary_color ?? null,
+    fabric: body.fabric ?? null,
+    pattern: body.pattern ?? null,
   };
 }
 
@@ -131,26 +198,19 @@ export const adminPhotoCleanupRoutes: FastifyPluginAsync = async (server) => {
   // AI Studio Shoot test bench — runs the SAME generateStudioImage() the
   // retailer feature uses (studio-shoot.ts), but synchronously and without
   // the BullMQ queue / quota / product-row plumbing (admin-only test page,
-  // mirrors /photo-cleanup/run's sync shape). Engine cascade is unchanged:
-  // Fal Flux Pro → Google Imagen 3 → Fal Schnell → BFL FLUX Kontext Pro,
-  // gated by which key is configured. Pass engine:'bfl_kontext' has no
-  // forcing effect today — only BFL_API_KEY-and-nothing-else lands on BFL.
+  // mirrors /photo-cleanup/run's sync shape).
+  //
+  // `engine` is honoured (see STUDIO_ENGINES), and every engine except the
+  // `vton_*` pair receives the product photo directly. When `engine` is omitted
+  // the default cascade applies: FLUX Kontext via Fal, falling back to the BFL
+  // direct API when Fal is unavailable or errors. `flux_pro` / `flux_schnell` /
+  // `gemini_image*` only run when named here — each falls through to Kontext on
+  // its own failure, so an engine choice degrades rather than fails.
   server.post('/photo-cleanup/studio-shoot', async (request) => {
     const body = z
       .object({
-        product_url: z.string().url(),
-        // studio_styles slug — resolved to its prompt/tab. Optional: a
-        // free-text `prompt` alone is also valid on the bench.
-        slug: z.string().optional(),
-        engine: z
-          .enum(['flux_pro', 'imagen_3', 'flux_schnell', 'imagen_3_fast', 'bfl_kontext'])
-          .optional(),
-        // Demographic override — decides which person the scene renders.
-        // Omitted → generateStudioImage infers it from the product category.
-        demographic: z.enum(PRODUCT_DEMOGRAPHICS).optional(),
-        // Free-text prompt (paste a formula from AI Models and Scenes.html) —
-        // overrides the style's prompt. Admin test bench only.
-        prompt: z.string().min(1).max(4000).optional(),
+        ...studioBenchFields,
+        engine: z.enum(STUDIO_ENGINES).optional(),
       })
       .parse(request.body);
 
@@ -162,6 +222,10 @@ export const adminPhotoCleanupRoutes: FastifyPluginAsync = async (server) => {
       throw validationError('Provide a slug or a prompt.', 'slug');
     }
 
+    // Mirror the job's product shape so the bench assembles the SAME
+    // garment-identity + colour clauses the retailer path does.
+    const product = studioProductFromBench(body);
+
     const result = await generateStudioImage(body.product_url, {
       // The guard above guarantees at least one of the two is present; the
       // `?? ''` only satisfies the type checker.
@@ -169,6 +233,8 @@ export const adminPhotoCleanupRoutes: FastifyPluginAsync = async (server) => {
       tab: style?.tab ?? 'MODEL',
       engine: body.engine,
       demographic: body.demographic,
+      humanImageUrl: body.model_image_url,
+      product,
     });
     // `!payload` is true exactly when neither field is present, so the guard's
     // meaning is unchanged while `payload` narrows to `string` below.
@@ -184,6 +250,103 @@ export const adminPhotoCleanupRoutes: FastifyPluginAsync = async (server) => {
     const key = R2_PATHS.photoCleanupTest(`studio-${randomUUID()}.jpg`);
     const uploaded = await downloadCompressAndUpload(payload, key, Boolean(result.base64Data));
     return { data: { result_url: uploaded.url, slug: style?.slug ?? null } };
+  });
+
+  // ─── POST /admin/photo-cleanup/studio-ab ──────────────────────────
+  // The SAME product photo down BOTH pipeline orders, returned together for a
+  // side-by-side quality call:
+  //
+  //   forward   reference → try-on (product photo) → scene render
+  //   reversed  scene render (product photo)        → try-on (product photo)
+  //
+  // Neither order is obviously right — the forward one feeds the try-on the
+  // plain frontal reference it was trained on and finishes at the scene
+  // model's resolution; the reversed one costs a call less but feeds the
+  // try-on a generated scene and finishes at FASHN's 576×864. That argument is
+  // unresolvable on paper, which is why this exists.
+  //
+  // Both arms are STRICT — no fallback — so a blank arm means that order
+  // failed and `error` names the stage. Everything is re-served from R2: Fal
+  // and BFL result URLs expire (BFL's within ten minutes), so linking them
+  // directly would leave the comparison board full of broken tiles by the time
+  // anyone looks at it twice.
+  server.post('/photo-cleanup/studio-ab', async (request) => {
+    const body = z
+      .object({
+        ...studioBenchFields,
+        // Restricted to the engines that HAVE two orders — a single-shot engine
+        // here would run the same pipeline twice and call it a comparison.
+        engine: z.enum(['vton_kontext', 'vton_gemini']).default('vton_kontext'),
+      })
+      .parse(request.body);
+
+    const style = body.slug
+      ? await prisma.studioStyle.findFirst({ where: { slug: body.slug } })
+      : null;
+    if (!style && !body.prompt) {
+      throw validationError('Provide a slug or a prompt.', 'slug');
+    }
+
+    const ab = await generateStudioOrderAb(body.product_url, {
+      prompt: body.prompt ?? style?.prompt ?? '',
+      tab: style?.tab ?? 'MODEL',
+      engine: body.engine,
+      demographic: body.demographic,
+      // Forward arm only — the reversed arm's person comes from its own scene.
+      humanImageUrl: body.model_image_url,
+      product: studioProductFromBench(body),
+      // Gemini answers in base64 and the try-on stage needs a URL it can fetch,
+      // so the reversed arm's scene render is re-served mid-pipeline here.
+      persistStage: async (payload) => {
+        const key = R2_PATHS.photoCleanupTest(`studio-ab-stage-${randomUUID()}.jpg`);
+        const uploaded = await downloadCompressAndUpload(
+          payload.base64Data ?? payload.sampleUrl ?? '',
+          key,
+          Boolean(payload.base64Data),
+        );
+        return uploaded.url;
+      },
+    });
+
+    // Persist each arm's final image AND its intermediates, in parallel — see
+    // the expiry note above. A failed arm still contributes whatever stages it
+    // did produce, which is the part that says WHERE it failed.
+    const arms = await Promise.all(
+      ab.arms.map(async (arm) => {
+        const payload = arm.base64Data || arm.sampleUrl;
+        return {
+          order: arm.order,
+          label: arm.label,
+          status: arm.status,
+          error: arm.error ?? null,
+          ms: arm.ms,
+          result_url: payload
+            ? (
+                await downloadCompressAndUpload(
+                  payload,
+                  R2_PATHS.photoCleanupTest(`studio-ab-${arm.order}-${randomUUID()}.jpg`),
+                  Boolean(arm.base64Data),
+                )
+              ).url
+            : null,
+          stages: await Promise.all(
+            arm.stages.map(async (step) => ({
+              label: step.label,
+              url: (
+                await downloadCompressAndUpload(
+                  step.url,
+                  R2_PATHS.photoCleanupTest(`studio-ab-${arm.order}-stage-${randomUUID()}.jpg`),
+                )
+              ).url,
+            })),
+          ),
+        };
+      }),
+    );
+
+    return {
+      data: { engine: ab.engine, slug: style?.slug ?? null, arms, notes: ab.notes },
+    };
   });
 
   // ─── POST /admin/photo-cleanup/image-to-video ─────────────────────

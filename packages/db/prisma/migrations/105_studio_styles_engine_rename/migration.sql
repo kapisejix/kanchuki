@@ -1,0 +1,36 @@
+-- Rename the studio_styles engine values that no longer exist.
+--
+-- Stage 3 replaced the engine the old strings named. `imagen_3` /
+-- `imagen_3_fast` pointed at `imagen-3.0-generate-002` on the `:predict`
+-- endpoint, which turned out to be two errors at once:
+--
+--   * wrong family — that is Imagen, a diffusion TEXT-TO-IMAGE model, not
+--     Gemini's image capability (the "Nano Banana" line);
+--   * structurally incapable — its request body was `instances: [{ prompt }]`
+--     with no image field, and it was never handed `inputImageUrl` either, so
+--     it rendered a garment it had never seen.
+--
+-- apps/api/src/lib/imagen-client.ts is gone, replaced by gemini-image.ts, which
+-- calls the Interactions API and passes the product photo as a real image input
+-- block. The engines are now `gemini_image` (gemini-3.1-flash-image, Nano
+-- Banana 2) and `gemini_image_pro` (gemini-3-pro-image, Nano Banana Pro).
+--
+-- `engine` is a free-text column — admin validation only guards NEW writes — so
+-- a row can still be holding a value that the API validators, the shared
+-- STUDIO_ENGINES list and both admin selectors no longer know. Those values do
+-- not crash: `generateStudioImage` has no branch for them and falls through to
+-- the default Kontext path. That silent fallback is the reason to normalize —
+-- the row reads "Gemini" in the DB and quietly is not.
+--
+-- Note on the 8 MODEL rows from migration 102: migration 104 already reverted
+-- them to NULL (Kontext), so in a clean 102 → 104 → 105 sequence this statement
+-- matches nothing for them. It is here for stale and hand-set values — a row
+-- edited in /admin/studio-styles between the two, or any row this repo did not
+-- create. Applying 105 alone would point such a row at Gemini, which is now a
+-- working engine rather than a broken one, which is why it is a rename rather
+-- than a delete.
+--
+-- Verify with:
+--   SELECT slug, engine FROM studio_styles WHERE engine IS NOT NULL ORDER BY sort_order;
+UPDATE studio_styles SET engine = 'gemini_image' WHERE engine = 'imagen_3';
+UPDATE studio_styles SET engine = 'gemini_image_pro' WHERE engine = 'imagen_3_fast';

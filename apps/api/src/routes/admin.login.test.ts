@@ -35,6 +35,13 @@ vi.mock('@kanchuki/shared', () => ({
   INTEGRATION_KEYS: [],
   PLAN_PRICING: {},
   R2_PATHS: {},
+  // The admin route barrel builds `z.enum(STUDIO_ENGINES)` and
+  // `z.enum(PRODUCT_DEMOGRAPHICS)` at module load (the photo-cleanup bench's
+  // shared body shape), so both must be present AND non-empty — `z.enum([])`
+  // throws, and a missing key throws on `z.enum(undefined)`. Values are
+  // irrelevant to these tests.
+  STUDIO_ENGINES: ['bfl_kontext', 'vton_kontext'],
+  PRODUCT_DEMOGRAPHICS: ['womens', 'mens'],
 }));
 
 // ─── Test setup ────────────────────────────────────────────────────

@@ -13,7 +13,8 @@ export function isFalConfigured(): boolean {
 }
 
 /**
- * Submit and poll a Fal.ai model task (Flux 1.1 Pro, Schnell, or IDM-VTON).
+ * Submit and poll a Fal.ai model task (FLUX Pro / Schnell / Kontext, FASHN v1.5
+ * try-on).
  */
 export async function runFalTask(
   modelEndpoint: string,
@@ -235,37 +236,58 @@ export async function generateFluxSchnellImage(
   return runFalTask('fal-ai/flux/schnell', input, options?.onProgress);
 }
 
-/**
- * Run IDM-VTON / CatVTON Virtual Try-On (drape garment photo onto model photo).
- */
-export async function generateIdmVtonTryon(
-  humanImageUrl: string,
-  garmentImageUrl: string,
-  description = 'Indian ethnic wear garment',
-  onProgress?: (p: { progress: number; etaMs: number }) => void,
-): Promise<{ sampleUrl: string }> {
-  const input = {
-    human_img_url: humanImageUrl,
-    garm_img_url: garmentImageUrl,
-    garment_des: description,
-    is_checked: true,
-    is_checked_crop: false,
-    denoise_steps: 30,
-    seed: 42,
-  };
+// ─── Deliberately absent: the IDM-VTON / CatVTON try-on helper ──────────────
+//
+// A `generateIdmVtonTryon()` used to sit here. It was deleted on 2026-09-18
+// rather than repaired:
+//   - nothing called it (its last caller went with the 2026-08-30 studio-styles
+//     rework, which replaced the photo-identity models with a prompt path), so
+//     it had never executed once — the same shape as `generateFashnTryon()`,
+//     which turned out to be pointed at an endpoint that would 404.
+//   - its input names (`human_img_url`, `garm_img_url`, `garment_des`) were never
+//     verified against the model's schema, so the first real caller would have
+//     discovered that, not the tests.
+//   - IDM-VTON's released checkpoints are CC BY-NC-SA-ND (non-commercial, and
+//     no-derivatives, which blocks redistributing a fine-tune) — see
+//     `docs/adrs/ADR-006-defer-3d-parametric-vto.md`.
+// The self-hosted `services/fashion-vtone` (FASHN VTON v1.5) is not wired into
+// the API either.
+//
+// The live try-on step is FASHN v1.5, below — garment-conditioned, so the
+// retailer's actual dye, print and embroidery survive. Do not revive the above:
+// `retired-tryon-guard.test.ts` fails if that name, that endpoint, or its
+// parameter names reappear as code under apps/, packages/ or scripts/.
 
-  return runFalTask('fal-ai/idm-vton', input, onProgress);
-}
-
 /**
- * Run FASHN v1.5 Virtual Try-On via fal.ai (high fidelity, maskless, with Indian long_top support).
+ * FASHN v1.5 Virtual Try-On via fal.ai — maskless, garment-conditioned. This is
+ * the half of a studio shoot that keeps the ACTUAL product: the model is
+ * conditioned on the garment image, so its colour, print and embroidery survive
+ * in a way no text prompt can enforce.
+ *
+ * Contract verified 2026-09-18 against fal.ai/models/fal-ai/fashn/tryon/v1.5/api —
+ * the previous version of this function had never been called, and it was wrong
+ * in ways that would have 404'd or been silently ignored on first use:
+ *   - endpoint was `fal-ai/fashn/tryon-v1.5` (dashes) — the real path is
+ *     `fal-ai/fashn/tryon/v1.5` (slashes), so the submit would 404.
+ *   - it sent `long_top`, `nsfw_filter`, `cover_feet`, `adjust_hands` and
+ *     `restore_background` — NONE of these exist in the v1.5 schema. (Docs and
+ *     BUILD-LOG credited this function with "Indian long_top support"; that
+ *     came from the phantom parameter, not a real capability.)
+ *   - moderation is `moderation_level`, not `nsfw_filter`.
+ *
+ * Real inputs: model_image*, garment_image*, category, mode, garment_photo_type,
+ * moderation_level, seed, num_samples, segmentation_free, sync_mode,
+ * output_format. Default `category: 'auto'` lets FASHN detect the garment class
+ * rather than us guessing it from our own taxonomy — a kurta SET is not cleanly
+ * "tops", and one-pieces (saree, gown, anarkali) are their own class.
+ *
+ * Output is 576x864 at v1.5 ($0.075/generation).
  */
 export async function generateFashnTryon(
   humanImageUrl: string,
   garmentImageUrl: string,
-  category: 'tops' | 'bottoms' | 'one-pieces' = 'tops',
+  category: 'tops' | 'bottoms' | 'one-pieces' | 'auto' = 'auto',
   options?: {
-    isLongTop?: boolean;
     mode?: 'quality' | 'balanced' | 'performance';
     garmentPhotoType?: 'auto' | 'flat-lay' | 'model';
     onProgress?: (p: { progress: number; etaMs: number }) => void;
@@ -276,13 +298,11 @@ export async function generateFashnTryon(
     garment_image: garmentImageUrl,
     category,
     mode: options?.mode ?? 'quality',
-    long_top: options?.isLongTop ?? category === 'tops',
-    garment_photo_type: options?.garmentPhotoType ?? 'auto',
-    nsfw_filter: true,
-    cover_feet: false,
-    adjust_hands: true,
-    restore_background: true,
+    garment_photo_type: options?.garmentPhotoType ?? 'flat-lay',
+    moderation_level: 'permissive',
+    num_samples: 1,
+    output_format: 'jpeg',
   };
 
-  return runFalTask('fal-ai/fashn/tryon-v1.5', input, options?.onProgress);
+  return runFalTask('fal-ai/fashn/tryon/v1.5', input, options?.onProgress);
 }

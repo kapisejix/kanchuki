@@ -5,14 +5,16 @@
 import { createHash } from 'node:crypto';
 import { deleteObject, getUploadPresignedUrl, publicUrl } from '@kanchuki/ai';
 import { type Prisma, prisma } from '@kanchuki/db';
-import { R2_PATHS } from '@kanchuki/shared';
+import { R2_PATHS, STUDIO_ENGINES } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { AppError, notFound, validationError } from '../../plugins/error-handler.js';
 import { adminAuthPreHandler } from '../admin-auth.js';
 
 const SLUG = /^[a-z0-9_]{2,40}$/;
-const ENGINES = ['flux_pro', 'imagen_3', 'imagen_3_fast', 'flux_schnell', 'bfl_kontext'] as const;
+// Shared with the other three surfaces that validate/render this list — see
+// STUDIO_ENGINES in @kanchuki/shared for why it is not a local literal.
+const ENGINES = STUDIO_ENGINES;
 const DEMOS = ['womens', 'mens', 'teen_girl', 'teen_boy', 'kids_girl', 'kids_boy'] as const;
 const PLANS = ['STARTER', 'GROWTH', 'PRO'] as const;
 

@@ -4,17 +4,24 @@
 //
 // USAGE (from repo root):
 //
-//   # 1. Kontext: AI-invents the model, replaces background with a scene.
-//   #    This is exactly what the shipped "Studio Shoot" feature does today.
+//   # Kontext: AI-invents the model, replaces background with a scene.
+//   #    BFL-direct is the code-level FALLBACK in apps/api/src/lib/studio-shoot.ts,
+//   #    not the shipped default: production runs FLUX Kontext through Fal
+//   #    (generateFluxKontext), and the garment-conditioned path puts a FASHN
+//   #    v1.5 try-on step in front of it. So this script is a quick eyes-on
+//   #    check of the fallback prompt and contract only — use the admin bench
+//   #    (/admin/photo-cleanup-test) to exercise the real pipeline.
 //   BFL_API_KEY=sk-... node scripts/studio-shoot-demo.mjs kontext \
 //       docs/photoshoots/product-1.jpg runway --gender female --age adult
 //
-//   # 2. VTON 2-step: warp the garment onto YOUR model photo (Fal IDM-VTON),
-//   #    then Kontext swaps the background to the chosen scene.
-//   BFL_API_KEY=sk-...  FAL_KEY=... node scripts/studio-shoot-demo.mjs vton \
-//       docs/photoshoots/product-1.jpg docs/photoshoots/model-female-1.jpg beach
+// There is deliberately NO vton mode. A Fal IDM-VTON try-on helper here was
+// deleted 2026-09-18 along with the one in the API — never called, params and
+// endpoint never verified, and IDM-VTON's weights are CC BY-NC-SA-ND (ADR-006).
+// The real try-on step is FASHN v1.5 inside the API; do not re-add a second
+// copy of it. apps/api/src/lib/retired-tryon-guard.test.ts fails if that name
+// returns as code anywhere under apps/, packages/ or scripts/.
 //
-// Output -> docs/photoshoots/out/<mode>-<product>-<scene>.jpg
+// Output -> docs/photoshoots/out/kontext-<product>-<scene>.jpg
 //
 // ponytail: no arg-parser lib, no classifier for gender/age -- pass them as
 // flags. The real API infers demographic from the product row (category/name);
@@ -111,38 +118,6 @@ async function fluxKontext(prompt, inputImageDataUrl, key) {
   throw new Error('BFL poll timed out (180s)');
 }
 
-// ─── Fal IDM-VTON: garment photo -> onto a specific model photo ────────────
-async function falVton(modelDataUrl, garmentDataUrl, key) {
-  const res = await fetch('https://queue.fal.run/fal-ai/idm-vton', {
-    method: 'POST',
-    headers: { authorization: `Key ${key}`, 'content-type': 'application/json' },
-    body: JSON.stringify({
-      human_image_url: modelDataUrl,
-      garment_image_url: garmentDataUrl,
-      description: 'Indian ethnic wear garment, exact original colour and embroidery preserved',
-    }),
-  });
-  const submit = await res.json();
-  if (!res.ok) throw new Error(`Fal submit ${res.status}: ${JSON.stringify(submit)}`);
-  const statusUrl = submit.status_url;
-  const responseUrl = submit.response_url;
-  const deadline = Date.now() + 180_000;
-  process.stdout.write('  vton polling');
-  while (Date.now() < deadline) {
-    await new Promise((r) => setTimeout(r, 2500));
-    process.stdout.write('.');
-    const sr = await fetch(statusUrl, { headers: { authorization: `Key ${key}` } });
-    const st = await sr.json();
-    if (st.status === 'COMPLETED') {
-      process.stdout.write(' done\n');
-      const out = await (await fetch(responseUrl, { headers: { authorization: `Key ${key}` } })).json();
-      return out.image?.url ?? out.images?.[0]?.url;
-    }
-    if (st.status === 'FAILED') throw new Error(`Fal VTON failed: ${JSON.stringify(st)}`);
-  }
-  throw new Error('Fal VTON timed out');
-}
-
 async function downloadTo(url, dest) {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`download ${res.status}`);
@@ -168,37 +143,7 @@ async function main() {
     return;
   }
 
-  if (mode === 'vton') {
-    const [productPath, modelPath, scene] = rest;
-    const falKey = process.env.FAL_KEY;
-    if (!falKey) throw new Error('vton mode needs FAL_KEY');
-    console.log(`vton: ${basename(productPath)} onto ${basename(modelPath)} -> ${scene}`);
-    // step 1 — garment onto the real model photo
-    const worn = await falVton(
-      await fileToDataUrl(modelPath),
-      await fileToDataUrl(productPath),
-      falKey,
-    );
-    const wornDest = join(OUT_DIR, `vton-worn-${basename(modelPath, extname(modelPath))}.jpg`);
-    await downloadTo(worn, wornDest);
-    console.log(`  step1 saved ${wornDest}`);
-    // step 2 — Kontext swaps the background of the worn image to the scene
-    const sceneClause = (SCENES[scene] ?? SCENES.studio)
-      .replace('Place this exact outfit on {MODEL} ', '')
-      .replace('{MODEL}', 'the model');
-    const prompt = `Keep the model and the garment exactly as-is. ${sceneClause}` + COLOR_TAIL;
-    const sample = await fluxKontext(prompt, await fileToDataUrl(wornDest), bflKey);
-    const dest = join(
-      OUT_DIR,
-      `vton-${basename(productPath, extname(productPath))}-${basename(modelPath, extname(modelPath))}-${scene}.jpg`,
-    );
-    await downloadTo(sample, dest);
-    console.log(`  saved ${dest}`);
-    return;
-  }
-
   console.error('modes: kontext <product.jpg> <scene> [--gender male/female/kids] [--age kid/teen/adult/senior]');
-  console.error('       vton <product.jpg> <model.jpg> <scene>');
   console.error(`scenes: ${Object.keys(SCENES).join(', ')}`);
   process.exit(1);
 }

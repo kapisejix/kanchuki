@@ -91,7 +91,7 @@ model StudioStyle {
   tab              StudioStyleTab
   status           StudioStyleStatus @default(DRAFT)
   plans            SubscriptionPlan[] @default([])  // which plan tiers may use this style; [] = nobody
-  engine           String?                     // null = default cascade; else flux_pro | imagen_3 | imagen_3_fast | flux_schnell | bfl_kontext
+  engine           String?                     // null = default cascade; else one of STUDIO_ENGINES (@kanchuki/shared) — flux_pro | gemini_image | gemini_image_pro | flux_schnell | bfl_kontext | vton_kontext | vton_gemini
   audience         String[]          @default([])   // [] = all demographics; else subset of PRODUCT_DEMOGRAPHICS
   thumbnail_url    String?                     // admin-uploaded sample OUTPUT image (R2)
   thumbnail_r2_key String?
@@ -263,9 +263,9 @@ studioStyleThumb: (filename: string) => `admin/studio-styles/${filename}`,
   options.modelId`), the `getStudioModel` import + usage, `modelPrompt`
   construction, `STUDIO_MODELS`-derived logic. `generateIdmVtonTryon`
   import removed if unused elsewhere (grep first).
-- Engine cascade (`flux_pro` / `imagen_3` / `imagen_3_fast` /
-  `flux_schnell` → default Fal Kontext → BFL direct) unchanged; `engine`
-  now arrives from the style row.
+- Engine dial — the literal list lives in `STUDIO_ENGINES` (@kanchuki/shared);
+  revised 2026-09-18, see `docs/BUILD-LOG.md` stage 3. Default cascade is Fal
+  Kontext → BFL direct, and `engine` arrives from the style row.
 - `StudioEngine` union: drop `idm_vton`.
 - Keep `downloadCompressAndUpload`, the Redis job-status helpers, and
   `isStudioShootConfigured` unchanged.

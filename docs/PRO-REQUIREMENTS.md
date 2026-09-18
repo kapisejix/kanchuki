@@ -1683,7 +1683,7 @@ Build this as a **generic "connected publishing accounts" module** (one `SocialA
 
 Post-launch feature. Not in locked MVP scope; the launch (Play Store batch, billing, privacy) is the current focus. Slots into Phase 1 (post-MVP) — see `docs/PLAN.md`. Meta app review should be requested well before development starts if this becomes a priority.
 
-## 24. F-032 AI Studio Shoots + Product Videos (PhotoRoom-style) — Phase A ✅ BUILT, Phase B/C 🔴 PLANNED
+## 24. F-032 AI Studio Shoots + Product Videos (PhotoRoom-style) — Phase A ✅ BUILT, Phase B/C 🔴 PLANNED; engine/photo path rebuilt 2026-09-18 (§24.13)
 
 **Correction 2026-08-20:** Phase A (studio backgrounds) was built without a
 doc update — commits `5d5ae44` (2026-08-13) and `d67484d` (2026-08-19),
@@ -1728,6 +1728,92 @@ owner applies), managed from the **Admin → Studio Styles** page:
 
 Full spec: `docs/superpowers/specs/2026-08-30-studio-styles-admin-design.md`.
 Supersedes step 6 of `docs/tasks/ai-studio-shoot-models-scenes.md`.
+
+### 24.13 Engine + photo path rebuilt — ✅ Built 2026-09-18 (stages 1–3), never run against live providers
+
+**Root cause found 2026-09-18 (RC-027): the product photo was never reaching the
+model.** `generateGoogleImagen()` posted `instances: [{ prompt }]` to
+`imagen-3.0-generate-002:predict` — a body with **no image field** — and
+`generateStudioImage()` never passed the source photo to it either.
+`imagen-3.0-generate-002` is **Imagen 3**, a diffusion text-to-image family, not
+Gemini's image capability (the "Nano Banana" line — `gemini-3.1-flash-image` /
+`gemini-3-pro-image` on the Interactions API, which takes an input image). So
+`engine = 'imagen_3'`, set on the 8 MODEL rows by migration `102`, did not
+switch generation to Gemini: it switched it to a generator that had never seen
+the garment, driven by a prompt that never named a garment type either
+(`colorSpec` carries colour / fabric / pattern / embellishment, never `category`
+or `name`). The admin bench compounded it — it called `generateStudioImage()`
+with no `product` object and never sent `engine`, so it exercised a strictly
+weaker prompt than the retailer path.
+
+**Stage 1 — name the garment, and make the bench able to reproduce production.**
+`garmentIdentityClause()` names the garment from `subtype` / `category` and
+*always* forbids substitution and re-draping (so the half that does not need row
+data fires on every caller); `sanitizeGarmentText()` cleans retailer free text
+before it enters a third-party prompt (control chars stripped, double quotes
+neutralised, length bounded); `isTopOnlyGarment()` is now variadic and takes
+`subtype`; `subtype` is piped through the job; the bench takes Category /
+Subtype / Name / Colour / Fabric / Pattern **and `engine`**.
+
+**Stage 2 — `vton_kontext`, a garment-conditioned two-step pipeline.** Plain
+frontal human reference → **FASHN v1.5 try-on, with the product photo as input
+(the garment-fidelity step)** → FLUX Kontext scene swap. If the try-on stage
+fails the pipeline returns `null` and the caller falls through to the existing
+single-shot Kontext path, so a provider outage degrades the shot instead of
+failing the job. `generateFashnTryon()` was **dead code that would have 404'd on
+first use** — the endpoint was `fal-ai/fashn/tryon-v1.5` (the real v1.5 path
+uses slashes) and it sent `long_top`, `nsfw_filter`, `cover_feet`,
+`adjust_hands`, `restore_background`, none of which exist in the v1.5 schema.
+
+**Stage 3 — delete the Imagen client, use Gemini properly.** `imagen-client.ts`
+is deleted; `gemini-image.ts` is a real Interactions-API client (image input
+block as base64, `x-goog-api-key` header rather than a query param, and a parse
+that takes the **last** image block because Gemini 3 emits interim "thought
+images"). Engines: `gemini_image` / `gemini_image_pro` replace `imagen_3` /
+`imagen_3_fast`, and `vton_gemini` runs the two-step pipeline with Gemini as the
+scene renderer (`sceneRenderer: 'kontext' | 'gemini'`), so both renderers can
+be A/B'd on identical try-on output. `STUDIO_ENGINES` (`@kanchuki/shared`) is
+now the single source of truth for the engine list — it had been duplicated
+across four surfaces — and `StudioEngine` is derived from it.
+
+**Stage 4 — a bench A/B over BOTH pipeline orders (bench only, 2026-09-18).**
+`generateStudioOrderAb()` runs the same product photo through both orders
+concurrently and returns them together: **forward** = reference → try-on →
+scene render, **reversed** = scene render → try-on. Neither is obviously right
+(the forward order feeds the try-on the plain frontal reference it was trained
+on and finishes at the scene renderer's resolution; the reversed order saves a
+provider call but feeds the try-on a generated scene and finishes at FASHN
+v1.5's 576×864), which is why the decision is left to output rather than to
+argument. `POST /admin/photo-cleanup/studio-ab` is the entry point; the bench
+page renders the arms side by side with their intermediate stages, wall-clock
+and failure reason. **Both arms are strict** — no fallback — because
+`generateStudioImage()`'s single-shot fallback would silently turn the A/B into
+a comparison of two different pipelines, the same mistake as the bench that
+sent less product data than production. `buildStudioPromptContext()` guarantees
+byte-identical prompt text in both arms, and `persistStage` re-serves Gemini's
+base64 scene render so the reversed order can reach its try-on stage at all.
+This is the instrument for the open pose-robustness question below: it makes
+"is the try-on input the problem, or the scene?" answerable per stage.
+
+**Migrations (owner applies):** `104_studio_styles_model_engine_revert_kontext`
+(reverts the 8 MODEL rows to the Kontext default) and
+`105_studio_styles_engine_rename` (normalizes the two retired engine strings — an
+unrecognised value does not crash, `generateStudioImage` silently falls through
+to Kontext while the DB claims otherwise).
+
+**Not verified:** nothing has run against the live providers — no
+`GEMINI_API_KEY` / `FAL_KEY` and no production access in that session. The proof
+is request shape plus tests (`apps/api` 1002/1002, `apps/web` 279/279, tsc and
+Biome clean), including the assertion that the request carries an image block
+whose `data` is the base64 of the fetched photo bytes. Output quality, pose
+robustness on generated human references, Gemini's `3:4` framing on a full-length
+garment shot, and whether the Interactions API accepts a ~1 MB base64 block are
+all open until the first bench run. **Gemini is also not garment-locked** — it
+reinterprets, and does not guarantee this retailer's dye, print, embroidery or
+cut; only the try-on step does, which is the point of the `vton_*` pair.
+
+Full detail: `docs/BUILD-LOG.md` §2026-09-18 (both entries), RC-027 in
+`docs/root-cause/root-cause issues.md`.
 
 ### 24.1 Problem
 

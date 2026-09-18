@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Clapperboard, Save, Loader2, Trash2, Upload, ChevronDown, ChevronUp, Plus, Eye } from 'lucide-react'
 import Image from 'next/image'
+import { STUDIO_ENGINES } from '@kanchuki/shared'
 import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
@@ -27,7 +28,9 @@ type StudioStyleRow = {
 }
 
 const PLANS = ['STARTER', 'GROWTH', 'PRO'] as const
-const ENGINES = ['flux_pro', 'imagen_3', 'imagen_3_fast', 'flux_schnell', 'bfl_kontext'] as const
+// Shared with the API validators + the shoot bench — see STUDIO_ENGINES in
+// @kanchuki/shared. A value missing here is renderable-but-unselectable.
+const ENGINES = STUDIO_ENGINES
 const DEMOGRAPHICS = ['womens', 'mens', 'teen_girl', 'teen_boy', 'kids_girl', 'kids_boy'] as const
 const DEMO_LABELS: Record<string, string> = {
   womens: 'Womens', mens: 'Mens', teen_girl: 'Teen girl', teen_boy: 'Teen boy',

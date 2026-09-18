@@ -2569,3 +2569,164 @@ Both were found by the console-error backstop above, on the same page every shop
 
 **Not yet applied to prod** — both ship via the normal migration-deploy path, not run directly, same as `101`.
 
+---
+
+## BUILT 2026-09-18 (later still) — AI Studio Shoot: the product photo was never reaching the model, + garment-conditioned two-step pipeline
+
+**Why:** owner asked why AI Studio Shoot doesn't produce Gemini/ChatGPT-quality output, what backend those products actually use, and whether to switch APIs.
+
+### Root cause — found by reading the code, and it supersedes the previous two rounds' diagnosis
+
+`generateGoogleImagen()` (`apps/api/src/lib/imagen-client.ts`) is a **text-to-image** call: its body is `instances: [{ prompt }]` — there is no image field — and `generateStudioImage()` never passed it `inputImageUrl` either. So migration `102` did **not** switch MODEL scenes "to Gemini"; it switched them to a generator that had never seen the product, driven by a prompt that never named a garment type either. A plausible stranger in a plausible stranger's clothes is the correct output of that input — the observation that motivated `102` ("Gemini's pose/smile/lighting realism clearly better") was a comparison against a model that had the garment and a model that didn't.
+
+Three supporting findings:
+
+1. `imagen-3.0-generate-002` on `:predict` is **Imagen 3**, a diffusion text-to-image family — not Gemini's image capability. Gemini's is the "Nano Banana" line (`gemini-3.1-flash-image` / `gemini-3-pro-image`; `gemini-2.5-flash-image` now legacy) on the Interactions API, and it accepts the input image. The repo called none of it.
+2. The admin bench called `generateStudioImage()` with **no `product` object at all** — so no colour clause, a `womens` demographic fallback, and neither the garment-identity nor the top-only guard could fire. It exercised a strictly weaker prompt than the retailer path, which is why three rounds of prompt-guard work could not be validated on it.
+3. **Structural:** no single call gives both properties a studio shoot needs. Prompt-driven models (Kontext, Gemini, FLUX) produce the person and scene but can only *guess* the garment — naming it narrows the guess, it does not make it your product. A garment-conditioned try-on model puts the real garment on the model but knows nothing about studios, poses or lighting. Gemini/ChatGPT are both autoregressive native-multimodal models (not diffusion, per OpenAI's own 4o image-generation system card) — that is the source of their realism — but **neither is garment-locked**. Google Shopping's "Try It On" is garment-conditioned, like FASHN, not prompt-driven.
+
+### Stage 1 — stop the bleeding, name the garment, make it testable
+
+| File | Change |
+|---|---|
+| `apps/api/src/lib/studio-shoot.ts` | New `garmentIdentityClause()` — names the garment from `subtype`/`category` and, **whether or not row data exists**, forbids substitution and re-draping ("keep any dupatta, stole or sash in its original placement"). The anti-substitution half needs no row data, so it fires on every caller. New `sanitizeGarmentText()` — `product.name` is retailer free text entering a third-party prompt: control characters dropped (a newline would split the instruction), double quotes neutralised, whitespace collapsed, bounded to 120 chars. `isTopOnlyGarment()` is now variadic and takes `subtype`, so a product with `subtype: 'Kurti'` and a generic category no longer slips past the guard. `SCENE_GUARD` hoisted to module scope so both paths share one string. |
+| `apps/api/src/jobs/studio-shoot.ts` | Pipes `subtype` through (it was already selected from the DB, just never passed). |
+| `apps/api/src/routes/admin/admin-photo-cleanup.ts` + `apps/web/src/app/admin/photo-cleanup-test/page.tsx` | Bench takes Category / Subtype / Name / Colour / Fabric / Pattern, and now sends `engine` at all (it never did). This is the process fix that stops round four. |
+| `packages/db/prisma/migrations/104_studio_styles_model_engine_revert_kontext/migration.sql` | **New** — `engine = NULL` (Kontext default) on the 8 MODEL rows from `101`/`102`. Interim: Kontext preserves the garment, `imagen_3` provably could not. Comment records why, so nobody re-points at it without reading that.
+
+### Stage 2 — the two-step pipeline (`engine = 'vton_kontext'`)
+
+Human reference (supplied, or generated plain and frontal) → **FASHN v1.5 try-on ← THE PRODUCT PHOTO** → **FLUX Kontext** scene swap. The step-1 input is deliberately a plain frontal full-body reference with no scene, because try-on models are trained on plain human photographs and a dramatic pose or cropped frame (see the top-only guard) is out of distribution — the likeliest way this stage disappoints. `humanImageUrl` lets the bench substitute any reference, including a previously generated scene, which makes the reversed order testable without new code.
+
+| File | Change |
+|---|---|
+| `apps/api/src/lib/fal-client.ts` | **Fixed `generateFashnTryon()` — it was dead code that would have failed on first use.** Verified against `fal.ai/models/fal-ai/fashn/tryon/v1.5/api`: the endpoint was `fal-ai/fashn/tryon-v1.5` (**dashes — the real path uses slashes, so it would 404**), and it sent `long_top`, `nsfw_filter`, `cover_feet`, `adjust_hands`, `restore_background` — **none of which exist in the v1.5 schema**. Moderation is `moderation_level`. Note the earlier docs/BUILD-LOG claim of "Indian long_top support" came from that phantom parameter, not a real capability. Now: correct path, real params only, `category: 'auto'` (a kurta *set* is not cleanly `tops`), `output_format: 'jpeg'`. |
+| `apps/api/src/lib/studio-shoot.ts` | New `runTwoStepStudio()` + `MODEL_REFERENCE_PROMPT`. Returns `null` when the try-on stage fails so the caller **falls through to the single-shot Kontext path** — a provider outage degrades the shot instead of failing the job. `vton_kontext` added to `StudioEngine`. |
+| `packages/shared/src/constants/index.ts` | New `STUDIO_ENGINES` + `StudioEngine` type. The engine list had been duplicated across four surfaces (two API validators, two admin web selectors); a value present in only some is un-storable or unselectable. `StudioEngine` in the API is now derived from it, so the type cannot drift from the list. |
+| `apps/api/src/routes/admin/admin-studio-styles.ts`, `apps/web/src/app/admin/studio-styles/page.tsx`, `apps/api/src/routes/admin/admin-photo-cleanup.ts`, `apps/web/src/app/admin/photo-cleanup-test/page.tsx` | All four read `STUDIO_ENGINES`; bench gains an engine select + optional model-reference URL. |
+| `apps/api/src/routes/security.test.ts`, `admin.login.test.ts` | Their explicit-factory `vi.mock('@kanchuki/shared')` had to gain a **non-empty** `STUDIO_ENGINES` — the admin barrel builds `z.enum(STUDIO_ENGINES)` at module load and `z.enum([])` throws. |
+
+### Verification
+
+`apps/api` **981/981** (77 files; `studio-shoot.test.ts` 9 → **17**, incl. the two-step order, the supplied-reference path, the try-on-failure fallback, and pins on both the slash endpoint and the absence of the four phantom params) · `apps/web` **279/279** · API/Web/Shared `tsc --noEmit` clean · Biome clean on every changed API/lib/shared file (the two admin web pages and `shared/constants/index.ts` carry pre-existing diagnostics, byte-identical before and after — verified by baselining each file against `HEAD`).
+
+The fallback test was initially passing for the wrong reason — the mocked response had no `.text()`, so `runFalTask`'s error branch threw a `TypeError` instead of the `AppError` under test. The mock now provides it, and the test exercises the real 500 path.
+
+`packages/shared` was rebuilt (`pnpm --filter @kanchuki/shared build`) because `dist` is what the consuming apps resolved, and `dist` is gitignored.
+
+### Owner actions, then the honest limits
+
+1. **Apply migration `104`**, and confirm `102`'s actual state: `SELECT slug, engine FROM studio_styles WHERE tab = 'MODEL'`.
+2. **Re-test on the bench with the garment fields filled** — the first run where the output is diagnostic.
+3. Point the 8 MODEL rows at `vton_kontext` only after the bench proves it. **No migration flips them to the new engine** — it is opt-in per row, and `104` leaves them on the Kontext default.
+
+**Deliberately not done at the time:** `generateIdmVtonTryon()` was still dead broken code (same class of problem — never called); **deleted later the same day**, see the entry at the end of this file. ~~Stage 3 is not started.~~ **Stage 3 landed the same day** — see the entry below: the `:predict` Imagen 3 path is deleted, replaced by a real Gemini native-image client that is handed the photo. `imagen_3` / `imagen_3_fast` no longer exist.
+
+**Not verified:** the two-step pipeline has never been run against the live providers — no FAL key or prod access in this session. Pose robustness on generated (rather than photographed) human references is the specific unknown to watch on the first bench run.
+
+---
+
+## BUILT 2026-09-18 (stage 3) — AI Studio Shoot: a real Gemini native-image client, and Gemini on the two-step scene step
+
+**Why:** stage 3 of the three-stage plan — replace the `imagen-3.0-generate-002` `:predict` client, which is a text-to-image endpoint that never received the product photo, with Gemini's actual image capability ("Nano Banana", Interactions API), which does. Then use it where it is strongest: the **scene** step, on top of an image that already has the right garment on the right person.
+
+### The contract, verified 2026-09-18 (this is the third time a provider contract has been assumed wrong in this feature — so it is cited)
+
+Against `ai.google.dev/api/interactions-api` and `ai.google.dev/gemini-api/docs/image-generation`:
+
+| | Value |
+|---|---|
+| Endpoint | `POST https://generativelanguage.googleapis.com/v1beta/interactions` |
+| Auth | `x-goog-api-key: <key>` header — **not** a `?key=` query param (which ends up in logs and error strings) |
+| Body | `{ model, input: [{type:'text',text}, {type:'image',mime_type,data}] }` — `input` is a plain string only for text-only calls |
+| Image input | base64 `data` + `mime_type`. A `uri` field exists in the schema, but every documented input example is base64, and a URL would rely on the model fetching our R2 object |
+| Output | Interaction resource: `steps[].content[]` with a `{type:'image', data, mime_type}` block. There is **no** top-level `predictions` / `images` array — the SDK `output_image` property is a convenience over the steps |
+| Models | `gemini-3.1-flash-image` (Nano Banana 2, workhorse) / `gemini-3-pro-image` (Nano Banana Pro); `gemini-2.5-flash-image` is the legacy one |
+
+**The parse takes the LAST image block, not the first.** Gemini 3 image models run a thinking pass that emits interim "thought images" before the final output, and the docs define `output_image` as *the last* generated image block for that reason. A first-match parser would hand back a draft, which reads as a quality regression rather than a parsing bug. Both directions are pinned in tests.
+
+**Deliberately not sent:** `image_size` (1K is the default, it varies by model — Flash Lite is 1K-only — and an unexercisable field is a field that 400s in production). **Considered and deferred:** `store: false`, which would stop Google retaining the request/response. It is a documented optional field, but a wrong field fails the whole call and there is no key in this session to test with; note the photos already reach Fal/BFL today, so it is not a regression — but it is the right follow-up for a DPDP review.
+
+### Stage 3 changes
+
+| File | Change |
+|---|---|
+| `apps/api/src/lib/gemini-image.ts` | **New.** The old `imagen-client.ts` is deleted. `generateGeminiImage(prompt, { inputImageUrl, model, aspectRatio, onProgress })` fetches the source photo (SSRF-safe — in the bench case the URL is admin-pasted), sends it as a real image input block, and returns `{ base64Data, mimeType }`. Also `inferImageMimeType()` (the block's `mime_type` is required and must be honest; read the extension, fall back to JPEG since our compressor outputs JPEG) and `parseInteractionImage()` (last-wins, exported for tests). A 200 carrying `status: failed`/`cancelled`/`budget_exceeded` throws the interaction's own `errors[].message` instead of mis-reporting "no image". |
+| `apps/api/src/lib/studio-shoot.ts` | `gemini_image` / `gemini_image_pro` replace `imagen_3` / `imagen_3_fast`, and **do** pass `inputImageUrl`. New `vton_gemini` engine: the same two-step pipeline as `vton_kontext` with Gemini rendering step 2 (`runTwoStepStudio` gained a `sceneRenderer: 'kontext' \| 'gemini'` option) — so the two scene renderers can be A/B'd on the bench on identical try-on output. `StudioEngine` is now **derived** from `STUDIO_ENGINES` rather than restated as a union, which is the drift the shared constant exists to prevent. |
+| `packages/shared/src/constants/index.ts` | `imagen_3` / `imagen_3_fast` → `gemini_image` / `gemini_image_pro`; `vton_gemini` added. Comment records what the old names were and why they were renamed rather than fixed. |
+| `packages/db/prisma/migrations/105_studio_styles_engine_rename/migration.sql` | **New** — `UPDATE`s the two retired strings to their replacements. `engine` is a free-text column (admin validation only guards new writes), and a row holding a dead value does not crash: `generateStudioImage` has no branch for it and **silently falls through to Kontext while the DB says "Gemini"**. That silence is why this normalizes. In a clean `102 → 104 → 105` sequence it matches nothing (104 already reverted the 8 rows); it is here for stale and hand-set values. |
+| `apps/web/src/app/admin/photo-cleanup-test/page.tsx` | Bench labels both two-step engines as keeping the product, and marks the Gemini engines as receiving the photo. |
+
+### Verification
+
+`apps/api` **1002/1002** (78 files) · `apps/web` **279/279** · API + Web `tsc --noEmit` clean · Biome clean on every changed API/shared file · the bench page's 17 diagnostics are **byte-identical to `HEAD`** (baselined by running Biome on the `git show HEAD:` copy).
+
+New: `apps/api/src/lib/gemini-image.test.ts` — 15 tests, including that the request carries an image block whose `data` is the base64 of the fetched photo bytes (the assertion that would have failed on every previous round of this feature), that the key is a header and not a query param, last-image-block-wins over a leading thought image, malformed/absent images, a failed interaction surfacing its own message, an unreadable source photo, and the unconfigured-key 503. `studio-shoot.test.ts` **17 → 24**: `gemini_image` sends the photo, `gemini_image_pro` selects the Pro model, a Gemini failure falls back to the Kontext path, `vton_gemini` orders try-on → Gemini and hands Gemini the **worn** image (asserting it never downloads the flat product photo, and that Kontext is not called at all on that engine), the try-on-failure fallback, and two pins on `STUDIO_ENGINES` (the retired names are gone; both Gemini scene engines are present).
+
+`packages/shared` rebuilt again for the same reason as stage 2: the consuming apps resolve its gitignored `dist`.
+
+### Owner actions
+
+1. **Apply migration `105`** (and `104` if it is still pending).
+2. On `/admin/photo-cleanup-test`, run the same product + scene through `bfl_kontext`, `gemini_image`, `vton_kontext` and `vton_gemini`, with the garment fields filled. That is now a real four-way comparison: all four receive the photograph.
+3. Only then point the 8 MODEL rows at whichever engine wins. **Nothing flips them automatically**, on purpose — `vton_*` costs three provider calls per shot and its step-0 human reference is still unvalidated, so a readiness claim would be a guess.
+
+### Honest limits
+
+**Never run against the live API** — no `GEMINI_API_KEY` and no prod access in this session. Everything above is verified by types, tests and the published contract; none of it is verified by output quality. The specific unknowns to watch on the first bench run are (a) whether Gemini's `3:4` output framing suits a full-length garment shot that Kontext would have matched to the input, and (b) whether the Interactions API accepts a ~1MB base64 image block from our compressed JPEGs, or wants the image downscaled first.
+
+**Gemini is still not garment-locked.** It now receives the photo — which is the difference between describing a garment to a generator and instructing an editor — but it reinterprets: it does not guarantee this retailer's dye, print, embroidery or cut. Only the garment-conditioned try-on step does, and that is the point of the `vton_*` pair. `gemini_image` is the like-for-like comparison against the current default, not the fidelity fix.
+
+**Still open:** `generateIdmVtonTryon()` is dead broken code of the same class as `generateFashnTryon()` was (endpoint and params unverified, never called) — nothing calls it, and `services/fashion-vtone` is no longer in the path. With the engine list renamed, the cleanest next move is deleting it rather than verifying it. **Deleted later the same day** — see the entry at the end of this file.
+
+---
+
+## BUILT 2026-09-18 (same day) — AI Studio Shoot: the last dead try-on helper deleted, and a guard that keeps it deleted
+
+**Why:** both entries above close by naming `generateIdmVtonTryon()` as dead broken code left in place ("the cleanest next move is deleting it rather than verifying it"). Verifying it was the wrong option: the reason it was broken is that nothing had ever run it, so the first caller — a retailer — would have been the one to find out. Deleted instead, in all three places it existed.
+
+| File | Change |
+|---|---|
+| `apps/api/src/lib/fal-client.ts` | `generateIdmVtonTryon()` **deleted**. A tombstone comment records why (no caller since the 2026-08-30 studio-styles rework, parameter names never checked against the schema, weights CC BY-NC-SA-ND per ADR-006 so no fine-tune may be redistributed) and points at the FASHN v1.5 step that replaced it. The `runFalTask` doc comment no longer advertises IDM-VTON. |
+| `scripts/studio-shoot-demo.mjs` | The `vton` mode and its `falVton()` helper **deleted** — a second, differently-wrong copy of the same call (it posted `human_image_url` / `garment_image_url` to `fal-ai/idm-vton`, neither of which matches the API helper's own names). Header corrected too: BFL-direct is the code-level *fallback*, not what the shipped feature does (production runs FLUX Kontext through Fal). |
+| `packages/shared/src/constants/index.ts` | `FAL_API_KEY` label: `'Fal.ai API Key (Flux 1.1 Pro, Flux Schnell, IDM-VTON / CatVTON)'` → `'… (FLUX Pro / Kontext / Schnell, FASHN v1.5 try-on)'`. Labels render live from the constant (`admin-integrations.ts` maps them), so no migration — but the old text was the admin dashboard advertising a retired model. |
+| `apps/api/src/lib/retired-tryon-guard.test.ts` | **New** — a repo scan that fails if the retired path reappears **as code**. |
+
+**The guard, and why deleting is not self-enforcing:** a removed function cannot be found by a reader, and a reviewer looking at a diff that re-adds it has no way to know it was removed on purpose. So the guard scans `apps/`, `packages/` and `scripts/` for the endpoint and engine value (`idm-vton` / `idm_vton`), the helper name, and IDM-VTON's parameter names (`human_img_url`, `garm_img_url`, `garment_des`). It strips comments before matching, so this repo's own tombstone comments and the RC-027 entry stay legal — a guard that fires on prose gets weakened by whoever trips it (the sibling `/v1/` shell guard carries that lesson explicitly). `services/` is excluded because nothing in the app imports it; `docs/` is excluded because docs should record the history. It lives in a test rather than a `scripts/check-*.sh` so it needs no CI change and also fires on every local `pnpm test`.
+
+**Proof — the guard was shown to fail, not assumed to work:** a temporary `scripts/tmp-guard-drill.mjs` containing `runFalTask('fal-ai/idm-vton', input)` was added; the guard failed naming it (`scripts/tmp-guard-drill.mjs → the IDM-VTON endpoint or engine value`), and the file was deleted. It also asserts the walk sees two specific files (`fal-client.ts`, the demo script) so a broken walk cannot pass as a clean repo, and asserts FASHN v1.5 is still the live step as a positive control. The self-proof block covers the endpoint, the helper, an `idm_vton` engine value, the parameter names, comment-immunity, and a call on a line that also contains `https://`.
+
+**Verification:** `apps/api` **1010/1010** (79 files; the new guard test adds 8) · `apps/web` **279/279** · API `tsc --noEmit` clean · Biome clean on `fal-client.ts` and the new test. The demo script's 2 remaining diagnostics are fewer than its `HEAD` baseline (3), and `scripts/` is not in any package's lint scope. `scripts/studio-shoot-demo.mjs` parses (`node --check`). `packages/shared` rebuilt — the consuming apps resolve its gitignored `dist`, so the label change needs that build to be visible locally.
+
+**Left alone deliberately:** `services/fashion-vtone` stays in the repo, unwired (not imported by the API, and out of the path since the 2026-08-30 rework). `docs/TECH-STACK.md` still lists "Replicate IDM-VTON" in a historical cost table — that is research, not a wiring path.
+
+**Not amended:** `CLAUDE.md` row 75 (the studio-shoot index row) does not mention this cleanup — that file is gated on explicit approval, so the one-clause addition is pending an owner go-ahead.
+
+---
+
+## BUILT 2026-09-18 (same day) — AI Studio Shoot: a bench A/B that runs BOTH pipeline orders on one product photo
+
+**Why:** the two-step pipeline can be ordered two ways and neither is obviously right. The forward order (reference → try-on → scene render) feeds the try-on the plain frontal reference it was trained on and finishes at the scene renderer's own resolution. The reversed order (scene render → try-on) costs one provider call less and starts from the single-shot render the feature already produces, but it feeds the try-on a *generated* scene — out of distribution for a try-on model — and finishes at FASHN v1.5's 576×864. That argument cannot be settled on paper; it is the kind of thing a bench settles with output. Until now the reversed order was only reachable by hand — pasting a previously generated scene into the bench's model-reference field — which is an approximation of the order, not the order.
+
+| File | Change |
+|---|---|
+| `apps/api/src/lib/studio-shoot.ts` | **`generateStudioOrderAb()`** runs both orders **concurrently** over the same photo and returns both arms, each with its stages, wall-clock, and failure reason. **`runReversedStudio()`** is the other order: scene render from the product photo, then try-on. **`runTwoStepStudio()`** now returns `{ result, stages, error }` rather than `result \| null`, so an arm can say *which stage* failed — a new `stage()` helper wraps each call and prefixes its label onto the error, because in a three-call pipeline "Fal.ai task submission failed (500)" is equally true of the try-on and the scene render. **`buildStudioPromptContext()`** was extracted out of `generateStudioImage()` so both arms are handed **byte-identical** prompt text; two copies of that assembly would drift, and the drift would be invisible in exactly the way that matters (the arms would differ by wording as well as by stage order). `StudioProduct` is shared by both entry points, and `StudioVtonEngine` is `Extract<StudioEngine, …>` rather than a restated union. |
+| `apps/api/src/routes/admin/admin-photo-cleanup.ts` | **`POST /admin/photo-cleanup/studio-ab`**, engine restricted to the two `vton_*` values (a single-shot engine there would run the same pipeline twice and call it a comparison). Re-serves **every** image from R2 — each arm's result *and* its intermediates — because Fal and BFL result URLs expire, BFL's inside ten minutes, and a comparison board of dead tiles is worse than no board. `studioBenchFields` extracted so `/studio-shoot` and `/studio-ab` cannot start describing the product differently. |
+| `apps/web/src/app/admin/photo-cleanup-test/page.tsx` | Side-by-side A/B card: its **own** engine dial (`vton_kontext` / `vton_gemini`) rather than the form's engine — the comparison is undefined for single-shot engines, and silently coercing whatever the form had selected is the same class of hidden behaviour this bench exists to remove. Each arm shows its stage strip above its result, its wall-clock, and its failure reason; the server's caveats render as a notes list. |
+| `apps/api/src/lib/studio-shoot.test.ts` | 4 new tests — the order itself, the failure reporting, the Gemini-intermediate persist step, and the no-persist-step error. |
+| `apps/api/src/routes/security.test.ts`, `admin.login.test.ts` | Their explicit-factory `vi.mock('@kanchuki/shared')` now also supplies `PRODUCT_DEMOGRAPHICS`: the shared bench body shape is module-level, so `z.enum(PRODUCT_DEMOGRAPHICS)` evaluates at **import**, and a missing key throws during collection (the same failure mode `STUDIO_ENGINES` produced in stage 2 — these tests fail to *collect*, not to assert). |
+
+**Both arms are strict, and that is the load-bearing decision.** `generateStudioImage()` falls back to a single-shot Kontext render when a stage fails; letting the A/B do that would turn "which order is better" into a silent comparison of two different pipelines — the same mistake as the bench that sent *less* product data than production and therefore could not reproduce the bug it was opened to test. So a failed stage fails that arm, names the stage, and leaves the other arm's result intact. The tests pin that: one arm's try-on is failed (identified by the model image it was handed, which is the arm's own fingerprint) and the other arm still comes back `ready`, with the failed arm's stages showing how far it got.
+
+**The assertion this feature exists for** is that the two try-ons were handed *different* model images — the generated reference in one arm, the scene render in the other — while both receive the same product photo as the garment. It was drilled rather than assumed: pointing the reversed arm's try-on at the product photo instead of its scene render made the test fail, and the file was restored afterwards.
+
+**The reversed order and base64.** Gemini answers with base64 and the try-on stage needs a URL it can fetch, so the reversed pipeline takes an injected `persistStage` upload and re-serves its intermediate; without it the arm fails immediately with that reason rather than sending base64 somewhere it cannot go. The route supplies an R2 uploader (keeping storage keys the route's business), and the test injects a fake to prove the try-on receives the *persisted* URL.
+
+**Notes the bench returns** (they change how the two images should be read): the reversed arm finishes on the try-on's 576×864 and will look softer; a product-only scene renders nobody, so the reversed arm usually cannot run; a supplied model reference makes the arms differ by more than stage order; and the provider-call count per run.
+
+**Verification:** `apps/api` **1014/1014** (79 files; +4) · `apps/web` **279/279** · API + Web `tsc --noEmit` clean · Biome clean on all changed API/route files, and the bench page's 17 diagnostics are byte-identical to its `HEAD` baseline. The page is CRLF in the working tree and stayed CRLF (`loneLF = 0`).
+
+**Not verified:** the A/B has never run against live providers — no `FAL_API_KEY` / `GEMINI_API_KEY` or production access in that session. Everything above is types, tests and the published contracts; the quality call it exists to support is still the owner's, on the bench, after migrations 104/105.
+
+**Not amended:** `CLAUDE.md` row 75 does not yet mention this bench (that file is gated on explicit approval).
+

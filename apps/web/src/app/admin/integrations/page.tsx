@@ -21,7 +21,7 @@ type IntegrationRow = {
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
-  AI: 'AI Models & Generation (Fal.ai Flux / IDM-VTON, Google Imagen 3, Gemini, Claude, OpenAI)',
+  AI: 'AI Models & Generation (Fal.ai Flux / FASHN Try-On, Google Gemini, Claude, OpenAI)',
   PAYMENT: 'Payment Gateway (Razorpay)',
   STORAGE: 'Storage (Cloudflare R2)',
   WHATSAPP: 'WhatsApp Business API',

@@ -254,10 +254,7 @@ export const SUPPORTED_LOCALES = [
 export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number]['key'];
 
 /** Default locale fallback chain: selected → retailer default → Hindi → English. */
-export const LOCALE_FALLBACK_CHAIN: readonly SupportedLocale[] = [
-  'hi-IN',
-  'en-IN',
-] as const;
+export const LOCALE_FALLBACK_CHAIN: readonly SupportedLocale[] = ['hi-IN', 'en-IN'] as const;
 
 // ─── R2 Storage Paths ─────────────────────────────────────────────
 
@@ -328,6 +325,38 @@ export const R2_PATHS = {
 // this is the credits-per-image multiplier the UI shows the retailer.
 export const STUDIO_CREDITS_PER_IMAGE = 8;
 
+// The `studio_styles.engine` dial — one value per row, null = default cascade.
+// Declared once here because four surfaces validate or render this list (the
+// admin style CRUD route, the admin shoot bench, and both admin web pages),
+// and a value present in only some of them is either un-storable or
+// unselectable.
+//
+// Single-shot engines take the product photo and edit the scene in one call:
+// `bfl_kontext` (default) and `flux_pro` / `flux_schnell` render the whole
+// frame, which is why they recolour the garment; `gemini_image` /
+// `gemini_image_pro` are Gemini native image (Nano Banana 2 / Pro, Interactions
+// API) and DO receive the photo. The `vton_*` pair is the two-step pipeline —
+// garment-conditioned try-on first (FASHN v1.5), then a scene swap, rendered by
+// Kontext or Gemini respectively. Only the two-step pair keeps the actual
+// product AND produces a real scene.
+//
+// `imagen_3` / `imagen_3_fast` were renamed to `gemini_image` /
+// `gemini_image_pro`: they named `imagen-3.0-generate-002` on `:predict`, a
+// text-to-image diffusion endpoint that was never handed the product photo and
+// so could not do this job at all. Migration
+// `105_studio_styles_engine_rename` normalizes any row still holding the old
+// strings.
+export const STUDIO_ENGINES = [
+  'flux_pro',
+  'gemini_image',
+  'gemini_image_pro',
+  'flux_schnell',
+  'bfl_kontext',
+  'vton_kontext',
+  'vton_gemini',
+] as const;
+export type StudioEngine = (typeof STUDIO_ENGINES)[number];
+
 // ─── Product demographic (derived from the AI-tagged category) ───────
 // AI Studio Shoot no longer asks "which model?" — the product's category
 // string tells us who wears it, and the scene picker is filtered to the
@@ -344,19 +373,27 @@ export const PRODUCT_DEMOGRAPHICS = [
 ] as const;
 export type Demographic = (typeof PRODUCT_DEMOGRAPHICS)[number];
 
-export function demographicForCategory(category?: string | null, name?: string | null): Demographic {
+export function demographicForCategory(
+  category?: string | null,
+  name?: string | null,
+): Demographic {
   const s = `${category ?? ''} ${name ?? ''}`.toLowerCase();
-  const kid = /\b(kid|kids|kid'?s|child|children|toddler|infant|baby)\b/.test(s) || /\bfrock\b/.test(s);
+  const kid =
+    /\b(kid|kids|kid'?s|child|children|toddler|infant|baby)\b/.test(s) || /\bfrock\b/.test(s);
   const teen = /\b(teen|teens|teenage|teenager|junior)\b/.test(s);
   const girl = /\b(girl|girls|girl'?s)\b/.test(s);
   const boy = /\b(boy|boys|boy'?s)\b/.test(s);
   const mens =
-    /\b(men'?s|mens|gents?|male|sherwani|nehru jacket|bandhgala|pathani|menswear|waistcoat)\b/.test(s) ||
+    /\b(men'?s|mens|gents?|male|sherwani|nehru jacket|bandhgala|pathani|menswear|waistcoat)\b/.test(
+      s,
+    ) ||
     /\bkurta paja?ma\b/.test(s) ||
     /\bkurta pyjama\b/.test(s) ||
     /\bdhoti kurta\b/.test(s);
   const womensHint =
-    /\b(women'?s|woman|ladies|lady|saree|sari|lehenga|choli|kurti|anarkali|sharara|salwar|blouse|gown)\b/.test(s);
+    /\b(women'?s|woman|ladies|lady|saree|sari|lehenga|choli|kurti|anarkali|sharara|salwar|blouse|gown)\b/.test(
+      s,
+    );
 
   if (teen && girl) return 'teen_girl';
   if (teen && boy) return 'teen_boy';
@@ -377,7 +414,7 @@ export const INTEGRATION_KEYS = [
   {
     key_name: 'FAL_API_KEY',
     category: 'AI',
-    label: 'Fal.ai API Key (Flux 1.1 Pro, Flux Schnell, IDM-VTON / CatVTON)',
+    label: 'Fal.ai API Key (FLUX Pro / Kontext / Schnell, FASHN v1.5 try-on)',
   },
   {
     key_name: 'BFL_API_KEY',
@@ -397,7 +434,7 @@ export const INTEGRATION_KEYS = [
   {
     key_name: 'GEMINI_API_KEY',
     category: 'AI',
-    label: 'Google Gemini / Imagen 3 API Key (AI tagging & Imagen generation)',
+    label: 'Google Gemini API Key (AI tagging, AI Studio Shoots & Gemini image generation)',
   },
   // Generic OpenAI-protocol providers — same key mechanism, used via the
   // Admin → AI Providers registry (provider_type OPENAI_COMPAT + base_url).
