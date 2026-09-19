@@ -16,6 +16,8 @@ import { generateImageToVideo } from '../../lib/fal-video.js';
 import { runPhotoCleanup, serializePhotoCleanup } from '../../lib/photo-cleanup-runner.js';
 import {
   type StudioProduct,
+  buildStudioPrompt,
+  directStudioPrompt,
   downloadCompressAndUpload,
   generateStudioImage,
   generateStudioOrderAb,
@@ -95,6 +97,10 @@ const studioBenchFields = {
   primary_color: z.string().max(60).optional(),
   fabric: z.string().max(60).optional(),
   pattern: z.string().max(60).optional(),
+  // Shoulder-to-hem garment length in cm → hem landmark clause in the prompt.
+  length_cm: z.number().int().min(20).max(200).optional(),
+  // Overrides the default model height for the demographic (cm).
+  model_height_cm: z.number().int().min(90).max(210).optional(),
 };
 
 /**
@@ -109,9 +115,17 @@ function studioProductFromBench(body: {
   primary_color?: string;
   fabric?: string;
   pattern?: string;
+  length_cm?: number;
+  model_height_cm?: number;
 }): StudioProduct | undefined {
   const hasGarmentFields = Boolean(
-    body.name || body.category || body.subtype || body.primary_color || body.fabric || body.pattern,
+    body.name ||
+      body.category ||
+      body.subtype ||
+      body.primary_color ||
+      body.fabric ||
+      body.pattern ||
+      body.length_cm,
   );
   if (!hasGarmentFields) return undefined;
   return {
@@ -121,6 +135,8 @@ function studioProductFromBench(body: {
     primary_color: body.primary_color ?? null,
     fabric: body.fabric ?? null,
     pattern: body.pattern ?? null,
+    length_cm: body.length_cm ?? null,
+    model_height_cm: body.model_height_cm ?? null,
   };
 }
 
@@ -211,6 +227,12 @@ export const adminPhotoCleanupRoutes: FastifyPluginAsync = async (server) => {
       .object({
         ...studioBenchFields,
         engine: z.enum(STUDIO_ENGINES).optional(),
+        // false → the photo is a bare garment (hanger / flat-lay): use the
+        // placement wording instead of "edit only the background".
+        input_has_person: z.boolean().default(true),
+        // Run the prompt director (vision pass) and send ITS prompt instead.
+        // Single-shot engines only — the vton_* pair builds its own prompts.
+        director: z.boolean().default(false),
       })
       .parse(request.body);
 
@@ -226,15 +248,36 @@ export const adminPhotoCleanupRoutes: FastifyPluginAsync = async (server) => {
     // garment-identity + colour clauses the retailer path does.
     const product = studioProductFromBench(body);
 
+    const tab = style?.tab ?? 'MODEL';
+    // The guard above guarantees at least one of the two is present; the
+    // `?? ''` only satisfies the type checker.
+    const prompt = body.prompt ?? style?.prompt ?? '';
+    const isTwoStep = body.engine === 'vton_kontext' || body.engine === 'vton_gemini';
+    let directed: { prompt: string; missing_parts: string[] } | undefined;
+    if (body.director && !isTwoStep) {
+      directed = await directStudioPrompt(
+        body.product_url,
+        buildStudioPrompt({
+          prompt,
+          tab,
+          demographic: body.demographic,
+          product,
+          inputHasPerson: body.input_has_person,
+        }),
+      );
+    }
+
     const result = await generateStudioImage(body.product_url, {
-      // The guard above guarantees at least one of the two is present; the
-      // `?? ''` only satisfies the type checker.
-      prompt: body.prompt ?? style?.prompt ?? '',
-      tab: style?.tab ?? 'MODEL',
+      prompt,
+      tab,
       engine: body.engine,
       demographic: body.demographic,
       humanImageUrl: body.model_image_url,
       product,
+      inputHasPerson: body.input_has_person,
+      promptOverride: directed?.prompt,
+      // A bench run must show the engine it names, not a Kontext fallback.
+      strict: true,
     });
     // `!payload` is true exactly when neither field is present, so the guard's
     // meaning is unchanged while `payload` narrows to `string` below.
@@ -249,7 +292,16 @@ export const adminPhotoCleanupRoutes: FastifyPluginAsync = async (server) => {
 
     const key = R2_PATHS.photoCleanupTest(`studio-${randomUUID()}.jpg`);
     const uploaded = await downloadCompressAndUpload(payload, key, Boolean(result.base64Data));
-    return { data: { result_url: uploaded.url, slug: style?.slug ?? null } };
+    return {
+      data: {
+        result_url: uploaded.url,
+        slug: style?.slug ?? null,
+        // Present only when the director ran — what was actually sent, and
+        // which outfit pieces the photo does not show.
+        prompt_used: directed?.prompt ?? null,
+        missing_parts: directed?.missing_parts ?? null,
+      },
+    };
   });
 
   // ─── POST /admin/photo-cleanup/studio-ab ──────────────────────────

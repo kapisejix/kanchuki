@@ -255,6 +255,16 @@ export default function PhotoCleanupTestPage() {
   // here — which is how migration 102's imagen_3 switch went unverified.
   const [studioEngine, setStudioEngine] = useState<(typeof STUDIO_ENGINES)[number] | ''>('');
   const [studioModelUrl, setStudioModelUrl] = useState<string>('');
+  // Garment length (cm, shoulder→hem) — retailer data in production; becomes a
+  // hem-landmark clause ("hem at mid-calf") in the prompt.
+  const [studioLengthCm, setStudioLengthCm] = useState<string>('');
+  // Blank → default per demographic (womens 165, mens 175, teen 155/160, kids 115/118).
+  const [studioModelHeightCm, setStudioModelHeightCm] = useState<string>('');
+  // Hanger / flat-lay photo with no person: swaps "edit only the background"
+  // for a "put this garment on the model" instruction.
+  const [studioBareGarment, setStudioBareGarment] = useState(true);
+  // Prompt director: a vision pass rewrites the prompt from the photo first.
+  const [studioDirector, setStudioDirector] = useState(false);
   // A/B — the same photo through BOTH pipeline orders. It has its own engine
   // dial rather than reusing `studioEngine`: the comparison is only defined for
   // the two two-step engines, and silently coercing whatever the form had
@@ -284,7 +294,15 @@ export default function PhotoCleanupTestPage() {
   }, [scenesForPicker, studioSlug]);
   const [studioBusy, setStudioBusy] = useState(false);
   const [studioResults, setStudioResults] = useState<
-    { id: string; productUrl: string; resultUrl: string; label: string; ranAt: string }[]
+    {
+      id: string;
+      productUrl: string;
+      resultUrl: string;
+      label: string;
+      ranAt: string;
+      promptUsed?: string | null;
+      missingParts?: string[] | null;
+    }[]
   >([]);
 
   const runStudioShoot = async () => {
@@ -309,6 +327,10 @@ export default function PhotoCleanupTestPage() {
           pattern: studioGarment.pattern.trim() || undefined,
           engine: studioEngine || undefined,
           model_image_url: studioModelUrl.trim() || undefined,
+          length_cm: Number.parseInt(studioLengthCm, 10) || undefined,
+          model_height_cm: Number.parseInt(studioModelHeightCm, 10) || undefined,
+          input_has_person: !studioBareGarment,
+          director: studioDirector,
         }),
       });
       const json = await res.json();
@@ -324,6 +346,8 @@ export default function PhotoCleanupTestPage() {
           resultUrl: json.data.result_url,
           label,
           ranAt: new Date().toLocaleTimeString(),
+          promptUsed: json.data.prompt_used,
+          missingParts: json.data.missing_parts,
         },
         ...prev,
       ]);
@@ -853,6 +877,60 @@ export default function PhotoCleanupTestPage() {
           garment type is never named, which is how a salwar gets rendered as a dhoti. Real
           products fill these from the AI tagger, so fill them to test what production sends.
         </p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="flex flex-col gap-1">
+            <label htmlFor="studio-length" className="text-xs text-gray-500">
+              Garment length, shoulder→hem (cm)
+            </label>
+            <input
+              id="studio-length"
+              type="number"
+              min={20}
+              max={200}
+              value={studioLengthCm}
+              onChange={(e) => setStudioLengthCm(e.target.value)}
+              placeholder="105"
+              className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2"
+            />
+            <label htmlFor="studio-model-height" className="text-xs text-gray-500 mt-1">
+              Model height (cm) — blank = default for demographic
+            </label>
+            <input
+              id="studio-model-height"
+              type="number"
+              min={90}
+              max={210}
+              value={studioModelHeightCm}
+              onChange={(e) => setStudioModelHeightCm(e.target.value)}
+              placeholder="165"
+              className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2"
+            />
+          </div>
+          <label className="flex items-start gap-2 text-xs text-gray-600 sm:col-span-1">
+            <input
+              type="checkbox"
+              checked={studioBareGarment}
+              onChange={(e) => setStudioBareGarment(e.target.checked)}
+              className="mt-0.5"
+            />
+            <span>
+              Photo is a bare garment (hanger / flat-lay, no person) — uses “put this garment on
+              the model” instead of “edit only the background”
+            </span>
+          </label>
+          <label className="flex items-start gap-2 text-xs text-gray-600 sm:col-span-1">
+            <input
+              type="checkbox"
+              checked={studioDirector}
+              onChange={(e) => setStudioDirector(e.target.checked)}
+              className="mt-0.5"
+            />
+            <span>
+              Prompt director — a vision pass reads the photo and rewrites the prompt (single-shot
+              engines only, not vton_*)
+            </span>
+          </label>
+        </div>
         <div className="flex flex-col gap-1">
           <label htmlFor="studio-prompt" className="text-xs text-gray-500">
             Custom prompt (optional — overrides template & model; paste a formula from{' '}
@@ -1028,6 +1106,15 @@ export default function PhotoCleanupTestPage() {
                   <span className="truncate">{r.label}</span>
                   <span>{r.ranAt}</span>
                 </div>
+                {r.promptUsed && (
+                  <details className="px-3 pb-2 text-[10px] text-gray-500">
+                    <summary className="cursor-pointer">
+                      Director prompt
+                      {r.missingParts?.length ? ` · not in photo: ${r.missingParts.join(', ')}` : ''}
+                    </summary>
+                    <p className="mt-1 whitespace-pre-wrap font-mono">{r.promptUsed}</p>
+                  </details>
+                )}
               </div>
             ))}
           </div>

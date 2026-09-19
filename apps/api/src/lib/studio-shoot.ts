@@ -1,7 +1,9 @@
 import {
   compressImageToTarget,
+  fetchImageBuffer,
   publicUrl,
   readCappedBuffer,
+  runVisionAsk,
   ssrfSafeFetch,
   uploadBuffer,
 } from '@kanchuki/ai';
@@ -232,6 +234,55 @@ function garmentIdentityClause(product?: {
 const SCENE_GUARD =
   'Edit ONLY the background, setting and scene of this photograph. Keep the garment itself pixel-identical to the input: exact same colour, dye, print, pattern, embroidery, fabric, cut, drape and proportions. Do not recolour, restyle or regenerate the clothing.';
 
+/**
+ * SCENE_GUARD assumes the photo already shows a person ("edit the background"),
+ * which contradicts "put this garment on a model" for a hanger / flat-lay photo.
+ * Used instead when the caller says the input has no person (admin bench only).
+ */
+const PLACEMENT_GUARD =
+  'The input photograph shows a garment on its own, with no person. Reproduce that exact garment on the model described below: exact same colour, dye, print, pattern, embroidery, fabric, cut and proportions. Do not recolour, restyle or redesign it.';
+
+// Model height (cm) per demographic — a constant WE choose, so it needs no measuring.
+const MODEL_HEIGHT_CM: Record<Demographic, number> = {
+  womens: 165,
+  mens: 175,
+  teen_girl: 155,
+  teen_boy: 160,
+  kids_girl: 115,
+  kids_boy: 118,
+};
+
+// Approximate hem height as a fraction of standing height (anthropometric
+// rules of thumb, not clinical values — tune against real renders).
+const HEM_LANDMARKS: [fraction: number, phrase: string][] = [
+  [0.04, 'at the ankle'],
+  [0.2, 'at mid-calf'],
+  [0.285, 'at the knee'],
+  [0.39, 'at mid-thigh'],
+  [0.52, 'at the hip'],
+];
+
+/**
+ * Turn the retailer's garment length (shoulder → hem, cm) into a body landmark
+ * for the prompt: shoulder ≈ 0.82H, so the hem sits ≈ 0.82H − length above the
+ * floor. A photo carries no scale, so the length must come from product data.
+ */
+export function hemLandmarkClause(
+  demographic: Demographic,
+  lengthCm: number,
+  modelHeightCm?: number | null,
+): string {
+  const h = modelHeightCm || MODEL_HEIGHT_CM[demographic];
+  const hem = 0.82 * h - lengthCm;
+  const where =
+    hem <= 0
+      ? 'reaching the floor'
+      : (HEM_LANDMARKS.reduce((best, cur) =>
+          Math.abs(cur[0] - hem / h) < Math.abs(best[0] - hem / h) ? cur : best,
+        )[1] ?? 'at the knee');
+  return `The garment is ${lengthCm} cm long from the shoulder; on this model (${h} cm tall) its hem falls ${where}${hem > 0 ? `, about ${Math.round(hem)} cm above the floor` : ''}. Do not shorten or lengthen it.`;
+}
+
 // ─── Two-step pipeline: garment-conditioned try-on, then a scene swap ───
 //
 // Why this exists: no single call gives both properties a studio shoot needs.
@@ -418,6 +469,10 @@ export interface StudioProduct {
   fabric?: string | null;
   pattern?: string | null;
   embellishments?: string[];
+  /** Shoulder-to-hem garment length in cm — retailer data, never inferred. */
+  length_cm?: number | null;
+  /** Overrides the per-demographic model height (cm) — admin bench. */
+  model_height_cm?: number | null;
 }
 
 /** Everything the prompt needs, assembled once per generation. */
@@ -449,6 +504,8 @@ function buildStudioPromptContext(opts: {
   tab: 'PRODUCT' | 'MODEL';
   demographic?: string;
   product?: StudioProduct;
+  /** false → the input is a bare garment photo; swap SCENE_GUARD for PLACEMENT_GUARD. Default true. */
+  inputHasPerson?: boolean;
 }): StudioPromptContext {
   const { product } = opts;
   const colorSpec = [
@@ -483,6 +540,9 @@ function buildStudioPromptContext(opts: {
       personClause,
     );
     basePrompt = `The person wearing this garment is ${personClause}. ${basePrompt}`;
+    if (product?.length_cm) {
+      basePrompt += ` ${hemLandmarkClause(demographic, product.length_cm, product.model_height_cm)}`;
+    }
     if (isTopOnlyGarment(product?.subtype, product?.category, product?.name)) {
       basePrompt += ` This garment is a standalone top — it is NOT part of a full outfit. Frame the shot from the head down to the hip only. Do NOT show the model's legs, hips-down or feet, and do NOT add, invent or imply any trousers, palazzo, leggings, jeans or skirt that is not visible in the original product photo.`;
     }
@@ -492,8 +552,66 @@ function buildStudioPromptContext(opts: {
     ? ` The garment has ${colorSpec}. CRITICAL COLOR ACCURACY: Absolutely preserve the garment's exact fabric dye, color tone, embroidery, and saturation without any tinting, hue shift, or color alteration. Use neutral 5500K daylight-balanced CRI-98 key lighting on the garment.`
     : ` CRITICAL COLOR ACCURACY: Preserve the garment's exact original color, hue, dye, saturation, and embroidery 100% faithfully to the input photo without color shifting or tinting. Use neutral 5500K daylight-balanced key lighting on the garment.`;
 
-  const promptText = `${SCENE_GUARD} ${garmentSpec} ${basePrompt} ${colorEnforcement}`;
+  const guard = opts.inputHasPerson === false ? PLACEMENT_GUARD : SCENE_GUARD;
+  const promptText = `${guard} ${garmentSpec} ${basePrompt} ${colorEnforcement}`;
   return { garmentSpec, colorEnforcement, promptText, personClause, basePrompt, demographic };
+}
+
+/** The single-shot prompt exactly as `generateStudioImage` would assemble it. */
+export function buildStudioPrompt(opts: {
+  prompt: string;
+  tab: 'PRODUCT' | 'MODEL';
+  demographic?: string;
+  product?: StudioProduct;
+  inputHasPerson?: boolean;
+}): string {
+  return buildStudioPromptContext(opts).promptText;
+}
+
+const DIRECTOR_SYSTEM =
+  "You are the prompt director for an Indian fashion catalogue image generator. You see the retailer's product photo and a DRAFT prompt; the image model will receive the same photo plus your final prompt. " +
+  'Rewrite the draft into one final prompt. Rules: (1) describe the garment exactly as visible — type, colour, print, embroidery, neckline, sleeves, fabric sheen; (2) state which pieces of an outfit are visible and which are NOT, and never add a garment that is not visible (plain footwear is allowed); (3) keep every constraint in the draft — colour accuracy, hem length, person, scene, framing; (4) under 250 words, plain prose. ' +
+  'Reply with ONLY JSON: {"prompt": string, "missing_parts": string[]} where missing_parts lists outfit pieces a shopper might assume but the photo does not show (empty array if none).';
+
+/**
+ * Prompt director — the layer the chat apps add invisibly. One vision pass over
+ * the product photo turns the draft prompt into a garment-aware final prompt and
+ * reports what the photo does not show. Admin bench only for now.
+ */
+export async function directStudioPrompt(
+  inputImageUrl: string,
+  draft: string,
+): Promise<{ prompt: string; missing_parts: string[] }> {
+  const buffer = await fetchImageBuffer(inputImageUrl);
+  const lower = inputImageUrl.toLowerCase().split('?')[0] ?? '';
+  const mediaType = lower.endsWith('.png')
+    ? 'image/png'
+    : lower.endsWith('.webp')
+      ? 'image/webp'
+      : 'image/jpeg';
+  const raw = await runVisionAsk({
+    images: [{ buffer, mediaType }],
+    systemPrompt: DIRECTOR_SYSTEM,
+    userPrompt: `DRAFT PROMPT:\n${draft}`,
+    maxTokens: 900,
+  });
+  try {
+    const json = JSON.parse(raw.replace(/^```(?:json)?\s*|\s*```$/g, '').trim()) as {
+      prompt?: unknown;
+      missing_parts?: unknown;
+    };
+    if (typeof json.prompt !== 'string' || !json.prompt.trim()) throw new Error('no prompt');
+    const missing = Array.isArray(json.missing_parts)
+      ? json.missing_parts.filter((p): p is string => typeof p === 'string')
+      : [];
+    return { prompt: json.prompt.trim(), missing_parts: missing };
+  } catch {
+    throw new AppError(
+      'STUDIO_SHOOT_FAILED',
+      `Prompt director returned unusable output: ${raw.slice(0, 200)}`,
+      502,
+    );
+  }
 }
 
 /** Which half of the two-step pipeline renders the scene. */
@@ -747,6 +865,12 @@ export async function generateStudioImage(
     humanImageUrl?: string;
     onProgress?: (progress: { progress: number; etaMs: number }) => void;
     product?: StudioProduct;
+    /** false → input is a bare garment photo (no person); see PLACEMENT_GUARD. Default true. */
+    inputHasPerson?: boolean;
+    /** Replaces the assembled prompt on the single-shot engines (prompt director output). */
+    promptOverride?: string;
+    /** Explicitly-chosen engine failing throws instead of falling back to Kontext (admin bench). */
+    strict?: boolean;
   },
 ): Promise<StudioGenerationResult> {
   const { prompt, tab, engine, onProgress } = opts;
@@ -769,13 +893,25 @@ export async function generateStudioImage(
     colorEnforcement,
     basePrompt,
     personClause: indianModelDesc,
-    promptText,
+    promptText: builtPrompt,
   } = buildStudioPromptContext({
     prompt,
     tab,
     demographic: typeof opts.demographic === 'string' ? opts.demographic : undefined,
     product: opts.product,
+    inputHasPerson: opts.inputHasPerson,
   });
+  const promptText = opts.promptOverride ?? builtPrompt;
+  const fail = (label: string, err: unknown): never => {
+    throw new AppError(
+      'STUDIO_SHOOT_FAILED',
+      `${label}: ${err instanceof Error ? err.message : String(err)}`,
+      502,
+    );
+  };
+  if (opts.strict && (engine === 'gemini_image' || engine === 'gemini_image_pro') && !geminiKey) {
+    fail(engine, 'no Gemini API key configured');
+  }
 
   // FLUX Kontext is an instruction-edit model: it changes only what the
   // prompt names and leaves the rest of the pixels alone. Plain flux img2img
@@ -826,6 +962,7 @@ export async function generateStudioImage(
       });
       return { status: 'ready', base64Data: res.base64Data };
     } catch (err) {
+      if (opts.strict) fail(engine, err);
       console.error('[studio-shoot] gemini (explicit) failed, falling back to Kontext:', err);
     }
   }

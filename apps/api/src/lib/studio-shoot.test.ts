@@ -24,15 +24,38 @@ vi.mock('@kanchuki/ai', () => ({
   ssrfSafeFetch: mockFetch,
   uploadBuffer: mockUpload,
   publicUrl: mockPublicUrl,
+  fetchImageBuffer: vi.fn(),
+  runVisionAsk: vi.fn(),
 }));
 
 // Keep the real shared module (templates) — only the env is stubbed.
 import {
+  buildStudioPrompt,
   downloadCompressAndUpload,
   generateStudioImage,
   generateStudioOrderAb,
+  hemLandmarkClause,
   isStudioShootConfigured,
 } from './studio-shoot.js';
+
+describe('admin-bench prompt options', () => {
+  it('105 cm kurta on the 165 cm womens model lands mid-calf', () => {
+    expect(hemLandmarkClause('womens', 105)).toContain('at mid-calf');
+    expect(hemLandmarkClause('womens', 105)).toContain('about 30 cm above the floor');
+  });
+
+  it('a very long garment reaches the floor', () => {
+    expect(hemLandmarkClause('womens', 140)).toContain('reaching the floor');
+  });
+
+  it('keeps SCENE_GUARD by default and swaps it only for bare-garment photos', () => {
+    const base = { prompt: 'A studio.', tab: 'MODEL' as const };
+    expect(buildStudioPrompt(base)).toContain('Edit ONLY the background');
+    const bare = buildStudioPrompt({ ...base, inputHasPerson: false });
+    expect(bare).not.toContain('Edit ONLY the background');
+    expect(bare).toContain('with no person');
+  });
+});
 
 const originalFetch = globalThis.fetch;
 
