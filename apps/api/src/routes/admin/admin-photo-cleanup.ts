@@ -259,7 +259,9 @@ export const adminPhotoCleanupRoutes: FastifyPluginAsync = async (server) => {
     // Person present? Explicit override wins; otherwise ask vision. A failed
     // detection (null) keeps today's behaviour (assume a person).
     const detected =
-      body.input_has_person === undefined ? await detectGarmentPartsFromUrl(body.product_url) : null;
+      body.input_has_person === undefined
+        ? await detectGarmentPartsFromUrl(body.product_url)
+        : null;
     const inputHasPerson = body.input_has_person ?? detected?.hasPerson ?? true;
     let directed: { prompt: string; missing_parts: string[] } | undefined;
     if (body.director && !isTwoStep) {
