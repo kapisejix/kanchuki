@@ -10,6 +10,8 @@ import { motion } from 'framer-motion';
 import { ArrowRight, Columns2, ImageOff, Loader2, Shirt, Upload, Video, Wand2 } from 'lucide-react';
 import Image from 'next/image';
 import { useEffect, useRef, useState } from 'react';
+import { CLS } from '@/lib/studio-effects';
+import EffectsCatalog, { type UseEffectArgs } from './EffectsCatalog';
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
 
@@ -304,6 +306,24 @@ export default function PhotoCleanupTestPage() {
       missingParts?: string[] | null;
     }[]
   >([]);
+
+  // Effects catalog → bench: load the sample photo as the product photo and fill
+  // the demographic, garment type and the composed prompt, then jump to the card.
+  const useEffectInBench = async ({ prompt, aud, cls, sample }: UseEffectArgs) => {
+    setStudioPrompt(prompt);
+    setStudioDemographic(aud);
+    setStudioGarment((g) => ({ ...g, category: CLS[cls] }));
+    if (sample) {
+      try {
+        const blob = await (await fetch(`/effect-photos/products/${sample.f}.jpg`)).blob();
+        setProductFile(new File([blob], `${sample.f}.jpg`, { type: 'image/jpeg' }));
+        setCrop(null);
+      } catch {
+        setError('Could not load the sample photo — upload the product photo manually.');
+      }
+    }
+    document.getElementById('studio-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
 
   const runStudioShoot = async () => {
     if (!productFile || studioBusy) return;
@@ -742,8 +762,10 @@ export default function PhotoCleanupTestPage() {
         </div>
       </div>
 
+      <EffectsCatalog onUse={(a) => void useEffectInBench(a)} />
+
       {/* AI Studio Shoot — FLUX Kontext / Gemini / two-step VTON (F-032) */}
-      <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-4 space-y-3">
+      <div id="studio-card" className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-4 space-y-3">
         <div className="flex items-center gap-3">
           <Wand2 size={18} className="text-fuchsia-500" />
           <div>
