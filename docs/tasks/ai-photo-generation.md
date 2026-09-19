@@ -862,6 +862,16 @@ Draft written 2026-09-19. A first implementation was made and **reverted the sam
 
 **Sources:** [fal pricing](https://fal.ai/pricing), [fal pricing API](https://fal.ai/docs/platform-apis/v1/models/pricing), [fal models API](https://fal.ai/docs/platform-apis/v1/models), [fal GPT Image 2 edit](https://fal.ai/models/openai/gpt-image-2/edit), [fal Recraft V4](https://fal.ai/models/fal-ai/recraft/v4/text-to-image), [Gemini API pricing](https://ai.google.dev/gemini-api/docs/pricing), [buildmvpfast image-cost tracker](https://www.buildmvpfast.com/api-costs/ai-image), [Midjourney API status](https://unifically.com/blogs/midjourney-api). Endpoint IDs above were read from fal's live `GET /v1/models?q=…` on 2026-09-19.
 
+#### 8.1c Admin model bench ✅ built 2026-09-19 (not yet run live)
+
+Full detail, tables and the results view: `docs/tasks/AI Cost Comparison.html` §8.2. Summary:
+
+- `/admin/photo-cleanup-test` → AI Studio Shoot: scene (11 outdoor: Nature / Urban / Resort) + gender + age bucket (kid / teen / adult / senior) + auto pose (only Standing, Sitting, Walking, Turning, Looking back, Twirl, Holding dupatta, Dupatta flow, Candid) → one prompt via `composeBenchPrompt` (`apps/web/src/lib/studio-effects.ts`).
+- Multi-select of 15 engines with estimated $ / ₹ (@96) / credits (`STUDIO_ENGINE_INFO`, `packages/shared`); batch run confirms the estimate first, runs 2 at a time, one shared pose per batch.
+- 8 new Fal image-edit engines (`flux2_pro`, `gpt_image_2_low|medium|high`, `seedream_v4`, `qwen_edit`, `nano_banana`, `grok_imagine`) via one table `FAL_EDIT_ENGINES` in `apps/api/src/lib/fal-client.ts`; request bodies read from each endpoint's OpenAPI. Same `FAL_API_KEY`. Bench runs are strict (no silent Kontext fallback).
+- Results: export JSON → `node scripts/save-bench.mjs <file>` → images in `docs/tasks/effect-photos/preview/`, data in `docs/tasks/bench-results.js`, shown in the HTML with a per-row score/notes.
+- Unpriced (`usd: null`) engines show "?": Grok, FLUX 1.1 Pro, FLUX Schnell, both `vton_*`. No migration, no retailer-path change.
+
 ### 8.2 The 80 KB ceiling — the decision table
 
 | Path | Current | Recommendation |

@@ -150,6 +150,55 @@ export const SCENE = {
     'a royal palace courtyard with ornate arches and sandstone pillars',
   ],
   beach: ['Goa Sunset Beach', 'outdoor', 'Resort', 'a Goa beach at sunset with soft waves'],
+  // Added for the model bench (BENCH_SCENES below). No preset uses these.
+  riverside: [
+    'Riverside',
+    'outdoor',
+    'Nature',
+    'a calm riverbank with soft grass, gentle water and hazy hills behind',
+  ],
+  forest: [
+    'Forest',
+    'outdoor',
+    'Nature',
+    'a quiet green forest path with tall trees and dappled sunlight',
+  ],
+  modern_street: [
+    'Modern Street',
+    'outdoor',
+    'Urban',
+    'a clean modern city street with glass storefronts and softly blurred traffic',
+  ],
+  cafe: [
+    'Cafe',
+    'outdoor',
+    'Urban',
+    'a cosy street cafe with wooden tables, potted plants and warm ambient light',
+  ],
+  terrace: [
+    'Terrace',
+    'outdoor',
+    'Urban',
+    'a sunlit open terrace with a low parapet and a soft city skyline beyond',
+  ],
+  balcony: [
+    'Balcony',
+    'outdoor',
+    'Urban',
+    'a bright apartment balcony with a wrought-iron railing and hanging plants',
+  ],
+  poolside: [
+    'Poolside',
+    'outdoor',
+    'Resort',
+    'a resort poolside with turquoise water, white loungers and palm shade',
+  ],
+  tropical_resort: [
+    'Tropical Resort',
+    'outdoor',
+    'Resort',
+    'a tropical resort courtyard with palms, bamboo and warm stone paths',
+  ],
 } as const satisfies Record<string, readonly [string, Env, string, string]>;
 export type SceneId = keyof typeof SCENE;
 
@@ -909,3 +958,97 @@ export const MODEL_TILES: ModelTile[] = [
   { f: 'kid-girl-4', aud: 'kids_girl', label: 'Girl · 4', senior: false },
   { f: 'kid-boy-4', aud: 'kids_boy', label: 'Boy · 4', senior: false },
 ];
+
+// ── Model bench (admin test page) ─────────────────────────────────────
+// Pick a scene, a gender and an age bucket; the pose is chosen from a fixed
+// list. Reuses composePrompt() above so a bench prompt reads exactly like a
+// catalog effect's prompt — the only new logic is which pose and who.
+
+/** The outdoor scene picker, grouped as the owner listed them. `li` is the
+ * lighting that suits the scene (a bench prompt has no preset to carry it). */
+export const BENCH_SCENES = [
+  { group: 'Nature', label: 'Rose Garden', id: 'rose_garden', li: 'golden' },
+  { group: 'Nature', label: 'Riverside', id: 'riverside', li: 'natural' },
+  { group: 'Nature', label: 'Mountain', id: 'mountain', li: 'daylight' },
+  { group: 'Nature', label: 'Forest', id: 'forest', li: 'soft' },
+  { group: 'Urban', label: 'Modern Street', id: 'modern_street', li: 'daylight' },
+  { group: 'Urban', label: 'Cafe', id: 'cafe', li: 'golden' },
+  { group: 'Urban', label: 'Terrace', id: 'terrace', li: 'golden' },
+  { group: 'Urban', label: 'Balcony', id: 'balcony', li: 'natural' },
+  { group: 'Resort', label: 'Beach', id: 'beach', li: 'sunset' },
+  { group: 'Resort', label: 'Poolside', id: 'poolside', li: 'daylight' },
+  { group: 'Resort', label: 'Tropical Resort', id: 'tropical_resort', li: 'golden' },
+] as const satisfies readonly { group: string; label: string; id: SceneId; li: LightId }[];
+
+/** The only poses the bench uses (owner list, 2026-09-19). */
+export const BENCH_POSES = [
+  'standing',
+  'sitting',
+  'walking',
+  'turning',
+  'looking_back',
+  'twirl',
+  'hold_dupatta',
+  'dupatta_flow',
+  'candid',
+] as const satisfies readonly PoseId[];
+export type BenchPose = (typeof BENCH_POSES)[number];
+
+const DUPATTA_POSES = new Set<BenchPose>(['hold_dupatta', 'dupatta_flow']);
+// A waist-up frame cannot show a stride, a seat or a flare.
+const FULL_BODY_POSES = new Set<BenchPose>(['walking', 'sitting', 'twirl']);
+
+/** Poses that make sense for this garment: dupatta poses only when there is a
+ * dupatta, and no full-body poses for a half-body garment (top / kurti / shorts). */
+export function benchPoseChoices(cls: Cls, hasDupatta: boolean): BenchPose[] {
+  return BENCH_POSES.filter(
+    (p) => (hasDupatta || !DUPATTA_POSES.has(p)) && !(HALF.has(cls) && FULL_BODY_POSES.has(p)),
+  );
+}
+
+/** "Auto pose": one random pick from benchPoseChoices. `rand` is injectable for tests. */
+export function pickPose(cls: Cls, hasDupatta: boolean, rand: () => number = Math.random): BenchPose {
+  const choices = benchPoseChoices(cls, hasDupatta);
+  return choices[Math.floor(rand() * choices.length)] ?? 'standing';
+}
+
+export const BENCH_GENDERS = ['female', 'male'] as const;
+export const BENCH_AGES = ['kid', 'teen', 'adult', 'senior'] as const;
+export type BenchGender = (typeof BENCH_GENDERS)[number];
+export type BenchAge = (typeof BENCH_AGES)[number];
+
+/** Gender + age bucket → the demographic the API renders, plus the senior flag
+ * composePrompt() uses for an older model (only defined for adults). */
+export function audFor(gender: BenchGender, age: BenchAge): { aud: Aud; senior: boolean } {
+  const f = gender === 'female';
+  if (age === 'kid') return { aud: f ? 'kids_girl' : 'kids_boy', senior: false };
+  if (age === 'teen') return { aud: f ? 'teen_girl' : 'teen_boy', senior: false };
+  return { aud: f ? 'womens' : 'mens', senior: age === 'senior' };
+}
+
+export function composeBenchPrompt(o: {
+  scene: SceneId;
+  pose: PoseId;
+  cls: Cls;
+  gender: BenchGender;
+  age: BenchAge;
+}): string {
+  const li = BENCH_SCENES.find((s) => s.id === o.scene)?.li ?? 'natural';
+  const { aud, senior } = audFor(o.gender, o.age);
+  const preset: Preset = {
+    code: 'BENCH',
+    title: 'Bench',
+    mode: 'model',
+    sc: o.scene,
+    po: o.pose,
+    li,
+    fr: HALF.has(o.cls) ? 'half' : 'full',
+    fit: 'all',
+    aud: null,
+    pri: 0,
+    env: 'outdoor',
+    group: SCENE[o.scene][2],
+    combo: false,
+  };
+  return composePrompt(preset, { cls: o.cls, aud, senior });
+}

@@ -306,3 +306,63 @@ export async function generateFashnTryon(
 
   return runFalTask('fal-ai/fashn/tryon/v1.5', input, options?.onProgress);
 }
+
+/**
+ * Fal image-EDIT engines for the admin model bench. Every entry takes the
+ * product photo (`image_urls`) plus a prompt and returns `images[0].url`, which
+ * is the shape `runFalTask` already parses — so one table replaces eight
+ * near-identical helpers.
+ *
+ * Request bodies were read from each endpoint's own OpenAPI
+ * (`GET api.fal.ai/v1/models?endpoint_id=…&expand=openapi-3.0`) on 2026-09-19,
+ * not guessed: an invented parameter name is what made the first FASHN helper
+ * 404. Only `output_format`/`quality`/`resolution` are set beyond the required
+ * pair, to keep output a JPEG at each model's default size. Re-read the schema
+ * before adding a field.
+ *
+ * Keys must stay a subset of STUDIO_ENGINES (@kanchuki/shared) — a test checks.
+ */
+export const FAL_EDIT_ENGINES = {
+  flux2_pro: { endpoint: 'fal-ai/flux-2-pro/edit', extra: { output_format: 'jpeg' } },
+  gpt_image_2_low: {
+    endpoint: 'openai/gpt-image-2/edit',
+    extra: { quality: 'low', output_format: 'jpeg', num_images: 1 },
+  },
+  gpt_image_2_medium: {
+    endpoint: 'openai/gpt-image-2/edit',
+    extra: { quality: 'medium', output_format: 'jpeg', num_images: 1 },
+  },
+  gpt_image_2_high: {
+    endpoint: 'openai/gpt-image-2/edit',
+    extra: { quality: 'high', output_format: 'jpeg', num_images: 1 },
+  },
+  seedream_v4: { endpoint: 'fal-ai/bytedance/seedream/v4/edit', extra: { num_images: 1 } },
+  qwen_edit: {
+    endpoint: 'fal-ai/qwen-image-edit-2511',
+    extra: { output_format: 'jpeg', num_images: 1 },
+  },
+  nano_banana: {
+    endpoint: 'fal-ai/nano-banana/edit',
+    extra: { output_format: 'jpeg', num_images: 1 },
+  },
+  grok_imagine: {
+    endpoint: 'xai/grok-imagine-image/v2.0/edit',
+    extra: { output_format: 'jpeg', num_images: 1, resolution: '1k' },
+  },
+} as const satisfies Record<string, { endpoint: string; extra: Record<string, unknown> }>;
+
+export type FalEditEngine = keyof typeof FAL_EDIT_ENGINES;
+
+export function isFalEditEngine(engine: string | undefined): engine is FalEditEngine {
+  return engine !== undefined && Object.hasOwn(FAL_EDIT_ENGINES, engine);
+}
+
+export async function generateFalEdit(
+  engine: FalEditEngine,
+  prompt: string,
+  inputImageUrl: string,
+  onProgress?: (progress: { progress: number; etaMs: number }) => void,
+): Promise<{ sampleUrl: string }> {
+  const { endpoint, extra } = FAL_EDIT_ENGINES[engine];
+  return runFalTask(endpoint, { prompt, image_urls: [inputImageUrl], ...extra }, onProgress);
+}

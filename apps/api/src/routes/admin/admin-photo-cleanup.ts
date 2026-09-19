@@ -267,6 +267,7 @@ export const adminPhotoCleanupRoutes: FastifyPluginAsync = async (server) => {
       );
     }
 
+    const startedAt = Date.now();
     const result = await generateStudioImage(body.product_url, {
       prompt,
       tab,
@@ -296,6 +297,9 @@ export const adminPhotoCleanupRoutes: FastifyPluginAsync = async (server) => {
       data: {
         result_url: uploaded.url,
         slug: style?.slug ?? null,
+        // Echoed so a batch card can label itself and show wall-clock time.
+        engine: body.engine ?? null,
+        ms: Date.now() - startedAt,
         // Present only when the director ran — what was actually sent, and
         // which outfit pieces the photo does not show.
         prompt_used: directed?.prompt ?? null,

@@ -100,6 +100,10 @@
   ul { padding-left: 20px; }
   li { margin: 3px 0; }
   .legend { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 8px 0 4px; font-size: 13px; }
+  .thumb { width: 72px; height: 96px; object-fit: cover; border-radius: 6px; border: 1px solid var(--line); display: block; background: var(--panel); }
+  td input.score { width: 64px; padding: 4px 6px; border: 1px solid var(--line); border-radius: 6px; font: inherit; text-align: right; }
+  td input.note-in { width: 200px; padding: 4px 6px; border: 1px solid var(--line); border-radius: 6px; font: inherit; }
+  .err { color: var(--bad-ink); font-size: 12px; max-width: 160px; word-break: break-word; }
   footer { color: var(--muted); font-size: 12.5px; padding: 20px 24px 40px; border-top: 1px solid var(--line); }
   a { color: var(--accent); }
   @media (max-width: 700px) {
@@ -127,6 +131,8 @@
   <a href="#pipelines">Pipeline cost per shot</a>
   <a href="#plan">Plan assignment</a>
   <a href="#s81b">8.1b cost_micro_usd spec</a>
+  <a href="#s82">8.2 Model bench</a>
+  <a href="#s82-results">Bench results</a>
   <a href="#sources">Sources</a>
 </nav>
 
@@ -369,6 +375,116 @@ plan_ai_budget    = owner-decided share of Starter ₹4,999 / Growth ₹9,999 / 
 </table>
 </div>
 
+<!-- ================= 8.2 model bench ================= -->
+<h2 id="s82">8.2 Model bench — scene + gender + age + auto pose, every model side by side <span class="pill g-good">✅ BUILT</span> <span class="hint">2026-09-19 · not yet run against live providers</span></h2>
+
+<div class="note">
+  The admin test page (<code>/admin/photo-cleanup-test</code> → <em>AI Studio Shoot</em>) now takes a scene, a gender and an age bucket; the pose is picked for you. Tick any number of models and press <strong>Run batch</strong> — the same product photo, scene, person and pose go through each model, so outputs, time and cost compare like for like. Cost figures are <strong>estimates</strong> from the §8.1a price sheet at ₹96/USD; the real bill comes from Fal / Google.
+</div>
+
+<h3>How to compare and keep the results</h3>
+<div class="wrap">
+<table>
+  <thead><tr><th class="num">#</th><th>Step</th><th>Detail</th></tr></thead>
+  <tbody>
+    <tr><td class="num">1</td><td>Run the batch</td><td>Upload a product photo, choose <em>Garment type</em>, scene, gender, age, tick models, press <strong>Run batch</strong>. It shows the estimated total and asks you to confirm before spending anything. Two models run at a time.</td></tr>
+    <tr><td class="num">2</td><td>Look at the table on the page</td><td>Each row has a clickable thumbnail, model, version, time, cost in $ / ₹ / credits. A failed model shows its error in red instead of an image.</td></tr>
+    <tr><td class="num">3</td><td>Export</td><td>Press <strong>Export results (JSON)</strong> → downloads <code>bench-run-&lt;time&gt;.json</code>.</td></tr>
+    <tr><td class="num">4</td><td>Save into the repo</td><td>Run <code>node scripts/save-bench.mjs &lt;that file&gt;</code>. It downloads every output and the input photo into <code>docs/tasks/effect-photos/preview/</code> (provider URLs expire), and writes <code>docs/tasks/bench-results.js</code>. Re-running the same file adds no duplicates.</td></tr>
+    <tr><td class="num">5</td><td>Open this page</td><td>The table in <a href="#s82-results">8.2 results</a> below fills in automatically. Type your own <strong>score /10</strong> and notes — they are kept in this browser only (<code>localStorage</code>).</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>What the bench takes as input</h3>
+<div class="wrap">
+<table>
+  <thead><tr><th>Input</th><th>Values</th><th>Rule</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Scene</strong> (outdoor)</td><td><strong>Nature:</strong> Rose Garden, Riverside, Mountain, Forest · <strong>Urban:</strong> Modern Street, Cafe, Terrace, Balcony · <strong>Resort:</strong> Beach, Poolside, Tropical Resort</td><td>Rose Garden, Mountain and Beach reuse existing catalog scenes; the other 8 are new scene lines in <code>studio-effects.ts</code>. Each scene carries its own lighting (e.g. Beach = sunset, Mountain = daylight).</td></tr>
+    <tr><td><strong>Gender</strong></td><td>Female, Male</td><td>Combined with age into the six existing demographics the API already understands.</td></tr>
+    <tr><td><strong>Age</strong> (bucket)</td><td>Kid (~4), Teen (~16), Adult (30s), Senior (60s+)</td><td>Female: kids_girl / teen_girl / womens. Male: kids_boy / teen_boy / mens. Senior = adult with the existing older-model wording (60s woman / 70s man).</td></tr>
+    <tr><td><strong>Pose / action</strong></td><td><strong>Auto</strong> (random) or one of: Standing, Sitting, Walking, Turning, Looking back, Twirl, Holding dupatta, Dupatta flow, Candid</td><td>Only these nine. Auto picks <em>once per batch</em> and every model gets the same pose. Dupatta poses only if “Outfit has a dupatta” is ticked. Half-body garments (top, kurti, shorts) never get Walking, Sitting or Twirl.</td></tr>
+    <tr><td><strong>Garment type</strong></td><td>Top, Kurti, Shorts, Pant, Suit set, Saree, Lehenga, Dress</td><td>Now a dropdown (was free text). It decides framing (half vs full body) and which poses are allowed. “Unstitched material” is left out — cloth cannot be worn on a model.</td></tr>
+    <tr><td><strong>Models</strong></td><td>15 engines — table below</td><td>Multi-select with an estimated ₹ and credits under each name; an unpriced model shows “price not verified”, never a guess.</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>Models available on the bench</h3>
+<div class="tools">
+  <input type="search" id="f4" placeholder="Filter models…" data-table="tengines">
+</div>
+<div class="wrap">
+<table class="sortable" id="tengines">
+  <thead><tr>
+    <th>Model</th><th>Engine value</th><th>Version / endpoint</th><th>Provider</th>
+    <th class="num">Calls</th><th class="num">Est. $</th><th class="num">Est. ₹ (@96)</th><th class="num">Credits</th><th>Status</th>
+  </tr></thead>
+  <tbody>
+    <tr class="baseline"><td>FLUX.1 Kontext Pro (default)</td><td><code>bfl_kontext</code></td><td><code>fal-ai/flux-pro/kontext</code></td><td>Fal</td><td class="num" data-v="1">1</td><td class="num" data-v="0.04">$0.04</td><td class="num" data-v="3.84">₹3.84</td><td class="num" data-v="8">8</td><td>existing · live default</td></tr>
+    <tr><td>FLUX.2 [pro] edit</td><td><code>flux2_pro</code></td><td><code>fal-ai/flux-2-pro/edit</code></td><td>Fal</td><td class="num" data-v="1">1</td><td class="num" data-v="0.03">$0.03</td><td class="num" data-v="2.88">₹2.88</td><td class="num" data-v="6">6</td><td>new</td></tr>
+    <tr><td>GPT Image 2 edit — low</td><td><code>gpt_image_2_low</code></td><td><code>openai/gpt-image-2/edit</code> (quality=low)</td><td>Fal</td><td class="num" data-v="1">1</td><td class="num" data-v="0.015">$0.015</td><td class="num" data-v="1.44">₹1.44</td><td class="num" data-v="3">3</td><td>new</td></tr>
+    <tr><td>GPT Image 2 edit — medium</td><td><code>gpt_image_2_medium</code></td><td><code>openai/gpt-image-2/edit</code> (quality=medium)</td><td>Fal</td><td class="num" data-v="1">1</td><td class="num" data-v="0.061">$0.061</td><td class="num" data-v="5.86">₹5.86</td><td class="num" data-v="13">13</td><td>new</td></tr>
+    <tr><td>GPT Image 2 edit — high</td><td><code>gpt_image_2_high</code></td><td><code>openai/gpt-image-2/edit</code> (quality=high)</td><td>Fal</td><td class="num" data-v="1">1</td><td class="num" data-v="0.219">$0.219</td><td class="num" data-v="21.02">₹21.02</td><td class="num" data-v="44">44</td><td>new</td></tr>
+    <tr><td>Seedream V4 edit</td><td><code>seedream_v4</code></td><td><code>fal-ai/bytedance/seedream/v4/edit</code></td><td>Fal</td><td class="num" data-v="1">1</td><td class="num" data-v="0.03">$0.03</td><td class="num" data-v="2.88">₹2.88</td><td class="num" data-v="6">6</td><td>new</td></tr>
+    <tr><td>Qwen Image Edit 2511 (≈1 MP)</td><td><code>qwen_edit</code></td><td><code>fal-ai/qwen-image-edit-2511</code></td><td>Fal</td><td class="num" data-v="1">1</td><td class="num" data-v="0.02">$0.02</td><td class="num" data-v="1.92">₹1.92</td><td class="num" data-v="4">4</td><td>new · billed per megapixel</td></tr>
+    <tr><td>Nano Banana v1 edit</td><td><code>nano_banana</code></td><td><code>fal-ai/nano-banana/edit</code></td><td>Fal</td><td class="num" data-v="1">1</td><td class="num" data-v="0.0398">$0.0398</td><td class="num" data-v="3.82">₹3.82</td><td class="num" data-v="8">8</td><td>new</td></tr>
+    <tr><td>Grok Imagine Image 2.0 edit</td><td><code>grok_imagine</code></td><td><code>xai/grok-imagine-image/v2.0/edit</code></td><td>Fal</td><td class="num" data-v="1">1</td><td class="num" data-v="">?</td><td class="num" data-v="">?</td><td class="num" data-v="">?</td><td>new · price not verified</td></tr>
+    <tr><td>Nano Banana 2 (Gemini Flash Image, 1K)</td><td><code>gemini_image</code></td><td><code>gemini-3.1-flash-image</code></td><td>Google</td><td class="num" data-v="1">1</td><td class="num" data-v="0.067">$0.067</td><td class="num" data-v="6.43">₹6.43</td><td class="num" data-v="14">14</td><td>existing</td></tr>
+    <tr><td>Nano Banana Pro (Gemini Pro Image)</td><td><code>gemini_image_pro</code></td><td><code>gemini-3-pro-image</code></td><td>Google</td><td class="num" data-v="1">1</td><td class="num" data-v="0.134">$0.134</td><td class="num" data-v="12.86">₹12.86</td><td class="num" data-v="27">27</td><td>existing</td></tr>
+    <tr><td>FLUX 1.1 Pro (text→image)</td><td><code>flux_pro</code></td><td><code>fal-ai/flux-pro/v1.1</code></td><td>Fal</td><td class="num" data-v="1">1</td><td class="num" data-v="">?</td><td class="num" data-v="">?</td><td class="num" data-v="">?</td><td>existing · price not verified · does not see the product photo as an editor</td></tr>
+    <tr><td>FLUX Schnell (text→image)</td><td><code>flux_schnell</code></td><td><code>fal-ai/flux/schnell</code></td><td>Fal</td><td class="num" data-v="1">1</td><td class="num" data-v="">?</td><td class="num" data-v="">?</td><td class="num" data-v="">?</td><td>existing · price not verified</td></tr>
+    <tr><td>Two-step: FASHN try-on → Kontext scene</td><td><code>vton_kontext</code></td><td><code>flux-pro/v1.1 + fashn/tryon/v1.5 + flux-pro/kontext</code></td><td>Fal</td><td class="num" data-v="3">3</td><td class="num" data-v="">?</td><td class="num" data-v="">?</td><td class="num" data-v="">?</td><td>existing · 3 calls, price not verified</td></tr>
+    <tr><td>Two-step: FASHN try-on → Gemini scene</td><td><code>vton_gemini</code></td><td><code>flux-pro/v1.1 + fashn/tryon/v1.5 + gemini-3.1-flash-image</code></td><td>Fal + Google</td><td class="num" data-v="3">3</td><td class="num" data-v="">?</td><td class="num" data-v="">?</td><td class="num" data-v="">?</td><td>existing · 3 calls, price not verified</td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="note warn">
+  <strong>Not yet run live.</strong> Every new Fal request body was read from the endpoint's own OpenAPI (no guessed parameter names — a guessed name is what 404'd the first FASHN helper), but no call has been made against Fal with your key. Expect the first run to surface an endpoint-specific quirk. A bench run is <strong>strict</strong>: a failing model shows its own error instead of quietly returning a Kontext image under its name.
+</div>
+
+<h3>Admin test page — fields removed, replaced, kept</h3>
+<div class="wrap">
+<table>
+  <thead><tr><th>Field (AI Studio Shoot card)</th><th>Was</th><th>Now</th></tr></thead>
+  <tbody>
+    <tr><td>Product demographic</td><td>One dropdown of 6 combined values + “any”</td><td><strong>Replaced</strong> by two dropdowns, Gender and Age. The demographic sent to the API is derived from them.</td></tr>
+    <tr><td>Scene template (16)</td><td>DB <code>studio_styles</code> list with slugs</td><td><strong>Replaced</strong> by the 11 outdoor scenes grouped Nature / Urban / Resort. The DB list is no longer fetched here.</td></tr>
+    <tr><td>Engine</td><td>One dropdown (“default cascade”)</td><td><strong>Replaced</strong> by a multi-select of 15 models with version, provider and estimated cost; default = Kontext only.</td></tr>
+    <tr><td>Model reference URL</td><td>Always shown</td><td><strong>Kept</strong>, but shown only when a two-step model is ticked (it is ignored by every other engine).</td></tr>
+    <tr><td>Category</td><td>Free text</td><td><strong>Changed</strong> to a dropdown of garment types — the value drives pose rules and framing.</td></tr>
+    <tr><td>Subtype · Product name · Primary colour · Fabric · Pattern</td><td>Free text</td><td><strong>Kept</strong> — production sends these from the AI tagger; blank means a weaker prompt.</td></tr>
+    <tr><td>Garment length (cm) · Model height (cm)</td><td>Number inputs</td><td><strong>Kept</strong> (hem-landmark clause).</td></tr>
+    <tr><td>Bare-garment checkbox · Prompt director checkbox</td><td>Checkboxes</td><td><strong>Kept.</strong> The director is skipped automatically for the two-step models.</td></tr>
+    <tr><td>Custom prompt</td><td>Textarea</td><td><strong>Kept</strong> as an override. Filled → replaces the scene / gender / age / pose prompt. The effects catalog’s “Use in bench” still fills it.</td></tr>
+    <tr><td>Generate button · results grid</td><td>One shot; card grid</td><td><strong>Replaced</strong> by “Run batch · N models · est. ₹” with a confirm step, and a comparison table (thumbnail, model, version, scene · person · pose, time, $ / ₹ / credits). Export and Clear buttons added.</td></tr>
+    <tr><td>A/B pipeline-order block</td><td>Used the DB scene</td><td><strong>Kept</strong>; it now uses the same composed prompt and demographic as the batch.</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3 id="s82-results">Bench results <span class="hint">— loaded from <code>bench-results.js</code></span></h3>
+<div class="note warn" id="bench-empty">
+  No saved runs yet. Run a batch on the admin test page, export the JSON, then <code>node scripts/save-bench.mjs &lt;file&gt;</code> and reload this page.
+</div>
+<div class="tools">
+  <input type="search" id="f3" placeholder="Filter results (model, scene, pose…)" data-table="tbench">
+  <span class="hint">Your score and notes stay in this browser. Click a header to sort.</span>
+</div>
+<div class="wrap">
+<table class="sortable" id="tbench">
+  <thead><tr>
+    <th>Output</th><th>Input</th><th>Model</th><th>Version</th><th>Provider</th>
+    <th>Scene</th><th>Person</th><th>Pose</th>
+    <th class="num">Time (s)</th><th class="num">Cost $</th><th class="num">Cost ₹</th><th class="num">Credits</th>
+    <th class="num">Your score /10</th><th>Notes</th>
+  </tr></thead>
+  <tbody></tbody>
+</table>
+</div>
+
 <h3 id="sources">Sources</h3>
 <ul>
   <li><a href="https://fal.ai/pricing">fal pricing</a></li>
@@ -388,6 +504,8 @@ plan_ai_budget    = owner-decided share of Starter ₹4,999 / Growth ₹9,999 / 
   Generated from <code>docs/tasks/ai-photo-generation.md</code> §8–§8.1b. The .md stays the source of truth — if the two differ, update this file from it. Static file, no network calls.
 </footer>
 
+<!-- Written by scripts/save-bench.mjs. A plain script tag works from file://; fetch() of a .json does not. Missing file = no saved runs yet. -->
+<script src="bench-results.js"></script>
 <script>
 (function () {
   function cellVal(td) {
@@ -435,7 +553,7 @@ plan_ai_budget    = owner-decided share of Starter ₹4,999 / Growth ₹9,999 / 
       r.style.display = show ? '' : 'none';
     });
   }
-  ['f1', 'f2'].forEach(function (id) {
+  ['f1', 'f2', 'f3', 'f4'].forEach(function (id) {
     var el = document.getElementById(id);
     if (!el) return;
     el.addEventListener('input', function () { applyFilters(el.getAttribute('data-table'), el); });
@@ -444,6 +562,61 @@ plan_ai_budget    = owner-decided share of Starter ₹4,999 / Growth ₹9,999 / 
     var el = document.getElementById(id);
     if (el) el.addEventListener('change', function () { applyFilters('tchart', document.getElementById('f2')); });
   });
+
+  // ---- 8.2 bench results (window.BENCH_RESULTS from bench-results.js) ----
+  var rows = window.BENCH_RESULTS;
+  if (Array.isArray(rows) && rows.length) {
+    document.getElementById('bench-empty').style.display = 'none';
+    var scores = {};
+    try { scores = JSON.parse(localStorage.getItem('bench-scores') || '{}'); } catch (e) { scores = {}; }
+    var persist = function () { try { localStorage.setItem('bench-scores', JSON.stringify(scores)); } catch (e) {} };
+    var esc = function (s) {
+      return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+      });
+    };
+    var num = function (v, fmt) { return v == null ? '?' : fmt(v); };
+    var body = document.querySelector('#tbench tbody');
+    rows.slice().reverse().forEach(function (r) {
+      var key = r.ran_at + '|' + r.engine;
+      var saved = scores[key] || {};
+      var tr = document.createElement('tr');
+      var out = r.image
+        ? '<a href="' + esc(r.image) + '" target="_blank" rel="noopener"><img class="thumb" loading="lazy" alt="' + esc(r.model) + '" src="' + esc(r.image) + '"></a>'
+        : '<div class="err">' + esc(r.error || 'no image') + '</div>';
+      var inp = r.input
+        ? '<a href="' + esc(r.input) + '" target="_blank" rel="noopener"><img class="thumb" loading="lazy" alt="input" src="' + esc(r.input) + '"></a>'
+        : '';
+      tr.innerHTML =
+        '<td>' + out + '</td><td>' + inp + '</td>' +
+        '<td>' + esc(r.model) + '</td>' +
+        '<td><code>' + esc(r.version) + '</code></td>' +
+        '<td>' + esc(r.provider) + '</td>' +
+        '<td>' + esc(r.scene) + '</td>' +
+        '<td>' + esc(r.gender) + ' / ' + esc(r.age) + '</td>' +
+        '<td>' + esc(r.pose) + '</td>' +
+        '<td class="num" data-v="' + (r.ms == null ? '' : r.ms / 1000) + '">' + num(r.ms, function (v) { return (v / 1000).toFixed(1); }) + '</td>' +
+        '<td class="num" data-v="' + (r.usd == null ? '' : r.usd) + '">' + num(r.usd, function (v) { return '$' + v; }) + '</td>' +
+        '<td class="num" data-v="' + (r.inr == null ? '' : r.inr) + '">' + num(r.inr, function (v) { return '₹' + v; }) + '</td>' +
+        '<td class="num" data-v="' + (r.credits == null ? '' : r.credits) + '">' + num(r.credits, String) + '</td>' +
+        '<td class="num" data-v="' + esc(saved.score == null ? '' : saved.score) + '"><input class="score" type="number" min="0" max="10" step="0.5" value="' + esc(saved.score == null ? '' : saved.score) + '"></td>' +
+        '<td><input class="note-in" type="text" placeholder="notes" value="' + esc(saved.note || '') + '"></td>';
+      var scoreIn = tr.querySelector('input.score');
+      var noteIn = tr.querySelector('input.note-in');
+      scoreIn.addEventListener('input', function () {
+        scores[key] = scores[key] || {};
+        scores[key].score = scoreIn.value === '' ? null : Number(scoreIn.value);
+        scoreIn.parentNode.setAttribute('data-v', scoreIn.value);
+        persist();
+      });
+      noteIn.addEventListener('input', function () {
+        scores[key] = scores[key] || {};
+        scores[key].note = noteIn.value;
+        persist();
+      });
+      body.appendChild(tr);
+    });
+  }
 })();
 </script>
 </body>

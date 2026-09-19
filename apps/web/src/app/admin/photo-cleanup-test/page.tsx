@@ -2,15 +2,33 @@
 
 import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch';
 import {
-  PRODUCT_DEMOGRAPHICS,
+  BENCH_USD_TO_INR,
   STUDIO_ENGINES,
-  type Demographic,
+  STUDIO_ENGINE_INFO,
+  type StudioEngine,
+  studioEngineCost,
 } from '@kanchuki/shared';
 import { motion } from 'framer-motion';
 import { ArrowRight, Columns2, ImageOff, Loader2, Shirt, Upload, Video, Wand2 } from 'lucide-react';
 import Image from 'next/image';
 import { useEffect, useRef, useState } from 'react';
-import { CLS } from '@/lib/studio-effects';
+import {
+  type Aud,
+  BENCH_AGES,
+  BENCH_GENDERS,
+  BENCH_SCENES,
+  type BenchAge,
+  type BenchGender,
+  type BenchPose,
+  CLS,
+  type Cls,
+  POSE,
+  type SceneId,
+  audFor,
+  benchPoseChoices,
+  composeBenchPrompt,
+  pickPose,
+} from '@/lib/studio-effects';
 import EffectsCatalog, { type UseEffectArgs } from './EffectsCatalog';
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
@@ -48,13 +66,36 @@ const VTONE_CATEGORIES = [
   { value: 'one-pieces', label: 'One-piece / Kurta / Dress / Suit set' },
 ] as const;
 
-const DEMOGRAPHIC_LABELS: Record<string, string> = {
-  womens: 'Womens',
-  mens: 'Mens',
-  teen_girl: 'Teen girl',
-  teen_boy: 'Teen boy',
-  kids_girl: 'Kids girl',
-  kids_boy: 'Kids boy',
+// Effects catalog audience → the bench's gender + age bucket.
+const AUD_TO_BENCH: Record<Aud, [BenchGender, BenchAge]> = {
+  womens: ['female', 'adult'],
+  mens: ['male', 'adult'],
+  teen_girl: ['female', 'teen'],
+  teen_boy: ['male', 'teen'],
+  kids_girl: ['female', 'kid'],
+  kids_boy: ['male', 'kid'],
+};
+
+// One finished (or failed) engine run on the model bench.
+type BenchRow = {
+  id: string;
+  engine: StudioEngine;
+  label: string;
+  version: string;
+  provider: string;
+  cost: { usd: number; inr: number; credits: number } | null;
+  productUrl: string;
+  resultUrl: string | null;
+  ms: number | null;
+  scene: string;
+  gender: BenchGender;
+  age: BenchAge;
+  pose: string;
+  prompt: string;
+  promptUsed: string | null;
+  missingParts: string[] | null;
+  error: string | null;
+  ranAt: string;
 };
 
 // F-034 AI Promo Video bench — Fal image→video models (per-clip ₹ bands from
@@ -229,17 +270,18 @@ export default function PhotoCleanupTestPage() {
   const modelUrlRef = useRef<string | null>(null);
   const tryOnPollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // AI Studio Shoot (F-032) — DB-backed styles from admin studio-styles API.
-  type StudioStyleRow = {
-    id: string; slug: string; label: string; description: string;
-    prompt: string; tab: 'PRODUCT' | 'MODEL'; status: string;
-    plans: string[]; engine: string | null; audience: string[];
-    thumbnail_url: string | null; sort_order: number;
-  };
-  const [studioStyles, setStudioStyles] = useState<StudioStyleRow[]>([]);
-  const [studioSlug, setStudioSlug] = useState<string>('');
+  // AI Studio Shoot / model bench (F-032). Scene + gender + age + pose become ONE
+  // prompt (studio-effects.ts composeBenchPrompt) that is run through every ticked
+  // engine, so the same photo can be compared model by model.
+  const [benchScene, setBenchScene] = useState<SceneId>('mountain');
+  const [benchGender, setBenchGender] = useState<BenchGender>('female');
+  const [benchAge, setBenchAge] = useState<BenchAge>('adult');
+  // 'auto' → one random pick per batch, shared by every engine so results compare.
+  const [benchPose, setBenchPose] = useState<'auto' | BenchPose>('auto');
+  const [hasDupatta, setHasDupatta] = useState(true);
+  const [benchEngines, setBenchEngines] = useState<StudioEngine[]>(['bfl_kontext']);
+  // Optional override of the composed prompt (advanced).
   const [studioPrompt, setStudioPrompt] = useState<string>('');
-  const [studioDemographic, setStudioDemographic] = useState<'' | Demographic>('');
   // Garment identity. The bench generates from a pasted R2 URL — there is no
   // product row — so with these blank the API assembles a WEAKER prompt than
   // the retailer path (no garment type, no colour clause) and neither the
@@ -252,10 +294,6 @@ export default function PhotoCleanupTestPage() {
     fabric: '',
     pattern: '',
   });
-  // Engine dial. The bench previously never sent `engine` at all, so every run
-  // took the default Kontext cascade and the per-row engine could not be tested
-  // here — which is how migration 102's imagen_3 switch went unverified.
-  const [studioEngine, setStudioEngine] = useState<(typeof STUDIO_ENGINES)[number] | ''>('');
   const [studioModelUrl, setStudioModelUrl] = useState<string>('');
   // Garment length (cm, shoulder→hem) — retailer data in production; becomes a
   // hem-landmark clause ("hem at mid-calf") in the prompt.
@@ -268,7 +306,7 @@ export default function PhotoCleanupTestPage() {
   // Prompt director: a vision pass rewrites the prompt from the photo first.
   const [studioDirector, setStudioDirector] = useState(false);
   // A/B — the same photo through BOTH pipeline orders. It has its own engine
-  // dial rather than reusing `studioEngine`: the comparison is only defined for
+  // dial rather than reusing the batch list: the comparison is only defined for
   // the two two-step engines, and silently coercing whatever the form had
   // selected is the kind of hidden behaviour this bench exists to remove.
   const [studioAbEngine, setStudioAbEngine] = useState<'vton_kontext' | 'vton_gemini'>(
@@ -278,41 +316,35 @@ export default function PhotoCleanupTestPage() {
   const [studioAb, setStudioAb] = useState<
     (StudioAbResponse & { productUrl: string }) | null
   >(null);
-  // Fetch all admin studio styles (any status — bench tests drafts).
-  useEffect(() => {
-    fetch(`${API_URL}/v1/admin/studio-styles`, adminGetOptions())
-      .then((r) => r.json())
-      .then((json) => setStudioStyles(json.data ?? []))
-      .catch(() => {});
-  }, []);
-  const scenesForPicker = studioDemographic
-    ? studioStyles.filter((s) => s.tab === 'MODEL' && (s.audience.length === 0 || s.audience.includes(studioDemographic)))
-    : studioStyles;
-  // If the current slug falls outside the filter, snap to the first allowed one.
-  useEffect(() => {
-    if (scenesForPicker.length > 0 && !scenesForPicker.some((s) => s.slug === studioSlug)) {
-      setStudioSlug(scenesForPicker[0]?.slug ?? '');
-    }
-  }, [scenesForPicker, studioSlug]);
-  const [studioBusy, setStudioBusy] = useState(false);
-  const [studioResults, setStudioResults] = useState<
-    {
-      id: string;
-      productUrl: string;
-      resultUrl: string;
-      label: string;
-      ranAt: string;
-      promptUsed?: string | null;
-      missingParts?: string[] | null;
-    }[]
-  >([]);
+  const [benchBusy, setBenchBusy] = useState(false);
+  const [benchResults, setBenchResults] = useState<BenchRow[]>([]);
+
+  // Derived: garment class → allowed poses; gender × age → demographic; batch cost.
+  const benchCls: Cls =
+    (Object.keys(CLS) as Cls[]).find((k) => CLS[k] === studioGarment.category) ?? 'suit';
+  const benchDemographic = audFor(benchGender, benchAge).aud;
+  const benchPoseOptions = benchPoseChoices(benchCls, hasDupatta);
+  const benchTotalInr = benchEngines.reduce((s, e) => s + (studioEngineCost(e)?.inr ?? 0), 0);
+  const benchUnpriced = benchEngines.filter((e) => studioEngineCost(e) === null).length;
+  const benchHasTwoStep = benchEngines.some((e) => e === 'vton_kontext' || e === 'vton_gemini');
+  const buildBenchPrompt = (pose: BenchPose): string =>
+    studioPrompt.trim() ||
+    composeBenchPrompt({
+      scene: benchScene,
+      pose,
+      cls: benchCls,
+      gender: benchGender,
+      age: benchAge,
+    });
 
   // Effects catalog → bench: load the sample photo as the product photo and fill
-  // the demographic, garment type and the composed prompt, then jump to the card.
-  const useEffectInBench = async ({ prompt, aud, cls, sample }: UseEffectArgs) => {
+  // the gender/age, garment type and the composed prompt, then jump to the card.
+  const applyEffectToBench = async ({ prompt, aud, cls, sample }: UseEffectArgs) => {
     setStudioPrompt(prompt);
-    setStudioDemographic(aud);
-    setStudioGarment((g) => ({ ...g, category: CLS[cls] }));
+    const [g, a] = AUD_TO_BENCH[aud];
+    setBenchGender(g);
+    setBenchAge(a);
+    setStudioGarment((prev) => ({ ...prev, category: CLS[cls] }));
     if (sample) {
       try {
         const blob = await (await fetch(`/effect-photos/products/${sample.f}.jpg`)).blob();
@@ -325,57 +357,136 @@ export default function PhotoCleanupTestPage() {
     document.getElementById('studio-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
-  const runStudioShoot = async () => {
-    if (!productFile || studioBusy) return;
-    setStudioBusy(true);
+  // The fields both bench routes take (same product description on every arm).
+  const benchRequestFields = (productUrl: string, prompt: string) => ({
+    product_url: productUrl,
+    demographic: benchDemographic,
+    prompt,
+    category: studioGarment.category.trim() || undefined,
+    subtype: studioGarment.subtype.trim() || undefined,
+    name: studioGarment.name.trim() || undefined,
+    primary_color: studioGarment.primary_color.trim() || undefined,
+    fabric: studioGarment.fabric.trim() || undefined,
+    pattern: studioGarment.pattern.trim() || undefined,
+    model_image_url: studioModelUrl.trim() || undefined,
+  });
+
+  const resolveBenchPose = (): BenchPose =>
+    benchPose === 'auto' ? pickPose(benchCls, hasDupatta) : benchPose;
+
+  const runBench = async () => {
+    if (!productFile || benchBusy || benchEngines.length === 0) return;
+    const priced = `₹${benchTotalInr.toFixed(2)}${benchUnpriced ? ` + ${benchUnpriced} unpriced` : ''}`;
+    if (
+      !window.confirm(
+        `Run ${benchEngines.length} model(s) on this photo?\nEstimated ${priced} — this is real provider spend.`,
+      )
+    ) {
+      return;
+    }
+    setBenchBusy(true);
     setError('');
+    // One pose + prompt for the whole batch: the models are compared like for like.
+    const pose = resolveBenchPose();
+    const prompt = buildBenchPrompt(pose);
+    const sceneLabel = BENCH_SCENES.find((s) => s.id === benchScene)?.label ?? benchScene;
     try {
       const productUrl = await uploadToR2(productFile);
-      const res = await fetch(`${API_URL}/v1/admin/photo-cleanup/studio-shoot`, {
-        ...(await adminMutateOptions()),
-        method: 'POST',
-        body: JSON.stringify({
-          product_url: productUrl,
-          slug: studioSlug || undefined,
-          demographic: studioDemographic || undefined,
-          prompt: studioPrompt.trim() || undefined,
-          category: studioGarment.category.trim() || undefined,
-          subtype: studioGarment.subtype.trim() || undefined,
-          name: studioGarment.name.trim() || undefined,
-          primary_color: studioGarment.primary_color.trim() || undefined,
-          fabric: studioGarment.fabric.trim() || undefined,
-          pattern: studioGarment.pattern.trim() || undefined,
-          engine: studioEngine || undefined,
-          model_image_url: studioModelUrl.trim() || undefined,
-          length_cm: Number.parseInt(studioLengthCm, 10) || undefined,
-          model_height_cm: Number.parseInt(studioModelHeightCm, 10) || undefined,
-          input_has_person: !studioBareGarment,
-          director: studioDirector,
-        }),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json?.error?.message ?? 'Studio shoot failed');
-      const label = studioPrompt.trim()
-        ? 'Custom prompt'
-        : (studioStyles.find((s) => s.slug === (json.data.slug ?? studioSlug))?.label ??
-          studioSlug);
-      setStudioResults((prev) => [
-        {
+      const runOne = async (engine: StudioEngine): Promise<BenchRow> => {
+        const info = STUDIO_ENGINE_INFO[engine];
+        const base = {
           id: crypto.randomUUID(),
+          engine,
+          label: info.label,
+          version: info.version,
+          provider: info.provider,
+          cost: studioEngineCost(engine),
           productUrl,
-          resultUrl: json.data.result_url,
-          label,
-          ranAt: new Date().toLocaleTimeString(),
-          promptUsed: json.data.prompt_used,
-          missingParts: json.data.missing_parts,
-        },
-        ...prev,
-      ]);
+          scene: sceneLabel,
+          gender: benchGender,
+          age: benchAge,
+          pose: POSE[pose][0],
+          prompt,
+          ranAt: new Date().toISOString(),
+        };
+        try {
+          const res = await fetch(`${API_URL}/v1/admin/photo-cleanup/studio-shoot`, {
+            ...(await adminMutateOptions()),
+            method: 'POST',
+            body: JSON.stringify({
+              ...benchRequestFields(productUrl, prompt),
+              engine,
+              length_cm: Number.parseInt(studioLengthCm, 10) || undefined,
+              model_height_cm: Number.parseInt(studioModelHeightCm, 10) || undefined,
+              input_has_person: !studioBareGarment,
+              director: studioDirector,
+            }),
+          });
+          const json = await res.json();
+          if (!res.ok) throw new Error(json?.error?.message ?? 'Studio shoot failed');
+          return {
+            ...base,
+            resultUrl: json.data.result_url as string,
+            ms: (json.data.ms as number | null) ?? null,
+            promptUsed: json.data.prompt_used ?? null,
+            missingParts: json.data.missing_parts ?? null,
+            error: null,
+          };
+        } catch (err) {
+          return {
+            ...base,
+            resultUrl: null,
+            ms: null,
+            promptUsed: null,
+            missingParts: null,
+            error: err instanceof Error ? err.message : 'Studio shoot failed',
+          };
+        }
+      };
+      // Two at a time: Fal / BFL cap concurrent tasks, and a bench is not a load test.
+      const queue = [...benchEngines];
+      const worker = async () => {
+        for (let e = queue.shift(); e; e = queue.shift()) {
+          const row = await runOne(e);
+          setBenchResults((prev) => [row, ...prev]);
+        }
+      };
+      await Promise.all([worker(), worker()]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Studio shoot failed');
     } finally {
-      setStudioBusy(false);
+      setBenchBusy(false);
     }
+  };
+
+  // Download the table as bench-run-<time>.json; scripts/save-bench.mjs turns it
+  // into saved thumbnails + docs/tasks/bench-results.js for AI Cost Comparison.html.
+  const exportBench = () => {
+    const rows = benchResults.map((r) => ({
+      engine: r.engine,
+      model: r.label,
+      version: r.version,
+      provider: r.provider,
+      usd: r.cost?.usd ?? null,
+      inr: r.cost?.inr ?? null,
+      credits: r.cost?.credits ?? null,
+      ms: r.ms,
+      scene: r.scene,
+      gender: r.gender,
+      age: r.age,
+      pose: r.pose,
+      prompt: r.prompt,
+      product_url: r.productUrl,
+      result_url: r.resultUrl,
+      error: r.error,
+      ran_at: r.ranAt,
+    }));
+    const blob = new Blob([JSON.stringify(rows, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `bench-run-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
   };
 
   const runStudioAb = async () => {
@@ -388,18 +499,8 @@ export default function PhotoCleanupTestPage() {
         ...(await adminMutateOptions()),
         method: 'POST',
         body: JSON.stringify({
-          product_url: productUrl,
-          slug: studioSlug || undefined,
-          demographic: studioDemographic || undefined,
-          prompt: studioPrompt.trim() || undefined,
-          category: studioGarment.category.trim() || undefined,
-          subtype: studioGarment.subtype.trim() || undefined,
-          name: studioGarment.name.trim() || undefined,
-          primary_color: studioGarment.primary_color.trim() || undefined,
-          fabric: studioGarment.fabric.trim() || undefined,
-          pattern: studioGarment.pattern.trim() || undefined,
+          ...benchRequestFields(productUrl, buildBenchPrompt(resolveBenchPose())),
           engine: studioAbEngine,
-          model_image_url: studioModelUrl.trim() || undefined,
         }),
       });
       const json = await res.json();
@@ -762,7 +863,7 @@ export default function PhotoCleanupTestPage() {
         </div>
       </div>
 
-      <EffectsCatalog onUse={(a) => void useEffectInBench(a)} />
+      <EffectsCatalog onUse={(a) => void applyEffectToBench(a)} />
 
       {/* AI Studio Shoot — FLUX Kontext / Gemini / two-step VTON (F-032) */}
       <div id="studio-card" className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-4 space-y-3">
@@ -771,88 +872,164 @@ export default function PhotoCleanupTestPage() {
           <div>
             <p className="text-sm font-medium text-gray-800">AI Studio Shoot</p>
             <p className="text-xs text-gray-400">
-              Uses the “Product photo” above. Pick a scene template (or a fashion model), then
-              Generate — same <code className="text-[10px]">generateStudioImage()</code> the retailer
-              app runs, synchronous here. ~10–60s.
+              Uses the “Product photo” above. Pick a scene, gender and age (the pose is chosen
+              for you), tick the models to compare, then Run batch — each runs the same{' '}
+              <code className="text-[10px]">generateStudioImage()</code> the retailer app runs, ~10–60s
+              per model. Cost figures are estimates.
             </p>
           </div>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
           <div className="flex flex-col gap-1">
-            <label htmlFor="studio-demographic" className="text-xs text-gray-500">
-              Product demographic
+            <label htmlFor="bench-scene" className="text-xs text-gray-500">
+              Scene (outdoor)
             </label>
             <select
-              id="studio-demographic"
-              value={studioDemographic}
-              onChange={(e) => setStudioDemographic(e.target.value as '' | Demographic)}
+              id="bench-scene"
+              value={benchScene}
+              onChange={(e) => setBenchScene(e.target.value as SceneId)}
               className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2"
             >
-              <option value="">— any / all scenes —</option>
-              {PRODUCT_DEMOGRAPHICS.map((d) => (
-                <option key={d} value={d}>
-                  {DEMOGRAPHIC_LABELS[d]}
-                </option>
+              {(['Nature', 'Urban', 'Resort'] as const).map((g) => (
+                <optgroup key={g} label={g}>
+                  {BENCH_SCENES.filter((s) => s.group === g).map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.label}
+                    </option>
+                  ))}
+                </optgroup>
               ))}
             </select>
-            <p className="text-[10px] text-gray-400">
-              Filters the scene list + tells the API which person to render.
-            </p>
           </div>
           <div className="flex flex-col gap-1">
-            <label htmlFor="studio-template" className="text-xs text-gray-500">
-              Scene template ({scenesForPicker.length})
+            <label htmlFor="bench-gender" className="text-xs text-gray-500">
+              Gender
             </label>
             <select
-              id="studio-template"
-              value={studioSlug}
-              onChange={(e) => setStudioSlug(e.target.value)}
+              id="bench-gender"
+              value={benchGender}
+              onChange={(e) => setBenchGender(e.target.value as BenchGender)}
               className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2"
             >
-              {scenesForPicker.map((s) => (
-                  <option key={s.slug} value={s.slug}>
-                    {s.label} (/{s.slug}){' '}
-                    {s.tab === 'PRODUCT'
-                      ? '· product-only'
-                      : s.audience.length > 0
-                        ? `· ${s.audience.join('/')}`
-                        : '· all models'}
-                  </option>
-                ))}
-            </select>
-          </div>
-
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div className="flex flex-col gap-1">
-            <label htmlFor="studio-engine" className="text-xs text-gray-500">
-              Engine
-            </label>
-            <select
-              id="studio-engine"
-              value={studioEngine}
-              onChange={(e) =>
-                setStudioEngine(e.target.value as (typeof STUDIO_ENGINES)[number] | '')
-              }
-              className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2"
-            >
-              <option value="">— default cascade (Kontext) —</option>
-              {STUDIO_ENGINES.map((e) => (
-                <option key={e} value={e}>
-                  {e}
-                  {e === 'vton_kontext' || e === 'vton_gemini'
-                    ? ' · two-step, keeps the product'
-                    : ''}
-                  {e === 'gemini_image' || e === 'gemini_image_pro'
-                    ? ' · Gemini native image, gets the photo'
-                    : ''}
+              {BENCH_GENDERS.map((g) => (
+                <option key={g} value={g}>
+                  {g === 'female' ? 'Female' : 'Male'}
                 </option>
               ))}
             </select>
           </div>
-          <div className="flex flex-col gap-1 sm:col-span-2">
+          <div className="flex flex-col gap-1">
+            <label htmlFor="bench-age" className="text-xs text-gray-500">
+              Age
+            </label>
+            <select
+              id="bench-age"
+              value={benchAge}
+              onChange={(e) => setBenchAge(e.target.value as BenchAge)}
+              className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2"
+            >
+              {BENCH_AGES.map((a) => (
+                <option key={a} value={a}>
+                  {{ kid: 'Kid (~4)', teen: 'Teen (~16)', adult: 'Adult (30s)', senior: 'Senior (60s+)' }[a]}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label htmlFor="bench-pose" className="text-xs text-gray-500">
+              Pose / action
+            </label>
+            <select
+              id="bench-pose"
+              value={benchPose}
+              onChange={(e) => setBenchPose(e.target.value as 'auto' | BenchPose)}
+              className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2"
+            >
+              <option value="auto">Auto — random pick from the list</option>
+              {benchPoseOptions.map((p) => (
+                <option key={p} value={p}>
+                  {POSE[p][0]}
+                </option>
+              ))}
+            </select>
+            <label className="flex items-center gap-1.5 text-[10px] text-gray-500">
+              <input
+                type="checkbox"
+                checked={hasDupatta}
+                onChange={(e) => setHasDupatta(e.target.checked)}
+              />
+              Outfit has a dupatta (allows the dupatta poses)
+            </label>
+          </div>
+        </div>
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs text-gray-500">
+              Models to run ({benchEngines.length} selected) — est. ₹{benchTotalInr.toFixed(2)}
+              {benchUnpriced > 0 ? ` + ${benchUnpriced} unpriced` : ''}
+            </p>
+            <div className="flex gap-2 text-[10px]">
+              <button
+                type="button"
+                onClick={() => setBenchEngines([...STUDIO_ENGINES])}
+                className="text-blue-600 hover:underline"
+              >
+                All
+              </button>
+              <button
+                type="button"
+                onClick={() => setBenchEngines([])}
+                className="text-blue-600 hover:underline"
+              >
+                None
+              </button>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5">
+            {STUDIO_ENGINES.map((e) => {
+              const info = STUDIO_ENGINE_INFO[e];
+              const cost = studioEngineCost(e);
+              return (
+                <label
+                  key={e}
+                  className="flex items-start gap-2 text-xs text-gray-700 border border-gray-200 rounded-lg px-2 py-1.5 bg-white"
+                >
+                  <input
+                    type="checkbox"
+                    checked={benchEngines.includes(e)}
+                    onChange={(ev) =>
+                      setBenchEngines((prev) =>
+                        ev.target.checked ? [...prev, e] : prev.filter((x) => x !== e),
+                      )
+                    }
+                    className="mt-0.5"
+                  />
+                  <span className="flex flex-col">
+                    <span>{info.label}</span>
+                    <span className="text-[10px] text-gray-400 break-all">
+                      {info.version} · {info.provider}
+                      {info.calls > 1 ? ` · ${info.calls} calls` : ''}
+                    </span>
+                    <span className="text-[10px] text-gray-500">
+                      {cost
+                        ? `$${cost.usd} · ₹${cost.inr} · ${cost.credits} credits`
+                        : 'price not verified'}
+                    </span>
+                  </span>
+                </label>
+              );
+            })}
+          </div>
+          <p className="text-[10px] text-gray-400">
+            Estimates from the price sheet in <code>docs/tasks/AI Cost Comparison.html</code> at ₹
+            {BENCH_USD_TO_INR}/USD. Real spend is billed by Fal / Google, and a two-step model is
+            several calls.
+          </p>
+        </div>
+        {benchHasTwoStep && (
+          <div className="flex flex-col gap-1">
             <label htmlFor="studio-model-url" className="text-xs text-gray-500">
-              Model reference URL — two-step engines (vton_*) only, optional
+              Model reference URL — two-step models only, optional
             </label>
             <input
               id="studio-model-url"
@@ -861,12 +1038,8 @@ export default function PhotoCleanupTestPage() {
               placeholder="https://… — blank generates a plain frontal reference"
               className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2"
             />
-            <p className="text-[10px] text-gray-400">
-              Paste a previously generated scene here to test the reversed order
-              (scene first, then try-on).
-            </p>
           </div>
-        </div>
+        )}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {(
             [
@@ -882,15 +1055,33 @@ export default function PhotoCleanupTestPage() {
               <label htmlFor={`studio-${key}`} className="text-xs text-gray-500">
                 {fieldLabel}
               </label>
-              <input
-                id={`studio-${key}`}
-                value={studioGarment[key]}
-                onChange={(e) =>
-                  setStudioGarment((g) => ({ ...g, [key]: e.target.value }))
-                }
-                placeholder={placeholder}
-                className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2"
-              />
+              {key === 'category' ? (
+                // A dropdown, not free text: the garment class decides which
+                // poses are allowed (auto pose) and the half-body framing.
+                <select
+                  id="studio-category"
+                  value={studioGarment.category}
+                  onChange={(e) => setStudioGarment((g) => ({ ...g, category: e.target.value }))}
+                  className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2"
+                >
+                  <option value="">— pick garment type —</option>
+                  {(Object.keys(CLS) as Cls[])
+                    .filter((k) => k !== 'unstitched')
+                    .map((k) => (
+                      <option key={k} value={CLS[k]}>
+                        {CLS[k]}
+                      </option>
+                    ))}
+                </select>
+              ) : (
+                <input
+                  id={`studio-${key}`}
+                  value={studioGarment[key]}
+                  onChange={(e) => setStudioGarment((g) => ({ ...g, [key]: e.target.value }))}
+                  placeholder={placeholder}
+                  className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2"
+                />
+              )}
             </div>
           ))}
         </div>
@@ -955,7 +1146,7 @@ export default function PhotoCleanupTestPage() {
         </div>
         <div className="flex flex-col gap-1">
           <label htmlFor="studio-prompt" className="text-xs text-gray-500">
-            Custom prompt (optional — overrides template & model; paste a formula from{' '}
+            Custom prompt (optional — replaces the scene / gender / age / pose prompt; paste a formula from{' '}
             <code className="text-[10px]">AI Models and Scenes.html</code>)
           </label>
           <textarea
@@ -970,14 +1161,36 @@ export default function PhotoCleanupTestPage() {
             A colour-accuracy sentence is appended automatically so the garment colour stays true.
           </p>
         </div>
-        <button
-          onClick={runStudioShoot}
-          disabled={!productFile || studioBusy}
-          className="flex items-center gap-2 px-4 py-2.5 bg-fuchsia-600 hover:bg-fuchsia-500 text-white text-sm font-medium rounded-xl disabled:opacity-40 transition-colors"
-        >
-          {studioBusy ? <Loader2 size={16} className="animate-spin" /> : <Wand2 size={16} />}
-          Generate studio shoot
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={runBench}
+            disabled={!productFile || benchBusy || benchEngines.length === 0}
+            className="flex items-center gap-2 px-4 py-2.5 bg-fuchsia-600 hover:bg-fuchsia-500 text-white text-sm font-medium rounded-xl disabled:opacity-40 transition-colors"
+          >
+            {benchBusy ? <Loader2 size={16} className="animate-spin" /> : <Wand2 size={16} />}
+            Run batch · {benchEngines.length} model{benchEngines.length === 1 ? '' : 's'} · est. ₹
+            {benchTotalInr.toFixed(2)}
+            {benchUnpriced > 0 ? ` + ${benchUnpriced} unpriced` : ''}
+          </button>
+          {benchResults.length > 0 && (
+            <>
+              <button
+                type="button"
+                onClick={exportBench}
+                className="px-3 py-2 text-xs border border-gray-300 rounded-xl hover:bg-gray-50"
+              >
+                Export results (JSON)
+              </button>
+              <button
+                type="button"
+                onClick={() => setBenchResults([])}
+                className="px-3 py-2 text-xs text-gray-500 hover:underline"
+              >
+                Clear
+              </button>
+            </>
+          )}
+        </div>
         <div className="rounded-2xl border border-gray-200 bg-gray-50/60 p-3 flex flex-col gap-3">
           <div className="flex flex-col lg:flex-row lg:items-center gap-3">
             <div className="flex flex-col gap-1">
@@ -1096,49 +1309,93 @@ export default function PhotoCleanupTestPage() {
             </div>
           )}
         </div>
-        {studioResults.length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
-            {studioResults.map((r) => (
-              <div
-                key={r.id}
-                className="bg-white rounded-2xl border border-gray-200/80 overflow-hidden"
-              >
-                <div className="flex items-center gap-1 p-2 bg-gray-50">
-                  <button
-                    type="button"
-                    className="flex-1 aspect-square relative rounded-lg overflow-hidden bg-gray-100 cursor-zoom-in hover:opacity-90 transition-opacity"
-                    title="Click to enlarge"
-                    onClick={() => setLightbox({ url: r.productUrl, label: 'Input' })}
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element -- R2 result URLs render reliably as a plain img; next/image was showing broken tiles here */}
-                    <img src={r.productUrl} alt="input" className="absolute inset-0 w-full h-full object-cover" />
-                  </button>
-                  <ArrowRight size={14} className="text-gray-400 shrink-0" />
-                  <button
-                    type="button"
-                    className="flex-1 aspect-square relative rounded-lg overflow-hidden bg-gray-100 cursor-zoom-in hover:opacity-90 transition-opacity"
-                    title="Click to enlarge"
-                    onClick={() => setLightbox({ url: r.resultUrl, label: r.label })}
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element -- see above */}
-                    <img src={r.resultUrl} alt="studio result" className="absolute inset-0 w-full h-full object-cover" />
-                  </button>
-                </div>
-                <div className="px-3 py-2 flex items-center justify-between gap-2 text-xs text-gray-500">
-                  <span className="truncate">{r.label}</span>
-                  <span>{r.ranAt}</span>
-                </div>
-                {r.promptUsed && (
-                  <details className="px-3 pb-2 text-[10px] text-gray-500">
-                    <summary className="cursor-pointer">
-                      Director prompt
-                      {r.missingParts?.length ? ` · not in photo: ${r.missingParts.join(', ')}` : ''}
-                    </summary>
-                    <p className="mt-1 whitespace-pre-wrap font-mono">{r.promptUsed}</p>
-                  </details>
-                )}
-              </div>
-            ))}
+        {benchResults.length > 0 && (
+          <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white">
+            <table className="w-full text-xs">
+              <thead className="bg-gray-50 text-gray-500 text-left">
+                <tr>
+                  {[
+                    'Output',
+                    'Model',
+                    'Version',
+                    'Scene · person · pose',
+                    'Time',
+                    'Cost ($)',
+                    'Cost (₹)',
+                    'Credits',
+                  ].map((h) => (
+                    <th key={h} className="px-3 py-2 font-medium whitespace-nowrap">
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {benchResults.map((r) => (
+                  <tr key={r.id} className="border-t border-gray-100 align-top">
+                    <td className="px-3 py-2">
+                      {r.resultUrl ? (
+                        <button
+                          type="button"
+                          className="w-16 h-20 relative rounded-lg overflow-hidden bg-gray-100 cursor-zoom-in hover:opacity-90"
+                          title="Click to enlarge"
+                          onClick={() => setLightbox({ url: r.resultUrl ?? '', label: r.label })}
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element -- R2 result URLs render reliably as a plain img */}
+                          <img
+                            src={r.resultUrl}
+                            alt={r.label}
+                            className="absolute inset-0 w-full h-full object-cover"
+                          />
+                        </button>
+                      ) : (
+                        <span className="flex w-16 h-20 items-center justify-center rounded-lg bg-red-50 text-red-500">
+                          <ImageOff size={14} />
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2">
+                      <div className="font-medium text-gray-800">{r.label}</div>
+                      <div className="text-[10px] text-gray-400">{r.provider}</div>
+                      {r.error && (
+                        <p className="mt-1 max-w-[16rem] text-[10px] text-red-600 font-mono break-words">
+                          {r.error}
+                        </p>
+                      )}
+                      {r.promptUsed && (
+                        <details className="mt-1 text-[10px] text-gray-500">
+                          <summary className="cursor-pointer">
+                            Director prompt
+                            {r.missingParts?.length
+                              ? ` · not in photo: ${r.missingParts.join(', ')}`
+                              : ''}
+                          </summary>
+                          <p className="mt-1 max-w-[20rem] whitespace-pre-wrap font-mono">
+                            {r.promptUsed}
+                          </p>
+                        </details>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 font-mono text-[10px] text-gray-500 break-all max-w-[12rem]">
+                      {r.version}
+                    </td>
+                    <td className="px-3 py-2 text-gray-600">
+                      {r.scene} · {r.gender}/{r.age} · {r.pose}
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      {r.ms === null ? '—' : `${(r.ms / 1000).toFixed(1)}s`}
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      {r.cost ? `$${r.cost.usd}` : '?'}
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      {r.cost ? `₹${r.cost.inr}` : '?'}
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap">{r.cost ? r.cost.credits : '?'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
