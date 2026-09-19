@@ -43,7 +43,7 @@ The gap is **not mainly resolution or `image_size`** (an earlier draft over-weig
 1. **Owner:** save the ChatGPT + Gemini + Kanchuki outputs and the **original product photo** in one folder; ask Claude to do a structured visual diff (§3B.5).
 2. **Owner (bench, ~30 min):** run the same product photo through Kontext / `gemini_image` / `gemini_image_pro` with the *identical* mirror-selfie prompt; note which rows are really `engine = NULL`.
 3. Decide §10 items 1, 2, 4 and the new items 9–11.
-4. **Done on the admin bench 2026-09-19:** `SCENE_GUARD` fix, prompt director, single-pass Gemini Pro (already an engine), length + model-height capture. **Owner test pending** on `gemini_image_pro`: A = bare-garment ✔ / director ✘, B = ✔ / ✔, C = ✘ / ✘ (old behaviour). Needs Gemini billing (enabled) and, for Kontext/`vton_*`, Fal credit.
+4. **Done on the admin bench 2026-09-19:** `SCENE_GUARD` fix (**now auto-detected by vision — the manual "bare garment" checkbox was removed; `input_has_person` is only an API override**), prompt director, single-pass Gemini Pro (already an engine), length + model-height capture. **Owner test pending** on `gemini_image_pro`: A = bare-garment ✔ / director ✘, B = ✔ / ✔, C = ✘ / ✘ (old behaviour). Needs Gemini billing (enabled) and, for Kontext/`vton_*`, Fal credit.
 5. **After the bench result:** promote the winning arm to the retailer path (`studio-shoot` job + `products-studio` route; flip `inputHasPerson`/director defaults) → add `length_cm` to the product schema/form (mobile) → GPT Image engine (only if it beats Gemini) → set completion (R1–R3, blocked on the R6 disclosure decision). **Not done anywhere:** retailer-path wiring, product-row `length_cm`, GPT Image client, `garment-parts` wiring.
 
 ---
@@ -98,7 +98,8 @@ The gap is **not mainly resolution or `image_size`** (an earlier draft over-weig
 | Order decided: complete-set → try-on → scene (forced by garment-conditioning) | ✅ decided | §5 R1 | — |
 | Gating decided: gate on product data (owner) | ✅ decided | §5 R1 | mapping still config-only, not yet read by the pipeline |
 | R1 generate the missing salwar in the same fabric/print/colour | 🔴 left | — | build the complete-set pass **before** try-on |
-| R2 visible-parts check consulted (not subtype alone) | 🟡 built, not wired | `garment-parts.ts` | call it in `generateStudioImage` |
+| R2 visible-parts check consulted (not subtype alone) | 🟡 **partly wired 2026-09-19 (admin bench only)** — the vision call now runs on `POST /admin/photo-cleanup/studio-shoot` and drives `input_has_person` (bare garment vs worn); the parts it returns (`missingParts`, framing) are still unused | `garment-parts.ts` `detectGarmentPartsFromUrl()`, BUILD-LOG 2026-09-19 | call it in `generateStudioImage` (retailer path) and feed `missingParts` to the set-completion pass |
+| **NEW** Bare-garment detection replaces the manual "bare garment" checkbox | 🧪 built on the bench, unmeasured live | `input_has_person` optional on the route; page shows "Photo read as: …" | owner test; then wire the same call into `studio-shoot` job + `products-studio` |
 | R3 framing precondition (full-length + hem for set products) | 🔴 left | §5 R3 | `framingClause()` exists but is not enforced |
 | R6 disclosure of an AI-completed component | 🔴 **decision pending** | §5 R6 | owner picks A / B / C |
 
@@ -732,6 +733,145 @@ ON CONFLICT ("plan","resource_type") DO NOTHING;
 | Image studio shoot | Growth/Pro only, STARTER → 402 | `STUDIO_SHOOT` `QuotaResourceType`, F-010 pattern, no per-retailer override |
 | Promo video (F-034 P2) | `AI_VIDEO` + overage credit packs | `checkQuota` (route) / `incrementUsage` (job on success) / `resource_packs` rows |
 | Addon packs | admin-managed DB rows, `/admin/resource-packs` | `089_resource_packs` ✅ applied |
+
+#### 8.1a Cost per model — provider price sheet (researched 2026-09-19, USD)
+
+**Evidence grades:** ✅ = read from fal.ai's own page; ◐ = third-party price-tracker or search summary; ⚠ = not found. **All prices move — re-pull before setting plan limits.** The fal pricing API (`GET https://api.fal.ai/v1/models/pricing?endpoint_id=a,b,c`, header `Authorization: Key $FAL_API_KEY`, returns `unit_price` + `unit` per endpoint) **requires a key (401 without)** — it was not called in this research. Run it once with the real key and paste the rows over the ◐/⚠ cells. Check `unit`: some models bill **per megapixel**, not per image.
+
+| Model | Route to reach it | Endpoint ID / model ID | Edit (takes product photo)? | Price | Grade | In Kanchuki? |
+|---|---|---|---|---|---|---|
+| **FLUX.1 Kontext Pro** | Fal | `fal-ai/flux-pro/kontext` | ✔ | $0.04 / image | ✅ | ✔ default |
+| FLUX 1.1 Pro | Fal | `fal-ai/flux-pro/v1.1` | ✖ text→image | ⚠ pull via API | ⚠ | ✔ ref step |
+| FLUX Schnell | Fal | `fal-ai/flux/schnell` | ✖ | ⚠ pull via API | ⚠ | ✔ ref step |
+| **FLUX.2** | Fal | `fal-ai/flux-2` ([dev] per fal page), `-max`, `-flex`, `/turbo`, `/flash`, `/klein/4b`, `/klein/9b`, `-lora-gallery/*` | ✔ (native editing) | pro $0.03, max $0.07 (BFL, per image) | ◐ | ✖ |
+| **GPT Image 2** | Fal (`openai/gpt-image-2`, `…/edit`) **or** OpenAI direct | `openai/gpt-image-2/edit` on Fal; also 2.5 `sunburst`/`flare`, 1.5, 1-mini, gpt-image-1 | ✔ | Fal edit @1024²: **low $0.015 / med $0.061 / high $0.219**; @1024×768: $0.011 / $0.043 / $0.151. OpenAI direct est. @1024²: $0.006 / $0.053 / $0.211 (token-billed; Batch −50%). GPT Image 1 Mini ≈ $0.005 | ✅ (Fal) ◐ (direct) | ✖ |
+| **Seedream** | Fal | `bytedance/seedream/v5/lite/edit`, `…/v5/pro/edit`, `fal-ai/bytedance/seedream/v4.5/edit`, `…/v4/edit` (+ text-to-image variants, v3) | ✔ | V4: **$0.03 / image**; V5 lite/pro ⚠ | ✅ (V4) | ✖ (Seedance *video* is, not Seedream) |
+| **Recraft V4** | Fal | `fal-ai/recraft/v4/text-to-image`, `…/v4/pro/text-to-image`, `…/v4.1/…`, `…/v4/text-to-vector`, `recraft/v4/style/…` | ✖ text→image only (no edit endpoint at V4) | V4 **$0.04 / image**; V4.1 $0.035 (◐) | ✅ / ◐ | ✖ — not suited: no photo input |
+| **Qwen Image** | Fal | `fal-ai/qwen-image-edit-2511`, `fal-ai/qwen-image-2/edit`, `…/2/pro/edit`, `fal-ai/qwen-image-max/edit`, `alibaba/qwen-image-3/edit` | ✔ (edit endpoints) | **$0.02 / megapixel** (fal pricing page; which endpoint that figure is for was not stated) | ✅ (per-MP) | ✖ (`qwen-vl` in `vision-model.ts` is a *vision-input* allowlist, not generation) |
+| **Nano Banana** (Gemini image) | Fal **or** Google direct | Fal: `fal-ai/nano-banana/edit`, `…nano-banana-2/edit`, `…nano-banana-pro/edit`, `google/nano-banana-lite/edit`, `fal-ai/gemini-3-pro-image-preview/edit`, `fal-ai/gemini-3.1-flash-image-preview/edit`. Google: `gemini-3.1-flash-image`, `gemini-3-pro-image` | ✔ | Fal Nano Banana (v1): **$0.0398**. Google direct: Flash-Image **$0.045 (0.5K) / $0.067 (1K) / $0.101 (2K) / $0.151 (4K)**; Pro-Image **$0.134 (1K/2K) / $0.24 (4K)**; Flash-Lite-Image $0.0336 (1K) | ✅ (Fal v1) ◐ (Google) | ✔ Google direct via `gemini-image.ts` |
+| **Grok Imagine** | Fal (`xai/…`) | `xai/grok-imagine-image/v2.0/edit`, `…/edit`, `…/quality/edit`, `…/v2.0/text-to-image` (+ video 1.5) | ✔ up to 3 input images, 1k/2k | ⚠ not found | ⚠ | ✖ |
+| **Midjourney** | **None (no official API)** | third-party wrappers (PiAPI ≈ $0.01/task, Apiframe, etc.); subscription only $10/$30/$60/$120 per month | ✖ no reliable photo-edit input | no per-image list price | ◐ | ✖ — **do not build**: unofficial wrappers violate MJ terms, can vanish, no SLA |
+| FASHN try-on v1.5 / v1.6 | Fal | `fal-ai/fashn/tryon/v1.5` (v1.6 available) | ✔ garment-conditioned | ⚠ pull via API | ⚠ | ✔ v1.5 |
+
+**Do I add each vendor's key, or use Fal for everything?** Fal covers every row above **except Midjourney** with **one key (`FAL_API_KEY`, already in Admin → Integrations)**: FLUX.1/2, GPT Image, Seedream, Recraft, Qwen, Nano Banana/Gemini image, Grok Imagine. Trade-off:
+
+| | One key (Fal for all) | Vendor-direct |
+|---|---|---|
+| Integration effort | 1 helper per model over existing `runFalTask()`; same queue/poll | new client + auth + billing per vendor |
+| Billing | one invoice, fal markup on OpenAI/Google/xAI | vendor price, N invoices |
+| Rate limits / access | Fal's (OpenAI org-verification gating avoided) | vendor's; OpenAI may require org verification |
+| BYOK | GPT Image 2 on Fal accepts `openai_api_key` (bill OpenAI directly, keep Fal's API) | native |
+| Provenance (C2PA / SynthID) | verify per route | verify per route |
+| Deprecations | fal lists `status=active\|deprecated` in `/v1/models` | vendor changelogs |
+
+**Recommendation (proposal, not built):** default to **Fal for everything new** (one key, one polling path — the FASHN endpoint-typo lesson in RC-027 says each new client is a chance to be wrong, so minimize client count); keep the existing direct Gemini client (`gemini-image.ts`) and BFL fallback as they are; add vendor-direct only if a specific model's fal markup or availability blocks you. Skip Midjourney.
+
+**Cost per finished shot ≠ price per call.** Kontext single-shot ≈ 1 call. `vton_kontext` = FLUX 1.1 Pro reference + FASHN try-on + Kontext scene ≈ **3 calls**; `vton_gemini` = FLUX 1.1 Pro + FASHN + Gemini scene ≈ 3 calls. Multi-sample QA (§3B.6, N = 2–3) multiplies again. Compute plan caps on shots, not calls.
+
+**Plan-cap arithmetic (template — fill from the pricing API, no owner numbers assumed):**
+
+```
+cost_per_shot_INR = Σ(call USD price) × USD→INR × (1 + margin) × samples
+monthly_cap       = floor( plan_ai_budget_INR / cost_per_shot_INR )
+plan_ai_budget    = owner-decided share of Starter ₹4,999 / Growth ₹9,999 / Pro ₹14,999 (ex-GST)
+```
+
+Store caps in `plan_pricing`/quota rows (F-010 pattern), not code. **Not tracked today:** `ai-usage.ts` logs `credits_used: 1` per shoot and `model_name: 'flux-kontext-pro'`; no cost or ₹ is recorded, so real spend per retailer cannot be measured until a cost column is added (open decision — see §10).
+
+#### 8.1a-ii Comparison chart — model → price → credits → cost per image (2026-09-19)
+
+**How "credits" are derived (an inference, not a stated rule):** `STUDIO_CREDITS_PER_IMAGE = 8` (`packages/shared/src/constants/index.ts:326`) is what a retailer is billed per studio shot today, and the shot runs on Kontext at **$0.04**. That implies **1 credit ≈ $0.005**. Credits below = `ceil(USD ÷ 0.005)`. The owner may set a different credit value (and add margin) — change the one number and every row follows. **₹ per image = USD × today's USD→INR rate × (1 + margin)**; no rate is assumed here, so no ₹ column.
+
+Prices per §8.1a: ✅ read from fal.ai, ◐ third-party/search summary, ⚠ not found. Capability = can it take the retailer's product photo (edit) and keep the garment.
+
+**Currency:** owner-set rate **1 USD = ₹96** (2026-09-19) → **₹ per image = USD × 96**; **₹ per credit = 0.005 × 96 = ₹0.48**. ₹ shown is the raw provider cost — **before** GST (18 %) and **before** any margin. Change the rate here and recompute.
+
+**Quality /10 — read this before trusting it:** the column is **my provisional estimate of garment-edit quality for this job** (keeps the exact print/colour/embroidery/length of the retailer's photo *and* renders a believable person/scene), **not a measurement.** No model in this doc has been run against real products on the bench (§3B.8 is the experiment that produces real scores, and it has not run). Basis: the "expected fidelity" column in §3B.7 (Nano Banana Pro "best-in-class", GPT Image 2 "strongest instruction-following", Kontext "preserves pixels, weak at inventing", BFL recommending FLUX.2 over Kontext), plus third-party comparison blogs (opinion, not benchmarks). `?` = no basis to score; `0` = cannot do the job at all. Treat ±2 as the honest error bar and **replace with the §3B.8 blind-rated scores as soon as they exist.**
+
+| # | Model | Reach via | Exact ID | Price / image (USD) | **₹ / image (@96)** | Credits (@ $0.005) | **Quality /10 (provisional)** | Grade | Takes product photo? | Cost tier |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | GPT Image 1 Mini | Fal `fal-ai/gpt-image-1-mini/edit` / OpenAI | gpt-image-1-mini | $0.005 | **₹0.48** | **1** | **4** | ◐ | ✔ | 🟢 cheapest |
+| 2 | GPT Image 2 — low, 1024² | Fal `openai/gpt-image-2/edit` | gpt-image-2 | $0.015 | **₹1.44** | **3** | **6** | ✅ | ✔ | 🟢 |
+| 3 | Qwen Image (edit) | Fal `fal-ai/qwen-image-edit-2511` etc. | qwen-image-edit-2511 | $0.02 per **megapixel** → ≈ $0.02 at 1 MP | **₹1.92** at 1 MP | **4** at 1 MP | **6** | ✅ (unit only) | ✔ | 🟢 |
+| 4 | FLUX.2 [pro] | Fal `fal-ai/flux-2` family / BFL | flux-2-pro | $0.03 | **₹2.88** | **6** | **7** | ◐ | ✔ | 🟢 |
+| 5 | Seedream V4 (edit) | Fal `fal-ai/bytedance/seedream/v4/edit` | seedream-v4 | $0.03 | **₹2.88** | **6** | **6** | ✅ | ✔ | 🟢 |
+| 6 | Gemini 3.1 Flash-Lite Image, 1K | Google direct / Fal `google/nano-banana-lite/edit` | gemini-3.1-flash-lite-image | $0.0336 | **₹3.23** | **7** | **6** | ◐ | ✔ | 🟢 |
+| 7 | Nano Banana (v1), Fal | Fal `fal-ai/nano-banana/edit` | nano-banana | $0.0398 | **₹3.82** | **8** | **6** | ✅ | ✔ | 🟡 |
+| 8 | **FLUX.1 Kontext Pro — today's default** | Fal `fal-ai/flux-pro/kontext` / BFL | flux-kontext-pro | **$0.04** | **₹3.84** | **8** (= the existing constant) | **6** | ✅ | ✔ | 🟡 **baseline** |
+| 9 | Recraft V4 | Fal `fal-ai/recraft/v4/text-to-image` | recraft-v4 | $0.04 (V4.1 $0.035 ◐) | ₹3.84 | 8 | **0** (no photo input) | ✅ | ✖ text→image only | ⛔ not usable for this job |
+| 10 | GPT Image 2 — medium, 1024² | Fal `openai/gpt-image-2/edit` | gpt-image-2 | $0.061 | **₹5.86** | **13** | **8** | ✅ | ✔ | 🟡 |
+| 11 | Gemini 3.1 Flash Image ("Nano Banana 2"), 1K | Google direct (`gemini_image`) / Fal | gemini-3.1-flash-image | $0.067 | **₹6.43** | **14** | **7** | ◐ | ✔ | 🟡 |
+| 12 | FLUX.2 [max] | Fal `fal-ai/flux-2-max` / BFL | flux-2-max | $0.07 | **₹6.72** | **14** | **8** | ◐ | ✔ | 🟡 |
+| 13 | Gemini 3.1 Flash Image, 2K | Google direct | gemini-3.1-flash-image | $0.101 | **₹9.70** | **21** | **8** (same model, more pixels) | ◐ | ✔ | 🟠 |
+| 14 | **Gemini 3 Pro Image ("Nano Banana Pro"), 1K/2K** (`gemini_image_pro`) | Google direct / Fal `fal-ai/nano-banana-pro/edit` | gemini-3-pro-image | $0.134 | **₹12.86** | **27** | **9** | ◐ | ✔ | 🟠 premium |
+| 15 | GPT Image 2 — high, 1024² | Fal `openai/gpt-image-2/edit` | gpt-image-2 | $0.219 | **₹21.02** | **44** | **9** | ✅ | ✔ | 🔴 |
+| 16 | Gemini 3 Pro Image, 4K | Google direct | gemini-3-pro-image | $0.24 | **₹23.04** | **48** | **9** (resolution, not fidelity, is what 4K adds) | ◐ | ✔ | 🔴 |
+| — | Grok Imagine Image edit | Fal `xai/grok-imagine-image/v2.0/edit` | grok-imagine-image-2.0 | ⚠ not found | ⚠ | ⚠ | **?** | ⚠ | ✔ (≤3 images) | ⚠ pull via API |
+| — | Seedream V5 lite/pro edit | Fal `bytedance/seedream/v5/{lite,pro}/edit` | seedream-v5 | ⚠ not found | ⚠ | ⚠ | **?** | ⚠ | ✔ | ⚠ pull via API |
+| — | FLUX 1.1 Pro / FLUX Schnell | Fal `fal-ai/flux-pro/v1.1`, `fal-ai/flux/schnell` | flux-1.1-pro / schnell | ⚠ not found | ⚠ | ⚠ | **0** as scene renderer (text→image, invents the garment); fine as a model-reference step | ⚠ | ✖ (reference step only) | ⚠ |
+| — | FASHN try-on v1.5 (v1.6 available) | Fal `fal-ai/fashn/tryon/v1.5` | fashn-tryon-v1.5 | ⚠ not found | ⚠ | ⚠ | **?** (garment-conditioned; output is 576×864) | ⚠ | ✔ garment-conditioned | ⚠ |
+| — | Midjourney | **no official API** | — | no per-image list price (subscription only) | n/a | n/a | **n/a** (cannot be called) | ◐ | ✖ | ⛔ do not build |
+
+**Quality-per-rupee at a glance (provisional):** Kontext is the 6/10 baseline at ₹3.84. FLUX.2 [pro] (7/10, ₹2.88) and Seedream V4 / Qwen (6/10, ₹2.88 / ₹1.92) are cheaper for equal-or-better *estimated* quality. GPT Image 2 medium (8/10, ₹5.86) is the cheapest ≥ 8 row. Gemini Pro (9/10, ₹12.86) is the cheapest 9. Paying more than ₹12.86 for a 9 (rows 15–16) buys nothing on this scale. These are all hypotheses for the §3B.8 bench to confirm or kill — do not assign plans from this column alone.
+
+**Cost per finished studio shot (what a retailer is actually charged for) — pipelines, not single calls:**
+
+| Pipeline (`engine` value) | Calls | Cost per shot (USD) | **₹ per shot (@96)** | Credits (@ $0.005) | Quality /10 (provisional) | Status |
+|---|---|---|---|---|---|---|
+| Kontext single-shot (`NULL` / `bfl_kontext`) | 1 | **$0.04** | **₹3.84** | **8** | 6 | ✅ verified — live default |
+| `gemini_image` single-shot (Flash Image, 1K) | 1 | ≈ $0.067 | ≈ ₹6.43 | ≈ 14 | 7 | ◐ |
+| `gemini_image_pro` single-shot (Pro Image, 1K/2K) | 1 | ≈ $0.134 | ≈ ₹12.86 | ≈ 27 | 9 | ◐ |
+| `vton_kontext` = FLUX 1.1 Pro ref + FASHN try-on + Kontext scene | 3 | **$0.04 + 2 unpriced calls** → cannot be totalled yet | ≥ ₹3.84 + ? | ≥ 8 + ? | ? (two-step keeps the garment via try-on, but three passes lose detail — §3B.7) | ⚠ needs fal pricing API |
+| `vton_gemini` = FLUX 1.1 Pro ref + FASHN try-on + Gemini Flash scene | 3 | ≈ $0.067 + 2 unpriced calls | ≥ ₹6.43 + ? | ≥ 14 + ? | ? | ⚠ needs fal pricing API |
+| Any of the above with N = 2–3 QA samples (§3B.6) | ×N | × N | × N | × N | — | proposal only |
+
+**Reading it for plan assignment (suggestion — owner decides, nothing is built):**
+- **Baseline to beat:** Kontext at 8 credits ($0.04). Anything cheaper on the chart that also takes the photo (rows 1–6) is a candidate for a **cost-saving Starter/Growth engine** *if* the bench shows equal garment fidelity — quality is unmeasured, price is not a reason to switch.
+- **Premium tier candidates:** rows 11, 14 (Gemini Flash/Pro, 14–27 credits) and GPT Image 2 medium (13). Row 15–16 (44–48 credits, >5× baseline) only make sense as an opt-in "hero shot".
+- **Do not consider for this job:** Recraft V4 (no photo input), Midjourney (no API), FLUX 1.1 Pro / Schnell as a scene renderer (text→image, loses the garment).
+- **Two-step pipelines cost ≥ 3 calls**, so `vton_*` will exceed every single-shot row; total them only after the FASHN and FLUX 1.1 Pro prices are pulled.
+- **Monthly cap formula** (§8.1a): `floor(plan_ai_budget_INR ÷ (credits × ₹ per credit))`, where `₹ per credit = 0.005 × USD→INR × (1 + margin)`.
+
+#### 8.1b Spec: `cost_micro_usd` on `ai_usage_logs` 🔴 NOT BUILT — docs only, awaiting owner "proceed"
+
+Draft written 2026-09-19. A first implementation was made and **reverted the same session** at the owner's instruction (no code until told). Nothing below exists in the repo. Nothing was applied to any database.
+
+**Why:** `ai_usage_logs` stores `credits_used` (a weighted count) but no money, so real provider spend per retailer cannot be measured and §8.1a plan caps cannot be checked against reality.
+
+**Changes, in order (5 files, all small):**
+
+| # | File | Change |
+|---|---|---|
+| 1 | `packages/db/prisma/migrations/106_ai_usage_cost/migration.sql` (new; 105 is the latest today) | `ALTER TABLE "ai_usage_logs" ADD COLUMN "cost_micro_usd" INTEGER;` — nullable, no default, no backfill. Header comment must state the unit and the NULL rule below. Existing per-retailer SELECT RLS policy already covers a new column; no policy change. |
+| 2 | `packages/db/prisma/schema.prisma` `AiUsageLog` (near `credits_used`, ~line 1421) | `cost_micro_usd Int?` with a comment. Then `prisma generate` (offline, touches no DB). |
+| 3 | `apps/api/src/lib/ai-usage.ts` `recordBflStudioUsage(retailerId, template, costMicroUsd?: number)` | Third optional arg; write `cost_micro_usd: costMicroUsd ?? null`. `recordAiUsage()` (tagging) is untouched in phase 1. |
+| 4 | `apps/api/src/jobs/studio-shoot.ts` (call at ~line 215, in the success block) | Pass `40_000` **only** when `engine === undefined \|\| engine === 'bfl_kontext'`; otherwise pass nothing. |
+| 5 | test | One assertion that the row is written with the value for Kontext and with `null` for any other engine. |
+
+**Design rules (why it is shaped this way):**
+- **Unit = millionths of a USD** (`$0.04` = `40000`). Integer → sums are exact, no float drift; Postgres `INTEGER` holds up to ≈ $2,147 per row. Convert to ₹ at report time, using the day's rate, not at write time.
+- **NULL ≠ 0.** `NULL` means "cost unknown" (every pre-106 row, and any path whose price is unverified). A `0` would read as "free" in a spend report and silently understate cost. Reports must show unknown-cost row counts next to the spend total.
+- **Only record what is verified.** Only single-call Kontext ($0.04, fal.ai pricing page, ✅ in §8.1a) gets a value. `vton_kontext` / `vton_gemini` (≈ 3 calls), Gemini, FLUX 1.1 Pro and FASHN log `NULL` until their prices are pulled from the fal pricing API (§8.1a) and confirmed.
+- **Hardcoded `40_000` is a stopgap.** CLAUDE.md says prices should be DB-driven. A price table (endpoint → `unit_price`) is the proper follow-up; do not grow the constant into a map in code.
+- **Known pre-existing inaccuracy:** `recordBflStudioUsage` writes `model_name: 'flux-kontext-pro'` and `provider_type: 'BFL'` for every studio shoot regardless of the engine that actually ran (Gemini, `vton_*`…). Cost attribution by model is therefore wrong for non-Kontext engines until that is fixed — record the real engine (available as `engine` on the job data) in the same change or the next.
+- **Deploy order matters:** apply migration 106 **before** the API build that writes `cost_micro_usd`, otherwise every studio-shoot log insert fails (caught and logged, so the job still succeeds, but usage rows are lost). Migrations are owner-applied from the admin dashboard (CLAUDE.md), never by the agent.
+- **Purge role:** the `kanchuki_app` / purge roles' column-level grants are not affected by an added nullable column; confirm against migration `084_grant_delete_purge_role` before applying.
+
+**Out of scope for phase 1:** `recordAiUsage` (tagging calls), the Admin → AI Usage dashboard column/sum, a `cost` field on other engines, ₹ conversion, per-plan cap enforcement based on cost.
+
+**Owner decisions needed:** (1) go/no-go to build; (2) whether `recordAiUsage` tagging rows should get a cost too (would need each `AiProviderConfig` to carry a price); (3) fix the `model_name`/`provider_type` attribution in the same change.
+
+**Sources:** [fal pricing](https://fal.ai/pricing), [fal pricing API](https://fal.ai/docs/platform-apis/v1/models/pricing), [fal models API](https://fal.ai/docs/platform-apis/v1/models), [fal GPT Image 2 edit](https://fal.ai/models/openai/gpt-image-2/edit), [fal Recraft V4](https://fal.ai/models/fal-ai/recraft/v4/text-to-image), [Gemini API pricing](https://ai.google.dev/gemini-api/docs/pricing), [buildmvpfast image-cost tracker](https://www.buildmvpfast.com/api-costs/ai-image), [Midjourney API status](https://unifically.com/blogs/midjourney-api). Endpoint IDs above were read from fal's live `GET /v1/models?q=…` on 2026-09-19.
+
+#### 8.1c Admin model bench ✅ built 2026-09-19 (not yet run live)
+
+Full detail, tables and the results view: `docs/tasks/AI Cost Comparison.html` §8.2. Summary:
+
+- `/admin/photo-cleanup-test` → AI Studio Shoot: scene (11 outdoor: Nature / Urban / Resort) + gender + age bucket (kid / teen / adult / senior) + auto pose (only Standing, Sitting, Walking, Turning, Looking back, Twirl, Holding dupatta, Dupatta flow, Candid) → one prompt via `composeBenchPrompt` (`apps/web/src/lib/studio-effects.ts`).
+- Multi-select of 15 engines with estimated $ / ₹ (@96) / credits (`STUDIO_ENGINE_INFO`, `packages/shared`); batch run confirms the estimate first, runs 2 at a time, one shared pose per batch.
+- 8 new Fal image-edit engines (`flux2_pro`, `gpt_image_2_low|medium|high`, `seedream_v4`, `qwen_edit`, `nano_banana`, `grok_imagine`) via one table `FAL_EDIT_ENGINES` in `apps/api/src/lib/fal-client.ts`; request bodies read from each endpoint's OpenAPI. Same `FAL_API_KEY`. Bench runs are strict (no silent Kontext fallback).
+- Results: export JSON → `node scripts/save-bench.mjs <file>` → images in `docs/tasks/effect-photos/preview/`, data in `docs/tasks/bench-results.js`, shown in the HTML with a per-row score/notes.
+- Unpriced (`usd: null`) engines show "?": Grok, FLUX 1.1 Pro, FLUX Schnell, both `vton_*`. No migration, no retailer-path change.
 
 ### 8.2 The 80 KB ceiling — the decision table
 

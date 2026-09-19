@@ -41,10 +41,12 @@ import { type Demographic, type STUDIO_ENGINES, demographicForCategory } from '@
 import { Redis } from 'ioredis';
 import { AppError } from '../plugins/error-handler.js';
 import {
+  generateFalEdit,
   generateFashnTryon,
   generateFluxKontext,
   generateFluxProImage,
   generateFluxSchnellImage,
+  isFalEditEngine,
   resolveFalKey,
 } from './fal-client.js';
 import { generateGeminiImage, resolveGeminiKey } from './gemini-image.js';
@@ -912,6 +914,9 @@ export async function generateStudioImage(
   if (opts.strict && (engine === 'gemini_image' || engine === 'gemini_image_pro') && !geminiKey) {
     fail(engine, 'no Gemini API key configured');
   }
+  if (opts.strict && isFalEditEngine(engine) && !falKey) {
+    fail(engine, 'no Fal.ai API key configured');
+  }
 
   // FLUX Kontext is an instruction-edit model: it changes only what the
   // prompt names and leaves the rest of the pixels alone. Plain flux img2img
@@ -972,6 +977,20 @@ export async function generateStudioImage(
       return { status: 'ready', sampleUrl: res.sampleUrl };
     } catch (err) {
       console.error('[studio-shoot] flux_schnell (explicit) failed, falling back to Kontext:', err);
+    }
+  }
+  // Fal image-edit engines (FLUX.2, GPT Image 2, Seedream, Qwen, Nano Banana,
+  // Grok) — all take the product photo. Strict (admin bench) → a failure names the
+  // engine instead of silently returning a Kontext image under its label.
+  if (isFalEditEngine(engine) && falKey) {
+    try {
+      return await generateFalEdit(engine, promptText, inputImageUrl, onProgress).then((res) => ({
+        status: 'ready' as const,
+        sampleUrl: res.sampleUrl,
+      }));
+    } catch (err) {
+      if (opts.strict) fail(engine, err);
+      console.error(`[studio-shoot] ${engine} (explicit) failed, falling back to Kontext:`, err);
     }
   }
 

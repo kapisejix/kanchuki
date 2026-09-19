@@ -662,6 +662,44 @@ describe('generateStudioImage', () => {
     expect(body.model).toBe('gemini-3-pro-image');
   });
 
+  it('gpt_image_2_medium: sends the photo, prompt and quality to the GPT Image 2 edit endpoint', async () => {
+    vi.stubEnv('FAL_API_KEY', 'fal-key');
+    falTaskOnce('https://fal/gpt.jpg');
+
+    const result = await generateStudioImage('https://r2.example/p.jpg', {
+      prompt: 'A mountain scene.',
+      tab: 'MODEL',
+      engine: 'gpt_image_2_medium',
+      strict: true,
+    });
+
+    expect(result).toEqual({ status: 'ready', sampleUrl: 'https://fal/gpt.jpg' });
+    const [url, init] = callAt(0);
+    expect(url).toBe('https://queue.fal.run/openai/gpt-image-2/edit');
+    const body = JSON.parse(init.body as string) as {
+      prompt: string;
+      image_urls: string[];
+      quality: string;
+    };
+    expect(body.image_urls).toEqual(['https://r2.example/p.jpg']);
+    expect(body.quality).toBe('medium');
+    expect(body.prompt).toContain('mountain');
+  });
+
+  it('flux2_pro strict: a Fal failure names the engine instead of returning a Kontext image', async () => {
+    vi.stubEnv('FAL_API_KEY', 'fal-key');
+    mockFetch.mockResolvedValueOnce(jsonResponse({ error: 'nope' }, false, 500));
+
+    await expect(
+      generateStudioImage('https://r2.example/p.jpg', {
+        prompt: 'x',
+        tab: 'MODEL',
+        engine: 'flux2_pro',
+        strict: true,
+      }),
+    ).rejects.toThrow(/flux2_pro/);
+  });
+
   it('gemini_image: falls back to the Kontext path when Gemini errors', async () => {
     vi.stubEnv('GEMINI_API_KEY', 'gemini-key');
     mockFetch

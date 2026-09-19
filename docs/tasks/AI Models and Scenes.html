@@ -73,7 +73,7 @@
           🏞️ <strong id="sceneCount">22</strong> Scenes
         </span>
         <span class="px-3 py-1.5 rounded-xl bg-white border border-[#E0E1F6] text-[#231F48] shadow-xs">
-          💃 <strong id="modelCount">18</strong> Fashion Models
+          💃 <strong id="modelCount">6</strong> Fashion Models
         </span>
         <button onclick="exportSelectedJson()" class="px-4 py-1.5 rounded-xl bg-[#231F48] text-white hover:bg-[#BB3F95] transition-colors flex items-center gap-1.5 shadow-sm">
           <i data-lucide="download" class="w-3.5 h-3.5"></i> Export Selected
@@ -94,19 +94,16 @@
           🏞️ Scene Environments (22)
         </button>
         <button onclick="filterCategory('female')" class="tab-btn px-4 py-2 rounded-2xl text-xs font-bold transition-all bg-gray-100 text-gray-700 hover:bg-gray-200" data-filter="female">
-          👗 Female Models (6)
+          👗 Female Models (1)
         </button>
         <button onclick="filterCategory('male')" class="tab-btn px-4 py-2 rounded-2xl text-xs font-bold transition-all bg-gray-100 text-gray-700 hover:bg-gray-200" data-filter="male">
-          👔 Male Models (4)
+          👔 Male Models (1)
         </button>
         <button onclick="filterCategory('kids')" class="tab-btn px-4 py-2 rounded-2xl text-xs font-bold transition-all bg-gray-100 text-gray-700 hover:bg-gray-200" data-filter="kids">
-          🧒 Kids & Toddlers (4)
+          🧒 Kids (2)
         </button>
         <button onclick="filterCategory('teen')" class="tab-btn px-4 py-2 rounded-2xl text-xs font-bold transition-all bg-gray-100 text-gray-700 hover:bg-gray-200" data-filter="teen">
           🎒 Teenagers (2)
-        </button>
-        <button onclick="filterCategory('senior')" class="tab-btn px-4 py-2 rounded-2xl text-xs font-bold transition-all bg-gray-100 text-gray-700 hover:bg-gray-200" data-filter="senior">
-          👑 35+ & 45+ Mature (4)
         </button>
       </div>
 
@@ -484,7 +481,6 @@
         description: "Seamless white cyclorama studio wall with daylight-balanced CRI-98 studio softbox lighting and soft contact drop shadow.",
         prompt: "Replace background with a clean, seamless white studio backdrop. Neutral 5500K daylight-balanced CRI-98 studio lighting with soft grounding shadow under the garment. Keep product color 100% identical."
       },
-
       // ══════════════════════════════════════════════════════════════
       // SECTION 1B: PRODUCT / HANGER STUDIO STYLES (no model, 2026-08-30)
       // Remove the original hanger from the source photo, re-present the
@@ -652,285 +648,104 @@
         description: "No model — original hanger removed, garment re-hung on a polished walnut wooden hanger against a seamless white studio. Swap the hanger noun in the prompt to compare materials.",
         prompt: "Product-only studio shot, no person, model or mannequin anywhere in the frame. Keep the garment 100% pixel-identical — do not alter its shoulders, neckline, sleeves, colour, print or embroidery. Remove the original hanger, hook, clips and pegs, then hang the garment on a polished walnut wooden hanger against a seamless white studio backdrop, even 5500K lighting, with a soft natural grounding shadow."
       },
-
       // ══════════════════════════════════════════════════════════════
-      // SECTION 2: KIDS & TODDLER MODELS (Ages 3 – 12)
+      // INDIAN MODELS - 1 per category, photos in docs/tasks/models/
       // ══════════════════════════════════════════════════════════════
       {
-        id: "model_kid_girl_aarohi",
-        code: "MODEL_KID_GIRL_01",
+        id: "model_female",
+        code: "MODEL_FEMALE",
         type: "model",
-        categoryTag: "kids",
-        title: "Aarohi (Kid Girl)",
-        subtitle: "Age 4–6 Years · Indian Girl Model · Cute & Joyful",
+        categoryTag: "female",
+        title: "Female Model",
+        subtitle: "Adult (30 Yrs) · Indian · Female Model",
         gender: "Female",
-        ageGroup: "Kids (4-6 Yrs)",
-        imageUrl: "https://images.unsplash.com/photo-1622290291468-a28f7a7dc6a8?w=800&auto=format&fit=crop&q=80",
-        badge: "Kids Girls",
+        ageGroup: "Adult (30 Yrs)",
+        imageUrl: "models/female.png",
+        badge: "Female Model",
         badgeColor: "badge-fuchsia",
-        garmentFit: "Kids Lehengas, Pattu Pavadai, Frocks, Festive Gowns, Anarkalis",
-        description: "Adorable Indian girl model with sweet natural smile, gentle posture, and traditional hair accessories for kids ethnic wear.",
-        prompt: "Fit this kids garment onto a cute 5-year-old Indian girl model named Aarohi with a joyful natural smile and neat braided hair. Draping proportioned perfectly for a child's silhouette with 100% color accuracy."
+        garmentFit: "Sarees, Lehengas, Anarkalis, Kurtis, Salwar Suits",
+        description: "Reference photo of an Indian woman around 30 years old.",
+        prompt: "Fit this garment onto the person in the reference photo, an Indian woman around 30 years old. Natural relaxed standing pose, full body. Dress the model ONLY in the product garment - do not add, invent or change any other clothing. The garment exact colour, print, embroidery, fabric texture and original length are 100% preserved."
       },
       {
-        id: "model_kid_boy_aarav",
-        code: "MODEL_KID_BOY_01",
+        id: "model_male",
+        code: "MODEL_MALE",
         type: "model",
-        categoryTag: "kids",
-        title: "Aarav (Kid Boy)",
-        subtitle: "Age 5–7 Years · Indian Boy Model · Smart & Playful",
+        categoryTag: "male",
+        title: "Male Model",
+        subtitle: "Adult (35 Yrs) · Indian · Male Model",
         gender: "Male",
-        ageGroup: "Kids (5-7 Yrs)",
-        imageUrl: "https://images.unsplash.com/photo-1595454223600-91fbdd7ee9a4?w=800&auto=format&fit=crop&q=80",
-        badge: "Kids Boys",
+        ageGroup: "Adult (35 Yrs)",
+        imageUrl: "models/male.png",
+        badge: "Male Model",
         badgeColor: "badge-sky",
-        garmentFit: "Kids Kurta-Pajama, Nehru Jackets, Dhoti Sets, Indo-Western",
-        description: "Handsome young Indian boy with neat haircut and cheerful posture, ideal for boys wedding & festive ethnic wear.",
-        prompt: "Fit this boys ethnic garment onto a smart 6-year-old Indian boy model named Aarav with a happy natural expression. Proportioned child fit with true-to-life fabric color and texture."
+        garmentFit: "Sherwanis, Kurta-Pajama, Nehru Jackets, Shirts",
+        description: "Reference photo of an Indian man around 35 years old.",
+        prompt: "Fit this garment onto the person in the reference photo, an Indian man around 35 years old. Natural relaxed standing pose, full body. Dress the model ONLY in the product garment - do not add, invent or change any other clothing. The garment exact colour, print, embroidery, fabric texture and original length are 100% preserved."
       },
       {
-        id: "model_preteen_girl_diya",
-        code: "MODEL_PRETEEN_GIRL_02",
-        type: "model",
-        categoryTag: "kids",
-        title: "Diya (Pre-Teen Girl)",
-        subtitle: "Age 9–11 Years · Indian Girl Model · Graceful & Confident",
-        gender: "Female",
-        ageGroup: "Pre-Teen (9-11 Yrs)",
-        imageUrl: "https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?w=800&auto=format&fit=crop&q=80",
-        badge: "Pre-Teen Girls",
-        badgeColor: "badge-fuchsia",
-        garmentFit: "Junior Lehengas, Crop-Top Skirts, Anarkali Suits, Gowns",
-        description: "Graceful 10-year-old Indian girl with expressive eyes and confident posture for growing girls ethnic collections.",
-        prompt: "Fit this garment onto a graceful 10-year-old Indian girl model named Diya with sleek hair and elegant natural posture. Accurate drape and 100% true garment color."
-      },
-      {
-        id: "model_preteen_boy_kabir",
-        code: "MODEL_PRETEEN_BOY_02",
-        type: "model",
-        categoryTag: "kids",
-        title: "Vivaan (Pre-Teen Boy)",
-        subtitle: "Age 10–12 Years · Indian Boy Model · Confident & Sharp",
-        gender: "Male",
-        ageGroup: "Pre-Teen (10-12 Yrs)",
-        imageUrl: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=800&auto=format&fit=crop&q=80",
-        badge: "Pre-Teen Boys",
-        badgeColor: "badge-sky",
-        garmentFit: "Boys Sherwanis, Kurta Sets, Modi Jackets, Pathani Suits",
-        description: "Sharp and dignified 11-year-old Indian boy model, perfect for festive wear and family wedding photo shoots.",
-        prompt: "Fit this garment onto an 11-year-old Indian boy model named Vivaan standing confidently with natural posture. Exact garment color, fabric drape, and sharp embroidery detail."
-      },
-
-      // ══════════════════════════════════════════════════════════════
-      // SECTION 3: TEENAGE MODELS (Ages 13 – 19)
-      // ══════════════════════════════════════════════════════════════
-      {
-        id: "model_teen_girl_ananya",
-        code: "MODEL_TEEN_GIRL_01",
+        id: "model_teen_girl",
+        code: "MODEL_TEEN_GIRL",
         type: "model",
         categoryTag: "teen",
-        title: "Rhea (Teenage Girl)",
-        subtitle: "Age 16–18 Years · Contemporary Indian Teen · Trendy & Vibrant",
+        title: "Teen Girl Model",
+        subtitle: "Teen (16 Yrs) · Indian · Teen Girl Model",
         gender: "Female",
-        ageGroup: "Teen (16-18 Yrs)",
-        imageUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=800&auto=format&fit=crop&q=80",
-        badge: "Teen Girls",
-        badgeColor: "badge-purple",
-        garmentFit: "Crop Top Lehengas, Fusion Kurti Sets, Saree Gowns, Co-ords",
-        description: "Youthful Indian teenage model with fresh glowing skin, modern styling, and effortless Gen-Z poise for fusion wear.",
-        prompt: "Fit this outfit onto a stylish 17-year-old Indian teenage girl model named Rhea with natural modern makeup and sleek hair. Flowing realistic fabric drape with 100% color-true lighting."
-      },
-      {
-        id: "model_teen_boy_rohan",
-        code: "MODEL_TEEN_BOY_01",
-        type: "model",
-        categoryTag: "teen",
-        title: "Rohan (Teenage Boy)",
-        subtitle: "Age 17–19 Years · Contemporary Indian Teen · Athletic & Stylish",
-        gender: "Male",
-        ageGroup: "Teen (17-19 Yrs)",
-        imageUrl: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=800&auto=format&fit=crop&q=80",
-        badge: "Teen Boys",
-        badgeColor: "badge-sky",
-        garmentFit: "Modern Kurtas, Asymmetric Kurtas, Nehru Jackets, Casual Ethnic",
-        description: "Athletic Indian teenage male model with clean grooming and confident youthful posture for modern youth collections.",
-        prompt: "Fit this garment onto a handsome 18-year-old Indian teenage boy model named Rohan with natural expression and confident posture. Flawless fit on shoulders and true fabric hue."
-      },
-
-      // ══════════════════════════════════════════════════════════════
-      // SECTION 4: YOUNG ADULT FEMALE MODELS (Ages 20 – 34)
-      // ══════════════════════════════════════════════════════════════
-      {
-        id: "model_female_priya_bridal",
-        code: "MODEL_FEMALE_ROYAL_BRIDAL",
-        type: "model",
-        categoryTag: "female",
-        title: "Priya (Royal Bridal)",
-        subtitle: "Age 24–27 Years · Royal Bridal Posture · Traditional Elegance",
-        gender: "Female",
-        ageGroup: "Young Adult (20-34)",
-        imageUrl: "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?w=800&auto=format&fit=crop&q=80",
-        badge: "Royal Bridal",
-        badgeColor: "badge-fuchsia",
-        garmentFit: "Heavy Bridal Lehengas, Kanjeevaram Sarees, Wedding Gowns",
-        description: "Classic Indian bride persona with regal poise, subtle kundan jewelry, and traditional dupatta draping for bridal couture.",
-        prompt: "Fit this bridal garment onto a royal Indian bridal model named Priya with elegant regal posture, subtle traditional jewelry, and immaculate draping. 100% preservation of heavy zari and color."
-      },
-      {
-        id: "model_female_ananya_saree",
-        code: "MODEL_FEMALE_SAREE_KURTI",
-        type: "model",
-        categoryTag: "female",
-        title: "Ananya (Saree & Kurti)",
-        subtitle: "Age 23–26 Years · Modern Indian Model · Graceful & Versatile",
-        gender: "Female",
-        ageGroup: "Young Adult (20-34)",
-        imageUrl: "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=800&auto=format&fit=crop&q=80",
-        badge: "Saree & Kurti",
-        badgeColor: "badge-purple",
-        garmentFit: "Daily Sarees, Anarkalis, Kurti Sets, Casual Ethnic, Office Wear",
-        description: "Graceful modern Indian model with warm expressive smile and versatile styling suited for catalog daily wear.",
-        prompt: "Place this outfit onto a graceful 25-year-old Indian model named Ananya with natural posture and soft makeup. Realistic draping and 100% color-true lighting with no hue shifts."
-      },
-      {
-        id: "model_female_meera_festive",
-        code: "MODEL_FEMALE_FESTIVE_GOWN",
-        type: "model",
-        categoryTag: "female",
-        title: "Meera (Festive & Fusion)",
-        subtitle: "Age 26–29 Years · Vibrant Festive Model · Dynamic & Glamorous",
-        gender: "Female",
-        ageGroup: "Young Adult (20-34)",
-        imageUrl: "https://images.unsplash.com/photo-1566737236500-c8ac43014a67?w=800&auto=format&fit=crop&q=80",
-        badge: "Festive Glam",
-        badgeColor: "badge-amber",
-        garmentFit: "Festive Anarkalis, Indo-Western Gowns, Sangeet Wear, Shararas",
-        description: "Glamorous festive persona with vibrant energy, ideal for Sangeet, Mehendi, and Diwali cocktail collections.",
-        prompt: "Fit this festive outfit onto a glamorous Indian model named Meera in a celebratory posture with natural hair flow. True-to-life fabric drape and radiant true-tone lighting."
-      },
-      {
-        id: "model_female_tara_curvy",
-        code: "MODEL_FEMALE_PLUS_CURVY",
-        type: "model",
-        categoryTag: "female",
-        title: "Tara (Curvy & Plus Size)",
-        subtitle: "Age 27–32 Years · Body Positive Indian Model · Beautiful Drapes",
-        gender: "Female",
-        ageGroup: "Young Adult (20-34)",
-        imageUrl: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=800&auto=format&fit=crop&q=80",
-        badge: "Plus & Curvy",
+        ageGroup: "Teen (16 Yrs)",
+        imageUrl: "models/teen_girl.png",
+        badge: "Teen Girl Model",
         badgeColor: "badge-emerald",
-        garmentFit: "Plus Size Kurtis (XXL–5XL), Straight Suits, Draped Sarees",
-        description: "Confident curvy Indian female model showcasing how garments flatter natural fuller silhouettes with comfort.",
-        prompt: "Fit this garment onto a confident curvy Indian female model named Tara with graceful posture. Realistic draping for fuller body dimensions with 100% accurate fabric color."
+        garmentFit: "Teen Lehengas, Anarkalis, Kurti Sets, Tops, Dresses",
+        description: "Reference photo of a 16-year-old Indian teenage girl.",
+        prompt: "Fit this garment onto the person in the reference photo, a 16-year-old Indian teenage girl. Natural relaxed standing pose, full body. Dress the model ONLY in the product garment - do not add, invent or change any other clothing. The garment exact colour, print, embroidery, fabric texture and original length are 100% preserved."
       },
-
-      // ══════════════════════════════════════════════════════════════
-      // SECTION 5: YOUNG ADULT MALE MODELS (Ages 20 – 34)
-      // ══════════════════════════════════════════════════════════════
       {
-        id: "model_male_kabir_sherwani",
-        code: "MODEL_MALE_ROYAL_GROOM",
+        id: "model_teen_boy",
+        code: "MODEL_TEEN_BOY",
         type: "model",
-        categoryTag: "male",
-        title: "Kabir (Royal Groom)",
-        subtitle: "Age 27–30 Years · Tall & Dignified · Sherwani & Wedding",
+        categoryTag: "teen",
+        title: "Teen Boy Model",
+        subtitle: "Teen (18 Yrs) · Indian · Teen Boy Model",
         gender: "Male",
-        ageGroup: "Young Adult (20-34)",
-        imageUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800&auto=format&fit=crop&q=80",
-        badge: "Royal Groom",
-        badgeColor: "badge-amber",
-        garmentFit: "Sherwanis, Achkans, Wedding Kurtas, Silk Shawls, Safas",
-        description: "Tall, broad-shouldered Indian male model with well-groomed beard and commanding regal posture for groomswear.",
-        prompt: "Fit this menswear garment onto a tall Indian male model named Kabir with athletic build and well-groomed beard. Flawless shoulder tailoring and 100% color-true lighting."
+        ageGroup: "Teen (18 Yrs)",
+        imageUrl: "models/teen_boy.png",
+        badge: "Teen Boy Model",
+        badgeColor: "badge-emerald",
+        garmentFit: "Teen Kurta-Pajama, Nehru Jackets, Shirts, T-shirts",
+        description: "Reference photo of an 18-year-old Indian teenage boy.",
+        prompt: "Fit this garment onto the person in the reference photo, an 18-year-old Indian teenage boy. Natural relaxed standing pose, full body. Dress the model ONLY in the product garment - do not add, invent or change any other clothing. The garment exact colour, print, embroidery, fabric texture and original length are 100% preserved."
       },
       {
-        id: "model_male_aditya_casual",
-        code: "MODEL_MALE_CASUAL_KURTA",
+        id: "model_kid_girl",
+        code: "MODEL_KID_GIRL",
         type: "model",
-        categoryTag: "male",
-        title: "Aditya (Modern Ethnic)",
-        subtitle: "Age 24–28 Years · Clean Shaven / Light Stubble · Casual Kurtas",
-        gender: "Male",
-        ageGroup: "Young Adult (20-34)",
-        imageUrl: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=800&auto=format&fit=crop&q=80",
-        badge: "Modern Ethnic",
-        badgeColor: "badge-sky",
-        garmentFit: "Short Kurtas, Linen Shirts, Nehru Jackets, Cotton Pajamas",
-        description: "Approachable modern Indian male model with relaxed confidence for daily ethnic and festive family wear.",
-        prompt: "Fit this garment onto a handsome Indian male model named Aditya standing with relaxed natural posture. Exact linen/cotton weave texture and true dye color."
-      },
-
-      // ══════════════════════════════════════════════════════════════
-      // SECTION 6: MATURE MODELS (Ages 35 – 44 Years)
-      // ══════════════════════════════════════════════════════════════
-      {
-        id: "model_female_nandini_35",
-        code: "MODEL_FEMALE_MATURE_35",
-        type: "model",
-        categoryTag: "senior",
-        title: "Nandini (Sophisticated 35+)",
-        subtitle: "Age 36–40 Years · Elegant Indian Woman · Silk & Classic Suits",
+        categoryTag: "kids",
+        title: "Kid Girl Model",
+        subtitle: "Kid (4 Yrs) · Indian · Kid Girl Model",
         gender: "Female",
-        ageGroup: "Mature (35-44 Yrs)",
-        imageUrl: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=800&auto=format&fit=crop&q=80",
-        badge: "Mature 35+",
-        badgeColor: "badge-purple",
-        garmentFit: "Chanderi Suits, Tussar Silk Sarees, Linen Kurtas, Formal Suits",
-        description: "Dignified, sophisticated Indian woman with understated luxury elegance and poise, perfect for premium handloom.",
-        prompt: "Fit this garment onto an elegant 38-year-old Indian woman named Nandini with sophisticated posture and tasteful grooming. Pristine fabric drapes and color accuracy."
-      },
-      {
-        id: "model_male_rajesh_35",
-        code: "MODEL_MALE_MATURE_35",
-        type: "model",
-        categoryTag: "senior",
-        title: "Vikram (Distinguished 35+)",
-        subtitle: "Age 38–42 Years · Distinguished Indian Gentleman · Bandhgala",
-        gender: "Male",
-        ageGroup: "Mature (35-44 Yrs)",
-        imageUrl: "https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=800&auto=format&fit=crop&q=80",
-        badge: "Mature 35+",
-        badgeColor: "badge-sky",
-        garmentFit: "Bandhgalas, Heritage Kurtas, Silk Nehru Jackets, Formal Ethnic",
-        description: "Distinguished Indian gentleman with commanding presence, light salt-and-pepper stubble, and executive ethnic elegance.",
-        prompt: "Fit this menswear garment onto a distinguished 40-year-old Indian gentleman named Vikram with tailored posture. 100% preservation of fabric texture and color."
-      },
-
-      // ══════════════════════════════════════════════════════════════
-      // SECTION 7: SENIOR & ELDER MODELS (Over 45 Years / 45–60+)
-      // ══════════════════════════════════════════════════════════════
-      {
-        id: "model_female_sunita_45",
-        code: "MODEL_FEMALE_SENIOR_45",
-        type: "model",
-        categoryTag: "senior",
-        title: "Sunita (Graceful Matriarch 45+)",
-        subtitle: "Age 48–55 Years · Graceful Elder Woman · Pure Silk & Banarasi",
-        gender: "Female",
-        ageGroup: "Senior (45-60+ Yrs)",
-        imageUrl: "https://images.unsplash.com/photo-1567532939604-b6b5b0db2604?w=800&auto=format&fit=crop&q=80",
-        badge: "Senior 45+",
-        badgeColor: "badge-fuchsia",
-        garmentFit: "Banarasi Sarees, Kanjivaram Silks, Velvet Shawls, Elegant Suits",
-        description: "Graceful Indian matriarch with kind smile, classic silver-streaked hair, and unmatched poise in traditional heavy silks.",
-        prompt: "Fit this silk garment onto a graceful 50-year-old Indian elder woman named Sunita with silver-streaked hair and majestic posture. Flawless traditional saree pallu drape with 100% true zari sheen."
-      },
-      {
-        id: "model_male_harish_45",
-        code: "MODEL_MALE_SENIOR_45",
-        type: "model",
-        categoryTag: "senior",
-        title: "Harish (Royal Patriarch 45+)",
-        subtitle: "Age 50–60 Years · Royal Elder Gentleman · Silk Kurta & Shawl",
-        gender: "Male",
-        ageGroup: "Senior (45-60+ Yrs)",
-        imageUrl: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=800&auto=format&fit=crop&q=80",
-        badge: "Senior 45+",
+        ageGroup: "Kid (4 Yrs)",
+        imageUrl: "models/kid_girl.png",
+        badge: "Kid Girl Model",
         badgeColor: "badge-amber",
-        garmentFit: "Pure Silk Kurtas, Kashmiri Pashmina Shawls, Achkans, Dhoti",
-        description: "Dignified Indian elder patriarch with silver hair, warm expressive eyes, and royal heritage presence for senior ethnic wear.",
-        prompt: "Fit this garment onto a dignified 55-year-old Indian elder gentleman named Harish with silver hair and refined posture. 100% preservation of embroidery, color, and fabric weight."
+        garmentFit: "Kids Lehengas, Frocks, Anarkalis, Festive Gowns",
+        description: "Reference photo of a 4-year-old Indian girl.",
+        prompt: "Fit this garment onto the person in the reference photo, a 4-year-old Indian girl. Natural relaxed child pose, proportions and drape correct for a child. Dress the model ONLY in the product garment - do not add, invent or change any other clothing. The garment exact colour, print, embroidery, fabric texture and original length are 100% preserved."
+      },
+      {
+        id: "model_kid_boy",
+        code: "MODEL_KID_BOY",
+        type: "model",
+        categoryTag: "kids",
+        title: "Kid Boy Model",
+        subtitle: "Kid (4 Yrs) · Indian · Kid Boy Model",
+        gender: "Male",
+        ageGroup: "Kid (4 Yrs)",
+        imageUrl: "models/kid_boy.png",
+        badge: "Kid Boy Model",
+        badgeColor: "badge-amber",
+        garmentFit: "Kids Kurta-Pajama, Nehru Jackets, Indo-Western, Shirts",
+        description: "Reference photo of a 4-year-old Indian boy.",
+        prompt: "Fit this garment onto the person in the reference photo, a 4-year-old Indian boy. Natural relaxed child pose, proportions and drape correct for a child. Dress the model ONLY in the product garment - do not add, invent or change any other clothing. The garment exact colour, print, embroidery, fabric texture and original length are 100% preserved."
       }
     ];
 
@@ -944,11 +759,10 @@
       const filtered = ITEMS.filter(item => {
         const matchesCat = currentFilter === 'all' || 
           (currentFilter === 'scene' && item.type === 'scene') ||
-          (currentFilter === 'female' && item.type === 'model' && item.gender === 'Female' && !item.categoryTag.includes('kids') && !item.categoryTag.includes('teen') && !item.categoryTag.includes('senior')) ||
-          (currentFilter === 'male' && item.type === 'model' && item.gender === 'Male' && !item.categoryTag.includes('kids') && !item.categoryTag.includes('teen') && !item.categoryTag.includes('senior')) ||
+          (currentFilter === 'female' && item.type === 'model' && item.gender === 'Female' && !item.categoryTag.includes('kids') && !item.categoryTag.includes('teen')) ||
+          (currentFilter === 'male' && item.type === 'model' && item.gender === 'Male' && !item.categoryTag.includes('kids') && !item.categoryTag.includes('teen')) ||
           (currentFilter === 'kids' && item.categoryTag === 'kids') ||
-          (currentFilter === 'teen' && item.categoryTag === 'teen') ||
-          (currentFilter === 'senior' && item.categoryTag === 'senior');
+          (currentFilter === 'teen' && item.categoryTag === 'teen');
 
         const q = searchQuery.toLowerCase().trim();
         const matchesSearch = !q || 

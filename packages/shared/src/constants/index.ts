@@ -346,6 +346,12 @@ export const STUDIO_CREDITS_PER_IMAGE = 8;
 // so could not do this job at all. Migration
 // `105_studio_styles_engine_rename` normalizes any row still holding the old
 // strings.
+//
+// The eight `flux2_pro` … `grok_imagine` values are Fal image-edit endpoints added
+// for the admin model bench (docs/tasks/AI Cost Comparison.html). Each takes the
+// product photo like the Gemini engines do; endpoint ids and request bodies live
+// in apps/api/src/lib/fal-client.ts (FAL_EDIT_ENGINES), which a test keeps in
+// step with this list.
 export const STUDIO_ENGINES = [
   'flux_pro',
   'gemini_image',
@@ -354,8 +360,67 @@ export const STUDIO_ENGINES = [
   'bfl_kontext',
   'vton_kontext',
   'vton_gemini',
+  'flux2_pro',
+  'gpt_image_2_low',
+  'gpt_image_2_medium',
+  'gpt_image_2_high',
+  'seedream_v4',
+  'qwen_edit',
+  'nano_banana',
+  'grok_imagine',
 ] as const;
 export type StudioEngine = (typeof STUDIO_ENGINES)[number];
+
+// ─── Bench cost estimate (admin test page only) ──────────────────────
+// Provider list prices in USD per finished image, researched 2026-09-19 — see
+// docs/tasks/AI Cost Comparison.html for the source and evidence grade of each.
+// `usd: null` = price not verified (or several calls) → the bench shows "?" and
+// never a made-up number. ESTIMATES: prices move, so re-check before setting
+// plan limits. Hardcoded because the bench is admin-only; a retailer-facing
+// credit charge must come from the DB (plan_pricing), not from this table.
+export const STUDIO_CREDIT_USD = 0.005; // 8 credits/image ≈ Kontext's $0.04
+export const BENCH_USD_TO_INR = 96; // owner planning rate, 2026-09-19
+
+export interface StudioEngineInfo {
+  label: string;
+  /** Endpoint / model id actually called. */
+  version: string;
+  provider: 'Fal' | 'Google' | 'Fal + Google';
+  /** Provider calls behind one finished image. */
+  calls: number;
+  usd: number | null;
+}
+export const STUDIO_ENGINE_INFO: Record<StudioEngine, StudioEngineInfo> = {
+  bfl_kontext: { label: 'FLUX.1 Kontext Pro (default)', version: 'fal-ai/flux-pro/kontext', provider: 'Fal', calls: 1, usd: 0.04 },
+  flux_pro: { label: 'FLUX 1.1 Pro (text→image)', version: 'fal-ai/flux-pro/v1.1', provider: 'Fal', calls: 1, usd: null },
+  flux_schnell: { label: 'FLUX Schnell (text→image)', version: 'fal-ai/flux/schnell', provider: 'Fal', calls: 1, usd: null },
+  gemini_image: { label: 'Nano Banana 2 (Gemini Flash Image, 1K)', version: 'gemini-3.1-flash-image', provider: 'Google', calls: 1, usd: 0.067 },
+  gemini_image_pro: { label: 'Nano Banana Pro (Gemini Pro Image)', version: 'gemini-3-pro-image', provider: 'Google', calls: 1, usd: 0.134 },
+  vton_kontext: { label: 'Two-step: FASHN try-on → Kontext scene', version: 'flux-pro/v1.1 + fashn/tryon/v1.5 + flux-pro/kontext', provider: 'Fal', calls: 3, usd: null },
+  vton_gemini: { label: 'Two-step: FASHN try-on → Gemini scene', version: 'flux-pro/v1.1 + fashn/tryon/v1.5 + gemini-3.1-flash-image', provider: 'Fal + Google', calls: 3, usd: null },
+  flux2_pro: { label: 'FLUX.2 [pro] edit', version: 'fal-ai/flux-2-pro/edit', provider: 'Fal', calls: 1, usd: 0.03 },
+  gpt_image_2_low: { label: 'GPT Image 2 edit — low', version: 'openai/gpt-image-2/edit (quality=low)', provider: 'Fal', calls: 1, usd: 0.015 },
+  gpt_image_2_medium: { label: 'GPT Image 2 edit — medium', version: 'openai/gpt-image-2/edit (quality=medium)', provider: 'Fal', calls: 1, usd: 0.061 },
+  gpt_image_2_high: { label: 'GPT Image 2 edit — high', version: 'openai/gpt-image-2/edit (quality=high)', provider: 'Fal', calls: 1, usd: 0.219 },
+  seedream_v4: { label: 'Seedream V4 edit', version: 'fal-ai/bytedance/seedream/v4/edit', provider: 'Fal', calls: 1, usd: 0.03 },
+  qwen_edit: { label: 'Qwen Image Edit 2511 (≈1 MP)', version: 'fal-ai/qwen-image-edit-2511', provider: 'Fal', calls: 1, usd: 0.02 },
+  nano_banana: { label: 'Nano Banana v1 edit', version: 'fal-ai/nano-banana/edit', provider: 'Fal', calls: 1, usd: 0.0398 },
+  grok_imagine: { label: 'Grok Imagine Image 2.0 edit', version: 'xai/grok-imagine-image/v2.0/edit', provider: 'Fal', calls: 1, usd: null },
+};
+
+/** USD → ₹ and credits for one image, or null when the price is unknown. */
+export function studioEngineCost(
+  engine: StudioEngine,
+  usdToInr: number = BENCH_USD_TO_INR,
+): { usd: number; inr: number; credits: number } | null {
+  const usd = STUDIO_ENGINE_INFO[engine].usd;
+  if (usd === null) return null;
+  return {
+    usd,
+    inr: Math.round(usd * usdToInr * 100) / 100,
+    credits: Math.ceil(usd / STUDIO_CREDIT_USD - 1e-9),
+  };
+}
 
 // ─── Product demographic (derived from the AI-tagged category) ───────
 // AI Studio Shoot no longer asks "which model?" — the product's category

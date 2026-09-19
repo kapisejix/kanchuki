@@ -2730,3 +2730,23 @@ New: `apps/api/src/lib/gemini-image.test.ts` — 15 tests, including that the re
 
 **Not amended:** `CLAUDE.md` row 75 does not yet mention this bench (that file is gated on explicit approval).
 
+
+
+## BUILT 2026-09-19 — Admin bench: vision detects "bare garment vs worn", manual checkbox removed
+
+**Problem:** the bench had a manual "Photo is a bare garment" checkbox (default on) that toggled `input_has_person`, i.e. `SCENE_GUARD` ("edit only the background") vs `PLACEMENT_GUARD` ("put this garment on the model"). A hand-set flag the pipeline can read off the photo — and one that silently mis-set the prompt whenever the operator forgot it.
+
+**Change (bench only; the retailer job/route path is deliberately untouched until the bench result is in):**
+
+| File | Change |
+|---|---|
+| `apps/api/src/lib/garment-parts.ts` | `person_present` added to the vision schema; `VisibleParts.hasPerson` (`false` only on an explicit "nobody wearing it" or a `flat-lay` framing — silent/unusable answers read as *person present*, i.e. today's behaviour); new `detectGarmentPartsFromUrl()` |
+| `apps/api/src/routes/admin/admin-photo-cleanup.ts` | `input_has_person` is now **optional**. Omitted → `detectGarmentPartsFromUrl()` decides; explicit value still wins as an override; detection failure → assume a person. Response adds `input_has_person` + `detected_parts` |
+| `apps/web/.../photo-cleanup-test/page.tsx` | checkbox + state removed, field no longer sent; result rows show "Photo read as: worn / bare garment" |
+| `apps/api/src/lib/garment-parts.test.ts` | +2 tests: flat-lay / `person_present:false` → no person; silent or non-boolean answer → person (fail-open) |
+
+**Cost:** one extra vision call per bench run when the override is omitted (bucketed under `AI_ITEM_DETECT`, not billed as a shoot).
+
+**Not done:** retailer path still passes no `inputHasPerson`; `missingParts`/set completion (R1–R3) still not wired even though the same vision call now returns the parts; `studio-ab` route does not run the check (two-step engines build their own prompts). **Not verified against a live provider.**
+
+**Verification:** `garment-parts` + `studio-shoot` tests 58/58 · API + Web `tsc --noEmit` clean.

@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>AI Cost Comparison</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --panel: #f6f7f9;
+    --ink: #1a1d24;
+    --muted: #5b6270;
+    --line: #d9dde4;
+    --head: #eceff4;
+    --accent: #1f5fd6;
+    --good: #e3f5e8;
+    --good-ink: #16652b;
+    --mid: #fff4d6;
+    --mid-ink: #7a5300;
+    --warn: #ffe6d1;
+    --warn-ink: #8a3d00;
+    --bad: #fde2e2;
+    --bad-ink: #9b1c1c;
+    --unk: #eceef2;
+    --unk-ink: #4a5160;
+  }
+  * { box-sizing: border-box; }
+  html { color-scheme: light; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  header.top {
+    padding: 20px 24px 12px; border-bottom: 1px solid var(--line); background: var(--bg);
+  }
+  header.top h1 { margin: 0 0 4px; font-size: 22px; }
+  header.top p { margin: 0; color: var(--muted); }
+  nav.toc {
+    position: sticky; top: 0; z-index: 20; background: var(--bg);
+    border-bottom: 1px solid var(--line); padding: 8px 24px; display: flex; flex-wrap: wrap; gap: 6px 16px;
+  }
+  nav.toc a { color: var(--accent); text-decoration: none; font-size: 13px; }
+  nav.toc a:hover { text-decoration: underline; }
+  main { padding: 8px 24px 60px; max-width: 1600px; margin: 0 auto; }
+  h2 { font-size: 19px; margin: 36px 0 6px; padding-top: 8px; border-top: 2px solid var(--line); }
+  h3 { font-size: 16px; margin: 28px 0 6px; }
+  h4 { font-size: 14px; margin: 20px 0 6px; }
+  p, li { max-width: 1100px; }
+  code {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 4px;
+    padding: 0 4px; font: 12px/1.4 ui-monospace, Consolas, monospace; word-break: break-word;
+  }
+  pre {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 6px;
+    padding: 10px 12px; overflow-x: auto; font: 12.5px/1.5 ui-monospace, Consolas, monospace;
+  }
+  .note {
+    background: #f2f6fd; border: 1px solid #c9d8f3;
+    border-radius: 6px; padding: 10px 14px; margin: 10px 0; max-width: 1100px;
+  }
+  .note.warn { border-color: #f0cf9c; background: #fff8ec; }
+  .note.stop { border-color: #eab0b0; background: #fff2f2; }
+  .tools { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 10px 0 6px; }
+  .tools input[type=search] {
+    padding: 6px 10px; border: 1px solid var(--line); border-radius: 6px; min-width: 240px; font: inherit; background: #fff; color: var(--ink);
+  }
+  .tools label { color: var(--muted); font-size: 13px; }
+  .hint { color: var(--muted); font-size: 12.5px; font-weight: 400; }
+  .wrap { overflow: auto; border: 1px solid var(--line); border-radius: 8px; max-height: 78vh; background: #fff; }
+  table { border-collapse: separate; border-spacing: 0; width: 100%; font-size: 13px; }
+  th, td { border-bottom: 1px solid var(--line); border-right: 1px solid var(--line); padding: 7px 9px; vertical-align: top; text-align: left; }
+  th:last-child, td:last-child { border-right: 0; }
+  thead th {
+    position: sticky; top: 0; background: var(--head); z-index: 2; font-weight: 600; white-space: nowrap;
+  }
+  table.sortable thead th { cursor: pointer; user-select: none; }
+  table.sortable thead th::after { content: " \2195"; color: #9aa1af; font-size: 11px; }
+  table.sortable thead th.asc::after { content: " \25B2"; color: var(--accent); }
+  table.sortable thead th.desc::after { content: " \25BC"; color: var(--accent); }
+  tbody tr:nth-child(even) td { background: #fbfbfd; }
+  tbody tr:hover td { background: #eef4ff; }
+  tr.baseline td { background: #eaf2ff !important; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  td.nowrap { white-space: nowrap; }
+  .pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .g-good { background: var(--good); color: var(--good-ink); }
+  .g-mid  { background: var(--mid);  color: var(--mid-ink); }
+  .g-warn { background: var(--warn); color: var(--warn-ink); }
+  .g-bad  { background: var(--bad);  color: var(--bad-ink); }
+  .g-unk  { background: var(--unk);  color: var(--unk-ink); }
+  .q { display: inline-block; min-width: 34px; text-align: center; padding: 1px 6px; border-radius: 6px; font-weight: 700; }
+  .q9 { background: #cfeed8; color: #0f5a25; }
+  .q8 { background: #ddf3cf; color: #2d5a0f; }
+  .q7 { background: #eef6c9; color: #55620f; }
+  .q6 { background: #fff1c2; color: #7a5300; }
+  .q4 { background: #ffe0c2; color: #8a3d00; }
+  .q0 { background: #fbd5d5; color: #9b1c1c; }
+  .qq { background: var(--unk); color: var(--unk-ink); }
+  ul { padding-left: 20px; }
+  li { margin: 3px 0; }
+  .legend { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 8px 0 4px; font-size: 13px; }
+  .thumb { width: 72px; height: 96px; object-fit: cover; border-radius: 6px; border: 1px solid var(--line); display: block; background: var(--panel); }
+  td input.score { width: 64px; padding: 4px 6px; border: 1px solid var(--line); border-radius: 6px; font: inherit; text-align: right; }
+  td input.note-in { width: 200px; padding: 4px 6px; border: 1px solid var(--line); border-radius: 6px; font: inherit; }
+  .err { color: var(--bad-ink); font-size: 12px; max-width: 160px; word-break: break-word; }
+  footer { color: var(--muted); font-size: 12.5px; padding: 20px 24px 40px; border-top: 1px solid var(--line); }
+  a { color: var(--accent); }
+  @media (max-width: 700px) {
+    header.top, nav.toc, main { padding-left: 14px; padding-right: 14px; }
+  }
+  @media print {
+    nav.toc, .tools { display: none; }
+    .wrap { max-height: none; overflow: visible; }
+    thead th { position: static; }
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <h1>§8 Cross-cutting concerns — quota, cost &amp; model comparison</h1>
+  <p>Source: <code>docs/tasks/ai-photo-generation.md</code> §8 → §8.1b · researched 2026-09-19 · rate <strong>1 USD = ₹96</strong> · click any column header to sort, use the search box to filter.</p>
+</header>
+
+<nav class="toc">
+  <a href="#s81">8.1 Quota &amp; cost</a>
+  <a href="#s81a">8.1a Price sheet</a>
+  <a href="#s81a-key">Fal vs vendor keys</a>
+  <a href="#s81a-ii">8.1a-ii Comparison chart</a>
+  <a href="#pipelines">Pipeline cost per shot</a>
+  <a href="#plan">Plan assignment</a>
+  <a href="#s81b">8.1b cost_micro_usd spec</a>
+  <a href="#s82">8.2 Model bench</a>
+  <a href="#s82-results">Bench results</a>
+  <a href="#sources">Sources</a>
+</nav>
+
+<main>
+
+<h2 id="s81">8.1 Quota &amp; cost</h2>
+<div class="wrap">
+<table>
+  <thead><tr><th>Resource</th><th>Gate</th><th>Pattern</th></tr></thead>
+  <tbody>
+    <tr><td>Image studio shoot</td><td>Growth/Pro only, STARTER → 402</td><td><code>STUDIO_SHOOT</code> <code>QuotaResourceType</code>, F-010 pattern, no per-retailer override</td></tr>
+    <tr><td>Promo video (F-034 P2)</td><td><code>AI_VIDEO</code> + overage credit packs</td><td><code>checkQuota</code> (route) / <code>incrementUsage</code> (job on success) / <code>resource_packs</code> rows</td></tr>
+    <tr><td>Addon packs</td><td>admin-managed DB rows, <code>/admin/resource-packs</code></td><td><code>089_resource_packs</code> ✅ applied</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2 id="s81a">8.1a Cost per model — provider price sheet <span class="hint">(researched 2026-09-19, USD)</span></h2>
+
+<div class="note warn">
+  <strong>Evidence grades:</strong>
+  <span class="pill g-good">✅</span> read from fal.ai's own page ·
+  <span class="pill g-mid">◐</span> third-party price-tracker or search summary ·
+  <span class="pill g-unk">⚠</span> not found.
+  <strong>All prices move — re-pull before setting plan limits.</strong>
+  The fal pricing API (<code>GET https://api.fal.ai/v1/models/pricing?endpoint_id=a,b,c</code>, header <code>Authorization: Key $FAL_API_KEY</code>, returns <code>unit_price</code> + <code>unit</code> per endpoint) <strong>requires a key (401 without)</strong> — it was <em>not</em> called in this research. Run it once with the real key and paste the rows over the ◐/⚠ cells. Check <code>unit</code>: some models bill <strong>per megapixel</strong>, not per image.
+</div>
+
+<div class="tools">
+  <input type="search" id="f1" placeholder="Filter price sheet (e.g. flux, gemini, edit)…" data-table="t81a">
+  <span class="hint">Click headers to sort.</span>
+</div>
+<div class="wrap">
+<table class="sortable" id="t81a">
+  <thead><tr>
+    <th>Model</th><th>Route to reach it</th><th>Endpoint ID / model ID</th><th>Edit (takes product photo)?</th><th>Price</th><th>Grade</th><th>In Kanchuki?</th>
+  </tr></thead>
+  <tbody>
+    <tr class="baseline"><td><strong>FLUX.1 Kontext Pro</strong></td><td>Fal</td><td><code>fal-ai/flux-pro/kontext</code></td><td>✔</td><td>$0.04 / image</td><td>✅</td><td>✔ default</td></tr>
+    <tr><td>FLUX 1.1 Pro</td><td>Fal</td><td><code>fal-ai/flux-pro/v1.1</code></td><td>✖ text→image</td><td>⚠ pull via API</td><td>⚠</td><td>✔ ref step</td></tr>
+    <tr><td>FLUX Schnell</td><td>Fal</td><td><code>fal-ai/flux/schnell</code></td><td>✖</td><td>⚠ pull via API</td><td>⚠</td><td>✔ ref step</td></tr>
+    <tr><td><strong>FLUX.2</strong></td><td>Fal</td><td><code>fal-ai/flux-2</code> ([dev] per fal page), <code>-max</code>, <code>-flex</code>, <code>/turbo</code>, <code>/flash</code>, <code>/klein/4b</code>, <code>/klein/9b</code>, <code>-lora-gallery/*</code></td><td>✔ (native editing)</td><td>pro $0.03, max $0.07 (BFL, per image)</td><td>◐</td><td>✖</td></tr>
+    <tr><td><strong>GPT Image 2</strong></td><td>Fal (<code>openai/gpt-image-2</code>, <code>…/edit</code>) <strong>or</strong> OpenAI direct</td><td><code>openai/gpt-image-2/edit</code> on Fal; also 2.5 <code>sunburst</code>/<code>flare</code>, 1.5, 1-mini, gpt-image-1</td><td>✔</td><td>Fal edit @1024²: <strong>low $0.015 / med $0.061 / high $0.219</strong>; @1024×768: $0.011 / $0.043 / $0.151. OpenAI direct est. @1024²: $0.006 / $0.053 / $0.211 (token-billed; Batch −50%). GPT Image 1 Mini ≈ $0.005</td><td>✅ (Fal) ◐ (direct)</td><td>✖</td></tr>
+    <tr><td><strong>Seedream</strong></td><td>Fal</td><td><code>bytedance/seedream/v5/lite/edit</code>, <code>…/v5/pro/edit</code>, <code>fal-ai/bytedance/seedream/v4.5/edit</code>, <code>…/v4/edit</code> (+ text-to-image variants, v3)</td><td>✔</td><td>V4: <strong>$0.03 / image</strong>; V5 lite/pro ⚠</td><td>✅ (V4)</td><td>✖ (Seedance <em>video</em> is, not Seedream)</td></tr>
+    <tr><td><strong>Recraft V4</strong></td><td>Fal</td><td><code>fal-ai/recraft/v4/text-to-image</code>, <code>…/v4/pro/text-to-image</code>, <code>…/v4.1/…</code>, <code>…/v4/text-to-vector</code>, <code>recraft/v4/style/…</code></td><td>✖ text→image only (no edit endpoint at V4)</td><td>V4 <strong>$0.04 / image</strong>; V4.1 $0.035 (◐)</td><td>✅ / ◐</td><td>✖ — not suited: no photo input</td></tr>
+    <tr><td><strong>Qwen Image</strong></td><td>Fal</td><td><code>fal-ai/qwen-image-edit-2511</code>, <code>fal-ai/qwen-image-2/edit</code>, <code>…/2/pro/edit</code>, <code>fal-ai/qwen-image-max/edit</code>, <code>alibaba/qwen-image-3/edit</code></td><td>✔ (edit endpoints)</td><td><strong>$0.02 / megapixel</strong> (fal pricing page; which endpoint that figure is for was not stated)</td><td>✅ (per-MP)</td><td>✖ (<code>qwen-vl</code> in <code>vision-model.ts</code> is a <em>vision-input</em> allowlist, not generation)</td></tr>
+    <tr><td><strong>Nano Banana</strong> (Gemini image)</td><td>Fal <strong>or</strong> Google direct</td><td>Fal: <code>fal-ai/nano-banana/edit</code>, <code>…nano-banana-2/edit</code>, <code>…nano-banana-pro/edit</code>, <code>google/nano-banana-lite/edit</code>, <code>fal-ai/gemini-3-pro-image-preview/edit</code>, <code>fal-ai/gemini-3.1-flash-image-preview/edit</code>. Google: <code>gemini-3.1-flash-image</code>, <code>gemini-3-pro-image</code></td><td>✔</td><td>Fal Nano Banana (v1): <strong>$0.0398</strong>. Google direct: Flash-Image <strong>$0.045 (0.5K) / $0.067 (1K) / $0.101 (2K) / $0.151 (4K)</strong>; Pro-Image <strong>$0.134 (1K/2K) / $0.24 (4K)</strong>; Flash-Lite-Image $0.0336 (1K)</td><td>✅ (Fal v1) ◐ (Google)</td><td>✔ Google direct via <code>gemini-image.ts</code></td></tr>
+    <tr><td><strong>Grok Imagine</strong></td><td>Fal (<code>xai/…</code>)</td><td><code>xai/grok-imagine-image/v2.0/edit</code>, <code>…/edit</code>, <code>…/quality/edit</code>, <code>…/v2.0/text-to-image</code> (+ video 1.5)</td><td>✔ up to 3 input images, 1k/2k</td><td>⚠ not found</td><td>⚠</td><td>✖</td></tr>
+    <tr><td><strong>Midjourney</strong></td><td><strong>None (no official API)</strong></td><td>third-party wrappers (PiAPI ≈ $0.01/task, Apiframe, etc.); subscription only $10/$30/$60/$120 per month</td><td>✖ no reliable photo-edit input</td><td>no per-image list price</td><td>◐</td><td>✖ — <strong>do not build</strong>: unofficial wrappers violate MJ terms, can vanish, no SLA</td></tr>
+    <tr><td>FASHN try-on v1.5 / v1.6</td><td>Fal</td><td><code>fal-ai/fashn/tryon/v1.5</code> (v1.6 available)</td><td>✔ garment-conditioned</td><td>⚠ pull via API</td><td>⚠</td><td>✔ v1.5</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3 id="s81a-key">Do I add each vendor's key, or use Fal for everything?</h3>
+<p>Fal covers every row above <strong>except Midjourney</strong> with <strong>one key (<code>FAL_API_KEY</code>, already in Admin → Integrations)</strong>: FLUX.1/2, GPT Image, Seedream, Recraft, Qwen, Nano Banana/Gemini image, Grok Imagine. Trade-off:</p>
+<div class="wrap">
+<table>
+  <thead><tr><th>Concern</th><th>One key (Fal for all)</th><th>Vendor-direct</th></tr></thead>
+  <tbody>
+    <tr><td>Integration effort</td><td>1 helper per model over existing <code>runFalTask()</code>; same queue/poll</td><td>new client + auth + billing per vendor</td></tr>
+    <tr><td>Billing</td><td>one invoice, fal markup on OpenAI/Google/xAI</td><td>vendor price, N invoices</td></tr>
+    <tr><td>Rate limits / access</td><td>Fal's (OpenAI org-verification gating avoided)</td><td>vendor's; OpenAI may require org verification</td></tr>
+    <tr><td>BYOK</td><td>GPT Image 2 on Fal accepts <code>openai_api_key</code> (bill OpenAI directly, keep Fal's API)</td><td>native</td></tr>
+    <tr><td>Provenance (C2PA / SynthID)</td><td>verify per route</td><td>verify per route</td></tr>
+    <tr><td>Deprecations</td><td>fal lists <code>status=active|deprecated</code> in <code>/v1/models</code></td><td>vendor changelogs</td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="note">
+  <strong>Recommendation (proposal, not built):</strong> default to <strong>Fal for everything new</strong> (one key, one polling path — the FASHN endpoint-typo lesson in RC-027 says each new client is a chance to be wrong, so minimize client count); keep the existing direct Gemini client (<code>gemini-image.ts</code>) and BFL fallback as they are; add vendor-direct only if a specific model's fal markup or availability blocks you. Skip Midjourney.
+</div>
+
+<h4>Cost per finished shot ≠ price per call</h4>
+<p>Kontext single-shot ≈ 1 call. <code>vton_kontext</code> = FLUX 1.1 Pro reference + FASHN try-on + Kontext scene ≈ <strong>3 calls</strong>; <code>vton_gemini</code> = FLUX 1.1 Pro + FASHN + Gemini scene ≈ 3 calls. Multi-sample QA (§3B.6, N = 2–3) multiplies again. Compute plan caps on shots, not calls.</p>
+
+<h4>Plan-cap arithmetic <span class="hint">(template — fill from the pricing API, no owner numbers assumed)</span></h4>
+<pre>cost_per_shot_INR = Σ(call USD price) × USD→INR × (1 + margin) × samples
+monthly_cap       = floor( plan_ai_budget_INR / cost_per_shot_INR )
+plan_ai_budget    = owner-decided share of Starter ₹4,999 / Growth ₹9,999 / Pro ₹14,999 (ex-GST)</pre>
+<p>Store caps in <code>plan_pricing</code>/quota rows (F-010 pattern), not code. <strong>Not tracked today:</strong> <code>ai-usage.ts</code> logs <code>credits_used: 1</code> per shoot and <code>model_name: 'flux-kontext-pro'</code>; no cost or ₹ is recorded, so real spend per retailer cannot be measured until a cost column is added (open decision — see §10).</p>
+
+<h2 id="s81a-ii">8.1a-ii Comparison chart — model → price → ₹ → credits → quality <span class="hint">(2026-09-19)</span></h2>
+
+<div class="note">
+  <strong>Credits (an inference, not a stated rule):</strong> <code>STUDIO_CREDITS_PER_IMAGE = 8</code> (<code>packages/shared/src/constants/index.ts:326</code>) is what a retailer is billed per studio shot today, and that shot runs on Kontext at <strong>$0.04</strong> → <strong>1 credit ≈ $0.005</strong>. Credits below = <code>ceil(USD ÷ 0.005)</code>. The owner may set a different credit value (and add margin) — change the one number and every row follows.
+</div>
+<div class="note">
+  <strong>Currency:</strong> owner-set rate <strong>1 USD = ₹96</strong> (2026-09-19) → <strong>₹ per image = USD × 96</strong>; <strong>₹ per credit = 0.005 × 96 = ₹0.48</strong>. ₹ shown is the raw provider cost — <strong>before</strong> GST (18%) and <strong>before</strong> any margin.
+</div>
+<div class="note stop">
+  <strong>Quality /10 — read before trusting it.</strong> This is <strong>my provisional estimate of garment-edit quality for this job</strong> (keeps the exact print/colour/embroidery/length of the retailer's photo <em>and</em> renders a believable person/scene) — <strong>not a measurement.</strong> No model here has been run against real products on the bench (§3B.8 is the experiment that produces real scores; it has not run). Basis: §3B.7 "expected fidelity" (Nano Banana Pro rated top for garment fidelity, GPT Image 2 "strongest instruction-following", Kontext "preserves pixels, weak at inventing", BFL recommending FLUX.2 over Kontext) plus third-party comparison blogs (opinion, not benchmarks). <code>?</code> = no basis to score · <code>0</code> = cannot do the job. Treat ±2 as the honest error bar and <strong>replace with §3B.8 blind-rated scores as soon as they exist.</strong>
+</div>
+
+<div class="legend">
+  <span><span class="q q9">9</span> best</span>
+  <span><span class="q q8">8</span></span>
+  <span><span class="q q7">7</span></span>
+  <span><span class="q q6">6</span> baseline</span>
+  <span><span class="q q4">4</span></span>
+  <span><span class="q q0">0</span> cannot do job</span>
+  <span><span class="q qq">?</span> unknown</span>
+  &nbsp;|&nbsp;
+  <span class="pill g-good">🟢 cheap</span>
+  <span class="pill g-mid">🟡 mid</span>
+  <span class="pill g-warn">🟠 premium</span>
+  <span class="pill g-bad">🔴 expensive</span>
+</div>
+
+<div class="tools">
+  <input type="search" id="f2" placeholder="Filter chart (e.g. gemini, ✔, gpt)…" data-table="tchart">
+  <label><input type="checkbox" id="onlyPhoto"> only models that take the product photo</label>
+  <label><input type="checkbox" id="onlyPriced"> hide unpriced (⚠) rows</label>
+  <span class="hint">Click headers to sort — try “₹ / image” or “Quality”.</span>
+</div>
+<div class="wrap">
+<table class="sortable" id="tchart">
+  <thead><tr>
+    <th class="num">#</th>
+    <th>Model</th>
+    <th>Reach via</th>
+    <th>Exact ID</th>
+    <th class="num">Price / image (USD)</th>
+    <th class="num">₹ / image (@96)</th>
+    <th class="num">Credits (@ $0.005)</th>
+    <th class="num">Quality /10 (provisional)</th>
+    <th>Grade</th>
+    <th>Takes product photo?</th>
+    <th>Cost tier</th>
+  </tr></thead>
+  <tbody>
+    <tr data-photo="1" data-priced="1"><td class="num" data-v="1">1</td><td>GPT Image 1 Mini</td><td>Fal <code>fal-ai/gpt-image-1-mini/edit</code> / OpenAI</td><td><code>gpt-image-1-mini</code></td><td class="num" data-v="0.005">$0.005</td><td class="num" data-v="0.48"><strong>₹0.48</strong></td><td class="num" data-v="1"><strong>1</strong></td><td class="num" data-v="4"><span class="q q4">4</span></td><td>◐</td><td>✔</td><td data-v="1"><span class="pill g-good">🟢 cheapest</span></td></tr>
+    <tr data-photo="1" data-priced="1"><td class="num" data-v="2">2</td><td>GPT Image 2 — low, 1024²</td><td>Fal <code>openai/gpt-image-2/edit</code></td><td><code>gpt-image-2</code></td><td class="num" data-v="0.015">$0.015</td><td class="num" data-v="1.44"><strong>₹1.44</strong></td><td class="num" data-v="3"><strong>3</strong></td><td class="num" data-v="6"><span class="q q6">6</span></td><td>✅</td><td>✔</td><td data-v="1"><span class="pill g-good">🟢</span></td></tr>
+    <tr data-photo="1" data-priced="1"><td class="num" data-v="3">3</td><td>Qwen Image (edit)</td><td>Fal <code>fal-ai/qwen-image-edit-2511</code> etc.</td><td><code>qwen-image-edit-2511</code></td><td class="num" data-v="0.02">$0.02 per <strong>MP</strong> → ≈ $0.02 at 1 MP</td><td class="num" data-v="1.92"><strong>₹1.92</strong> at 1 MP</td><td class="num" data-v="4"><strong>4</strong> at 1 MP</td><td class="num" data-v="6"><span class="q q6">6</span></td><td>✅ (unit only)</td><td>✔</td><td data-v="1"><span class="pill g-good">🟢</span></td></tr>
+    <tr data-photo="1" data-priced="1"><td class="num" data-v="4">4</td><td>FLUX.2 [pro]</td><td>Fal <code>fal-ai/flux-2</code> family / BFL</td><td><code>flux-2-pro</code></td><td class="num" data-v="0.03">$0.03</td><td class="num" data-v="2.88"><strong>₹2.88</strong></td><td class="num" data-v="6"><strong>6</strong></td><td class="num" data-v="7"><span class="q q7">7</span></td><td>◐</td><td>✔</td><td data-v="1"><span class="pill g-good">🟢</span></td></tr>
+    <tr data-photo="1" data-priced="1"><td class="num" data-v="5">5</td><td>Seedream V4 (edit)</td><td>Fal <code>fal-ai/bytedance/seedream/v4/edit</code></td><td><code>seedream-v4</code></td><td class="num" data-v="0.03">$0.03</td><td class="num" data-v="2.88"><strong>₹2.88</strong></td><td class="num" data-v="6"><strong>6</strong></td><td class="num" data-v="6"><span class="q q6">6</span></td><td>✅</td><td>✔</td><td data-v="1"><span class="pill g-good">🟢</span></td></tr>
+    <tr data-photo="1" data-priced="1"><td class="num" data-v="6">6</td><td>Gemini 3.1 Flash-Lite Image, 1K</td><td>Google direct / Fal <code>google/nano-banana-lite/edit</code></td><td><code>gemini-3.1-flash-lite-image</code></td><td class="num" data-v="0.0336">$0.0336</td><td class="num" data-v="3.23"><strong>₹3.23</strong></td><td class="num" data-v="7"><strong>7</strong></td><td class="num" data-v="6"><span class="q q6">6</span></td><td>◐</td><td>✔</td><td data-v="1"><span class="pill g-good">🟢</span></td></tr>
+    <tr data-photo="1" data-priced="1"><td class="num" data-v="7">7</td><td>Nano Banana (v1), Fal</td><td>Fal <code>fal-ai/nano-banana/edit</code></td><td><code>nano-banana</code></td><td class="num" data-v="0.0398">$0.0398</td><td class="num" data-v="3.82"><strong>₹3.82</strong></td><td class="num" data-v="8"><strong>8</strong></td><td class="num" data-v="6"><span class="q q6">6</span></td><td>✅</td><td>✔</td><td data-v="2"><span class="pill g-mid">🟡</span></td></tr>
+    <tr class="baseline" data-photo="1" data-priced="1"><td class="num" data-v="8">8</td><td><strong>FLUX.1 Kontext Pro — today's default</strong></td><td>Fal <code>fal-ai/flux-pro/kontext</code> / BFL</td><td><code>flux-kontext-pro</code></td><td class="num" data-v="0.04"><strong>$0.04</strong></td><td class="num" data-v="3.84"><strong>₹3.84</strong></td><td class="num" data-v="8"><strong>8</strong> (= existing constant)</td><td class="num" data-v="6"><span class="q q6">6</span></td><td>✅</td><td>✔</td><td data-v="2"><span class="pill g-mid">🟡 baseline</span></td></tr>
+    <tr data-photo="0" data-priced="1"><td class="num" data-v="9">9</td><td>Recraft V4</td><td>Fal <code>fal-ai/recraft/v4/text-to-image</code></td><td><code>recraft-v4</code></td><td class="num" data-v="0.04">$0.04 (V4.1 $0.035 ◐)</td><td class="num" data-v="3.84">₹3.84</td><td class="num" data-v="8">8</td><td class="num" data-v="0"><span class="q q0">0</span> no photo input</td><td>✅</td><td>✖ text→image only</td><td data-v="5"><span class="pill g-bad">⛔ not usable</span></td></tr>
+    <tr data-photo="1" data-priced="1"><td class="num" data-v="10">10</td><td>GPT Image 2 — medium, 1024²</td><td>Fal <code>openai/gpt-image-2/edit</code></td><td><code>gpt-image-2</code></td><td class="num" data-v="0.061">$0.061</td><td class="num" data-v="5.86"><strong>₹5.86</strong></td><td class="num" data-v="13"><strong>13</strong></td><td class="num" data-v="8"><span class="q q8">8</span></td><td>✅</td><td>✔</td><td data-v="2"><span class="pill g-mid">🟡</span></td></tr>
+    <tr data-photo="1" data-priced="1"><td class="num" data-v="11">11</td><td>Gemini 3.1 Flash Image (“Nano Banana 2”), 1K</td><td>Google direct (<code>gemini_image</code>) / Fal</td><td><code>gemini-3.1-flash-image</code></td><td class="num" data-v="0.067">$0.067</td><td class="num" data-v="6.43"><strong>₹6.43</strong></td><td class="num" data-v="14"><strong>14</strong></td><td class="num" data-v="7"><span class="q q7">7</span></td><td>◐</td><td>✔</td><td data-v="2"><span class="pill g-mid">🟡</span></td></tr>
+    <tr data-photo="1" data-priced="1"><td class="num" data-v="12">12</td><td>FLUX.2 [max]</td><td>Fal <code>fal-ai/flux-2-max</code> / BFL</td><td><code>flux-2-max</code></td><td class="num" data-v="0.07">$0.07</td><td class="num" data-v="6.72"><strong>₹6.72</strong></td><td class="num" data-v="14"><strong>14</strong></td><td class="num" data-v="8"><span class="q q8">8</span></td><td>◐</td><td>✔</td><td data-v="2"><span class="pill g-mid">🟡</span></td></tr>
+    <tr data-photo="1" data-priced="1"><td class="num" data-v="13">13</td><td>Gemini 3.1 Flash Image, 2K</td><td>Google direct</td><td><code>gemini-3.1-flash-image</code></td><td class="num" data-v="0.101">$0.101</td><td class="num" data-v="9.70"><strong>₹9.70</strong></td><td class="num" data-v="21"><strong>21</strong></td><td class="num" data-v="8"><span class="q q8">8</span> same model, more pixels</td><td>◐</td><td>✔</td><td data-v="3"><span class="pill g-warn">🟠</span></td></tr>
+    <tr data-photo="1" data-priced="1"><td class="num" data-v="14">14</td><td><strong>Gemini 3 Pro Image (“Nano Banana Pro”), 1K/2K</strong> (<code>gemini_image_pro</code>)</td><td>Google direct / Fal <code>fal-ai/nano-banana-pro/edit</code></td><td><code>gemini-3-pro-image</code></td><td class="num" data-v="0.134">$0.134</td><td class="num" data-v="12.86"><strong>₹12.86</strong></td><td class="num" data-v="27"><strong>27</strong></td><td class="num" data-v="9"><span class="q q9">9</span></td><td>◐</td><td>✔</td><td data-v="3"><span class="pill g-warn">🟠 premium</span></td></tr>
+    <tr data-photo="1" data-priced="1"><td class="num" data-v="15">15</td><td>GPT Image 2 — high, 1024²</td><td>Fal <code>openai/gpt-image-2/edit</code></td><td><code>gpt-image-2</code></td><td class="num" data-v="0.219">$0.219</td><td class="num" data-v="21.02"><strong>₹21.02</strong></td><td class="num" data-v="44"><strong>44</strong></td><td class="num" data-v="9"><span class="q q9">9</span></td><td>✅</td><td>✔</td><td data-v="4"><span class="pill g-bad">🔴</span></td></tr>
+    <tr data-photo="1" data-priced="1"><td class="num" data-v="16">16</td><td>Gemini 3 Pro Image, 4K</td><td>Google direct</td><td><code>gemini-3-pro-image</code></td><td class="num" data-v="0.24">$0.24</td><td class="num" data-v="23.04"><strong>₹23.04</strong></td><td class="num" data-v="48"><strong>48</strong></td><td class="num" data-v="9"><span class="q q9">9</span> resolution, not fidelity, is what 4K adds</td><td>◐</td><td>✔</td><td data-v="4"><span class="pill g-bad">🔴</span></td></tr>
+    <tr data-photo="1" data-priced="0"><td class="num" data-v="17">—</td><td>Grok Imagine Image edit</td><td>Fal <code>xai/grok-imagine-image/v2.0/edit</code></td><td><code>grok-imagine-image-2.0</code></td><td class="num" data-v="">⚠ not found</td><td class="num" data-v="">⚠</td><td class="num" data-v="">⚠</td><td class="num" data-v=""><span class="q qq">?</span></td><td>⚠</td><td>✔ (≤3 images)</td><td data-v="9"><span class="pill g-unk">⚠ pull via API</span></td></tr>
+    <tr data-photo="1" data-priced="0"><td class="num" data-v="18">—</td><td>Seedream V5 lite/pro edit</td><td>Fal <code>bytedance/seedream/v5/{lite,pro}/edit</code></td><td><code>seedream-v5</code></td><td class="num" data-v="">⚠ not found</td><td class="num" data-v="">⚠</td><td class="num" data-v="">⚠</td><td class="num" data-v=""><span class="q qq">?</span></td><td>⚠</td><td>✔</td><td data-v="9"><span class="pill g-unk">⚠ pull via API</span></td></tr>
+    <tr data-photo="0" data-priced="0"><td class="num" data-v="19">—</td><td>FLUX 1.1 Pro / FLUX Schnell</td><td>Fal <code>fal-ai/flux-pro/v1.1</code>, <code>fal-ai/flux/schnell</code></td><td><code>flux-1.1-pro</code> / <code>schnell</code></td><td class="num" data-v="">⚠ not found</td><td class="num" data-v="">⚠</td><td class="num" data-v="">⚠</td><td class="num" data-v="0"><span class="q q0">0</span> as scene renderer (text→image, invents the garment); fine as model-reference step</td><td>⚠</td><td>✖ (reference step only)</td><td data-v="9"><span class="pill g-unk">⚠</span></td></tr>
+    <tr data-photo="1" data-priced="0"><td class="num" data-v="20">—</td><td>FASHN try-on v1.5 (v1.6 available)</td><td>Fal <code>fal-ai/fashn/tryon/v1.5</code></td><td><code>fashn-tryon-v1.5</code></td><td class="num" data-v="">⚠ not found</td><td class="num" data-v="">⚠</td><td class="num" data-v="">⚠</td><td class="num" data-v=""><span class="q qq">?</span> garment-conditioned; output 576×864</td><td>⚠</td><td>✔ garment-conditioned</td><td data-v="9"><span class="pill g-unk">⚠</span></td></tr>
+    <tr data-photo="0" data-priced="0"><td class="num" data-v="21">—</td><td>Midjourney</td><td><strong>no official API</strong></td><td>—</td><td class="num" data-v="">no per-image list price (subscription only)</td><td class="num" data-v="">n/a</td><td class="num" data-v="">n/a</td><td class="num" data-v=""><span class="q qq">n/a</span> cannot be called</td><td>◐</td><td>✖</td><td data-v="5"><span class="pill g-bad">⛔ do not build</span></td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="note">
+  <strong>Quality-per-rupee at a glance (provisional):</strong> Kontext is the 6/10 baseline at ₹3.84. FLUX.2 [pro] (7/10, ₹2.88) and Seedream V4 / Qwen (6/10, ₹2.88 / ₹1.92) are cheaper for equal-or-better <em>estimated</em> quality. GPT Image 2 medium (8/10, ₹5.86) is the cheapest ≥ 8 row. Gemini Pro (9/10, ₹12.86) is the cheapest 9. Paying more than ₹12.86 for a 9 (rows 15–16) buys nothing on this scale. These are all hypotheses for the §3B.8 bench to confirm or kill — <strong>do not assign plans from this column alone.</strong>
+</div>
+
+<h3 id="pipelines">Cost per finished studio shot — pipelines, not single calls</h3>
+<p class="hint">What a retailer is actually charged for.</p>
+<div class="wrap">
+<table class="sortable" id="tpipe">
+  <thead><tr>
+    <th>Pipeline (<code>engine</code> value)</th>
+    <th class="num">Calls</th>
+    <th class="num">Cost per shot (USD)</th>
+    <th class="num">₹ per shot (@96)</th>
+    <th class="num">Credits (@ $0.005)</th>
+    <th>Quality /10 (provisional)</th>
+    <th>Status</th>
+  </tr></thead>
+  <tbody>
+    <tr class="baseline"><td>Kontext single-shot (<code>NULL</code> / <code>bfl_kontext</code>)</td><td class="num" data-v="1">1</td><td class="num" data-v="0.04"><strong>$0.04</strong></td><td class="num" data-v="3.84"><strong>₹3.84</strong></td><td class="num" data-v="8"><strong>8</strong></td><td data-v="6"><span class="q q6">6</span></td><td>✅ verified — live default</td></tr>
+    <tr><td><code>gemini_image</code> single-shot (Flash Image, 1K)</td><td class="num" data-v="1">1</td><td class="num" data-v="0.067">≈ $0.067</td><td class="num" data-v="6.43">≈ ₹6.43</td><td class="num" data-v="14">≈ 14</td><td data-v="7"><span class="q q7">7</span></td><td>◐</td></tr>
+    <tr><td><code>gemini_image_pro</code> single-shot (Pro Image, 1K/2K)</td><td class="num" data-v="1">1</td><td class="num" data-v="0.134">≈ $0.134</td><td class="num" data-v="12.86">≈ ₹12.86</td><td class="num" data-v="27">≈ 27</td><td data-v="9"><span class="q q9">9</span></td><td>◐</td></tr>
+    <tr><td><code>vton_kontext</code> = FLUX 1.1 Pro ref + FASHN try-on + Kontext scene</td><td class="num" data-v="3">3</td><td class="num" data-v="">$0.04 + 2 unpriced calls → cannot be totalled yet</td><td class="num" data-v="">≥ ₹3.84 + ?</td><td class="num" data-v="">≥ 8 + ?</td><td data-v=""><span class="q qq">?</span> two-step keeps the garment via try-on, but three passes lose detail (§3B.7)</td><td>⚠ needs fal pricing API</td></tr>
+    <tr><td><code>vton_gemini</code> = FLUX 1.1 Pro ref + FASHN try-on + Gemini Flash scene</td><td class="num" data-v="3">3</td><td class="num" data-v="">≈ $0.067 + 2 unpriced calls</td><td class="num" data-v="">≥ ₹6.43 + ?</td><td class="num" data-v="">≥ 14 + ?</td><td data-v=""><span class="q qq">?</span></td><td>⚠ needs fal pricing API</td></tr>
+    <tr><td>Any of the above with N = 2–3 QA samples (§3B.6)</td><td class="num" data-v="">× N</td><td class="num" data-v="">× N</td><td class="num" data-v="">× N</td><td class="num" data-v="">× N</td><td data-v="">—</td><td>proposal only</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3 id="plan">Reading it for plan assignment <span class="hint">(suggestion — owner decides, nothing is built)</span></h3>
+<ul>
+  <li><strong>Baseline to beat:</strong> Kontext at 8 credits ($0.04). Anything cheaper on the chart that also takes the photo (rows 1–6) is a candidate for a <strong>cost-saving Starter/Growth engine</strong> <em>if</em> the bench shows equal garment fidelity — quality is unmeasured, price is not a reason to switch.</li>
+  <li><strong>Premium tier candidates:</strong> rows 11, 14 (Gemini Flash/Pro, 14–27 credits) and GPT Image 2 medium (13). Rows 15–16 (44–48 credits, &gt;5× baseline) only make sense as an opt-in “hero shot”.</li>
+  <li><strong>Do not consider for this job:</strong> Recraft V4 (no photo input), Midjourney (no API), FLUX 1.1 Pro / Schnell as a scene renderer (text→image, loses the garment).</li>
+  <li><strong>Two-step pipelines cost ≥ 3 calls</strong>, so <code>vton_*</code> will exceed every single-shot row; total them only after the FASHN and FLUX 1.1 Pro prices are pulled.</li>
+  <li><strong>Monthly cap formula</strong> (§8.1a): <code>floor(plan_ai_budget_INR ÷ (credits × ₹ per credit))</code>, where <code>₹ per credit = 0.005 × USD→INR × (1 + margin)</code>.</li>
+</ul>
+
+<h2 id="s81b">8.1b Spec: <code>cost_micro_usd</code> on <code>ai_usage_logs</code> <span class="pill g-bad">🔴 NOT BUILT</span> <span class="hint">docs only, awaiting owner “proceed”</span></h2>
+
+<div class="note stop">
+  Draft written 2026-09-19. A first implementation was made and <strong>reverted the same session</strong> at the owner's instruction (no code until told). Nothing below exists in the repo. Nothing was applied to any database.
+</div>
+<p><strong>Why:</strong> <code>ai_usage_logs</code> stores <code>credits_used</code> (a weighted count) but no money, so real provider spend per retailer cannot be measured and §8.1a plan caps cannot be checked against reality.</p>
+
+<h4>Changes, in order (5 files, all small)</h4>
+<div class="wrap">
+<table>
+  <thead><tr><th class="num">#</th><th>File</th><th>Change</th></tr></thead>
+  <tbody>
+    <tr><td class="num">1</td><td><code>packages/db/prisma/migrations/106_ai_usage_cost/migration.sql</code> (new; 105 is the latest today)</td><td><code>ALTER TABLE "ai_usage_logs" ADD COLUMN "cost_micro_usd" INTEGER;</code> — nullable, no default, no backfill. Header comment must state the unit and the NULL rule below. Existing per-retailer SELECT RLS policy already covers a new column; no policy change.</td></tr>
+    <tr><td class="num">2</td><td><code>packages/db/prisma/schema.prisma</code> <code>AiUsageLog</code> (near <code>credits_used</code>, ~line 1421)</td><td><code>cost_micro_usd Int?</code> with a comment. Then <code>prisma generate</code> (offline, touches no DB).</td></tr>
+    <tr><td class="num">3</td><td><code>apps/api/src/lib/ai-usage.ts</code> <code>recordBflStudioUsage(retailerId, template, costMicroUsd?: number)</code></td><td>Third optional arg; write <code>cost_micro_usd: costMicroUsd ?? null</code>. <code>recordAiUsage()</code> (tagging) is untouched in phase 1.</td></tr>
+    <tr><td class="num">4</td><td><code>apps/api/src/jobs/studio-shoot.ts</code> (call at ~line 215, in the success block)</td><td>Pass <code>40_000</code> <strong>only</strong> when <code>engine === undefined || engine === 'bfl_kontext'</code>; otherwise pass nothing.</td></tr>
+    <tr><td class="num">5</td><td>test</td><td>One assertion that the row is written with the value for Kontext and with <code>null</code> for any other engine.</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h4>Design rules (why it is shaped this way)</h4>
+<div class="wrap">
+<table>
+  <thead><tr><th>Rule</th><th>Detail</th></tr></thead>
+  <tbody>
+    <tr><td class="nowrap"><strong>Unit</strong></td><td>Millionths of a USD (<code>$0.04</code> = <code>40000</code>). Integer → sums are exact, no float drift; Postgres <code>INTEGER</code> holds up to ≈ $2,147 per row. Convert to ₹ at report time, using the day's rate, not at write time.</td></tr>
+    <tr><td class="nowrap"><strong>NULL ≠ 0</strong></td><td><code>NULL</code> means “cost unknown” (every pre-106 row, and any path whose price is unverified). A <code>0</code> would read as “free” in a spend report and silently understate cost. Reports must show unknown-cost row counts next to the spend total.</td></tr>
+    <tr><td class="nowrap"><strong>Only record what is verified</strong></td><td>Only single-call Kontext ($0.04, fal.ai pricing page, ✅ in §8.1a) gets a value. <code>vton_kontext</code> / <code>vton_gemini</code> (≈ 3 calls), Gemini, FLUX 1.1 Pro and FASHN log <code>NULL</code> until their prices are pulled from the fal pricing API (§8.1a) and confirmed.</td></tr>
+    <tr><td class="nowrap"><strong>Hardcoded <code>40_000</code> is a stopgap</strong></td><td>CLAUDE.md says prices should be DB-driven. A price table (endpoint → <code>unit_price</code>) is the proper follow-up; do not grow the constant into a map in code.</td></tr>
+    <tr><td class="nowrap"><strong>Known pre-existing inaccuracy</strong></td><td><code>recordBflStudioUsage</code> writes <code>model_name: 'flux-kontext-pro'</code> and <code>provider_type: 'BFL'</code> for every studio shoot regardless of the engine that actually ran (Gemini, <code>vton_*</code>…). Cost attribution by model is therefore wrong for non-Kontext engines until fixed — record the real engine (available as <code>engine</code> on the job data) in the same change or the next.</td></tr>
+    <tr><td class="nowrap"><strong>Deploy order</strong></td><td>Apply migration 106 <strong>before</strong> the API build that writes <code>cost_micro_usd</code>, otherwise every studio-shoot log insert fails (caught and logged, so the job still succeeds, but usage rows are lost). Migrations are owner-applied from the admin dashboard (CLAUDE.md), never by the agent.</td></tr>
+    <tr><td class="nowrap"><strong>Purge role</strong></td><td>The <code>kanchuki_app</code> / purge roles' column-level grants are not affected by an added nullable column; confirm against migration <code>084_grant_delete_purge_role</code> before applying.</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h4>Scope &amp; decisions</h4>
+<div class="wrap">
+<table>
+  <thead><tr><th>Item</th><th>Detail</th></tr></thead>
+  <tbody>
+    <tr><td class="nowrap"><strong>Out of scope (phase 1)</strong></td><td><code>recordAiUsage</code> (tagging calls), the Admin → AI Usage dashboard column/sum, a <code>cost</code> field on other engines, ₹ conversion, per-plan cap enforcement based on cost.</td></tr>
+    <tr><td class="nowrap"><strong>Owner decisions needed</strong></td><td>(1) go/no-go to build; (2) whether <code>recordAiUsage</code> tagging rows should get a cost too (would need each <code>AiProviderConfig</code> to carry a price); (3) fix the <code>model_name</code>/<code>provider_type</code> attribution in the same change.</td></tr>
+  </tbody>
+</table>
+</div>
+
+<!-- ================= 8.2 model bench ================= -->
+<h2 id="s82">8.2 Model bench — scene + gender + age + auto pose, every model side by side <span class="pill g-good">✅ BUILT</span> <span class="hint">2026-09-19 · not yet run against live providers</span></h2>
+
+<div class="note">
+  The admin test page (<code>/admin/photo-cleanup-test</code> → <em>AI Studio Shoot</em>) now takes a scene, a gender and an age bucket; the pose is picked for you. Tick any number of models and press <strong>Run batch</strong> — the same product photo, scene, person and pose go through each model, so outputs, time and cost compare like for like. Cost figures are <strong>estimates</strong> from the §8.1a price sheet at ₹96/USD; the real bill comes from Fal / Google.
+</div>
+
+<h3>How to compare and keep the results</h3>
+<div class="wrap">
+<table>
+  <thead><tr><th class="num">#</th><th>Step</th><th>Detail</th></tr></thead>
+  <tbody>
+    <tr><td class="num">1</td><td>Run the batch</td><td>Upload a product photo, choose <em>Garment type</em>, scene, gender, age, tick models, press <strong>Run batch</strong>. It shows the estimated total and asks you to confirm before spending anything. Two models run at a time.</td></tr>
+    <tr><td class="num">2</td><td>Look at the table on the page</td><td>Each row has a clickable thumbnail, model, version, time, cost in $ / ₹ / credits. A failed model shows its error in red instead of an image.</td></tr>
+    <tr><td class="num">3</td><td>Export</td><td>Press <strong>Export results (JSON)</strong> → downloads <code>bench-run-&lt;time&gt;.json</code>.</td></tr>
+    <tr><td class="num">4</td><td>Save into the repo</td><td>Run <code>node scripts/save-bench.mjs &lt;that file&gt;</code>. It downloads every output and the input photo into <code>docs/tasks/effect-photos/preview/</code> (provider URLs expire), and writes <code>docs/tasks/bench-results.js</code>. Re-running the same file adds no duplicates.</td></tr>
+    <tr><td class="num">5</td><td>Open this page</td><td>The table in <a href="#s82-results">8.2 results</a> below fills in automatically. Type your own <strong>score /10</strong> and notes — they are kept in this browser only (<code>localStorage</code>).</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>What the bench takes as input</h3>
+<div class="wrap">
+<table>
+  <thead><tr><th>Input</th><th>Values</th><th>Rule</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Scene</strong> (outdoor)</td><td><strong>Nature:</strong> Rose Garden, Riverside, Mountain, Forest · <strong>Urban:</strong> Modern Street, Cafe, Terrace, Balcony · <strong>Resort:</strong> Beach, Poolside, Tropical Resort</td><td>Rose Garden, Mountain and Beach reuse existing catalog scenes; the other 8 are new scene lines in <code>studio-effects.ts</code>. Each scene carries its own lighting (e.g. Beach = sunset, Mountain = daylight).</td></tr>
+    <tr><td><strong>Gender</strong></td><td>Female, Male</td><td>Combined with age into the six existing demographics the API already understands.</td></tr>
+    <tr><td><strong>Age</strong> (bucket)</td><td>Kid (~4), Teen (~16), Adult (30s), Senior (60s+)</td><td>Female: kids_girl / teen_girl / womens. Male: kids_boy / teen_boy / mens. Senior = adult with the existing older-model wording (60s woman / 70s man).</td></tr>
+    <tr><td><strong>Pose / action</strong></td><td><strong>Auto</strong> (random) or one of: Standing, Sitting, Walking, Turning, Looking back, Twirl, Holding dupatta, Dupatta flow, Candid</td><td>Only these nine. Auto picks <em>once per batch</em> and every model gets the same pose. Dupatta poses only if “Outfit has a dupatta” is ticked. Half-body garments (top, kurti, shorts) never get Walking, Sitting or Twirl.</td></tr>
+    <tr><td><strong>Garment type</strong></td><td>Top, Kurti, Shorts, Pant, Suit set, Saree, Lehenga, Dress</td><td>Now a dropdown (was free text). It decides framing (half vs full body) and which poses are allowed. “Unstitched material” is left out — cloth cannot be worn on a model.</td></tr>
+    <tr><td><strong>Models</strong></td><td>15 engines — table below</td><td>Multi-select with an estimated ₹ and credits under each name; an unpriced model shows “price not verified”, never a guess.</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>Models available on the bench</h3>
+<div class="tools">
+  <input type="search" id="f4" placeholder="Filter models…" data-table="tengines">
+</div>
+<div class="wrap">
+<table class="sortable" id="tengines">
+  <thead><tr>
+    <th>Model</th><th>Engine value</th><th>Version / endpoint</th><th>Provider</th>
+    <th class="num">Calls</th><th class="num">Est. $</th><th class="num">Est. ₹ (@96)</th><th class="num">Credits</th><th>Status</th>
+  </tr></thead>
+  <tbody>
+    <tr class="baseline"><td>FLUX.1 Kontext Pro (default)</td><td><code>bfl_kontext</code></td><td><code>fal-ai/flux-pro/kontext</code></td><td>Fal</td><td class="num" data-v="1">1</td><td class="num" data-v="0.04">$0.04</td><td class="num" data-v="3.84">₹3.84</td><td class="num" data-v="8">8</td><td>existing · live default</td></tr>
+    <tr><td>FLUX.2 [pro] edit</td><td><code>flux2_pro</code></td><td><code>fal-ai/flux-2-pro/edit</code></td><td>Fal</td><td class="num" data-v="1">1</td><td class="num" data-v="0.03">$0.03</td><td class="num" data-v="2.88">₹2.88</td><td class="num" data-v="6">6</td><td>new</td></tr>
+    <tr><td>GPT Image 2 edit — low</td><td><code>gpt_image_2_low</code></td><td><code>openai/gpt-image-2/edit</code> (quality=low)</td><td>Fal</td><td class="num" data-v="1">1</td><td class="num" data-v="0.015">$0.015</td><td class="num" data-v="1.44">₹1.44</td><td class="num" data-v="3">3</td><td>new</td></tr>
+    <tr><td>GPT Image 2 edit — medium</td><td><code>gpt_image_2_medium</code></td><td><code>openai/gpt-image-2/edit</code> (quality=medium)</td><td>Fal</td><td class="num" data-v="1">1</td><td class="num" data-v="0.061">$0.061</td><td class="num" data-v="5.86">₹5.86</td><td class="num" data-v="13">13</td><td>new</td></tr>
+    <tr><td>GPT Image 2 edit — high</td><td><code>gpt_image_2_high</code></td><td><code>openai/gpt-image-2/edit</code> (quality=high)</td><td>Fal</td><td class="num" data-v="1">1</td><td class="num" data-v="0.219">$0.219</td><td class="num" data-v="21.02">₹21.02</td><td class="num" data-v="44">44</td><td>new</td></tr>
+    <tr><td>Seedream V4 edit</td><td><code>seedream_v4</code></td><td><code>fal-ai/bytedance/seedream/v4/edit</code></td><td>Fal</td><td class="num" data-v="1">1</td><td class="num" data-v="0.03">$0.03</td><td class="num" data-v="2.88">₹2.88</td><td class="num" data-v="6">6</td><td>new</td></tr>
+    <tr><td>Qwen Image Edit 2511 (≈1 MP)</td><td><code>qwen_edit</code></td><td><code>fal-ai/qwen-image-edit-2511</code></td><td>Fal</td><td class="num" data-v="1">1</td><td class="num" data-v="0.02">$0.02</td><td class="num" data-v="1.92">₹1.92</td><td class="num" data-v="4">4</td><td>new · billed per megapixel</td></tr>
+    <tr><td>Nano Banana v1 edit</td><td><code>nano_banana</code></td><td><code>fal-ai/nano-banana/edit</code></td><td>Fal</td><td class="num" data-v="1">1</td><td class="num" data-v="0.0398">$0.0398</td><td class="num" data-v="3.82">₹3.82</td><td class="num" data-v="8">8</td><td>new</td></tr>
+    <tr><td>Grok Imagine Image 2.0 edit</td><td><code>grok_imagine</code></td><td><code>xai/grok-imagine-image/v2.0/edit</code></td><td>Fal</td><td class="num" data-v="1">1</td><td class="num" data-v="">?</td><td class="num" data-v="">?</td><td class="num" data-v="">?</td><td>new · price not verified</td></tr>
+    <tr><td>Nano Banana 2 (Gemini Flash Image, 1K)</td><td><code>gemini_image</code></td><td><code>gemini-3.1-flash-image</code></td><td>Google</td><td class="num" data-v="1">1</td><td class="num" data-v="0.067">$0.067</td><td class="num" data-v="6.43">₹6.43</td><td class="num" data-v="14">14</td><td>existing</td></tr>
+    <tr><td>Nano Banana Pro (Gemini Pro Image)</td><td><code>gemini_image_pro</code></td><td><code>gemini-3-pro-image</code></td><td>Google</td><td class="num" data-v="1">1</td><td class="num" data-v="0.134">$0.134</td><td class="num" data-v="12.86">₹12.86</td><td class="num" data-v="27">27</td><td>existing</td></tr>
+    <tr><td>FLUX 1.1 Pro (text→image)</td><td><code>flux_pro</code></td><td><code>fal-ai/flux-pro/v1.1</code></td><td>Fal</td><td class="num" data-v="1">1</td><td class="num" data-v="">?</td><td class="num" data-v="">?</td><td class="num" data-v="">?</td><td>existing · price not verified · does not see the product photo as an editor</td></tr>
+    <tr><td>FLUX Schnell (text→image)</td><td><code>flux_schnell</code></td><td><code>fal-ai/flux/schnell</code></td><td>Fal</td><td class="num" data-v="1">1</td><td class="num" data-v="">?</td><td class="num" data-v="">?</td><td class="num" data-v="">?</td><td>existing · price not verified</td></tr>
+    <tr><td>Two-step: FASHN try-on → Kontext scene</td><td><code>vton_kontext</code></td><td><code>flux-pro/v1.1 + fashn/tryon/v1.5 + flux-pro/kontext</code></td><td>Fal</td><td class="num" data-v="3">3</td><td class="num" data-v="">?</td><td class="num" data-v="">?</td><td class="num" data-v="">?</td><td>existing · 3 calls, price not verified</td></tr>
+    <tr><td>Two-step: FASHN try-on → Gemini scene</td><td><code>vton_gemini</code></td><td><code>flux-pro/v1.1 + fashn/tryon/v1.5 + gemini-3.1-flash-image</code></td><td>Fal + Google</td><td class="num" data-v="3">3</td><td class="num" data-v="">?</td><td class="num" data-v="">?</td><td class="num" data-v="">?</td><td>existing · 3 calls, price not verified</td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="note warn">
+  <strong>Not yet run live.</strong> Every new Fal request body was read from the endpoint's own OpenAPI (no guessed parameter names — a guessed name is what 404'd the first FASHN helper), but no call has been made against Fal with your key. Expect the first run to surface an endpoint-specific quirk. A bench run is <strong>strict</strong>: a failing model shows its own error instead of quietly returning a Kontext image under its name.
+</div>
+
+<h3>Admin test page — fields removed, replaced, kept</h3>
+<div class="wrap">
+<table>
+  <thead><tr><th>Field (AI Studio Shoot card)</th><th>Was</th><th>Now</th></tr></thead>
+  <tbody>
+    <tr><td>Product demographic</td><td>One dropdown of 6 combined values + “any”</td><td><strong>Replaced</strong> by two dropdowns, Gender and Age. The demographic sent to the API is derived from them.</td></tr>
+    <tr><td>Scene template (16)</td><td>DB <code>studio_styles</code> list with slugs</td><td><strong>Replaced</strong> by the 11 outdoor scenes grouped Nature / Urban / Resort. The DB list is no longer fetched here.</td></tr>
+    <tr><td>Engine</td><td>One dropdown (“default cascade”)</td><td><strong>Replaced</strong> by a multi-select of 15 models with version, provider and estimated cost; default = Kontext only.</td></tr>
+    <tr><td>Model reference URL</td><td>Always shown</td><td><strong>Kept</strong>, but shown only when a two-step model is ticked (it is ignored by every other engine).</td></tr>
+    <tr><td>Category</td><td>Free text</td><td><strong>Changed</strong> to a dropdown of garment types — the value drives pose rules and framing.</td></tr>
+    <tr><td>Subtype · Product name · Primary colour · Fabric · Pattern</td><td>Free text</td><td><strong>Kept</strong> — production sends these from the AI tagger; blank means a weaker prompt.</td></tr>
+    <tr><td>Garment length (cm) · Model height (cm)</td><td>Number inputs</td><td><strong>Kept</strong> (hem-landmark clause).</td></tr>
+    <tr><td>Bare-garment checkbox · Prompt director checkbox</td><td>Checkboxes</td><td><strong>Kept.</strong> The director is skipped automatically for the two-step models.</td></tr>
+    <tr><td>Custom prompt</td><td>Textarea</td><td><strong>Kept</strong> as an override. Filled → replaces the scene / gender / age / pose prompt. The effects catalog’s “Use in bench” still fills it.</td></tr>
+    <tr><td>Generate button · results grid</td><td>One shot; card grid</td><td><strong>Replaced</strong> by “Run batch · N models · est. ₹” with a confirm step, and a comparison table (thumbnail, model, version, scene · person · pose, time, $ / ₹ / credits). Export and Clear buttons added.</td></tr>
+    <tr><td>A/B pipeline-order block</td><td>Used the DB scene</td><td><strong>Kept</strong>; it now uses the same composed prompt and demographic as the batch.</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3 id="s82-results">Bench results <span class="hint">— loaded from <code>bench-results.js</code></span></h3>
+<div class="note warn" id="bench-empty">
+  No saved runs yet. Run a batch on the admin test page, export the JSON, then <code>node scripts/save-bench.mjs &lt;file&gt;</code> and reload this page.
+</div>
+<div class="tools">
+  <input type="search" id="f3" placeholder="Filter results (model, scene, pose…)" data-table="tbench">
+  <span class="hint">Your score and notes stay in this browser. Click a header to sort.</span>
+</div>
+<div class="wrap">
+<table class="sortable" id="tbench">
+  <thead><tr>
+    <th>Output</th><th>Input</th><th>Model</th><th>Version</th><th>Provider</th>
+    <th>Scene</th><th>Person</th><th>Pose</th>
+    <th class="num">Time (s)</th><th class="num">Cost $</th><th class="num">Cost ₹</th><th class="num">Credits</th>
+    <th class="num">Your score /10</th><th>Notes</th>
+  </tr></thead>
+  <tbody></tbody>
+</table>
+</div>
+
+<h3 id="sources">Sources</h3>
+<ul>
+  <li><a href="https://fal.ai/pricing">fal pricing</a></li>
+  <li><a href="https://fal.ai/docs/platform-apis/v1/models/pricing">fal pricing API</a></li>
+  <li><a href="https://fal.ai/docs/platform-apis/v1/models">fal models API</a></li>
+  <li><a href="https://fal.ai/models/openai/gpt-image-2/edit">fal GPT Image 2 edit</a></li>
+  <li><a href="https://fal.ai/models/fal-ai/recraft/v4/text-to-image">fal Recraft V4</a></li>
+  <li><a href="https://ai.google.dev/gemini-api/docs/pricing">Gemini API pricing</a></li>
+  <li><a href="https://www.buildmvpfast.com/api-costs/ai-image">buildmvpfast image-cost tracker</a></li>
+  <li><a href="https://unifically.com/blogs/midjourney-api">Midjourney API status</a></li>
+</ul>
+<p class="hint">Endpoint IDs above were read from fal's live <code>GET /v1/models?q=…</code> on 2026-09-19.</p>
+
+</main>
+
+<footer>
+  Generated from <code>docs/tasks/ai-photo-generation.md</code> §8–§8.1b. The .md stays the source of truth — if the two differ, update this file from it. Static file, no network calls.
+</footer>
+
+<!-- Written by scripts/save-bench.mjs. A plain script tag works from file://; fetch() of a .json does not. Missing file = no saved runs yet. -->
+<script src="bench-results.js"></script>
+<script>
+(function () {
+  function cellVal(td) {
+    var v = td.getAttribute('data-v');
+    var raw = v !== null ? v : td.textContent.trim();
+    if (raw === '') return { empty: true, n: 0, s: '' };
+    var n = parseFloat(raw.replace(/[^0-9.\-]/g, ''));
+    if (!isNaN(n) && /^[\s$₹≈≥]*[0-9.]/.test(raw)) return { empty: false, n: n, s: raw.toLowerCase() };
+    return { empty: false, n: NaN, s: raw.toLowerCase() };
+  }
+  document.querySelectorAll('table.sortable').forEach(function (table) {
+    var heads = table.querySelectorAll('thead th');
+    heads.forEach(function (th, idx) {
+      th.addEventListener('click', function () {
+        var asc = !th.classList.contains('asc');
+        heads.forEach(function (h) { h.classList.remove('asc', 'desc'); });
+        th.classList.add(asc ? 'asc' : 'desc');
+        var body = table.tBodies[0];
+        var rows = Array.prototype.slice.call(body.rows);
+        rows.sort(function (a, b) {
+          var x = cellVal(a.cells[idx]), y = cellVal(b.cells[idx]);
+          if (x.empty && y.empty) return 0;
+          if (x.empty) return 1;
+          if (y.empty) return -1;
+          var c;
+          if (!isNaN(x.n) && !isNaN(y.n)) c = x.n - y.n;
+          else c = x.s < y.s ? -1 : x.s > y.s ? 1 : 0;
+          return asc ? c : -c;
+        });
+        rows.forEach(function (r) { body.appendChild(r); });
+      });
+    });
+  });
+
+  function applyFilters(tableId, inputEl) {
+    var table = document.getElementById(tableId);
+    if (!table) return;
+    var q = inputEl ? inputEl.value.trim().toLowerCase() : '';
+    var onlyPhoto = tableId === 'tchart' && document.getElementById('onlyPhoto').checked;
+    var onlyPriced = tableId === 'tchart' && document.getElementById('onlyPriced').checked;
+    Array.prototype.forEach.call(table.tBodies[0].rows, function (r) {
+      var show = !q || r.textContent.toLowerCase().indexOf(q) !== -1;
+      if (show && onlyPhoto && r.getAttribute('data-photo') !== '1') show = false;
+      if (show && onlyPriced && r.getAttribute('data-priced') !== '1') show = false;
+      r.style.display = show ? '' : 'none';
+    });
+  }
+  ['f1', 'f2', 'f3', 'f4'].forEach(function (id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('input', function () { applyFilters(el.getAttribute('data-table'), el); });
+  });
+  ['onlyPhoto', 'onlyPriced'].forEach(function (id) {
+    var el = document.getElementById(id);
+    if (el) el.addEventListener('change', function () { applyFilters('tchart', document.getElementById('f2')); });
+  });
+
+  // ---- 8.2 bench results (window.BENCH_RESULTS from bench-results.js) ----
+  var rows = window.BENCH_RESULTS;
+  if (Array.isArray(rows) && rows.length) {
+    document.getElementById('bench-empty').style.display = 'none';
+    var scores = {};
+    try { scores = JSON.parse(localStorage.getItem('bench-scores') || '{}'); } catch (e) { scores = {}; }
+    var persist = function () { try { localStorage.setItem('bench-scores', JSON.stringify(scores)); } catch (e) {} };
+    var esc = function (s) {
+      return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+      });
+    };
+    var num = function (v, fmt) { return v == null ? '?' : fmt(v); };
+    var body = document.querySelector('#tbench tbody');
+    rows.slice().reverse().forEach(function (r) {
+      var key = r.ran_at + '|' + r.engine;
+      var saved = scores[key] || {};
+      var tr = document.createElement('tr');
+      var out = r.image
+        ? '<a href="' + esc(r.image) + '" target="_blank" rel="noopener"><img class="thumb" loading="lazy" alt="' + esc(r.model) + '" src="' + esc(r.image) + '"></a>'
+        : '<div class="err">' + esc(r.error || 'no image') + '</div>';
+      var inp = r.input
+        ? '<a href="' + esc(r.input) + '" target="_blank" rel="noopener"><img class="thumb" loading="lazy" alt="input" src="' + esc(r.input) + '"></a>'
+        : '';
+      tr.innerHTML =
+        '<td>' + out + '</td><td>' + inp + '</td>' +
+        '<td>' + esc(r.model) + '</td>' +
+        '<td><code>' + esc(r.version) + '</code></td>' +
+        '<td>' + esc(r.provider) + '</td>' +
+        '<td>' + esc(r.scene) + '</td>' +
+        '<td>' + esc(r.gender) + ' / ' + esc(r.age) + '</td>' +
+        '<td>' + esc(r.pose) + '</td>' +
+        '<td class="num" data-v="' + (r.ms == null ? '' : r.ms / 1000) + '">' + num(r.ms, function (v) { return (v / 1000).toFixed(1); }) + '</td>' +
+        '<td class="num" data-v="' + (r.usd == null ? '' : r.usd) + '">' + num(r.usd, function (v) { return '$' + v; }) + '</td>' +
+        '<td class="num" data-v="' + (r.inr == null ? '' : r.inr) + '">' + num(r.inr, function (v) { return '₹' + v; }) + '</td>' +
+        '<td class="num" data-v="' + (r.credits == null ? '' : r.credits) + '">' + num(r.credits, String) + '</td>' +
+        '<td class="num" data-v="' + esc(saved.score == null ? '' : saved.score) + '"><input class="score" type="number" min="0" max="10" step="0.5" value="' + esc(saved.score == null ? '' : saved.score) + '"></td>' +
+        '<td><input class="note-in" type="text" placeholder="notes" value="' + esc(saved.note || '') + '"></td>';
+      var scoreIn = tr.querySelector('input.score');
+      var noteIn = tr.querySelector('input.note-in');
+      scoreIn.addEventListener('input', function () {
+        scores[key] = scores[key] || {};
+        scores[key].score = scoreIn.value === '' ? null : Number(scoreIn.value);
+        scoreIn.parentNode.setAttribute('data-v', scoreIn.value);
+        persist();
+      });
+      noteIn.addEventListener('input', function () {
+        scores[key] = scores[key] || {};
+        scores[key].note = noteIn.value;
+        persist();
+      });
+      body.appendChild(tr);
+    });
+  }
+})();
+</script>
+</body>
+</html>
