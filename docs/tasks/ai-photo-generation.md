@@ -16,6 +16,38 @@
 
 ---
 
+## §0a — SESSION HAND-OFF (read this first in a new session)
+
+**Updated 2026-09-18.** This file is now the single source of truth. The separate `ai-photo-quality-gap-analysis.md` was merged into it (§3B) and deleted.
+
+### What the owner wants (the target solution)
+
+1. A retailer uploads an **ordinary product photo** — hanger, flat-lay, mannequin, partial, often **missing pieces** (a kurta with no salwar visible, no length reference, no feet, no back).
+2. Kanchuki returns a **studio-grade photo of that exact garment worn by a model** in a curated scene, at the quality **Gemini / ChatGPT give today** — exact print, colour, embroidery, length; complete outfit; believable body, pose, shadow.
+3. **No prompt box for retailers.** Curated styles/commands stack (4–5 effects → one prompt). Free text stays on the admin bench.
+4. **Acceptable to call Gemini / OpenAI APIs** with our own prompt/commands if our own models can't reach that quality (answered in §3B.6: yes, with a "prompt director" layer).
+5. Unattended, metered, bulk-safe (500–3000 SKUs) — the reason a retailer pays us instead of using the chat apps.
+
+### The one-paragraph finding
+
+The gap is **not mainly resolution or `image_size`** (an earlier draft over-weighted that; it is a hygiene item, §3B.7). It is **how each model turns the product photo into a worn garment**: Gemini/ChatGPT are reasoning image models that *understand* the garment, *infer what the photo does not show* (bottom, length, back, feet, body proportions) and render the whole scene in **one** pass; our default stack is a diffusion **editor** (Kontext) inside a 2–3 pass pipeline whose prompt **tells it to "edit ONLY the background… pixel-identical"** — an instruction that contradicts "place this garment on a model" when the input has no model (§3B.1, verified in code). Add the ≤80 KB ceiling on top and the result looks nothing like theirs.
+
+### Developed vs. to develop (detail in §0b)
+
+| Developed ✅ / 🧪 | To develop 🔴 |
+|---|---|
+| **Admin bench only, 2026-09-19 (`a3f2034b`, unmeasured on live):** `SCENE_GUARD` swap for person-less photos (`input_has_person`), **prompt director** (`directStudioPrompt` — vision pass, returns final prompt + `missing_parts`), `length_cm` + `model_height_cm` → hem-landmark clause (`hemLandmarkClause`), `strict` (a chosen Gemini engine errors instead of falling back to Kontext). Retailer/job path **unchanged** — defaults keep the old prompt. Controls sit on `/admin/photo-cleanup-test`. · Product photo reaches every engine; subtype in prompt; 8 curated MODEL scenes; 6-way demographic swap; try-on → scene pipeline; bench A/B over both pipeline orders; Gemini client (Interactions API); `STUDIO_ENGINES` single list; quota/plan gate; F-034 video Phase 1 (admin) | **Prompt director** (vision step that describes the garment + what's missing and writes the final prompt) · **single-pass Gemini Pro / GPT Image 2 engines** · GPT Image client (none exists) · fix the `SCENE_GUARD` contradiction for photos with no person · garment **length/size data capture** + proportion→hem-landmark clause · set completion wiring (R1–R3, built-uncommitted `garment-parts.ts`) · raise the 80 KB ceiling for hero output · FASHN v1.6 · FLUX.2 evaluation · effects axes (camera/light) |
+
+### Next steps, in order (nothing coded in this session — analysis only)
+
+1. **Owner:** save the ChatGPT + Gemini + Kanchuki outputs and the **original product photo** in one folder; ask Claude to do a structured visual diff (§3B.5).
+2. **Owner (bench, ~30 min):** run the same product photo through Kontext / `gemini_image` / `gemini_image_pro` with the *identical* mirror-selfie prompt; note which rows are really `engine = NULL`.
+3. Decide §10 items 1, 2, 4 and the new items 9–11.
+4. **Done on the admin bench 2026-09-19:** `SCENE_GUARD` fix, prompt director, single-pass Gemini Pro (already an engine), length + model-height capture. **Owner test pending** on `gemini_image_pro`: A = bare-garment ✔ / director ✘, B = ✔ / ✔, C = ✘ / ✘ (old behaviour). Needs Gemini billing (enabled) and, for Kontext/`vton_*`, Fal credit.
+5. **After the bench result:** promote the winning arm to the retailer path (`studio-shoot` job + `products-studio` route; flip `inputHasPerson`/director defaults) → add `length_cm` to the product schema/form (mobile) → GPT Image engine (only if it beats Gemini) → set completion (R1–R3, blocked on the R6 disclosure decision). **Not done anywhere:** retailer-path wiring, product-row `length_cm`, GPT Image client, `garment-parts` wiring.
+
+---
+
 ## §0 — How to read this doc
 
 | Section | Answers |
@@ -23,6 +55,7 @@
 | §1 | What this feature is, and what it is not |
 | §2 | **What exists today** — engines, pipeline, prompt assembly, quotas, files. Start here before writing code. |
 | §3 | **Why the output doesn't look like Gemini/ChatGPT yet** — decoded comparison, measured facts, parameter checklist |
+| **§3B** | **Gap analysis vs Gemini/ChatGPT** — how each model class handles the product photo, what is invented, measuring length/height, prompt reverse-engineering (not possible — what is), API route, model comparison, experiment |
 | §4 | **What we are working on now** (uncommitted, 2026-09-18) |
 | §5 | Current requirements, R1–R8, with acceptance criteria and the one thing still blocking each |
 | §6 | The effects command library → curated-preset design |
@@ -76,6 +109,11 @@
 | Diagnosis: 69,072 B / 1024×1024, sub-80 KB ceiling inherited from the catalog default | ✅ done | §2.5, §3.4 | — |
 | 5a raise the ceiling for hero studio output | 🔴 left | — | owner picks the storage/egress trade (§8.2) |
 | 5b force portrait for garment scenes | 🔴 left | — | Kontext currently inherits a square source |
+| **NEW** `SCENE_GUARD` conditional on person-less input | 🔴 left | §3B.1 #1 | highest-leverage single fix |
+| **NEW** Prompt director (vision → garment + missing parts + length landmark → final prompt) | 🔴 left | §3B.6 | — |
+| **NEW** Single-pass `gemini_image_pro` / GPT Image 2 path + vision QA + N-sample pick | 🔴 left | §3B.6 | GPT Image client does not exist |
+| **NEW** Garment `length_cm` capture + landmark clause | 🔴 left | §3B.4 | owner decision §10 #10 |
+| **NEW** FASHN v1.6 / FLUX.2 evaluation | 🔴 left | §3B.7 | bench |
 | 5c explicit preservation clause **including length** | 🔴 left | — | ChatGPT's prompt has it, ours doesn't |
 | 5d state the grounding shadow in model scenes | 🔴 left | — | — |
 
@@ -298,6 +336,163 @@ Titled **"Ivory Kurta with Indigo Floral Shawl"** — i.e. a human named the gar
 ### 3.4 The ceiling nobody can prompt around
 
 Even with perfect prompts, a **correct** completed outfit is *more* fine detail (embroidery on three pieces) delivered at **69 KB**. Fixing completeness without fixing the compression ceiling gets you a correct outfit rendered too softly to sell. §5 R5 is not cosmetic; it is a precondition for R1 being worth anything.
+
+---
+
+## §3B — Gap analysis vs Gemini / ChatGPT (merged 2026-09-18)
+
+**Evidence quality — read before trusting a number.**
+
+| Claim | Source | Trust |
+|---|---|---|
+| What our pipeline does, prompt wrapper, schema | Read in code this session | High |
+| Our output: 1024×1024, 69,072 B, no EXIF | Measured (§2.5) | High |
+| ChatGPT's prompt | Decoded from share link (§3.1) | High (prompt only, not pixels) |
+| Gemini's prompt and pixels | Auth-walled | **Not seen** |
+| Model capabilities / prices | Web search summaries, Sept 2026 (§3B.9) | Medium |
+| **Any head-to-head quality claim** | **Nobody has run these models on one product photo in this project** | **None — §3B.8 is the experiment** |
+
+Everything below marked *reasoned* is architectural inference until §3B.8 is run.
+
+### 3B.1 The owner's test — same prompt, totally different results
+
+The owner pasted the **Home Mirror Selfie** prompt from `AI Models and Scenes.html` into ChatGPT and Gemini: *"Place this garment on the model taking a casual full-length mirror selfie inside a warm, softly lit home interior … The garment's exact colour, print, embroidery, fabric texture and original length are 100% preserved."* The results differed completely from Kanchuki's BFL output. Ranked causes:
+
+| # | Cause | Status |
+|---|---|---|
+| 1 | **`SCENE_GUARD` contradicts the request.** Every prompt on every engine is prefixed with *"Edit ONLY the background, setting and scene of this photograph. Keep the garment itself pixel-identical…"* (`studio-shoot.ts:232`, comment: "Prefixed to EVERY prompt on every engine"; used at `:318` and `:495`). Correct when the input already shows a model (scene swap). **Wrong for a hanger/flat-lay photo**: the model is told the person, pose and mirror are *not* to change — but there is no person. Kontext then has to obey "background only" while being asked to invent a body, a mirror and a phone. ChatGPT/Gemini received the plain *"place this garment on the model"* instruction. | ✅ **verified in code**; effect on output not yet bench-proven |
+| 2 | **The prompt the owner pasted is not what our pipeline sends.** We wrap the row text with `SCENE_GUARD` + `garmentIdentityClause` + colour/fabric lock + person clause + top-only guard, and route it through 2–3 passes. | ✅ verified |
+| 3 | **Different model class** — reasoning image models vs a diffusion editor (§3B.2). | reasoned |
+| 4 | **Chat apps add hidden layers**: an LLM rewrites/expands your prompt, plans the composition, and applies default quality/style priors before the image model runs. The API-level "same prompt" is not the app-level "same prompt". | reasoned (industry-standard architecture; internal prompts unseen) |
+| 5 | **Mirror-selfie is the hardest scene for an editor**: reflection consistency + phone + hand + full-length body from a flat garment photo. Mirror/phone scenes need world knowledge, which is where Kontext is weakest. | reasoned |
+| 6 | **Sampling randomness**: even the same model on the same prompt varies; the chat apps also let a human regenerate and show the best. | known |
+| 7 | **≤80 KB ceiling** flattens whatever came out (§2.5, §3.4). | ✅ measured |
+
+**Unknown:** how exactly the owner ran the BFL/Kanchuki attempt (bench vs app, which row/engine, which input photo). Save those with the outputs (§3B.5).
+
+### 3B.2 How each model class "calculates" the product photo and puts it on a model *(reasoned, not measured)*
+
+| Class | Models | What it does with the product photo | What it can do when the photo lacks something |
+|---|---|---|---|
+| **Reasoning image model** (LLM backbone) | GPT Image 2, Nano Banana Pro / 2 | Encodes the photo into tokens **and understands it** — garment type, cut, print, drape, proportions. Plans the full scene (body, pose, framing, feet, accessories), then renders **person + garment + scene together in one pass**. The garment is *re-drawn from understanding*, not pasted. | **Infers.** Sees a kurta → knows sets usually include a salwar, knows how it hangs, roughly how long, that a model has feet/footwear/hair. Fills gaps from world knowledge. Risk: fine print can shift slightly. |
+| **Diffusion editor** | FLUX.1 Kontext Pro (our default), FLUX.2 | Treats the photo as **visual context** and edits in latent space. Strong at *keeping what is in the photo*. | **Weak at adding what isn't there** — it has little garment-level reasoning, and treats long instructions more like style hints. A big domain jump (flat garment → mirror-selfie person) is where it degrades. FLUX.2 is better (10 references, more world knowledge), not the same as an LLM. |
+| **Try-on model** | FASHN v1.5 / v1.6 | Segments/poses a **supplied person image**, warps the **visible** garment onto the body. | **Cannot invent** — it maps only what is visible. No salwar in the photo → no salwar out. Low resolution (576×864 / 864×1296). |
+
+**Consequence for Kanchuki:** the "missing pieces" problem (§5 R1) is *native* to reasoning models and *foreign* to our default stack. That is the structural reason ChatGPT/Gemini look "smarter" on incomplete photos.
+
+### 3B.3 What is in the product photo vs. what the model invents
+
+| Element | In the retailer's photo? | Generated on the model | Risk if wrong |
+|---|---|---|---|
+| Garment colour / print / embroidery | Yes | Re-rendered | Wrong print/colour = returns |
+| Garment **length** | Only implied (no scale) | Inferred | Kurta shown as tunic / too long |
+| Fit / ease / how it hangs | Partly (hanger distorts) | Invented | Looks tighter/looser than real |
+| Back, sleeves, side slits, neckline back | Usually **no** | Invented | Design detail not in real garment |
+| **Bottom (salwar/churidar/palazzo)** | Often **no** | Invented (or omitted) | Shows a set the customer can't buy (§5 R6) |
+| Dupatta placement | Sometimes | Invented drape | Wrong styling |
+| **Body: face, skin, hair, hands, height** | **No** | Invented | Diversity/likeness, hand artefacts |
+| Footwear, jewellery, bag | **No** | Invented | Customer thinks they're included |
+| Lining / opacity / transparency | No | Guessed | Sheer vs opaque misrepresented |
+| Fabric sheen / weight / movement | Weakly | Invented | Silk vs cotton look wrong |
+| Scene, shadow, reflection, phone | No | Invented | Not a product risk unless it hides the garment |
+
+**Product-data implication:** everything in the "invented" rows that affects a purchase decision (length, set contents, what's included) must come from **retailer data**, not the model — otherwise the image over-promises.
+
+### 3B.4 Measuring the garment length and the model's height
+
+**What cannot be done:** real centimetres cannot be read off an ordinary photo. A photo has no scale unless something of known size is in frame. A vision model can estimate *relative* proportions (garment length vs width, sleeve vs body) coarsely — an estimate with a wide error bar, not a measurement.
+
+**What exists today:** nothing captures garment length. Checked the Prisma schema: the only `height` field is `ProductPhoto.height` (image pixels, `schema.prisma:577`); no garment length, size chart or measurements on products (the customer-measurements model was removed with VTO).
+
+**What works (reasoned, not built):**
+
+1. **Capture length as data.** Add optional `length_cm` (and optionally chest/shoulder) to the product form — retailers already know "42-inch kurta". This is also the number customers want.
+2. **Fix a model height per demographic** (e.g. womens 165 cm) — we choose the model, so this is a constant, not a measurement.
+3. **Convert to a body landmark and put it in the prompt.** Approximate anthropometry (fractions of standing height H): shoulder ≈ 0.82H, waist ≈ 0.60H, hip ≈ 0.52H, mid-thigh ≈ 0.39H, knee ≈ 0.285H, mid-calf ≈ 0.2H, ankle ≈ 0.04H. Hem height from floor ≈ `0.82H − garment_length`.
+   *Worked example:* H = 165 cm, kurta = 105 cm (shoulder-to-hem) → hem ≈ 135 − 105 = **30 cm** from floor ≈ 0.18H → **just below the knee, mid-calf**. Prompt clause: *"hem falls at mid-calf, about 30 cm above the floor; do not shorten or lengthen."*
+4. **Fallback without data:** vision estimates a landmark ("hem ≈ knee") from the photo, flagged as low-confidence and logged.
+5. **Verify after generation:** a vision check that the hem in the output is at the requested landmark (reuse `runVisionAsk`) — cheap length QA.
+
+Figures are approximate proportions, not clinical values; tune with real renders.
+
+### 3B.5 Can the prompt be recovered from a Gemini/ChatGPT image? No — and what is possible
+
+| Question | Answer |
+|---|---|
+| Can pixels be reverse-engineered into the **exact prompt**? | **No.** Generation is not invertible; many prompts give the same image, and the same prompt gives different images. Nothing I (or any tool) can do recovers the original text from pixels. |
+| Is the prompt in the file's metadata? | **No.** ChatGPT images carry C2PA provenance (source/tool/date, not the prompt). Gemini images carry an invisible SynthID watermark, and C2PA on some surfaces (also not the prompt). EXIF is usually absent. Read with `exiftool` / `c2patool`. |
+| Where *is* the prompt? | ChatGPT: the share link (decoded, §3.1) or your own chat. Gemini: your own signed-in chat (the share link is auth-walled) — copy it from there. The **hidden rewritten prompt** and system instructions are not exposed by either app. |
+| What can Claude actually do with uploaded images? | **View them** and produce a **structured visual diff** and an **approximate descriptive prompt** ("what would generate this") — clearly a *reconstruction*, not the real prompt. Compare: garment fidelity, length, framing, pose, lighting, scene props, sharpness, what was added that the photo didn't contain. Useful for finding *what they add that we don't*. |
+
+**How to use this:** put in one folder — (a) the **original product photo**, (b) ChatGPT output, (c) Gemini output, (d) Kanchuki output — plus the exact prompt/engine/row used for each. Then ask for the visual diff.
+
+### 3B.6 Can we use their API with our prompt/commands to get the same results? Yes — mostly
+
+Yes: the API serves the same model families as the apps (GPT Image 2 via OpenAI; Nano Banana Pro / 2 via the Gemini API — we already have the Gemini client). It will not be the *same file*, and a naive call will still look worse than the app, because the app's hidden layers are missing:
+
+| App layer | Replicate by |
+|---|---|
+| LLM rewrites/expands the prompt, plans the composition | **Prompt director** — one `runVisionAsk` pass on the product photo that outputs: garment type, colour/print description, visible vs missing parts, estimated length landmark, and the final image prompt. (Machinery exists: `runVisionAsk`, `garment-parts.ts`.) |
+| Photo passed at high fidelity | GPT Image 2: automatic. Gemini: pass the photo as an image block (client already does). Use `gemini_image_pro` for the premium tier. |
+| Human regenerates until happy | **N=2–3 samples + automatic vision QA** (garment/length/parts check) → return best. Costs 2–3× per image, still cents. |
+| Default quality/style tuning | Set quality/size explicitly (`quality:high` on GPT Image; Gemini `image_size` — hygiene, §3B.7). |
+| Nothing to replicate | Do **not** prefix `SCENE_GUARD` when the input has no person (§3B.1 #1). |
+
+**Recommended architecture (proposal):** curated command stack → English prompt → **prompt director** → **single-pass** call to `gemini_image_pro` (or GPT Image 2) with the original photo → vision QA → R2. Keep Kontext as the cheap Starter/fallback path. This is additive: `STUDIO_ENGINES` is already the single engine list.
+
+Cautions (verify before building): OpenAI gates newer image models behind API-org verification — confirm access; no seed control on GPT Image; outputs carry provenance marks (C2PA / SynthID) — decide whether to preserve or strip and check disclosure rules; per-image cost ≈ ₹11–18 on the premium models vs ≈ ₹3 on Kontext — put it in plan pricing.
+
+### 3B.7 Model comparison and ranked gaps
+
+**Models** (documented/expected — see evidence table; costs are search-summary figures):
+
+| Model | Class | Max/typical output | Takes the photo? | Garment fidelity (expected) | In Kanchuki? | ~Cost |
+|---|---|---|---|---|---|---|
+| GPT Image 2 (ChatGPT) | reasoning | to ~2K | ✔ high fidelity always | ✔ strongest instruction-following | **✖ no client** | $0.005–0.21 |
+| Nano Banana Pro (`gemini-3-pro-image`) | reasoning | 1K default, 2K/4K | ✔ up to 14 refs | ✔ best-in-class, reasoning-guided | 🟡 `gemini_image_pro`, no row uses it | ~$0.134 |
+| Nano Banana 2 (`gemini-3.1-flash-image`) | reasoning | 512–4K | ✔ | ◐→✔ | 🟡 `gemini_image` | ~$0.02–0.04 (1K) |
+| FLUX.2 [pro]/[max] | diffusion editor | up to 4 MP, 10 refs | ✔ | ✔ BFL now recommends it over Kontext | **✖ not integrated** | ~Kontext band |
+| **FLUX.1 Kontext Pro (our default)** | diffusion editor, prev-gen | inherits input size | ✔ 1 image | ◐ preserves pixels, weak at inventing | ✔ default, all 8 MODEL rows | ~$0.04/MP |
+| FASHN try-on v1.5 (used) / v1.6 (available) | try-on | 576×864 / 864×1296 | ✔ garment-conditioned | ✔ visible garment only | ✔ v1.5 only | low |
+| FLUX 1.1 pro / schnell | text→image | — | ✖ | ✖ invents garment | ✔ model-reference step only | low |
+
+**Passes photo→final:** ChatGPT 1 · Gemini 1 · Kanchuki 2–3 (reference → try-on → scene) — each pass re-synthesises the print (generational loss). *(reasoned)*
+
+**Ranked gaps (quality gained per effort):**
+
+| # | Gap | Change | Effort |
+|---|---|---|---|
+| 1 | `SCENE_GUARD` contradicts placement on person-less photos | Conditional guard: scene-swap wording only when the input already has a person | S |
+| 2 | No product understanding / no gap-filling layer | Prompt director (§3B.6) | M |
+| 3 | Multi-pass generational loss | Single-pass reasoning-model path (`gemini_image_pro` / GPT Image 2) | M |
+| 4 | Engine `NULL` → Kontext everywhere | Owner flips rows after bench (R7) | S |
+| 5 | Length / set contents invented | `length_cm` capture + landmark clause + set completion (R1–R3) | M |
+| 6 | 80 KB / 1024² ceiling | Explicit options on the studio hero path (§5 R5, §8.2) | S + owner cost call |
+| 7 | Old editor, old try-on | FLUX.2 evaluation; FASHN v1.6 (864×1296) | S–M |
+| 8 | Hygiene | Portrait aspect (Kontext accepts `aspect_ratio`, we send none); Gemini `image_size` not sent (client comment: left out to avoid an unexercised 400 — exercise once on the bench) | S |
+
+**Where we are equal or better:** colour-temperature lock, demographic person swap, curated repeatable scenes, quota/metering, unattended bulk, no long-thread drift (each job independent), the whole catalog pipeline. Those are the business case; none of them help the single-image "looks like ChatGPT" test.
+
+### 3B.8 The experiment that turns this into a decision
+
+**Setup:** 12 real products from a pilot retailer (4 embroidered kurta sets, 3 printed kurtis, 3 dupatta-heavy, 2 kids), original photos only. Same scene wording (the mirror-selfie prompt **and** one studio prompt), n = 3 samples per arm.
+
+| Arm | Engine | Isolates |
+|---|---|---|
+| A | Kontext two-step, current | baseline |
+| B | Kontext, `SCENE_GUARD` removed for person-less input | cause #1 |
+| C | Kontext, ceiling raised | compression alone |
+| D | `gemini_image` single pass (+ prompt director) | reasoning model, cheap |
+| E | `gemini_image_pro` single pass (+ prompt director) | reasoning model, premium |
+| F/G | ChatGPT and Gemini apps, manual | the reference |
+
+**Rate blind** (2 raters): garment print exact · colour exact · **length exact** · **all set pieces present** · shadow/grounding · anatomy · sharpness at 100 % · "would I buy from this". Log ₹/image and latency. **Decision rule:** ship the cheapest arm within 0.5 points of the best on print/length/completeness; if E beats C by >1 point on garment fidelity, adopt single-pass Pro for Growth/Pro and keep Kontext for Starter. **Cost:** ≈ 12 × 5 API arms × 3 ≈ 180 generations ≈ single-digit USD.
+
+### 3B.9 Sources (web search, September 2026)
+
+GPT Image 2: [OpenAI image prompting](https://developers.openai.com/api/docs/guides/image-prompting), [model page](https://developers.openai.com/api/docs/models/gpt-image-2), [ComfyUI node](https://docs.comfy.org/tutorials/partner-nodes/openai/gpt-image-2). Nano Banana: [Google blog](https://blog.google/innovation-and-ai/products/nano-banana-pro/), [image-generation docs](https://ai.google.dev/gemini-api/docs/image-generation), [3.1 Flash Image](https://ai.google.dev/gemini-api/docs/models/gemini-3.1-flash-image). Comparisons (blogs — opinion, not benchmark): [Medium](https://medium.com/@cognidownunder/nano-banana-pro-vs-flux-2-max-vs-gpt-1-5-106c8f5de7b4), [CometAPI](https://www.cometapi.com/gpt-image-1-5-vs-nano-banana-pro-which-is-better-/), [Tigris](https://www.tigrisdata.com/blog/flux-kontext-vs-nano-banana/); benchmarks: [OpenVTON-Bench](https://arxiv.org/pdf/2601.22725), [Garments2Look](https://arxiv.org/pdf/2603.14153). FLUX.2: [BFL blog](https://bfl.ai/blog/flux-2), [BFL editing docs](https://docs.bfl.ml/kontext/kontext_image_editing), [fal FLUX.2 pro edit](https://fal.ai/models/fal-ai/flux-2-pro/edit). FASHN v1.6: [blog](https://fashn.ai/blog/fashn-v1-6-our-best-virtual-try-on-model-yet-now-at-864-x-1296-resolution), [docs](https://docs.fashn.ai/api-reference/tryon-v1-6).
+
+**Limits:** no Gemini image was viewable; no model was run by the author; prices/limits change monthly; "expected fidelity" is inference until §3B.8 runs.
 
 ---
 
@@ -575,6 +770,11 @@ Changing this is a **storage + egress cost decision** for the owner, not a code 
 | 5 | **`CLAUDE.md` rows 54 and 60 point at files this merge deletes** | **Gated file — needs explicit approval.** See §13.5 |
 | 6 | The F-034 model endpoints are marked "confirm live at build" and none has been verified | `fal-video.ts` self-check exists; **endpoint liveness still unverified** |
 | 7 | The "which engine is actually running" question had no single place to answer it | §7 R7 / `/admin/studio-styles`; all MODEL rows are `engine = NULL` → Kontext |
+| 8 | **`SCENE_GUARD` ("edit ONLY the background… pixel-identical") is prefixed to every prompt on every engine** (`studio-shoot.ts:232/:318/:495`) — wrong for a person-less product photo | §3B.1 #1, §3B.7 gap #1 |
+| 9 | Earlier draft of the analysis over-weighted the Gemini `image_size` gap — the owner corrected this: the real question is how each model reads the product photo and fills what's missing | Re-ranked; `image_size` is now hygiene (§3B.7 #8) |
+| 10 | §1 cost table omits **FLUX.2 [pro]** (BFL recommends it over Kontext for editing) and §2.1 uses **FASHN v1.5** while **v1.6 (864×1296)** exists | Added to §3B.7; not yet evaluated on the bench |
+| 11 | No GPT Image engine exists — ChatGPT's own model has no arm in our bench | §3B.6, §3B.7 |
+| 12 | No garment length / size-chart data exists on products (only `ProductPhoto.width/height` in pixels) | §3B.4 |
 
 ---
 
@@ -590,6 +790,9 @@ Changing this is a **storage + egress cost decision** for the owner, not a code 
 | 6 | **Camera + light as real picker axes** (R4 step 1) | build now vs keep baked into scenes | effects library |
 | 7 | **Delete `AI Models and Scenes.hmtl`** (stale duplicate) | yes / keep | doc hygiene |
 | 8 | **Google Merchant Center push** (separate future feature — gives retailers free Google-hosted try-on without Kanchuki hosting anything) | worth scoping vs not | not blocking anything |
+| 9 | **Use OpenAI/Gemini APIs as the primary quality path** with a prompt director (§3B.6) | yes (Growth/Pro) + Kontext for Starter / no | the whole quality goal |
+| 10 | **Capture garment `length_cm` on the product form** (§3B.4) | build / skip (vision estimate only) | length accuracy |
+| 11 | **Add a GPT Image 2 engine** (needs API-org verification check) | yes / Gemini-only | parity with ChatGPT |
 
 ---
 
@@ -648,6 +851,7 @@ This doc was produced by reading all 5 source files and the live code. Facts ass
 | `docs/tasks/ai-studio-shoot-models-scenes.md` (2026-08-30, finalised 2026-09-18) | §2.3 (demographic/person clause/scene tags/finalised MODEL set), §9 #4 (stale constants) |
 | `docs/tasks/photo-feature-implementation-tasks.md` | §5 R8 (still-valid items), §9 #2 (VTO tasks obsolete), §1 (removed-feature note) |
 | `docs/tasks/image-to-video.md` (2026-09-03) | §7 in full — models, Phase 1 evidence, Phase 2 tasks, reuse map, NOT-doing |
+| `docs/tasks/ai-photo-quality-gap-analysis.md` (2026-09-18) | §3B in full (deduplicated against §1 cost, §2.5/§3.4 ceiling, §3.3 engine-NULL, §5 R5) + §0a hand-off + §9 #8–12 + §10 #9–11. Deleted after merge. |
 | `docs/tasks/image-to-video-phase2.md` (2026-09-03) | §7.4 (tasks 5–10), §7.5 (migration SQL, **renumbered**), §7 global conventions, §7.6 verification gate |
 
 ### 13.2 New content added by this merge (not in any source file)
