@@ -174,6 +174,15 @@ test.beforeAll(async () => {
       return
     }
 
+    // Engagement beacon (F-037) — fire-and-forget POST through the passport
+    // proxy. Unstubbed it answers 404, which the console check reports as a page
+    // error; the beacon is timing-dependent, so the failure was intermittent.
+    if (req.method === 'POST' && url.pathname === '/v1/public/passport/events') {
+      res.statusCode = 204
+      res.end()
+      return
+    }
+
     // Promotions — the storefront's PromotionBanner fetches
     // `/api/{store}/promotions`, which proxies to this upstream. Unstubbed it
     // answers 404, which the console check reports as a page error.

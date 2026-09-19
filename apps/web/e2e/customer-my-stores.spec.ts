@@ -545,16 +545,29 @@ test('the production build meets the installability prerequisites (valid manifes
   page,
   context,
 }) => {
+  test.setTimeout(60_000)
   await page.goto('/my-stores')
   await expect(page.getByRole('heading', { name: 'My Stores' })).toBeVisible()
 
   // The SW must be active for Chrome to consider the page installable.
-  const swState = await page.evaluate(() =>
-    Promise.race([
-      navigator.serviceWorker?.ready.then((reg) => (reg.active ? 'active' : 'no-active')),
-      new Promise((resolve) => setTimeout(() => resolve('timeout'), 5000)),
-    ]),
-  )
+  // Polls registrations instead of awaiting `.ready`: `.ready` never resolves if
+  // no registration was ever created, and then says nothing about why. On
+  // failure this reports what exists (scope + installing/waiting/active state).
+  const swState = await page.evaluate(async () => {
+    const snapshot = async () =>
+      (await navigator.serviceWorker.getRegistrations()).map((r) => ({
+        scope: r.scope,
+        installing: r.installing?.state ?? null,
+        waiting: r.waiting?.state ?? null,
+        active: r.active?.state ?? null,
+      }))
+    const deadline = Date.now() + 25_000
+    while (Date.now() < deadline) {
+      if ((await snapshot()).some((r) => r.active === 'activated')) return 'active'
+      await new Promise((resolve) => setTimeout(resolve, 250))
+    }
+    return `not active after 25s: ${JSON.stringify(await snapshot())}`
+  })
   expect(swState).toBe('active')
 
   const cdp = await context.newCDPSession(page)

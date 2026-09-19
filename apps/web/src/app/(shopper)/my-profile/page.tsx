@@ -27,7 +27,7 @@ interface ProfileData {
 const STYLE_CHIPS = [
   'Casual', 'Party', 'Office', 'Wedding', 'Festive',
   'Anarkali', 'Lehenga', 'Saree', 'Kurti', 'Gown',
-  'Indo-Western', 'Sharara', 'Suit', 'Gown',
+  'Indo-Western', 'Sharara', 'Suit',
 ]
 
 export default function MyProfilePage() {
