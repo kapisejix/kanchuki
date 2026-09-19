@@ -94,6 +94,8 @@ type BenchRow = {
   prompt: string;
   promptUsed: string | null;
   missingParts: string[] | null;
+  /** What vision decided (null = failed / not returned). */
+  inputHasPerson: boolean | null;
   error: string | null;
   ranAt: string;
 };
@@ -300,9 +302,6 @@ export default function PhotoCleanupTestPage() {
   const [studioLengthCm, setStudioLengthCm] = useState<string>('');
   // Blank → default per demographic (womens 165, mens 175, teen 155/160, kids 115/118).
   const [studioModelHeightCm, setStudioModelHeightCm] = useState<string>('');
-  // Hanger / flat-lay photo with no person: swaps "edit only the background"
-  // for a "put this garment on the model" instruction.
-  const [studioBareGarment, setStudioBareGarment] = useState(true);
   // Prompt director: a vision pass rewrites the prompt from the photo first.
   const [studioDirector, setStudioDirector] = useState(false);
   // A/B — the same photo through BOTH pipeline orders. It has its own engine
@@ -418,7 +417,6 @@ export default function PhotoCleanupTestPage() {
               engine,
               length_cm: Number.parseInt(studioLengthCm, 10) || undefined,
               model_height_cm: Number.parseInt(studioModelHeightCm, 10) || undefined,
-              input_has_person: !studioBareGarment,
               director: studioDirector,
             }),
           });
@@ -430,6 +428,7 @@ export default function PhotoCleanupTestPage() {
             ms: (json.data.ms as number | null) ?? null,
             promptUsed: json.data.prompt_used ?? null,
             missingParts: json.data.missing_parts ?? null,
+            inputHasPerson: (json.data.input_has_person as boolean | undefined) ?? null,
             error: null,
           };
         } catch (err) {
@@ -439,6 +438,7 @@ export default function PhotoCleanupTestPage() {
             ms: null,
             promptUsed: null,
             missingParts: null,
+            inputHasPerson: null,
             error: err instanceof Error ? err.message : 'Studio shoot failed',
           };
         }
@@ -1122,18 +1122,6 @@ export default function PhotoCleanupTestPage() {
           <label className="flex items-start gap-2 text-xs text-gray-600 sm:col-span-1">
             <input
               type="checkbox"
-              checked={studioBareGarment}
-              onChange={(e) => setStudioBareGarment(e.target.checked)}
-              className="mt-0.5"
-            />
-            <span>
-              Photo is a bare garment (hanger / flat-lay, no person) — uses “put this garment on
-              the model” instead of “edit only the background”
-            </span>
-          </label>
-          <label className="flex items-start gap-2 text-xs text-gray-600 sm:col-span-1">
-            <input
-              type="checkbox"
               checked={studioDirector}
               onChange={(e) => setStudioDirector(e.target.checked)}
               className="mt-0.5"
@@ -1360,6 +1348,11 @@ export default function PhotoCleanupTestPage() {
                       {r.error && (
                         <p className="mt-1 max-w-[16rem] text-[10px] text-red-600 font-mono break-words">
                           {r.error}
+                        </p>
+                      )}
+                      {r.inputHasPerson !== null && (
+                        <p className="mt-1 text-[10px] text-gray-500">
+                          Photo read as: {r.inputHasPerson ? 'worn / on a model' : 'bare garment'}
                         </p>
                       )}
                       {r.promptUsed && (

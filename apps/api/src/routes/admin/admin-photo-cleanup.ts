@@ -13,6 +13,7 @@ import { prisma } from '@kanchuki/db';
 import { PRODUCT_DEMOGRAPHICS, R2_PATHS, STUDIO_ENGINES } from '@kanchuki/shared';
 import { z } from 'zod';
 import { generateImageToVideo } from '../../lib/fal-video.js';
+import { detectGarmentPartsFromUrl } from '../../lib/garment-parts.js';
 import { runPhotoCleanup, serializePhotoCleanup } from '../../lib/photo-cleanup-runner.js';
 import {
   type StudioProduct,
@@ -227,9 +228,10 @@ export const adminPhotoCleanupRoutes: FastifyPluginAsync = async (server) => {
       .object({
         ...studioBenchFields,
         engine: z.enum(STUDIO_ENGINES).optional(),
-        // false → the photo is a bare garment (hanger / flat-lay): use the
-        // placement wording instead of "edit only the background".
-        input_has_person: z.boolean().default(true),
+        // Optional override. Omitted → a vision pass decides whether anyone is
+        // wearing the garment (false = hanger / flat-lay → placement wording
+        // instead of "edit only the background").
+        input_has_person: z.boolean().optional(),
         // Run the prompt director (vision pass) and send ITS prompt instead.
         // Single-shot engines only — the vton_* pair builds its own prompts.
         director: z.boolean().default(false),
@@ -253,6 +255,12 @@ export const adminPhotoCleanupRoutes: FastifyPluginAsync = async (server) => {
     // `?? ''` only satisfies the type checker.
     const prompt = body.prompt ?? style?.prompt ?? '';
     const isTwoStep = body.engine === 'vton_kontext' || body.engine === 'vton_gemini';
+
+    // Person present? Explicit override wins; otherwise ask vision. A failed
+    // detection (null) keeps today's behaviour (assume a person).
+    const detected =
+      body.input_has_person === undefined ? await detectGarmentPartsFromUrl(body.product_url) : null;
+    const inputHasPerson = body.input_has_person ?? detected?.hasPerson ?? true;
     let directed: { prompt: string; missing_parts: string[] } | undefined;
     if (body.director && !isTwoStep) {
       directed = await directStudioPrompt(
@@ -262,7 +270,7 @@ export const adminPhotoCleanupRoutes: FastifyPluginAsync = async (server) => {
           tab,
           demographic: body.demographic,
           product,
-          inputHasPerson: body.input_has_person,
+          inputHasPerson,
         }),
       );
     }
@@ -275,7 +283,7 @@ export const adminPhotoCleanupRoutes: FastifyPluginAsync = async (server) => {
       demographic: body.demographic,
       humanImageUrl: body.model_image_url,
       product,
-      inputHasPerson: body.input_has_person,
+      inputHasPerson,
       promptOverride: directed?.prompt,
       // A bench run must show the engine it names, not a Kontext fallback.
       strict: true,
@@ -304,6 +312,10 @@ export const adminPhotoCleanupRoutes: FastifyPluginAsync = async (server) => {
         // which outfit pieces the photo does not show.
         prompt_used: directed?.prompt ?? null,
         missing_parts: directed?.missing_parts ?? null,
+        // What the guard swap was based on: null = detection failed or the
+        // caller overrode it.
+        input_has_person: inputHasPerson,
+        detected_parts: detected,
       },
     };
   });

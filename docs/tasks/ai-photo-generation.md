@@ -43,7 +43,7 @@ The gap is **not mainly resolution or `image_size`** (an earlier draft over-weig
 1. **Owner:** save the ChatGPT + Gemini + Kanchuki outputs and the **original product photo** in one folder; ask Claude to do a structured visual diff (§3B.5).
 2. **Owner (bench, ~30 min):** run the same product photo through Kontext / `gemini_image` / `gemini_image_pro` with the *identical* mirror-selfie prompt; note which rows are really `engine = NULL`.
 3. Decide §10 items 1, 2, 4 and the new items 9–11.
-4. **Done on the admin bench 2026-09-19:** `SCENE_GUARD` fix, prompt director, single-pass Gemini Pro (already an engine), length + model-height capture. **Owner test pending** on `gemini_image_pro`: A = bare-garment ✔ / director ✘, B = ✔ / ✔, C = ✘ / ✘ (old behaviour). Needs Gemini billing (enabled) and, for Kontext/`vton_*`, Fal credit.
+4. **Done on the admin bench 2026-09-19:** `SCENE_GUARD` fix (**now auto-detected by vision — the manual "bare garment" checkbox was removed; `input_has_person` is only an API override**), prompt director, single-pass Gemini Pro (already an engine), length + model-height capture. **Owner test pending** on `gemini_image_pro`: A = bare-garment ✔ / director ✘, B = ✔ / ✔, C = ✘ / ✘ (old behaviour). Needs Gemini billing (enabled) and, for Kontext/`vton_*`, Fal credit.
 5. **After the bench result:** promote the winning arm to the retailer path (`studio-shoot` job + `products-studio` route; flip `inputHasPerson`/director defaults) → add `length_cm` to the product schema/form (mobile) → GPT Image engine (only if it beats Gemini) → set completion (R1–R3, blocked on the R6 disclosure decision). **Not done anywhere:** retailer-path wiring, product-row `length_cm`, GPT Image client, `garment-parts` wiring.
 
 ---
@@ -98,7 +98,8 @@ The gap is **not mainly resolution or `image_size`** (an earlier draft over-weig
 | Order decided: complete-set → try-on → scene (forced by garment-conditioning) | ✅ decided | §5 R1 | — |
 | Gating decided: gate on product data (owner) | ✅ decided | §5 R1 | mapping still config-only, not yet read by the pipeline |
 | R1 generate the missing salwar in the same fabric/print/colour | 🔴 left | — | build the complete-set pass **before** try-on |
-| R2 visible-parts check consulted (not subtype alone) | 🟡 built, not wired | `garment-parts.ts` | call it in `generateStudioImage` |
+| R2 visible-parts check consulted (not subtype alone) | 🟡 **partly wired 2026-09-19 (admin bench only)** — the vision call now runs on `POST /admin/photo-cleanup/studio-shoot` and drives `input_has_person` (bare garment vs worn); the parts it returns (`missingParts`, framing) are still unused | `garment-parts.ts` `detectGarmentPartsFromUrl()`, BUILD-LOG 2026-09-19 | call it in `generateStudioImage` (retailer path) and feed `missingParts` to the set-completion pass |
+| **NEW** Bare-garment detection replaces the manual "bare garment" checkbox | 🧪 built on the bench, unmeasured live | `input_has_person` optional on the route; page shows "Photo read as: …" | owner test; then wire the same call into `studio-shoot` job + `products-studio` |
 | R3 framing precondition (full-length + hem for set products) | 🔴 left | §5 R3 | `framingClause()` exists but is not enforced |
 | R6 disclosure of an AI-completed component | 🔴 **decision pending** | §5 R6 | owner picks A / B / C |
 
