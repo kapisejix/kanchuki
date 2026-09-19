@@ -545,6 +545,7 @@ test('the production build meets the installability prerequisites (valid manifes
   page,
   context,
 }) => {
+  test.setTimeout(60_000)
   await page.goto('/my-stores')
   await expect(page.getByRole('heading', { name: 'My Stores' })).toBeVisible()
 
@@ -552,7 +553,9 @@ test('the production build meets the installability prerequisites (valid manifes
   const swState = await page.evaluate(() =>
     Promise.race([
       navigator.serviceWorker?.ready.then((reg) => (reg.active ? 'active' : 'no-active')),
-      new Promise((resolve) => setTimeout(() => resolve('timeout'), 5000)),
+      // First-visit install precaches the whole app shell; 5s was a coin flip on
+      // a loaded CI runner (passed and failed on identical code).
+      new Promise((resolve) => setTimeout(() => resolve('timeout'), 25_000)),
     ]),
   )
   expect(swState).toBe('active')
