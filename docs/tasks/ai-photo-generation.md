@@ -783,45 +783,45 @@ Store caps in `plan_pricing`/quota rows (F-010 pattern), not code. **Not tracked
 
 Prices per §8.1a: ✅ read from fal.ai, ◐ third-party/search summary, ⚠ not found. Capability = can it take the retailer's product photo (edit) and keep the garment.
 
-**Currency:** owner-set rate **1 USD = ₹88** (2026-09-19) → **₹ per image = USD × 88**; **₹ per credit = 0.005 × 88 = ₹0.44**. ₹ shown is the raw provider cost — **before** GST (18 %) and **before** any margin. Change the rate here and recompute.
+**Currency:** owner-set rate **1 USD = ₹96** (2026-09-19) → **₹ per image = USD × 96**; **₹ per credit = 0.005 × 96 = ₹0.48**. ₹ shown is the raw provider cost — **before** GST (18 %) and **before** any margin. Change the rate here and recompute.
 
 **Quality /10 — read this before trusting it:** the column is **my provisional estimate of garment-edit quality for this job** (keeps the exact print/colour/embroidery/length of the retailer's photo *and* renders a believable person/scene), **not a measurement.** No model in this doc has been run against real products on the bench (§3B.8 is the experiment that produces real scores, and it has not run). Basis: the "expected fidelity" column in §3B.7 (Nano Banana Pro "best-in-class", GPT Image 2 "strongest instruction-following", Kontext "preserves pixels, weak at inventing", BFL recommending FLUX.2 over Kontext), plus third-party comparison blogs (opinion, not benchmarks). `?` = no basis to score; `0` = cannot do the job at all. Treat ±2 as the honest error bar and **replace with the §3B.8 blind-rated scores as soon as they exist.**
 
-| # | Model | Reach via | Exact ID | Price / image (USD) | **₹ / image (@88)** | Credits (@ $0.005) | **Quality /10 (provisional)** | Grade | Takes product photo? | Cost tier |
+| # | Model | Reach via | Exact ID | Price / image (USD) | **₹ / image (@96)** | Credits (@ $0.005) | **Quality /10 (provisional)** | Grade | Takes product photo? | Cost tier |
 |---|---|---|---|---|---|---|---|---|---|---|
-| 1 | GPT Image 1 Mini | Fal `fal-ai/gpt-image-1-mini/edit` / OpenAI | gpt-image-1-mini | $0.005 | **₹0.44** | **1** | **4** | ◐ | ✔ | 🟢 cheapest |
-| 2 | GPT Image 2 — low, 1024² | Fal `openai/gpt-image-2/edit` | gpt-image-2 | $0.015 | **₹1.32** | **3** | **6** | ✅ | ✔ | 🟢 |
-| 3 | Qwen Image (edit) | Fal `fal-ai/qwen-image-edit-2511` etc. | qwen-image-edit-2511 | $0.02 per **megapixel** → ≈ $0.02 at 1 MP | **₹1.76** at 1 MP | **4** at 1 MP | **6** | ✅ (unit only) | ✔ | 🟢 |
-| 4 | FLUX.2 [pro] | Fal `fal-ai/flux-2` family / BFL | flux-2-pro | $0.03 | **₹2.64** | **6** | **7** | ◐ | ✔ | 🟢 |
-| 5 | Seedream V4 (edit) | Fal `fal-ai/bytedance/seedream/v4/edit` | seedream-v4 | $0.03 | **₹2.64** | **6** | **6** | ✅ | ✔ | 🟢 |
-| 6 | Gemini 3.1 Flash-Lite Image, 1K | Google direct / Fal `google/nano-banana-lite/edit` | gemini-3.1-flash-lite-image | $0.0336 | **₹2.96** | **7** | **6** | ◐ | ✔ | 🟢 |
-| 7 | Nano Banana (v1), Fal | Fal `fal-ai/nano-banana/edit` | nano-banana | $0.0398 | **₹3.50** | **8** | **6** | ✅ | ✔ | 🟡 |
-| 8 | **FLUX.1 Kontext Pro — today's default** | Fal `fal-ai/flux-pro/kontext` / BFL | flux-kontext-pro | **$0.04** | **₹3.52** | **8** (= the existing constant) | **6** | ✅ | ✔ | 🟡 **baseline** |
-| 9 | Recraft V4 | Fal `fal-ai/recraft/v4/text-to-image` | recraft-v4 | $0.04 (V4.1 $0.035 ◐) | ₹3.52 | 8 | **0** (no photo input) | ✅ | ✖ text→image only | ⛔ not usable for this job |
-| 10 | GPT Image 2 — medium, 1024² | Fal `openai/gpt-image-2/edit` | gpt-image-2 | $0.061 | **₹5.37** | **13** | **8** | ✅ | ✔ | 🟡 |
-| 11 | Gemini 3.1 Flash Image ("Nano Banana 2"), 1K | Google direct (`gemini_image`) / Fal | gemini-3.1-flash-image | $0.067 | **₹5.90** | **14** | **7** | ◐ | ✔ | 🟡 |
-| 12 | FLUX.2 [max] | Fal `fal-ai/flux-2-max` / BFL | flux-2-max | $0.07 | **₹6.16** | **14** | **8** | ◐ | ✔ | 🟡 |
-| 13 | Gemini 3.1 Flash Image, 2K | Google direct | gemini-3.1-flash-image | $0.101 | **₹8.89** | **21** | **8** (same model, more pixels) | ◐ | ✔ | 🟠 |
-| 14 | **Gemini 3 Pro Image ("Nano Banana Pro"), 1K/2K** (`gemini_image_pro`) | Google direct / Fal `fal-ai/nano-banana-pro/edit` | gemini-3-pro-image | $0.134 | **₹11.79** | **27** | **9** | ◐ | ✔ | 🟠 premium |
-| 15 | GPT Image 2 — high, 1024² | Fal `openai/gpt-image-2/edit` | gpt-image-2 | $0.219 | **₹19.27** | **44** | **9** | ✅ | ✔ | 🔴 |
-| 16 | Gemini 3 Pro Image, 4K | Google direct | gemini-3-pro-image | $0.24 | **₹21.12** | **48** | **9** (resolution, not fidelity, is what 4K adds) | ◐ | ✔ | 🔴 |
+| 1 | GPT Image 1 Mini | Fal `fal-ai/gpt-image-1-mini/edit` / OpenAI | gpt-image-1-mini | $0.005 | **₹0.48** | **1** | **4** | ◐ | ✔ | 🟢 cheapest |
+| 2 | GPT Image 2 — low, 1024² | Fal `openai/gpt-image-2/edit` | gpt-image-2 | $0.015 | **₹1.44** | **3** | **6** | ✅ | ✔ | 🟢 |
+| 3 | Qwen Image (edit) | Fal `fal-ai/qwen-image-edit-2511` etc. | qwen-image-edit-2511 | $0.02 per **megapixel** → ≈ $0.02 at 1 MP | **₹1.92** at 1 MP | **4** at 1 MP | **6** | ✅ (unit only) | ✔ | 🟢 |
+| 4 | FLUX.2 [pro] | Fal `fal-ai/flux-2` family / BFL | flux-2-pro | $0.03 | **₹2.88** | **6** | **7** | ◐ | ✔ | 🟢 |
+| 5 | Seedream V4 (edit) | Fal `fal-ai/bytedance/seedream/v4/edit` | seedream-v4 | $0.03 | **₹2.88** | **6** | **6** | ✅ | ✔ | 🟢 |
+| 6 | Gemini 3.1 Flash-Lite Image, 1K | Google direct / Fal `google/nano-banana-lite/edit` | gemini-3.1-flash-lite-image | $0.0336 | **₹3.23** | **7** | **6** | ◐ | ✔ | 🟢 |
+| 7 | Nano Banana (v1), Fal | Fal `fal-ai/nano-banana/edit` | nano-banana | $0.0398 | **₹3.82** | **8** | **6** | ✅ | ✔ | 🟡 |
+| 8 | **FLUX.1 Kontext Pro — today's default** | Fal `fal-ai/flux-pro/kontext` / BFL | flux-kontext-pro | **$0.04** | **₹3.84** | **8** (= the existing constant) | **6** | ✅ | ✔ | 🟡 **baseline** |
+| 9 | Recraft V4 | Fal `fal-ai/recraft/v4/text-to-image` | recraft-v4 | $0.04 (V4.1 $0.035 ◐) | ₹3.84 | 8 | **0** (no photo input) | ✅ | ✖ text→image only | ⛔ not usable for this job |
+| 10 | GPT Image 2 — medium, 1024² | Fal `openai/gpt-image-2/edit` | gpt-image-2 | $0.061 | **₹5.86** | **13** | **8** | ✅ | ✔ | 🟡 |
+| 11 | Gemini 3.1 Flash Image ("Nano Banana 2"), 1K | Google direct (`gemini_image`) / Fal | gemini-3.1-flash-image | $0.067 | **₹6.43** | **14** | **7** | ◐ | ✔ | 🟡 |
+| 12 | FLUX.2 [max] | Fal `fal-ai/flux-2-max` / BFL | flux-2-max | $0.07 | **₹6.72** | **14** | **8** | ◐ | ✔ | 🟡 |
+| 13 | Gemini 3.1 Flash Image, 2K | Google direct | gemini-3.1-flash-image | $0.101 | **₹9.70** | **21** | **8** (same model, more pixels) | ◐ | ✔ | 🟠 |
+| 14 | **Gemini 3 Pro Image ("Nano Banana Pro"), 1K/2K** (`gemini_image_pro`) | Google direct / Fal `fal-ai/nano-banana-pro/edit` | gemini-3-pro-image | $0.134 | **₹12.86** | **27** | **9** | ◐ | ✔ | 🟠 premium |
+| 15 | GPT Image 2 — high, 1024² | Fal `openai/gpt-image-2/edit` | gpt-image-2 | $0.219 | **₹21.02** | **44** | **9** | ✅ | ✔ | 🔴 |
+| 16 | Gemini 3 Pro Image, 4K | Google direct | gemini-3-pro-image | $0.24 | **₹23.04** | **48** | **9** (resolution, not fidelity, is what 4K adds) | ◐ | ✔ | 🔴 |
 | — | Grok Imagine Image edit | Fal `xai/grok-imagine-image/v2.0/edit` | grok-imagine-image-2.0 | ⚠ not found | ⚠ | ⚠ | **?** | ⚠ | ✔ (≤3 images) | ⚠ pull via API |
 | — | Seedream V5 lite/pro edit | Fal `bytedance/seedream/v5/{lite,pro}/edit` | seedream-v5 | ⚠ not found | ⚠ | ⚠ | **?** | ⚠ | ✔ | ⚠ pull via API |
 | — | FLUX 1.1 Pro / FLUX Schnell | Fal `fal-ai/flux-pro/v1.1`, `fal-ai/flux/schnell` | flux-1.1-pro / schnell | ⚠ not found | ⚠ | ⚠ | **0** as scene renderer (text→image, invents the garment); fine as a model-reference step | ⚠ | ✖ (reference step only) | ⚠ |
 | — | FASHN try-on v1.5 (v1.6 available) | Fal `fal-ai/fashn/tryon/v1.5` | fashn-tryon-v1.5 | ⚠ not found | ⚠ | ⚠ | **?** (garment-conditioned; output is 576×864) | ⚠ | ✔ garment-conditioned | ⚠ |
 | — | Midjourney | **no official API** | — | no per-image list price (subscription only) | n/a | n/a | **n/a** (cannot be called) | ◐ | ✖ | ⛔ do not build |
 
-**Quality-per-rupee at a glance (provisional):** Kontext is the 6/10 baseline at ₹3.52. FLUX.2 [pro] (7/10, ₹2.64) and Seedream V4 / Qwen (6/10, ₹2.64 / ₹1.76) are cheaper for equal-or-better *estimated* quality. GPT Image 2 medium (8/10, ₹5.37) is the cheapest ≥ 8 row. Gemini Pro (9/10, ₹11.79) is the cheapest 9. Paying more than ₹11.79 for a 9 (rows 15–16) buys nothing on this scale. These are all hypotheses for the §3B.8 bench to confirm or kill — do not assign plans from this column alone.
+**Quality-per-rupee at a glance (provisional):** Kontext is the 6/10 baseline at ₹3.84. FLUX.2 [pro] (7/10, ₹2.88) and Seedream V4 / Qwen (6/10, ₹2.88 / ₹1.92) are cheaper for equal-or-better *estimated* quality. GPT Image 2 medium (8/10, ₹5.86) is the cheapest ≥ 8 row. Gemini Pro (9/10, ₹12.86) is the cheapest 9. Paying more than ₹12.86 for a 9 (rows 15–16) buys nothing on this scale. These are all hypotheses for the §3B.8 bench to confirm or kill — do not assign plans from this column alone.
 
 **Cost per finished studio shot (what a retailer is actually charged for) — pipelines, not single calls:**
 
-| Pipeline (`engine` value) | Calls | Cost per shot (USD) | **₹ per shot (@88)** | Credits (@ $0.005) | Quality /10 (provisional) | Status |
+| Pipeline (`engine` value) | Calls | Cost per shot (USD) | **₹ per shot (@96)** | Credits (@ $0.005) | Quality /10 (provisional) | Status |
 |---|---|---|---|---|---|---|
-| Kontext single-shot (`NULL` / `bfl_kontext`) | 1 | **$0.04** | **₹3.52** | **8** | 6 | ✅ verified — live default |
-| `gemini_image` single-shot (Flash Image, 1K) | 1 | ≈ $0.067 | ≈ ₹5.90 | ≈ 14 | 7 | ◐ |
-| `gemini_image_pro` single-shot (Pro Image, 1K/2K) | 1 | ≈ $0.134 | ≈ ₹11.79 | ≈ 27 | 9 | ◐ |
-| `vton_kontext` = FLUX 1.1 Pro ref + FASHN try-on + Kontext scene | 3 | **$0.04 + 2 unpriced calls** → cannot be totalled yet | ≥ ₹3.52 + ? | ≥ 8 + ? | ? (two-step keeps the garment via try-on, but three passes lose detail — §3B.7) | ⚠ needs fal pricing API |
-| `vton_gemini` = FLUX 1.1 Pro ref + FASHN try-on + Gemini Flash scene | 3 | ≈ $0.067 + 2 unpriced calls | ≥ ₹5.90 + ? | ≥ 14 + ? | ? | ⚠ needs fal pricing API |
+| Kontext single-shot (`NULL` / `bfl_kontext`) | 1 | **$0.04** | **₹3.84** | **8** | 6 | ✅ verified — live default |
+| `gemini_image` single-shot (Flash Image, 1K) | 1 | ≈ $0.067 | ≈ ₹6.43 | ≈ 14 | 7 | ◐ |
+| `gemini_image_pro` single-shot (Pro Image, 1K/2K) | 1 | ≈ $0.134 | ≈ ₹12.86 | ≈ 27 | 9 | ◐ |
+| `vton_kontext` = FLUX 1.1 Pro ref + FASHN try-on + Kontext scene | 3 | **$0.04 + 2 unpriced calls** → cannot be totalled yet | ≥ ₹3.84 + ? | ≥ 8 + ? | ? (two-step keeps the garment via try-on, but three passes lose detail — §3B.7) | ⚠ needs fal pricing API |
+| `vton_gemini` = FLUX 1.1 Pro ref + FASHN try-on + Gemini Flash scene | 3 | ≈ $0.067 + 2 unpriced calls | ≥ ₹6.43 + ? | ≥ 14 + ? | ? | ⚠ needs fal pricing API |
 | Any of the above with N = 2–3 QA samples (§3B.6) | ×N | × N | × N | × N | — | proposal only |
 
 **Reading it for plan assignment (suggestion — owner decides, nothing is built):**
