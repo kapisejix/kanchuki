@@ -873,6 +873,26 @@ Full detail, tables and the results view: `docs/tasks/AI Cost Comparison.html` �
 - Results: export JSON → `node scripts/save-bench.mjs <file>` → images in `docs/tasks/effect-photos/preview/`, data in `docs/tasks/bench-results.js`, shown in the HTML with a per-row score/notes.
 - Unpriced (`usd: null`) engines show "?": Grok, FLUX 1.1 Pro, FLUX Schnell, both `vton_*`. No migration, no retailer-path change.
 
+#### 8.1d Bench run 1 — outdoor, with model (2026-09-20)
+
+Raw rows + images: `docs/tasks/bench-results.json` / `.js` and `docs/tasks/effect-photos/preview/` (saved with `node scripts/save-bench.mjs`). 14 runs, 11 engines, 0 errors, six real garment photos (2 pink lehenga shots, red kurti, green saree, blue suit, yellow printed suit). **n = 1-2 per engine on different garments — a shortlist, not a ranking.** Visual garment-fidelity verdicts:
+
+| Engine | Verdict | Notes |
+|---|---|---|
+| `grok_imagine` ($0.04) | Excellent x2 | embroidery, drape, length held |
+| `gemini_image` ($0.067) | Excellent | also dropped the input's camera overlay |
+| `gpt_image_2_medium` ($0.061) | Excellent | saree pattern/border/pleats held |
+| `nano_banana` ($0.0398) | Very good | trim added to dupatta, slight lilac shift |
+| `qwen_edit` ($0.02) | Very good / medium | colour ran hot; seated pose rearranged embroidery |
+| `gpt_image_2_low` ($0.015) | Good | mauve colour drift |
+| `flux2_pro` ($0.03) | Good | hot-pink drift |
+| `bfl_kontext` ($0.04) | Medium | **copied the phone timestamp overlay** into the output |
+| `seedream_v4` | Poor x2 | lost embroidery, lavender shift — **removed** |
+| `vton_kontext` | Worst | lehenga became a sleeveless dress — two-step lost to single-shot |
+| `vton_gemini` | Medium-poor | saree drape re-invented, sneakers added |
+
+Follow-ups planned: run 2 = indoor with model, run 3 = product only (no model); compare all three on the same garments. Grok priced at $0.04 from docs.x.ai (`grok-imagine-image-2.0`); Fal's own price for the edit endpoint is unconfirmed.
+
 ### 8.2 The 80 KB ceiling — the decision table
 
 | Path | Current | Recommendation |

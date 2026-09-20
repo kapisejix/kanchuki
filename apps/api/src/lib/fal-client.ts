@@ -307,7 +307,6 @@ export const FAL_EDIT_ENGINES = {
     endpoint: 'openai/gpt-image-2/edit',
     extra: { quality: 'high', output_format: 'jpeg', num_images: 1 },
   },
-  seedream_v4: { endpoint: 'fal-ai/bytedance/seedream/v4/edit', extra: { num_images: 1 } },
   qwen_edit: {
     endpoint: 'fal-ai/qwen-image-edit-2511',
     extra: { output_format: 'jpeg', num_images: 1 },

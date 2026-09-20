@@ -351,7 +351,7 @@ export const STUDIO_CREDITS_PER_IMAGE = 8;
 // `105_studio_styles_engine_rename` normalizes any row still holding the old
 // strings.
 //
-// The eight `flux2_pro` … `grok_imagine` values are Fal image-edit endpoints added
+// The seven `flux2_pro` … `grok_imagine` values are Fal image-edit endpoints added
 // for the admin model bench (docs/tasks/AI Cost Comparison.html). Each takes the
 // product photo like the Gemini engines do; endpoint ids and request bodies live
 // in apps/api/src/lib/fal-client.ts (FAL_EDIT_ENGINES), which a test keeps in
@@ -366,7 +366,6 @@ export const STUDIO_ENGINES = [
   'gpt_image_2_low',
   'gpt_image_2_medium',
   'gpt_image_2_high',
-  'seedream_v4',
   'qwen_edit',
   'nano_banana',
   'grok_imagine',
@@ -402,10 +401,9 @@ export const STUDIO_ENGINE_INFO: Record<StudioEngine, StudioEngineInfo> = {
   gpt_image_2_low: { label: 'GPT Image 2 edit — low', version: 'openai/gpt-image-2/edit (quality=low)', provider: 'Fal', calls: 1, usd: 0.015 },
   gpt_image_2_medium: { label: 'GPT Image 2 edit — medium', version: 'openai/gpt-image-2/edit (quality=medium)', provider: 'Fal', calls: 1, usd: 0.061 },
   gpt_image_2_high: { label: 'GPT Image 2 edit — high', version: 'openai/gpt-image-2/edit (quality=high)', provider: 'Fal', calls: 1, usd: 0.219 },
-  seedream_v4: { label: 'Seedream V4 edit', version: 'fal-ai/bytedance/seedream/v4/edit', provider: 'Fal', calls: 1, usd: 0.03 },
   qwen_edit: { label: 'Qwen Image Edit 2511 (≈1 MP)', version: 'fal-ai/qwen-image-edit-2511', provider: 'Fal', calls: 1, usd: 0.02 },
   nano_banana: { label: 'Nano Banana v1 edit', version: 'fal-ai/nano-banana/edit', provider: 'Fal', calls: 1, usd: 0.0398 },
-  grok_imagine: { label: 'Grok Imagine Image 2.0 edit', version: 'xai/grok-imagine-image/v2.0/edit', provider: 'Fal', calls: 1, usd: null },
+  grok_imagine: { label: 'Grok Imagine Image 2.0 edit', version: 'xai/grok-imagine-image/v2.0/edit', provider: 'Fal', calls: 1, usd: 0.04 },
 };
 
 /** USD → ₹ and credits for one image, or null when the price is unknown. */
