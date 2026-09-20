@@ -90,6 +90,7 @@ for (const row of rows) {
     gender: row.gender,
     age: row.age,
     pose: row.pose,
+    photography: row.photography,
     usd: row.usd,
     inr: row.inr,
     credits: row.credits,

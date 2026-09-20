@@ -55,20 +55,20 @@ describe('gender + age bucket', () => {
 });
 
 describe('bench scenes and prompt', () => {
-  it('has the 11 outdoor scenes and every one resolves in SCENE', () => {
-    expect(BENCH_SCENES).toHaveLength(11);
-    for (const s of BENCH_SCENES) expect(SCENE[s.id][1]).toBe('outdoor');
+  it('has the 17 indoor scenes and every one resolves in SCENE', () => {
+    expect(BENCH_SCENES).toHaveLength(17);
+    for (const s of BENCH_SCENES) expect(SCENE[s.id][1]).toBe('indoor');
   });
 
   it('names scene, pose, person and the garment-preservation guard', () => {
     const p = composeBenchPrompt({
-      scene: 'mountain',
+      scene: 'penthouse',
       pose: 'twirl',
       cls: 'lehenga',
       gender: 'female',
       age: 'adult',
     });
-    expect(p).toContain('mountain');
+    expect(p).toContain('penthouse');
     expect(p).toContain('twirl');
     expect(p).toContain('woman');
     expect(p).toContain('100% preserved');
@@ -76,13 +76,27 @@ describe('bench scenes and prompt', () => {
 
   it('writes an older model for the senior bucket', () => {
     const p = composeBenchPrompt({
-      scene: 'beach',
+      scene: 'hotel',
       pose: 'standing',
       cls: 'saree',
       gender: 'female',
       age: 'senior',
     });
     expect(p).toContain('60s');
+  });
+});
+
+describe('bench light + shot', () => {
+  const base = { scene: 'showroom', pose: 'standing', gender: 'female', age: 'adult' } as const;
+  it('writes light and shot into the prompt, indoors', () => {
+    const p = composeBenchPrompt({ ...base, cls: 'suit', light: 'window', shot: 'profile' });
+    expect(p).toContain('window light');
+    expect(p).toContain('profile shot');
+    expect(p).not.toContain('outdoors');
+  });
+  it('never frames a half-body garment below the hip', () => {
+    const p = composeBenchPrompt({ ...base, cls: 'kurti', shot: 'full' });
+    expect(p).toContain('waist-up');
   });
 });
 

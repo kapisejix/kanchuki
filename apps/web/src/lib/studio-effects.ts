@@ -151,53 +151,59 @@ export const SCENE = {
   ],
   beach: ['Goa Sunset Beach', 'outdoor', 'Resort', 'a Goa beach at sunset with soft waves'],
   // Added for the model bench (BENCH_SCENES below). No preset uses these.
-  riverside: [
-    'Riverside',
-    'outdoor',
-    'Nature',
-    'a calm riverbank with soft grass, gentle water and hazy hills behind',
+  courtyard: [
+    'Courtyard',
+    'indoor',
+    'Indian',
+    'a traditional Indian haveli courtyard with carved stone pillars, a tulsi planter and soft light from an open sky',
   ],
-  forest: [
-    'Forest',
-    'outdoor',
-    'Nature',
-    'a quiet green forest path with tall trees and dappled sunlight',
+  royal_interior: [
+    'Royal Interior',
+    'indoor',
+    'Indian',
+    'an opulent royal Indian interior with ornate gilded arches, rich drapes and a crystal chandelier softly out of focus',
   ],
-  modern_street: [
-    'Modern Street',
-    'outdoor',
-    'Urban',
-    'a clean modern city street with glass storefronts and softly blurred traffic',
+  showroom: [
+    'Showroom',
+    'indoor',
+    'Commercial',
+    'a bright modern clothing showroom with clean display plinths and softly blurred garment racks',
   ],
-  cafe: [
-    'Cafe',
-    'outdoor',
-    'Urban',
-    'a cosy street cafe with wooden tables, potted plants and warm ambient light',
+  designer_store: [
+    'Designer Store',
+    'indoor',
+    'Commercial',
+    'an upscale designer boutique with warm spotlit mannequins and minimal wooden shelving softly out of focus',
   ],
-  terrace: [
-    'Terrace',
-    'outdoor',
-    'Urban',
-    'a sunlit open terrace with a low parapet and a soft city skyline beyond',
+  fashion_gallery: [
+    'Fashion Gallery',
+    'indoor',
+    'Commercial',
+    'a minimalist fashion gallery with white walls, framed editorial prints and a polished concrete floor',
   ],
-  balcony: [
-    'Balcony',
-    'outdoor',
-    'Urban',
-    'a bright apartment balcony with a wrought-iron railing and hanging plants',
+  hotel: [
+    'Hotel',
+    'indoor',
+    'Luxury',
+    'a five-star hotel lobby with a grand staircase, warm lamps and polished stone floors softly out of focus',
   ],
-  poolside: [
-    'Poolside',
-    'outdoor',
-    'Resort',
-    'a resort poolside with turquoise water, white loungers and palm shade',
+  penthouse: [
+    'Penthouse',
+    'indoor',
+    'Luxury',
+    'a high-rise penthouse living room with floor-to-ceiling windows, a designer sofa and a soft city skyline beyond',
   ],
-  tropical_resort: [
-    'Tropical Resort',
-    'outdoor',
-    'Resort',
-    'a tropical resort courtyard with palms, bamboo and warm stone paths',
+  luxury_lounge: [
+    'Luxury Lounge',
+    'indoor',
+    'Luxury',
+    'a plush luxury lounge with velvet armchairs, brass accents and low ambient lighting',
+  ],
+  heritage_room: [
+    'Heritage Room',
+    'indoor',
+    'Heritage',
+    'a heritage Indian room with carved teak furniture, jharokha windows and muted antique textiles',
   ],
 } as const satisfies Record<string, readonly [string, Env, string, string]>;
 export type SceneId = keyof typeof SCENE;
@@ -241,6 +247,12 @@ export const FRAME = {
   three_q: ['Three-quarter', 'three-quarter shot, head to knee'],
   half: ['Half body', 'waist-up only, head to hip'],
   close: ['Close-up', 'tight chest-up close-up'],
+  mid: ['Mid shot', 'mid shot, head to thigh'],
+  front: ['Front view', 'straight-on front view, full body, facing the camera'],
+  side: ['Side view', 'side view, full body, body turned 90 degrees to the camera'],
+  profile: ['Profile', 'profile shot, head and shoulders in side profile'],
+  wide: ['Wide shot', 'wide shot, full body small in frame with the scene visible around'],
+  editorial: ['Editorial', 'editorial fashion framing, full body, dynamic angle, magazine composition'],
   product: ['Product', 'centred, entire product visible'],
 } as const;
 export type FrameId = keyof typeof FRAME;
@@ -964,21 +976,36 @@ export const MODEL_TILES: ModelTile[] = [
 // list. Reuses composePrompt() above so a bench prompt reads exactly like a
 // catalog effect's prompt — the only new logic is which pose and who.
 
-/** The outdoor scene picker, grouped as the owner listed them. `li` is the
- * lighting that suits the scene (a bench prompt has no preset to carry it). */
+/** The indoor scene picker, grouped as the owner listed them. */
 export const BENCH_SCENES = [
-  { group: 'Nature', label: 'Rose Garden', id: 'rose_garden', li: 'golden' },
-  { group: 'Nature', label: 'Riverside', id: 'riverside', li: 'natural' },
-  { group: 'Nature', label: 'Mountain', id: 'mountain', li: 'daylight' },
-  { group: 'Nature', label: 'Forest', id: 'forest', li: 'soft' },
-  { group: 'Urban', label: 'Modern Street', id: 'modern_street', li: 'daylight' },
-  { group: 'Urban', label: 'Cafe', id: 'cafe', li: 'golden' },
-  { group: 'Urban', label: 'Terrace', id: 'terrace', li: 'golden' },
-  { group: 'Urban', label: 'Balcony', id: 'balcony', li: 'natural' },
-  { group: 'Resort', label: 'Beach', id: 'beach', li: 'sunset' },
-  { group: 'Resort', label: 'Poolside', id: 'poolside', li: 'daylight' },
-  { group: 'Resort', label: 'Tropical Resort', id: 'tropical_resort', li: 'golden' },
-] as const satisfies readonly { group: string; label: string; id: SceneId; li: LightId }[];
+  { group: 'Studio', label: 'White Studio', id: 'white_studio' },
+  { group: 'Studio', label: 'Beige Studio', id: 'beige_studio' },
+  { group: 'Studio', label: 'Grey Studio', id: 'grey_studio' },
+  { group: 'Studio', label: 'Luxury Studio', id: 'luxury_studio' },
+  { group: 'Studio', label: 'Editorial Studio', id: 'editorial' },
+  { group: 'Indian', label: 'Indian Home', id: 'indian_home' },
+  { group: 'Indian', label: 'Courtyard', id: 'courtyard' },
+  { group: 'Indian', label: 'Royal Interior', id: 'royal_interior' },
+  { group: 'Commercial', label: 'Boutique', id: 'boutique' },
+  { group: 'Commercial', label: 'Showroom', id: 'showroom' },
+  { group: 'Commercial', label: 'Designer Store', id: 'designer_store' },
+  { group: 'Commercial', label: 'Fashion Gallery', id: 'fashion_gallery' },
+  { group: 'Luxury', label: 'Hotel', id: 'hotel' },
+  { group: 'Luxury', label: 'Penthouse', id: 'penthouse' },
+  { group: 'Luxury', label: 'Luxury Lounge', id: 'luxury_lounge' },
+  { group: 'Luxury', label: 'Marble Hall', id: 'marble' },
+  { group: 'Heritage', label: 'Heritage Room', id: 'heritage_room' },
+] as const satisfies readonly { group: string; label: string; id: SceneId }[];
+
+/** Owner-approved bench lighting (2026-09-20). */
+export const BENCH_LIGHTS = ['natural', 'soft', 'window', 'sunset', 'studio', 'highkey', 'lowkey'] as const satisfies readonly LightId[];
+export type BenchLight = (typeof BENCH_LIGHTS)[number];
+
+/** Owner-approved bench photography / framing (2026-09-20). */
+export const BENCH_SHOTS = ['full', 'three_q', 'mid', 'close', 'front', 'side', 'profile', 'wide', 'editorial'] as const satisfies readonly FrameId[];
+export type BenchShot = (typeof BENCH_SHOTS)[number];
+// A half-body garment cannot be framed below the hip (no invented legs).
+const LEGS_SHOTS = new Set<BenchShot>(['full', 'three_q', 'front', 'side', 'wide', 'editorial']);
 
 /** The only poses the bench uses (owner list, 2026-09-19). */
 export const BENCH_POSES = [
@@ -1032,21 +1059,23 @@ export function composeBenchPrompt(o: {
   cls: Cls;
   gender: BenchGender;
   age: BenchAge;
+  light?: BenchLight;
+  shot?: BenchShot;
 }): string {
-  const li = BENCH_SCENES.find((s) => s.id === o.scene)?.li ?? 'natural';
   const { aud, senior } = audFor(o.gender, o.age);
+  const shot = o.shot ?? 'full';
   const preset: Preset = {
     code: 'BENCH',
     title: 'Bench',
     mode: 'model',
     sc: o.scene,
     po: o.pose,
-    li,
-    fr: HALF.has(o.cls) ? 'half' : 'full',
+    li: o.light ?? 'soft',
+    fr: HALF.has(o.cls) && LEGS_SHOTS.has(shot) ? 'half' : shot,
     fit: 'all',
     aud: null,
     pri: 0,
-    env: 'outdoor',
+    env: 'indoor',
     group: SCENE[o.scene][2],
     combo: false,
   };

@@ -477,7 +477,7 @@ plan_ai_budget    = owner-decided share of Starter ₹4,999 / Growth ₹9,999 / 
 <table class="sortable" id="tbench">
   <thead><tr>
     <th>Output</th><th>Input</th><th>Model</th><th>Version</th><th>Provider</th>
-    <th>Scene</th><th>Person</th><th>Pose</th>
+    <th>Scene</th><th>Person</th><th>Pose</th><th>Photography</th>
     <th class="num">Time (s)</th><th class="num">Cost $</th><th class="num">Cost ₹</th><th class="num">Credits</th>
     <th class="num">Your score /10</th><th>Notes</th>
   </tr></thead>
@@ -595,6 +595,7 @@ plan_ai_budget    = owner-decided share of Starter ₹4,999 / Growth ₹9,999 / 
         '<td>' + esc(r.scene) + '</td>' +
         '<td>' + esc(r.gender) + ' / ' + esc(r.age) + '</td>' +
         '<td>' + esc(r.pose) + '</td>' +
+        '<td>' + esc(r.photography || '—') + '</td>' +
         '<td class="num" data-v="' + (r.ms == null ? '' : r.ms / 1000) + '">' + num(r.ms, function (v) { return (v / 1000).toFixed(1); }) + '</td>' +
         '<td class="num" data-v="' + (r.usd == null ? '' : r.usd) + '">' + num(r.usd, function (v) { return '$' + v; }) + '</td>' +
         '<td class="num" data-v="' + (r.inr == null ? '' : r.inr) + '">' + num(r.inr, function (v) { return '₹' + v; }) + '</td>' +

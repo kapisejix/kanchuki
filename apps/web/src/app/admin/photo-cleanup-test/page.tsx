@@ -16,12 +16,18 @@ import {
   type Aud,
   BENCH_AGES,
   BENCH_GENDERS,
+  BENCH_LIGHTS,
   BENCH_SCENES,
+  BENCH_SHOTS,
   type BenchAge,
   type BenchGender,
+  type BenchLight,
   type BenchPose,
+  type BenchShot,
   CLS,
   type Cls,
+  FRAME,
+  LIGHT,
   POSE,
   type SceneId,
   audFor,
@@ -91,6 +97,7 @@ type BenchRow = {
   gender: BenchGender;
   age: BenchAge;
   pose: string;
+  photography: string;
   prompt: string;
   promptUsed: string | null;
   missingParts: string[] | null;
@@ -275,7 +282,9 @@ export default function PhotoCleanupTestPage() {
   // AI Studio Shoot / model bench (F-032). Scene + gender + age + pose become ONE
   // prompt (studio-effects.ts composeBenchPrompt) that is run through every ticked
   // engine, so the same photo can be compared model by model.
-  const [benchScene, setBenchScene] = useState<SceneId>('mountain');
+  const [benchScene, setBenchScene] = useState<SceneId>('white_studio');
+  const [benchLight, setBenchLight] = useState<BenchLight>('soft');
+  const [benchShot, setBenchShot] = useState<BenchShot>('full');
   const [benchGender, setBenchGender] = useState<BenchGender>('female');
   const [benchAge, setBenchAge] = useState<BenchAge>('adult');
   // 'auto' → one random pick per batch, shared by every engine so results compare.
@@ -334,6 +343,8 @@ export default function PhotoCleanupTestPage() {
       cls: benchCls,
       gender: benchGender,
       age: benchAge,
+      light: benchLight,
+      shot: benchShot,
     });
 
   // Effects catalog → bench: load the sample photo as the product photo and fill
@@ -405,6 +416,7 @@ export default function PhotoCleanupTestPage() {
           gender: benchGender,
           age: benchAge,
           pose: POSE[pose][0],
+          photography: FRAME[benchShot][0],
           prompt,
           ranAt: new Date().toISOString(),
         };
@@ -475,6 +487,7 @@ export default function PhotoCleanupTestPage() {
       gender: r.gender,
       age: r.age,
       pose: r.pose,
+      photography: r.photography,
       prompt: r.prompt,
       product_url: r.productUrl,
       result_url: r.resultUrl,
@@ -882,7 +895,7 @@ export default function PhotoCleanupTestPage() {
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
           <div className="flex flex-col gap-1">
             <label htmlFor="bench-scene" className="text-xs text-gray-500">
-              Scene (outdoor)
+              Scene (Indoor)
             </label>
             <select
               id="bench-scene"
@@ -890,7 +903,7 @@ export default function PhotoCleanupTestPage() {
               onChange={(e) => setBenchScene(e.target.value as SceneId)}
               className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2"
             >
-              {(['Nature', 'Urban', 'Resort'] as const).map((g) => (
+              {(['Studio', 'Indian', 'Commercial', 'Luxury', 'Heritage'] as const).map((g) => (
                 <optgroup key={g} label={g}>
                   {BENCH_SCENES.filter((s) => s.group === g).map((s) => (
                     <option key={s.id} value={s.id}>
@@ -898,6 +911,40 @@ export default function PhotoCleanupTestPage() {
                     </option>
                   ))}
                 </optgroup>
+              ))}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label htmlFor="bench-light" className="text-xs text-gray-500">
+              Light
+            </label>
+            <select
+              id="bench-light"
+              value={benchLight}
+              onChange={(e) => setBenchLight(e.target.value as BenchLight)}
+              className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2"
+            >
+              {BENCH_LIGHTS.map((k) => (
+                <option key={k} value={k}>
+                  {LIGHT[k][0]}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label htmlFor="bench-shot" className="text-xs text-gray-500">
+              Photography
+            </label>
+            <select
+              id="bench-shot"
+              value={benchShot}
+              onChange={(e) => setBenchShot(e.target.value as BenchShot)}
+              className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2"
+            >
+              {BENCH_SHOTS.map((k) => (
+                <option key={k} value={k}>
+                  {FRAME[k][0]}
+                </option>
               ))}
             </select>
           </div>
