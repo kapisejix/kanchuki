@@ -2133,6 +2133,11 @@ model CustomerAccount {
   // search) are suppressed and the preference vector is frozen/cleared.
   profiling_enabled Boolean @default(true)
 
+  // DPDP s.14 right to nominate: who may exercise this shopper's data rights on
+  // death/incapacity. Both set or both null.
+  nominee_name  String?
+  nominee_phone String?
+
   created_at DateTime  @default(now())
   updated_at DateTime  @updatedAt
   deleted_at DateTime?

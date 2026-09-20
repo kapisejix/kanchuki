@@ -55,6 +55,8 @@ export const passportDataRoutes: FastifyPluginAsync = async (server) => {
         budget_min: true,
         budget_max: true,
         profiling_enabled: true,
+        nominee_name: true,
+        nominee_phone: true,
         created_at: true,
       },
     });

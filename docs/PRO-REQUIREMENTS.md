@@ -2955,3 +2955,27 @@ tables as-is; live dashboard queries against raw interaction rows; fabricated
 social-proof numbers; a default admin view that exposes named-customer raw
 behavior without an audit trail; any re-introduction of 360°/VTO/loyalty-points
 under the engagement banner.
+
+---
+
+## 34. DPDP Notice Update + Right to Nominate — ✅ BUILT 2026-09-20
+
+Source: DPDP founder guide (Sept 2026, 20 points). Most day-to-day duties are scheduled for 13 May 2027 — this is a build-now pass, **pending lawyer review**.
+
+| Guide point | Where |
+|---|---|
+| 1–3 lawful grounds, legitimate uses, who is responsible | `/privacy` "Why we process your data, and who is responsible"; `/terms` §7 (retailer decides purpose for its customer list, Kanchuki processes) |
+| 4 processor contracts, 15 overseas processing | `/privacy` "Third parties" |
+| 5, 11 accuracy, access incl. who data was shared with | `/privacy` "Your rights" (30-day response) |
+| 6–7 security | `/privacy` "Security" |
+| 8 breach notification | `/privacy` "Data breaches"; `/terms` §7 (retailer must report incidents) |
+| 9 retention | `/privacy` "Keeping data only as long as needed" |
+| 10 children | `/privacy` "Children"; `/terms` §7 |
+| 12 grievance | `/privacy` "Grievance officer" — `privacy@kanchuki.app`, 30 days (guide caps the published period at 90) |
+| 13 nominate | `/my-profile` Nominee card + migration 108 (see DATABASE.md); `/privacy` "Your rights" |
+| 20 Data Protection Board | `/privacy` "Your rights → Complaints"; `/account-deletion` |
+| 14, 16–19 Consent Manager, SDF, DPO, DPIA, audit | Not applicable unless notified as an SDF — no page text |
+
+Marketing: FAQ "Is my data protected under India's DPDP Act?"; `/for-customers` safety blurb names the DPDP Act. FAQ prices corrected to ₹4,999 / ₹9,999 / ₹14,999 monthly ex-GST (annual billing was removed 2026-09-01).
+
+**Open:** lawyer review of all wording; migration 108 must be applied from the admin dashboard before the Nominee card works on live.

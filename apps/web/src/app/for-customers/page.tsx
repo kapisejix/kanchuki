@@ -86,7 +86,7 @@ export default function ForCustomersPage() {
           <div>
             <ShieldCheck size={24} strokeWidth={1.5} className="text-cobalt-600 mb-3" />
             <h3 className="font-display text-lg font-semibold text-carbon mb-2">Is my information safe?</h3>
-            <p className="text-sm text-carbon/60 leading-relaxed">You don&apos;t need an account to browse. When you enquire, the shop sees only what you choose to share. Kanchuki follows India&apos;s data norms — no random ads, no selling your number.</p>
+            <p className="text-sm text-carbon/60 leading-relaxed">You don&apos;t need an account to browse. When you enquire, the shop sees only what you choose to share. Kanchuki follows India&apos;s DPDP Act — no random ads, no selling your number. You can access, correct or delete your data any time, and we answer complaints within 30 days. <Link href="/privacy" className="font-semibold text-cobalt-600 hover:text-cobalt-700 underline decoration-cobalt-200 underline-offset-2 transition-colors">Read our Privacy Policy</Link>.</p>
           </div>
           <div>
             <MapPin size={24} strokeWidth={1.5} className="text-terracotta mb-3" />

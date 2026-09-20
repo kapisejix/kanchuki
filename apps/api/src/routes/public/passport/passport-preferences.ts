@@ -24,6 +24,8 @@ export const passportPreferencesRoutes: FastifyPluginAsync = async (server) => {
       pref_fabrics: account.pref_fabrics,
       budget_min: account.budget_min,
       budget_max: account.budget_max,
+      nominee_name: account.nominee_name,
+      nominee_phone: account.nominee_phone,
     });
   });
   // ─── PUT /passport/preferences ────────────────────────────────
@@ -36,6 +38,13 @@ export const passportPreferencesRoutes: FastifyPluginAsync = async (server) => {
     pref_fabrics: z.array(z.string()).optional(),
     budget_min: z.number().int().nonnegative().optional(),
     budget_max: z.number().int().nonnegative().optional(),
+    // Right to nominate (DPDP s.14). Both fields together, or null/null to clear.
+    nominee_name: z.string().trim().min(1).max(100).nullable().optional(),
+    nominee_phone: z
+      .string()
+      .regex(/^[6-9]\d{9}$/, 'Enter a 10-digit Indian mobile number')
+      .nullable()
+      .optional(),
   });
 
   server.put('/preferences', async (request, reply) => {
@@ -56,6 +65,19 @@ export const passportPreferencesRoutes: FastifyPluginAsync = async (server) => {
     const accountId = session.customer_account_id;
     const current = session.customer_account;
     const updates = body.data;
+    if ((updates.nominee_name === undefined) !== (updates.nominee_phone === undefined)) {
+      return reply.status(400).send({
+        error: { code: 'INVALID_BODY', message: 'Send nominee_name and nominee_phone together' },
+      });
+    }
+    if ((updates.nominee_name === null) !== (updates.nominee_phone === null)) {
+      return reply.status(400).send({
+        error: {
+          code: 'INVALID_BODY',
+          message: 'Nominee name and phone must both be set or both cleared',
+        },
+      });
+    }
 
     // If profiling is being disabled, freeze the vector (stop updating it)
     // and record the event. The vector naturally becomes stale as no new

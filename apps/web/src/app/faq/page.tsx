@@ -15,7 +15,7 @@ const GROUPS: { tag: string; items: { q: string; a: string }[] }[] = [
       { q: 'Do I need a website?', a: 'No. That\'s the point. Your catalog lives on a link you share on WhatsApp, and your shop gets its own page on Kanchuki. No domain, no hosting, no website builder.' },
       { q: 'Do my customers need an app?', a: 'No. The link opens in their phone\'s browser — usually right inside WhatsApp. They can browse, favourite, and enquire without installing anything.' },
       { q: 'How long until my shop is online?', a: 'Most shops are online the same evening. Photograph your best pieces, add prices, save, share the link.' },
-      { q: 'Can I try it before paying?', a: 'Yes — 14 days free, no credit card. After that, plans start at ₹999/month.' },
+      { q: 'Can I try it before paying?', a: 'Yes — 14 days free, no credit card. After that, plans start at ₹4,999/month + GST.' },
     ],
   },
   {
@@ -38,7 +38,7 @@ const GROUPS: { tag: string; items: { q: string; a: string }[] }[] = [
   {
     tag: 'Money & billing',
     items: [
-      { q: 'How much does it cost?', a: 'Starter ₹999/mo, Growth ₹2,499/mo, Pro ₹4,999/mo. Annual billing saves 20%. Prices in INR with GST invoices.' },
+      { q: 'How much does it cost?', a: 'Starter ₹4,999/mo, Growth ₹9,999/mo, Pro ₹14,999/mo, billed monthly. Prices are in INR, exclusive of 18% GST, and every payment gets a GST invoice.' },
       { q: 'How do I pay?', a: 'UPI (GPay, PhonePe, PayTM), cards, or netbanking. No forex, no hidden charges.' },
       { q: 'What if I hit a product limit?', a: 'Buy a small add-on pack for that month, or upgrade the plan. Nothing gets deleted.' },
     ],
@@ -54,6 +54,7 @@ const GROUPS: { tag: string; items: { q: string; a: string }[] }[] = [
     tag: 'Data & trust',
     items: [
       { q: 'Who owns the customer data?', a: 'Your shop does. Customer photos and details belong to you; deletion is supported. Kanchuki follows India\'s data norms.' },
+      { q: 'Is my data protected under India\'s DPDP Act?', a: 'Yes. We collect data only with consent or for a purpose the law allows, protect it with access controls and encryption, tell you promptly if a breach affects you, and never sell it. You can access, correct, delete or nominate someone for your data, and complaints are answered within 30 days at privacy@kanchuki.app. Details are in our Privacy Policy.' },
       { q: 'Can my staff use it too?', a: 'Yes — on the Pro plan, add staff with their own logins. Team members can help without touching your account.' },
       { q: 'Is the app on the Play Store?', a: 'Android APK is available now via direct install. Play Store and iOS listings are coming soon.' },
     ],

@@ -262,3 +262,41 @@ describe('PUT /v1/public/passport/preferences', () => {
     expect(res.statusCode).toBe(400);
   });
 });
+
+// ─── Right to nominate (DPDP s.14) ────────────────────────────────
+
+describe('PUT /v1/public/passport/preferences — nominee', () => {
+  const put = async (payload: unknown) => {
+    const app = buildApp();
+    await app.ready();
+    return app.inject({
+      method: 'PUT',
+      url: '/v1/public/passport/preferences',
+      headers: { cookie: 'kanchuki_passport=session_abc123', 'content-type': 'application/json' },
+      payload: payload as Record<string, unknown>,
+    });
+  };
+
+  it('saves a nominee name + phone together', async () => {
+    const res = await put({ nominee_name: 'Asha', nominee_phone: '9876543210' });
+    expect(res.statusCode).toBe(200);
+    expect(mockCustomerAccountUpdate).toHaveBeenCalledWith({
+      where: { id: 'ca_123' },
+      data: { nominee_name: 'Asha', nominee_phone: '9876543210' },
+    });
+  });
+
+  it('clears the nominee with null/null', async () => {
+    expect((await put({ nominee_name: null, nominee_phone: null })).statusCode).toBe(200);
+  });
+
+  it.each([
+    ['only a name', { nominee_name: 'Asha' }],
+    ['only a phone', { nominee_phone: '9876543210' }],
+    ['name set, phone cleared', { nominee_name: 'Asha', nominee_phone: null }],
+    ['a non-Indian-mobile phone', { nominee_name: 'Asha', nominee_phone: '12345' }],
+  ])('rejects %s', async (_label, payload) => {
+    expect((await put(payload)).statusCode).toBe(400);
+    expect(mockCustomerAccountUpdate).not.toHaveBeenCalled();
+  });
+});

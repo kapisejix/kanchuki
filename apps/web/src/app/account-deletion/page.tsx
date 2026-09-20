@@ -18,7 +18,7 @@ export default function AccountDeletionPage() {
         </Link>
 
         <h1 className="mt-6 font-display text-3xl font-semibold">Account Deletion</h1>
-        <p className="mt-2 text-sm text-carbon/50">Last updated: August 10, 2026</p>
+        <p className="mt-2 text-sm text-carbon/50">Last updated: September 20, 2026</p>
 
         <div className="mt-8 space-y-6 text-carbon/70">
           <p>
@@ -90,7 +90,7 @@ export default function AccountDeletionPage() {
               <Link href="/privacy" className="text-cobalt-600 underline">
                 Privacy Policy
               </Link>{' '}
-              for full details on how we collect, use, and retain data.
+              for full details on how we collect, use, and retain data, including your right to complain to our Grievance Officer at privacy@kanchuki.app (we reply within 30 days) and, after that, to the Data Protection Board of India.
             </p>
           </section>
         </div>

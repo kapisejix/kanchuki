@@ -2750,3 +2750,21 @@ New: `apps/api/src/lib/gemini-image.test.ts` — 15 tests, including that the re
 **Not done:** retailer path still passes no `inputHasPerson`; `missingParts`/set completion (R1–R3) still not wired even though the same vision call now returns the parts; `studio-ab` route does not run the check (two-step engines build their own prompts). **Not verified against a live provider.**
 
 **Verification:** `garment-parts` + `studio-shoot` tests 58/58 · API + Web `tsc --noEmit` clean.
+
+## BUILT 2026-09-20 — DPDP notice update + shopper "right to nominate"
+
+Driven by the DPDP founder guide (see PRO-REQUIREMENTS §34 for the point-by-point map).
+
+| File | Change |
+|---|---|
+| `apps/web/src/app/privacy/page.tsx` | +Why we process / who is responsible, Security, Data breaches, Children, Retention, Grievance officer (`privacy@kanchuki.app`, 30 days); Rights gains nominate + Board complaint; vendor-contract / overseas sentence |
+| `apps/web/src/app/terms/page.tsx` | new §7 "Personal data of your customers"; later sections renumbered 8–10 |
+| `apps/web/src/app/account-deletion/page.tsx` | grievance + Board pointer |
+| `apps/web/src/app/faq/page.tsx`, `for-customers/page.tsx` | DPDP FAQ entry + safety blurb; stale FAQ prices fixed (were ₹999/2,499/4,999 + annual) |
+| `packages/db/prisma/schema.prisma`, `migrations/108_customer_nominee` | `CustomerAccount.nominee_name` / `nominee_phone` — **migration NOT applied** (admin dashboard) |
+| `apps/api/.../passport-preferences.ts`, `passport-data.ts` | nominee on GET/PUT `/preferences` (both-or-neither, 10-digit mobile) + in the data export |
+| `apps/web/.../(shopper)/my-profile/page.tsx` | Nominee card (save / update / remove) |
+| `passport-preferences.test.ts` | +6 nominee tests |
+
+**Not done:** lawyer review; nothing acts on a nominee automatically; CLAUDE.md index row not added (needs owner approval).
+**Verification:** passport-preferences 14/14 · API + Web `tsc --noEmit` clean.

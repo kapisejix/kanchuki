@@ -15,7 +15,7 @@ export default function TermsOfServicePage() {
         </Link>
 
         <h1 className="mt-6 font-display text-3xl font-semibold">Terms of Service</h1>
-        <p className="mt-2 text-sm text-carbon/50">Last updated: September 8, 2026</p>
+        <p className="mt-2 text-sm text-carbon/50">Last updated: September 20, 2026</p>
 
         <div className="mt-8 space-y-6 text-carbon/70">
           <p>
@@ -92,7 +92,27 @@ export default function TermsOfServicePage() {
           </section>
 
           <section>
-            <h2 className="font-display text-xl font-semibold text-carbon">7. Acceptable use</h2>
+            <h2 className="font-display text-xl font-semibold text-carbon">
+              7. Personal data of your customers
+            </h2>
+            <p>
+              For the customer details you enter or collect through Kanchuki, you decide why they
+              are used and Kanchuki processes them on your behalf. You must have a lawful basis
+              (such as the customer&apos;s consent) to collect and message them, keep the details
+              accurate, and honour their requests to access, correct or erase their data. You
+              must tell us without delay if you become aware of a breach affecting data held in
+              Kanchuki, so we can help you meet your notification duties under India&apos;s Digital
+              Personal Data Protection Act, 2023. Do not collect data from anyone under 18 without a
+              parent or guardian&apos;s verifiable consent. See our{' '}
+              <Link href="/privacy" className="text-cobalt-600 hover:underline">
+                Privacy Policy
+              </Link>{' '}
+              for how we handle personal data.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="font-display text-xl font-semibold text-carbon">8. Acceptable use</h2>
             <p>
               Do not misuse the platform: don&apos;t upload unlawful, infringing, or deceptive
               content, don&apos;t attempt to access another retailer&apos;s data, and don&apos;t
@@ -102,7 +122,7 @@ export default function TermsOfServicePage() {
           </section>
 
           <section>
-            <h2 className="font-display text-xl font-semibold text-carbon">8. Availability &amp; liability</h2>
+            <h2 className="font-display text-xl font-semibold text-carbon">9. Availability &amp; liability</h2>
             <p>
               We work to keep the service available, but provide it &quot;as is&quot; without
               warranties of uninterrupted availability. To the maximum extent permitted by law,
@@ -112,7 +132,7 @@ export default function TermsOfServicePage() {
           </section>
 
           <section>
-            <h2 className="font-display text-xl font-semibold text-carbon">9. Changes to these terms</h2>
+            <h2 className="font-display text-xl font-semibold text-carbon">10. Changes to these terms</h2>
             <p>
               We may update these terms from time to time. Continued use of Kanchuki after changes
               are posted constitutes acceptance of the updated terms.

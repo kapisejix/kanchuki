@@ -15,7 +15,7 @@ export default function PrivacyPolicyPage() {
         </Link>
 
         <h1 className="mt-6 font-display text-3xl font-semibold">Privacy Policy</h1>
-        <p className="mt-2 text-sm text-carbon/50">Last updated: September 8, 2026</p>
+        <p className="mt-2 text-sm text-carbon/50">Last updated: September 20, 2026</p>
 
         <div className="mt-8 space-y-6 text-carbon/70">
           <p>
@@ -23,6 +23,24 @@ export default function PrivacyPolicyPage() {
             clothing retailers in India. This policy explains what we collect from retailers and
             their customers, why, and how it&apos;s handled.
           </p>
+
+          <section>
+            <h2 className="font-display text-xl font-semibold text-carbon">Why we process your data, and who is responsible</h2>
+            <p>
+              We process personal data only with your consent (for example, when you tick the
+              consent box or create a shopper profile) or for a specific purpose the law permits,
+              such as delivering a service you asked for, sending an OTP you requested, or issuing
+              a GST invoice. You can withdraw consent at any time; withdrawing does not affect
+              what was done before.
+            </p>
+            <p>
+              Kanchuki is responsible (the &ldquo;Data Fiduciary&rdquo; under India&apos;s Digital
+              Personal Data Protection Act, 2023) for retailer account data and for shopper
+              profiles. For the customer lists a retailer builds inside Kanchuki, the retailer
+              decides why the data is used and Kanchuki processes it on the retailer&apos;s behalf.
+              We stay responsible for keeping that data secure.
+            </p>
+          </section>
 
           <section>
             <h2 className="font-display text-xl font-semibold text-carbon">What we collect</h2>
@@ -124,10 +142,24 @@ export default function PrivacyPolicyPage() {
               <a href="mailto:privacy@kanchuki.app" className="text-cobalt-600 hover:underline">
                 privacy@kanchuki.app
               </a>
-              . We will respond within a reasonable time, subject to the retention obligations
-              described below. Kanchuki retailer accounts are for users 18 and older; if a
+              . We will respond within 30 days, subject to the retention obligations
+              described below. You can also ask which service providers your data has been shared
+              with, ask us to correct inaccurate or incomplete data, and withdraw consent at any
+              time. Kanchuki retailer accounts are for users 18 and older; if a
               minor&apos;s details were shared without a parent or guardian&apos;s consent, contact
               us to have them removed.
+            </p>
+            <p>
+              <strong>Right to nominate:</strong> you can name a person to exercise your data
+              rights if you die or become unable to. Shopper profile holders can add a nominee in{' '}
+              <Link href="/my-profile" className="text-cobalt-600 hover:underline">
+                My Profile
+              </Link>
+              ; retailers can email us at the address below.
+            </p>
+            <p>
+              <strong>Complaints:</strong> if you are not satisfied with our reply to your grievance
+              (see below), you may complain to the Data Protection Board of India.
             </p>
           </section>
 
@@ -148,6 +180,12 @@ export default function PrivacyPolicyPage() {
                 Ads account, product data may be sent to those platforms using the retailer&apos;s
                 own credentials.</li>
             </ul>
+            <p className="mt-2">
+              Each provider that handles personal data for us is bound by a contract that requires
+              it to protect that data. Some providers (AI, hosting, SMS) process data outside India;
+              transfers are made only for the feature in use and only to the extent Indian law
+              permits.
+            </p>
           </section>
 
           <section>
@@ -167,6 +205,55 @@ export default function PrivacyPolicyPage() {
                 account deletion page
               </Link>
               .
+            </p>
+          </section>
+
+          <section>
+            <h2 className="font-display text-xl font-semibold text-carbon">Security</h2>
+            <p>
+              We protect personal data with encryption in transit, access controls so that staff
+              see only what their job needs, restricted database roles, audit logging of
+              sensitive actions, and regular backups. Access is reviewed and revoked when it is no
+              longer needed.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="font-display text-xl font-semibold text-carbon">Data breaches</h2>
+            <p>
+              If a personal data breach affects you, we will tell you without delay, explain what
+              happened and what you can do, and report it to the Data Protection Board of India as
+              the law requires.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="font-display text-xl font-semibold text-carbon">Children</h2>
+            <p>
+              A child is anyone under 18. Kanchuki does not knowingly collect a child&apos;s
+              personal data, and shopper profiles and retailer accounts are for people 18 and
+              older. Where a child&apos;s data must be processed, we require verifiable consent from
+              a parent or guardian, and we do not track or profile children or show them targeted
+              advertising.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="font-display text-xl font-semibold text-carbon">Keeping data only as long as needed</h2>
+            <p>
+              We erase personal data once the purpose it was collected for has ended, unless a law
+              requires us to keep it (for example GST records).
+            </p>
+          </section>
+
+          <section>
+            <h2 className="font-display text-xl font-semibold text-carbon">Grievance officer</h2>
+            <p>
+              To raise a complaint about how your data is handled, write to our Grievance Officer at{' '}
+              <a href="mailto:privacy@kanchuki.app" className="text-cobalt-600 hover:underline">
+                privacy@kanchuki.app
+              </a>
+              . We acknowledge complaints promptly and resolve them within 30 days.
             </p>
           </section>
 

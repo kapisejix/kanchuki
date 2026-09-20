@@ -39,6 +39,10 @@ export default function MyProfilePage() {
   const [saving, setSaving] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [nomineeName, setNomineeName] = useState('')
+  const [nomineePhone, setNomineePhone] = useState('')
+  const [nomineeSaved, setNomineeSaved] = useState(false)
+  const [nomineeBusy, setNomineeBusy] = useState(false)
 
   useEffect(() => {
     loadProfile()
@@ -63,6 +67,14 @@ export default function MyProfilePage() {
       })
       // Initialize style chips from account preferences
       setSelectedStyles((account as any).pref_styles ?? [])
+      // Nominee lives on the preferences endpoint (not in /me).
+      const prefRes = await fetch('/api/passport/preferences', { credentials: 'include' })
+      if (prefRes.ok) {
+        const prefs = await prefRes.json()
+        setNomineeName(prefs.nominee_name ?? '')
+        setNomineePhone(prefs.nominee_phone ?? '')
+        setNomineeSaved(Boolean(prefs.nominee_name))
+      }
     } catch {
       // Session expired or network error
     } finally {
@@ -83,6 +95,32 @@ export default function MyProfilePage() {
       await new Promise((r) => setTimeout(r, 500)) // placeholder
     } finally {
       setSaving(false)
+    }
+  }
+
+  // A non-2xx resolves rather than throws, so check res.ok (RC-026's lesson).
+  async function saveNominee(clear: boolean) {
+    setNomineeBusy(true)
+    try {
+      const res = await fetch('/api/passport/preferences', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(
+          clear
+            ? { nominee_name: null, nominee_phone: null }
+            : { nominee_name: nomineeName.trim(), nominee_phone: nomineePhone.trim() },
+        ),
+      })
+      if (!res.ok) throw new Error(`nominee update failed: ${res.status}`)
+      if (clear) {
+        setNomineeName('')
+        setNomineePhone('')
+      }
+      setNomineeSaved(!clear)
+    } catch {
+      alert('Could not save your nominee. Check the 10-digit mobile number and try again.')
+    } finally {
+      setNomineeBusy(false)
     }
   }
 
@@ -243,6 +281,53 @@ export default function MyProfilePage() {
               className="h-4 w-4 text-amber-600 rounded"
             />
           </label>
+        </div>
+      </section>
+
+      {/* Right to nominate — DPDP Act s.14 */}
+      <section className="bg-white rounded-lg border border-stone-200 p-6">
+        <h2 className="text-lg font-medium text-stone-900 mb-1">Nominee</h2>
+        <p className="text-sm text-stone-500 mb-4">
+          Name someone who can exercise your data rights if you die or can no longer do so
+          yourself.
+        </p>
+        <div className="space-y-3">
+          <input
+            type="text"
+            value={nomineeName}
+            onChange={(e) => setNomineeName(e.target.value)}
+            placeholder="Nominee's full name"
+            maxLength={100}
+            aria-label="Nominee's full name"
+            className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm"
+          />
+          <input
+            type="tel"
+            inputMode="numeric"
+            value={nomineePhone}
+            onChange={(e) => setNomineePhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+            placeholder="Nominee's 10-digit mobile number"
+            aria-label="Nominee's mobile number"
+            className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm"
+          />
+          <div className="flex gap-2">
+            <button
+              onClick={() => saveNominee(false)}
+              disabled={nomineeBusy || !nomineeName.trim() || nomineePhone.length !== 10}
+              className="px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700 disabled:opacity-50"
+            >
+              {nomineeBusy ? 'Saving…' : nomineeSaved ? 'Update nominee' : 'Save nominee'}
+            </button>
+            {nomineeSaved && (
+              <button
+                onClick={() => saveNominee(true)}
+                disabled={nomineeBusy}
+                className="px-4 py-2 bg-stone-100 text-stone-600 rounded-lg text-sm font-medium hover:bg-stone-200 disabled:opacity-50"
+              >
+                Remove
+              </button>
+            )}
+          </div>
         </div>
       </section>
 
