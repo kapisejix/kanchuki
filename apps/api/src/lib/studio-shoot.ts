@@ -45,7 +45,6 @@ import {
   generateFashnTryon,
   generateFluxKontext,
   generateFluxProImage,
-  generateFluxSchnellImage,
   isFalEditEngine,
   resolveFalKey,
 } from './fal-client.js';
@@ -923,7 +922,7 @@ export async function generateStudioImage(
   // (strength 0.65) regenerates most of the frame, and a generative model —
   // Gemini included, even though it now receives the photo — is free to
   // reinterpret the garment, which is the "changed the product colour" bug.
-  // So the default path is Kontext only; flux_pro / gemini / flux_schnell run
+  // So the default path is Kontext only; gemini / the Fal edit engines run
   // only when a caller explicitly asks via `engine`.
 
   // Two-step pipeline — garment-conditioned try-on, then a scene swap. Falls
@@ -946,14 +945,6 @@ export async function generateStudioImage(
 
   // Explicit engine override (admin bench / future UI) — attempt it, but
   // still fall through to Kontext if it errors.
-  if (engine === 'flux_pro' && falKey) {
-    try {
-      const res = await generateFluxProImage(promptText, { inputImageUrl, onProgress });
-      return { status: 'ready', sampleUrl: res.sampleUrl };
-    } catch (err) {
-      console.error('[studio-shoot] flux_pro (explicit) failed, falling back to Kontext:', err);
-    }
-  }
   // Gemini native image (Nano Banana). Unlike the Imagen `:predict` client this
   // replaces, it IS handed the product photo — the scene guard and the
   // garment-identity clause are instructions to an editor, not a description
@@ -969,14 +960,6 @@ export async function generateStudioImage(
     } catch (err) {
       if (opts.strict) fail(engine, err);
       console.error('[studio-shoot] gemini (explicit) failed, falling back to Kontext:', err);
-    }
-  }
-  if (engine === 'flux_schnell' && falKey) {
-    try {
-      const res = await generateFluxSchnellImage(promptText, { inputImageUrl, onProgress });
-      return { status: 'ready', sampleUrl: res.sampleUrl };
-    } catch (err) {
-      console.error('[studio-shoot] flux_schnell (explicit) failed, falling back to Kontext:', err);
     }
   }
   // Fal image-edit engines (FLUX.2, GPT Image 2, Seedream, Qwen, Nano Banana,

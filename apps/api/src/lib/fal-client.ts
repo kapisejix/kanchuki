@@ -13,7 +13,7 @@ export function isFalConfigured(): boolean {
 }
 
 /**
- * Submit and poll a Fal.ai model task (FLUX Pro / Schnell / Kontext, FASHN v1.5
+ * Submit and poll a Fal.ai model task (FLUX Pro / Kontext, FASHN v1.5
  * try-on).
  */
 export async function runFalTask(
@@ -205,35 +205,6 @@ export async function generateFluxProImage(
   };
 
   return runFalTask('fal-ai/flux-pro/v1.1', input, options?.onProgress);
-}
-
-/**
- * Run Flux Schnell (fast & budget-friendly) generation.
- */
-export async function generateFluxSchnellImage(
-  prompt: string,
-  options?: {
-    inputImageUrl?: string;
-    onProgress?: (p: { progress: number; etaMs: number }) => void;
-  },
-): Promise<{ sampleUrl: string }> {
-  if (options?.inputImageUrl) {
-    return generateFluxImageToImage(prompt, options.inputImageUrl, {
-      strength: 0.7,
-      onProgress: options?.onProgress,
-    });
-  }
-
-  const input: Record<string, unknown> = {
-    prompt,
-    negative_prompt:
-      'color shift, hue change, altered fabric color, color bleed, recoloring, washed out colors, oversaturated, tinted fabric, distorted embroidery, mismatched patterns, altered texture, color cast',
-    image_size: 'portrait_4_3',
-    num_inference_steps: 4,
-    enable_safety_checker: true,
-  };
-
-  return runFalTask('fal-ai/flux/schnell', input, options?.onProgress);
 }
 
 // ─── Deliberately absent: the IDM-VTON / CatVTON try-on helper ──────────────

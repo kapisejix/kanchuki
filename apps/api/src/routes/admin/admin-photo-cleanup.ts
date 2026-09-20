@@ -220,8 +220,8 @@ export const adminPhotoCleanupRoutes: FastifyPluginAsync = async (server) => {
   // `engine` is honoured (see STUDIO_ENGINES), and every engine except the
   // `vton_*` pair receives the product photo directly. When `engine` is omitted
   // the default cascade applies: FLUX Kontext via Fal, falling back to the BFL
-  // direct API when Fal is unavailable or errors. `flux_pro` / `flux_schnell` /
-  // `gemini_image*` only run when named here — each falls through to Kontext on
+  // direct API when Fal is unavailable or errors. `gemini_image*` and the Fal
+  // edit engines only run when named here — each falls through to Kontext on
   // its own failure, so an engine choice degrades rather than fails.
   server.post('/photo-cleanup/studio-shoot', async (request) => {
     const body = z

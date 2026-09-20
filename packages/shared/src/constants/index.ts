@@ -332,13 +332,17 @@ export const STUDIO_CREDITS_PER_IMAGE = 8;
 // unselectable.
 //
 // Single-shot engines take the product photo and edit the scene in one call:
-// `bfl_kontext` (default) and `flux_pro` / `flux_schnell` render the whole
-// frame, which is why they recolour the garment; `gemini_image` /
+// `bfl_kontext` (default) edits the scene in place; `gemini_image` /
 // `gemini_image_pro` are Gemini native image (Nano Banana 2 / Pro, Interactions
 // API) and DO receive the photo. The `vton_*` pair is the two-step pipeline —
 // garment-conditioned try-on first (FASHN v1.5), then a scene swap, rendered by
 // Kontext or Gemini respectively. Only the two-step pair keeps the actual
 // product AND produces a real scene.
+//
+// `flux_pro` / `flux_schnell` (FLUX text-to-image) were removed: no photo input
+// in the scene step, so they invented the garment. FLUX 1.1 Pro is still called
+// inside the `vton_*` pipeline, but only for the person-only reference frame.
+// Migration `106_studio_styles_drop_text_to_image_engines` resets stored rows.
 //
 // `imagen_3` / `imagen_3_fast` were renamed to `gemini_image` /
 // `gemini_image_pro`: they named `imagen-3.0-generate-002` on `:predict`, a
@@ -353,10 +357,8 @@ export const STUDIO_CREDITS_PER_IMAGE = 8;
 // in apps/api/src/lib/fal-client.ts (FAL_EDIT_ENGINES), which a test keeps in
 // step with this list.
 export const STUDIO_ENGINES = [
-  'flux_pro',
   'gemini_image',
   'gemini_image_pro',
-  'flux_schnell',
   'bfl_kontext',
   'vton_kontext',
   'vton_gemini',
@@ -392,8 +394,6 @@ export interface StudioEngineInfo {
 }
 export const STUDIO_ENGINE_INFO: Record<StudioEngine, StudioEngineInfo> = {
   bfl_kontext: { label: 'FLUX.1 Kontext Pro (default)', version: 'fal-ai/flux-pro/kontext', provider: 'Fal', calls: 1, usd: 0.04 },
-  flux_pro: { label: 'FLUX 1.1 Pro (text→image)', version: 'fal-ai/flux-pro/v1.1', provider: 'Fal', calls: 1, usd: null },
-  flux_schnell: { label: 'FLUX Schnell (text→image)', version: 'fal-ai/flux/schnell', provider: 'Fal', calls: 1, usd: null },
   gemini_image: { label: 'Nano Banana 2 (Gemini Flash Image, 1K)', version: 'gemini-3.1-flash-image', provider: 'Google', calls: 1, usd: 0.067 },
   gemini_image_pro: { label: 'Nano Banana Pro (Gemini Pro Image)', version: 'gemini-3-pro-image', provider: 'Google', calls: 1, usd: 0.134 },
   vton_kontext: { label: 'Two-step: FASHN try-on → Kontext scene', version: 'flux-pro/v1.1 + fashn/tryon/v1.5 + flux-pro/kontext', provider: 'Fal', calls: 3, usd: null },
@@ -479,7 +479,7 @@ export const INTEGRATION_KEYS = [
   {
     key_name: 'FAL_API_KEY',
     category: 'AI',
-    label: 'Fal.ai API Key (FLUX Pro / Kontext / Schnell, FASHN v1.5 try-on)',
+    label: 'Fal.ai API Key (FLUX Pro reference / Kontext, FASHN v1.5 try-on)',
   },
   {
     key_name: 'BFL_API_KEY',
