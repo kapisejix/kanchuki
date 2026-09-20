@@ -14,7 +14,7 @@ export default defineConfig({
   // The customer/PWA suite runs against a production server in
   // playwright.customer.config.ts (the Serwist SW is disabled in dev) — keep
   // it out of the fast dev-server run.
-  testIgnore: '**/customer-collection.spec.ts',
+  testIgnore: '**/customer-*.spec.ts',
   timeout: 120_000,
   fullyParallel: false,
   workers: 1,

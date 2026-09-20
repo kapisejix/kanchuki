@@ -39,7 +39,11 @@ async function forward(request: NextRequest, path: string[], method: ProxyMethod
       ...(hasBody ? { body: await request.text() } : {}),
     });
 
-    const body = await res.text();
+    // A 204/205/304 must have a null body: `new Response('', { status: 204 })`
+    // throws, and the catch below would turn the API's successful answer into a
+    // 503 (the events beacon answers 204 by design).
+    const nullBody = res.status === 204 || res.status === 205 || res.status === 304;
+    const body = nullBody ? null : await res.text();
     const response = new NextResponse(body, { status: res.status });
 
     // Forward Set-Cookie headers from the API (session cookie on verify)
