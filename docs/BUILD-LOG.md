@@ -2853,7 +2853,7 @@ Auditing `scripts/setup-role-separation.sql` against the schema produced two fin
 | ID | Finding | Fix |
 |---|---|---|
 | RC-029 | **RC-028's fix does not work.** It moved the promotions delete onto `kanchuki_purge`, but no file anywhere — script or migration — ever granted that role `DELETE` on `promotions`. The route compiles, ships and looks right while the delete still 500s. | migration `110_promotions_purge_grant` (`prisma migrate deploy` applies it; the hand-run script is not on any deploy path) + the same grant in the script |
-| RC-030 | **7 tables strand rows on retailer deletion.** `campaigns`, `campaign_sends`, `promotions`, `consent_events`, `customer_recently_viewed`, `customer_wishlist_items`, `customer_interactions` declare `retailer_id` as a bare scalar with no FK, so nothing cascades and nothing errors — the rows simply survive. Two are not even granted. 6 of 13 bare-`retailer_id` models are purged; 7 are not. | **Not fixed** — documented as an open gap in the script and RC-030, with the mechanical check that proves it |
+| RC-030 | **7 tables strand rows on retailer deletion.** `campaigns`, `campaign_sends`, `promotions`, `consent_events`, `customer_recently_viewed`, `customer_wishlist_items`, `customer_interactions` declare `retailer_id` as a bare scalar with no FK, so nothing cascades and nothing errors — the rows simply survive. Two are not even granted. 6 of 13 bare-`retailer_id` models are purged; 7 are not. | **Fixed** — all 7 swept in **both** jobs + 6 new grants in `scripts/setup-role-separation.sql` (`promotions` in migration `110`), with the **schema-driven completeness guard** that made the class possible in the first place. ⚠ 4 of the 7 (`customer_interactions`, `consent_events`, `customer_recently_viewed`, `customer_wishlist_items`) have RLS enabled and `kanchuki_purge` has no `BYPASSRLS` — RLS filters instead of raising, so those sweeps may affect 0 rows silently until a policy is decided (a PII call, documented in both jobs and RC-030). Strictly no worse than before, but not yet proven live. |
 
 The reported staleness was also real and is pruned: **9 names in the purge grant list had been
 dropped by migration 082** (`product_spin_frames`, `order_items`, `orders`, `try_on_jobs`,
@@ -2877,6 +2877,32 @@ shop fail on the referrer's leftover row); `referral_payouts` before `referral_c
 deletes); no unscoped table delete; the 15-day predicate inline where each sweep actually lives; and
 `app.allow_hard_delete` set in the **same** transaction as every delete (it is per-connection, so a
 SET and its DELETE landing on different pooled connections makes the guardrail refuse the delete).
+
+**RC-030's cleanup — and the guard the class needed from the start.** All seven bare-`retailer_id`
+tables are now swept by **both** jobs (`purgeChildren('campaign_sends'… )` etc. in the cron,
+`DELETE FROM campaign_sends WHERE retailer_id = $1` in the admin hard-delete), with six new grants in
+`scripts/setup-role-separation.sql` and `promotions` already carried by migration `110`. Each deletion
+site is commented with the rule that matters: a **declared** FK fails loudly when a sweep misses it (the
+FK violation rolls the whole transaction back, which is why the `product_attributes` /
+`social_accounts` omissions were caught at all), while a **denormalised** `retailer_id` fails
+**silently** — Postgres neither cascades nor errors, so the rows simply outlive the shop with no owner.
+That asymmetry is the whole root cause.
+
+The guard is the part that stops it recurring, and it is deliberately **not** a list of seven names:
+`purge-soft-deleted.test.ts` → `RC-030 — every bare-\`retailer_id\` table has a purge decision` reads
+`schema.prisma` at run time, collects every model whose `retailer_id` is a bare scalar (no `Retailer`
+relation), computes cascade reachability **from the schema's own `onDelete: Cascade` relations** to a
+fixpoint, and fails naming any table either job misses. Cascade reachability is computed rather than
+allowlisted because of `product_videos` — the one existing counter-example, and the reason the
+asymmetry between the two jobs is not a bug: it needs no cron delete because its `product_id` FK to
+`products` (migration 055) already carries it away when products are purged, and the admin path deletes
+it explicitly. A test asserting "all seven names present" would relearn nothing one refactor later; this
+one fails the moment a new bare-`retailer_id` model appears with no purge decision. **Falsified three
+ways:** dropping the `promotions` sweep from the cron fails with `expected [ 'promotions' ] to deeply
+equal []`; adding a bare-`retailer_id` model to the schema fails **both** jobs with
+`expected [ 'test_orphan_table' ]`; and a counter-test asserts `BARE_RETAILER_MODELS.length >= 7` so a
+broken schema parse cannot make the guard pass vacuously. `purge-retailer-now.test.ts` also asserts all
+seven deletes are issued **before** the retailer row.
 
 **Verification:** API **1078/1078** (83 files, and the spec §11-required `security.test.ts` +
 `admin.login.test.ts` run explicitly — 15/15) · web **319/319** (41 files) · `apps/api` + `packages/db` +
@@ -2905,8 +2931,9 @@ it costs nothing to remove.
 
 **Not done / owner-side:** migration **109 and 110 are not applied** (admin dashboard, per CLAUDE.md) ·
 `scripts/setup-role-separation.sql` is applied by hand and carries the `promotions` grant only for
-from-scratch environments · **T3–T10 not started** · RC-030's 7-table cleanup deliberately left open ·
-CLAUDE.md index row not added (needs owner approval).
+from-scratch environments · **T3–T10 not started** · **RC-030's 7 sweeps ship but 4 are RLS-blocked
+pending a policy decision** (see the RC-030 row above) · CLAUDE.md index row not added (needs owner
+approval).
 
 **T3 blocker, recorded so it is not rediscovered:** `generateReferralCode()` already exists **twice** —
 live for F-018 staff codes in `team-helpers.ts`, and a stale orphan in `growth-helpers.ts` — and

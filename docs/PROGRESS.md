@@ -25,10 +25,12 @@ has shipped twice (`product_attributes`, `social_accounts`).
 2. **RC-030 — 7 tables strand rows when a retailer is deleted** (`campaigns`, `campaign_sends`,
    `promotions`, `consent_events`, `customer_recently_viewed`, `customer_wishlist_items`,
    `customer_interactions`). They declare `retailer_id` as a bare scalar with no FK, so nothing
-   cascades and nothing errors — the rows just survive. **Not fixed**; documented in the script and
-   RC-030 with the mechanical check that proves it (13 bare-`retailer_id` models, 6 purged, 7 not).
-   This is a DPDP retention issue, not just hygiene — it needs an owner call on whether a deleted
-   retailer's customer interaction / consent rows should go.
+   cascades and nothing errors — the rows just survive (13 bare-`retailer_id` models, 6 purged, 7 not).
+   **Fixed this session** (owner decision): all seven swept in both jobs + six new grants, and the
+   missing mechanical link replaced with a **schema-driven completeness test** so a new bare-`retailer_id`
+   model can no longer be added without a purge decision. ⚠ Four of the seven have ROW LEVEL SECURITY
+   and `kanchuki_purge` has no `BYPASSRLS`, so those sweeps may affect 0 rows silently — a PII
+   policy decision, left documented rather than guessed.
 
 The originally reported staleness is fixed: **9 names in the purge grant list had been dropped by
 migration 082**, and a `GRANT` naming a missing relation makes the script abort at that statement.
@@ -51,7 +53,9 @@ sending every field from the form fails 7.
 **Blocked / owner-side:**
 1. **Migrations 109 and 110 not applied** — admin dashboard, per CLAUDE.md. Until then T1's tables do
    not exist and T2's screen 404s its own data.
-2. **RC-030 decision** — fix the 7 orphaned tables now, or track separately.
+2. **RC-030 RLS policy** — the seven sweeps ship, but the four `customer_*`/`consent_*` tables may
+   delete 0 rows silently under RLS until a policy for the backend role (or a role attribute) is
+   decided. That is a PII call: whether a deleted retailer's customer interaction / consent rows go.
 3. CLAUDE.md index row for this feature (and the `RC-029` / `RC-030` rows in its RC table) — needs
    explicit owner approval; drafted in this session's handoff.
 

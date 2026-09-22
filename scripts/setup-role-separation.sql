@@ -166,30 +166,39 @@ GRANT DELETE ON TABLE
   -- so the sweep deletes them before the retailer row. referral_settings is
   -- absent on purpose: a global singleton, never deleted.
   referral_codes, referral_conversions, referral_payouts,
-  -- Granted at HEAD and left alone: nothing deletes from it today, so this
-  -- is inert, but removing a grant would be an unrequested privilege
-  -- change. It is one of the RC-030 tables (bare `retailer_id`, no FK), so
-  -- the cleanup fix will need it.
-  customer_interactions,
+  -- RC-030: bare-`retailer_id` tables with no FK to retailers, now swept by
+  -- BOTH purge jobs (children-before-parents order does not apply — there is
+  -- no FK — but a closed shop's campaigns, discounts, consent records and
+  -- behavioural logs should not outlive it). `promotions` is granted above, and
+  -- `customer_interactions` was already granted at HEAD; the rest are new here
+  -- because the cleanup never existed before.
+  -- ⚠ Four of these — consent_events, customer_interactions,
+  -- customer_recently_viewed, customer_wishlist_items — have ROW LEVEL SECURITY
+  -- enabled (migrations 079/100, default deny) and kanchuki_purge is created
+  -- WITHOUT BYPASSRLS, while no existing purge target has RLS. RLS filters rows
+  -- instead of raising, so those four sweeps may affect 0 rows silently until
+  -- a policy for the backend role or the role attribute is decided. That is a
+  -- PII-table call, deliberately not guessed at here. See RC-030.
+  campaigns, campaign_sends, consent_events,
+  customer_recently_viewed, customer_wishlist_items, customer_interactions,
   retailers
 TO kanchuki_purge;
 
--- KNOWN GAP (RC-030): seven tables declare `retailer_id` as a bare scalar
--- with NO foreign key to retailers, so a retailer purge silently leaves
--- their rows behind:
---   campaigns, campaign_sends, promotions, consent_events,
---   customer_recently_viewed, customer_wishlist_items, customer_interactions
--- Two of the seven are granted above (`promotions`, `customer_interactions`)
--- but NEITHER is deleted by the purge jobs — the promotions grant unblocks
--- the retailer's own delete button for a single row (RC-028), and nothing
--- deletes customer_interactions at all. The grant list is a permission
--- boundary, not a list of what runs.
--- The other five are deliberately NOT granted yet, because a grant for a
--- delete that does not exist is privilege for nothing. The fix is the
--- cleanup and those grants together; see RC-030 in
--- docs/root-cause/root-cause issues.md.
--- `product_videos` shows the intended shape — bare retailer_id, deleted by
--- both purge jobs.
+-- RC-030 (FIXED 2026-09-22, above): seven tables declare `retailer_id` as a
+-- bare scalar with no foreign key to retailers, so a purge silently left their
+-- rows behind — 6 of 13 bare-`retailer_id` models were swept, 7 were not.
+-- All seven are now deleted by both purge jobs and granted above.
+--
+-- The lesson worth keeping: a *declared* FK fails loudly when a sweep misses
+-- it (an FK violation rolls the whole transaction back), but a denormalised
+-- `retailer_id` fails SILENTLY — Postgres neither cascades nor errors, so the
+-- rows simply survive. Nothing tied this list to the schema, and no test
+-- asserted completeness (only that the existing entries were present), so a
+-- new feature could add `retailer_id` forever without anyone noticing.
+-- `product_videos` had the right shape all along; it just was not generalised.
+-- Treat a new bare-`retailer_id` column as a purge-list change in the same PR,
+-- the way a RESTRICT FK already is. See RC-030 in
+-- docs/root-cause/root-cause issues.md (and the RLS caveat above).
 
 -- ─── 4. Verify ───────────────────────────────────────────────
 SELECT rolname, rolsuper, rolcreaterole, rolcreatedb

@@ -113,6 +113,33 @@ export async function hardDeleteRetailer(retailerId: string): Promise<void> {
     // ProductVideo.retailer_id is a bare scalar (no FK) so it never blocked a
     // delete, but its rows were orphaned on purge — remove them explicitly.
     'DELETE FROM product_videos WHERE retailer_id = $1;',
+    // Bare-`retailer_id` tables with NO FK to retailers at all (RC-030) — the
+    // same shape as product_videos above, which was the only bare-
+    // `retailer_id` table ever cleaned up. A *declared* FK fails loudly when a
+    // sweep misses it; a denormalised column fails silently — Postgres neither
+    // cascades nor errors, so the rows just survive the delete and a closed
+    // shop's campaign history, discount codes, consent records and behavioural
+    // logs are kept with no owner. `campaign_sends` before `campaigns`
+    // (parent-first, even though the link is a loose pointer).
+    'DELETE FROM campaign_sends WHERE retailer_id = $1;',
+    'DELETE FROM campaigns WHERE retailer_id = $1;',
+    'DELETE FROM promotions WHERE retailer_id = $1;',
+    // consent_events.retailer_id is NULLABLE (NULL = a passport-level consent
+    // not tied to any store), so only this retailer's store-scoped rows go.
+    'DELETE FROM consent_events WHERE retailer_id = $1;',
+    'DELETE FROM customer_interactions WHERE retailer_id = $1;',
+    'DELETE FROM customer_recently_viewed WHERE retailer_id = $1;',
+    'DELETE FROM customer_wishlist_items WHERE retailer_id = $1;',
+    // ⚠ CAVEAT on the four `customer_*`/`consent_*` tables above: they are the
+    // only purge targets in this repo with ROW LEVEL SECURITY enabled (migration
+    // 079/100, "no policies = default deny"), and kanchuki_purge is created
+    // WITHOUT BYPASSRLS. RLS filters rows rather than raising, so if this role
+    // is subject to it these four DELETEs silently affect 0 rows. They are
+    // strictly no worse than not being here at all (today nothing deletes these
+    // tables), and the three below have no RLS and work exactly like
+    // product_videos. Settling it needs a policy for the backend role or a role
+    // attribute — a PII-table decision, so it is deliberately not guessed at
+    // here. See RC-030.
     // Retailer referral program (migration 109) — RESTRICT FKs to retailers,
     // so these must precede the retailer row (same bug class as the
     // product_attributes / social_accounts omission above: a missing RESTRICT

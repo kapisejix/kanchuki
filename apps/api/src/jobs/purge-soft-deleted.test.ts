@@ -271,3 +271,150 @@ describe('handlePurgeSoftDeleted — sweep invariants', () => {
     });
   });
 });
+
+// ── RC-030: the completeness guard ──────────────────────────────────
+//
+// RC-030's root cause was not "seven tables were missing from the list". It was
+// that **nothing tied the list to the schema**, so it could go stale without a
+// symptom — a declared FK fails loudly when a sweep misses it (the transaction
+// rolls back), while a denormalised `retailer_id` fails silently, and the only
+// test in place asserted that the existing entries were still there. A list of
+// seven names here would rebuild that weakness one refactor later.
+//
+// So this derives the requirement from schema.prisma instead: every model whose
+// `retailer_id` is a bare scalar (no `Retailer` relation) is unreachable by
+// cascade, so a purge can only clear it by naming it explicitly. Add such a
+// model without deciding what happens to it on deletion and this fails, naming
+// the table and both jobs.
+//
+// Cascade reachability is computed rather than allowlisted — `product_videos`
+// is the case that proves why: it needs no explicit delete in the cron because
+// its `product_id` FK is ON DELETE CASCADE (migration 055), so the product
+// sweep already carries it away. That is a fact about the schema, so the test
+// reads it from the schema.
+import { readFileSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
+
+interface PrismaModel {
+  name: string;
+  table: string;
+  body: string;
+}
+
+/** Every `model X { … }` block in the schema, with its `@@map` table name. */
+function prismaModels(): PrismaModel[] {
+  const schema = readFileSync(join(REPO_ROOT, 'packages/db/prisma/schema.prisma'), 'utf8');
+  const models: PrismaModel[] = [];
+  for (const match of schema.matchAll(/^model\s+(\w+)\s*\{([\s\S]*?)^\}/gm)) {
+    const [, name, body] = match;
+    const mapped = body?.match(/@@map\("([^"]+)"\)/);
+    models.push({
+      name: name ?? '',
+      body: body ?? '',
+      table: mapped?.[1] ?? (name ?? '').toLowerCase(),
+    });
+  }
+  return models;
+}
+
+const MODELS = prismaModels();
+
+/** Models with a bare `retailer_id` — no `Retailer` relation, so no cascade path. */
+const BARE_RETAILER_MODELS = MODELS.filter(
+  (m) =>
+    /^\s+retailer_id\s+String\??\s*(?:\/\/.*)?$/m.test(m.body) &&
+    !/^\s+retailer\s+Retailer\??\s*@relation/m.test(m.body),
+);
+
+/**
+ * Tables the purge reaches only through an ON DELETE CASCADE from an already
+ * deleted table. Resolved to a fixpoint so a chain (product → variant → …) is
+ * followed rather than assumed to be one level deep.
+ */
+function cascadeReachable(deletedTables: Set<string>): Set<string> {
+  const byName = new Map(MODELS.map((m) => [m.name, m]));
+  const reachable = new Set<string>();
+  for (;;) {
+    let grew = false;
+    for (const model of MODELS) {
+      if (deletedTables.has(model.table) || reachable.has(model.table)) continue;
+      for (const rel of model.body.matchAll(
+        /^\s+\w+\s+(\w+)\??\s+@relation\([^)]*onDelete:\s*Cascade[^)]*\)/gm,
+      )) {
+        const parent = byName.get(rel[1] ?? '');
+        if (parent && (deletedTables.has(parent.table) || reachable.has(parent.table))) {
+          reachable.add(model.table);
+          grew = true;
+          break;
+        }
+      }
+    }
+    if (!grew) return reachable;
+  }
+}
+
+/** Table names a purge module deletes, in any of the three shapes it uses. */
+function deletedTablesIn(sourceFile: string): Set<string> {
+  const src = readFileSync(join(REPO_ROOT, 'apps/api/src/jobs', sourceFile), 'utf8');
+  const tables = new Set<string>();
+  for (const m of src.matchAll(/purge(?:Children|Table)\(\s*'([a-z_]+)'/g)) tables.add(m[1] ?? '');
+  for (const m of src.matchAll(/DELETE FROM "?([a-z_]+)"?/g)) tables.add(m[1] ?? '');
+  return tables;
+}
+
+// Single source of truth for "reached by cascade" — asserted once, below, so the
+// exemption cannot quietly stop being true.
+const PRODUCT_CASCADE = cascadeReachable(new Set(['products']));
+
+interface JobCoverage {
+  job: string;
+  direct: Set<string>;
+  cascade: Set<string>;
+}
+
+const JOBS: JobCoverage[] = [
+  {
+    job: 'purge-soft-deleted.ts (cron)',
+    direct: deletedTablesIn('purge-soft-deleted.ts'),
+    cascade: PRODUCT_CASCADE,
+  },
+  {
+    job: 'purge-retailer-now.ts (admin hard delete)',
+    direct: deletedTablesIn('purge-retailer-now.ts'),
+    // The admin path deletes one retailer's products explicitly, so the same
+    // product cascade applies.
+    cascade: PRODUCT_CASCADE,
+  },
+];
+
+describe('RC-030 — every bare-`retailer_id` table has a purge decision', () => {
+  it('finds the bare-`retailer_id` models (the guard is not vacuous)', () => {
+    // If the schema parse breaks, BARE_RETAILER_MODELS empties and the assertions
+    // below would pass while checking nothing at all.
+    expect(BARE_RETAILER_MODELS.length).toBeGreaterThanOrEqual(7);
+    expect(BARE_RETAILER_MODELS.map((m) => m.table)).toContain('customer_recently_viewed');
+  });
+
+  it('computes product_videos as cascade-reached, not explicitly deleted by the cron', () => {
+    // Documents WHY the cron needs no product_videos delete, so a later reader
+    // does not "fix" the asymmetry by adding one (or by removing the cascade).
+    expect(PRODUCT_CASCADE.has('product_videos')).toBe(true);
+    expect(deletedTablesIn('purge-soft-deleted.ts').has('product_videos')).toBe(false);
+  });
+
+  for (const coverage of JOBS) {
+    it(`${coverage.job} clears every unreachable bare-\`retailer_id\` table`, () => {
+      const uncovered = BARE_RETAILER_MODELS.filter(
+        (m) => !coverage.direct.has(m.table) && !coverage.cascade.has(m.table),
+      ).map((m) => m.table);
+
+      expect(
+        uncovered,
+        `These tables declare a bare \`retailer_id\` with no FK, so only an explicit DELETE clears them, and ${coverage.job} does not delete them. A deleted retailer's rows survive there permanently. Add the sweep to BOTH purge jobs and grant the DELETE — and note the RLS caveat: four of these tables have RLS enabled and kanchuki_purge has no BYPASSRLS, so those sweeps may affect 0 rows silently rather than erroring (RC-030).`,
+      ).toEqual([]);
+    });
+  }
+});

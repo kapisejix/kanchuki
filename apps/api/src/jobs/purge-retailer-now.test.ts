@@ -91,6 +91,21 @@ describe('hardDeleteRetailer', () => {
       'DELETE FROM referral_payouts',
       'DELETE FROM referral_conversions',
       'DELETE FROM referral_codes',
+      // RC-030 — bare `retailer_id`, no FK, so these never blocked the retailer
+      // delete and nothing errored when they were missing: the rows simply
+      // outlived the shop. They are asserted here for the same reason as the
+      // RESTRICT children — a closed shop's campaigns, discounts, consent
+      // records and behavioural logs should not be retained with no owner.
+      // The schema-driven completeness check lives in
+      // purge-soft-deleted.test.ts ("RC-030 — every bare-`retailer_id` table has
+      // a purge decision"), which covers this file too.
+      'DELETE FROM campaign_sends',
+      'DELETE FROM campaigns',
+      'DELETE FROM promotions',
+      'DELETE FROM consent_events',
+      'DELETE FROM customer_interactions',
+      'DELETE FROM customer_recently_viewed',
+      'DELETE FROM customer_wishlist_items',
     ]) {
       const idx = statements.findIndex((s) => s.startsWith(table));
       expect(idx, `expected ${table} in delete list`).toBeGreaterThanOrEqual(0);

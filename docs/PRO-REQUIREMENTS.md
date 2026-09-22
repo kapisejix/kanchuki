@@ -3000,4 +3000,6 @@ Full spec, research and the T1–T10 breakdown: `docs/tasks/referral-program-ret
 
 **Payout terms are validated server-side in three layers** (zod bounds → enum membership → the migration's `CHECK` constraints mirrored against the *merged* state), so an admin cannot put the ledger in an impossible state and an enum value the consuming code does not understand is rejected rather than stored and silently ignored (the RC-027 rule). Only changed fields are written, so resubmitting an untouched form cannot churn a row or trip validation.
 
-**Open:** migrations 109 and 110 must be applied from the admin dashboard · T3–T10 · RC-030's 7-table purge gap (found during this build, unrelated to the feature) · CLAUDE.md index row not added (needs owner approval).
+**RC-030's 7-table purge gap was found during this build (unrelated to the feature) and is fixed:** all seven bare-`retailer_id` tables are now swept by both purge jobs, six grants added, and a schema-driven completeness test prevents the next one. ⚠ Four of the seven are RLS-protected and `kanchuki_purge` has no `BYPASSRLS`, so those sweeps may affect 0 rows silently until a policy is decided — documented, not guessed.
+
+**Open:** migrations 109 and 110 must be applied from the admin dashboard · T3–T10 · the RC-030 RLS policy decision.

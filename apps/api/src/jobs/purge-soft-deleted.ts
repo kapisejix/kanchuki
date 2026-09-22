@@ -39,7 +39,23 @@ const db = getPurgePrisma();
  *   4. collections                                           → main business table
  *   5. customers                                             → main business table
  *   6. staff                                                 → children of retailers
- *   7. retailers                                             → main business table (last, FK target)
+ *   7. referral_codes, referral_conversions, referral_payouts → RESTRICT children
+ *      of retailers (migration 109). conversions are swept on BOTH referrer_id
+ *      and referred_id — a conversion is a child of two retailers.
+ *      payouts before conversions: ON DELETE SET NULL means clearing the parent
+ *      is another write on the child, so the reverse order can deadlock two
+ *      concurrent deletes.
+ *   8. campaigns, campaign_sends, promotions, consent_events,
+ *      customer_recently_viewed, customer_wishlist_items,
+ *      customer_interactions                              → RC-030: bare
+ *      `retailer_id`, no FK. Postgres neither cascades nor errors here, so
+ *      before this these rows silently outlived the retailer.
+ *   9. retailers                                             → main business table (last, FK target)
+ *
+ * Bare `retailer_id` tables (RC-030) must be listed here by hand: a declared FK
+ * fails loudly when a child is missed (the FK violation rolls the whole
+ * transaction back), a denormalised id fails SILENTLY. Add a new one in the
+ * same change that adds the column.
  */
 
 const PURGE_AFTER_DAYS = 15;
@@ -272,6 +288,34 @@ export async function handlePurgeSoftDeleted(): Promise<PurgeResult> {
     purgeChildren('product_attributes', 'retailer_id', 'retailers', cutoff),
     purgeChildren('social_posts', 'retailer_id', 'retailers', cutoff),
     purgeChildren('social_accounts', 'retailer_id', 'retailers', cutoff),
+    // Bare-`retailer_id` tables with NO FK to retailers at all (RC-030). A
+    // declared FK fails loudly when a sweep misses it; a denormalised column
+    // fails silently — Postgres neither cascades nor errors, so the rows simply
+    // survive and a closed shop's campaign history, discount codes, consent
+    // records and behavioural logs are retained with no owner. The closest
+    // sibling is product_videos, but it is NOT the precedent to copy: it has a
+    // real FK to products (migration 055, ON DELETE CASCADE), so the product
+    // sweep above already carries it away. None of these has any FK path that
+    // reaches it. Safe in the parallel batch: campaign_sends → campaigns is a
+    // loose pointer, not an FK, so no ordering/deadlock relationship exists.
+    purgeChildren('campaign_sends', 'retailer_id', 'retailers', cutoff),
+    purgeChildren('campaigns', 'retailer_id', 'retailers', cutoff),
+    purgeChildren('promotions', 'retailer_id', 'retailers', cutoff),
+    // consent_events.retailer_id is NULLABLE (NULL = a passport-level consent
+    // not tied to any store), so this only matches store-scoped rows.
+    purgeChildren('consent_events', 'retailer_id', 'retailers', cutoff),
+    purgeChildren('customer_interactions', 'retailer_id', 'retailers', cutoff),
+    purgeChildren('customer_recently_viewed', 'retailer_id', 'retailers', cutoff),
+    purgeChildren('customer_wishlist_items', 'retailer_id', 'retailers', cutoff),
+    // ⚠ CAVEAT on consent_events / customer_interactions /
+    // customer_recently_viewed / customer_wishlist_items: they are the only
+    // purge targets in this repo with ROW LEVEL SECURITY enabled (migrations
+    // 079/100, "no policies = default deny"), and kanchuki_purge is created
+    // WITHOUT BYPASSRLS. RLS filters rows rather than raising, so if this role
+    // is subject to it these four sweep 0 rows without erroring — no worse than
+    // today (nothing deleted them), but not yet the fix. The other three
+    // (campaigns, campaign_sends, promotions) have no RLS and delete normally.
+    // See RC-030.
   ]);
 
   // biome-ignore lint/suspicious/noConsoleLog: admin cron job logging
