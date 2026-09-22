@@ -225,6 +225,7 @@ Payment: Razorpay (UPI first). Retailer pays base + 18% GST. **Source of truth: 
 
 | ID | Root cause (one line) | Fixed in |
 |----|----------------------|----------|
+| RC-028 | Promotion delete used main `kanchuki_app` client, which has DELETE revoked at DB role level (SECURITY §19) | this session |
 | RC-001 | `parseCampaignIntent` trusts free-text LLM reply shapes → route 500s on missing/stringified/bad-enum/numeric-string fields | `70e057a8` |
 | RC-002 | Festival resolution does an exact `equals` match against the prompt's first 3 words → never matches, FESTIVAL drafts unsaveable | `70e057a8` |
 | RC-003 | Mobile catch block swaps the real API error for a constant fallback string | `70e057a8` |

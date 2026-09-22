@@ -10,6 +10,18 @@
 
 ---
 
+## RC-028 — Promotion delete used the main `kanchuki_app` client, which has DELETE revoked at the DB role level (SECURITY §19)
+
+- **Component:** `apps/api/src/routes/growth/growth-promotions.ts` (`DELETE /growth/promotions/:id`)
+- **Commit:** found 2026-09-22 from a Sentry event (`7cbe0255...`, prod, 2026-09-21 09:31 IST); fixed same session
+- **Symptom:** `DELETE /v1/growth/promotions/:id` 500s with `PrismaClientUnknownRequestError` → Postgres `42501 permission denied for table promotions`.
+- **Root cause:** same shape as RC-004. `kanchuki_app` (the API's `DATABASE_URL` role) has `DELETE, TRUNCATE, DROP, ALTER, CREATE` revoked platform-wide (SECURITY §19.1) — the load-bearing control that a hard `DELETE` can never be issued by application code regardless of what a route does. The promotions route called `prisma.promotion.delete()` on the main client, which was always going to be blocked at the DB layer; `Promotion` has no `deleted_at` for a soft-delete path either, so a real hard delete is required here (unlike most tables, which just get a soft-delete flag).
+- **Fix:** route now uses `getPurgePrisma()` (the scoped `kanchuki_purge` role, `PURGE_DATABASE_URL`) and sets `app.allow_hard_delete = 'true'` inside the same transaction before the delete, matching `categories.ts`'s `DELETE /:id` (RC-004) and `products-trash.ts` / `products-variants.ts`.
+- **Proof:** only call site of `promotion.delete(` in the repo, confirmed via grep, now routes through the purge client.
+- **Prevention lesson:** any new hard-delete route on a table with no `deleted_at` needs the purge-client + `allow_hard_delete` pattern from day one — `kanchuki_app` will 42501 on a bare `prisma.<model>.delete()` every time, by design. Grep `\.delete(\s*{` in new route files against the RC-004/RC-028 pattern before shipping.
+
+---
+
 ## RC-027 — The "Gemini" studio engine was a text-to-image endpoint that was never handed the product photo, and its engine name was a free-text string nothing validated
 
 - **Component:** `apps/api/src/lib/imagen-client.ts` (deleted) and its call site in `apps/api/src/lib/studio-shoot.ts`; the `studio_styles.engine` column written by migration `102`

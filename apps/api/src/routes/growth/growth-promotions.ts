@@ -1,4 +1,4 @@
-import { prisma } from '@kanchuki/db';
+import { getPurgePrisma, prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { hasFeature } from '../../lib/features.js';
@@ -112,7 +112,16 @@ export const growthPromotionRoutes: FastifyPluginAsync = async (server) => {
     const { id } = request.params as { id: string };
     const existing = await prisma.promotion.findFirst({ where: { id, retailer_id: retailerId } });
     if (!existing) throw notFound('Promotion');
-    await prisma.promotion.delete({ where: { id } });
+
+    // RC-004 pattern: promotions is a hard-delete table under SECURITY §19 —
+    // kanchuki_app has DELETE revoked, so this needs the scoped purge role +
+    // app.allow_hard_delete inside the transaction (see categories.ts).
+    const purgeDb = getPurgePrisma();
+    await purgeDb.$transaction([
+      purgeDb.$executeRawUnsafe(`SET app.allow_hard_delete = 'true';`),
+      purgeDb.promotion.delete({ where: { id } }),
+    ]);
+
     return reply.status(204).send();
   });
 
