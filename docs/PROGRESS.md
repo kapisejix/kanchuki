@@ -2,6 +2,58 @@
 
 One file, update at end of each work session: what's done, what's next, what's blocked. Check `git log -1` and this file first thing each session.
 
+## 2026-09-23 — Admin access boundary closed (RC-034) + stale bench assertion (RC-035)
+
+**Commit:** *(this session)* · **Zero `apps/mobile` files** (Play Console review in flight).
+
+**Done:** closed the super-admin path-list gap that was outstanding from T2. The rule "which admin
+surfaces need Super Admin" lived in **three hand-written lists** (API 8 / web layout 14 / Sidebar 14)
+and the API's copy — the only one that enforced anything — failed **open** (`startsWith` against a
+fixed set), so an unlisted route was reachable rather than refused, with no error and no log.
+One shared `packages/shared/src/constants/admin-access.ts` now backs all three surfaces, matching the
+whole first path segment (so `/admin/commission-x` no longer matches `commission`), with query/hash
+stripped and case normalised.
+
+**What that closed:** `referral-settings` (reported) + `commission` (the 3% payout ledger) + 8 more
+hidden-but-API-reachable surfaces (`addon-purchases`, `ai-usage`, `audit-log`, `plan-features`,
+`plan-limits`, `resource-packs`, `storage-report`) + 3 that were in **no list at all** —
+`plan-pricing` (what every retailer is charged), `invoices` (tax documents), `database/deletion-vault`
+(hard-deletes retailer/customer data).
+
+**Because runtime code fails open by design, the completeness property lives in a test:**
+`admin-access.test.ts` derives the segment set from the route sources and fails until every registered
+segment is classified. Adding an admin route now forces a decision instead of defaulting to public.
+Retired 6 dead entries (a list keyed on filenames protects nothing — the first path segment is the
+parent prefix: `/settings/theme`, `/reporting/tickets`).
+
+**Verification:** `admin-access.test.ts` 11/11 falsified 3 ways (removed entry names the path · new
+route file names the file · reintroduced `startsWith` fails the sibling assertion) · API **1215/1215** ·
+web **321/321** · `tsc` clean ×3 · F-017 delete-guard passed. The 12 Biome errors on changed files are
+the Windows CRLF artifact — all staged blobs measure 0 CR, so the commit is LF and CI-clean.
+
+**RC-035 (found by the gates, not part of this change):** a fresh `@kanchuki/shared` build turned the web
+suite red on `studioEngineCost('grok_imagine')` — the test asserted `null` while the committed table says
+`usd: 0.04`. It had been green because `packages/shared/dist` is gitignored and **stale**, so the test was
+resolving an older table than the source. Fixed to assert the *property* using engines that are `null`
+today (`vton_kontext`, `vton_gemini`).
+
+**Flagged, not decided:** `team-members` (staff account management — credential-adjacent) and `reports`
+(`/admin/reports/gst` is tax data but its fetches are the gated `/v1/admin/gst/*`, so it renders empty)
+stay standard-admin, matching pre-change reachability, each with an in-file note.
+
+**Next / blocked:**
+
+1. **Migrations `109`/`110`/`111` not applied** (admin dashboard) — referral tables + RLS policies
+   don't exist in prod until then.
+2. **Referral feature T6–T10 unbuilt** — T5 moves a conversion to `QUALIFIED`; nothing accrues (T6)
+   or pays (T7).
+3. **`purge-rls-live.test.ts` has still never executed** — the one claim resting on reasoning, not
+   measurement (RLS denies by filtering, so static checks can't see it).
+4. **RC-033** billing collapse (`subscription.completed` → `CANCELLED`) — recorded, deferred, touches billing.
+5. **Refund half of the clawback** — nothing writes `SubscriptionPayment.status = 'refunded'`.
+
+---
+
 ## 2026-09-22 (later still) — T5 built: referral qualification cron; RC-033
 
 Spec: `docs/tasks/referral-program-retailer-affiliate.md` §7 T5. `apps/api/src/jobs/referral-qualify.ts`

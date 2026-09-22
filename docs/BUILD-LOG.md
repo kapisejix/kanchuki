@@ -3316,3 +3316,126 @@ issue, distinct from the `retired-tryon-guard` timeout flake fixed earlier the s
 affiliate link earns anything yet**, stated here, in the spec, PRO-REQUIREMENTS and CLAUDE.md rather
 than left to the job's existence to imply · RC-033's billing fix · the refund half of the clawback · the
 super-admin path-list gap for `/v1/admin/referral-settings`.
+
+---
+
+## 2026-09-23 — Admin access boundary: three drifted lists → one shared, derivation-guarded list (RC-034) + a stale bench assertion (RC-035)
+
+**Commit:** *(this session)* · **RC-034**, **RC-035** · Zero `apps/mobile` files.
+
+### What was actually open
+
+The rule "this admin surface needs Super Admin" existed in three hand-maintained
+places that nobody had ever compared:
+
+| Surface | List | Enforced? |
+|---|---|---|
+| `apps/api/src/routes/admin-auth.ts` | 8 segments | **yes** — the only boundary |
+| `apps/web/src/app/admin/layout.tsx` | 14 prefixes | page access only |
+| `apps/web/src/app/admin/components/Sidebar.tsx` | 14 entries | cosmetic |
+
+Measured: **eight** surfaces the web UI hides were reachable by a plain ADMIN key —
+`commission` (the 3% payout ledger), `addon-purchases`, `ai-usage`, `audit-log`,
+`plan-features`, `plan-limits`, `resource-packs`, `storage-report` — plus
+`referral-settings`, which was in the Sidebar *only*, so it was hidden from the nav yet
+both directly navigable **and** callable. `plan-pricing` (what every retailer is charged),
+`invoices` (tax documents) and `database/deletion-vault` (hard-deletes retailer/customer
+data) were in **no list at all**. `payments` was in the API list while matching no route,
+so it protected nothing.
+
+The enforcement failed **open**: `path.startsWith(...)` against a fixed set means a route
+nobody remembered to add is *reachable*, not *refused*. No error, no log — the surface is
+simply open. Adding an admin route was a security decision that defaulted to "public".
+
+And it was invisible from any single file: the panel *looked* correct, because the Sidebar
+hid those entries and the layout rendered "Access Restricted". Only the API enforced
+anything, and only for its eight segments.
+
+### Why the fix is a shared list **and** a guard
+
+One list now backs all three surfaces (`packages/shared/src/constants/admin-access.ts`), so a
+surface is protected everywhere by construction instead of in whichever places somebody
+edited. Matching is on the whole first path segment after `/admin/`, never a bare
+`startsWith` — otherwise `/admin/commission-x` matches `commission` — and query strings,
+hashes and case are normalised, so `/v1/admin/COMMISSION?x=1` cannot slip past.
+
+But a shared list only fixes today's holes. Because the runtime check fails open **by
+design**, the property that matters — *every registered admin route has been classified* —
+cannot live in runtime code. It lives in `apps/api/src/routes/admin-access.test.ts`, which
+**derives** the segment set from the route and page sources and fails until each one is
+classified as super-admin-only or standard-admin. Adding an admin route now forces a
+decision instead of silently defaulting to public.
+
+Two design details carried the weight:
+
+- **Everything is classified, including the permitted.** `STANDARD_ADMIN_ADMIN_SEGMENTS`
+is not decoration: without it the guard can only ask "is this sensitive?" — an open-ended
+question whose lazy answer is "no". With both lists present the question becomes "which of
+these two is it?", and the failure names the segment nobody decided about.
+- **Failures point at the source.** The derivation maps each segment to the file that
+declares it, so the error says ``alerts  ←  apps/api/src/routes/admin-settings/notifications.ts``
+rather than just naming a string.
+
+### The dead entries, and why they were dead
+
+Six entries protected nothing, and the reason is worth recording: **those files are named
+after the feature, but the first path segment is the parent prefix.**
+
+| Entry | Real routes | Actual first segment |
+|---|---|---|
+| `theme` | `/settings/theme` | `settings` |
+| `catalog-promo` | `/settings/catalog-upload-promo` | `settings` |
+| `rate-limits` | `/settings/rate-limits` | `settings` |
+| `notifications` | `/settings/notifications` | `settings` |
+| `ticket-reporting` | `/reporting/tickets` | `reporting` |
+
+`settings` was already in the list, so four of them were redundant rather than harmful —
+but a list keyed on filenames is a list that cannot be verified by reading it, which is the
+same defect one level down. The guard's **dead-entry assertion** is what keeps this from
+recurring: if a surface returns later, the completeness assertions force a fresh decision.
+
+### Verification
+
+- `admin-access.test.ts` **11/11**, falsified three ways, each isolated:
+  - removing a gated entry (`referral-settings`) → failed, naming the path;
+  - adding a new admin route file (`/falsify-probe`) → failed, naming the file;
+  - reintroducing the old `startsWith` semantics → failed the sibling assertion
+    (`/admin/commission-x` must **not** match `commission`).
+- **API 1215/1215**, **web 321/321**, `tsc` clean in `apps/api` + `apps/web` + `packages/shared`,
+  F-017 delete-guard passed.
+- The 12 Biome errors reported on the changed files are the **Windows checkout artifact**
+  (`* text=auto eol=lf`): all staged blobs measure **0 CR**, so the commit is LF and CI-clean.
+- `apps/mobile`: **0 files**.
+
+### RC-035 — found while running the gates, not part of this change
+
+A fresh `@kanchuki/shared` build turned the web suite red on
+`studioEngineCost('grok_imagine')`: the test asserted `null` while the committed table says
+`usd: 0.04`. It had been **green because `packages/shared/dist` is gitignored and stale** — the
+test was resolving `@kanchuki/shared` to an older table than the source. The rule under test
+("an unverified price never becomes a number") was correct; the *example* had gone stale. The
+assertion now names engines that are `usd: null` today (`vton_kontext`, `vton_gemini`), so it
+tests the property rather than one row. Recorded as RC-035 rather than fixed silently, because
+the class — *an assertion pinned to a mutable data row, masked by a build artifact* — is the
+kind that returns.
+
+### Flagged, not decided
+
+Two segments are classified standard-admin, matching their **pre-change reachability**, with an
+in-file note and the one-line change to lock them down:
+
+- **`team-members`** — staff/sales-team account management (invite + edit members; via
+  `/v1/team/*`, not `/v1/admin/*`). Credential-adjacent, so it is worth an owner's eye.
+- **`reports`** — `/admin/reports/gst` is tax data, but its only fetches are `/v1/admin/gst/*`,
+  and `gst` **is** gated, so a standard admin sees an empty report rather than the figures.
+
+### Still open (owner-side)
+
+- **Migrations `109`/`110`/`111` not applied** (admin dashboard) — the referral tables and the
+  RLS policies do not exist in prod until they are.
+- **The opt-in `purge-rls-live.test.ts` has still never executed** — no test in this repo touches
+  a real database, and RLS denies by *filtering*, so a broken policy and a working one pass every
+  static check. This is the one claim in the referral feature resting on reasoning, not measurement.
+- **Why the gap existed at all is still open:** the Segment RC-034 list is now exhaustive by
+  construction, but the same "three lists" pattern may exist for other cross-surface rules.
+  Treat any rule duplicated per-surface as a candidate.

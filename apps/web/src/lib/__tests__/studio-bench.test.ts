@@ -110,8 +110,14 @@ describe('engine cost estimate', () => {
   });
 
   it('returns null — never a guess — when the price is unverified', () => {
+    // Use engines that are STILL `usd: null` in STUDIO_ENGINE_INFO. `grok_imagine`
+    // was the second example here, but its price got verified (0.04) and the
+    // assertion was left behind — it kept passing only because this package's
+    // `dist` is gitignored and was stale, so the test ran against an old table.
+    // A fresh `pnpm build` turned it red. Prefer naming an engine whose row says
+    // null today over pinning a fixed expectation to a mutable data table.
     expect(studioEngineCost('vton_kontext')).toBeNull();
-    expect(studioEngineCost('grok_imagine')).toBeNull();
+    expect(studioEngineCost('vton_gemini')).toBeNull();
   });
 
   it('has an info row for every engine', () => {

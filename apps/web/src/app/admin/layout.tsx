@@ -6,29 +6,18 @@ import Link from 'next/link'
 import nextDynamic from 'next/dynamic'
 import { motion } from 'framer-motion'
 import { Menu, Shield, ShieldAlert, ArrowLeft } from 'lucide-react'
+import { isSuperAdminOnlyAdminPath } from '@kanchuki/shared'
 import { PageLoader } from '@/components/PageLoader'
 import { RouteProgress } from '@/components/RouteProgress'
 import { FloatingOrbs } from './components/FloatingOrbs'
 import { NotificationBell } from './components/NotificationBell'
 import { Sidebar } from './components/Sidebar'
 
-// ── Super Admin Restricted Route Prefixes ──────────────────────────
-const SUPER_ADMIN_RESTRICTED_PREFIXES = [
-  '/admin/integrations',
-  '/admin/ai-providers',
-  '/admin/ai-usage',
-  '/admin/billing',
-  '/admin/commission',
-  '/admin/plan-limits',
-  '/admin/plan-features',
-  '/admin/resource-packs',
-  '/admin/addon-purchases',
-  '/admin/settings',
-  '/admin/operations',
-  '/admin/database',
-  '/admin/audit-log',
-  '/admin/storage-report',
-]
+// Super Admin restricted surfaces are NOT listed here. This file used to keep a
+// 14-entry local copy, which promptly drifted from the API's 8-entry copy and
+// the Sidebar's own list — the same route was reachable through the API while
+// the page said "Access Restricted" (RC-034). One shared list now backs all
+// three surfaces; see packages/shared/src/constants/admin-access.ts.
 
 // ── Lazy-loaded admin components ──────────────────────────────────
 const LoginScreen = nextDynamic(() => import('./components/LoginScreen'), {
@@ -134,10 +123,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   }
 
   const isRestrictedForStandardAdmin =
-    adminRole !== 'SUPER_ADMIN' &&
-    SUPER_ADMIN_RESTRICTED_PREFIXES.some(
-      (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
-    )
+    adminRole !== 'SUPER_ADMIN' && isSuperAdminOnlyAdminPath(pathname)
 
   return (
     <div className="min-h-screen bg-gray-50">

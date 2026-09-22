@@ -1,6 +1,6 @@
 # Retailer Affiliate / Referral Program — Research + Implementation Plan
 
-**Status:** 🟨 **T1–T4 ✅ BUILT 2026-09-22 (migrations `109`/`110`/`111` not applied); T5–T10 🔴 NOT STARTED.** The T3 naming blocker is **resolved** — see §0. **No affiliate link earns anything yet**: T4 records a conversion at signup, but nothing qualifies it (T5), computes a commission (T6) or pays it (T7) — and the `?ref=` cookie capture is deliberately not built (see §0 T4). Originally "research only, nothing built". Answering: "how does GoHighLevel's referral program work, and how do we build something similar for Kanchuki so retailers can earn money referring other retailers?"
+**Status:** 🟨 **T1–T4 ✅ BUILT 2026-09-22 (migrations `109`/`110`/`111` not applied); T5–T10 🔴 NOT STARTED.** The T3 naming blocker is **resolved** — see §0. **No affiliate link earns anything yet**: T4 records a conversion at signup, but nothing qualifies it (T5), computes a commission (T6) or pays it (T7) — and the `?ref=` cookie capture is deliberately not built (see §0 T4). **2026-09-23:** the super-admin path-list gap T2 deferred is **closed** (RC-034) — one shared `packages/shared/src/constants/admin-access.ts` now backs the API, the page guard and the Sidebar, with a test that derives the segment set from the route sources so an unclassified admin route can no longer default to public. That work touched **zero `apps/mobile` files**. Originally "research only, nothing built". Answering: "how does GoHighLevel's referral program work, and how do we build something similar for Kanchuki so retailers can earn money referring other retailers?"
 **Date:** 2026-09-22
 **Related:** `docs/INDIA-RETAILER-GROWTH.md` (retailer-facing referral engine — removed 2026-08-31 teardown, different feature: that was Kanchuki retailer → their own customers; this doc is Kanchuki retailer → other retailers, an affiliate/reseller layer), `docs/PRO-REQUIREMENTS.md`
 
@@ -18,6 +18,10 @@ Detail: `docs/BUILD-LOG.md` §2026-09-22 · tables `docs/DATABASE.md` → "Retai
 | T4 — Signup wiring | ✅ Built | `lib/referral-conversions.ts` + capture hooked into `PUT /v1/retailers/me`. **Zero `apps/mobile` changes** |
 | T5 — Qualification cron | ✅ Built | `jobs/referral-qualify.ts` + cron `0 2 * * *` on the maintenance queue. **No payout yet** — T6 accrues on QUALIFIED rows, T7 pays them |
 | T6–T10 | 🔴 Not started | Nothing pays out yet — see the status line above |
+| — | ✅ Built | **Not a T-task:** the `referral-settings`/`commission` super-admin gap T2 deferred is **closed** (RC-034) — see §12 |
+
+> **Session handoff:** §12 is a paste-ready prompt for continuing from T6 in a fresh session, including
+the owner actions that are still outstanding. Read §12 before starting T6.
 
 **The one open schema question was decided before migrating** (§6, §7 T1): **singleton** `referral_settings` row, not plan-scoped. Also decided: `ON DELETE RESTRICT` on the three retailer FKs, and payouts are never deleted (status only). §6 records these as owner decisions.
 
@@ -390,3 +394,126 @@ Every RC-### this repo has already paid for (`docs/root-cause/root-cause issues.
 - `npx vitest run src/routes/security.test.ts` — required if T7 (payout) or any endpoint touches auth/checkout-adjacent logic (CLAUDE.md rule 8).
 - `npx vitest run src/routes/admin.login.test.ts` — required since T2/T9 add new admin routes (CLAUDE.md rule 9).
 - Grep-proof check (RC-012/RC-013 style): confirm zero references to the old removed referral engine's field/route names remain anywhere in the new code's diff.
+
+---
+
+## 12. Handoff prompt — paste this into a new session to continue
+
+> Copy everything inside the block below as the first message of a new session.
+
+```
+Continue the Retailer Affiliate Referral Program (F-038). Read these first, in order:
+  1. docs/tasks/referral-program-retailer-affiliate.md   (this spec — §0 status, §7 tasks, §12)
+  2. docs/root-cause/root-cause issues.md                (RC-029 … RC-035)
+  3. git log --oneline -8                                 (T1–T5 landed 2026-09-22/23)
+
+HARD CONSTRAINT: do NOT touch apps/mobile — the app is under Google Play Console review.
+Every task so far was built without a single mobile file; keep it that way. If a task
+seems to need mobile, stop and ask instead of editing it.
+
+WHAT IS BUILT (T1–T5, all committed, all verified)
+  T1 migration 109_referral_program — 4 enums + 4 tables (referral_settings singleton,
+     referral_codes, referral_conversions, referral_payouts). NOT APPLIED in prod.
+  T2 GET/PUT /v1/admin/referral-settings + /admin/referral-settings screen.
+  T3 apps/api/src/lib/referral-codes.ts — affiliate codes are KAN-XXXXXX, provably disjoint
+     from F-018 staff codes ([0-9A-Z]{6}, hyphen-free); GET /v1/retailers/me/referral-code
+     mints idempotently.
+  T4 apps/api/src/lib/referral-conversions.ts — captures a typed affiliate code on the
+     EXISTING PUT /v1/retailers/me (zero mobile change). Guards: shape decides the ledger,
+     self-referral refused (phone/GSTIN only — Retailer has no bank-account column), one
+     attribution with staff winning, unique referred_id as the idempotency gate.
+  T5 apps/api/src/jobs/referral-qualify.ts — daily 0 2 * * * maintenance job: due PENDING
+     conversions -> QUALIFIED (commission_base_amount snapshot from Subscription.amount_inr,
+     already paise) or CLAWED_BACK.
+  Not a T-task: the super-admin gap T2 deferred is CLOSED (RC-034) — one shared
+     packages/shared/src/constants/admin-access.ts + a derivation guard in
+     apps/api/src/routes/admin-access.test.ts.
+
+WHAT IS NOT BUILT — your job, in this order
+  T6  Commission calc + monthly ledger rollup. Read commission_pct + duration_months from
+      ReferralSettings at call time (NOTHING hardcoded). Copy the ledger pattern from the
+      Admin Commission Tracker (BUILD-LOG §42) but use a PARALLEL table — that one is
+      platform-earned, this is retailer-earned. Sets commission_accrued, which T5
+      deliberately does not write.
+  T7  Payout job — RazorpayX Payouts (UPI/IMPS), batch per payout_cadence, honour
+      payout_min_amount, idempotency keys, webhook-confirmed status. This is the ONLY
+      writer of paid_at (T5 must never write it — the DB CHECK forbids it on QUALIFIED,
+      because paid_at is the REFERRER's payout date, not the date the referred store paid us).
+  T8  Retailer-facing "Refer & Earn" screen. This is the one task that WANTS apps/mobile —
+      do not build it until the Play review has cleared; ask the owner first. There is no
+      web retailer signup surface to host it instead (verified).
+  T9  Admin monitoring (leaderboard, pending/qualified/paid totals, manual override/clawback,
+      export) — web + API only, no mobile needed.
+  T10 Tests + docs, then the §11 Regression / Root-Cause Checklist.
+
+TASK-BY-TASK RULES THIS SPEC HAS BEEN HELD TO (keep holding to them)
+  - DONE = tests written, each new guard FALSIFIED (break it, watch it fail for the right
+    reason, restore), full API + web suites green, tsc clean, and docs updated in the SAME
+    session (CLAUDE.md rule 10): BUILD-LOG, PROGRESS, CLAUDE.md row, root-cause entry if a
+    bug was found. Commit the spec's own status too.
+  - Every new guard must be falsified. Across T1–T5 this caught vacuous guards six times —
+    a guard that passes for the wrong reason is worse than none.
+  - Prefer asserting the MECHANISM over the outcome (e.g. "the affiliate table was never
+    queried for a staff code" beats "the status came out right").
+  - Read the DDL before writing an UPDATE that must satisfy a CHECK constraint.
+  - If a task needs a decision that touches MONEY or SECURITY, ask the owner with the
+tradeoff stated, rather than picking silently.
+
+KNOWN TRAPS — already paid for, do not re-discover
+  - RC-033: billing-webhook.ts maps BOTH subscription.cancelled and subscription.completed to
+    Subscription.status = CANCELLED, so "finished its paid term" and "churned" are one row.
+    T5 decides money on it (correctly — a completed subscription is not active). The fix
+    touches BILLING, so it is deliberately deferred; do not "fix" it inside a referral task.
+  - REFUNDS ARE UNIMPLEMENTED: nothing in the repo writes SubscriptionPayment.status =
+    'refunded'. Only the churn half of the clawback exists. Do not add a refund check that
+    reads a value nothing produces — that is a guard that can never fire (the RC-027 class).
+  - CLAWED_BACK is IRREVERSIBLE (DB CHECK): only write it from an irreversible state.
+    is_suspended and PAST_DUE both stay PENDING on purpose (F-015 ships an unsuspend; dunning
+    retries cards). Writing an irreversible status from a reversible state lets an admin's
+    temporary suspension permanently end someone's referral.
+  - Nothing is ever hard-deleted: referral_payouts move by status only; referral_codes are
+    deactivated via is_active.
+  - Both purge jobs sweep the referral tables before DELETE FROM retailers and migration 109
+    grants kanchuki_purge the DELETE — either half alone reproduces the silently-rolled-back
+    transaction bug RC-029/RC-030 came from. If you add a referral child table, do BOTH.
+  - packages/shared/dist is gitignored: if you edit @kanchuki/shared, rebuild it
+    (pnpm --filter @kanchuki/shared build) or your tests run against a stale table (RC-035).
+  - The 12 Biome errors you may see on changed files are the Windows CRLF checkout artifact;
+    the committed blobs are LF (verify with git show :file | tr -cd '\\r' | wc -c == 0).
+
+OWNER ACTIONS STILL OUTSTANDING (nobody but the owner can close these)
+  1. Apply migrations 109, 110, 111 from the admin dashboard. Until then the referral tables
+     and the RLS policies do not exist in prod and T2's screen 404s its own data.
+  2. Run the opt-in purge-rls-live.test.ts against a real Postgres. It has NEVER EXECUTED —
+     no test in this repo touches a real DB, and RLS denies by FILTERING, so a broken policy
+     and a working one pass every static check. This is the only claim in the feature resting
+     on reasoning rather than measurement.
+  3. Two RC-034 classifications were flagged rather than decided: `team-members` (staff
+     account management — credential-adjacent) and `reports` (/admin/reports/gst is tax data
+     but its fetches are the gated /v1/admin/gst/*). Both carry an in-file note with the
+     one-line change to lock them down.
+  4. Migrations 104/105 (AI Studio engine rows) are still unapplied from an earlier session.
+
+START BY: re-reading §7 T6 and the §11 checklist, then planning T6 as its own commit. Before
+writing code, confirm with the owner whether T6's ledger should snapshot the plan tier at
+qualification time or at accrual time — that choice is not recorded anywhere yet.
+```
+
+### Why §12 exists
+
+T1–T5 were built across several sessions, and each one ended with an owner action still outstanding
+(migrations applied by hand from the admin dashboard, a live test that needs a real database). A
+handoff that only said "continue with T6" would lose the distinction between *built and verified*,
+*built but not deployed*, and *reasoned but never executed* — which is exactly the distinction this
+feature has been careful to preserve everywhere else.
+
+### Still genuinely undecided (do not invent an answer)
+
+- **Nothing in the spec says whether `commission_accrued` snapshots the plan tier at**
+  **qualification or at accrual.** T5 snapshots `commission_base_amount` at qualification, which
+  leans one way, but a mid-cycle plan change (T10's own edge case list) means the two can differ.
+  T6 should not start without the owner's answer; it is a money decision.
+- **`payout_min_amount` and `payout_cadence`** (§6 items 3) are still "suggestions, not confirmed".
+  They are columns with defaults, so the code is unblocked — but T7's batching behaviour follows
+  them, so confirm before shipping T7.
+- **Phase-1 audience** (§6 item 4) — existing retailers only, still unconfirmed.

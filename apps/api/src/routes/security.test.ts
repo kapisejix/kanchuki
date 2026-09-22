@@ -56,7 +56,11 @@ vi.mock('@kanchuki/ai', () => ({
   publicUrl: vi.fn(),
 }));
 
-vi.mock('@kanchuki/shared', () => ({
+// Spread the REAL module, then override — a hand-written partial mock breaks
+// silently as soon as production code imports another export from it (see the
+// same note in admin.login.test.ts).
+vi.mock('@kanchuki/shared', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kanchuki/shared')>()),
   INTEGRATION_KEYS: [],
   PLAN_PRICING: {},
   R2_PATHS: {},

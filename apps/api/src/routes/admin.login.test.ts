@@ -31,7 +31,14 @@ vi.mock('@kanchuki/ai', () => ({
   publicUrl: vi.fn(),
 }));
 
-vi.mock('@kanchuki/shared', () => ({
+// Spread the REAL module, then override the few values these tests care about.
+// A hand-written mock object silently breaks the moment the production code
+// starts importing another export from it — `admin-auth.ts` gained
+// `isSuperAdminOnlyAdminPath`, and a partial mock would hand it `undefined`,
+// turning a green suite into a runtime TypeError (same shape as RC-034's
+// fail-open lists). importOriginal keeps the remaining exports real.
+vi.mock('@kanchuki/shared', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kanchuki/shared')>()),
   INTEGRATION_KEYS: [],
   PLAN_PRICING: {},
   R2_PATHS: {},

@@ -2,6 +2,7 @@
 // Kept here so domain modules can share them without a circular import back
 // into the aggregator. admin.ts re-exports these for back-compat.
 import { createHmac, timingSafeEqual } from 'node:crypto';
+import { adminPathSegment, isSuperAdminOnlyAdminPath } from '@kanchuki/shared';
 import { SignJWT, jwtVerify } from 'jose';
 import { forbidden } from '../plugins/error-handler.js';
 import { verifyTeamToken } from '../plugins/team-auth.js';
@@ -140,8 +141,10 @@ export async function adminAuthPreHandler(
   // to prevent reconnaissance from non-allowlisted IPs.
   if (!isIpAllowlisted(request.ip)) throw forbidden('Access denied — IP not allowlisted');
 
-  // Skip auth for login endpoint — use request.url (raw URL) for reliability
-  if (request.url === '/v1/admin/login') return;
+  // Skip auth for login endpoint — use request.url (raw URL) for reliability.
+  // Query strings are stripped so `/v1/admin/login?x=1` can't fall through to
+  // the key check (and 403) by accident.
+  if (adminPathSegment(request.url) === 'login') return;
 
   const key = request.headers['x-admin-key'] as string | undefined;
   if (!key) throw forbidden('Invalid admin key');
@@ -156,22 +159,15 @@ export async function adminAuthPreHandler(
     throw forbidden('Access denied — staff accounts cannot access the admin panel');
   }
 
-  // Standard Admin accounts (not Super Admin) are restricted from sensitive endpoints
-  if (info.role !== 'SUPER_ADMIN') {
-    const path = request.url.toLowerCase();
-    const isSuperAdminOnly =
-      path.startsWith('/v1/admin/integrations') ||
-      path.startsWith('/v1/admin/ai-providers') ||
-      path.startsWith('/v1/admin/settings') ||
-      path.startsWith('/v1/admin/payments') ||
-      path.startsWith('/v1/admin/billing') ||
-      path.startsWith('/v1/admin/operations') ||
-      path.startsWith('/v1/admin/database') ||
-      path.startsWith('/v1/admin/audit-logs');
-
-    if (isSuperAdminOnly) {
-      throw forbidden('Access denied — Super Admin privileges required');
-    }
+  // Standard Admin accounts (not Super Admin) are restricted from sensitive endpoints.
+  //
+  // RC-034: this check used to be a local `startsWith` list, which failed OPEN —
+  // any admin route nobody remembered to add was reachable by a plain ADMIN key.
+  // It now reads the shared, exhaustively-classified list (see
+  // packages/shared/src/constants/admin-access.ts) and matches on the whole first
+  // path segment, so `/v1/admin/commission-x` is not mistaken for `commission`.
+  if (info.role !== 'SUPER_ADMIN' && isSuperAdminOnlyAdminPath(request.url)) {
+    throw forbidden('Access denied — Super Admin privileges required');
   }
 
   // Session login carries the admin's email (per-admin audit attribution);

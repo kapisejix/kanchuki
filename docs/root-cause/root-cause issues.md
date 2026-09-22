@@ -10,6 +10,31 @@
 
 ---
 
+## RC-034 — The rule "which admin surfaces need Super Admin" lived in three hand-written lists that had drifted apart, and the only copy that enforced anything failed **open** — so a plain ADMIN key could reach surfaces the UI hides
+
+- **Component:** `apps/api/src/routes/admin-auth.ts` (`adminAuthPreHandler`) · `apps/web/src/app/admin/layout.tsx` · `apps/web/src/app/admin/components/Sidebar.tsx` · new `packages/shared/src/constants/admin-access.ts` + `apps/api/src/routes/admin-access.test.ts`
+- **Commit:** this session
+- **Symptom:** a plain (non-`SUPER_ADMIN`) admin key could read **and write** `commission` (the 3% payout ledger), `referral-settings` (referral payout terms), `addon-purchases`, `ai-usage`, `audit-log`, `plan-features`, `plan-limits`, `resource-packs` and `storage-report` — every one of which the web UI hides from that role. On top of those, `plan-pricing` (what every retailer is charged), `invoices` (tax documents) and `database/deletion-vault` (hard-deletes retailer/customer data) were in **no** list at all.
+- **Root cause:** **three copies of one rule — measured 8 / 14 / 14 entries — with the enforcement sitting in the copy that failed open.** Each surface was protected in whichever list somebody happened to edit, and the API's check was `path.startsWith(...)` against a fixed set, so a route nobody remembered to add was *reachable* rather than *refused*. The failure mode is silent by construction: no error, no log, the surface is simply open. Adding an admin route was therefore a security decision that defaulted to "public".
+- **Why it was invisible:** the web UI *looked* correct — the Sidebar hid the entries and the layout rendered "Access Restricted" — so the panel appeared to enforce the rule. Only the API did, and only for the eight segments in its list. `referral-settings` existed in the Sidebar alone, and the three segments in no list were invisible from any single file.
+- **The shape of the fix:** one shared list consumed by all three surfaces, **and** a guard that derives the segment set from the route sources, so "which segments exist" is measured rather than remembered. Because the runtime check fails open by design, the completeness property can only live in a test that re-reads the repo. Everything is classified **including the permitted**: with both lists present the question becomes "which of these two is it?" rather than the lazily-answerable "is this sensitive?", and the failure message names the segment *and* the file that declares it.
+- **Also fixed as a by-product:** `payments` was in the API list while matching no route, so it protected nothing; and five more entries (`theme`, `catalog-promo`, `rate-limits`, `notifications`, `ticket-reporting`) turned out to be dead for a reason worth recording — those files are named after the *feature*, but the **first path segment** is the parent prefix (`/settings/theme`, `/reporting/tickets`), so a list keyed on filenames protects nothing. The guard's dead-entry assertion is what stops this recurring.
+- **Proof:** `admin-access.test.ts` 11/11, falsified three ways — removing a gated entry (`referral-settings`) failed and named the path; adding a new admin route file failed and named that file; reintroducing the old `startsWith` semantics failed the sibling-segment assertion (`/admin/commission-x` must **not** match `commission`). API 1215/1215, web 321/321.
+- **Flagged, not decided:** `team-members` (staff account management — credential-adjacent) and `reports` (`/admin/reports/gst` *is* tax data, but its fetches are `/v1/admin/gst/*`, which is gated above, so the page renders empty rather than leaking figures) are classified standard-admin, matching their pre-change reachability. Both carry an in-file note with the one-line change to lock them down.
+
+---
+
+## RC-035 — A test assertion pinned to one mutable data row went stale, and a **gitignored build artifact** hid it: the suite was passing against an old `dist`, not against the source
+
+- **Component:** `apps/web/src/lib/__tests__/studio-bench.test.ts` ("returns null — never a guess — when the price is unverified") · `packages/shared/src/constants/index.ts` (`STUDIO_ENGINE_INFO`)
+- **Commit:** pre-existing at HEAD, surfaced and fixed this session (see the admin-access commit)
+- **Symptom:** `studioEngineCost('grok_imagine')` was asserted to be `null`, but the committed table says `usd: 0.04`, so a fresh `pnpm build` turned the web suite red. With the stale artifact present, it was green.
+- **Root cause:** the assertion proved its rule ("an unverified price never becomes a number") by naming one specific engine as the unverified example — so when that engine's price *was* verified the example went stale while the rule stayed true. `packages/shared/dist` is gitignored, so the test resolved `@kanchuki/shared` to whatever artifact happened to be on disk: it was testing an older table than the source, and the mismatch was only visible once something forced a rebuild.
+- **Fix:** the assertion now names engines that are `usd: null` in the table *today* (`vton_kontext`, `vton_gemini`), with a comment recording why the previous example moved — the rule is stated as a property to select from rather than a row to trust.
+- **Proof:** web suite 321/321 after the fix; the failure reproduced deterministically on a fresh `@kanchuki/shared` build, and `git show HEAD:packages/shared/src/constants/index.ts` confirms `grok_imagine: usd: 0.04` is committed (not a working-tree edit).
+
+---
+
 ## RC-033 — The billing webhook collapses `subscription.completed` into `Subscription.status = CANCELLED`, so "finished its paid term" and "churned" are the same row — and T5's clawback branch now makes a money decision on it
 
 - **Component:** `apps/api/src/routes/billing/billing-webhook.ts` (lines ~178-188, the `case 'subscription.cancelled': case 'subscription.completed':` fallthrough) · consumed by `apps/api/src/jobs/referral-qualify.ts` (T5)

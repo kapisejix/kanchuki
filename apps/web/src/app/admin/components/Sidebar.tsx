@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom'
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
+import { isSuperAdminOnlyAdminPath } from '@kanchuki/shared'
 import { resetAdminFetchCache } from '@/lib/admin-fetch'
 import {
   LayoutDashboard,
@@ -190,8 +191,20 @@ export function Sidebar({
 
   const isSuperAdmin = role === 'SUPER_ADMIN'
 
+  // A nav entry is Super-Admin-only if its own flag says so OR the shared
+  // access list says so. The flag is per-entry and easy to forget when adding a
+  // route — deriving from the list is what keeps the nav from advertising a
+  // surface that the API and the page guard would both refuse (RC-034).
+  // Accepts NavItem (including `{ separator: true }`) and narrows, so a
+  // separator or a group is never mistaken for a link.
+  const isSuperAdminOnlyItem = (entry: NavItem) => {
+    const href = 'href' in entry ? entry.href : undefined
+    const flagged = 'superAdminOnly' in entry && entry.superAdminOnly === true
+    return flagged || isSuperAdminOnlyAdminPath(href)
+  }
+
   const filteredNavItems = NAV_ITEMS.filter((item) => {
-    if ('superAdminOnly' in item && item.superAdminOnly && !isSuperAdmin) {
+    if (isSuperAdminOnlyItem(item) && !isSuperAdmin) {
       return false
     }
     return true
@@ -199,7 +212,7 @@ export function Sidebar({
     .map((item) => {
       if ('children' in item) {
         const visibleChildren = item.children.filter(
-          (child) => !child.superAdminOnly || isSuperAdmin,
+          (child) => !isSuperAdminOnlyItem(child) || isSuperAdmin,
         )
         return { ...item, children: visibleChildren }
       }
