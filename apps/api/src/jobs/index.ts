@@ -26,6 +26,7 @@ import {
   getStudioShootQueue,
   getTaggingQueue,
 } from './queue.js';
+import { handleReferralQualify } from './referral-qualify.js';
 import {
   type RewatermarkShowcaseDesignsJobData,
   addRewatermarkShowcaseDesignsJob,
@@ -168,6 +169,8 @@ export async function startWorkers(): Promise<void> {
           return handleBackfillMissingAiFields();
         case 'purge-soft-deleted':
           return handlePurgeSoftDeleted();
+        case 'referral-qualify':
+          return handleReferralQualify();
         case 'backup-database': {
           const data = (job.data ?? {}) as { type?: 'daily' | 'weekly' | 'manual' };
           return handleBackupDatabase(data.type ?? 'daily');
@@ -209,6 +212,21 @@ export async function startWorkers(): Promise<void> {
     {},
     {
       repeat: { pattern: '30 1 * * *', limit: 1 },
+      removeOnComplete: { count: 10 },
+      removeOnFail: { count: 10 },
+    },
+  );
+
+  // Referral qualification — daily at 2:00 AM UTC (T5). Moves due PENDING
+  // affiliate conversions to QUALIFIED or CLAWED_BACK. Runs before the 02:30
+  // backfill and well before the 06:00 GST reconciliation, and after the 01:30
+  // purge so a soft-deleted store's conversion is already gone or clawed back
+  // rather than qualifying in the same hour it is being swept.
+  await getMaintenanceQueue().add(
+    'referral-qualify',
+    {},
+    {
+      repeat: { pattern: '0 2 * * *', limit: 1 },
       removeOnComplete: { count: 10 },
       removeOnFail: { count: 10 },
     },

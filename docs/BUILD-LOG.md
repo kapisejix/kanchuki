@@ -2773,7 +2773,7 @@ Driven by the DPDP founder guide (see PRO-REQUIREMENTS §34 for the point-by-poi
 
 > **Superseded in part, same day:** **T4** landed later (see §2026-09-22 (T4) at the foot of this file),
 > so the "T4–T10 not started" status below describes *this* section's session, not the current state.
-> Current status is in **CLAUDE.md** row 76. T5–T10 remain unstarted.
+> Current status is in **CLAUDE.md** row 76. T6–T10 remain unstarted (T4 and T5 have since landed — see the foot of this file).
 
 Spec: `docs/tasks/referral-program-retailer-affiliate.md`. Retailer → retailer: an existing paying
 retailer earns a recurring commission for bringing another retailer onto Kanchuki. §10 of that spec
@@ -3095,9 +3095,14 @@ nothing in the purge path touches them.
 
 ## BUILT 2026-09-22 (T4) — Affiliate referral capture at signup, riding the field F-018 already owns
 
+> **Superseded in part, same day:** **T5** landed later (see §2026-09-22 (T5) at the foot of this
+> file), so the "T5–T10 are untouched" status below describes *this* section's session. **T6–T10
+> remain unbuilt — nothing pays out yet.**
+
 Spec: `docs/tasks/referral-program-retailer-affiliate.md` §7 T4. Turns a code a signing-up retailer
 entered into a `pending` `ReferralConversion`, and gives the referred store its side of the deal.
-**T5–T10 are untouched, so nothing pays out yet** — T4 records a conversion and no code consumes it.
+**T5–T10 were untouched at this point, so nothing paid out yet** — T4 records a conversion and no code
+consumed it. *(T5 landed later the same day — see the foot of this file.)*
 
 **`apps/mobile` and customer web: 0 files changed.** The Play Console review in flight is unaffected.
 
@@ -3187,8 +3192,127 @@ the bonus read wall-clock time, so one transaction contained two different refer
 then became the only part of the operation a caller could not pin. `now` is now threaded through.
 
 **Not done / owner-side:** migrations **109, 110 and 111 are still not applied** (admin dashboard) ·
-**T5–T10 unbuilt — no affiliate link earns anything yet**, stated in the spec, PRO-REQUIREMENTS and
-CLAUDE.md rather than left to the endpoint's existence to imply · the `?ref=` cookie capture (only
+**T6–T10 unbuilt — no affiliate link earns anything yet**, stated in the spec, PRO-REQUIREMENTS and
+CLAUDE.md rather than left to the endpoint's existence to imply *(T5 landed later the same day — see the
+foot of this file)* · the `?ref=` cookie capture (only
 meaningful once a web signup exists) · the super-admin path-list gap for
 `/v1/admin/referral-settings` (pre-existing, shared with `/v1/admin/commission`; T2 matched its sibling
 rather than diverging).
+
+---
+
+## BUILT 2026-09-22 (T5) — Referral qualification cron: `pending` → `qualified` / `clawed_back`
+
+Spec: `docs/tasks/referral-program-retailer-affiliate.md` §7 T5. **T6–T10 are still unbuilt, so this
+job still earns nobody anything** — it moves a conversion into the state T6 will accrue from, and no
+code consumes that state yet. **`apps/mobile`: 0 files.**
+
+| File | What it is |
+|---|---|
+| `apps/api/src/jobs/referral-qualify.ts` (new) | `handleReferralQualify()` + the pure `decideQualification()` gate |
+| `apps/api/src/jobs/referral-qualify.test.ts` (new) | 24 cases: the gate's whole branch table, the CAS write payload, per-row isolation, one-query paid lookup, cron wiring |
+| `apps/api/src/jobs/index.ts` | worker `case 'referral-qualify'` + repeat `0 2 * * *` on the maintenance queue |
+
+### The day count is deliberately NOT in this job
+
+`qualifies_at` is stamped at **signup** by T4 from `qualify_days`, and the schema says exactly that
+("computed at signup by T4 and enforced nightly by T5"). So the spec's requirement — *read the window
+from settings, not a literal `30`* — is satisfied one layer up, and re-deriving it here would create a
+second answer to "when is this due?". The consequence is recorded rather than hidden: an admin editing
+`qualify_days` affects conversions created **after** the edit, because `qualifies_at` is the record of
+the terms in effect when the referral happened — the same snapshot discipline as
+`commission_base_amount`. A **source-scan guard** (with comments stripped, because the file's own
+header explains the rule it enforces) fails if T5 ever gains a `qualify_days` reference or imports the
+settings loader.
+
+### The gate — "paid + active for the window", literally
+
+| Condition | Outcome |
+|---|---|
+| `Retailer.deleted_at` set | `CLAWED_BACK` · `REFERRED_DELETED` |
+| no `SubscriptionPayment` with `status = 'success'` | stays `PENDING` · `NOT_PAID` |
+| `Retailer.is_suspended` | stays `PENDING` · `SUSPENDED` |
+| payment **and** an `ACTIVE` subscription **and** active store | **`QUALIFIED`** |
+| payment, no `ACTIVE`, but a `CANCELLED` subscription | `CLAWED_BACK` · `REFERRED_CHURNED_AFTER_PAYMENT` |
+| payment, `PAST_DUE` only | stays `PENDING` · `PAST_DUE_REVIEW` |
+
+**Two orderings are load-bearing and each has a test that fails if it is swapped.** The terminal check
+precedes the never-paid check, so a soft-deleted store is clawed back instead of being re-scanned
+forever; and the never-paid check precedes the churn branch, so a store that abandoned a **free trial**
+lands in `PENDING` rather than in an irreversible `CLAWED_BACK` — there is no value to claw back, and if
+it resubscribes inside its window the referrer is still paid.
+
+**Two deliberate non-clawbacks.** `is_suspended` and `PAST_DUE` stay `PENDING`, because both are
+**recoverable** — F-015 ships an unsuspend, and dunning has card retries — while `CLAWED_BACK` is
+**irreversible** (the CHECK permits no documented reverse transition). Writing an irreversible status
+from a reversible state would let an admin's temporary suspension end a referral permanently. The cost
+is that a store which never pays leaves its conversion `PENDING` indefinitely; nothing accrues and
+nothing is owed, so it is inert — and it is **counted** in the run summary rather than left invisible.
+
+### What it writes, and the two fields it must never write
+
+`commission_base_amount` ← `Subscription.amount_inr` of the newest `ACTIVE` subscription. That column is
+**paise** per the schema, the same unit as this one — there is deliberately no `* 100`, which is the
+mistake that would multiply every payout by 100 without failing anything. `qualified_at` /
+`clawed_back_at` are written here and nowhere else.
+
+- **Not `paid_at`.** It is the date the *referrer was paid out* (T7), not the date the referred store
+  paid us, and the DB CHECK forbids it on a `QUALIFIED` row. The column name invites precisely the wrong
+  write and the constraint is the only place that says so — so the test asserts the key's **absence**
+  from the payload.
+- **Not `commission_accrued`.** T6's column, per the schema (*"written by T6"*).
+
+### Idempotency is a compare-and-swap, not a read-then-write
+
+Every transition is `updateMany` with `status: 'PENDING'` in the `WHERE`, inside the same transaction as
+its audit row. Two overlapping runs — or the nightly cron plus a manual trigger — cannot both move a
+row; the loser sees `count: 0` and is reported as `raced`, not as an error. A read-then-write version
+passes every single-threaded test and double-transitions in production. Failures are isolated per row,
+so one broken store cannot abandon the night's remaining work (counted **and** logged, because a silent
+error here is a referral that quietly never qualifies). Paid status is resolved in **one** grouped query
+per page rather than one per candidate.
+
+### RC-033 — a pre-existing billing collapse that T5's clawback now rests on
+
+`billing-webhook.ts` maps **both** `subscription.cancelled` **and** `subscription.completed` to
+`status: 'CANCELLED'` — so *"finished its paid term"* and *"churned"* are the same row, and the same
+statement stamps `cancelled_at` and nulls `razorpay_subscription_id`, destroying the evidence of which
+event actually arrived. T5 is the first consumer to make a **consequential** decision on `CANCELLED`.
+
+The T5 decision **stays correct**: the gate is sustained paid **and** active *through* the window, and a
+completed subscription is not active, so `CLAWED_BACK` is right either way. What is lost is the audit
+distinction. The fix is a schema change plus a webhook remap plus a backfill — i.e. **billing**, the
+revenue path — so it is **recorded and deferred**, not silently patched from inside a referrals task.
+
+### Refunds still have no data source
+
+Nothing in this repo ever writes `SubscriptionPayment.status = 'refunded'`. T5 therefore implements the
+**churn half only** of the spec's clawback; the refund half is not built. A refund check reading a value
+nothing produces is a guard that can never fire.
+
+### Verification
+
+API **1204/1204** (91 files, +24) · web **321/321** · `tsc --noEmit` clean ×3 · Biome clean on all 3
+changed files · `check-delete-guard.sh` passes · **`apps/mobile`: 0 files**.
+
+**Guard falsified nine ways**, each restored byte-clean afterwards: drop `status: 'PENDING'` from the
+CAS `WHERE` → the CAS test; add `paid_at: now` → the never-write-`paid_at` test; add
+`commission_accrued` → the same test; `amount_inr * 100` → 3 tests; let the never-paid gate win over the
+terminal one → 2 tests; let the churn branch fire without a payment → the never-paid-cancellation test;
+`throw error` instead of `errors++` → the per-row isolation test; remove the worker `case` → the wiring
+test; remove the cron `add` → the scheduling test.
+
+**Two test-side corrections of my own:** the reachability assertion's expected array was in the wrong
+sort order (`'T' < '_'`, so `NOT_PAID` precedes `NO_ACTIVE_SUBSCRIPTION`), and the source-scan guard
+tripped on the job's own header comment explaining the rule it checks — fixed by stripping comments
+before scanning, since the correct fix is never to delete the explanation.
+
+**Three unrelated suites failed the first full run and passed the second** (`auth-otp-bypass`,
+`retailers-whatsapp-catalog`, `discover-stores`) — all three pass in isolation, so they are the
+load-sensitive flake class, not this change. Run 2 was 1204/1204. (Not fixed here: it is a test-infra
+issue, distinct from the `retired-tryon-guard` timeout flake fixed earlier the same day.)
+
+**Not done / owner-side:** migrations **109, 110, 111 still not applied** · **T6–T10 unbuilt — no
+affiliate link earns anything yet**, stated here, in the spec, PRO-REQUIREMENTS and CLAUDE.md rather
+than left to the job's existence to imply · RC-033's billing fix · the refund half of the clawback · the
+super-admin path-list gap for `/v1/admin/referral-settings`.

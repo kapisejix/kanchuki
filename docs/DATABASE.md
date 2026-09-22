@@ -1045,13 +1045,13 @@ When adding a new business table:
 
 ## Retailer referral / affiliate program — `referral_*` (migration 109, T1)
 
-Retailer → retailer: an existing paying retailer earns a recurring commission for bringing another retailer onto Kanchuki. Spec + task breakdown: `docs/tasks/referral-program-retailer-affiliate.md`. **T1 (schema) + T2 (admin settings API/screen) are built; T3–T10 are not started.** Migration 109 is **not applied**.
+Retailer → retailer: an existing paying retailer earns a recurring commission for bringing another retailer onto Kanchuki. Spec + task breakdown: `docs/tasks/referral-program-retailer-affiliate.md`. **T1–T5 are built; T6–T10 are not started.** Migration 109 is **not applied**.
 
 | Table | Purpose |
 |---|---|
 | `referral_settings` | **Singleton** (`id = 'singleton'`, same shape as `platform_gst_profile`). Every economic term — `commission_pct`, `duration_months`, `qualify_days`, `referred_bonus_type`/`_value`, `second_tier_enabled`/`_pct`, `payout_min_amount`, `payout_cadence`. Seeded by the migration so code never needs a fallback constant; admin-edited in place from `/admin/referral-settings` (T2). **Nothing here is ever a literal in application code.** |
 | `referral_codes` | One shareable code per retailer (`retailer_id` unique, `code` unique). Deactivation flips `is_active` — no application hard-delete path. |
-| `referral_conversions` | One row per referred retailer (`referred_id` unique → a retailer can be referred once, so a code can't double-pay). `status` PENDING → QUALIFIED → PAID / CLAWED_BACK, money in paise, `payout_id` links the batch that settled it. |
+| `referral_conversions` | One row per referred retailer (`referred_id` unique → a retailer can be referred once, so a code can't double-pay). `status` PENDING → QUALIFIED → PAID / CLAWED_BACK, money in paise, `payout_id` links the batch that settled it. **Writer map:** `qualifies_at` at signup + `commission_base_amount`'s source is T4 (`lib/referral-conversions.ts`); `qualified_at` / `clawed_back_at` are written **only** by the nightly T5 cron (`jobs/referral-qualify.ts`, `0 2 * * *`); `commission_accrued` by T6; `paid_at` by T7 — it is the date the **referrer was paid out**, not the date the referred store paid, and the CHECK forbids it on a QUALIFIED row (RC-033 note: the webhook's collapse of `subscription.completed` into `CANCELLED` is why T5's churn branch cannot distinguish completion from churn). |
 | `referral_payouts` | One batch per referrer per cadence period. `idempotency_key` unique (retried cron can't double-pay), `razorpayx_payout_id` unique, `webhook_confirmed` + timestamp. Never deleted by application code — a bad batch is marked FAILED/REVERSED. |
 
 **Deliberately not the removed engine.** The customer-facing "Referral Program Engine" was dropped by migration 082 (`referrals`, `referral_credits`, `partner_referrals`, enums `ReferralCreditStatus`/`PartnerReferralStatus`, `retailers.referral_enabled`/`referral_reward_paise`). None of those identifiers are reused. This is also distinct from F-018's internal-team codes (`TeamMember.referral_code` → `retailers.onboarded_by_id`) — separate ledgers.

@@ -16,7 +16,8 @@ Detail: `docs/BUILD-LOG.md` §2026-09-22 · tables `docs/DATABASE.md` → "Retai
 | T2 — Admin settings screen + API | ✅ Built | `GET`/`PUT /v1/admin/referral-settings` + `/admin/referral-settings` |
 | T3 — Code + link generation | ✅ Built | `GET /v1/retailers/me/referral-code` + `lib/referral-codes.ts`. Blocker resolved — see below |
 | T4 — Signup wiring | ✅ Built | `lib/referral-conversions.ts` + capture hooked into `PUT /v1/retailers/me`. **Zero `apps/mobile` changes** |
-| T5–T10 | 🔴 Not started | Nothing pays out yet — see the status line above |
+| T5 — Qualification cron | ✅ Built | `jobs/referral-qualify.ts` + cron `0 2 * * *` on the maintenance queue. **No payout yet** — T6 accrues on QUALIFIED rows, T7 pays them |
+| T6–T10 | 🔴 Not started | Nothing pays out yet — see the status line above |
 
 **The one open schema question was decided before migrating** (§6, §7 T1): **singleton** `referral_settings` row, not plan-scoped. Also decided: `ON DELETE RESTRICT` on the three retailer FKs, and payouts are never deleted (status only). §6 records these as owner decisions.
 
@@ -194,9 +195,87 @@ At Phase 1 pilot volume (a handful of retailers), the fraud/edge-case tracking t
 - Applies referred-side bonus per `ReferralSettings.referred_bonus_*` (not a hardcoded "1 free month").
 - Guardrail: block self-referral (same GSTIN/phone/bank account as referrer).
 
-### T5 — Qualification cron
-- Nightly job: `pending` → `qualified` once referred retailer has been paid+active for `ReferralSettings.qualify_days` (currently 30, but read from settings, not literal `30`).
-- Clawback path: referred retailer refunds/churns inside the qualify window → conversion → `clawed_back`, no commission accrues.
+### T5 — Qualification cron — ✅ BUILT 2026-09-22
+
+`apps/api/src/jobs/referral-qualify.ts` (`handleReferralQualify`), registered in the
+maintenance worker and scheduled daily at 02:00 UTC. Test: `referral-qualify.test.ts`
+(24 cases).
+
+**The day count is not in this job, deliberately.** `qualifies_at` is stamped at
+SIGNUP by T4 from `qualify_days`, and the schema says so: *"computed at signup by T4
+and enforced nightly by T5"*. T5 therefore reads no window setting at all — the
+requirement "read from settings, not literal 30" is satisfied one layer up, and
+restating the arithmetic here would create a second answer to "when is this due?".
+The consequence is recorded: an admin editing `qualify_days` affects conversions
+created **after** the edit, because `qualifies_at` is the record of the terms in
+effect when the referral happened — the same snapshot discipline as
+`commission_base_amount`. A source-scan guard in the test asserts T5 never gains a
+`qualify_days` dependency.
+
+**The gate** — paid+active for the window means, literally:
+
+| Condition | Outcome |
+|---|---|
+| `Retailer.deleted_at` set | `CLAWED_BACK` (`REFERRED_DELETED`) |
+| no `SubscriptionPayment` with `status = 'success'` | stays `PENDING` (`NOT_PAID`) |
+| `Retailer.is_suspended` | stays `PENDING` (`SUSPENDED`) |
+| payment + an `ACTIVE` subscription + active store | **`QUALIFIED`**, base snapshotted |
+| payment + no `ACTIVE` + a `CANCELLED` subscription | `CLAWED_BACK` (`REFERRED_CHURNED_AFTER_PAYMENT`) |
+| payment + `PAST_DUE` only | stays `PENDING` (`PAST_DUE_REVIEW`) |
+
+**Order is load-bearing, in two places.** The terminal check precedes the never-paid
+check (so a soft-deleted store is clawed back rather than re-scanned forever), and
+the never-paid check precedes the churn branch (so a store that abandoned a free
+trial lands in `PENDING`, not in an irreversible `CLAWED_BACK`). Both orderings have a
+test that fails if they are swapped.
+
+**Two deliberate non-clawbacks.** `is_suspended` and `PAST_DUE` stay `PENDING`
+because both are *recoverable* (F-015 ships an unsuspend; dunning has card retries)
+and `CLAWED_BACK` is **irreversible** — the CHECK allows no documented reverse
+transition. Writing an irreversible status on a reversible state would let an
+admin's temporary suspension end a referral permanently. Cost of the conservatism: a
+store that never pays leaves its conversion in `PENDING` indefinitely. Nothing
+accrues and nothing is owed, so it is inert — and it is **counted** in the run
+summary rather than left invisible.
+
+**What T5 writes, and what it must never write.**
+
+- `commission_base_amount` ← `Subscription.amount_inr` of the newest `ACTIVE`
+  subscription. That column is paise (schema comment), the same unit as this one —
+  there is deliberately no `* 100`.
+- `qualified_at` / `clawed_back_at` — T5 is their only writer.
+- **Not `paid_at`**: it is the date the *referrer was paid out* (T7), not the date the
+  referred store paid us. The DB CHECK forbids it on a QUALIFIED row. The column name
+  invites exactly the wrong write, and the constraint is the only place that says so.
+- **Not `commission_accrued`**: T6's column (schema: *"written by T6"*).
+
+**Idempotency.** Every transition is a compare-and-swap — `updateMany` with
+`status: 'PENDING'` in the `WHERE`, inside the same transaction as its audit row. Two
+overlapping runs (or cron + a manual trigger) cannot both move a row; the loser sees
+`count: 0` and is reported as `raced`, not as an error. A read-then-write version
+passes every single-threaded test and double-transitions in production. Failures are
+isolated per row, so one broken store cannot abandon the night's remaining work.
+
+**Clawback is irreversible — accepted, and here is the full consequence.** A store
+that paid and then churned inside its window cannot un-churn the conversion by
+re-subscribing; only a T9 admin action can. This is the spec's rule (*"churns inside
+the qualify window → no commission accrues"*) and the window is evaluated once, at
+`qualifies_at`. Raised rather than silently designed around.
+
+**⚠️ Interaction found while building — RC-033.** `billing-webhook.ts` maps **both**
+`subscription.cancelled` and `subscription.completed` to `status: 'CANCELLED'`, so
+*"finished its paid term"* and *"churned"* are the same row. T5's churn branch
+therefore treats a successfully completed subscription as churn. The **decision
+stays correct** — the gate is sustained paid+active *through* the window, and a
+completed subscription is not active — but the audit distinction is lost. Fixing the
+mapping means touching billing, so it is deferred and documented, not silently
+patched from here (see RC-033 in `docs/root-cause/root-cause issues.md`).
+
+**Refunds are still not represented.** T4's research established that nothing in the
+repo ever writes `SubscriptionPayment.status = 'refunded'`, so the refund half of
+the spec's clawback has no data source and is **not** implemented. T5 implements the
+churn half only. A refund check reading a value nothing produces would be a guard
+that can never fire.
 
 ### T6 — Commission calc + ledger
 - Compute owed commission off `ReferralSettings.commission_pct` × `duration_months`, per conversion, monthly rollup.

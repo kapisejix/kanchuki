@@ -2,6 +2,67 @@
 
 One file, update at end of each work session: what's done, what's next, what's blocked. Check `git log -1` and this file first thing each session.
 
+## 2026-09-22 (later still) — T5 built: referral qualification cron; RC-033
+
+Spec: `docs/tasks/referral-program-retailer-affiliate.md` §7 T5. `apps/api/src/jobs/referral-qualify.ts`
++ a daily `0 2 * * *` maintenance cron. PENDING conversions that come due are moved to `QUALIFIED` or
+`CLAWED_BACK`. **T6–T10 unbuilt, so this still earns nobody anything** — it produces the state T6 will
+accrue from. Detail: `docs/BUILD-LOG.md` §2026-09-22 (T5).
+
+**`apps/mobile`: 0 files** — the Play Console review is unaffected.
+
+**The day count is deliberately absent from the job.** `qualifies_at` is stamped at **signup** by T4 from
+`qualify_days`, and the schema says so ("computed at signup by T4 and enforced nightly by T5"), so the
+spec's "read the window from settings, not a literal `30`" is satisfied one layer up. Re-deriving it
+here would create a second answer to "when is this due?". Recorded consequence: an admin editing
+`qualify_days` affects conversions created **after** the edit — `qualifies_at` is the terms in effect
+when the referral happened, the same snapshot discipline as `commission_base_amount`. A comment-stripped
+source guard fails if T5 ever gains a `qualify_days` reference.
+
+**The gate:** deleted store → `CLAWED_BACK` · no successful payment → stays `PENDING` · suspended →
+stays `PENDING` · payment + `ACTIVE` subscription → **`QUALIFIED`** · payment + no active + cancelled →
+`CLAWED_BACK` · `PAST_DUE` only → stays `PENDING`. **Suspended and `PAST_DUE` deliberately do not claw
+back**, because both are *recoverable* (F-015 ships an unsuspend; dunning retries) and `CLAWED_BACK` is
+**irreversible**. Two orderings are load-bearing with tests that fail if swapped: terminal-before-
+never-paid, and never-paid-before-churn (so abandoning a free trial lands in `PENDING`, not in a
+permanent clawback — there is no value to claw back).
+
+**Two fields it must never write, both traps:** `paid_at` is the date the *referrer was paid out* (T7),
+not the date the referred store paid us — the DB CHECK forbids it on `QUALIFIED`, and the column name
+invites exactly the wrong write; `commission_accrued` is T6's. The base is `Subscription.amount_inr`,
+already **paise**, so there is deliberately no `* 100`.
+
+**Idempotency is a compare-and-swap**, not read-then-write: `updateMany` with `status: 'PENDING'` in the
+`WHERE`, in the same transaction as its audit row. Overlapping runs (cron + manual trigger) cannot both
+move a row; the loser is reported as `raced`, not as an error. A read-then-write version passes every
+single-threaded test and double-transitions in production. Failures are isolated per row.
+
+**RC-033 — a pre-existing billing collapse T5 now rests on.** `billing-webhook.ts` maps **both**
+`subscription.cancelled` **and** `subscription.completed` to `status: 'CANCELLED'`, so "finished its paid
+term" and "churned" are one row (and the same statement stamps `cancelled_at` and nulls
+`razorpay_subscription_id`, destroying the evidence). T5 is the first consumer to make a consequential
+decision on it. The **decision stays correct** — the gate is sustained paid **and** active through the
+window, and a completed subscription is not active — but the audit distinction is lost. Fixed by a
+schema change + webhook remap + backfill, i.e. **billing**, so it is **recorded and deferred** rather
+than silently patched from inside a referrals task.
+
+**Refunds still have no data source** — nothing in the repo writes `SubscriptionPayment.status =
+'refunded'`, so only the **churn half** of the spec's clawback is implemented. A refund check reading a
+value nothing produces is a guard that can never fire.
+
+**Verification:** API **1204 passed / 5 skipped** (91 files, +24) · web **321/321** · `tsc --noEmit` clean
+×3 · Biome clean on all 3 changed files · `check-delete-guard.sh` passes · `apps/mobile` **0 files**.
+Guards falsified **nine ways** (CAS `WHERE`, `paid_at` added, `commission_accrued` added, `* 100` unit
+slip, both gate orderings, churn-without-payment, per-row isolation removed, worker `case` removed, cron
+`add` removed), each restored byte-clean. Three unrelated suites failed the first full run and passed
+the second, all green in isolation — the load-sensitive flake class, not this change.
+
+**Still open:** migrations **109/110/111 not applied** (admin dashboard) · **T6–T10 unbuilt — no
+affiliate link earns anything yet** · RC-033's billing fix · the refund half of the clawback · the opt-in
+RLS live test has never executed · the super-admin path-list gap on `/v1/admin/referral-settings`.
+
+---
+
 ## 2026-09-22 (later) — T4 built: affiliate referral capture at signup; RC-032
 
 Spec: `docs/tasks/referral-program-retailer-affiliate.md` §7 T4. A code entered at signup now writes a
@@ -43,8 +104,9 @@ dropped, entry made stale, type made selectable again, route catch removed, attr
 fallback constant added to the settings loader), each failing for the right reason with the offending
 value named.
 
-**Still open:** migrations **109/110/111 not applied** (admin dashboard) · **T5–T10 unbuilt — no
-affiliate link earns anything yet** · the opt-in RLS live test has never executed · the super-admin
+**Still open:** migrations **109/110/111 not applied** (admin dashboard) · **T6–T10 unbuilt — no
+affiliate link earns anything yet** *(T5 landed later the same day — see above)* · the opt-in RLS live
+test has never executed · the super-admin
 path-list gap on `/v1/admin/referral-settings` (pre-existing, shared with `/v1/admin/commission`).
 
 ---
