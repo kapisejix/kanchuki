@@ -67,13 +67,22 @@ function collectCodeFiles(dir: string, out: string[] = []): string[] {
   return out;
 }
 
+// Memoised deliberately. Without it every test below re-walks `apps` + `packages`
+// + `scripts` and re-reads every code file synchronously, and on Windows the
+// first walk goes over vitest's 5s default under parallel load (87 files in one
+// run) while taking under a second alone — a flake whose only symptom is this
+// file failing intermittently for no change in the code it guards. Nothing in
+// the scan mutates the result, and the files cannot change mid-run.
+let sourcesCache: Record<string, string> | undefined;
 function loadSources(): Record<string, string> {
+  if (sourcesCache) return sourcesCache;
   const sources: Record<string, string> = {};
   for (const dir of SCAN_DIRS) {
     for (const file of collectCodeFiles(join(REPO_ROOT, dir))) {
       sources[relative(REPO_ROOT, file).replace(/\\/g, '/')] = readFileSync(file, 'utf8');
     }
   }
+  sourcesCache = sources;
   return sources;
 }
 
@@ -107,6 +116,9 @@ function findRetiredTryon(sources: Record<string, string>): string[] {
 }
 
 describe('retired IDM-VTON try-on path', () => {
+  // 30s, not the 5s default: this is the one test that performs the full
+  // synchronous repo walk (the rest reuse the memoised result). Budgeted for
+  // contention, not because the walk is slow — it is under a second alone.
   it('scans the app, package and script sources — not vacuously', () => {
     const files = Object.keys(loadSources());
     expect(files.length, 'the source walk found almost nothing').toBeGreaterThan(200);
@@ -115,7 +127,7 @@ describe('retired IDM-VTON try-on path', () => {
     // exists to watch.
     expect(files).toContain('apps/api/src/lib/fal-client.ts');
     expect(files).toContain('scripts/studio-shoot-demo.mjs');
-  });
+  }, 30_000);
 
   it('still has FASHN v1.5 as the live try-on step', () => {
     // Positive control: confirms the scan actually read fal-client.ts, so the

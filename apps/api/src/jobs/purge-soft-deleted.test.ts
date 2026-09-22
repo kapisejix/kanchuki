@@ -413,7 +413,7 @@ describe('RC-030 — every bare-`retailer_id` table has a purge decision', () =>
 
       expect(
         uncovered,
-        `These tables declare a bare \`retailer_id\` with no FK, so only an explicit DELETE clears them, and ${coverage.job} does not delete them. A deleted retailer's rows survive there permanently. Add the sweep to BOTH purge jobs and grant the DELETE — and note the RLS caveat: four of these tables have RLS enabled and kanchuki_purge has no BYPASSRLS, so those sweeps may affect 0 rows silently rather than erroring (RC-030).`,
+        `These tables declare a bare \`retailer_id\` with no FK, so only an explicit DELETE clears them, and ${coverage.job} does not delete them. A deleted retailer's rows survive there permanently. Add the sweep to BOTH purge jobs and grant the DELETE — and if the table has RLS enabled with no policy naming the backend roles, add it to migration 111 too, or the sweep will affect 0 rows silently rather than erroring (RC-030).`,
       ).toEqual([]);
     });
   }

@@ -29,8 +29,38 @@ has shipped twice (`product_attributes`, `social_accounts`).
    **Fixed this session** (owner decision): all seven swept in both jobs + six new grants, and the
    missing mechanical link replaced with a **schema-driven completeness test** so a new bare-`retailer_id`
    model can no longer be added without a purge decision. ⚠ Four of the seven have ROW LEVEL SECURITY
-   and `kanchuki_purge` has no `BYPASSRLS`, so those sweeps may affect 0 rows silently — a PII
-   policy decision, left documented rather than guessed.
+   and `kanchuki_purge` has no `BYPASSRLS`, so those sweeps deleted 0 rows silently until migration
+   **111** — see the RLS section below, which the same session went on to build.
+
+**RC-030's second half — the sweeps still deleted nothing, and the diagnosis inverted.** Adding the
+seven sweeps and their grants was not enough: the four `customer_*`/`consent_*` tables have RLS enabled,
+RLS *filters* rows rather than raising, and no policy in the repo named the backend roles. The tempting
+reading was "those four need a policy". Measured, it was repo-wide: **23 of the 32** purge-path tables
+are RLS-enabled (`products`, `customers`, `collections`, `retailers`, `subscriptions`, `staff`…) and
+**not one** of the schema's policies named `kanchuki_app` or `kanchuki_purge` — they all target
+`authenticated`/`anon`. The path has always worked only via `pg_class_ownercheck`: the purge role is a
+member of the role that owns each table, so both are treated as owners and skip RLS. That is an accident
+of which role ran which migration, per table, documented nowhere — so the honest statement is that the
+30-day cron and the admin hard-delete have worked *by luck*, and RC-030 is where it first bit.
+
+**Fixed with migration `111_backend_role_rls_policies`** — one `FOR ALL … USING (true) WITH CHECK
+(true)` policy per RLS table the purge path touches, naming both backend roles (24 tables, derived from
+the job sources rather than typed by hand). Two details are load-bearing and both are tested:
+**`FOR ALL`, not `FOR DELETE`,** because `purgeTable()` / `fetchR2Keys()` / `purgeChildren()` all
+`SELECT` before they delete — a `DELETE`-only policy would have left every batch `SELECT` empty, so the
+sweeps would have kept silently deleting nothing *with a policy in place making them look fixed*; and
+**a policy rather than `ALTER ROLE … BYPASSRLS`,** which needs superuser and so could only ever be
+hand-applied (the RC-029 failure). `USING (true)` is a filter, not a widening — it names only the two
+backend roles, is `PERMISSIVE` so it ORs with the existing policies, and cannot grant a privilege
+(`kanchuki_app` still has no `DELETE`; the `REVOKE` is checked before RLS).
+
+`purge-rls-policy.test.ts` re-derives the required set from `schema.prisma` + the migration history +
+both job sources and fails if migration 111 drifts from it in **either** direction — a missing entry is
+a sweep that does nothing, a stale one is RC-029 returning. `purge-rls-live.test.ts` is the executed
+proof, **opt-in** via `PURGE_RLS_TEST_DATABASE_URL`: this failure is semantic, so no static check can
+settle it. It lifts the `CREATE POLICY` statement out of the migration (so it cannot drift) and shows
+per table that no policy → the row survives silently, a `FOR DELETE` policy → it *still* survives, and
+migration 111's policy → it goes.
 
 **T3 — the `generateReferralCode()` collision, resolved without a data migration.** The spec's own
 blocker: `generateReferralCode()` existed twice (live for F-018 *staff* codes in `team-helpers.ts`, stale
@@ -58,6 +88,18 @@ reconciles a concurrent double-mint on the unique constraint rather than 500ing 
 per retailer. Nothing about F-018 staff codes changed, and no endpoint resolves a typed code to a shop
 — that would be an enumeration oracle over 456,976 candidates.
 
+**RC-030's RLS half — seven falsifications in total this session.** The five on the migration's table
+list/policy shape are above; the last two were pointed at the migration's own *guard clauses*: removing
+the `schemaname = ANY (current_schemas(false))` scoping from the idempotency check fails exactly that
+test (unscoped, a same-named policy in another schema makes the loop skip and the migration silently
+does nothing — this bug class's failure mode, inside its own guard), and inserting a second
+`CREATE POLICY` earlier in the file fails the "exactly one policy DDL to lift" test **plus** the two
+assertions that read the DDL — because the live test lifts the first match, so a second one would
+silently change what it proves while it stayed green. **That last one is the pattern worth keeping:**
+the two pre-existing assertions did not catch the drift by themselves — they only failed because they
+were reading the wrong statement. **This is the fourth guard this session that was only proven by
+breaking it.**
+
 **Falsification found a real hole in T3's own guard** (RC-031): the whole separation rests on one
 character, and the first guard only checked `includes('-')` — so making the hyphen **optional** in the
 pattern let a typed `KAN7F3QMP` into the staff field while classification sent it to the affiliate
@@ -74,7 +116,8 @@ session and **restored**, since nothing deletes it and an unrequested privilege 
 change. `docs/INFRA-SETUP.md` carried a third copy of the list with the same rot; now points at the
 script as the single authority.
 
-**Verification:** API **1082/1082** (83 files) · web **319/319** (41 files) · API + DB + web `tsc` clean
+**Verification:** API **1132 passed / 5 skipped** (86 files + 1 skipped — the skip is this round's
+opt-in live RLS test) · web **319/319** (41 files) · API + DB + web `tsc` clean
 · `next lint` clean, and Biome clean on the changed `apps/api` / `packages/db` files (the CI-governed
 surface — `apps/web` lints with `next lint`, not Biome, and its admin pages already carry a dirty Biome
 baseline, so the new screen was matched to its siblings rather than to a gate nothing runs) ·
@@ -83,15 +126,26 @@ Prisma's generated DDL (61/61) · grant list checked in both directions (24/24 n
 deleted by the 7 purge-role consumers are granted). Guards falsified, not assumed — dropping a referral
 delete fails the job tests; swapping enum checks for `z.string()` fails exactly the 2 RC-027 tests;
 sending every field from the form fails 7; and T3's namespace guard was **rebuilt after** its first
-version survived a falsification attempt (RC-031).
+version survived a falsification attempt (RC-031). The RLS guards were falsified **five ways**, each
+hitting exactly one assertion (drop a table → missing check; invent one → stale check; `FOR ALL`→`FOR
+DELETE` → the `FOR ALL` check; drop a role → the roles check; remove the role guard → the deploy-safety
+check), with the files restored byte-clean after each.
+
+**One pre-existing test flake fixed, not re-reported.** `retired-tryon-guard.test.ts` had flaked twice
+before; this run it failed the suite with `Test timed out in 5000ms`. Its `loadSources()` re-walked
+`apps`+`packages`+`scripts` and re-read every file **on every call**. Now memoised (nothing mutates the
+result; the files cannot change mid-run) with a 30s budget on the one test that performs the walk.
+No assertion weakened — 8/8 before and after, and the suite is deterministic again.
 
 **Blocked / owner-side:**
-1. **Migrations 109 and 110 not applied** — admin dashboard, per CLAUDE.md. Until then T1's tables do
-   not exist and T2's screen 404s its own data.
-2. **RC-030 RLS policy** — the seven sweeps ship, but the four `customer_*`/`consent_*` tables may
-   delete 0 rows silently under RLS until a policy for the backend role (or a role attribute) is
-   decided. That is a PII call: whether a deleted retailer's customer interaction / consent rows go.
-3. **Affiliate links are not live yet** — T3 generates and returns `KC-` codes, but nothing captures
+1. **Migrations 109, 110 and 111 not applied** — admin dashboard, per CLAUDE.md. Until then T1's tables
+   do not exist and T2's screen 404s its own data.
+2. **The live RLS test has never been run.** There is no local Postgres, no DB harness and no
+   docker-compose in this repo, so `purge-rls-live.test.ts` is committed **opt-in**
+   (`PURGE_RLS_TEST_DATABASE_URL`) and is the owner's first execution. Until it runs, the only evidence
+   that the policy deletes rows is the static guard plus the reasoning in migration 111 — the very
+   gap this bug class lives in, so it is stated rather than implied.
+3. **Affiliate links are not live yet** — T3 generates and returns `KAN-` codes, but nothing captures
    one from a visitor: the storefront `?ref=` path is T4. A retailer can see their code; a customer
    following it earns nothing until T4 ships.
 4. **A pre-existing admin auth gap, unrelated to this feature and not introduced here:**
@@ -101,8 +155,8 @@ version survived a falsification attempt (RC-031).
 
 **Next:** T4 (conversion capture / ledger). T3's two blockers are closed — the code namespace is settled
 (`referral-codes.ts`) and the orphaned `generateReferralCode()` in `growth-helpers.ts` is deleted, so
-there is exactly one generator per namespace again. T4 still needs the `KC-` **agreement-link** path
-(the `/{slug}` storefront accepting `?ref=KC-…`) — T3 shipped code generation and the staff-field
+there is exactly one generator per namespace again. T4 still needs the `KAN-` **agreement-link** path
+(the `/{slug}` storefront accepting `?ref=KAN-…`) — T3 shipped code generation and the staff-field
 guard, not the customer-facing capture — and must not touch `apps/mobile` while Play review is in flight.
 
 ## 2026-09-09 — Tokenized staff-invite review sign-off + test plan (commit `fe9b7df`)

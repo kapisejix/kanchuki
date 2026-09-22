@@ -2853,7 +2853,7 @@ Auditing `scripts/setup-role-separation.sql` against the schema produced two fin
 | ID | Finding | Fix |
 |---|---|---|
 | RC-029 | **RC-028's fix does not work.** It moved the promotions delete onto `kanchuki_purge`, but no file anywhere — script or migration — ever granted that role `DELETE` on `promotions`. The route compiles, ships and looks right while the delete still 500s. | migration `110_promotions_purge_grant` (`prisma migrate deploy` applies it; the hand-run script is not on any deploy path) + the same grant in the script |
-| RC-030 | **7 tables strand rows on retailer deletion.** `campaigns`, `campaign_sends`, `promotions`, `consent_events`, `customer_recently_viewed`, `customer_wishlist_items`, `customer_interactions` declare `retailer_id` as a bare scalar with no FK, so nothing cascades and nothing errors — the rows simply survive. Two are not even granted. 6 of 13 bare-`retailer_id` models are purged; 7 are not. | **Fixed** — all 7 swept in **both** jobs + 6 new grants in `scripts/setup-role-separation.sql` (`promotions` in migration `110`), with the **schema-driven completeness guard** that made the class possible in the first place. ⚠ 4 of the 7 (`customer_interactions`, `consent_events`, `customer_recently_viewed`, `customer_wishlist_items`) have RLS enabled and `kanchuki_purge` has no `BYPASSRLS` — RLS filters instead of raising, so those sweeps may affect 0 rows silently until a policy is decided (a PII call, documented in both jobs and RC-030). Strictly no worse than before, but not yet proven live. |
+| RC-030 | **7 tables strand rows on retailer deletion.** `campaigns`, `campaign_sends`, `promotions`, `consent_events`, `customer_recently_viewed`, `customer_wishlist_items`, `customer_interactions` declare `retailer_id` as a bare scalar with no FK, so nothing cascades and nothing errors — the rows simply survive. Two are not even granted. 6 of 13 bare-`retailer_id` models are purged; 7 are not. | **Fixed** — all 7 swept in **both** jobs + 6 new grants in `scripts/setup-role-separation.sql` (`promotions` in migration `110`), with the **schema-driven completeness guard** that made the class possible in the first place. Then the four `customer_*`/`consent_*` sweeps **still deleted nothing**: they have RLS enabled and no policy named the backend roles, and RLS filters instead of raising. That turned out to be repo-wide — **23 of the 32** purge-path tables are RLS-enabled and **no policy in the schema named `kanchuki_app`/`kanchuki_purge`**; access worked only via `pg_class_ownercheck` (the purge role is a member of each table's owning role). Fixed by migration `111_backend_role_rls_policies` (`FOR ALL`, both roles — `FOR DELETE` would have left every batch-`SELECT` empty) + `purge-rls-policy.test.ts` (derives the set in both directions) + opt-in `purge-rls-live.test.ts`. |
 
 The reported staleness was also real and is pruned: **9 names in the purge grant list had been
 dropped by migration 082** (`product_spin_frames`, `order_items`, `orders`, `try_on_jobs`,
@@ -2929,12 +2929,12 @@ file: `biome check --fix` (import order, formatting) and an explicit `type="butt
 buttons — no `<form>` wraps them today, so the implicit-submit hazard is latent rather than live, but
 it costs nothing to remove.
 
-**Not done / owner-side:** migration **109 and 110 are not applied** (admin dashboard, per CLAUDE.md) ·
-`scripts/setup-role-separation.sql` is applied by hand and carries the `promotions` grant only for
-from-scratch environments · **T4–T10 not started** · **affiliate links earn nothing yet** — T3 mints and
-returns a code, but the `?ref=` capture on `/for-retailers` is T4, so no conversion can be recorded ·
-**RC-030's 7 sweeps ship but 4 are RLS-blocked pending a policy decision** (see the RC-030 row above).
-CLAUDE.md index row + the RC rows were added with explicit owner approval (Operational Control Policy).
+**Not done / owner-side:** migrations **109, 110 and 111 are not applied** (admin dashboard, per
+CLAUDE.md) · `scripts/setup-role-separation.sql` is applied by hand and carries the `promotions` grant
+only for from-scratch environments · **T4–T10 not started** · **affiliate links earn nothing yet** — T3
+mints and returns a code, but the `?ref=` capture on `/for-retailers` is T4, so no conversion can be
+recorded. CLAUDE.md index row + the RC rows were added with explicit owner approval (Operational
+Control Policy).
 
 **T3 blocker, recorded so it is not rediscovered:** `generateReferralCode()` already exists **twice** —
 live for F-018 staff codes in `team-helpers.ts`, and a stale orphan in `growth-helpers.ts` — and
@@ -2989,3 +2989,101 @@ optional failed **nothing** until the missing assertion was added — see above.
 **Not verified:** the screen is unit-tested, not visually checked in a browser — the repo's precedent
 for admin pages (`suits-designs/__tests__/page.test.tsx`). The 10 tests do assert the rendered values
 come from the API fixture (37% / 9mo / 45d / ₹123.45), so a hardcoded default would fail them.
+
+---
+
+## BUILT 2026-09-22 (later still) — RC-030 RLS half: the purge path's access to 50 RLS tables rested on an ownership accident
+
+**Migration `111_backend_role_rls_policies` · `purge-rls-policy.test.ts` · opt-in `purge-rls-live.test.ts`**
+
+### The finding that reframed the problem
+
+The previous entry closed with "4 of the 7 new sweeps may affect 0 rows silently — a PII call to settle".
+Settling it inverted the diagnosis. The question was whether the purge role bypasses RLS; the answer is
+that it has no `BYPASSRLS` **and no policy either**, so it bypasses via `pg_class_ownercheck` —
+`kanchuki_purge` is a member of `kanchuki_app`, and for any table `kanchuki_app` **owns**, Postgres
+treats both as owners and skips RLS.
+
+| Measured | Value |
+|---|---|
+| Tables with `ENABLE ROW LEVEL SECURITY` | **50** |
+| Policies naming `kanchuki_app` or `kanchuki_purge` | **0** — every policy targets `authenticated` / `anon` (PostgREST) |
+| Purge-path tables that are RLS-enabled | **23 of 32** (`products`, `customers`, `collections`, `retailers`, `subscriptions`, `staff`, `audit_logs`…) |
+| Roles with `BYPASSRLS` | **0** — `ALTER ROLE … BYPASSRLS` appears nowhere |
+
+So the four tables were never special, and "add a policy for the four" would have been a fix aimed at
+the symptom. The backend's access to **all 50** tables depends on which role happened to run each
+migration — an accident nobody documented, verified, or controlled. The honest statement is that the
+30-day cron and the admin hard-delete have always worked *by luck*, and RC-030 is simply where it first
+bit.
+
+### Why a policy, and why `FOR ALL`
+
+`ALTER ROLE … BYPASSRLS` needs superuser, so it could only ever be hand-applied in the SQL Editor and
+could never ride `prisma migrate deploy` — **RC-029's failure exactly** (a fix that lives only in a
+hand-run script). It would also silently cover future tables and leave no trace in the schema, which is
+how this class hides. A per-table policy is ordinary DDL, applied by the deploy path.
+
+`FOR ALL`, not `FOR DELETE`, is the trap this migration exists to avoid. `purgeTable()` selects a batch
+of ids and breaks out of its loop when the batch is empty; `fetchR2Keys()` selects the R2 keys before
+the rows go; `purgeChildren()` scopes its `DELETE` through `SELECT id FROM retailers`. Under a
+`DELETE`-only policy **every one of those `SELECT`s still returns 0 rows**, so the sweep would keep
+silently deleting nothing *while a policy sat there making it look fixed*. Phase B of the live test
+executes precisely that non-fix and shows the row surviving it.
+
+`USING (true)` is a filter, not a widening: the policy names only the two backend roles, it is
+`PERMISSIVE` so it ORs with the `authenticated`/`anon` policies rather than replacing them, and RLS
+cannot grant a privilege — `kanchuki_app` still has no `DELETE`, because the `REVOKE` in
+`scripts/setup-role-separation.sql` is checked **before** RLS is consulted. The migration is guarded on
+both roles existing and each table still existing (a `CREATE POLICY` naming a missing role is a hard
+error that would abort `migrate deploy` in a brand-new environment, where migrations run before the
+hand-run role script) and is idempotent, so a later teardown cannot break it.
+
+### The two guards
+
+`purge-rls-policy.test.ts` (static, runs in CI) re-derives the required set from `schema.prisma` + the
+migration history + both job sources and fails if migration 111's array drifts in **either** direction
+— a missing entry is a sweep that silently does nothing, a stale one is RC-029 returning. It also pins
+`FOR ALL`, both role names and the two guards. It carries a floor on every derived set, so a broken
+parse cannot make it pass vacuously; it pins the **unquoted**-identifier case (`DELETE FROM
+ai_usage_logs` in the hard-delete job, which an earlier quoted-only regex silently dropped from the
+required set); and it strips comments first, because both job files *discuss* dropped tables in prose.
+
+`purge-rls-live.test.ts` is the executed proof, opt-in via `PURGE_RLS_TEST_DATABASE_URL` — no test in
+this repo touches a real database, and this failure is **semantic**, so a static check cannot settle
+it. It lifts the `CREATE POLICY` statement **out of the migration file** (so it cannot drift from what
+will run) and, on scratch tables with real RLS and the real privilege split, shows per table: (A) no
+policy → `SELECT` sees 0, `DELETE` affects 0, **no error**, row survives; (B) a `FOR DELETE` policy →
+still 0 and 0, row survives; (C) migration 111's policy → sweep sees the row and it goes. A fifth case
+proves the cron's `audit_logs` **insert** raises 42501 without a policy — a loud failure, unlike the
+deletes, and a dependency on the same policy.
+
+**Verification:** API **1132 passed / 5 skipped** (86 files + 1 skipped — the skip is this round's
+opt-in live test) · web **319/319** (41 files) · `tsc --noEmit` clean ×3 · `biome check src/` clean on
+every changed file · `check-delete-guard.sh` passes · **`apps/mobile` 0 files** · the static
+guard **falsified seven ways**: drop `customer_interactions` from the array → missing + four-tables
+checks; an invented `user_sessions` entry → the stale check; `FOR ALL`→`FOR DELETE` → the `FOR ALL`
+check; drop `kanchuki_app` from the policy → the roles check; remove the role guard → the deploy-safety
+check; unscope the idempotency check → the `schemaname` assertion; and a second `CREATE POLICY` earlier
+in the file → the "exactly one DDL to lift" check **plus** the two assertions that read the DDL, which
+is the pointed lesson: those two did not catch the drift on their own, they failed only because they
+were now reading the wrong statement. Files restored byte-clean after each. The live test's
+extraction regex was verified to yield the real DDL, so a bad parse cannot make the owner's first live
+run fail for the wrong reason.
+
+**One pre-existing test flake fixed rather than re-reported** (`retired-tryon-guard.test.ts`, flagged
+last session as "passes standalone, occasionally flakes in the full suite"). This time it failed the
+suite outright with `Test timed out in 5000ms` — and the cause is real, not environmental noise:
+`loadSources()` re-walked `apps` + `packages` + `scripts` and re-read every code file **on every call**,
+and several tests call it. Standalone the whole file runs in ~0.5s and it passed 3/3; under 87 parallel
+files the first synchronous walk exceeds the 5s default. Two lines: the walk is now memoised (nothing
+in the scan mutates the result and the files cannot change mid-run) and that one test carries an
+explicit 30s budget, budgeted for contention rather than because the walk is slow. No assertion was
+weakened — the file is 8/8 before and after, and the suite went green.
+
+**Not done / owner-side:** migration **111 is not applied** (admin dashboard, per CLAUDE.md) · the live
+test has **never been executed** — no local Postgres, no DB harness, no docker-compose in this repo, so
+it is committed as opt-in and is the owner's first run · `scripts/setup-role-separation.sql` was **not**
+changed for the policies (they belong in the migration; the script keeps the ownership note pointing at
+it) · the 26 other RLS-enabled tables still rely on the ownership accident — out of scope only because
+nothing in the purge path touches them.

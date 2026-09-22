@@ -175,10 +175,14 @@ GRANT DELETE ON TABLE
   -- ⚠ Four of these — consent_events, customer_interactions,
   -- customer_recently_viewed, customer_wishlist_items — have ROW LEVEL SECURITY
   -- enabled (migrations 079/100, default deny) and kanchuki_purge is created
-  -- WITHOUT BYPASSRLS, while no existing purge target has RLS. RLS filters rows
-  -- instead of raising, so those four sweeps may affect 0 rows silently until
-  -- a policy for the backend role or the role attribute is decided. That is a
-  -- PII-table call, deliberately not guessed at here. See RC-030.
+  -- WITHOUT BYPASSRLS. RLS filters rows instead of raising, so those sweeps
+  -- committed while deleting nothing. It was never those four: 23 of the 32
+  -- tables the purge path touches are RLS-enabled and NO policy anywhere named
+  -- kanchuki_app or kanchuki_purge, so the whole path worked only because
+  -- kanchuki_purge is a member of the role that owns each table
+  -- (pg_class_ownercheck). Migration 111_backend_role_rls_policies replaces
+  -- that accident with an explicit FOR ALL policy per table. See RC-030 and the
+  -- RLS section at the end of this file.
   campaigns, campaign_sends, consent_events,
   customer_recently_viewed, customer_wishlist_items, customer_interactions,
   retailers
@@ -198,7 +202,33 @@ TO kanchuki_purge;
 -- `product_videos` had the right shape all along; it just was not generalised.
 -- Treat a new bare-`retailer_id` column as a purge-list change in the same PR,
 -- the way a RESTRICT FK already is. See RC-030 in
--- docs/root-cause/root-cause issues.md (and the RLS caveat above).
+-- docs/root-cause/root-cause issues.md.
+--
+-- The second half of RC-030, and the reason a GRANT is not sufficient on its
+-- own: privilege and RLS are different checks, and getting the first right says
+-- nothing about the second. A missing policy does not raise — it filters — so a
+-- sweep with no policy reports success and deletes nothing, exactly like a
+-- missing GRANT raises only if you are lucky. 23 of the 32 tables the purge path
+-- touches are RLS-enabled and every policy in the schema targeted
+-- `authenticated`/`anon` (PostgREST), never the backend roles. Access held only
+-- through `pg_class_ownercheck` — kanchuki_purge is a member of kanchuki_app, so
+-- for any table kanchuki_app OWNS both roles are treated as owners and skip RLS.
+-- That is an accident of which role ran which migration (base schema via Prisma,
+-- 083-089 via the admin runner on DATABASE_URL_MIGRATOR, others from dev machines
+-- on the kanchuki_app-scoped .env), it is per-table, and nothing verified it.
+--
+-- Fixed by packages/db/prisma/migrations/111_backend_role_rls_policies — a
+-- policy, not ALTER ROLE ... BYPASSRLS (that needs superuser, so it could only
+-- ever be hand-applied here and could never ride `prisma migrate deploy`: the
+-- RC-029 failure mode again). The policies belong in the migration rather than
+-- in this file for the same reason the promotions GRANT moved to migration 110:
+-- this script is run by hand, so nothing guarantees it runs.
+--
+-- If you add a purge target that has RLS enabled, it needs THREE things, not
+-- two: the sweep, the GRANT here, and an entry in migration 111's table array.
+-- apps/api/src/jobs/purge-rls-policy.test.ts derives that third requirement from
+-- schema.prisma + the migration history + both job sources and fails if the two
+-- lists drift in either direction.
 
 -- ─── 4. Verify ───────────────────────────────────────────────
 SELECT rolname, rolsuper, rolcreaterole, rolcreatedb

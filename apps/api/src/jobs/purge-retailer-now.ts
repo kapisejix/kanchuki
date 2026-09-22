@@ -130,16 +130,20 @@ export async function hardDeleteRetailer(retailerId: string): Promise<void> {
     'DELETE FROM customer_interactions WHERE retailer_id = $1;',
     'DELETE FROM customer_recently_viewed WHERE retailer_id = $1;',
     'DELETE FROM customer_wishlist_items WHERE retailer_id = $1;',
-    // ⚠ CAVEAT on the four `customer_*`/`consent_*` tables above: they are the
-    // only purge targets in this repo with ROW LEVEL SECURITY enabled (migration
-    // 079/100, "no policies = default deny"), and kanchuki_purge is created
-    // WITHOUT BYPASSRLS. RLS filters rows rather than raising, so if this role
-    // is subject to it these four DELETEs silently affect 0 rows. They are
-    // strictly no worse than not being here at all (today nothing deletes these
-    // tables), and the three below have no RLS and work exactly like
-    // product_videos. Settling it needs a policy for the backend role or a role
-    // attribute — a PII-table decision, so it is deliberately not guessed at
-    // here. See RC-030.
+    // RLS (RC-030): the four `customer_*`/`consent_*` tables above have ROW
+    // LEVEL SECURITY enabled with no policy for the backend roles, and RLS
+    // filters rows rather than raising — so before migration 111 these four
+    // DELETEs silently affected 0 rows. They are NOT special: 23 of the 32
+    // tables this path deletes from are RLS-protected the same way (products,
+    // customers, retailers, subscriptions included) and none named
+    // kanchuki_purge or kanchuki_app. It all worked only because the purge role
+    // is a member of the role that happens to own each table, which Postgres's
+    // owner check accepts — an accident of which role ran which migration.
+    //
+    // Migration 111 states it explicitly for every RLS table this path touches,
+    // with FOR ALL rather than FOR DELETE: `purgeTable()` and `fetchR2Keys()`
+    // SELECT before they delete, so a DELETE-only policy would leave those
+    // SELECTs empty and keep deleting nothing while looking fixed. See RC-030.
     // Retailer referral program (migration 109) — RESTRICT FKs to retailers,
     // so these must precede the retailer row (same bug class as the
     // product_attributes / social_accounts omission above: a missing RESTRICT

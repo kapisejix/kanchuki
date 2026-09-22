@@ -56,6 +56,15 @@ const db = getPurgePrisma();
  * fails loudly when a child is missed (the FK violation rolls the whole
  * transaction back), a denormalised id fails SILENTLY. Add a new one in the
  * same change that adds the column.
+ *
+ * RLS (RC-030): a table with ROW LEVEL SECURITY enabled and no policy for
+ * `kanchuki_app`/`kanchuki_purge` fails in exactly the same silent way — RLS
+ * filters rows rather than raising, so every statement here affects 0 rows and
+ * nothing errors. 23 of the tables below are in that state and work only because
+ * the purge role happens to be a member of each table's owning role. Migration
+ * 111 replaces that accident with an explicit policy, and
+ * `purge-rls-policy.test.ts` re-derives the required set from the schema so a
+ * new RLS table cannot be added to this path without one. See RC-030.
  */
 
 const PURGE_AFTER_DAYS = 15;
@@ -307,15 +316,23 @@ export async function handlePurgeSoftDeleted(): Promise<PurgeResult> {
     purgeChildren('customer_interactions', 'retailer_id', 'retailers', cutoff),
     purgeChildren('customer_recently_viewed', 'retailer_id', 'retailers', cutoff),
     purgeChildren('customer_wishlist_items', 'retailer_id', 'retailers', cutoff),
-    // ⚠ CAVEAT on consent_events / customer_interactions /
-    // customer_recently_viewed / customer_wishlist_items: they are the only
-    // purge targets in this repo with ROW LEVEL SECURITY enabled (migrations
-    // 079/100, "no policies = default deny"), and kanchuki_purge is created
-    // WITHOUT BYPASSRLS. RLS filters rows rather than raising, so if this role
-    // is subject to it these four sweep 0 rows without erroring — no worse than
-    // today (nothing deleted them), but not yet the fix. The other three
-    // (campaigns, campaign_sends, promotions) have no RLS and delete normally.
-    // See RC-030.
+    // RLS (RC-030): consent_events / customer_interactions /
+    // customer_recently_viewed / customer_wishlist_items have ROW LEVEL SECURITY
+    // enabled with no policy for the backend roles, and RLS filters rows instead
+    // of raising — so before migration 111 these four swept 0 rows without
+    // erroring. They are NOT special: 23 of the 32 tables the purge path deletes
+    // from are RLS-protected the same way (products, customers, collections,
+    // retailers included) and none of them named kanchuki_purge or kanchuki_app.
+    // The whole path worked only because the purge role is a member of the role
+    // that happens to own each table, which Postgres's owner check accepts — an
+    // accident of which role ran which migration, per table.
+    //
+    // Migration 111 makes it explicit for every RLS table this path touches, with
+    // FOR ALL rather than FOR DELETE: purgeChildren() scopes its DELETE through
+    // `SELECT id FROM retailers`, so a DELETE-only policy would leave the
+    // subquery empty and keep deleting nothing while looking fixed. See RC-030,
+    // and apps/api/src/jobs/purge-rls-policy.test.ts, which re-derives the
+    // required set from the schema and fails if the migration's list drifts.
   ]);
 
   // biome-ignore lint/suspicious/noConsoleLog: admin cron job logging

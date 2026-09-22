@@ -735,6 +735,20 @@ The `kanchuki_migrator` credentials must **never** appear in any `.env` file or 
 
 This is the load-bearing control: even a fully-trusted, fully-compromised, or simply buggy line of application code (written by a human or an AI agent) **cannot** issue a `DELETE`/`DROP`/`TRUNCATE` against the primary database, because the credentials it runs with don't have that grant at the database level. Application-layer soft-delete conventions (`deleted_at`) become the only way to remove data through `kanchuki_app` — not a convention anyone has to remember to follow correctly.
 
+#### Row-Level Security must name the backend roles explicitly (RC-030)
+
+PRIVILEGES and RLS are two different checks, and the first one being right says nothing about the second. 50 tables carry `ENABLE ROW LEVEL SECURITY`; **every policy in the schema targets `authenticated` or `anon`** — the Supabase PostgREST roles — and **not one names `kanchuki_app` or `kanchuki_purge`**, the roles the backend actually connects as. RLS is default-deny, and for `SELECT`/`UPDATE`/`DELETE` a denial is not an error: the statement succeeds and affects **zero rows**. Nothing logs, nothing fails, the transaction commits.
+
+So the backend's access to all 50 tables rested on `pg_class_ownercheck`: `kanchuki_purge` is a member of `kanchuki_app`, so for any table `kanchuki_app` **owns**, both roles are treated as owners and skip RLS entirely. That worked — but it is an accident of which role happened to run which migration (base schema via Prisma, 083–089 via the admin runner on `DATABASE_URL_MIGRATOR`, others from dev machines on the `kanchuki_app`-scoped `.env`), it is per-table, and nothing verified or documented it. Where it did not hold, the operation deleted nothing and reported success.
+
+Migration `111_backend_role_rls_policies` replaces the accident with an explicit `FOR ALL` policy naming both backend roles, for the 24 tables the purge path touches. Three details are load-bearing:
+
+- **`FOR ALL`, not `FOR DELETE`.** `purgeTable()` selects a batch of ids and exits its loop when the batch is empty; `fetchR2Keys()` selects keys before the rows go; `purgeChildren()` scopes its `DELETE` through `SELECT id FROM retailers`. Under a `DELETE`-only policy every one of those `SELECT`s still returns nothing — the sweep would keep silently deleting nothing *while a policy sat there making it look fixed*.
+- **`USING (true)` is not a widening.** The policy names only the two backend roles, it is `PERMISSIVE` (so it ORs with the existing `authenticated`/`anon` policies rather than replacing them), and RLS is a filter — it cannot grant a privilege. `kanchuki_app` still cannot `DELETE`, because the `REVOKE DELETE` above is a privilege check that runs *before* RLS is consulted. The PostgREST isolation is untouched.
+- **A policy, not `ALTER ROLE … BYPASSRLS`.** `BYPASSRLS` needs superuser, so it could only ever be applied by hand in the SQL Editor and could never ride `prisma migrate deploy` — exactly the RC-029 failure (a fix that lives only in a hand-run script). A per-table policy is ordinary DDL, and it keeps the grant visible in the schema instead of silently covering future tables.
+
+`apps/api/src/jobs/purge-rls-policy.test.ts` re-derives the required set from `schema.prisma`, the migration history and both purge jobs, and fails if migration 111's array drifts from it in **either** direction — a missing entry means a sweep that silently does nothing, a stale one is the RC-029 failure returning. `purge-rls-live.test.ts` is the executed proof (opt-in, `PURGE_RLS_TEST_DATABASE_URL`): it runs the same `CREATE POLICY` statement the migration runs against scratch tables and shows (a) no policy → row survives silently, (b) `FOR DELETE` → row *still* survives, (c) migration 111's policy → the row goes.
+
 ### 19.2 Layer 2 — DB triggers (belt-and-suspenders)
 
 ```sql
