@@ -245,6 +245,21 @@ export async function handlePurgeSoftDeleted(): Promise<PurgeResult> {
   // BEFORE subscriptions (children-before-parents; keep it out of the
   // parallel batch below to avoid a race).
   await purgeChildren('subscription_payments', 'retailer_id', 'retailers', cutoff);
+  // Retailer referral program (migration 109) — RESTRICT FKs to retailers, so
+  // these MUST go before the retailer row or `DELETE FROM retailers` throws an
+  // FK violation and rolls the entire sweep back (the product_attributes /
+  // social_accounts omission, migrations 046/052). Kept sequential with
+  // subscription_payments and outside the parallel batch below for the same
+  // reason it is: referral_payouts and referral_conversions are parent/child
+  // (conversions.payout_id → payouts, ON DELETE SET NULL), and deleting them
+  // concurrently can deadlock. Setting a conversion's payout_id to NULL is also
+  // an UPDATE on the child row, so the child delete waits for it.
+  await purgeChildren('referral_payouts', 'referrer_id', 'retailers', cutoff);
+  await purgeChildren('referral_conversions', 'referrer_id', 'retailers', cutoff);
+  // A conversion is also a child of the *referred* retailer — if the referred
+  // shop is purged, the referrer's pending commission on it goes too.
+  await purgeChildren('referral_conversions', 'referred_id', 'retailers', cutoff);
+  await purgeChildren('referral_codes', 'retailer_id', 'retailers', cutoff);
   await Promise.all([
     purgeChildren('staff', 'retailer_id', 'retailers', cutoff),
     purgeChildren('store_sections', 'retailer_id', 'retailers', cutoff),

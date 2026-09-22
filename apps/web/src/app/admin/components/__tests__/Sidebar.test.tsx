@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { createControllablePathname } from '@/test/__mocks__/next-navigation'
 import { Sidebar } from '../Sidebar'
+import ReferralSettingsPage from '@/app/admin/referral-settings/page'
 
 // Controllable router/pathname so the active-link behavior can be tested per
 // route. The shared next/navigation mock is stateful; the handle exposes the
@@ -122,6 +123,22 @@ describe('Sidebar state', () => {
     await waitFor(() => {
       expect(document.querySelector('.fixed.inset-0')).not.toBeInTheDocument()
     })
+  })
+
+  it('links the Referral Program page under Reports & Finance', () => {
+    // Importing the page is half the assertion: a nav entry pointing at a
+    // route that does not exist is the RC-025 class of bug, and it renders
+    // as a working-looking link right up until somebody clicks it.
+    expect(ReferralSettingsPage).toBeTypeOf('function')
+
+    renderSidebar()
+    const finance = screen.getByRole('button', { name: 'Reports & Finance' }).closest('div') as HTMLElement
+    fireEvent.mouseEnter(finance)
+
+    expect(screen.getByRole('link', { name: 'Referral Program' })).toHaveAttribute(
+      'href',
+      '/admin/referral-settings',
+    )
   })
 
   it('sign out clears the session key, fires onLogout, and redirects to /admin', () => {

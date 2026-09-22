@@ -86,6 +86,11 @@ describe('hardDeleteRetailer', () => {
       'DELETE FROM collections',
       'DELETE FROM customers',
       'DELETE FROM products',
+      // Retailer referral program (migration 109) — RESTRICT FKs to retailers,
+      // so the same omission would silently roll the whole transaction back.
+      'DELETE FROM referral_payouts',
+      'DELETE FROM referral_conversions',
+      'DELETE FROM referral_codes',
     ]) {
       const idx = statements.findIndex((s) => s.startsWith(table));
       expect(idx, `expected ${table} in delete list`).toBeGreaterThanOrEqual(0);

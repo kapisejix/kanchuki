@@ -116,28 +116,80 @@ END
 $$;
 GRANT kanchuki_app TO kanchuki_purge;
 
--- Every table the purge cron (purge-soft-deleted.ts) or the admin
--- hard-delete-retailer action (purge-retailer-now.ts) deletes from
--- (children before parents). Tables added later need an explicit
--- GRANT DELETE here too; default privileges do NOT cover this role.
--- product_spin_frames was missing from this grant even though the cron
--- already tried to delete from it — that call has been silently/loudly
--- failing with permission denied every run; fixed here (2026-08-05).
+-- Tables the purge role may DELETE from (children before parents).
+--
+-- This is a permission boundary, so it must be exact in BOTH directions:
+--   * too FEW entries -> the job hits "permission denied for table <t>"
+--     mid-sweep, and on the retailer paths the whole transaction rolls back,
+--     so the delete silently does nothing (the product_attributes /
+--     social_accounts omission, migrations 046/052).
+--   * too MANY entries -> a name that no longer exists makes the GRANT
+--     itself fail, aborting the rest of this script.
+--
+-- SCOPE OF THIS LIST. These are the tables that existed when this script was
+-- written. Tables created later carry their OWN purge grant in the migration
+-- that creates them, because ALTER DEFAULT PRIVILEGES does not cover this
+-- role and a future table's name cannot appear here:
+--   083 / 097 — kanchuki_app DELETE exceptions (product_photos,
+--               showcase_designs, staff_invites)
+--   084 — social_posts, social_accounts, product_attributes,
+--         product_videos, quota_addon_purchases
+--   099 — staff_invites
+--   109 — referral_codes, referral_conversions, referral_payouts
+-- Those grants are idempotent repeats of what is below where they overlap, so
+-- the end state is the same whichever runs first.
+--
+-- PRUNED 2026-09-22: nine names here had been dropped by migration 082
+-- (remove_unwanted_features) and were making this script abort at the GRANT
+-- below. Removed: product_spin_frames, order_items, orders, try_on_jobs,
+-- try_on_usage_logs, customer_measurements, customer_fashion_dna,
+-- size_charts, size_chart_rows. Re-check this list against the schema
+-- whenever a feature is torn down.
+-- customer_interactions is NOT one of those: migration 082 dropped it and
+-- migration 100 re-created it, so it must stay.
 GRANT DELETE ON TABLE
-  product_variants, product_photos, product_spin_frames, product_embeddings,
+  product_variants, product_photos, product_embeddings,
   products,
-  order_items, orders,
   collection_products, collection_views, collection_enquiries,
   collections,
-  try_on_usage_logs, try_on_jobs,
-  customer_interactions, customer_measurements, customer_fashion_dna,
   customers,
   subscription_payments, subscriptions,
-  size_chart_rows, size_charts,
   support_tickets, ai_usage_logs, quota_addon_purchases,
   staff, store_sections, product_categories, usage_counters,
+  -- Smart Promotion / Discount Engine. Deleted through the purge role
+  -- (RC-028) but never granted anywhere — so that delete failed with
+  -- "permission denied for table promotions" even after RC-028 shipped.
+  -- Migration 110 grants this too, so a normal `prisma migrate deploy`
+  -- fixes it without anyone re-running this script (RC-029).
+  promotions,
+  -- Retailer referral program (migration 109) — RESTRICT FKs to retailers,
+  -- so the sweep deletes them before the retailer row. referral_settings is
+  -- absent on purpose: a global singleton, never deleted.
+  referral_codes, referral_conversions, referral_payouts,
+  -- Granted at HEAD and left alone: nothing deletes from it today, so this
+  -- is inert, but removing a grant would be an unrequested privilege
+  -- change. It is one of the RC-030 tables (bare `retailer_id`, no FK), so
+  -- the cleanup fix will need it.
+  customer_interactions,
   retailers
 TO kanchuki_purge;
+
+-- KNOWN GAP (RC-030): seven tables declare `retailer_id` as a bare scalar
+-- with NO foreign key to retailers, so a retailer purge silently leaves
+-- their rows behind:
+--   campaigns, campaign_sends, promotions, consent_events,
+--   customer_recently_viewed, customer_wishlist_items, customer_interactions
+-- Two of the seven are granted above (`promotions`, `customer_interactions`)
+-- but NEITHER is deleted by the purge jobs — the promotions grant unblocks
+-- the retailer's own delete button for a single row (RC-028), and nothing
+-- deletes customer_interactions at all. The grant list is a permission
+-- boundary, not a list of what runs.
+-- The other five are deliberately NOT granted yet, because a grant for a
+-- delete that does not exist is privilege for nothing. The fix is the
+-- cleanup and those grants together; see RC-030 in
+-- docs/root-cause/root-cause issues.md.
+-- `product_videos` shows the intended shape — bare retailer_id, deleted by
+-- both purge jobs.
 
 -- ─── 4. Verify ───────────────────────────────────────────────
 SELECT rolname, rolsuper, rolcreaterole, rolcreatedb

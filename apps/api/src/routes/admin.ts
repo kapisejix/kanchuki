@@ -31,6 +31,7 @@ import {
   adminPlansRoutes,
   adminPostTemplatesRoutes,
   adminRatingsRoutes,
+  adminReferralRoutes,
   adminResourcePacksRoutes,
   adminRetailersRoutes,
   adminShowcaseDesignCategoryRoutes,
@@ -192,6 +193,8 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
   await server.register(adminStudioStylesRoutes);
   // admin-resource-packs — admin-managed addon packs (F-034 task 6.1)
   await server.register(adminResourcePacksRoutes);
+  // admin-referral — retailer referral program terms (T2)
+  await server.register(adminReferralRoutes);
   // admin-data — auto-split module
   await server.register(adminDataRoutes);
   // admin-integrations — auto-split module

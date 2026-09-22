@@ -113,6 +113,16 @@ export async function hardDeleteRetailer(retailerId: string): Promise<void> {
     // ProductVideo.retailer_id is a bare scalar (no FK) so it never blocked a
     // delete, but its rows were orphaned on purge — remove them explicitly.
     'DELETE FROM product_videos WHERE retailer_id = $1;',
+    // Retailer referral program (migration 109) — RESTRICT FKs to retailers,
+    // so these must precede the retailer row (same bug class as the
+    // product_attributes / social_accounts omission above: a missing RESTRICT
+    // child makes `DELETE FROM retailers` throw and roll the whole transaction
+    // back, so the admin delete silently does nothing). Payouts before
+    // conversions — conversions.payout_id → referral_payouts is ON DELETE
+    // SET NULL, and payouts own the conversions they settled.
+    'DELETE FROM referral_payouts WHERE referrer_id = $1;',
+    'DELETE FROM referral_conversions WHERE referrer_id = $1 OR referred_id = $1;',
+    'DELETE FROM referral_codes WHERE retailer_id = $1;',
     // retailer_limit_overrides has onDelete: Cascade in the schema — Postgres
     // removes it automatically with the row below.
     'DELETE FROM retailers WHERE id = $1;',

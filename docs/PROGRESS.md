@@ -2,6 +2,64 @@
 
 One file, update at end of each work session: what's done, what's next, what's blocked. Check `git log -1` and this file first thing each session.
 
+## 2026-09-22 — Retailer affiliate referral program T1+T2 built; purge-grant audit (RC-029, RC-030)
+
+Spec: `docs/tasks/referral-program-retailer-affiliate.md`. Built **T1 (schema + migration) and T2 (admin
+settings API + screen)** only — §10 of that spec says to start T1 and stop, and T3–T10 are untouched.
+Detail: `docs/BUILD-LOG.md` §2026-09-22, `docs/DATABASE.md`, `docs/PRO-REQUIREMENTS.md` §35.
+
+**`apps/mobile` and customer web: 0 files changed** — the Play Console review in flight is unaffected.
+Every tracked edit is an insertion; no existing behaviour was modified.
+
+**Owner decisions asked before the migration was written** (both expensive to change after apply):
+singleton `referral_settings` row, `ON DELETE RESTRICT` on the three retailer FKs, payouts never
+deleted. RESTRICT is why T1 also had to touch both purge jobs and the grant list — as retail
+*children* these tables turn a missed sweep into a rolled-back `DELETE FROM retailers`, which this repo
+has shipped twice (`product_attributes`, `social_accounts`).
+
+**The audit found two real bugs, neither of them the referral feature:**
+1. **RC-029 — RC-028's fix does not actually work.** It moved the promotions delete onto the
+   `kanchuki_purge` role, but no file anywhere ever granted that role `DELETE` on `promotions`. The
+   route compiles and ships; the delete still 500s. Fixed with migration **110** (applied by
+   `prisma migrate deploy`, unlike the hand-run script).
+2. **RC-030 — 7 tables strand rows when a retailer is deleted** (`campaigns`, `campaign_sends`,
+   `promotions`, `consent_events`, `customer_recently_viewed`, `customer_wishlist_items`,
+   `customer_interactions`). They declare `retailer_id` as a bare scalar with no FK, so nothing
+   cascades and nothing errors — the rows just survive. **Not fixed**; documented in the script and
+   RC-030 with the mechanical check that proves it (13 bare-`retailer_id` models, 6 purged, 7 not).
+   This is a DPDP retention issue, not just hygiene — it needs an owner call on whether a deleted
+   retailer's customer interaction / consent rows should go.
+
+The originally reported staleness is fixed: **9 names in the purge grant list had been dropped by
+migration 082**, and a `GRANT` naming a missing relation makes the script abort at that statement.
+Near-miss worth remembering — `customer_interactions` was dropped by 082 **and re-created by migration
+100**, so a naive grep-the-drops fix would have broken F-037. It was briefly removed from the list this
+session and **restored**, since nothing deletes it and an unrequested privilege reduction is also a
+change. `docs/INFRA-SETUP.md` carried a third copy of the list with the same rot; now points at the
+script as the single authority.
+
+**Verification:** API **1078/1078** (83 files) · web **319/319** (41 files) · API + DB + web `tsc` clean
+· `next lint` clean, and Biome clean on the changed `apps/api` / `packages/db` files (the CI-governed
+surface — `apps/web` lints with `next lint`, not Biome, and its admin pages already carry a dirty Biome
+baseline, so the new screen was matched to its siblings rather than to a gate nothing runs) ·
+`check-delete-guard.sh` passes · migration 109 byte-identical to
+Prisma's generated DDL (61/61) · grant list checked in both directions (24/24 names exist; 24/24 tables
+deleted by the 7 purge-role consumers are granted). Guards falsified, not assumed — dropping a referral
+delete fails the job tests; swapping enum checks for `z.string()` fails exactly the 2 RC-027 tests;
+sending every field from the form fails 7.
+
+**Blocked / owner-side:**
+1. **Migrations 109 and 110 not applied** — admin dashboard, per CLAUDE.md. Until then T1's tables do
+   not exist and T2's screen 404s its own data.
+2. **RC-030 decision** — fix the 7 orphaned tables now, or track separately.
+3. CLAUDE.md index row for this feature (and the `RC-029` / `RC-030` rows in its RC table) — needs
+   explicit owner approval; drafted in this session's handoff.
+
+**Next:** T3 (signup + attribution wiring). **Known blocker first:** `generateReferralCode()` already
+exists **twice** — live for F-018 *staff* codes in `team-helpers.ts`, and a stale orphan in
+`growth-helpers.ts` — and onboarding's "Referral Code (Optional)" field is F-018 staff attribution, not
+this program. Disambiguate before writing code or the two code namespaces collide.
+
 ## 2026-09-09 — Tokenized staff-invite review sign-off + test plan (commit `fe9b7df`)
 
 Feature was built earlier same day by a Codebuff session — commits `4f5e2fb1` (feat), `313069ca` (post-review UX fixes), `d93ace6c` (operator SQL). This session = full code review against `docs/tasks/staff-invite-tokens.md` + doc close-out + Play Store test guidance. **No push of feature code by me** — but `git push origin main` here also carried those 3 pre-existing local commits to remote (they weren't on `origin` yet).

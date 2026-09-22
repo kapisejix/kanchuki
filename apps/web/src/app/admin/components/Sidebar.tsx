@@ -122,6 +122,7 @@ const NAV_ITEMS: NavItem[] = [
       { label: 'GST Reports', href: '/admin/reports/gst', icon: Receipt },
       { label: 'Billing & Invoices', href: '/admin/billing', icon: CreditCard, superAdminOnly: true },
       { label: 'Commission', href: '/admin/commission', icon: Percent, superAdminOnly: true },
+      { label: 'Referral Program', href: '/admin/referral-settings', icon: Handshake, superAdminOnly: true },
       { label: 'Addon Purchases', href: '/admin/addon-purchases', icon: ShoppingCart, superAdminOnly: true },
       { label: 'Plan Limits', href: '/admin/plan-limits', icon: Gauge, superAdminOnly: true },
       { label: 'Resource Packs', href: '/admin/resource-packs', icon: Layers, superAdminOnly: true },

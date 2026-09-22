@@ -30,3 +30,4 @@ export { adminShowcaseDesignCategoryRoutes } from './admin-showcase-design-categ
 export { adminBugReportRoutes } from './admin-bug-reports.js';
 export { adminSurveyRoutes } from './admin-survey.js';
 export { adminInvoicesRoutes } from './admin-invoices.js';
+export { adminReferralRoutes } from './admin-referral.js';

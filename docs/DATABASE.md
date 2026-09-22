@@ -1043,6 +1043,27 @@ When adding a new business table:
 
 `nominee_name TEXT NULL`, `nominee_phone TEXT NULL` — the person a shopper names to exercise their data rights on death/incapacity. Both set or both NULL (enforced in `PUT /v1/public/passport/preferences`; phone must be a 10-digit Indian mobile). Existing rows stay NULL. Included in the "Download my data" export. Nothing acts on it automatically — a nominee contacts `privacy@kanchuki.app`. No new RLS needed (existing table, same row-level policy).
 
+## Retailer referral / affiliate program — `referral_*` (migration 109, T1)
+
+Retailer → retailer: an existing paying retailer earns a recurring commission for bringing another retailer onto Kanchuki. Spec + task breakdown: `docs/tasks/referral-program-retailer-affiliate.md`. **T1 (schema) + T2 (admin settings API/screen) are built; T3–T10 are not started.** Migration 109 is **not applied**.
+
+| Table | Purpose |
+|---|---|
+| `referral_settings` | **Singleton** (`id = 'singleton'`, same shape as `platform_gst_profile`). Every economic term — `commission_pct`, `duration_months`, `qualify_days`, `referred_bonus_type`/`_value`, `second_tier_enabled`/`_pct`, `payout_min_amount`, `payout_cadence`. Seeded by the migration so code never needs a fallback constant; admin-edited in place from `/admin/referral-settings` (T2). **Nothing here is ever a literal in application code.** |
+| `referral_codes` | One shareable code per retailer (`retailer_id` unique, `code` unique). Deactivation flips `is_active` — no application hard-delete path. |
+| `referral_conversions` | One row per referred retailer (`referred_id` unique → a retailer can be referred once, so a code can't double-pay). `status` PENDING → QUALIFIED → PAID / CLAWED_BACK, money in paise, `payout_id` links the batch that settled it. |
+| `referral_payouts` | One batch per referrer per cadence period. `idempotency_key` unique (retried cron can't double-pay), `razorpayx_payout_id` unique, `webhook_confirmed` + timestamp. Never deleted by application code — a bad batch is marked FAILED/REVERSED. |
+
+**Deliberately not the removed engine.** The customer-facing "Referral Program Engine" was dropped by migration 082 (`referrals`, `referral_credits`, `partner_referrals`, enums `ReferralCreditStatus`/`PartnerReferralStatus`, `retailers.referral_enabled`/`referral_reward_paise`). None of those identifiers are reused. This is also distinct from F-018's internal-team codes (`TeamMember.referral_code` → `retailers.onboarded_by_id`) — separate ledgers.
+
+**Constraints carry the invariants.** Prisma cannot express `CHECK`, so these are DB-only (they won't show as drift in `prisma migrate diff`): commission/pct ranges, `second_tier_enabled` ⇒ `second_tier_pct`, the `referred_bonus_type`↔`referred_bonus_value` unit pairing, no self-referral, conversion `status`↔transition-timestamp agreement, positive payout amount, and `webhook_confirmed`↔timestamp agreement. Rationale: an enum-like config value the code doesn't understand must fail loudly rather than silently no-op (RC-027).
+
+**Purge wiring (load-bearing).** All three retailer FKs are `ON DELETE RESTRICT`, which makes them retailer *children*. Both `apps/api/src/jobs/purge-soft-deleted.ts` and `purge-retailer-now.ts` therefore delete them **before** the retailer row, and migration 109 grants `DELETE` to the scoped `kanchuki_purge` role (same shape as migration 084). Omitting either half reproduces the `product_attributes`/`social_accounts` bug: `DELETE FROM retailers` throws an FK violation and the entire purge transaction rolls back silently. Any future table with a RESTRICT FK to `retailers` needs both. `referral_settings` is exempt — a global singleton, never deleted.
+
+**The opposite failure mode, for contrast (RC-030).** A **declared** FK fails loudly when the purge list misses it. A denormalised `retailer_id` (bare `String`, no `@relation` — used for query convenience on `product_videos`, `campaigns`, `customer_interactions`, …) fails **silently**: Postgres neither cascades nor errors, so the rows simply survive the delete. 7 of the 13 models with a bare `retailer_id` are not swept. The rule that follows: a new `retailer_id` column without a relation is still a purge-list change and must ship with the sweep, exactly like a RESTRICT FK. See RC-030.
+
+No RLS: post-Railway tables rely on app-layer tenant scoping through the privileged app role (the zero-policy deny-all pattern breaks the pooled Prisma read path — see migration 099's header).
+
 ## Migrations Strategy
 
 - All schema changes via Prisma migrations (`prisma migrate dev`)

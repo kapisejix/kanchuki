@@ -162,7 +162,17 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO kanchuki_migrat
 -- (human-only) — this is the sanctioned middle ground.
 DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'kanchuki_purge') THEN CREATE ROLE kanchuki_purge WITH LOGIN PASSWORD '<PURGE_PASSWORD>' INHERIT; END IF; END $$;
 GRANT kanchuki_app TO kanchuki_purge;
-GRANT DELETE ON TABLE products, product_variants, product_photos, product_embeddings, collections, collection_products, collection_views, collection_enquiries, customers, customer_interactions, customer_measurements, customer_fashion_dna, retailers, staff, store_sections, product_categories, try_on_usage_logs, usage_counters TO kanchuki_purge;
+GRANT DELETE ON TABLE products, product_variants, product_photos, product_embeddings, collections, collection_products, collection_views, collection_enquiries, customers, customer_interactions, retailers, staff, store_sections, product_categories, usage_counters TO kanchuki_purge;
+-- This inline copy lists only the 2026-08-02 tables. Tables created later
+-- carry their own purge grant in the migration that creates them (084 adds
+-- social_posts/social_accounts/product_attributes/product_videos/
+-- quota_addon_purchases, 099 adds staff_invites, 109 adds referral_*), and
+-- scripts/setup-role-separation.sql holds the full current set — treat that
+-- file as the source of truth for this list.
+-- ⚠️ Every name above must be an existing table: a GRANT naming a dropped one
+-- aborts the rest of the block. Three such names had been left here by
+-- migration 082's teardown (customer_measurements, customer_fashion_dna,
+-- try_on_usage_logs) and were removed 2026-09-22.
 ```
 
 **Verify:**

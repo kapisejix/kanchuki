@@ -342,6 +342,12 @@ model Retailer {
   store_reviews         StoreReview[]
   bug_reports         BugReport[]
   showcase_designs     ShowcaseDesign[]
+  // Retailer referral / affiliate program (see the Referral* models below).
+  // Two distinct relations to Retailer, so the referral edges are named.
+  referral_code                 ReferralCode?
+  referral_conversions_made     ReferralConversion[] @relation("ReferralConversionsMade")
+  referral_conversion_received  ReferralConversion?  @relation("ReferralConversionReceived")
+  referral_payouts              ReferralPayout[]     @relation("ReferralPayouts")
 
   @@index([phone])
   @@index([city])
@@ -1294,6 +1300,214 @@ model ResourcePack {
 
   @@index([resource_type])
   @@map("resource_packs")
+}
+
+// ─── RETAILER REFERRAL / AFFILIATE PROGRAM ──────────────────────
+// Retailer → retailer: an existing paying retailer earns a recurring
+// commission for bringing another retailer onto Kanchuki.
+// Spec + task breakdown: docs/tasks/referral-program-retailer-affiliate.md (T1).
+//
+// NOT to be confused with:
+//   - the customer-facing "Referral Program Engine" dropped by migration 082
+//     (tables referrals / referral_credits / partner_referrals, enums
+//     ReferralCreditStatus / PartnerReferralStatus, retailers.referral_enabled)
+//     — those identifiers are deliberately NOT reused anywhere here; nor
+//   - F-018's internal-team referral codes (TeamMember.referral_code →
+//     retailers.onboarded_by_id), which attribute a signup to a Kanchuki
+//     salesperson. Keep the two ledgers separate.
+//
+// NO HARDCODED TERMS: every economic value (commission %, duration months,
+// qualify days, referred-side bonus, second-tier flag/%, payout minimum and
+// cadence) lives on ReferralSettings and is read at call time. Nothing about
+// "30%" or "12 months" may appear as a literal in application code.
+
+enum ReferralBonusType {
+  FREE_MONTH
+  FLAT_DISCOUNT
+  NONE
+}
+
+enum ReferralPayoutCadence {
+  MONTHLY
+  MANUAL
+}
+
+enum ReferralConversionStatus {
+  PENDING
+  QUALIFIED
+  PAID
+  CLAWED_BACK
+}
+
+enum ReferralPayoutStatus {
+  PENDING
+  PROCESSING
+  PAID
+  FAILED
+  REVERSED
+}
+
+/// Singleton admin-editable terms for the retailer referral program.
+/// Row id = 'singleton' (same shape as PlatformGstProfile). Migration 109
+/// seeds it with the owner-locked defaults, so there is always a row to read
+/// and no fallback constant is needed anywhere in code. Admin edits it in
+/// place from /admin/referral-settings (T2) — no redeploy.
+model ReferralSettings {
+  id String @id @default("singleton")
+
+  /// Commission as a whole percentage of the referred retailer's recurring
+  /// subscription. DB CHECK: 0..100.
+  commission_pct Int @default(30)
+
+  /// How many months of the referred retailer's paid subscription accrue
+  /// commission. DB CHECK: >= 1.
+  duration_months Int @default(12)
+
+  /// Days the referred retailer's subscription must be paid AND active before
+  /// a PENDING conversion becomes QUALIFIED (steals GHL's "45 days in good
+  /// standing" gate, shortened for the India retail cycle). 0 = immediate.
+  qualify_days Int @default(30)
+
+  /// What the *referred* retailer receives. Dual-sided programs consistently
+  /// out-convert one-sided cash (spec §3).
+  referred_bonus_type ReferralBonusType @default(FREE_MONTH)
+
+  /// Unit depends on referred_bonus_type — FREE_MONTH: months of free
+  /// subscription; FLAT_DISCOUNT: paise off; NONE: must be 0. A DB CHECK
+  /// enforces the pairing, so this value can never silently mean something
+  /// the code does not expect (RC-027).
+  referred_bonus_value Int @default(1)
+
+  /// Second tier ships DISABLED (owner decision 2026-09-22). The columns exist
+  /// from day one so turning it on later is an admin toggle, not a migration.
+  second_tier_enabled Boolean @default(false)
+  second_tier_pct     Int?
+
+  /// Owed commission (paise) that must accumulate before a payout batch is
+  /// raised by T7. DB CHECK: >= 0.
+  payout_min_amount Int @default(50000)
+
+  /// MONTHLY = the T7 cron raises batches; MANUAL = the cron skips and an
+  /// admin triggers one. Only values the code can actually honour exist as
+  /// enum members — a config value the code ignores is the RC-027 failure.
+  payout_cadence ReferralPayoutCadence @default(MONTHLY)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@map("referral_settings")
+}
+
+/// One shareable code per retailer, minted on first request (T3). `code` is
+/// what a prospective retailer types at onboarding; the shareable link reuses
+/// the existing store slug/QR infra (§30) rather than a second link-shortener.
+/// Deactivating a code flips is_active — there is no application hard-delete
+/// path. The row is still a child of its retailer for the F-017 purge sweep,
+/// which is why the kanchuki_purge role holds DELETE on it (migration 109).
+model ReferralCode {
+  id String @id @default(cuid())
+
+  retailer_id String   @unique
+  retailer    Retailer @relation(fields: [retailer_id], references: [id], onDelete: Restrict)
+
+  code String @unique
+
+  is_active Boolean @default(true)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@map("referral_codes")
+}
+
+/// One row per referred retailer. `referred_id` is unique — a retailer can be
+/// referred exactly once, so a second signup with the same code can never
+/// double-pay. Money fields are paise, the repo's money unit
+/// (plan_pricing.monthly_paise is the commission base).
+model ReferralConversion {
+  id String @id @default(cuid())
+
+  referrer_id String
+  referrer    Retailer @relation("ReferralConversionsMade", fields: [referrer_id], references: [id], onDelete: Restrict)
+
+  referred_id String   @unique
+  referred    Retailer @relation("ReferralConversionReceived", fields: [referred_id], references: [id], onDelete: Restrict)
+
+  status ReferralConversionStatus @default(PENDING)
+
+  /// When PENDING is due to become QUALIFIED (created_at + qualify_days,
+  /// computed at signup by T4 and enforced nightly by T5).
+  qualifies_at DateTime?
+  /// State-transition timestamps — DB CHECK keeps them consistent with status,
+  /// so a row can never claim PAID with no paid_at, or be CLAWED_BACK without
+  /// a clawback (that's what makes the ledger auditable).
+  qualified_at   DateTime?
+  clawed_back_at DateTime?
+  paid_at        DateTime?
+
+  /// The referred retailer's subscription amount the commission is computed
+  /// from (paise), snapshotted at qualification so a later plan change cannot
+  /// retroactively move an already-accrued amount.
+  commission_base_amount Int @default(0)
+
+  /// commission_base_amount x commission_pct over duration_months of paid
+  /// subscription — written by T6, never recomputed from current settings.
+  commission_accrued Int @default(0)
+
+  /// The payout batch that settled this conversion (T7). SetNull so the purge
+  /// sweep can remove a batch without an FK-ordering constraint, and so a
+  /// clawback after payout doesn't have to unpick the batch.
+  payout_id String?
+  payout    ReferralPayout? @relation(fields: [payout_id], references: [id], onDelete: SetNull)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([referrer_id, status])
+  @@index([status, qualifies_at])
+  @@index([payout_id])
+  @@map("referral_conversions")
+}
+
+/// One payout batch per referrer per cadence period. Never deleted by
+/// application code — a mistaken batch is marked FAILED/REVERSED, never
+/// removed — so the RC-004/RC-028 "42501 permission denied" class of bug
+/// cannot occur here. The kanchuki_purge role still holds DELETE, because a
+/// purged retailer's batches are children of that retailer.
+model ReferralPayout {
+  id String @id @default(cuid())
+
+  referrer_id String
+  referrer    Retailer @relation("ReferralPayouts", fields: [referrer_id], references: [id], onDelete: Restrict)
+
+  /// paise. DB CHECK: > 0 — a batch below payout_min_amount is never raised.
+  amount_paise Int
+
+  status ReferralPayoutStatus @default(PENDING)
+
+  /// RazorpayX Payouts id — null until T7 dispatches the batch.
+  razorpayx_payout_id String? @unique
+  /// Set by the RazorpayX webhook — the only evidence money actually moved.
+  webhook_confirmed    Boolean   @default(false)
+  webhook_confirmed_at DateTime?
+
+  /// Sent as the provider idempotency key by T7 and unique here, so a retried
+  /// cron run can never raise a second batch for the same referrer+period.
+  idempotency_key String @unique
+
+  /// Only ever set on a FAILED batch, so an operator sees the real provider
+  /// error rather than a generic line — the RC-003/RC-009 lesson applied to
+  /// money.
+  failure_reason String?
+
+  conversions ReferralConversion[]
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([referrer_id, status])
+  @@index([status, created_at])
+  @@map("referral_payouts")
 }
 
 // ─── SIZE CHARTS (F-102c — size recommendation, no GPU cost) ────

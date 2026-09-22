@@ -2768,3 +2768,152 @@ Driven by the DPDP founder guide (see PRO-REQUIREMENTS §34 for the point-by-poi
 
 **Not done:** lawyer review; nothing acts on a nominee automatically; CLAUDE.md index row not added (needs owner approval).
 **Verification:** passport-preferences 14/14 · API + Web `tsc --noEmit` clean.
+
+## BUILT 2026-09-22 — Retailer affiliate referral program (T1 + T2) + purge-grant audit (RC-029, RC-030)
+
+Spec: `docs/tasks/referral-program-retailer-affiliate.md`. Retailer → retailer: an existing paying
+retailer earns a recurring commission for bringing another retailer onto Kanchuki. §10 of that spec
+says to build **T1 (schema) first and stop**; T1 and T2 are done, **T3–T10 are not started.**
+
+**`apps/mobile` and `apps/web` (customer PWA) are untouched — 0 files.** The Play Console review in
+flight is unaffected. Every tracked edit below is an insertion.
+
+### T1 — schema + migration `109_referral_program` (not applied)
+
+| File | Change |
+|---|---|
+| `packages/db/prisma/schema.prisma` | `ReferralSettings` / `ReferralCode` / `ReferralConversion` / `ReferralPayout` + `PayoutStatus` / `PayoutCadence` / `ReferredBonusType` / `ConversionStatus`; back-relations on `Retailer` |
+| `packages/db/prisma/migrations/109_referral_program/migration.sql` | 4 enums + 4 tables, 12 `CHECK` constraints, indexes, the singleton seed row, and `GRANT DELETE` to `kanchuki_purge` |
+| `apps/api/src/jobs/purge-soft-deleted.ts`, `purge-retailer-now.ts` | the three new tables swept **before** `DELETE FROM retailers` |
+| `scripts/setup-role-separation.sql` | the three new tables added to the purge grant list |
+| `docs/DATABASE.md` | new "Retailer referral / affiliate program" section |
+
+**Owner decisions applied (asked before writing the migration, because both are expensive after it
+is applied):** singleton `referral_settings` row (not per-tier), `ON DELETE RESTRICT` on all three
+retailer FKs, and payouts never deleted — status only.
+
+**The RESTRICT choice is load-bearing and is why T1 touched the jobs at all.** It makes all three
+tables retailer *children*, and this repo has shipped that bug twice: `product_attributes` /
+`social_accounts` got RESTRICT FKs, were missing from the purge list, and made `DELETE FROM retailers`
+throw an FK violation that rolled back the **whole** transaction — the cron silently did nothing.
+Either half alone reproduces it. `referral_settings` is exempt (global singleton).
+
+**Fields beyond the spec's T1 sketch, each audited and most trimmed** — the criterion being *removing it
+leaves a money/audit invariant unrepresentable and needs a later migration on a financial table*.
+Kept: `payout_id` (`REVERSED` must be able to find the conversions a batch settled, and `status` is
+only auditable if it agrees with the transitions), `idempotency_key` (uniqueness cannot be safely
+retrofitted once rows exist), `qualified_at` / `clawed_back_at` / `paid_at`, `failure_reason`,
+`PayoutStatus.PROCESSING` / `REVERSED`, `BonusType.NONE` (**required**, not extra — the CHECK forbids
+`value = 0` for a real type, so "no referred-side bonus" is otherwise inexpressible), `Cadence.MANUAL`,
+`is_active` (a flag means **no** hard-delete path on `referral_codes`, removing an RC-004/RC-028 class
+rather than guarding it). Trimmed: `period_start` / `period_end` (redundant once `payout_id` links
+the conversions, and the only thing forcing the `period_ordered` CHECK), `razorpayx_status` (raw
+provider blob; our status + `failure_reason` + the lookup-able id cover diagnosis),
+`clawback_reason` (free text for T9's undesigned tool), `deactivated_at` (unpaired timestamp on a
+toggle).
+
+**Names avoid the removed engine entirely.** The 082 teardown dropped `referrals`,
+`referral_credits`, `partner_referrals` and the enums `ReferralCreditStatus` / `PartnerReferralStatus`;
+none of those identifiers is reused. It is also distinct from F-018's *internal-team* codes
+(`TeamMember.referral_code` → `retailers.onboarded_by_id`) — separate ledgers, and onboarding's
+existing "Referral Code (Optional)" field is F-018 staff attribution, **not** this feature.
+
+### T2 — admin settings API + screen
+
+| File | Change |
+|---|---|
+| `apps/api/src/routes/admin/admin-referral.ts` | `GET` + `PUT /v1/admin/referral-settings` |
+| `apps/api/src/routes/admin/index.ts`, `routes/admin.ts` | export **and** `await server.register(...)` |
+| `apps/web/src/app/admin/referral-settings/page.tsx` | the settings form |
+| `apps/web/src/app/admin/components/Sidebar.tsx` | `Referral Program` entry under Reports & Finance |
+| `admin-referral.test.ts`, `referral-settings/__tests__/page.test.tsx`, `Sidebar.test.tsx` | 17 + 10 tests, plus a nav→route pair guard |
+
+"CRUD on the settings row" for a singleton seeded by the migration reads as GET + PUT. **`D` is
+deliberately absent** — no hard-delete path on the table at all, which is what the owner's
+"never delete, status only" decision bought.
+
+**Server-side validation, three layers:** zod bounds per field (commission 0–100, duration 1–120,
+qualify 0–365 …); enum-like columns validated against the exact set the consuming tasks branch on, so
+a `'CASHBACK'` bonus is **rejected rather than stored and ignored** (RC-027); and the migration's
+`CHECK` constraints mirrored in `crossFieldError()`, evaluated against the **merged** state so a
+partial PUT still cannot land an impossible pairing — naming the setting to fix instead of surfacing a
+Postgres 23514.
+
+**Only changed fields are written, and that is load-bearing twice.** The screen diffs against the
+stored row and the API diffs again ("no change" is a no-op with no audit entry), so resubmitting an
+untouched form cannot trip validation or churn a row (the RC-010 shape). `buildPatch` also forces the
+bonus **value** in when only its *unit* changed: 2 months and 2 paise are the same numeral, so
+comparing numbers alone would call it unchanged and silently reinterpret the stored figure.
+
+### Purge-grant audit — the part that was not the referral feature
+
+Auditing `scripts/setup-role-separation.sql` against the schema produced two findings, both fixed
+(details + prevention lessons in `docs/root-cause/root-cause issues.md`):
+
+| ID | Finding | Fix |
+|---|---|---|
+| RC-029 | **RC-028's fix does not work.** It moved the promotions delete onto `kanchuki_purge`, but no file anywhere — script or migration — ever granted that role `DELETE` on `promotions`. The route compiles, ships and looks right while the delete still 500s. | migration `110_promotions_purge_grant` (`prisma migrate deploy` applies it; the hand-run script is not on any deploy path) + the same grant in the script |
+| RC-030 | **7 tables strand rows on retailer deletion.** `campaigns`, `campaign_sends`, `promotions`, `consent_events`, `customer_recently_viewed`, `customer_wishlist_items`, `customer_interactions` declare `retailer_id` as a bare scalar with no FK, so nothing cascades and nothing errors — the rows simply survive. Two are not even granted. 6 of 13 bare-`retailer_id` models are purged; 7 are not. | **Not fixed** — documented as an open gap in the script and RC-030, with the mechanical check that proves it |
+
+The reported staleness was also real and is pruned: **9 names in the purge grant list had been
+dropped by migration 082** (`product_spin_frames`, `order_items`, `orders`, `try_on_jobs`,
+`try_on_usage_logs`, `customer_measurements`, `customer_fashion_dna`, `size_charts`,
+`size_chart_rows`). A `GRANT` naming a missing relation is a hard error, so the script aborted at that
+statement before its own verification `SELECT`s ran. One near-miss worth recording:
+**`customer_interactions` was also dropped by 082 and re-created by migration 100** (F-037 Phase 1), so
+a grep-082's-drops fix would have deleted it and broken the newest feature on the list — the
+re-creation was checked, not just the drop. It was originally removed from the list in this session and
+**restored**, because nothing deletes it and a privilege reduction nobody asked for is also a change.
+`docs/INFRA-SETUP.md` carried a third copy of the same list with 3 dead names; fixed, and pointed at
+the script as the one authority so the two stop drifting.
+
+Also added: `apps/api/src/jobs/purge-soft-deleted.test.ts` — the cron had **no** test file, so the
+test for T1's three tables would otherwise have left the cron half unguarded while the admin half
+(`purge-retailer-now.test.ts`) was covered. Its assertions are the invariants, not the call count:
+children before `DELETE FROM retailers`; `referral_conversions` swept for **`referred_id` too** (a
+conversion is a child of *both* retailers, so a missing referred-side sweep makes purging a referred
+shop fail on the referrer's leftover row); `referral_payouts` before `referral_conversions`
+(`ON DELETE SET NULL` is another write on the child, so the other order can deadlock two concurrent
+deletes); no unscoped table delete; the 15-day predicate inline where each sweep actually lives; and
+`app.allow_hard_delete` set in the **same** transaction as every delete (it is per-connection, so a
+SET and its DELETE landing on different pooled connections makes the guardrail refuse the delete).
+
+**Verification:** API **1078/1078** (83 files, and the spec §11-required `security.test.ts` +
+`admin.login.test.ts` run explicitly — 15/15) · web **319/319** (41 files) · `apps/api` + `packages/db` +
+`apps/web` `tsc --noEmit` clean · `apps/web` `next lint` clean · **Biome clean on every changed
+`apps/api` / `packages/db` file** (that is the surface CI governs — `apps/api`'s lint script is
+`biome check src/`, while `apps/web` lints with `next lint`, so the web admin pages are outside the
+Biome gate and carry a dirty baseline: the two siblings of the new screen hold **25** errors and 5
+warnings between them) · `check-delete-guard.sh` passes · migration 109 diffed **byte-identical**
+against Prisma's own `migrate diff` output (61/61 lines) · grant list checked in **both** directions
+(every name exists — 24/24; every table the 7 purge-role consumers delete is granted — 24/24) ·
+Guards falsified rather than assumed: removing a referral delete from either job fails with a precise
+message; swapping the enum checks for `z.string()` fails exactly the 2 RC-027 tests; making the diff
+send every field fails **7**.
+
+**On the web files' Biome diagnostics, stated precisely rather than claimed clean.** `git show
+HEAD:` versions of `Sidebar.tsx` and `Sidebar.test.tsx` carry the **same 5** diagnostics after this
+change as before it, so nothing was added. The new `page.tsx` ends at **1 error + 1 warning**: the
+error is `process.env['NEXT_PUBLIC_API_URL']` (biome's `useLiteralKeys`), which is the repo's own
+convention — 68 files use the bracket form including all three sibling admin pages on the identical
+line — so it was deliberately left rather than diverging from every other admin screen; the warning is
+`useExhaustiveDependencies: load`, which adding would re-run the fetch on every render (`load` is
+recreated each render) and which the sibling page also carries. Two real fixes were applied to the new
+file: `biome check --fix` (import order, formatting) and an explicit `type="button"` on both
+buttons — no `<form>` wraps them today, so the implicit-submit hazard is latent rather than live, but
+it costs nothing to remove.
+
+**Not done / owner-side:** migration **109 and 110 are not applied** (admin dashboard, per CLAUDE.md) ·
+`scripts/setup-role-separation.sql` is applied by hand and carries the `promotions` grant only for
+from-scratch environments · **T3–T10 not started** · RC-030's 7-table cleanup deliberately left open ·
+CLAUDE.md index row not added (needs owner approval).
+
+**T3 blocker, recorded so it is not rediscovered:** `generateReferralCode()` already exists **twice** —
+live for F-018 staff codes in `team-helpers.ts`, and a stale orphan in `growth-helpers.ts` — and
+onboarding's "Referral Code (Optional)" field is F-018 *staff* attribution. T3 has to disambiguate the
+two before it writes any code, or a retailer's affiliate code and a marketing agent's attribution code
+will collide in the same namespace.
+
+**Not verified:** the screen is unit-tested, not visually checked in a browser — the repo's precedent
+for admin pages (`suits-designs/__tests__/page.test.tsx`). The 10 tests do assert the rendered values
+come from the API fixture (37% / 9mo / 45d / ₹123.45), so a hardcoded default would fail them.

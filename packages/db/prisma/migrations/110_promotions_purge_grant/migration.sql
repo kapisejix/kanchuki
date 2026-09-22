@@ -1,0 +1,25 @@
+-- 110: Grant DELETE on promotions to kanchuki_purge.
+--
+-- Issue: DELETE /v1/growth/promotions/:id 500s with
+--   "42501: permission denied for table promotions"
+--   — reported as fixed by RC-028, but still failing.
+--
+-- Root cause (RC-029): RC-028 correctly moved the delete off kanchuki_app
+--   (which has DELETE revoked platform-wide, SECURITY §19.1) and onto the
+--   scoped kanchuki_purge role — but the second half of that permission
+--   boundary is a GRANT, and no file ever granted kanchuki_purge DELETE on
+--   `promotions`. Promotion has no `deleted_at`, so there is no soft-delete
+--   path: a hard delete is required, and the role performing it has to be
+--   allowed to. The route change typechecks, ships and looks correct while
+--   the operation still cannot succeed. Same bug class as RC-004 and
+--   migration 083/097 — but on the *purge* role instead of kanchuki_app.
+--
+--   `promotions` was created by the growth-engine migration (055/056), i.e.
+--   AFTER the original role-separation setup (037), which is exactly the
+--   case that has to be granted in the migration that introduces the table.
+--   ALTER DEFAULT PRIVILEGES does not cover kanchuki_purge, and the
+--   hand-run scripts/setup-role-separation.sql only helps if an operator
+--   re-runs it — `prisma migrate deploy` applies this automatically.
+--
+-- Idempotent: GRANT is safe to repeat.
+GRANT DELETE ON TABLE promotions TO kanchuki_purge;
