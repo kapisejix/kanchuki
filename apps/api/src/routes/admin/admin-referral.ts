@@ -19,18 +19,41 @@ import type { FastifyPluginAsync } from 'fastify';
 
 import { type Prisma, prisma } from '@kanchuki/db';
 import { z } from 'zod';
+import { type ReferralSettingsRow, loadReferralSettings } from '../../lib/referral-settings.js';
 import { validationError } from '../../plugins/error-handler.js';
 import { adminAuthPreHandler } from '../admin-auth.js';
 
-/** The single settings row — matches @default("singleton") on the model. */
-const SINGLETON_ID = 'singleton';
+// The singleton id lives with the loader in lib/referral-settings.ts.
 
 // The vocabulary the consuming tasks actually branch on: T4 applies the
 // referred-side bonus, T5 the qualify gate, T6 the commission, T7 the payout
 // cron. A value outside these sets must be rejected loudly — never stored and
 // then silently ignored, which is exactly the RC-027 failure.
-const BONUS_TYPES = ['FREE_MONTH', 'FLAT_DISCOUNT', 'NONE'] as const;
+//
+// NARROWED 2026-09-22 when T4 landed. `FLAT_DISCOUNT` was selectable from day
+// one but nothing can apply it: a discount has to reduce a charge, and no code
+// path in this repo discounts a Razorpay payment or a GST invoice. Leaving it
+// settable would have produced exactly the failure this comment describes — an
+// admin picks "₹500 off", the store never gets ₹500, and nothing reports it.
+// So it is refused with a message naming the reason (below), and it stays in the
+// PostgreSQL enum in migration 109 for the day a rail exists. Owner decision
+// 2026-09-22: narrow the setting to what the code honours.
+// Exported so `admin-referral.test.ts` can prove it against the PostgreSQL enum
+// in schema.prisma. A set nothing checks is a set that grows a member nobody
+// implements, which is the trap the comment above describes.
+export const BONUS_TYPES = ['FREE_MONTH', 'NONE'] as const;
 const PAYOUT_CADENCES = ['MONTHLY', 'MANUAL'] as const;
+
+/**
+ * Bonus types that exist in the DB enum but that NO code path implements. Kept
+ * as data so `referral-program-settings.test.ts` can derive the full enum from
+ * schema.prisma and fail if a member is neither implemented nor listed here —
+ * an enum that grows a member nobody handles is the RC-027 trap, and the test is
+ * what makes adding one impossible to miss.
+ */
+export const UNIMPLEMENTED_BONUS_TYPES: Record<string, string> = {
+  FLAT_DISCOUNT: 'nothing applies a discount to a payment yet',
+};
 
 // Unit-dependent bounds for referred_bonus_value, applied per bonus type.
 // FREE_MONTH counts months; FLAT_DISCOUNT counts paise.
@@ -56,20 +79,12 @@ const settingsPatchSchema = z.object({
 
 type SettingsPatch = z.infer<typeof settingsPatchSchema>;
 
-/**
- * Read the singleton row, creating it from the column DEFAULTs if missing.
- * The row is seeded by migration 109, so reaching the create branch means the
- * seed was skipped somewhere. The create passes an EMPTY data object precisely
- * so every value comes from the DB default — restating the terms here would be
- * the hardcoding this whole design exists to prevent.
- */
-async function loadOrCreate() {
-  const existing = await prisma.referralSettings.findUnique({ where: { id: SINGLETON_ID } });
-  if (existing) return existing;
-  return prisma.referralSettings.create({ data: {} });
-}
-
-type SettingsRow = Awaited<ReturnType<typeof loadOrCreate>>;
+// The singleton row reader now lives in lib/referral-settings.ts, because T4 is
+// its second consumer. Two private copies of "read the row, create it from the
+// DB DEFAULTs if missing" would drift the moment one of them grew a fallback
+// constant — and the fallback would be a commission term by definition.
+type SettingsRow = ReferralSettingsRow;
+const loadOrCreate = loadReferralSettings;
 
 /**
  * Cross-field rules, evaluated against the MERGED state (stored row + patch)
@@ -88,6 +103,11 @@ export function crossFieldError(row: SettingsRow, patch: SettingsPatch): string 
   if (type === 'FREE_MONTH' && (value < 1 || value > MAX_BONUS_MONTHS)) {
     return `referred_bonus_value must be 1-${MAX_BONUS_MONTHS} months for FREE_MONTH`;
   }
+  // UNREACHABLE from the API since T4 narrowed the accepted set, but kept for a
+  // row that already holds FLAT_DISCOUNT (written before the narrowing, or by
+  // hand in SQL): patching any OTHER field must still not land an impossible
+  // value, and the DB CHECK can only see this pairing. Not dead code — a
+  // defence for the one state the route can no longer create.
   if (type === 'FLAT_DISCOUNT' && (value < 1 || value > MAX_BONUS_DISCOUNT_PAISE)) {
     return `referred_bonus_value must be 1-${MAX_BONUS_DISCOUNT_PAISE} paise for FLAT_DISCOUNT`;
   }
@@ -130,6 +150,16 @@ export const adminReferralRoutes: FastifyPluginAsync = async (server) => {
   // Partial update: only the keys present in the body are written, so the
   // admin screen can send just the fields the operator touched.
   server.put('/referral-settings', async (request) => {
+    // Checked BEFORE zod so the admin gets a message that says WHY, rather than
+    // a generic `Invalid enum value` for a value the UI used to offer.
+    const submitted = (request.body ?? {}) as Record<string, unknown>;
+    const bonusType = submitted.referred_bonus_type;
+    if (typeof bonusType === 'string' && UNIMPLEMENTED_BONUS_TYPES[bonusType]) {
+      throw validationError(
+        `referred_bonus_type '${bonusType}' is not available: ${UNIMPLEMENTED_BONUS_TYPES[bonusType]}. Use FREE_MONTH or NONE.`,
+      );
+    }
+
     const patch = settingsPatchSchema.parse(request.body ?? {});
     const current = await loadOrCreate();
 

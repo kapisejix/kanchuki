@@ -3,6 +3,11 @@ import { generateCollectionSlug } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { sendOtpViaMsg91, verifyStoredOtp } from '../../lib/msg91-otp.js';
+import {
+  type ReferralCaptureReport,
+  type ReferralCaptureResult,
+  applyReferralCapture,
+} from '../../lib/referral-conversions.js';
 import { notFound, validationError } from '../../plugins/error-handler.js';
 
 const WhatsAppNumberSchema = z
@@ -222,6 +227,54 @@ export const retailersProfileRoutes: FastifyPluginAsync = async (server) => {
       },
     });
 
-    return { data: updated };
+    // ── Affiliate referral capture (T4) ───────────────────────────
+    // The SAME self-serve field also carries a retailer→retailer affiliate code
+    // (KAN-XXXXXX). `classifyReferralCode` decides by SHAPE which ledger a code
+    // belongs to, never by lookup order — so a staff code still resolves to
+    // `onboarded_by_id` above and an affiliate code lands here. This is also why
+    // the program needs no client change: the field already travels.
+    //
+    // Deliberately AFTER the update: the shop's attribution is settled by then,
+    // so "one attribution, staff wins" holds even if both kinds of code arrive
+    // in one payload, and a failed profile write cannot leave a payout behind.
+    //
+    // A referral problem never fails the profile save. `applyReferralCapture`
+    // throws on a database error on purpose (a captured-then-lost referral is a
+    // referrer who is never paid), so this is where that becomes non-fatal: the
+    // code is one optional field of a general save, and a 500 here would block a
+    // shop from finishing onboarding over a code it can remove. Logged AND
+    // reported as a status, so it is neither fatal nor silent.
+    let referral:
+      | ReferralCaptureResult
+      | { status: Extract<ReferralCaptureReport, 'CAPTURE_FAILED'> }
+      | null = null;
+    if (referral_code) {
+      try {
+        referral = await applyReferralCapture({
+          referredRetailerId: request.retailerId,
+          code: referral_code,
+        });
+      } catch (error) {
+        // Most likely cause in practice: migration 109 not yet applied, so
+        // `referral_codes` does not exist. Deployment order should prevent that,
+        // but an optional field must not be able to break onboarding.
+        request.log.error({ err: error }, 'referral capture failed');
+        referral = { status: 'CAPTURE_FAILED' };
+      }
+    }
+
+    // A FREE_MONTH bonus moves `trial_ends_at` in a separate transaction, so the
+    // row has to be re-read when one was applied — otherwise this response would
+    // carry the pre-bonus trial date and the bonus would look like it failed.
+    // `'reward' in referral` rather than `referral?.reward`: the CAPTURE_FAILED
+    // member of the union has no `reward` field, and reading through that is a
+    // type error precisely because the failure branch genuinely has no reward.
+    const appliedBonus =
+      referral !== null && 'reward' in referral && referral.reward?.kind === 'FREE_MONTH';
+    const data = appliedBonus
+      ? ((await prisma.retailer.findUnique({ where: { id: request.retailerId } })) ?? updated)
+      : updated;
+
+    return { data, referral };
   });
 };

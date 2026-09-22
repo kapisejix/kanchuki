@@ -2,10 +2,58 @@
 
 One file, update at end of each work session: what's done, what's next, what's blocked. Check `git log -1` and this file first thing each session.
 
+## 2026-09-22 (later) — T4 built: affiliate referral capture at signup; RC-032
+
+Spec: `docs/tasks/referral-program-retailer-affiliate.md` §7 T4. A code entered at signup now writes a
+`pending` `ReferralConversion` and applies the referred store's bonus. 
+Detail: `docs/BUILD-LOG.md` §2026-09-22 (T4).
+
+**`apps/mobile` and customer web: 0 files changed** — the Play Console review in flight is unaffected.
+
+**The task needed no mobile change because the capture point already shipped.** `referral_code` on
+`PUT /v1/retailers/me` is **F-018's** self-serve salesperson field and already resolves against
+`TeamMember` — so an affiliate code typed into the existing "Referral Code (Optional)" onboarding field
+has been *arriving at the API and being silently dropped*. T4 adds a second, shape-decided destination
+to a value that already travels. Three things research changed about the spec, all owner-decided:
+
+1. **The `?ref=` cookie was NOT built.** There is no retailer signup form on the web (every `shop_name`
+   match is admin or shopper), so the link's CTA leaves for the app — the cookie would have been a hook
+   with no consumer. **RC-025's shape**, and the second time this spec has avoided it.
+2. **Self-referral cannot check bank account** — the spec asks for it and `Retailer` has no such column.
+   Checks phone + GSTIN, and says so rather than implying a third check exists.
+3. **`FLAT_DISCOUNT` removed from the settings** (RC-027 one layer up): it was selectable since T2 and
+   nothing discounts a Razorpay charge or a GST invoice, so choosing it stored a term that never
+   reaches the store. Now refused by name, unselectable in the admin screen (a legacy row holding it
+   still renders, disabled), and guarded by a test that derives the PostgreSQL enum from
+   `schema.prisma` and fails on any member neither implemented nor listed as unimplemented.
+
+**RC-032 — a defect in T4, found and fixed before it was committed.** The route comment promised "a
+referral problem never fails the profile save", but `applyReferralCapture()` **throws by design** and
+the call site had no `catch`. Migrations are applied by hand from the admin dashboard while code
+deploys on push, so in that window any retailer entering a referral code would have got a **500 on the
+profile save — onboarding blocked** for exactly the users the program exists to encourage. Every check
+was green: `prisma.referralCode` typechecks, a mocked client passes, and a 500 on a profile save reads
+as a validation bug. Fixed so both halves hold: caught, logged with the underlying error, and reported
+as `CAPTURE_FAILED` **as data** — non-fatal *and* not silent.
+
+**Verification:** API **1180 passed / 5 skipped** (89 files, +47) · web **321/321** (+2) · `tsc` clean
+×3 · `biome check` clean on all 8 changed API files · `next lint` clean · `check-delete-guard.sh`
+passes · `apps/mobile` **0 files**. Guards falsified **seven ways** (enum member added, refusal entry
+dropped, entry made stale, type made selectable again, route catch removed, attribution check removed,
+fallback constant added to the settings loader), each failing for the right reason with the offending
+value named.
+
+**Still open:** migrations **109/110/111 not applied** (admin dashboard) · **T5–T10 unbuilt — no
+affiliate link earns anything yet** · the opt-in RLS live test has never executed · the super-admin
+path-list gap on `/v1/admin/referral-settings` (pre-existing, shared with `/v1/admin/commission`).
+
+---
+
 ## 2026-09-22 — Retailer affiliate referral program T1+T2+T3 built; purge-grant audit (RC-029, RC-030, RC-031)
 
 Spec: `docs/tasks/referral-program-retailer-affiliate.md`. Built **T1 (schema + migration), T2 (admin
-settings API + screen) and T3 (code namespace + attribution)** — T4–T10 are untouched.
+settings API + screen) and T3 (code namespace + attribution)** — T4–T10 untouched *at the time of this
+session* (T4 landed later the same day; see the T4 entry above).
 Detail: `docs/BUILD-LOG.md` §2026-09-22, `docs/DATABASE.md`, `docs/PRO-REQUIREMENTS.md` §35.
 
 **`apps/mobile` and customer web: 0 files changed** — the Play Console review in flight is unaffected.

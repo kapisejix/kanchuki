@@ -55,11 +55,36 @@ type Draft = {
   payout_cadence: Cadence;
 };
 
+// Labels for EVERY enum member, including ones no longer selectable — a legacy
+// row must still render its own value by name.
+const BONUS_TYPE_LABELS: Record<BonusType, string> = {
+  FREE_MONTH: 'Free months of subscription',
+  FLAT_DISCOUNT: 'Flat discount off first payment',
+  NONE: 'No referred-side bonus',
+};
+
+// Only types the CODE can actually honour are offered. `FLAT_DISCOUNT` is
+// deliberately absent: nothing in the repo discounts a Razorpay payment or a GST
+// invoice, so selecting it would store a term that never reaches the store —
+// the RC-027 failure (a config value the code silently drops). The API refuses it
+// with a message naming the reason; this keeps the UI from offering it at all.
 const BONUS_TYPES: { value: BonusType; label: string }[] = [
-  { value: 'FREE_MONTH', label: 'Free months of subscription' },
-  { value: 'FLAT_DISCOUNT', label: 'Flat discount off first payment' },
-  { value: 'NONE', label: 'No referred-side bonus' },
+  { value: 'FREE_MONTH', label: BONUS_TYPE_LABELS.FREE_MONTH },
+  { value: 'NONE', label: BONUS_TYPE_LABELS.NONE },
 ];
+
+/**
+ * Types that remain in the PostgreSQL enum (migration 109) but that no code path
+ * implements. They must still be RENDERABLE: a row written before this narrowing
+ * — or by hand in SQL — holds the value, and a `<select>` with no matching
+ * `<option>` renders as blank, hiding the stored term from the operator. So the
+ * option is shown, marked, and disabled; the operator can switch away from it
+ * (the API only refuses FLAT_DISCOUNT when it is the *submitted* value) but
+ * cannot select it.
+ */
+const UNAVAILABLE_BONUS_TYPES: Partial<Record<BonusType, string>> = {
+  FLAT_DISCOUNT: 'no longer available — nothing applies a discount to a payment yet',
+};
 
 const CADENCES: { value: Cadence; label: string; hint: string }[] = [
   {
@@ -364,12 +389,27 @@ export default function ReferralSettingsPage() {
               }}
               className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
             >
+              {/* The stored value first when it is one the code cannot honour,
+                  so the select shows what is actually in the database rather
+                  than silently rendering the first available option as if it
+                  were selected. */}
+              {UNAVAILABLE_BONUS_TYPES[draft.referred_bonus_type] && (
+                <option value={draft.referred_bonus_type} disabled>
+                  {BONUS_TYPE_LABELS[draft.referred_bonus_type]} —{' '}
+                  {UNAVAILABLE_BONUS_TYPES[draft.referred_bonus_type]}
+                </option>
+              )}
               {BONUS_TYPES.map((b) => (
                 <option key={b.value} value={b.value}>
                   {b.label}
                 </option>
               ))}
             </select>
+            {UNAVAILABLE_BONUS_TYPES[draft.referred_bonus_type] && (
+              <span className="block text-[11px] text-amber-600 mt-1">
+                This row still holds the old value. Pick another type to replace it.
+              </span>
+            )}
           </label>
           <label className="block">
             <span className="block text-xs font-semibold text-gray-500 mb-1">{unit.label}</span>
@@ -386,7 +426,7 @@ export default function ReferralSettingsPage() {
               {bonusOff
                 ? 'No bonus — the store pays full price.'
                 : draft.referred_bonus_type === 'FLAT_DISCOUNT'
-                  ? 'Entered in ₹; stored as paise.'
+                  ? 'Stored, but not applied — no code path discounts a payment.'
                   : 'Whole months of free subscription.'}
             </span>
           </label>

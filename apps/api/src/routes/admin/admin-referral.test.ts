@@ -9,11 +9,22 @@
 // standing in for "whatever the admin has configured" — it is NOT a term in
 // application code, which is exactly what T1's no-hardcode rule requires.
 import { randomBytes } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import cookie from '@fastify/cookie';
 import Fastify from 'fastify';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { errorHandler } from '../../plugins/error-handler.js';
-import { adminReferralRoutes, changedKeys, crossFieldError } from './admin-referral.js';
+import {
+  BONUS_TYPES,
+  UNIMPLEMENTED_BONUS_TYPES,
+  adminReferralRoutes,
+  changedKeys,
+  crossFieldError,
+} from './admin-referral.js';
+
+const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../../../..');
 
 const { mockFindUnique, mockCreate, mockUpdate, mockAuditLogCreate } = vi.hoisted(() => ({
   mockFindUnique: vi.fn(),
@@ -120,15 +131,20 @@ describe('crossFieldError', () => {
     expect(crossFieldError(baseline, { referred_bonus_value: 2 })).toBeNull();
   });
 
-  it('bounds a flat discount as paise', () => {
+  it('still bounds a flat discount as paise for a row that already holds one', () => {
+    // T4 narrowed the ACCEPTED set to FREE_MONTH/NONE (nothing can apply a
+    // discount), so the route can no longer produce this pairing. The check is
+    // kept for a row written before the narrowing or by hand in SQL: patching
+    // any other field must still not land an impossible value. The cast is the
+    // point — the type no longer admits it, and that is the desired state.
+    const legacy = (patch: Record<string, unknown>) =>
+      crossFieldError(baseline, patch as Parameters<typeof crossFieldError>[1]);
+
+    expect(legacy({ referred_bonus_type: 'FLAT_DISCOUNT', referred_bonus_value: 0 })).toMatch(
+      /paise/,
+    );
     expect(
-      crossFieldError(baseline, { referred_bonus_type: 'FLAT_DISCOUNT', referred_bonus_value: 0 }),
-    ).toMatch(/paise/);
-    expect(
-      crossFieldError(baseline, {
-        referred_bonus_type: 'FLAT_DISCOUNT',
-        referred_bonus_value: 50000,
-      }),
+      legacy({ referred_bonus_type: 'FLAT_DISCOUNT', referred_bonus_value: 50000 }),
     ).toBeNull();
   });
 
@@ -190,6 +206,29 @@ describe('PUT /v1/admin/referral-settings', () => {
       data: { commission_pct: 35 },
     });
     expect(res.json().changed).toEqual(['commission_pct']);
+    await app.close();
+  });
+
+  it('refuses FLAT_DISCOUNT by name instead of storing a bonus nothing applies', async () => {
+    // The whole point of the narrowing: an admin must not be able to set a
+    // referred-side bonus that no code path delivers. Rejected before zod so the
+    // message explains WHY rather than saying `Invalid enum value`, and rejected
+    // before any write so the row is untouched.
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'PUT',
+      url: '/v1/admin/referral-settings',
+      headers: putHeaders(),
+      payload: { referred_bonus_type: 'FLAT_DISCOUNT', referred_bonus_value: 50000 },
+    });
+
+    expect(res.statusCode).toBe(422);
+    const message = res.json().error.message as string;
+    expect(message).toMatch(/FLAT_DISCOUNT/);
+    expect(message).toMatch(/not available/);
+    // The reason, not just the rejection — this is the string an operator reads.
+    expect(message).toMatch(/nothing applies a discount/i);
+    expect(mockUpdate).not.toHaveBeenCalled();
     await app.close();
   });
 
@@ -309,5 +348,61 @@ describe('PUT /v1/admin/referral-settings', () => {
     expect(res.statusCode).toBe(200);
     expect(res.json().changed).toEqual([]);
     await app.close();
+  });
+});
+
+// ─── The enum guard ──────────────────────────────────────────────────
+//
+// RC-027's shape: a value the CODE does not implement, stored and then silently
+// ignored. `BONUS_TYPES` (selectable) and `UNIMPLEMENTED_BONUS_TYPES` (refused,
+// with a reason) are two hand-maintained lists, and the thing they can both
+// drift from is the PostgreSQL enum in schema.prisma — which is the only place a
+// new member actually appears. Deriving the requirement from the schema is what
+// makes adding one impossible to miss, and it is the same technique the purge
+// guards use so their lists cannot rot either.
+describe('every bonus type in the database is accounted for in code', () => {
+  function bonusEnumMembers(): string[] {
+    const schema = readFileSync(join(REPO_ROOT, 'packages/db/prisma/schema.prisma'), 'utf8');
+    const start = schema.indexOf('\nenum ReferralBonusType {');
+    expect(start, 'enum ReferralBonusType not found in schema.prisma').toBeGreaterThan(-1);
+    const body = schema.slice(start + 1);
+    return body
+      .slice(body.indexOf('{') + 1, body.indexOf('}'))
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line !== '' && !line.startsWith('//') && !line.startsWith('@@'));
+  }
+
+  it('parses the enum it is guarding', () => {
+    // Without this the assertions below could pass vacuously on a bad parse —
+    // an empty list trivially has no unhandled members. The three members are
+    // asserted as a floor, not as a snapshot: adding a fourth must not fail here.
+    const members = bonusEnumMembers();
+    expect(members).toContain('FREE_MONTH');
+    expect(members).toContain('NONE');
+    expect(members.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it('has no member that is neither selectable nor refused with a reason', () => {
+    const handled = new Set<string>([...BONUS_TYPES, ...Object.keys(UNIMPLEMENTED_BONUS_TYPES)]);
+    const unhandled = bonusEnumMembers().filter((m) => !handled.has(m));
+
+    expect(unhandled).toEqual([]);
+  });
+
+  it('names a real enum member in every "not implemented" entry', () => {
+    // A stale entry — a renamed or removed enum member — would silently widen
+    // the list of things covered, hiding the day a NEW member needs handling.
+    const members = new Set(bonusEnumMembers());
+    const stale = Object.keys(UNIMPLEMENTED_BONUS_TYPES).filter((k) => !members.has(k));
+
+    expect(stale).toEqual([]);
+  });
+
+  it('gives every refusal a reason, and never lists a type as both', () => {
+    for (const [type, reason] of Object.entries(UNIMPLEMENTED_BONUS_TYPES)) {
+      expect(reason.trim(), `${type} needs a reason an operator can read`).not.toBe('');
+      expect(BONUS_TYPES).not.toContain(type);
+    }
   });
 });

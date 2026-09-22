@@ -19,7 +19,13 @@ const ROW = {
 
 let puts: { url: string; body: Record<string, unknown> }[] = [];
 
-function makeFetchStub(opts?: { getFails?: boolean; putStatus?: number; putBody?: unknown }) {
+function makeFetchStub(opts?: {
+  getFails?: boolean;
+  putStatus?: number;
+  putBody?: unknown;
+  /** Override the served row — used for a legacy value in the DB. */
+  row?: Record<string, unknown>;
+}) {
   return vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
     const url = String(input);
     const method = init?.method ?? 'GET';
@@ -32,7 +38,7 @@ function makeFetchStub(opts?: { getFails?: boolean; putStatus?: number; putBody?
           json: async () => ({ error: { message: 'Database connection refused' } }),
         };
       }
-      return { ok: true, status: 200, json: async () => ({ data: ROW }) };
+      return { ok: true, status: 200, json: async () => ({ data: opts?.row ?? ROW }) };
     }
 
     puts.push({ url, body: JSON.parse(String(init?.body ?? '{}')) });
@@ -179,6 +185,45 @@ describe('ReferralSettingsPage', () => {
     // `fetch` does not throw on a non-2xx — RC-025/RC-026 are what happen when
     // a page assumes it does.
     expect(await screen.findByText('Database connection refused')).toBeInTheDocument();
+  });
+
+  it('does not offer a bonus type no code path can honour', async () => {
+    vi.stubGlobal('fetch', makeFetchStub());
+    render(<ReferralSettingsPage />);
+
+    await screen.findByDisplayValue('37');
+    const select = screen.getAllByRole('combobox')[0] as HTMLSelectElement;
+    const values = Array.from(select.options).map((o) => o.value);
+
+    // FLAT_DISCOUNT sits in the PostgreSQL enum (migration 109) but nothing
+    // discounts a payment, so the API 422s it. Offering it here would let an
+    // operator store a term that never reaches the store.
+    expect(values).not.toContain('FLAT_DISCOUNT');
+    expect(values).toEqual(['FREE_MONTH', 'NONE']);
+  });
+
+  it('still renders a legacy bonus type the row already holds, marked and disabled', async () => {
+    // A row written before the narrowing (or by hand in SQL) holds the value. A
+    // <select> with no matching <option> renders blank, which would hide the
+    // stored term from the operator altogether.
+    vi.stubGlobal(
+      'fetch',
+      makeFetchStub({ row: { ...ROW, referred_bonus_type: 'FLAT_DISCOUNT', referred_bonus_value: 50000 } }),
+    );
+    render(<ReferralSettingsPage />);
+
+    const select = (await screen.findByRole('combobox', {
+      name: /bonus type/i,
+    })) as HTMLSelectElement;
+    expect(select.value).toBe('FLAT_DISCOUNT');
+
+    const legacy = Array.from(select.options).find((o) => o.value === 'FLAT_DISCOUNT');
+    expect(legacy).toBeDefined();
+    expect(legacy?.disabled).toBe(true);
+    // Named, not the raw enum string.
+    expect(legacy?.textContent).toMatch(/Flat discount off first payment/);
+    // And the operator is told what to do about it.
+    expect(screen.getByText(/pick another type to replace it/i)).toBeInTheDocument();
   });
 
   it('sends the paired 0 when the referred bonus is switched off', async () => {

@@ -2982,7 +2982,7 @@ Marketing: FAQ "Is my data protected under India's DPDP Act?"; `/for-customers` 
 
 ---
 
-## 35. Retailer Affiliate Referral Program — 🟨 T1–T3 ✅ BUILT 2026-09-22; T4–T10 🔴 NOT STARTED
+## 35. Retailer Affiliate Referral Program — 🟨 T1–T4 ✅ BUILT 2026-09-22; T5–T10 🔴 NOT STARTED
 
 Full spec, research and the T1–T10 breakdown: `docs/tasks/referral-program-retailer-affiliate.md`. Build detail: `docs/BUILD-LOG.md` §2026-09-22. Tables: `docs/DATABASE.md` → "Retailer referral / affiliate program".
 
@@ -2993,7 +2993,8 @@ Full spec, research and the T1–T10 breakdown: `docs/tasks/referral-program-ret
 | T1 | Prisma models + migration `109_referral_program` + purge wiring | ✅ Built (migration **not applied**) |
 | T2 | Admin settings API (`GET`/`PUT /v1/admin/referral-settings`) + `/admin/referral-settings` screen | ✅ Built |
 | T3 | Code namespace (`apps/api/src/lib/referral-codes.ts`) + `GET /v1/retailers/me/referral-code` + reserved-namespace guard on the F-018 staff field | ✅ Built |
-| T4–T10 | Signup/attribution **capture**, qualification, commission ledger, payout job, retailer-facing UI, admin monitoring | 🔴 Not started |
+| T4 | Signup **capture** — `apps/api/src/lib/referral-conversions.ts`, hooked into the **existing** `PUT /v1/retailers/me` (no mobile change, no new route). Four guards: shape decides the ledger, self-referral refused, one attribution (staff wins), UNIQUE-constraint idempotency with the bonus applied in the same transaction. Also narrowed the settings: `FLAT_DISCOUNT` is refused because nothing in the repo can apply a discount | ✅ Built |
+| T5–T10 | Qualification, commission ledger, payout job, retailer-facing UI, admin monitoring | 🔴 Not started |
 
 **Every economic term is data, not a literal.** Commission %, duration, qualification window, referred-side bonus, second tier, payout minimum and cadence all live in the singleton `referral_settings` row and are admin-editable, so pricing changes need no deploy — and no roadmap doc is the source of truth for a number. Same principle as `plan_pricing` (CLAUDE.md §59).
 
@@ -3003,4 +3004,6 @@ Full spec, research and the T1–T10 breakdown: `docs/tasks/referral-program-ret
 
 **RC-030's 7-table purge gap was found during this build (unrelated to the feature) and is fixed:** all seven bare-`retailer_id` tables are now swept by both purge jobs, six grants added, and a schema-driven completeness test prevents the next one. ⚠ Four of the seven are RLS-protected and `kanchuki_purge` has no `BYPASSRLS`, so those sweeps may affect 0 rows silently until a policy is decided — documented, not guessed.
 
-**Open:** migrations 109 and 110 must be applied from the admin dashboard · T4–T10 · the RC-030 RLS policy decision · **no affiliate link can earn anything yet** (T3 mints and returns the code; the `?ref=` capture is T4).
+**T4 — capture, and the three things research changed about it.** The capture point **already shipped**: `referral_code` on `PUT /v1/retailers/me` is F-018's field and already resolves against `TeamMember`, so an affiliate code typed into the existing onboarding field was *arriving at the API and being silently dropped*. T4 adds a second, shape-decided destination to a value that already travels — which is why it needs **no `apps/mobile` change** during the Play Console review. Three spec changes, all owner-decided: the **`?ref=` cookie was not built** (there is no retailer signup form on the web, so it would be a hook with no consumer — RC-025's shape, avoided a second time); the self-referral guard's third check is **impossible** (`Retailer` has no bank-account column, so it checks phone + GSTIN and says so); and **`FLAT_DISCOUNT` was removed from the settings** (selectable since T2, but nothing discounts a Razorpay charge or a GST invoice, so it stored a term that never reaches the store — RC-027 one layer up). No bank-account column means the guard cannot be stronger than it is, and that is documented rather than implied.
+
+**Open:** migrations 109, 110 and 111 must be applied from the admin dashboard · T5–T10 · **no affiliate link earns anything yet** (T4 writes a `pending` conversion; nothing qualifies, prices or pays it until T5–T7) · the `?ref=` cookie capture (only meaningful once a web signup exists) · the super-admin path-list gap on `/v1/admin/referral-settings` (pre-existing, shared with `/v1/admin/commission`).

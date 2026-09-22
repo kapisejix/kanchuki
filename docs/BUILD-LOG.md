@@ -2771,6 +2771,10 @@ Driven by the DPDP founder guide (see PRO-REQUIREMENTS §34 for the point-by-poi
 
 ## BUILT 2026-09-22 — Retailer affiliate referral program (T1–T3) + purge-grant audit (RC-029, RC-030, RC-031)
 
+> **Superseded in part, same day:** **T4** landed later (see §2026-09-22 (T4) at the foot of this file),
+> so the "T4–T10 not started" status below describes *this* section's session, not the current state.
+> Current status is in **CLAUDE.md** row 76. T5–T10 remain unstarted.
+
 Spec: `docs/tasks/referral-program-retailer-affiliate.md`. Retailer → retailer: an existing paying
 retailer earns a recurring commission for bringing another retailer onto Kanchuki. §10 of that spec
 says to build **T1 (schema) first and stop**; T1–T3 are done, **T4–T10 are not started.**
@@ -2931,7 +2935,8 @@ it costs nothing to remove.
 
 **Not done / owner-side:** migrations **109, 110 and 111 are not applied** (admin dashboard, per
 CLAUDE.md) · `scripts/setup-role-separation.sql` is applied by hand and carries the `promotions` grant
-only for from-scratch environments · **T4–T10 not started** · **affiliate links earn nothing yet** — T3
+only for from-scratch environments · **T4–T10 not started** *(T4 landed later the same day — see the
+T4 section at the foot of this file)* · **affiliate links earn nothing yet** — T3
 mints and returns a code, but the `?ref=` capture on `/for-retailers` is T4, so no conversion can be
 recorded. CLAUDE.md index row + the RC rows were added with explicit owner approval (Operational
 Control Policy).
@@ -3087,3 +3092,103 @@ it is committed as opt-in and is the owner's first run · `scripts/setup-role-se
 changed for the policies (they belong in the migration; the script keeps the ownership note pointing at
 it) · the 26 other RLS-enabled tables still rely on the ownership accident — out of scope only because
 nothing in the purge path touches them.
+
+## BUILT 2026-09-22 (T4) — Affiliate referral capture at signup, riding the field F-018 already owns
+
+Spec: `docs/tasks/referral-program-retailer-affiliate.md` §7 T4. Turns a code a signing-up retailer
+entered into a `pending` `ReferralConversion`, and gives the referred store its side of the deal.
+**T5–T10 are untouched, so nothing pays out yet** — T4 records a conversion and no code consumes it.
+
+**`apps/mobile` and customer web: 0 files changed.** The Play Console review in flight is unaffected.
+
+| File | Change |
+|---|---|
+| `apps/api/src/lib/referral-conversions.ts` | **new** — `applyReferralCapture()`, `addCalendarMonths()`, the four guards, the reward application |
+| `apps/api/src/lib/referral-settings.ts` | **new** — one reader for the `referral_settings` singleton (extracted from `admin-referral.ts`, which becomes its second consumer) |
+| `apps/api/src/routes/retailers/retailers-profile.ts` | the capture hooked into `PUT /me`, after the update, non-fatal |
+| `apps/api/src/routes/admin/admin-referral.ts` | `FLAT_DISCOUNT` refused by name (`UNIMPLEMENTED_BONUS_TYPES`); `BONUS_TYPES` narrowed and exported |
+| `apps/web/src/app/admin/referral-settings/page.tsx` | `FLAT_DISCOUNT` no longer selectable; a legacy row holding it still **renders** it, disabled and labelled |
+| `referral-conversions.test.ts` · `referral-settings.test.ts` · `retailers-profile.test.ts` | **new** — 32 + 3 + 8 tests |
+| `admin-referral.test.ts` | +4 — the schema-derived enum guard |
+| `.../referral-settings/__tests__/page.test.tsx` | +2 — the narrowing, and the legacy row it must still show |
+
+### The capture point already existed, which is the whole reason there is no mobile change
+
+`UpdateRetailerSchema.referral_code` is **F-018's** self-serve salesperson code, and the route already
+resolves it against `TeamMember` → `onboarded_by_id`. So an affiliate code typed into the existing
+"Referral Code (Optional)" onboarding field has been **arriving at the API and being silently dropped**
+since F-018 shipped. T4 adds a second, shape-decided destination to a value that already travels — no
+client change, no new endpoint, no second link. The field maximises the surface a bad build could spoil
+(one field, one save) and minimises the client work, which is exactly the trade the Play review needs.
+
+**Three things research changed about the spec's T4, all decided with the owner before coding:**
+
+1. **The `?ref=` cookie was NOT built.** There is no retailer signup/onboarding form on the web — every
+   `shop_name` match is an admin or shopper page — so the link's CTA leaves for the app and a cookie
+   would have been a hook with no consumer that reads it. **RC-025's exact shape**, and the second time
+   this spec has avoided it (§0 records the first, at T3). Manual code entry is the mechanism that
+   completes today; the cookie is a follow-up **only if** a web signup ever exists.
+2. **Self-referral checks phone + GSTIN, not bank account.** The spec asks for "same
+   GSTIN/phone/bank account" and `Retailer` has **no bank-account column**. The missing third check is
+   stated in the code, the spec and here rather than implied to exist.
+3. **`FLAT_DISCOUNT` removed from the settings.** T2 had made it selectable from day one, and nothing
+   in this repo discounts a Razorpay charge or a GST invoice — so choosing it stored a term that never
+   reaches the store. **RC-027 one layer up** (a config value the code silently drops). Now: the API
+   refuses it with a message naming the reason, the admin screen stops offering it (while still
+   rendering a legacy row that holds it — a `<select>` with no matching `<option>` renders blank, which
+   would hide the stored term from the operator), and a test derives the full PostgreSQL enum from
+   `schema.prisma` and fails if a member is neither implemented nor listed as unimplemented.
+
+### Four guards, one per way the program could pay the wrong actor
+
+| Guard | Mechanism, not just the outcome |
+|---|---|
+| **Shape decides the ledger** | A staff code returns `NOT_AFFILIATE` and the affiliate table is **never queried** — asserted on `referralCode.findUnique` not having been called, because a status assertion passes even if the lookup happened and lost a race to the right answer. A hyphen-dropped `KAN7F3QMP` is `INVALID_CODE`, never looked up: it is staff-shaped too, so a lookup-order implementation would quietly search the wrong table first. |
+| **Self-referral** | By id, phone, or case/whitespace-insensitive GSTIN. Two **blank** GSTINs are *not* the same shop — `gstin` is nullable and a blank is legitimate for an unregistered store, so without that check every unregistered store is "the same shop". Refused silently to the client (a referral code is one field of a general save, and throwing would block a shop saving its own name over a code it can remove) but **audited**, unlike a typo — an abuse attempt and a mistyped code must not look the same in the data. |
+| **One attribution, staff wins** | A shop a marketing agent already onboarded (`onboarded_by_id` set) never also becomes an affiliate conversion. Owner decision. |
+| **Idempotency** | `referred_id` is UNIQUE and that constraint *is* the gate — not a `findFirst` check, which loses to a concurrent double-submit. `P2002` is the idempotent success case, and the reward is applied **inside the transaction that failed**, so neither a conversion without its bonus nor a bonus twice is reachable. |
+
+`addCalendarMonths()` is calendar months, not `days * 30`, and moves to the 1st before setting the
+month: `Jan 31 + 1 month` naively lands on **Mar 3**, silently granting a month and two days. It never
+extends from a lapsed trial — the bonus is worth the same applied on day 1 or day 20, so the base is
+whichever is later.
+
+### RC-032 — a defect in T4, found and fixed before it was committed
+
+The route comment promised "a referral problem never fails the profile save"; `applyReferralCapture()`
+**throws by design** (a captured-then-lost referral is a referrer never paid) and the call site was a
+bare `await` with no `catch`. Since migrations are applied **by hand from the admin dashboard** while
+code deploys **on push**, there was a window in which any retailer typing a referral code during
+onboarding would have got a **500 on the profile save and been blocked from finishing**. Every check
+was green: `prisma.referralCode` typechecks (the schema declares the table), a mocked client passes,
+and a 500 on the profile save reads as a validation bug. The fix holds both halves at once — the route
+catches, logs the underlying error, and reports `CAPTURE_FAILED` **as data**: non-fatal *and* not
+silent, because swallowing it would convert a visible outage into an invisible lost referral.
+
+**Verification:** API **1180 passed / 5 skipped** (89 files, +47 tests; the skips are the opt-in RLS
+live test) · web **321/321** (41 files, +2) · `tsc --noEmit` clean ×3 · `biome check` clean on all 8
+changed `apps/api` files · `next lint` clean · `check-delete-guard.sh` passes · **`apps/mobile` 0
+files** · **guard falsified seven ways**, each failing for the right reason with the offending value
+named: add `CREDIT_NOTE` to the enum → `expected [ 'CREDIT_NOTE' ] to deeply equal []`; drop
+`FLAT_DISCOUNT` from the refusal list → both the unhandled-member check and the route's
+`/not available/` message check; rename it to a stale key → the stale-entry check too; make
+`FLAT_DISCOUNT` selectable again → the web select check; restore `throw error` in the route's catch →
+`expected 500 to be 200`; drop the one-attribution check → `expected 'RECORDED' to be
+'ALREADY_ATTRIBUTED'` in both the lib and route suites; add a fallback constant to the settings loader
+→ `expected "spy" to be called with arguments: [ { data: {} } ]`. Files restored byte-clean after each.
+
+**Two test-side corrections of my own, both from mocking rather than from the product:** the first
+`addCalendarMonths` cases pinned the evaluation instant *after* the date being extended, so the
+documented "count from now" rule correctly applied and my expectations were wrong; and the route test's
+first fake DB returned fixed objects regardless of the writes, which made the post-bonus assertion
+untestable and the `data` assertions lie. Fixed by making the fake stateful. One **product** correction
+came out of the same failure: `applyReferralCapture` accepted an injected `now` for `qualifies_at` while
+the bonus read wall-clock time, so one transaction contained two different referral moments — the bonus
+then became the only part of the operation a caller could not pin. `now` is now threaded through.
+
+**Not done / owner-side:** migrations **109, 110 and 111 are still not applied** (admin dashboard) ·
+**T5–T10 unbuilt — no affiliate link earns anything yet**, stated in the spec, PRO-REQUIREMENTS and
+CLAUDE.md rather than left to the endpoint's existence to imply · the `?ref=` cookie capture (only
+meaningful once a web signup exists) · the super-admin path-list gap for
+`/v1/admin/referral-settings` (pre-existing, shared with `/v1/admin/commission`; T2 matched its sibling
+rather than diverging).
