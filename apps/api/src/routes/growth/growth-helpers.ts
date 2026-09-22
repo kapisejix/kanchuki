@@ -1,4 +1,3 @@
-import { randomBytes } from 'node:crypto';
 import type { Customer, Product, Promotion } from '@kanchuki/db';
 import { z } from 'zod';
 
@@ -140,18 +139,18 @@ export function buildWhatsAppDeepLink(phone: string, message: string): string {
   return `https://wa.me/${intl}?text=${encodeURIComponent(message)}`;
 }
 
-// ─── Referral codes (roadmap C) ───────────────────────────────────
-
-const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // no I/L/O/0/1 ambiguity
-
-export function generateReferralCode(prefix = 'KAN'): string {
-  const rand = randomBytes(6);
-  let suffix = '';
-  // Iterate the buffer directly: `rand[i]` is `number | undefined` under
-  // noUncheckedIndexedAccess, and `charAt` keeps the indexed lookup non-null too.
-  for (const byte of rand) suffix += CODE_ALPHABET.charAt(byte % CODE_ALPHABET.length);
-  return `${prefix}-${suffix}`;
-}
+// ─── Referral codes → MOVED ───────────────────────────────────────
+// `generateReferralCode()` and `parseReferralCode()` used to live here, for the
+// roadmap-C customer referral engine that migration 082 removed. Neither ever had
+// a caller after the teardown, but the `KAN-XXXXXX` shape this file defined turned
+// out to be exactly what the retailer affiliate program needed, so the code was
+// kept and relocated to lib/referral-codes.ts (T3, 2026-09-22) rather than
+// re-invented — same alphabet, same shape, and now the single place where both
+// referral namespaces are defined and told apart.
+//
+// Do not re-add a code generator here: a second one is how the two namespaces
+// drifted apart in the first place (lib/referral-codes.ts header explains why
+// their disjointness is load-bearing, and referral-codes.test.ts asserts it).
 
 // ─── Promotions (roadmap F) ───────────────────────────────────────
 
@@ -316,12 +315,6 @@ export function computeInventoryAlerts(
     }
   }
   return alerts;
-}
-
-// ─── Referral credits (roadmap C) ─────────────────────────────────
-
-export function parseReferralCode(raw: string): string {
-  return raw.trim().toUpperCase();
 }
 
 // ─── A/B testing (roadmap S) ──────────────────────────────────────

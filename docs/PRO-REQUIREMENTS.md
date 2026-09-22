@@ -2982,7 +2982,7 @@ Marketing: FAQ "Is my data protected under India's DPDP Act?"; `/for-customers` 
 
 ---
 
-## 35. Retailer Affiliate Referral Program — 🟨 T1 + T2 ✅ BUILT 2026-09-22; T3–T10 🔴 NOT STARTED
+## 35. Retailer Affiliate Referral Program — 🟨 T1–T3 ✅ BUILT 2026-09-22; T4–T10 🔴 NOT STARTED
 
 Full spec, research and the T1–T10 breakdown: `docs/tasks/referral-program-retailer-affiliate.md`. Build detail: `docs/BUILD-LOG.md` §2026-09-22. Tables: `docs/DATABASE.md` → "Retailer referral / affiliate program".
 
@@ -2992,14 +2992,15 @@ Full spec, research and the T1–T10 breakdown: `docs/tasks/referral-program-ret
 |---|---|---|
 | T1 | Prisma models + migration `109_referral_program` + purge wiring | ✅ Built (migration **not applied**) |
 | T2 | Admin settings API (`GET`/`PUT /v1/admin/referral-settings`) + `/admin/referral-settings` screen | ✅ Built |
-| T3–T10 | Signup/attribution wiring, qualification, commission ledger, payout job, retailer-facing UI, admin monitoring | 🔴 Not started |
+| T3 | Code namespace (`apps/api/src/lib/referral-codes.ts`) + `GET /v1/retailers/me/referral-code` + reserved-namespace guard on the F-018 staff field | ✅ Built |
+| T4–T10 | Signup/attribution **capture**, qualification, commission ledger, payout job, retailer-facing UI, admin monitoring | 🔴 Not started |
 
 **Every economic term is data, not a literal.** Commission %, duration, qualification window, referred-side bonus, second tier, payout minimum and cadence all live in the singleton `referral_settings` row and are admin-editable, so pricing changes need no deploy — and no roadmap doc is the source of truth for a number. Same principle as `plan_pricing` (CLAUDE.md §59).
 
-**Deliberately not the removed engine.** The customer-facing "Referral Program Engine" (Sprint Block B, roadmap item C) was dropped by migration 082 — `referrals`, `referral_credits`, `partner_referrals`, the `ReferralCreditStatus` / `PartnerReferralStatus` enums, and `retailers.referral_enabled` / `referral_reward_paise`. None of those identifiers is reused. This program is also **distinct from F-018** (`TeamMember.referral_code` → `retailers.onboarded_by_id`), which attributes an onboarded retailer to an internal marketing agent — separate ledgers, separate actors. Onboarding's existing "Referral Code (Optional)" field belongs to F-018, **not** to this program; T3 must disambiguate the two before writing code, and `generateReferralCode()` currently exists twice in the API (live for F-018 in `team-helpers.ts`, an orphan in `growth-helpers.ts`).
+**Deliberately not the removed engine.** The customer-facing "Referral Program Engine" (Sprint Block B, roadmap item C) was dropped by migration 082 — `referrals`, `referral_credits`, `partner_referrals`, the `ReferralCreditStatus` / `PartnerReferralStatus` enums, and `retailers.referral_enabled` / `referral_reward_paise`. None of those identifiers is reused. This program is also **distinct from F-018** (`TeamMember.referral_code` → `retailers.onboarded_by_id`), which attributes an onboarded retailer to an internal marketing agent — separate ledgers, separate actors. Onboarding's existing "Referral Code (Optional)" field belongs to F-018, **not** to this program, and it is the single point where both namespaces arrive — so T3 separated them by code **shape**, since `?ref=` is already used by F-018's own share links (`survey/SurveyForm.tsx`) and lookup order would silently decide which ledger gets paid. Affiliate codes are `KAN-XXXXXX` from an ambiguity-free alphabet; the F-018 field now **refuses** that namespace, and the duplicate `generateReferralCode()` orphan in `growth-helpers.ts` is deleted so there is one generator per namespace.
 
 **Payout terms are validated server-side in three layers** (zod bounds → enum membership → the migration's `CHECK` constraints mirrored against the *merged* state), so an admin cannot put the ledger in an impossible state and an enum value the consuming code does not understand is rejected rather than stored and silently ignored (the RC-027 rule). Only changed fields are written, so resubmitting an untouched form cannot churn a row or trip validation.
 
 **RC-030's 7-table purge gap was found during this build (unrelated to the feature) and is fixed:** all seven bare-`retailer_id` tables are now swept by both purge jobs, six grants added, and a schema-driven completeness test prevents the next one. ⚠ Four of the seven are RLS-protected and `kanchuki_purge` has no `BYPASSRLS`, so those sweeps may affect 0 rows silently until a policy is decided — documented, not guessed.
 
-**Open:** migrations 109 and 110 must be applied from the admin dashboard · T3–T10 · the RC-030 RLS policy decision.
+**Open:** migrations 109 and 110 must be applied from the admin dashboard · T4–T10 · the RC-030 RLS policy decision · **no affiliate link can earn anything yet** (T3 mints and returns the code; the `?ref=` capture is T4).

@@ -2,10 +2,10 @@
 
 One file, update at end of each work session: what's done, what's next, what's blocked. Check `git log -1` and this file first thing each session.
 
-## 2026-09-22 — Retailer affiliate referral program T1+T2 built; purge-grant audit (RC-029, RC-030)
+## 2026-09-22 — Retailer affiliate referral program T1+T2+T3 built; purge-grant audit (RC-029, RC-030, RC-031)
 
-Spec: `docs/tasks/referral-program-retailer-affiliate.md`. Built **T1 (schema + migration) and T2 (admin
-settings API + screen)** only — §10 of that spec says to start T1 and stop, and T3–T10 are untouched.
+Spec: `docs/tasks/referral-program-retailer-affiliate.md`. Built **T1 (schema + migration), T2 (admin
+settings API + screen) and T3 (code namespace + attribution)** — T4–T10 are untouched.
 Detail: `docs/BUILD-LOG.md` §2026-09-22, `docs/DATABASE.md`, `docs/PRO-REQUIREMENTS.md` §35.
 
 **`apps/mobile` and customer web: 0 files changed** — the Play Console review in flight is unaffected.
@@ -32,6 +32,40 @@ has shipped twice (`product_attributes`, `social_accounts`).
    and `kanchuki_purge` has no `BYPASSRLS`, so those sweeps may affect 0 rows silently — a PII
    policy decision, left documented rather than guessed.
 
+**T3 — the `generateReferralCode()` collision, resolved without a data migration.** The spec's own
+blocker: `generateReferralCode()` existed twice (live for F-018 *staff* codes in `team-helpers.ts`, stale
+orphan in `growth-helpers.ts`) *and* onboarding's "Referral Code (Optional)" field is F-018 **staff**
+attribution — so the naive build would have made a shop entering a staff code record a phantom affiliate
+conversion. Three findings from grepping the **live** flows, not the docs, and they changed the link scheme:
+(i) `?ref=` is **already** spoken for — `survey/SurveyForm.tsx` shares `…/for-retailers?ref={staffCode}`
+on WhatsApp today, so the two namespaces meet at ONE param and ONE landing and must be told apart by
+**shape**, never by lookup order (lookup order silently decides which ledger gets paid — the RC-027
+failure shape); (ii) the spec's sketched `/join?ref=…` link would have **404'd every referral** — that
+route is the staff-invite bridge and `notFound()`s without a `token` — so links point at the page
+F-018 already uses; (iii) the wanted code shape already existed as the **orphaned**
+`generateReferralCode()` in `growth-helpers.ts`, so it was relocated rather than re-invented.
+
+Shipped: **`apps/api/src/lib/referral-codes.ts`** is the one authority — affiliate = `KAN-XXXXXX` from
+an ambiguity-free alphabet (no I/L/O/0/1: these are read aloud off WhatsApp screenshots), F-018 =
+`[0-9A-Z]{6}` base36 which **cannot** emit a hyphen, so the namespaces are disjoint by **construction**
+and `classifyReferralCode()` may branch on shape. The F-018 staff field now **refuses** the reserved
+namespace (a hand-typed affiliate code there is an attempt to self-attribute) instead of silently
+accepting it, and the orphaned generator plus its `parseReferralCode` are deleted. The shared `?ref=`
+**capture** is T4's — T3 ships code generation and the guard, so **no affiliate link earns anything
+yet**. `GET /v1/retailers/me/referral-code` mints on first call, is idempotent across retries, and
+reconciles a concurrent double-mint on the unique constraint rather than 500ing (the §64
+`createOrReconcilePost` posture). `link` is built, never stored, so a base-URL change cannot go stale
+per retailer. Nothing about F-018 staff codes changed, and no endpoint resolves a typed code to a shop
+— that would be an enumeration oracle over 456,976 candidates.
+
+**Falsification found a real hole in T3's own guard** (RC-031): the whole separation rests on one
+character, and the first guard only checked `includes('-')` — so making the hyphen **optional** in the
+pattern let a typed `KAN7F3QMP` into the staff field while classification sent it to the affiliate
+ledger. Breaking it failed **nothing**; the test was green for the wrong reason. The guard now refuses
+the hyphen-dropped shape too, with a test asserting a hyphen-stripped minted code classifies neither
+`AFFILIATE` nor `STAFF`. **This is the third guard this session that only held once falsified** —
+assume a green test until it has been deliberately broken.
+
 The originally reported staleness is fixed: **9 names in the purge grant list had been dropped by
 migration 082**, and a `GRANT` naming a missing relation makes the script abort at that statement.
 Near-miss worth remembering — `customer_interactions` was dropped by 082 **and re-created by migration
@@ -40,7 +74,7 @@ session and **restored**, since nothing deletes it and an unrequested privilege 
 change. `docs/INFRA-SETUP.md` carried a third copy of the list with the same rot; now points at the
 script as the single authority.
 
-**Verification:** API **1078/1078** (83 files) · web **319/319** (41 files) · API + DB + web `tsc` clean
+**Verification:** API **1082/1082** (83 files) · web **319/319** (41 files) · API + DB + web `tsc` clean
 · `next lint` clean, and Biome clean on the changed `apps/api` / `packages/db` files (the CI-governed
 surface — `apps/web` lints with `next lint`, not Biome, and its admin pages already carry a dirty Biome
 baseline, so the new screen was matched to its siblings rather than to a gate nothing runs) ·
@@ -48,7 +82,8 @@ baseline, so the new screen was matched to its siblings rather than to a gate no
 Prisma's generated DDL (61/61) · grant list checked in both directions (24/24 names exist; 24/24 tables
 deleted by the 7 purge-role consumers are granted). Guards falsified, not assumed — dropping a referral
 delete fails the job tests; swapping enum checks for `z.string()` fails exactly the 2 RC-027 tests;
-sending every field from the form fails 7.
+sending every field from the form fails 7; and T3's namespace guard was **rebuilt after** its first
+version survived a falsification attempt (RC-031).
 
 **Blocked / owner-side:**
 1. **Migrations 109 and 110 not applied** — admin dashboard, per CLAUDE.md. Until then T1's tables do
@@ -56,13 +91,19 @@ sending every field from the form fails 7.
 2. **RC-030 RLS policy** — the seven sweeps ship, but the four `customer_*`/`consent_*` tables may
    delete 0 rows silently under RLS until a policy for the backend role (or a role attribute) is
    decided. That is a PII call: whether a deleted retailer's customer interaction / consent rows go.
-3. CLAUDE.md index row for this feature (and the `RC-029` / `RC-030` rows in its RC table) — needs
-   explicit owner approval; drafted in this session's handoff.
+3. **Affiliate links are not live yet** — T3 generates and returns `KC-` codes, but nothing captures
+   one from a visitor: the storefront `?ref=` path is T4. A retailer can see their code; a customer
+   following it earns nothing until T4 ships.
+4. **A pre-existing admin auth gap, unrelated to this feature and not introduced here:**
+   `/v1/admin/referral-settings` is not on `adminAuthPreHandler`'s super-admin path list, so a
+   plain-`ADMIN` key can change payout terms while not seeing the nav link. `/v1/admin/commission`
+   carries the identical gap, so it is repo-wide; T2 matched its sibling rather than diverging.
 
-**Next:** T3 (signup + attribution wiring). **Known blocker first:** `generateReferralCode()` already
-exists **twice** — live for F-018 *staff* codes in `team-helpers.ts`, and a stale orphan in
-`growth-helpers.ts` — and onboarding's "Referral Code (Optional)" field is F-018 staff attribution, not
-this program. Disambiguate before writing code or the two code namespaces collide.
+**Next:** T4 (conversion capture / ledger). T3's two blockers are closed — the code namespace is settled
+(`referral-codes.ts`) and the orphaned `generateReferralCode()` in `growth-helpers.ts` is deleted, so
+there is exactly one generator per namespace again. T4 still needs the `KC-` **agreement-link** path
+(the `/{slug}` storefront accepting `?ref=KC-…`) — T3 shipped code generation and the staff-field
+guard, not the customer-facing capture — and must not touch `apps/mobile` while Play review is in flight.
 
 ## 2026-09-09 — Tokenized staff-invite review sign-off + test plan (commit `fe9b7df`)
 

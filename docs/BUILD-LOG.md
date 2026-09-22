@@ -2769,11 +2769,11 @@ Driven by the DPDP founder guide (see PRO-REQUIREMENTS §34 for the point-by-poi
 **Not done:** lawyer review; nothing acts on a nominee automatically; CLAUDE.md index row not added (needs owner approval).
 **Verification:** passport-preferences 14/14 · API + Web `tsc --noEmit` clean.
 
-## BUILT 2026-09-22 — Retailer affiliate referral program (T1 + T2) + purge-grant audit (RC-029, RC-030)
+## BUILT 2026-09-22 — Retailer affiliate referral program (T1–T3) + purge-grant audit (RC-029, RC-030, RC-031)
 
 Spec: `docs/tasks/referral-program-retailer-affiliate.md`. Retailer → retailer: an existing paying
 retailer earns a recurring commission for bringing another retailer onto Kanchuki. §10 of that spec
-says to build **T1 (schema) first and stop**; T1 and T2 are done, **T3–T10 are not started.**
+says to build **T1 (schema) first and stop**; T1–T3 are done, **T4–T10 are not started.**
 
 **`apps/mobile` and `apps/web` (customer PWA) are untouched — 0 files.** The Play Console review in
 flight is unaffected. Every tracked edit below is an insertion.
@@ -2931,15 +2931,60 @@ it costs nothing to remove.
 
 **Not done / owner-side:** migration **109 and 110 are not applied** (admin dashboard, per CLAUDE.md) ·
 `scripts/setup-role-separation.sql` is applied by hand and carries the `promotions` grant only for
-from-scratch environments · **T3–T10 not started** · **RC-030's 7 sweeps ship but 4 are RLS-blocked
-pending a policy decision** (see the RC-030 row above) · CLAUDE.md index row not added (needs owner
-approval).
+from-scratch environments · **T4–T10 not started** · **affiliate links earn nothing yet** — T3 mints and
+returns a code, but the `?ref=` capture on `/for-retailers` is T4, so no conversion can be recorded ·
+**RC-030's 7 sweeps ship but 4 are RLS-blocked pending a policy decision** (see the RC-030 row above).
+CLAUDE.md index row + the RC rows were added with explicit owner approval (Operational Control Policy).
 
 **T3 blocker, recorded so it is not rediscovered:** `generateReferralCode()` already exists **twice** —
 live for F-018 staff codes in `team-helpers.ts`, and a stale orphan in `growth-helpers.ts` — and
 onboarding's "Referral Code (Optional)" field is F-018 *staff* attribution. T3 has to disambiguate the
 two before it writes any code, or a retailer's affiliate code and a marketing agent's attribution code
-will collide in the same namespace.
+will collide in the same namespace. **(Resolved when T3 landed — see the T3 section below, which found
+the collision was already live in the web app, not just a naming risk.)**
+
+### T3 — referral code + shareable link (2026-09-22, later)
+
+**The blocker was understated, and answering it properly changed the link scheme.** Three findings from
+grepping the live flows rather than the docs:
+
+| # | Finding | Consequence |
+|---|---|---|
+| 1 | **`?ref=` already carries the F-018 staff namespace.** `apps/web/src/app/survey/SurveyForm.tsx` shares `https://kanchuki.com/for-retailers?ref={staffCode}` on WhatsApp today. | The two namespaces meet at ONE param and ONE landing. They must be separated by the code's **shape**, not by which code path read them — a single entry point is exactly the case where "look up one table, then the other" hands attribution to whichever runs first. |
+| 2 | **`/join?ref=…`, the link the spec sketched, would 404 every referral.** `apps/web/src/app/join/page.tsx` is the staff-invite bridge (`?token=…`) and calls `notFound()` without a token. | The link points at `/for-retailers` — the page F-018 links already use. No new route, no second link-shortener. |
+| 3 | **The wanted `KAN-XXXXXX` shape already existed as dead code.** An orphan `generateReferralCode()` in `growth-helpers.ts` (roadmap C, deleted by migration 082's teardown) with an ambiguity-free alphabet. | Relocated to `lib/referral-codes.ts` instead of re-invented, so there is one definition rather than two. Its orphaned `parseReferralCode` went with it. |
+
+**The separation, and why it holds.** Affiliate = `KAN-XXXXXX` (no I/L/O/0/1 — these are read aloud off WhatsApp screenshots). F-018 = `[0-9A-Z]{6}` from `Math.random().toString(36)`, which **cannot produce a hyphen**. So one character separates them, and `classifyReferralCode()` branches on shape — never on lookup order. Two halves make it hold: the generator's shape, pinned by a **source contract** test (the generator is in a route module whose import chain reaches the admin router and Redis clients, so reading its source beats dragging that into a unit test), and a **guard on the hand-editable path** — the F-018 field is `z.string().min(4).max(20)`, so a typed `KAN-XXXXXX` would otherwise sit in the affiliate namespace and shadow a real attribution. That is why `team-members.ts` now refuses a hyphen, with a message naming the reservation.
+
+**Falsification caught a real hole in the first version of that guard**, which is the part worth
+keeping. The guard checked only for a hyphen — so relaxing the pattern to `-?` let `KAN7F3QMP` into the
+staff field while classification sent it to the affiliate ledger: the separation rested entirely on a
+detail nothing prevented from changing. The guard now refuses the hyphen-dropped shape too, and a test
+asserts that a hyphen-stripped minted code is neither `AFFILIATE` nor `STAFF`. `KAN001` — the existing
+F-018 fixture — still classifies `STAFF`, because `0` and `1` are absent from the affiliate alphabet;
+that case is why the guard could not simply reserve the `KAN` prefix.
+
+**Endpoint:** `GET /v1/retailers/me/referral-code` — fetch-or-mint, idempotent (re-minting would break
+every link already shared), reconciling a concurrent first request to the winner's code instead of
+minting a second (`retailer_id` is unique, so one insert wins; the loser re-reads — the social
+composer's `createOrReconcilePost` shape), and retrying on a `code` collision. `link` is **built, never
+stored** — derived from `WEB_URL` + the code, so changing the base URL or landing path cannot go stale
+per-retailer.
+
+**Two decisions worth naming.** (i) The code is **not** the store slug, despite §4.3's example: the slug
+is *mutable* (the §30 store-URL rename sync), so attribution stored against it would break on rename;
+the code is its own immutable identifier and the *generation pattern* is what got reused. (ii) No
+endpoint resolves a typed code to a shop. That is a code-enumeration oracle — 456,976 candidates is
+minutes of requests, and the answer is a list of who is in the program. Resolution returns only inside
+T4's server-side signup write.
+
+**Verification:** API **1121/1121** (85 files, +43) · web **319/319** · `tsc --noEmit` clean ×3 ·
+Biome clean on all changed `apps/api` files · `check-delete-guard.sh` + `check-route-size.sh` pass ·
+**`apps/mobile` 0 files**. Guards falsified four ways, each hitting exactly its target: dropping the
+aggregator `register()` call fails the wiring test (a passing route test would not have — the module
+still registers fine on its own, which is precisely how RC-025 shipped a 404); removing the P2002
+re-read fails 3 tests; making the namespace refine a no-op fails the 422 test; and making the hyphen
+optional failed **nothing** until the missing assertion was added — see above.
 
 **Not verified:** the screen is unit-tested, not visually checked in a browser — the repo's precedent
 for admin pages (`suits-designs/__tests__/page.test.tsx`). The 10 tests do assert the rendered values

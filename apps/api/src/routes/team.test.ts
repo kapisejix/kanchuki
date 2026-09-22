@@ -287,6 +287,82 @@ describe('POST /team/members — role scoping', () => {
   });
 });
 
+// F-018's `referral_code` and the retailer affiliate namespace (migration 109)
+// both reach signup through one `?ref=` param, told apart by shape alone
+// (lib/referral-codes.ts). The generator can only emit `[0-9A-Z]{6}`, so the
+// namespaces are disjoint by construction — but this field is hand-editable, and
+// a typed `KAN-XXXXXX` would sit in the affiliate namespace and shadow a real
+// affiliate attribution. These two tests are the guard on that manual path.
+describe('POST /team/members — the affiliate namespace is reserved', () => {
+  it('rejects a hand-entered code that would land in the affiliate namespace', async () => {
+    mockTeamMemberFindUnique.mockResolvedValueOnce({
+      id: 'mgr_1',
+      role: 'MARKETING_MANAGER',
+      is_active: true,
+    });
+    mockTeamMemberTerritoryFindMany.mockResolvedValue([{ territory_id: 't1' }]);
+
+    const token = await signTeamToken({ sub: 'mgr_1', role: 'MARKETING_MANAGER' });
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/team/members',
+      headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+      payload: {
+        name: 'New Agent',
+        email: 'new.agent@kanchuki.app',
+        password: 'password123',
+        role: 'MARKETING_AGENT',
+        referral_code: 'KAN-ABC123',
+      },
+    });
+
+    expect(res.statusCode).toBe(422);
+    // The message must name the reservation — "invalid referral code" would
+    // leave the admin with no way to know the prefix belongs to another program.
+    expect(res.json().error.message).toContain('KAN-');
+    expect(mockTeamMemberCreate).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('still accepts a code of the shape the F-018 generator produces', async () => {
+    mockTeamMemberFindUnique
+      .mockResolvedValueOnce({ id: 'mgr_1', role: 'MARKETING_MANAGER', is_active: true }) // auth
+      .mockResolvedValueOnce(null); // email not yet in use
+    mockTeamMemberTerritoryFindMany.mockResolvedValue([{ territory_id: 't1' }]);
+    mockTeamMemberCreate.mockResolvedValue({
+      id: 'tm_new',
+      name: 'New Agent',
+      email: 'new.agent@kanchuki.app',
+      phone: null,
+      role: 'MARKETING_AGENT',
+      max_retailers: null,
+      is_active: true,
+      referral_code: 'ROHAN1',
+    });
+
+    const token = await signTeamToken({ sub: 'mgr_1', role: 'MARKETING_MANAGER' });
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/team/members',
+      headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+      payload: {
+        name: 'New Agent',
+        email: 'new.agent@kanchuki.app',
+        password: 'password123',
+        role: 'MARKETING_AGENT',
+        referral_code: 'ROHAN1',
+      },
+    });
+
+    // The guard must not narrow the existing namespace — a hyphen-free code is
+    // what agents already have and must keep working.
+    expect(res.statusCode).toBe(200);
+    await app.close();
+  });
+});
+
 describe('GET /team/members — capacity flag', () => {
   it('marks a member over_capacity when onboarded count exceeds max_retailers', async () => {
     mockTeamMemberFindUnique.mockResolvedValueOnce({

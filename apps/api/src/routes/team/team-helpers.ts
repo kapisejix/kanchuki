@@ -32,6 +32,15 @@ export function requireRole(request: FastifyRequest, allowed: TeamRole[]): void 
 
 // F-018: short code a retailer can type at self-serve signup. Auto-generated
 // for marketing agents so every agent has one without a manual admin step.
+//
+// NAMESPACE: output is base36 uppercased — `[0-9A-Z]{6}`, NEVER a hyphen. That is
+// load-bearing, not incidental: the retailer affiliate program (migration 109)
+// mints `KAN-XXXXXX`, and the two namespaces are told apart by shape alone at
+// signup (lib/referral-codes.ts classifyReferralCode), because onboarding sends
+// one opaque `referral_code` string for both actors. Adding a prefix or a hyphen
+// here would put this namespace inside the affiliate one and attribution would
+// silently go to the wrong ledger. apps/api/src/lib/referral-codes.test.ts pins
+// this contract against this function's source for that reason.
 export function generateReferralCode(): string {
   return Math.random().toString(36).slice(2, 8).toUpperCase();
 }

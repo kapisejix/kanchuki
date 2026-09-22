@@ -9,6 +9,7 @@ import {
   retailersInvoicesRoutes,
   retailersProfileRoutes,
   retailersRatingsRoutes,
+  retailersReferralRoutes,
   retailersSectionsRoutes,
   retailersSettingsRoutes,
   retailersShowcaseDesignRoutes,
@@ -50,4 +51,6 @@ export const retailerRoutes: FastifyPluginAsync = async (server) => {
   await server.register(retailersBugReportRoutes);
   // retailers-invoices — GST invoice list + PDF download
   await server.register(retailersInvoicesRoutes);
+  // retailers-referral — F-038 affiliate program, own referral code + link (T3)
+  await server.register(retailersReferralRoutes);
 };

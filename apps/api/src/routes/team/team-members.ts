@@ -4,6 +4,7 @@ import { isValidIndianPhone, normalizeIndianPhone } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { sendTeamMemberWelcomeEmail } from '../../lib/email.js';
+import { isReservedForAffiliateNamespace } from '../../lib/referral-codes.js';
 import { forbidden, notFound, validationError } from '../../plugins/error-handler.js';
 import { hashPassword } from '../../plugins/team-auth.js';
 import {
@@ -12,6 +13,22 @@ import {
   generateReferralCode,
   teamAuthPreHandler,
 } from './team-helpers.js';
+
+// F-018 attribution code. The generator (team-helpers.generateReferralCode) can
+// only ever emit `[0-9A-Z]{6}`, which is disjoint from the retailer affiliate
+// namespace (`KAN-XXXXXX`, migration 109) by construction — but this field is
+// ALSO hand-editable, so a typed `KAN-XXXXXX` would sit inside the affiliate
+// namespace and shadow a real affiliate attribution. A hyphen is therefore
+// reserved, and refusing it is half of the disjointness guarantee the signup
+// classifier (lib/referral-codes.ts) relies on; the generator is the other half.
+const referralCodeSchema = z
+  .string()
+  .min(4)
+  .max(20)
+  .refine((value) => !isReservedForAffiliateNamespace(value), {
+    message:
+      'Referral codes cannot contain a hyphen — the "KAN-" prefix is reserved for the retailer referral program.',
+  });
 
 const CreateMemberSchema = z.object({
   name: z.string().min(1).max(200),
@@ -39,14 +56,14 @@ const CreateMemberSchema = z.object({
   ]),
   max_retailers: z.number().int().min(1).max(10000).optional(),
   territory_ids: z.array(z.string()).max(100).optional(),
-  referral_code: z.string().min(4).max(20).optional(), // F-018
+  referral_code: referralCodeSchema.optional(), // F-018
 });
 
 const UpdateMemberSchema = z.object({
   is_active: z.boolean().optional(),
   max_retailers: z.number().int().min(1).max(10000).nullable().optional(),
   territory_ids: z.array(z.string()).max(100).optional(),
-  referral_code: z.string().min(4).max(20).nullable().optional(), // F-018
+  referral_code: referralCodeSchema.nullable().optional(), // F-018
   // 2026-08-04: set/clear the phone used for OTP login into mobile staff screens
   phone: z
     .string()

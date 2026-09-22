@@ -1,6 +1,6 @@
 # Retailer Affiliate / Referral Program — Research + Implementation Plan
 
-**Status:** 🟨 **T1 + T2 ✅ BUILT 2026-09-22; T3–T10 🔴 NOT STARTED.** Originally "research only, nothing built". Answering: "how does GoHighLevel's referral program work, and how do we build something similar for Kanchuki so retailers can earn money referring other retailers?"
+**Status:** 🟨 **T1–T3 ✅ BUILT 2026-09-22 (migrations `109`/`110` not applied); T4–T10 🔴 NOT STARTED.** The T3 naming blocker is **resolved** — see §0. Originally "research only, nothing built". Answering: "how does GoHighLevel's referral program work, and how do we build something similar for Kanchuki so retailers can earn money referring other retailers?"
 **Date:** 2026-09-22
 **Related:** `docs/INDIA-RETAILER-GROWTH.md` (retailer-facing referral engine — removed 2026-08-31 teardown, different feature: that was Kanchuki retailer → their own customers; this doc is Kanchuki retailer → other retailers, an affiliate/reseller layer), `docs/PRO-REQUIREMENTS.md`
 
@@ -8,22 +8,28 @@
 
 ## 0. Build status (2026-09-22)
 
-Detail: `docs/BUILD-LOG.md` §2026-09-22 · tables `docs/DATABASE.md` → "Retailer referral / affiliate program" · requirements `docs/PRO-REQUIREMENTS.md` §35. **`apps/mobile` and customer web were not touched** (Play Console review in flight).
+Detail: `docs/BUILD-LOG.md` §2026-09-22 · tables `docs/DATABASE.md` → "Retailer referral / affiliate program" · requirements `docs/PRO-REQUIREMENTS.md` §35. **`apps/mobile` and customer web were not touched across T1–T3** (Play Console review in flight) — T3's shareable-link capture point is the existing `/for-retailers` page, so no mobile build is needed to ship the code itself.
 
 | Task | Status | Note |
 |---|---|---|
 | T1 — Schema + migration | ✅ Built | `109_referral_program` — **not applied** (admin dashboard) |
 | T2 — Admin settings screen + API | ✅ Built | `GET`/`PUT /v1/admin/referral-settings` + `/admin/referral-settings` |
-| T3 — Code + link generation | 🔴 Not started | **has a blocker — see below** |
+| T3 — Code + link generation | ✅ Built | `GET /v1/retailers/me/referral-code` + `lib/referral-codes.ts`. Blocker resolved — see below |
 | T4–T10 | 🔴 Not started | |
 
 **The one open schema question was decided before migrating** (§6, §7 T1): **singleton** `referral_settings` row, not plan-scoped. Also decided: `ON DELETE RESTRICT` on the three retailer FKs, and payouts are never deleted (status only). §6 records these as owner decisions.
 
-**T3 blocker — resolve before writing code.** `generateReferralCode()` already exists **twice**: live for F-018 *staff/marketing-agent* codes in `team-helpers.ts`, and a stale orphan in `growth-helpers.ts`. Separately, onboarding's existing **"Referral Code (Optional)"** field is F-018 staff attribution, **not** this program — and §11's RC-007/RC-013 rows ask exactly this question ("grep for lingering references before reusing similar naming"). T3 must decide how a retailer's affiliate code and a marketing agent's attribution code are kept from colliding in the same namespace.
+**T3 blocker — RESOLVED 2026-09-22, and it was worse than the blueprint.** The duplicate `generateReferralCode()` was the least of it. Grepping the live flows found that the collision is not theoretical:
+
+1. **`?ref=` is already used by F-018.** `apps/web/src/app/survey/SurveyForm.tsx` shares `https://kanchuki.com/for-retailers?ref={staffCode}` on WhatsApp today. One query param already carries the staff namespace, and this feature's codes would arrive through the same one — so the two namespaces meet at a single entry point, which is why they must be told apart by shape rather than by which code path read them.
+2. **The spec's proposed `/join?ref=…` link would have 404'd every referral.** `apps/web/src/app/join/page.tsx` is the **staff-invite bridge** (`?token=…`) and calls `notFound()` when the token is absent.
+3. `generateReferralCode()` existed **twice** — live for F-018 in `team-helpers.ts`, and as an orphan in `growth-helpers.ts` whose `KAN-XXXXXX` shape this feature wanted.
+
+**Resolution (built):** the affiliate namespace is `KAN-XXXXXX` from an ambiguity-free alphabet; the F-018 namespace is `[0-9A-Z]{6}` from base36 and **can never contain a hyphen**, so "contains a hyphen" separates them — one classifier, one param, one landing (`/for-retailers`, the page F-018 links already use), **no second link-shortener and no second route**. Two halves make it hold: the generator's shape (pinned by a source contract) and a guard reserving the hyphen in the hand-editable F-018 field. The orphan was relocated to `lib/referral-codes.ts` rather than re-invented. Falsification found the guard's first version was too weak — it checked only for a hyphen, so relaxing the pattern to `-?` let `KAN7F3QMP` into the staff field while classification sent it to the affiliate ledger; the guard now refuses the hyphen-dropped shape too, and a test pins it. Full reasoning: `apps/api/src/lib/referral-codes.ts` header.
 
 **Two bugs found during this build, neither of them the feature** (both in `docs/root-cause/root-cause issues.md`): **RC-029** — RC-028's promotions-delete fix moved the delete to the `kanchuki_purge` role but never granted it, so the delete still failed; fixed by migration `110`. **RC-030** — 7 tables declare a bare `retailer_id` with no FK and were never purged, so a deleted retailer's rows survived; **fixed this session** (owner decision) — all seven swept in both jobs, six grants added, plus a schema-driven completeness test so the list can no longer go stale silently. ⚠ Four of the seven are RLS-protected and `kanchuki_purge` lacks `BYPASSRLS`, so those sweeps may affect 0 rows silently pending a policy decision.
 
-**§11 checklist: rows checked at T2.** RC-025 (routes registered in both the barrel and `admin.ts`, verified by grep, not by file existence), RC-026 (the PUT checks status explicitly; `fetch` does not throw on non-2xx), RC-027 (enum-like settings validated server-side against the exact set the code branches on — a `'CASHBACK'` bonus is rejected, not stored and ignored), RC-003/RC-009 (the real API error is surfaced, not a constant), RC-010 (only changed fields are sent, and the API diffs again). Rows for T4–T9 remain to be checked as those tasks land.
+**§11 checklist: rows checked at T2.** RC-025 (routes registered in both the barrel and `admin.ts`, verified by grep, not by file existence), RC-026 (the PUT checks status explicitly; `fetch` does not throw on non-2xx), RC-027 (enum-like settings validated server-side against the exact set the code branches on — a `'CASHBACK'` bonus is rejected, not stored and ignored), RC-003/RC-009 (the real API error is surfaced, not a constant), RC-010 (only changed fields are sent, and the API diffs again). **§11 rows checked at T3:** RC-025 (the module is registered in **both** the barrel and `retailers.ts`, asserted by a source test — a passing route test would not have caught the missing aggregator call), RC-003/RC-009 (the real error is rethrown, asserted on the error object rather than the response body, because a 500 is deliberately sanitised for the client), RC-027 (the config the code does not understand is rejected, not stored: classification is by shape and never falls through), and the RC-007/RC-013 question — "grep for lingering references before reusing similar naming" — answered by the `?ref=` / `/join` findings in §0. Rows for T4–T9 remain to be checked as those tasks land.
 
 ---
 
@@ -163,10 +169,12 @@ At Phase 1 pilot volume (a handful of retailers), the fraud/edge-case tracking t
 - `/admin/referral-settings` — CRUD on the `ReferralSettings` row(s). This is the screen that makes T1's "no hardcode" rule real — build it before or alongside any consuming logic, not after.
 - Validate ranges server-side (e.g. commission_pct 0–100) so admin can't put the ledger in an impossible state.
 
-### T3 — Referral code + link generation — 🔴 NEXT (see the naming blocker in §0)
-- Retailer API: fetch/create own `ReferralCode`.
-- Reuse Store QR/slug infra (§30) for the shareable link — don't build a second link-shortener.
-- Support both link-click (`?ref=`) and manual code entry at onboarding (assume low click-through in a WhatsApp-shared-screenshot world).
+### T3 — Referral code + link generation — ✅ BUILT 2026-09-22
+- Retailer API: fetch/create own `ReferralCode`. → `GET /v1/retailers/me/referral-code`, fetch-or-mint, idempotent (a re-mint would break links already shared), reconciling a concurrent first request to the winner's code instead of minting a second one.
+- Reuse Store QR/slug infra (§30) for the shareable link — don't build a second link-shortener. → **Reused the pattern, not the slug.** The slug is *mutable* (the §30 store-URL rename sync), so attribution stored against it would break on rename; the code is its own immutable identifier. `link` is **built, never stored** — derived from `WEB_URL` + the code — so changing the base URL or landing path does not rewrite every retailer's row.
+- Support both link-click (`?ref=`) and manual code entry at onboarding. → `classifyReferralCode()` decides by shape alone (see §0): resolution order must never pick the ledger. The actual capture + write is T4.
+- **Not built, deliberately:** any endpoint that resolves a typed code to a shop. That is a code-enumeration oracle — 456,976 candidates is minutes of requests and the answer is a list of who is in the program. Resolution returns only as part of T4's server-side signup write.
+- Files: `apps/api/src/lib/referral-codes.ts` (+27 tests), `apps/api/src/routes/retailers/retailers-referral.ts` (+8 tests), `apps/api/src/routes/team/team-members.ts` (namespace guard +2 tests), and the orphaned `growth-helpers.ts` helpers relocated.
 
 ### T4 — Signup wiring
 - Onboarding flow captures `?ref=`/manual code → writes `pending` `ReferralConversion`.

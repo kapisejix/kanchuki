@@ -14,3 +14,4 @@ export { retailersRatingsRoutes } from './retailers-ratings.js';
 export { retailersShowcaseDesignRoutes } from './retailers-showcase-designs.js';
 export { retailersBugReportRoutes } from './retailers-bug-reports.js';
 export { retailersInvoicesRoutes } from './retailers-invoices.js';
+export { retailersReferralRoutes } from './retailers-referral.js';
