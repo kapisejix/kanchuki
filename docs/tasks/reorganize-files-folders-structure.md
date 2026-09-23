@@ -168,13 +168,26 @@ Shrink `PRO-REQUIREMENTS.md` (≤400 lines: scope + feature status table linking
 
 ## Phase 8 — KEEP / DELETE list ✅ (this is the decision you asked for)
 
-**How this was produced (reproducible):** every old tracked file under `docs/` (excluding `docs/content/`) was hashed with md5 and matched against every file in the new tree. **247 old files, 229 new-tree files; 81 were byte-identical.** The 166 that did not match are all accounted for: 11 are intentionally unmoved, 155 were transformed (concatenated, renamed-with-edits, or are gitignored images whose copies are simply hidden from `git status`), and 2 are true duplicates. **Nothing was missed, and nothing is unaccounted for.**
+**How this was produced (reproducible):** take the *pre-session* file list with `git ls-tree -r --name-only a0fafafe -- docs` — `a0fafafe` is `origin/main`'s tip, i.e. the tree before any of this session's work — then md5 each of those files and match the hashes against every file now on disk under `docs/`. It must be run **after** the commit so the new tree is on disk to match against; running `git ls-files` instead would be wrong, because it picks up the newly-added files and contaminates both sides of the comparison.
+
+**Result: 247 old docs files (excluding `docs/content/`) — 214 have a byte-identical copy at a new path, 33 do not.** Those 33 are each individually accounted for below, and the tally is exact:
+
+| Why no identical copy | Count | Files |
+|---|---|---|
+| **Deliberately kept in place** — these *are* the new tree; they never moved, so there is nothing to copy | **11** | the 9 root docs (`API`, `BUILD-LOG`, `DEPLOY`, `PLAN`, `PLAY-STORE-RELEASES`, `PRO-REQUIREMENTS`, `SCALING`, `SECURITY`, `TECH-STACK`) + `design/emil-design.md` + `root-cause/root-cause issues.md` |
+| **Moved and edited on the way** | **3** | `Retailer → Customer AI Fashion Commerce Platform.md` → `references/research/platform-architecture-blueprint.md` (retitled); `INDIA-RETAILER-GROWTH.md` → `marketing/india-retailer-growth.md`; `social-connect-native.md` → `tasks/done/social-connect-native.md` |
+| **Marketing stubs MERGED into one file** (content concatenated with `<!-- source: … -->` markers, so no single stub survives byte-for-byte) | **13** | `IMPLEMENTATION-STATUS`, `aggregator-marketplace-sync`, `ai-driven-social-media-templates`, `automated-festival-background-library`, `automated-lookbook-generator`, `direct-social-publishing`, `facebook-local-awareness-ads`, `google-local-service-ads`, `google-my-business`, `local-discovery-engine`, `marketing-sales-enablement-overview`, `partner-network-manager`, `smart-incentive-engine` |
+| **Task files edited this session** (status headers corrected) | **5** | `ai-photo-generation`, `api-rate-limit`, `customer-engagement-and-admin-behavior-analytics`, `customer-pwa-store-list-and-push-notifications`, `M-MULTI-LANGUAGE-AI-GAPS` |
+| **Superseded by a correctly-spelled copy** | **1** | `tasks/AI Models and Scenes.hmtl` (typo'd extension) → `ai-studio/AI Models and Scenes.html` |
+| | **33** | ✓ sums exactly |
+
+**Nothing was missed, and nothing is unaccounted for.** The 214 identical ones are the safe deletions — taking them out cannot lose anything.
 
 > **Note on image paths:** the `docs/ai-studio/**` image copies are now gitignored, so they no longer appear in `git status` — which is exactly why they show as "unmatched" in a hash pass. **The files are on disk** (148 files under `docs/ai-studio/`: 14 tracked + 134 gitignored images). `git rm` will still work on the old tracked ones because they are already in the index.
 
 ---
 
-### ✅ KEEP — the new tree (~101 tracked files + 134 gitignored images)
+### ✅ KEEP — the new tree (100 tracked docs files + 134 gitignored images)
 
 **Root — main docs (12, all stay exactly where they are)**
 
@@ -282,14 +295,16 @@ Moved **with edits this session** (hash differs — content superseded by the co
 
 | Old location | Count | New location |
 |---|---|---|
+| `docs/photoshoots/Style Output/*.jpg` | 42 | `docs/ai-studio/photoshoots/style-output/` |
 | `docs/photoshoots/background/*` | 25 | `docs/ai-studio/photoshoots/backgrounds/` |
+| `docs/photoshoots/*.jpg\|png` (samples, `Style Output/` excluded) | 16 | `docs/ai-studio/photoshoots/samples/` |
 | `docs/photoshoots/models/*` | 14 | `docs/ai-studio/photoshoots/models/` |
-| `docs/photoshoots/*.jpg\|png` (samples + `Style Output/` excluded) | 15 | `docs/ai-studio/photoshoots/samples/` |
-| `docs/photoshoots/Style Output/*.jpg` | 46 | `docs/ai-studio/photoshoots/style-output/` |
-| `docs/tasks/effect-photos/models/*` | 8 | `docs/ai-studio/effect-photos/models/` |
 | `docs/tasks/effect-photos/products/*` | 23 | `docs/ai-studio/effect-photos/products/` |
+| `docs/tasks/effect-photos/models/*` | 8 | `docs/ai-studio/effect-photos/models/` |
 | `docs/tasks/models/*.png` | 6 | `docs/ai-studio/models/` |
-| **Total** | **137 tracked images → 134 on disk** | (the 3-file difference is `docs/photoshoots/background/download (1).png` + 2 samples counted in the `photoshoots/*` row above; every basename was verified present in the new tree) |
+| **Total** | **134** | — |
+
+**This is a clean 1:1**: the old AI-Studio image set is exactly 134 files and the new tree holds exactly 134 — verified by `git ls-tree -r a0fafafe -- docs | grep -iE '\.(jpg\|jpeg\|png\|webp\|gif)$'` grouped by folder. (An earlier draft of this table said 137; the authoritative per-folder split above is the measured one.) These are the **only** images being moved — the remaining old images are the 8 `docs/design/*.jpg` UI screenshots, whose copies live in `docs/design/screens/`.
 
 **6. The 2 files that MUST NOT be deleted (deliberately unmoved)**
 
