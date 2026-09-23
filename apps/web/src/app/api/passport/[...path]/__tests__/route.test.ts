@@ -120,3 +120,15 @@ describe('the shared forwarder did not change GET or POST', () => {
     expect(upstream).not.toHaveBeenCalled()
   })
 })
+
+describe('POST /api/passport/events', () => {
+  it('passes an upstream 204 through as 204, not a 503', async () => {
+    // The API answers the event beacon with 204. new NextResponse('', {status: 204})
+    // throws, and the catch reported the success as "Service unavailable".
+    upstream.mockResolvedValue(new Response(null, { status: 204 }))
+
+    const res = await call('POST', ['events'], { body: JSON.stringify({ events: [] }) })
+
+    expect(res.status).toBe(204)
+  })
+})

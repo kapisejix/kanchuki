@@ -209,6 +209,12 @@ test.beforeAll(async () => {
       return
     }
 
+    // /my-profile reads the nominee from here on mount (flat body, like the API).
+    if (path === '/v1/public/passport/preferences' && req.method === 'GET') {
+      json(res, 200, { profiling_enabled: true, nominee_name: null, nominee_phone: null })
+      return
+    }
+
     if (path === '/v1/public/passport/stores') {
       if (!state.signedIn || !state.storesAuthorized) {
         json(res, 401, { error: { code: 'UNAUTHORIZED', message: 'No session' } })

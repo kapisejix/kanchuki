@@ -40,7 +40,9 @@ async function forward(request: NextRequest, path: string[], method: ProxyMethod
     });
 
     const body = await res.text();
-    const response = new NextResponse(body, { status: res.status });
+    // A 204/304 may not carry a body — not even '' — or the constructor throws
+    // and the catch below turns the API's success into a 503.
+    const response = new NextResponse(body || null, { status: res.status });
 
     // Forward Set-Cookie headers from the API (session cookie on verify)
     const setCookie = res.headers.get('set-cookie');

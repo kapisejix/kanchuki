@@ -174,6 +174,14 @@ test.beforeAll(async () => {
       return
     }
 
+    // F-037 event beacon (dwell-timed views, favorites) — the real API always
+    // answers 204, even when it drops the batch.
+    if (req.method === 'POST' && url.pathname === '/v1/public/passport/events') {
+      res.statusCode = 204
+      res.end()
+      return
+    }
+
     // Promotions — the storefront's PromotionBanner fetches
     // `/api/{store}/promotions`, which proxies to this upstream. Unstubbed it
     // answers 404, which the console check reports as a page error.
