@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kanchuki AI Studio — Promo Video Motion Style Catalog</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Marcellus&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .font-marcellus { font-family: 'Marcellus', serif; }
+    .glass-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(12px); }
+    .badge-fuchsia { background: #FDF2F8; color: #BE185D; border: 1px solid #FBCFE8; }
+    .badge-purple  { background: #F5F3FF; color: #6D28D9; border: 1px solid #DDD6FE; }
+    .badge-amber   { background: #FFFBEB; color: #B45309; border: 1px solid #FDE68A; }
+    .badge-emerald { background: #ECFDF5; color: #047857; border: 1px solid #A7F3D0; }
+    .badge-sky     { background: #F0F9FF; color: #0369A1; border: 1px solid #BAE6FD; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f1f1; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+  </style>
+</head>
+<body class="bg-[#F8F7FC] text-[#231F48] min-h-screen">
+
+  <header class="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-[#E0E1F6] px-6 py-4 shadow-sm">
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-[#231F48] via-[#560A39] to-[#BB3F95] flex items-center justify-center text-white font-marcellus font-bold text-xl shadow-md">K</div>
+        <div>
+          <h1 class="text-xl font-extrabold text-[#231F48] font-marcellus tracking-wide">Kanchuki AI Studio — Motion Styles</h1>
+          <p class="text-xs text-[#6B4773] font-medium">F-034 Promo Video — motion-prompt presets for the /admin/photo-cleanup-test bench</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2 text-xs font-semibold">
+        <span class="px-3 py-1.5 rounded-xl bg-white border border-[#E0E1F6] text-[#231F48] shadow-xs">🎬 <strong id="styleCount">16</strong> Motion Styles</span>
+        <button onclick="exportSelectedJson()" class="px-4 py-1.5 rounded-xl bg-[#231F48] text-white hover:bg-[#BB3F95] transition-colors flex items-center gap-1.5 shadow-sm">
+          <i data-lucide="download" class="w-3.5 h-3.5"></i> Export Selected
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <div class="max-w-7xl mx-auto px-6 pt-6 pb-2">
+    <div class="bg-white rounded-3xl p-4 border border-[#E0E1F6] shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
+      <div class="flex flex-wrap items-center gap-1.5 w-full md:w-auto">
+        <button onclick="filterCategory('all')" class="tab-btn px-4 py-2 rounded-2xl text-xs font-bold transition-all bg-[#231F48] text-white" data-filter="all">All (<span id="totalItems">16</span>)</button>
+        <button onclick="filterCategory('camera-move')" class="tab-btn px-4 py-2 rounded-2xl text-xs font-bold transition-all bg-gray-100 text-gray-700 hover:bg-gray-200" data-filter="camera-move">🎥 Camera Move</button>
+        <button onclick="filterCategory('garment-motion')" class="tab-btn px-4 py-2 rounded-2xl text-xs font-bold transition-all bg-gray-100 text-gray-700 hover:bg-gray-200" data-filter="garment-motion">🧵 Garment Motion</button>
+        <button onclick="filterCategory('model-action')" class="tab-btn px-4 py-2 rounded-2xl text-xs font-bold transition-all bg-gray-100 text-gray-700 hover:bg-gray-200" data-filter="model-action">🚶 Model Action</button>
+        <button onclick="filterCategory('ambient')" class="tab-btn px-4 py-2 rounded-2xl text-xs font-bold transition-all bg-gray-100 text-gray-700 hover:bg-gray-200" data-filter="ambient">🌬️ Ambient</button>
+      </div>
+      <div class="relative w-full md:w-72">
+        <i data-lucide="search" class="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2"></i>
+        <input type="text" id="searchInput" oninput="handleSearch()" placeholder="Search motion, model, garment..."
+          class="w-full pl-10 pr-4 py-2 bg-[#F8F7FC] rounded-2xl border border-[#E0E1F6] text-xs text-[#231F48] placeholder-gray-400 focus:outline-none focus:border-[#BB3F95]" />
+      </div>
+    </div>
+  </div>
+
+  <main class="max-w-7xl mx-auto px-6 py-6">
+    <div id="catalogGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"></div>
+  </main>
+
+  <div id="detailModal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 border border-[#E0E1F6] shadow-2xl relative">
+      <button onclick="closeModal()" class="absolute top-5 right-5 w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 hover:bg-gray-200">
+        <i data-lucide="x" class="w-4 h-4"></i>
+      </button>
+      <div id="modalContent"></div>
+    </div>
+  </div>
+
+  <div id="toast" class="fixed bottom-6 right-6 bg-[#231F48] text-white px-5 py-3 rounded-2xl shadow-xl transform translate-y-20 opacity-0 transition-all duration-300 flex items-center gap-2 z-50 text-xs font-semibold">
+    <i data-lucide="check-circle" class="w-4 h-4 text-[#BB3F95]"></i>
+    <span id="toastMsg">Copied to clipboard!</span>
+  </div>
+
+  <script>
+    // ── Dataset: F-034 promo-video motion-style presets ──
+    //
+    // Owner browses this, checks the styles worth testing, "Export Selected" →
+    // JSON (or copies the motion_prompt), pastes motion_prompt into the bench
+    // "Motion prompt" field, picks recommended_model + recommended_aspect +
+    // seconds, generates, compares. Survivors become the studio_styles VIDEO
+    // rows in Phase 2 (2a). Same staging-ground relationship "AI Models and
+    // Scenes.html" has to studio_styles IMAGE rows.
+    //
+    // categoryTag: camera-move | garment-motion | model-action | ambient
+    // recommendedModel: seedance | wan | kling_std | kling_pro | luma
+    // recommendedAspect: 9:16 | 16:9 | 1:1 | 4:5   ·   seconds: 5 | 6 | 8
+
+    const CAT_LABEL = {
+      'camera-move': 'Camera Move',
+      'garment-motion': 'Garment Motion',
+      'model-action': 'Model Action',
+      'ambient': 'Ambient',
+    };
+    const CAT_BADGE = {
+      'camera-move': 'badge-sky',
+      'garment-motion': 'badge-fuchsia',
+      'model-action': 'badge-purple',
+      'ambient': 'badge-emerald',
+    };
+
+    // Placeholder card art only — fashion-in-motion stills. The clip itself is
+    // generated on the bench, not shown here.
+    const MOTION_STILLS = [
+      "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=800&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1509631179647-0177331693ae?w=800&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1483985988355-763728e1935b?w=800&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=800&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?w=800&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=800&auto=format&fit=crop&q=80",
+    ];
+
+    // A held-still guard reused by every prompt — the clip is a promo mood
+    // clip, NOT a catalog-accurate asset, but the garment must not morph.
+    const HOLD = "The garment's colour, print, embroidery, cut and proportions stay identical to the input photo throughout — no warping, no recolouring, no extra limbs or fingers.";
+
+    const RAW = [
+      // ═══ CAMERA MOVE ═══
+      {
+        code: "MOTION_PUSH_IN_SLOW", categoryTag: "camera-move",
+        title: "Slow Push-In", subtitle: "Camera eases toward the garment, hero-shot energy",
+        recommendedModel: "kling_std", recommendedAspect: "9:16", seconds: 5,
+        note: "Safe default. Works on everything — sarees, menswear, kidswear.",
+        description: "A gentle, steady dolly push toward the subject over ~5s. No cuts. The frame tightens slightly on the fabric detail. Faint parallax on the background.",
+        prompt: "Slow cinematic dolly push-in toward the subject, the camera easing forward at a steady pace, background gently going soft. Subtle natural cloth movement only. " + HOLD,
+      },
+      {
+        code: "MOTION_PULL_BACK_REVEAL", categoryTag: "camera-move",
+        title: "Pull-Back Reveal", subtitle: "Starts tight on detail, pulls out to full look",
+        recommendedModel: "kling_std", recommendedAspect: "9:16", seconds: 6,
+        note: "Heavy work — bridal lehengas, Banarasi, zari borders.",
+        description: "Opens close on an embroidered area, then a smooth pull-back over ~6s to show the whole garment head to hem.",
+        prompt: "Camera starts close on the fabric detail and smoothly pulls back to reveal the full garment, one continuous move, no cut. Gentle ambient cloth motion. " + HOLD,
+      },
+      {
+        code: "MOTION_ARC_ORBIT", categoryTag: "camera-move",
+        title: "Quarter Orbit", subtitle: "Camera arcs ~30° around the subject",
+        recommendedModel: "kling_pro", recommendedAspect: "9:16", seconds: 6,
+        note: "Shows drape and side profile — anarkalis, gowns, structured kurtas.",
+        description: "A controlled arc of about 30 degrees around the subject over ~6s, keeping the garment centred, revealing how it sits in three dimensions.",
+        prompt: "Smooth cinematic camera arc of roughly thirty degrees around the subject, the garment staying centred in frame, revealing its drape and silhouette in the round. Slow and controlled. " + HOLD,
+      },
+      {
+        code: "MOTION_TILT_HEM_TO_FACE", categoryTag: "camera-move",
+        title: "Hem-to-Top Tilt", subtitle: "Vertical tilt up the length of the garment",
+        recommendedModel: "kling_std", recommendedAspect: "9:16", seconds: 5,
+        note: "Full-length pieces — lehengas, gowns, sherwanis, floor-length Anarkalis.",
+        description: "The camera tilts vertically from the hem up to the neckline over ~5s, a slow scan of the whole garment.",
+        prompt: "Slow vertical camera tilt travelling up the length of the garment from hem to neckline, steady and even, one continuous move. Faint natural fabric sway. " + HOLD,
+      },
+
+      // ═══ GARMENT MOTION ═══
+      {
+        code: "MOTION_SAREE_PALLU_SWAY", categoryTag: "garment-motion",
+        title: "Pallu Sway", subtitle: "The saree pallu lifts and settles in a light breeze",
+        recommendedModel: "kling_pro", recommendedAspect: "9:16", seconds: 6,
+        note: "Sarees, dupatta-forward looks, lightweight georgette / chiffon.",
+        description: "The loose end of the drape lifts gently on a breeze and settles back, one soft cycle over ~6s. Everything else near-still.",
+        prompt: "A gentle breeze lifts the loose draped end of the garment so it floats and sways, then settles softly back into place. Realistic lightweight-fabric physics, slow and graceful, the rest of the garment nearly still. " + HOLD,
+      },
+      {
+        code: "MOTION_DUPATTA_FLOAT", categoryTag: "garment-motion",
+        title: "Dupatta Float", subtitle: "Dupatta billows outward and drifts down",
+        recommendedModel: "luma", recommendedAspect: "9:16", seconds: 6,
+        note: "Suit sets, Anarkalis, sharara / gharara with a flowing dupatta.",
+        description: "The dupatta catches air, billows away from the body, then drifts back down over ~6s — soft, weightless motion.",
+        prompt: "The dupatta catches a soft gust, billowing outward and upward away from the body, then drifting weightlessly back down. Airy, slow-motion cloth movement, cinematic. " + HOLD,
+      },
+      {
+        code: "MOTION_TWIRL_FLARE", categoryTag: "garment-motion",
+        title: "Twirl Flare", subtitle: "Model spins once, skirt flares into a full circle",
+        recommendedModel: "luma", recommendedAspect: "9:16", seconds: 8,
+        note: "Lehengas, circular / kalidar skirts, flared Anarkalis. Big joyful motion.",
+        description: "One full spin over ~8s so the skirt flares out into a wheel, then falls back as the model faces front again.",
+        prompt: "The model turns a single full spin, the skirt flaring outward into a wide circle from the momentum, then falling back into place as the turn completes. Fluid, joyful, well-lit, realistic heavy-skirt physics. " + HOLD,
+      },
+      {
+        code: "MOTION_FABRIC_RIPPLE_BREEZE", categoryTag: "garment-motion",
+        title: "Breeze Ripple", subtitle: "Loose fabric and sleeves ripple gently",
+        recommendedModel: "wan", recommendedAspect: "9:16", seconds: 5,
+        note: "Cotton kurtas, kaftans, palazzos, menswear kurta-pyjama.",
+        description: "A steady low breeze ripples through the looser parts of the garment — hem, sleeves, layers — for ~5s. Subtle, no big movement.",
+        prompt: "A steady gentle breeze ripples through the loose areas of the garment — the hem, the sleeves, any layers — with soft continuous cloth motion. Understated and natural, the model holding still. " + HOLD,
+      },
+
+      // ═══ MODEL ACTION ═══
+      {
+        code: "MOTION_TURN_TO_CAMERA", categoryTag: "model-action",
+        title: "Turn to Camera", subtitle: "Model turns from 3/4 back to face the lens",
+        recommendedModel: "kling_std", recommendedAspect: "9:16", seconds: 5,
+        note: "Universal. Shows back and front of the garment in one shot.",
+        description: "Starting three-quarters away, the model turns smoothly to face the camera over ~5s, ending on a held front pose.",
+        prompt: "The model begins facing three-quarters away, then turns smoothly and naturally to face the camera, settling into a still front-facing pose. One clean motion, garment drape following the turn realistically. " + HOLD,
+      },
+      {
+        code: "MOTION_WALK_TOWARD", categoryTag: "model-action",
+        title: "Walk Toward Camera", subtitle: "A few relaxed steps forward, runway feel",
+        recommendedModel: "wan", recommendedAspect: "9:16", seconds: 6,
+        note: "Draped and flowing pieces — gowns, Anarkalis, sherwanis, indo-western.",
+        description: "The model takes three or four relaxed steps toward the camera over ~6s; the garment moves with the stride.",
+        prompt: "The model walks a few relaxed steps toward the camera with an easy runway gait, the garment swaying and settling with each step, ending standing still and centred. Natural body mechanics, no floating. " + HOLD,
+      },
+      {
+        code: "MOTION_SHOULDER_GLANCE", categoryTag: "model-action",
+        title: "Shoulder Glance", subtitle: "Small over-the-shoulder look back",
+        recommendedModel: "kling_std", recommendedAspect: "4:5", seconds: 5,
+        note: "Back-detail garments — blouse work, jacket backs, dupatta drape.",
+        description: "A gentle over-the-shoulder glance back toward the camera and a soft return, ~5s, minimal body movement — highlights the back of the garment.",
+        prompt: "The model, seen from behind, glances gently back over one shoulder toward the camera and then eases back to the original pose. Small, elegant, controlled movement that shows the back of the garment. " + HOLD,
+      },
+      {
+        code: "MOTION_ADJUST_DUPATTA", categoryTag: "model-action",
+        title: "Adjusts Dupatta", subtitle: "Hands lift and re-settle the drape",
+        recommendedModel: "kling_pro", recommendedAspect: "9:16", seconds: 6,
+        note: "Suit sets and sarees where the drape is the story. Watch the hands.",
+        description: "The model raises both hands, lightly lifts the dupatta or pallu and lets it re-settle over the shoulder, ~6s of soft, deliberate motion.",
+        prompt: "The model raises both hands and gently lifts the draped dupatta or pallu, letting it fall and re-settle across the shoulder in a natural, unhurried gesture. Clean, correct hands, five fingers, realistic cloth fall. " + HOLD,
+      },
+
+      // ═══ AMBIENT ═══
+      {
+        code: "MOTION_BREEZE_AND_HAIR", categoryTag: "ambient",
+        title: "Breeze + Hair", subtitle: "Hair and loose fabric drift, model still",
+        recommendedModel: "seedance", recommendedAspect: "9:16", seconds: 5,
+        note: "Budget-friendly subtle life. Any garment, any demographic.",
+        description: "Almost a living photo: a light breeze moves the hair and the loosest fabric for ~5s while the model holds the pose.",
+        prompt: "A barely-there breeze gently moves the model's hair and the loosest edges of the garment while the pose is held. Minimal, cinemagraph-like motion, everything else still. " + HOLD,
+      },
+      {
+        code: "MOTION_FESTIVE_DIYA_GLOW", categoryTag: "ambient",
+        title: "Festive Diya Glow", subtitle: "Warm flickering light, drifting bokeh behind",
+        recommendedModel: "seedance", recommendedAspect: "9:16", seconds: 5,
+        note: "Diwali / wedding / festive collections — silk kurta sets, festive sarees.",
+        description: "Warm diya light flickers softly and out-of-focus light points drift in the background for ~5s. The garment lit steady and true.",
+        prompt: "Warm festive diya light flickers softly across the scene and out-of-focus golden light points drift slowly in the background. The garment stays evenly and accurately lit, the model still. " + HOLD,
+      },
+      {
+        code: "MOTION_PETALS_DRIFT", categoryTag: "ambient",
+        title: "Petals Drift", subtitle: "Flower petals fall slowly through frame",
+        recommendedModel: "wan", recommendedAspect: "9:16", seconds: 6,
+        note: "Bridal, Haldi / Mehendi, festive. Not for plain daily wear.",
+        description: "A few marigold or rose petals drift down slowly across the frame over ~6s. The model and garment hold still under the falling petals.",
+        prompt: "A scattering of flower petals drifts slowly down through the frame with soft natural motion. The model holds the pose, the garment still except for the faintest sway. " + HOLD,
+      },
+      {
+        code: "MOTION_BACKDROP_BILLOW", categoryTag: "ambient",
+        title: "Backdrop Billow", subtitle: "Curtain / sheer backdrop moves gently behind",
+        recommendedModel: "seedance", recommendedAspect: "1:1", seconds: 5,
+        note: "Studio-style promo tiles for feed. Any garment.",
+        description: "A sheer curtain or fabric backdrop billows slowly behind the subject for ~5s, adding depth. Foreground garment steady.",
+        prompt: "A sheer fabric backdrop behind the subject billows and settles slowly, adding gentle depth and life to the scene. The foreground garment and the model stay still. " + HOLD,
+      },
+    ];
+
+    const ITEMS = RAW.map((r, i) => ({
+      id: r.code.toLowerCase(),
+      code: r.code,
+      categoryTag: r.categoryTag,
+      title: r.title,
+      subtitle: r.subtitle,
+      badge: CAT_LABEL[r.categoryTag],
+      badgeColor: CAT_BADGE[r.categoryTag],
+      recommendedModel: r.recommendedModel,
+      recommendedAspect: r.recommendedAspect,
+      seconds: r.seconds,
+      note: r.note,
+      description: r.description,
+      prompt: r.prompt,
+      imageUrl: MOTION_STILLS[i % MOTION_STILLS.length],
+    }));
+
+    let currentFilter = 'all';
+    let searchQuery = '';
+    const selectedItemCodes = new Set();
+
+    function renderCatalog() {
+      const grid = document.getElementById('catalogGrid');
+      const filtered = ITEMS.filter(item => {
+        const matchesCat = currentFilter === 'all' || item.categoryTag === currentFilter;
+        const q = searchQuery.toLowerCase().trim();
+        const matchesSearch = !q ||
+          item.title.toLowerCase().includes(q) ||
+          item.subtitle.toLowerCase().includes(q) ||
+          item.code.toLowerCase().includes(q) ||
+          item.note.toLowerCase().includes(q) ||
+          item.recommendedModel.toLowerCase().includes(q);
+        return matchesCat && matchesSearch;
+      });
+
+      document.getElementById('totalItems').innerText = filtered.length;
+
+      if (filtered.length === 0) {
+        grid.innerHTML = `
+          <div class="col-span-full py-16 text-center">
+            <div class="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3 text-2xl">🔍</div>
+            <h3 class="text-base font-bold text-gray-800">No motion styles found</h3>
+            <p class="text-xs text-gray-500 mt-1">Try a different search or category filter.</p>
+          </div>`;
+        lucide.createIcons();
+        return;
+      }
+
+      grid.innerHTML = filtered.map(item => {
+        const isChecked = selectedItemCodes.has(item.code);
+        return `
+          <div class="glass-card rounded-[28px] overflow-hidden border border-[#E0E1F6] shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col group">
+            <div class="relative w-full aspect-[4/5] bg-gray-100 overflow-hidden cursor-pointer" onclick="openModal('${item.id}')">
+              <img src="${item.imageUrl}" alt="${item.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
+              <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/20 opacity-80 group-hover:opacity-90 transition-opacity"></div>
+              <div class="absolute top-3 left-3 right-3 flex items-center justify-between">
+                <span class="px-2.5 py-1 rounded-full text-[10px] font-bold ${item.badgeColor} shadow-sm backdrop-blur-md">${item.badge}</span>
+                <span class="px-2.5 py-0.5 rounded-full text-[9px] font-extrabold bg-black/60 text-white backdrop-blur-md">${item.recommendedAspect} · ${item.seconds}s</span>
+              </div>
+              <div class="absolute bottom-3 left-3 right-3 text-white">
+                <p class="text-sm font-extrabold font-marcellus leading-snug drop-shadow-sm">${item.title}</p>
+                <p class="text-[11px] text-gray-200 truncate mt-0.5">${item.subtitle}</p>
+              </div>
+            </div>
+            <div class="p-4 bg-white flex-1 flex flex-col justify-between gap-3">
+              <div>
+                <div class="flex items-center justify-between gap-2 pb-2 border-b border-gray-100">
+                  <span class="font-mono text-[11px] font-bold text-[#BB3F95] bg-fuchsia-50 px-2 py-0.5 rounded-md truncate max-w-[150px]">${item.code}</span>
+                  <label class="flex items-center gap-1.5 cursor-pointer text-[11px] font-bold text-[#231F48]" onclick="event.stopPropagation()">
+                    <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleSelect('${item.code}')" class="w-4 h-4 rounded text-[#BB3F95] focus:ring-[#BB3F95] border-gray-300" />
+                    <span>Select</span>
+                  </label>
+                </div>
+                <div class="mt-2.5 flex items-center gap-2">
+                  <span class="text-[10px] uppercase tracking-wider text-gray-400 font-bold">Model:</span>
+                  <span class="font-mono text-[11px] font-bold text-[#231F48] bg-gray-50 px-2 py-0.5 rounded">${item.recommendedModel}</span>
+                </div>
+                <div class="mt-2">
+                  <p class="text-[10px] uppercase tracking-wider text-gray-400 font-bold">Works best on:</p>
+                  <p class="text-xs text-[#231F48] font-medium leading-relaxed mt-0.5 line-clamp-2">${item.note}</p>
+                </div>
+              </div>
+              <div class="flex items-center gap-2 pt-2 border-t border-gray-100">
+                <button onclick="copyToClipboard('${item.code}', 'Code ${item.code} copied!')" class="flex-1 py-1.5 rounded-xl bg-gray-50 hover:bg-gray-100 border border-gray-200 text-[11px] font-bold text-[#231F48] flex items-center justify-center gap-1 transition-colors">
+                  <i data-lucide="copy" class="w-3 h-3 text-[#BB3F95]"></i> Code
+                </button>
+                <button onclick="copyToClipboard(\`${item.prompt.replace(/`/g, '\\`')}\`, 'Motion prompt copied!')" class="flex-1 py-1.5 rounded-xl bg-fuchsia-50 hover:bg-fuchsia-100 border border-fuchsia-200 text-[11px] font-bold text-fuchsia-800 flex items-center justify-center gap-1 transition-colors">
+                  <i data-lucide="sparkles" class="w-3 h-3 text-fuchsia-600"></i> Prompt
+                </button>
+                <button onclick="openModal('${item.id}')" class="w-8 h-8 rounded-xl bg-gray-50 hover:bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-600" title="View full spec">
+                  <i data-lucide="maximize-2" class="w-3.5 h-3.5"></i>
+                </button>
+              </div>
+            </div>
+          </div>`;
+      }).join('');
+
+      lucide.createIcons();
+    }
+
+    function filterCategory(cat) {
+      currentFilter = cat;
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.className = btn.getAttribute('data-filter') === cat
+          ? "tab-btn px-4 py-2 rounded-2xl text-xs font-bold transition-all bg-[#231F48] text-white shadow-sm"
+          : "tab-btn px-4 py-2 rounded-2xl text-xs font-bold transition-all bg-gray-100 text-gray-700 hover:bg-gray-200";
+      });
+      renderCatalog();
+    }
+
+    function handleSearch() {
+      searchQuery = document.getElementById('searchInput').value;
+      renderCatalog();
+    }
+
+    function toggleSelect(code) {
+      selectedItemCodes.has(code) ? selectedItemCodes.delete(code) : selectedItemCodes.add(code);
+      renderCatalog();
+    }
+
+    function copyToClipboard(text, msg = 'Copied to clipboard!') {
+      navigator.clipboard.writeText(text).then(() => showToast(msg)).catch(() => showToast('Error copying text'));
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      document.getElementById('toastMsg').innerText = msg;
+      toast.classList.remove('translate-y-20', 'opacity-0');
+      toast.classList.add('translate-y-0', 'opacity-100');
+      setTimeout(() => {
+        toast.classList.remove('translate-y-0', 'opacity-100');
+        toast.classList.add('translate-y-20', 'opacity-0');
+      }, 2500);
+    }
+
+    function openModal(id) {
+      const item = ITEMS.find(i => i.id === id);
+      if (!item) return;
+      const modal = document.getElementById('detailModal');
+      document.getElementById('modalContent').innerHTML = `
+        <div class="space-y-4">
+          <div class="flex items-start gap-4">
+            <div class="w-32 h-44 rounded-2xl overflow-hidden bg-gray-100 flex-shrink-0 border border-gray-200 shadow-sm">
+              <img src="${item.imageUrl}" alt="${item.title}" class="w-full h-full object-cover" />
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2">
+                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${item.badgeColor}">${item.badge}</span>
+                <span class="font-mono text-xs font-bold text-[#BB3F95] bg-fuchsia-50 px-2 py-0.5 rounded-md">${item.code}</span>
+              </div>
+              <h2 class="text-xl font-extrabold text-[#231F48] font-marcellus mt-1.5">${item.title}</h2>
+              <p class="text-xs text-[#6B4773] mt-0.5">${item.subtitle}</p>
+              <div class="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-gray-100 text-xs">
+                <div><span class="text-gray-400 block text-[10px] font-bold uppercase">Model:</span><span class="font-bold text-[#231F48] font-mono">${item.recommendedModel}</span></div>
+                <div><span class="text-gray-400 block text-[10px] font-bold uppercase">Aspect:</span><span class="font-bold text-[#231F48]">${item.recommendedAspect}</span></div>
+                <div><span class="text-gray-400 block text-[10px] font-bold uppercase">Seconds:</span><span class="font-bold text-[#231F48]">${item.seconds}s</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="bg-gray-50 rounded-2xl p-4 border border-gray-100">
+            <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">The Motion</h4>
+            <p class="text-xs text-[#231F48] leading-relaxed">${item.description}</p>
+          </div>
+          <div>
+            <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Works best on</h4>
+            <p class="text-xs font-bold text-[#BB3F95] bg-fuchsia-50 p-3 rounded-xl border border-fuchsia-100">${item.note}</p>
+          </div>
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider">Motion Prompt (paste into the bench)</h4>
+              <button onclick="copyToClipboard(\`${item.prompt.replace(/`/g, '\\`')}\`, 'Motion prompt copied!')" class="text-[11px] font-bold text-[#BB3F95] hover:underline flex items-center gap-1">
+                <i data-lucide="copy" class="w-3 h-3"></i> Copy
+              </button>
+            </div>
+            <div class="bg-[#231F48] text-gray-100 p-3.5 rounded-2xl font-mono text-[11px] leading-relaxed border border-gray-800 select-all">${item.prompt}</div>
+          </div>
+          <div class="pt-2 flex items-center gap-3">
+            <button onclick="copyToClipboard('${item.code}', 'Code ${item.code} copied!'); closeModal();" class="flex-1 py-2.5 rounded-2xl bg-[#231F48] text-white text-xs font-bold hover:bg-[#BB3F95] transition-colors flex items-center justify-center gap-1.5">
+              <i data-lucide="copy" class="w-3.5 h-3.5"></i> Copy Style Code
+            </button>
+            <button onclick="closeModal()" class="px-5 py-2.5 rounded-2xl bg-gray-100 text-gray-700 text-xs font-bold hover:bg-gray-200">Close</button>
+          </div>
+        </div>`;
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      lucide.createIcons();
+    }
+
+    function closeModal() {
+      const modal = document.getElementById('detailModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function exportSelectedJson() {
+      const selected = ITEMS.filter(i => selectedItemCodes.has(i.code)).map(i => ({
+        code: i.code,
+        category: i.categoryTag,
+        label: i.title,
+        description: i.subtitle,
+        motion_prompt: i.prompt,
+        recommended_model: i.recommendedModel,
+        recommended_aspect: i.recommendedAspect,
+        seconds: i.seconds,
+        note: i.note,
+      }));
+      if (selected.length === 0) {
+        showToast('Check "Select" on one or more styles first!');
+        return;
+      }
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(selected, null, 2));
+      const a = document.createElement('a');
+      a.setAttribute("href", dataStr);
+      a.setAttribute("download", "selected_ai_motion_styles.json");
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      showToast(`Exported ${selected.length} motion style(s)!`);
+    }
+
+    document.getElementById('styleCount').innerText = ITEMS.length;
+    window.addEventListener('DOMContentLoaded', renderCatalog);
+  </script>
+</body>
+</html>

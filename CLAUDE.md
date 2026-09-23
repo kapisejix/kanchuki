@@ -335,23 +335,28 @@ Payment: Razorpay (UPI first). Retailer pays base + 18% GST. **Source of truth: 
 
 ## Project File Index
 
-| File | Purpose |
+| File / folder | Purpose |
 |------|---------|
 | `CLAUDE.md` | Project memory + operational control policy + what's-built index |
-| `docs/BUILD-LOG.md` | Full chronological build history — feature/incident detail tables (CLAUDE.md index points here) |
-| `docs/PRO-REQUIREMENTS.md` | Full product requirements, user stories, acceptance criteria |
+| `docs/README.md` | **Docs index** — folder map + the documentation rules (where a new task/bug/status goes) |
+| `docs/BUILD-LOG.md` | **The one and only history log** — append-only chronological build/incident detail tables (this index points here) |
+| `docs/PRO-REQUIREMENTS.md` | Product requirements, user stories, acceptance criteria (being shrunk to a scope + status index) |
 | `docs/PLAN.md` | Phase-by-phase roadmap with timelines |
 | `docs/TECH-STACK.md` | Tech decisions with rationale |
-| `docs/DESIGN.md` | UI/UX design system, screens, flows |
-| `docs/DATABASE.md` | PostgreSQL schema, indexes, relationships |
 | `docs/API.md` | REST API contracts, endpoints, auth |
-| `docs/SECURITY.md` | Security model, OWASP, data privacy, governance |
+| `docs/SECURITY.md` | Security model, OWASP, data privacy, governance (§12–18 require human review) |
 | `docs/SCALING.md` | Scaling plan — 1M retailer/5M customer target, phased infra upgrades |
-| `docs/MEMORY.md` | AI agent context and prompting strategy |
-| `docs/SKILLS-AND-MCP.md` | Claude Code skills and MCP tools in use |
-| `docs/final-research.md` | Market research foundation |
-| `docs/PROGRESS.md` | Daily working log (session-by-session detail) |
-| `docs/root-cause/root-cause issues.md` | Root-cause issue tracker (RC-### entries, newest first) — every shipped bug's root cause, fix, and proof |
+| `docs/DEPLOY.md` | The correct deploy flow (GitHub push → Railway auto-deploy; never `railway up` locally) |
+| `docs/PLAY-STORE-RELEASES.md` | Release/versionCode history — ⚠️ **never move** (CI gate `scripts/check-android-version-code.mjs` reads this exact path) |
+| `docs/tasks/` | Work board — `pending/` (open) + `done/` (built specs); start at `tasks/README.md` |
+| `docs/root-cause/` | Root-cause tracker (`RC-###`) + pre-production regression checklist — **check before any development edit; re-test every RC before production** |
+| `docs/ai-studio/` | AI photo/video generation — bench HTML catalogs, ghost-mannequin research, image sets (images are gitignored, local-only) |
+| `docs/marketing/` | Marketing & Sales Enablement reference, India growth roadmap, hyperlocal ideas |
+| `docs/database/` | `DATABASE.md` (schema, indexes, relationships) + DB structure report |
+| `docs/design/` | `DESIGN.md`, `emil-design.md`, design review + `screens/` UI references |
+| `docs/customers/` | Customer profile + shopper-passport identity architecture |
+| `docs/content/` | Website copy |
+| `docs/references/` | Reference-only: `guides/`, `research/`, `design-inspiration/`, `adrs/`, `history/` (frozen — never current truth) |
 
 ---
 
