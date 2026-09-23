@@ -58,6 +58,7 @@ export const SUPER_ADMIN_ONLY_ADMIN_SEGMENTS = [
   'plan-limits',
   'plan-pricing',
   'resource-packs',
+  'referral', // T9 referral monitoring — leaderboard, payout trigger, irreversible clawback, payout-account entry (money)
   'referral-settings',
   // ── Tax and legal documents ──
   'gst',

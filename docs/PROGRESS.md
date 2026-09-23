@@ -2,6 +2,26 @@
 
 One file, update at end of each work session: what's done, what's next, what's blocked. Check `git log -1` and this file first thing each session.
 
+## 2026-09-23 (later still) — T9 built: admin referral monitoring + shared payout-account save
+
+**Commit:** *(this session)* · **Zero `apps/mobile` files** · Spec §7 T9.
+
+**What shipped:**
+- Admin API `routes/admin/admin-referral-monitor.ts` at `/v1/admin/referral/*`: overview, leaderboard, CSV export, manual payout trigger (`handleReferralPayout('manual')`), clawback (CAS on T5's own `CLAWBACK_ELIGIBLE_STATUSES`, refuses PAID), per-retailer conversions drawer, admin payout-account GET/PUT.
+- Payout-account save extracted to `lib/referral-payout-account-save.ts` — retailer self-serve route and admin route share one path (no drift in RazorpayX Contact/Fund-Account creation or masking).
+- `referral` classified super-admin-only in shared `admin-access.ts` (RC-034 derivation test enforces it); web screen `/admin/referral` + Sidebar entry.
+- Runbook for the owner: `docs/runbooks/razorpayx-referral-setup.md` (RazorpayX activation, keys, webhook secret, migrations 109–114, verification queries).
+
+**Caught mid-build:** leaderboard fed `payout_id === null`-filtered conversions into `computeUnsettledPaise` — double-subtracts claimed money (claimed conversions cancel on both sides of the identity). Fixed + pinned by a mechanism test.
+
+**Falsifications:** 5, each caught for the right reason. F5 exposed a **vacuous guard live** (restated formula was behaviorally equivalent; scan regex missed the shape) → guard strengthened (uniqueness assert + brace-depth `.reduce` token check) and re-falsified red before restore.
+
+**Verification:** T9 suite 30/30; full API **1323 passed / 5 skipped**; web **321 passed**; tsc clean both apps; Biome clean.
+
+**Next:** T10 (final §11 checklist) to close the feature; T8 blocked on Play review; owner applies migrations 109–114 + provisions RazorpayX.
+
+---
+
 ## 2026-09-23 (later still) — T7 built: RazorpayX payouts + webhook + payout accounts
 
 **Commit:** *(this session)* · **Zero `apps/mobile` files** · Spec §7 T7.

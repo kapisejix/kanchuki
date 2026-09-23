@@ -1,35 +1,28 @@
-// Retailer payout account — T7 of
+// Retailer self-serve payout account — T7 of
 // docs/tasks/referral-program-retailer-affiliate.md.
 //
-// Owner decision 2026-09-23: retailers add their OWN Bank/UPI details so
-// payouts (T7's job) have somewhere real to go. The entry UI lands in T8
-// (mobile, blocked on Play review) / T9 (admin fallback); these endpoints ship
-// first so nothing downstream is blocked on UI. ZERO apps/mobile files — the
-// Play-review hard constraint holds.
+// GET returns the masked shape only; PUT saves via the SHARED lib
+// (lib/referral-payout-account-save.ts) that T9's admin entry also uses — one
+// save path, two surfaces, so contact reuse / deactivate-then-create / masking
+// semantics cannot drift between them. The route adds only auth (retailer JWT
+// from index.ts) + validation + status mapping.
 //
-// SECURITY MODEL (SECURITY.md — photo-adjacent sensitive data rules applied to
-// financial data): raw bank/UPI details are accepted on PUT, used to create
-// the RazorpayX Contact + Fund Account, and stored ONLY so a deactivated fund
-// account can be recreated (RazorpayX has no update API — deactivate +
-// recreate is the documented path). GET returns masked_display only — an
-// account number or VPA never travels back to any client, not even the
-// owner's. The unique retailer_id makes "replace account" an upsert; the
-// previous RazorpayX fund account is deactivated so it can never receive.
+// Raw bank/UPI details are accepted in the request body but never returned:
+// the DB stores them only inside bank_details/vpa_address for recreation, and
+// GET selects masked_display alone.
 //
-// Registration note (RC-025): wired in BOTH the barrel (routes/retailers/
-// index.ts) and the aggregator (routes/retailers.ts) — the 404 class this repo
-// shipped before was a route registered in one and not the other.
-import { Prisma, prisma } from '@kanchuki/db';
+// Registered in BOTH the barrel (routes/retailers/index.ts) and the aggregator
+// (routes/retailers.ts) — the 404 class this repo shipped before was a route
+// registered in one and not the other.
+import { prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import {
-  createBankFundAccount,
-  createContact,
-  createVpaFundAccount,
-  deactivateFundAccount,
-} from '../../lib/razorpayx.js';
+  PayoutAccountNotFoundError,
+  savePayoutAccount,
+} from '../../lib/referral-payout-account-save.js';
 
-const putSchema = z.discriminatedUnion('account_type', [
+export const putSchema = z.discriminatedUnion('account_type', [
   z.object({
     account_type: z.literal('BANK_ACCOUNT'),
     account_name: z.string().min(1).max(100),
@@ -54,21 +47,6 @@ const putSchema = z.discriminatedUnion('account_type', [
   }),
 ]);
 
-type PutPayload = z.infer<typeof putSchema>;
-
-/** Mask what UIs render — raw numbers/VPAs never return to any client. */
-function maskFor(payload: PutPayload): string {
-  if (payload.account_type === 'VPA') return maskVpa(payload.vpa_address);
-  const num = payload.account_number;
-  return `••••${num.slice(-4)} · ${payload.ifsc}`;
-}
-
-function maskVpa(vpa: string): string {
-  const [user, handle] = vpa.split('@');
-  if (!user || !handle) return '•••';
-  return `${user.slice(0, 2)}•••@${handle}`;
-}
-
 export const retailersPayoutAccountRoutes: FastifyPluginAsync = async (server) => {
   // ─── GET /retailers/me/payout-account ────────────────────────────
   // Masked shape only. 404-shaped { data: null } when none saved — the T8 UI
@@ -88,7 +66,6 @@ export const retailersPayoutAccountRoutes: FastifyPluginAsync = async (server) =
   });
 
   // ─── PUT /retailers/me/payout-account ────────────────────────────
-  // Creates the RazorpayX Contact (once) + Fund Account, upserts the row.
   server.put('/me/payout-account', async (request, reply) => {
     const retailerId = request.retailerId;
     const parsed = putSchema.safeParse(request.body);
@@ -97,95 +74,19 @@ export const retailersPayoutAccountRoutes: FastifyPluginAsync = async (server) =
         error: { code: 'VALIDATION_ERROR', status: 422, message: parsed.error.issues[0]?.message },
       });
     }
-    const body = parsed.data;
 
-    const retailer = await prisma.retailer.findUnique({
-      where: { id: retailerId },
-      select: { shop_name: true, phone: true },
-    });
-    if (!retailer) {
-      return reply.status(404).send({ error: { code: 'NOT_FOUND', status: 404 } });
-    }
-
-    const existing = await prisma.referralPayoutAccount.findUnique({
-      where: { retailer_id: retailerId },
-    });
-
-    // Contact is created once and reused; RazorpayX has no contact dedupe, so
-    // the row is the dedupe (lib/razorpayx.ts contract).
-    let contactId = existing?.razorpayx_contact_id ?? null;
-    if (!contactId) {
-      const contact = await createContact(
-        retailer.shop_name || 'Kanchuki retailer',
-        body.holder_phone ?? retailer.phone ?? null,
+    try {
+      const row = await savePayoutAccount({
         retailerId,
-      );
-      contactId = contact.id;
-    }
-
-    // Replace = deactivate the old fund account FIRST so it can never receive
-    // again, then create the new one. A crash between the two leaves the old
-    // account deactivated with no replacement — the retailer simply PUTs
-    // again (idempotent from their point of view).
-    if (existing?.razorpayx_fund_account_id && existing.is_active) {
-      try {
-        await deactivateFundAccount(existing.razorpayx_fund_account_id);
-      } catch (error) {
-        // Non-fatal: an already-deactivated account may 400. Log and continue.
-        request.log.warn({ err: error }, 'fund-account deactivate failed during replace');
+        body: parsed.data,
+        logWarn: (obj, msg) => request.log.warn(obj, msg),
+      });
+      return { data: row };
+    } catch (error) {
+      if (error instanceof PayoutAccountNotFoundError) {
+        return reply.status(404).send({ error: { code: 'NOT_FOUND', status: 404 } });
       }
+      throw error;
     }
-
-    const fundAccount =
-      body.account_type === 'VPA'
-        ? await createVpaFundAccount(contactId, body.vpa_address)
-        : await createBankFundAccount(contactId, {
-            name: body.account_name,
-            ifsc: body.ifsc,
-            account_number: body.account_number,
-          });
-
-    const row = await prisma.referralPayoutAccount.upsert({
-      where: { retailer_id: retailerId },
-      create: {
-        retailer_id: retailerId,
-        razorpayx_contact_id: contactId,
-        razorpayx_fund_account_id: fundAccount.id,
-        account_type: body.account_type,
-        masked_display: maskFor(body),
-        bank_details:
-          body.account_type === 'BANK_ACCOUNT'
-            ? {
-                name: body.account_name,
-                ifsc: body.ifsc,
-                account_number: body.account_number,
-              }
-            : undefined,
-        vpa_address: body.account_type === 'VPA' ? body.vpa_address : undefined,
-        contact_name: retailer.shop_name || '',
-        contact_phone: body.holder_phone ?? retailer.phone ?? null,
-        is_active: true,
-      },
-      update: {
-        razorpayx_contact_id: contactId,
-        razorpayx_fund_account_id: fundAccount.id,
-        account_type: body.account_type,
-        masked_display: maskFor(body),
-        bank_details:
-          body.account_type === 'BANK_ACCOUNT'
-            ? {
-                name: body.account_name,
-                ifsc: body.ifsc,
-                account_number: body.account_number,
-              }
-            : Prisma.DbNull,
-        vpa_address: body.account_type === 'VPA' ? body.vpa_address : null,
-        contact_phone: body.holder_phone ?? retailer.phone ?? null,
-        is_active: true,
-      },
-      select: { id: true, account_type: true, masked_display: true, is_active: true },
-    });
-
-    return { data: row };
   });
 };
