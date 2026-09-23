@@ -10,6 +10,21 @@
 
 ---
 
+## RC-038 — The customer e2e suite never ran in CI, because the admin suite ran its specs first under `next dev` and failed; that hid a proxy that turned every API 204 into a 503
+
+- **Component:** `apps/web/playwright.config.ts` (admin suite scope); `apps/web/src/app/api/passport/[...path]/route.ts` (the passport proxy); `apps/web/src/app/(shopper)/my-profile/page.tsx`
+- **Commit:** found 2026-09-23 while clearing PR #37's red `e2e-web`; fixed on `fix/e2e-customer-my-stores`
+- **Symptom:** `e2e-web` red on every `main` run: the installability test (`swState` never `active`) and both `/my-profile` sizing tests (console errors) failed.
+- **Root cause:** three layered faults.
+  1. **Wrong suite, wrong server.** `test:e2e:all` is `playwright test && playwright test -c playwright.customer.config.ts`. The first (admin) config is documented as admin-only, but its `testIgnore` excluded only `customer-collection.spec.ts`, so every other `customer-*` spec also ran under `next dev`, where Serwist is deliberately disabled. The SW test could not pass there, and the `&&` meant the real production-build customer suite **never ran at all**.
+  2. **A duplicate chip.** `STYLE_CHIPS` listed `'Gown'` twice. React warned about the duplicate key and the page showed two "Gown" chips.
+  3. **204 → 503 in the proxy (hidden by 1).** The proxy built `new NextResponse(await res.text(), { status })`. For a 204 the body is `''`, and a 204 response may not carry a body, even an empty one, so the constructor throws and the `catch` answers `503 Service unavailable`. The F-037 event beacon (`POST /passport/events`, always 204) therefore failed on every page view in production with a console error, while the events themselves were written.
+- **Fix:** admin config ignores `**/customer-*.spec.ts`; duplicate `'Gown'` removed; proxy passes `body || null`; e2e stubs gained the `GET /passport/preferences` (PR #37's nominee card) and `POST /passport/events` routes.
+- **Proof:** a new proxy unit test (upstream 204 → 204) fails without the fix (`expected 503 to be 204`) and passes with it; web unit 307/307; tsc clean; locally `pnpm test:e2e:all` gives admin **6/6**, customer **32/32**.
+- **Prevention lesson:** a suite chained after another with `&&` is only as alive as the first one, and a failure in the first looks like "the known red test" rather than "half the suite is missing." When two configs share one `testDir`, each should name exactly what it owns.
+
+---
+
 ## RC-027 — The "Gemini" studio engine was a text-to-image endpoint that was never handed the product photo, and its engine name was a free-text string nothing validated
 
 - **Component:** `apps/api/src/lib/imagen-client.ts` (deleted) and its call site in `apps/api/src/lib/studio-shoot.ts`; the `studio_styles.engine` column written by migration `102`

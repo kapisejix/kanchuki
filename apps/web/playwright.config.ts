@@ -14,7 +14,11 @@ export default defineConfig({
   // The customer/PWA suite runs against a production server in
   // playwright.customer.config.ts (the Serwist SW is disabled in dev) — keep
   // it out of the fast dev-server run.
-  testIgnore: '**/customer-collection.spec.ts',
+  // Every customer-* spec belongs to playwright.customer.config.ts (prod build,
+  // SW enabled). Run here under `next dev` the SW is disabled, so the
+  // installability test could never pass — and its failure short-circuited
+  // `test:e2e:all` before the real customer suite ran.
+  testIgnore: '**/customer-*.spec.ts',
   timeout: 120_000,
   fullyParallel: false,
   workers: 1,
