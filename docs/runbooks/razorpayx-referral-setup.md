@@ -23,7 +23,9 @@ Everything here is **owner-only**: CLAUDE.md's operational control policy forbid
 
 ---
 
-## Part 1 — Apply migrations 109 → 114 (admin dashboard SQL runner, in this order)
+## Part 1 — ✅ DONE 2026-09-23 — Apply migrations 109 → 114 (admin dashboard SQL runner, in this order)
+
+> **✅ APPLIED 2026-09-23 by the owner, directly in the Supabase SQL Editor.** One follow-up matters (see the warning below): direct-SQL application does **not** write to `_prisma_migrations` — the 083–089 batch had exactly this gap and needed a reconciliation pass later (CLAUDE.md row 63). Run the reconciliation INSERT at the bottom of Part 1 once, then verify with its SELECT.
 
 Run these from the admin dashboard's SQL runner as `kanchuki_migrator` (the role every prior migration has been applied as). **In numeric order — each builds on the last:**
 
@@ -59,7 +61,7 @@ WHERE NOT EXISTS (
 );
 ```
 
-**Per-migration verification queries** (run after each):
+**Per-migration verification queries** (run after each — if you skipped them at apply time, run them ALL now; each takes seconds):
 
 ```sql
 -- After 109:

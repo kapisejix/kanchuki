@@ -2982,7 +2982,7 @@ Marketing: FAQ "Is my data protected under India's DPDP Act?"; `/for-customers` 
 
 ---
 
-## 35. Retailer Affiliate Referral Program — 🟨 T1–T5 ✅ BUILT 2026-09-22; T6–T10 🔴 NOT STARTED
+## 35. Retailer Affiliate Referral Program — 🟨 T1–T10 ✅ BUILT (T8 mobile screen deferred to Play-review clearance); migrations 109–114 applied in prod (Supabase SQL Editor) 2026-09-23
 
 Full spec, research and the T1–T10 breakdown: `docs/tasks/referral-program-retailer-affiliate.md`. Build detail: `docs/BUILD-LOG.md` §2026-09-22. Tables: `docs/DATABASE.md` → "Retailer referral / affiliate program".
 
@@ -2990,12 +2990,12 @@ Full spec, research and the T1–T10 breakdown: `docs/tasks/referral-program-ret
 
 | Task | Scope | Status |
 |---|---|---|
-| T1 | Prisma models + migration `109_referral_program` + purge wiring | ✅ Built (migration **not applied**) |
+| T1 | Prisma models + migration `109_referral_program` + purge wiring | ✅ Built (migration applied in prod) |
 | T2 | Admin settings API (`GET`/`PUT /v1/admin/referral-settings`) + `/admin/referral-settings` screen | ✅ Built |
 | T3 | Code namespace (`apps/api/src/lib/referral-codes.ts`) + `GET /v1/retailers/me/referral-code` + reserved-namespace guard on the F-018 staff field | ✅ Built |
 | T4 | Signup **capture** — `apps/api/src/lib/referral-conversions.ts`, hooked into the **existing** `PUT /v1/retailers/me` (no mobile change, no new route). Four guards: shape decides the ledger, self-referral refused, one attribution (staff wins), UNIQUE-constraint idempotency with the bonus applied in the same transaction. Also narrowed the settings: `FLAT_DISCOUNT` is refused because nothing in the repo can apply a discount | ✅ Built |
 | T5 | **Qualification cron** — `apps/api/src/jobs/referral-qualify.ts` + daily `0 2 * * *` maintenance job. Due `PENDING` conversions → `QUALIFIED` (base snapshotted from `Subscription.amount_inr`, paise) or `CLAWED_BACK`. Compare-and-swap idempotency, per-row failure isolation, no `qualify_days` dependency (the window is stamped at signup by T4 and only enforced here) | ✅ Built |
-| T6–T10 | Commission ledger, payout job, retailer-facing UI, admin monitoring | 🔴 Not started |
+| T6–T10 | Commission ledger, payout job (T7, cron `30 2 30 * *`), admin monitoring (T9), retailer-facing mobile UI (T8) | T6/T7/T9/T10 ✅ Built; **T8 deferred** — needs `apps/mobile`, blocked on Play Console review |
 
 **Every economic term is data, not a literal.** Commission %, duration, qualification window, referred-side bonus, second tier, payout minimum and cadence all live in the singleton `referral_settings` row and are admin-editable, so pricing changes need no deploy — and no roadmap doc is the source of truth for a number. Same principle as `plan_pricing` (CLAUDE.md §59).
 
@@ -3009,4 +3009,4 @@ Full spec, research and the T1–T10 breakdown: `docs/tasks/referral-program-ret
 
 **T5 — qualification, and why it is deliberately narrow.** The gate is literally *paid and active through the window*: a soft-deleted store is clawed back, no successful `SubscriptionPayment` stays `PENDING`, and a success **plus** an `ACTIVE` subscription **plus** a live, non-suspended store qualifies. **`is_suspended` and `PAST_DUE` deliberately do NOT claw back** — both are recoverable (F-015 ships an unsuspend, dunning retries cards) while `CLAWED_BACK` is **irreversible**, so writing it on a reversible state would let a temporary suspension end a referral permanently; those rows wait, and the never-paid ones are **counted** in the run summary rather than left invisible. Two orderings are load-bearing with tests that fail if swapped. **`paid_at` is not written here** — it is the referrer's *payout* date (T7), not the date the referred store paid us, and the DB CHECK forbids it on `QUALIFIED`; `commission_accrued` is T6's. **RC-033:** `billing-webhook.ts` maps both `subscription.cancelled` and `subscription.completed` to `CANCELLED`, so "finished its paid term" and "churned" are one row — T5 is the first consumer to decide money on it. The decision is correct either way (a completed subscription is not active), but the audit distinction is lost; the fix is a schema + webhook change in **billing**, so it is recorded and deferred. **Refunds remain unimplemented** — nothing in the repo writes `SubscriptionPayment.status = 'refunded'`, so only the churn half of the clawback exists; a refund check reading a value nothing produces would be a guard that can never fire.
 
-**Open:** migrations 109, 110 and 111 must be applied from the admin dashboard · T6–T10 · **no affiliate link earns anything yet** (T4 writes a `pending` conversion and T5 moves it to `qualified`; nothing **accrues** or **pays** until T6–T7) · the refund half of the clawback · RC-033's billing fix · the `?ref=` cookie capture (only meaningful once a web signup exists) · the super-admin path-list gap on `/v1/admin/referral-settings` (pre-existing, shared with `/v1/admin/commission`).
+**Open:** nothing in the code path — migrations 109–114 applied (Supabase SQL Editor, 2026-09-23); T8 (mobile Refer & Earn screen) deferred until Play review clears. RazorpayX provisioning (runbook) still owner-side. Before: **no affiliate link earned anything** (T4 writes a `pending` conversion and T5 moves it to `qualified`; nothing **accrues** or **pays** until T6–T7) · the refund half of the clawback · RC-033's billing fix · the `?ref=` cookie capture (only meaningful once a web signup exists) · the super-admin path-list gap on `/v1/admin/referral-settings` (pre-existing, shared with `/v1/admin/commission`).

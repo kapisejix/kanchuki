@@ -2,6 +2,8 @@
 
 One file, update at end of each work session: what's done, what's next, what's blocked. Check `git log -1` and this file first thing each session.
 
+## 2026-09-23 — F-038 code-complete: T10 closed, migrations 109-114 applied (Supabase SQL Editor), all docs swept. Feature now waits only on owner-side RazorpayX provisioning + T8 (mobile, Play-review-gated). Final doc batch committed with this session.
+
 ## 2026-09-23 (latest) — §11 checklist run early → caught a double-pay race (RC-036), fixed + falsified
 
 **Commit:** *(this session)* · **Zero `apps/mobile` files**.
