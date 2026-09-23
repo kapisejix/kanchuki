@@ -3439,3 +3439,99 @@ in-file note and the one-line change to lock them down:
 - **Why the gap existed at all is still open:** the Segment RC-034 list is now exhaustive by
   construction, but the same "three lists" pattern may exist for other cross-surface rules.
   Treat any rule duplicated per-surface as a candidate.
+
+---
+
+## 2026-09-23 (later) — T6: referral commission accrual — monthly installments, owner money decisions recorded, ledger made self-auditing
+
+**Commit:** *(this session)* · **Zero `apps/mobile` files** · Spec §7 T6 (`docs/tasks/referral-program-retailer-affiliate.md`).
+
+### What shipped
+
+- **Migration `112_referral_accrual_columns`** (not applied): three T6-owned columns on
+  `referral_conversions` — `commission_monthly_paise` (frozen per-installment amount),
+  `accrued_months` (installments EARNED), `accrued_through_period` (last earned month, the
+  idempotency cursor) — plus four CHECK constraints that make the ledger self-auditing:
+  `accrued_months = 0` ⟺ no cursor ⟺ no frozen amount; PENDING rows can never accrue;
+  and `commission_accrued = accrued_months × commission_monthly_paise`, so if the job ever
+  writes the three inconsistently the UPDATE fails rather than the ledger lying quietly.
+- **`apps/api/src/jobs/referral-accrue.ts`** — the accrual job, registered as
+  `referral-accrue` on the maintenance queue, daily **`15 2 * * *`** (after T5's 02:00
+  qualification, before the 02:30 backfill). Pure decision function (`decideAccrual`,
+  exported like T5's) + compare-and-swap writes with the audit row in the same transaction.
+- **`schema.prisma`** — the three columns documented on `ReferralConversion` with the
+  writer map extended.
+
+### The four owner money decisions (2026-09-23 — none were in the spec text; asked before coding)
+
+1. **Base = T5's qualification snapshot.** `commission_base_amount` is never re-read; a
+   mid-cycle plan change moves nothing.
+2. **Monthly, on the same daily cron.** One installment per IST calendar month (the §42
+   Commission Tracker business calendar).
+3. **Only paid months earn.** An installment accrues only for a month with ≥1 successful
+   `SubscriptionPayment`. An unpaid month is **skipped, never clawed back** — the same
+   installment number stays available for the next paying month — and the program runs
+   until `duration_months` installments have **earned**, regardless of wall-time. The
+   anchor for month 1 is the store's **first successful payment**: trial months are not
+   month 1 (the owner's rule — "after the trial the retailer starts paying us, then we
+   pay the referrer; if the retailer stops paying, no payment to the referral account").
+4. **The monthly amount freezes at first earn** (`base × commission_pct`, snapshotted).
+   An admin editing `commission_pct` cannot reprice earned months in either direction.
+
+### Design: why columns, not a parallel ledger table
+
+The spec said "copy the §42 ledger pattern — parallel table". §42 stores only mutating
+expense rows because its monthly figure is computed on the fly; here every conversion
+already carries its own accrual, so the monthly rollup **is** the row — a second table
+would have been a duplicate of `commission_accrued` needing its own reconciliation. The
+pattern worth copying was §42's **IST period semantics**, not its storage.
+
+### Mechanics worth knowing
+
+- The walk starts after the last earned month (or at the first payment month) and moves
+  forward one calendar month at a time; a paid month EARNs, an unpaid month is walked past
+  without consuming the installment.
+- A month only earns once it has **fully ended** (IST) — nobody can know a running
+  month's payment picture.
+- At most **one** installment per conversion per run — a backlog drains over successive
+  nights instead of bursting in one run.
+- A 60-consecutive-unpaid-month ceiling parks genuinely dead referrals so the nightly
+  walk stays bounded; the counter is per-run and re-arms if the store ever pays again.
+- **PAID rows keep accruing** — a payout settles part of the ledger, it does not end the
+  program (examining QUALIFIED rows only would pay a 12-month program exactly once).
+  For the same reason this job never touches `paid_at`: on a PAID row that timestamp is
+  the referrer's payout history, not the accrual timeline.
+- Writes are compare-and-swap — `status` + `accrued_months` + `accrued_through_period`
+  all in the WHERE, audit row (`REFERRAL_COMMISSION_ACCRUED`) in the same transaction —
+  so overlapping runs cannot double-credit and a failed audit rolls the credit back.
+- A QUALIFIED/PAID row whose store has no successful payment is a data-integrity throw
+  (unreachable through T5's gate), not a silent DONE; the settings singleton missing is a
+  loud error naming migration 109, not a hardcoded fallback (RC-027 rule: no silent
+  defaults, no code constants).
+
+### Verification
+
+- `referral-accrue.test.ts` **29/29**: full-payload `toEqual` (any extra field — `paid_at`,
+  `payout_id`, `commission_base_amount` — turns red), CAS-WHERE assertion, audit-in-
+  transaction, IST boundary arithmetic (18:29:59Z is still August), freeze both directions,
+  every decision branch, one-installment-per-run, settings read at call time, missing
+  singleton fails loudly, cron-wiring source scans (registration + `15 2` ordering +
+  `paid_at`-never-written + never re-deriving the base from the subscription).
+- **Falsified 6 ways, each caught for the right reason:** (1) cursor dropped from the CAS
+  WHERE → the WHERE assertion failed; (2) walk restarting at the first payment month → 4
+  cursor tests failed; (3) freeze removed → the reprice test failed; (4) audit moved
+  outside the transaction → 4 tests including the tx-scoped audit assertion; (5) `paid_at`
+  sneaked into the payload → 6 tests incl. the source scan; (6) hardcoded settings
+  fallback → the missing-singleton test failed. (One falsification attempt was itself
+  vacuous — adding a comment after `return true` — and was replaced by moving the audit
+  genuinely outside the transaction; a falsification that changes nothing proves nothing.)
+- Full API suite **1244/1249** (5 pre-existing skips) · API + web `tsc` clean · Biome clean
+  on all touched files · `@kanchuki/shared` rebuilt (no source change; RC-035 hygiene).
+
+### Still open (owner-side)
+
+- Migrations **109/110/111/112 not applied** (admin dashboard) — T6's columns and CHECKs
+  do not exist in prod until 112 lands, and nothing runs until 109 does. Apply 112 **with**
+  the referral batch.
+- **T7–T10 unbuilt — still nothing pays out.** T6 grows the ledger; T7 (RazorpayX)
+  settles it.

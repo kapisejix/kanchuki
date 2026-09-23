@@ -1454,6 +1454,25 @@ model ReferralConversion {
   /// subscription — written by T6, never recomputed from current settings.
   commission_accrued Int @default(0)
 
+  /// T6 only. The frozen per-installment amount (paise): base × commission_pct
+  /// as of the FIRST earned month. Frozen so an admin editing commission_pct
+  /// can never retroactively reprice months already earned. Null until the
+  /// first installment earns. DB CHECK: NULL ⟺ accrued_months = 0.
+  commission_monthly_paise Int?
+
+  /// T6 only. Installments EARNED so far (a month the referred store did not
+  /// pay is skipped, not clawed back — owner decision 2026-09-23). The program
+  /// ends when this reaches duration_months, regardless of wall-time. DB
+  /// CHECK: 0 ⟺ no cursor; and commission_accrued = accrued_months ×
+  /// commission_monthly_paise, so the three fields cannot drift apart.
+  accrued_months Int @default(0)
+
+  /// T6 only. The last IST calendar month (YYYY-MM) that EARNED an installment
+  /// — the idempotency cursor. A month only earns if the referred store made a
+  /// successful payment in it, so this is never simply "the previous month".
+  /// Null until the first earn.
+  accrued_through_period String?
+
   /// The payout batch that settled this conversion (T7). SetNull so the purge
   /// sweep can remove a batch without an FK-ordering constraint, and so a
   /// clawback after payout doesn't have to unpick the batch.

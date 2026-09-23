@@ -2,6 +2,35 @@
 
 One file, update at end of each work session: what's done, what's next, what's blocked. Check `git log -1` and this file first thing each session.
 
+## 2026-09-23 (later) — T6 built: referral commission accrual
+
+**Commit:** *(this session)* · **Zero `apps/mobile` files** · Spec §7 T6.
+
+**Done:** `apps/api/src/jobs/referral-accrue.ts` + daily `15 2 * * *` cron (after T5's 02:00) +
+migration `112_referral_accrual_columns` (not applied). Monthly installments accrue on
+QUALIFIED/PAID conversions: one per IST calendar month, only for months the referred store
+actually paid, up to `duration_months` **earned**, amount frozen at first earn, base = T5's
+snapshot. Ledger is columns on the conversion (not a parallel table — §42's storage doesn't
+transfer, its IST semantics do), with 4 CHECK constraints making the ledger self-auditing.
+The four owner money decisions are recorded in the spec §7 T6 and the job header.
+
+**Verified:** `referral-accrue.test.ts` **29/29**; falsified 6 ways, each caught for the right
+reason (CAS cursor dropped · walk restart · freeze removed · audit out of the tx · `paid_at`
+in the payload · hardcoded settings fallback); full API suite **1244/1249** (5 pre-existing
+skips); API + web tsc clean; Biome clean; shared rebuilt.
+
+**Next / blocked:**
+
+1. **Migrations `109`/`110`/`111`/`112` not applied** (admin dashboard) — apply 112 with the
+   referral batch; nothing accrues in prod until both land.
+2. **T7–T10 unbuilt — still nothing pays out** (T7 RazorpayX settles the ledger T6 grows).
+3. **T8 wants `apps/mobile`** — frozen under Play review; ask the owner first (owner already
+   advised: no admin-dashboard access for retailers, wait for review, build the specced screen).
+4. `purge-rls-live.test.ts` still never executed against a real Postgres.
+5. RC-033 billing collapse + the refund half of the clawback still deferred (billing).
+
+---
+
 ## 2026-09-23 — Admin access boundary closed (RC-034) + stale bench assertion (RC-035)
 
 **Commit:** *(this session)* · **Zero `apps/mobile` files** (Play Console review in flight).

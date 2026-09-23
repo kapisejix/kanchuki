@@ -26,6 +26,7 @@ import {
   getStudioShootQueue,
   getTaggingQueue,
 } from './queue.js';
+import { handleReferralAccrue } from './referral-accrue.js';
 import { handleReferralQualify } from './referral-qualify.js';
 import {
   type RewatermarkShowcaseDesignsJobData,
@@ -171,6 +172,8 @@ export async function startWorkers(): Promise<void> {
           return handlePurgeSoftDeleted();
         case 'referral-qualify':
           return handleReferralQualify();
+        case 'referral-accrue':
+          return handleReferralAccrue();
         case 'backup-database': {
           const data = (job.data ?? {}) as { type?: 'daily' | 'weekly' | 'manual' };
           return handleBackupDatabase(data.type ?? 'daily');
@@ -227,6 +230,20 @@ export async function startWorkers(): Promise<void> {
     {},
     {
       repeat: { pattern: '0 2 * * *', limit: 1 },
+      removeOnComplete: { count: 10 },
+      removeOnFail: { count: 10 },
+    },
+  );
+
+  // Referral commission accrual — daily at 2:15 AM UTC (T6). Runs AFTER the
+  // 02:00 qualification so a row T5 qualifies tonight is already visible to
+  // T6's scan (though it cannot earn tonight — a month only earns once it has
+  // fully ENDED), and before the 02:30 backfill.
+  await getMaintenanceQueue().add(
+    'referral-accrue',
+    {},
+    {
+      repeat: { pattern: '15 2 * * *', limit: 1 },
       removeOnComplete: { count: 10 },
       removeOnFail: { count: 10 },
     },

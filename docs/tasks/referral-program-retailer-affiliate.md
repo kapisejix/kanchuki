@@ -1,6 +1,6 @@
 # Retailer Affiliate / Referral Program — Research + Implementation Plan
 
-**Status:** 🟨 **T1–T4 ✅ BUILT 2026-09-22 (migrations `109`/`110`/`111` not applied); T5–T10 🔴 NOT STARTED.** The T3 naming blocker is **resolved** — see §0. **No affiliate link earns anything yet**: T4 records a conversion at signup, but nothing qualifies it (T5), computes a commission (T6) or pays it (T7) — and the `?ref=` cookie capture is deliberately not built (see §0 T4). **2026-09-23:** the super-admin path-list gap T2 deferred is **closed** (RC-034) — one shared `packages/shared/src/constants/admin-access.ts` now backs the API, the page guard and the Sidebar, with a test that derives the segment set from the route sources so an unclassified admin route can no longer default to public. That work touched **zero `apps/mobile` files**. Originally "research only, nothing built". Answering: "how does GoHighLevel's referral program work, and how do we build something similar for Kanchuki so retailers can earn money referring other retailers?"
+**Status:** 🟨 **T1–T6 ✅ BUILT (T1–T4 on 2026-09-22, T5 on 2026-09-22, T6 on 2026-09-23; migrations `109`/`110`/`111`/`112` not applied); T7–T10 🔴 NOT STARTED.** The T3 naming blocker is **resolved** — see §0. **No affiliate link earns anything yet**: T4 records a conversion at signup, T5 qualifies it, T6 accrues monthly installments on QUALIFIED/PAID rows — but nothing pays out until T7 (RazorpayX), and the `?ref=` cookie capture is deliberately not built (see §0 T4). **2026-09-23:** the super-admin path-list gap T2 deferred is **closed** (RC-034) — one shared `packages/shared/src/constants/admin-access.ts` now backs the API, the page guard and the Sidebar, with a test that derives the segment set from the route sources so an unclassified admin route can no longer default to public. Every task so far has touched **zero `apps/mobile` files**. Originally "research only, nothing built". Answering: "how does GoHighLevel's referral program work, and how do we build something similar for Kanchuki so retailers can earn money referring other retailers?"
 **Date:** 2026-09-22
 **Related:** `docs/INDIA-RETAILER-GROWTH.md` (retailer-facing referral engine — removed 2026-08-31 teardown, different feature: that was Kanchuki retailer → their own customers; this doc is Kanchuki retailer → other retailers, an affiliate/reseller layer), `docs/PRO-REQUIREMENTS.md`
 
@@ -17,7 +17,8 @@ Detail: `docs/BUILD-LOG.md` §2026-09-22 · tables `docs/DATABASE.md` → "Retai
 | T3 — Code + link generation | ✅ Built | `GET /v1/retailers/me/referral-code` + `lib/referral-codes.ts`. Blocker resolved — see below |
 | T4 — Signup wiring | ✅ Built | `lib/referral-conversions.ts` + capture hooked into `PUT /v1/retailers/me`. **Zero `apps/mobile` changes** |
 | T5 — Qualification cron | ✅ Built | `jobs/referral-qualify.ts` + cron `0 2 * * *` on the maintenance queue. **No payout yet** — T6 accrues on QUALIFIED rows, T7 pays them |
-| T6–T10 | 🔴 Not started | Nothing pays out yet — see the status line above |
+| T6 — Commission calc + ledger | ✅ Built 2026-09-23 | `jobs/referral-accrue.ts` + cron `15 2 * * *` + migration `112_referral_accrual_columns` (**not applied**). **Still nothing pays out** — T7 settles the ledger |
+| T7–T10 | 🔴 Not started | Nothing pays out yet — see the status line above |
 | — | ✅ Built | **Not a T-task:** the `referral-settings`/`commission` super-admin gap T2 deferred is **closed** (RC-034) — see §12 |
 
 > **Session handoff:** §12 is a paste-ready prompt for continuing from T6 in a fresh session, including
@@ -281,9 +282,22 @@ the spec's clawback has no data source and is **not** implemented. T5 implements
 churn half only. A refund check reading a value nothing produces would be a guard
 that can never fire.
 
-### T6 — Commission calc + ledger
-- Compute owed commission off `ReferralSettings.commission_pct` × `duration_months`, per conversion, monthly rollup.
-- Ledger pattern copied from Admin Commission Tracker (§42) — parallel table, not the same rows (that one's platform-earned, this is retailer-earned).
+### T6 — Commission calc + ledger — ✅ BUILT 2026-09-23
+`apps/api/src/jobs/referral-accrue.ts` + daily `15 2 * * *` maintenance cron (runs after T5's 02:00) + migration `112_referral_accrual_columns` (**not applied**). **Still nothing pays out** — T6 grows the ledger; T7 settles it.
+
+**Owner money decisions recorded 2026-09-23 (none were in the spec text; all four are encoded in the job header and migration):**
+1. **Base = T5's qualification snapshot** (`commission_base_amount`, never re-read). A mid-cycle plan change moves nothing.
+2. **Monthly, on the same daily cron** — one installment per IST calendar month (the §42 business calendar).
+3. **Only paid months earn.** An installment accrues only for a month with ≥1 successful `SubscriptionPayment` (status `success`). An unpaid month is **skipped, never clawed back** — the same installment number stays available for the next paying month, and the program runs until `duration_months` installments have **earned**, regardless of wall-time. The anchor for month 1 is the store's **first successful payment** (the owner's rule: trial months are not month 1; commission starts once the retailer starts paying, stops when it stops).
+4. **The monthly amount freezes at first earn** (`base × commission_pct`, snapshotted into `commission_monthly_paise`). An admin editing `commission_pct` can never reprice months already earned, in either direction.
+
+**Design (why the ledger is columns, not a parallel table):** the spec suggested copying §42's ledger *pattern*, but §42 stores only mutating expense rows because its monthly figure is computed on the fly; here each conversion carries its own accrual, so the rollup **is** the row — a second table would have been a duplicate of `commission_accrued` to keep in sync. Migration 112 instead adds three T6-owned columns (`commission_monthly_paise`, `accrued_months`, `accrued_through_period`) plus four CHECK constraints that make the ledger self-auditing: cursor ⟺ frozen amount (`accrued_months = 0 ⟺` both null), PENDING rows can never accrue, and `commission_accrued = accrued_months × commission_monthly_paise` — if the job ever writes the three inconsistently the UPDATE fails rather than the ledger lying quietly.
+
+**Mechanics:** the walk starts after the last earned month (or at the first payment month) and moves forward; a paid month EARNs and advances the earned count, an unpaid month is walked past without consuming the installment; a month only earns once it has **fully ended** (IST); at most **one** installment per conversion per run (a backlog drains over nights, never bursts); a 60-consecutive-unpaid-month ceiling parks genuinely dead referrals so the nightly walk stays bounded. Writes are compare-and-swap (`status` + `accrued_months` + `accrued_through_period` all in the WHERE, audit row in the same transaction — T5's discipline). PAID rows keep accruing: a payout settles part of the ledger, it does not end the program (otherwise a 12-month program would pay exactly once).
+
+**Tests:** 29/29 in `referral-accrue.test.ts` — full-payload assertions (any extra field — `paid_at`, `payout_id`, `commission_base_amount` — turns the test red), CAS-WHERE assertion, audit-in-transaction, IST boundary arithmetic, every decision branch, settings read at call time, missing-singleton fails loudly, cron wiring scans. **Falsified 6 ways, each caught for the right reason:** cursor dropped from the CAS WHERE · walk restarting at the first payment month (double-earn) · freeze removed (reprice) · audit moved out of the transaction · `paid_at` sneaked into the payload (caught by 6 tests incl. the source scan) · hardcoded settings fallback.
+
+**Zero `apps/mobile` files.**
 
 ### T7 — Payout job
 - RazorpayX Payouts API integration, batch monthly (or `ReferralSettings.payout_cadence`), `ReferralSettings.payout_min_amount` threshold, idempotency keys, webhook-confirmed status update.
