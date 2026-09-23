@@ -130,6 +130,76 @@ export function buildReferralLeaderboardCsv(rows: LeaderboardRow[]): string {
   return lines.join('\n');
 }
 
+/** Leaderboard rows, sorted by accrued commission — shared by the JSON and CSV routes. */
+async function loadLeaderboardRows(): Promise<LeaderboardRow[]> {
+  const [conversions, payoutRows, codes] = await Promise.all([
+    prisma.referralConversion.findMany({
+      where: { status: { in: ['PENDING', 'QUALIFIED', 'PAID', 'CLAWED_BACK'] } },
+      select: {
+        referrer_id: true,
+        status: true,
+        commission_accrued: true,
+        referrer: { select: { shop_name: true } },
+      },
+    }),
+    prisma.referralPayout.findMany({
+      where: { status: { in: [...LEDGER_CONSUMING_STATUSES] } },
+      select: { referrer_id: true, amount_paise: true },
+    }),
+    prisma.referralCode.findMany({ select: { retailer_id: true, code: true } }),
+  ]);
+  const codeByRetailer = new Map(codes.map((c) => [c.retailer_id, c.code]));
+
+  const committedByReferrer = new Map<string, number>();
+  for (const p of payoutRows) {
+    committedByReferrer.set(
+      p.referrer_id,
+      (committedByReferrer.get(p.referrer_id) ?? 0) + p.amount_paise,
+    );
+  }
+
+  const byReferrer = new Map<string, typeof conversions>();
+  for (const c of conversions) {
+    const list = byReferrer.get(c.referrer_id) ?? [];
+    list.push(c);
+    byReferrer.set(c.referrer_id, list);
+  }
+
+  const rows: LeaderboardRow[] = [...byReferrer.entries()].map(([referrerId, list]) => {
+    const count = (status: ConversionStatus) => list.filter((c) => c.status === status).length;
+    const committed = committedByReferrer.get(referrerId) ?? 0;
+    // The exact per-referrer unsettled identity T7 acts on: accrued on ALL
+    // QUALIFIED/PAID conversions (claimed ones included — their money sits on
+    // both sides of the identity and cancels) minus committed batches.
+    // Filtering to payout_id === null here would subtract claimed money twice.
+    const unsettledPaise = computeUnsettledPaise(
+      list
+        .filter((c) => c.status === 'QUALIFIED' || c.status === 'PAID')
+        .map((c) => ({
+          id: c.referrer_id,
+          status: c.status,
+          commission_accrued: c.commission_accrued,
+          payout_id: null,
+        })),
+      committed,
+    );
+    return {
+      referrer_id: referrerId,
+      shop_name: list[0]?.referrer.shop_name ?? referrerId,
+      code: codeByRetailer.get(referrerId) ?? null,
+      conversions_total: list.length,
+      pending: count('PENDING'),
+      qualified: count('QUALIFIED'),
+      paid: count('PAID'),
+      clawed_back: count('CLAWED_BACK'),
+      commission_accrued_paise: list.reduce((s, c) => s + c.commission_accrued, 0),
+      paid_out_paise: committed,
+      unsettled_paise: unsettledPaise,
+    };
+  });
+  return rows.sort((a, b) => b.commission_accrued_paise - a.commission_accrued_paise);
+}
+
 // ─── Routes ────────────────────────────────────────────────────────
 
 export const adminReferralMonitorRoutes: FastifyPluginAsync = async (server) => {
@@ -155,6 +225,16 @@ export const adminReferralMonitorRoutes: FastifyPluginAsync = async (server) => 
       conversions.find((c) => c.status === status)?._count._all ?? 0;
     const accrued = conversions.reduce((sum, c) => sum + (c._sum.commission_accrued ?? 0), 0);
     const committed = payoutsAgg._sum.amount_paise ?? 0;
+    // Only QUALIFIED/PAID money is payable — a CLAWED_BACK row can still carry
+    // accrued commission, and the job never pays it.
+    const payable = conversions
+      .filter((c) => c.status === 'QUALIFIED' || c.status === 'PAID')
+      .map((c) => ({
+        id: c.status,
+        status: c.status,
+        commission_accrued: c._sum.commission_accrued ?? 0,
+        payout_id: null,
+      }));
 
     return {
       data: {
@@ -165,10 +245,10 @@ export const adminReferralMonitorRoutes: FastifyPluginAsync = async (server) => 
         clawed_back: byStatus('CLAWED_BACK'),
         commission_accrued_paise: accrued,
         paid_out_paise: committed,
-        // Same identity the payout job enforces: unsettled = accrued −
+        // Same identity the payout job enforces: unsettled = payable accrued −
         // committed(PENDING/PROCESSING/PAID). REVERSED/FAILED batches released
         // their claim, so they are excluded on BOTH sides.
-        unsettled_paise: accrued - committed,
+        unsettled_paise: computeUnsettledPaise(payable, committed),
         payout_batches_in_flight: payoutsAgg._count._all,
       },
     };
@@ -178,147 +258,11 @@ export const adminReferralMonitorRoutes: FastifyPluginAsync = async (server) => 
   // One row per referrer with unsettled money. The unsettled figure per row
   // uses the T7 ledger identity, so a row showing ₹0 exactly means the next
   // payout run has nothing to claim for that referrer.
-  server.get('/referral/leaderboard', async () => {
-    const conversions = await prisma.referralConversion.findMany({
-      where: { status: { in: ['PENDING', 'QUALIFIED', 'PAID', 'CLAWED_BACK'] } },
-      select: {
-        referrer_id: true,
-        status: true,
-        commission_accrued: true,
-        referrer: { select: { shop_name: true } },
-      },
-    });
-    const payoutRows = await prisma.referralPayout.findMany({
-      where: { status: { in: [...LEDGER_CONSUMING_STATUSES] } },
-      select: { referrer_id: true, amount_paise: true },
-    });
-    const codes = await prisma.referralCode.findMany({
-      select: { retailer_id: true, code: true },
-    });
-    const codeByRetailer = new Map(codes.map((c) => [c.retailer_id, c.code]));
-
-    const committedByReferrer = new Map<string, number>();
-    for (const p of payoutRows) {
-      committedByReferrer.set(
-        p.referrer_id,
-        (committedByReferrer.get(p.referrer_id) ?? 0) + p.amount_paise,
-      );
-    }
-
-    const byReferrer = new Map<string, typeof conversions>();
-    for (const c of conversions) {
-      const list = byReferrer.get(c.referrer_id) ?? [];
-      list.push(c);
-      byReferrer.set(c.referrer_id, list);
-    }
-
-    const rows: LeaderboardRow[] = [];
-    for (const [referrerId, list] of byReferrer) {
-      const count = (status: ConversionStatus) => list.filter((c) => c.status === status).length;
-      const accrued = list.reduce((s, c) => s + c.commission_accrued, 0);
-      const committed = committedByReferrer.get(referrerId) ?? 0;
-      // The exact per-referrer unsettled identity T7 acts on: accrued on ALL
-      // QUALIFIED/PAID conversions (claimed ones included — their money sits on
-      // both sides of the identity and cancels) minus committed batches.
-      // Filtering to payout_id === null here would subtract claimed money
-      // twice. Reusing the job's own helper + statuses constant keeps the
-      // screen honest if the job ever changes its set.
-      const unsettledPaise = computeUnsettledPaise(
-        list
-          .filter((c) => c.status === 'QUALIFIED' || c.status === 'PAID')
-          .map((c) => ({
-            id: c.referrer_id,
-            status: c.status,
-            commission_accrued: c.commission_accrued,
-            payout_id: null,
-          })),
-        committed,
-      );
-      rows.push({
-        referrer_id: referrerId,
-        shop_name: list[0]?.referrer.shop_name ?? referrerId,
-        code: codeByRetailer.get(referrerId) ?? null,
-        conversions_total: list.length,
-        pending: count('PENDING'),
-        qualified: count('QUALIFIED'),
-        paid: count('PAID'),
-        clawed_back: count('CLAWED_BACK'),
-        commission_accrued_paise: accrued,
-        paid_out_paise: committed,
-        unsettled_paise: unsettledPaise,
-      });
-    }
-    rows.sort((a, b) => b.commission_accrued_paise - a.commission_accrued_paise);
-
-    return { data: rows };
-  });
+  server.get('/referral/leaderboard', async () => ({ data: await loadLeaderboardRows() }));
 
   // ─── GET /referral/export ────────────────────────────────────────
   server.get('/referral/export', async (_request, reply) => {
-    // Reuse the leaderboard computation by calling the same selects inline.
-    const conversions = await prisma.referralConversion.findMany({
-      where: { status: { in: ['PENDING', 'QUALIFIED', 'PAID', 'CLAWED_BACK'] } },
-      select: {
-        referrer_id: true,
-        status: true,
-        commission_accrued: true,
-        referrer: { select: { shop_name: true } },
-      },
-    });
-    const payoutRows = await prisma.referralPayout.findMany({
-      where: { status: { in: [...LEDGER_CONSUMING_STATUSES] } },
-      select: { referrer_id: true, amount_paise: true },
-    });
-    const codes = await prisma.referralCode.findMany({ select: { retailer_id: true, code: true } });
-    const codeByRetailer = new Map(codes.map((c) => [c.retailer_id, c.code]));
-    const committedByReferrer = new Map<string, number>();
-    for (const p of payoutRows) {
-      committedByReferrer.set(
-        p.referrer_id,
-        (committedByReferrer.get(p.referrer_id) ?? 0) + p.amount_paise,
-      );
-    }
-    const byReferrer = new Map<string, typeof conversions>();
-    for (const c of conversions) {
-      const list = byReferrer.get(c.referrer_id) ?? [];
-      list.push(c);
-      byReferrer.set(c.referrer_id, list);
-    }
-    const rows: LeaderboardRow[] = [...byReferrer.entries()].map(([referrerId, list]) => {
-      const count = (status: ConversionStatus) => list.filter((c) => c.status === status).length;
-      const accrued = list.reduce((s, c) => s + c.commission_accrued, 0);
-      const committed = committedByReferrer.get(referrerId) ?? 0;
-      // Same identity as the leaderboard: ALL QUALIFIED/PAID conversions,
-      // never the payout_id-filtered subset (claimed money would otherwise be
-      // subtracted twice).
-      const unsettledPaise = computeUnsettledPaise(
-        list
-          .filter((c) => c.status === 'QUALIFIED' || c.status === 'PAID')
-          .map((c) => ({
-            id: c.referrer_id,
-            status: c.status,
-            commission_accrued: c.commission_accrued,
-            payout_id: null,
-          })),
-        committed,
-      );
-      return {
-        referrer_id: referrerId,
-        shop_name: list[0]?.referrer.shop_name ?? referrerId,
-        code: codeByRetailer.get(referrerId) ?? null,
-        conversions_total: list.length,
-        pending: count('PENDING'),
-        qualified: count('QUALIFIED'),
-        paid: count('PAID'),
-        clawed_back: count('CLAWED_BACK'),
-        commission_accrued_paise: accrued,
-        paid_out_paise: committed,
-        unsettled_paise: unsettledPaise,
-      };
-    });
-    rows.sort((a, b) => b.commission_accrued_paise - a.commission_accrued_paise);
-
-    const csv = buildReferralLeaderboardCsv(rows);
+    const csv = buildReferralLeaderboardCsv(await loadLeaderboardRows());
     reply.header('Content-Type', 'text/csv; charset=utf-8');
     reply.header(
       'Content-Disposition',

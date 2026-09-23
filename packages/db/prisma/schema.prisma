@@ -1571,19 +1571,15 @@ model ReferralPayoutAccount {
   razorpayx_contact_id      String
   razorpayx_fund_account_id String? @unique
 
-  /// Which fund-account flavor. DB CHECK pins it to the two flavors the code
-  /// understands (RC-027: no unrecognized silent values).
+  /// Which fund-account flavor (RC-027: an enum, so an unrecognized value is
+  /// unrepresentable).
   account_type ReferralPayoutAccountType @default(BANK_ACCOUNT)
 
   /// What every UI renders. Never the raw numbers.
   masked_display String @default("")
 
-  /// Raw details, ONLY for recreation. Pairing enforced by DB CHECK:
-  /// bank_account ⟹ bank_details present + vpa null; vpa ⟹ the reverse.
-  bank_details Json?
-  vpa_address  String?
-
-  /// RazorpayX contact metadata (recreation reuses the same contact).
+  /// RazorpayX contact metadata (a replacement reuses the same contact).
+  /// Raw bank/UPI details are never stored (owner decision, migration 115).
   contact_name  String  @default("")
   contact_phone String?
 

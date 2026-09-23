@@ -13,12 +13,13 @@
 //
 // THE CLAIM MODEL (why this is safe under crash/retry)
 //
-// 1. CLAIM (one transaction): PENDING row created with
-//    idempotency_key = 'refpo-' + row id, then a compare-and-swap attaches
-//    payout_id to every unsettled QUALIFIED/PAID conversion of that referrer
-//    (WHERE payout_id IS NULL — the CAS: two concurrent claims can never both
-//    grab a conversion). The audit row joins the transaction (T5/T6
-//    discipline — a claim without its audit is an unaudited money move).
+// 1. CLAIM (one transaction): a per-referrer advisory lock serializes
+//    overlapping runs, the unsettled amount is re-read under it, a PENDING
+//    row is created for exactly that amount with a random 'refpo-' key, and
+//    every QUALIFIED/PAID conversion not held by an in-flight batch is
+//    attached (payout_id) so settlement can stamp paid_at. The audit row
+//    joins the transaction (T5/T6 discipline — a claim without its audit is
+//    an unaudited money move).
 // 2. SUBMIT: POST /v1/payouts with X-Payout-Idempotency = the row's key and a
 //    body derived purely from stored values (RazorpayX requires the identical
 //    body on retry; anything timestamp- or random-derived would break it).
@@ -49,7 +50,12 @@
 // trigger endpoint pays on demand through the same exported function).
 import { randomBytes } from 'node:crypto';
 import { prisma } from '@kanchuki/db';
-import { type RazorpayxPayoutStatus, createPayout, fetchPayout } from '../lib/razorpayx.js';
+import {
+  RazorpayxHttpError,
+  type RazorpayxPayoutStatus,
+  createPayout,
+  fetchPayout,
+} from '../lib/razorpayx.js';
 import { settlePayout } from '../lib/referral-payout-settle.js';
 
 /**
@@ -284,14 +290,26 @@ async function submitPayoutRow(payoutRowId: string): Promise<'submitted' | 'fail
     return 'failed';
   }
 
-  const netPaise = row.amount_paise - row.tds_paise;
-  const remote = await createPayout({
-    fundAccountId: account.razorpayx_fund_account_id,
-    amount: netPaise,
-    idempotencyKey: row.idempotency_key,
-    referenceId: row.id,
-    narration: 'Kanchuki referral',
-  });
+  let remote: Awaited<ReturnType<typeof createPayout>>;
+  try {
+    remote = await createPayout({
+      fundAccountId: account.razorpayx_fund_account_id,
+      amount: row.amount_paise - row.tds_paise,
+      idempotencyKey: row.idempotency_key,
+      referenceId: row.id,
+      narration: 'Kanchuki referral',
+    });
+  } catch (error) {
+    // Only a definitive rejection releases the claim. A timeout, 5xx or 429
+    // is ambiguous — RazorpayX may have created the payout — so the row stays
+    // PENDING and the next run re-submits with the SAME key. Releasing here
+    // would re-batch the money under a NEW key and pay it twice.
+    if (error instanceof RazorpayxHttpError && error.isDefinitiveRejection) {
+      await settlePayout(row.id, 'FAILED', failureReasonFrom(error));
+      return 'failed';
+    }
+    throw error;
+  }
 
   const mapped = mapRazorpayxStatus(remote.status);
   if (!mapped) {
@@ -435,30 +453,39 @@ export async function handleReferralPayout(
       if (decision.action === 'SKIP_BELOW_MIN') summary.skipped_below_min += 1;
       if (decision.action !== 'CLAIM') continue;
 
-      // 3a. CLAIM — one transaction: batch row + CAS attach + audit.
-      //      The batch amount is DECIDED here from what the CAS actually
-      //      attached, not from the pre-read unsettled figure: a concurrent
-      //      run (manual trigger + cron, or two triggers) can claim
-      //      conversions between this run's unsettled read and its claim tx.
-      //      The loser of that race would otherwise create a PENDING batch for
-      //      the FULL pre-read amount while claiming ZERO conversions — and
-      //      settlePayout('PAID') would pay real money with nothing on the
-      //      ledger behind it (RC-015 class, server half). The tx re-sums the
-      //      claimable conversions and treats an empty claim as a skip, so an
-      //      overlapping run can never double-pay.
-      const grossPaise = decision.gross_paise;
-      const { net_paise: netPaise, tds_paise: tdsPaise } = splitTds(grossPaise, settings);
-      if (netPaise <= 0) {
-        // TDS settings swallowed the batch — refuse loudly rather than send a
-        // sub-minimum payout to RazorpayX.
-        summary.errors += 1;
-        console.error(
-          `[referral-payout] TDS leaves nothing to pay for referrer ${referrerId} (gross ${grossPaise}, tds ${tdsPaise}) — skipping`,
-        );
-        continue;
-      }
-
+      // 3a. CLAIM — one transaction: per-referrer lock + ledger re-read +
+      //      batch row + attach + audit. The pre-read above only decides
+      //      whether to try; the amount is decided under the lock, so an
+      //      overlapping run can never double-pay (RC-036). splitTds keeps
+      //      net ≥ 1 paise for any gross ≥ 1, and gross 0 is refused in-tx.
       const payoutRowId = await prisma.$transaction(async (tx) => {
+        // Serialize claims per referrer: an overlapping run (cron + manual
+        // trigger, or two triggers) blocks here until the first commits, then
+        // the re-read below sees the first run's batch as consumed. Lock is
+        // released at tx end.
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${referrerId}))`;
+        // Re-read the ledger UNDER the lock and size the batch from it — never
+        // from the pre-read figure, which a concurrent run may have consumed
+        // (RC-036: a stale-sized batch pays money no ledger entry backs).
+        const [accruedNow, consumedNow] = await Promise.all([
+          tx.referralConversion.aggregate({
+            where: { referrer_id: referrerId, status: { in: ['QUALIFIED', 'PAID'] } },
+            _sum: { commission_accrued: true },
+          }),
+          tx.referralPayout.aggregate({
+            where: { referrer_id: referrerId, status: { in: [...LEDGER_CONSUMING_STATUSES] } },
+            _sum: { amount_paise: true },
+          }),
+        ]);
+        const lockedGross = Math.max(
+          0,
+          (accruedNow._sum.commission_accrued ?? 0) - (consumedNow._sum.amount_paise ?? 0),
+        );
+        if (lockedGross === 0 || lockedGross < settings.payout_min_amount) {
+          // A concurrent run paid this referrer while we waited on the lock.
+          throw new EmptyClaimError();
+        }
+        const locked = splitTds(lockedGross, settings);
         // Pre-generate the claim key: idempotency_key is UNIQUE, so a
         // placeholder would collide under two overlapping claim transactions.
         // 24 hex chars -> "refpo-" + 24 = 30, within RazorpayX's 40-char cap.
@@ -466,44 +493,25 @@ export async function handleReferralPayout(
         const batch = await tx.referralPayout.create({
           data: {
             referrer_id: referrerId,
-            amount_paise: grossPaise,
-            tds_paise: tdsPaise,
+            amount_paise: lockedGross,
+            tds_paise: locked.tds_paise,
             status: 'PENDING',
             idempotency_key: claimKey,
           },
         });
-        // CAS: attach ONLY conversions not already claimed (payout_id IS NULL).
-        //        Under SERIALIZABLE isolation Postgres would abort the loser;
-        //        at READ COMMITTED (the default) we must detect the empty/
-        //        partial claim ourselves, so re-sum what THIS batch actually
-        //        attached and size the batch from it.
-        const claimResult = await tx.referralConversion.updateMany({
+        // Attach every conversion not held by an in-flight batch — including
+        // ones a PAID batch settled earlier: they keep accruing monthly after
+        // the first payout, and settlePayout stamps paid_at via this link.
+        // (Filtering on payout_id IS NULL alone stranded every month after the
+        // first payout — nothing ever re-attached, so nothing paid again.)
+        await tx.referralConversion.updateMany({
           where: {
             referrer_id: referrerId,
-            payout_id: null,
             status: { in: ['QUALIFIED', 'PAID'] },
+            OR: [{ payout_id: null }, { payout: { status: 'PAID' } }],
           },
           data: { payout_id: batch.id },
         });
-        const claimedPaise = await tx.referralConversion.aggregate({
-          where: { referrer_id: referrerId, payout_id: batch.id },
-          _sum: { commission_accrued: true },
-        });
-        const claimedGross = claimedPaise._sum.commission_accrued ?? 0;
-        if (claimResult.count === 0 || claimedGross <= 0) {
-          // Lost the race: a concurrent run claimed everything between our
-          // unsettled read and this tx. No batch, no money — the loser rolls
-          // back to a clean no-op (the winner's batch is authoritative).
-          throw new EmptyClaimError();
-        }
-        if (claimedGross < grossPaise) {
-          // Partial claim — a concurrent run took some conversions first.
-          // Size THIS batch to what it actually holds, never to the stale
-          // pre-read figure, or it would pay money no ledger entry backs.
-          const claimed = splitTds(claimedGross, settings);
-          batch.amount_paise = claimedGross;
-          batch.tds_paise = claimed.tds_paise;
-        }
         await tx.auditLog.create({
           data: {
             actor_type: 'system',
@@ -522,17 +530,16 @@ export async function handleReferralPayout(
       });
       summary.batches_claimed += 1;
 
-      // 3b. SUBMIT — outside the claim transaction; a crash here leaves a
-      //     PENDING row that the re-submit step above recovers next run.
+      // 3b. SUBMIT — outside the claim transaction. A definitive rejection is
+      //     released inside submitPayoutRow; anything that throws out is
+      //     ambiguous and leaves a PENDING row the re-submit step recovers
+      //     next run with the same idempotency key.
       try {
-        await submitPayoutRow(payoutRowId);
-        summary.batches_submitted += 1;
+        if ((await submitPayoutRow(payoutRowId)) === 'submitted') summary.batches_submitted += 1;
+        else summary.errors += 1;
       } catch (error) {
-        // Submission failed — release the claim so the money is not stranded
-        // behind a PENDING row the re-submit would keep fighting over.
         summary.errors += 1;
         console.error(`[referral-payout] submit failed for ${payoutRowId}:`, error);
-        await settlePayout(payoutRowId, 'FAILED', failureReasonFrom(error));
       }
     } catch (error) {
       if (error instanceof EmptyClaimError) {

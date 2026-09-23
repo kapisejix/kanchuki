@@ -3,7 +3,7 @@
 //
 // WHAT THIS IS
 //
-// Thin raw-fetch wrappers over the four RazorpayX endpoints T7 needs:
+// Thin raw-fetch wrappers over the RazorpayX endpoints T7 needs:
 //   POST /v1/contacts               — payee record (one per referrer)
 //   POST /v1/fund_accounts          — destination: bank_account | vpa (UPI)
 //   PATCH /v1/fund_accounts/:id     — deactivate on account replacement
@@ -47,10 +47,25 @@ async function razorpayx<T>(path: string, init?: RequestInit): Promise<T> {
     },
   });
   if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`RazorpayX ${res.status}: ${body}`);
+    throw new RazorpayxHttpError(res.status, await res.text());
   }
   return res.json() as Promise<T>;
+}
+
+/** A RazorpayX non-2xx. Timeouts/network errors are NOT this class — they stay ambiguous. */
+export class RazorpayxHttpError extends Error {
+  constructor(
+    readonly status: number,
+    body: string,
+  ) {
+    super(`RazorpayX ${status}: ${body}`);
+    this.name = 'RazorpayxHttpError';
+  }
+
+  /** 4xx means the request was refused and nothing was created; 408/429 are retryable, not refusals. */
+  get isDefinitiveRejection(): boolean {
+    return this.status >= 400 && this.status < 500 && this.status !== 408 && this.status !== 429;
+  }
 }
 
 /** The RazorpayX business account payouts debit. Required — throws if unset. */

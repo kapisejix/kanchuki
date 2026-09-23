@@ -37,6 +37,7 @@ Run these from the admin dashboard's SQL runner as `kanchuki_migrator` (the role
 | 4 | `112_referral_accrual_columns` | 3 T6-owned columns on `referral_conversions` + the 4 ledger-consistency CHECKs. | 109 |
 | 5 | `113_referral_payout_accounts` | The payout-accounts table + `GRANT DELETE` to `kanchuki_purge`. | 109 |
 | 6 | `114_referral_tax_columns` | Tax knobs on `referral_settings` + `referral_payouts.tds_paise`. | 109 |
+| 7 | `115_referral_payout_account_fix` | **⚠️ NOT applied — verified 2026-09-23 by `scripts/check-referral-migrations.ts` (`account_type` still `text`, `bank_details`/`vpa_address` still present). 109–114 verified PASS by the same script.** Converts `account_type` TEXT → the `referral_payout_account_type` enum Prisma expects (without it **every payout-account save fails**) and drops the unused raw `bank_details`/`vpa_address` columns. | 113 |
 
 **Warning about 110 before 111:** 110 grants DELETE on one table; 111 creates the RLS policies that make the purge role's access *explicit* across the path. If you apply 111 and skip 110, the promotions sweep is still broken (RC-029). Apply both.
 
@@ -131,12 +132,12 @@ The payouts webhook verifies HMAC with its **own** secret — deliberately NOT t
 
 ## Part 3 — Register the payouts webhook in the RazorpayX dashboard
 
-- **URL:** `https://api.kanchuki.app/v1/billing/razorpayx-payout-webhook` (replace with the real prod API host if different — the payments webhook in `docs/DEPLOY.md` uses the same host).
+- **URL:** `https://api.kanchuki.app/v1/public/webhooks/razorpayx-payout` (replace with the real prod API host if different — the payments webhook in `docs/DEPLOY.md` uses the same host).
 - **Secret:** exactly the `RAZORPAYX_WEBHOOK_SECRET` string from 2c.
 - **Events:** subscribe to **`payout.processed`**, **`payout.failed`**, **`payout.rejected`**, **`payout.canceled`**, **`payout.reversed`**. The route maps: processed → PAID; failed/rejected/canceled → FAILED (claim released, money re-pools); reversed → REVERSED. An unrecognized status is logged and ignored — never guessed.
 - **Active:** yes.
 
-**Verification:** from the X dashboard's webhook settings, use "Send test event"; then check the API logs for `[razorpayx-payout-webhook]` lines. A 401 means the dashboard's secret ≠ 2c's secret (most common miss); a 404 means the URL path is wrong.
+**Verification:** from the X dashboard's webhook settings, use "Send test event"; then check the API logs for the request to `/v1/public/webhooks/razorpayx-payout` (a test event for an unknown payout logs `webhook for unknown payout` and returns 200). A 401 means the dashboard's secret ≠ 2c's secret (most common miss); a 404 means the URL path is wrong.
 
 ---
 

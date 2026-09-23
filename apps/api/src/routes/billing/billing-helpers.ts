@@ -1,6 +1,8 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
+import { Readable } from 'node:stream';
 import { getSecret, prisma } from '@kanchuki/db';
 import { PLAN_LIMITS, PLAN_PRICING } from '@kanchuki/shared';
+import type { FastifyRequest } from 'fastify';
 
 // Shared helpers for the billing route modules (split from billing.ts).
 // Everything here was module-level in the original file; bodies moved
@@ -145,4 +147,18 @@ declare module 'fastify' {
   interface FastifyRequest {
     rawBody?: string;
   }
+}
+
+/**
+ * preParsing hook for HMAC-signed webhooks: keep the raw body on
+ * request.rawBody and hand the JSON parser a fresh stream. Hooks are
+ * encapsulated per plugin — every webhook plugin must add this itself.
+ */
+export async function captureRawBody(request: FastifyRequest): Promise<Readable> {
+  const chunks: Buffer[] = [];
+  for await (const chunk of request.raw) {
+    chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
+  }
+  request.rawBody = Buffer.concat(chunks).toString();
+  return Readable.from(request.rawBody);
 }

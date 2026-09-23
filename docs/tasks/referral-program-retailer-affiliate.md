@@ -455,6 +455,10 @@ Every RC-### this repo has already paid for (`docs/root-cause/root-cause issues.
 
 ---
 
+### 11.1 Full-feature review — 2026-09-23 (RC-037)
+
+Five T7 defects fixed that every mocked test had passed: partial-claim resize never persisted; webhook never received its raw body (all deliveries 401); payout-account enum missing in DB (all saves fail) + raw bank/UPI details stored against the owner decision; no second payout ever possible after a referrer's first; ambiguous submit errors released the claim (double-pay). Also: leaderboard/export duplication removed, overview "unsettled" now excludes clawed-back money, runbook webhook URL corrected to `/v1/public/webhooks/razorpayx-payout`. **Live DB check (2026-09-23, `scripts/check-referral-migrations.ts`, read-only):** 109–114 ✅ all PASS (tables, settings singleton, promotions purge grant, backend-role RLS policies, accrual + tax columns, Prisma read of all 5 models). **115 ❌ NOT applied** — `account_type` is still `text`, raw-detail columns still present. **Owner action: apply `115_referral_payout_account_fix`, then re-run the script** before anyone saves a payout account.
+
 ## 12. Handoff prompt — paste this into a new session to continue
 
 > Copy everything inside the block below as the first message of a new session.

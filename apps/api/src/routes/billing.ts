@@ -1,5 +1,6 @@
-import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
+import type { FastifyPluginAsync } from 'fastify';
 import { billingAddonRoutes } from './billing/billing-addons.js';
+import { captureRawBody } from './billing/billing-helpers.js';
 import { billingPlansRoutes } from './billing/billing-plans.js';
 import { billingSubscriptionRoutes } from './billing/billing-subscription.js';
 import { billingWebhookRoutes } from './billing/billing-webhook.js';
@@ -11,16 +12,7 @@ export const billingRoutes: FastifyPluginAsync = async (server) => {
   // Razorpay signs the raw body — capture it BEFORE the JSON parser runs.
   // Fastify v5: removeContentTypeParser inside an encapsulated plugin doesn't
   // reliably remove inherited parsers. Use preParsing hook instead.
-  server.addHook('preParsing', async (request: FastifyRequest) => {
-    const chunks: Buffer[] = [];
-    for await (const chunk of request.raw) {
-      chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
-    }
-    request.rawBody = Buffer.concat(chunks).toString();
-    // Return a new stream so the default JSON parser still works
-    const { Readable } = await import('node:stream');
-    return Readable.from(request.rawBody);
-  });
+  server.addHook('preParsing', captureRawBody);
 
   await server.register(billingPlansRoutes);
   await server.register(billingSubscriptionRoutes);

@@ -10,6 +10,20 @@
 
 ---
 
+## RC-037 — Mocks that return the same object they store made three payout bugs invisible: an in-memory-only resize, a plugin-scoped raw-body hook, and a Prisma enum the DB never had
+
+- **Component:** F-038 T7 — `jobs/referral-payout.ts`, `routes/webhooks/razorpayx-payout.ts`, `lib/referral-payout-account-save.ts`, migration 113 · found by the 2026-09-23 full-feature review
+- **Commit:** this session
+- **Root causes (one shape — the test double agreed with the code, not with the platform):**
+  1. **RC-036's partial-claim resize never reached the DB.** It mutated the JS object `tx.referralPayout.create()` returned; `submitPayoutRow` re-reads the row, so RazorpayX would have been paid the stale figure. The mock's `create` pushed and returned the *same* object, so the mutation leaked into "the DB" and the test passed.
+  2. **Every RazorpayX webhook would 401.** `request.rawBody` is set by a `preParsing` hook registered inside `billingRoutes`; Fastify hooks are plugin-scoped, and the payout webhook is a separate plugin, so `rawBody` was always undefined. Source-scan tests checked the secret name, never that the body was captured.
+  3. **Every payout-account save would fail.** `schema.prisma` declares enum `referral_payout_account_type` (BANK_ACCOUNT/VPA); migration 113 made the column TEXT with a lowercase CHECK and never created the type. Mocked Prisma never casts. 113 also stored raw bank/UPI details the owner decision said must never persist — and nothing read them.
+- **Also fixed (logic, same review):** (4) the claim attached only `payout_id IS NULL` conversions, but a PAID batch keeps its conversions attached while they keep accruing, so after a referrer's **first** payout nothing ever re-attached — every later month hit `EmptyClaimError` and was never paid. (5) Any submit exception (timeout, 5xx) released the claim; the money was then re-batched under a **new** idempotency key — a double-pay whenever RazorpayX had in fact created the payout.
+- **Fix:** claim tx takes `pg_advisory_xact_lock(hashtext(referrer_id))`, re-reads the ledger under it, creates the batch at that amount (no post-hoc resize), and attaches conversions that are unattached **or** held by a PAID batch. `RazorpayxHttpError.isDefinitiveRejection` (4xx except 408/429) is the only thing that releases a claim; anything else leaves the row PENDING for same-key re-submit. Shared `captureRawBody` hook (billing, WhatsApp, RazorpayX — three copies → one) added to the payout webhook. Migration `115_referral_payout_account_fix` (**owner must apply**) converts the column to the enum and drops `bank_details`/`vpa_address`.
+- **Proof:** payout job 53/53 incl. new tests (ambiguous 5xx stays PENDING and re-submits with the same key; second payout after a PAID batch; race loser/partial via a hooked lock). Falsified: forcing every error "definitive" → ambiguous test red; sizing from the pre-read → partial-race + F1 red. Full API 1327/1332 (5 skips), tsc clean.
+
+---
+
 ## RC-036 — The payout job read the money BEFORE the claim transaction, and sized the batch from that stale figure: the CAS prevented a double-**attach** but nothing prevented a double-**pay**
 
 - **Component:** `apps/api/src/jobs/referral-payout.ts` (`handleReferralPayout` claim tx) · found by the §11 checklist run (RC-015 row, server half)

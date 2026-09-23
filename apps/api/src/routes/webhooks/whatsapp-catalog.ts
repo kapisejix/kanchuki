@@ -31,8 +31,9 @@
 
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { getSecret, prisma } from '@kanchuki/db';
-import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
+import type { FastifyPluginAsync } from 'fastify';
 import { addCatalogSyncJob } from '../../jobs/index.js';
+import { captureRawBody } from '../billing/billing-helpers.js';
 
 const CATALOG_EVENT_FIELDS = new Set([
   'catalog_item_added',
@@ -154,16 +155,7 @@ export const whatsappCatalogWebhookRoutes: FastifyPluginAsync = async (server) =
   // Meta signs the raw body — capture it BEFORE the JSON parser runs.
   // Fastify v5: removeContentTypeParser inside an encapsulated plugin doesn't
   // reliably remove inherited parsers. Use preParsing hook instead.
-  server.addHook('preParsing', async (request: FastifyRequest) => {
-    const chunks: Buffer[] = [];
-    for await (const chunk of request.raw) {
-      chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
-    }
-    const raw = Buffer.concat(chunks).toString();
-    (request as FastifyRequest & { rawBody?: string }).rawBody = raw;
-    const { Readable } = await import('node:stream');
-    return Readable.from(raw);
-  });
+  server.addHook('preParsing', captureRawBody);
 
   // ── GET /public/webhooks/whatsapp-catalog — subscription handshake ─
   // Meta verifies the callback URL with this GET before enabling the webhook.
@@ -194,7 +186,7 @@ export const whatsappCatalogWebhookRoutes: FastifyPluginAsync = async (server) =
   // No JWT (the /v1/public prefix is auth-exempt); authentication is the
   // X-Hub-Signature-256 header verified against META_APP_SECRET.
   server.post('/public/webhooks/whatsapp-catalog', async (request, reply) => {
-    const rawBody = (request as FastifyRequest & { rawBody?: string }).rawBody ?? '';
+    const rawBody = request.rawBody ?? '';
     const signature = request.headers['x-hub-signature-256'] as string | undefined;
 
     const appSecret = (await getSecret('META_APP_SECRET'))?.trim();

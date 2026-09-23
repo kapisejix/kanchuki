@@ -4,12 +4,12 @@
 // replacement, masked display) on the admin surface.
 //
 // THE INVARIANT BOTH SURFACES SHARE: the database stores ONLY RazorpayX
-// identifiers + a masked display. Raw bank/UPI details persist solely in
-// `bank_details`/`vpa_address` for fund-account recreation (RazorpayX has no
-// update API — deactivate + recreate is the documented path), and are never
-// returned to any client.
+// identifiers + a masked display (owner decision). Raw bank/UPI details are
+// forwarded to RazorpayX and never persisted — a replacement arrives with
+// fresh details in the PUT body (RazorpayX has no update API; deactivate +
+// recreate is the documented path).
 
-import { Prisma, prisma } from '@kanchuki/db';
+import { prisma } from '@kanchuki/db';
 import {
   createBankFundAccount,
   createContact,
@@ -117,15 +117,6 @@ export async function savePayoutAccount(params: {
       razorpayx_fund_account_id: fundAccount.id,
       account_type: body.account_type,
       masked_display: maskFor(body),
-      bank_details:
-        body.account_type === 'BANK_ACCOUNT'
-          ? {
-              name: body.account_name,
-              ifsc: body.ifsc,
-              account_number: body.account_number,
-            }
-          : undefined,
-      vpa_address: body.account_type === 'VPA' ? body.vpa_address : undefined,
       contact_name: retailer.shop_name || '',
       contact_phone: body.holder_phone ?? retailer.phone ?? null,
       is_active: true,
@@ -135,15 +126,6 @@ export async function savePayoutAccount(params: {
       razorpayx_fund_account_id: fundAccount.id,
       account_type: body.account_type,
       masked_display: maskFor(body),
-      bank_details:
-        body.account_type === 'BANK_ACCOUNT'
-          ? {
-              name: body.account_name,
-              ifsc: body.ifsc,
-              account_number: body.account_number,
-            }
-          : Prisma.DbNull,
-      vpa_address: body.account_type === 'VPA' ? body.vpa_address : null,
       contact_phone: body.holder_phone ?? retailer.phone ?? null,
       is_active: true,
     },

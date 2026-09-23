@@ -55,9 +55,9 @@ function listFiles(dir: string, out: string[] = []): string[] {
   return out;
 }
 
-const SERVER_METHOD_CALL = /server\.(?:get|post|put|patch|delete|head|options)\(\s*['"`]([^'"`]+)['"`]/g;
-const SERVER_ROUTE_CALL =
-  /server\.route\(\s*\{[\s\S]{0,400}?url:\s*['"`]([^'"`]+)['"`]/g;
+const SERVER_METHOD_CALL =
+  /server\.(?:get|post|put|patch|delete|head|options)\(\s*['"`]([^'"`]+)['"`]/g;
+const SERVER_ROUTE_CALL = /server\.route\(\s*\{[\s\S]{0,400}?url:\s*['"`]([^'"`]+)['"`]/g;
 
 function segmentsInSource(source: string): string[] {
   const clean = stripComments(source);
@@ -151,12 +151,7 @@ describe('admin access list completeness (RC-034)', () => {
     const unclassified = apiSegments.filter((s) => !CLASSIFIED.includes(s));
     expect(
       unclassified,
-      'These admin route segments are in NEITHER list, so a plain ADMIN key can ' +
-        'reach them — the guard can only protect what is classified. Add each to ' +
-        'SUPER_ADMIN_ONLY_ADMIN_SEGMENTS (money, credentials, tax, platform config, ' +
-        'destructive) or STANDARD_ADMIN_ADMIN_SEGMENTS (day-to-day ops) in ' +
-        'packages/shared/src/constants/admin-access.ts:\n' +
-        located(apiSegmentMap, unclassified),
+      `These admin route segments are in NEITHER list, so a plain ADMIN key can reach them — the guard can only protect what is classified. Add each to SUPER_ADMIN_ONLY_ADMIN_SEGMENTS (money, credentials, tax, platform config, destructive) or STANDARD_ADMIN_ADMIN_SEGMENTS (day-to-day ops) in packages/shared/src/constants/admin-access.ts:\n${located(apiSegmentMap, unclassified)}`,
     ).toEqual([]);
   });
 

@@ -1,9 +1,8 @@
-import { createHmac, timingSafeEqual } from 'node:crypto';
 // RazorpayX payouts webhook — T7 of
 // docs/tasks/referral-program-retailer-affiliate.md.
 //
 // ROUTE: POST /v1/public/webhooks/razorpayx-payout
-// (registered under the public prefix → auth.ts skips JWT for /v1/public/*;
+// (under /v1/public → auth.ts skips JWT for /v1/public/*;
 // authentication is the HMAC signature below, exactly the billing webhook's
 // model. RazorpayX dashboard config: subscribe payout.processed,
 // payout.failed, payout.reversed, payout.rejected, payout.updated; set the
@@ -22,20 +21,15 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 // raw body with a constant-time compare (timing side-channel), and a ±300s
 // created_at window (a captured request resent later must not resurrect a
 // payout).
+import { createHmac } from 'node:crypto';
 import { getSecret, prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
 import { mapRazorpayxStatus } from '../../jobs/referral-payout.js';
 import type { RazorpayxPayoutStatus } from '../../lib/razorpayx.js';
 import { settlePayout } from '../../lib/referral-payout-settle.js';
+import { captureRawBody, hexEquals } from '../billing/billing-helpers.js';
 
 const WEBHOOK_MAX_AGE_SECONDS = 300;
-
-/** Constant-time hex compare (same shape as billing-helpers.hexEquals). */
-function hexEquals(expected: string, actual: string): boolean {
-  const a = Buffer.from(expected);
-  const b = Buffer.from(actual);
-  return a.length === b.length && timingSafeEqual(a, b);
-}
 
 async function verifyRazorpayxSignature(rawBody: string, signature: string): Promise<boolean> {
   const secret = (await getSecret('RAZORPAYX_WEBHOOK_SECRET')) ?? '';
@@ -60,6 +54,11 @@ interface PayoutWebhookEvent {
 }
 
 export const razorpayxPayoutWebhookRoutes: FastifyPluginAsync = async (server) => {
+  // RazorpayX signs the raw body. The billing plugin's hook does not reach
+  // this plugin (Fastify encapsulation) — without this, rawBody is undefined
+  // and every delivery 401s.
+  server.addHook('preParsing', captureRawBody);
+
   server.post('/public/webhooks/razorpayx-payout', async (request, reply) => {
     const signature = request.headers['x-razorpay-signature'] as string | undefined;
     if (
@@ -96,8 +95,7 @@ export const razorpayxPayoutWebhookRoutes: FastifyPluginAsync = async (server) =
     }
 
     if (event.event === 'payout.updated') {
-      // UTR arrival etc. — record the UTR when the row lacks one; no status
-      // change (payout.updated fires for non-terminal transitions too).
+      // Fires for non-terminal transitions too — never decides money.
       return reply.send({ received: true });
     }
 

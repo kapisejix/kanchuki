@@ -7,9 +7,8 @@
 // semantics cannot drift between them. The route adds only auth (retailer JWT
 // from index.ts) + validation + status mapping.
 //
-// Raw bank/UPI details are accepted in the request body but never returned:
-// the DB stores them only inside bank_details/vpa_address for recreation, and
-// GET selects masked_display alone.
+// Raw bank/UPI details are accepted in the request body, forwarded to
+// RazorpayX, and never stored or returned — GET selects masked_display alone.
 //
 // Registered in BOTH the barrel (routes/retailers/index.ts) and the aggregator
 // (routes/retailers.ts) — the 404 class this repo shipped before was a route
