@@ -2761,7 +2761,7 @@ Driven by the DPDP founder guide (see PRO-REQUIREMENTS §34 for the point-by-poi
 | `apps/web/src/app/terms/page.tsx` | new §7 "Personal data of your customers"; later sections renumbered 8–10 |
 | `apps/web/src/app/account-deletion/page.tsx` | grievance + Board pointer |
 | `apps/web/src/app/faq/page.tsx`, `for-customers/page.tsx` | DPDP FAQ entry + safety blurb; stale FAQ prices fixed (were ₹999/2,499/4,999 + annual) |
-| `packages/db/prisma/schema.prisma`, `migrations/108_customer_nominee` | `CustomerAccount.nominee_name` / `nominee_phone` — **migration NOT applied** (admin dashboard) |
+| `packages/db/prisma/schema.prisma`, `migrations/108_customer_nominee` | `CustomerAccount.nominee_name` / `nominee_phone` — **migration applied 2026-09-23** (owner, Supabase SQL Editor; verified: both TEXT columns present, Prisma select ok) |
 | `apps/api/.../passport-preferences.ts`, `passport-data.ts` | nominee on GET/PUT `/preferences` (both-or-neither, 10-digit mobile) + in the data export |
 | `apps/web/.../(shopper)/my-profile/page.tsx` | Nominee card (save / update / remove) |
 | `passport-preferences.test.ts` | +6 nominee tests |

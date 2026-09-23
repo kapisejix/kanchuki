@@ -1039,7 +1039,7 @@ When adding a new business table:
 
 ---
 
-## Shopper nominee — `customer_accounts` (migration 108, DPDP s.14)
+## Shopper nominee — `customer_accounts` (migration 108, DPDP s.14 — applied 2026-09-23)
 
 `nominee_name TEXT NULL`, `nominee_phone TEXT NULL` — the person a shopper names to exercise their data rights on death/incapacity. Both set or both NULL (enforced in `PUT /v1/public/passport/preferences`; phone must be a 10-digit Indian mobile). Existing rows stay NULL. Included in the "Download my data" export. Nothing acts on it automatically — a nominee contacts `privacy@kanchuki.app`. No new RLS needed (existing table, same row-level policy).
 
