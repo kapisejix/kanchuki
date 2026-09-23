@@ -75,6 +75,12 @@ const settingsPatchSchema = z.object({
   second_tier_pct: z.number().int().min(0).max(100).nullable().optional(),
   payout_min_amount: z.number().int().min(0).optional(),
   payout_cadence: z.enum(PAYOUT_CADENCES).optional(),
+  // T7 tax knobs (migration 114) — the owner flips these after the CA
+  // conversation; defaults stay off/zero so nothing changes until then.
+  tds_enabled: z.boolean().optional(),
+  tds_pct: z.number().int().min(0).max(100).optional(),
+  gst_applicable: z.boolean().optional(),
+  gst_pct: z.number().int().min(0).max(100).optional(),
 });
 
 type SettingsPatch = z.infer<typeof settingsPatchSchema>;
@@ -116,6 +122,19 @@ export function crossFieldError(row: SettingsRow, patch: SettingsPatch): string 
   const pct = patch.second_tier_pct !== undefined ? patch.second_tier_pct : row.second_tier_pct;
   if (enabled && pct == null) {
     return 'second_tier_pct is required when second_tier_enabled is true';
+  }
+
+  // T7 tax pairings — mirror migration 114's CHECKs so the admin gets a
+  // message naming the knob instead of an opaque 23514.
+  const tdsOn = patch.tds_enabled ?? row.tds_enabled;
+  const tdsRate = patch.tds_pct ?? row.tds_pct;
+  if (tdsOn && tdsRate <= 0) {
+    return 'tds_pct must be greater than 0 when tds_enabled is true';
+  }
+  const gstOn = patch.gst_applicable ?? row.gst_applicable;
+  const gstRate = patch.gst_pct ?? row.gst_pct;
+  if (gstOn && gstRate <= 0) {
+    return 'gst_pct must be greater than 0 when gst_applicable is true';
   }
 
   return null;

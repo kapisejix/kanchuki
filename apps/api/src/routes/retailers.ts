@@ -7,6 +7,7 @@ import {
   retailersCatalogUploadRoutes,
   retailersIntegrationsRoutes,
   retailersInvoicesRoutes,
+  retailersPayoutAccountRoutes,
   retailersProfileRoutes,
   retailersRatingsRoutes,
   retailersReferralRoutes,
@@ -53,4 +54,6 @@ export const retailerRoutes: FastifyPluginAsync = async (server) => {
   await server.register(retailersInvoicesRoutes);
   // retailers-referral — F-038 affiliate program, own referral code + link (T3)
   await server.register(retailersReferralRoutes);
+  // retailers-payout-account — F-038 T7 payout destination (Bank/UPI, masked)
+  await server.register(retailersPayoutAccountRoutes);
 };

@@ -348,6 +348,7 @@ model Retailer {
   referral_conversions_made     ReferralConversion[] @relation("ReferralConversionsMade")
   referral_conversion_received  ReferralConversion?  @relation("ReferralConversionReceived")
   referral_payouts              ReferralPayout[]     @relation("ReferralPayouts")
+  referral_payout_account       ReferralPayoutAccount?
 
   @@index([phone])
   @@index([city])
@@ -1392,6 +1393,18 @@ model ReferralSettings {
   /// enum members — a config value the code ignores is the RC-027 failure.
   payout_cadence ReferralPayoutCadence @default(MONTHLY)
 
+  /// T7 tax knobs (owner decision 2026-09-23: the OPTION ships now, the owner
+  /// flips it from /admin/referral-settings after talking to their CA). All
+  /// default off/zero — zero tax behavior until enabled. DB CHECKs pin the
+  /// pairings (enabled with a 0% rate is unrepresentable).
+  /// TDS withheld at source on each payout batch (India §194H/194J etc.).
+  tds_enabled Boolean @default(false)
+  tds_pct     Int     @default(0)
+  /// GST applicability flag for referral commission payouts (reporting only in
+  /// v1 — T7 pays gross-minus-TDS; the GST slice is recorded, not remitted).
+  gst_applicable Boolean @default(false)
+  gst_pct        Int     @default(0)
+
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
@@ -1514,6 +1527,13 @@ model ReferralPayout {
   /// cron run can never raise a second batch for the same referrer+period.
   idempotency_key String @unique
 
+  /// T7 only. TDS withheld at source on this batch (paise), from
+  /// ReferralSettings.tds_pct at submit time — snapshotted per batch so a
+  /// later settings edit cannot reprice a batch already sent. RazorpayX
+  /// receives NET = amount_paise − tds_paise; amount_paise stays the gross
+  /// claim against the ledger. DB CHECK: 0 <= tds_paise < amount_paise.
+  tds_paise Int @default(0)
+
   /// Only ever set on a FAILED batch, so an operator sees the real provider
   /// error rather than a generic line — the RC-003/RC-009 lesson applied to
   /// money.
@@ -1527,6 +1547,58 @@ model ReferralPayout {
   @@index([referrer_id, status])
   @@index([status, created_at])
   @@map("referral_payouts")
+}
+
+/// T7 — where a referrer's payouts go (owner decision 2026-09-23: retailers
+/// add their own Bank/UPI details). One row per retailer (UNIQUE retailer_id):
+/// replacing the account overwrites in place, deactivating the old RazorpayX
+/// fund account so it can never receive again. RazorpayX model is Contact →
+/// Fund Account (bank_account | vpa) → Payout; we create the Contact + Fund
+/// Account at save time and keep their IDs. Raw bank/UPI details are stored
+/// ONLY so a deactivated fund account can be recreated (RazorpayX has no
+/// update API — deactivate + recreate is the documented path); UIs show only
+/// masked_display. Retailer child (RESTRICT FK) — the purge sweeps delete it
+/// before the retailer row, and kanchuki_purge holds DELETE (migration 113).
+model ReferralPayoutAccount {
+  id String @id @default(cuid())
+
+  retailer_id String   @unique
+  retailer    Retailer @relation(fields: [retailer_id], references: [id], onDelete: Restrict)
+
+  /// RazorpayX identifiers. contact_id required; fund_account_id nullable
+  /// only for the contact-created/fund-account-failed pre-state. DB CHECK:
+  /// is_active = true requires fund_account_id.
+  razorpayx_contact_id      String
+  razorpayx_fund_account_id String? @unique
+
+  /// Which fund-account flavor. DB CHECK pins it to the two flavors the code
+  /// understands (RC-027: no unrecognized silent values).
+  account_type ReferralPayoutAccountType @default(BANK_ACCOUNT)
+
+  /// What every UI renders. Never the raw numbers.
+  masked_display String @default("")
+
+  /// Raw details, ONLY for recreation. Pairing enforced by DB CHECK:
+  /// bank_account ⟹ bank_details present + vpa null; vpa ⟹ the reverse.
+  bank_details Json?
+  vpa_address  String?
+
+  /// RazorpayX contact metadata (recreation reuses the same contact).
+  contact_name  String  @default("")
+  contact_phone String?
+
+  is_active Boolean @default(true)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@map("referral_payout_accounts")
+}
+
+enum ReferralPayoutAccountType {
+  BANK_ACCOUNT
+  VPA
+  @@map("referral_payout_account_type")
 }
 
 // ─── SIZE CHARTS (F-102c — size recommendation, no GPU cost) ────

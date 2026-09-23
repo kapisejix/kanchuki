@@ -27,6 +27,7 @@ import {
   getTaggingQueue,
 } from './queue.js';
 import { handleReferralAccrue } from './referral-accrue.js';
+import { handleReferralPayout } from './referral-payout.js';
 import { handleReferralQualify } from './referral-qualify.js';
 import {
   type RewatermarkShowcaseDesignsJobData,
@@ -174,6 +175,8 @@ export async function startWorkers(): Promise<void> {
           return handleReferralQualify();
         case 'referral-accrue':
           return handleReferralAccrue();
+        case 'referral-payout':
+          return handleReferralPayout('cron');
         case 'backup-database': {
           const data = (job.data ?? {}) as { type?: 'daily' | 'weekly' | 'manual' };
           return handleBackupDatabase(data.type ?? 'daily');
@@ -244,6 +247,21 @@ export async function startWorkers(): Promise<void> {
     {},
     {
       repeat: { pattern: '15 2 * * *', limit: 1 },
+      removeOnComplete: { count: 10 },
+      removeOnFail: { count: 10 },
+    },
+  );
+
+  // Referral commission payout — monthly on the 30th at 02:30 UTC (T7, owner
+  // decision 2026-09-23). Deliberately NOT '30 2 * * *' (daily) — the cadence
+  // is monthly; settings.payout_cadence MANUAL makes the cron skip anyway.
+  // February has no 30th, so February's batch pays on March 30 (the unsettled
+  // balance carries — nothing lost, nothing doubled).
+  await getMaintenanceQueue().add(
+    'referral-payout',
+    {},
+    {
+      repeat: { pattern: '30 2 30 * *', limit: 1 },
       removeOnComplete: { count: 10 },
       removeOnFail: { count: 10 },
     },

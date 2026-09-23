@@ -2,6 +2,20 @@
 
 One file, update at end of each work session: what's done, what's next, what's blocked. Check `git log -1` and this file first thing each session.
 
+## 2026-09-23 (later still) — T7 built: RazorpayX payouts + webhook + payout accounts
+
+**Commit:** *(this session)* · **Zero `apps/mobile` files** · Spec §7 T7.
+
+- **Owner decisions recorded before coding** (spec §7 T7): (1) self-serve Bank/UPI entry; (2) UPI = VPA fund account (explained); (3) TDS/GST admin-configurable, defaults OFF pending the CA conversation; (4) monthly on the **30th** (`30 2 30 * *` — February carries to March 30).
+- **Migrations 113** (`referral_payout_accounts` — RazorpayX ids + masked display only, raw bank details never stored; `GRANT DELETE` to `kanchuki_purge`; no RLS → no policy owed) **and 114** (tax columns on `referral_settings` + `referral_payouts.tds_paise`) — **not applied**, with 109–112.
+- **`lib/razorpayx.ts`** — Contacts / Fund Accounts (VPA + bank) / Payouts client; AbortSignal timeouts (RC-011); `X-Payout-Idempotency` always sent with the **stored** key (mandatory since RazorpayX 2025-03-15).
+- **`lib/referral-payout-settle.ts`** — `settlePayout()` is the single settlement path, imported by BOTH the job's reconciliation and the webhook. PAID stamps `paid_at` only on conversions still attached to the batch; FAILED/REVERSED release the claim so money re-pools.
+- **`jobs/referral-payout.ts`** — re-submit crashed PENDING rows (same key) → reconcile in-flight → compute `unsettled` per referrer (FAILED/REVERSED excluded) → gate on `payout_min_amount` + live payout account → claim in ONE transaction (pre-generated `refpo-` key via `crypto.randomBytes(12)` — a create-then-update placeholder would collide on the UNIQUE key under overlapping claims; CAS-attach conversions; audit row) → submit outside the tx (failed submit → settle FAILED, never stranded PENDING). TDS: RazorpayX receives **net**, `amount_paise` stays gross, `tds_paise` snapshots — withheld tax can never be re-paid.
+- **`routes/webhooks/razorpayx-payout.ts`** — own secret `RAZORPAYX_WEBHOOK_SECRET` (never the payments one), HMAC + replay guard, duplicate-tolerant, unrecognized status → logged and ignored, never guessed. Registered in `index.ts`.
+- **`routes/retailers/retailers-payout-account.ts`** — `GET/PUT /v1/retailers/me/payout-account`; Contact + Fund Account created at save time; only ids + masked display persisted. Barrel + aggregator registered. Form UI is T8 (Play-review-gated); T9 admin is the interim path. Both purge jobs sweep the new table before `DELETE FROM retailers` (RC-030).
+- **Tests:** `referral-payout.test.ts` **49/49**; **7 falsifications, each caught for the right reason** (dropped CAS → double-claim; settle-at-submit → `paid_at` scan; per-retry key regen → F3; FAILED in consuming statuses; shared webhook secret; unrecognized→FAILED; clock-derived body field). Full API suite **1293 passed / 5 skipped**, tsc clean, Biome clean.
+- **Still open:** migrations 109–114 unapplied (owner); RazorpayX keys + `RAZORPAYX_WEBHOOK_SECRET` provisioning (owner); T8 (mobile, Play-review-gated), T9 admin monitoring, T10 final checklist.
+
 ## 2026-09-23 (later) — T6 built: referral commission accrual
 
 **Commit:** *(this session)* · **Zero `apps/mobile` files** · Spec §7 T6.

@@ -154,6 +154,9 @@ export async function hardDeleteRetailer(retailerId: string): Promise<void> {
     'DELETE FROM referral_payouts WHERE referrer_id = $1;',
     'DELETE FROM referral_conversions WHERE referrer_id = $1 OR referred_id = $1;',
     'DELETE FROM referral_codes WHERE retailer_id = $1;',
+    // Payout destination (migration 113) — RESTRICT FK child; must precede the
+    // retailer row (same RC-029/RC-030 class as the three above).
+    'DELETE FROM referral_payout_accounts WHERE retailer_id = $1;',
     // retailer_limit_overrides has onDelete: Cascade in the schema — Postgres
     // removes it automatically with the row below.
     'DELETE FROM retailers WHERE id = $1;',

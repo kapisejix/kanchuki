@@ -32,6 +32,7 @@ import { searchRoutes } from './routes/search.js';
 import { staffRoutes } from './routes/staff.js';
 import { teamRoutes } from './routes/team.js';
 import { msg91WebhookRoutes } from './routes/webhooks/msg91.js';
+import { razorpayxPayoutWebhookRoutes } from './routes/webhooks/razorpayx-payout.js';
 import { whatsappCatalogWebhookRoutes } from './routes/webhooks/whatsapp-catalog.js';
 
 // Fail fast at boot instead of 500ing the first request that touches
@@ -171,6 +172,9 @@ await server.register(teamRoutes, { prefix: '/v1/team' });
 await server.register(msg91WebhookRoutes, { prefix: '/v1' });
 // Phase II: WhatsApp catalog webhook (Meta → Kanchuki, HMAC-verified)
 await server.register(whatsappCatalogWebhookRoutes, { prefix: '/v1' });
+// T7: RazorpayX payouts webhook (RazorpayX → Kanchuki, HMAC-verified with its
+// own secret — see routes/webhooks/razorpayx-payout.ts)
+await server.register(razorpayxPayoutWebhookRoutes, { prefix: '/v1' });
 
 // ─── Health Check ─────────────────────────────────────────────────
 // Deep health: verifies DB + Redis connectivity. Returns 503 if any

@@ -46,7 +46,8 @@ vi.mock('@kanchuki/db', () => ({
 
 const ADMIN_KEY = 'test-admin-key-12345';
 
-// Every field the model has, at the migration-109 defaults.
+// Every field the model has, at the migration-109 defaults (plus migration
+// 114's tax knobs at their all-OFF defaults — owner decision 2026-09-23).
 const baseline = {
   id: 'singleton',
   commission_pct: 30,
@@ -58,6 +59,10 @@ const baseline = {
   second_tier_pct: null,
   payout_min_amount: 50000,
   payout_cadence: 'MONTHLY' as const,
+  tds_enabled: false,
+  tds_pct: 0,
+  gst_applicable: false,
+  gst_pct: 0,
   created_at: new Date('2026-09-22T00:00:00.000Z'),
   updated_at: new Date('2026-09-22T00:00:00.000Z'),
 };

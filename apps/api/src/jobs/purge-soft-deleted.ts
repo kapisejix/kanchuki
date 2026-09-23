@@ -284,6 +284,10 @@ export async function handlePurgeSoftDeleted(): Promise<PurgeResult> {
   // A conversion is also a child of the *referred* retailer — if the referred
   // shop is purged, the referrer's pending commission on it goes too.
   await purgeChildren('referral_conversions', 'referred_id', 'retailers', cutoff);
+  // Payout destination (migration 113) — RESTRICT FK child of retailers, so it
+  // must precede the retailer row too. No ordering hazard with the payouts /
+  // conversions deletes above: nothing in those tables references it.
+  await purgeChildren('referral_payout_accounts', 'retailer_id', 'retailers', cutoff);
   await purgeChildren('referral_codes', 'retailer_id', 'retailers', cutoff);
   await Promise.all([
     purgeChildren('staff', 'retailer_id', 'retailers', cutoff),
