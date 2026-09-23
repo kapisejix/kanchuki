@@ -174,7 +174,7 @@ CREATE INDEX IF NOT EXISTS idx_campaign_send_campaign_sent
 
 ## References
 
-- Main roadmap: `docs/INDIA-RETAILER-GROWTH.md` (Feature R, line 342–356)
+- Main roadmap: `docs/marketing/india-retailer-growth.md` (Feature R, line 342–356)
 - Build log: `docs/BUILD-LOG.md` §47
 - Analytics screen: `apps/mobile/app/(tabs)/analytics.tsx`
 - Campaign analytics API: `apps/api/src/routes/growth/analytics.ts`

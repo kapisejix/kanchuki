@@ -1,5 +1,5 @@
 // AI Studio effects catalog — the "combination" behind Studio Shoot presets.
-// Ported from docs/tasks/AI Studio Effects.html. Each effect is a bundle of
+// Ported from docs/ai-studio/AI Studio Effects.html. Each effect is a bundle of
 // scene + pose/presentation + lighting + framing; prompts are COMPOSED from
 // those short clauses, so the whole catalog is data, not 45 hand-written prompts.
 // Admin bench only for now — not wired to studio_styles.

@@ -1,10 +1,10 @@
 # Customer PWA — Home-Screen Icon, Visited-Store List & Push Notifications
 
-**Document:** `docs/tasks/customer-pwa-store-list-and-push-notifications.md`
+**Document:** `docs/tasks/pending/customer-pwa-push-notifications.md`
 **Date:** 2026-09-17
 **Status:** 🟡 **Phase A ✅ Built (2026-09-17)** — see `docs/BUILD-LOG.md` §2026-09-17 and `CLAUDE.md` row 73: `/my-stores` visited-store list, `manifest.json` `start_url` → `/my-stores`, install CTA (module-scope `beforeinstallprompt` capture), plus the follow-on `/login` + `return_to` work (`docs/tasks/done/return-to-post-login-redirect.md`) and the `/stores` `ShopperEntry` state-aware entry point. **Phases B–D 🔴 Planned, no code yet** — push subscription model + VAPID/web-push send job, `push` service-worker handler, enforced iOS Add-to-Home-Screen, consent/mute UI, retailer subscriber counts. (This header previously read "research & roadmap only — no code started"; that was true when written and is now stale.)
 **Answers:** owner question about giving customers a phone-icon entry point into "all stores they've visited," plus browser push notifications for new products/collections, without replacing WhatsApp share.
-**Related:** `docs/customer/customer-qr-identity-solution.md` (Shopper Passport — identity/cookie/consent architecture this feature sits on top of), `docs/customer/customer-profile-req.md` §12.
+**Related:** `docs/customers/shopper-passport-identity.md` (Shopper Passport — identity/cookie/consent architecture this feature sits on top of), `docs/customers/customer-profile.md` §12.
 
 ---
 
@@ -24,7 +24,7 @@
 
 ## 2. The good news: 80% of the hard part is already designed
 
-This is not a new concept for Kanchuki. `docs/customer/customer-qr-identity-solution.md` ("Shopper Passport") already specs almost exactly this, for a different original reason (killing the repeat-form wall across boutiques). It has already been partially built:
+This is not a new concept for Kanchuki. `docs/customers/shopper-passport-identity.md` ("Shopper Passport") already specs almost exactly this, for a different original reason (killing the repeat-form wall across boutiques). It has already been partially built:
 
 | Piece | Status in repo | Where |
 |---|---|---|

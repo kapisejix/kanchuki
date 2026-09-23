@@ -178,7 +178,7 @@ enum CollectionStatus {
 
 ## References
 
-- Main roadmap: `docs/INDIA-RETAILER-GROWTH.md` (Feature S, line 359–368)
+- Main roadmap: `docs/marketing/india-retailer-growth.md` (Feature S, line 359–368)
 - Build log: `docs/BUILD-LOG.md` §47
 - Campaign model: `apps/api/src/models/Campaign.ts`
 - Collection model: `apps/api/src/models/Collection.ts`

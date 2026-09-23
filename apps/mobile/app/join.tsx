@@ -7,7 +7,7 @@ import { ApiError, staffInviteApi, type StaffInviteInfo } from '../src/lib/api'
 import { showError } from '../src/lib/errors'
 
 /**
- * Tokenized staff invite join screen (docs/tasks/staff-invite-tokens.md §6.1).
+ * Tokenized staff invite join screen (docs/tasks/done/staff-invite-tokens.md §6.1).
  *
  * Opened via kanchuki://join?token=<raw> (or the web /join fallback). Shows a
  * masked summary of the invite (shop, role, masked phone — the full number

@@ -52,7 +52,7 @@ Admin panel lives inside the same Next.js app, so it hosts on the same service �
 ## 4. Database, Cache, Storage — already decided, no change needed
 
 - **Primary DB:** Supabase Postgres (includes Auth + pgvector) — free tier covers MVP, paid tier ~$25/mo when needed.
-- **Deletion Vault DB:** separate Railway Postgres instance, INSERT-only role — already provisioned (`docs/INFRA-SETUP.md`).
+- **Deletion Vault DB:** separate Railway Postgres instance, INSERT-only role — already provisioned (`docs/references/guides/infra-setup.md`).
 - **Redis:** Upstash — free tier covers MVP queue/cache volume.
 - **Image storage:** Cloudflare R2 — cheapest object storage with zero egress fees (important since product photos get viewed a lot).
 
@@ -86,7 +86,7 @@ React Native/Expo apps aren't hosted on a server the way a website is. Two separ
 
 Total hard cost: **$25 one-time**. Everything else is free/time.
 
-> **Consolidated launch checklist with exact Data Safety + content-rating answers, permissions, closed-testing steps, and the target-API deadline:** `docs/PLAY-STORE-LAUNCH-CHECKLIST.md`
+> **Consolidated launch checklist with exact Data Safety + content-rating answers, permissions, closed-testing steps, and the target-API deadline:** `docs/references/guides/play-store-launch-checklist.md`
 
 ---
 

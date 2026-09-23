@@ -105,7 +105,7 @@ PATCH /retailers/me/onboarding  # Update onboarding progress flags
 > Multi-target publish from the mobile composer (`/social/create`) to every connected FB/IG
 > account. Legacy single-account publish (`/retailers/accounts/:id/posts`, F-031 Phase 1) still
 > serves post history; new posts go through the fan-out below. Access tokens never leave the
-> server. Spec: `docs/tasks/social-create-post-composer.md`.
+> server. Spec: `docs/tasks/done/social-create-post-composer.md`.
 
 ```
 POST   /retailers/me/social/posts        # Fan-out publish: { post_type: SINGLE|CAROUSEL|COLLECTION_LINK,
@@ -314,7 +314,7 @@ Removed in `chore/remove-unwanted-features` (2026-08-31, migration 082). The
 `kanchuki:try-on` queue no longer exist. Also removed in the same pass:
 `/checkout/*` (orders), `/size-charts/*`, `/for-you`, and the growth
 sub-routes for incentives, suppliers, bookings, customer referrals, lookbooks
-and festival backgrounds. See `docs/database/no-feature-want.md`.
+and festival backgrounds. See `docs/references/history/reports/2026-08-31-feature-teardown-spec.md`.
 
 ---
 

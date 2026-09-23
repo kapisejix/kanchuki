@@ -13,7 +13,7 @@ I read the code before proposing anything. Three problems, none of them cosmetic
 
 ### 1.1 Your design system is fiction
 
-`docs/DESIGN.md` documents a violet/amber palette (`#7C3AED` primary, `#F59E0B` secondary), Nunito for mobile, Inter for web, shadcn/ui + Nativewind as the component stack.
+`docs/design/DESIGN.md` documents a violet/amber palette (`#7C3AED` primary, `#F59E0B` secondary), Nunito for mobile, Inter for web, shadcn/ui + Nativewind as the component stack.
 
 **None of that is what's actually built:**
 
@@ -169,7 +169,7 @@ Today: web tokens live in `globals.css`, mobile has none, nothing shares. Fix:
 
 1. Create one token source — either a small JSON/TS file in `packages/shared` (`packages/shared/src/design-tokens.ts`) or a `tokens.css` at repo root — containing every color, spacing, radius, and easing value from 3.1 above.
 2. `apps/web/tailwind.config.ts` and `apps/mobile/tailwind.config.js` both `extend` from that one source instead of hardcoding values independently.
-3. Delete the stale palette/font claims in `docs/DESIGN.md` and replace with whatever you actually approve from this doc — CLAUDE.md's own instruction #10 ("docs must track commits") applies here too: a design doc that lies about the palette is worse than no design doc.
+3. Delete the stale palette/font claims in `docs/design/DESIGN.md` and replace with whatever you actually approve from this doc — CLAUDE.md's own instruction #10 ("docs must track commits") applies here too: a design doc that lies about the palette is worse than no design doc.
 
 This single change is what prevents this whole exercise from rotting the way DESIGN.md already has.
 

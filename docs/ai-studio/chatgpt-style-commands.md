@@ -61,7 +61,7 @@ the picker shows all 11 for every product.
 
 ## 3. We already have the raw material for the bigger library
 
-`docs/tasks/AI Models and Scenes.html` is a **built but never-wired-in** catalog:
+`docs/ai-studio/AI Models and Scenes.html` is a **built but never-wired-in** catalog:
 **24 scenes + 18 models**, each with a full `prompt`, plus `gender`, `ageGroup`,
 `garmentFit`, and — critically — **`categoryTag`**: one of
 `scene | female | male | kids | teen | mature`.

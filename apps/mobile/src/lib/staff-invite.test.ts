@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { buildStaffInviteMessage, buildWhatsAppInviteUrl } from './staff-invite'
 
-// Tokenized invite (docs/tasks/staff-invite-tokens.md §6.4): after a
+// Tokenized invite (docs/tasks/done/staff-invite-tokens.md §6.4): after a
 // successful add, the retailer shares the invite LINK — the phone is no
 // longer the payload. This pins the exact message copy.
 describe('buildStaffInviteMessage (staff-invite-tokens)', () => {

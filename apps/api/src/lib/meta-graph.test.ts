@@ -8,7 +8,7 @@ import {
   publishInstagramCarousel,
 } from './meta-graph.js';
 
-// Create Post Composer v2 (docs/tasks/social-create-post-composer.md §6.2) —
+// Create Post Composer v2 (docs/tasks/done/social-create-post-composer.md §6.2) —
 // both carousel helpers are pure fetch callers, so every branch is reachable
 // by queueing mocked Graph API responses. `status_code: FINISHED` responses
 // keep the IN_PROGRESS poll from ever sleeping.
@@ -257,7 +257,7 @@ describe('publishInstagramCarousel', () => {
     expect(fetchMock).toHaveBeenCalledTimes(5);
   });
 
-  // Finding 5a (docs/tasks/social-create-post-composer.md §12): IG captions cap
+  // Finding 5a (docs/tasks/done/social-create-post-composer.md §12): IG captions cap
   // at 2,200 chars. The helper clamps at the platform boundary so a
   // server-appended '\n\n' + link URL can never push a near-max caption past
   // the limit.

@@ -2,7 +2,7 @@
 
 **Status:** operator runbook. Everything here is Meta-dashboard / Play-Console work —
 no code change is needed for the login itself. The code side is already shipped
-(see `docs/social-connect-native.md`).
+(see `docs/tasks/done/social-connect-native.md`).
 **Last verified against the repo:** 2026-09-12.
 **Why this exists:** "Connect Facebook" kept returning to the login screen. The code
 bug behind that is fixed (RC-018), but a correct client cannot complete a login
@@ -388,7 +388,7 @@ Error codes come from `apps/api/src/routes/retailers/retailers-social/retailers-
   It falls back to the web OAuth flow by design. Test one-tap on an EAS or
   Play-installed build only.
 - **WhatsApp / Messaging permissions** — unrelated; see
-  `docs/tasks/whatsapp-embedded-signup-managed-sending.md`.
+  `docs/tasks/pending/whatsapp-managed-sending.md`.
 
 ---
 
@@ -421,8 +421,8 @@ Copy into the task tracker; tick in order.
 
 | Doc | Covers |
 |---|---|
-| `docs/social-connect-native.md` | the code/architecture side — flow, files, API routes, error-code map |
+| `docs/tasks/done/social-connect-native.md` | the code/architecture side — flow, files, API routes, error-code map |
 | `docs/root-cause/root-cause issues.md` | RC-016 / RC-018 — why connect looped back to the login screen |
-| `docs/tasks/2026-09-11-otp-fb-aistudio-lint-session.md` | the session that diagnosed it, incl. build-provenance footer |
+| `docs/references/history/sessions/2026-09-11-otp-fb-aistudio-lint.md` | the session that diagnosed it, incl. build-provenance footer |
 | `docs/PLAY-STORE-RELEASES.md` | versionCode release log — which `.aab` went to which track |
-| `docs/LAUNCH-READINESS-AUDIT.md` | pre-launch gate this setup is an input to |
+| `docs/references/history/reports/launch-readiness-audit.md` | pre-launch gate this setup is an input to |

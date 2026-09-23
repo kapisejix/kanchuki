@@ -3,7 +3,7 @@
 **Date:** 2026-09-09
 **Status:** ✅ **DONE — review-complete, ready for live testing (2026-09-09).** Phases 1–2 shipped in `4f5e2fb1` + post-review fixes `313069ca` + operator SQL `d93ace6c`. Delivery = free client-side WhatsApp `wa.me` deep link (D4 below) — server-send stays post-launch (§10, Phase 3).
 **Owner ask:** _"I want a tokenized invite system for retailer staff so everything is fine and the picture is clear."_
-**Supersedes:** `docs/tasks/team-member-access-control.md` §FR-6 (the client-only "copy this text" stopgap, shipped as FR-6.1 in `dab79651`). Everything else in that doc (role picker, `staffCan`, routing, lifecycle) still stands — this doc only replaces the *invite* piece.
+**Supersedes:** `docs/tasks/done/team-member-access-control.md` §FR-6 (the client-only "copy this text" stopgap, shipped as FR-6.1 in `dab79651`). Everything else in that doc (role picker, `staffCan`, routing, lifecycle) still stands — this doc only replaces the *invite* piece.
 
 ---
 

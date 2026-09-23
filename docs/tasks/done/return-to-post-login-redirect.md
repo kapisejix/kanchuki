@@ -3,7 +3,7 @@
 **Status:** ✅ **FIXED 2026-09-17** — see §8 for what actually shipped (the approach differs from the §4.3 recommendation: a dedicated `/login` route, option **(d)**). Filed during F-036 Phase A (Task 2) and deliberately not bundled into that diff.
 **Created:** 2026-09-17
 **Owner:** customer web / passport
-**Related docs:** `docs/tasks/customer-pwa-store-list-and-push-notifications.md` (F-036 — where this surfaced), `docs/customer/customer-qr-identity-solution.md`, `apps/web/src/app/(shopper)/layout.tsx`, `apps/web/src/app/[store]/components/ContactGate.tsx`
+**Related docs:** `docs/tasks/pending/customer-pwa-push-notifications.md` (F-036 — where this surfaced), `docs/customers/shopper-passport-identity.md`, `apps/web/src/app/(shopper)/layout.tsx`, `apps/web/src/app/[store]/components/ContactGate.tsx`
 
 ---
 

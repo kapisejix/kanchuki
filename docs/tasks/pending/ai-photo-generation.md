@@ -194,7 +194,7 @@ Three hard constraints that define every design decision below:
 
 | Not this | Why | Reference |
 |---|---|---|
-| ⛔ Virtual Try-On (self-serve, customer-facing) | Built (CatVTON on RunPod, July 2026), debugged, then **deliberately torn down** 2026-08-31 (migration `082_remove_unwanted_features`) with an explicit "Removed" line in CLAUDE.md. Google now gives it away free inside Search/Shopping for retailers with a Merchant Center feed — not Kanchuki's model. Re-adding it reverses a recent, deliberate decision. | §9, `docs/database/no-feature-want.md` |
+| ⛔ Virtual Try-On (self-serve, customer-facing) | Built (CatVTON on RunPod, July 2026), debugged, then **deliberately torn down** 2026-08-31 (migration `082_remove_unwanted_features`) with an explicit "Removed" line in CLAUDE.md. Google now gives it away free inside Search/Shopping for retailers with a Merchant Center feed — not Kanchuki's model. Re-adding it reverses a recent, deliberate decision. | §9, `docs/references/history/reports/2026-08-31-feature-teardown-spec.md` |
 | ⛔ IDM-VTON / any self-hosted GPU try-on | CPU-only infra (Hetzner CX43). IDM-VTON's released weights are CC BY-NC-SA-**ND** (no derivatives) — ADR-006 blocks redistributing a fine-tune. Helper deleted 2026-09-18; `retired-tryon-guard.test.ts` fails if it reappears. | §9 |
 | Not a replacement for the catalog pipeline | The image is 1 step of ~10 (tag → compress → R2 → rack/shelf → WhatsApp link → PWA catalog). A retailer using ChatGPT still does steps 2–10 by hand for every SKU, every restock. | §3 |
 
@@ -626,7 +626,7 @@ Still valid, still not built: image-size validation (<20 MB / <20 MP) before pro
 
 **Build order if this is picked up:** (1) make **camera** and **light** real axes rather than text baked into scenes — they are the two families that change the visual language without touching the garment; (2) add conflict groups + last-wins; (3) then the exotic families. Do **not** build a 300-row picker before (1) and (2) exist — a flat list of 300 is unusable and will contradict itself.
 
-Reference sheets (static, no build step, open with `file:///`): `docs/tasks/AI Models and Scenes.html` (scene/model prompts, marked FINALIZED SET), `docs/tasks/AI Motion Styles.html` (16 motion presets for F-034).
+Reference sheets (static, no build step, open with `file:///`): `docs/ai-studio/AI Models and Scenes.html` (scene/model prompts, marked FINALIZED SET), `docs/ai-studio/AI Motion Styles.html` (16 motion presets for F-034).
 
 ---
 
@@ -657,7 +657,7 @@ Aspects: **9:16** (Reels/Shorts), **16:9**, **1:1** / **4:5**. Store per-call �
 |---|---|
 | `apps/api/src/lib/fal-video.ts` — `generateImageToVideo()` + `VIDEO_MODELS` + `cropTrimToAspect()`; self-check 3/3 with real ffmpeg | ✅ `17fe997` |
 | `POST /admin/photo-cleanup/image-to-video` (sync, admin-only): zod body → Fal → ffmpeg crop/trim → R2 `promo-<uuid>.mp4` → `result_url` | ✅ `17fe997` |
-| `docs/tasks/AI Motion Styles.html` — 16 presets / 4 categories, "Export Selected" → JSON | ✅ `17fe997` |
+| `docs/ai-studio/AI Motion Styles.html` — 16 presets / 4 categories, "Export Selected" → JSON | ✅ `17fe997` |
 | Admin **"AI Promo Video"** card on `/admin/photo-cleanup-test` | ✅ `f57479c` → **owner bench test = the gate** |
 | Admin addon-pack surface — migration `089_resource_packs` (**applied**), `admin-resource-packs.ts` CRUD, `/admin/resource-packs` screen | ✅ `47748a4` |
 
@@ -867,12 +867,12 @@ Draft written 2026-09-19. A first implementation was made and **reverted the sam
 
 #### 8.1c Admin model bench ✅ built 2026-09-19 (not yet run live)
 
-Full detail, tables and the results view: `docs/tasks/AI Cost Comparison.html` §8.2. Summary:
+Full detail, tables and the results view: `docs/ai-studio/AI Cost Comparison.html` §8.2. Summary:
 
 - `/admin/photo-cleanup-test` → AI Studio Shoot: scene (11 outdoor: Nature / Urban / Resort) + gender + age bucket (kid / teen / adult / senior) + auto pose (only Standing, Sitting, Walking, Turning, Looking back, Twirl, Holding dupatta, Dupatta flow, Candid) → one prompt via `composeBenchPrompt` (`apps/web/src/lib/studio-effects.ts`).
 - Multi-select of 15 engines with estimated $ / ₹ (@96) / credits (`STUDIO_ENGINE_INFO`, `packages/shared`); batch run confirms the estimate first, runs 2 at a time, one shared pose per batch.
 - 8 new Fal image-edit engines (`flux2_pro`, `gpt_image_2_low|medium|high`, `seedream_v4`, `qwen_edit`, `nano_banana`, `grok_imagine`) via one table `FAL_EDIT_ENGINES` in `apps/api/src/lib/fal-client.ts`; request bodies read from each endpoint's OpenAPI. Same `FAL_API_KEY`. Bench runs are strict (no silent Kontext fallback).
-- Results: export JSON → `node scripts/save-bench.mjs <file>` → images in `docs/tasks/effect-photos/preview/`, data in `docs/tasks/bench-results.js`, shown in the HTML with a per-row score/notes.
+- Results: export JSON → `node scripts/save-bench.mjs <file>` → images in `docs/ai-studio/effect-photos/previews/`, data in `docs/ai-studio/bench-results.js`, shown in the HTML with a per-row score/notes.
 - Unpriced (`usd: null`) engines show "?": Grok, FLUX 1.1 Pro, FLUX Schnell, both `vton_*`. No migration, no retailer-path change.
 
 ### 8.2 The 80 KB ceiling — the decision table
@@ -907,7 +907,7 @@ Changing this is a **storage + egress cost decision** for the owner, not a code 
 |---|---|---|
 | 1 | **Migration-number collision.** `image-to-video-phase2.md` reserved `090`/`091` for F-034; both are now applied by the social composer. Following it verbatim would collide | Corrected in §7.5 (renumber ≥106). **Old draft deleted.** |
 | 2 | **`photo-feature-implementation-tasks.md` carries tasks for a removed feature** — Virtual Try-On (GPU detection on V-Tone, 24 h expiry countdown, exponential-backoff polling) and a `TryOnModal`. VTO was torn out 2026-08-31 (migration `082`) | Marked ⛔ in §1; not carried into §5 as work |
-| 3 | **Stale duplicate reference sheet:** `docs/tasks/AI Models and Scenes.hmtl` (typo'd extension, 52 KB, Aug 30) alongside the live `AI Models and Scenes.html` (75 KB, Sep 18, marked FINALIZED SET) | **Flagged only** — not deleted by this doc merge (owner said `.md` files). Recommend deleting the `.hmtl` one |
+| 3 | **Stale duplicate reference sheet:** `docs/ai-studio/AI Models and Scenes.html` (typo'd extension, 52 KB, Aug 30) alongside the live `AI Models and Scenes.html` (75 KB, Sep 18, marked FINALIZED SET) | **Flagged only** — not deleted by this doc merge (owner said `.md` files). Recommend deleting the `.hmtl` one |
 | 4 | **Stale migration reference in `ai-studio-shoot-models-scenes.md`:** step 6 describes `STUDIO_TEMPLATES`/`STUDIO_MODELS` constants and a `studioTemplatesFor()` helper — all deleted from `@kanchuki/shared`, replaced by the `studio_styles` DB table + admin manager | Recorded in §2; constants are gone (step 6 confirmed done via the DB-backed catalog) |
 | 5 | **`CLAUDE.md` rows 54 and 60 point at files this merge deletes** | **Gated file — needs explicit approval.** See §13.5 |
 | 6 | The F-034 model endpoints are marked "confirm live at build" and none has been verified | `fal-video.ts` self-check exists; **endpoint liveness still unverified** |
@@ -1008,15 +1008,15 @@ Gemini / Nano Banana: `ai.google.dev/gemini-api/docs/image-generation`, Google's
 
 | File | Purpose |
 |---|---|
-| `docs/tasks/AI Models and Scenes.html` | Image scene/model prompt library — **FINALIZED SET** marked at the top of its `ITEMS` array. The 21 retired scenes stay in it as design reference only (no longer live in the DB). |
-| `docs/tasks/AI Motion Styles.html` | F-034 motion presets — 16 across 4 categories, "Export Selected" → `selected_ai_motion_styles.json`. The staging ground for `studio_styles` VIDEO rows. |
-| `docs/tasks/AI Models and Scenes.hmtl` | ⚠️ Stale typo'd duplicate (Aug 30). **Delete candidate** — see §9 #3. |
+| `docs/ai-studio/AI Models and Scenes.html` | Image scene/model prompt library — **FINALIZED SET** marked at the top of its `ITEMS` array. The 21 retired scenes stay in it as design reference only (no longer live in the DB). |
+| `docs/ai-studio/AI Motion Styles.html` | F-034 motion presets — 16 across 4 categories, "Export Selected" → `selected_ai_motion_styles.json`. The staging ground for `studio_styles` VIDEO rows. |
+| `docs/ai-studio/AI Models and Scenes.html` | ⚠️ Stale typo'd duplicate (Aug 30). **Delete candidate** — see §9 #3. |
 
 ### 13.5 Historical references — read before "fixing" them
 
 Several files mention the deleted filenames as **dated records of what happened**. Those mentions are historically accurate and were deliberately **not** rewritten (rewriting a build log is worse than a stale link):
 
 - `docs/BUILD-LOG.md` — historical entries referencing `image-to-video.md` / `image-to-video-phase2.md` / the studio-scenes doc.
-- `docs/PROGRESS.md` — session log mentions.
+- `docs/references/history/sessions/PROGRESS.md` — session log mentions.
 - **`docs/PLAN.md`** and **`docs/PRO-REQUIREMENTS.md`** — forward-looking pointers, **updated in this change** to point here (a dangling "where's the spec" link is a real defect, unlike a dated log line).
 - ✅ **`CLAUDE.md` — repointed with explicit owner approval (2026-09-18).** Row 54 now points here instead of the deleted scene-expansion doc (and its stale "Built (unmerged)" status was corrected — steps 1–6 are done via the DB-backed style catalog); row 60's doc pointers were replaced and its stale `090`/`091` migration numbers corrected to "renumber ≥106". No dangling reference to a deleted file remains in this file.

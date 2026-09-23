@@ -20,7 +20,7 @@
 > `retailers.try_on_credits` / `referral_enabled` / `referral_reward_paise` and
 > `products.spin_status` / `spin_error`, and 15 now-dead enums. SDL blocks and
 > ERD lines below that reference those tables are historical. Full breakdown:
-> `docs/database/no-feature-want.md`.
+> `docs/references/history/reports/2026-08-31-feature-teardown-spec.md`.
 
 ## Design Principles
 
@@ -840,7 +840,7 @@ ALTER TABLE plan_features ENABLE ROW LEVEL SECURITY;
 -- (no policies defined = default deny for authenticated/anon roles)
 
 -- studio_styles (F-032 style catalog, planned — spec
--- docs/superpowers/specs/2026-08-30-studio-styles-admin-design.md):
+-- docs/references/history/executed-plans/specs/2026-08-30-studio-styles-admin-design.md):
 -- same deny-all pattern as background_images. Admin CRUD via the
 -- service-role admin API; retailers read the plan-filtered subset via
 -- GET /v1/studio-styles (the API filters status=PUBLISHED AND
@@ -1019,7 +1019,7 @@ Allowlisted paths:
 
 If all three layers above somehow fail (compromised `kanchuki_migrator`
 credentials, a Postgres admin-level breach), the Deletion Vault at
-`docs/DATABASE.md` "Deletion Vault" provides an independent copy of every
+`docs/database/DATABASE.md` "Deletion Vault" provides an independent copy of every
 soft-deleted record in a separate database that even the application cannot
 UPDATE or DELETE from.
 

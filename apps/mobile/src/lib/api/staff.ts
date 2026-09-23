@@ -26,7 +26,7 @@ export type StaffMember = {
   invite: StaffInviteState | null
 }
 
-// Tokenized invite (docs/tasks/staff-invite-tokens.md §5.1) — the response to
+// Tokenized invite (docs/tasks/done/staff-invite-tokens.md §5.1) — the response to
 // a staff CREATE (and RESEND) carries a shareable invite link when the member
 // has never logged in. The invite block is absent for already-joined members.
 export type StaffInvitePayload = {

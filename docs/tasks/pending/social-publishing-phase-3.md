@@ -12,7 +12,7 @@ Phase 1–2 (Facebook + Instagram + composer) are built — see `docs/tasks/done
 - Post history (what was posted, when, link to the live post)
 - Meta app review submission for `pages_manage_posts` (parallel with build)
 
-**Phase 2 — Instagram + richer posts: ✅ BUILT + LIVE 2026-09-04** — the Social Create-Post Composer (`docs/tasks/social-create-post-composer.md`) supersedes this phase's piecemeal scope with one shipped whole:
+**Phase 2 — Instagram + richer posts: ✅ BUILT + LIVE 2026-09-04** — the Social Create-Post Composer (`docs/tasks/done/social-create-post-composer.md`) supersedes this phase's piecemeal scope with one shipped whole:
 - Instagram Business connect + **multi-target fan-out**: one composer screen posts to *every* connected FB/IG account (`POST /v1/retailers/me/social/posts`, per-target dispatch, partial-success results)
 - Multi-product **carousel** posts (migrations 090/092) + single photo/video + link-card posts
 - **Auto-generated captions**: templated server-side captions + admin-curated **Post Templates** (plan-gated, `usage_count`) + **Caption AI** (`POST /v1/growth/social/caption-suggest` — `@kanchuki/ai`, debounced composer prefill, always fail-open)

@@ -126,7 +126,7 @@ once the VITON-HD dataset lineage is accounted for.
    explicitly commercial-use-licensed) **and keep self-hosted CatVTON only
    for internal dev/testing**, where non-commercial use is actually
    license-compliant. This was rejected earlier in the project purely on
-   cost grounds (`docs/final-research.md` era decision) — worth revisiting
+   cost grounds (`docs/references/research/final-research.md` era decision) — worth revisiting
    given the alternative is an actual license violation, not just a cost
    delta. At Phase 0 pilot volume (≤10 retailers), the cost gap vs. self-
    hosted CatVTON is small in absolute ₹ terms.
@@ -158,7 +158,7 @@ blocker for adopting IDM-VTON-class quality.
 
 ### Quality: does it actually fix the reported problem?
 
-Relevant to the "not even 1% close" complaint (`docs/PROGRESS.md`,
+Relevant to the "not even 1% close" complaint (`docs/references/history/sessions/PROGRESS.md`,
 2026-07-12 entries) once the real root cause — unhandled multi-piece
 garments, now fixed — is set aside: for **single-piece, texture-heavy
 garments** (the print/color-fidelity axis, not the piece-count axis),
@@ -212,7 +212,7 @@ zero on a large paired dataset).** This is a research-lab-scale project:
 architecture on Kanchuki's own domain data (Indian ethnic wear).** This is
 what "build like Google, but sized for us" actually looks like, and the
 project already has half the infrastructure for it
-(`scripts/training/train_lora.py`, mentioned in `docs/PROGRESS.md`
+(`scripts/training/train_lora.py`, mentioned in `docs/references/history/sessions/PROGRESS.md`
 2026-07-08, built for CatVTON LoRA fine-tuning). Two important caveats
 specific to this option:
 

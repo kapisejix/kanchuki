@@ -4,7 +4,7 @@
 
 **Created:** 2026-09-02
 **Owner:** platform / billing
-**Related docs:** `apps/api/src/routes/billing.ts`, `docs/tasks/subscription-gst-and-monthly-pricing.md` (§59), `CLAUDE.md` → Pricing Model, `apps/web/src/app/billing/page.tsx`, `apps/mobile/app/plan-select.tsx`
+**Related docs:** `apps/api/src/routes/billing.ts`, `docs/tasks/done/subscription-gst-and-monthly-pricing.md` (§59), `CLAUDE.md` → Pricing Model, `apps/web/src/app/billing/page.tsx`, `apps/mobile/app/plan-select.tsx`
 
 ---
 

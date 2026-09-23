@@ -114,7 +114,7 @@ ALTER TABLE "customers" ADD COLUMN "usual_size" TEXT;
 
 ## References
 
-- Main roadmap: `docs/INDIA-RETAILER-GROWTH.md` (Feature N, line 283–296)
+- Main roadmap: `docs/marketing/india-retailer-growth.md` (Feature N, line 283–296)
 - Build log: `docs/BUILD-LOG.md` §47
 - Size recommendation logic: `apps/api/src/lib/size-recommendation.ts` (or equivalent)
 - PWA collection/product pages: `apps/web/src/app/[store]/...`

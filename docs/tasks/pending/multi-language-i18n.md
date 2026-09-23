@@ -104,7 +104,7 @@ Languages supported: Hindi, Hinglish (Devanagari + Romanized), Tamil, Telugu, Ma
 
 ## References
 
-- Main roadmap: `docs/INDIA-RETAILER-GROWTH.md` (Feature M, line 263–279)
+- Main roadmap: `docs/marketing/india-retailer-growth.md` (Feature M, line 263–279)
 - Build log: `docs/BUILD-LOG.md` §47
 - AI search screen: `apps/mobile/app/(tabs)/ai-search.tsx`
 - PWA entry: `apps/web/src/app/[store]/page.tsx` (or equivalent)

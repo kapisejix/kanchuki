@@ -1,7 +1,7 @@
 # Customer Profile + Multi-Retailer AI Stylist — Research & Requirements
 
 **Date:** 2026-08-21
-**Status:** Research + decision recorded. Nothing built. No schema/code changes made.
+**Status:** 🟡 Partly built — this was written before the build, and its "nothing built" header was left behind. The P2 set shipped (fabric glossary, recently-viewed row, restock notify, saved size, 5-question style quiz, AI Stylist, Unstitched Design Gallery — see `CLAUDE.md` row 51), while the P3 items were **removed** by the 2026-08-31 teardown. Re-checked against code 2026-09-23 during the docs reorg: `FabricGlossary.tsx`, `StyleQuiz.tsx`, `public-stylist.ts` and the `CustomerRecentlyViewed` model all exist.
 **Decision:** User confirmed **unified cross-retailer customer identity** (one phone-OTP login, one profile, browse/favorite across all retailers) — this is what §6 below labels **Option C**. Note the label collision: the user's own shorthand "Option B" (from the initial fork question) means the *full unified identity* model, not the narrower "opt-in cross-store product matching, no shared login" option this doc separately calls Option B. Written out in full below so the letters don't matter.
 
 ---
@@ -11,7 +11,7 @@
 **Two separable pieces, both now scoped:**
 
 - **AI Stylist** (combo suggestions from tagged catalog) — good fit, buildable now, cheap. LLM + deterministic color/fabric rules over attributes already captured by the AI Catalog Builder. See §3–4.
-- **Cross-retailer customer identity** — confirmed direction, but it is a **business-model pivot**, not a feature slot. It directly reverses PRO-REQUIREMENTS §2.2 ("customer does NOT need... create account") and requires the `Customer` model to stop being solely `retailer_id`-owned (`docs/DATABASE.md:382-427`, phone unique per-retailer today, not globally). Auth mechanics are cheap (Supabase Auth phone OTP + MSG91 rail already live for retailers, 2026-08-12 — directly reusable for customers). The real cost is the identity/data-model rework + retailer buy-in, not the login screen.
+- **Cross-retailer customer identity** — confirmed direction, but it is a **business-model pivot**, not a feature slot. It directly reverses PRO-REQUIREMENTS §2.2 ("customer does NOT need... create account") and requires the `Customer` model to stop being solely `retailer_id`-owned (`docs/database/DATABASE.md:382-427`, phone unique per-retailer today, not globally). Auth mechanics are cheap (Supabase Auth phone OTP + MSG91 rail already live for retailers, 2026-08-12 — directly reusable for customers). The real cost is the identity/data-model rework + retailer buy-in, not the login screen.
 
 **Retailer-relationship risk, stated plainly since the call is made:** putting all 12+ boutiques behind one customer login turns Kanchuki into a marketplace competing for that customer's attention across stores it also serves individually. Retailers may read this as Kanchuki disintermediating their customer relationship. Not a reason to reverse the decision — a reason to sequence rollout with retailer communication/opt-in, not silently.
 
@@ -48,7 +48,7 @@ Contrast: **GlowRoad/Meesho** — social resell of a shared dropship catalog, wo
 ### 3.2 What Kanchuki has right now
 
 - AI Catalog Builder already tags category/color/fabric/subtype/occasion per product (BUILD-LOG §12).
-- `CustomerFashionDNA` model exists in schema (`docs/DATABASE.md:467-491`) — color/style/fabric/occasion affinities + budget range — currently unused by anything customer-facing.
+- `CustomerFashionDNA` model exists in schema (`docs/database/DATABASE.md:467-491`) — color/style/fabric/occasion affinities + budget range — currently unused by anything customer-facing.
 - No 450k-style training set, no embedding pipeline, no click-stream volume — training a recommender is not realistic yet.
 
 ### 3.3 Correct v1
@@ -102,7 +102,7 @@ Encode as a small static ruleset — a pre-filter/validator under the LLM, not a
 ## 7. Data model gaps
 
 - No region/state field on `Customer`/`CustomerFashionDNA` — needed per §4/§5.
-- `CustomerFashionDNA` currently `retailer_id`-scoped (`docs/DATABASE.md:470`) — under Option C this needs to become identity-scoped (one DNA profile per customer, aggregating signal across all retailers they've interacted with) rather than one-per-retailer-relationship.
+- `CustomerFashionDNA` currently `retailer_id`-scoped (`docs/database/DATABASE.md:470`) — under Option C this needs to become identity-scoped (one DNA profile per customer, aggregating signal across all retailers they've interacted with) rather than one-per-retailer-relationship.
 - `customers.usual_size` (migration 058) not yet applied — blocks size-aware stylist output.
 - No product-to-product "pairs well with" relation — v1 stylist output stays LLM-composed from independently tagged items, no schema change required yet.
 - Unified identity needs a `CustomerAccount`-style table (phone as global key) sitting above per-retailer `Customer` rows, plus a migration path to link/merge existing retailer-scoped customer records to the new identity without duplicating consent.
@@ -230,7 +230,7 @@ Supersedes §11 for near-term scope. Selected: items 1–13 below (P0/P1/P2). It
 
 Full architecture + phased task breakdown written:
 
-- **Design / architecture:** `docs/customer/customer-qr-identity-solution.md` — §1–§14 = "Shopper Passport" (one OTP-verified identity, server-set `HttpOnly` cookie carried across all `kanchuki.com/{store}` QR codes, per-store affirmative contact-share tap, DPDP Rules 2025 corrections). §15–§19 = cross-store activity tracking, unified `CustomerFashionDNA`, pgvector+rules recommendation engine, `/my-profile` + `/my-stores`, profiling-consent controls.
-- **Implementation plan:** `docs/superpowers/plans/2026-08-30-shopper-passport-and-profile.md` — 28 tasks across 8 phases, each tagged with dev/design/planning/testing skills, files, interfaces, test plan, acceptance.
+- **Design / architecture:** `docs/customers/shopper-passport-identity.md` — §1–§14 = "Shopper Passport" (one OTP-verified identity, server-set `HttpOnly` cookie carried across all `kanchuki.com/{store}` QR codes, per-store affirmative contact-share tap, DPDP Rules 2025 corrections). §15–§19 = cross-store activity tracking, unified `CustomerFashionDNA`, pgvector+rules recommendation engine, `/my-profile` + `/my-stores`, profiling-consent controls.
+- **Implementation plan:** `docs/references/history/executed-plans/plans/2026-08-30-shopper-passport-and-profile.md` — 28 tasks across 8 phases, each tagged with dev/design/planning/testing skills, files, interfaces, test plan, acceptance.
 - **Mapping:** item 21 → Phases 1–2 (Tasks 1–10). Item 22 (cross-store wishlist) → Task 19. Item 23 (personalized home feed) → Task 21. Item 24 ("similar from other stores") → Tasks 20 + 22–23.
 - **Status:** documentation only. Open decisions listed in the spec §13 (a–j). Nothing coded.

@@ -3,7 +3,7 @@
 **Status:** ✅ **Complete — Phases 0–9 shipped 2026-09-04.** Migrations 090/091/092 (carousel + post templates + client dedupe) applied in prod; Graph publish back-end, fan-out `POST /v1/retailers/me/social/posts`, mobile composer, all five entry points (T-5.1–T-5.5), Caption AI (T-6.1/T-6.2), campaign template picker (T-9.7), and Phase 7 gating/polish all landed. Route-registration gaps fixed (fan-out, retailer templates `/v1/post-templates`, admin templates). Remaining: T-8.2 manual EAS-build verification on real accounts.
 **Owner decision needed:** see [§10 Open product decisions](#10-open-product-decisions) + [§11.6 Open decisions](#116-open-decisions-defaults-in-brackets)
 **Supersedes:** the single-item composer in `apps/mobile/app/settings/social.tsx` (`ComposerModal`)
-**Related:** BUILD-LOG §7 (product WhatsApp share), §28 (F-033 Ken Burns video), §41 (F-031 social phase 1), CLAUDE.md row 60 (F-034 AI video — retailer phase deferred), `docs/social-connect-native.md`
+**Related:** BUILD-LOG §7 (product WhatsApp share), §28 (F-033 Ken Burns video), §41 (F-031 social phase 1), CLAUDE.md row 60 (F-034 AI video — retailer phase deferred), `docs/tasks/done/social-connect-native.md`
 
 Legend for effort: **S** = < 1h, one file · **M** = 1–3 files · **L** = cross-cutting / migration / needs product sign-off.
 
@@ -108,7 +108,7 @@ The retailer can:
   - `media` JSONB NULL — array of `{ product_id, photo_id|video_id, kind: 'photo'|'video', url }` snapshots, so history survives later edits/deletes. (`product_ids` stays for backward-compat / quick filters.)
   - `client_post_id TEXT NULL` + `@@unique([retailer_id, client_post_id])` — idempotency (R-13).
 - `SocialPostStatus` — add `SCHEDULED` and `DRAFT` values now (unused until the scheduling task) so no second enum migration later. **PostgreSQL enum add is safe/online**; do it in its own statement (see the 55P04 split pattern in migrations 060–062).
-- RLS: `social_posts` already retailer-scoped — confirm the new columns need no policy change (`docs/DATABASE.md`, [[kanchuki-rls-convention]]).
+- RLS: `social_posts` already retailer-scoped — confirm the new columns need no policy change (`docs/database/DATABASE.md`, [[kanchuki-rls-convention]]).
 
 Update `packages/db/prisma/schema.prisma` to match, run `prisma generate`, regenerate types.
 
@@ -229,7 +229,7 @@ Design: follow `impeccable` / project design system — the composer must match 
 ### Phase 1 — Schema
 - [x] **T-1.1** (M) Migration `090_social_post_carousel.sql` ✅: `SocialPost.link_url/link_type/media/client_post_id` + unique; `SocialPostStatus += SCHEDULED, DRAFT` (separate statement).
 - [x] **T-1.2** (S) Update `schema.prisma`, `prisma generate`, regenerate `@kanchuki/db` types. ✅
-- [x] **T-1.3** (S) Confirm `social_posts` RLS still correct for new columns; note in `docs/DATABASE.md`. ✅
+- [x] **T-1.3** (S) Confirm `social_posts` RLS still correct for new columns; note in `docs/database/DATABASE.md`. ✅
 - [x] **T-1.4** (S) Apply migration to prod via the admin migration runner (with approval — CLAUDE.md operational policy). Verify columns/enum in prod. ✅ — applied 2026-09-04, "Success"
 
 ### Phase 2 — Graph client
@@ -446,7 +446,7 @@ See **Phase 9** in [§9 Task breakdown](#9-task-breakdown) (T-9.1 → T-9.8).
 
 ```
 Resume on branch fix/social-connect-surface-errors (composer idempotency
-fix, findings 1+2). Read docs/tasks/social-create-post-composer.md §12 first
+fix, findings 1+2). Read docs/tasks/done/social-create-post-composer.md §12 first
 — it is the canonical handoff. Remaining: (1) finish the new fan-out test
 cases (5 scenarios listed in §12), (2) implement mobile client_post_id reuse
 in apps/mobile/app/social/create.tsx (finding 2 — currently mints a fresh id

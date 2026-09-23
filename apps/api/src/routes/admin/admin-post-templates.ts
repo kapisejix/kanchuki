@@ -1,5 +1,5 @@
 // Admin-managed post templates (post_templates table) — Create Post Composer
-// v2 addendum §11 (docs/tasks/social-create-post-composer.md).
+// v2 addendum §11 (docs/tasks/done/social-create-post-composer.md).
 // Mirrors admin-studio-styles.ts: presigned R2 thumbnail upload, status
 // toggle, plan assignment, audit-logged CRUD. The retailer-facing read is a
 // separate plan-filtered endpoint (T-9.3 GET /v1/post-templates).

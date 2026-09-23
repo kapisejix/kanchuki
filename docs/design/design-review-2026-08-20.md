@@ -2,10 +2,10 @@
 
 **Date:** 2026-08-20  
 **Reviewed files:**
-- `docs/design/feature-ideas-2026-07-30.md`
-- `docs/references/mobile-ui-ux.md`
-- `docs/references/marketing-landing.md`
-- `docs/20-August-changes.md`
+- `docs/references/research/feature-ideas-2026-07-30.md`
+- `docs/references/design-inspiration/mobile-ui-ux.md`
+- `docs/references/design-inspiration/marketing-landing.md`
+- `docs/references/history/reports/2026-08-20-remaining-work.md`
 
 ---
 

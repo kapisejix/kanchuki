@@ -1,7 +1,7 @@
 # Kanchuki — UI/UX Design Document
 
 **Version:** 1.2  
-**Date:** June 2026 (v1.0) · **Updated 2026-07-28:** Brand Identity palette/typography/tokens replaced with the "Loom" design system (Option A) — see `docs/design/emil-design.md` for the full audit, the four direction options considered, and why Loom was picked. · **Updated 2026-07-31:** corrected the "mobile has no design tokens" claim below (it does — see Design Tokens section) and closed the accessibility-label / Reduce Motion gaps flagged by an `/impeccable audit` pass on `apps/mobile` — see `docs/design/design-work.md`.  
+**Date:** June 2026 (v1.0) · **Updated 2026-07-28:** Brand Identity palette/typography/tokens replaced with the "Loom" design system (Option A) — see `docs/design/emil-design.md` for the full audit, the four direction options considered, and why Loom was picked. · **Updated 2026-07-31:** corrected the "mobile has no design tokens" claim below (it does — see Design Tokens section) and closed the accessibility-label / Reduce Motion gaps flagged by an `/impeccable audit` pass on `apps/mobile` — see `docs/references/history/reports/2026-07-31-design-work.md`.  
 **Tools:** Figma (design), Nativewind (mobile — design tokens ARE wired, see note below; this doc previously claimed otherwise), TailwindCSS (web — no component-primitive library installed; the "shadcn/ui" claim in v1.0 was inaccurate)
 
 ---
@@ -331,7 +331,7 @@ Please share availability and details.
 
 Removed in `chore/remove-unwanted-features` (2026-08-31). Virtual Try-On, the
 cart/checkout screens, showroom booking, lookbooks and the 360° spin viewer are
-no longer part of the product. See `docs/database/no-feature-want.md`.
+no longer part of the product. See `docs/references/history/reports/2026-08-31-feature-teardown-spec.md`.
 
 ---
 
@@ -370,9 +370,9 @@ Retailer can switch to "TV Mode" — optimized for 40"+ screens connected to tab
 - Form validation: inline, not modal alert
 
 **Mobile status (updated 2026-07-31, `apps/mobile`):**
-- **Screen reader labels:** fixed. An `/impeccable audit` found 0 `accessibilityLabel` usage across all 48 screens despite 43+ files using icon-only `TouchableOpacity` controls (back buttons, remove/close/share/filter icons). Swept and added `accessibilityLabel`/`accessibilityRole="button"` to every icon-only control found (66 labels across 32 files) — see `docs/design/design-work.md` for the full audit report.
+- **Screen reader labels:** fixed. An `/impeccable audit` found 0 `accessibilityLabel` usage across all 48 screens despite 43+ files using icon-only `TouchableOpacity` controls (back buttons, remove/close/share/filter icons). Swept and added `accessibilityLabel`/`accessibilityRole="button"` to every icon-only control found (66 labels across 32 files) — see `docs/references/history/reports/2026-07-31-design-work.md` for the full audit report.
 - **Reduce Motion:** fixed for the app's decorative animation — `src/hooks/useReduceMotion.ts` (wraps `AccessibilityInfo.isReduceMotionEnabled`) now gates the onboarding confetti overlay, the onboarding step-transition slide (crossfades instead when Reduce Motion is on, per HIG/Material guidance), the skeleton shimmer loop (dims instead of pulses), and the offline-banner slide-in (jumps instead of animating). Functional loading affordances (AI-processing spinner/progress bar, pinch-to-zoom photo viewer) were deliberately left alone — they carry state, not decoration.
-- **Tab bar fixed 2026-07-31 (follow-up pass):** the 6-destination bottom tab bar flagged above is now 5 (Analytics moved to a top-level route, reachable via a Home header icon) — at the 3–5 platform guidance. Dark mode remains open (0 `useColorScheme` usage) — declined for this pass in favor of a light-only gradient/shadow/animation direction, see `docs/design/design-work.md`. (The one sub-44pt touch target it found — a remove-photo button in bulk upload — was fixed alongside the accessibility-label sweep.)
+- **Tab bar fixed 2026-07-31 (follow-up pass):** the 6-destination bottom tab bar flagged above is now 5 (Analytics moved to a top-level route, reachable via a Home header icon) — at the 3–5 platform guidance. Dark mode remains open (0 `useColorScheme` usage) — declined for this pass in favor of a light-only gradient/shadow/animation direction, see `docs/references/history/reports/2026-07-31-design-work.md`. (The one sub-44pt touch target it found — a remove-photo button in bulk upload — was fixed alongside the accessibility-label sweep.)
 
 **Skill reference:** `accessibility` skill for WCAG 2.2 AA audit
 

@@ -1,6 +1,6 @@
 # Kanchuki — Play Store listing copy (paste-ready)
 
-Companion to `docs/PLAY-STORE-LAUNCH-CHECKLIST.md` §1. Copy below is written
+Companion to `docs/references/guides/play-store-launch-checklist.md` §1. Copy below is written
 to the **current** feature set — no Virtual Try-On, no "Fashion DNA matching",
 no showroom booking (all removed in `chore/remove-unwanted-features`). Keep it
 in sync with the marketing pages (`apps/web/src/app/for-retailers`,

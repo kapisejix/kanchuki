@@ -1,6 +1,6 @@
 /**
  * T2.2 — resolves what to stamp on a Suits Design at upload time
- * (docs/tasks/suits-designs.md §2.5 / §4).
+ * (docs/tasks/done/suits-designs.md §2.5 / §4).
  *
  * Watermark config is one JSON blob in the AuditLog-as-KV settings store
  * (key `showcase_watermark`, read via getSetting/saveSetting — the same

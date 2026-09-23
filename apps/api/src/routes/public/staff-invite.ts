@@ -1,4 +1,4 @@
-// Public staff-invite routes (docs/tasks/staff-invite-tokens.md §5.3/5.4).
+// Public staff-invite routes (docs/tasks/done/staff-invite-tokens.md §5.3/5.4).
 //
 // The join screen (app/join.tsx, web /join) calls these UNAUTHENTICATED —
 // a staff member who hasn't logged in yet has no session. Two surfaces:

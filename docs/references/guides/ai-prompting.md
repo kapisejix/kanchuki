@@ -439,7 +439,7 @@ When the AI assistant needs to perform an operation requiring human approval:
 ### 8.4 Security-Critical Operations
 The following automatically pause for human verification:
 - Any change to: `admin.ts`, `checkout.ts`, `authPlugin`, `team-auth.ts`
-- Any change to: `CLAUDE.md`, `docs/SECURITY.md`, `docs/MEMORY.md`
+- Any change to: `CLAUDE.md`, `docs/SECURITY.md`, `docs/references/guides/ai-prompting.md`
 - Any change touching: payment flows, PII handling, API credentials
 
 ---

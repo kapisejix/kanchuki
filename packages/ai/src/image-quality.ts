@@ -1,5 +1,5 @@
 // Sharpness scoring for auto-picking the primary product photo (Laplacian
-// variance — the classic no-ML blur metric; see docs/photo-feature/
+// variance — the classic no-ML blur metric; see docs/ai-studio/history/
 // multi-photo-catalog-pipeline-2026-08-07.md §3). Pure function over a
 // decoded image buffer, used by the pro photo-cleanup route to flag the
 // sharpest cleaned shot as the product's primary/thumbnail.

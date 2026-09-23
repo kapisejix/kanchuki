@@ -48,8 +48,13 @@ This file is the map. If you are looking for something and it is not listed here
 
 ---
 
-## Old paths (awaiting deletion approval)
+## Old paths — removed
 
-The reorganization **copied** files into this structure and deleted nothing. Old paths (`docs/photoshoots/`, `docs/photo-feature/`, `docs/superpowers/`, `docs/customer/`, `docs/adrs/`, `docs/survey/`, `docs/new-updates/`, `docs/tasks/*` originals, and ~25 files at the `docs/` root such as `PROGRESS.md`, `DESIGN.md`, `DATABASE.md`, `MEMORY.md`, `final-research.md`) still exist on disk alongside the new copies.
+The reorganization first laid this structure down as **copies**, then deleted the originals once every one of them had a proven successor: **236 files removed, 0 unresolved.** 215 were byte-identical copies, 13 were merged into `marketing/marketing-sales-enablement.md`, and 8 were renamed or edited on the way. The per-file accounting is in `tasks/reorganize-files-folders-structure.md`. 11 files never moved and are still where they always were.
 
-**Nothing is deleted until the owner approves the KEEP / DELETE list** at the bottom of `tasks/reorganize-files-folders-structure.md`. Until then: use the paths in this README, and do not add new content to an old path.
+Every reference in the repo — code comments, scripts and docs — now points here, and `git grep` is clean apart from two deliberate exceptions:
+
+- **`references/history/`** (and `ai-studio/history/`) — frozen records, so they legitimately still name the paths of their time.
+- **`packages/db/prisma/migrations/*/migration.sql`** — a handful of SQL comments still name old paths. These files are **immutable**: Prisma checksums every applied migration, and editing one can hard-fail the next `migrate deploy`. A stale path in a comment is worth far less than a blocked migration, so they were deliberately left alone.
+
+If you find a stale path anywhere else, fix it — it is a leftover, not a policy.

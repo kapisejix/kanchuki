@@ -6,7 +6,7 @@
 - `apps/api/src/routes/retailers/retailers-whatsapp.ts` — existing bring-your-own-credentials config routes (`GET/PATCH/DELETE /v1/retailers/me/whatsapp-api`)
 - `apps/api/src/routes/collections.ts:451` — `POST /v1/collections/:id/bulk-send` (already sends via `graph.facebook.com/v21.0/{phone_number_id}/messages` with the retailer's token + template)
 - `apps/api/src/routes/growth/growth-campaigns/growth-campaigns-send.ts` — campaign WhatsApp send (same credential source)
-- `docs/tasks/PHASE-II-WHATSAPP-CATALOG-BREAKDOWN.md` — Phase II native catalog sync (also reads `whatsapp_api_*` on Retailer)
+- `docs/tasks/done/whatsapp-catalog-sync.md` — Phase II native catalog sync (also reads `whatsapp_api_*` on Retailer)
 - `docs/PRO-REQUIREMENTS.md` §23 (F-031 social), §27 (Phase II catalog)
 - CLAUDE.md "What's Built" index — add the F-035 row when this ships
 - `docs/BUILD-LOG.md` — append the build table when this ships
@@ -148,7 +148,7 @@ only its own `retailer_id`). Add the policy in the same migration.
 
 The Embedded Signup `config_id` can be set (P-5) to also create/attach a **Catalog**
 to the WABA. If done, Phase II native catalog sync
-(`docs/tasks/PHASE-II-WHATSAPP-CATALOG-BREAKDOWN.md`) needs **no separate
+(`docs/tasks/done/whatsapp-catalog-sync.md`) needs **no separate
 onboarding** — the `catalog_id` comes back in the same callback. Store it on the
 existing Phase II field. **Decide in D-4** (adds review scope:
 `catalog_management` permission).

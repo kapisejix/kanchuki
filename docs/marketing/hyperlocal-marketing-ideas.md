@@ -5,7 +5,7 @@
 **Document Type:** Strategic Research & Product Feature Blueprint  
 **Target Audience:** Independent Fashion Retailers, Boutique Owners, Regional Apparel Store Chains  
 **Geographic Scope:** Hyperlocal Radius (3–10 km) & Single-District Catchment Areas  
-**Target File:** `docs/customer/marketing-ideas.md`
+**Target File:** `docs/marketing/hyperlocal-marketing-ideas.md`
 
 ---
 

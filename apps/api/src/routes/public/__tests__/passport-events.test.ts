@@ -2,7 +2,7 @@ import { prisma } from '@kanchuki/db';
 /**
  * F-037 Phase 1: POST /v1/public/passport/events — behavioral event beacon.
  * customer_interactions is net-new (dropped by migration 082, rebuilt at
- * identity scope) — see docs/tasks/customer-engagement-and-admin-behavior-analytics.md §0.
+ * identity scope) — see docs/tasks/pending/customer-engagement-analytics.md §0.
  */
 import Fastify from 'fastify';
 import { beforeEach, describe, expect, it, vi } from 'vitest';

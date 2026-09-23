@@ -27,7 +27,7 @@ Built with the **bring-your-own-key** pattern (retailer pastes their own Google/
 
 ---
 
-<!-- source: docs/marketing/marketing-sales-enablement-overview.md -->
+<!-- source: docs/marketing/marketing-sales-enablement.md -->
 ## Marketing & Sales Enablement Features - Overview and Individual Specs
 
 **Note:** The original PRD has been split into individual feature files in this directory for granular tracking. Each feature file contains detailed specifications, status, and implementation details.
@@ -166,7 +166,7 @@ All marketing and sales enablement features are gated behind subscription plan f
 End of PRD.
 ---
 
-<!-- source: docs/marketing/IMPLEMENTATION-STATUS.md -->
+<!-- source: docs/marketing/marketing-sales-enablement.md -->
 ## Marketing & Sales Enablement — Implementation Status & Development Plan
 
 **Last updated:** 2026-08-20 (updated after Phase 5+6 mobile screens + Phase 9 orphan cleanup)  
@@ -558,11 +558,11 @@ Phase 9  ←──  Phase 8  ←──  Phase 7  ←──  Phase 6  ←──  
 
 ---
 
-<!-- source: docs/marketing/smart-incentive-engine.md -->
+<!-- source: docs/marketing/marketing-sales-enablement.md -->
 ## Smart Incentive Engine
 
 **Status:** ❌ **REMOVED 2026-08-31** (`chore/remove-unwanted-features`, migration `082`). Was an orphan stub; its `incentive_rules` table and `INCENTIVE_ENGINE` plan row were dropped and the feature is no longer a target. The rest of this section is kept as the historical design record only. *(Corrected 2026-09-23 — previously "🔴 Not Built — orphan stub".)*  
-**Plan:** Phase 1 of `docs/marketing/IMPLEMENTATION-STATUS.md`  
+**Plan:** Phase 1 of `docs/marketing/marketing-sales-enablement.md`  
 **Date:** 2026-08-20
 
 ---
@@ -608,11 +608,11 @@ Phase 9  ←──  Phase 8  ←──  Phase 7  ←──  Phase 6  ←──  
 
 ---
 
-<!-- source: docs/marketing/local-discovery-engine.md -->
+<!-- source: docs/marketing/marketing-sales-enablement.md -->
 ## Local Discovery Engine
 
 **Status:** ✅ Built — folded into `apps/` architecture  
-**Plan:** Phase 3 of `docs/marketing/IMPLEMENTATION-STATUS.md`  
+**Plan:** Phase 3 of `docs/marketing/marketing-sales-enablement.md`  
 **Commit:** `7efc6db`  
 **Date:** 2026-08-20
 
@@ -643,11 +643,11 @@ Phase 9  ←──  Phase 8  ←──  Phase 7  ←──  Phase 6  ←──  
 
 ---
 
-<!-- source: docs/marketing/ai-driven-social-media-templates.md -->
+<!-- source: docs/marketing/marketing-sales-enablement.md -->
 ## AI-Driven Social Media Templates
 
 **Status:** ✅ **BUILT** — superseded by the post-template system. `SocialTemplate` + `PostTemplate` models, migration `091_post_templates`, admin CRUD (`routes/admin/admin-social-templates.ts`, `routes/admin/admin-post-templates.ts`), retailer read (`routes/post-templates.ts`), and admin screens `/admin/social-templates` + `/admin/post-templates`. *(Corrected 2026-09-23 — previously "🔴 Not Built — orphan stub in `services/social-template/`", which no longer exists.)*  
-**Plan:** Phase 5 of `docs/marketing/IMPLEMENTATION-STATUS.md`  
+**Plan:** Phase 5 of `docs/marketing/marketing-sales-enablement.md`  
 **Date:** 2026-08-20
 
 ---
@@ -671,11 +671,11 @@ Phase 9  ←──  Phase 8  ←──  Phase 7  ←──  Phase 6  ←──  
 
 ---
 
-<!-- source: docs/marketing/automated-festival-background-library.md -->
+<!-- source: docs/marketing/marketing-sales-enablement.md -->
 ## Automated Festival Background Library
 
 **Status:** 🔴 Not Built — doc-only spec, no code exists. The IMPLEMENTATION-STATUS.md previously claimed this was part of `services/photo-cleanup/` but that's a different feature (mannequin removal).  
-**Plan:** Phase 4 of `docs/marketing/IMPLEMENTATION-STATUS.md`  
+**Plan:** Phase 4 of `docs/marketing/marketing-sales-enablement.md`  
 **Date:** 2026-08-20
 
 ---
@@ -697,11 +697,11 @@ Phase 9  ←──  Phase 8  ←──  Phase 7  ←──  Phase 6  ←──  
 
 ---
 
-<!-- source: docs/marketing/automated-lookbook-generator.md -->
+<!-- source: docs/marketing/marketing-sales-enablement.md -->
 ## Automated Lookbook Generator
 
 **Status:** 🔴 Not Built — orphan stub in `services/lookbook-generator/`, not wired into any app.  
-**Plan:** Phase 6 of `docs/marketing/IMPLEMENTATION-STATUS.md`  
+**Plan:** Phase 6 of `docs/marketing/marketing-sales-enablement.md`  
 **Date:** 2026-08-20
 
 ---
@@ -723,11 +723,11 @@ Phase 9  ←──  Phase 8  ←──  Phase 7  ←──  Phase 6  ←──  
 
 ---
 
-<!-- source: docs/marketing/aggregator-marketplace-sync.md -->
+<!-- source: docs/marketing/marketing-sales-enablement.md -->
 ## Aggregator & Marketplace Sync
 
 **Status:** ✅ **BUILT** — no longer a stub. `ChannelSync` model + migration `070_channel_sync_aggregator`, retailer API (`routes/retailers/retailers-aggregators.ts`), admin API (`routes/admin/admin-aggregators.ts`), mobile screen (`apps/mobile/app/growth/aggregators.tsx`) and admin page (`/admin/aggregators`). *(Corrected 2026-09-23 — previously "🔴 Not Built — 1-file orphan stub in `services/aggregator-sync/` with mock data", which no longer exists.)*  
-**Plan:** Phase 7 of `docs/marketing/IMPLEMENTATION-STATUS.md`  
+**Plan:** Phase 7 of `docs/marketing/marketing-sales-enablement.md`  
 **Date:** 2026-08-20
 
 ---
@@ -755,11 +755,11 @@ Phase 9  ←──  Phase 8  ←──  Phase 7  ←──  Phase 6  ←──  
 
 ---
 
-<!-- source: docs/marketing/partner-network-manager.md -->
+<!-- source: docs/marketing/marketing-sales-enablement.md -->
 ## Partner Network Manager
 
 **Status:** ❌ **REMOVED 2026-08-31** (`chore/remove-unwanted-features`, migration `082`) — built 2026-08-20 (migration `066`), then deleted in full: tables `partners`/`partner_referrals`/`partner_events`, enums `PartnerType`/`CommissionType`/`PartnerReferralStatus`, the `retailers-partners/` API dir, `admin-partners.ts`, web `admin/partners/`, and mobile `app/growth/partners.tsx`. *(Corrected 2026-09-23 — previously "🟡 Partial — … schema.prisma has broken inline enum syntax blocking `npx prisma validate`". That blocker is gone: `npx prisma validate` passes today. Note the dead enum value `PlanFeatureKey.PARTNER_NETWORK` is intentionally retained — see the note at the foot of migration `082`.)*  
-**Plan:** Phase 0 (fix schema) + Phase 2 (build UI) of `docs/marketing/IMPLEMENTATION-STATUS.md`  
+**Plan:** Phase 0 (fix schema) + Phase 2 (build UI) of `docs/marketing/marketing-sales-enablement.md`  
 **Date:** 2026-08-20
 
 ---
@@ -797,7 +797,7 @@ Phase 9  ←──  Phase 8  ←──  Phase 7  ←──  Phase 6  ←──  
 
 ---
 
-<!-- source: docs/marketing/direct-social-publishing.md -->
+<!-- source: docs/marketing/marketing-sales-enablement.md -->
 ## Direct Social Publishing
 
 **Status:** ✅ **BUILT — phases 1–2 plus the full create-post composer.** Facebook Page + Instagram connect and posting, multi-target fan-out (`POST /v1/retailers/me/social/posts`), carousel/link/photo/video post types, post + campaign templates, Caption AI, and five entry points. Migrations `090`–`092` applied in prod — see `tasks/done/social-create-post-composer.md` and `CLAUDE.md` row 64. **Still not built:** Instagram Reels *scheduling*, WhatsApp Catalog broadcast analytics, and native F-035 managed sending (`tasks/pending/whatsapp-managed-sending.md`). *(Corrected 2026-09-23 — previously "🟡 Partial — Phase 1 built", which predates the composer.)*  
@@ -824,7 +824,7 @@ Phase 9  ←──  Phase 8  ←──  Phase 7  ←──  Phase 6  ←──  
 
 ---
 
-<!-- source: docs/marketing/google-my-business.md -->
+<!-- source: docs/marketing/marketing-sales-enablement.md -->
 ## Google My Business Integration
 
 **Status:** ✅ **BUILT** (bring-your-own-key) — no longer a stub. `POST/DELETE /me/integrations/gmb`, plus `/me/integrations/gmb/test` and `/me/integrations/gmb/post` in `apps/api/src/routes/retailers/retailers-integrations.ts`; mobile screen `apps/mobile/app/growth/integrations/gmb.tsx`. The retailer supplies their own Google credentials, so this is **not** blocked on Kanchuki obtaining Google API access. *(Corrected 2026-09-23.)*  
@@ -857,7 +857,7 @@ Phase 9  ←──  Phase 8  ←──  Phase 7  ←──  Phase 6  ←──  
 
 ---
 
-<!-- source: docs/marketing/facebook-local-awareness-ads.md -->
+<!-- source: docs/marketing/marketing-sales-enablement.md -->
 ## Facebook Local Awareness Ads
 
 **Status:** ✅ **BUILT** (bring-your-own-key) — no longer a stub. `POST/DELETE /me/integrations/fb-ads`, plus `/me/integrations/fb-ads/test` and `/me/integrations/fb-ads/create-campaign` in `apps/api/src/routes/retailers/retailers-integrations.ts`; mobile screen `apps/mobile/app/growth/integrations/fb-ads.tsx`. The retailer supplies their own Meta credentials, so this is **not** blocked on Kanchuki obtaining Marketing API access. *(Corrected 2026-09-23.)*  
@@ -888,7 +888,7 @@ Phase 9  ←──  Phase 8  ←──  Phase 7  ←──  Phase 6  ←──  
 
 ---
 
-<!-- source: docs/marketing/google-local-service-ads.md -->
+<!-- source: docs/marketing/marketing-sales-enablement.md -->
 ## Google Local Service Ads
 
 **Status:** ✅ **BUILT** (bring-your-own-key) — no longer a stub. `POST/DELETE /me/integrations/google-ads`, plus `/me/integrations/google-ads/test` in `apps/api/src/routes/retailers/retailers-integrations.ts`; mobile screen `apps/mobile/app/growth/integrations/google-ads.tsx`. The retailer supplies their own Google Ads credentials, so this is **not** blocked on Kanchuki obtaining Google Ads API access. *(Corrected 2026-09-23.)*  

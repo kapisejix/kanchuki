@@ -31,12 +31,14 @@ Open these directly in a browser. They are self-contained (Tailwind via CDN, no 
 
 ## Scripts that read/write this folder
 
-These currently point at the **old** paths and are on the post-deletion `sed` list (see `../tasks/reorganize-files-folders-structure.md` → Phase 8 "After-delete work list"):
+All three now point here — they wrote to the old paths until the move, so if a bench run ever lands somewhere unexpected, check these first:
 
-| Script | Currently | Will become |
-|---|---|---|
-| `scripts/save-bench.mjs` | `docs/tasks/effect-photos/preview/`, `docs/tasks/bench-results.json`, `docs/tasks/bench-results.js` | `docs/ai-studio/...` |
-| `scripts/studio-shoot-demo.mjs` | `OUT_DIR = 'docs/photoshoots/out'` | `docs/ai-studio/photoshoots/out` |
-| `scripts/batch-clean-photos.py` | comment pointing at `docs/photo-feature/ghost-mannequin-research.md` | `docs/ai-studio/ghost-mannequin-research.md` |
+| Script | Path it uses |
+|---|---|
+| `scripts/save-bench.mjs` | `effect-photos/previews/`, `bench-results.json`, `bench-results.js` |
+| `scripts/studio-shoot-demo.mjs` | `photoshoots/out/` (`OUT_DIR`) |
+| `scripts/batch-clean-photos.py` | comment only → `ghost-mannequin-research.md` |
+
+`bench-results.json` / `bench-results.js` **do not exist until a bench run happens** — `save-bench.mjs` generates them, and `AI Cost Comparison.html` loads the `.js` with a plain `<script>` tag (a `file://` page cannot `fetch()` a `.json`). The results section renders empty until then; that is expected, not breakage.
 
 `history/` holds the frozen pre-merge photo-feature documents (the 5 files merged into the spec, plus the older progress logs). Not current truth.

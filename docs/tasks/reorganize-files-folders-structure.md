@@ -237,36 +237,36 @@ Shrink `PRO-REQUIREMENTS.md` (≤400 lines: scope + feature status table linking
 
 | Old path | Why | Successor |
 |---|---|---|
-| `docs/AI Fashion Sales Assistant - Phase 1.txt` | byte-identical to the `.md` right beside it | `docs/references/research/ai-fashion-sales-assistant-phase-1.md` |
-| `docs/tasks/AI Models and Scenes.hmtl` | typo'd filename, superseded copy | `docs/ai-studio/AI Models and Scenes.html` |
+| `docs/references/research/ai-fashion-sales-assistant-phase-1.md` | byte-identical to the `.md` right beside it | `docs/references/research/ai-fashion-sales-assistant-phase-1.md` |
+| `docs/ai-studio/AI Models and Scenes.html` | typo'd filename, superseded copy | `docs/ai-studio/AI Models and Scenes.html` |
 
 **2. Old `docs/` root files — byte-identical copies exist (22)**
 
 | Old path | New location |
 |---|---|
-| `docs/20-August-changes.md` | `docs/references/history/reports/2026-08-20-remaining-work.md` |
-| `docs/26-night-report.md` | `docs/references/history/reports/2026-07-26-night-report.md` |
-| `docs/AI Fashion Sales Assistant - Phase 1.md` | `docs/references/research/ai-fashion-sales-assistant-phase-1.md` |
-| `docs/DATABASE.md` | `docs/database/DATABASE.md` |
-| `docs/DESIGN.md` | `docs/design/DESIGN.md` |
-| `docs/HOSTING-AND-APP-STORE-GUIDE.md` | `docs/references/guides/hosting-and-app-store.md` |
-| `docs/INFRA-SETUP.md` | `docs/references/guides/infra-setup.md` |
-| `docs/INTERNATIONAL-EXPANSION.md` | `docs/references/research/international-expansion.md` |
-| `docs/LAUNCH-READINESS-AUDIT.md` | `docs/references/history/reports/launch-readiness-audit.md` |
-| `docs/MEMORY.md` | `docs/references/guides/ai-prompting.md` |
-| `docs/META-FACEBOOK-LOGIN-SETUP.md` | `docs/references/guides/meta-facebook-login-setup.md` |
-| `docs/OTP-issue.md` | `docs/references/history/reports/2026-08-22-otp-issue.md` |
-| `docs/PLAY-STORE-LAUNCH-CHECKLIST.md` | `docs/references/guides/play-store-launch-checklist.md` |
-| `docs/PLAY-STORE-LISTING.md` | `docs/references/guides/play-store-listing.md` |
-| `docs/PROGRESS.md` | `docs/references/history/sessions/PROGRESS.md` (frozen) |
-| `docs/Retailer → Customer AI Fashion Commerce Platform.md` | `docs/references/research/platform-architecture-blueprint.md` |
-| `docs/SKILLS-AND-MCP.md` | `docs/references/guides/skills-and-mcp.md` |
-| `docs/TRAINING.md` | `docs/references/history/superseded/catvton-training.md` |
-| `docs/final-research.md` | `docs/references/research/final-research.md` |
-| `docs/omp-review.md` | `docs/references/history/reports/2026-07-27-omp-review.md` |
-| `docs/staff-retailer.md` | `docs/tasks/done/staff-assisted-catalog-upload.md` |
-| `docs/INDIA-RETAILER-GROWTH.md` | `docs/marketing/india-retailer-growth.md` (copy **edited** this session — hash differs) |
-| `docs/social-connect-native.md` | `docs/tasks/done/social-connect-native.md` (copy **edited**) |
+| `docs/references/history/reports/2026-08-20-remaining-work.md` | `docs/references/history/reports/2026-08-20-remaining-work.md` |
+| `docs/references/history/reports/2026-07-26-night-report.md` | `docs/references/history/reports/2026-07-26-night-report.md` |
+| `docs/references/research/ai-fashion-sales-assistant-phase-1.md` | `docs/references/research/ai-fashion-sales-assistant-phase-1.md` |
+| `docs/database/DATABASE.md` | `docs/database/DATABASE.md` |
+| `docs/design/DESIGN.md` | `docs/design/DESIGN.md` |
+| `docs/references/guides/hosting-and-app-store.md` | `docs/references/guides/hosting-and-app-store.md` |
+| `docs/references/guides/infra-setup.md` | `docs/references/guides/infra-setup.md` |
+| `docs/references/research/international-expansion.md` | `docs/references/research/international-expansion.md` |
+| `docs/references/history/reports/launch-readiness-audit.md` | `docs/references/history/reports/launch-readiness-audit.md` |
+| `docs/references/guides/ai-prompting.md` | `docs/references/guides/ai-prompting.md` |
+| `docs/references/guides/meta-facebook-login-setup.md` | `docs/references/guides/meta-facebook-login-setup.md` |
+| `docs/references/history/reports/2026-08-22-otp-issue.md` | `docs/references/history/reports/2026-08-22-otp-issue.md` |
+| `docs/references/guides/play-store-launch-checklist.md` | `docs/references/guides/play-store-launch-checklist.md` |
+| `docs/references/guides/play-store-listing.md` | `docs/references/guides/play-store-listing.md` |
+| `docs/references/history/sessions/PROGRESS.md` | `docs/references/history/sessions/PROGRESS.md` (frozen) |
+| `docs/references/research/platform-architecture-blueprint.md` | `docs/references/research/platform-architecture-blueprint.md` |
+| `docs/references/guides/skills-and-mcp.md` | `docs/references/guides/skills-and-mcp.md` |
+| `docs/references/history/superseded/catvton-training.md` | `docs/references/history/superseded/catvton-training.md` |
+| `docs/references/research/final-research.md` | `docs/references/research/final-research.md` |
+| `docs/references/history/reports/2026-07-27-omp-review.md` | `docs/references/history/reports/2026-07-27-omp-review.md` |
+| `docs/tasks/done/staff-assisted-catalog-upload.md` | `docs/tasks/done/staff-assisted-catalog-upload.md` |
+| `docs/marketing/india-retailer-growth.md` | `docs/marketing/india-retailer-growth.md` (copy **edited** this session — hash differs) |
+| `docs/tasks/done/social-connect-native.md` | `docs/tasks/done/social-connect-native.md` (copy **edited**) |
 
 **3. Old root folders — all files duplicated into the new tree, so the folders empty out (1 + 3 + 2 + 11 + 1 + 7 + 5 + 1 + 1)**
 
@@ -313,10 +313,14 @@ Moved **with edits this session** (hash differs — content superseded by the co
 
 ---
 
-### 🛠 After-delete work list (NOT done now — only after you approve)
+### 🛠 After-delete work list ✅ EXECUTED 2026-09-23
 
-1. `git rm -r` the paths in sections 1–5 above. **Verify each folder still has its KEEP files** before removing a folder (`docs/design/`, `docs/database/`, `docs/marketing/`, `docs/references/`, `docs/tasks/` all remain).
-2. **sed the old paths in code comments** (~70 sites) and **the doc cross-links** (~527) — principally `docs/DESIGN.md`→`docs/design/DESIGN.md`, `docs/DATABASE.md`→`docs/database/DATABASE.md`, `docs/PROGRESS.md`→`docs/references/history/sessions/PROGRESS.md`, `docs/MEMORY.md`→`docs/references/guides/ai-prompting.md`, `docs/final-research.md`→`docs/references/research/final-research.md`, `docs/INDIA-RETAILER-GROWTH.md`→`docs/marketing/india-retailer-growth.md`, `docs/customer/*`→`docs/customers/*`, `docs/tasks/<old>`→`docs/tasks/{pending,done}/<new>`.
+**Result: 236 files removed, 0 unresolved.** Each was re-proven immediately before deletion — the delete list refuses to build if any old file has no successor (that guard fired once, on a `git ls-tree` quoting bug, and was fixed rather than bypassed). 11 files were kept in place and never touched.
+
+1. `git rm -r` the paths in sections 1–5 above. **Verify each folder still has its KEEP files** before removing a folder (`docs/design/`, `docs/database/`, `docs/marketing/`, `docs/references/`, `docs/tasks/` all remain). — **DONE**, via a verified delete list rather than hand-picked paths. `docs/design/`, `docs/database/`, `docs/marketing/`, `docs/references/` and `docs/tasks/` all survived with their KEEP files; the emptied folders (`photoshoots/`, `photo-feature/`, `superpowers/`, `survey/`, `new-updates/`, `adrs/`, `customer/`, `tasks/models/`, `tasks/effect-photos/`) were removed.
+2. **Rewrite the old paths in code comments and doc cross-links.** — **DONE: 406 references across 120 files**, from a mapping built per-file (explicit rename table first, then CRLF-normalised hash match), never guessed. **235 files mapped, 0 unmapped, 0 ambiguous.** Ran longest-path-first so no short path could eat a longer one's prefix, and the frozen `references/history/` tree was excluded by design. Non-`docs/` files touched were almost all comment-only; `apps/mobile/app.json`'s edit is inside its `"//"` key, so nothing functional changed.
+
+   **One deliberate exclusion:** `packages/db/prisma/migrations/*/migration.sql` was rewritten and then **reverted**. Prisma records a checksum per applied migration and will refuse to run the next `migrate deploy` if one was edited — including a comment-only edit. A stale path inside an immutable migration's comment costs nothing; a blocked production migration costs a lot. Those SQL comments keep the old paths on purpose. `schema.prisma` was **not** excluded (it is not checksummed) and its comments were updated.
 3. **Fix the three scripts** (currently pointing at old paths): `scripts/save-bench.mjs` lines 10–12 + 109 → `docs/ai-studio/` (`effect-photos/previews/`, `bench-results.json`, `bench-results.js`) — this also fixes `AI Cost Comparison.html`'s `bench-results.js` load; `scripts/studio-shoot-demo.mjs` lines 15/24/34 → `docs/ai-studio/photoshoots/`; `scripts/batch-clean-photos.py` line 23 comment → `docs/ai-studio/ghost-mannequin-research.md`.
 4. **Fix the CLAUDE.md feature-index rows** that link old paths (the row-73/74/75 F-036/F-037/AI-studio links), plus the **stale statuses found in Phase 4** (needs your approval — see the chat summary).
 5. **Prove it:** `git grep -nE 'docs/(photoshoots|photo-feature|superpowers|survey|new-updates|adrs|customer/|MEMORY\.md|PROGRESS\.md|final-research\.md|INDIA-RETAILER-GROWTH\.md|DATABASE\.md|DESIGN\.md)'` → expect **zero** hits outside `references/history/`; then `pnpm lint` + `node scripts/check-android-version-code.mjs` (the CI gate that reads `PLAY-STORE-RELEASES.md`).

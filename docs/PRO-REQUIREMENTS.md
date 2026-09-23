@@ -3,7 +3,7 @@
 **Version:** 1.0  
 **Date:** June 2026  
 **Status:** Active  
-**Source:** `docs/final-research.md` + `docs/AI Fashion Sales Assistant - Phase 1.md`
+**Source:** `docs/references/research/final-research.md` + `docs/references/research/ai-fashion-sales-assistant-phase-1.md`
 
 ---
 
@@ -180,7 +180,7 @@ Both F-001b and F-001c share the same underlying `detector.ts` with the same `de
 ---
 
 #### F-001e: Ghost-Mannequin AI Generation (Packed/Flat-Lay → Full Catalog Image)
-**Status:** Planned (not built) — job + Snappyit client scaffolded (`apps/api/src/jobs/ghost-mannequin.ts`, `packages/ai/src/snappyit.ts`) but the worker is paused as of 2026-08-02 (consolidated-cron change, `8b7a5be`) — not functional. Snappyit itself later confirmed to have no public API at all — see `docs/photo-feature/ghost-mannequin-research.md`. A local LaMa-inpainting version of the hollow-gap-fill step now exists and works (`scripts/batch-clean-photos.py --ghost-mannequin`, commit `0c66a7f`), reachable today only from the admin photo-cleanup **test tool** (`apps/web/src/app/admin/photo-cleanup-test`) — it is NOT wired into this retailer-facing flow (steps 1–4 below), which stays not-built.
+**Status:** Planned (not built) — job + Snappyit client scaffolded (`apps/api/src/jobs/ghost-mannequin.ts`, `packages/ai/src/snappyit.ts`) but the worker is paused as of 2026-08-02 (consolidated-cron change, `8b7a5be`) — not functional. Snappyit itself later confirmed to have no public API at all — see `docs/ai-studio/ghost-mannequin-research.md`. A local LaMa-inpainting version of the hollow-gap-fill step now exists and works (`scripts/batch-clean-photos.py --ghost-mannequin`, commit `0c66a7f`), reachable today only from the admin photo-cleanup **test tool** (`apps/web/src/app/admin/photo-cleanup-test`) — it is NOT wired into this retailer-facing flow (steps 1–4 below), which stays not-built.
 **Priority:** P2 (nice-to-have, not MVP-blocking)
 **Vendor:** Snappyit API (evaluated 2026-07-25 vs WearView/bitStudio/Scenario — Snappyit chosen for confirmed public API + lowest cost; WearView/Scenario had no confirmed public developer API at eval time)
 
@@ -297,7 +297,7 @@ Both F-001b and F-001c share the same underlying `detector.ts` with the same `de
 - Favorite/shortlist button
 - "I'm interested" enquiry button (opens WhatsApp to retailer)
 - Product detail view with all colors, close-up photos
-- Share button (forward to family/friends) — collection-level built with F-005/F-006; product-level share (single-item deep share from the product detail sheet) closed 2026-07-30, see `docs/design/feature-ideas-2026-07-30.md` §3
+- Share button (forward to family/friends) — collection-level built with F-005/F-006; product-level share (single-item deep share from the product detail sheet) closed 2026-07-30, see `docs/references/research/feature-ideas-2026-07-30.md` §3
 
 **Acceptance Criteria:**
 - Loads without account/login
@@ -439,7 +439,7 @@ Both F-001b and F-001c share the same underlying `detector.ts` with the same `de
 
 **Sections (all built):**
 1. **Profile** — edit shop name, owner name, city, state, address line 1, GSTIN, pincode. Store logo upload with square crop + presigned URL to R2. Account delete/deactivate with "type DELETE" confirmation modal (soft-delete via `Retailer.deleted_at`).
-2. **Subscription** — view current plan, usage vs limits per resource from F-010 ("Usage" section with progress bars, color-coded at 80%/100%). **Since 2026-08-10 (Play Billing compliance) the mobile screen is read-only**: upgrade/downgrade/cancel/add-ons moved to the web billing page `kanchuki.app/billing` (phone-OTP login). See `docs/PLAY-STORE-LAUNCH-CHECKLIST.md`.
+2. **Subscription** — view current plan, usage vs limits per resource from F-010 ("Usage" section with progress bars, color-coded at 80%/100%). **Since 2026-08-10 (Play Billing compliance) the mobile screen is read-only**: upgrade/downgrade/cancel/add-ons moved to the web billing page `kanchuki.app/billing` (phone-OTP login). See `docs/references/guides/play-store-launch-checklist.md`.
 3. **Team** (`apps/mobile/app/settings/staff.tsx`) — invite shop staff via phone number, list staff with role badges (owner/manager/salesperson), remove with confirmation. Reuses the existing `Staff` table.
 4. **WhatsApp** — configure separate WhatsApp business number (10-digit validation, falls back to `phone` if empty). `Retailer.whatsapp_number` stored independently.
 5. **WhatsApp Business API** — bring-your-own Meta credentials: phone number ID, permanent access token, template name/language. When configured, collection bulk-send uses it instead of one-by-one `wa.me` links. Disconnect option.
@@ -581,7 +581,7 @@ Fashion V-Tone does NOT require background removal or segmentation masks — it 
 
 **Logic:** Simple range lookup — customer bust/waist/hip → nearest matching chart row → recommended size, no AI/GPU cost.
 
-**Explicitly NOT in scope:** Rendering the try-on visual at the customer's actual body proportions. CatVTON is image-conditioned only (no numeric measurement input) — feeding height/weight into it has no effect on output. A measurement-driven 3D render (SMPL/STAR body model + pose-conditioned diffusion, e.g. IDM-VTON/OOTDiffusion) could do this but is deferred — see `docs/adrs/ADR-006-defer-3d-parametric-vto.md`.
+**Explicitly NOT in scope:** Rendering the try-on visual at the customer's actual body proportions. CatVTON is image-conditioned only (no numeric measurement input) — feeding height/weight into it has no effect on output. A measurement-driven 3D render (SMPL/STAR body model + pose-conditioned diffusion, e.g. IDM-VTON/OOTDiffusion) could do this but is deferred — see `docs/references/adrs/ADR-006-defer-3d-parametric-vto.md`.
 
 ---
 
@@ -618,9 +618,9 @@ Fashion V-Tone does NOT require background removal or segmentation masks — it 
 **Status:** ❌ **Removed** — try-on pipeline code dropped in `chore/remove-unwanted-features`.
 **Description:** Two related additions to the F-102 try-on pipeline, built together 2026-07-13.
 
-**Part 1 — Crop-tagging for single-photo "set" shots.** Many vendor catalog photos show a 2-piece outfit (kameez+dupatta draped on a mannequin, folded bottom piece on a stand) all in **one** frame — the existing F-102 piece-tagging (`ProductPhoto.piece_type`) is per-whole-photo, so a single combined photo can't be split into upper+lower for the two-call chaining path; it falls back to a single `overall` call, which mis-renders (confirmed root cause, see `docs/adrs/ADR-006-defer-3d-parametric-vto.md` session notes 2026-07-12).
+**Part 1 — Crop-tagging for single-photo "set" shots.** Many vendor catalog photos show a 2-piece outfit (kameez+dupatta draped on a mannequin, folded bottom piece on a stand) all in **one** frame — the existing F-102 piece-tagging (`ProductPhoto.piece_type`) is per-whole-photo, so a single combined photo can't be split into upper+lower for the two-call chaining path; it falls back to a single `overall` call, which mis-renders (confirmed root cause, see `docs/references/adrs/ADR-006-defer-3d-parametric-vto.md` session notes 2026-07-12).
 
-**Fix:** in `apps/mobile/app/product/[id].tsx`, for `PIECE_TAGGABLE_CATEGORIES` products missing an upper or lower tag, a "Crop {piece} piece from a photo" button re-opens the same gallery photo through `expo-image-picker`'s native `allowsEditing` crop screen, uploads the cropped result as a new `ProductPhoto`, and tags it directly. No new dependency — reuses `expo-image-picker`/`expo-image-manipulator`, already installed, both Expo-Go-compatible (a native crop *library* was deliberately avoided — would need a dev build, breaking the Expo Go workflow, per the native-module lesson already logged for MMKV in `docs/PROGRESS.md` 2026-07-08).
+**Fix:** in `apps/mobile/app/product/[id].tsx`, for `PIECE_TAGGABLE_CATEGORIES` products missing an upper or lower tag, a "Crop {piece} piece from a photo" button re-opens the same gallery photo through `expo-image-picker`'s native `allowsEditing` crop screen, uploads the cropped result as a new `ProductPhoto`, and tags it directly. No new dependency — reuses `expo-image-picker`/`expo-image-manipulator`, already installed, both Expo-Go-compatible (a native crop *library* was deliberately avoided — would need a dev build, breaking the Expo Go workflow, per the native-module lesson already logged for MMKV in `docs/references/history/sessions/PROGRESS.md` 2026-07-08).
 
 **Part 2 — Consented training-data collection.** Separate, unchecked-by-default checkbox (web `TryOnModal`, mobile in-store try-on) that lets a customer additionally allow Kanchuki to keep a copy of that try-on's photos to fine-tune the try-on model later. Fully specified in `docs/SECURITY.md` §3b — key points:
 - New `TryOnJob.consent_to_training` flag + `TrainingPhotoConsent` table (migration `008_training_photo_consent`).
@@ -653,7 +653,7 @@ Fashion V-Tone does NOT require background removal or segmentation masks — it 
 
 ### Customer Profile Features (P0-P3, Built 2026-08-21)
 
-**Full spec:** `docs/customer/customer-profile-req.md` §12
+**Full spec:** `docs/customers/customer-profile.md` §12
 
 | # | Feature | Status | Commit |
 |---|---------|--------|--------|
@@ -889,7 +889,7 @@ All Indian retail software must support GST invoicing. Kanchuki must:
 - Generalized to any metered resource (uploads, AI tagging, crop, bg-removal, API calls) via F-010's `quota_addon_purchases` — planned, see Section 3 F-010
 
 ### Billing Rules
-- Payment via Razorpay (UPI, cards, netbanking) — **live on web billing `kanchuki.app/billing` since 2026-08-10**; the Android app has no in-app purchases (Play Billing compliance — subscriptions/add-ons are sold on the website, see `docs/PLAY-STORE-LAUNCH-CHECKLIST.md`). Launch remains free-trial-first
+- Payment via Razorpay (UPI, cards, netbanking) — **live on web billing `kanchuki.app/billing` since 2026-08-10**; the Android app has no in-app purchases (Play Billing compliance — subscriptions/add-ons are sold on the website, see `docs/references/guides/play-store-launch-checklist.md`). Launch remains free-trial-first
 - Monthly billing only (annual plans removed 2026-09-01)
 - 14-day free trial (Growth features), no credit card
 - Auto-renewal with advance notice
@@ -1227,7 +1227,7 @@ Requires a `SupportTicket` entity: retailer, `requires_visit` flag, assigned sta
 
 ## 12. Admin Control Center — Plan Permission Matrix, Trust & Safety, Deletion Vault
 
-**Status:** ✅ **Built** (2026-07-26). Full implementation of F-013 through F-017. See `docs/PROGRESS.md` 2026-07-26 for details, `docs/SECURITY.md` §19 for guardrail design, `docs/26-night-report.md` for test report.
+**Status:** ✅ **Built** (2026-07-26). Full implementation of F-013 through F-017. See `docs/references/history/sessions/PROGRESS.md` 2026-07-26 for details, `docs/SECURITY.md` §19 for guardrail design, `docs/references/history/reports/2026-07-26-night-report.md` for test report.
 
 Reuses the F-010 admin-grid pattern (`plan_limits` table + `/admin/plan-limits` UI) for the new boolean feature matrix instead of inventing a second admin-config system.
 
@@ -1263,7 +1263,7 @@ Reuses the F-010 admin-grid pattern (`plan_limits` table + `/admin/plan-limits` 
 Defaults above are a starting proposal — admin edits every cell live, no deploy, same as `plan_limits`. Two more resources join F-010's *numeric* `QuotaResourceType` enum rather than this boolean table, since they're counts, not on/off: `TEAM_SEATS` (Starter 1 / Growth 3 / Pro 10, over-cap via existing ₹199/mo add-on) and `STORAGE_MB` (Starter 2GB / Growth 10GB / Pro 50GB, aggregate R2 usage across products/backgrounds/spin frames).
 
 **Implementation shape (build time):**
-- `PlanFeature` table: `(plan, feature_key, enabled, updated_at, updated_by_id)` — see `docs/DATABASE.md`
+- `PlanFeature` table: `(plan, feature_key, enabled, updated_at, updated_by_id)` — see `docs/database/DATABASE.md`
 - `PlanFeatureKey` enum — one entry per row above
 - `GET/PUT /admin/plan-features` — mirrors `GET/PUT /admin/plan-limits`
 - `/admin/plan-features` web page — checkbox grid, mirrors `/admin/plan-limits` numeric grid
@@ -1305,7 +1305,7 @@ Defaults above are a starting proposal — admin edits every cell live, no deplo
 **Priority:** P1 — currently the only account-disable path is soft-delete (F-009), which is permanent-leaning and customer-facing collection links go dark immediately. Suspension needs to be reversible and distinct from delete.
 
 **Design:**
-- `Retailer.is_suspended` + `suspended_at` + `suspended_reason` + `suspended_by_id` (FK `TeamMember`) — see `docs/DATABASE.md`
+- `Retailer.is_suspended` + `suspended_at` + `suspended_reason` + `suspended_by_id` (FK `TeamMember`) — see `docs/database/DATABASE.md`
 - Suspended retailer: API login blocked (clear "account suspended, contact support" message, not a generic auth error), all their collection links show a "temporarily unavailable" page instead of 404 (avoids leaking suspension as a customer-visible error), mobile app shows a suspended-state screen instead of the normal dashboard
 - Reversible — admin can unsuspend, `AuditLog` records both actions with reason
 - Same mechanism for `TeamMember` (internal staff) reusing existing `is_active` flag, with `suspended_reason`/`suspended_by_id` added for audit parity
@@ -1323,7 +1323,7 @@ Defaults above are a starting proposal — admin edits every cell live, no deplo
 **Status:** ✅ **Built** — vault Prisma schema + `packages/db/src/vault.ts` (vaultDelete helper) + Railway Postgres-PYkI with INSERT-only `vault_app` role + admin UI at `/admin/database/deletion-vault`. Vault permission test passes.
 **Priority:** P1 — distinct from the already-planned Cold Backup (`docs/SECURITY.md` §13, whole-DB periodic dumps). This is a **per-delete-event** copy, triggered the moment something is soft-deleted, not a periodic snapshot.
 
-**Problem:** Today soft-deleted rows (`deleted_at` set) live in the same primary Supabase DB and a cron purges them after 30 days (`docs/DATABASE.md` Data Retention Policy). If the primary DB is compromised, mis-migrated, or a retailer disputes a deletion after the 30-day window, there's no independent copy.
+**Problem:** Today soft-deleted rows (`deleted_at` set) live in the same primary Supabase DB and a cron purges them after 30 days (`docs/database/DATABASE.md` Data Retention Policy). If the primary DB is compromised, mis-migrated, or a retailer disputes a deletion after the 30-day window, there's no independent copy.
 
 **Design — a genuinely separate database, not a second schema on the same instance:**
 - New Postgres instance (Railway/Hetzner/Neon — provider TBD at build time, must NOT be the same Supabase project as primary), connection via a new `VAULT_DATABASE_URL`
@@ -1395,7 +1395,7 @@ Kurta Sets, Salwar Suits, Short Kurtis, Kurta, Co-ords, Plus Sizes, Dresses, Bot
 ### What already exists (checked by reading the code, not assumed)
 
 - `ProductCategory` (`packages/db/prisma/schema.prisma:295`) is **already** a DB-backed, per-retailer, admin/retailer-editable merchandising group — full CRUD at `apps/api/src/routes/categories.ts`, drives `Product.category_id` (the customer-facing "browse by category" nav). This is a different field from `Product.category` (free-text AI garment-type tag like "Saree"/"Kurti", sourced from `PRODUCT_CATEGORIES` in `packages/shared/src/constants/index.ts:37` — that hardcoded array is a *fine* AI-vocabulary constant, not the thing the user is asking to move to DB).
-- Gap confirmed: nothing seeds `ProductCategory` rows for a new retailer today (list starts empty until the retailer manually adds one via the mobile "Add Category" screen, `apps/mobile/app/category/new.tsx`). Nothing in `apps/api/src/jobs/tag-product.ts` touches `category_id` — AI tagging currently never assigns a merchandising category, confirming the gap is real, not stale-doc noise (see `docs/PROGRESS.md` doc-staleness pattern).
+- Gap confirmed: nothing seeds `ProductCategory` rows for a new retailer today (list starts empty until the retailer manually adds one via the mobile "Add Category" screen, `apps/mobile/app/category/new.tsx`). Nothing in `apps/api/src/jobs/tag-product.ts` touches `category_id` — AI tagging currently never assigns a merchandising category, confirming the gap is real, not stale-doc noise (see `docs/references/history/sessions/PROGRESS.md` doc-staleness pattern).
 
 ### Design (ladder-first — reuses `ProductCategory`/`categories.ts` wholesale, no parallel category system)
 
@@ -1403,7 +1403,7 @@ Kurta Sets, Salwar Suits, Short Kurtis, Kurta, Co-ords, Plus Sizes, Dresses, Bot
 2. **Retailer onboarding** copies the current active `DefaultProductCategory` rows into that retailer's own `ProductCategory` rows (one-time, at signup — same moment `Staff`/theme defaults etc. already get provisioned). A one-off backfill migration does the same for existing retailers with zero categories, so nobody regresses.
 3. **AI auto-assignment — no new AI plumbing needed.** `tagger.ts`'s vision call already returns `category` (free-text) each run. `tag-product.ts` additionally does a case-insensitive match of the returned category name against **that retailer's current `ProductCategory` list** (defaults + any custom ones — one mechanism handles both, no default-vs-custom special-casing) and sets `category_id` when it finds one. No match → `category_id` stays null, retailer assigns manually exactly like today. This also means a retailer's custom category ("Bridal Wear") becomes an AI target for free the moment it exists, matching the "retailer can add more" ask without extra code.
 4. **"New Arrivals" and "Sale" are not garment types — flagging before anyone builds this wrong.** A photo cannot tell you a product is newly stocked or discounted; these two are date/price-derived, not AI-taggable. Two honest options, needs a decision before coding:
-   - **A (recommended, cheaper — and there's already a working precedent in this exact codebase):** keep them out of `ProductCategory`/AI entirely — compute at query time as virtual filter chips, same as the existing occasion/color/price facets. **"New Arrivals" specifically doesn't need new logic at all** — `isNewArrival()` already exists (`apps/api/src/routes/products.ts:110`, `created_at` within 30 days) and is already wired into the retailer-facing mobile catalog filter (`docs/PROGRESS.md` 2026-07-16 #6). It has just never been exposed on the *customer-facing* public API (`apps/api/src/routes/public.ts`) that the Shop-By-Categories nav actually renders — so the real work here is porting the existing helper to `public.ts`, not building fresh. It's currently duplicated once already (`apps/api/src/routes/search.ts:11`) — adding it to `public.ts` makes a 3rd copy, which is the rule-of-three trigger to extract it into one shared helper instead. "Sale" (`mrp > price_min`) is new but trivially the same shape.
+   - **A (recommended, cheaper — and there's already a working precedent in this exact codebase):** keep them out of `ProductCategory`/AI entirely — compute at query time as virtual filter chips, same as the existing occasion/color/price facets. **"New Arrivals" specifically doesn't need new logic at all** — `isNewArrival()` already exists (`apps/api/src/routes/products.ts:110`, `created_at` within 30 days) and is already wired into the retailer-facing mobile catalog filter (`docs/references/history/sessions/PROGRESS.md` 2026-07-16 #6). It has just never been exposed on the *customer-facing* public API (`apps/api/src/routes/public.ts`) that the Shop-By-Categories nav actually renders — so the real work here is porting the existing helper to `public.ts`, not building fresh. It's currently duplicated once already (`apps/api/src/routes/search.ts:11`) — adding it to `public.ts` makes a 3rd copy, which is the rule-of-three trigger to extract it into one shared helper instead. "Sale" (`mrp > price_min`) is new but trivially the same shape.
    - **B:** seed them as real `ProductCategory` rows too, but leave `category_id` assignment to the retailer only for these two (AI never targets them) — matches the visual "15-tile grid" request more literally but needs the retailer to manually re-curate both every time stock/price changes, which real retailers won't keep up with.
 
 ### Not decided yet / explicitly not started
@@ -1475,7 +1475,7 @@ This is a regression introduced by F-017 (shipped 2026-07-26, "Database Guardrai
 
 Both take `--crop x1,y1,x2,y2` (isolates the subject before segmentation — tested and confirmed rembg segments by saliency, not subject identity, so it keeps overlapping neighbor garments/mannequins as "foreground" too; crop only fixes clutter that doesn't physically touch the subject) and `--shine` (contrast/saturation/brightness boost + a soft screen-blended highlight on the subject only, via stdlib-adjacent `PIL.ImageEnhance`/`ImageChops` — no new dependency).
 
-**Explicitly discussed and not built:** compositing the garment onto a stock/AI human-model photo. That's virtual try-on (pose-aware garment transfer), not background work — a flat paste ignores body pose/perspective/drape and looks obviously fake. This project already has the real path half-built (RunPod CatVTON, confirmed working end-to-end in an earlier session — see `docs/PROGRESS.md`) or the planned self-hosted Fashion V-Tone v1.5 engine (`docs/TECH-STACK.md`); real per-run RunPod cost means don't build this without an explicit ask.
+**Explicitly discussed and not built:** compositing the garment onto a stock/AI human-model photo. That's virtual try-on (pose-aware garment transfer), not background work — a flat paste ignores body pose/perspective/drape and looks obviously fake. This project already has the real path half-built (RunPod CatVTON, confirmed working end-to-end in an earlier session — see `docs/references/history/sessions/PROGRESS.md`) or the planned self-hosted Fashion V-Tone v1.5 engine (`docs/TECH-STACK.md`); real per-run RunPod cost means don't build this without an explicit ask.
 
 **Verified:** ran end-to-end on 3 real retailer product photos across all mode/flag combinations, outputs saved at `scripts/demo/2026-08-05/`.
 
@@ -1491,7 +1491,7 @@ Both take `--crop x1,y1,x2,y2` (isolates the subject before segmentation — tes
 
 **Migration deployment (2026-08-07):** applying 046 surfaced the live Supabase DB was **four migrations behind**, not one — `_prisma_migrations` topped out at `042_seed_llama_vision_fallbacks`. Diagnosed via direct `information_schema`/`pg_indexes`/`to_regclass` checks rather than trusting the migrations table: 043 (`products.sku/description/subtype`) and 044 (`team_members.phone`) had their DDL already applied by hand at some earlier point but were never recorded; 045 (`default_product_categories`) and 046 (this taxonomy) were genuinely unapplied. All four resolved via Supabase SQL Editor — 043/044 recorded as no-op (columns already existed), 045/046 run fresh — each backed by a manual `_prisma_migrations` INSERT keyed to that file's real sha256 checksum.
 
-**Verified:** live DB query confirms 10 default categories, 33 default attributes (9/11/13 exact), 66 backfilled `product_attributes` rows (2 existing retailers × 33). `pnpm db:generate` + `tsc --noEmit` clean across `@kanchuki/db`/`@kanchuki/api`. API 306/306 tests across 23 files (incl. a 12-test admin CRUD suite + 9-test `product-attributes.test.ts` incl. IDOR), AI 58/58, DB 10/10. Browser-verified (headless, real admin session) at `/admin/default-attributes`: all three tabs render correct seeded names, 0 console errors; live CRUD confirmed by adding a test row through the real admin UI. Full build/deploy log: `docs/PROGRESS.md` "2026-08-07" entries.
+**Verified:** live DB query confirms 10 default categories, 33 default attributes (9/11/13 exact), 66 backfilled `product_attributes` rows (2 existing retailers × 33). `pnpm db:generate` + `tsc --noEmit` clean across `@kanchuki/db`/`@kanchuki/api`. API 306/306 tests across 23 files (incl. a 12-test admin CRUD suite + 9-test `product-attributes.test.ts` incl. IDOR), AI 58/58, DB 10/10. Browser-verified (headless, real admin session) at `/admin/default-attributes`: all three tabs render correct seeded names, 0 console errors; live CRUD confirmed by adding a test row through the real admin UI. Full build/deploy log: `docs/references/history/sessions/PROGRESS.md` "2026-08-07" entries.
 
 ---
 
@@ -1535,7 +1535,7 @@ Both take `--crop x1,y1,x2,y2` (isolates the subject before segmentation — tes
 
 **Mobile:** `productApi.rotatePhoto()` client mirrors `cleanupPhoto` (POST + 30s). Product-detail rotate button shown for both the primary and original carousel slides (cleanup stays primary-only); a client-only per-photo label cycles 90/180/270/360 for feedback (not persisted). `photoCacheBust` reused for both slides (same URL, new bytes). Busy-state guards mirror the cleanup pattern (`rotatingPhotoId`, `rotatingPreview`).
 
-**Verified:** AI 4/4 (image-rotate), API full suite 364/364 (incl. 4 new route tests), api + mobile `tsc --noEmit` clean. Mobile UI unverified on device (no RN simulator). Plan + build detail: `docs/superpowers/plans/2026-08-09-photo-rotate-and-background-picker.md`, design spec `docs/superpowers/specs/2026-08-09-photo-rotate-and-background-picker-design.md`.
+**Verified:** AI 4/4 (image-rotate), API full suite 364/364 (incl. 4 new route tests), api + mobile `tsc --noEmit` clean. Mobile UI unverified on device (no RN simulator). Plan + build detail: `docs/references/history/executed-plans/plans/2026-08-09-photo-rotate-and-background-picker.md`, design spec `docs/references/history/executed-plans/specs/2026-08-09-photo-rotate-and-background-picker-design.md`.
 
 ### F-029 extension — Photo Set-as-Main + per-photo background picker — ✅ BUILT 2026-08-09 (commit `714a564`)
 
@@ -1629,7 +1629,7 @@ Three post types, ascending effort:
 - Post history (what was posted, when, link to the live post)
 - Meta app review submission for `pages_manage_posts` (parallel with build)
 
-**Phase 2 — Instagram + richer posts: ✅ BUILT + LIVE 2026-09-04** — the Social Create-Post Composer (`docs/tasks/social-create-post-composer.md`) supersedes this phase's piecemeal scope with one shipped whole:
+**Phase 2 — Instagram + richer posts: ✅ BUILT + LIVE 2026-09-04** — the Social Create-Post Composer (`docs/tasks/done/social-create-post-composer.md`) supersedes this phase's piecemeal scope with one shipped whole:
 - Instagram Business connect + **multi-target fan-out**: one composer screen posts to *every* connected FB/IG account (`POST /v1/retailers/me/social/posts`, per-target dispatch, partial-success results)
 - Multi-product **carousel** posts (migrations 090/092) + single photo/video + link-card posts
 - **Auto-generated captions**: templated server-side captions + admin-curated **Post Templates** (plan-gated, `usage_count`) + **Caption AI** (`POST /v1/growth/social/caption-suggest` — `@kanchuki/ai`, debounced composer prefill, always fail-open)
@@ -1687,14 +1687,14 @@ Post-launch feature. Not in locked MVP scope; the launch (Play Store batch, bill
 
 **Correction 2026-08-20:** Phase A (studio backgrounds) was built without a
 doc update — commits `5d5ae44` (2026-08-13) and `d67484d` (2026-08-19),
-found via `docs/photoshoots/photo-feature-audit.md` + verified against the
+found via `docs/ai-studio/history/photo-feature-audit.md` + verified against the
 real code (`apps/api/src/lib/studio-shoot.ts`, `apps/api/src/jobs/studio-shoot.ts`,
 `apps/api/src/routes/products/products-studio.ts`,
 `apps/mobile/app/product/[id].tsx` template picker + polling). §24.11 below
 said **"do NOT start until the user says go"** — this was never revisited
 when Phase A shipped. Full working-vs-remaining breakdown:
-`docs/photoshoots/photo-feature-audit.md` §1.3, backlog:
-`docs/tasks/ai-photo-generation.md` §5 R8. Phase B (product video)
+`docs/ai-studio/history/photo-feature-audit.md` §1.3, backlog:
+`docs/tasks/pending/ai-photo-generation.md` §5 R8. Phase B (product video)
 and Phase C (AI Fashion Model) — no code found for either, §24.11's
 do-not-start still applies to those.
 
@@ -1726,8 +1726,8 @@ owner applies), managed from the **Admin → Studio Styles** page:
 - `STUDIO_TEMPLATES` / `STUDIO_MODELS` constants deleted from
   `@kanchuki/shared` (Task 6). Admin bench page migrated to API fetch.
 
-Full spec: `docs/superpowers/specs/2026-08-30-studio-styles-admin-design.md`.
-Supersedes step 6 of the AI Studio Shoot scene-expansion plan, now merged into `docs/tasks/ai-photo-generation.md` §2.3.
+Full spec: `docs/references/history/executed-plans/specs/2026-08-30-studio-styles-admin-design.md`.
+Supersedes step 6 of the AI Studio Shoot scene-expansion plan, now merged into `docs/tasks/pending/ai-photo-generation.md` §2.3.
 
 ### 24.13 Engine + photo path rebuilt — ✅ Built 2026-09-18 (stages 1–3), never run against live providers
 
@@ -2079,7 +2079,7 @@ The app was an operations-efficiency tool: it digitized catalogs and enabled
 remote selling, but did not (1) bring new customers to the retailer, (2)
 automate marketing at scale, (3) manage the shop's financial life, or (4)
 adapt to Indian retail culture and language. The roadmap
-(`docs/INDIA-RETAILER-GROWTH.md`) groups the fixes into four gaps: Customer
+(`docs/marketing/india-retailer-growth.md`) groups the fixes into four gaps: Customer
 Acquisition, Marketing Strategy, Shop Organization, and Localized Indian
 Features.
 
@@ -2293,13 +2293,13 @@ Graph API function + a 2-line branch in an existing route).
 
 ## 29. Partner Network Manager (Marketing & Sales Enablement) — 🔴 NOT WIRED (backend exists, schema currently broken)
 
-**Written 2026-08-20** following `docs/marketing/WIRING-AUDIT-2026-08-20.md`, which
-found the 10 features in `docs/marketing/IMPLEMENTATION-STATUS.md` were built as
+**Written 2026-08-20** following `docs/references/history/reports/2026-08-20-marketing-wiring-audit.md`, which
+found the 10 features in `docs/marketing/marketing-sales-enablement.md` were built as
 disconnected `services/*` stubs, unreachable from `apps/web` (admin) or
 `apps/mobile`. Partner Network Manager was the one exception with a real
 `apps/api` route — this section scopes what's left to actually ship it. Full
-spec source: `docs/marketing/partner-network-manager.md`,
-`docs/marketing/marketing-sales-enablement-overview.md` §1 "Community
+spec source: `docs/marketing/marketing-sales-enablement.md`,
+`docs/marketing/marketing-sales-enablement.md` §1 "Community
 Partnerships".
 
 ### 29.1 Problem
@@ -2400,12 +2400,12 @@ exists and just needs a working schema under it.
 ## 30. F-034 AI Image→Video for Social Promo (Reels / Shorts / Feed) — 🧪 PHASE 1 BUILT (admin bench); Phase 2 (retailer) 🔴 DEFERRED
 
 **Status 2026-09-03:** Phase 1 (admin test bench) is built — tasks 1–4 of
-`docs/tasks/ai-photo-generation.md` §7 (commits `17fe997`, `f57479c`) plus the task-6.1
+`docs/tasks/pending/ai-photo-generation.md` §7 (commits `17fe997`, `f57479c`) plus the task-6.1
 admin addon-pack surface (migration `089_resource_packs`, applied; `47748a4`).
 **The owner decided 2026-09-03 to keep this feature ADMIN-TEST-ONLY for now** — the
 retailer mobile screen, queue/job, FB/IG publish and quota wiring (tasks 5–9) are
 🔴 hard-deferred until the bench is tested properly and the owner says go. Nothing
-retailer-facing ships from this spec yet; see `docs/tasks/ai-photo-generation.md` §7.4–§7.5
+retailer-facing ships from this spec yet; see `docs/tasks/pending/ai-photo-generation.md` §7.4–§7.5
 for the deferred checklist (that draft's migration numbers 090/091 are now taken by the
 `resource_packs` migration and the applied 090–092 social-composer set — renumber to ≥106 before building it).
 
@@ -2599,7 +2599,7 @@ for the go signal.
 ## 31. F-035 Kanchuki-Managed WhatsApp Sending (Meta Tech Provider + Embedded Signup) — 🔴 PLANNED, POST-LAUNCH
 
 **Written 2026-09-08 on user request.** Full dev spec, task list, skills, and
-testing plan: **`docs/tasks/whatsapp-embedded-signup-managed-sending.md`**.
+testing plan: **`docs/tasks/pending/whatsapp-managed-sending.md`**.
 
 ### 31.1 Problem
 
@@ -2696,8 +2696,8 @@ D (consent/mute + retailer visibility) are not started.
 
 **Written 2026-09-17 on owner request.** Full research, technical mechanics,
 platform limitations, and precedent analysis:
-**`docs/tasks/customer-pwa-store-list-and-push-notifications.md`**. Builds directly
-on the identity/consent architecture in `docs/customer/customer-qr-identity-solution.md`
+**`docs/tasks/pending/customer-pwa-push-notifications.md`**. Builds directly
+on the identity/consent architecture in `docs/customers/shopper-passport-identity.md`
 ("Shopper Passport" — `CustomerAccount`/`CustomerStoreVisit`, partially built via
 migrations `079_passport_core`, `080_passport_preferences`,
 `081_passport_personalization_toggle`).
@@ -2843,7 +2843,7 @@ round trip in a browser and that a hostile target cannot leave the origin.
 
 Verified live (prod build + Chrome): anonymous `/my-stores` → `/login` → OTP → back
 on `/my-stores` signed in (the query string rides along too). Web 242/242, API 967/967 (API untouched). Detail:
-`docs/BUILD-LOG.md` §2026-09-17 (later), `docs/tasks/return-to-post-login-redirect.md` §8.
+`docs/BUILD-LOG.md` §2026-09-17 (later), `docs/tasks/done/return-to-post-login-redirect.md` §8.
 
 **A state-aware entry point on `/stores` (built later still).** Phase A's `/login`
 was reachable only by being *intercepted* by the guard — a shopper had to already
@@ -2866,7 +2866,7 @@ live in Chrome. Detail: `docs/BUILD-LOG.md` §2026-09-17 (later still).
 ## 33. F-037 Customer Engagement Enhancements + Admin Behavior Analytics — 🟨 Phase 1 ✅ Built; 2–4 🔴 Planned
 
 **Written 2026-09-17 on owner follow-up to F-036.** Full research, schema
-correction, and roadmap: **`docs/tasks/customer-engagement-and-admin-behavior-analytics.md`**.
+correction, and roadmap: **`docs/tasks/pending/customer-engagement-analytics.md`**.
 
 **Phase 1 built 2026-09-18** — `CustomerInteraction` model (migration `100_customer_interaction`,
 net-new per §33.1, RLS on/default-deny) + `POST /v1/public/passport/events` now writes
@@ -2879,7 +2879,7 @@ filters + result_count). API 973/973, web tsc + 279/279 — see BUILD-LOG §2026
 
 ### 33.1 Schema correction (load-bearing — read before estimating this)
 
-`docs/customer/customer-qr-identity-solution.md` §15.1 claims `CustomerInteraction`
+`docs/customers/shopper-passport-identity.md` §15.1 claims `CustomerInteraction`
 and `CustomerFashionDNA` already exist and only need widening. **They do not.**
 Migration `082_remove_unwanted_features` (2026-08-31, one day after that doc was
 written) drops both tables plus `store_affinities`. Confirmed live in

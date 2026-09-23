@@ -1,5 +1,5 @@
 // Retailer discovery survey — question/option copy in 3 languages.
-// Mirrors docs/survey/retailer-pain-point.html field-for-field so API
+// Mirrors docs/references/research/retailer-pain-point-survey.html field-for-field so API
 // payload keys (see apps/api/src/routes/team/team-survey.ts) stay stable
 // across languages — only the label text changes. Staff-only tool: a field
 // agent fills this in while standing in the retailer's shop.

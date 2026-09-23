@@ -11,7 +11,7 @@ import { growthSocialTemplateRoutes } from './growth-social-templates.js';
 import { growthTranslateRoutes } from './growth-translate.js';
 import { growthVideoRoutes } from './growth-videos.js';
 
-// India Retailer Growth Engine (docs/INDIA-RETAILER-GROWTH.md).
+// India Retailer Growth Engine (docs/marketing/india-retailer-growth.md).
 // Sub-modules match the roadmap sections:
 //  - campaigns  → D (festival), G (reactivation), S (A/B), R (analytics), E (AI assistant)
 //  - promotions → F (smart promotion engine)

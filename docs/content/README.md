@@ -29,8 +29,8 @@ the **customer storefront**, and all **public-facing content** (copy, images, SE
 - `docs/design/emil-design.md` — the design system (Black & Gold Elegance tokens, typography, motion-by-surface, anti-patterns). The roadmap **references** this; it does not redefine it.
 - `docs/PRO-REQUIREMENTS.md` — the product spec the feature inventory is drawn from (§3 features by phase, §6 pricing).
 - `docs/PLAN.md` — the product roadmap the website phases interleave with.
-- `docs/CLAUDE.md` (repo root) — project memory; the authoritative list of **built** features.
-- `docs/DESIGN.md` — design tokens reference (kept current with the live palette).
+- `CLAUDE.md` (repo root, **not** under `docs/`) — project memory; the authoritative list of **built** features.
+- `docs/design/DESIGN.md` — design tokens reference (kept current with the live palette).
 
 ## How to use these docs
 

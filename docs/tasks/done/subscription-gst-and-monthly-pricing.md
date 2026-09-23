@@ -1,14 +1,14 @@
 # Subscription Billing — Monthly-Only Pricing + GST Engine & Invoice PDF
 
 **Status:** ✅ Built — commit `91144cb` (2026-09-01), hardened 2026-09-02 after code
-review (`docs/tasks/2026-09-01.md`, 10 findings fixed — see `docs/BUILD-LOG.md`
+review (`docs/references/history/sessions/2026-09-01-gst-review.md`, 10 findings fixed — see `docs/BUILD-LOG.md`
 §59 + §59.1). Migrations `086` + `087` to be applied from the admin dashboard.
 This file is kept as the design record; the sections below are the spec as
 written before the build, not a live to-do list.
 
 **Created:** 2026-09-01
 **Owner:** platform / billing
-**Related docs:** `docs/INDIA-RETAILER-GROWTH.md` §I, `docs/PRO-REQUIREMENTS.md` §5 (GST Compliance) + §F-304, `apps/api/src/routes/billing.ts`, `CLAUDE.md` → Pricing Model
+**Related docs:** `docs/marketing/india-retailer-growth.md` §I, `docs/PRO-REQUIREMENTS.md` §5 (GST Compliance) + §F-304, `apps/api/src/routes/billing.ts`, `CLAUDE.md` → Pricing Model
 
 ---
 
@@ -247,7 +247,7 @@ secret handling; table = easier to render/edit as a form).
 - **A6.** `public-misc.ts` and any public pricing JSON — monthly only.
 - **A7.** Docs: `CLAUDE.md` Pricing Model table (monthly only, base ex-GST,
   "source of truth = admin dashboard"), `docs/PLAN.md`,
-  `docs/PRO-REQUIREMENTS.md`, `docs/INDIA-RETAILER-GROWTH.md`.
+  `docs/PRO-REQUIREMENTS.md`, `docs/marketing/india-retailer-growth.md`.
 
 ### Part B — GST engine + invoice PDF
 
@@ -288,7 +288,7 @@ secret handling; table = easier to render/edit as a form).
 - **B11.** Backfill (optional) — for any existing `SubscriptionPayment` rows,
   compute + store the split and generate PDFs. One-off script in `scripts/`.
 - **B12.** Docs — `docs/BUILD-LOG.md` entry, flip
-  `docs/INDIA-RETAILER-GROWTH.md` §I to describe subscription GST (currently
+  `docs/marketing/india-retailer-growth.md` §I to describe subscription GST (currently
   describes the removed order GST), `docs/PRO-REQUIREMENTS.md` §5 acceptance
   criteria, `CLAUDE.md` What's-Built index row.
 
@@ -364,8 +364,8 @@ Repo rules to respect (from `CLAUDE.md`):
 ## Starter Prompt (paste into a fresh session)
 
 ```
-Read docs/tasks/subscription-gst-and-monthly-pricing.md in full, then
-docs/INDIA-RETAILER-GROWTH.md §I and docs/PRO-REQUIREMENTS.md §5.
+Read docs/tasks/done/subscription-gst-and-monthly-pricing.md in full, then
+docs/marketing/india-retailer-growth.md §I and docs/PRO-REQUIREMENTS.md §5.
 
 We are doing two coupled billing changes:
   A) Remove annual/yearly plans — monthly only — and make plan_pricing (the

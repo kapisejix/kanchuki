@@ -1,9 +1,9 @@
 # Customer Phone Number & Universal QR Profile Architecture
 
-**Document:** `docs/customer/customer-qr-identity-solution.md`
+**Document:** `docs/customers/shopper-passport-identity.md`
 **Date:** 2026-08-30 (research pass 3 — adds cross-store activity tracking, unified profile & recommendation engine, §15–§19)
-**Status:** Research & Architecture Proposal — decisions needed (§13). No code started.
-**Context:** Concrete build spec for the "unified cross-retailer identity" decision recorded in `docs/customer/customer-profile-req.md` (there called **Option C**, roadmap item 21). §1–§14 = QR entry / phone capture. §15–§19 = the activity/profile/recommendation layer that identity unlocks (delivers deferred items 22–24). **Task breakdown:** `docs/superpowers/plans/2026-08-30-shopper-passport-and-profile.md`.
+**Status:** 🟢 Core built — §1–§14 (QR entry / phone capture) and the identity core are **live**, not a proposal: `CustomerAccount`, `CustomerStoreVisit`, `ConsentEvent`, `PassportSession`, `CustomerRecentlyViewed` and `CustomerWishlistItem` exist in the schema with migrations `079`–`081` applied, and F-036 Phase A shipped (`CLAUDE.md` row 73). This header previously read "No code started", which was stale. What remains unbuilt is the F-036 **Phase B–D** work (push notifications) and the §15–§19 activity/recommendation layer — re-checked against code 2026-09-23 during the docs reorg.
+**Context:** Concrete build spec for the "unified cross-retailer identity" decision recorded in `docs/customers/customer-profile.md` (there called **Option C**, roadmap item 21). §1–§14 = QR entry / phone capture. §15–§19 = the activity/profile/recommendation layer that identity unlocks (delivers deferred items 22–24). **Task breakdown:** `docs/references/history/executed-plans/plans/2026-08-30-shopper-passport-and-profile.md`.
 
 ---
 
@@ -485,9 +485,9 @@ Routes: `/my-profile`, `/my-stores`. **Everything tracked is visible, editable, 
 | **8 — Proactive triggers** | new-arrival / restock / price-drop / collection triggers → WhatsApp/push with frequency cap | Phases 2, 7 |
 | **9 — Profiling compliance & retailer analytics** | recommendations toggle + freeze/clear; data export; DPDP notice-copy pass + `notice_version`; aggregate retailer taste report | Phases 4–7 |
 
-Full task breakdown with per-task skills, files, interfaces, test plans and acceptance criteria: **`docs/superpowers/plans/2026-08-30-shopper-passport-and-profile.md`**.
+Full task breakdown with per-task skills, files, interfaces, test plans and acceptance criteria: **`docs/references/history/executed-plans/plans/2026-08-30-shopper-passport-and-profile.md`**.
 
-**Docs to update when each phase ships** (per CLAUDE.md rule 10–11): CLAUDE.md feature index + `docs/BUILD-LOG.md`; `docs/PLAN.md`; `docs/PRO-REQUIREMENTS.md`; `docs/DATABASE.md` (new tables + RLS); `docs/API.md` (new endpoints); `docs/SECURITY.md` (§12–18 profiling + PII surface); `docs/customer/customer-profile-req.md` §12 (items 21–24).
+**Docs to update when each phase ships** (per CLAUDE.md rule 10–11): CLAUDE.md feature index + `docs/BUILD-LOG.md`; `docs/PLAN.md`; `docs/PRO-REQUIREMENTS.md`; `docs/database/DATABASE.md` (new tables + RLS); `docs/API.md` (new endpoints); `docs/SECURITY.md` (§12–18 profiling + PII surface); `docs/customers/customer-profile.md` §12 (items 21–24).
 
 ---
 

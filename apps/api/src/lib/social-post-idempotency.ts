@@ -1,5 +1,5 @@
 // social-post-idempotency.ts — client_post_id dedup markers for the composer
-// fan-out publish (R-13 in docs/tasks/social-create-post-composer.md).
+// fan-out publish (R-13 in docs/tasks/done/social-create-post-composer.md).
 //
 // The DB `@@unique([retailer_id, social_account_id, client_post_id])` (092) is
 // the record-of-truth guard — it makes a concurrent double-POST raise a unique

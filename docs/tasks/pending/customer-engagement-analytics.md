@@ -1,10 +1,10 @@
 # Customer Catalog Engagement + Admin Behavior Analytics
 
-**Document:** `docs/tasks/customer-engagement-and-admin-behavior-analytics.md`
+**Document:** `docs/tasks/pending/customer-engagement-analytics.md`
 **Date:** 2026-09-17
 **Status:** 🟡 **Phase 1 ✅ Built (2026-09-18)** — `CustomerInteraction` model + migration `100_customer_interaction`, `POST /v1/public/passport/events` restored, `STORE_VISIT` write on QR lead capture, consent-gated client beacon (dwell-timed `view`, `favorite`/`unfavorite`, `enquiry`, debounced `search`). See `docs/BUILD-LOG.md` §2026-09-18. **Phases 2–4 🔴 Planned — no code started** (nightly aggregation job, admin behavior dashboard with per-customer drill-down, retailer-facing aggregate view).
 **Answers:** owner follow-up on F-036 — (1) what else increases time-on-catalog/customer engagement, (2) how admin tracks per-customer dwell time, liked products, search terms, and view history in the admin dashboard.
-**Related:** `docs/tasks/customer-pwa-store-list-and-push-notifications.md` (F-036), `docs/customer/customer-qr-identity-solution.md` (Shopper Passport), `docs/PRO-REQUIREMENTS.md` §33.
+**Related:** `docs/tasks/pending/customer-pwa-push-notifications.md` (F-036), `docs/customers/shopper-passport-identity.md` (Shopper Passport), `docs/PRO-REQUIREMENTS.md` §33.
 
 ---
 

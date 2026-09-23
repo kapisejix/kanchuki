@@ -163,7 +163,7 @@ export const adminPhotoCleanupRoutes: FastifyPluginAsync = async (server) => {
           blur: z.number().int().min(1).max(100).optional(),
           // Ghost mannequin: fills the hollow neckline/sleeve/waist gaps in
           // the garment silhouette via local LaMa inpainting (no 3rd-party
-          // API/key — see docs/photo-feature/ghost-mannequin-research.md
+          // API/key — see docs/ai-studio/ghost-mannequin-research.md
           // for why the earlier Snappyit integration was dead on arrival).
           // Passed straight through to batch-clean-photos.py's
           // --ghost-mannequin flag, which forces composite mode (blur is

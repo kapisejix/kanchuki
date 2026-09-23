@@ -1,6 +1,6 @@
 // Types + server-fetch helpers shared by the storefront Suits Designs pages
 // (/{store}/designs browse + /{store}/designs/[id] permalink). Mirrors the
-// shapes returned by GET /v1/public/showcase-designs (docs/tasks/suits-designs.md
+// shapes returned by GET /v1/public/showcase-designs (docs/tasks/done/suits-designs.md
 // §5 public routes) — no retailer r2 keys or inactive rows ever reach here.
 
 export interface PublicShowcaseDesign {

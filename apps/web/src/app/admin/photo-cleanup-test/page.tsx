@@ -127,7 +127,7 @@ const PROMO_SECONDS: { value: PromoSeconds; label: string }[] = [
   { value: 8, label: '8s' },
 ];
 
-// First-draft presets copied from docs/tasks/AI Motion Styles.html — the HOLD
+// First-draft presets copied from docs/ai-studio/AI Motion Styles.html — the HOLD
 // sentence keeps colour/print/cut true to the input photo. Pick one in the card
 // to fill the prompt + model + aspect + duration; the full catalog lives in the
 // HTML file (owner exports the surviving set for Phase 2 studio_styles VIDEO rows).
@@ -460,7 +460,7 @@ export default function PhotoCleanupTestPage() {
   };
 
   // Download the table as bench-run-<time>.json; scripts/save-bench.mjs turns it
-  // into saved thumbnails + docs/tasks/bench-results.js for AI Cost Comparison.html.
+  // into saved thumbnails + docs/ai-studio/bench-results.js for AI Cost Comparison.html.
   const exportBench = () => {
     const rows = benchResults.map((r) => ({
       engine: r.engine,
@@ -1021,7 +1021,7 @@ export default function PhotoCleanupTestPage() {
             })}
           </div>
           <p className="text-[10px] text-gray-400">
-            Estimates from the price sheet in <code>docs/tasks/AI Cost Comparison.html</code> at ₹
+            Estimates from the price sheet in <code>docs/ai-studio/AI Cost Comparison.html</code> at ₹
             {BENCH_USD_TO_INR}/USD. Real spend is billed by Fal / Google, and a two-step model is
             several calls.
           </p>
@@ -1488,7 +1488,7 @@ export default function PhotoCleanupTestPage() {
         <div className="flex flex-col gap-1">
           <label htmlFor="promo-prompt" className="text-xs text-gray-500">
             Motion prompt (free text — copy any preset from{' '}
-            <code className="text-[10px]">docs/tasks/AI Motion Styles.html</code> or edit below)
+            <code className="text-[10px]">docs/ai-studio/AI Motion Styles.html</code> or edit below)
           </label>
           <textarea
             id="promo-prompt"

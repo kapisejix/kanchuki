@@ -254,7 +254,7 @@ rtk railway run -- prisma db pull
 
 All major tech decisions are recorded using `skill://architecture-decision-records`.
 
-Existing ADRs (create these in `docs/adrs/`):
+Existing ADRs (create these in `docs/references/adrs/`):
 - `ADR-001-react-native-over-flutter.md` — Why React Native
 - `ADR-002-fastify-over-express.md` — Why Fastify
 - `ADR-003-pgvector-over-pinecone.md` — Why PostgreSQL + pgvector over dedicated vector DB

@@ -1,6 +1,6 @@
 // Retailer-facing "professional photo" cleanup — the capture-flow backend for
-// the multi-shot product-add flow (see docs/photo-feature/
-// ai-photo-requirements-analysis-and-thoughts-2026-08-07.md §6 build items 1-3).
+// the multi-shot product-add flow (see docs/ai-studio/history/
+// ai-photo-requirements-analysis-2026-08-07.md §6 build items 1-3).
 //
 // The mobile capture screen uploads the retailer's raw kept shots to R2
 // (existing /products/upload-url presign), then calls this endpoint. Each

@@ -120,7 +120,7 @@
 
 <header class="top">
   <h1>§8 Cross-cutting concerns — quota, cost &amp; model comparison</h1>
-  <p>Source: <code>docs/tasks/ai-photo-generation.md</code> §8 → §8.1b · researched 2026-09-19 · rate <strong>1 USD = ₹96</strong> · click any column header to sort, use the search box to filter.</p>
+  <p>Source: <code>docs/tasks/pending/ai-photo-generation.md</code> §8 → §8.1b · researched 2026-09-19 · rate <strong>1 USD = ₹96</strong> · click any column header to sort, use the search box to filter.</p>
 </header>
 
 <nav class="toc">
@@ -390,7 +390,7 @@ plan_ai_budget    = owner-decided share of Starter ₹4,999 / Growth ₹9,999 / 
     <tr><td class="num">1</td><td>Run the batch</td><td>Upload a product photo, choose <em>Garment type</em>, scene, gender, age, tick models, press <strong>Run batch</strong>. It shows the estimated total and asks you to confirm before spending anything. Two models run at a time.</td></tr>
     <tr><td class="num">2</td><td>Look at the table on the page</td><td>Each row has a clickable thumbnail, model, version, time, cost in $ / ₹ / credits. A failed model shows its error in red instead of an image.</td></tr>
     <tr><td class="num">3</td><td>Export</td><td>Press <strong>Export results (JSON)</strong> → downloads <code>bench-run-&lt;time&gt;.json</code>.</td></tr>
-    <tr><td class="num">4</td><td>Save into the repo</td><td>Run <code>node scripts/save-bench.mjs &lt;that file&gt;</code>. It downloads every output and the input photo into <code>docs/tasks/effect-photos/preview/</code> (provider URLs expire), and writes <code>docs/tasks/bench-results.js</code>. Re-running the same file adds no duplicates.</td></tr>
+    <tr><td class="num">4</td><td>Save into the repo</td><td>Run <code>node scripts/save-bench.mjs &lt;that file&gt;</code>. It downloads every output and the input photo into <code>docs/ai-studio/effect-photos/previews/</code> (provider URLs expire), and writes <code>docs/ai-studio/bench-results.js</code> — the file this page loads. Re-running the same file adds no duplicates.</td></tr>
     <tr><td class="num">5</td><td>Open this page</td><td>The table in <a href="#s82-results">8.2 results</a> below fills in automatically. Type your own <strong>score /10</strong> and notes — they are kept in this browser only (<code>localStorage</code>).</td></tr>
   </tbody>
 </table>
@@ -501,7 +501,7 @@ plan_ai_budget    = owner-decided share of Starter ₹4,999 / Growth ₹9,999 / 
 </main>
 
 <footer>
-  Generated from <code>docs/tasks/ai-photo-generation.md</code> §8–§8.1b. The .md stays the source of truth — if the two differ, update this file from it. Static file, no network calls.
+  Generated from <code>docs/tasks/pending/ai-photo-generation.md</code> §8–§8.1b. The .md stays the source of truth — if the two differ, update this file from it. Static file, no network calls.
 </footer>
 
 <!-- Written by scripts/save-bench.mjs. A plain script tag works from file://; fetch() of a .json does not. Missing file = no saved runs yet. -->

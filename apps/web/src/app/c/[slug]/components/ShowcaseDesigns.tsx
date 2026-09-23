@@ -1,7 +1,7 @@
 'use client'
 
 // Suits Designs strip — rendered in ProductDetailSheet below the Related
-// products block (docs/tasks/suits-designs.md §2.3). Shows the N (admin-
+// products block (docs/tasks/done/suits-designs.md §2.3). Shows the N (admin-
 // configured) watermarked design thumbs for the product's garment category
 // (+ related categories) with a "View more" link into the full browse route
 // in a new tab. Hidden entirely when no designs match or no store slug exists

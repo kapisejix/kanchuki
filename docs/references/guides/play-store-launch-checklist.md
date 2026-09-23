@@ -392,6 +392,6 @@ surfaced and which need a Console check or a form edit before submitting.
 
 ---
 
-Related docs: `docs/HOSTING-AND-APP-STORE-GUIDE.md` (hosting + store strategy),
-`docs/LAUNCH-READINESS-AUDIT.md` (general launch audit), `docs/SECURITY.md`
+Related docs: `docs/references/guides/hosting-and-app-store.md` (hosting + store strategy),
+`docs/references/history/reports/launch-readiness-audit.md` (general launch audit), `docs/SECURITY.md`
 (governance).

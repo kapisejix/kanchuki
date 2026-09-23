@@ -20,7 +20,7 @@ highlight over it, applies in either mode.
 --ghost-mannequin fills gaps in the garment silhouette that show the plain
 studio *backdrop* through them (e.g. a low neckline you can see straight
 through to the wall/floor behind), using local LaMa inpainting (no
-third-party API, no key — see docs/photo-feature/ghost-mannequin-research.md
+third-party API, no key — see docs/ai-studio/ghost-mannequin-research.md
 for why this replaced the Snappyit integration, which was wired to a vendor
 that turns out to have no public API at all). Forces composite mode.
 CONFIRMED LIMITATION (tested against a real product photo, not assumed): it

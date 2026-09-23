@@ -7,7 +7,7 @@
 // is a per-target result array; partial success is normal and expected
 // (FB ok / IG failed must never roll back the FB post).
 //
-// Contract (docs/tasks/social-create-post-composer.md §6.1):
+// Contract (docs/tasks/done/social-create-post-composer.md §6.1):
 //   {
 //     client_post_id: uuid,            // client minted; dedupes retries (R-13)
 //     post_type: SINGLE_PRODUCT|CAROUSEL|COLLECTION_LINK|IMAGE,

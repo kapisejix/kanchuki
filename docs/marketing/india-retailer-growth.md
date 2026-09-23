@@ -6,9 +6,9 @@
 > size-chart recommendation engine (usual-size capture + plus sizes stay).
 > `customer_interactions` was also dropped — reactivation (G), inventory alerts
 > (J) and campaign/seasonal analytics (R) now compute from favorites, enquiries
-> and `total_purchases` only. Authoritative list: `docs/database/no-feature-want.md`.
+> and `total_purchases` only. Authoritative list: `docs/references/history/reports/2026-08-31-feature-teardown-spec.md`.
 
-**Status:** ✅ **Backend + full mobile UI BUILT 2026-08-17** (all growth modules ship under `/v1/growth/*`, gated behind the `GROWTH_ENGINE` plan feature; every roadmap module below has a live retailer screen in the mobile app). **M, N, R, S completed 2026-08-17** (BUILD-LOG §47). **E (AI Campaign Assistant) completed 2026-08-18** (BUILD-LOG §48). **Migrations:** 055–058 + 060–062 **applied and verified** (growth tables/enum/plan-rows live; Phase II catalog tables + WHATSAPP_CATALOG_SYNC feature live; `customers.usual_size` column live — 058 confirmed by the 2026-09-03 launch audit's ground-truth check). **⚠️ 063 (`retailers.preferred_locale`) is UNVERIFIED — do not read the earlier "063 applied" claim here as fact:** `docs/BUILD-LOG.md` §50 says "migration 063 NOT applied", and no ground-truth check exists for it. Owner check is on `docs/tasks/pending/launch-readiness.md`. **P (WhatsApp native catalog) completed 2026-08-18** (BUILD-LOG §49, Phase II — catalog sync engine, API, webhook, admin monitor, mobile UI). **R seasonal analytics (wedding-season vs daily-wear) completed 2026-08-18** (BUILD-LOG §51). **S auto-built variant collection links completed 2026-08-18** (BUILD-LOG §49 — HIDDEN collection status + variant sync on campaign create/edit + variant links in send response). **i18n data groundwork completed 2026-08-18** (BUILD-LOG §50 — preferred_locale + SUPPORTED_LOCALES). **Not built:** Instagram Business publishing; future work: M native mic + UI language toggle. See `docs/BUILD-LOG.md` §44–51. Full remaining-work task list: `docs/20-August-changes.md`.  
+**Status:** ✅ **Backend + full mobile UI BUILT 2026-08-17** (all growth modules ship under `/v1/growth/*`, gated behind the `GROWTH_ENGINE` plan feature; every roadmap module below has a live retailer screen in the mobile app). **M, N, R, S completed 2026-08-17** (BUILD-LOG §47). **E (AI Campaign Assistant) completed 2026-08-18** (BUILD-LOG §48). **Migrations:** 055–058 + 060–062 **applied and verified** (growth tables/enum/plan-rows live; Phase II catalog tables + WHATSAPP_CATALOG_SYNC feature live; `customers.usual_size` column live — 058 confirmed by the 2026-09-03 launch audit's ground-truth check). **⚠️ 063 (`retailers.preferred_locale`) is UNVERIFIED — do not read the earlier "063 applied" claim here as fact:** `docs/BUILD-LOG.md` §50 says "migration 063 NOT applied", and no ground-truth check exists for it. Owner check is on `docs/tasks/pending/launch-readiness.md`. **P (WhatsApp native catalog) completed 2026-08-18** (BUILD-LOG §49, Phase II — catalog sync engine, API, webhook, admin monitor, mobile UI). **R seasonal analytics (wedding-season vs daily-wear) completed 2026-08-18** (BUILD-LOG §51). **S auto-built variant collection links completed 2026-08-18** (BUILD-LOG §49 — HIDDEN collection status + variant sync on campaign create/edit + variant links in send response). **i18n data groundwork completed 2026-08-18** (BUILD-LOG §50 — preferred_locale + SUPPORTED_LOCALES). **Not built:** Instagram Business publishing; future work: M native mic + UI language toggle. See `docs/BUILD-LOG.md` §44–51. Full remaining-work task list: `docs/references/history/reports/2026-08-20-remaining-work.md`.  
 **Date:** August 2026  
 **Scope:** India-only small retailers  
 **Prerequisite:** Phase 0 live + F-031 social publishing shipped  
@@ -32,7 +32,7 @@
 | L | Showroom / Try-On Room Booking | ❌ REMOVED — `chore/remove-unwanted-features` (2026-08-31, migration 082): `bookings` table + routes + mobile/web UI deleted |
 | M | Multi-Language AI | ✅ Built — descriptions + campaign/WhatsApp messages in 7 languages (placeholders preserved) + AI-search screen (Hindi/Hinglish, voice via keyboard dictation). Native in-app mic + PWA/retailer UI language toggle: future work |
 | N | Indian Size & Fit System | ⚠️ Partly removed — `usual_size` quick capture + plus sizes + unstitched/blouse flags stay; the size-chart recommendation engine (`size_charts` / `size_chart_rows`) was removed in `chore/remove-unwanted-features` (2026-08-31, migration 082). |
-| P | WhatsApp Native Catalog Sync | ✅ Built (Phase II: DB schema + sync engine + API + webhook + admin monitor + retailer mobile UI — see `docs/tasks/PHASE-II-WHATSAPP-CATALOG-BREAKDOWN.md`) |
+| P | WhatsApp Native Catalog Sync | ✅ Built (Phase II: DB schema + sync engine + API + webhook + admin monitor + retailer mobile UI — see `docs/tasks/done/whatsapp-catalog-sync.md`) |
 | Q | Video Product Support | ✅ Built (backend + mobile UI) |
 | R | Campaign Analytics by Region / Festival | ✅ Built — campaign analytics screen: festival, customer segment, hour-of-day opens, category, video-vs-photo, A/B results, seasonal (wedding vs daily-wear) comparison (BUILD-LOG §51). |
 | S | A/B Testing for Collections | ✅ Built — per-variant product sets (collection A/B) + send stagger + variant stats + two-proportion z-test significance + auto-built variant collection links with HIDDEN status (BUILD-LOG §49). |
@@ -325,7 +325,7 @@ These four gaps are where the next wave of features must land.
 - Webhook: `apps/api/src/routes/webhooks/whatsapp-catalog.ts` at `/v1/public/webhooks/whatsapp-catalog` — GET handshake (verify token) + HMAC-SHA256 signature over `META_APP_SECRET`; `catalog_item_added`/`updated`/`deleted`/`out_of_stock` events sync price/availability back and are audited to `CatalogSyncLog`.
 - Retailer UI: `apps/mobile/app/settings/whatsapp-catalog.tsx` — toggle, category picker, Sync Now, status card, logs with pull-to-refresh + per-product synced/pending/error badges in the catalog tab.
 - Admin monitor: `apps/web/src/app/admin/whatsapp-catalog/` — health cards, per-retailer table, drill-down logs/items, manual sync trigger.
-- Docs: `docs/tasks/PHASE-II-WHATSAPP-CATALOG-BREAKDOWN.md` (63/63 tasks) + `docs/DEPLOY.md` webhook setup section.
+- Docs: `docs/tasks/done/whatsapp-catalog-sync.md` (63/63 tasks) + `docs/DEPLOY.md` webhook setup section.
 
 ---
 
@@ -411,16 +411,16 @@ These four gaps are where the next wave of features must land.
 |---|---|---|---|---|
 | Multi-Language AI (Hindi + 3 regional) | Medium | High | **P0** | ✅ Built (descriptions + campaign messages + AI search) |
 | Indian Size & Fit System | Low-Medium | Medium | **P1** | ✅ Built (usual size + recommendation + plus sizes) |
-| WhatsApp Native Catalog Sync | Medium | High | **P1** | ✅ Built (Phase II — `docs/tasks/PHASE-II-WHATSAPP-CATALOG-BREAKDOWN.md`) |
+| WhatsApp Native Catalog Sync | Medium | High | **P1** | ✅ Built (Phase II — `docs/tasks/done/whatsapp-catalog-sync.md`) |
 
 ### Sprint Block E — Advanced (Post-Phase 1)
 
 | Feature | Effort | Impact | Priority | Status |
 |---|---|---|---|---|
 | AI Campaign Assistant | High | High | **P1** | ✅ Built (NLP intent → WhatsApp message template + save-to-campaign) |
-| Instagram Business Publishing | Medium | Medium | **P1** | 🔴 Not built (F-031 = Facebook only) — see `docs/20-August-changes.md` item 7 |
+| Instagram Business Publishing | Medium | Medium | **P1** | 🔴 Not built (F-031 = Facebook only) — see `docs/references/history/reports/2026-08-20-remaining-work.md` item 7 |
 | A/B Testing | Medium | Medium | **P2** | ✅ Built (collection sets + stagger + significance) |
-| F-035 Kanchuki-Managed WhatsApp Sending (Meta Tech Provider + Embedded Signup) | High | High | **P1** | 🔴 Planned, post-launch — retailer taps "Connect WhatsApp", gets their own WABA, Kanchuki sends `bulk-send` / campaigns on their behalf (no manual token paste). Gated on Meta Business Verification + App Review (4–8 wk). Spec `docs/tasks/whatsapp-embedded-signup-managed-sending.md` |
+| F-035 Kanchuki-Managed WhatsApp Sending (Meta Tech Provider + Embedded Signup) | High | High | **P1** | 🔴 Planned, post-launch — retailer taps "Connect WhatsApp", gets their own WABA, Kanchuki sends `bulk-send` / campaigns on their behalf (no manual token paste). Gated on Meta Business Verification + App Review (4–8 wk). Spec `docs/tasks/pending/whatsapp-managed-sending.md` |
 
 ---
 
@@ -458,7 +458,7 @@ These four gaps are where the next wave of features must land.
 
 ## 7. Out of Scope (This Roadmap)
 
-- International expansion (separate roadmap: `docs/INTERNATIONAL-EXPANSION.md`)
+- International expansion (separate roadmap: `docs/references/research/international-expansion.md`)
 - Full B2B wholesaler/manufacturer network (Phase 2)
 - Multi-store retailer management (Phase 3)
 - Advanced AI demand forecasting (Phase 3)

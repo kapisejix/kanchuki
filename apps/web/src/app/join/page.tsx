@@ -4,7 +4,7 @@ import { Smartphone } from 'lucide-react';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
-// docs/tasks/staff-invite-tokens.md §7 — web /join bridge. The invite link a
+// docs/tasks/done/staff-invite-tokens.md §7 — web /join bridge. The invite link a
 // retailer shares is kanchuki://join?token=… (custom scheme, D6). When the
 // member doesn't have the app installed, the platform falls back to
 // https://kanchuki.app/join?token=… — this page shows who/what the invite is

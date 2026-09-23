@@ -3,13 +3,13 @@
 **Date:** 2026-08-07
 **Status:** Research only. Nothing in this document is built. No code was written this session.
 **Requested by:** user, via `/ponytail` — "review requirements, research solutions, no development."
-**Related existing docs:** `docs/photo-feature/ghost-mannequin-research.md` (2026-08-06, prior session — read and incorporated, not duplicated), `docs/DESIGN.md`, `CLAUDE.md` → "Ghost-mannequin" and "Admin Photo Cleanup Test Page" entries.
+**Related existing docs:** `docs/ai-studio/ghost-mannequin-research.md` (2026-08-06, prior session — read and incorporated, not duplicated), `docs/design/DESIGN.md`, `CLAUDE.md` → "Ghost-mannequin" and "Admin Photo Cleanup Test Page" entries.
 
 ---
 
 ## 1. Status of the existing ghost-mannequin / AI photo-edit feature (verified via git, not memory)
 
-Both `docs/PROGRESS.md`/`CLAUDE.md` and the actual commit history were checked directly (`git log`) because this project has a documented pattern of docs going stale mid-feature (see memory: "doc staleness pattern"). Here is what is **actually true today**, in build order:
+Both `docs/references/history/sessions/PROGRESS.md`/`CLAUDE.md` and the actual commit history were checked directly (`git log`) because this project has a documented pattern of docs going stale mid-feature (see memory: "doc staleness pattern"). Here is what is **actually true today**, in build order:
 
 | Date | Commit | What it did |
 |---|---|---|
@@ -147,4 +147,4 @@ Proposed capture screen, matching what you described ("camera opens, team clicks
 - [Exposure Fusion, Mertens et al.](https://web.stanford.edu/class/cs231m/project-1/exposure-fusion.pdf)
 - [Amazon product photography guide (Jungle Scout)](https://www.junglescout.com/resources/articles/amazon-product-photography/) · [E-commerce product photography guide](https://www.silkwoodstudio.co.uk/2026/05/05/the-complete-guide-to-ecommerce-product-photography-amazon-shopify-more/)
 - [Google ML Kit object detection](https://developers.google.com/ml-kit/vision/object-detection/android) · [react-native-document-scanner](https://github.com/Michaelvilleneuve/react-native-document-scanner) · [Scanbot SDK](https://scanbot.io/developer/react-native-document-scanner/)
-- `docs/photo-feature/ghost-mannequin-research.md` (2026-08-06, this project, prior session)
+- `docs/ai-studio/ghost-mannequin-research.md` (2026-08-06, this project, prior session)

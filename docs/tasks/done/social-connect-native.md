@@ -66,7 +66,7 @@ must change together. `isAutoInitEnabled` is deliberately `false` (the SDK inits
 lazily on first tap — a bad appID in `Application.onCreate` crashes app launch; see
 the block's own `"//"` note).
 
-> → **Full Meta-dashboard runbook: [`docs/META-FACEBOOK-LOGIN-SETUP.md`](./META-FACEBOOK-LOGIN-SETUP.md)**
+> → **Full Meta-dashboard runbook: [`docs/references/guides/meta-facebook-login-setup.md`](./META-FACEBOOK-LOGIN-SETUP.md)**
 > — key hashes (including the Play App Signing trap that is the usual real cause of
 > "still not connected"), App Roles / App Mode, OAuth redirect URIs, the App Review
 > permission list, and a layer-by-layer verification table.

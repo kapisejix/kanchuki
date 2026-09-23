@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-07 (rev 2)
 **Status:** Research + status report. No production code was changed. A **fresh demo run** of the existing cleanup pipeline was executed locally against 3 of your real team photos (see §2.3) so the "status" section is evidence, not memory.
-**Related docs:** `docs/photo-feature/ghost-mannequin-research.md` (2026-08-06 — why the Snappyit integration is dead), `docs/photo-feature/multi-photo-catalog-pipeline-2026-08-07.md` (earlier today — prior research on the same queries).
+**Related docs:** `docs/ai-studio/ghost-mannequin-research.md` (2026-08-06 — why the Snappyit integration is dead), `docs/ai-studio/history/multi-photo-catalog-pipeline-2026-08-07.md` (earlier today — prior research on the same queries).
 **Revision note (rev 2, per your request):** this revision **reviews** `multi-photo-catalog-pipeline-2026-08-07.md` and **merges its findings + queries into this report** so there is one complete reference. What changed: the commit-level status table, the detailed photo/reference analysis, the gpt-image-1/Gemini generative options, the capture-UX depth (ML Kit), the resources inventory, and the earlier source list are now folded in (§0 explains what was kept, what was superseded, and the two pricing/priority reconciliations).
 
 ---
@@ -327,8 +327,8 @@ Per your request these were answered by the AI with recommendations. **Every ans
 ## 10. Sources & references
 
 **This project (read these too):**
-- `docs/photo-feature/ghost-mannequin-research.md` — Snappyit dead-integration proof + IOPaint/LaMa tier analysis (2026-08-06)
-- `docs/photo-feature/multi-photo-catalog-pipeline-2026-08-07.md` — prior same-day research; reviewed and merged into this report (see §0)
+- `docs/ai-studio/ghost-mannequin-research.md` — Snappyit dead-integration proof + IOPaint/LaMa tier analysis (2026-08-06)
+- `docs/ai-studio/history/multi-photo-catalog-pipeline-2026-08-07.md` — prior same-day research; reviewed and merged into this report (see §0)
 - `scripts/batch-clean-photos.py` — the existing engine (verified again this session)
 - Demo outputs: `scripts/demo/2026-08-07-status/` (input / out-composite / out-ghost)
 
