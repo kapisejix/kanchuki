@@ -110,7 +110,7 @@ Checked all 13 `pending/` + 13 `done/` files against code and `git log`. **One w
 - [x] Confirmed-correct as-is: `coupon-codes` (📋 spec), `ghost-mannequin` (🔴 P2), `google-business-profile-autopost` (⏸ on hold), `plan-switch-prorated` (🔴), `social-publishing-phase-3` (🔴), `whatsapp-managed-sending` (🔴 post-launch), `launch-readiness` (🟡 open), and all 12 other `done/` files.
 - [x] `launch-readiness.md` gained 3 items found during this pass: verify migration `063`, the Facebook-native connect real-device check, and the first live-provider AI Studio run.
 
-## Phase 4 — Settle doc conflicts (read-only checks, then fix the NEW copy)
+## Phase 4 — Settle doc conflicts (read-only checks, then fix the NEW copy) ✅ DONE
 | # | Conflict | Check |
 |---|---|---|
 | 1 | Partner Network built vs "schema broken" (CLAUDE #47 vs PLAN.md) | `npx prisma validate`, grep `PARTNER_NETWORK`, `apps/mobile/app/growth/partners.tsx` |
@@ -154,7 +154,7 @@ CLAUDE.md content fixes = **ask owner first** — collected in the Phase 8 repor
 - [x] Retained the ⚠️ **never move `docs/PLAY-STORE-RELEASES.md`** warning (CI gate reads that exact path).
 - [x] **No other CLAUDE.md section touched** — not the What's-Built feature index, not the RC table, not the Operational Control Policy. Feature-index rows still pointing at old paths (and the stale rows found in Phase 4) are deliberately left for the deletion phase (sed) + an owner decision.
 
-## Phase 8 — Deliver KEEP / DELETE list (then STOP)
+## Phase 8 — Deliver KEEP / DELETE list (then STOP) ✅ DONE — commit `150a1352`, pushed, draft PR #39
 Write it as a section at the bottom of this file, and summarise in chat:
 - **KEEP:** every new-tree path, one-line summary each (what it holds, size, status).
 - **DELETE (after approval):** every old path now duplicated, with its new location. Includes the 2 true duplicates: `AI Fashion Sales Assistant - Phase 1.txt` (= `.md`), `tasks/AI Models and Scenes.hmtl` (old copy of `.html`), and old folders `customer/ database/database-22-August.md marketing/<13 stubs> new-updates/ photo-feature/ photoshoots/ references/*.md superpowers/ survey/ adrs/` + old root files + old `tasks/*` files.
