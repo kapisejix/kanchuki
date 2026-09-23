@@ -24,23 +24,9 @@ import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch';
 import { motion } from 'framer-motion';
 import { AlertCircle, CheckCircle2, Handshake, Loader2, Save } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { type BonusType, type Cadence, type Settings, buildPatch } from './build-patch';
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
-
-type BonusType = 'FREE_MONTH' | 'FLAT_DISCOUNT' | 'NONE';
-type Cadence = 'MONTHLY' | 'MANUAL';
-
-type Settings = {
-  commission_pct: number;
-  duration_months: number;
-  qualify_days: number;
-  referred_bonus_type: BonusType;
-  referred_bonus_value: number;
-  second_tier_enabled: boolean;
-  second_tier_pct: number | null;
-  payout_min_amount: number;
-  payout_cadence: Cadence;
-};
 
 /** Everything editing-side as a string, so a half-typed number is representable. */
 type Draft = {
@@ -145,26 +131,6 @@ function toSettings(d: Draft): Settings {
     payout_min_amount: rupeesToPaise(d.payout_min_amount),
     payout_cadence: d.payout_cadence,
   };
-}
-
-/**
- * The patch to send: only keys whose value actually moved. `typeChanged`
- * forces the bonus value into the patch even when the numeral is identical —
- * 1 month and 1 paise are the same number but a very different payout, so
- * switching the type without resending the value would silently reinterpret
- * the stored figure in the new unit.
- */
-export function buildPatch(
-  stored: Settings,
-  next: Settings,
-  typeChanged: boolean,
-): Record<string, unknown> {
-  const patch: Record<string, unknown> = {};
-  for (const key of Object.keys(next) as (keyof Settings)[]) {
-    if (next[key] !== stored[key]) patch[key] = next[key];
-  }
-  if (typeChanged) patch.referred_bonus_value = next.referred_bonus_value;
-  return patch;
 }
 
 /** Read the API's own message off a failed response. Never a constant. */

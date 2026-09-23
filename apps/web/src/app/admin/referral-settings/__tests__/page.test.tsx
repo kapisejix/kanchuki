@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import ReferralSettingsPage, { buildPatch } from '../page';
+import { type Settings, buildPatch } from '../build-patch';
+import ReferralSettingsPage from '../page';
 
 // A deliberately unusual row. If any term were hardcoded in the screen instead
 // of read from the API, these assertions would fail — which is the point.
@@ -74,7 +75,7 @@ afterEach(() => {
 // ─── Pure diff ─────────────────────────────────────────────────────
 
 describe('buildPatch', () => {
-  const stored = { ...ROW } as Parameters<typeof buildPatch>[0];
+  const stored: Settings = { ...ROW };
 
   it('returns only the keys that actually moved', () => {
     expect(buildPatch(stored, { ...stored }, false)).toEqual({});
@@ -208,7 +209,9 @@ describe('ReferralSettingsPage', () => {
     // stored term from the operator altogether.
     vi.stubGlobal(
       'fetch',
-      makeFetchStub({ row: { ...ROW, referred_bonus_type: 'FLAT_DISCOUNT', referred_bonus_value: 50000 } }),
+      makeFetchStub({
+        row: { ...ROW, referred_bonus_type: 'FLAT_DISCOUNT', referred_bonus_value: 50000 },
+      }),
     );
     render(<ReferralSettingsPage />);
 
