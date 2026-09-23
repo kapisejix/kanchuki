@@ -2,6 +2,22 @@
 
 One file, update at end of each work session: what's done, what's next, what's blocked. Check `git log -1` and this file first thing each session.
 
+## 2026-09-23 (latest) — §11 checklist run early → caught a double-pay race (RC-036), fixed + falsified
+
+**Commit:** *(this session)* · **Zero `apps/mobile` files**.
+
+The spec's §11 Regression / Root-Cause Checklist was run against T1–T7 + T9 now, not deferred to T10. Every row verified against actual code (results table now in the spec §11). One row caught a real money bug:
+
+**RC-036:** the RC-015 row ("submit-once actions need a ref-guard, not just state") had a **server half** nobody had applied to T7 — `handleReferralPayout` read the unsettled amount **outside** the claim tx and sized the batch from that stale figure. Two overlapping runs (manual trigger + cron, or two triggers) both read unsettled; the CAS made the loser attach zero conversions, but its PENDING batch still carried the full pre-read amount and `submitPayoutRow` pays what the batch says → real money with no ledger behind it, no CHECK violation to notice.
+
+**Fix:** inside the claim tx — re-sum what the batch actually attached; zero → `EmptyClaimError` (tx unwinds like Postgres's rollback, counted in a new `skipped_concurrent` summary counter); partial → batch resized via re-applied `splitTds`, so audit row, stored row and submitted amount all derive from `batch.amount_paise`.
+
+**Verification:** job suite 51/51 with two new mechanism tests (empty claim → no submit, no money; partial → RazorpayX receives 15000, never the stale 60000); both arms falsified (throw removed → red; resize disabled → red at `amount: 60000`). The mock `$transaction` gained real rollback semantics — the first test run exposed that without it, the test asserted the mock's limitation rather than the DB's behavior. Full API **1325/1330**, tsc + Biome clean, security + admin.login gates 15/15, web 321/321, mobile 107/107.
+
+**Everything else:** all remaining §11 rows verified clean (details in the spec's results table + BUILD-LOG). Feature still awaits: migrations 109–114 (owner), RazorpayX provisioning (owner, runbook ready), T8 (Play-review-gated), T10 wrap-up.
+
+---
+
 ## 2026-09-23 (later still) — T9 built: admin referral monitoring + shared payout-account save
 
 **Commit:** *(this session)* · **Zero `apps/mobile` files** · Spec §7 T9.

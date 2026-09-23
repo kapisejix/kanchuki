@@ -77,7 +77,11 @@ vi.mock('@kanchuki/db', () => {
         void by;
         return out;
       },
-      findMany: async (args?: { where?: { referrer_id?: string; status?: { in?: string[] } }; orderBy?: unknown; take?: number }) => {
+      findMany: async (args?: {
+        where?: { referrer_id?: string; status?: { in?: string[] } };
+        orderBy?: unknown;
+        take?: number;
+      }) => {
         let rows = [...state.conversions];
         const where = args?.where;
         if (where?.referrer_id) rows = rows.filter((c) => c.referrer_id === where.referrer_id);
@@ -91,7 +95,13 @@ vi.mock('@kanchuki/db', () => {
       },
       findUnique: async ({ where }: { where: { id?: string } }) =>
         state.conversions.find((c) => c.id === where.id) ?? null,
-      updateMany: async ({ where, data }: { where: { id: string; status: { in: string[] } }; data: { status: string; clawed_back_at: Date } }) => {
+      updateMany: async ({
+        where,
+        data,
+      }: {
+        where: { id: string; status: { in: string[] } };
+        data: { status: string; clawed_back_at: Date };
+      }) => {
         const row = state.conversions.find((c) => c.id === where.id);
         // CAS: honour the status IN clause exactly like Postgres would.
         if (!row || !where.status.in.includes(row.status)) return { count: 0 };
@@ -156,9 +166,9 @@ vi.mock('../../jobs/referral-payout.js', async (importOriginal) => {
 import { handleReferralPayout } from '../../jobs/referral-payout.js';
 import {
   CLAWBACK_ELIGIBLE_STATUSES,
+  adminReferralMonitorRoutes,
   buildReferralLeaderboardCsv,
   isClawbackAllowed,
-  adminReferralMonitorRoutes,
 } from './admin-referral-monitor.js';
 
 // ─── Fastify harness (same shape as admin-festivals.test.ts) ───────
@@ -235,7 +245,11 @@ describe('GET /referral/overview', () => {
     seedConv({ id: 'c4', referrer_id: 'r2', status: 'CLAWED_BACK' });
     state.payouts.push({ id: 'p1', referrer_id: 'r1', amount_paise: 30_000, status: 'PAID' });
 
-    const res = await app.inject({ method: 'GET', url: '/referral/overview', headers: ADMIN_HEADERS });
+    const res = await app.inject({
+      method: 'GET',
+      url: '/referral/overview',
+      headers: ADMIN_HEADERS,
+    });
     expect(res.statusCode).toBe(200);
     const d = res.json().data;
     expect(d.conversions_total).toBe(4);
@@ -256,7 +270,11 @@ describe('GET /referral/overview', () => {
     const app = await build();
     seedConv({ id: 'c1', referrer_id: 'r1', status: 'QUALIFIED', commission_accrued: 50_000 });
     state.payouts.push({ id: 'p1', referrer_id: 'r1', amount_paise: 20_000, status: 'FAILED' });
-    const res = await app.inject({ method: 'GET', url: '/referral/overview', headers: ADMIN_HEADERS });
+    const res = await app.inject({
+      method: 'GET',
+      url: '/referral/overview',
+      headers: ADMIN_HEADERS,
+    });
     const d = res.json().data;
     expect(d.paid_out_paise).toBe(0);
     expect(d.unsettled_paise).toBe(50_000);
@@ -280,7 +298,11 @@ describe('GET /referral/leaderboard', () => {
     state.payouts.push({ id: 'p1', referrer_id: 'r1', amount_paise: 30_000, status: 'PAID' });
     state.codes.push({ retailer_id: 'r1', code: 'KAN-ABC123' });
 
-    const res = await app.inject({ method: 'GET', url: '/referral/leaderboard', headers: ADMIN_HEADERS });
+    const res = await app.inject({
+      method: 'GET',
+      url: '/referral/leaderboard',
+      headers: ADMIN_HEADERS,
+    });
     const rows = res.json().data;
     expect(rows).toHaveLength(2);
     expect(rows[0].referrer_id).toBe('r1');
@@ -299,7 +321,11 @@ describe('GET /referral/leaderboard', () => {
     seedConv({ id: 'c2', referrer_id: 'r1', status: 'QUALIFIED', commission_accrued: 20_000 });
     state.payouts.push({ id: 'p1', referrer_id: 'r1', amount_paise: 30_000, status: 'PROCESSING' });
 
-    const res = await app.inject({ method: 'GET', url: '/referral/leaderboard', headers: ADMIN_HEADERS });
+    const res = await app.inject({
+      method: 'GET',
+      url: '/referral/leaderboard',
+      headers: ADMIN_HEADERS,
+    });
     const rows = res.json().data;
     // 50k accrued − 30k committed = 20k. The double-subtraction bug this test
     // pins showed 50k − 30k − 30k = 0 (clamped) when c1 was filtered out.
@@ -478,7 +504,12 @@ describe('/referral/retailers/:id/payout-account', () => {
       method: 'PUT',
       url: '/referral/retailers/r1/payout-account',
       headers: { ...ADMIN_HEADERS, 'content-type': 'application/json' },
-      payload: { account_type: 'BANK_ACCOUNT', account_name: 'X', ifsc: '12AB', account_number: '123456' },
+      payload: {
+        account_type: 'BANK_ACCOUNT',
+        account_name: 'X',
+        ifsc: '12AB',
+        account_number: '123456',
+      },
     });
     expect(res.statusCode).toBe(422);
     expect(res.json().error.message).toContain('IFSC');
@@ -496,9 +527,7 @@ describe('T9 source-scan guards', () => {
    * there through the imports (the exact rake T7's test stepped on).
    */
   const code = (source: string) =>
-    source
-      .replace(/(^|[^:])\/\/[^\n]*/g, '$1')
-      .replace(/\/\*[\s\S]*?\*\//g, '');
+    source.replace(/(^|[^:])\/\/[^\n]*/g, '$1').replace(/\/\*[\s\S]*?\*\//g, '');
 
   const monitorSource = code(
     readFileSync(join(REPO_ROOT, 'apps/api/src/routes/admin/admin-referral-monitor.ts'), 'utf8'),
@@ -512,7 +541,10 @@ describe('T9 source-scan guards', () => {
 
   it('audit row is written INSIDE the transaction', () => {
     const txStart = monitorSource.indexOf('prisma.$transaction');
-    const txEnd = monitorSource.indexOf('});', monitorSource.indexOf('REFERRAL_CLAWED_BACK_MANUAL'));
+    const txEnd = monitorSource.indexOf(
+      '});',
+      monitorSource.indexOf('REFERRAL_CLAWED_BACK_MANUAL'),
+    );
     const txSlice = monitorSource.slice(txStart, txEnd);
     expect(txSlice).toContain('auditLog.create');
   });
@@ -534,7 +566,11 @@ describe('T9 source-scan guards', () => {
 
   it('every mutating route audit-logs its action', () => {
     // Three mutators: trigger, clawback, account-set.
-    for (const action of ['REFERRAL_PAYOUT_TRIGGERED', 'REFERRAL_CLAWED_BACK_MANUAL', 'REFERRAL_PAYOUT_ACCOUNT_SET']) {
+    for (const action of [
+      'REFERRAL_PAYOUT_TRIGGERED',
+      'REFERRAL_CLAWED_BACK_MANUAL',
+      'REFERRAL_PAYOUT_ACCOUNT_SET',
+    ]) {
       expect(monitorSource).toContain(action);
     }
   });
@@ -545,7 +581,9 @@ describe('T9 source-scan guards', () => {
     // Registered in the barrel too — the 404 class is registering in one and
     // not the other.
     const barrel = readFileSync(join(REPO_ROOT, 'apps/api/src/routes/admin/index.ts'), 'utf8');
-    expect(barrel).toContain("export { adminReferralMonitorRoutes } from './admin-referral-monitor.js'");
+    expect(barrel).toContain(
+      "export { adminReferralMonitorRoutes } from './admin-referral-monitor.js'",
+    );
   });
 
   it('the screen source calls the masked-only GET and never displays raw details', () => {
@@ -567,7 +605,9 @@ describe('falsification record', () => {
     // 422-refuses-PAID test (the mutation lets the write through after the 422
     // branch was already skipped by the eligibility read... actually with the
     // read intact the 422 fires first, so the load-bearing catcher is the scan).
-    expect(monitorSourceSnippet()).toMatch(/status:\s*\{\s*in:\s*\[\.\.\.CLAWBACK_ELIGIBLE_STATUSES\]/);
+    expect(monitorSourceSnippet()).toMatch(
+      /status:\s*\{\s*in:\s*\[\.\.\.CLAWBACK_ELIGIBLE_STATUSES\]/,
+    );
   });
 
   it('F2: clawing back from PAID would let money leave twice', () => {
@@ -611,7 +651,10 @@ describe('falsification record', () => {
 
 /** Re-read the monitor source for the falsification assertions. Line comments first — see `code` above. */
 function monitorSourceSnippet(): string {
-  return readFileSync(join(REPO_ROOT, 'apps/api/src/routes/admin/admin-referral-monitor.ts'), 'utf8')
+  return readFileSync(
+    join(REPO_ROOT, 'apps/api/src/routes/admin/admin-referral-monitor.ts'),
+    'utf8',
+  )
     .replace(/(^|[^:])\/\/[^\n]*/g, '$1')
     .replace(/\/\*[\s\S]*?\*\//g, '');
 }

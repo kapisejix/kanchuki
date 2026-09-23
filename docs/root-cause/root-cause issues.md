@@ -10,6 +10,17 @@
 
 ---
 
+## RC-036 — The payout job read the money BEFORE the claim transaction, and sized the batch from that stale figure: the CAS prevented a double-**attach** but nothing prevented a double-**pay**
+
+- **Component:** `apps/api/src/jobs/referral-payout.ts` (`handleReferralPayout` claim tx) · found by the §11 checklist run (RC-015 row, server half)
+- **Commit:** this session
+- **Root cause:** the per-run unsettled amount is read **outside** the claim transaction (`Promise.all` of account + conversions + ledger aggregate), and `decideReferrerBatch` sizes the batch from that pre-read figure. Under overlap — manual trigger + cron, or two manual triggers (the web button's guard is React state, and RC-015 exists precisely because state-only guards don't survive concurrent entry) — both runs read `unsettled = ₹1000` and both enter the claim tx. The CAS (`payout_id IS NULL`) correctly makes one run attach zero conversions… but the run then created the PENDING batch **before** the CAS, with `amount_paise = 10000` (the stale figure), and `submitPayoutRow` pays whatever the batch says. `settlePayout('PAID')` would have moved real money with no ledger conversion behind it — invisible until reconciliation, because every row's own CHECKs hold (a batch with no conversions is not a constraint violation).
+- **Why it was invisible:** every single-threaded test passes — the CAS looks like it covers the race, and in the single-run case the pre-read figure is always correct. The gap exists only in the ordering between two concurrent runs, which no test in the repo simulated.
+- **The shape of the fix (two guards, one per way the race loses money):** inside the claim tx, (1) re-sum what **this batch actually attached** (`tx.referralConversion.aggregate` by `payout_id`); if the CAS attached zero → `EmptyClaimError`, unwinding the tx so the loser's batch row is discarded exactly as Postgres would roll it back, surfaced as a new `skipped_concurrent` counter (not an error — the winner's batch is authoritative). (2) If the claim is **partial** (`claimedGross < grossPaise`), resize the batch (`amount_paise`/`tds_paise` via `splitTds` re-applied) to what it actually holds before the audit row — the audit metadata and the submitted amount both derive from `batch.amount_paise`, so the ledger and the payment can never disagree.
+- **Proof:** 51/51 job tests, two new mechanism tests — empty claim → `skipped_concurrent=1`, no `createPayout` call, zero surviving batch rows; partial claim → RazorpayX receives 15000 (the tx's own re-sum), never the stale 60000. Falsified both ways: removing the throw → race test red (`skipped_concurrent` 0 ≠ 1, the loser proceeded); disabling the resize → race test red (`amount: 60000` submitted). The test harness's mock `$transaction` gained real rollback semantics (snapshot mutable state, restore on throw) — without it the loser's batch row survived the tx throw and the test asserted the mock's limitation rather than the DB's behavior. Full API suite 1325/1330 (5 skips), tsc + Biome clean.
+
+---
+
 ## RC-034 — The rule "which admin surfaces need Super Admin" lived in three hand-written lists that had drifted apart, and the only copy that enforced anything failed **open** — so a plain ADMIN key could reach surfaces the UI hides
 
 - **Component:** `apps/api/src/routes/admin-auth.ts` (`adminAuthPreHandler`) · `apps/web/src/app/admin/layout.tsx` · `apps/web/src/app/admin/components/Sidebar.tsx` · new `packages/shared/src/constants/admin-access.ts` + `apps/api/src/routes/admin-access.test.ts`

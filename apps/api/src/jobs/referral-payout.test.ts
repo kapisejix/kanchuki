@@ -114,6 +114,27 @@ vi.mock('@kanchuki/db', () => ({
           return { count: matched };
         },
       ),
+      // Sums conversions by WHERE — the claim tx uses this to size the batch
+      // to what it actually attached (race guard).
+      aggregate: vi.fn(
+        async ({
+          where,
+        }: {
+          where?: { referrer_id?: string; payout_id?: string } & Record<string, unknown>;
+        }) => {
+          let rows = prismaState.conversions;
+          if (where?.referrer_id) rows = rows.filter((c) => c.referrer_id === where.referrer_id);
+          if (where?.payout_id) rows = rows.filter((c) => c.payout_id === where.payout_id);
+          return {
+            _sum: {
+              commission_accrued: rows.reduce(
+                (acc, c) => acc + (c.commission_accrued as number),
+                0,
+              ),
+            },
+          };
+        },
+      ),
     },
     referralPayoutAccount: {
       findUnique: vi.fn(
@@ -132,8 +153,20 @@ vi.mock('@kanchuki/db', () => ({
         // Array form: each element is a promise-returning call already made.
         return Promise.all(input);
       }
-      // Interactive form — receives the tx client; our mock passes prisma itself.
-      return (input as (tx: unknown) => Promise<unknown>)(prisma);
+      // Interactive form — receives the tx client; our mock passes prisma
+      // itself. A throw must ROLL BACK state the tx mutated (a real tx
+      // would), so snapshot the mutable arrays and restore on failure —
+      // without this, an EmptyClaimError test would see the loser's batch
+      // row that a real Postgres transaction would have discarded.
+      const beforePayouts = [...prismaState.payouts];
+      const beforeConversions = prismaState.conversions.map((c) => ({ ...c }));
+      try {
+        return await (input as (tx: unknown) => Promise<unknown>)(prisma);
+      } catch (error) {
+        prismaState.payouts = beforePayouts;
+        prismaState.conversions = beforeConversions;
+        throw error;
+      }
     }),
   },
 }));
@@ -499,6 +532,121 @@ describe('handleReferralPayout', () => {
     expect(summary.skipped_cadence).toBe(1);
     expect(createPayout).not.toHaveBeenCalled();
   });
+
+  // ── Claim race (RC-015 server half): two overlapping runs (manual trigger
+  // + cron, or two triggers) both read unsettled BEFORE their claim tx. The
+  // CAS prevents double-ATTACH; these tests pin the two guards that prevent
+  // double-PAY: an empty claim aborts the batch, and a partial claim sizes
+  // the batch to what it actually holds.
+
+  it('race: an empty claim aborts — no batch submitted, no money moved', async () => {
+    // Simulate the loser: conversions were claimed by a concurrent run
+    // between this run's unsettled read and its claim tx.
+    prismaState.conversions = [conv('c1', 60000, 'QUALIFIED', 'po_winner')];
+    prismaState.accounts = [
+      { retailer_id: 'ret_A', is_active: true, razorpayx_fund_account_id: 'fa_1' },
+    ];
+    // Wait — the unsettled read filters by status QUALIFIED/PAID and this row
+    // is QUALIFIED, so the job still sees 60000 unsettled... but the pre-claim
+    // aggregate over LEDGER_CONSUMING statuses also counts po_winner's batch.
+    // Seed that batch so the ledger math cancels out and decideReferrerBatch
+    // says SKIP_BELOW_MIN instead. For the race to be exercised we need the
+    // read to happen BEFORE the winner claims, which a single-threaded mock
+    // cannot do — so we assert the JOB'S OWN defense instead: make the CAS
+    // attach nothing even though the unsettled read saw money (as if the
+    // winner committed between read and tx).
+    prismaState.conversions = [conv('c1', 60000)];
+    prismaState.payouts = [
+      // A batch that the ledger counts (PROCESSING = consuming) but whose
+      // conversions were attached by the "winner" AFTER this run's read.
+      // The claim CAS will find payout_id !== null only if the winner wrote
+      // it — emulate the winner having attached it by the time the claim tx
+      // runs, via a one-shot interceptor on updateMany.
+    ];
+    // The unsettled read (findMany + ledger aggregate) must see the money;
+    // the claim tx must find it already gone. Intercept the claim's
+    // updateMany and pre-attach the conversion — the read already happened.
+    const convModel = prisma.referralConversion as unknown as {
+      updateMany: (args: Record<string, unknown>) => Promise<{ count: number }>;
+    };
+    const realUpdateMany = convModel.updateMany.bind(convModel);
+    let intercepted = false;
+    vi.mocked(convModel.updateMany).mockImplementationOnce(
+      async (args: Record<string, unknown>) => {
+        // The "winner" commits right here — between this run's read and claim.
+        const c = prismaState.conversions[0]!;
+        c.payout_id = 'po_winner';
+        intercepted = true;
+        return realUpdateMany(args);
+      },
+    );
+    void intercepted;
+
+    const summary = await handleReferralPayout('cron');
+
+    // The loser's claim attached ZERO conversions → no submission, no money.
+    expect(summary.skipped_concurrent).toBe(1);
+    expect(summary.batches_claimed).toBe(0);
+    expect(summary.batches_submitted).toBe(0);
+    expect(createPayout).not.toHaveBeenCalled();
+    // The loser's batch row did NOT survive the tx throw — a real Postgres
+    // transaction rolls the create back, and the mock now does the same.
+    // (The winner's batch lives only in the interceptor's assignment, not in
+    // this run's state, so zero payout rows remain.)
+    expect(prismaState.payouts).toHaveLength(0);
+    // The rollback restored the conversion to its pre-tx shape: the winner's
+    // attach happened mid-tx in THIS process only as the race's effect, and
+    // the rollback correctly rewinds it here — the winner (a different
+    // process in reality) holds its own committed state.
+    expect(prismaState.conversions[0]!.payout_id).toBeNull();
+  });
+
+  it('race: a partial claim sizes the batch to what it actually holds, not the stale read', async () => {
+    // Pre-read sees 60000 unsettled; by claim time the winner took 45000,
+    // leaving this run 15000. The batch must pay 15000 — not 60000.
+    prismaState.conversions = [conv('c1', 45000), conv('c2', 15000)];
+    prismaState.accounts = [
+      { retailer_id: 'ret_A', is_active: true, razorpayx_fund_account_id: 'fa_1' },
+    ];
+    vi.mocked(createPayout).mockResolvedValue({
+      id: 'pout_p',
+      status: 'initiated',
+      amount: 15000,
+      fees: 0,
+      tax: 0,
+      utr: null,
+      reference_id: null,
+    });
+    // Intercept the claim's updateMany: the "winner" takes c1 first.
+    const convModel = prisma.referralConversion as unknown as {
+      updateMany: (args: Record<string, unknown>) => Promise<{ count: number }>;
+    };
+    const realUpdateMany = convModel.updateMany.bind(convModel);
+    vi.mocked(convModel.updateMany).mockImplementationOnce(
+      async (args: Record<string, unknown>) => {
+        const c1 = prismaState.conversions[0]!;
+        c1.payout_id = 'po_winner';
+        // Update the ledger BEFORE our claim so the consumed aggregate... no —
+        // the aggregate ran during the read. Just claim c1 to the winner; our
+        // own updateMany then attaches only c2.
+        return realUpdateMany(args);
+      },
+    );
+    // The pre-read ledger aggregate must NOT count po_winner (it did not
+    // exist at read time) — but our mock aggregate reads live state. That
+    // divergence only makes the test stricter: even if unsettled came out
+    // 15000 here, the mechanism under test is the batch being sized from
+    // the tx's own re-sum, which this asserts on the submitted amount.
+
+    const summary = await handleReferralPayout('cron');
+    expect(summary.batches_claimed).toBe(1);
+    expect(summary.batches_submitted).toBe(1);
+    // THE mechanism: RazorpayX receives what the tx actually claimed (15000),
+    // never the stale pre-read figure.
+    expect(createPayout).toHaveBeenCalledWith(expect.objectContaining({ amount: 15000 }));
+    // The stored batch matches too — ledger and payment agree.
+    expect(prismaState.payouts.at(-1)).toMatchObject({ amount_paise: 15000 });
+  });
 });
 
 // ─── Source-scan guards (RC-025 / RC-027 class) ──────────────────
@@ -595,11 +743,18 @@ describe('falsification record', () => {
     // Mutation: remove `payout_id: null` from the claim's updateMany WHERE.
     // Caught by: 'never raises a second batch for the same money' — the
     // mechanism test counts CLAIM actions with a live batch present.
-    // (Asserted here as the WHERE clause shape the job source must keep.)
+    // (Asserted here as the WHERE clause shape the job source must keep.
+    // Window runs to the 3b marker because the claim block grew with the
+    // race fix — a fixed-length window goes stale as the block evolves.)
     const jobSource = readFileSync(join(REPO_ROOT, 'apps/api/src/jobs/referral-payout.ts'), 'utf8');
     const claimStart = jobSource.indexOf('3a. CLAIM');
-    const claimSlice = jobSource.slice(claimStart, claimStart + 1500);
+    const claimEnd = jobSource.indexOf('3b. SUBMIT');
+    expect(claimEnd).toBeGreaterThan(claimStart);
+    const claimSlice = jobSource.slice(claimStart, claimEnd);
     expect(claimSlice).toMatch(/payout_id: null/);
+    // The race guard must stay: an empty claim aborts instead of paying.
+    expect(claimSlice).toMatch(/EmptyClaimError/);
+    expect(claimSlice).toMatch(/claimedGross/);
   });
 
   it('F2: settling at submit time (instead of webhook) would write paid_at — the source scan forbids it', () => {

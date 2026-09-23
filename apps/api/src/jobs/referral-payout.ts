@@ -52,6 +52,19 @@ import { prisma } from '@kanchuki/db';
 import { type RazorpayxPayoutStatus, createPayout, fetchPayout } from '../lib/razorpayx.js';
 import { settlePayout } from '../lib/referral-payout-settle.js';
 
+/**
+ * Internal signal that the claim transaction attached zero conversions — the
+ * caller lost a race with a concurrent payout run. Thrown (not returned) so it
+ * unwinds the transaction and rolls back the just-created batch row; the outer
+ * handler converts it to a skipped batch, not an error.
+ */
+class EmptyClaimError extends Error {
+  constructor() {
+    super('claim attached zero conversions — concurrent run won the race');
+    this.name = 'EmptyClaimError';
+  }
+}
+
 // ─── Pure decision core (unit-tested without RazorpayX or DB) ────
 
 export interface PayoutJobSettings {
@@ -190,6 +203,8 @@ export interface PayoutRunSummary {
   skipped_no_account: number;
   skipped_below_min: number;
   skipped_cadence: number;
+  /** Claim tx attached zero conversions — a concurrent run won the race. */
+  skipped_concurrent: number;
   errors: number;
 }
 
@@ -332,6 +347,7 @@ export async function handleReferralPayout(
     skipped_no_account: 0,
     skipped_below_min: 0,
     skipped_cadence: 0,
+    skipped_concurrent: 0,
     errors: 0,
   };
 
@@ -420,6 +436,16 @@ export async function handleReferralPayout(
       if (decision.action !== 'CLAIM') continue;
 
       // 3a. CLAIM — one transaction: batch row + CAS attach + audit.
+      //      The batch amount is DECIDED here from what the CAS actually
+      //      attached, not from the pre-read unsettled figure: a concurrent
+      //      run (manual trigger + cron, or two triggers) can claim
+      //      conversions between this run's unsettled read and its claim tx.
+      //      The loser of that race would otherwise create a PENDING batch for
+      //      the FULL pre-read amount while claiming ZERO conversions — and
+      //      settlePayout('PAID') would pay real money with nothing on the
+      //      ledger behind it (RC-015 class, server half). The tx re-sums the
+      //      claimable conversions and treats an empty claim as a skip, so an
+      //      overlapping run can never double-pay.
       const grossPaise = decision.gross_paise;
       const { net_paise: netPaise, tds_paise: tdsPaise } = splitTds(grossPaise, settings);
       if (netPaise <= 0) {
@@ -447,7 +473,11 @@ export async function handleReferralPayout(
           },
         });
         // CAS: attach ONLY conversions not already claimed (payout_id IS NULL).
-        await tx.referralConversion.updateMany({
+        //        Under SERIALIZABLE isolation Postgres would abort the loser;
+        //        at READ COMMITTED (the default) we must detect the empty/
+        //        partial claim ourselves, so re-sum what THIS batch actually
+        //        attached and size the batch from it.
+        const claimResult = await tx.referralConversion.updateMany({
           where: {
             referrer_id: referrerId,
             payout_id: null,
@@ -455,6 +485,25 @@ export async function handleReferralPayout(
           },
           data: { payout_id: batch.id },
         });
+        const claimedPaise = await tx.referralConversion.aggregate({
+          where: { referrer_id: referrerId, payout_id: batch.id },
+          _sum: { commission_accrued: true },
+        });
+        const claimedGross = claimedPaise._sum.commission_accrued ?? 0;
+        if (claimResult.count === 0 || claimedGross <= 0) {
+          // Lost the race: a concurrent run claimed everything between our
+          // unsettled read and this tx. No batch, no money — the loser rolls
+          // back to a clean no-op (the winner's batch is authoritative).
+          throw new EmptyClaimError();
+        }
+        if (claimedGross < grossPaise) {
+          // Partial claim — a concurrent run took some conversions first.
+          // Size THIS batch to what it actually holds, never to the stale
+          // pre-read figure, or it would pay money no ledger entry backs.
+          const claimed = splitTds(claimedGross, settings);
+          batch.amount_paise = claimedGross;
+          batch.tds_paise = claimed.tds_paise;
+        }
         await tx.auditLog.create({
           data: {
             actor_type: 'system',
@@ -463,9 +512,9 @@ export async function handleReferralPayout(
             resource_id: batch.id,
             metadata: {
               referrer_id: referrerId,
-              gross_paise: grossPaise,
-              tds_paise: tdsPaise,
-              net_paise: netPaise,
+              gross_paise: batch.amount_paise,
+              tds_paise: batch.tds_paise,
+              net_paise: batch.amount_paise - batch.tds_paise,
             },
           },
         });
@@ -486,6 +535,12 @@ export async function handleReferralPayout(
         await settlePayout(payoutRowId, 'FAILED', failureReasonFrom(error));
       }
     } catch (error) {
+      if (error instanceof EmptyClaimError) {
+        // Lost the claim race — a concurrent run paid this referrer first.
+        // Not an error: count it so the run summary stays honest.
+        summary.skipped_concurrent += 1;
+        continue;
+      }
       summary.errors += 1;
       console.error(`[referral-payout] referrer ${referrerId} failed:`, error);
     }
