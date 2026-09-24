@@ -33,6 +33,8 @@ Result against `aws-1-ap-south-1.pooler.supabase.com` (prod):
 - [ ] **1.2** Update docs that still say "not applied": `launch-readiness.md` (063, 104/105 lines), CLAUDE.md row 75, referral spec §12 "OWNER ACTIONS" #1 and #4.
 - [ ] **1.3 (owner)** Pick the engine for the 8 MODEL `studio_styles` rows in `/admin/studio-styles` (all currently NULL → Kontext).
 - Next free migration number: **116**.
+- **Migration allocation — decided 2026-09-24:** `116` stays reserved for §4.3's `ALTER TYPE ... ADD VALUE 'COMPLETED'` (it must be its own migration — a PG `55P04` enum add cannot share a transaction with its use, the same split as 060/061). **§6.11's HSN table therefore takes `117`.** Order does not matter between them: §4.3 must precede §4.4, and 6.11 is independent — the only rule is that neither claims the other's number.
+- ⚠️ **§6.11 is now larger than this table implies.** Owner decision 2026-09-24 was **DB-editable, not the default**: `HSN_RULES` (`apps/api/src/jobs/catalog-sync.ts:76`) becomes a real table + admin screen + migration `117`, seeded from the current in-code list, with the code list kept as the documented fallback. Treat it as its own task, not a list move.
 
 ---
 
@@ -106,7 +108,10 @@ Rule: admin-editable data comes from the DB; true constants (fixed enum options)
 | 6.13 | `apps/mobile/app/(tabs)/catalog.tsx:50` | `PRICE_BUCKETS` | Skip — UI filter constant. |
 | 6.14 | `apps/web/src/app/admin/photo-cleanup-test/page.tsx:105` | `VIDEO_MODELS` ₹ costs | Skip — admin bench only. |
 
-- [ ] **6.a** Web/API items (6.1, 6.4–6.10, 6.12). Every list now fetched gets loading + empty + error states (RC-003: surface the real error).
+**Landed 2026-09-24 (`55ef9057`) — 6.1, 6.8, 6.12:** `my-profile` style chips now come from the new `GET /v1/public/attributes?kind=STYLE` (own test file, 6 cases, de-dupe arm falsified); `SIZE_OPTIONS` imported from `@kanchuki/shared` in both customer components; `999999` replaced by `UNLIMITED` in all four files.
+**Still open:** 6.2 + 6.3 (mobile — next EAS build), 6.4, **6.5–6.7** (shared `plan_limits` reader not written yet — `GET /v1/public/pricing` still returns `{ plan, monthly }` only), 6.9 (needs the result of `scripts/check-regional-tags.ts`, still uncommitted), 6.10, 6.11 (migration `117`).
+
+- [ ] **6.a** Web/API items (6.1, 6.4–6.10, 6.12). Every list now fetched gets loading + empty + error states (RC-003: surface the real error). **(partial — 6.1 / 6.8 / 6.12 only)**
 - [ ] **6.b** Mobile items (6.2, 6.3) — ships with next EAS build.
 - [ ] **6.c** Re-grep `const [A-Z_]+ = \[` with string literals across `apps/` for stragglers.
 
@@ -140,3 +145,4 @@ Rule: admin-editable data comes from the DB; true constants (fixed enum options)
 |---|---|---|
 | 1 — migration check script + prod result (all applied) | uncommitted: `scripts/check-pending-migrations.ts` | 2026-09-24 |
 | 3 — admin-access: `team-members` + `reports` → super-admin (RC-034 follow-up) | `36b764c3` | 2026-09-24 |
+| 6 — partial: 6.1 (style chips → `GET /v1/public/attributes`), 6.8 (`SIZE_OPTIONS` shared), 6.12 (`UNLIMITED`) | `55ef9057` | 2026-09-24 |
