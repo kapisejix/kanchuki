@@ -21,6 +21,24 @@ export const PLAN_LIMITS = {
   },
 } as const;
 
+// ─── "Unlimited" sentinel ─────────────────────────────────────────
+// One name for "this plan has no limit" the moment it crosses a boundary.
+//
+// `PLAN_LIMITS` above writes `Number.POSITIVE_INFINITY` because it is never
+// persisted and never serialised — it only feeds in-process comparisons.
+// Anything that *is* persisted or sent over the wire has to be a real number:
+// a PostgreSQL integer column cannot hold `Infinity`, and `JSON.stringify`
+// silently turns it into `null`. So the API fallbacks, the DB-backed plan
+// limits, the admin retailer page and the mobile analytics screen each wrote a
+// bare `999999` literal instead — a magic number in five files, two of which
+// *compare* against it (`max >= 999999 ? '∞'`) and would drift apart from the
+// values the other three write. This is the single name for it.
+//
+// "Unlimited" here means "no plan reaches this", not "infinity": never treat
+// it as a real capacity, never do arithmetic with it, and never store it where
+// a user could be shown it as a limit.
+export const UNLIMITED = 999999;
+
 // ─── Plan Pricing (paise) ─────────────────────────────────────────
 
 export const PLAN_PRICING = {

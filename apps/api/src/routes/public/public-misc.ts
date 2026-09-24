@@ -3,6 +3,7 @@ import { prisma } from '@kanchuki/db';
 import { PLAN_PRICING } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
+import { withPublicCache } from '../../lib/public-cache.js';
 import { validationError } from '../../plugins/error-handler.js';
 import { getTheme } from '../admin-settings.js';
 
@@ -63,6 +64,36 @@ export const publicMiscRoutes: FastifyPluginAsync = async (server) => {
       return { data };
     },
   );
+
+  // ─── GET /public/attributes?kind=STYLE|OCCASION|FABRIC ──────────
+  // Customer-facing names for the preference pickers (/my-profile "Your
+  // Style"). Admin-editable via Admin → Default Attributes; this endpoint is
+  // the single source of truth, replacing the hardcoded `STYLE_CHIPS` copy the
+  // page used to carry (it had drifted — a duplicated 'Gown').
+  //
+  // Returns NAMES, not rows: the unique key is (kind, segment, name), so the
+  // same style exists once per segment and a flat chip row wants it once. This
+  // is the endpoint's job because a client-side dedupe is what drifted before.
+  server.get('/attributes', async (request) => {
+    const parsed = z
+      .object({
+        kind: z.enum(['STYLE', 'OCCASION', 'FABRIC']).default('STYLE'),
+        segment: z.enum(['LADIES', 'MEN', 'KIDS']).optional(),
+      })
+      .safeParse(request.query);
+    if (!parsed.success) throw validationError('Invalid query params');
+    const { kind, segment } = parsed.data;
+
+    // Redis-cached with single-flight stampede protection (lib/public-cache.ts).
+    return withPublicCache(request.url, async () => {
+      const rows = await prisma.defaultProductAttribute.findMany({
+        where: { kind, is_active: true, ...(segment ? { segment } : {}) },
+        orderBy: [{ sort_order: 'asc' }, { name: 'asc' }],
+        select: { name: true },
+      });
+      return { data: { kind, names: [...new Set(rows.map((r) => r.name))] } };
+    });
+  });
 
   // ─── GET /public/stats ─────────────────────────────────────────
   // Landing page stats — real counts from the platform, no auth needed.

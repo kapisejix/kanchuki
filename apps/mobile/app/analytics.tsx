@@ -1,3 +1,4 @@
+import { UNLIMITED } from '@kanchuki/shared'
 import { memo } from 'react'
 import {
   View,
@@ -269,7 +270,7 @@ function PlanUsageBar({
           style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
           className="text-xs font-bold text-spaceCadet-900"
         >
-          {current} / {max >= 999999 ? '∞' : max.toLocaleString('en-IN')}
+          {current} / {max >= UNLIMITED ? '∞' : max.toLocaleString('en-IN')}
         </Text>
       </View>
       <View className="h-2 bg-lavender-100 rounded-full overflow-hidden border border-lavender-200">

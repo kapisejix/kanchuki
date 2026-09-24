@@ -1,5 +1,5 @@
 import { prisma } from '@kanchuki/db';
-import { PLAN_LIMITS } from '@kanchuki/shared';
+import { PLAN_LIMITS, UNLIMITED } from '@kanchuki/shared';
 // billing-webhook.ts — Razorpay webhook → subscription/payment + GST invoice (split from apps/api/src/routes/billing.ts — body byte-identical)
 import type { FastifyPluginAsync } from 'fastify';
 import { addGenerateGstInvoiceJob } from '../../jobs/generate-gst-invoice.js';
@@ -12,6 +12,11 @@ import {
   resolveStateCode,
   verifyWebhookSignature,
 } from './billing-helpers.js';
+
+// `PLAN_LIMITS` encodes "unlimited" as `Infinity`; the retailer columns store a
+// number, so they get the shared sentinel instead.
+const orUnlimited = (value: number) => (Number.isFinite(value) ? value : UNLIMITED);
+
 export const billingWebhookRoutes: FastifyPluginAsync = async (server) => {
   // ─── POST /billing/webhook (Razorpay → server, no JWT) ──────────
   server.post('/webhook', async (request, reply) => {
@@ -104,8 +109,8 @@ export const billingWebhookRoutes: FastifyPluginAsync = async (server) => {
               plan,
               plan_status: 'ACTIVE',
               plan_expires_at: end,
-              max_products: Number.isFinite(limits.max_products) ? limits.max_products : 999999,
-              max_customers: Number.isFinite(limits.max_customers) ? limits.max_customers : 999999,
+              max_products: orUnlimited(limits.max_products),
+              max_customers: orUnlimited(limits.max_customers),
             },
           });
 
