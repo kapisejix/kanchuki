@@ -45,7 +45,6 @@ const PromotionBanner = dynamic(() => import('./PromotionBanner').then((m) => m.
 const RecentlyViewed = dynamic(() => import('./RecentlyViewedRow').then((m) => m.RecentlyViewed), { ssr: false });
 const StyleQuiz = dynamic(() => import('./StyleQuiz').then((m) => m.StyleQuiz), { ssr: false });
 const AIStylist = dynamic(() => import('./AIStylist').then((m) => m.AIStylist), { ssr: false });
-const RegionalFilters = dynamic(() => import('./RegionalFilters').then((m) => m.RegionalFilters), { ssr: false });
 // Feature flags for customer catalog screen
 const REGIONAL_FILTERS_ENABLED = false;
 
@@ -92,7 +91,6 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
   const [filterCategory, setFilterCategory] = useState<string | null>(null);
   const [filterPrice, setFilterPrice] = useState<string | null>(null);
   const [filterColor, setFilterColor] = useState<string | null>(null);
-  const [filterRegional, setFilterRegional] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
 
   const [showQuiz, setShowQuiz] = useState(false);
@@ -153,7 +151,6 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
       if (filters.category) qs.set('category', filters.category);
       if (filters.price) qs.set('price', filters.price);
       if (filters.color) qs.set('color', filters.color);
-      if ((filters as { regional?: string }).regional) qs.set('regional', (filters as { regional?: string }).regional!);
       try {
         const res = await fetch(`${productsApiPath}?${qs}`);
         if (!res.ok) return;
@@ -181,9 +178,8 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
         category: filterCategory,
         price: filterPrice,
         color: filterColor,
-        regional: filterRegional,
-      } as Parameters<typeof fetchProducts>[1]);
-  }, [filterCategory, filterPrice, filterColor, filterRegional, fetchProducts]);
+      });
+  }, [filterCategory, filterPrice, filterColor, fetchProducts]);
 
   const goToPage = useCallback(
     (nextPage: number) => {
@@ -191,10 +187,9 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
         category: filterCategory,
         price: filterPrice,
         color: filterColor,
-        regional: filterRegional,
-      } as Parameters<typeof fetchProducts>[1]);
+      });
     },
-    [fetchProducts, filterCategory, filterPrice, filterColor, filterRegional],
+    [fetchProducts, filterCategory, filterPrice, filterColor],
   );
 
   const toggleFavorite = useCallback(
@@ -471,7 +466,6 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
                 setFilterCategory(null);
                 setFilterPrice(null);
                 setFilterColor(null);
-                setFilterRegional(null);
               }}
               className="text-[#231F48] bg-white border border-[#E0E1F6] hover:bg-[#F8F7FC] text-xs font-bold px-4 py-2 rounded-full transition-colors shadow-sm"
             >
