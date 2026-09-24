@@ -4,6 +4,9 @@ import { CollectionView } from '../../c/[slug]/components/CollectionView';
 import { SuspendedNotice } from '../../c/[slug]/components/SuspendedNotice';
 import { fetchCollection } from '../../c/[slug]/lib/fetchCollection';
 import { resolveStorefront } from '../lib/resolveStorefront';
+import { itemListLd, ldJson } from '../lib/store-seo';
+
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://kanchuki.app';
 
 interface Props {
   params: Promise<{ store: string; collection: string }>;
@@ -81,11 +84,22 @@ export default async function CollectionPage({ params }: Props) {
   }
 
   return (
-    <CollectionView
-      collection={data}
-      slug={collection}
-      store={store}
-      productsApiPath={`/api/${store}/${collection}/products`}
-    />
+    <>
+      <script
+        type="application/ld+json"
+        // biome-ignore lint/security/noDangerouslySetInnerHtml: JSON-LD, '<' escaped by ldJson
+        dangerouslySetInnerHTML={{
+          __html: ldJson(
+            itemListLd(data.title, data.products, (id) => `${SITE_URL}/${store}/${collection}/product/${id}`),
+          ),
+        }}
+      />
+      <CollectionView
+        collection={data}
+        slug={collection}
+        store={store}
+        productsApiPath={`/api/${store}/${collection}/products`}
+      />
+    </>
   );
 }

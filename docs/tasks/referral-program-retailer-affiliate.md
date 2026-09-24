@@ -579,3 +579,54 @@ feature has been careful to preserve everywhere else.
   They are columns with defaults, so the code is unblocked — but T7's batching behaviour follows
   them, so confirm before shipping T7.
 - **Phase-1 audience** (§6 item 4) — existing retailers only, still unconfirmed.
+
+---
+
+## 13. Status + everything left — 2026-09-24 (supersedes §12's "what's next")
+
+### 13.1 Where things stand
+- **Branch:** `fix/post-referral-cleanup-and-launch` — 48 commits ahead of `origin/main`, **not pushed**. Parent `chore/remove-text-to-image-studio-engines` (F-038 T1–T10, 22 commits) is pushed but **not merged**. `docs/reorganize` (docs tree reorg, 8 commits) is a sibling, unmerged — will conflict on ~12 files (`CLAUDE.md`, `BUILD-LOG.md`, `PRO-REQUIREMENTS.md`, `SECURITY.md`, `schema.prisma`, …).
+- **Migrations:** 063, 104–117 all applied in prod (116 + 117 applied by owner 2026-09-24).
+- **Referral program (F-038):** T1–T7, T9, T10 built + migrations applied. RC-033 (completed ≠ cancelled) fixed. Refunds (5A.1) write `status='refunded'`; T6 stops future earning, never un-earns; T5 claws back nothing (owner rulings). **Pays nobody until RazorpayX is live.**
+- **Board §3/§4/§5A/§6 done** (see `docs/tasks/pending/post-referral-cleanup-and-launch.md`). Static `PLAN_PRICING` deleted — `plan_pricing` table is the only price source (prod verified ₹4,999/₹9,999/₹14,999).
+- **§7A.1 + §7A.2 done 2026-09-24:** JSON-LD on collection (`ItemList`) + product (`Product`/`Offer`) pages via new `productLd`/`itemListLd`/`ldJson` in `apps/web/src/app/[store]/lib/store-seo.ts`; store + categories pages switched from raw `JSON.stringify` to escaped `ldJson`. This is **RC-040** — a retailer `shop_name` containing `</script>` broke out of the JSON-LD tag (stored XSS on every storefront page), and the first written escape had **one** backslash (a no-op) until the test caught it. §7A.1 needed no work: the sitemap already exists at `app/sitemap.xml/route.ts` + `[id]/route.ts`, not the `sitemap.ts` path the board named. `store-seo.test.ts` **3/3** (falsified: bare `JSON.stringify` → red); web **326/326**, tsc clean. `docs/ai-studio/` = local test images — **never commit, owner deleting**.
+
+### 13.2 Left — code (Claude can do)
+1. ~~**Finish §7A.2**~~ ✅ done 2026-09-24 (RC-040; falsified).
+2. ~~**§7A.1**~~ ✅ ticked — already built (`app/sitemap.xml/route.ts` + `app/sitemap/[id]/route.ts`, image-sitemap extension).
+3. **§7A.3** — Apple reviewer bypass: fixed `REVIEW_PHONE`/`REVIEW_OTP`, env-gated, off by default, never logged; security review + `security.test.ts` + `admin.login.test.ts` before merge.
+4. **§7A.4** — `docs/references/guides/disaster-recovery.md` (Supabase backups/PITR, R2, Redis, Railway rollback, secret-rotation order).
+5. **§7A.5** — load-test script against **staging** (`docs/SCALING.md` §5); owner runs it.
+6. **§7A.6** — training-photo retention/deletion notice (copy + placement); legal review after.
+7. **§7A.7** — pre-prod re-test of every RC-### (pass/fail per RC).
+8. **§2.1** — run `apps/api/src/jobs/purge-rls-live.test.ts` against a local Docker Postgres (the 5 skipped tests); record result in §11; failure → new RC.
+9. **§5B** — `?ref=` capture: `/r/<CODE>` page + Play Install Referrer + `kanchuki://signup?ref=` deep link; mobile prefills the existing manual code field once at first launch, never auto-submits; unknown code still refused server-side. Needs an EAS build.
+10. **T8** — mobile "Refer & Earn" screen (blocked on Play Console review).
+11. **Board §1.2** — docs still claiming 063/104/105 "not applied" → update.
+12. **Test debt** — studio-shoot tests pay real 1 s poll sleeps (guarded at 30 s); durable fix = inject poll intervals. Same RC-039 amplifier latent in any other shared-fixture suite.
+13. **`/v1/team/*` gap (RC-034 scope note)** — `teamAuthPreHandler` promotes any admin key to Super Admin; decide + gate.
+
+### 13.3 Left — owner only
+- Open PR `chore/remove-text-to-image-studio-engines` → `main`, merge; then PR this branch. Decide how/when to merge `docs/reorganize`.
+- Next **EAS build** — ships mobile `growth/templates.tsx` (DB studio styles + festivals) + everything mobile since the last build.
+- **RazorpayX** live keys + webhook secret (`docs/runbooks/razorpayx-referral-setup.md`) — until then T7 pays nobody.
+- **Razorpay webhook**: subscribe to `refund.processed` — until then refunds are never recorded.
+- CA conversation: TDS/GST on referral payouts + GST credit-note format for refunds (5A.3).
+- Pick the engine for the 8 `studio_styles` MODEL rows; AI Studio live bench run.
+- `SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN` in Railway; rotate dev `.env` credentials; lawyer review (PR #37); Play Store assets + Data Safety; MSG91 `verifyAccessToken` shape; read replica (B-002); full real-device pass.
+
+### 13.4 Kickoff prompt — paste into a new session
+```
+Kanchuki, branch fix/post-referral-cleanup-and-launch (48 commits ahead of main, not pushed — never push to main).
+Read docs/tasks/referral-program-retailer-affiliate.md §13 and docs/tasks/pending/post-referral-cleanup-and-launch.md §7 first.
+Do NOT commit docs/ai-studio/ (local test images).
+
+Step 1: finish §7A.2 already in the working tree — run apps/web/src/app/[store]/lib/store-seo.test.ts,
+web vitest + tsc, falsify the ldJson escape (revert to JSON.stringify → test must go red, then restore),
+add an RC entry (next ID after RC-039) for the JSON-LD </script> stored-XSS escape, tick 7A.1 (sitemap already
+exists) and 7A.2 on the board, commit.
+Step 2: continue §7A in order — 7A.3 (Apple reviewer bypass, env-gated, security review + security.test.ts +
+admin.login.test.ts), 7A.4 (disaster-recovery runbook), 7A.6 (retention notice), then 7A.7 (re-test every RC).
+One commit per item, tests + falsification for any logic, update board + BUILD-LOG each time.
+Stop and report before 7A.5 (staging load test) and before anything needing an EAS build (§5B, T8).
+```

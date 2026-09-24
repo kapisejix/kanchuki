@@ -4,7 +4,7 @@ import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
-import { buildStoreDescription, localBusinessLd, storeOgImage } from '../lib/store-seo';
+import { buildStoreDescription, ldJson, localBusinessLd, storeOgImage } from '../lib/store-seo';
 
 interface PublicCategory {
   id: string;
@@ -256,7 +256,7 @@ export default async function StoreCategoriesPage({ params }: Props) {
       <script
         type="application/ld+json"
         // biome-ignore lint/security/noDangerouslySetInnerHtml: JSON-LD from our own retailer data, no user input
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessLd(data, store)) }}
+        dangerouslySetInnerHTML={{ __html: ldJson(localBusinessLd(data, store)) }}
       />
     </div>
   );

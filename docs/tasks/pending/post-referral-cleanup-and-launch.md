@@ -172,8 +172,8 @@ Rule: admin-editable data comes from the DB; true constants (fixed enum options)
 ## 7. Launch readiness (absorbs `launch-readiness.md`)
 
 ### 7A. Code — Claude can do
-- [ ] **7A.1** `apps/web/src/app/sitemap.ts` (missing; `robots.ts` exists) — stores + collections from the API, `revalidate`.
-- [ ] **7A.2** Per-page `generateMetadata` + JSON-LD (`Store`/`Product`/`ItemList`) on `/{store}` + collection pages — check what exists first.
+- [x] **7A.1** Sitemap — **already built, no work needed.** The board's `apps/web/src/app/sitemap.ts` path was wrong: it lives at `apps/web/src/app/sitemap.xml/route.ts` (chunked index via `generateSitemaps`, 10k URLs/file) + `apps/web/src/app/sitemap/[id]/route.ts` backed by `apps/web/src/lib/sitemap.ts`, enumerating every live store with Google **image-sitemap** extensions on product photos. Pinned by `apps/web/src/app/__tests__/sitemap.test.ts`.
+- [x] **7A.2** Per-page `generateMetadata` + JSON-LD — **done 2026-09-24.** New `apps/web/src/app/[store]/lib/store-seo.ts` (`buildStoreDescription`, `storeOgImage`, `localBusinessLd`, `productLd`, `itemListLd`, `ldJson`). Surfaces: `/{store}` + `/{store}/categories` already had `generateMetadata` + `LocalBusiness`; added `ItemList` on `/{store}/{collection}` and `Product`/`Offer` on `/{store}/{collection}/product/{productId}` (Offer emitted only with a price — Google rejects a Product offer without one; `SOLD` → `OutOfStock`; a price range → `AggregateOffer`). **This item also found + fixed RC-040:** the two shipped pages passed `JSON.stringify` straight into `dangerouslySetInnerHTML`, so a retailer `shop_name` containing `</script>` closed the JSON-LD `<script>` tag and ran markup on the storefront — **stored XSS**. All four sites now route through `ldJson()`, which escapes `<` → `\u003c` (a bare `JSON.stringify` is not an HTML escaper). Falsified by reverting to `JSON.stringify` → the escape arm goes red. Web **326/326**, web `tsc --noEmit` clean. Also: the first form of the escape had **one** backslash (`'\u003c'` = the literal `<`, a no-op) — `store-seo.test.ts` asserts the **absence of `</script>` in the output string**, which is what makes that mistake fail.
 - [ ] **7A.3** Apple reviewer bypass: fixed test phone + fixed OTP, env-gated (`REVIEW_PHONE`/`REVIEW_OTP`), off by default, never logged. Security review before merge.
 - [ ] **7A.4** Disaster-recovery runbook `docs/references/guides/disaster-recovery.md` (Supabase backups/PITR, R2, Redis, Railway rollback, secret rotation order).
 - [ ] **7A.5** Load-test script against **staging** (`docs/SCALING.md` §5); owner runs it.
@@ -195,6 +195,7 @@ Rule: admin-editable data comes from the DB; true constants (fixed enum options)
 ## Done log
 | Task | Commit | Date |
 |---|---|---|
+| 7A.1 + 7A.2 — sitemap ticked (already built) + storefront JSON-LD on all 4 surfaces; **RC-040** stored-XSS fix (`ldJson`) | *(this commit)* | 2026-09-24 |
 | 1 — migration check script + prod result (all applied) | uncommitted: `scripts/check-pending-migrations.ts` | 2026-09-24 |
 | 3 — admin-access: `team-members` + `reports` → super-admin (RC-034 follow-up) | `36b764c3` | 2026-09-24 |
 | 6 — partial: 6.1 (style chips → `GET /v1/public/attributes`), 6.8 (`SIZE_OPTIONS` shared), 6.12 (`UNLIMITED`) | `55ef9057` | 2026-09-24 |
