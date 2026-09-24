@@ -97,12 +97,12 @@ export const billingWebhookRoutes: FastifyPluginAsync = async (server) => {
       // was paid for": flipping it on a ₹1 refund would erase a month the
       // retailer mostly paid for, while leaving it on a full reversal would
       // keep earning commission on money that was handed back. Only full
-      // coverage flips it. ⚠️ **PROVISIONAL — not yet owner-confirmed.** This
-      // is the default the implementer picked while writing §5A.1; the owner
-      // was asked to clarify whether partial refunds ever occur against a
-      // Kanchuki plan charge, and the answer may be "add a refunded-amount
-      // column" (which would be migration 117) or "any refund flips it".
-      // Nothing here should be read as a settled rule until the board says so.
+      // coverage flips it. **Decided 2026-09-24 (owner):** partial refunds are
+      // not applied, on the basis that a plan charge is refunded in full or not
+      // at all in practice — so this is a settled rule, not a placeholder. If
+      // partials ever do appear, the answer is a `refunded_amount` column
+      // (migration 117 — 116 is RC-033) and a pro-rata rule, not a quiet flip of
+      // this flag.
       if (refund.amount < row.amount_inr) {
         request.log.warn(
           {
