@@ -24,11 +24,15 @@ enum SubscriptionPlan {
   PRO
 }
 
+// NOTE: this enum backs TWO columns — Retailer.plan_status and
+// Subscription.status (below). Any ADD VALUE changes both; RC-033 is the
+// reason COMPLETED exists (a finished term is not churn).
 enum SubscriptionStatus {
   TRIAL
   ACTIVE
   PAST_DUE
   CANCELLED
+  COMPLETED
 }
 
 enum KycStatus {

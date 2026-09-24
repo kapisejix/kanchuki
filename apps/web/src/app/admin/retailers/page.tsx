@@ -251,6 +251,9 @@ function RetailersContent() {
           <option value="ACTIVE">Active</option>
           <option value="PAST_DUE">Past Due</option>
           <option value="CANCELLED">Cancelled</option>
+          {/* RC-033: a finished term is its own status now — without this the
+              API accepts the filter but no admin can select it. */}
+          <option value="COMPLETED">Completed</option>
         </select>
         <select
           value={filters.suspended}

@@ -39,6 +39,20 @@ export const PLAN_LIMITS = {
 // a user could be shown it as a limit.
 export const UNLIMITED = 999999;
 
+// ─── "Is this plan still live?" ───────────────────────────────────
+// RC-033: a CANCELLED term and a COMPLETED one are different events — churn
+// versus a term that ran its course — but every caller that asks "is this plan
+// still live?" wants the same answer for both, and four surfaces were each
+// writing their own `=== 'CANCELLED'` literal. That is how a newly added status
+// ends up handled correctly by three callers and wrongly by the fourth (the
+// RC-034 shape: one rule with several copies).
+//
+// PAST_DUE is deliberately NOT ended: dunning is recoverable, and T5's own
+// qualification gate refuses to claw back on it for exactly that reason.
+export function isPlanEnded(status: string | null | undefined): boolean {
+  return status === 'CANCELLED' || status === 'COMPLETED';
+}
+
 // ─── Plan Pricing (paise) ─────────────────────────────────────────
 
 export const PLAN_PRICING = {

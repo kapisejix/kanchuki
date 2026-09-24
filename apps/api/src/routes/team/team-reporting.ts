@@ -161,7 +161,15 @@ export const teamReportingRoutes: FastifyPluginAsync = async (server) => {
       prisma.retailer.count({ where: { ...baseWhere, onboarding_completed: true } }),
       prisma.retailer.count({ where: { ...baseWhere, plan_status: 'TRIAL' as const } }),
       prisma.retailer.count({ where: { ...baseWhere, plan_status: 'ACTIVE' as const } }),
-      prisma.retailer.count({ where: { ...baseWhere, plan_status: 'CANCELLED' as const } }),
+      // RC-033: COMPLETED joins this bucket on purpose. A finished term is not
+      // active, and giving it its own counter would leave every completed
+      // retailer out of all three buckets — a funnel that silently shrinks as
+      // terms expire is worse than one that names the bucket "ended". PAST_DUE
+      // is already outside the three (dunning is recoverable), so this bucket
+      // was never guaranteed to sum to the total.
+      prisma.retailer.count({
+        where: { ...baseWhere, plan_status: { in: ['CANCELLED', 'COMPLETED'] } },
+      }),
     ]);
 
     return {

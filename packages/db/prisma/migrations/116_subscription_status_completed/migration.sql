@@ -1,0 +1,30 @@
+-- 116: add 'COMPLETED' to SubscriptionStatus — RC-033.
+--
+-- WHY
+--
+-- The billing webhook handled `subscription.completed` and
+-- `subscription.cancelled` in ONE block, writing CANCELLED for both. T5's
+-- referral qualification gate keys money off that column
+-- (`jobs/referral-qualify.ts` — any CANCELLED subscription on a paid store
+-- produces an IRREVERSIBLE `CLAWED_BACK`), so a retailer who paid for a full
+-- term was recorded as a churning one and the referrer's already-accrued
+-- commission was taken back for a customer who never left.
+--
+-- A term that ran its full course is not churn (owner ruling 2026-09-24), so
+-- the two events now have two statuses.
+--
+-- WHY THIS FILE IS ONLY THE ENUM VALUE
+--
+-- PostgreSQL 55P04: a value added via ALTER TYPE ... ADD VALUE cannot be USED
+-- in the same transaction that added it ("new enum values must be committed
+-- before they can be used"). Prisma wraps each migration in a single
+-- transaction, so the webhook and reader changes that USE 'COMPLETED' live in
+-- the code deploy, never in this file. Same split as the 060/061 enum
+-- precedent (PlanFeatureKey → WHATSAPP_CATALOG_SYNC).
+--
+-- BLAST RADIUS: this type backs TWO columns — Retailer.plan_status and
+-- Subscription.status — so both widen. Readers that ask "is this plan still
+-- live?" call the shared `isPlanEnded()` rather than comparing literals, and
+-- PAST_DUE is deliberately NOT ended (dunning is recoverable).
+
+ALTER TYPE "SubscriptionStatus" ADD VALUE 'COMPLETED';

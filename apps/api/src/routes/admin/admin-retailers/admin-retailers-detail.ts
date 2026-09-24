@@ -143,7 +143,7 @@ export const adminRetailersDetailRoutes: FastifyPluginAsync = async (server) => 
     const body = z
       .object({
         plan: z.enum(['STARTER', 'GROWTH', 'PRO']),
-        status: z.enum(['TRIAL', 'ACTIVE', 'PAST_DUE', 'CANCELLED']),
+        status: z.enum(['TRIAL', 'ACTIVE', 'PAST_DUE', 'CANCELLED', 'COMPLETED']),
         extend_trial_days: z.number().int().min(0).max(90).optional(),
       })
       .parse(request.body);

@@ -56,6 +56,19 @@
 //                                    never qualify)
 //   paid, then cancelled           → CLAWED_BACK (the spec's "churns inside the
 //                                    window, no commission accrues")
+//   paid, then COMPLETED           → stays PENDING. A term that ran its full
+//                                    course is not churn — the retailer paid
+//                                    and stopped — so this must NOT take the
+//                                    clawback branch above it (owner ruling
+//                                    2026-09-24, RC-033). Note the consequence
+//                                    it also accepts: completion is not a
+//                                    qualification either, because the gate
+//                                    below wants a still-ACTIVE subscription.
+//                                    A conversion that reaches this state was
+//                                    never qualified during the whole term,
+//                                    so nothing had accrued to lose — but it
+//                                    is worth knowing that this path pays
+//                                    nothing rather than assuming otherwise.
 //   suspended (F-015)              → stays PENDING. Suspension is REVERSIBLE —
 //                                    `unsuspend` exists — and an irreversible
 //                                    clawback on a reversible state would
@@ -127,7 +140,7 @@ export type QualificationDecision =
 
 /** The subscription facts the gate needs. */
 export interface ReferredSubscriptionFacts {
-  status: 'TRIAL' | 'ACTIVE' | 'PAST_DUE' | 'CANCELLED';
+  status: 'TRIAL' | 'ACTIVE' | 'PAST_DUE' | 'CANCELLED' | 'COMPLETED';
   /** Paise, ex-GST — the recurring base the commission is computed from. */
   amount_inr: number;
 }
@@ -182,6 +195,17 @@ export function decideQualification(input: {
 
   // Paid, no active subscription, and a cancellation on record: this is the
   // spec's churn case, and it has a real value to lose.
+  //
+  // CANCELLED only, deliberately — `COMPLETED` must NOT reach this branch
+  // (RC-033, owner ruling 2026-09-24: a term that ran its full course is not
+  // churn, and this transition is irreversible by design). A completed term
+  // falls through to the PAST_DUE/NO_ACTIVE_SUBSCRIPTION wait below, so this
+  // referral is not ended and nothing already accrued is taken back.
+  //
+  // Edge case, decided rather than inherited: a store that has BOTH a
+  // historical CANCELLED row and a later COMPLETED one still claws back — it
+  // did cancel at some point, and `some()` is on the whole history. Pinned by
+  // test so the reading is visible to whoever revisits this.
   if (referred.subscriptions.some((s) => s.status === 'CANCELLED')) {
     return { outcome: 'CLAW_BACK', reason: 'REFERRED_CHURNED_AFTER_PAYMENT' };
   }

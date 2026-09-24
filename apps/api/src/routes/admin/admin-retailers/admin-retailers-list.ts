@@ -53,7 +53,7 @@ export const adminRetailersListRoutes: FastifyPluginAsync = async (server) => {
         city: z.string().max(100).optional(),
         state: z.string().max(100).optional(),
         plan: z.enum(['STARTER', 'GROWTH', 'PRO']).optional(),
-        status: z.enum(['TRIAL', 'ACTIVE', 'PAST_DUE', 'CANCELLED']).optional(),
+        status: z.enum(['TRIAL', 'ACTIVE', 'PAST_DUE', 'CANCELLED', 'COMPLETED']).optional(),
         suspended: z.coerce.boolean().optional(),
         featured: z.coerce.boolean().optional(),
       })

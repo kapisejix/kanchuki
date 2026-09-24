@@ -180,8 +180,14 @@ export const billingWebhookRoutes: FastifyPluginAsync = async (server) => {
         break;
       }
 
-      case 'subscription.cancelled':
-      case 'subscription.completed': {
+      // RC-033: a term that finished and one that was cancelled are different
+      // events (a completed subscription means Razorpay exhausted its cycles —
+      // the retailer paid and stopped, which is not churn). They shared one
+      // block until now, and T5 keys an irreversible referral clawback off the
+      // result. Both still move BOTH columns: `plan_status` is what the
+      // retailer and admin surfaces read, so leaving it CANCELLED here would
+      // only relocate the collapse.
+      case 'subscription.cancelled': {
         await prisma.$transaction([
           prisma.subscription.update({
             where: { id: subscription.id },
@@ -190,6 +196,23 @@ export const billingWebhookRoutes: FastifyPluginAsync = async (server) => {
           prisma.retailer.update({
             where: { id: retailerId },
             data: { plan_status: 'CANCELLED', razorpay_subscription_id: null },
+          }),
+        ]);
+        break;
+      }
+
+      case 'subscription.completed': {
+        await prisma.$transaction([
+          prisma.subscription.update({
+            where: { id: subscription.id },
+            // `cancelled_at` stays null: nothing was cancelled, and stamping
+            // it here would make the two states indistinguishable again in
+            // the one field a reader might reach for.
+            data: { status: 'COMPLETED' },
+          }),
+          prisma.retailer.update({
+            where: { id: retailerId },
+            data: { plan_status: 'COMPLETED', razorpay_subscription_id: null },
           }),
         ]);
         break;

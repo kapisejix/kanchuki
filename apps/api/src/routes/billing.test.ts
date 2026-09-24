@@ -671,6 +671,70 @@ describe('POST /v1/billing/webhook', () => {
     await app.close();
   });
 
+  // ─── RC-033: cancelled and completed must not collapse ─────────────
+  // These two events shared one block until 2026-09-24, so a retailer whose
+  // term merely RAN ITS FULL COURSE was recorded as a churning one — and T5
+  // keys an irreversible referral clawback off that column. Both tests exist
+  // because the failure mode is a *pair*: fixing only one direction would move
+  // the collapse rather than remove it.
+
+  function lifecycleEvent(event: string) {
+    return {
+      event,
+      created_at: Math.floor(Date.now() / 1000),
+      payload: { subscription: { entity: { id: RZP_SUB_ID, current_start: 0, current_end: 0 } } },
+    };
+  }
+
+  async function postLifecycle(event: string) {
+    primeHappyPath();
+    const app = await buildApp();
+    const { raw, signature } = signedRequest(lifecycleEvent(event));
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/billing/webhook',
+      headers: { 'x-razorpay-signature': signature, 'content-type': 'application/json' },
+      payload: raw,
+    });
+    await app.close();
+    return res;
+  }
+
+  it('subscription.completed: records COMPLETED on both columns, never CANCELLED', async () => {
+    const res = await postLifecycle('subscription.completed');
+
+    expect(res.statusCode).toBe(200);
+    const subArg = mockSubscriptionUpdate.mock.calls.at(-1)?.[0] as {
+      data: Record<string, unknown>;
+    };
+    expect(subArg.data.status).toBe('COMPLETED');
+    // Nothing was cancelled — stamping cancelled_at would make the two states
+    // indistinguishable in the one field a reader might reach for.
+    expect(subArg.data.cancelled_at).toBeUndefined();
+
+    const retailerArg = mockRetailerUpdate.mock.calls.at(-1)?.[0] as {
+      data: Record<string, unknown>;
+    };
+    // Both columns, or the collapse has only moved: `plan_status` is what every
+    // retailer and admin surface actually renders.
+    expect(retailerArg.data.plan_status).toBe('COMPLETED');
+    expect(retailerArg.data.razorpay_subscription_id).toBeNull();
+  });
+
+  it('subscription.cancelled: still records CANCELLED — the fix must not have moved the collapse', async () => {
+    const res = await postLifecycle('subscription.cancelled');
+
+    expect(res.statusCode).toBe(200);
+    const subArg = mockSubscriptionUpdate.mock.calls.at(-1)?.[0] as {
+      data: Record<string, unknown>;
+    };
+    expect(subArg.data.status).toBe('CANCELLED');
+    const retailerArg = mockRetailerUpdate.mock.calls.at(-1)?.[0] as {
+      data: Record<string, unknown>;
+    };
+    expect(retailerArg.data.plan_status).toBe('CANCELLED');
+  });
+
   it('rejects a bad signature', async () => {
     const app = await buildApp();
     const res = await app.inject({

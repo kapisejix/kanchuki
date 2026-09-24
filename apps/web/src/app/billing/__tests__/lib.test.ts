@@ -24,6 +24,9 @@ describe('billing plan helpers', () => {
     expect(planStatusLabel('ACTIVE')).toBe('Active');
     expect(planStatusLabel('TRIAL')).toBe('Free trial');
     expect(planStatusLabel('CANCELLED')).toBe('Cancelled');
+    // RC-033: must NOT fall through to the `default` arm, which renders the
+    // raw enum string ('COMPLETED') on the retailer billing page.
+    expect(planStatusLabel('COMPLETED')).toBe('Completed');
     expect(planStatusLabel('PAST_DUE')).toBe('Payment due');
     expect(planStatusLabel(null)).toBe('Unknown');
     expect(planStatusLabel(undefined)).toBe('Unknown');

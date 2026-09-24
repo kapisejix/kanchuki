@@ -1,5 +1,6 @@
 import { prisma } from '@kanchuki/db';
 // billing-subscription.ts — retailer subscription lifecycle + invoice history (split from apps/api/src/routes/billing.ts — body byte-identical)
+import { isPlanEnded } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { notFound, validationError } from '../../plugins/error-handler.js';
@@ -149,7 +150,11 @@ export const billingSubscriptionRoutes: FastifyPluginAsync = async (server) => {
       select: { razorpay_subscription_id: true, plan_status: true },
     });
     if (!retailer) throw notFound('Retailer');
-    if (!retailer.razorpay_subscription_id || retailer.plan_status === 'CANCELLED') {
+    // `isPlanEnded` covers COMPLETED as well as CANCELLED (RC-033): a finished
+    // term has nothing live to cancel either, and comparing the literal here
+    // was one of the copies that would have gone stale the moment a new status
+    // existed. The null id already refuses both, but the state is now stated.
+    if (!retailer.razorpay_subscription_id || isPlanEnded(retailer.plan_status)) {
       throw validationError('No active subscription to cancel');
     }
 
