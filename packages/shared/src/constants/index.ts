@@ -39,6 +39,9 @@ export const PLAN_LIMITS = {
 // a user could be shown it as a limit.
 export const UNLIMITED = 999999;
 
+/** `PLAN_LIMITS` value → something a DB int column / JSON can hold. */
+export const orUnlimited = (value: number): number => (Number.isFinite(value) ? value : UNLIMITED);
+
 // ─── "Is this plan still live?" ───────────────────────────────────
 // RC-033: a CANCELLED term and a COMPLETED one are different events — churn
 // versus a term that ran its course — but every caller that asks "is this plan

@@ -2,6 +2,10 @@ import type { Metadata } from 'next'
 import { Camera, Wand2, MessageCircle, Store, Heart, Package, ScanLine, WifiOff, Users } from 'lucide-react'
 import { Navbar, Footer, Section, SectionHeader, ColorCard, AnimatedSection, FinalCta, PageHero } from '@/components/site/Chrome'
 import { ACCENT_TEXT, ACCENT_SUBTLE } from '@/components/site/accents'
+import { PLAN_LIMITS } from '@kanchuki/shared'
+import { getPlanPricing, rupees } from '@/lib/plan-pricing'
+
+const count = (n: number) => (Number.isFinite(n) ? n.toLocaleString('en-IN') : 'unlimited')
 
 export const metadata: Metadata = {
   title: 'For Retailers — AI Catalog & WhatsApp Selling for Clothing Stores | Kanchuki',
@@ -27,7 +31,8 @@ const COMING_SOON = [
   { feature: 'Play Store / iOS app listings', status: 'Coming soon — Android APK available now' },
 ]
 
-export default function ForRetailersPage() {
+export default async function ForRetailersPage() {
+  const price = await getPlanPricing()
   return (
     <>
       <Navbar />
@@ -60,11 +65,11 @@ export default function ForRetailersPage() {
             <SectionHeader tag="Pricing" title="Pricing that fits a small shop" />
           </AnimatedSection>
           <ul className="space-y-3 text-carbon/70 text-sm sm:text-base leading-relaxed">
-            <li><strong className="text-carbon">Starter ₹999/mo</strong> — one shop, 500 products, unlimited customers, AI tagging included.</li>
-            <li><strong className="text-carbon">Growth ₹2,499/mo</strong> — 2,000 products, unlimited customers, unlimited links.</li>
-            <li><strong className="text-carbon">Pro ₹4,999/mo</strong> — unlimited products, WhatsApp automation, multi-staff, campaign system.</li>
+            <li><strong className="text-carbon">Starter {rupees(price.STARTER.monthly)}/mo</strong> — one shop, {count(PLAN_LIMITS.STARTER.max_products)} products, unlimited customers, AI tagging included.</li>
+            <li><strong className="text-carbon">Growth {rupees(price.GROWTH.monthly)}/mo</strong> — {count(PLAN_LIMITS.GROWTH.max_products)} products, unlimited customers, unlimited links.</li>
+            <li><strong className="text-carbon">Pro {rupees(price.PRO.monthly)}/mo</strong> — {count(PLAN_LIMITS.PRO.max_products)} products, WhatsApp automation, multi-staff, campaign system.</li>
           </ul>
-          <p className="mt-6 text-sm text-carbon/50">14-day free trial, no credit card. UPI, cards, netbanking. GST invoices. Annual plans save 20%. Full details on <a href="/pricing" className="text-cobalt-600 font-medium hover:underline">the pricing page</a>.</p>
+          <p className="mt-6 text-sm text-carbon/50">14-day free trial, no credit card. UPI, cards, netbanking. GST invoices. Full details on <a href="/pricing" className="text-cobalt-600 font-medium hover:underline">the pricing page</a>.</p>
         </div>
       </Section>
 
