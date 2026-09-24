@@ -1,6 +1,6 @@
 # Docs Re-organization — Execution Plan (hand-off for a new session)
 
-**Status:** 🟨 In progress — Phase 1 partly done (copies made, nothing committed, nothing deleted).
+**Status:** ✅ Done — Phases 1–8 + the after-delete work executed 2026-09-23 (`6fcfbe2a`, PR #39). Phase 9 (shrink PRO-REQUIREMENTS/PLAN) still open. The DELETE tables below keep the **pre-move** paths on purpose — they are the record of what was removed.
 **Branch:** `docs/reorganize` (created from `origin/main` 2026-09-23). Work ONLY on this branch → one PR. Never merge it yourself.
 **Owner decisions (final, 2026-09-23 — do not re-ask):**
 1. Separate `docs/reorganize` PR (not #37/#38).
@@ -237,36 +237,36 @@ Shrink `PRO-REQUIREMENTS.md` (≤400 lines: scope + feature status table linking
 
 | Old path | Why | Successor |
 |---|---|---|
-| `docs/references/research/ai-fashion-sales-assistant-phase-1.md` | byte-identical to the `.md` right beside it | `docs/references/research/ai-fashion-sales-assistant-phase-1.md` |
-| `docs/ai-studio/AI Models and Scenes.html` | typo'd filename, superseded copy | `docs/ai-studio/AI Models and Scenes.html` |
+| `docs/AI Fashion Sales Assistant - Phase 1.txt` | byte-identical to the `.md` right beside it | `docs/references/research/ai-fashion-sales-assistant-phase-1.md` |
+| `docs/tasks/AI Models and Scenes.hmtl` | typo'd filename, superseded copy | `docs/ai-studio/AI Models and Scenes.html` |
 
 **2. Old `docs/` root files — byte-identical copies exist (22)**
 
 | Old path | New location |
 |---|---|
-| `docs/references/history/reports/2026-08-20-remaining-work.md` | `docs/references/history/reports/2026-08-20-remaining-work.md` |
-| `docs/references/history/reports/2026-07-26-night-report.md` | `docs/references/history/reports/2026-07-26-night-report.md` |
-| `docs/references/research/ai-fashion-sales-assistant-phase-1.md` | `docs/references/research/ai-fashion-sales-assistant-phase-1.md` |
-| `docs/database/DATABASE.md` | `docs/database/DATABASE.md` |
-| `docs/design/DESIGN.md` | `docs/design/DESIGN.md` |
-| `docs/references/guides/hosting-and-app-store.md` | `docs/references/guides/hosting-and-app-store.md` |
-| `docs/references/guides/infra-setup.md` | `docs/references/guides/infra-setup.md` |
-| `docs/references/research/international-expansion.md` | `docs/references/research/international-expansion.md` |
-| `docs/references/history/reports/launch-readiness-audit.md` | `docs/references/history/reports/launch-readiness-audit.md` |
-| `docs/references/guides/ai-prompting.md` | `docs/references/guides/ai-prompting.md` |
-| `docs/references/guides/meta-facebook-login-setup.md` | `docs/references/guides/meta-facebook-login-setup.md` |
-| `docs/references/history/reports/2026-08-22-otp-issue.md` | `docs/references/history/reports/2026-08-22-otp-issue.md` |
-| `docs/references/guides/play-store-launch-checklist.md` | `docs/references/guides/play-store-launch-checklist.md` |
-| `docs/references/guides/play-store-listing.md` | `docs/references/guides/play-store-listing.md` |
-| `docs/references/history/sessions/PROGRESS.md` | `docs/references/history/sessions/PROGRESS.md` (frozen) |
-| `docs/references/research/platform-architecture-blueprint.md` | `docs/references/research/platform-architecture-blueprint.md` |
-| `docs/references/guides/skills-and-mcp.md` | `docs/references/guides/skills-and-mcp.md` |
-| `docs/references/history/superseded/catvton-training.md` | `docs/references/history/superseded/catvton-training.md` |
-| `docs/references/research/final-research.md` | `docs/references/research/final-research.md` |
-| `docs/references/history/reports/2026-07-27-omp-review.md` | `docs/references/history/reports/2026-07-27-omp-review.md` |
-| `docs/tasks/done/staff-assisted-catalog-upload.md` | `docs/tasks/done/staff-assisted-catalog-upload.md` |
-| `docs/marketing/india-retailer-growth.md` | `docs/marketing/india-retailer-growth.md` (copy **edited** this session — hash differs) |
-| `docs/tasks/done/social-connect-native.md` | `docs/tasks/done/social-connect-native.md` (copy **edited**) |
+| `docs/20-August-changes.md` | `docs/references/history/reports/2026-08-20-remaining-work.md` |
+| `docs/26-night-report.md` | `docs/references/history/reports/2026-07-26-night-report.md` |
+| `docs/AI Fashion Sales Assistant - Phase 1.md` | `docs/references/research/ai-fashion-sales-assistant-phase-1.md` |
+| `docs/DATABASE.md` | `docs/database/DATABASE.md` |
+| `docs/DESIGN.md` | `docs/design/DESIGN.md` |
+| `docs/HOSTING-AND-APP-STORE-GUIDE.md` | `docs/references/guides/hosting-and-app-store.md` |
+| `docs/INFRA-SETUP.md` | `docs/references/guides/infra-setup.md` |
+| `docs/INTERNATIONAL-EXPANSION.md` | `docs/references/research/international-expansion.md` |
+| `docs/LAUNCH-READINESS-AUDIT.md` | `docs/references/history/reports/launch-readiness-audit.md` |
+| `docs/MEMORY.md` | `docs/references/guides/ai-prompting.md` |
+| `docs/META-FACEBOOK-LOGIN-SETUP.md` | `docs/references/guides/meta-facebook-login-setup.md` |
+| `docs/OTP-issue.md` | `docs/references/history/reports/2026-08-22-otp-issue.md` |
+| `docs/PLAY-STORE-LAUNCH-CHECKLIST.md` | `docs/references/guides/play-store-launch-checklist.md` |
+| `docs/PLAY-STORE-LISTING.md` | `docs/references/guides/play-store-listing.md` |
+| `docs/PROGRESS.md` | `docs/references/history/sessions/PROGRESS.md` (frozen) |
+| `docs/Retailer → Customer AI Fashion Commerce Platform.md` | `docs/references/research/platform-architecture-blueprint.md` |
+| `docs/SKILLS-AND-MCP.md` | `docs/references/guides/skills-and-mcp.md` |
+| `docs/TRAINING.md` | `docs/references/history/superseded/catvton-training.md` |
+| `docs/final-research.md` | `docs/references/research/final-research.md` |
+| `docs/omp-review.md` | `docs/references/history/reports/2026-07-27-omp-review.md` |
+| `docs/staff-retailer.md` | `docs/tasks/done/staff-assisted-catalog-upload.md` |
+| `docs/INDIA-RETAILER-GROWTH.md` | `docs/marketing/india-retailer-growth.md` (copy **edited** this session — hash differs) |
+| `docs/social-connect-native.md` | `docs/tasks/done/social-connect-native.md` (copy **edited**) |
 
 **3. Old root folders — all files duplicated into the new tree, so the folders empty out (1 + 3 + 2 + 11 + 1 + 7 + 5 + 1 + 1)**
 

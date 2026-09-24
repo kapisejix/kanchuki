@@ -2,7 +2,7 @@
 
 **Last reorganized:** 2026-09-23 (`docs/reorganize` branch, plan: `tasks/reorganize-files-folders-structure.md`).
 
-This file is the map. If you are looking for something and it is not listed here, it is either in `references/history/` (frozen, never current truth) or it is an old path still awaiting the deletion phase — see "Old paths" at the bottom.
+This file is the map. If you are looking for something and it is not listed here, it is in `references/history/` (frozen, never current truth). Where the old paths went: "Old paths — removed" at the bottom.
 
 ---
 
