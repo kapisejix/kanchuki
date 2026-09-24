@@ -14,11 +14,10 @@
 // existing item instead of creating a duplicate. Local CatalogItem rows key off
 // product_id (@unique).
 //
-// HSN (C5): Phase I's admin-overridable hsn_codes master table is not built yet
-// (GST-ready invoicing is designed, not implemented) — resolveHsnForCatalog is
-// the interim keyword map over the common apparel HSN 8-digit heads (6204 women's
-// non-knitted outerwear, 5407/5208/5007 woven fabrics, 6214 shawls, 6211 track
-// suits, ...). Swap for the Phase I table when that ships.
+// HSN (C5): resolveHsnForCatalog keyword-maps products onto the common apparel
+// HSN heads (6204 women's non-knitted outerwear, 5407/5208/5007 woven fabrics,
+// 6214 shawls, 6211 track suits, ...). Rules are admin-editable in hsn_rules
+// (§6.11), refreshed at the start of every sync run.
 
 import { type Prisma, getSecret, prisma } from '@kanchuki/db';
 import {
@@ -70,38 +69,82 @@ export function mapProductStatus(status: string): CatalogAvailability {
   }
 }
 
-// Interim HSN mapping (C5). Ordered — first keyword hit wins. Defaults to 6204
-// (women's/girls' non-knitted suits, dresses, skirts, trousers) which covers
-// the bulk of a Kanchuki retailer's kurti/suit inventory.
-const HSN_RULES: Array<{ pattern: RegExp; hsn: string }> = [
-  // Fabric-specific descriptors first — a silk saree is 5007, a cotton one
+// HSN mapping (C5). Ordered — first rule with a keyword in the product text
+// wins; no hit → 6204 (women's/girls' non-knitted suits, dresses, skirts,
+// trousers), which covers the bulk of a Kanchuki retailer's kurti/suit stock.
+//
+// Admin-editable in the hsn_rules table (§6.11, migration 117). This list is
+// the documented fallback — used when the table is empty or unreadable — and
+// is what migration 117 seeds, so the two start identical.
+export type HsnRule = { keywords: string[]; hsn: string };
+
+export const HSN_RULES_FALLBACK: HsnRule[] = [
+  // Fabric-specific descriptors first — a silk saree is 5007, cotton fabric
   // 5208; only bare "saree" (no fabric word) falls through to the synthetic
   // 5407 head (the most common retail saree HSN).
-  { pattern: /silk/, hsn: '5007' },
-  { pattern: /cotton fabric|fabric.*cotton|^fabric$/, hsn: '5208' },
-  { pattern: /saree|saaree|sadi/, hsn: '5407' }, // woven man-made-fibre saree
-  { pattern: /dupatta|stole|shawl|scarf/, hsn: '6214' },
-  { pattern: /tracksuit|track suit|legging/, hsn: '6211' },
-  { pattern: /jeans|trouser|pant/, hsn: '6204' },
-  { pattern: /shirt/, hsn: '6205' },
-  { pattern: /blouse|top/, hsn: '6206' },
-  { pattern: /dress|gown/, hsn: '6204' },
-  { pattern: /skirt/, hsn: '6204' },
-  { pattern: /kurta|kurti|kameez|suit|lehenga|lehanga|anarkali|salwar|churidar/, hsn: '6204' },
+  { keywords: ['silk'], hsn: '5007' },
+  { keywords: ['cotton fabric'], hsn: '5208' },
+  { keywords: ['saree', 'saaree', 'sadi'], hsn: '5407' }, // woven man-made-fibre saree
+  { keywords: ['dupatta', 'stole', 'shawl', 'scarf'], hsn: '6214' },
+  { keywords: ['tracksuit', 'track suit', 'legging'], hsn: '6211' },
+  { keywords: ['jeans', 'trouser', 'pant'], hsn: '6204' },
+  { keywords: ['shirt'], hsn: '6205' },
+  { keywords: ['blouse', 'top'], hsn: '6206' },
+  { keywords: ['dress', 'gown'], hsn: '6204' },
+  { keywords: ['skirt'], hsn: '6204' },
+  {
+    keywords: [
+      'kurta',
+      'kurti',
+      'kameez',
+      'suit',
+      'lehenga',
+      'lehanga',
+      'anarkali',
+      'salwar',
+      'churidar',
+    ],
+    hsn: '6204',
+  },
 ];
 
+// ponytail: module cache refreshed at the start of each sync run — rules change
+// rarely, and every job in this process wants the same answer.
+let activeHsnRules: HsnRule[] = HSN_RULES_FALLBACK;
+
+/** Reload active rules from hsn_rules. Keeps the last good set on a read error. */
+export async function refreshHsnRules(): Promise<HsnRule[]> {
+  try {
+    const rows = await prisma.hsnRule.findMany({
+      where: { is_active: true },
+      orderBy: [{ sort_order: 'asc' }, { created_at: 'asc' }],
+      select: { keywords: true, hsn: true },
+    });
+    activeHsnRules = rows.length > 0 ? rows : HSN_RULES_FALLBACK;
+  } catch (err) {
+    console.warn(
+      '[catalog-sync] hsn_rules unreadable, keeping current rules:',
+      (err as Error).message,
+    );
+  }
+  return activeHsnRules;
+}
+
 /**
- * Resolve an HSN code for a product (C5). Uses Phase I's apparel HSN rates as
- * the source of truth for the mapping; keyword-matches the free-text AI fields
- * + the retailer's category name. Falls back to 6204 (default women's apparel).
+ * Resolve an HSN code for a product (C5): keyword-match the free-text AI fields
+ * + the retailer's category name against the active rules. Falls back to 6204
+ * (default women's apparel).
  */
-export function resolveHsnForCatalog(product: {
-  name?: string | null;
-  category?: string | null;
-  subtype?: string | null;
-  description?: string | null;
-  categoryName?: string | null;
-}): string {
+export function resolveHsnForCatalog(
+  product: {
+    name?: string | null;
+    category?: string | null;
+    subtype?: string | null;
+    description?: string | null;
+    categoryName?: string | null;
+  },
+  rules: readonly HsnRule[] = activeHsnRules,
+): string {
   const haystack = [
     product.name,
     product.category,
@@ -113,8 +156,8 @@ export function resolveHsnForCatalog(product: {
     .join(' ')
     .toLowerCase();
 
-  for (const rule of HSN_RULES) {
-    if (rule.pattern.test(haystack)) return rule.hsn;
+  for (const rule of rules) {
+    if (rule.keywords.some((k) => haystack.includes(k.toLowerCase()))) return rule.hsn;
   }
   return '6204';
 }
@@ -217,6 +260,7 @@ export async function syncAllProducts(
   triggeredBy: CatalogSyncJobData['triggered_by'] = 'retailer',
   signal?: AbortSignal,
 ): Promise<void> {
+  await refreshHsnRules();
   const retailer = await prisma.retailer.findUnique({
     where: { id: retailerId },
     select: {
@@ -464,6 +508,7 @@ export async function syncSingleProduct(
   triggeredBy: CatalogSyncJobData['triggered_by'] = 'retailer',
   signal?: AbortSignal,
 ): Promise<void> {
+  await refreshHsnRules();
   const retailer = await prisma.retailer.findUnique({
     where: { id: retailerId },
     select: {

@@ -71,6 +71,7 @@ export const SUPER_ADMIN_ONLY_ADMIN_SEGMENTS = [
   // ── Tax and legal documents ──
   'gst',
   'gst-profile',
+  'hsn-rules', // §6.11 keyword → HSN map used on WhatsApp catalog items (tax data)
   'invoices',
   'reports', // admin reporting rollups (/admin/reports) — GST figures are tax data
   // ── Credentials and provider configuration ──

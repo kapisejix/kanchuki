@@ -3656,3 +3656,17 @@ The stress run above cleared `admin-referral-monitor` and failed **two other fil
 | Harness honesty | The double-suite harness is marginal on this machine: the first attempt completed (and produced the failures above), the second killed one instance mid-run with `Serialized Error: { code: 'ERR_IPC_CHANNEL_CLOSED' }`. That is why the deterministic global-default proof replaced a second contention run rather than being skipped. |
 | Verification | `studio-shoot` **33/33** · `admin.login` **9/9** · full API **1353 passed / 5 skipped (1358), 0 failed** · `tsc` + biome clean. |
 | Durable alternative, flagged not done | Making the poll interval injectable would let those tests run with no real sleep at all — roughly **34 s of the suite's wall clock**, since the file currently spends ~34 s inside tests. That is a production-code change; the timeout above was the requested, minimal fix. |
+
+## 2026-09-24 (latest) — §6 hardcoded lists → DB: done
+
+| Item | Change |
+|---|---|
+| 6.5–6.7 | Premise corrected: catalog-size limits have **no DB table** (`plan_limits` = per-period quotas). Prices → `plan_pricing` via new `apps/web/src/lib/plan-pricing.ts` (per-plan fallback; the old in-page helper crashed on partial rows); limits → shared `PLAN_LIMITS` everywhere (admin billing, pricing page, admin plan-change route via new shared `orUnlimited`). Admin billing was mislabelling the `PRODUCT_UPLOAD` quota as catalog size. Stale prices fixed: pricing metadata + comparison row (₹999), `for-retailers` (₹999/₹2,499/₹4,999 + "Annual plans save 20%"), admin `plan-features` labels. |
+| 6.2 / 6.3 | Mobile `growth/templates.tsx`: studio styles from `/products/studio-styles` (stale hardcoded ids 422'd at generate after the migration-101 collapse), festivals from `/growth/festivals` + `General`. Ships with the next EAS build. |
+| 6.4 | Admin social-templates filter from `stats.by_occasion`; removed the groupBy `take: 10` (it also capped the stat count). |
+| 6.9 | `RegionalFilters` deleted — dead end to end (never rendered; the API never read `regional`). |
+| 6.10 | Skipped — `SUBTYPE_KEYWORDS` is search vocabulary; category names would inject noise hints. |
+| 6.11 | `hsn_rules` table (migration **117, not applied**) + admin API/screen; keywords not regex; the code list is the fallback. |
+| 6.12 | Fifth `999999` straggler (`admin-retailers-detail.ts`) → `PLAN_LIMITS`. |
+
+Side fix: the mobile global `@kanchuki/shared` mock now spreads the real module (its export whitelist broke the RC-011 smoke on `isPlanEnded`). **Owner to verify:** migration 074 seeded `plan_pricing` at ₹999/₹2,499/₹4,999 and no later migration updates it — if an admin never edited those rows, prod charges and now displays those prices, not ₹4,999/₹9,999/₹14,999. Tests: API 1365/1370 (5 skipped), web 323/323, mobile 107/107, tsc ×3 clean.
