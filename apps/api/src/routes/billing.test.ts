@@ -21,6 +21,7 @@ const {
   mockPlatformGstProfileFindUnique,
   mockSubscriptionPaymentFindUnique,
   mockSubscriptionPaymentCreate,
+  mockSubscriptionPaymentUpdateMany,
   mockQueryRaw,
   prismaMock,
 } = vi.hoisted(() => {
@@ -39,6 +40,7 @@ const {
     mockPlatformGstProfileFindUnique: vi.fn(),
     mockSubscriptionPaymentFindUnique: vi.fn(),
     mockSubscriptionPaymentCreate: vi.fn(),
+    mockSubscriptionPaymentUpdateMany: vi.fn(),
     mockQueryRaw: vi.fn(),
     prismaMock: p,
   };
@@ -61,6 +63,7 @@ const {
     subscriptionPayment: {
       findUnique: m.mockSubscriptionPaymentFindUnique,
       create: m.mockSubscriptionPaymentCreate,
+      updateMany: m.mockSubscriptionPaymentUpdateMany,
     },
     auditLog: { create: vi.fn() },
     $queryRaw: m.mockQueryRaw,
@@ -733,6 +736,144 @@ describe('POST /v1/billing/webhook', () => {
       data: Record<string, unknown>;
     };
     expect(retailerArg.data.plan_status).toBe('CANCELLED');
+  });
+
+  // ─── refund.processed (§5A.1) ──────────────────────────────────────
+  // Nothing in the repo wrote `SubscriptionPayment.status = 'refunded'`
+  // before this, so T5/T6's "was this month paid for?" question had only one
+  // possible answer forever. The event is the ledger's ONLY correction
+  // channel, which is why each guard below is a test and not a comment.
+
+  function refundEvent(opts: { paymentId?: string; amount?: number; withSubscription?: boolean }) {
+    const { paymentId = 'pay_1', amount = 117882, withSubscription = false } = opts;
+    return {
+      event: 'refund.processed',
+      created_at: Math.floor(Date.now() / 1000),
+      payload: {
+        // Razorpay need not include the subscription on a refund — and the
+        // handler must not depend on it either way (see the "no subscription
+        // entity" test).
+        ...(withSubscription
+          ? { subscription: { entity: { id: RZP_SUB_ID, current_start: 0, current_end: 0 } } }
+          : {}),
+        refund: { entity: { id: 'rfnd_1', payment_id: paymentId, amount, status: 'processed' } },
+      },
+    };
+  }
+
+  async function postRefund(body: object) {
+    const app = await buildApp();
+    const { raw, signature } = signedRequest(body);
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/billing/webhook',
+      headers: { 'x-razorpay-signature': signature, 'content-type': 'application/json' },
+      payload: raw,
+    });
+    await app.close();
+    return res;
+  }
+
+  it('refund.processed: flips the matching payment row to refunded', async () => {
+    mockSubscriptionPaymentFindUnique.mockResolvedValue({
+      id: 'pay_row_1',
+      amount_inr: 117882,
+      status: 'success',
+    });
+    mockSubscriptionPaymentUpdateMany.mockResolvedValue({ count: 1 });
+
+    const res = await postRefund(refundEvent({}));
+
+    expect(res.statusCode).toBe(200);
+    const arg = mockSubscriptionPaymentUpdateMany.mock.calls[0]?.[0] as {
+      where: Record<string, unknown>;
+      data: Record<string, unknown>;
+    };
+    expect(arg.where).toEqual({ razorpay_payment_id: 'pay_1', status: { not: 'refunded' } });
+    expect(arg.data).toEqual({ status: 'refunded' });
+  });
+
+  it('refund.processed: replays are a 0-row no-op, not an error', async () => {
+    // Razorpay redelivers at-least-once. The guard is the WHERE (the row has
+    // no second state to move to), so a redelivery reports count 0 and still
+    // answers 200 — a webhook that 500s on a duplicate gets retried forever.
+    mockSubscriptionPaymentFindUnique.mockResolvedValue({
+      id: 'pay_row_1',
+      amount_inr: 117882,
+      status: 'refunded',
+    });
+    mockSubscriptionPaymentUpdateMany.mockResolvedValue({ count: 0 });
+
+    const res = await postRefund(refundEvent({}));
+
+    expect(res.statusCode).toBe(200);
+    expect(mockSubscriptionPaymentUpdateMany.mock.calls[0]?.[0]?.where).toMatchObject({
+      status: { not: 'refunded' },
+    });
+  });
+
+  it('refund.processed: applies with NO subscription entity in the payload', async () => {
+    // The regression this exists for: refunds were initially going to live in
+    // the switch below, whose `if (!rzpSub) return { received: true }` would
+    // have dropped every one of them — silently, as a 200. This test would be
+    // green in that world too, so it asserts the WRITE happened, not just the
+    // status code.
+    mockSubscriptionPaymentFindUnique.mockResolvedValue({
+      id: 'pay_row_1',
+      amount_inr: 117882,
+      status: 'success',
+    });
+    mockSubscriptionPaymentUpdateMany.mockResolvedValue({ count: 1 });
+
+    const res = await postRefund(refundEvent({ withSubscription: false }));
+
+    expect(res.statusCode).toBe(200);
+    expect(mockSubscriptionUpdate).not.toHaveBeenCalled();
+    expect(mockSubscriptionPaymentUpdateMany).toHaveBeenCalledTimes(1);
+  });
+
+  it('refund.processed: a PARTIAL refund is deliberately not applied', async () => {
+    // A partial refund must not erase a month the retailer mostly paid for:
+    // the row carries one whole-month flag that both T5 and T6 read as "this
+    // month was paid for". Owner call, recorded on the board — the tests pin
+    // the direction so a later "fix" has to argue with them.
+    mockSubscriptionPaymentFindUnique.mockResolvedValue({
+      id: 'pay_row_1',
+      amount_inr: 117882,
+      status: 'success',
+    });
+
+    const res = await postRefund(refundEvent({ amount: 50000 }));
+
+    expect(res.statusCode).toBe(200);
+    expect(mockSubscriptionPaymentUpdateMany).not.toHaveBeenCalled();
+  });
+
+  it('refund.processed: an unknown payment row is a 200 with nothing written', async () => {
+    // A refund for a charge this server never recorded (an add-on payment, a
+    // missed subscription.charged). Nothing to reverse — but the webhook must
+    // not 404/500, because Razorpay would retry it forever.
+    mockSubscriptionPaymentFindUnique.mockResolvedValue(null);
+
+    const res = await postRefund(refundEvent({ paymentId: 'pay_never_seen' }));
+
+    expect(res.statusCode).toBe(200);
+    expect(mockSubscriptionPaymentUpdateMany).not.toHaveBeenCalled();
+  });
+
+  it('refund.processed: still refuses a bad signature', async () => {
+    // The HMAC check is unchanged by §5A and applies to this event like any
+    // other — a refund moves money-adjacent state, so it is not exempt.
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/billing/webhook',
+      headers: { 'x-razorpay-signature': 'deadbeef', 'content-type': 'application/json' },
+      payload: JSON.stringify(refundEvent({})),
+    });
+    expect(res.statusCode).toBe(401);
+    expect(mockSubscriptionPaymentUpdateMany).not.toHaveBeenCalled();
+    await app.close();
   });
 
   it('rejects a bad signature', async () => {

@@ -228,6 +228,71 @@ describe('decideAccrual', () => {
     expect(decision).toEqual({ action: 'FUTURE', period: '2026-09', skipped_months: 0 });
   });
 
+  // ─── Refunds (§5A.2) ───────────────────────────────────────────────
+  // "Does a refunded month still earn?" has two halves, and only one of them
+  // is a no. These two tests exist to state both, because the interesting one
+  // is the half that is NOT a clawback and would otherwise be assumed.
+
+  it('a month whose only payment was REFUNDED does not earn — the walk skips it and the installment is not consumed', () => {
+    // The store paid July, was refunded for August, and paid September.
+    // `paid_periods` is the set of months with a SUCCESS payment (a refunded
+    // row is excluded by the loader's `status: 'success'` whitelist), so
+    // August is simply absent — the same treatment as a month the store never
+    // paid for at all. The installment number stays available for September:
+    // a refund SKIPS a month, it does not advance the program.
+    const decision = decideAccrual({
+      candidate: candidate({
+        accrued_months: 1,
+        accrued_through_period: '2026-07',
+        commission_monthly_paise: 299_970,
+      }),
+      facts: {
+        first_payment_period: '2026-07',
+        paid_periods: paidOn('2026-07-05T06:00:00Z', '2026-09-10T06:00:00Z'),
+        now: OCT_NOW,
+      },
+      settings: SETTINGS,
+    });
+    expect(decision).toEqual({
+      action: 'EARN',
+      period: '2026-09',
+      monthly_amount: 299_970,
+      skipped_months: 1, // August — refunded, so it counts as skipped, not earned
+    });
+  });
+
+  it('a refund AFTER a month already earned does NOT un-earn it — this job never looks back', () => {
+    // The honest boundary of ".a refunded month stops earning": it stops
+    // FUTURE months. An installment that was already credited when the charge
+    // was 'success' stays credited — the cursor only ever moves forward, and
+    // nothing here writes a negative accrual. Stated as a test because the
+    // opposite is what an operator would reasonably expect, and an owner
+    // deciding refund policy needs the real behaviour, not the intuitive one.
+    const decision = decideAccrual({
+      candidate: candidate({
+        accrued_months: 1,
+        accrued_through_period: '2026-07',
+        commission_monthly_paise: 299_970,
+      }),
+      facts: {
+        first_payment_period: '2026-07',
+        // July's payment has since been refunded — it is gone from the set...
+        paid_periods: paidOn('2026-08-05T06:00:00Z'),
+        now: NOW,
+      },
+      settings: SETTINGS,
+    });
+    // ...and the walk still starts at August, so July's earned installment is
+    // never re-examined. July cannot be revoked by anything in this job.
+    expect(decision).toEqual({
+      action: 'EARN',
+      period: '2026-08',
+      monthly_amount: 299_970,
+      skipped_months: 0,
+    });
+    expect(decision).not.toHaveProperty('revoke');
+  });
+
   it('freezes the monthly amount at first earn — later pct edits cannot reprice it', () => {
     // commission_monthly_paise is set, and settings now say 10%: the frozen
     // 299 970 wins. Both directions matter — an admin halving pct must not
@@ -532,6 +597,23 @@ describe('handleReferralAccrue — selection and settings', () => {
       retailer_id: { in: ['shop_1', 'shop_2'] },
       status: 'success',
     });
+  });
+
+  it('counts a paid month by a WHITELIST on success — a refunded row cannot earn', async () => {
+    // The mechanism behind §5A.2's first half. A blacklist (`status: { not:
+    // 'refunded' }`) would let a FAILED charge count as a paid month the
+    // moment a new payment status appeared, and would count today's 'failed'
+    // rows too. Asserting the exact form is the point: this test fails on any
+    // relaxation, not just on removing the filter.
+    withCandidates(candidate({ id: 'rc_1', referred_id: 'shop_1' }));
+    mockPaymentFindMany.mockResolvedValue([]);
+
+    await handleReferralAccrue({ now: NOW });
+
+    const where = mockPaymentFindMany.mock.calls[0]?.[0]?.where as Record<string, unknown>;
+    expect(where.status).toBe('success');
+    expect(where.status).not.toEqual({ not: 'refunded' });
+    expect(where.status).not.toEqual({ in: ['success', 'refunded'] });
   });
 
   it('sums earned paise across multiple conversions', async () => {

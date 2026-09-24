@@ -45,6 +45,34 @@
 //     is named "_inr" and IS paise, which is the kind of unit mismatch that
 //     multiplies a payout by 100 without failing anything.
 //
+// ─── REFUNDS: WHAT A REFUND DOES HERE, AND WHAT IT DELIBERATELY DOES NOT ──
+//
+// Until §5A.1 nothing in the repo could write `SubscriptionPayment.status =
+// 'refunded'`, so the question could not arise. It can now, and the owner
+// decided it on 2026-09-24: **a refund stops FUTURE earning; it never claws
+// back.** No branch was added for it, and this is why none is needed:
+//
+//   refund BEFORE qualification  → `hasSuccessfulPayment` (the grouped query
+//                                  below, `status: 'success'`) goes false, so
+//                                  the gate returns WAIT / NOT_PAID. The store
+//                                  simply never qualifies — and if it pays
+//                                  again inside its window, it still can.
+//   refund AFTER qualification   → nothing happens AT ALL, by construction:
+//                                  this job selects `status: 'PENDING'` rows
+//                                  only, so a QUALIFIED/PAID conversion is
+//                                  never re-examined. Installments already
+//                                  accrued stand; future months stop earning
+//                                  (T6's paid-month whitelist).
+//
+// The board's original proposal was `refund → CLAWED_BACK`. Rejected on the
+// same ground as RC-033: the clawback is irreversible while a refund's *cause*
+// is not always a churn (a billing dispute, a duplicate charge, a plan
+// correction) — and once T7 has paid installments out, a clawback would mean
+// recovering real money from the referrer. The lenient direction leaves an
+// uncollected accrual, which a future rule can still act on; the strict one
+// cannot be undone. The cost is stated rather than hidden: a referrer keeps
+// commission on revenue later handed back.
+//
 // ─── WHY EACH BRANCH IS REACHABLE (AND ONE DELIBERATELY IS NOT) ──────────
 //
 // A guard that can never fire is worse than no guard, because it reads as
@@ -231,6 +259,12 @@ export function decideQualification(input: {
  */
 async function loadPaidRetailerIds(retailerIds: string[]): Promise<Set<string>> {
   if (retailerIds.length === 0) return new Set();
+  // A WHITELIST, and it is load-bearing for refunds (§5A.1/§5A.2): once the
+  // webhook started writing `status = 'refunded'`, this filter is what makes a
+  // refunded qualifying payment read as "never paid" — so the referral waits
+  // rather than qualifying off money that was handed back. A blacklist
+  // (`status: { not: 'refunded' }`) would instead count a FAILED charge as a
+  // paid one, and would silently accept whatever status is invented next.
   const rows = await prisma.subscriptionPayment.findMany({
     where: { retailer_id: { in: retailerIds }, status: 'success' },
     select: { retailer_id: true },

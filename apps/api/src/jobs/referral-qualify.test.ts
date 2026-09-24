@@ -244,6 +244,51 @@ describe('decideQualification', () => {
     ).toEqual({ outcome: 'QUALIFY', base_amount: 1_499_900 });
   });
 
+  // ─── Refunds (§5A.2) — owner ruling 2026-09-24 ─────────────────────
+  // "A refund stops FUTURE earning; it never claws back." The board's
+  // original proposal was the opposite (`refund → CLAWED_BACK`), so this test
+  // is the decision, not an observation — reverting the ruling means changing
+  // this assertion on purpose.
+
+  it('a refunded qualifying payment reads as NEVER PAID — it waits, it does not claw back', () => {
+    // The store was charged, the charge was refunded, and its subscription is
+    // STILL ACTIVE (a refund of one month does not cancel a subscription) — so
+    // this cannot be mistaken for the churn branch. `hasSuccessfulPayment` is
+    // false because the loader reads `status: 'success'` only.
+    //
+    // Consequence, stated because it is the interesting part: the referral is
+    // not ended. If the store pays again inside its window it still qualifies,
+    // and nothing already accrued is taken back.
+    expect(
+      decideQualification({
+        referred: {
+          deleted_at: null,
+          is_suspended: false,
+          subscriptions: [{ status: 'ACTIVE', amount_inr: 999_900 }],
+        },
+        hasSuccessfulPayment: false, // the only difference from the happy path
+      }),
+    ).toEqual({ outcome: 'WAIT', reason: 'NOT_PAID' });
+  });
+
+  it('a refund on a store that is ALSO cancelled still claws back — the refund is not a shield', () => {
+    // Order of gates matters and is worth pinning: a refunded payment makes
+    // `hasSuccessfulPayment` false, which is checked BEFORE the churn branch, so
+    // a refunded-and-cancelled store waits instead of being clawed back. That is
+    // the correct read — "no successful payment" is the more fundamental fact,
+    // and there is no value to lose in either case.
+    expect(
+      decideQualification({
+        referred: {
+          deleted_at: null,
+          is_suspended: false,
+          subscriptions: [{ status: 'CANCELLED', amount_inr: 999_900 }],
+        },
+        hasSuccessfulPayment: false,
+      }),
+    ).toEqual({ outcome: 'WAIT', reason: 'NOT_PAID' });
+  });
+
   it('waits on PAST_DUE — dunning is recoverable', () => {
     expect(
       decideQualification({

@@ -37,6 +37,9 @@ export const billingWebhookRoutes: FastifyPluginAsync = async (server) => {
         payment?: {
           entity: { id: string; order_id?: string; amount: number; status: string };
         };
+        refund?: {
+          entity: { id: string; payment_id: string; amount: number; status?: string };
+        };
       };
     };
 
@@ -48,6 +51,88 @@ export const billingWebhookRoutes: FastifyPluginAsync = async (server) => {
       Math.abs(Date.now() / 1000 - event.created_at) > WEBHOOK_MAX_AGE_SECONDS
     ) {
       return reply.status(401).send({ error: { code: 'STALE_EVENT', status: 401 } });
+    }
+
+    // ─── Refunds (§5A.1) ────────────────────────────────────────
+    // `refund.processed` only: `refund.created` and `refund.failed` do not mean
+    // money moved back, and the ledger must not record a reversal that never
+    // happened. `refund.speed_changed` is webhook noise.
+    // Handled HERE, above the subscription lookup and its `if (!rzpSub)` early
+    // return, and that placement is the whole point: a refund event carries
+    // `payload.refund` plus the payment it reverses and need not carry
+    // `payload.subscription` at all. Left in the switch below it would have
+    // been dropped by that early return — silently, as an HTTP 200, which is
+    // the shape that makes a missing handler look like a working one.
+    if (event.event === 'refund.processed') {
+      const refund = event.payload?.refund?.entity;
+      const paymentId = refund?.payment_id;
+      if (!refund || !paymentId) {
+        request.log.warn({ event: event.event }, 'refund.processed without a refund entity');
+        return reply.send({ received: true });
+      }
+
+      // Razorpay amounts are paise, the same unit the row stores in
+      // `amount_inr` (misleading name — see the column comment; T5/T6 read it
+      // as paise too).
+      const row = await prisma.subscriptionPayment.findUnique({
+        where: { razorpay_payment_id: paymentId },
+        select: { id: true, amount_inr: true, status: true },
+      });
+
+      if (!row) {
+        // A refund against a charge this server never recorded — an add-on
+        // payment, or a subscription.charged we missed. Nothing to reverse,
+        // and said out loud rather than swallowed: this is exactly the case
+        // that surfaces later as "the ledger disagrees with the dashboard".
+        request.log.warn(
+          { razorpay_payment_id: paymentId, refund_id: refund.id },
+          'refund.processed for an unknown payment row',
+        );
+        return reply.send({ received: true });
+      }
+
+      // PARTIAL refunds are logged, never applied — and this is a decision, not
+      // an omission. The row has one whole-month flag and no column that could
+      // hold a refunded amount, and T5/T6 both read that flag as "this month
+      // was paid for": flipping it on a ₹1 refund would erase a month the
+      // retailer mostly paid for, while leaving it on a full reversal would
+      // keep earning commission on money that was handed back. Only full
+      // coverage flips it. ⚠️ **PROVISIONAL — not yet owner-confirmed.** This
+      // is the default the implementer picked while writing §5A.1; the owner
+      // was asked to clarify whether partial refunds ever occur against a
+      // Kanchuki plan charge, and the answer may be "add a refunded-amount
+      // column" (which would be migration 117) or "any refund flips it".
+      // Nothing here should be read as a settled rule until the board says so.
+      if (refund.amount < row.amount_inr) {
+        request.log.warn(
+          {
+            razorpay_payment_id: paymentId,
+            refund_id: refund.id,
+            refund_amount: refund.amount,
+            payment_amount: row.amount_inr,
+          },
+          'partial refund ignored — the payment row records whole months only',
+        );
+        return reply.send({ received: true });
+      }
+
+      // Idempotent: Razorpay redelivers (at-least-once), and `status` is a
+      // scalar with no second state to move to — so the guard is the WHERE.
+      // A replay matches 0 rows instead of rewriting the same value.
+      const applied = await prisma.subscriptionPayment.updateMany({
+        where: { razorpay_payment_id: paymentId, status: { not: 'refunded' } },
+        data: { status: 'refunded' },
+      });
+      request.log.info(
+        {
+          razorpay_payment_id: paymentId,
+          refund_id: refund.id,
+          previously: row.status,
+          applied: applied.count,
+        },
+        applied.count === 1 ? 'refund applied' : 'refund replayed — already recorded',
+      );
+      return reply.send({ received: true });
     }
 
     const rzpSub = event.payload?.subscription?.entity;
