@@ -10,6 +10,17 @@
 
 ---
 
+## RC-041 — the web `/join` bridge hardcodes the wrong Android package in its `intent://` deep link, so "Open with Android app" cannot open Kanchuki — found while building §5B.1, not fixed here
+
+- **Component:** `apps/web/src/app/join/page.tsx:54` (`openInApp = 'intent://join?token=…#Intent;scheme=kanchuki;package=in.kanchuki.app;end'`) · the real package is `app.kanchuki.retailer` (`apps/mobile/app.json:11` `android.package`, `:29` `ios.bundleIdentifier`) · found 2026-09-25 while building the `/for-retailers` referral-capture page (§5B.1), which reuses the same `intent://`/`kanchuki://` bridge pattern — cross-checked the package name against `app.json` before reusing it and found the existing copy was already wrong.
+- **Status: found, NOT fixed.** Out of scope for §5B.1 (a different page, a pre-existing bug, not something that page's own tests exercise) — recorded per this repo's rule that a found-but-deferred issue is written down, not silently carried. `apps/web/src/app/for-retailers/page.tsx`'s new deep link uses the correct `kanchuki://onboarding?ref=…` scheme-only form (no `intent://` variant, since mobile does not read `ref` yet — see the ponytail comment at that call site) and does **not** copy the wrong package name forward.
+- **Symptom:** on Android, tapping "Open with Android app" on the staff-invite bridge page (`/join?token=…`) fires an `intent://` URI whose `package=` names an app that does not exist on the device (or on the Play Store, which isn't live yet either). Android falls through to its default intent-resolution behaviour rather than opening Kanchuki. The plain `kanchuki://` scheme link right above it ("Open in Kanchuki app") still works, since a custom URL scheme has no package to get wrong, so this only breaks the fallback a reviewer is less likely to test.
+- **Root cause:** the `intent://` URI was written by hand with a package name never cross-checked against `app.json` — the two files (`apps/web/src/app/join/page.tsx`, `apps/mobile/app.json`) share no source, so a typo/guess in one has nothing to catch it at build time; neither `apps/web` nor `apps/mobile` tsc fails regardless.
+- **Prevention lesson:** the same shape as RC-034's classification lists and RC-027's engine strings — a value duplicated by hand across two files/packages with no single source and no test pinning them together. The durable fix is a shared constant both `apps/web`'s deep-link builders and `apps/mobile/app.json` could derive from, plus a test that greps `app.json` for the real value and asserts every `intent://package=` string in `apps/web` matches it. Not built — this entry is the record until someone picks it up.
+- **Proof:** none yet — nothing here is fixed. This entry exists so the next session (or `?ref=`/T8 mobile work, which will add more `intent://` call sites) does not silently copy the wrong package name a second time.
+
+---
+
 ## RC-040 — JSON-LD was injected with `JSON.stringify` into `dangerouslySetInnerHTML`, and `JSON.stringify` does not escape `<`, so a retailer's own `shop_name` could close the `<script>` tag and run markup on **every** storefront page (stored XSS)
 
 - **Component:** `apps/web/src/app/[store]/lib/store-seo.ts` (`ldJson`) · consumers `apps/web/src/app/[store]/page.tsx`, `apps/web/src/app/[store]/categories/page.tsx` (both shipped with raw `JSON.stringify`), plus the new `[collection]` / `[collection]/product/[productId]` JSON-LD added by §7A.2 · found 2026-09-24 while working the launch-readiness board (§7A.2).
