@@ -24,7 +24,7 @@ import {
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import Link from 'next/link'
-import { PLAN_PRICING } from '@kanchuki/shared'
+import { getPlanPricing, type PlanPrices } from '@/lib/plan-pricing'
 import StoreLogo from '@/components/site/StoreLogo'
 import { Section, SectionHeader, ColorCard, AnimatedSection, Marquee, Footer, fadeUp, stagger, ACCENT_BG, ACCENT_TEXT, ACCENT_SUBTLE } from '@/components/site/Chrome'
 import { type ColorAccent } from '@/components/site/accents'
@@ -429,23 +429,11 @@ function TestimonialsSection() {
 function PricingSection() {
   const ref = useRef(null)
   const isInView = useInView(ref, { once: true, margin: '-60px' })
-  const [pricing, setPricing] = useState(
-    PLAN_PRICING as Record<'STARTER' | 'GROWTH' | 'PRO', { monthly: number }>,
-  )
+  // null until loaded / if the API is down — cards render without a number.
+  const [pricing, setPricing] = useState<PlanPrices | null>(null)
 
   useEffect(() => {
-    const apiUrl = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
-    fetch(`${apiUrl}/v1/public/pricing`)
-      .then((r) => r.json())
-      .then((res) => {
-        const rows: { plan: 'STARTER' | 'GROWTH' | 'PRO'; monthly: number }[] = res?.data ?? []
-        if (rows.length === 0) return
-        setPricing(Object.fromEntries(rows.map((r) => [r.plan, { monthly: r.monthly }])) as Record<
-          'STARTER' | 'GROWTH' | 'PRO',
-          { monthly: number }
-        >)
-      })
-      .catch(() => {})
+    void getPlanPricing().then(setPricing)
   }, [])
 
   return (
@@ -456,18 +444,17 @@ function PricingSection() {
         </AnimatedSection>
         <motion.div initial="hidden" animate={isInView ? 'visible' : 'hidden'} variants={stagger} className="grid sm:grid-cols-3 gap-6 lg:gap-8">
           {PLANS.map((plan) => {
-            const planPricing = pricing[plan.planKey]
-            const price = planPricing.monthly / 100
+            const monthly = pricing?.[plan.planKey].monthly
             return (
               <motion.div key={plan.name} variants={fadeUp} className={`relative rounded-2xl p-6 sm:p-8 border transition-all duration-300 ${plan.highlight ? 'border-carbon bg-carbon text-cream shadow-[0_20px_48px_-16px_rgba(6,6,6,0.5)]' : 'border-carbon/10 bg-white hover:border-carbon/25 hover:-translate-y-0.5'}`}>
                 {plan.highlight && <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-volt text-carbon text-xs font-semibold px-4 py-1 rounded-full">MOST POPULAR</div>}
                 <h3 className={`font-display text-xl font-semibold mb-1 ${plan.highlight ? 'text-cream' : 'text-carbon'}`}>{plan.name}</h3>
                 <div className={`font-display text-3xl sm:text-4xl font-semibold mb-1 ${plan.highlight ? 'text-cream' : 'text-carbon'}`}>
-                  <span className="inline-flex items-center"><IndianRupee size={22} strokeWidth={1.5} className={plan.highlight ? 'text-cream/80' : 'text-carbon/40'} />{price.toLocaleString('en-IN')}</span>
+                  <span className="inline-flex items-center"><IndianRupee size={22} strokeWidth={1.5} className={plan.highlight ? 'text-cream/80' : 'text-carbon/40'} />{monthly != null ? (monthly / 100).toLocaleString('en-IN') : '—'}</span>
                   <span className={`text-base font-normal ${plan.highlight ? 'text-cream/60' : 'text-carbon/40'}`}>/mo</span>
                 </div>
                 <div className={`text-sm mb-6 ${plan.highlight ? 'text-cream/60' : 'text-carbon/40'}`}>
-                  {`₹${(planPricing.monthly / 100).toLocaleString('en-IN')}/mo billed monthly`}
+                  {monthly != null ? `₹${(monthly / 100).toLocaleString('en-IN')}/mo billed monthly` : 'Billed monthly'}
                 </div>
                 <ul className="space-y-3 mb-8">
                   {plan.features.map((f) => (

@@ -4,12 +4,13 @@ import { Navbar, Footer, Section, SectionHeader, AnimatedSection, FinalCta, Page
 import { getPlanPricing, rupees } from '@/lib/plan-pricing'
 import { PricingTable } from './PricingTable'
 
-// Was hardcoded "₹999" — stale since pricing moved to ₹4,999 base. Now the live Starter price.
+// Live Starter price from plan_pricing; generic copy if the API is unavailable.
 export async function generateMetadata(): Promise<Metadata> {
-  const from = rupees((await getPlanPricing()).STARTER.monthly)
+  const starter = (await getPlanPricing())?.STARTER.monthly
+  const from = starter != null ? ` from ${rupees(starter)}/mo` : ''
   return {
-    title: `Pricing — from ${from}/mo for Indian Clothing Stores | Kanchuki`,
-    description: `Kanchuki plans from ${from}/month — AI photo catalog, WhatsApp collections, store page. 14-day free trial, no credit card. UPI, GST invoices, INR only.`,
+    title: `Pricing${from ? ` —${from}` : ''} for Indian Clothing Stores | Kanchuki`,
+    description: `Kanchuki plans${from} — AI photo catalog, WhatsApp collections, store page. 14-day free trial, no credit card. UPI, GST invoices, INR only.`,
   }
 }
 
@@ -38,11 +39,11 @@ const ROWS: { label: string; values: [string, string, string] }[] = [
   { label: 'Bulk onboarding (PDF / racks)', values: ['—', '✅', '✅'] },
 ]
 
-const oldWay = (from: string) => [
+const oldWay = (from: string | null) => [
   { label: 'Catalog photos', old: 'Photographer + editor, ₹2,000–5,000 per shoot', kanchuki: 'Included (AI cleanup)' },
   { label: 'Writing product descriptions', old: 'Hours of typing or a hired assistant', kanchuki: 'Included (AI writes them)' },
   { label: 'A website', old: '₹10,000–50,000 + maintenance', kanchuki: 'Included (your store page + WhatsApp links)' },
-  { label: 'Monthly cost', old: 'Easily ₹2,000+ with no results yet', kanchuki: `From ${from}, results the same week` },
+  { label: 'Monthly cost', old: 'Easily ₹2,000+ with no results yet', kanchuki: from ? `From ${from}, results the same week` : 'Results the same week' },
 ]
 
 const FAQ = [
@@ -126,7 +127,7 @@ export default async function PricingPage() {
                 </tr>
               </thead>
               <tbody>
-                {oldWay(rupees(pricing.STARTER.monthly)).map((row, i) => (
+                {oldWay(pricing ? rupees(pricing.STARTER.monthly) : null).map((row, i) => (
                   <tr key={row.label} className={i % 2 === 0 ? 'bg-white' : 'bg-cream/60'}>
                     <td className="px-5 py-4 text-carbon font-medium">{row.label}</td>
                     <td className="px-5 py-4 text-carbon/60">{row.old}</td>

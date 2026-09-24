@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { CheckSquare, Square, Save, Loader2, Sparkles } from 'lucide-react'
-import { PLAN_PRICING } from '@kanchuki/shared'
 import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
 import { rupees } from '@/lib/plan-pricing'
 
@@ -81,7 +80,7 @@ export default function PlanFeaturesPage() {
       .then((j: { data?: { plan: Plan; monthly_paise: number }[] }) =>
         setPrices(Object.fromEntries((j.data ?? []).map((p) => [p.plan, p.monthly_paise]))),
       )
-      .catch(() => {}) // price label only — falls back to PLAN_PRICING below
+      .catch(() => {}) // price label only — shows '—' if unavailable
     async function load() {
       try {
         const res = await fetch(`${API_URL}/v1/admin/plan-features`, adminGetOptions())
@@ -203,7 +202,7 @@ export default function PlanFeaturesPage() {
                   >
                     <div className="flex flex-col items-center gap-0.5">
                       <span>{PLAN_LABELS[plan].name}</span>
-                      <span className="text-[10px] font-normal opacity-70">{rupees(prices[plan] ?? PLAN_PRICING[plan].monthly)}/mo</span>
+                      <span className="text-[10px] font-normal opacity-70">{prices[plan] != null ? `${rupees(prices[plan])}/mo` : '—'}</span>
                     </div>
                   </th>
                 ))}

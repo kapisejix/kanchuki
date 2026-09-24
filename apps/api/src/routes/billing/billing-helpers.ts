@@ -1,8 +1,9 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { Readable } from 'node:stream';
 import { getSecret, prisma } from '@kanchuki/db';
-import { PLAN_LIMITS, PLAN_PRICING } from '@kanchuki/shared';
+import { PLAN_LIMITS } from '@kanchuki/shared';
 import type { FastifyRequest } from 'fastify';
+import { AppError } from '../../plugins/error-handler.js';
 
 // Shared helpers for the billing route modules (split from billing.ts).
 // Everything here was module-level in the original file; bodies moved
@@ -113,14 +114,21 @@ export function resolveStateCode(state: string | null | undefined): string | nul
   return null;
 }
 
-// Admin-editable via PUT /admin/plan-pricing (plan_pricing table). Missing
-// row (nothing edited yet) falls back to the shared-package default so
-// pricing never breaks before an admin touches the new table.
+// Admin-editable via PUT /admin/plan-pricing — the only source of plan prices.
+// Seeded for every plan (migration 074) and never deleted, so a missing row is
+// a misconfiguration: fail loudly rather than charge a guessed price.
 export async function getPlanPricing(plan: Plan): Promise<{ monthly: number }> {
   const row = await prisma.planPricing.findUnique({ where: { plan } });
-  if (row) return { monthly: row.monthly_paise };
-  return PLAN_PRICING[plan];
+  if (!row) throw planPriceMissing(plan);
+  return { monthly: row.monthly_paise };
 }
+
+export const planPriceMissing = (plan: string) =>
+  new AppError(
+    'PLAN_PRICE_MISSING',
+    `No price set for ${plan} — set it in Admin → Plan Pricing`,
+    500,
+  );
 
 export function jsonLimits(plan: Plan) {
   const limits = PLAN_LIMITS[plan];

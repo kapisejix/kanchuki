@@ -1,28 +1,25 @@
-import { PLAN_PRICING } from '@kanchuki/shared'
-
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
 
 export type Plan = 'STARTER' | 'GROWTH' | 'PRO'
 export type PlanPrices = Record<Plan, { monthly: number }>
 
 /**
- * Live plan prices (paise, ex-GST) from the admin-editable plan_pricing table.
- * Falls back per plan to PLAN_PRICING — the same fallback the API applies — so a
- * marketing page never renders blank when the API is down.
+ * Live plan prices (paise, ex-GST) from the admin-editable plan_pricing table —
+ * the only source. Returns null when the API is down or any plan is missing;
+ * callers hide the price rather than show a stale hardcoded one.
  */
-export async function getPlanPricing(): Promise<PlanPrices> {
+export async function getPlanPricing(): Promise<PlanPrices | null> {
   try {
     const res = await fetch(`${API_URL}/v1/public/pricing`, { next: { revalidate: 60 } })
-    if (!res.ok) return PLAN_PRICING
+    if (!res.ok) return null
     const rows: { plan: Plan; monthly: number }[] = (await res.json()).data ?? []
     const byPlan = new Map(rows.map((r) => [r.plan, r.monthly]))
-    return {
-      STARTER: { monthly: byPlan.get('STARTER') ?? PLAN_PRICING.STARTER.monthly },
-      GROWTH: { monthly: byPlan.get('GROWTH') ?? PLAN_PRICING.GROWTH.monthly },
-      PRO: { monthly: byPlan.get('PRO') ?? PLAN_PRICING.PRO.monthly },
-    }
+    const get = (p: Plan) => byPlan.get(p)
+    const [s, g, p] = [get('STARTER'), get('GROWTH'), get('PRO')]
+    if (s == null || g == null || p == null) return null
+    return { STARTER: { monthly: s }, GROWTH: { monthly: g }, PRO: { monthly: p } }
   } catch {
-    return PLAN_PRICING
+    return null
   }
 }
 

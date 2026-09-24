@@ -11,7 +11,7 @@ import {
   Sparkles,
   type LucideIcon,
 } from 'lucide-react'
-import { PLAN_LIMITS, PLAN_PRICING } from '@kanchuki/shared'
+import { PLAN_LIMITS } from '@kanchuki/shared'
 import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
@@ -82,8 +82,8 @@ export default function BillingPage() {
     const maxProducts = PLAN_LIMITS[plan].max_products
     return {
       plan: PLAN_LABEL[plan],
-      // No plan_pricing row = admin hasn't edited it; the API falls back the same way.
-      monthly: `${paise(pricing?.monthly_paise ?? PLAN_PRICING[plan].monthly)}/mo`,
+      // plan_pricing is the only source — no row means not configured, never a guessed price.
+      monthly: pricing ? `${paise(pricing.monthly_paise)}/mo` : 'Not set',
       products: Number.isFinite(maxProducts) ? maxProducts.toLocaleString('en-IN') : '∞',
     }
   })

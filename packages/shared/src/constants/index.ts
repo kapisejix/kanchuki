@@ -56,13 +56,10 @@ export function isPlanEnded(status: string | null | undefined): boolean {
   return status === 'CANCELLED' || status === 'COMPLETED';
 }
 
-// ─── Plan Pricing (paise) ─────────────────────────────────────────
-
-export const PLAN_PRICING = {
-  STARTER: { monthly: 499900 }, // ₹4,999/mo base (ex-GST); retailer pays base + 18%
-  GROWTH: { monthly: 999900 }, // ₹9,999/mo base (ex-GST)
-  PRO: { monthly: 1499900 }, // ₹14,999/mo base (ex-GST)
-} as const;
+// Plan prices are NOT here: the plan_pricing table (Admin → Plan Pricing) is the
+// only source. Migration 074 seeds every plan and the app role cannot DELETE,
+// so a row is always present; a missing one is a loud error, never a stale
+// number charged or shown.
 
 // ─── Indian Ethnic Wear Categories ───────────────────────────────
 

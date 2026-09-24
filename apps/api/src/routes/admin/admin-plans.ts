@@ -11,10 +11,11 @@ import {
   prisma,
   vaultDelete,
 } from '@kanchuki/db';
-import { INTEGRATION_KEYS, PLAN_PRICING, R2_PATHS } from '@kanchuki/shared';
+import { INTEGRATION_KEYS, R2_PATHS } from '@kanchuki/shared';
 import { z } from 'zod';
 import { forbidden, notFound, validationError } from '../../plugins/error-handler.js';
 import { adminAuthPreHandler } from '../admin-auth.js';
+import { planPriceMissing } from '../billing/billing-helpers.js';
 
 export const adminPlansRoutes: FastifyPluginAsync = async (server) => {
   server.addHook('preHandler', adminAuthPreHandler);
@@ -30,8 +31,9 @@ export const adminPlansRoutes: FastifyPluginAsync = async (server) => {
 
     for (const planKey of ['STARTER', 'GROWTH', 'PRO'] as const) {
       const pricingRow = await prisma.planPricing.findUnique({ where: { plan: planKey } });
-      // Base price in paise (ex-GST). DB row is source of truth; fallback to shared constant.
-      const basePaise = pricingRow?.monthly_paise ?? PLAN_PRICING[planKey].monthly;
+      // Base price in paise (ex-GST). Never guess: this creates a real Razorpay plan.
+      if (!pricingRow) throw planPriceMissing(planKey);
+      const basePaise = pricingRow.monthly_paise;
       // Razorpay charges a fixed amount — must include 18% GST (gross)
       const grossPaise = Math.round(basePaise * 1.18);
 
@@ -153,23 +155,11 @@ export const adminPlansRoutes: FastifyPluginAsync = async (server) => {
   });
 
   // ─── GET /admin/plan-pricing ─────────────────────────────────────
-  // Admin-editable ₹/plan pricing, replaces the hardcoded PLAN_PRICING
-  // constant. Missing row falls back to that constant (see billing.ts).
+  // Admin-editable ₹/plan pricing — the only source of plan prices.
   // Monthly only — base price is ex-GST, retailer pays base + 18%.
   server.get('/plan-pricing', async () => {
     const rows = await prisma.planPricing.findMany({ orderBy: { plan: 'asc' } });
-    const byPlan = new Map(rows.map((r) => [r.plan, r]));
-    // Always return all three plans — an unset row falls back to the
-    // PLAN_PRICING constant (same fallback billing.ts uses) so admin/mobile
-    // callers never render a gap or a stale hardcoded number.
-    const data = (['STARTER', 'GROWTH', 'PRO'] as const).map(
-      (plan) =>
-        byPlan.get(plan) ?? {
-          plan,
-          monthly_paise: PLAN_PRICING[plan].monthly,
-        },
-    );
-    return { data };
+    return { data: rows };
   });
 
   // ─── PUT /admin/plan-pricing ─────────────────────────────────────

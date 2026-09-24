@@ -3670,3 +3670,5 @@ The stress run above cleared `admin-referral-monitor` and failed **two other fil
 | 6.12 | Fifth `999999` straggler (`admin-retailers-detail.ts`) → `PLAN_LIMITS`. |
 
 Side fix: the mobile global `@kanchuki/shared` mock now spreads the real module (its export whitelist broke the RC-011 smoke on `isPlanEnded`). **Owner to verify:** migration 074 seeded `plan_pricing` at ₹999/₹2,499/₹4,999 and no later migration updates it — if an admin never edited those rows, prod charges and now displays those prices, not ₹4,999/₹9,999/₹14,999. Tests: API 1365/1370 (5 skipped), web 323/323, mobile 107/107, tsc ×3 clean.
+
+**Follow-up (same day):** prod prices verified via `GET api.kanchuki.app/v1/public/pricing` → ₹4,999 / ₹9,999 / ₹14,999 (the 074 seed rows were edited in Admin). Owner decision: the static `PLAN_PRICING` constant is **deleted** — `plan_pricing` is the only source; API throws `PLAN_PRICE_MISSING` on a missing row, web hides the number when the API is down. New `billing-pricing.test.ts` pins both paths. Migration **116 applied** (owner); **117 pending**.

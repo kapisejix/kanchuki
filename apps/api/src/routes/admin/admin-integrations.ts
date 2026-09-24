@@ -11,7 +11,7 @@ import {
   prisma,
   vaultDelete,
 } from '@kanchuki/db';
-import { INTEGRATION_KEYS, PLAN_PRICING, R2_PATHS } from '@kanchuki/shared';
+import { INTEGRATION_KEYS, R2_PATHS } from '@kanchuki/shared';
 import { z } from 'zod';
 import { forbidden, notFound, validationError } from '../../plugins/error-handler.js';
 import { adminAuthPreHandler } from '../admin-auth.js';

@@ -5,6 +5,7 @@ import { ACCENT_TEXT, ACCENT_SUBTLE } from '@/components/site/accents'
 import { PLAN_LIMITS } from '@kanchuki/shared'
 import { getPlanPricing, rupees } from '@/lib/plan-pricing'
 
+const perMonth = (p: { monthly: number } | undefined) => (p ? ` ${rupees(p.monthly)}/mo` : '')
 const count = (n: number) => (Number.isFinite(n) ? n.toLocaleString('en-IN') : 'unlimited')
 
 export const metadata: Metadata = {
@@ -65,9 +66,9 @@ export default async function ForRetailersPage() {
             <SectionHeader tag="Pricing" title="Pricing that fits a small shop" />
           </AnimatedSection>
           <ul className="space-y-3 text-carbon/70 text-sm sm:text-base leading-relaxed">
-            <li><strong className="text-carbon">Starter {rupees(price.STARTER.monthly)}/mo</strong> — one shop, {count(PLAN_LIMITS.STARTER.max_products)} products, unlimited customers, AI tagging included.</li>
-            <li><strong className="text-carbon">Growth {rupees(price.GROWTH.monthly)}/mo</strong> — {count(PLAN_LIMITS.GROWTH.max_products)} products, unlimited customers, unlimited links.</li>
-            <li><strong className="text-carbon">Pro {rupees(price.PRO.monthly)}/mo</strong> — {count(PLAN_LIMITS.PRO.max_products)} products, WhatsApp automation, multi-staff, campaign system.</li>
+            <li><strong className="text-carbon">Starter{perMonth(price?.STARTER)}</strong> — one shop, {count(PLAN_LIMITS.STARTER.max_products)} products, unlimited customers, AI tagging included.</li>
+            <li><strong className="text-carbon">Growth{perMonth(price?.GROWTH)}</strong> — {count(PLAN_LIMITS.GROWTH.max_products)} products, unlimited customers, unlimited links.</li>
+            <li><strong className="text-carbon">Pro{perMonth(price?.PRO)}</strong> — {count(PLAN_LIMITS.PRO.max_products)} products, WhatsApp automation, multi-staff, campaign system.</li>
           </ul>
           <p className="mt-6 text-sm text-carbon/50">14-day free trial, no credit card. UPI, cards, netbanking. GST invoices. Full details on <a href="/pricing" className="text-cobalt-600 font-medium hover:underline">the pricing page</a>.</p>
         </div>
