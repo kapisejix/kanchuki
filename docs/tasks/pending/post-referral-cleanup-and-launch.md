@@ -158,7 +158,7 @@ Rule: admin-editable data comes from the DB; true constants (fixed enum options)
 | 6.13 | `apps/mobile/app/(tabs)/catalog.tsx:50` | `PRICE_BUCKETS` | Skip — UI filter constant. |
 | 6.14 | `apps/web/src/app/admin/photo-cleanup-test/page.tsx:105` | `VIDEO_MODELS` ₹ costs | Skip — admin bench only. |
 
-**Landed 2026-09-24 (`55ef9057`) — 6.1, 6.8, 6.12:** `my-profile` style chips now come from the new `GET /v1/public/attributes?kind=STYLE` (own test file, 6 cases, de-dupe arm falsified); `SIZE_OPTIONS` imported from `@kanchuki/shared` in both customer components; `999999` replaced by `UNLIMITED` in all four files.
+**Landed 2026-09-24 (`55ef9057`) — 6.1, 6.8, 6.12:** `my-profile` style chips now come from the new `GET /v1/public/attributes?kind=STYLE` (own test file, 6 cases, de-dupe arm falsified); `SIZE_OPTIONS` imported from `@kanchuki/shared` in both customer components; `999999` replaced by `UNLIMITED` in all four files. A fifth straggler the table missed — `admin-retailers-detail.ts` (admin plan-change limits) — swept 2026-09-24, dead `try_on` field dropped with it.
 **Still open:** 6.2 + 6.3 (mobile — next EAS build), 6.4, **6.5–6.7** (shared `plan_limits` reader not written yet — `GET /v1/public/pricing` still returns `{ plan, monthly }` only), 6.9 (needs the result of `scripts/check-regional-tags.ts`, still uncommitted), 6.10, 6.11 (migration `117`).
 
 - [ ] **6.a** Web/API items (6.1, 6.4–6.10, 6.12). Every list now fetched gets loading + empty + error states (RC-003: surface the real error). **(partial — 6.1 / 6.8 / 6.12 only)**

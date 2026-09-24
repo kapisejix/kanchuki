@@ -1,5 +1,6 @@
 // Auto-split from admin/admin-retailers.ts (scripts/check-route-size.sh) — route bodies verbatim.
 import { prisma } from '@kanchuki/db';
+import { UNLIMITED } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { notFound } from '../../../plugins/error-handler.js';
@@ -153,10 +154,11 @@ export const adminRetailersDetailRoutes: FastifyPluginAsync = async (server) => 
     });
     if (!retailer) throw notFound('Retailer not found');
 
-    const limits: Record<string, { products: number; customers: number; try_on: number }> = {
-      STARTER: { products: 500, customers: 999999, try_on: 0 },
-      GROWTH: { products: 2000, customers: 999999, try_on: 100 },
-      PRO: { products: 999999, customers: 999999, try_on: 500 },
+    // ponytail: hardcoded until the shared plan_limits reader lands (board §6.5–6.7).
+    const limits: Record<string, { products: number; customers: number }> = {
+      STARTER: { products: 500, customers: UNLIMITED },
+      GROWTH: { products: 2000, customers: UNLIMITED },
+      PRO: { products: UNLIMITED, customers: UNLIMITED },
     };
 
     const planLimits = limits[body.plan];
