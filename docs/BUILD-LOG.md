@@ -3609,3 +3609,31 @@ RC-034 shipped with two classifications deliberately **flagged, not decided** �
 | Verification | `pnpm --filter @kanchuki/shared build` first (RC-035 discipline: `dist` is gitignored), then `admin-access.test.ts` **12/12**, `admin.login.test.ts` **9/9**, `Sidebar.test.tsx` **10/10**. |
 | Residual, deliberately open | Both pages fetch their **data** from `/v1/team/*`, which the shared list does not cover: `teamAuthPreHandler` accepts any valid admin key and grants it unscoped Super Admin, so a plain-ADMIN caller still reaches `/v1/team/members` and `/v1/team/reporting/*`. **The pages are closed; the routes are not.** Recorded as a scope note in `admin-access.ts` and left as its own decision — the `ADMIN` role is currently latent (`signAdminSession` always signs `SUPER_ADMIN`, and `TeamRole` has no `ADMIN` member), and `POST /members` deliberately lets managers create their own agents, so blanket-gating `/v1/team/*` would remove a shipped capability rather than close a hole. |
 | Not in this entry | `?ref=` capture, refunds and RC-033 are the next board sections; `_prisma_migrations` reconciliation and the `studio_styles` engine picks are owner actions. |
+
+---
+
+## 2026-09-24 (later) — the intermittent `admin-referral-monitor` failure under the full parallel suite: a timeout was poisoning the NEXT test's fixture (RC-039)
+
+**Commit:** *(this task)* · **test-infra only — no production file touched, no migration.** Found while running the suite repeatedly for the §4/§5A work, where the same file failed once and passed on rerun.
+
+The symptom named a money bug that did not exist:
+
+```
+FAIL ... > GET /referral/overview > excludes FAILED batches from committed money
+AssertionError: expected 30000 to be +0
+```
+
+That test seeds one **FAILED** `20_000` payout and asserts `paid_out_paise === 0`; it read `30_000` — the *other* overview test's **PAID** row. Reading it as a route bug is the natural move, and it is wrong at both ends: the route never sums FAILED batches, and the number it was accused of was never in its input.
+
+| Piece | Detail |
+|---|---|
+| Trigger | This was the only file of 96 that built its app per test via `await Promise.all([import('fastify'), import('.../error-handler.js')])` — the whole module graph pulled at test time. Cheap alone; on a saturated worker it exceeded vitest's 5s ceiling. Now static imports, like every other suite. |
+| Amplifier (the real defect) | The prisma stand-in was **one** module-level object and `beforeEach(resetState)` *swapped its arrays*. Vitest abandoning a timed-out test does not cancel its promises, so `build()` resolved afterwards, the abandoned continuation ran its seeds, and — sharing the same object identity as the next test's fixture — they landed **in the next test**. |
+| Fix, half 1 (ownership) | The fixture became `let state: Fixture`, replaced whole by `resetState()` (`state = makeState()`), and every test that touches it binds its own at the top: `const st = freshState()`. A late write now reaches an object the next test cannot see, at any timing. **Shipped alone first, and it changed nothing** — binding `const st = state` while `resetState` still cleared arrays in place makes `st` and `state` the same object, so `st.payouts` resolves to whatever the next `beforeEach` just installed. |
+| Fix, half 2 (retiring) | `afterEach(retireState)` freezes the retired fixture's arrays, so a late write **throws** in the abandoned promise chain instead of landing silently. This was also shipped first, alone, tested — and did **not** stop the flake: it froze arrays the next `beforeEach` immediately replaces. |
+| Guards | **F6** replays the mechanism deterministically: abandoned and next fixtures must be different objects, the late write must throw, and the next fixture must still be empty. **F7** source-scans that no test body writes the shared pointer. **F8a/F8b** pin what F6 structurally cannot see — that `retireState` is *wired* to `afterEach`. |
+| Two guard defects, both found only by running the mutant | (1) **F7 located itself by a literal filename**, so injecting a bare `state.payouts.push(…)` into a *copy* of the file left it green — it had scanned the original; now `fileURLToPath(import.meta.url)`. (2) **F8b exists because deleting `afterEach(retireState)` left the suite 32/32 green** — F6 calls `retireState()` itself, so the test that was supposed to protect the hook could not see its removal. The F6 comment claimed otherwise; the experiment disproved the comment, and the comment now records the measurement. |
+| Falsification | **(A)** `resetState` back to clearing arrays on one shared object → F6 + F8b red, `expected [] not to be []` (the message itself shows one array). **(B)** `afterEach(retireState)` deleted → F8b red alone (`expected false to be true`), F6 correctly green. **(C)** a bare `state.payouts.push(…)` in a test body → F7 red, naming the call. |
+| Verification | `admin-referral-monitor.test.ts` **34/34** (32 + F8a/F8b + the rewritten F7). Full API suite **1353 passed / 5 skipped, 0 failed — twice consecutively** in the default parallel run. `tsc` + biome clean. |
+| Stress, and what it found instead | Two full suites run **concurrently** (the condition that caused the original timeout): the monitor file stayed green in both, and two *other* files timed out — `lib/studio-shoot.test.ts > runs both orders …` (both runs) and `routes/admin.login.test.ts > rejects missing email` (one run). Both are plain `Test timed out in 5000ms`, neither has a shared fixture. Measured solo: studio-shoot's test takes **4557 ms of a 5000 ms ceiling** (a 443 ms margin), admin.login's takes 1092 ms. So the trigger class is suite-wide and lives on the *other* side of the fix: **the leak needs a timeout, so the durable answer is no test sitting near the ceiling** — an explicit timeout on the two slow tests, not a larger global one (which would also hide a genuinely hung test). |
+| Residual, stated | The mock reads the *current* fixture, so an abandoned continuation that drives a route handler could still mutate a row object inside the next test's fixture if two tests shared a row id. Narrower than the fixed leak (it requires a timeout *and* an id collision) and it is exactly why the slow-test margin above is the real remaining item. |
