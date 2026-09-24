@@ -340,7 +340,7 @@ Payment: Razorpay (UPI first). Retailer pays base + 18% GST. **Source of truth: 
 | `CLAUDE.md` | Project memory + operational control policy + what's-built index |
 | `docs/README.md` | **Docs index** — folder map + the documentation rules (where a new task/bug/status goes) |
 | `docs/BUILD-LOG.md` | **The one and only history log** — append-only chronological build/incident detail tables (this index points here) |
-| `docs/PRO-REQUIREMENTS.md` | Scope + feature-status index (every F- |
+| `docs/PRO-REQUIREMENTS.md` | Scope + feature-status index (every F-### → status → `tasks/` spec); full pre-shrink PRD in `docs/references/history/superseded/` |
 | `docs/PLAN.md` | Phase-by-phase roadmap with timelines |
 | `docs/TECH-STACK.md` | Tech decisions with rationale |
 | `docs/API.md` | REST API contracts, endpoints, auth |
