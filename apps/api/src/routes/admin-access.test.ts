@@ -197,6 +197,27 @@ describe('admin access list completeness (RC-034)', () => {
       expect(isSuperAdminOnlyAdminPath(path), `${path} must require Super Admin`).toBe(true);
     }
   });
+
+  it('gates the two surfaces RC-034 left flagged (2026-09-24 follow-up)', () => {
+    // RC-034 shipped with `reports` and `team-members` deliberately left in the
+    // standard-admin list, each carrying an in-file note saying why — the
+    // decision was flagged rather than made. Both are now decided the other
+    // way: `/admin/team-members` manages staff accounts, and `/admin/reports`
+    // carries the GST figures. Pinned so an edit that moves either back fails
+    // here instead of silently reopening the page.
+    //
+    // The API half of these two segments is `/v1/team/*`, which this list does
+    // NOT cover — see the scope note in admin-access.ts. That remains open.
+    for (const path of [
+      '/admin/team-members',
+      '/admin/team-members/anything',
+      '/admin/reports',
+      '/admin/reports/gst',
+      '/v1/admin/reports',
+    ]) {
+      expect(isSuperAdminOnlyAdminPath(path), `${path} must require Super Admin`).toBe(true);
+    }
+  });
 });
 
 describe('adminPathSegment', () => {

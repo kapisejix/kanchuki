@@ -141,6 +141,49 @@ describe('Sidebar state', () => {
     )
   })
 
+  it('hides the newly-restricted surfaces from a plain ADMIN (RC-034 follow-up)', () => {
+    // `team-members` and `reports` moved into the super-admin list on
+    // 2026-09-24. This is the nav half of that decision — the layout's page
+    // guard reads the same predicate, but the nav is what a standard ADMIN
+    // actually sees first, so pin both directions here.
+    renderSidebar({ role: 'ADMIN' })
+
+    const teamSupport = screen
+      .getByRole('button', { name: 'Team & Support' })
+      .closest('div') as HTMLElement
+    fireEvent.mouseEnter(teamSupport)
+    expect(screen.queryByRole('link', { name: 'Team Members' })).not.toBeInTheDocument()
+    // …while the support inboxes it shares a group with are untouched.
+    expect(screen.getByRole('link', { name: 'Support Tickets' })).toBeInTheDocument()
+    fireEvent.mouseLeave(teamSupport)
+
+    // Every child of Reports & Finance is super-admin-only now — `reports` was
+    // the last standard-admin entry in the group — so the Sidebar drops the
+    // group entirely (it filters out empty groups). Asserted so the group's
+    // disappearance is a recorded consequence, not a surprise.
+    expect(
+      screen.queryByRole('button', { name: 'Reports & Finance' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('keeps Team Members, Overview and GST Reports for a SUPER_ADMIN', () => {
+    renderSidebar({ role: 'SUPER_ADMIN' })
+
+    const teamSupport = screen
+      .getByRole('button', { name: 'Team & Support' })
+      .closest('div') as HTMLElement
+    fireEvent.mouseEnter(teamSupport)
+    expect(screen.getByRole('link', { name: 'Team Members' })).toBeInTheDocument()
+    fireEvent.mouseLeave(teamSupport)
+
+    const finance = screen
+      .getByRole('button', { name: 'Reports & Finance' })
+      .closest('div') as HTMLElement
+    fireEvent.mouseEnter(finance)
+    expect(screen.getByRole('link', { name: 'Overview' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'GST Reports' })).toBeInTheDocument()
+  })
+
   it('sign out clears the session key, fires onLogout, and redirects to /admin', () => {
     const removeSpy = vi.spyOn(Storage.prototype, 'removeItem')
     const onLogout = vi.fn()

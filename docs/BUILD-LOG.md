@@ -3421,6 +3421,10 @@ kind that returns.
 
 ### Flagged, not decided
 
+> **→ Superseded 2026-09-24** — both of the entries below were locked down; see
+> [§2026-09-24](#2026-09-24--rc-034-follow-up-team-members--reports-locked-to-super-admin) at the foot
+> of this file. Kept verbatim as the record of what was decided at the time.
+
 Two segments are classified standard-admin, matching their **pre-change reachability**, with an
 in-file note and the one-line change to lock them down:
 
@@ -3588,3 +3592,20 @@ The spec's §11 Regression / Root-Cause Checklist was run now, not deferred to T
 | **Doc sweep** | PRO-REQUIREMENTS §35 heading + task rows + Open line → T1–T10 built, T8 deferred (Play review), migrations applied. Runbook: migration steps marked done, remaining RazorpayX steps left live. Spec §0 status → built + §13 note. DATABASE.md "not applied" lines cleared. CLAUDE.md rows 76/78/79 "not applied" clauses removed. |
 | **Still open** | **T8** (retailer Refer & Earn mobile screen) — hard-blocked until Play Console review clears, then needs the owner's go-ahead per the mobile constraint. **RazorpayX provisioning** (activation, keys, `RAZORPAYX_WEBHOOK_SECRET`) — runbook `docs/runbooks/razorpayx-referral-setup.md`. **`purge-rls-live.test.ts`** — still never executed against a real Postgres. **`_prisma_migrations` rows for 109–114** — absent; reconcile before the next schema-baseline audit. |
 | **CA conversation** | TDS settings (`tds_enabled`/`tds_pct`) exist and are admin-editable — talk to the CA before flipping them on (§194H/194J thresholds for recurring payouts). |
+
+## 2026-09-24 — RC-034 follow-up: `team-members` + `reports` locked to Super Admin
+
+**Board:** `docs/tasks/pending/post-referral-cleanup-and-launch.md` §3 · **Commit:** *(this task)* · zero `apps/mobile` files · no migration.
+
+RC-034 shipped with two classifications deliberately **flagged, not decided** — `team-members` and `reports` stayed standard-admin, matching their pre-change reachability, each carrying an in-file note with the one-line change that would close it. This entry is that decision, taken the other way.
+
+| Piece | Detail |
+|---|---|
+| Move | Both segments joined `SUPER_ADMIN_ONLY_ADMIN_SEGMENTS`: `reports` under *tax and legal documents* (`/admin/reports/gst` is tax data), `team-members` under *credentials and provider configuration* (staff/sales-team accounts — invite + edit). Both in-file notes deleted. |
+| Web (nav + page) | Closed **by construction, not by a second list**: `Sidebar.tsx` filters through `isSuperAdminOnlyAdminPath(href)` and `layout.tsx` renders "Access Restricted" on the same predicate, so Team Members / Overview / GST Reports hide *and* refuse together. No web code change was needed — the shared list is the change. |
+| Consequence, checked | Every child of the *Reports & Finance* group is super-admin-only now (`reports` was its last standard-admin entry), so the Sidebar drops the whole group for a plain ADMIN. Asserted in the test rather than left to be discovered. |
+| Pinned by tests | `admin-access.test.ts` gained a case asserting `/admin/team-members`, `/admin/team-members/anything`, `/admin/reports`, `/admin/reports/gst` and `/v1/admin/reports` are gated — a *forward* pin, so a later edit that moves either segment back fails there instead of silently reopening the page. `Sidebar.test.tsx` gained two cases pinning the nav for `role: 'ADMIN'` (restricted links gone, *Support Tickets* still present) and `role: 'SUPER_ADMIN'` (all three present). |
+| Falsification | Both new guards driven red before restore: moving the two segments back to the standard list fails the API case **1 failed / 11 passed** — the completeness assertions stayed green, so the failure is the decision and not the derivation — and fails the nav case with the rendered `Team Members` link in the diff. |
+| Verification | `pnpm --filter @kanchuki/shared build` first (RC-035 discipline: `dist` is gitignored), then `admin-access.test.ts` **12/12**, `admin.login.test.ts` **9/9**, `Sidebar.test.tsx` **10/10**. |
+| Residual, deliberately open | Both pages fetch their **data** from `/v1/team/*`, which the shared list does not cover: `teamAuthPreHandler` accepts any valid admin key and grants it unscoped Super Admin, so a plain-ADMIN caller still reaches `/v1/team/members` and `/v1/team/reporting/*`. **The pages are closed; the routes are not.** Recorded as a scope note in `admin-access.ts` and left as its own decision — the `ADMIN` role is currently latent (`signAdminSession` always signs `SUPER_ADMIN`, and `TeamRole` has no `ADMIN` member), and `POST /members` deliberately lets managers create their own agents, so blanket-gating `/v1/team/*` would remove a shipped capability rather than close a hole. |
+| Not in this entry | `?ref=` capture, refunds and RC-033 are the next board sections; `_prisma_migrations` reconciliation and the `studio_styles` engine picks are owner actions. |

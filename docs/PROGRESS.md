@@ -118,9 +118,15 @@ suite red on `studioEngineCost('grok_imagine')` — the test asserted `null` whi
 resolving an older table than the source. Fixed to assert the *property* using engines that are `null`
 today (`vton_kontext`, `vton_gemini`).
 
-**Flagged, not decided:** `team-members` (staff account management — credential-adjacent) and `reports`
-(`/admin/reports/gst` is tax data but its fetches are the gated `/v1/admin/gst/*`, so it renders empty)
-stay standard-admin, matching pre-change reachability, each with an in-file note.
+**Decided 2026-09-24 (board §3):** the two RC-034 flags — `team-members` (staff account management —
+credential-adjacent) and `reports` (`/admin/reports/gst` is tax data) — both moved into the super-admin
+list, in-file notes deleted, and the decision pinned by tests rather than left as a comment:
+`admin-access.test.ts` 12/12 asserts the four paths, `Sidebar.test.tsx` 10/10 asserts the nav for ADMIN
+and SUPER_ADMIN, both falsified by moving the segments back. Side effect, asserted: the whole *Reports &
+Finance* group disappears for a plain ADMIN, because `reports` was its last standard-admin entry.
+**Still open:** both pages read their data from `/v1/team/*`, which no shared list covers —
+`teamAuthPreHandler` promotes any valid admin key to unscoped Super Admin, so the routes behind those
+pages are not gated (scope note in `admin-access.ts`).
 
 **Next / blocked:**
 
