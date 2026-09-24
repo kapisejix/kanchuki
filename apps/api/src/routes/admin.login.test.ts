@@ -61,6 +61,25 @@ const ADMIN_HASH =
 const ADMIN_SCRYPT_HASH = `${ADMIN_SALT}:${ADMIN_HASH}`;
 const ADMIN_KEY = 'test-admin-key-12345';
 
+/**
+ * Explicit timeout for the FIRST test in this file — the only one with any
+ * exposure to vitest's 5 s default, and only because it is first.
+ *
+ * It carries the cold start (the `adminRoutes` barrel, the scrypt constants, a
+ * Fastify `register` + `ready`) on top of a ~50 ms assertion. Measured warm,
+ * one fresh process each: **403 / 462 / 480 ms**, with every other test in the
+ * file under 300 ms. The two larger sightings — 1092 ms and 1449 ms — were both
+ * taken while the machine was still busy from a parallel run, and under two
+ * concurrently running suites this test is the one that reported
+ * `Test timed out in 5000ms`, with the rejection it asserts working correctly.
+ *
+ * 15 s is ~30× the warm measurement, so it absorbs a loaded CI box without
+ * hiding a hang. Applied to this test ONLY: a hang anywhere else in the file
+ * still fails at the default. If tests are ever reordered the new first test
+ * inherits this risk — the durable fix is one app built in `beforeAll`.
+ */
+const COLD_START_TEST_TIMEOUT_MS = 15_000;
+
 async function buildApp() {
   const app = Fastify();
   app.setErrorHandler(errorHandler);
@@ -81,7 +100,7 @@ beforeEach(() => {
 // Admin login is email + password (scrypt) only — no TOTP / 2FA.
 
 describe('POST /v1/admin/login', () => {
-  it('rejects missing email', async () => {
+  it('rejects missing email', { timeout: COLD_START_TEST_TIMEOUT_MS }, async () => {
     const app = await buildApp();
     const res = await app.inject({
       method: 'POST',
