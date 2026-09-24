@@ -1,6 +1,6 @@
 # Docs Re-organization — Execution Plan (hand-off for a new session)
 
-**Status:** ✅ Done — Phases 1–8 + the after-delete work executed 2026-09-23 (`6fcfbe2a`, PR #39). Phase 9 (shrink PRO-REQUIREMENTS/PLAN) still open. The DELETE tables below keep the **pre-move** paths on purpose — they are the record of what was removed.
+**Status:** ✅ Done — Phases 1–8 + the after-delete work executed 2026-09-23 (`6fcfbe2a`, PR #39). Phase 9 (shrink PRO-REQUIREMENTS/PLAN) done 2026-09-24. The DELETE tables below keep the **pre-move** paths on purpose — they are the record of what was removed.
 **Branch:** `docs/reorganize` (created from `origin/main` 2026-09-23). Work ONLY on this branch → one PR. Never merge it yourself.
 **Owner decisions (final, 2026-09-23 — do not re-ask):**
 1. Separate `docs/reorganize` PR (not #37/#38).
@@ -161,7 +161,12 @@ Write it as a section at the bottom of this file, and summarise in chat:
 - **After-delete work list** (not done now): `git rm` old paths; sed old paths in ~70 code comments + ≈527 doc cross-links + CLAUDE.md feature rows; update `scripts/save-bench.mjs` (→ `docs/ai-studio/bench-results.*`) and `scripts/studio-shoot-demo.mjs` (`OUT_DIR` → `docs/ai-studio/photoshoots/out`); `git grep` proves zero stale paths; run `pnpm lint` + `node scripts/check-android-version-code.mjs`.
 - Commit (docs-only, message references this file), push `docs/reorganize`, open a **draft** PR. Do not merge.
 
-## Phase 9 — Later, only after deletion approved
+## Phase 9 — Shrink PRO-REQUIREMENTS + PLAN ✅ DONE 2026-09-24
+- [x] `PRO-REQUIREMENTS.md` 2,957 → 255 lines: scope, users, a feature-status index (every F-### → status → `tasks/` spec or archive §), NFRs, GST, pricing, data, integrations. VTO / Fashion DNA / checkout / orders now shown as ❌ removed (Phase 4 #5).
+- [x] `PLAN.md` 359 → 108 lines: phase status table, post-launch "Next" list linking `tasks/pending/`, scaling, milestones, risks, budget. Old Phase 1 (VTO + Fashion DNA) and checkout plan dropped (Phase 4 #4).
+- [x] "Nothing deleted without a home": both originals preserved byte-for-byte in `references/history/superseded/{PRO-REQUIREMENTS,PLAN}-full-2026-09-24.md`. Chosen over splitting ~30 built-feature specs into `tasks/done/` — built features already have BUILD-LOG entries, and ~100 existing "PRO-REQUIREMENTS §N / F-xxx" citations (incl. immutable migration SQL comments) keep resolving through the index rows + the archive without being rewritten.
+
+Original scope:
 Shrink `PRO-REQUIREMENTS.md` (≤400 lines: scope + feature status table linking `tasks/`) and `PLAN.md` (≤150 lines, removed features dropped). Detail goes to `tasks/done/` or `tasks/pending/`; nothing deleted without a home.
 
 ---

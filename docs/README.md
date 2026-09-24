@@ -10,8 +10,8 @@ This file is the map. If you are looking for something and it is not listed here
 
 | File | What it is |
 |---|---|
-| `PRO-REQUIREMENTS.md` | The product requirements — user stories, acceptance criteria, feature IDs (F-###). **Being shrunk** to a scope + feature-status index that links `tasks/`. |
-| `PLAN.md` | Phase-by-phase roadmap and timelines. **Being shrunk**; removed features still need dropping. |
+| `PRO-REQUIREMENTS.md` | Scope + feature-status index (every F-### with status and a link to its spec in `tasks/`). Full pre-shrink PRD: `references/history/superseded/PRO-REQUIREMENTS-full-2026-09-24.md`. |
+| `PLAN.md` | Roadmap — phase status, post-launch priorities, scaling, milestones. Full pre-shrink plan: `references/history/superseded/PLAN-full-2026-09-24.md`. |
 | `BUILD-LOG.md` | **The one and only history log** — append-only, chronological, file-level detail for every shipped feature and incident. Every build appends here. |
 | `TECH-STACK.md` | Locked technology choices with rationale. |
 | `API.md` | REST API contracts, endpoints, auth. |
