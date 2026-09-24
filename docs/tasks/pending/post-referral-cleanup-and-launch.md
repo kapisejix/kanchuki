@@ -139,3 +139,4 @@ Rule: admin-editable data comes from the DB; true constants (fixed enum options)
 | Task | Commit | Date |
 |---|---|---|
 | 1 — migration check script + prod result (all applied) | uncommitted: `scripts/check-pending-migrations.ts` | 2026-09-24 |
+| 3 — admin-access: `team-members` + `reports` → super-admin (RC-034 follow-up) | `36b764c3` | 2026-09-24 |
