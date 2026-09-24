@@ -62,7 +62,43 @@ File: `packages/shared/src/constants/admin-access.ts` (lines ~118–137 carry th
 
 `billing-webhook.ts` maps both `subscription.cancelled` and `subscription.completed` → `Subscription.status = CANCELLED`. T5 clawback decides money on it.
 
-- [ ] **4.1** Read the subscription status enum + grep every reader of `'CANCELLED'` (billing gating, plan-limit fallback, T5 qualification job, T6 accrual, admin billing page, commission tracker). List them here before editing.
+- [x] **4.1** Inventory — **done 2026-09-24** (below). Three of this bullet's own premises are wrong: there is **no billing gate**, **no plan-limit fallback**, and the **admin billing page reads no status at all**.
+
+**THE DECISIVE FACT: one enum, two columns.** `SubscriptionStatus` is used by **both** `Retailer.plan_status` *and* `Subscription.status` (`schema.prisma:276`, `:978` — the baseline enum is `TRIAL | ACTIVE | PAST_DUE | CANCELLED`, `migrations/000_baseline:14`). So the `ALTER TYPE` in §4.3 changes *both*, and every `plan_status` reader below is in scope for §4.4 — not just the webhook.
+
+**Writers of the literal (4):**
+| Where | What it writes |
+|---|---|
+| `billing-webhook.ts:180–194` | **RC-033 itself** — `case 'subscription.cancelled': case 'subscription.completed':` share one block → `Subscription.status='CANCELLED'`, `Retailer.plan_status='CANCELLED'`, `razorpay_subscription_id=null` |
+| `billing-subscription.ts:170–182` | retailer self-cancel: `updateMany({ status: { not: 'CANCELLED' } })` + `plan_status='CANCELLED'` + `razorpay_subscription_id=null` |
+| `admin-retailers-detail.ts:146,167` | admin PATCH plan/status — **zod enum is the literal 4** (`admin-retailers-list.ts:56` same), so `COMPLETED` is *unsettable and unfilterable* until both are widened |
+| `packages/db/prisma/seed.ts:69…` | seeds `ACTIVE`/`TRIAL` only |
+
+**Readers that DECIDE something (§4.4 must reason about each):**
+| Reader | Reads | Means "not active"? |
+|---|---|---|
+| `jobs/referral-qualify.ts:185` (T5) | `subscriptions.some(s => s.status === 'CANCELLED')` → `CLAW_BACK REFERRED_CHURNED_AFTER_PAYMENT` | **Yes — money.** This is the §4.2 decision's single site |
+| `billing-subscription.ts:65` (subscribe) | `findFirst({ status: { in: ['TRIAL','ACTIVE'] } })` → blocks a second subscription | **Already correct for both** — a `COMPLETED` **or** `CANCELLED` row does not block, so a finished term can resubscribe either way (no change needed) |
+| `billing-subscription.ts:152` (cancel) | `plan_status === 'CANCELLED'` → 422 "No active subscription to cancel" | Needs review: a `COMPLETED` retailer also has `razorpay_subscription_id=null`, so the first clause already refuses — but the message/behaviour should be stated, not inherited |
+| `admin-plans.ts:520` (GET /admin/usage MRR) | `subscription.findMany({ status: 'ACTIVE' })` → `mrr_inr` | **Correctly excludes `COMPLETED` already** — a finished term is not recurring revenue |
+| `admin-retailers/*.ts` status filter + `admin/retailers/[id]/page.tsx:255` | `status: plan === retailer.plan ? retailer.plan_status : 'ACTIVE'` | Writer, not a reader — but it is how a `COMPLETED` retailer gets moved off the state |
+
+**Readers that only DISPLAY (each needs a `COMPLETED` case or it leaks the raw enum string):**
+- `apps/web/src/app/billing/lib.ts:28` `planStatusLabel` — `switch` with `default: return status` → renders the literal **"COMPLETED"** on the retailer billing page (pinned today for the other four by `billing/__tests__/lib.test.ts:24–29`).
+- `apps/web/src/app/billing/page.tsx:711,736,786,791,798,831` — `statusActive = status === 'ACTIVE'` drives "Renews …" vs "No active subscription", the cancel button, and the plan-switch buttons.
+- `apps/web/src/app/admin/retailers/page.tsx:176,253` + `[id]/page.tsx:297` — `statusColor` switches (they have fallbacks) and the **admin status `<select>`**, which cannot offer `COMPLETED` until the zod enums are widened.
+- `apps/mobile`: `plan-select.tsx:79–92,255` (`isCancelled` deliberately re-enables the current plan), `billing.tsx:62,66` (`=== 'ACTIVE' ? 'active' : 'free trial'` → a `COMPLETED` retailer would be told they are **on a free trial**), `analytics.tsx:429`, `settings/index.tsx:1436`, `staff/index.tsx:362–375` `StatusBadge` (has a fallback).
+
+**Counters / reporting:** `team-reporting.ts:162–164` (TRIAL / ACTIVE / CANCELLED buckets — a third bucket means the three no longer sum to the total; decide whether `COMPLETED` folds into `CANCELLED` here or gets its own), `admin-retailers-list.ts:25–26` (headline `ACTIVE`/`TRIAL` counts; unaffected).
+
+**What does NOT read it — the corrections (do not chase these):**
+- **There is no billing gate.** `plugins/auth.ts:340` *selects* `plan_status` and never uses it (a dead select); the only session gate is `is_suspended` (F-015). Cancelling does not lock anyone out of the API or the app.
+- **There is no plan-limit fallback.** `lib/quota.ts` and `lib/showcase-quota.ts` resolve on `retailer.plan` + `plan_limits` rows only — neither file mentions `status`; `billing-addons.ts:220` likewise. Nothing degrades a limit on cancellation.
+- **T6 never reads `Subscription.status`.** `jobs/referral-accrue.ts` earns off `SubscriptionPayment.status = 'success'` per IST month (its own header says so) — so `COMPLETED` cannot affect accrual, and a *refund* is the only payment-status event that could (§5A).
+- **The §42 Commission Tracker never reads it.** `admin-commission.ts` aggregates `subscriptionPayment.status = 'success'` (lines 164, 217, 313).
+- **`apps/web/src/app/admin/billing/page.tsx` has zero status reads** — the board's "admin billing page" is the *retailer* `/billing` page above.
+
+**Test surface that pins today's rule:** `jobs/referral-qualify.test.ts:138,180–198,247–287` (the `CANCELLED` → `CLAW_BACK` arm, incl. the reason-enumeration assertion) and `billing/__tests__/lib.test.ts:26` (the label). These are what §4.5's falsification should turn red.
 - [ ] **4.2 (owner decision — money, ask first)** Does a *completed* term (paid the full term, not renewed) claw back a referral like churn? Default proposal: **completed = not active for access, but NOT a clawback**.
 - [ ] **4.3** Migration `116_subscription_status_completed`: `ALTER TYPE ... ADD VALUE 'COMPLETED'` in its own migration (PG 55P04 — enum add can't share a tx with its use; see the 060/061 split).
 - [ ] **4.4** Webhook: `subscription.completed` → `COMPLETED`. Every reader from 4.1 that means "not active" treats `COMPLETED` like `CANCELLED` (shared helper only if ≥3 readers).
