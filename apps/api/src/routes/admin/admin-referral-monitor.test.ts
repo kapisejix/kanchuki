@@ -15,6 +15,7 @@
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { stripComments } from '@kanchuki/shared/testing';
 import Fastify from 'fastify';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { errorHandler } from '../../plugins/error-handler.js';
@@ -608,9 +609,11 @@ describe('T9 source-scan guards', () => {
    * LINE comments FIRST — this route's header contains `referral/*` inside a
    * `//` comment, and stripping block comments first makes the regex eat from
    * there through the imports (the exact rake T7's test stepped on).
+   *
+   * That line-first order is the `'line-first'` argument to the one shared
+   * stripper (RC-043); the regex used to live here.
    */
-  const code = (source: string) =>
-    source.replace(/(^|[^:])\/\/[^\n]*/g, '$1').replace(/\/\*[\s\S]*?\*\//g, '');
+  const code = (source: string) => stripComments(source, 'line-first');
 
   const monitorSource = code(
     readFileSync(join(REPO_ROOT, 'apps/api/src/routes/admin/admin-referral-monitor.ts'), 'utf8'),

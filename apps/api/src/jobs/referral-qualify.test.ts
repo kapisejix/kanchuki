@@ -18,6 +18,7 @@
 import { readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { stripComments } from '@kanchuki/shared/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const {
@@ -517,9 +518,11 @@ describe('referral-qualify cron wiring', () => {
    * reads `qualify_days`, so a raw text scan would fail on the documentation of
    * the rule it is checking — and the fix for that must not be to delete the
    * explanation.
+   *
+   * The regex itself is shared (`@kanchuki/shared/testing`, RC-043); this file
+   * carried a second copy of it until the repo-wide re-grep.
    */
-  const code = (source: string) =>
-    source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+  const code = stripComments;
 
   const jobsIndex = readFileSync(join(REPO_ROOT, 'apps/api/src/jobs/index.ts'), 'utf8');
   const jobSource = code(

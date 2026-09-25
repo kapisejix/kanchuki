@@ -19,6 +19,7 @@
 import { readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { stripComments } from '@kanchuki/shared/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const {
@@ -661,9 +662,12 @@ describe('handleReferralAccrue — selection and settings', () => {
 });
 
 describe('referral-accrue cron wiring', () => {
-  /** Comments stripped before scanning — the header EXPLAINS rules the scan checks. */
-  const code = (source: string) =>
-    source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+  /**
+   * Comments stripped before scanning — the header EXPLAINS rules the scan checks.
+   * The stripper is the shared one (`@kanchuki/shared/testing`, RC-043); this
+   * file used to carry its own copy of the regex.
+   */
+  const code = stripComments;
 
   const jobsIndex = readFileSync(join(REPO_ROOT, 'apps/api/src/jobs/index.ts'), 'utf8');
   const jobSource = code(

@@ -21,6 +21,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { stripComments } from '@kanchuki/shared/testing';
 import { describe, expect, it } from 'vitest';
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
@@ -97,9 +98,10 @@ const MODEL_TO_TABLE: Map<string, string> = (() => {
  * policies for tables that no longer exist.
  */
 function touchedTablesIn(sourceFile: string): Set<string> {
-  const src = readFileSync(join(JOBS_DIR, sourceFile), 'utf8')
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .replace(/\/\/[^\n]*/g, '');
+  // The shared stripper, not a fourth local copy: the inline version was the
+  // naive one, which treats the `//` in `https://…` as a comment opener and
+  // deletes the rest of the line — the text a scan is looking for (RC-041).
+  const src = stripComments(readFileSync(join(JOBS_DIR, sourceFile), 'utf8'));
 
   const tables = new Set<string>();
   for (const m of src.matchAll(/\b(?:FROM|INTO|UPDATE|JOIN)\s+"?([a-z_][a-z0-9_]*)"?/gi)) {

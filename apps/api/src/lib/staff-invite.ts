@@ -5,6 +5,7 @@
 // or logged — only its sha256 hash, so a DB leak can't be replayed and a
 // leaked share-link can't be brute-forced from the hash column.
 import { createHash, randomBytes } from 'node:crypto';
+import { appLink } from '@kanchuki/shared';
 
 // 7-day invite lifetime (spec §3.1). Expired invites lazily read as
 // 'expired' and can be refreshed via Resend.
@@ -34,9 +35,16 @@ export function staffInviteExpiry(now = new Date()): Date {
  * The share URL carried by the invite. v1 uses the custom scheme deep link
  * (D6) — the web /join page re-opens this from its ?token= query. The raw
  * token only ever appears here (in the retailer's share sheet and the link).
+ *
+ * The scheme comes from `@kanchuki/shared` rather than being written out here:
+ * this was the third hand-written copy of it (after `apps/mobile/app.json` and
+ * the web's deep-link module), and it is one of the two the web `/join` bridge
+ * has to agree with exactly. `randomBytes(...).toString('base64url')` is
+ * `[A-Za-z0-9_-]`, so the builder's percent-encoding is a no-op here and the
+ * emitted link is byte-identical to the literal it replaces.
  */
 export function buildStaffInviteUrl(raw: string): string {
-  return `kanchuki://join?token=${raw}`;
+  return appLink('join', { token: raw });
 }
 
 /**

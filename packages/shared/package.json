@@ -10,6 +10,15 @@
       "types": "./src/index.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
+    },
+    "./testing": {
+      "types": "./src/testing/strip-comments.ts",
+      "import": "./dist/testing/strip-comments.js",
+      "default": "./dist/testing/strip-comments.js"
+    },
+    "./constants/app-identity": {
+      "types": "./src/constants/app-identity.ts",
+      "default": "./src/constants/app-identity.ts"
     }
   },
   "scripts": {

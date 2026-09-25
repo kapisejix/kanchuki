@@ -29,6 +29,7 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { stripComments } from '@kanchuki/shared/testing';
 import { describe, expect, it } from 'vitest';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -76,10 +77,10 @@ const PUBLIC_DATA = {
 
 // ─── Source scanning ───────────────────────────────────────────────
 
-/** Strip comments so a documented example path isn't mistaken for a route. */
-function stripComments(source: string): string {
-  return source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
-}
+// Comments are stripped so a documented example path isn't mistaken for a route.
+// The stripper is shared and tested in its own right (`@kanchuki/shared/testing`,
+// RC-041) rather than a local copy — this file's copy happened to be the correct
+// form, but two others in the repo were not, and the wrong one is silent.
 
 function listFiles(target: string, out: string[] = []): string[] {
   if (!statSync(target).isDirectory()) {

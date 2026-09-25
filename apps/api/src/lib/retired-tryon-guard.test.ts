@@ -30,6 +30,7 @@
 import { type Dirent, readFileSync, readdirSync } from 'node:fs';
 import { dirname, extname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { stripComments } from '@kanchuki/shared/testing';
 import { describe, expect, it } from 'vitest';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -86,15 +87,11 @@ function loadSources(): Record<string, string> {
   return sources;
 }
 
-/**
- * Drops `/* … *\/` blocks and `// …` line comments, keeping the line's own
- * leading whitespace so line counts are not what matters here. `//` inside a URL
- * is preserved (the character before it is `:`, not whitespace), so a real call
- * on a line containing `https://…` is still seen.
- */
-function stripComments(source: string): string {
-  return source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|\s)\/\/[^\n]*/g, '$1');
-}
+// The stripper is shared (`@kanchuki/shared/testing`). This file's copy used the
+// `(^|\s)` form, which misses a comment that follows code with no space — so a
+// banned string mentioned in `x();// idm-vton` stayed in the source and failed
+// the build later. The shared form strips it, and keeps `https://…` intact
+// either way, which is the property the arms below depend on.
 
 /** What could never be right to re-add, and why each one is a real signal. */
 const RETIRED = [

@@ -4,11 +4,9 @@
     "slug": "kanchuki",
     "version": "1.0.0",
     "orientation": "default",
-    "scheme": "kanchuki",
     "userInterfaceStyle": "light",
     "icon": "./assets/icon.png",
     "android": {
-      "package": "app.kanchuki.retailer",
       "versionCode": 5,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
@@ -26,7 +24,6 @@
       ]
     },
     "ios": {
-      "bundleIdentifier": "app.kanchuki.retailer",
       "supportsTablet": true,
       "infoPlist": {
         "NSCameraUsageDescription": "Take photos of your products to add them to your catalog with AI assistance.",

@@ -30,6 +30,7 @@ import {
   adminPathSegment,
   isSuperAdminOnlyAdminPath,
 } from '@kanchuki/shared';
+import { stripComments } from '@kanchuki/shared/testing';
 import { describe, expect, it } from 'vitest';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -38,10 +39,11 @@ const REPO_ROOT = join(HERE, '..', '..', '..', '..');
 
 // ─── Source scanning ───────────────────────────────────────────────
 
-/** Strip comments so a documented example path isn't mistaken for a route. */
-function stripComments(source: string): string {
-  return source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
-}
+// Comments are stripped so a documented example path isn't mistaken for a route.
+// The stripper is shared and tested in its own right (`@kanchuki/shared/testing`,
+// RC-041) rather than a local copy — the derivation below is only as good as its
+// ability to see the routes, and a stripper that eats its own subject is the one
+// defect that makes every arm here green at once.
 
 function listFiles(dir: string, out: string[] = []): string[] {
   for (const entry of readdirSync(dir)) {

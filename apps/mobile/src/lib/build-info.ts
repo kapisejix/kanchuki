@@ -15,7 +15,7 @@ import Constants from 'expo-constants';
  *     time. Set by `.github/workflows/android-release.yml` (real commit) and
  *     `eas.json`; guaranteed to survive into the shipped JS.
  *  2. `Constants.expoConfig.extra.buildInfo` — the resolved Expo config
- *     embedded in the binary, populated by `app.config.js`.
+ *     embedded in the binary, populated by `app.config.ts`.
  *  3. `'unknown'` / `null` — a local dev build with neither.
  *
  * Nothing here is a secret: a commit SHA and a timestamp are already public in
@@ -51,7 +51,7 @@ function fromEnv(): Partial<BuildInfo> {
   };
 }
 
-/** Reads the resolved Expo config embedded in the binary (app.config.js). */
+/** Reads the resolved Expo config embedded in the binary (app.config.ts). */
 function fromEmbeddedConfig(): Partial<BuildInfo> {
   const extra = (Constants.expoConfig?.extra ?? {}) as { buildInfo?: EmbeddedBuildInfo };
   const info = extra.buildInfo;

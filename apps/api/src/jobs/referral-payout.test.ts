@@ -10,6 +10,7 @@ import { createHmac } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { stripComments } from '@kanchuki/shared/testing';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
@@ -729,9 +730,9 @@ describe('handleReferralPayout', () => {
 describe('T7 source-scan guards', () => {
   // LINE comments FIRST, then block comments — the reverse order breaks on a
   // `/*` sequence INSIDE a line comment (the webhook header has `/v1/public/*;`),
-  // which eats the following code and vacates the scan.
-  const code = (source: string) =>
-    source.replace(/(^|[^:])\/\/.*$/gm, '$1').replace(/\/\*[\s\S]*?\*\//g, '');
+  // which eats the following code and vacates the scan. That order is the
+  // `'line-first'` argument to the one shared stripper (RC-043).
+  const code = (source: string) => stripComments(source, 'line-first');
 
   const jobsIndex = readFileSync(join(REPO_ROOT, 'apps/api/src/jobs/index.ts'), 'utf8');
   const jobSource = code(
@@ -837,7 +838,10 @@ describe('falsification record', () => {
     // right after create. Caught by: the paid_at single-writer scan (the job
     // source would then need a paid_at write or a PAID settle on create).
     const jobSource = readFileSync(join(REPO_ROOT, 'apps/api/src/jobs/referral-payout.ts'), 'utf8');
-    const code = jobSource.replace(/\/[\*][\s\S]*?[\*]\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+    // The shared stripper at its default order — this call was block-first
+    // before RC-043, and the describe-level `code` above is line-first. Keeping
+    // its own order here is deliberate: the two are not interchangeable.
+    const code = stripComments(jobSource);
     // The submit path maps processed → settle, but only via the remote entity
     // actually saying 'processed' — a blind settle-on-submit would call
     // settlePayout unconditionally after createPayout. The scan: settle calls
