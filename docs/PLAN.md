@@ -405,7 +405,7 @@ Per emil-design.md §2.5 and the project's honest-copy discipline: **no fabricat
 | # | Item | Detail |
 |---|---|---|
 | 1 | **sitemap.ts** (missing) | `apps/web/src/app/sitemap.ts`: `/`, all marketing pages, `/stores` (dynamic — query the directory endpoint), all store URLs. `robots.ts` already exists and allows `/store/*`. |
-| 2 | **Per-page metadata** | Each page gets its own title/description/OG (extend the layout's metadata pattern; note the repo's plain-title convention — pages append " | Kanchuki" manually). |
+| 2 | **Per-page metadata** | Each page gets its own title/description/OG (extend the layout's metadata pattern; note the repo's plain-title convention — pages append " \| Kanchuki" manually). |
 | 3 | **Structured data (JSON-LD)** | `Organization` + `SoftwareApplication` (retailer app) on homepage; `Product`/`Store` (`LocalBusiness`-style) on store pages (careful: stores are retail stores, markup as `ClothingStore`); `FAQPage` on /faq; `BreadcrumbList` on deep pages. |
 | 4 | **Local SEO via store pages** | Each `/store/[slug]` = "<Shop Name> — <City> clothing store on Kanchuki" → long-tail city queries. Directory is the hub page linking to all. |
 | 5 | **OG/Twitter cards per page** | Already have og-image.png; add per-page images (store pages could use the store banner). |

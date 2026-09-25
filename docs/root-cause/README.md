@@ -14,6 +14,24 @@
 
 **Format reminder:** append new entries at the TOP of `root-cause issues.md`. The `RC-###` ID is stable forever — never reuse or renumber one.
 
+### Checking the tracker table
+
+Rule 4 is only worth having if the table can be *checked*, so both halves are one command each. Run from the repo root:
+
+```bash
+# RC IDs that have a full entry but no row in the CLAUDE.md table  → must print nothing
+comm -23 <(grep -oE '^## RC-[0-9]+' 'docs/root-cause/root-cause issues.md' | sed 's/## //' | sort -u) \
+         <(awk '/^\| RC-[0-9]+ \|/{print $2}' CLAUDE.md | sort -u)
+
+# rows in the table that have no entry  → must print nothing
+comm -13 <(grep -oE '^## RC-[0-9]+' 'docs/root-cause/root-cause issues.md' | sed 's/## //' | sort -u) \
+         <(awk '/^\| RC-[0-9]+ \|/{print $2}' CLAUDE.md | sort -u)
+```
+
+The first command is the one that matters — it is what catches a fixed bug whose row was never added. It found `RC-037` on 2026-09-25, two days after that row should have landed: the entry existed, the commit message used the ID, and rule 4 was simply not followed.
+
+**The invariant is the ID set, not the row order.** The table is newest-first by *fix date*, so the numbers read out of order on purpose (`RC-033` sits below `RC-032`; `RC-034`/`RC-035` share one commit). As of 2026-09-25 the set is contiguous `RC-001…RC-043` — if a number is missing from that range, exactly one of the two commands above is non-empty.
+
 ---
 
 ## Pre-production regression checklist
