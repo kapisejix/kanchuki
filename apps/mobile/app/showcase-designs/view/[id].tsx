@@ -1,5 +1,5 @@
 // Suits Designs — public design detail + share (customer-facing,
-// docs/tasks/suits-designs.md §2.4). Big watermarked image, store name,
+// docs/tasks/done/suits-designs.md §2.4). Big watermarked image, store name,
 // Share (system sheet with the permalink + image) / WhatsApp (wa.me) /
 // Copy link, and a "Visit store" CTA. Public API only — no session needed.
 import { View, Text, Image, ActivityIndicator, Alert, Linking, Platform, Share as RnShare } from 'react-native'

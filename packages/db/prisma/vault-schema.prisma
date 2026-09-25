@@ -3,7 +3,7 @@
 // The DB role behind VAULT_DATABASE_URL grants only INSERT — no UPDATE,
 // no DELETE, not even for the app itself.
 //
-// See docs/DATABASE.md "Deletion Vault — Secondary Database" and
+// See docs/database/DATABASE.md "Deletion Vault — Secondary Database" and
 // docs/PRO-REQUIREMENTS.md §12.4 for full requirements.
 
 generator client {

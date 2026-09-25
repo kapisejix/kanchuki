@@ -105,7 +105,7 @@ migration 082). No customer photo is uploaded for garment compositing anywhere
 in the product any more; `try_on_jobs`, `customer_measurements` and their R2
 prefixes (`try_on_jobs/`, `tryon-results/`, `tryon-preprocessed/`) no longer
 exist. §§3b and 3c below (training-data consent + revocation) are removed with
-it. See `docs/database/no-feature-want.md`.
+it. See `docs/references/history/reports/2026-08-31-feature-teardown-spec.md`.
 
 ---
 
@@ -785,7 +785,7 @@ Only the purge-cron job (running as the `kanchuki_purge` scoped role via `PURGE_
 
 ### 19.4 Layer 4 — Deletion Vault (F-016) as the recovery backstop
 
-If every guardrail above somehow fails (compromised `kanchuki_migrator` credentials, a Postgres admin-level breach), the Deletion Vault (`docs/DATABASE.md` "Deletion Vault") is a **separate database, separate provider, separate credentials, INSERT-only even for the app**. A primary-DB compromise that can delete data cannot also delete the vault's copy of that data, because the vault's write path never has UPDATE/DELETE grants to begin with — not even accidentally.
+If every guardrail above somehow fails (compromised `kanchuki_migrator` credentials, a Postgres admin-level breach), the Deletion Vault (`docs/database/DATABASE.md` "Deletion Vault") is a **separate database, separate provider, separate credentials, INSERT-only even for the app**. A primary-DB compromise that can delete data cannot also delete the vault's copy of that data, because the vault's write path never has UPDATE/DELETE grants to begin with — not even accidentally.
 
 ### 19.5 What this does NOT protect against
 

@@ -390,7 +390,7 @@ export default function ThemeSettingsPage() {
       )}
 
       {/* Suits Designs watermark — the platform logo + stamping config that
-          every new design upload is composited with (docs/tasks/suits-designs.md
+          every new design upload is composited with (docs/tasks/done/suits-designs.md
           §2.2.4). Code defaults until an admin saves here. */}
       <ShowcaseWatermarkSettings />
 

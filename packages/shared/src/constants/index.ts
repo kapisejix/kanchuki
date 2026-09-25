@@ -318,7 +318,7 @@ export const R2_PATHS = {
     `retailers/${retailerId}/categories/${filename}`,
   retailerBanner: (retailerId: string, filename: string) =>
     `retailers/${retailerId}/banner/${filename}`,
-  // Suits Designs (docs/tasks/suits-designs.md §4): raw client upload vs the
+  // Suits Designs (docs/tasks/done/suits-designs.md §4): raw client upload vs the
   // server-watermarked final. `owner` is the retailer id, or 'global' for
   // admin-published designs (no retailer).
   showcaseDesignRaw: (owner: string, filename: string) =>
@@ -384,7 +384,7 @@ export const STUDIO_CREDITS_PER_IMAGE = 8;
 // strings.
 //
 // The seven `flux2_pro` … `grok_imagine` values are Fal image-edit endpoints added
-// for the admin model bench (docs/tasks/AI Cost Comparison.html). Each takes the
+// for the admin model bench (docs/ai-studio/AI Cost Comparison.html). Each takes the
 // product photo like the Gemini engines do; endpoint ids and request bodies live
 // in apps/api/src/lib/fal-client.ts (FAL_EDIT_ENGINES), which a test keeps in
 // step with this list.
@@ -406,7 +406,7 @@ export type StudioEngine = (typeof STUDIO_ENGINES)[number];
 
 // ─── Bench cost estimate (admin test page only) ──────────────────────
 // Provider list prices in USD per finished image, researched 2026-09-19 — see
-// docs/tasks/AI Cost Comparison.html for the source and evidence grade of each.
+// docs/ai-studio/AI Cost Comparison.html for the source and evidence grade of each.
 // `usd: null` = price not verified (or several calls) → the bench shows "?" and
 // never a made-up number. ESTIMATES: prices move, so re-check before setting
 // plan limits. Hardcoded because the bench is admin-only; a retailer-facing

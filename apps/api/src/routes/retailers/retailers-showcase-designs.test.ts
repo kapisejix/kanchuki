@@ -1,4 +1,4 @@
-// Route tests for retailer Suits Designs (docs/tasks/suits-designs.md §5).
+// Route tests for retailer Suits Designs (docs/tasks/done/suits-designs.md §5).
 import Fastify from 'fastify';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { errorHandler } from '../../plugins/error-handler.js';

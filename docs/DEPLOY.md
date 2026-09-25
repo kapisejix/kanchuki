@@ -2,7 +2,7 @@
 
 **Target:** Railway (api.kanchuki.app + kanchuki.app)  
 **Stack:** Node.js 20 · pnpm · Turborepo · PostgreSQL 16 · Redis  
-**Why Railway (host comparison + mobile app store launch steps):** `docs/HOSTING-AND-APP-STORE-GUIDE.md`
+**Why Railway (host comparison + mobile app store launch steps):** `docs/references/guides/hosting-and-app-store.md`
 
 ---
 

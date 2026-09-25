@@ -629,7 +629,7 @@ describe('per-target fan-out', () => {
 
 // ── idempotency hardening — finding 1 (DB-first dedupe + P2002 reconcile, §12) ─
 // Tests the 2026-09-05 fix: a Redis-down double or a concurrent twin must
-// never 500 and never double-post to Meta. See docs/tasks/social-create-post-composer.md §12.
+// never 500 and never double-post to Meta. See docs/tasks/done/social-create-post-composer.md §12.
 function twinRow(overrides: Record<string, unknown> = {}) {
   return {
     id: 'sp_twin',
@@ -809,7 +809,7 @@ describe('idempotency hardening (finding 1, §12)', () => {
   });
 });
 
-// ── findings 3–5 (docs/tasks/social-create-post-composer.md §12) ──
+// ── findings 3–5 (docs/tasks/done/social-create-post-composer.md §12) ──
 // 3.  IG single-photo permalink must be the REAL permalink (the media id is
 //     NOT an instagram.com shortcode) — never fabricated /p/<id>.
 // 4.  Only MetaApiError messages are curated user-safe text; DB/network

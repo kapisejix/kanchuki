@@ -4,7 +4,7 @@ Full chronological build history for Kanchuki. **CLAUDE.md** keeps only a
 one-line index of these entries; this file is the detail for every feature,
 incident, migration, and decision recorded after 2026-07-26.
 
-> **Remaining work:** `docs/20-August-changes.md` — 31 prioritized coding items + 5 devOps tasks (items 1–3 marked ✅ done).
+> **Remaining work:** `docs/references/history/reports/2026-08-20-remaining-work.md` — 31 prioritized coding items + 5 devOps tasks (items 1–3 marked ✅ done).
 
 ## Table of Contents
 
@@ -71,7 +71,7 @@ incident, migration, and decision recorded after 2026-07-26.
 
 ## Built: Admin Control Center — Permission Matrix, Trust & Safety, Deletion Vault, DB Guardrails
 
-**Built 2026-07-26** — full feature set F-013 through F-017. Spec: `docs/PRO-REQUIREMENTS.md` §12. Schema & guardrail design: `docs/DATABASE.md`, `docs/SECURITY.md` §19. Roadmap: `docs/PLAN.md` Phase S Month S4.
+**Built 2026-07-26** — full feature set F-013 through F-017. Spec: `docs/PRO-REQUIREMENTS.md` §12. Schema & guardrail design: `docs/database/DATABASE.md`, `docs/SECURITY.md` §19. Roadmap: `docs/PLAN.md` Phase S Month S4.
 
 ### F-013: Plan Feature Matrix (Admin-Configurable Checkbox Grid)
 
@@ -137,7 +137,7 @@ Four layers of defense: role separation (infra) → DB triggers (migration) → 
 
 ### Deletion Vault DB setup (future — needs provisioned instance)
 
-The vault DB is a separate Postgres instance (not the Supabase primary project). Its role must be granted INSERT-only. Once provisioned, set `VAULT_DATABASE_URL` and run the vault Prisma schema. See full spec: `docs/DATABASE.md` (Deletion Vault section), `docs/SECURITY.md` §19.6.
+The vault DB is a separate Postgres instance (not the Supabase primary project). Its role must be granted INSERT-only. Once provisioned, set `VAULT_DATABASE_URL` and run the vault Prisma schema. See full spec: `docs/database/DATABASE.md` (Deletion Vault section), `docs/SECURITY.md` §19.6.
 
 ---
 
@@ -155,7 +155,7 @@ The vault DB is a separate Postgres instance (not the Supabase primary project).
 
 ## Built: L2 Ecommerce Checkout (WhatsApp stays messaging-only)
 
-**Built 2026-08-18** — full spec `docs/PRO-REQUIREMENTS.md` F-302/F-307, schema `docs/DATABASE.md`, threat model `docs/SECURITY.md` §11.
+**Built 2026-08-18** — full spec `docs/PRO-REQUIREMENTS.md` F-302/F-307, schema `docs/database/DATABASE.md`, threat model `docs/SECURITY.md` §11.
 
 WhatsApp is not the payment rail (Meta Catalog/Cart + WhatsApp Pay aren't viable for a third-party platform here) — it stays a share/notify channel. Real checkout (cart → address → pay) is built into the existing customer PWA. Two-stage rollout:
 1. **Stage A (build first) — Direct-to-Retailer:** each retailer connects their own Razorpay account; Kanchuki never custodies retailer sale money (avoids RBI Payment Aggregator license). Credentials reuse the F-012 encrypted-secret mechanism, per-retailer.
@@ -165,13 +165,13 @@ A retailer having an *active connected payment account* is itself the L1 (catalo
 
 **Security note (2026-07-24):** no payment integration is "100% secure" — the required hardening (server-side amount computation, dual payment verification, atomic inventory reservation, step-up auth on payment-account changes, PCI SAQ-A via hosted Checkout.js, anonymous order-lookup IDOR protection) is fully written up in `docs/SECURITY.md` §11.6–11.10. Treat that as required scope for F-302, not optional polish.
 
-**Offline catalog browsing (built 2026-07-27):** F-006B done. Web: `apps/web/src/app/sw.ts` runtime caching (R2 images CacheFirst, `/api/c/*` collection API StaleWhileRevalidate, `/c/*` pages NetworkFirst) + `/offline` fallback + PWA manifest icons. Mobile: React Query `networkMode: 'offlineFirst'`, 10-min catalog `staleTime`, `expo-image` prefetch, and an offline mutation queue (`apps/mobile/src/lib/mutation-queue.ts`) for product status changes made while offline, replayed on reconnect. Full writeup: `docs/PRO-REQUIREMENTS.md` F-006B, build plan `docs/omp-review.md` §15.
+**Offline catalog browsing (built 2026-07-27):** F-006B done. Web: `apps/web/src/app/sw.ts` runtime caching (R2 images CacheFirst, `/api/c/*` collection API StaleWhileRevalidate, `/c/*` pages NetworkFirst) + `/offline` fallback + PWA manifest icons. Mobile: React Query `networkMode: 'offlineFirst'`, 10-min catalog `staleTime`, `expo-image` prefetch, and an offline mutation queue (`apps/mobile/src/lib/mutation-queue.ts`) for product status changes made while offline, replayed on reconnect. Full writeup: `docs/PRO-REQUIREMENTS.md` F-006B, build plan `docs/references/history/reports/2026-07-27-omp-review.md` §15.
 
 ---
 
 ## Built: Sales Referral Attribution + Paid On-Site Catalog Upload Service (F-018/F-019)
 
-**Built 2026-07-28** — full spec `docs/PRO-REQUIREMENTS.md` §10.9–10.10, schema `docs/DATABASE.md`, roadmap slot `docs/PLAN.md` Phase 0.5. Committed in `e561541` ("F-018 referral attribution + F-019 paid catalog upload service, salesperson staff role").
+**Built 2026-07-28** — full spec `docs/PRO-REQUIREMENTS.md` §10.9–10.10, schema `docs/database/DATABASE.md`, roadmap slot `docs/PLAN.md` Phase 0.5. Committed in `e561541` ("F-018 referral attribution + F-019 paid catalog upload service, salesperson staff role").
 
 Both extend the existing Phase 0.5 internal-team system (`TeamMember`, `onboarded_by_id`, `SupportTicket`, `routeTicket()`) rather than adding new models:
 
@@ -191,7 +191,7 @@ Explicitly not in scope for these two: a generic non-catalog on-site maintenance
 
 **Built 2026-07-29** (design direction decided 2026-07-28). Full audit, four direction options with pros/cons, and the chosen system spec live in `docs/design/emil-design.md`.
 
-Kanchuki's design was ad hoc — `docs/DESIGN.md` documented a violet/amber palette that didn't match the live cyan code (see doc Part 1). Presented four creative directions (A Loom/textile-native, B Ledger/mercantile, C Studio Neon/fashion-editorial, D Quiet Atelier/minimal-premium) with honest pros/cons; user picked **Option A — Loom** (natural-dye palette, selvedge-edge cards, drape transitions, thin-line icons, serif+grotesk pairing). B/C/D stay documented in the doc as alternatives, not deleted.
+Kanchuki's design was ad hoc — `docs/design/DESIGN.md` documented a violet/amber palette that didn't match the live cyan code (see doc Part 1). Presented four creative directions (A Loom/textile-native, B Ledger/mercantile, C Studio Neon/fashion-editorial, D Quiet Atelier/minimal-premium) with honest pros/cons; user picked **Option A — Loom** (natural-dye palette, selvedge-edge cards, drape transitions, thin-line icons, serif+grotesk pairing). B/C/D stay documented in the doc as alternatives, not deleted.
 
 | Layer | Files | Summary |
 |---|---|---|
@@ -203,7 +203,7 @@ Kanchuki's design was ad hoc — `docs/DESIGN.md` documented a violet/amber pale
 
 **Verified:** `tsc --noEmit` clean, `eslint` clean, dev server compiles, compiled CSS confirmed to contain real oklch values. **Not verified:** no live browser screenshot — no Playwright browser extension available in this environment. Open `localhost:3000` yourself before treating this as final.
 
-**Not yet done** (see the doc's own punch list): `docs/DESIGN.md` itself still has stale violet/amber values, not yet corrected to match the Loom tokens now live in code. Shared web/mobile token package (`packages/shared`) not built — mobile (`apps/mobile`) still has no design tokens at all. Founder-story/About page (etymology angle, doc §2.5) not built — needs the real founder story as input, won't be invented. Admin panel and retailer mobile app deliberately untouched — the doc argues those surfaces should stay motion/decoration-restrained, unlike marketing/customer-facing surfaces.
+**Not yet done** (see the doc's own punch list): `docs/design/DESIGN.md` itself still has stale violet/amber values, not yet corrected to match the Loom tokens now live in code. Shared web/mobile token package (`packages/shared`) not built — mobile (`apps/mobile`) still has no design tokens at all. Founder-story/About page (etymology angle, doc §2.5) not built — needs the real founder story as input, won't be invented. Admin panel and retailer mobile app deliberately untouched — the doc argues those surfaces should stay motion/decoration-restrained, unlike marketing/customer-facing surfaces.
 
 ---
 
@@ -213,7 +213,7 @@ Whole-platform rebrand without an app rebuild: `GET/PUT /admin/settings/theme` (
 
 ## Built: Product-Level WhatsApp Share Button (F-006 gap) + Ratings Reviewed
 
-**Built 2026-07-30.** Full research on three user-proposed features (cross-store coupon network, ratings, WhatsApp share) in `docs/design/feature-ideas-2026-07-30.md`. Two of three acted on:
+**Built 2026-07-30.** Full research on three user-proposed features (cross-store coupon network, ratings, WhatsApp share) in `docs/references/research/feature-ideas-2026-07-30.md`. Two of three acted on:
 
 - **WhatsApp share on product detail (done):** `CollectionView.tsx` already had a working share button (`navigator.share` Web Share API). `ProductDetailSheet.tsx` (single-product view) did not — added the same pattern (`Share2` icon next to the favorite heart), sharing the current page URL + product name/category as title. No new dependency — Web Share API was already in use in this codebase. Falls back to clipboard copy on browsers without `navigator.share`. Spec updated in `docs/PRO-REQUIREMENTS.md` F-006, `docs/PLAN.md` Month 4c.
 - **Ratings system (planned, not built):** spec written as F-021 in `docs/PRO-REQUIREMENTS.md` §10.12, roadmap slot in `docs/PLAN.md` (Future, post-MVP). Gate rating eligibility behind a prior enquiry/order — open ratings on a catalog with no purchase-verification invite fake reviews. Not in locked MVP scope; candidate for early Phase 1. Includes a `Retailer.google_place_id` Google-review deep-link CTA (rating ≥4 → prompt; ≤3 → private feedback instead) — flagged in spec as "review gating," a pattern against Google's Business Profile policy; built because explicitly requested, risk is the retailer's/platform's call.
@@ -252,16 +252,16 @@ Distinct from F-021's Google review link — this uses the Business Profile API'
 
 ## Built: Mobile Accessibility Audit + Harden Pass (`apps/mobile`)
 
-**Built 2026-07-31.** `/impeccable audit` ran against `apps/mobile` (React Native/Expo), scored against native iOS/Android platform guidance — full report in `docs/design/design-work.md` ("Mobile audit results"). Score: 10/20, "Acceptable, significant work needed." The two P1 findings (zero accessibility labels, zero Reduce Motion handling) were hardened same day; the rest are tracked as open follow-ups, not fixed.
+**Built 2026-07-31.** `/impeccable audit` ran against `apps/mobile` (React Native/Expo), scored against native iOS/Android platform guidance — full report in `docs/references/history/reports/2026-07-31-design-work.md` ("Mobile audit results"). Score: 10/20, "Acceptable, significant work needed." The two P1 findings (zero accessibility labels, zero Reduce Motion handling) were hardened same day; the rest are tracked as open follow-ups, not fixed.
 
 | Layer | Files | Summary |
 |---|---|---|
 | **Reduce Motion** | `apps/mobile/src/hooks/useReduceMotion.ts` (new) | Wraps `AccessibilityInfo.isReduceMotionEnabled` + change listener. Wired into `app/onboarding.tsx` (confetti skipped, step-transition slide replaced with crossfade), `src/components/Skeleton.tsx` (shimmer dims instead of pulsing), `src/components/NetworkBanner.tsx` (offline-banner slide becomes instant). Functional loading/gesture animation (AI-processing spinner, pinch-to-zoom photo viewer) deliberately untouched — they carry state, not decoration |
 | **Accessibility labels** | 32 files across `apps/mobile/app/**` and `src/components/**` | Swept every `lucide-react-native` icon import for icon-only `TouchableOpacity`/`Pressable` controls (back/close/remove/share/filter/FAB buttons) with no visible text label. Added `accessibilityLabel` + `accessibilityRole="button"` to 66 spots. Selection chips using a `{selected && <Check/>}` overlay were left as-is (they already have a visible text label) — flagged as a smaller `accessibilityState` follow-up, not silent |
 | **Touch target (in passing)** | `apps/mobile/app/product/bulk.tsx` | Added `hitSlop={8}` to the 24×24px remove-photo button flagged by the audit as below the 44pt/48dp minimum |
-| **Docs corrected** | `docs/DESIGN.md` | Fixed a stale claim ("mobile has no design tokens" / `theme.extend: {}`) — `apps/mobile/tailwind.config.js` has had a full token scale since before this session; the doc just hadn't caught up |
+| **Docs corrected** | `docs/design/DESIGN.md` | Fixed a stale claim ("mobile has no design tokens" / `theme.extend: {}`) — `apps/mobile/tailwind.config.js` has had a full token scale since before this session; the doc just hadn't caught up |
 
-**Follow-up pass, same day (commit `39e5ea8`):** `accessibilityState` on the 16 selection chips (fixed — screen readers now announce toggle state, not just the checkmark). Mobile/web `rust`/`turmeric`/`sand` token drift checked and found already resolved (doc claim was stale, not a real gap). Tab bar cut 6→5 (`analytics` moved to a top-level route, reachable via a Home header icon). Tablet/window adaptivity added (`useIsTablet`/`useGridColumns`, wired into all 5 product/category grids). New `AnimatedPressable`/`GradientButton` primitives (Reanimated press-scale + `expo-linear-gradient`), applied to the shared `ProductCard` (iOS shadow added — it had none, only Android `elevation`) and the 3 highest-traffic primary CTAs (product/customer save, collection create). No dark mode — user chose a light-only gradient/shadow/animation direction instead. Primitives + high-traffic screens only, not all 48 hand-migrated (no RN simulator in this environment to verify a blind full sweep). See `docs/design/design-work.md` for full detail.
+**Follow-up pass, same day (commit `39e5ea8`):** `accessibilityState` on the 16 selection chips (fixed — screen readers now announce toggle state, not just the checkmark). Mobile/web `rust`/`turmeric`/`sand` token drift checked and found already resolved (doc claim was stale, not a real gap). Tab bar cut 6→5 (`analytics` moved to a top-level route, reachable via a Home header icon). Tablet/window adaptivity added (`useIsTablet`/`useGridColumns`, wired into all 5 product/category grids). New `AnimatedPressable`/`GradientButton` primitives (Reanimated press-scale + `expo-linear-gradient`), applied to the shared `ProductCard` (iOS shadow added — it had none, only Android `elevation`) and the 3 highest-traffic primary CTAs (product/customer save, collection create). No dark mode — user chose a light-only gradient/shadow/animation direction instead. Primitives + high-traffic screens only, not all 48 hand-migrated (no RN simulator in this environment to verify a blind full sweep). See `docs/references/history/reports/2026-07-31-design-work.md` for full detail.
 
 **Still open:** dark mode (declined for this pass, may revisit later), full tablet-adaptivity coverage beyond the 5 grid screens. The "~45 screens not yet migrated" gap noted here is stale — the codemod in commit `e162f03` (later the same day) migrated all remaining `TouchableOpacity` usage across 38 files to `AnimatedPressable`; 0 `TouchableOpacity` remain in `apps/mobile/app`.
 
@@ -273,7 +273,7 @@ Distinct from F-021's Google review link — this uses the Business Profile API'
 
 | Change | Files | Summary |
 |---|---|---|
-| **Pooler suffix** | `docs/INFRA-SETUP.md`, `docs/26-night-report.md`, `scripts/setup-role-separation.sql` | All `kanchuki_*` pooler URLs now `kanchuki_app.thpqcylmcxokajxoerjx` / `kanchuki_migrator.thpqcylmcxokajxoerjx`; stale `wqcbvmmqzoxapmxbjzhm` ref removed; setup SQL made idempotent + gained missing sequence grants (`GRANT USAGE, SELECT ON ALL SEQUENCES` + default privileges) |
+| **Pooler suffix** | `docs/references/guides/infra-setup.md`, `docs/references/history/reports/2026-07-26-night-report.md`, `scripts/setup-role-separation.sql` | All `kanchuki_*` pooler URLs now `kanchuki_app.thpqcylmcxokajxoerjx` / `kanchuki_migrator.thpqcylmcxokajxoerjx`; stale `wqcbvmmqzoxapmxbjzhm` ref removed; setup SQL made idempotent + gained missing sequence grants (`GRANT USAGE, SELECT ON ALL SEQUENCES` + default privileges) |
 | **Purge-cron scoped role** | `packages/db/src/client.ts`, `apps/api/src/jobs/purge-soft-deleted.ts`, `scripts/setup-role-separation.sql`, `.env.example` | New `kanchuki_purge` role — inherits `kanchuki_app` (SELECT/INSERT/UPDATE) + DELETE on exactly the 18 purge tables, no TRUNCATE/DROP/DDL — via new `PURGE_DATABASE_URL` and `getPurgePrisma()`. Under full role separation the cron can't run as `kanchuki_app` (no DELETE) or `kanchuki_migrator` (human-only) — this is the scoped role SECURITY §19.2 sanctions. Falls back to the shared client (with a warning) when the URL is unset |
 | **Admin DB-down guards** | `apps/web/src/app/admin/{page,retailers/page,activity/page,retailers/[id]/activity/page}.tsx` + `error.tsx`/`global-error.tsx`/`admin/error.tsx` | Every admin fetch now guards `!res.ok`/`Array.isArray(json?.data)` so a 500 `{error}` body can't crash renders with `undefined.length` — this was crashing the production admin panel during the outage |
 | **Brand assets** | `apps/web/src/app/{icon.svg,apple-icon.png,robots.ts}`, `apps/web/public/{favicon.ico,og-image.png}`, PWA icons, `apps/web/src/app/layout.tsx`, `scripts/generate-brand-assets.mjs` | Loom-brand favicon (SVG + PNG-in-ICO), iOS apple-icon, PWA icons regenerated from stale pre-Loom cyan → brand-correct ink/turmeric, `robots.txt` (Disallow `/admin /api/ /offline`), OG/Twitter meta + 1200×630 `og-image.png` resolved via `metadataBase` (`NEXT_PUBLIC_SITE_URL` fallback `https://kanchuki.app`) |
@@ -319,11 +319,11 @@ User asked AI tagging to also produce: garment **subtype** (finer than `category
 
 ## Built: `apps/mobile` Design Polish Pass — P0/P1 fixed, P3 started (2026-08-03)
 
-**Audited 2026-08-03 via `/impeccable audit` (native path), source-level, no simulator** (registration-screen overflow report + a color/gradient/animation polish request). Full scored findings (13/20 → fixes below) live in `docs/DESIGN.md` → "Audit: `apps/mobile` Design Pass — 2026-08-03". `apps/mobile` `tsc --noEmit` clean after every step (no RN simulator in this environment — UI unverified on device).
+**Audited 2026-08-03 via `/impeccable audit` (native path), source-level, no simulator** (registration-screen overflow report + a color/gradient/animation polish request). Full scored findings (13/20 → fixes below) live in `docs/design/DESIGN.md` → "Audit: `apps/mobile` Design Pass — 2026-08-03". `apps/mobile` `tsc --noEmit` clean after every step (no RN simulator in this environment — UI unverified on device).
 
 - **P0 fixed:** `app/auth/phone.tsx` + `app/auth/otp.tsx` — added `ScrollView` + `useSafeAreaInsets` (replacing hardcoded `pt-*`/`pb-*`), fixed Android `KeyboardAvoidingView` behavior (`'height'` instead of `undefined`).
 - **P1 fixed:** `GradientButton` promoted to the primary CTA on all 8 screens using the flat `bg-ink-600`/`bg-sand-200` conditional pattern — `auth/phone.tsx`, `auth/otp.tsx`, `onboarding.tsx`, `product/bulk.tsx`, `staff/retailer-onboard.tsx`, `settings/staff.tsx`, `collection/[id].tsx`, `category/[id]/add-products.tsx`.
-- **P2 — color-drift finding retracted** (verified false via oklch→hex conversion, see `docs/DESIGN.md`). **Tablet decision (user, 2026-08-03): commit to tablet.** `app.json` `orientation` changed `"portrait"` → `"default"`. Screen-by-screen `useIsTablet`/`useGridColumns` coverage is still 5/~40 screens — **not extended in this pass**, tracked as open follow-up (no simulator here to verify a blind ~35-screen sweep).
+- **P2 — color-drift finding retracted** (verified false via oklch→hex conversion, see `docs/design/DESIGN.md`). **Tablet decision (user, 2026-08-03): commit to tablet.** `app.json` `orientation` changed `"portrait"` → `"default"`. Screen-by-screen `useIsTablet`/`useGridColumns` coverage is still 5/~40 screens — **not extended in this pass**, tracked as open follow-up (no simulator here to verify a blind ~35-screen sweep).
 - **P3 started:** new `apps/mobile/src/components/GradientBorderCard.tsx` (subtle gradient-edge card — outer-gradient/inner-fill trick, since RN has no `background-clip`; pattern sourced from the `css-border-gradient` skill in `github.com/MengTo/Skills`, taste rules followed: 1px border, low-alpha stops, one hierarchy level). Applied to `onboarding.tsx`'s two info cards (step 1, step 4) + a signature `LinearGradient` hero treatment on the step-6 celebration icon. **Not done:** icon-specific micro-animation (favorite/bell/checkmark) — skipped this pass, no clearly interactive favorite/bell control exists yet in the retailer app to attach it to (those live in the customer web PWA); revisit if/when one does.
 
 ---
@@ -337,19 +337,19 @@ User asked AI tagging to also produce: garment **subtype** (finer than `category
 | **Design tokens** | `apps/web/tailwind.config.ts`, `apps/mobile/tailwind.config.js` | Same `ink`/`rust`/`turmeric`/`sand`/`cotton`/`charcoal` key names as Red Elegance (repaints className usage for free) — `ink`=deep navy, `rust`=regal gold (was secondary, now primary hero accent), `turmeric`=antique gold/bronze (grounding accent, no separate swatch given), `sand`=neutral grey. Every ramp moved from oklch to plain hex this pass — removes the web/mobile hand-conversion step. Decorative hero-wash tokens `icy`/`petal` renamed `glow`/`veil` (gold glow / navy-black shadow — a cool wash no longer fit) |
 | **Brand chrome** | `globals.css`, `layout.tsx`, `icon.svg`, `manifest.json`, mobile `app.json`, `theme.tsx`, header configs across `_layout.tsx`/`orders/[id].tsx`, `admin-settings.ts` default, admin theme settings page | Favicon, PWA theme/background color, splash screen, admin-configurable brand color default, and header tint/background across every mobile screen updated to match. Also fixed a stray leftover cyan shadow tint (`rgb(8 145 178)`) in `tailwind.config.ts` that predated even the Loom repaint and had never been caught |
 | **Shared `COLORS` module (new)** | `packages/shared/src/colors.ts` (new), `packages/shared/src/index.ts` | Closes part of the shared-token gap tracked in `docs/design/emil-design.md` §3.4: ~40 `apps/mobile` screens were hardcoding raw hex directly in RN literal props (`color=`, `placeholderTextColor=`, inline `style` objects — spots a Tailwind `className` can't reach). All migrated to `import { COLORS } from '@kanchuki/shared'`, so the next repaint edits one file instead of ~40. Tailwind configs still hardcode their own copy of the same values on purpose — those load at build time before `@kanchuki/shared`'s `dist/` is guaranteed built, and wiring that import wasn't safely verifiable without a live Metro/Next build in this environment |
-| **Docs** | `docs/DESIGN.md` (Design Tokens section), `docs/design/emil-design.md` §3.1/§3.4 | Both updated with current values — `docs/DESIGN.md`'s token block had been stale since the Loom→Red Elegance switch (never corrected); fixed as part of this pass, not left stale a second time |
+| **Docs** | `docs/design/DESIGN.md` (Design Tokens section), `docs/design/emil-design.md` §3.1/§3.4 | Both updated with current values — `docs/design/DESIGN.md`'s token block had been stale since the Loom→Red Elegance switch (never corrected); fixed as part of this pass, not left stale a second time |
 
 **Session note:** the mobile hex→`COLORS` migration was scripted (PowerShell bulk find/replace across ~40 files); the first attempt had two bugs — a broken replace clobbered 14 files' pre-existing imports (lost names like `formatPriceRange`, `PRODUCT_CATEGORIES`), and the file glob briefly touched 8 `node_modules` vendor files. Both fully recovered (originals restored from `git show HEAD`, vendor files restored) before verification. **Verified:** `apps/mobile` `tsc --noEmit` clean, `vitest run` 25/25 passing (1 unrelated pre-existing suite failure — a Rolldown/Vite JSX-parse error inside `expo-linear-gradient`'s vendor build output, predates this session and unrelated to the color changes). No RN simulator/browser available in this environment — UI unverified visually on device; verify before treating as final.
 
-**2026-08-04 device-test findings — RESOLVED** — full detail `docs/PROGRESS.md` "SecureStore crash fix + open bug". SecureStore crash fixed (`theme.tsx` cache key had a `:`, only `[A-Za-z0-9._-]` allowed). The blank AI-tagged fields bug was **root-caused + fixed the same day**: the worker consolidation (`8b7a5be`) never touched the AI_TAGGING worker (verified in git diff) — the chain was correct, and the blank fields were products tagged **before migration 043** whose name/subtype/SKU/description stayed NULL. Shipped `backfill-missing-ai-fields` maintenance job (commit `4037e49`, daily 2:30 AM UTC, capped 250/run) to re-queue those. Color-detect circle on `product/add.tsx` shipped in `d8042f6`.
+**2026-08-04 device-test findings — RESOLVED** — full detail `docs/references/history/sessions/PROGRESS.md` "SecureStore crash fix + open bug". SecureStore crash fixed (`theme.tsx` cache key had a `:`, only `[A-Za-z0-9._-]` allowed). The blank AI-tagged fields bug was **root-caused + fixed the same day**: the worker consolidation (`8b7a5be`) never touched the AI_TAGGING worker (verified in git diff) — the chain was correct, and the blank fields were products tagged **before migration 043** whose name/subtype/SKU/description stayed NULL. Shipped `backfill-missing-ai-fields` maintenance job (commit `4037e49`, daily 2:30 AM UTC, capped 250/run) to re-queue those. Color-detect circle on `product/add.tsx` shipped in `d8042f6`.
 
-**R2 storage cleanup on product delete (2026-08-04) — ✅ FIXED.** `apps/api/src/jobs/purge-soft-deleted.ts` deleted DB rows only — R2 photo/spin-frame/variant bytes were never removed. Now fetches `r2_key`s before purging `product_photos`/`product_spin_frames`/`product_variants` and deletes them via `deleteObject()` (`@kanchuki/ai`) after the DB purge, best-effort. `product_spin_frames` was also missing from the explicit children-purge list (silent gap, fixed same pass). **Retention window: 30 → 15 days** (`PURGE_AFTER_DAYS`, applies cron-wide). See `docs/PROGRESS.md` for full detail.
+**R2 storage cleanup on product delete (2026-08-04) — ✅ FIXED.** `apps/api/src/jobs/purge-soft-deleted.ts` deleted DB rows only — R2 photo/spin-frame/variant bytes were never removed. Now fetches `r2_key`s before purging `product_photos`/`product_spin_frames`/`product_variants` and deletes them via `deleteObject()` (`@kanchuki/ai`) after the DB purge, best-effort. `product_spin_frames` was also missing from the explicit children-purge list (silent gap, fixed same pass). **Retention window: 30 → 15 days** (`PURGE_AFTER_DAYS`, applies cron-wide). See `docs/references/history/sessions/PROGRESS.md` for full detail.
 
 ---
 
 ## Built: Customer Web PWA — catalog nav bug + bottom bar + cart wiring + product detail redesign + back-button fix (2026-08-04)
 
-User-reported 7-item list for the customer-facing web PWA (`apps/web/src/app/c/[slug]`, `/store/[slug]/categories/...`). Full review notes + status per item: `docs/PROGRESS.md` "2026-08-04 — Customer Web PWA" entry.
+User-reported 7-item list for the customer-facing web PWA (`apps/web/src/app/c/[slug]`, `/store/[slug]/categories/...`). Full review notes + status per item: `docs/references/history/sessions/PROGRESS.md` "2026-08-04 — Customer Web PWA" entry.
 
 | # | Item | Status |
 |---|------|--------|
@@ -366,7 +366,7 @@ User-reported 7-item list for the customer-facing web PWA (`apps/web/src/app/c/[
 ## ✅ BUILT 2026-08-04: Staff/Retailer catalog-upload — auth gap closed + 500-item free offer enforced
 
 **Both tasks shipped this session (commits `c99a6c6`, `f0ab109`).** Original
-research + guideline: `docs/staff-retailer.md`. Verified by reading the
+research + guideline: `docs/tasks/done/staff-assisted-catalog-upload.md`. Verified by reading the
 actual auth chain end to end (not from doc/memory claims), per the "doc
 staleness" pattern this project keeps hitting.
 
@@ -438,7 +438,7 @@ manual, expired, unconfigured).
 
 | Domain | Skill/agent if built |
 |---|---|
-| Database | `ecc:database-reviewer` — trivial addition (2 nullable fields on an existing settings row), but still route schema changes through review per this repo's own AI Agent Instructions (§ "Always check `docs/DATABASE.md`") |
+| Database | `ecc:database-reviewer` — trivial addition (2 nullable fields on an existing settings row), but still route schema changes through review per this repo's own AI Agent Instructions (§ "Always check `docs/database/DATABASE.md`") |
 | Backend/API | `ecc:typescript-reviewer`, `ecc:api-design` — one conditional in the quoting/pay flow |
 | Admin UI/Design | `ecc:frontend-patterns` or `impeccable` if the tier-grid page needs a visible countdown/expiry field, otherwise cosmetic only |
 | Security | Low risk — admin-only mutation, same trust boundary as existing plan-limit editing. Still worth a `security-review` pass given it touches a payment-quoting path (money path = never skip, per this file's own "Operational Control Policy") |
@@ -490,7 +490,7 @@ recommended.
 
 | Domain | Skill/agent if built |
 |---|---|
-| Database | `ecc:database-reviewer` — new template table + per-retailer seed migration, route through `docs/DATABASE.md` review per this file's own AI Agent Instructions |
+| Database | `ecc:database-reviewer` — new template table + per-retailer seed migration, route through `docs/database/DATABASE.md` review per this file's own AI Agent Instructions |
 | Backend/API | `ecc:typescript-reviewer`, `ecc:api-design` — `tag-product.ts` category-match logic, onboarding seed step |
 | AI tagging | `packages/ai/src/tagger.ts` already returns free-text `category` per call — no new AI/vision plumbing needed, just consuming the existing result differently |
 | Admin UI | Reuse the existing plan-features/catalog-upload-tiers admin grid pattern — no new design system work, admin panel stays motion/decoration-restrained per the Loom design-system entry in this file |
@@ -600,7 +600,7 @@ Wires the standalone script above into an admin-panel test page so the user can 
 
 ### Built: `--ghost-mannequin` mode (2026-08-06, commit `0c66a7f`) + two bugs fixed same day
 
-Fills backdrop-colored gaps in a garment silhouette (hollow neckline/sleeve/waist showing the studio backdrop through them) via **local LaMa inpainting** — no 3rd-party API/key. Replaces a dead Snappyit integration (Snappyit turned out to have no public API at all — see `docs/photo-feature/ghost-mannequin-research.md`).
+Fills backdrop-colored gaps in a garment silhouette (hollow neckline/sleeve/waist showing the studio backdrop through them) via **local LaMa inpainting** — no 3rd-party API/key. Replaces a dead Snappyit integration (Snappyit turned out to have no public API at all — see `docs/ai-studio/ghost-mannequin-research.md`).
 
 | Layer | Files | Summary |
 |---|---|---|
@@ -680,7 +680,7 @@ User ask: every stored image under 80KB with the highest possible quality, to cu
 
 | Layer | Files | Summary |
 |---|---|---|
-| **DB** | `packages/db/prisma/schema.prisma`, `migrations/049_featured_stores/`, `docs/DATABASE.md` | `Retailer.is_featured Boolean @default(false)` + `featured_at DateTime?` + `@@index([is_featured])` |
+| **DB** | `packages/db/prisma/schema.prisma`, `migrations/049_featured_stores/`, `docs/database/DATABASE.md` | `Retailer.is_featured Boolean @default(false)` + `featured_at DateTime?` + `@@index([is_featured])` |
 | **Admin API** | `apps/api/src/routes/admin/admin-retailers/admin-retailers-management.ts` | `POST /admin/retailers/:id/feature` / `unfeature` — mirrors suspend/unsuspend (404/422 guards, `FEATURE_STORE`/`UNFEATURE_STORE` audit logs). List/detail selects expose `is_featured`; list gains a `featured` boolean filter |
 | **Public API** | `apps/api/src/routes/public/public-stores.ts` | orderBy `[{is_featured:'desc'},{featured_at:'desc'},{updated_at:'desc'}]` — pinned stores first, most-recently-pinned first within the block; `is_featured` in the payload |
 | **Web badges** | `apps/web/src/app/stores/StoresDirectory.tsx`, `sections/MarketingSections.tsx` | Star "Featured" pill on pinned store cards (turmeric palette) |
@@ -752,7 +752,7 @@ User wants: retailer clicks 3 photos of one product → auto-combine into short 
 
 ## ✅ BUILT + MIGRATED + LIVE-VERIFIED (2026-08-07) — DB-backed Category/Style/Occasion/Fabric taxonomy (F-027)
 
-**All code done 2026-08-07, and the production Supabase DB is now fully migrated and browser-verified.** Applying migration 046 surfaced that the live DB was actually **four migrations behind** (`_prisma_migrations` topped out at `042_seed_llama_vision_fallbacks` — 043/044/045/046 all pending, not just 046). Root-caused via direct `information_schema`/`pg_indexes` checks rather than trusting `_prisma_migrations`: 043 (`products.sku/description/subtype`) and 044 (`team_members.phone`) had their DDL already applied by hand at some point but were never recorded; 045 (`default_product_categories`) and 046 (`product_attributes`/taxonomy) were fully unapplied. Applied via Supabase SQL Editor (043/044 recorded as no-op since columns already existed; 045 and 046 run fresh), each followed by a manual `_prisma_migrations` INSERT keyed to that file's real sha256 checksum. Verified post-apply: 10 default categories, 33 default attributes (9 style/11 occasion/13 fabric), 66 backfilled `product_attributes` rows (2 existing retailers × 33). `pnpm db:generate` + `tsc --noEmit` clean across `@kanchuki/db`/`@kanchuki/api`. Browser-verified (headless, real admin session) at `/admin/default-attributes`: all three tabs render correct seeded names, 0 console errors, CRUD confirmed working (user added a test "Kurtis" STYLE row live, renders back correctly). See `docs/PROGRESS.md` "2026-08-07" entries for full detail.
+**All code done 2026-08-07, and the production Supabase DB is now fully migrated and browser-verified.** Applying migration 046 surfaced that the live DB was actually **four migrations behind** (`_prisma_migrations` topped out at `042_seed_llama_vision_fallbacks` — 043/044/045/046 all pending, not just 046). Root-caused via direct `information_schema`/`pg_indexes` checks rather than trusting `_prisma_migrations`: 043 (`products.sku/description/subtype`) and 044 (`team_members.phone`) had their DDL already applied by hand at some point but were never recorded; 045 (`default_product_categories`) and 046 (`product_attributes`/taxonomy) were fully unapplied. Applied via Supabase SQL Editor (043/044 recorded as no-op since columns already existed; 045 and 046 run fresh), each followed by a manual `_prisma_migrations` INSERT keyed to that file's real sha256 checksum. Verified post-apply: 10 default categories, 33 default attributes (9 style/11 occasion/13 fabric), 66 backfilled `product_attributes` rows (2 existing retailers × 33). `pnpm db:generate` + `tsc --noEmit` clean across `@kanchuki/db`/`@kanchuki/api`. Browser-verified (headless, real admin session) at `/admin/default-attributes`: all three tabs render correct seeded names, 0 console errors, CRUD confirmed working (user added a test "Kurtis" STYLE row live, renders back correctly). See `docs/references/history/sessions/PROGRESS.md` "2026-08-07" entries for full detail.
 
 User ask: move Category/Style/Occasion/Fabric off hardcoded lists onto the DB — admin-editable, seeded as defaults per new retailer, AI tagging auto-detects Style/Fabric (Occasion/Category already did), dynamic select/multi-select on product add. Ladies-only now, schema ready for Men/Kids later via a `segment` column (zero migration needed to add them, just new rows). Style/Fabric are multi-select (user-confirmed); Category stays single (`category_id`), Occasion stays multi (`occasions[]`) — both pre-existing.
 
@@ -773,7 +773,7 @@ User asks this session: (a) recover the crashed session's last task — surfaced
 | **Pro-mode error** | `apps/api/src/plugins/error-handler.ts`, `apps/api/src/routes/products/products-pro-cleanup.ts`, `apps/mobile/app/product/add.tsx` | Environment failures (sidecar/python down, network, timeout) → 503 `SERVICE_UNAVAILABLE` "use Photo mode instead"; photo-quality failures stay 422. **Camera-error root cause:** `PHOTO_CLEANUP_SERVICE_URL` unset → local-python fallback, but the sidecar commit removed Python from the Railway container — Pro needs the sidecar deployed (ops action, not done) |
 | **Tests** | `apps/api/src/routes/retailers.test.ts`, `apps/api/src/routes/products/products-pro-cleanup.test.ts` | Rename regeneration, DELETE qr-slug idempotency, 503 env-down vs 422 photo-quality. API suite **332/332** |
 
-Also in `3311fc7` (the crashed session's in-flight work, landed together): the 4-step onboarding redesign (Shop → Location → GST → Done), Terms/Privacy links + new `apps/web/src/app/terms/page.tsx` via the shared `apps/mobile/src/lib/web-url.ts` helper, DB category self-heal on `GET /categories` (gated on `onboarding_completed`), and the tabs onboarding-gate fix (`isFetching` guard). Full detail: `docs/PROGRESS.md` "2026-08-08 — Store QR Self-Service" entry.
+Also in `3311fc7` (the crashed session's in-flight work, landed together): the 4-step onboarding redesign (Shop → Location → GST → Done), Terms/Privacy links + new `apps/web/src/app/terms/page.tsx` via the shared `apps/mobile/src/lib/web-url.ts` helper, DB category self-heal on `GET /categories` (gated on `onboarding_completed`), and the tabs onboarding-gate fix (`isFetching` guard). Full detail: `docs/references/history/sessions/PROGRESS.md` "2026-08-08 — Store QR Self-Service" entry.
 
 
 ## Built: Add-Product Flow Rework — AI-in-Background + F-028 Auto-Contrast Background (2026-08-08, committed `ec525bd` + follow-ups)
@@ -815,7 +815,7 @@ Also in `3311fc7` (the crashed session's in-flight work, landed together): the 4
 
 ## Built: F-029 Photo Rotate (Pre-Save + Post-Save) + Post-Save Background Picker (2026-08-09)
 
-**Built 2026-08-09** — 6-task plan `docs/superpowers/plans/2026-08-09-photo-rotate-and-background-picker.md` (design spec `docs/superpowers/specs/2026-08-09-photo-rotate-and-background-picker-design.md`), merged to main `6ee8ede` + pushed. Spec: `docs/PRO-REQUIREMENTS.md` §20. User ask: rotate a product photo in 90° fixed steps (both the pre-cleanup original and the current primary), from the pre-save add-product preview AND the post-save product-detail screen, plus a post-save background picker (the `PATCH /:id/background` endpoint already existed — this wired it into the edit screen that never called it).
+**Built 2026-08-09** — 6-task plan `docs/references/history/executed-plans/plans/2026-08-09-photo-rotate-and-background-picker.md` (design spec `docs/references/history/executed-plans/specs/2026-08-09-photo-rotate-and-background-picker-design.md`), merged to main `6ee8ede` + pushed. Spec: `docs/PRO-REQUIREMENTS.md` §20. User ask: rotate a product photo in 90° fixed steps (both the pre-cleanup original and the current primary), from the pre-save add-product preview AND the post-save product-detail screen, plus a post-save background picker (the `PATCH /:id/background` endpoint already existed — this wired it into the edit screen that never called it).
 
 | Layer | Files | Summary |
 |---|---|---|
@@ -831,7 +831,7 @@ Also in `3311fc7` (the crashed session's in-flight work, landed together): the 4
 
 ## Fixed: photo edits (crop/rotate/background) not visible after save — deployed 2026-08-10 (commit `4067306`)
 
-User reported (screenshots) that crop/remove-background/background-swap "works well, but still not saved" — catalog grid and product detail kept showing the raw pre-edit photo. Root cause: `/cleanup`, `/rotate`, `/background`, and the automatic post-upload cleanup job (`tag-product.ts`) all overwrite a photo's R2 bytes **in place at the same key** — the stored URL never changes, so CDN/client image caches served stale bytes indefinitely (`tag-product.ts` had a comment explicitly declaring this intentional — wrong once caching is considered). Fix: `bumpPhotoUrlVersion()` (`apps/api/src/lib/photo-cleanup.ts`) stamps `?v=<timestamp>` on `ProductPhoto.url` after every in-place overwrite. Also removed the dead Upper/Lower piece-tag UI from `apps/mobile/app/product/[id].tsx`. **Deploy gotcha:** the fix existed from a prior session but was left uncommitted — the user's app points at production (`api.kanchuki.app`), so nothing changed until this session committed + pushed it (confirmed with user first, since push auto-deploys via Railway). Full detail: `docs/PRO-REQUIREMENTS.md` §21, `docs/PROGRESS.md` 2026-08-10.
+User reported (screenshots) that crop/remove-background/background-swap "works well, but still not saved" — catalog grid and product detail kept showing the raw pre-edit photo. Root cause: `/cleanup`, `/rotate`, `/background`, and the automatic post-upload cleanup job (`tag-product.ts`) all overwrite a photo's R2 bytes **in place at the same key** — the stored URL never changes, so CDN/client image caches served stale bytes indefinitely (`tag-product.ts` had a comment explicitly declaring this intentional — wrong once caching is considered). Fix: `bumpPhotoUrlVersion()` (`apps/api/src/lib/photo-cleanup.ts`) stamps `?v=<timestamp>` on `ProductPhoto.url` after every in-place overwrite. Also removed the dead Upper/Lower piece-tag UI from `apps/mobile/app/product/[id].tsx`. **Deploy gotcha:** the fix existed from a prior session but was left uncommitted — the user's app points at production (`api.kanchuki.app`), so nothing changed until this session committed + pushed it (confirmed with user first, since push auto-deploys via Railway). Full detail: `docs/PRO-REQUIREMENTS.md` §21, `docs/references/history/sessions/PROGRESS.md` 2026-08-10.
 
 ## ✅ BUILT + DEPLOYED 2026-08-10: F-030 shadow toggle for cropped photos
 
@@ -843,7 +843,7 @@ User asks (in one message): remove occasion, make AI auto-select the Category (C
 
 ## ✅ Built 2026-08-10: Play Store Launch Batch — Web Billing (Option A), Privacy Disclosures, Location Removal, Launch Checklist (commits `56357f6` + `b29b316`)
 
-Launch-readiness drove four changes, all pushed to main (full Play paperwork drafts live in the new `docs/PLAY-STORE-LAUNCH-CHECKLIST.md`):
+Launch-readiness drove four changes, all pushed to main (full Play paperwork drafts live in the new `docs/references/guides/play-store-launch-checklist.md`):
 
 **1. In-app Razorpay billing removed from the Android build (Play Billing compliance)** — `56357f6`. Google Play requires Play Billing for digital goods sold in-app; subscriptions/add-ons would be a first-review rejection. `apps/mobile/app/billing.tsx` is now a read-only info screen (current plan + "Manage my plan" → website); `billingApi` + server rails retained (commented) for the future web flow; home banner copy + dead `BillingSkeleton` removed; `RECORD_AUDIO` trimmed (`app.json` + `expo-camera recordAudioAndroid:false`). Kept + documented the F-019 catalog-upload payment — a physical on-site service, Play-exempt.
 
@@ -853,9 +853,9 @@ Launch-readiness drove four changes, all pushed to main (full Play paperwork dra
 
 **4. Location permission removed entirely** — `ACCESS_COARSE/FINE_LOCATION`, iOS usage string, `expo-location` plugin + dependency dropped; onboarding "Use current location" autofill removed (city/state/pincode typed manually). No location data collected at all → the Data Safety form declares no Location rows.
 
-> **Superseded by commit `b4270e4` (Google Maps location).** Onboarding step 2 re-added an optional "Get Location" button (`app/onboarding.tsx` `handleGetLocation`): one foreground `getCurrentPositionAsync` + `reverseGeocodeAsync` to pre-fill the address and store `retailers.latitude`/`longitude`, which renders a `maps/dir/?api=1&destination=` link on `/c/[slug]`. `expo-location` is back in `package.json`. **The Data Safety form now declares Location (precise + approximate), optional, foreground-only** — see `docs/PLAY-STORE-LAUNCH-CHECKLIST.md` §2/§3/§4. No background location, no tracking.
+> **Superseded by commit `b4270e4` (Google Maps location).** Onboarding step 2 re-added an optional "Get Location" button (`app/onboarding.tsx` `handleGetLocation`): one foreground `getCurrentPositionAsync` + `reverseGeocodeAsync` to pre-fill the address and store `retailers.latitude`/`longitude`, which renders a `maps/dir/?api=1&destination=` link on `/c/[slug]`. `expo-location` is back in `package.json`. **The Data Safety form now declares Location (precise + approximate), optional, foreground-only** — see `docs/references/guides/play-store-launch-checklist.md` §2/§3/§4. No background location, no tracking.
 
-**Play paperwork drafts** (in `docs/PLAY-STORE-LAUNCH-CHECKLIST.md`): full Data Safety answers (7 declared types — name/email/phone/address/other-info[GSTIN+measurements]/photos/other-UGC; not collected: financial, location, device IDs, crash logs, analytics), IARC content-rating answers (Business category, expected **12+** from unfiltered UGC — do NOT claim "fully moderated"), closed-testing path (20 testers × 14 days), and the **Aug 31, 2026 target-API deadline** (API 35 OK now via SDK 54; after that, API 36 requires an Expo SDK 55 bump).
+**Play paperwork drafts** (in `docs/references/guides/play-store-launch-checklist.md`): full Data Safety answers (7 declared types — name/email/phone/address/other-info[GSTIN+measurements]/photos/other-UGC; not collected: financial, location, device IDs, crash logs, analytics), IARC content-rating answers (Business category, expected **12+** from unfiltered UGC — do NOT claim "fully moderated"), closed-testing path (20 testers × 14 days), and the **Aug 31, 2026 target-API deadline** (API 35 OK now via SDK 54; after that, API 36 requires an Expo SDK 55 bump).
 
 ## ✅ BUILT 2026-08-12: Real OTP — MSG91 widget on mobile + server-side MSG91 everywhere
 
@@ -880,7 +880,7 @@ Launch-readiness drove four changes, all pushed to main (full Play paperwork dra
 
 Spec: `docs/PRO-REQUIREMENTS.md` §24, roadmap `docs/PLAN.md` (Future slot). Written after deep research into PhotoRoom's published tech stack and the 2026 image/video model landscape — the research below predates the build and originally said "NO CODE — do not start until the user says go."
 
-**Correction 2026-08-20:** Phase A was built anyway, without a doc update — found via `docs/photoshoots/photo-feature-audit.md` (an independent audit of 4 photo systems) and verified against real code. Commits `5d5ae44` (2026-08-13, initial backend) and `d67484d` (2026-08-19, adaptive polling backoff + Redis progress/ETA, part of a broader "high-priority photo feature updates" pass covering Photo Cleanup/Try-On/Gallery too — see `docs/tasks/photo-feature-implementation-tasks.md` for the full checklist, most items done, a few genuinely still open).
+**Correction 2026-08-20:** Phase A was built anyway, without a doc update — found via `docs/ai-studio/history/photo-feature-audit.md` (an independent audit of 4 photo systems) and verified against real code. Commits `5d5ae44` (2026-08-13, initial backend) and `d67484d` (2026-08-19, adaptive polling backoff + Redis progress/ETA, part of a broader "high-priority photo feature updates" pass covering Photo Cleanup/Try-On/Gallery too — see `docs/tasks/photo-feature-implementation-tasks.md` for the full checklist, most items done, a few genuinely still open).
 
 | Layer | Files | Summary |
 |---|---|---|
@@ -894,7 +894,7 @@ Spec: `docs/PRO-REQUIREMENTS.md` §24, roadmap `docs/PLAN.md` (Future slot). Wri
 ### ✅ BUILT 2026-08-30: Studio style catalog → DB-managed + per-plan
 
 Full spec + file-level plan:
-`docs/superpowers/specs/2026-08-30-studio-styles-admin-design.md`.
+`docs/references/history/executed-plans/specs/2026-08-30-studio-styles-admin-design.md`.
 
 - **New `studio_styles` table** (migration `075_studio_styles`, owner
   applies) replaces the hardcoded `STUDIO_TEMPLATES` / `STUDIO_MODELS`
@@ -996,7 +996,7 @@ User ask: add separate Login and Register screens for retailers in the mobile ap
 
 ## ✅ BUILT (backend) 2026-08-17: India Retailer Growth Engine — 10 feature modules + migration 055
 
-Roadmap: `docs/INDIA-RETAILER-GROWTH.md` (§3.1–3.5; feature letters below refer to it). User ask: build the **India Retailer Growth & Profitability Roadmap** features — customer acquisition (QR leads, referrals), marketing automation (festival/reactivation/A-B campaigns, promotions), shop management (khata P&L, suppliers, showroom bookings, inventory alerts), and India-localized features (udhar credit, product videos, multi-language AI descriptions, Indian fit flags). **This commit is backend-only** — all 10 modules shipped under `/v1/growth/*` with the full schema in migration `055_growth_engine`. **UI (mobile app + web PWA screens) is NOT built yet** — API-first, UI is the next workstream.
+Roadmap: `docs/marketing/india-retailer-growth.md` (§3.1–3.5; feature letters below refer to it). User ask: build the **India Retailer Growth & Profitability Roadmap** features — customer acquisition (QR leads, referrals), marketing automation (festival/reactivation/A-B campaigns, promotions), shop management (khata P&L, suppliers, showroom bookings, inventory alerts), and India-localized features (udhar credit, product videos, multi-language AI descriptions, Indian fit flags). **This commit is backend-only** — all 10 modules shipped under `/v1/growth/*` with the full schema in migration `055_growth_engine`. **UI (mobile app + web PWA screens) is NOT built yet** — API-first, UI is the next workstream.
 
 | Layer | Files | Summary |
 |---|---|---|
@@ -1045,7 +1045,7 @@ Follow-up to the §45 commit: the growth hub's "Soon" cards are gone — every r
 
 **Design decisions:** mirror the §45 conventions — festival ids stay opaque, money stays paise (rendered via `₹` + `en-IN`), send/credit flows stay manual-dispatch first. Referral credits are shown as a ledger (PENDING/CREDITED) rather than wallet math; the retailer confirms conversion manually.
 
-**Verified:** mobile `tsc --noEmit` clean. **Still pending:** migration `055_growth_engine` + `056`/`057` not applied (Supabase SQL Editor / `prisma migrate deploy`); per-route growth tests not written; no deployment. Not built / partial per roadmap: I, P, and partial M/N/R/S (see `docs/INDIA-RETAILER-GROWTH.md` status table).
+**Verified:** mobile `tsc --noEmit` clean. **Still pending:** migration `055_growth_engine` + `056`/`057` not applied (Supabase SQL Editor / `prisma migrate deploy`); per-route growth tests not written; no deployment. Not built / partial per roadmap: I, P, and partial M/N/R/S (see `docs/marketing/india-retailer-growth.md` status table).
 
 ## ✅ BUILT 2026-08-17: Growth Engine — roadmap M, N, R, S completed (AI translate breadth + Size & Fit + campaign analytics + collection A/B)
 
@@ -1071,7 +1071,7 @@ Follow-up to §46: the four "partial" roadmap letters get their missing pieces. 
 
 ## BUILT 2026-08-18: AI Campaign Assistant (Roadmap E)
 
-Roadmap: docs/INDIA-RETAILER-GROWTH.md section 3.2 (feature E). Needs Fashion DNA per the original roadmap, but built against the explicit customer preference fields already on the Customer model (preferred_colors, preferred_styles, preferred_fabrics, preferred_budget_paise) — the same signals Fashion DNA would surface. The standalone computeFashionDNA() vector helper in packages/ai/src/fashion-dna.ts is not yet wired to a background job; matching is rule-based on explicit preferences for now.
+Roadmap: docs/marketing/india-retailer-growth.md section 3.2 (feature E). Needs Fashion DNA per the original roadmap, but built against the explicit customer preference fields already on the Customer model (preferred_colors, preferred_styles, preferred_fabrics, preferred_budget_paise) — the same signals Fashion DNA would surface. The standalone computeFashionDNA() vector helper in packages/ai/src/fashion-dna.ts is not yet wired to a background job; matching is rule-based on explicit preferences for now.
 
 | Layer | Files | Summary |
 |--------|-------|---------|
@@ -1089,7 +1089,7 @@ Roadmap: docs/INDIA-RETAILER-GROWTH.md section 3.2 (feature E). Needs Fashion DN
 
 ## BUILT 2026-08-18: Phase II — WhatsApp Native Catalog Sync (F-307 / roadmap P)
 
-Spec: `docs/PRO-REQUIREMENTS.md` F-307 (already marked Built), `docs/PLAN.md` Phase II, task breakdown `docs/tasks/PHASE-II-WHATSAPP-CATALOG-BREAKDOWN.md` (all **63/63 tasks** complete). All sprints built: DB schema → Meta Catalog API client → sync engine → retailer routes → webhook → mobile UI → admin monitor → auto-sync hooks → deploy docs → docs/J4 (CLAUDE.md index = this entry).
+Spec: `docs/PRO-REQUIREMENTS.md` F-307 (already marked Built), `docs/PLAN.md` Phase II, task breakdown `docs/tasks/done/whatsapp-catalog-sync.md` (all **63/63 tasks** complete). All sprints built: DB schema → Meta Catalog API client → sync engine → retailer routes → webhook → mobile UI → admin monitor → auto-sync hooks → deploy docs → docs/J4 (CLAUDE.md index = this entry).
 
 | Layer | Files | Summary |
 |--------|-------|---------|
@@ -1102,7 +1102,7 @@ Spec: `docs/PRO-REQUIREMENTS.md` F-307 (already marked Built), `docs/PLAN.md` Ph
 | **Admin API** | `apps/api/src/routes/admin/admin-whatsapp-catalog.ts` (new) + test (10) | G1-G5: `GET /whatsapp-catalog/overview` (all retailers + global health: syncing/configured counts, item status totals, 7-day failed runs, error-rate %, **daily-cron health** — last schedule-triggered run + 7-day failed/timed-out counts via JSON path filter on `payload_json.triggered_by = 'schedule'`, same pattern as admin-contact.ts), drill-down `.../retailers/:id/logs` + `/items`, `POST .../retailers/:id/sync` (triggered_by: 'admin', audited) |
 | **Mobile UI** | `apps/mobile/app/settings/whatsapp-catalog.tsx` (new) + `src/lib/api/whatsapp-catalog.ts` + `(tabs)/catalog.tsx` + `ProductCard.tsx` + `settings/index.tsx` + test (5) | F1-F7: Settings → WhatsApp Native Catalog (plan-gated empty state), status card, Sync Now, enable toggle, category chips, sync-history with pull-to-refresh, per-product sync dots (green synced / amber pending / red error) + legend in the catalog tab |
 | **Admin UI** | `apps/web/src/app/admin/whatsapp-catalog/page.tsx` (new) + `Sidebar.tsx` | 5 health stat cards (incl. **Daily Cron** — last run + 7-day failed/timed-out, red when any failed), retailer table (store/plan/catalog id/badges/counts/last sync), drill-down modal with Sync Logs + Items tabs, per-row + modal Sync now |
-| **Docs** | `docs/DEPLOY.md`, `docs/INDIA-RETAILER-GROWTH.md`, `docs/PLAN.md`, `docs/tasks/PHASE-II-WHATSAPP-CATALOG-BREAKDOWN.md` | Deploy guide: Meta env vars, webhook callback URL + verify token + signature contract, retailer first-sync steps, checklist; roadmap P row → Built |
+| **Docs** | `docs/DEPLOY.md`, `docs/marketing/india-retailer-growth.md`, `docs/PLAN.md`, `docs/tasks/done/whatsapp-catalog-sync.md` | Deploy guide: Meta env vars, webhook callback URL + verify token + signature contract, retailer first-sync steps, checklist; roadmap P row → Built |
 
 **Design decisions:** external id for idempotency is the **Kanchuki product id** (not sku — skus can change); HSN mapping is an interim keyword map until Phase I's `hsn_codes` master table ships; webhook signature uses **META_APP_SECRET** (Meta's actual contract — the breakdown's "META_WEBHOOK_SECRET" wording was wrong; that secret is only the GET-handshake verify token); auto-sync hooks are **fail-open** (a catalog hiccup never fails the product save) and gated on `sync_enabled`, so retailers who turned sync off get zero overhead; create-flow sync rides on tag completion so photo-only uploads sync once with final data, not twice with placeholders.
 
@@ -1110,7 +1110,7 @@ Spec: `docs/PRO-REQUIREMENTS.md` F-307 (already marked Built), `docs/PLAN.md` Ph
 
 ## BUILT 2026-08-18: Roadmap M — i18n Data Groundwork (deferred post-launch)
 
-Post-launch groundwork for Feature M (Multi-Language AI) gaps per `docs/tasks/M-MULTI-LANGUAGE-AI-GAPS.md`. The three full sub-tasks (native in-app mic, PWA language toggle, retailer app UI language toggle) are deferred until after app launch. This commit lands the **data model and shared constants** that both language toggles will need, with zero screen/UI changes.
+Post-launch groundwork for Feature M (Multi-Language AI) gaps per `docs/tasks/pending/multi-language-i18n.md`. The three full sub-tasks (native in-app mic, PWA language toggle, retailer app UI language toggle) are deferred until after app launch. This commit lands the **data model and shared constants** that both language toggles will need, with zero screen/UI changes.
 
 | Layer | Files | Summary |
 |---|---|---|
@@ -1122,7 +1122,7 @@ Post-launch groundwork for Feature M (Multi-Language AI) gaps per `docs/tasks/M-
 
 ## BUILT 2026-08-18: Roadmap R — Seasonal Analytics (wedding-season vs daily-wear)
 
-Gap per `docs/tasks/R-CAMPAIGN-ANALYTICS-SEASONAL.md`: the existing campaign analytics screen has festival/type/segment/hour/category/video-vs-photo dimensions, but no seasonal period comparison. This adds a **Seasonal** section that compares product-category performance across wedding season (Oct–Feb) vs daily-wear (Mar–Sep), giving the retailer a quick read on what to stock up for the next season.
+Gap per `docs/tasks/done/campaign-analytics-seasonal.md`: the existing campaign analytics screen has festival/type/segment/hour/category/video-vs-photo dimensions, but no seasonal period comparison. This adds a **Seasonal** section that compares product-category performance across wedding season (Oct–Feb) vs daily-wear (Mar–Sep), giving the retailer a quick read on what to stock up for the next season.
 
 | Layer | Files | Summary |
 |---|---|---| |
@@ -1158,7 +1158,7 @@ Spec `docs/PRO-REQUIREMENTS.md` §28. Two reuse-only slices, no new dependency o
 
 ## BUILT 2026-08-20: Phase 5+6 — Social Templates + Lookbook Generator Mobile Screens
 
-Completes the mobile UI gaps identified in `docs/marketing/IMPLEMENTATION-STATUS.md`. Both features had admin API + admin dashboard built (Phases 5+6) but no retailer-facing API routes or mobile screens. This commit adds the full retailer stack for both.
+Completes the mobile UI gaps identified in `docs/marketing/marketing-sales-enablement.md`. Both features had admin API + admin dashboard built (Phases 5+6) but no retailer-facing API routes or mobile screens. This commit adds the full retailer stack for both.
 
 ### Phase 5 — AI Social Media Templates (mobile)
 
@@ -1184,7 +1184,7 @@ Completes the mobile UI gaps identified in `docs/marketing/IMPLEMENTATION-STATUS
 |---|---|
 | `apps/mobile/app/growth/templates.tsx` | Replaced `variant="secondary"` on `GradientButton` (which doesn't accept that prop) with plain styled `AnimatedPressable` buttons. |
 | `apps/mobile/app/growth/lookbook.tsx` | Same `variant="secondary"` fix. |
-| `docs/marketing/IMPLEMENTATION-STATUS.md` | Updated templates + lookbook status from "Deferred" → "Built"; updated honest status summary table; updated orphan cleanup section. |
+| `docs/marketing/marketing-sales-enablement.md` | Updated templates + lookbook status from "Deferred" → "Built"; updated honest status summary table; updated orphan cleanup section. |
 
 **Verified:** API `tsc --noEmit` clean (0 new errors — 21 pre-existing in `retailers-social.ts` and `products-festival-background.ts`); mobile `tsc --noEmit` clean; `prisma validate` + `prisma generate` clean.
 
@@ -1192,7 +1192,7 @@ Completes the mobile UI gaps identified in `docs/marketing/IMPLEMENTATION-STATUS
 
 ## BUILT 2026-08-20: Phase 4 — Festival Backgrounds Mobile Screen
 
-Completes the mobile UI gap in `docs/marketing/IMPLEMENTATION-STATUS.md` Phase 4. The admin API + dashboard were built (commit `7d39d18`) but no retailer-facing API routes or mobile screen existed.
+Completes the mobile UI gap in `docs/marketing/marketing-sales-enablement.md` Phase 4. The admin API + dashboard were built (commit `7d39d18`) but no retailer-facing API routes or mobile screen existed.
 
 | Layer | Files | Summary |
 |---|---|---|
@@ -1207,7 +1207,7 @@ Completes the mobile UI gap in `docs/marketing/IMPLEMENTATION-STATUS.md` Phase 4
 
 ## BUILT 2026-08-20: Phase 8 — GST Report Mobile Screen
 
-Completes the mobile UI gap in `docs/marketing/IMPLEMENTATION-STATUS.md` Phase 8. The admin API + dashboard were built (commit `0a9b8cb`) but no retailer-facing API routes or mobile screen existed.
+Completes the mobile UI gap in `docs/marketing/marketing-sales-enablement.md` Phase 8. The admin API + dashboard were built (commit `0a9b8cb`) but no retailer-facing API routes or mobile screen existed.
 
 | Layer | Files | Summary |
 |---|---|---|
@@ -1222,7 +1222,7 @@ Completes the mobile UI gap in `docs/marketing/IMPLEMENTATION-STATUS.md` Phase 8
 
 ## BUILT 2026-08-20: Social Publishing Admin UI (F-031)
 
-Completes the admin dashboard gap in `docs/marketing/IMPLEMENTATION-STATUS.md` for Direct Social Publishing. The retailer-facing API already existed (`retailers-social.ts`) but no admin oversight UI existed.
+Completes the admin dashboard gap in `docs/marketing/marketing-sales-enablement.md` for Direct Social Publishing. The retailer-facing API already existed (`retailers-social.ts`) but no admin oversight UI existed.
 
 | Layer | Files | Summary |
 |---|---|---|
@@ -1255,7 +1255,7 @@ Replaces the 3 "Not Built" features that were blocked on platform API credential
 
 ## BUILT 2026-08-20: Lookbook HTML/PDF Rendering Worker
 
-Completes the last remaining coding item in `docs/marketing/IMPLEMENTATION-STATUS.md`. The lookbook generate endpoint previously marked status as GENERATING but had no actual rendering. Now it enqueues a BullMQ job that renders styled HTML + PDF.
+Completes the last remaining coding item in `docs/marketing/marketing-sales-enablement.md`. The lookbook generate endpoint previously marked status as GENERATING but had no actual rendering. Now it enqueues a BullMQ job that renders styled HTML + PDF.
 
 | Layer | Files | Summary |
 |---|---|---|
@@ -1387,7 +1387,7 @@ User asked for the pricing table (Starter/Growth/Pro monthly + annual + products
 
 ## BUILT 2026-08-21: Customer Profile P0-P3 — All 16 Features Shipped
 
-**User ask:** review `docs/customer/customer-profile-req.md` §12 and build P0 through P2 (13 items), then P3 (3 items). Each committed individually.
+**User ask:** review `docs/customers/customer-profile.md` §12 and build P0 through P2 (13 items), then P3 (3 items). Each committed individually.
 
 ### P0 — VTO Self-Serve (Commit `6dcf35c`)
 | Layer | Files | Summary |
@@ -1547,7 +1547,7 @@ Plan: `docs/tasks/ai-studio-shoot-models-scenes.md`. Steps 1–5 of that doc. No
 
 | File | Detail |
 |------|--------|
-| **Spec** | `docs/database/no-feature-want.md` — authoritative teardown spec |
+| **Spec** | `docs/references/history/reports/2026-08-31-feature-teardown-spec.md` — authoritative teardown spec |
 | **Branch** | `chore/remove-unwanted-features` |
 | **Date** | 2026-08-31 |
 | **Status** | ✅ Code complete, migration 082 written (not deployed) |
@@ -1782,9 +1782,9 @@ New table: `GstInvoiceSequence` — gap-free per-FY counter (`financial_year` PK
 - `CLAUDE.md` §59 index entry + Pricing Model table (monthly only, base ex-GST)
 - `docs/PRO-REQUIREMENTS.md` §6 Billing Rules (monthly-only, CGST/SGST/IGST split)
 - `docs/BUILD-LOG.md` §59 (this entry)
-- `docs/tasks/subscription-gst-and-monthly-pricing.md` — spec/task doc
+- `docs/tasks/done/subscription-gst-and-monthly-pricing.md` — spec/task doc
 
-### §59.1 — Post-review hardening (2026-09-02, code-review `docs/tasks/2026-09-01.md`)
+### §59.1 — Post-review hardening (2026-09-02, code-review `docs/references/history/sessions/2026-09-01-gst-review.md`)
 
 Ten findings from the GST-engine review, all fixed:
 
@@ -1838,7 +1838,7 @@ No new page/route — the existing F-012 integrations vault (`admin-integrations
 
 ## Fixed: 2026-09-03 — Launch-readiness cleanup (4 audit points)
 
-Four items from `docs/LAUNCH-READINESS-AUDIT.md` closed this session. Full record in that doc's new §0b.
+Four items from `docs/references/history/reports/launch-readiness-audit.md` closed this session. Full record in that doc's new §0b.
 
 ### 1. P0 secrets in Railway — verified live
 
@@ -1874,9 +1874,9 @@ VTO, "Fashion DNA AI matching" and showroom booking were removed in `chore/remov
 
 Customer preference capture (colour/style/budget) is unchanged — still shipped, core MVP. Web `tsc` clean.
 
-### 4. Play Store store-listing copy — `docs/PLAY-STORE-LISTING.md` (commit `a2308ce`)
+### 4. Play Store store-listing copy — `docs/references/guides/play-store-listing.md` (commit `a2308ce`)
 
-New paste-ready doc: short description (76 chars), full description (<4000, VTO-free), Business category, 8-screenshot shot-list with routes, feature-graphic spec. `docs/PLAY-STORE-LAUNCH-CHECKLIST.md` §1 refreshed to point at it. Screenshots, the 1024×500 feature graphic, and the Console entry itself stay owner tasks — cannot be produced from the repo.
+New paste-ready doc: short description (76 chars), full description (<4000, VTO-free), Business category, 8-screenshot shot-list with routes, feature-graphic spec. `docs/references/guides/play-store-launch-checklist.md` §1 refreshed to point at it. Screenshots, the 1024×500 feature graphic, and the Console entry itself stay owner tasks — cannot be produced from the repo.
 
 Audit doc updated in commit `70d7ed2` (new §0b + §3 table rows + §5 checkboxes + §0/§9/§9b refs).
 
@@ -1884,7 +1884,7 @@ Audit doc updated in commit `70d7ed2` (new §0b + §3 table rows + §5 checkboxe
 
 ## Fixed: 2026-09-03 — 03-Sep-2026 review batch (11 items, commit `1843805`)
 
-All eleven items of `docs/tasks/changes-03-09-2026.md` (moved from the repo root in this same commit). Full root-cause write-ups and the retailer-phone `8872101879` case live in that task doc; this is the index-level record.
+All eleven items of `docs/references/history/sessions/2026-09-03-review-batch.md` (moved from the repo root in this same commit). Full root-cause write-ups and the retailer-phone `8872101879` case live in that task doc; this is the index-level record.
 
 | # | Fix | Files | Status |
 |---|-----|-------|--------|
@@ -1900,7 +1900,7 @@ All eleven items of `docs/tasks/changes-03-09-2026.md` (moved from the repo root
 | 10 | Shared-product page **Enquire Now + View Full Catalog** side by side (`grid grid-cols-2 gap-3`) | `apps/web/src/app/c/[slug]/components/SharedProductPage.tsx` | ✅ |
 | 11 | One CTA design across surfaces — new shared `ProductCtas` component (gradient Enquire + outline View Full Catalog) used by both `SharedProductPage` and the in-catalog `ProductDetailSheet` (its wishlist toggle stays available via the price-row heart) | `apps/web/src/app/c/[slug]/components/ProductCtas.tsx` (new), `SharedProductPage.tsx`, `ProductDetailSheet.tsx` | ✅ |
 
-**Also in the commit:** `changes-03-09-2026.md` → `docs/tasks/changes-03-09-2026.md` (marked done with a status table); pre-existing mobile dependency pins rode along (`apps/mobile/app.json` plugins + `package.json`/`pnpm-lock.yaml` — `@sentry/react-native`, `expo`, `expo-video`, `expo-sharing`, `expo-media-library`, `expo-constants`/`file-system`).
+**Also in the commit:** `changes-03-09-2026.md` → `docs/references/history/sessions/2026-09-03-review-batch.md` (marked done with a status table); pre-existing mobile dependency pins rode along (`apps/mobile/app.json` plugins + `package.json`/`pnpm-lock.yaml` — `@sentry/react-native`, `expo`, `expo-video`, `expo-sharing`, `expo-media-library`, `expo-constants`/`file-system`).
 
 **Verification:** API 706/706, web 91/91, mobile 43/43 vitest; `tsc --noEmit` clean on all three apps; secret guard passed. Pushed to `main` → Railway auto-deploy.
 
@@ -1914,7 +1914,7 @@ F-034 (PRO-REQUIREMENTS §30) started on user go, task by task from `docs/tasks/
 |-------|------------|-------|--------|
 | Task 1 — lib | `generateImageToVideo()` (Fal submit/poll 240s, reads `video.url`) + `VIDEO_MODELS` (5 models, Fal endpoints + ₹/clip bands) + `cropTrimToAspect()` (ffmpeg centre-crop to 9:16/16:9/1:1/4:5 + trim, yuv420p + faststart web-playable) + `AI_VIDEO_FAILED` error | `apps/api/src/lib/fal-video.ts` (new), `fal-video.test.ts` (3/3 — real ffmpeg asserts 1080×1920 + 1080×1080 + trim) | ✅ |
 | Task 2 — bench route | `POST /admin/photo-cleanup/image-to-video` — sync, admin-only, zod body (product_url, model 5-enum, motion_prompt ≤2000, aspect 4-enum, seconds 5\|6\|8) → R2 `promo-<uuid>.mp4` → `result_url` | `apps/api/src/routes/admin/admin-photo-cleanup.ts` | ✅ |
-| Task 3 — motion catalog | 16 motion presets / 4 categories (camera-move, garment-motion, model-action, ambient), each with garment-integrity HOLD guard + recommended model/aspect/seconds; Export Selected → `selected_ai_motion_styles.json` (Phase 2 studio_styles shape) | `docs/tasks/AI Motion Styles.html` (new) | ✅ |
+| Task 3 — motion catalog | 16 motion presets / 4 categories (camera-move, garment-motion, model-action, ambient), each with garment-integrity HOLD guard + recommended model/aspect/seconds; Export Selected → `selected_ai_motion_styles.json` (Phase 2 studio_styles shape) | `docs/ai-studio/AI Motion Styles.html` (new) | ✅ |
 | Task 4 — bench card | "AI Promo Video" card on `/admin/photo-cleanup-test`: model/aspect/duration selects, 6 first-draft presets (auto-fill), free-text prompt, synchronous generate + spinner, result rows with `<video controls loop>`, mp4-aware lightbox | `apps/web/src/app/admin/photo-cleanup-test/page.tsx` | ✅ |
 | Task 6.1 — admin addon packs | DB-driven replacement for hardcoded packs: migration `089_resource_packs` (`resource_type` TEXT so AI_VIDEO packs pre-date its enum value; `plans` TEXT[], admin sets price), CRUD API (GET/POST/PATCH/DELETE + audit log), super-admin screen `/admin/resource-packs` (₹ input, per-plan checkboxes, activate/delete) | `packages/db/prisma/migrations/089_resource_packs/` (new, **applied by owner**), `schema.prisma` (ResourcePack), `admin-resource-packs.ts` (new), `apps/api/src/routes/admin.ts` + `admin/index.ts`, `apps/web/src/app/admin/resource-packs/page.tsx` (new), `Sidebar.tsx`, `layout.tsx` | ✅ |
 | Task 10 — docs | Status rows updated across CLAUDE.md index, PRO-REQUIREMENTS §30, PLAN.md, PROGRESS.md, `image-to-video.md` + new `image-to-video-phase2.md` (task-by-task checklist, migrations renumbered **090** schema / **091** seeds after 089 was taken by `resource_packs`) | docs | ✅ |
@@ -1925,7 +1925,7 @@ F-034 (PRO-REQUIREMENTS §30) started on user go, task by task from `docs/tasks/
 
 ## BUILT 2026-09-04: Social Create-Post Composer — fan-out publish + Post Templates + Caption AI (Phases 0–9)
 
-Spec `docs/tasks/social-create-post-composer.md`; index row CLAUDE.md #64; plan row F-031 Phase 2.
+Spec `docs/tasks/done/social-create-post-composer.md`; index row CLAUDE.md #64; plan row F-031 Phase 2.
 
 **Scope shipped this commit (feature-complete; T-8.2 manual real-account EAS verification is the only remaining task):**
 
@@ -1946,7 +1946,7 @@ Spec `docs/tasks/social-create-post-composer.md`; index row CLAUDE.md #64; plan 
 
 ## BUILT 2026-09-05: Composer idempotency hardening (post-ship review findings 1+2)
 
-Spec `docs/tasks/social-create-post-composer.md` §12 (review pass); branch `fix/social-connect-surface-errors`; part of CLAUDE.md row #64.
+Spec `docs/tasks/done/social-create-post-composer.md` §12 (review pass); branch `fix/social-connect-surface-errors`; part of CLAUDE.md row #64.
 
 A post-ship end-to-end review of the composer fan-out path found 5 issues; owner chose to fix **1 + 2 (idempotency)** — both landed this session (entry above). Findings 3–5 were picked up and fixed later the same day (entry below).
 
@@ -1961,7 +1961,7 @@ A post-ship end-to-end review of the composer fan-out path found 5 issues; owner
 
 ## BUILT 2026-09-05 (later same day): Composer review findings 3–5 (permalink truth, message sanitization, caption clamp)
 
-Spec `docs/tasks/social-create-post-composer.md` §12 (review pass); branch `fix/social-connect-surface-errors`; part of CLAUDE.md row #64. Findings 1+2 (idempotency) shipped earlier the same day (entry above); findings 3–5 were then picked up and fixed. Server-only — no mobile/web impact, EAS-build plan unchanged.
+Spec `docs/tasks/done/social-create-post-composer.md` §12 (review pass); branch `fix/social-connect-surface-errors`; part of CLAUDE.md row #64. Findings 1+2 (idempotency) shipped earlier the same day (entry above); findings 3–5 were then picked up and fixed. Server-only — no mobile/web impact, EAS-build plan unchanged.
 
 | Finding | Fix | Files |
 |---|---|---|
@@ -2063,7 +2063,7 @@ Mobile `tsc --noEmit` clean, `vitest` 59/59. API `tsc --noEmit` clean, `growth-a
 
 ## BUILT 2026-09-07: Suits Designs — watermarked design-photo library (retailer mobile + customer web/storefront + admin; CLAUDE.md row #66)
 
-A library of design / pattern reference photos (Suits, Blouse, Saree, Kurti, Gala, Baju — DB rows, not enums) that retailers and admin upload and manage like products, shown to customers on the product-detail page under "Related products" as a "<Category> Designs" strip, with a "View more" browser and a shareable store-scoped permalink. Every design carries a server-side semi-transparent logo watermark; retailer-own uploads use the store logo (falling back to the platform one), global/admin designs always the platform logo. Full spec + locked decisions: docs/tasks/suits-designs.md (§14). Deliberately NOT the catalog (no price/stock/enquiry) and NOT the Unstitched Design Gallery — share + "Visit store" only.
+A library of design / pattern reference photos (Suits, Blouse, Saree, Kurti, Gala, Baju — DB rows, not enums) that retailers and admin upload and manage like products, shown to customers on the product-detail page under "Related products" as a "<Category> Designs" strip, with a "View more" browser and a shareable store-scoped permalink. Every design carries a server-side semi-transparent logo watermark; retailer-own uploads use the store logo (falling back to the platform one), global/admin designs always the platform logo. Full spec + locked decisions: docs/tasks/done/suits-designs.md (§14). Deliberately NOT the catalog (no price/stock/enquiry) and NOT the Unstitched Design Gallery — share + "Visit store" only.
 
 - **Schema + migrations 093–096.** `ShowcaseDesignCategory` (implicit self-M2M `_RelatedShowcaseCategories` = "a Saree product also shows Blouse designs", admin-edited) + `ShowcaseDesign` (retailer rows + `retailer_id NULL` global rows, no RLS — post-Railway convention, app-layer tenant scoping) + `Retailer.showcase_designs` back-relation. 093 seeds the 6 categories + related links; 094 adds `SHOWCASE_DESIGNS` to `PlanFeatureKey` + `QuotaResourceType` alone (Postgres 55P04 split); 095 seeds plan-feature rows (all plans on) + `plan_limits` (LIFETIME; Starter 20 / Growth 60 / Pro 200 — delete frees capacity, enforced as a live count not a meter); 096 adds `SocialPostType 'IMAGE'`.
 - **Watermark + quota helpers.** `packages/ai/src/watermark.ts` — `watermark(src, logo, {opacity, scale, gravity})` via sharp (lazy import, header-only metadata read rejects non-images + decompression bombs >50MP/12k, alpha-multiplied fade, baseline JPEG). `apps/api/src/lib/showcase-watermark.ts` — config defaults (0.35 / 18% width / southeast / strip 6) + `SETTING_showcase_watermark` KV-blob merge + logo precedence retailer → platform → built-in repo brand asset + `watermarkShowcaseDesign()` full download-composite-upload step. `showcase-quota.ts` — active-row count vs plan limit → 402.
@@ -2162,7 +2162,7 @@ Swept `apps/mobile` for kept screens still reading fields/features the 2026-08-3
 
 **Verification:** mobile `tsc --noEmit` clean, **59/59** vitest (11 files). Grep-proof: zero remaining `spin_*`/`measurement`-route/`try_on_credits` reads in `apps/mobile`; no `router.push` to any deleted route.
 
-## BUILT 2026-09-09 — Tokenized staff invites — core, lifecycle UI + WhatsApp delivery (CLAUDE.md row #71; spec `docs/tasks/staff-invite-tokens.md`)
+## BUILT 2026-09-09 — Tokenized staff invites — core, lifecycle UI + WhatsApp delivery (CLAUDE.md row #71; spec `docs/tasks/done/staff-invite-tokens.md`)
 
 Replaces the FR-6.1 "copy this text" stopgap (`dab79651`): a staff member added with name+phone now gets a **single-use `kanchuki://join?token=…` invite link** that carries "this is a team join, not a new signup" from the link into the first OTP verify. The token never authenticates — login stays phone+OTP, the SIM stays the auth factor (D1); after first login `staff.auth_user_id` routes every future login via the existing phone-match path, token irrelevant forever (D2).
 
@@ -2199,7 +2199,7 @@ The `quality` job only ever failed on **errors**, so the warning count drifted t
 
 ### `b48bf927` docs: Meta dashboard runbook for Facebook one-tap login
 
-New `docs/META-FACEBOOK-LOGIN-SETUP.md` — an operator runbook; the login code needed no change. Every fact in it is sourced from the repo rather than written from memory: app id `1758308975480748` and scheme (mobile `app.json` plugin block), package/bundle `app.kanchuki.retailer`, redirect URIs `/social/connect` + `/social/connect/callback` (`defaultOAuthRedirect()`, `retailers-social-connect.ts:28`; web callback at `:350`), the `PAGE_PERMISSIONS` / `IG_PERMISSIONS` lists (`facebook-auth.ts`), the `NO_PAGES_FOUND` / `NO_PAGE_TOKEN` / `NO_IG_FOUND` throws in the connect route, the signing secrets and keystore mechanics (`android-release.yml:54-88`), and the compliance URLs (all real web routes).
+New `docs/references/guides/meta-facebook-login-setup.md` — an operator runbook; the login code needed no change. Every fact in it is sourced from the repo rather than written from memory: app id `1758308975480748` and scheme (mobile `app.json` plugin block), package/bundle `app.kanchuki.retailer`, redirect URIs `/social/connect` + `/social/connect/callback` (`defaultOAuthRedirect()`, `retailers-social-connect.ts:28`; web callback at `:350`), the `PAGE_PERMISSIONS` / `IG_PERMISSIONS` lists (`facebook-auth.ts`), the `NO_PAGES_FOUND` / `NO_PAGE_TOKEN` / `NO_IG_FOUND` throws in the connect route, the signing secrets and keystore mechanics (`android-release.yml:54-88`), and the compliance URLs (all real web routes).
 
 Two findings that were the likely actual blockers — both configuration, neither fixable in code:
 
@@ -2288,7 +2288,7 @@ Two bugs found in the new decoder itself, both worth recording:
 | `scripts/check-aab-ad-id.mjs` | **New.** Fails the release build if the shipped AAB declares AD_ID. Fails closed on every unreadable path, and requires `android.permission.CAMERA` as a read-sanity anchor so an empty extraction cannot pass as "absent". |
 | `scripts/inspect-aab-manifest.mjs` | **New.** Decodes the merged manifest and reports package, `versionCode`/`versionName`, min/target SDK, the full permission list grouped by family, and the AD_ID verdict. `--json` for machine-readable output, `--strict` to exit non-zero when AD_ID is declared. A report is not a verdict, so it exits 0 on findings unless `--strict`. |
 | `apps/mobile/app.json` | `android.permission.RECORD_AUDIO` added to `expo.android.blockedPermissions` (1-line diff). Takes effect on the next build only. |
-| `docs/PLAY-STORE-LAUNCH-CHECKLIST.md` | §2 new "Audio" subsection (decision + root cause); §3 corrected (the `.aab` **is** authoritative, `RECORD_AUDIO` resolved, both Console locations named, the fix path, the 18/1/2 breakdown); §7 realigned. |
+| `docs/references/guides/play-store-launch-checklist.md` | §2 new "Audio" subsection (decision + root cause); §3 corrected (the `.aab` **is** authoritative, `RECORD_AUDIO` resolved, both Console locations named, the fix path, the 18/1/2 breakdown); §7 realigned. |
 | `docs/PLAY-STORE-RELEASES.md` | The **versionCode 2** row falsely credited an "AD_ID strip" — impossible, since the plugin (`b1ccefce`) postdates that upload and `6fc542ae` is only a one-line versionCode bump. Credited to versionCode 3 where it belongs; "in flight" section updated (4 is built + uploaded + blocked, so it gets **no Uploads row**). |
 
 ### Verification
@@ -2299,7 +2299,7 @@ Both guards run against all five real AABs: `check-aab-ad-id.mjs` **passes versi
 
 ## BUILT 2026-09-17 — F-036 Phase A: customer PWA visited-store list + installable home-screen icon (CLAUDE.md row #73)
 
-Spec `docs/tasks/customer-pwa-store-list-and-push-notifications.md`; requirement `docs/PRO-REQUIREMENTS.md` §32. **Phase A only** — Phase B (Web Push) is deliberately not started, so there is no `PushSubscription` model and no `push` handler in the service worker. **Zero files under `apps/mobile`.**
+Spec `docs/tasks/pending/customer-pwa-push-notifications.md`; requirement `docs/PRO-REQUIREMENTS.md` §32. **Phase A only** — Phase B (Web Push) is deliberately not started, so there is no `PushSubscription` model and no `push` handler in the service worker. **Zero files under `apps/mobile`.**
 
 The feature sits on identity work already shipped (`CustomerAccount`/`CustomerStoreVisit`, migrations `079`–`081`) — Phase A is the missing *surface*, not new identity.
 
@@ -2331,7 +2331,7 @@ Task 4 confirmations: a row links to `/{public_slug}` → the pre-existing `[sto
 
 ### Known issues (filed, not fixed here)
 
-- **`return_to` is written but never read** — `docs/tasks/return-to-post-login-redirect.md`. Pre-existing and now more visible: an installed-icon launch with an expired cookie bounces to `/`, which has no login surface (the only passport OTP entry point in the customer web app is a store catalog page). Deliberately not bundled into this diff. **✅ Fixed later the same day — see the entry below.**
+- **`return_to` is written but never read** — `docs/tasks/done/return-to-post-login-redirect.md`. Pre-existing and now more visible: an installed-icon launch with an expired cookie bounces to `/`, which has no login surface (the only passport OTP entry point in the customer web app is a store catalog page). Deliberately not bundled into this diff. **✅ Fixed later the same day — see the entry below.**
 - **No live browser run.** The tap-through chain is verified by reading route resolution plus unit/component tests; no one has clicked a row in a real browser, and the task's own acceptance test (anonymous → bounce → OTP → back on `/my-stores`) cannot pass until the item above is fixed. **✅ Closed later the same day** — a live Chrome run (prod build) now covers both the tap-through and the full acceptance test in `e2e/customer-my-stores.spec.ts`; see the entry below.
 - **Phase C still owns iOS.** Phase A ships no "Add to Home Screen" banner; Safari 16.4+ requires the PWA be installed before it can receive push at all, so that enforcement belongs with Phase B/C.
 
@@ -2339,7 +2339,7 @@ Task 4 confirmations: a row links to `/{public_slug}` → the pre-existing `[sto
 
 ## BUILT 2026-09-17 (later) — `return_to` is now consumed: dedicated `/login` route + open-redirect validation
 
-Closes the residual filed above (`docs/tasks/return-to-post-login-redirect.md`). F-036 Phase A pointed the installed icon at `/my-stores`; the guard bounced visitors who had no passport to `/` **with `?return_to=` attached and nothing reading it** — and `/` is the retailer marketing page, so there was no login surface anywhere outside a store catalog page. An installed-icon launch with an expired cookie dead-ended.
+Closes the residual filed above (`docs/tasks/done/return-to-post-login-redirect.md`). F-036 Phase A pointed the installed icon at `/my-stores`; the guard bounced visitors who had no passport to `/` **with `?return_to=` attached and nothing reading it** — and `/` is the retailer marketing page, so there was no login surface anywhere outside a store catalog page. An installed-icon launch with an expired cookie dead-ended.
 
 **Scope: `apps/web` only** — no API, schema, or `apps/mobile` change.
 
@@ -2517,7 +2517,7 @@ Both were found by the console-error backstop above, on the same page every shop
 
 ## BUILT 2026-09-18 — F-037 Phase 1: CustomerInteraction event log (net-new, identity-scoped)
 
-**Why:** owner follow-up doc (`docs/tasks/customer-engagement-and-admin-behavior-analytics.md` §0) found the passport doc's claim that `CustomerInteraction`/`CustomerFashionDNA` already existed and only needed widening was false — migration `082_remove_unwanted_features` (2026-08-31) had dropped both. Phase 1 (§6 of that doc) builds the interaction log fresh at `CustomerAccount` scope rather than reviving the old retailer-scoped table.
+**Why:** owner follow-up doc (`docs/tasks/pending/customer-engagement-analytics.md` §0) found the passport doc's claim that `CustomerInteraction`/`CustomerFashionDNA` already existed and only needed widening was false — migration `082_remove_unwanted_features` (2026-08-31) had dropped both. Phase 1 (§6 of that doc) builds the interaction log fresh at `CustomerAccount` scope rather than reviving the old retailer-scoped table.
 
 | Piece | Change |
 |---|---|
@@ -2547,7 +2547,7 @@ Both were found by the console-error backstop above, on the same page every shop
 |---|---|
 | `apps/api/src/lib/studio-shoot.ts` | **root-cause fix, one chokepoint** — new `isTopOnlyGarment()` (regex on category/name: kurti/blouse/t-shirt/tee/top/tunic/crop top/shirt); when true, `generateStudioImage()` appends a "waist-up only, do not invent trousers/palazzo/leggings/jeans/skirt" clause to **every** MODEL prompt, not just one template — every caller (retailer route, growth backgrounds, admin bench) gets it automatically |
 | `packages/db/prisma/migrations/101_studio_styles_finalized_v2/migration.sql` | **new** — `DELETE` the 21 original MODEL rows seeded in migration `078` (near-duplicate scene backdrops), `INSERT` 8 finalized rows: Indoor Studio Softbox, Home Mirror Selfie, Golden Hour Outdoor, Catwalk Runway Motion, Editorial Close-Up, Marble Premium Luxury, Half-Body Top Shot (Kurti/T-Shirt — explicit crop template), Social Media Post Square. All `PUBLISHED`, all 3 plan tiers. PRODUCT-tab rows (ghost/hanger/flatlay/mannequin, 8 rows) untouched. No FK from `ProductPhoto` to `studio_styles` (provenance is JSON metadata on the photo row) so the delete has no side effect on already-generated photos. **Not yet applied to prod — ships via the normal migration-deploy path, not run directly.** |
-| `docs/tasks/AI Models and Scenes.html` | the 8 finalized prompts prepended to the `ITEMS` array, marked "FINALIZED SET — 2026-09-18"; the 21 retired scenes stay below as design reference only (no longer live in the DB) |
+| `docs/ai-studio/AI Models and Scenes.html` | the 8 finalized prompts prepended to the `ITEMS` array, marked "FINALIZED SET — 2026-09-18"; the 21 retired scenes stay below as design reference only (no longer live in the DB) |
 | `docs/tasks/ai-studio-shoot-models-scenes.md` | status note appended documenting the 21→8 collapse + the code-level fix |
 
 **Deleting the old rows also removes them from the `/admin/photo-cleanup-test` bench dropdown** (that page fetches all `studio_styles` rows regardless of status, by design, so drafts stay testable — with the rows physically gone, no frontend filter change was needed).

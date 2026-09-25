@@ -12,7 +12,7 @@
 //   #    check of the fallback prompt and contract only — use the admin bench
 //   #    (/admin/photo-cleanup-test) to exercise the real pipeline.
 //   BFL_API_KEY=sk-... node scripts/studio-shoot-demo.mjs kontext \
-//       docs/photoshoots/product-1.jpg runway --gender female --age adult
+//       docs/ai-studio/photoshoots/samples/product-1.jpg runway --gender female --age adult
 //
 // There is deliberately NO vton mode. A Fal IDM-VTON try-on helper here was
 // deleted 2026-09-18 along with the one in the API — never called, params and
@@ -21,7 +21,7 @@
 // copy of it. apps/api/src/lib/retired-tryon-guard.test.ts fails if that name
 // returns as code anywhere under apps/, packages/ or scripts/.
 //
-// Output -> docs/photoshoots/out/kontext-<product>-<scene>.jpg
+// Output -> docs/ai-studio/photoshoots/out/kontext-<product>-<scene>.jpg
 //
 // ponytail: no arg-parser lib, no classifier for gender/age -- pass them as
 // flags. The real API infers demographic from the product row (category/name);
@@ -31,7 +31,7 @@ import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { basename, extname, join } from 'node:path';
 
 const BFL_BASE = 'https://api.bfl.ai/v1';
-const OUT_DIR = 'docs/photoshoots/out';
+const OUT_DIR = 'docs/ai-studio/photoshoots/out';
 
 // ─── Scene prompts (condensed from STUDIO_TEMPLATES + AI Models and Scenes.html)
 // The {MODEL} token is filled from --gender/--age so the same scene works for

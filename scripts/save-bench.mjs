@@ -7,11 +7,11 @@
 // results") downloads a JSON of every engine it ran. Fal / BFL / R2 result URLs
 // expire or live on a server that is not this repo, so this script:
 //   1. downloads each output (and the input photo) into
-//        docs/tasks/effect-photos/preview/
-//   2. appends the rows to docs/tasks/bench-results.json (kept as the source)
-//   3. rewrites docs/tasks/bench-results.js = `window.BENCH_RESULTS = [...]`
+//        docs/ai-studio/effect-photos/previews/
+//   2. appends the rows to docs/ai-studio/bench-results.json (kept as the source)
+//   3. rewrites docs/ai-studio/bench-results.js = `window.BENCH_RESULTS = [...]`
 //
-// docs/tasks/AI Cost Comparison.html loads bench-results.js with a plain <script>
+// docs/ai-studio/AI Cost Comparison.html loads bench-results.js with a plain <script>
 // tag — fetch() of a .json does not work from a file:// page, a script tag does.
 // Re-running with the same file is safe: rows are keyed on ran_at + engine.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -19,10 +19,11 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const tasks = join(root, 'docs', 'tasks');
-const previewDir = join(tasks, 'effect-photos', 'preview');
-const dataJson = join(tasks, 'bench-results.json');
-const dataJs = join(tasks, 'bench-results.js');
+// The bench assets live beside the bench HTML they feed, not under docs/tasks/.
+const aiStudio = join(root, 'docs', 'ai-studio');
+const previewDir = join(aiStudio, 'effect-photos', 'previews');
+const dataJson = join(aiStudio, 'bench-results.json');
+const dataJs = join(aiStudio, 'bench-results.js');
 
 const input = process.argv[2];
 if (!input) {
@@ -107,4 +108,4 @@ for (const row of rows) {
 
 writeFileSync(dataJson, `${JSON.stringify(saved, null, 2)}\n`);
 writeFileSync(dataJs, `window.BENCH_RESULTS = ${JSON.stringify(saved, null, 2)};\n`);
-console.log(`${added} new row(s); ${saved.length} total → docs/tasks/bench-results.js`);
+console.log(`${added} new row(s); ${saved.length} total → docs/ai-studio/bench-results.js`);

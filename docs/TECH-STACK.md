@@ -149,7 +149,7 @@ packages/
 - Customer Fashion DNA: preference vector per customer
 - Similarity matching: "products similar to this one"
 
-**Schema details:** See `docs/DATABASE.md`
+**Schema details:** See `docs/database/DATABASE.md`
 
 **Connection:** Prisma ORM + connection pooling via PgBouncer (Supabase built-in)
 
@@ -323,7 +323,7 @@ r2://kanchuki-prod/
 
 **Accuracy:** ±3–5cm typical (2D single-angle limitation). Existing alternatives (Bodygram, 3DLOOK) considered but skipped for MVP — MediaPipe is free and sufficient for fit-hinting, not sizing-guarantee.
 
-**Schema:** See `CustomerMeasurement` in `docs/DATABASE.md`
+**Schema:** See `CustomerMeasurement` in `docs/database/DATABASE.md`
 
 ---
 
@@ -356,7 +356,7 @@ r2://kanchuki-prod/
 
 ### 14. CI/CD: GitHub Actions → Railway
 
-**Host comparison (why Railway over Vercel/Render/Fly.io/Cloudflare) + mobile app store launch steps:** `docs/HOSTING-AND-APP-STORE-GUIDE.md`
+**Host comparison (why Railway over Vercel/Render/Fly.io/Cloudflare) + mobile app store launch steps:** `docs/references/guides/hosting-and-app-store.md`
 
 **Pipeline:**
 1. Push to main branch
@@ -390,7 +390,7 @@ r2://kanchuki-prod/
 
 ## Skills Used in This Project
 
-See `docs/SKILLS-AND-MCP.md` for the full list. Key skills:
+See `docs/references/guides/skills-and-mcp.md` for the full list. Key skills:
 - `fastapi-patterns` / `backend-patterns` — API design
 - `react-patterns` / `frontend-patterns` — web UI
 - `postgres-patterns` — DB schema + query optimization

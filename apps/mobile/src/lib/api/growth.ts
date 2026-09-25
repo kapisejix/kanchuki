@@ -1,6 +1,6 @@
 import { request } from './client'
 
-// ─── India Retailer Growth Engine (docs/INDIA-RETAILER-GROWTH.md) ──
+// ─── India Retailer Growth Engine (docs/marketing/india-retailer-growth.md) ──
 // All module endpoints: campaigns/festivals (D/G/R/S), referrals (C),
 // promotions (F), suppliers (K), bookings (L), inventory (J), videos
 // (Q), translate (M).

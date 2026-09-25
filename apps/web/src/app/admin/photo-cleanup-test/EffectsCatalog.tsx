@@ -3,7 +3,7 @@
 // Effects catalog for the admin bench. Pick a sample product (simulates the AI
 // tag) → effects load by audience + garment → "Use in bench" fills the AI Studio
 // Shoot card below (sample photo, prompt, demographic, garment type). Port of
-// docs/tasks/AI Studio Effects.html; data + rules live in lib/studio-effects.ts.
+// docs/ai-studio/AI Studio Effects.html; data + rules live in lib/studio-effects.ts.
 
 import {
   AUD_LABEL,

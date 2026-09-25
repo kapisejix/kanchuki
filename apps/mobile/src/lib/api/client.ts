@@ -149,7 +149,7 @@ export async function request<T>(
     // Re-wrap raw fetch errors as ApiError. Name the exact URL the device
     // tried — a bare "Network request failed" gives no clue whether the app
     // is pointed at a LAN IP, localhost, or prod (env precedence gotcha:
-    // apps/mobile/.env.local overrides .env, see docs/photo-feature/progress-update.md).
+    // apps/mobile/.env.local overrides .env, see docs/ai-studio/history/photo-feature-progress-log.md).
     throw new ApiError(
       'NETWORK_ERROR',
       `Network request failed to ${API_URL}${path}. Check that the API server is running and this device can reach it.`,

@@ -1,6 +1,6 @@
 import { request } from './client'
 
-// ─── Public staff-invite (docs/tasks/staff-invite-tokens.md §5.3/5.4) ─────
+// ─── Public staff-invite (docs/tasks/done/staff-invite-tokens.md §5.3/5.4) ─────
 // Called from the LOGGED-OUT join screen (app/join.tsx) — no session needed.
 // The server owns the invite's phone number; the client only ever sees the
 // masked form and a success signal.

@@ -91,7 +91,7 @@ const FAMILIES = [
   {
     match: (p) => p === AD_ID,
     label: 'Advertising ID',
-    note: 'must be absent / declared "No" — see docs/PLAY-STORE-LAUNCH-CHECKLIST.md §3',
+    note: 'must be absent / declared "No" — see docs/references/guides/play-store-launch-checklist.md §3',
     flag: true,
   },
   {

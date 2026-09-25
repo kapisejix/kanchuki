@@ -1,7 +1,7 @@
 """
 Body measurement extraction from front+back photos via MediaPipe Pose.
 
-Feeds docs/DATABASE.md::CustomerMeasurement (source=PHOTO).
+Feeds docs/database/DATABASE.md::CustomerMeasurement (source=PHOTO).
 Requires: pip install mediapipe opencv-python numpy
 
 Accuracy: +/-3-5cm typical (2D single-angle limitation, see docs/PRO-REQUIREMENTS.md F-102b).

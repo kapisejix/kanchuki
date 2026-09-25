@@ -13,7 +13,7 @@ interface Props {
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://kanchuki.app';
 
 // The designs browser (/{store}/designs) — the "View more" target from the
-// product-detail strip, opened in a new tab (docs/tasks/suits-designs.md §2.4).
+// product-detail strip, opened in a new tab (docs/tasks/done/suits-designs.md §2.4).
 // Store-scoped feed: global rows + the store's own, filtered by an optional
 // ?category= slug. `ref` (a product id) is provenance only — the feed itself
 // is store-scoped, not product-scoped.

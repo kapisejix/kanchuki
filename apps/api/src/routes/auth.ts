@@ -65,7 +65,7 @@ const OtpVerifySchema = z
     // Must match the purpose passed to /otp/send so verify checks the same
     // Redis slot the code was issued into (see SendOtpSchema).
     purpose: z.enum(['login', 'stepup']).optional().default('login'),
-    // Tokenized staff invite (docs/tasks/staff-invite-tokens.md §5.5):
+    // Tokenized staff invite (docs/tasks/done/staff-invite-tokens.md §5.5):
     // carried from the invite link into the FIRST login so this phone is
     // routed to the staff join instead of a brand-new retailer. Additive —
     // absent means exactly today's behavior.

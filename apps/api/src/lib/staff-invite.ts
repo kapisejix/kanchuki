@@ -1,4 +1,4 @@
-// Staff invite tokens (docs/tasks/staff-invite-tokens.md) — single-use,
+// Staff invite tokens (docs/tasks/done/staff-invite-tokens.md) — single-use,
 // onboarding-only tokens that carry "this is a team join, not a new signup"
 // from the invite link into the first OTP verify. The token NEVER
 // authenticates (D1); login stays phone + OTP. The raw token is never stored

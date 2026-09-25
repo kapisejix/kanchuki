@@ -168,7 +168,7 @@ ambiguous v3 row above. If you trigger a build and then trigger another before
 uploading, the second one overwrites your only signal of which is which.
 
 If the artifact is ever in doubt, the signing certificate identifies it without any
-Play Console access — see `docs/META-FACEBOOK-LOGIN-SETUP.md` §3, "Verifying which
+Play Console access — see `docs/references/guides/meta-facebook-login-setup.md` §3, "Verifying which
 key signed a shipped `.aab`".
 
 ## Verified provenance (2026-09-12)
@@ -191,4 +191,4 @@ Two things this establishes:
 Note this is the **upload** key. Testers installing from Play get an app re-signed by
 Google's **Play App Signing** key, whose hash is a different value that only the Play
 Console shows — both must be registered with Meta. See
-`docs/META-FACEBOOK-LOGIN-SETUP.md` §3.
+`docs/references/guides/meta-facebook-login-setup.md` §3.

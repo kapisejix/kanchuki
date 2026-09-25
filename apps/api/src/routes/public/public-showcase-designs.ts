@@ -1,4 +1,4 @@
-// Public Suits Designs routes (docs/tasks/suits-designs.md §2.4/§5).
+// Public Suits Designs routes (docs/tasks/done/suits-designs.md §2.4/§5).
 //
 // Three reads, all cacheable (Redis single-flight via withPublicCache +
 // s-maxage 300) and all leak-free: only is_active rows, only GLOBAL rows plus

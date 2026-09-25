@@ -1,6 +1,6 @@
 import { request } from './client'
 
-// ─── Suits Designs (docs/tasks/suits-designs.md) ────────────────────
+// ─── Suits Designs (docs/tasks/done/suits-designs.md) ────────────────────
 // Retailer manages their own designs + sees admin-global ones; the public
 // endpoints power the customer product-detail strip, the "View more" browse
 // feed, and the public permalink. All read shapes mirror the API responses.

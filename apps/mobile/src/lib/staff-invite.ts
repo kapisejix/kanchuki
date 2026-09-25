@@ -1,7 +1,7 @@
 import { normalizeIndianPhone } from '@kanchuki/shared'
 
 /**
- * Tokenized staff invite (docs/tasks/staff-invite-tokens.md §6.4) — the share
+ * Tokenized staff invite (docs/tasks/done/staff-invite-tokens.md §6.4) — the share
  * message after a staff member is added. The payload is now the invite LINK
  * (the phone is no longer the payload — the token never authenticates, and
  * delivery stays retailer-shares-the-link, no server SMS). The copy is pinned

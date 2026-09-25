@@ -2,7 +2,7 @@
 // detail screen. Shows the N (admin-configured) watermarked design thumbs for
 // the product's garment category (+ related categories), with a "View more"
 // button into the full browse grid. Hidden entirely when no designs match.
-// doc: docs/tasks/suits-designs.md §2.3.
+// doc: docs/tasks/done/suits-designs.md §2.3.
 import { useEffect, useState } from 'react'
 import { View, Text, ScrollView, Pressable } from 'react-native'
 import { Image } from 'expo-image'

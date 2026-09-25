@@ -836,7 +836,7 @@ model Staff {
 
   retailer Retailer @relation(fields: [retailer_id], references: [id])
 
-  // Tokenized invites (docs/tasks/staff-invite-tokens.md) — one live invite
+  // Tokenized invites (docs/tasks/done/staff-invite-tokens.md) — one live invite
   // per staff row (D5), replaced on resend. auth_user_id null = never joined.
   staff_invites StaffInvite[]
 
@@ -848,7 +848,7 @@ model Staff {
 }
 
 // ─── STAFF INVITES (tokenized invite system) ──────────────────────
-// docs/tasks/staff-invite-tokens.md — a single-use, onboarding-only token
+// docs/tasks/done/staff-invite-tokens.md — a single-use, onboarding-only token
 // that carries "this is a team join, not a new signup" from the invite link
 // into the first OTP verify. Never authenticates; login stays phone + OTP.
 // The raw token is never stored — only its sha256 hash (token_hash).
@@ -1844,7 +1844,7 @@ model SocialPost {
   @@map("social_posts")
 }
 
-// ─── INDIA RETAILER GROWTH ENGINE (docs/INDIA-RETAILER-GROWTH.md) ─
+// ─── INDIA RETAILER GROWTH ENGINE (docs/marketing/india-retailer-growth.md) ─
 
 enum CustomerLeadSource {
   MANUAL
@@ -2344,7 +2344,7 @@ enum BugReportStatus {
 // Distinct from the Unstitched Design Gallery (DesignReference, admin-only
 // storefront references) — these are retailer-managed + admin-global
 // "showcase" designs: a watermarked image + a category + a name, no price /
-// stock / enquiry flow. doc: docs/tasks/suits-designs.md. Categories AND the
+// stock / enquiry flow. doc: docs/tasks/done/suits-designs.md. Categories AND the
 // category → related-category links ("a Saree product also shows Blouse
 // designs") are DB rows an admin edits — nothing hardcoded.
 

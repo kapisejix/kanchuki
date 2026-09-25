@@ -25,7 +25,7 @@ const OAUTH_DIALOG = 'https://www.facebook.com/v21.0/dialog/oauth';
 // Instagram caption hard limit (Meta platform rule). Facebook's cap is
 // 63,206 chars, so only IG targets need clamping — a server-appended
 // '\n\n' + link URL used to push a near-max caption past the limit (finding 5a
-// in docs/tasks/social-create-post-composer.md §12).
+// in docs/tasks/done/social-create-post-composer.md §12).
 export const IG_CAPTION_LIMIT = 2200;
 
 /**

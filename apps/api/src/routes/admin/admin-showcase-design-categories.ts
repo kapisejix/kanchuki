@@ -1,4 +1,4 @@
-// Admin Suits Design Category routes (docs/tasks/suits-designs.md §5/§9).
+// Admin Suits Design Category routes (docs/tasks/done/suits-designs.md §5/§9).
 //
 // Admin owns the category list AND the category → related-category links
 // ("a Saree product also shows Blouse designs" = Saree.related includes

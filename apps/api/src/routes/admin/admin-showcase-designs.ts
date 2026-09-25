@@ -1,4 +1,4 @@
-// Admin Suits Designs routes (docs/tasks/suits-designs.md §5) — cloned from
+// Admin Suits Designs routes (docs/tasks/done/suits-designs.md §5) — cloned from
 // admin-design-references.ts, extended with the watermark create path.
 //
 // - Default owner is GLOBAL (retailer_id = NULL) → shown on every storefront.

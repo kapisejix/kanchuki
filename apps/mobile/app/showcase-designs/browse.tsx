@@ -1,4 +1,4 @@
-// Suits Designs — "View more" browse (customer-facing, docs/tasks/suits-designs.md §2.4).
+// Suits Designs — "View more" browse (customer-facing, docs/tasks/done/suits-designs.md §2.4).
 // Full grid of the related designs for the store, with the expanded related
 // category set as filter chips. Uses only the public API — reachable without a
 // retailer session.

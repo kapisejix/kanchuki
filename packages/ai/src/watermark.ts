@@ -1,6 +1,6 @@
 /**
  * T2.1 — server-side watermark compositing for Suits Designs
- * (docs/tasks/suits-designs.md). Composites a semi-transparent logo over a
+ * (docs/tasks/done/suits-designs.md). Composites a semi-transparent logo over a
  * source image and re-encodes as baseline JPEG.
  *
  * The caller owns logo selection (retailer logo → platform logo → builtin);

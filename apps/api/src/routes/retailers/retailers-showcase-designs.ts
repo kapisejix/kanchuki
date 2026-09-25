@@ -1,4 +1,4 @@
-// Retailer Suits Designs routes (docs/tasks/suits-designs.md §5).
+// Retailer Suits Designs routes (docs/tasks/done/suits-designs.md §5).
 //
 // A retailer manages THEIR OWN designs plus sees (read-only) the global ones
 // admin published. Flow per design: mobile compresses + uploads the RAW image

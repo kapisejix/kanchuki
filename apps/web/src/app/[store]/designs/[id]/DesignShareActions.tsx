@@ -2,7 +2,7 @@
 
 // Share actions for the design permalink — Web Share API when available,
 // WhatsApp wa.me deep link, and copy-link. Mirrors the mobile design detail
-// screen (docs/tasks/suits-designs.md §2.4): the permalink is the shareable
+// screen (docs/tasks/done/suits-designs.md §2.4): the permalink is the shareable
 // artifact.
 import { useState } from 'react'
 import { Check, Copy, MessageCircle, Share2 } from 'lucide-react'

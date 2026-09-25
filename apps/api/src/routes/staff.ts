@@ -14,7 +14,7 @@ import {
   validationError,
 } from '../plugins/error-handler.js';
 
-// FR-1.3 (docs/tasks/team-member-access-control.md): 'owner' is a valid DB
+// FR-1.3 (docs/tasks/done/team-member-access-control.md): 'owner' is a valid DB
 // value only for internal/seed use — a retailer caller can never grant it.
 // Rejected here (and in the update schema) so the API's error message is the
 // same plain-language one the role picker can rely on.

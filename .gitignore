@@ -101,6 +101,11 @@ strix_runs/
 *.keystore
 *.p12
 
-# Scratch AI Studio session notes — not source
-docs/ai-studio/
+# AI Studio working images — local-only assets, NEVER commit (docs/ai-studio HTML + .md stay tracked).
+# Regenerate/download them from the provider; they are large binaries, not source.
+docs/ai-studio/**/*.jpg
+docs/ai-studio/**/*.jpeg
+docs/ai-studio/**/*.png
+docs/ai-studio/**/*.webp
+docs/ai-studio/**/out/
 

@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 // Admin config for the Suits Designs watermark — the platform logo + how it
-// is stamped on every design (docs/tasks/suits-designs.md §2.2.4 / §4).
+// is stamped on every design (docs/tasks/done/suits-designs.md §2.2.4 / §4).
 //
 // The config is ONE JSON blob in the audit-log-as-key-value settings store
 // (key `showcase_watermark`, shared with lib/showcase-watermark.ts). Code
@@ -107,7 +107,7 @@ export const adminShowcaseWatermarkRoutes: FastifyPluginAsync = async (server) =
 
     // A stamp-affecting change (logo/opacity/scale/gravity) needs every
     // existing design re-composited from its raw upload — deferred background
-    // job, never inline (docs/tasks/suits-designs.md §6). Best-effort: the
+    // job, never inline (docs/tasks/done/suits-designs.md §6). Best-effort: the
     // config save has already succeeded, so a Redis/queue hiccup must not
     // fail the admin's PUT.
     const stampChanged = STAMP_AFFECTING_FIELDS.some(

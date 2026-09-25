@@ -1,4 +1,4 @@
-// T3.1 — SHOWCASE_DESIGNS upload cap (docs/tasks/suits-designs.md §14.2).
+// T3.1 — SHOWCASE_DESIGNS upload cap (docs/tasks/done/suits-designs.md §14.2).
 //
 // Unlike the usageCounter-style metered resources (F-010's checkQuota/
 // incrementUsage — a counter that only ever goes up), Suits Designs cap is a

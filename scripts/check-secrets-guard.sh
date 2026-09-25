@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # B-014 Secret-commit guard — blocks staged changes containing live credential
-# patterns (see docs/omp-review.md B-014 / S-001).
+# patterns (see docs/references/history/reports/2026-07-27-omp-review.md B-014 / S-001).
 #
 # HARDENED 2026-08-02 after a GitGuardian leak: the old version excluded *.md
 # and scripts/*.sql from scanning — exactly the files where the Supabase role
-# passwords + connection URIs lived (docs/INFRA-SETUP.md, 26-night-report.md,
+# passwords + connection URIs lived (docs/references/guides/infra-setup.md, 26-night-report.md,
 # omp-review.md, scripts/setup-role-separation.sql, setup-vault-db.sql). Those
 # exclusions are gone. Two tiers now:
 #   1. EVERY file (docs and SQL included): known-leaked literals + DB URLs with

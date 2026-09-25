@@ -9,7 +9,7 @@
 
 | Layer | Current | Source |
 |---|---|---|
-| DB | Supabase Postgres 16 + pgvector, single primary | `docs/DATABASE.md` |
+| DB | Supabase Postgres 16 + pgvector, single primary | `docs/database/DATABASE.md` |
 | Read replica | Code path exists (`packages/db/src/client.ts`, `DATABASE_URL_REPLICA`), **not provisioned** — admin queries hit primary | `client.ts:20-36` |
 | Connection pooling | None configured — no PgBouncer/Supabase pooler wired into `DATABASE_URL` | grep, no hits |
 | Deletion vault DB | Code + triggers built (F-016/F-017), `VAULT_DATABASE_URL` **unset in prod** — vault writes silently skip | CLAUDE.md, `vault.ts:28-30` |
