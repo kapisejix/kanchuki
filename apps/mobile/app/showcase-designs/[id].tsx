@@ -12,6 +12,7 @@ import {
 import { showError } from '../../src/lib/errors'
 import { useScreenInsets } from '../../src/lib/safe-area'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
+import { KeyboardScreen } from '../../src/components/KeyboardScreen'
 import { GradientButton } from '../../src/components/GradientButton'
 
 export default function ShowcaseDesignDetailScreen() {
@@ -137,6 +138,7 @@ export default function ShowcaseDesignDetailScreen() {
   return (
     <>
       <Stack.Screen options={{ title: globalReadOnly ? 'Design' : 'Edit Design', headerShown: true }} />
+      <KeyboardScreen>
       <ScrollView
         className="flex-1 bg-[#F8F7FC]"
         contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 24, gap: 18 }}
@@ -271,6 +273,7 @@ export default function ShowcaseDesignDetailScreen() {
           </>
         )}
       </ScrollView>
+      </KeyboardScreen>
     </>
   )
 }

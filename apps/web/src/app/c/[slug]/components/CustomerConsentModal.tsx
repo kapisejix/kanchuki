@@ -6,6 +6,7 @@ import { X, ArrowLeft, ShieldCheck, User, MessageSquare } from 'lucide-react'
 import { formatPriceRange, buildWhatsAppEnquiryLink, buildEnquiryMessage } from '@kanchuki/shared'
 import type { PublicProduct, PublicProductDetail, PublicCollection } from '@kanchuki/shared'
 import { trackPassportEvent } from '@/lib/passport-client'
+import { Sheet } from '@/components/Sheet'
 
 interface Props {
   product: PublicProduct | PublicProductDetail
@@ -76,15 +77,19 @@ export function CustomerConsentModal({
 
   const primaryPhoto = (product as any).primary_photo_url || (product as any).photos?.[0] || null
 
+  // A bottom sheet on phones and a centred dialog from `sm:` up. Its inputs
+  // scroll with the panel (there is no separate footer), but the panel is
+  // still bottom-anchored on phones, so it needs the same keyboard inset —
+  // and its 95vh cap subtracting it, or the header rides off the top.
   return (
-    <div
-      className="fixed inset-0 z-[70] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
-      onClick={onClose}
+    <Sheet
+      open
+      onClose={onClose}
+      overlayClassName="z-[70] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
+      panelClassName="relative w-full max-w-md bg-[#F8F7FC] rounded-t-[32px] sm:rounded-[32px] p-5 pb-8 sm:p-6 shadow-2xl border border-[#E0E1F6] max-h-[95vh] overflow-y-auto"
+      maxHeightVh={95}
+      ariaLabel="Enquire on WhatsApp"
     >
-      <div
-        className="relative w-full max-w-md bg-[#F8F7FC] rounded-t-[32px] sm:rounded-[32px] p-5 pb-8 sm:p-6 shadow-2xl border border-[#E0E1F6] max-h-[95vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
-      >
         {/* Top Navigation */}
         <div className="flex justify-between items-center mb-4">
           <button
@@ -286,8 +291,7 @@ export function CustomerConsentModal({
             <span>100% Privacy Protected • Direct Boutique Connect</span>
           </div>
         </div>
-      </div>
-    </div>
+    </Sheet>
   )
 }
 

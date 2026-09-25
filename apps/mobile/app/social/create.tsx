@@ -12,6 +12,7 @@ import {
   XCircle,
 } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { KeyboardScreen } from '../../src/components/KeyboardScreen';
 import {
   ActivityIndicator,
   Image,
@@ -864,7 +865,7 @@ export default function CreateSocialPostScreen() {
   const accountById = (id: string) => accounts.find((a) => a.id === id);
 
   return (
-    <View className="flex-1 bg-ink-50">
+    <KeyboardScreen className="flex-1 bg-ink-50">
       {/* Header */}
       <View
         className="bg-white border-b border-sand-100 px-4 pb-4"
@@ -1275,7 +1276,7 @@ export default function CreateSocialPostScreen() {
           }
         />
       ) : null}
-    </View>
+    </KeyboardScreen>
   );
 }
 

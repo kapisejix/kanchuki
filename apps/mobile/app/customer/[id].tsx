@@ -4,6 +4,7 @@ import { View, Text, TextInput, ScrollView, Alert, ActivityIndicator } from 'rea
 import { router, useLocalSearchParams } from 'expo-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useScreenInsets } from '../../src/lib/safe-area'
+import { KeyboardScreen } from '../../src/components/KeyboardScreen'
 import { X, Check, Plus, Trash2 } from 'lucide-react-native'
 import { customerApi, productAttributeApi } from '../../src/lib/api'
 import { DetailScreenSkeleton } from '../../src/components/Skeleton'
@@ -154,6 +155,7 @@ export default function CustomerDetailScreen() {
   }
 
   return (
+    <KeyboardScreen>
     <ScrollView className="flex-1 bg-[#F8F7FC]" contentContainerStyle={{ paddingBottom: screenPaddingBottom }}>
       {/* Header */}
       <View
@@ -478,5 +480,6 @@ export default function CustomerDetailScreen() {
 
       <View className="h-12" />
     </ScrollView>
+    </KeyboardScreen>
   )
 }

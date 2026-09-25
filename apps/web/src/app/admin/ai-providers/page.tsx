@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
+import { Sheet } from '@/components/Sheet'
 import {
   Bot,
   Plus,
@@ -395,14 +396,18 @@ export default function AiProvidersPage() {
         ))}
       </div>
 
-      {/* Add / edit form */}
+      {/* Add / edit form. A centred dialog whose panel is capped with
+          `max-h-full`, so the overlay's own keyboard padding is the whole
+          correction it needs — see `@/components/Sheet`. */}
       {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.96 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6"
-          >
+        <Sheet
+          open
+          onClose={() => setShowForm(false)}
+          overlayClassName="z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+          panelClassName="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 max-h-full overflow-y-auto"
+          panelAnimation={{ initial: { opacity: 0, scale: 0.96 }, animate: { opacity: 1, scale: 1 } }}
+          ariaLabel={editing ? 'Edit AI provider' : 'Add AI provider'}
+        >
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-bold text-gray-900">
                 {editing ? 'Edit AI provider' : 'Add AI provider'}
@@ -554,8 +559,7 @@ export default function AiProvidersPage() {
                 </button>
               </div>
             </div>
-          </motion.div>
-        </div>
+        </Sheet>
       )}
     </motion.div>
   )

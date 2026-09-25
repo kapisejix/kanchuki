@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { View, Text, TextInput, StyleSheet, ActivityIndicator } from 'react-native'
+import { KeyboardScreen } from '../../../src/components/KeyboardScreen'
 import { router, useLocalSearchParams } from 'expo-router'
 import { CameraView, useCameraPermissions } from 'expo-camera'
 import * as ImagePicker from 'expo-image-picker'
@@ -192,7 +193,7 @@ export default function AddColorVariantScreen() {
 
   // detecting / saving / manual fallback
   return (
-    <View className="flex-1 bg-black">
+    <KeyboardScreen className="flex-1 bg-black">
       {photoUri && <Image source={{ uri: photoUri }} style={{ width: '100%', height: '100%' }} contentFit="contain" />}
 
       <View className="absolute left-4" style={{ top: insets.top + 8 }}>
@@ -251,6 +252,6 @@ export default function AddColorVariantScreen() {
           />
         </View>
       )}
-    </View>
+    </KeyboardScreen>
   )
 }

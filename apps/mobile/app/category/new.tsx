@@ -10,6 +10,7 @@ import { showError } from '../../src/lib/errors'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { GradientButton } from '../../src/components/GradientButton'
 import { useScreenInsets } from '../../src/lib/safe-area'
+import { KeyboardScreen } from '../../src/components/KeyboardScreen'
 
 export default function NewCategoryScreen() {
   const { insets } = useScreenInsets()
@@ -84,7 +85,7 @@ export default function NewCategoryScreen() {
   return (
     <>
       <Stack.Screen options={{ title: 'New Category', headerShown: true }} />
-      <View className="flex-1 bg-[#F8F7FC] px-4 py-5 gap-4">
+      <KeyboardScreen className="flex-1 bg-[#F8F7FC] px-4 py-5 gap-4">
         <View className="items-center">
           <AnimatedPressable
             onPress={() => void handlePickImage()}
@@ -267,7 +268,7 @@ export default function NewCategoryScreen() {
           loading={create.isPending}
           onPress={() => create.mutate()}
         />
-      </View>
+      </KeyboardScreen>
     </>
   )
 }

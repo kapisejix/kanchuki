@@ -20,6 +20,7 @@ import {
   View,
 } from 'react-native'
 import { useScreenInsets } from '../../src/lib/safe-area'
+import { KeyboardScreen } from '../../src/components/KeyboardScreen'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { GradientButton } from '../../src/components/GradientButton'
 import { growthApi, type ChannelSync, type ChannelType } from '../../src/lib/api/growth'
@@ -330,7 +331,7 @@ function ConnectChannelModal({
   }
 
   return (
-    <View
+    <KeyboardScreen
       className="absolute inset-0 bg-black/60 items-center justify-end"
       style={{ paddingBottom: insets.bottom }}
     >
@@ -432,7 +433,7 @@ function ConnectChannelModal({
           </AnimatedPressable>
         </View>
       </View>
-    </View>
+    </KeyboardScreen>
   )
 }
 

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { Sheet } from '@/components/Sheet'
 import {
   Users,
   Search,
@@ -179,21 +180,25 @@ function MemberModal({
   return (
     <AnimatePresence>
       {open && (
-        <>
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50"
-            onClick={onClose}
-          />
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-            className="fixed inset-4 sm:inset-auto sm:top-10 sm:left-1/2 sm:-translate-x-1/2 sm:max-w-lg sm:w-full sm:max-h-[85vh] bg-white rounded-2xl shadow-2xl border border-gray-200 z-50 overflow-y-auto"
-          >
+        // The panel used to be a second `fixed` sibling of the scrim, which no
+        // overlay padding can reach — it is the scrim's flex child now, so the
+        // keyboard inset moves it like every other sheet. Losing `inset-4`
+        // costs nothing on a phone (a `p-4` gutter with `max-h-full` is the
+        // same box) and `sm:pt-10` keeps the desktop top alignment.
+        <Sheet
+          open
+          onClose={onClose}
+          overlayClassName="z-50 flex items-start justify-center p-4 bg-black/50 backdrop-blur-sm sm:pt-10"
+          panelClassName="w-full max-w-lg max-h-full sm:max-h-[85vh] bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-y-auto"
+          overlayAnimation={{ initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 } }}
+          panelAnimation={{
+            initial: { opacity: 0, scale: 0.95, y: 20 },
+            animate: { opacity: 1, scale: 1, y: 0 },
+            exit: { opacity: 0, scale: 0.95, y: 20 },
+            transition: { type: 'spring', stiffness: 300, damping: 30 },
+          }}
+          ariaLabel={editMember ? 'Edit Team Member' : 'Add Team Member'}
+        >
             <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between z-10">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl flex items-center justify-center">
@@ -369,8 +374,7 @@ function MemberModal({
                 )}
               </button>
             </div>
-          </motion.div>
-        </>
+        </Sheet>
       )}
     </AnimatePresence>
   )

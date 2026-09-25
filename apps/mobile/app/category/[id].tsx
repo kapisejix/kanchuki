@@ -4,6 +4,7 @@ import { View, Text, FlatList, TextInput, ActivityIndicator, Alert, Image, Modal
 import { router, useLocalSearchParams } from 'expo-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useScreenInsets } from '../../src/lib/safe-area'
+import { KeyboardScreen } from '../../src/components/KeyboardScreen'
 import * as ImagePicker from 'expo-image-picker'
 import { Plus, Trash2, Pencil, X, ImagePlus, ChevronLeft } from 'lucide-react-native'
 import ProductCard from '../../src/components/ProductCard'
@@ -93,7 +94,7 @@ function EditCategoryModal({
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View className="flex-1 bg-black/50 justify-center px-6">
+      <KeyboardScreen className="flex-1 bg-black/50 justify-center px-6">
         <View className="bg-white rounded-3xl w-full p-6 gap-4 border border-lavender-200 shadow-lg">
           <View className="flex-row items-center justify-between">
             <Text
@@ -150,7 +151,7 @@ function EditCategoryModal({
             </View>
           </View>
         </View>
-      </View>
+      </KeyboardScreen>
     </Modal>
   )
 }

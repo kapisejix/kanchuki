@@ -28,6 +28,7 @@ import {
   recommend,
 } from '@/lib/studio-effects';
 import { Sparkles, X } from 'lucide-react';
+import { Sheet } from '@/components/Sheet';
 import Image from 'next/image';
 import { useState } from 'react';
 
@@ -87,6 +88,8 @@ export default function EffectsCatalog({ onUse }: { onUse: (a: UseEffectArgs) =>
   const [po, setPo] = useState<string>('');
   const [li, setLi] = useState<LightId>('softbox');
   const [, bump] = useState(0); // re-render after an upload
+  // The preset dialog used to be a `<dialog>`; it is a `<Sheet>` now, which
+  // also handles the keyboard inset its prompt/select fields need.
 
   const pool = PRESETS.filter(
     (p) => p.mode === mode && fits(p, cls, aud) && (env === 'all' || p.env === env),
@@ -353,12 +356,14 @@ export default function EffectsCatalog({ onUse }: { onUse: (a: UseEffectArgs) =>
       )}
 
       {cur && (
-        <dialog
+        <Sheet
           open
-          className="fixed inset-0 z-50 m-0 flex h-full max-h-none w-full max-w-none items-center justify-center bg-black/60 p-4"
-          aria-label={cur.title}
+          onClose={() => setCur(null)}
+          overlayClassName="z-50 flex items-center justify-center bg-black/60 p-4"
+          panelClassName="relative max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white p-5"
+          maxHeightVh={92}
+          ariaLabel={cur.title}
         >
-          <div className="relative max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white p-5">
             <button
               type="button"
               aria-label="Close"
@@ -492,8 +497,7 @@ export default function EffectsCatalog({ onUse }: { onUse: (a: UseEffectArgs) =>
                 </p>
               </div>
             </div>
-          </div>
-        </dialog>
+        </Sheet>
       )}
     </div>
   );

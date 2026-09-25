@@ -6,6 +6,7 @@ import {
 import { router } from 'expo-router'
 import * as Clipboard from 'expo-clipboard'
 import { useScreenInsets } from '../../src/lib/safe-area'
+import { KeyboardScreen } from '../../src/components/KeyboardScreen'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Plus, Trash2, X, User, ChevronLeft, Pencil, RotateCcw, Check, MessageCircle, Copy,
@@ -108,7 +109,7 @@ function AddStaffModal({
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View className="flex-1 bg-black/50 justify-center px-6">
+      <KeyboardScreen className="flex-1 bg-black/50 justify-center px-6">
         <View className="bg-white rounded-3xl w-full p-6 gap-4">
           <View className="flex-row items-center justify-between">
             <Text className="text-lg font-bold text-sand-900">
@@ -202,7 +203,7 @@ function AddStaffModal({
             </View>
           </View>
         </View>
-      </View>
+      </KeyboardScreen>
     </Modal>
   )
 }
@@ -248,7 +249,7 @@ function PurgeModal({
 
   return (
     <Modal visible={Boolean(member)} transparent animationType="fade" onRequestClose={onClose}>
-      <View className="flex-1 bg-black/50 justify-center px-6">
+      <KeyboardScreen className="flex-1 bg-black/50 justify-center px-6">
         <View className="bg-white rounded-3xl w-full p-6 gap-4">
           <Text className="text-lg font-bold text-rust-600">Delete permanently</Text>
           <Text className="text-sm text-sand-600 leading-relaxed">
@@ -287,7 +288,7 @@ function PurgeModal({
             </AnimatedPressable>
           </View>
         </View>
-      </View>
+      </KeyboardScreen>
     </Modal>
   )
 }

@@ -35,6 +35,7 @@ import {
 import { showError, logError } from '../../src/lib/errors'
 import { useTheme } from '../../src/lib/theme'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
+import { KeyboardScreen } from '../../src/components/KeyboardScreen'
 
 // ─── Types ────────────────────────────────────────────────────────
 
@@ -901,7 +902,7 @@ export default function CatalogImportScreen() {
   }
 
   return (
-    <View className="flex-1 bg-sand-50">
+    <KeyboardScreen className="flex-1 bg-sand-50">
       {/* Header */}
       <View
         className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-sand-100"
@@ -937,7 +938,7 @@ export default function CatalogImportScreen() {
       {step === 'reviewing' && renderReviewStep()}
       {step === 'saving' && renderSavingStep()}
       {step === 'done' && renderDoneStep()}
-    </View>
+    </KeyboardScreen>
   )
 }
 

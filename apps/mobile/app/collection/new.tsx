@@ -9,6 +9,7 @@ import {
 import { router } from 'expo-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useScreenInsets } from '../../src/lib/safe-area'
+import { KeyboardScreen } from '../../src/components/KeyboardScreen'
 import { ChevronLeft } from 'lucide-react-native'
 import ProductCard from '../../src/components/ProductCard'
 import { ProductGridSkeleton } from '../../src/components/Skeleton'
@@ -71,7 +72,7 @@ export default function NewCollectionScreen() {
   const canCreate = title.trim().length > 0 && selected.size > 0 && !create.isPending
 
   return (
-    <View className="flex-1 bg-[#F8F7FC]">
+    <KeyboardScreen className="flex-1 bg-[#F8F7FC]">
       <View
         className="flex-row items-center px-5 pb-3 bg-white border-b border-lavender-200"
         style={{ paddingTop: headerPaddingTop }}
@@ -196,6 +197,6 @@ export default function NewCollectionScreen() {
           )}
         </View>
       </View>
-    </View>
+    </KeyboardScreen>
   )
 }

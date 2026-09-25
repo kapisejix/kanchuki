@@ -17,6 +17,7 @@ import {
   Linking,
 } from 'react-native'
 import { useScreenInsets } from '../../../src/lib/safe-area'
+import { KeyboardScreen } from '../../../src/components/KeyboardScreen'
 import { AnimatedPressable } from '../../../src/components/AnimatedPressable'
 import { GradientButton } from '../../../src/components/GradientButton'
 import { growthApi } from '../../../src/lib/api/growth'
@@ -80,7 +81,7 @@ export default function YouTubeConfigScreen() {
   })
 
   return (
-    <View className="flex-1 bg-[#F8F7FC]">
+    <KeyboardScreen className="flex-1 bg-[#F8F7FC]">
       {/* Header */}
       <View
         className="bg-white border-b border-lavender-200 px-5 pb-4"
@@ -228,7 +229,7 @@ export default function YouTubeConfigScreen() {
           </View>
         </View>
       </ScrollView>
-    </View>
+    </KeyboardScreen>
   )
 }
 

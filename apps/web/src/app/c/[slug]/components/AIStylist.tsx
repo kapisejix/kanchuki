@@ -4,6 +4,7 @@ import { useState, useCallback, useRef, useEffect } from 'react'
 import Image from 'next/image'
 import { Sparkles, Send, Loader2, X, MessageCircle } from 'lucide-react'
 import { formatPriceRange } from '@kanchuki/shared'
+import { Sheet } from '@/components/Sheet'
 
 interface Recommendation {
   product_id: string
@@ -102,26 +103,33 @@ export function AIStylist({ storeSlug, storeName, onProductTap }: Props) {
     }
   }, [open])
 
-  // Floating button
-  if (!open) {
-    return (
-      <button
-        onClick={openOverlay}
-        className="fixed bottom-24 right-4 z-40 w-14 h-14 bg-gradient-to-br from-cyan-500 to-indigo-600 text-white rounded-full shadow-lg hover:shadow-xl flex items-center justify-center transition-all active:scale-90 hover:-translate-y-0.5"
-        aria-label="Open AI Stylist"
-      >
-        <Sparkles size={22} />
-      </button>
-    )
-  }
-
   return (
-    <div className="fixed inset-0 z-50 flex flex-col" onClick={closeOverlay}>
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+    <>
+      {/* Rendered only while closed, so the open sheet is the only thing on
+          screen (and the only focusable control). */}
+      {!open && (
+        <button
+          onClick={openOverlay}
+          className="fixed bottom-24 right-4 z-40 w-14 h-14 bg-gradient-to-br from-cyan-500 to-indigo-600 text-white rounded-full shadow-lg hover:shadow-xl flex items-center justify-center transition-all active:scale-90 hover:-translate-y-0.5"
+          aria-label="Open AI Stylist"
+        >
+          <Sparkles size={22} />
+        </button>
+      )}
 
-      <div
-        className="relative mt-auto bg-white rounded-t-3xl max-h-[85vh] flex flex-col w-full max-w-md mx-auto"
-        onClick={(e) => e.stopPropagation()}
+      {/* Bottom sheet whose input sits in a footer *outside* the scrollable
+          body, so the panel's own scrolling can never bring it into view — the
+          overlay has to move instead. `<Sheet>` applies that, and caps the
+          panel at 85vh, because a `vh` cap is measured against the full layout
+          viewport and would otherwise push the header (and its close button)
+          off the top of the screen once the keyboard is open. */}
+      <Sheet
+        open={open}
+        onClose={closeOverlay}
+        overlayClassName="z-50 flex flex-col bg-black/40 backdrop-blur-sm"
+        panelClassName="relative mt-auto bg-white rounded-t-3xl max-h-[85vh] flex flex-col w-full max-w-md mx-auto"
+        maxHeightVh={85}
+        ariaLabel="AI Stylist"
       >
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
@@ -271,7 +279,7 @@ export function AIStylist({ storeSlug, storeName, onProductTap }: Props) {
             </button>
           </div>
         </div>
-      </div>
-    </div>
+      </Sheet>
+    </>
   )
 }

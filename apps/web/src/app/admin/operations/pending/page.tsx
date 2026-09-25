@@ -12,6 +12,7 @@ import {
   Shield,
 } from 'lucide-react'
 import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
+import { Sheet } from '@/components/Sheet'
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
 
@@ -206,12 +207,14 @@ export default function PendingApprovalsPage() {
 
       {/* Reject Modal */}
       {rejectModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <motion.div
-            initial={{ scale: 0.95, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl"
-          >
+        <Sheet
+          open
+          onClose={() => { setRejectModal(null); setRejectReason('') }}
+          overlayClassName="z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+          panelClassName="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl max-h-full overflow-y-auto"
+          panelAnimation={{ initial: { scale: 0.95, opacity: 0 }, animate: { scale: 1, opacity: 1 } }}
+          ariaLabel="Reject Operation"
+        >
             <h3 className="text-lg font-semibold text-gray-900 mb-2">Reject Operation</h3>
             <p className="text-sm text-gray-500 mb-4">
               Provide a reason for rejecting this {rejectModal.type.toLowerCase()} operation.
@@ -245,8 +248,7 @@ export default function PendingApprovalsPage() {
                 Reject
               </motion.button>
             </div>
-          </motion.div>
-        </div>
+        </Sheet>
       )}
     </motion.div>
   )

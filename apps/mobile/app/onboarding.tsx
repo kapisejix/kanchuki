@@ -17,13 +17,12 @@ import {
   Zap,
 } from 'lucide-react-native';
 import { useCallback, useEffect, useState } from 'react';
+import { KeyboardScreen } from '../src/components/KeyboardScreen';
 import {
   ActivityIndicator,
   Alert,
   BackHandler,
-  KeyboardAvoidingView,
   Linking,
-  Platform,
   ScrollView,
   Text,
   TextInput,
@@ -982,10 +981,7 @@ export default function OnboardingScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      className="flex-1 bg-[#F8F7FC]"
-    >
+    <KeyboardScreen className="flex-1 bg-[#F8F7FC]">
       {/* ── Fixed Luxury Header ── */}
       <View
         className="bg-white border-b border-lavender-200 px-5 pb-3"
@@ -1080,6 +1076,6 @@ export default function OnboardingScreen() {
           </View>
         </View>
       )}
-    </KeyboardAvoidingView>
+    </KeyboardScreen>
   );
 }

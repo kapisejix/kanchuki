@@ -12,6 +12,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
+import { Sheet } from '@/components/Sheet'
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
 
@@ -311,21 +312,20 @@ function FestivalFormModal({
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
-      onClick={onClose}
+    <Sheet
+      open
+      onClose={onClose}
+      overlayClassName="z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+      panelClassName="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 max-h-full overflow-y-auto"
+      overlayAnimation={{ initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 } }}
+      panelAnimation={{
+        initial: { opacity: 0, scale: 0.95, y: 12 },
+        animate: { opacity: 1, scale: 1, y: 0 },
+        exit: { opacity: 0, scale: 0.95, y: 12 },
+        transition: { type: 'spring', stiffness: 300, damping: 26 },
+      }}
+      ariaLabel={festival ? 'Edit Festival' : 'Add Festival'}
     >
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 12 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 12 }}
-        transition={{ type: 'spring', stiffness: 300, damping: 26 }}
-        onClick={(e) => e.stopPropagation()}
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6"
-      >
         <div className="flex items-center justify-between mb-5">
           <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
             <CalendarDays size={17} className="text-cyan-500" />
@@ -433,7 +433,6 @@ function FestivalFormModal({
             </button>
           </div>
         </div>
-      </motion.div>
-    </motion.div>
+    </Sheet>
   )
 }

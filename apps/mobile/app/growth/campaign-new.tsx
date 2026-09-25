@@ -5,15 +5,14 @@ import { useEffect, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
-  KeyboardAvoidingView,
   Modal,
-  Platform,
   ScrollView,
   Text,
   TextInput,
   View,
 } from 'react-native'
 import { useScreenInsets } from '../../src/lib/safe-area'
+import { KeyboardScreen } from '../../src/components/KeyboardScreen'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { GradientButton } from '../../src/components/GradientButton'
 import { TemplatePicker } from '../../src/components/social'
@@ -477,10 +476,7 @@ export default function CampaignFormScreen() {
   }
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      className="flex-1 bg-[#F8F7FC]"
-    >
+    <KeyboardScreen className="flex-1 bg-[#F8F7FC]">
       {/* Header */}
       <View
         className="flex-row items-center justify-between px-5 pb-4 bg-white border-b border-lavender-200"
@@ -1054,6 +1050,6 @@ export default function CampaignFormScreen() {
           </View>
         </View>
       </ScrollView>
-    </KeyboardAvoidingView>
+    </KeyboardScreen>
   )
 }

@@ -28,6 +28,7 @@ import {
 import { showError, logError } from '../../src/lib/errors'
 import { useTheme } from '../../src/lib/theme'
 import { ProductAddSkeleton } from '../../src/components/Skeleton'
+import { KeyboardScreen } from '../../src/components/KeyboardScreen'
 import { GradientButton } from '../../src/components/GradientButton'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 
@@ -1075,7 +1076,7 @@ export default function AddProductScreen() {
   }
 
   return (
-    <View className="flex-1 bg-ink-50">
+    <KeyboardScreen className="flex-1 bg-ink-50">
       {/* Header — fixed outside the scroll area so back/save stay reachable */}
       <View
         className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-sand-100"
@@ -1374,6 +1375,6 @@ export default function AddProductScreen() {
 
       <View className="h-12" />
       </ScrollView>
-    </View>
+    </KeyboardScreen>
   )
 }

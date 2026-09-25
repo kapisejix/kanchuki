@@ -1,11 +1,10 @@
 import { useState, useRef, useEffect } from 'react'
+import { KeyboardScreen } from '../../src/components/KeyboardScreen'
 import {
   View,
   Text,
   TextInput,
   ScrollView,
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
   Alert,
 } from 'react-native'
@@ -314,10 +313,7 @@ export default function OtpScreen() {
   }
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      className="flex-1 bg-[#F8F7FC]"
-    >
+    <KeyboardScreen className="flex-1 bg-[#F8F7FC]">
       <ScrollView
         className="flex-1 px-6"
         contentContainerStyle={{
@@ -455,6 +451,6 @@ export default function OtpScreen() {
           />
         </View>
       </ScrollView>
-    </KeyboardAvoidingView>
+    </KeyboardScreen>
   )
 }

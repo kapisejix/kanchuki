@@ -1,6 +1,7 @@
 'use client'
 
 import { UNLIMITED } from '@kanchuki/shared'
+import { Sheet } from '@/components/Sheet'
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
@@ -696,18 +697,15 @@ export default function RetailerDetailPage() {
 
             {/* F-015: Suspend confirmation dialog */}
             {showSuspendDialog && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm"
-                onClick={() => setShowSuspendDialog(false)}
+              <Sheet
+                open
+                onClose={() => setShowSuspendDialog(false)}
+                overlayClassName="z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm"
+                panelClassName="bg-white rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl border border-gray-200 space-y-4 max-h-full overflow-y-auto"
+                overlayAnimation={{ initial: { opacity: 0 }, animate: { opacity: 1 } }}
+                panelAnimation={{ initial: { scale: 0.95, opacity: 0 }, animate: { scale: 1, opacity: 1 } }}
+                ariaLabel="Suspend Account"
               >
-                <motion.div
-                  initial={{ scale: 0.95, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  onClick={(e) => e.stopPropagation()}
-                  className="bg-white rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl border border-gray-200 space-y-4"
-                >
                   <h3 className="text-lg font-bold text-gray-900">Suspend Account</h3>
                   <p className="text-sm text-gray-500">
                     This will prevent the retailer from logging in and hide their collection links.
@@ -754,8 +752,7 @@ export default function RetailerDetailPage() {
                       {actionLoading ? 'Suspending...' : 'Confirm Suspension'}
                     </button>
                   </div>
-                </motion.div>
-              </motion.div>
+              </Sheet>
             )}
 
             <hr className="my-4 border-gray-100" />

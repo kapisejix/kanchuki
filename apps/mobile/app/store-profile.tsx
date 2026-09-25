@@ -5,6 +5,7 @@ import * as Sharing from 'expo-sharing'
 import { router } from 'expo-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useScreenInsets } from '../src/lib/safe-area'
+import { KeyboardScreen } from '../src/components/KeyboardScreen'
 import { X, Share2, Check, Download, Trash2 } from 'lucide-react-native'
 import QRCode from 'react-native-qrcode-svg'
 import { Paths } from 'expo-file-system'
@@ -158,6 +159,7 @@ export default function StoreProfileScreen() {
     deleteConfirmText.trim().toLowerCase() === (me?.shop_name ?? '').trim().toLowerCase()
 
   return (
+    <KeyboardScreen>
     <ScrollView className="flex-1 bg-[#F8F7FC]" contentContainerStyle={{ paddingTop: headerPaddingTop, paddingBottom: screenPaddingBottom }}>
       <View className="flex-row items-center justify-between px-5 mb-4">
         <AnimatedPressable
@@ -354,5 +356,6 @@ export default function StoreProfileScreen() {
         )}
       </View>
     </ScrollView>
+    </KeyboardScreen>
   )
 }

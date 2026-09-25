@@ -4,13 +4,13 @@ import { ChevronLeft } from 'lucide-react-native'
 import { useState } from 'react'
 import {
   Alert,
-  KeyboardAvoidingView,
   ScrollView,
   Text,
   TextInput,
   View,
 } from 'react-native'
 import { useScreenInsets } from '../../src/lib/safe-area'
+import { KeyboardScreen } from '../../src/components/KeyboardScreen'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { GradientButton } from '../../src/components/GradientButton'
 import { growthApi, type AiCampaignDraft, type SuggestedProduct } from '../../src/lib/api'
@@ -110,10 +110,7 @@ export default function AiCampaignScreen() {
   }
 
   return (
-    <KeyboardAvoidingView
-      behavior="padding"
-      className="flex-1 bg-[#F8F7FC]"
-    >
+    <KeyboardScreen behavior="padding" className="flex-1 bg-[#F8F7FC]">
       <View
         className="flex-row items-center justify-between px-5 pb-4 bg-white border-b border-lavender-200"
         style={{ paddingTop: headerPaddingTop }}
@@ -274,6 +271,6 @@ export default function AiCampaignScreen() {
           )}
         </View>
       </ScrollView>
-    </KeyboardAvoidingView>
+    </KeyboardScreen>
   )
 }

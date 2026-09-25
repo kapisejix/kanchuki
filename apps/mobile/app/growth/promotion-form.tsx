@@ -4,14 +4,13 @@ import { ChevronLeft } from 'lucide-react-native'
 import { useEffect, useState } from 'react'
 import {
   Alert,
-  KeyboardAvoidingView,
-  Platform,
   ScrollView,
   Text,
   TextInput,
   View,
 } from 'react-native'
 import { useScreenInsets } from '../../src/lib/safe-area'
+import { KeyboardScreen } from '../../src/components/KeyboardScreen'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { GradientButton } from '../../src/components/GradientButton'
 import { growthApi, type Promotion } from '../../src/lib/api/growth'
@@ -130,10 +129,7 @@ export default function PromotionFormScreen() {
   }
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      className="flex-1 bg-[#F8F7FC]"
-    >
+    <KeyboardScreen className="flex-1 bg-[#F8F7FC]">
       {/* Header */}
       <View
         className="flex-row items-center justify-between px-5 pb-4 bg-white border-b border-lavender-200"
@@ -218,6 +214,6 @@ export default function PromotionFormScreen() {
           </Section>
         </View>
       </ScrollView>
-    </KeyboardAvoidingView>
+    </KeyboardScreen>
   )
 }

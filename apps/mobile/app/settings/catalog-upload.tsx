@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { useScreenInsets } from '../../src/lib/safe-area';
 import { AnimatedPressable } from '../../src/components/AnimatedPressable';
+import { KeyboardScreen } from '../../src/components/KeyboardScreen';
 import { GradientButton } from '../../src/components/GradientButton';
 import { type CatalogUploadTicket, catalogUploadApi } from '../../src/lib/api';
 import { showError } from '../../src/lib/errors';
@@ -251,7 +252,7 @@ export default function CatalogUploadScreen() {
     tickets.find((t) => t.status !== 'CLOSED' && t.status !== 'RESOLVED') ?? tickets[0];
 
   return (
-    <View className="flex-1 bg-white">
+    <KeyboardScreen className="flex-1 bg-white">
       <View
         className="bg-white border-b border-sand-100 px-4 pb-4"
         style={{ paddingTop: headerPaddingTop }}
@@ -282,6 +283,6 @@ export default function CatalogUploadScreen() {
           {activeTicket ? <TicketStatus ticket={activeTicket} /> : <RequestForm />}
         </ScrollView>
       )}
-    </View>
+    </KeyboardScreen>
   );
 }

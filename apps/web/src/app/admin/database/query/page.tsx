@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { Sheet } from '@/components/Sheet'
 import dynamic from 'next/dynamic'
 import {
   Play,
@@ -499,8 +500,13 @@ LIMIT 20;`)
 
       {/* Save Query Modal */}
       {showSaveDialog && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 max-w-md w-full space-y-4">
+        <Sheet
+          open
+          onClose={() => setShowSaveDialog(false)}
+          overlayClassName="z-50 bg-black/70 flex items-center justify-center p-4"
+          panelClassName="bg-gray-900 border border-gray-800 rounded-2xl p-5 max-w-md w-full space-y-4 max-h-full overflow-y-auto"
+          ariaLabel="Save Current Query"
+        >
             <h3 className="text-sm font-bold text-white">Save Current Query</h3>
             <input
               type="text"
@@ -525,8 +531,7 @@ LIMIT 20;`)
                 Save
               </button>
             </div>
-          </div>
-        </div>
+        </Sheet>
       )}
 
       {/* Query History Drawer */}

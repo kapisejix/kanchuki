@@ -1,11 +1,10 @@
 import { isValidIndianPhone, normalizeIndianPhone } from '@kanchuki/shared';
 import { router } from 'expo-router';
 import { useRef, useState } from 'react';
+import { KeyboardScreen } from '../../src/components/KeyboardScreen';
 import {
   Image,
-  KeyboardAvoidingView,
   Linking,
-  Platform,
   ScrollView,
   Text,
   TextInput,
@@ -107,10 +106,7 @@ export default function PhoneScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      className="flex-1 bg-[#F8F7FC]"
-    >
+    <KeyboardScreen className="flex-1 bg-[#F8F7FC]">
       <ScrollView
         className="flex-1 px-6"
         contentContainerStyle={{
@@ -221,6 +217,6 @@ export default function PhoneScreen() {
           </Text>
         </View>
       </ScrollView>
-    </KeyboardAvoidingView>
+    </KeyboardScreen>
   );
 }

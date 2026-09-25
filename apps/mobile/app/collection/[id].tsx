@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { normalizeIndianPhone } from '@kanchuki/shared'
 import { View, Text, ScrollView, FlatList, Image, Linking, ActivityIndicator, Alert, Modal, TextInput } from 'react-native'
+import { KeyboardScreen } from '../../src/components/KeyboardScreen'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useScreenInsets } from '../../src/lib/safe-area'
@@ -98,7 +99,7 @@ function EditModal({
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View className="flex-1 bg-black/50 items-center justify-center px-6">
+      <KeyboardScreen className="flex-1 bg-black/50 items-center justify-center px-6">
         <View className="bg-white rounded-3xl w-full p-6 gap-4 border border-lavender-200 shadow-xl">
           <Text
             style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
@@ -153,7 +154,7 @@ function EditModal({
             </View>
           </View>
         </View>
-      </View>
+      </KeyboardScreen>
     </Modal>
   )
 }
@@ -266,7 +267,7 @@ function ShareModal({
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
-      <View className="flex-1 bg-black/50 justify-end">
+      <KeyboardScreen className="flex-1 bg-black/50 justify-end">
         <View className="bg-white rounded-t-3xl max-h-[85%] p-5 border-t border-lavender-200">
           {bulkResult ? (
             <View className="items-center py-6 gap-3">
@@ -398,7 +399,7 @@ function ShareModal({
             </>
           )}
         </View>
-      </View>
+      </KeyboardScreen>
     </Modal>
   )
 }

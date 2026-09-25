@@ -25,14 +25,13 @@ import {
   X,
 } from "lucide-react-native";
 import { useEffect, useState } from "react";
+import { KeyboardScreen } from '../../src/components/KeyboardScreen';
 import {
   ActivityIndicator,
   Alert,
   Image,
-  KeyboardAvoidingView,
   Linking,
   Modal,
-  Platform,
   ScrollView,
   Text,
   TextInput,
@@ -227,10 +226,7 @@ function ProfileEditModal({
       animationType="fade"
       onRequestClose={onClose}
     >
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        className="flex-1 bg-black/50 justify-center px-6"
-      >
+      <KeyboardScreen className="flex-1 bg-black/50 justify-center px-6">
         <View className="bg-white rounded-3xl w-full p-6 gap-4 max-h-[80%]">
           <View className="flex-row items-center justify-between">
             <Text className="text-lg font-bold text-sand-900">
@@ -360,7 +356,7 @@ function ProfileEditModal({
             </View>
           </ScrollView>
         </View>
-      </KeyboardAvoidingView>
+      </KeyboardScreen>
     </Modal>
   );
 }
@@ -843,10 +839,7 @@ function WhatsAppApiModal({
       animationType="fade"
       onRequestClose={onClose}
     >
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        className="flex-1 bg-black/50 justify-center px-6"
-      >
+      <KeyboardScreen className="flex-1 bg-black/50 justify-center px-6">
         <View className="bg-white rounded-3xl w-full p-6 gap-4 max-h-[85%]">
           <View className="flex-row items-center justify-between">
             <Text className="text-lg font-bold text-sand-900">
@@ -932,7 +925,7 @@ function WhatsAppApiModal({
             </ScrollView>
           )}
         </View>
-      </KeyboardAvoidingView>
+      </KeyboardScreen>
     </Modal>
   );
 }

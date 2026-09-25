@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { Users, Search, ChevronRight, ChevronLeft, Store, Ruler, Sparkles, Ban, CheckCircle } from 'lucide-react'
 import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
+import { Sheet } from '@/components/Sheet'
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
 
@@ -272,18 +273,15 @@ export default function CustomersPage() {
 
       {/* Block confirmation dialog */}
       {blockDialog && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm"
-          onClick={() => setBlockDialog(null)}
+        <Sheet
+          open
+          onClose={() => setBlockDialog(null)}
+          overlayClassName="z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm"
+          panelClassName="bg-white rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl border border-gray-200 space-y-4 max-h-full overflow-y-auto"
+          overlayAnimation={{ initial: { opacity: 0 }, animate: { opacity: 1 } }}
+          panelAnimation={{ initial: { scale: 0.95, opacity: 0 }, animate: { scale: 1, opacity: 1 } }}
+          ariaLabel="Block Customer"
         >
-          <motion.div
-            initial={{ scale: 0.95, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            onClick={(e) => e.stopPropagation()}
-            className="bg-white rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl border border-gray-200 space-y-4"
-          >
             <h3 className="text-lg font-bold text-gray-900">Block Customer</h3>
             <p className="text-sm text-gray-500">
               This will prevent <strong>{blockDialog.customer.name}</strong> ({blockDialog.customer.phone})
@@ -330,8 +328,7 @@ export default function CustomersPage() {
                 {actionLoading ? 'Blocking...' : 'Confirm Block'}
               </button>
             </div>
-          </motion.div>
-        </motion.div>
+        </Sheet>
       )}
     </motion.div>
   )

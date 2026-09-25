@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, Clapperboard, Sparkles, Star, Trash2, Upload
 import { useState, useEffect, useRef } from 'react'
 import { ActivityIndicator, Alert, ScrollView, Text, TextInput, View } from 'react-native'
 import { useScreenInsets } from '../../src/lib/safe-area'
+import { KeyboardScreen } from '../../src/components/KeyboardScreen'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { GradientButton } from '../../src/components/GradientButton'
 import { productApi } from '../../src/lib/api'
@@ -168,7 +169,7 @@ export default function VideosScreen() {
   }
 
   return (
-    <View className="flex-1 bg-[#F8F7FC]">
+    <KeyboardScreen className="flex-1 bg-[#F8F7FC]">
       {/* Header */}
       <View
         className="bg-white border-b border-lavender-200 px-5 pb-4"
@@ -362,6 +363,6 @@ export default function VideosScreen() {
           )}
         </ScrollView>
       )}
-    </View>
+    </KeyboardScreen>
   )
 }

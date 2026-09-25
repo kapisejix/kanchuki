@@ -8,6 +8,7 @@ import { COLORS } from '@kanchuki/shared'
 import { productApi } from '../../src/lib/api'
 import { showError } from '../../src/lib/errors'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
+import { KeyboardScreen } from '../../src/components/KeyboardScreen'
 
 /**
  * F-025 scan-to-sell: offline sale reconciliation.
@@ -70,7 +71,7 @@ export default function ScanScreen() {
   }
 
   return (
-    <View className="flex-1 bg-black">
+    <KeyboardScreen className="flex-1 bg-black">
       <CameraView
         style={{ flex: 1 }}
         facing="back"
@@ -136,6 +137,6 @@ export default function ScanScreen() {
           <Text className="text-white text-xs font-bold">Find</Text>
         </AnimatedPressable>
       </View>
-    </View>
+    </KeyboardScreen>
   )
 }
