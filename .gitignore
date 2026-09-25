@@ -101,3 +101,6 @@ strix_runs/
 *.keystore
 *.p12
 
+# Scratch AI Studio session notes — not source
+docs/ai-studio/
+
