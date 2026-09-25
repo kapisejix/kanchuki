@@ -194,7 +194,7 @@ Three hard constraints that define every design decision below:
 
 | Not this | Why | Reference |
 |---|---|---|
-| ⛔ Virtual Try-On (self-serve, customer-facing) | Built (CatVTON on RunPod, July 2026), debugged, then **deliberately torn down** 2026-08-31 (migration `082_remove_unwanted_features`) with an explicit "Removed" line in CLAUDE.md. Google now gives it away free inside Search/Shopping for retailers with a Merchant Center feed — not Kanchuki's model. Re-adding it reverses a recent, deliberate decision. | §9, `docs/references/history/reports/2026-08-31-feature-teardown-spec.md` |
+| ⛔ Virtual Try-On (self-serve, customer-facing) | Built (CatVTON on RunPod, July 2026), debugged, then **deliberately torn down** 2026-08-31 (migration `082_remove_unwanted_features`) with an explicit "Removed" line in CLAUDE.md. Google now gives it away free inside Search/Shopping for retailers with a Merchant Center feed — not Kanchuki's model. Re-adding it reverses a recent, deliberate decision. | §9, `docs/BUILD-LOG.md (2026-08-31 teardown entry)` |
 | ⛔ IDM-VTON / any self-hosted GPU try-on | CPU-only infra (Hetzner CX43). IDM-VTON's released weights are CC BY-NC-SA-**ND** (no derivatives) — ADR-006 blocks redistributing a fine-tune. Helper deleted 2026-09-18; `retired-tryon-guard.test.ts` fails if it reappears. | §9 |
 | Not a replacement for the catalog pipeline | The image is 1 step of ~10 (tag → compress → R2 → rack/shelf → WhatsApp link → PWA catalog). A retailer using ChatGPT still does steps 2–10 by hand for every SKU, every restock. | §3 |
 
@@ -1037,6 +1037,6 @@ Gemini / Nano Banana: `ai.google.dev/gemini-api/docs/image-generation`, Google's
 Several files mention the deleted filenames as **dated records of what happened**. Those mentions are historically accurate and were deliberately **not** rewritten (rewriting a build log is worse than a stale link):
 
 - `docs/BUILD-LOG.md` — historical entries referencing `image-to-video.md` / `image-to-video-phase2.md` / the studio-scenes doc.
-- `docs/references/history/sessions/PROGRESS.md` — session log mentions.
+- `docs/BUILD-LOG.md` — session log mentions.
 - **`docs/PLAN.md`** and **`docs/PRO-REQUIREMENTS.md`** — forward-looking pointers, **updated in this change** to point here (a dangling "where's the spec" link is a real defect, unlike a dated log line).
 - ✅ **`CLAUDE.md` — repointed with explicit owner approval (2026-09-18).** Row 54 now points here instead of the deleted scene-expansion doc (and its stale "Built (unmerged)" status was corrected — steps 1–6 are done via the DB-backed style catalog); row 60's doc pointers were replaced and its stale `090`/`091` migration numbers corrected to "renumber ≥106". No dangling reference to a deleted file remains in this file.

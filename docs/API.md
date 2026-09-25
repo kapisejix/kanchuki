@@ -314,7 +314,7 @@ Removed in `chore/remove-unwanted-features` (2026-08-31, migration 082). The
 `kanchuki:try-on` queue no longer exist. Also removed in the same pass:
 `/checkout/*` (orders), `/size-charts/*`, `/for-you`, and the growth
 sub-routes for incentives, suppliers, bookings, customer referrals, lookbooks
-and festival backgrounds. See `docs/references/history/reports/2026-08-31-feature-teardown-spec.md`.
+and festival backgrounds. See `docs/BUILD-LOG.md (2026-08-31 teardown entry)`.
 
 ---
 

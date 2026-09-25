@@ -4,7 +4,7 @@
 // still makes it onto the page: a section that quietly loses its "we do not
 // train on your photos" sentence would leave every other check green. The page
 // is also the live source of the copy recorded for legal review in
-// docs/references/guides/photo-retention-notice.md.
+// docs/SECURITY.md (Photo Retention Notice section).
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 import PrivacyPolicyPage from '../page'

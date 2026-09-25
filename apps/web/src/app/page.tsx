@@ -6,7 +6,7 @@ import dynamic from 'next/dynamic'
 import { PageLoader } from '@/components/PageLoader'
 import { Navbar, drape } from '@/components/site/Chrome'
 
-// ── JSON-LD structured data (docs/content/pages/homepage.md "Page metadata") ─
+// ── JSON-LD structured data (docs/PLAN.md (Homepage page copy) "Page metadata") ─
 // Organization + WebSite, authored statically (no user/DB input). `<` is
 // escaped so the payload can never prematurely close the script tag.
 // Same SITE_URL fallback convention as layout.tsx / lib/sitemap.ts.

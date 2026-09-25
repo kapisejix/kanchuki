@@ -259,6 +259,6 @@ Meta wants base64(SHA-1(DER certificate)). Play Console and \`eas credentials\`
 show the same SHA-1 as hex, which Meta rejects — --sha1 converts it.
 
 Then: Meta app → Settings → Basic → Android → Key hashes.
-See docs/references/guides/meta-facebook-login-setup.md §3.
+See docs/DEPLOY.md (Meta Dashboard Setup section) §3.
 `);
 }

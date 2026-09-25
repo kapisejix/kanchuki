@@ -400,3 +400,57 @@ See `docs/references/guides/skills-and-mcp.md` for the full list. Key skills:
 - `deployment-patterns` — Railway + CI/CD
 - `error-handling` — resilient AI pipelines
 - `observability-and-instrumentation` — logs + metrics
+
+---
+
+## Original Platform Architecture Blueprint (2026-07, superseded)
+
+> Condensed from the former `docs/references/research/platform-architecture-blueprint.md` (1,395 lines) — an early architecture exploration doc, kept for rationale rather than in full since the locked stack below supersedes its tech options and most of its feature list (Order/Shipping modules, Digital Wardrobe, Campaign System) was cut from MVP scope or shipped in a different shape.
+
+This blueprint explored NestJS/FastAPI for the API server (Fastify was chosen — see below), Typesense/Meilisearch/Qdrant for search (pgvector on Postgres was chosen instead, one fewer moving part), and Flutter as a React Native alternative (React Native/Expo was chosen). Its 16-service microservice-style decomposition (Order Service, Shipping Service, Try-On Service, etc.) was never built — the actual API is a single Fastify monolith with route-level organization, and Order/Shipping/checkout are explicitly out of scope for the current product (§10).
+
+
+---
+
+## ADR-006: Defer 3D Parametric (SMPL/STAR) Measurement-Driven VTO
+
+> Condensed from the former `docs/references/adrs/ADR-006-defer-3d-parametric-vto.md`. Historical note: Virtual Try-On (VTO) itself was later removed from the product entirely (2026-08-31 teardown) — this record is kept only as the one real ADR this project produced, not as live guidance.
+
+**Status:** Original decision (SMPL/STAR, 3D pipeline) reaffirmed, unchanged.
+Revisited 2026-07-12 for a related but different question — swapping CatVTON
+for a 2D dual-UNet model (IDM-VTON/OOTDiffusion). See **Revisit** section
+below for that decision, plus a licensing finding that affects the
+**currently deployed, revenue-facing** CatVTON engine, not just the
+hypothetical upgrade. **Resolved 2026-07-13: commercial license for CatVTON
+obtained from the author (option 1) — no engine swap needed, NC-exposure
+closed.**
+**2026-07-16 UPDATE: CatVTON was swapped for Fashion V-Tone v1.5 (Apache 2.0,
+maskless CPU-capable). CatVTON code fully removed from the project.
+V-Tone is now the sole try-on engine. See docs/TECH-STACK.md §11.
+This ADR's reasoning about 3D pipeline deferral is unchanged.**
+**Date:** 2026-07-11 (original), 2026-07-12 (revisit), 2026-07-13 (licensing resolved), 2026-07-16 (engine swap)
+**Context:** Phase 1 (Virtual Try-On), evaluated after early CatVTON quality complaints ("not even 1% close" on product+customer image match)
+
+#### Decision
+
+Keep CatVTON (2D, photo-conditioned) as the sole try-on engine for MVP/Phase 1. Do **not** build a measurement-driven 3D body-shape pipeline (SMPL/STAR parametric body model + pose-conditioned diffusion, e.g. IDM-VTON/OOTDiffusion) at this stage.
+
+#### Why
+
+**Cost:** New pipeline needs 16-24GB VRAM (vs CatVTON's 8GB) and ~60-90s/job (vs ~35-45s) — RunPod serverless cost estimate ~$0.03-0.08/try-on vs CatVTON's $0.005, a 6-15x jump. At 10k try-ons/month: ~₹25,000-67,000 vs ~₹4,000 today. Pushes near/over the ₹5-15/image AI cost budget in `CLAUDE.md`.
+
+**Accuracy:** Published benchmarks (VITON-HD/DressCode) show only ~10-20% photorealism gain (FID/LPIPS/SSIM) for the 3D-conditioned approach over CatVTON — and **neither** engine's benchmark covers Indian ethnic wear (saree drape, dupatta, unstitched suit layering). The domain gap (Western fitted-garment training data) dominates output quality far more than architecture choice. The reported "not even 1% close" complaint traces to input quality (uncleaned background, wrong garment category, multi-piece sets) — not an engine ceiling — see `docs/PRO-REQUIREMENTS.md` F-102 product-photo requirements.
+
+**Licensing:** SMPL/SMPL-X model weights are free for research; commercial use requires a paid annual license from Meshcapade. Not a blocker in itself (STAR model is a free-for-commercial alternative), but adds friction on top of the cost/accuracy case above.
+
+**What 3D actually buys:** Body-shape *correctness* (output proportions match the customer's real measurements) — a different axis from garment-render realism. No established benchmark exists for it; SMPL pose-fit tools (4D-Humans/ROMP) report ~40-80mm joint error, decent but not exact.
+
+#### Consequences
+
+- Height/weight/body measurements (F-102b) are used for **size recommendation** only (F-102c: simple size-chart lookup, zero GPU cost) — not for scaling the CatVTON visual render.
+- Revisit this ADR post-MVP if: (a) margin allows ₹2.5-6.5/try-on economics, and (b) demand data shows customers specifically want body-shape-accurate previews over garment-style previews.
+- If revisited: full Python/open-source stack is buildable (4D-Humans/ROMP/PIXIE for pose+shape, STAR to avoid SMPL license fee, OOTDiffusion/IDM-VTON for render) — no forced third-party paid API.
+
+---
+
+#### Revisit — 2026-07-12: 2D dual-UNet upgrade (IDM-VTON / OOTDiffusion), and a licensing finding on the current engine

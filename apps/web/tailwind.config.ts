@@ -9,14 +9,14 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // "Black & Gold Elegance" palette (docs/design/emil-design.md §3.1,
+        // "Black & Gold Elegance" palette (docs/DESIGN.md (Emil Kowalski design direction section) §3.1,
         // revised 2026-08-03 from the given 5-swatch reference: bold black,
         // deep navy, regal gold, light grey, luminous white). Token names
         // kept from the Loom/Red Elegance passes before it — only the hues
         // changed — so every existing `ink-*`/`rust-*`/`turmeric-*` usage
         // repaints for free. All ramps are plain hex (dropped oklch this
         // pass): removes the hand-conversion step that made mobile/web
-        // parity error-prone (docs/design/emil-design.md §3.4) — mobile's
+        // parity error-prone (docs/DESIGN.md (Emil Kowalski design direction section) §3.4) — mobile's
         // ramp below is now a literal copy, not a derived one.
         // `stone` was renamed to `sand`: admin (`apps/web/src/app/admin/**`)
         // already uses Tailwind's *built-in* `stone-*` scale for its neutrals,

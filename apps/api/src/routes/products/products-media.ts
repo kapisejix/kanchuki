@@ -226,7 +226,7 @@ export const productsMediaRoutes: FastifyPluginAsync = async (server) => {
   // ─── POST /products/:id/photos/:photoId/rotate ─────────────────────
   // Rotates 90° clockwise, relative to whatever is currently stored at the
   // target key — not a lossless/pristine-tracked rotation (see design spec
-  // docs/references/history/executed-plans/specs/2026-08-09-photo-rotate-and-background-picker-design.md
+  // docs/tasks/done/ (2026-08-09 photo-rotate spec, folded into BUILD-LOG)
   // for why that tradeoff was deliberate). target='original' rotates the
   // preserved pre-cleanup upload (metadata.original_r2_key, written by
   // preserveOriginalPhoto() in lib/photo-cleanup.ts); target='primary'

@@ -135,7 +135,7 @@ function StatsBar() {
   }, [])
 
   const hasData = liveStats && liveStats.total_retailers > 0
-  // Honesty gate (docs/content/pages/content-style-guide.md): live numbers
+  // Honesty gate (docs/PLAN.md (Content Style Guide)): live numbers
   // only. If the stats API is unreachable or empty, show the label with a
   // dash — never a fabricated count.
   const stats = [

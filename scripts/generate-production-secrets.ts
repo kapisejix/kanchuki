@@ -1,6 +1,6 @@
 /**
  * One-shot generator for every secret the LAUNCH-READINESS-AUDIT lists as
- * missing/weak (docs/references/history/reports/launch-readiness-audit.md §3 + §5, omp-review B and S items).
+ * missing/weak (docs/BUILD-LOG.md (launch readiness work, §7A) §3 + §5, omp-review B and S items).
  *
  * Usage:
  *   npx tsx scripts/generate-production-secrets.ts
@@ -65,7 +65,7 @@ function main(): void {
   }
 
   console.log('\n──────────────────────────────────────────────────');
-  console.log('STILL MANUAL (see docs/references/history/reports/launch-readiness-audit.md §5):');
+  console.log('STILL MANUAL (see docs/BUILD-LOG.md (launch readiness work, §7A) §5):');
   console.log('  1. ADMIN_PASSWORD_HASH: npx tsx scripts/generate-admin-hash.ts <password>');
   console.log('  2. Rotate dev-exposed keys: ANTHROPIC_API_KEY, OPENAI_API_KEY, GEMINI_API_KEY,');
   console.log('     SUPABASE_SERVICE_KEY, R2_SECRET_ACCESS_KEY, REDIS_URL password.');

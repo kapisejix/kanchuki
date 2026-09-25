@@ -126,7 +126,9 @@ function derivedRoutes(): Map<string, string> {
       for (const file of listFiles(target)) {
         const rel = relative(REPO_ROOT, file).replace(/\\/g, '/');
         // `public/passport/*` is registered under an extra `/passport` prefix.
-        const prefix = rel.includes('/public/passport/') ? `${mount.prefix}/passport` : mount.prefix;
+        const prefix = rel.includes('/public/passport/')
+          ? `${mount.prefix}/passport`
+          : mount.prefix;
         const clean = stripComments(readFileSync(file, 'utf8'));
         SERVER_METHOD_CALL.lastIndex = 0;
         let match: RegExpExecArray | null = SERVER_METHOD_CALL.exec(clean);
@@ -211,7 +213,10 @@ describe('load-test rate stays under the API rate limiter (§7A.5)', () => {
   it('pins the limiter value to the one in the API source', () => {
     const index = readFileSync(join(REPO_ROOT, 'apps', 'api', 'src', 'index.ts'), 'utf8');
     const match = /rateLimit,\s*\{[\s\S]{0,300}?max:\s*(\d+)/.exec(index);
-    expect(match, 'could not find the @fastify/rate-limit max in apps/api/src/index.ts').toBeTruthy();
+    expect(
+      match,
+      'could not find the @fastify/rate-limit max in apps/api/src/index.ts',
+    ).toBeTruthy();
     expect(mix.RATE_LIMIT_PER_MINUTE).toBe(Number(match?.[1]));
     expect(mix.SAFE_RATE_PER_MINUTE).toBeLessThan(mix.RATE_LIMIT_PER_MINUTE);
   });
@@ -265,7 +270,11 @@ describe('load-test mixes only touch routes that exist (§7A.5)', () => {
       expect(
         routes.get(key),
         `no such route. Nearest registered paths:\n${[...routes.keys()]
-          .filter((k) => canon(k).split(' ')[1]?.includes(canon(entry.template).split('/')[1] ?? ''))
+          .filter((k) =>
+            canon(k)
+              .split(' ')[1]
+              ?.includes(canon(entry.template).split('/')[1] ?? ''),
+          )
           .sort()
           .join('\n')}`,
       ).toBeTruthy();
@@ -314,9 +323,10 @@ describe('load-test mixes only touch routes that exist (§7A.5)', () => {
     const createsProduct = scripts.find(
       ({ entry }) => entry.method === 'POST' && canon(entry.template) === '/v1/products',
     );
-    expect(createsProduct, 'a mix adds POST /v1/products — that buys a Vision call per request').toBe(
-      undefined,
-    );
+    expect(
+      createsProduct,
+      'a mix adds POST /v1/products — that buys a Vision call per request',
+    ).toBe(undefined);
   });
 
   it('drops the collection-view write when there is no collection to view', () => {
@@ -333,11 +343,15 @@ describe('load-test mixes only touch routes that exist (§7A.5)', () => {
 
   it('keeps the embedding-backed search out of the default mix', () => {
     expect(mix.buildPublicMix(PUBLIC_DATA).map((e) => e.name)).not.toContain('search');
-    expect(mix.buildPublicMix(PUBLIC_DATA, { search: true }).map((e) => e.name)).toContain('search');
+    expect(mix.buildPublicMix(PUBLIC_DATA, { search: true }).map((e) => e.name)).toContain(
+      'search',
+    );
   });
 
   it('refuses to build a storefront mix with nothing to load', () => {
-    expect(() => mix.buildPublicMix({ slugs: [], productIds: [] })).toThrow(/at least one live store/);
+    expect(() => mix.buildPublicMix({ slugs: [], productIds: [] })).toThrow(
+      /at least one live store/,
+    );
   });
 
   it('gives every entry a positive integer weight', () => {
@@ -378,9 +392,18 @@ describe('weighted selection covers the mix in proportion (§7A.5)', () => {
   });
 
   it('matches templates exactly, not loosely', () => {
-    expect(mix.matchesTemplate('/v1/public/retailers/x/products?page=1', '/v1/public/retailers/:s/products')).toBe(true);
-    expect(mix.matchesTemplate('/v1/public/retailers/x', '/v1/public/retailers/:s/products')).toBe(false);
-    expect(mix.matchesTemplate('/v1/public/retailers/x/designs', '/v1/public/retailers/:s/products')).toBe(false);
+    expect(
+      mix.matchesTemplate(
+        '/v1/public/retailers/x/products?page=1',
+        '/v1/public/retailers/:s/products',
+      ),
+    ).toBe(true);
+    expect(mix.matchesTemplate('/v1/public/retailers/x', '/v1/public/retailers/:s/products')).toBe(
+      false,
+    );
+    expect(
+      mix.matchesTemplate('/v1/public/retailers/x/designs', '/v1/public/retailers/:s/products'),
+    ).toBe(false);
   });
 });
 

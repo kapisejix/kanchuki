@@ -20,6 +20,9 @@ describe('getPlanPricing', () => {
 
   it('a missing row is a loud PLAN_PRICE_MISSING error, never a guessed price', async () => {
     mockFindUnique.mockResolvedValue(null);
-    await expect(getPlanPricing('PRO')).rejects.toMatchObject({ code: 'PLAN_PRICE_MISSING', status: 500 });
+    await expect(getPlanPricing('PRO')).rejects.toMatchObject({
+      code: 'PLAN_PRICE_MISSING',
+      status: 500,
+    });
   });
 });

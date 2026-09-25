@@ -125,7 +125,7 @@ export const publicMiscRoutes: FastifyPluginAsync = async (server) => {
   );
 
   // ─── POST /public/contact ────────────────────────────────────────
-  // Real "how to reach us" form submission (docs/content/pages/contact.md
+  // Real "how to reach us" form submission (docs/PLAN.md (Contact page copy)
   // — explicitly "no fake submit"). No new table/migration: reuses AuditLog
   // (already readable by admins at GET /admin/activity?resource_type=
   // ContactSubmission, F-014's platform activity feed). Global rate limiter

@@ -122,7 +122,7 @@ The repo's standard is that a guard must be shown to fail for the right reason:
 Record the observed red, then restore. No new `RC-###` is expected (nothing shipped was broken);
 if falsification finds a guard that is green for the wrong reason, that **is** an RC.
 
-### 4.3 Write the runbook — `docs/references/guides/load-testing.md`
+### 4.3 Write the runbook — `docs/SCALING.md (Load Testing section)`
 
 Not yet created. It must contain, at minimum:
 
@@ -214,7 +214,7 @@ built, the design decisions and why, and the ordered list of what is left. Then 
 2. Falsify the new guard the way this repo requires — break each of the four properties named
    in the handoff §4.2, confirm the right arm goes red naming the right reason, then restore.
    Report the observed failures.
-3. Write `docs/references/guides/load-testing.md` to the spec in handoff §4.3 — install paths,
+3. Write `docs/SCALING.md (Load Testing section)` to the spec in handoff §4.3 — install paths,
    env matrix, the bearer-token recipe, the 200/min-per-IP ceiling and what to do about it,
    how to read the results, and the explicit list of what is deliberately not measured and why.
 4. Re-run the full suites per package (not `pnpm test --force`, not nested `turbo`) and report
