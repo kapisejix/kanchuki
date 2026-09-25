@@ -92,6 +92,12 @@ describe('AIStylist keyboard inset', () => {
 
   beforeEach(() => {
     fake = installVisualViewport()
+    // The sheet fetches catalog-derived suggestions once it opens; stub it
+    // so that async state update doesn't race these tests' assertions.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({ json: () => Promise.resolve({ data: { suggestions: [] } }) }),
+    )
   })
 
   afterEach(() => {

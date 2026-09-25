@@ -106,51 +106,93 @@ export const publicStylistRoutes: FastifyPluginAsync = async (server) => {
         orderBy: { created_at: 'desc' },
       });
 
-      // Deterministic pre-filter: extract category/subtype/color/fabric hints from query
+      // Deterministic pre-filter: extract category/age/gender/occasion/fabric
+      // hints from the free-text query.
+      //
+      // Root cause this replaces: the old table keyed synonyms like "kurta"
+      // and matched them against `category`/`subtype` by substring — but the
+      // AI-tagging enum stores "Kurti", not "Kurta", so that key could never
+      // match its own catalog data. It also had zero kids/age/gender
+      // vocabulary, so a query like "2 years boy" produced no hints at all,
+      // which (see below) meant the filter step was skipped entirely and the
+      // customer got whatever was uploaded most recently — often ladies
+      // suits, regardless of what they asked for.
+      //
+      // Fix: each key below is the literal substring expected to appear in
+      // `category`/`subtype` (matching the real AI-tagging enum — see
+      // CLAUDE.md "Product Auto-Tagging"), and the synonyms are the
+      // customer-facing words that should resolve to it.
       const queryLower = query.toLowerCase();
 
-      // Category/subtype keywords — common Indian fashion terms
-      const CATEGORY_KEYWORDS: Record<string, string[]> = {
+      const PRODUCT_TYPE_SYNONYMS: Record<string, string[]> = {
         saree: ['saree', 'sari'],
-        lehenga: ['lehenga', 'lehenga choli'],
-        kurta: ['kurta', 'kurti', 'kurta set'],
+        lehenga: ['lehenga'],
+        kurti: ['kurti', 'kurta', 'kurta set'],
         suit: ['suit', 'salwar', 'churidar', 'anarkali'],
         sherwani: ['sherwani', 'bandhgala'],
         gown: ['gown', 'evening gown'],
         dupatta: ['dupatta', 'stole'],
         blouse: ['blouse', 'choli'],
         palazzo: ['palazzo', 'plazzo'],
-        sharara: ['sharara', 'sharara set'],
+        sharara: ['sharara'],
         kaftan: ['kaftan'],
         jumpsuit: ['jumpsuit'],
         dress: ['dress', 'frock'],
+        // "Kids Ethnic Wear" is a real category value — match it whenever the
+        // query names a child, an age under 13, or a specific kid's garment.
+        kids: [
+          'kid',
+          'kids',
+          'child',
+          'children',
+          'toddler',
+          'infant',
+          'baby',
+          'boy',
+          'girl',
+          'son',
+          'daughter',
+          'niece',
+          'nephew',
+        ],
+        // "Men's Kurta Pajama" — match explicit men's-wear language.
+        men: ['men', 'mens', "men's", 'gents', 'husband', 'father'],
       };
 
-      const categoryHints: string[] = [];
-      const subtypeHints: string[] = [];
-      for (const [cat, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
-        if (keywords.some((kw) => queryLower.includes(kw))) {
-          categoryHints.push(cat);
-        }
+      const typeHints = Object.keys(PRODUCT_TYPE_SYNONYMS).filter((key) =>
+        (PRODUCT_TYPE_SYNONYMS[key] ?? []).some((syn) => queryLower.includes(syn)),
+      );
+      // "a 2 year old", "for a 5-year-old boy" etc. — under-13 age mention
+      // implies kids' wear even without the word "kids"/"boy"/"girl".
+      const ageMatch = queryLower.match(/\b(\d{1,2})\s*[- ]?\s*(?:years?|yrs?)\b/);
+      if (ageMatch && Number(ageMatch[1]) < 13 && !typeHints.includes('kids')) {
+        typeHints.push('kids');
       }
-      // Also check product subtype fields directly (e.g. "kurti" matches subtype "Kurti")
-      const SUBTYPE_KEYWORDS = [
-        'kurta',
-        'kurti',
-        'saree',
-        'lehenga',
-        'sherwani',
-        'gown',
-        'anarkali',
-        'salwar',
-        'churidar',
-        'palazzo',
-        'sharara',
-        'kaftan',
-      ];
-      for (const st of SUBTYPE_KEYWORDS) {
-        if (queryLower.includes(st)) subtypeHints.push(st);
-      }
+
+      // Occasion synonyms → the literal `occasions` enum value they mean (see
+      // CLAUDE.md AI-tagging occasions list). Previously the occasion was
+      // never matched against the query at all.
+      const OCCASION_SYNONYMS: Record<string, string[]> = {
+        wedding: ['wedding', 'shadi', 'bridal', 'marriage'],
+        festive: ['festive', 'diwali', 'navratri', 'festival'],
+        sangeet: ['sangeet'],
+        mehendi: ['mehendi', 'mehandi'],
+        pooja: ['pooja', 'puja'],
+        'party wear': ['party', 'celebration'],
+        'office wear': ['office', 'work wear'],
+        'daily wear': ['daily wear', 'everyday'],
+        'special occasion': [
+          'function',
+          'family function',
+          'get-together',
+          'gathering',
+          'special occasion',
+        ],
+        casual: ['casual'],
+      };
+      const occasionHints = Object.keys(OCCASION_SYNONYMS).filter((key) =>
+        (OCCASION_SYNONYMS[key] ?? []).some((syn) => queryLower.includes(syn)),
+      );
 
       const _colorHints = Object.keys(COMPLEMENTARY_COLORS).filter((c) => queryLower.includes(c));
       const fabricHints = [
@@ -183,27 +225,52 @@ export const publicStylistRoutes: FastifyPluginAsync = async (server) => {
       if (budget_max != null)
         candidates = candidates.filter((p) => p.price_min == null || p.price_min <= budget_max);
 
-      // Category/subtype filter — scope results to matching product types
-      if (categoryHints.length > 0 || subtypeHints.length > 0) {
+      // Category/age/gender filter — HARD constraint. Unlike fabric/occasion
+      // below, a stated garment type, age, or gender is not a nice-to-have: a
+      // customer asking for kids' wear must never see ladies suits just
+      // because the store has more of those in stock. No match → no
+      // fallback substitution (this is the root-cause fix — the old
+      // threshold-based fallback is exactly why an unrelated category always
+      // won when the store had nothing matching).
+      let noStockForRequest = false;
+      if (typeHints.length > 0) {
         const filtered = candidates.filter((p) => {
           const cat = (p.category ?? '').toLowerCase();
           const sub = (p.subtype ?? '').toLowerCase();
-          return (
-            categoryHints.some((c) => cat.includes(c)) ||
-            subtypeHints.some((s) => sub.includes(s) || cat.includes(s))
-          );
+          return typeHints.some((hint) => cat.includes(hint) || sub.includes(hint));
         });
-        // Only apply if we have enough matches — otherwise fall through to
-        // unfiltered candidates so the LLM can still suggest alternatives.
+        if (filtered.length === 0) noStockForRequest = true;
+        candidates = filtered;
+      }
+
+      // Occasion filter — soft, same threshold convention as fabric below
+      // (occasion tagging isn't universal, so a strict match can starve the
+      // LLM of otherwise-good candidates).
+      if (!noStockForRequest && occasionHints.length > 0) {
+        const filtered = candidates.filter((p) =>
+          p.occasions.some((o) => occasionHints.some((h) => o.toLowerCase().includes(h))),
+        );
         if (filtered.length >= 2) candidates = filtered;
       }
 
-      // Fabric filter
-      if (fabricHints.length > 0) {
+      // Fabric filter — soft, same convention.
+      if (!noStockForRequest && fabricHints.length > 0) {
         const filtered = candidates.filter((p) =>
           fabricHints.some((f) => p.fabric_estimate?.toLowerCase().includes(f)),
         );
         if (filtered.length >= 3) candidates = filtered;
+      }
+
+      // The customer named a specific type/age/gender and this store has
+      // none — say so plainly instead of substituting an unrelated item, and
+      // skip the Claude call entirely since there is nothing to recommend.
+      if (noStockForRequest) {
+        return reply.status(200).send({
+          data: {
+            recommendations: [],
+            stylist_note: `${retailer.shop_name} doesn't have matching items in stock right now — try a different request or browse the full catalog.`,
+          },
+        });
       }
 
       // Build the product catalog for Claude (limit to 60 for context)
@@ -237,8 +304,8 @@ export const publicStylistRoutes: FastifyPluginAsync = async (server) => {
               rationale: `Great choice from ${retailer.shop_name}'s collection.`,
             })),
             stylist_note:
-              categoryHints.length > 0
-                ? `AI stylist is warming up. Showing top ${categoryHints[0]} picks.`
+              typeHints.length > 0
+                ? `AI stylist is warming up. Showing top ${typeHints[0]} picks.`
                 : 'AI stylist is warming up. Showing top picks for now.',
           },
         });
@@ -265,6 +332,8 @@ ${JSON.stringify(catalogForLLM, null, 2)}
 
 RULES:
 - Suggest 3-6 products that best match the customer's request
+- Recommend ONLY from the catalog above — every product_id must exist in it, never invent or substitute one
+- If the customer names an age group, gender, or specific garment type, every recommendation must match it — do not suggest a different category just because it's popular in this store
 - Mix items for a complete look (e.g., kurta + dupatta, suit + accessories)
 - Respect color coordination: analogous colors for daily wear, complementary for festive
 - Match fabric weight: embroidered suit → plain dupatta, solid suit → printed dupatta
@@ -299,18 +368,25 @@ RULES:
             }>)
           : [];
 
+        // Never trust the LLM's product_id blindly — drop anything that
+        // isn't actually in this store's filtered catalog rather than
+        // showing a hallucinated card (no photo, possibly wrong category).
+        const validRecommendations = recommendations
+          .map((r) => {
+            const match = candidates.find((p) => p.id === r.product_id);
+            return match ? { ...r, photo_url: match.photo_url } : null;
+          })
+          .filter((r): r is NonNullable<typeof r> => r !== null);
+
         return reply.status(200).send({
           data: {
-            recommendations: recommendations.map((r) => ({
-              ...r,
-              photo_url: candidates.find((p) => p.id === r.product_id)?.photo_url ?? r.photo_url,
-            })),
-            stylist_note: `Stylist picked ${recommendations.length} items from ${catalogForLLM.length} products in ${retailer.shop_name}'s catalog.`,
+            recommendations: validRecommendations,
+            stylist_note: `Stylist picked ${validRecommendations.length} items from ${catalogForLLM.length} products in ${retailer.shop_name}'s catalog.`,
           },
         });
       } catch (_err) {
         // Fallback on Claude failure.
-        // Already filtered by category/subtype/color/fabric above.
+        // Already filtered by category/age/gender/occasion/fabric above.
         return reply.status(200).send({
           data: {
             recommendations: candidates.slice(0, 6).map((p) => ({
@@ -323,12 +399,66 @@ RULES:
               rationale: `A great pick from ${retailer.shop_name}'s collection.`,
             })),
             stylist_note:
-              categoryHints.length > 0
-                ? `AI stylist is temporarily busy. Showing top ${categoryHints[0]} picks.`
+              typeHints.length > 0
+                ? `AI stylist is temporarily busy. Showing top ${typeHints[0]} picks.`
                 : 'AI stylist is temporarily busy. Showing top picks.',
           },
         });
       }
     },
   );
+
+  // ─── GET /stylist/suggestions?slug=<store> ───────────────────────
+  // The starter-chip suggestions shown before the customer types anything.
+  // Previously these were 5 hardcoded queries (saree/lehenga/kurta/suit)
+  // shown to every store regardless of what it actually sells — a kids-wear
+  // or men's-wear-only store showed ladies-suit suggestions nobody in its
+  // catalog could fulfil. Built from this store's own most-common
+  // category/occasion/color instead.
+  server.get('/stylist/suggestions', async (request, reply) => {
+    const qs = z.object({ slug: z.string().min(1) }).safeParse(request.query);
+    if (!qs.success) throw validationError('Invalid slug');
+
+    return withPublicCache(request.url, async () => {
+      const retailer = await prisma.retailer.findFirst({
+        where: { public_slug: qs.data.slug, deleted_at: null, is_suspended: false },
+        select: { id: true },
+      });
+      if (!retailer) throw notFound('Retailer');
+
+      const products = await prisma.product.findMany({
+        where: { retailer_id: retailer.id, deleted_at: null, status: 'AVAILABLE' },
+        select: { category: true, occasions: true, primary_color: true },
+        take: 200,
+        orderBy: { created_at: 'desc' },
+      });
+
+      const rankByFrequency = (values: string[]): string[] => {
+        const counts = new Map<string, number>();
+        for (const v of values) counts.set(v, (counts.get(v) ?? 0) + 1);
+        return [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([v]) => v);
+      };
+
+      const topCategories = rankByFrequency(
+        products.map((p) => p.category).filter((c): c is string => !!c),
+      );
+      const topOccasions = rankByFrequency(products.flatMap((p) => p.occasions));
+      const topColors = rankByFrequency(
+        products.map((p) => p.primary_color).filter((c): c is string => !!c),
+      );
+
+      const suggestions: string[] = [];
+      for (let i = 0; i < Math.min(5, topCategories.length); i++) {
+        const category = topCategories[i];
+        const occasion = topOccasions.length > 0 ? topOccasions[i % topOccasions.length] : null;
+        const color = topColors.length > 0 ? topColors[i % topColors.length] : null;
+        const parts = [color, category, occasion ? `for ${occasion.toLowerCase()}` : null].filter(
+          Boolean,
+        );
+        suggestions.push(parts.join(' '));
+      }
+
+      return reply.status(200).send({ data: { suggestions } });
+    });
+  });
 };

@@ -27,12 +27,13 @@ interface Props {
   onProductTap?: (productId: string) => void
 }
 
-const SUGGESTIONS = [
-  'Cotton saree for daily wear under ₹2000',
-  'Wedding lehenga in red and gold',
-  'Pastel kurta set for a mehendi',
-  'Silk suit for a pooja ceremony',
-  'Casual kurti for office',
+// Last-resort chips — only shown when the store has no products to derive
+// suggestions from, or the suggestions fetch fails. Deliberately generic
+// (no garment named) since a store could sell anything.
+const FALLBACK_SUGGESTIONS = [
+  'Something for a wedding',
+  'Something for daily wear',
+  'Show me your best sellers',
 ]
 
 export function AIStylist({ storeSlug, storeName, onProductTap }: Props) {
@@ -41,11 +42,33 @@ export function AIStylist({ storeSlug, storeName, onProductTap }: Props) {
   const [loading, setLoading] = useState(false)
   const [results, setResults] = useState<StylistResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [suggestions, setSuggestions] = useState<string[] | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (open) setTimeout(() => inputRef.current?.focus(), 300)
   }, [open])
+
+  // Starter chips grounded in this store's own catalog — fetched once, the
+  // first time the sheet opens, so a shopper who never opens it costs no
+  // request (same cost-consciousness as the visual-viewport listeners below).
+  useEffect(() => {
+    if (!open || suggestions !== null) return
+    let cancelled = false
+    fetch(`/api/stylist?slug=${encodeURIComponent(storeSlug)}`)
+      .then((res) => res.json())
+      .then((json: { data?: { suggestions?: string[] } }) => {
+        if (cancelled) return
+        const fetched = json.data?.suggestions
+        setSuggestions(fetched && fetched.length > 0 ? fetched : FALLBACK_SUGGESTIONS)
+      })
+      .catch(() => {
+        if (!cancelled) setSuggestions(FALLBACK_SUGGESTIONS)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [open, suggestions, storeSlug])
 
   const handleSubmit = useCallback(async (q: string) => {
     if (!q.trim()) return
@@ -164,7 +187,7 @@ export function AIStylist({ storeSlug, storeName, onProductTap }: Props) {
                 </p>
               </div>
               <div className="space-y-2">
-                {SUGGESTIONS.map((s) => (
+                {(suggestions ?? []).map((s) => (
                   <button
                     key={s}
                     onClick={() => void handleSubmit(s)}
