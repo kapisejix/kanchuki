@@ -88,8 +88,7 @@ Payment: Razorpay (UPI first). Retailer pays base + 18% GST. **Source of truth: 
 - **INR pricing only** — no USD, no forex friction
 - **Offline-first design** — retailer app must work with poor connectivity
 - **Photo-first UX** — no manual form filling for product entry
-- **WhatsApp API pass-through** — Meta's ₹0.38/conversation must be in pricing math
-- **WhatsApp API pass-through** — Meta's ₹0.38/conversation must be in pricing math
+- **WhatsApp API pass-through** — Meta's per-template fee (₹1.09 marketing / ₹0.145 utility-authentication, effective 2026-01-01 — replaced the old per-conversation model) must be in pricing math
 - **Regional language UI** — Hindi minimum by Year 1
 
 ---
