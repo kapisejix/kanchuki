@@ -220,7 +220,7 @@ export async function generateFluxProImage(
 //     discovered that, not the tests.
 //   - IDM-VTON's released checkpoints are CC BY-NC-SA-ND (non-commercial, and
 //     no-derivatives, which blocks redistributing a fine-tune) — see
-//     `docs/references/adrs/ADR-006-defer-3d-parametric-vto.md`.
+//     `docs/TECH-STACK.md (ADR-006 section)`.
 // The self-hosted `services/fashion-vtone` (FASHN VTON v1.5) is not wired into
 // the API either.
 //

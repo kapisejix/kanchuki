@@ -1,6 +1,6 @@
 # Task M: Multi-Language AI — Future Work (Gaps)
 
-**Status:** 🟡 **Partial — pending.** Core built (descriptions + campaign/WhatsApp messages in 7 languages, AI search with Hindi/Hinglish voice via keyboard dictation). **Data groundwork landed** (migration 063 + shared `SUPPORTED_LOCALES` + API `preferred_locale` field) — but ⚠️ **migration 063's applied state is unverified**: `docs/BUILD-LOG.md` §50 says "migration 063 NOT applied", while `docs/marketing/india-retailer-growth.md` claims 063 applied. No ground-truth check exists for 063 (unlike 058, which the 2026-09-03 launch audit confirmed present). **Owner check:** `SELECT 1 FROM information_schema.columns WHERE table_name='retailers' AND column_name='preferred_locale';` — see `docs/tasks/pending/launch-readiness.md`. Full sub-tasks (native mic, PWA toggle, retailer UI toggle) deferred post-launch — no i18n infra exists to build on.
+**Status:** 🟡 **Partial — pending.** Core built (descriptions + campaign/WhatsApp messages in 7 languages, AI search with Hindi/Hinglish voice via keyboard dictation). **Data groundwork landed** (migration 063 + shared `SUPPORTED_LOCALES` + API `preferred_locale` field) — but ⚠️ **migration 063's applied state is unverified**: `docs/BUILD-LOG.md` §50 says "migration 063 NOT applied", while `docs/MARKETING.md` claims 063 applied. No ground-truth check exists for 063 (unlike 058, which the 2026-09-03 launch audit confirmed present). **Owner check:** `SELECT 1 FROM information_schema.columns WHERE table_name='retailers' AND column_name='preferred_locale';` — see `docs/tasks/pending/launch-readiness.md`. Full sub-tasks (native mic, PWA toggle, retailer UI toggle) deferred post-launch — no i18n infra exists to build on.
 
 **⚠️ Correction:** The original assumption that "i18n infrastructure already in place (uses i18next / expo-localization)" is **FALSE** — verified 2026-08-18: zero i18n code exists in either app. The "Retailer app UI language toggle" and "PWA language toggle" sub-tasks require building i18n from scratch, making them significantly larger than the original "Low/Low-Medium" estimates.
 
@@ -104,7 +104,7 @@ Languages supported: Hindi, Hinglish (Devanagari + Romanized), Tamil, Telugu, Ma
 
 ## References
 
-- Main roadmap: `docs/marketing/india-retailer-growth.md` (Feature M, line 263–279)
+- Main roadmap: `docs/MARKETING.md` (Feature M, line 263–279)
 - Build log: `docs/BUILD-LOG.md` §47
 - AI search screen: `apps/mobile/app/(tabs)/ai-search.tsx`
 - PWA entry: `apps/web/src/app/[store]/page.tsx` (or equivalent)

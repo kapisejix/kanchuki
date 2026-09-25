@@ -47,7 +47,7 @@ export default async function StoresPage() {
   const initial = await fetchDirectory()
 
   // JSON-LD ItemList of ClothingStore — real stores only, from the live
-  // directory (docs/content/pages/stores.md; honesty gate: never invent
+  // directory (docs/PLAN.md (Stores page copy); honesty gate: never invent
   // entries, so this lists whatever page 1 actually returned).
   const itemList = initial?.stores.length
     ? {

@@ -1,5 +1,5 @@
 // Store-directory endpoint for the /stores marketing page
-// (docs/content/pages/stores.md). Live, non-suspended storefronts only —
+// (docs/PLAN.md (Stores page copy)). Live, non-suspended storefronts only —
 // same liveness bar as the sitemap discovery endpoint: has a public_slug,
 // not suspended, not deleted, and ≥1 live product (a store with nothing to
 // show isn't worth listing).

@@ -344,3 +344,9 @@ Per the owner rule, no CLAUDE.md content outside the Project File Index was touc
 | #73 | F-036 "Phase A ✅ Built" | correct, but `/login` + `return_to` + `/stores` entry point are described there as "now consumed"/"built" — matches; no change needed |
 | #75 | AI Studio "🧪 Built (**unmerged**)" | **Merged** — `c1ca817b`, `5d5ae44`, `d67484d` are all ancestors of `origin/main`, and migrations `101`–`105` exist on disk. What actually remains open is only the **owner actions** (apply `104`/`105`, choose the engine for the 8 MODEL rows) |
 | #9 | F-022 "Blocked on Google API access" | correct for the *auto*-post; note the retailer-side GMB integration **is** built (bring-your-own-key) |
+
+---
+
+## Final completion note — 2026-09-25
+
+Merged to `main` (this was never on `main` before — it sat unmerged on the `docs/reorganize` branch until this session, see `CLAUDE.md`'s Root-Cause Tracker for that gap). Phase 9 (shrink PRO-REQUIREMENTS/PLAN) was **reversed**: the owner chose to keep the full-detail versions of both files rather than the condensed rewrite, so PRO-REQUIREMENTS.md and PLAN.md remain full-length — condensing them is not part of this reorg's outcome. All remaining folders this plan named to keep (`content`, `marketing`, `database`, `design`, `customers`) were further consolidated into single top-level files (`MARKETING.md`, `DATABASE.md`, `DESIGN.md`; `customers`/`content merged into PRO-REQUIREMENTS/PLAN) per a follow-up owner request the same day. `references/` (guides, research, adrs, history) was fully distributed into the relevant top-level files and deleted. See the docs-consolidation commit for the final tree.

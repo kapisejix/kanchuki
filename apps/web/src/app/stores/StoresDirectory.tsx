@@ -144,7 +144,7 @@ export default function StoresDirectory({ initial }: { initial: StoresDirectoryD
         </div>
       )}
 
-      {/* Honest empty states (docs/content/pages/stores.md): never invent stores */}
+      {/* Honest empty states (docs/PLAN.md (Stores page copy)): never invent stores */}
       {!error && !initialFetchFailed && showFirstStoreCta && (
         <div className="text-center py-16">
           {hasFilters ? (

@@ -1,7 +1,7 @@
 // Single source of truth for JS-level color values (RN literal `color=`/
 // inline-style props, icon libraries, ActivityIndicator — anywhere a
 // Tailwind className can't reach because the target isn't CSS). This is
-// the piece from docs/design/emil-design.md §3.4 ("shared-token gap") that
+// the piece from docs/DESIGN.md (Emil Kowalski design direction section) §3.4 ("shared-token gap") that
 // closes: import COLORS instead of hardcoding hex, and the whole app
 // repaints from one file.
 //

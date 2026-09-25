@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 
 // WhatsApp business number isn't configured yet (no wa.me link exists
 // anywhere else in this codebase either) — the honesty gate in
-// docs/content/pages/content-style-guide.md forbids inventing one, so the
+// docs/PLAN.md (Content Style Guide) forbids inventing one, so the
 // WhatsApp card only appears once NEXT_PUBLIC_WHATSAPP_NUMBER is set.
 const WHATSAPP_NUMBER = process.env['NEXT_PUBLIC_WHATSAPP_NUMBER']
 
