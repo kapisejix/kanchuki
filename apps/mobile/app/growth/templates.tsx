@@ -59,41 +59,6 @@ const TYPE_EMOJI: Record<SocialTemplateType, string> = {
   PDF_FLYER: '📄',
 }
 
-// Keep the ids in sync with STUDIO_TEMPLATES in @kanchuki/shared — the API
-// resolves this string via getStudioTemplate() and 422s on an unknown id.
-const STUDIO_TEMPLATES = [
-  { id: 'studiomodel', label: 'Studio Editorial', emoji: '🎞️' },
-  { id: 'gradient_hero', label: 'Gradient Hero', emoji: '🎨' },
-  { id: 'dupatta_motion', label: 'Dupatta in Motion', emoji: '🌀' },
-  { id: 'seated_haveli_steps', label: 'Haveli Steps', emoji: '🪷' },
-  { id: 'boutique_showroom', label: 'Boutique Showroom', emoji: '🛍️' },
-  { id: 'rooftop_golden', label: 'Golden Rooftop', emoji: '🌇' },
-  { id: 'editorial_vogue', label: 'Vogue Editorial', emoji: '📷' },
-  { id: 'runway', label: 'Catwalk Runway', emoji: '💃' },
-  { id: 'blossom_atrium', label: 'Blossom Atrium', emoji: '🌸' },
-  { id: 'bougainvillea_corner', label: 'Bougainvillea Corner', emoji: '💜' },
-  { id: 'tree_tunnel', label: 'Tree-Tunnel Avenue', emoji: '🌳' },
-  { id: 'sunset_arch', label: 'Sunset Arch Alcove', emoji: '🌅' },
-  { id: 'pastel_gradient', label: 'Pastel Gradient Lounge', emoji: '🩰' },
-  { id: 'villa_arch', label: 'Villa Arch', emoji: '🏛️' },
-  { id: 'ocean_arches', label: 'Ocean Arches', emoji: '🌊' },
-  { id: 'mall_concourse', label: 'Mall Concourse', emoji: '🏬' },
-  { id: 'copper_diamond', label: 'Copper Diamond', emoji: '💠' },
-  { id: 'lakeside_deck', label: 'Lakeside Deck', emoji: '🏞️' },
-] as const
-
-const OCCASIONS = [
-  'Diwali',
-  'Navratri',
-  'Eid',
-  'Wedding',
-  'Raksha Bandhan',
-  'Holi',
-  'Christmas',
-  'New Year',
-  'General',
-] as const
-
 // ─── Main Screen ──────────────────────────────────────────────────
 
 export default function TemplatesScreen() {
@@ -402,13 +367,29 @@ function CreateTemplateModal({
   const [name, setName] = useState('')
   const [templateType, setTemplateType] = useState<SocialTemplateType>('INSTAGRAM_POST')
   const [occasion, setOccasion] = useState('')
-  const [studioTemplate, setStudioTemplate] = useState('runway')
+  const [studioTemplate, setStudioTemplate] = useState('')
   const [pickedProducts, setPickedProducts] = useState<{ id: string; name: string | null; primary_photo_url: string | null }[]>([])
   const [productPickerOpen, setProductPickerOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
-  const canSubmit = name.trim() && pickedProducts.length > 0 && !saving
+  // Both lists are DB-backed: studio_styles (published + this plan, the same set
+  // the server's resolveStudioStyleJob accepts) and admin-managed festivals.
+  const stylesQuery = useQuery({
+    queryKey: ['studio-styles'],
+    queryFn: () => productApi.getStudioStyles(),
+    staleTime: 60_000,
+  })
+  const styles = stylesQuery.data?.data ?? []
+  const festivalsQuery = useQuery({
+    queryKey: ['growth', 'festivals'],
+    queryFn: () => growthApi.festivals(),
+    staleTime: 60_000,
+  })
+  const occasions = [...new Set([...(festivalsQuery.data?.data ?? []).map((f) => f.name), 'General'])]
+  const selectedStyle = studioTemplate || styles[0]?.slug || ''
+
+  const canSubmit = name.trim() && pickedProducts.length > 0 && selectedStyle && !saving
 
   const productsQuery = useQuery({
     queryKey: ['products', 'list', 'social-template-picker'],
@@ -431,7 +412,7 @@ function CreateTemplateModal({
         template_type: templateType,
         occasion: occasion || undefined,
         product_ids: pickedProducts.map((p) => p.id),
-        studio_template: studioTemplate,
+        studio_template: selectedStyle,
       })
       onSaved()
     } catch (err) {
@@ -500,7 +481,7 @@ function CreateTemplateModal({
           {/* Occasion */}
           <Label text="Festive / Occasion (Optional)" />
           <View className="flex-row flex-wrap gap-2 mb-4">
-            {OCCASIONS.map((o) => {
+            {occasions.map((o) => {
               const active = occasion === o
               return (
                 <AnimatedPressable
@@ -523,17 +504,23 @@ function CreateTemplateModal({
           {/* Studio Template */}
           <Label text="AI Photoshoot Style" />
           <View className="flex-row flex-wrap gap-2 mb-4">
-            {STUDIO_TEMPLATES.map((st) => {
-              const active = studioTemplate === st.id
+            {stylesQuery.isLoading && <ActivityIndicator size="small" />}
+            {stylesQuery.error && (
+              <Text className="text-xs text-red-600">{(stylesQuery.error as Error).message}</Text>
+            )}
+            {!stylesQuery.isLoading && !stylesQuery.error && styles.length === 0 && (
+              <Text className="text-xs text-spaceCadet-900/60">No photoshoot styles available on your plan.</Text>
+            )}
+            {styles.map((st) => {
+              const active = selectedStyle === st.slug
               return (
                 <AnimatedPressable
-                  key={st.id}
-                  onPress={() => setStudioTemplate(st.id)}
+                  key={st.slug}
+                  onPress={() => setStudioTemplate(st.slug)}
                   className={`flex-row items-center gap-1.5 rounded-full px-3.5 py-2 border ${
                     active ? 'bg-spaceCadet-900 border-spaceCadet-900 shadow-sm' : 'bg-lavender-50 border-lavender-200'
                   }`}
                 >
-                  <Text className="text-xs">{st.emoji}</Text>
                   <Text
                     className={`text-xs font-bold ${active ? 'text-white' : 'text-spaceCadet-900'}`}
                   >

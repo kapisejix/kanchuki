@@ -45,6 +45,34 @@
 //     is named "_inr" and IS paise, which is the kind of unit mismatch that
 //     multiplies a payout by 100 without failing anything.
 //
+// ─── REFUNDS: WHAT A REFUND DOES HERE, AND WHAT IT DELIBERATELY DOES NOT ──
+//
+// Until §5A.1 nothing in the repo could write `SubscriptionPayment.status =
+// 'refunded'`, so the question could not arise. It can now, and the owner
+// decided it on 2026-09-24: **a refund stops FUTURE earning; it never claws
+// back.** No branch was added for it, and this is why none is needed:
+//
+//   refund BEFORE qualification  → `hasSuccessfulPayment` (the grouped query
+//                                  below, `status: 'success'`) goes false, so
+//                                  the gate returns WAIT / NOT_PAID. The store
+//                                  simply never qualifies — and if it pays
+//                                  again inside its window, it still can.
+//   refund AFTER qualification   → nothing happens AT ALL, by construction:
+//                                  this job selects `status: 'PENDING'` rows
+//                                  only, so a QUALIFIED/PAID conversion is
+//                                  never re-examined. Installments already
+//                                  accrued stand; future months stop earning
+//                                  (T6's paid-month whitelist).
+//
+// The board's original proposal was `refund → CLAWED_BACK`. Rejected on the
+// same ground as RC-033: the clawback is irreversible while a refund's *cause*
+// is not always a churn (a billing dispute, a duplicate charge, a plan
+// correction) — and once T7 has paid installments out, a clawback would mean
+// recovering real money from the referrer. The lenient direction leaves an
+// uncollected accrual, which a future rule can still act on; the strict one
+// cannot be undone. The cost is stated rather than hidden: a referrer keeps
+// commission on revenue later handed back.
+//
 // ─── WHY EACH BRANCH IS REACHABLE (AND ONE DELIBERATELY IS NOT) ──────────
 //
 // A guard that can never fire is worse than no guard, because it reads as
@@ -56,6 +84,19 @@
 //                                    never qualify)
 //   paid, then cancelled           → CLAWED_BACK (the spec's "churns inside the
 //                                    window, no commission accrues")
+//   paid, then COMPLETED           → stays PENDING. A term that ran its full
+//                                    course is not churn — the retailer paid
+//                                    and stopped — so this must NOT take the
+//                                    clawback branch above it (owner ruling
+//                                    2026-09-24, RC-033). Note the consequence
+//                                    it also accepts: completion is not a
+//                                    qualification either, because the gate
+//                                    below wants a still-ACTIVE subscription.
+//                                    A conversion that reaches this state was
+//                                    never qualified during the whole term,
+//                                    so nothing had accrued to lose — but it
+//                                    is worth knowing that this path pays
+//                                    nothing rather than assuming otherwise.
 //   suspended (F-015)              → stays PENDING. Suspension is REVERSIBLE —
 //                                    `unsuspend` exists — and an irreversible
 //                                    clawback on a reversible state would
@@ -127,7 +168,7 @@ export type QualificationDecision =
 
 /** The subscription facts the gate needs. */
 export interface ReferredSubscriptionFacts {
-  status: 'TRIAL' | 'ACTIVE' | 'PAST_DUE' | 'CANCELLED';
+  status: 'TRIAL' | 'ACTIVE' | 'PAST_DUE' | 'CANCELLED' | 'COMPLETED';
   /** Paise, ex-GST — the recurring base the commission is computed from. */
   amount_inr: number;
 }
@@ -182,6 +223,17 @@ export function decideQualification(input: {
 
   // Paid, no active subscription, and a cancellation on record: this is the
   // spec's churn case, and it has a real value to lose.
+  //
+  // CANCELLED only, deliberately — `COMPLETED` must NOT reach this branch
+  // (RC-033, owner ruling 2026-09-24: a term that ran its full course is not
+  // churn, and this transition is irreversible by design). A completed term
+  // falls through to the PAST_DUE/NO_ACTIVE_SUBSCRIPTION wait below, so this
+  // referral is not ended and nothing already accrued is taken back.
+  //
+  // Edge case, decided rather than inherited: a store that has BOTH a
+  // historical CANCELLED row and a later COMPLETED one still claws back — it
+  // did cancel at some point, and `some()` is on the whole history. Pinned by
+  // test so the reading is visible to whoever revisits this.
   if (referred.subscriptions.some((s) => s.status === 'CANCELLED')) {
     return { outcome: 'CLAW_BACK', reason: 'REFERRED_CHURNED_AFTER_PAYMENT' };
   }
@@ -207,6 +259,12 @@ export function decideQualification(input: {
  */
 async function loadPaidRetailerIds(retailerIds: string[]): Promise<Set<string>> {
   if (retailerIds.length === 0) return new Set();
+  // A WHITELIST, and it is load-bearing for refunds (§5A.1/§5A.2): once the
+  // webhook started writing `status = 'refunded'`, this filter is what makes a
+  // refunded qualifying payment read as "never paid" — so the referral waits
+  // rather than qualifying off money that was handed back. A blacklist
+  // (`status: { not: 'refunded' }`) would instead count a FAILED charge as a
+  // paid one, and would silently accept whatever status is invented next.
   const rows = await prisma.subscriptionPayment.findMany({
     where: { retailer_id: { in: retailerIds }, status: 'success' },
     select: { retailer_id: true },

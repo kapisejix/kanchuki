@@ -15,7 +15,9 @@
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import Fastify from 'fastify';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { errorHandler } from '../../plugins/error-handler.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 /** routes/admin → routes → src → apps/api → apps → repo root */
@@ -34,26 +36,96 @@ type Conv = {
   referrer: { shop_name: string };
 };
 
-const state = {
-  conversions: [] as Conv[],
-  payouts: [] as Array<{
+type Fixture = {
+  conversions: Conv[];
+  payouts: Array<{
     id: string;
     referrer_id: string;
     amount_paise: number;
     status: string;
-  }>,
-  codes: [] as Array<{ retailer_id: string; code: string }>,
-  accounts: [] as Array<{ retailer_id: string; is_active: boolean }>,
-  audits: [] as Array<{ action: string; metadata?: unknown }>,
+  }>;
+  codes: Array<{ retailer_id: string; code: string }>;
+  accounts: Array<{ retailer_id: string; is_active: boolean }>;
+  audits: Array<{ action: string; metadata?: unknown }>;
 };
 
-function resetState() {
-  state.conversions = [];
-  state.payouts = [];
-  state.codes = [];
-  state.accounts = [];
-  state.audits = [];
+function makeState(): Fixture {
+  return { conversions: [], payouts: [], codes: [], accounts: [], audits: [] };
 }
+
+// Swapped, never cleared in place. See `freshState()` for why the distinction
+// is the entire fix — clearing the arrays of one shared object fixes nothing.
+let state: Fixture = makeState();
+
+function resetState() {
+  state = makeState();
+}
+
+/**
+ * Bind THIS test's fixture and return it. **Must be the first statement of a
+ * test that touches the fixture — before any `await`.**
+ *
+ * Why binding, and not just `beforeEach(resetState)` (found 2026-09-24, after a
+ * flake that read as a route bug): vitest abandoning a timed-out test does not
+ * cancel its promises. The first `overview` test timed out, `build()` resolved
+ * afterwards, the abandoned continuation ran its seeds — and
+ * `st.payouts.push({ amount_paise: 30_000, status: 'PAID' })` landed in the NEXT
+ * test's fixture. That test seeds a 20 000 FAILED payout, asserts
+ * `paid_out_paise === 0`, and read **30 000** — the leaked row — which looks
+ * exactly like the route counting FAILED batches, and is not.
+ *
+ * Binding only works because `resetState()` REPLACES the fixture object rather
+ * than clearing the arrays inside one shared object: a test that captured its
+ * own fixture before its first await writes into its OWN (already retired)
+ * object, which the next test cannot see, whatever the timing.
+ *
+ * That subtlety is why a first attempt at this fix shipped and changed nothing.
+ * It added this same `const st = …` binding while `resetState` still swapped the
+ * ARRAYS on one shared object — so `st` WAS `state`, and `st.payouts` resolved
+ * to whatever the next `beforeEach` had just installed, which is
+ * indistinguishable from not binding at all. The F6 test below fails on that
+ * version (`abandoned.payouts` and `next.payouts` are the same array), which is
+ * how the no-op was caught instead of believed.
+ *
+ * `afterEach(retireState)` is the second half: it freezes the retired fixture's
+ * arrays so the stale write **throws** instead of sitting in a dead object
+ * unnoticed. Neither layer is sufficient alone.
+ */
+function freshState() {
+  resetState();
+  return state;
+}
+
+/**
+ * Freeze the fixture once a test has ended, so a test that TIMED OUT cannot
+ * write into the next test's state.
+ *
+ * Why this exists (found 2026-09-24, after a flake that read as a route bug):
+ * this file was the only one in the suite that built the Fastify app through a
+ * dynamic `import('fastify')` inside each test. On a saturated worker that
+ * import took longer than the 5s test timeout, so the first `overview` test
+ * timed out — and vitest abandoning a test does not cancel its promises.
+ * `build()` resolved afterwards, the abandoned continuation ran its seeds, and
+ * `st.payouts.push({ amount_paise: 30_000, status: 'PAID' })` landed in the
+ * NEXT test's freshly reset fixture. That next test seeds a 20_000 FAILED
+ * payout and asserts `paid_out_paise === 0`; it read **30 000** — the leaked
+ * row — which looks like the route summing FAILED batches and is not.
+ *
+ * The dynamic imports were the trigger and are now static, like the other 50
+ * test files. This is the amplifier: after a test ends, the old arrays are
+ * frozen, so a late write throws (`Cannot add property 5, object is not
+ * extensible`) inside the abandoned test's own promise chain. The failure then
+ * names the real problem instead of asserting a plausible wrong number.
+ */
+function retireState() {
+  Object.freeze(state.conversions);
+  Object.freeze(state.payouts);
+  Object.freeze(state.codes);
+  Object.freeze(state.accounts);
+  Object.freeze(state.audits);
+}
+
+afterEach(retireState);
 
 vi.mock('@kanchuki/db', () => {
   // The mock object is referenced by $transaction below — the route's callback
@@ -174,10 +246,11 @@ import {
 // ─── Fastify harness (same shape as admin-festivals.test.ts) ───────
 
 async function build() {
-  const [{ default: Fastify }, { errorHandler }] = await Promise.all([
-    import('fastify'),
-    import('../../plugins/error-handler.js'),
-  ]);
+  // Fastify + errorHandler are STATIC imports (2026-09-24). They used to be a
+  // per-test `await Promise.all([import('fastify'), import(...)])`, which pulls
+  // the whole module graph in at test time — cheap alone, >5s on a saturated
+  // worker, which is how the timeout above happened. Every other suite in this
+  // app imports them statically; this file was the outlier.
   const app = Fastify({ logger: false });
   // The real error handler maps ZodError → 422; without it a thrown
   // validation error surfaces as a bare 500 and the 422 tests would 500.
@@ -197,8 +270,8 @@ vi.mock('../admin-auth.js', () => ({
   adminAuthPreHandler: async () => {},
 }));
 
-const seedConv = (over: Partial<Conv> & { id: string; referrer_id: string }) => {
-  state.conversions.push({
+const seedConv = (st: typeof state, over: Partial<Conv> & { id: string; referrer_id: string }) => {
+  st.conversions.push({
     referred_id: `${over.id}-referred`,
     status: 'PENDING',
     commission_accrued: 0,
@@ -238,12 +311,13 @@ describe('GET /referral/overview', () => {
   beforeEach(resetState);
 
   it('sums status counts and the unsettled identity accrued − committed', async () => {
+    const st = freshState();
     const app = await build();
-    seedConv({ id: 'c1', referrer_id: 'r1', status: 'QUALIFIED', commission_accrued: 50_000 });
-    seedConv({ id: 'c2', referrer_id: 'r1', status: 'PAID', commission_accrued: 30_000 });
-    seedConv({ id: 'c3', referrer_id: 'r2', status: 'PENDING' });
-    seedConv({ id: 'c4', referrer_id: 'r2', status: 'CLAWED_BACK' });
-    state.payouts.push({ id: 'p1', referrer_id: 'r1', amount_paise: 30_000, status: 'PAID' });
+    seedConv(st, { id: 'c1', referrer_id: 'r1', status: 'QUALIFIED', commission_accrued: 50_000 });
+    seedConv(st, { id: 'c2', referrer_id: 'r1', status: 'PAID', commission_accrued: 30_000 });
+    seedConv(st, { id: 'c3', referrer_id: 'r2', status: 'PENDING' });
+    seedConv(st, { id: 'c4', referrer_id: 'r2', status: 'CLAWED_BACK' });
+    st.payouts.push({ id: 'p1', referrer_id: 'r1', amount_paise: 30_000, status: 'PAID' });
 
     const res = await app.inject({
       method: 'GET',
@@ -267,9 +341,10 @@ describe('GET /referral/overview', () => {
   });
 
   it('excludes FAILED batches from committed money', async () => {
+    const st = freshState();
     const app = await build();
-    seedConv({ id: 'c1', referrer_id: 'r1', status: 'QUALIFIED', commission_accrued: 50_000 });
-    state.payouts.push({ id: 'p1', referrer_id: 'r1', amount_paise: 20_000, status: 'FAILED' });
+    seedConv(st, { id: 'c1', referrer_id: 'r1', status: 'QUALIFIED', commission_accrued: 50_000 });
+    st.payouts.push({ id: 'p1', referrer_id: 'r1', amount_paise: 20_000, status: 'FAILED' });
     const res = await app.inject({
       method: 'GET',
       url: '/referral/overview',
@@ -288,15 +363,16 @@ describe('GET /referral/leaderboard', () => {
   beforeEach(resetState);
 
   it('sorts by accrued desc and computes unsettled via the T7 identity', async () => {
+    const st = freshState();
     const app = await build();
     // r1: 80k accrued, 30k committed → 50k unsettled
-    seedConv({ id: 'c1', referrer_id: 'r1', status: 'QUALIFIED', commission_accrued: 50_000 });
-    seedConv({ id: 'c2', referrer_id: 'r1', status: 'PAID', commission_accrued: 30_000 });
+    seedConv(st, { id: 'c1', referrer_id: 'r1', status: 'QUALIFIED', commission_accrued: 50_000 });
+    seedConv(st, { id: 'c2', referrer_id: 'r1', status: 'PAID', commission_accrued: 30_000 });
     // r2: only PENDING rows — realistic seed: accrued stays 0 on PENDING
     // (accrual is a QUALIFIED/PAID-only event in the real flow).
-    seedConv({ id: 'c3', referrer_id: 'r2', status: 'PENDING' });
-    state.payouts.push({ id: 'p1', referrer_id: 'r1', amount_paise: 30_000, status: 'PAID' });
-    state.codes.push({ retailer_id: 'r1', code: 'KAN-ABC123' });
+    seedConv(st, { id: 'c3', referrer_id: 'r2', status: 'PENDING' });
+    st.payouts.push({ id: 'p1', referrer_id: 'r1', amount_paise: 30_000, status: 'PAID' });
+    st.codes.push({ retailer_id: 'r1', code: 'KAN-ABC123' });
 
     const res = await app.inject({
       method: 'GET',
@@ -314,12 +390,13 @@ describe('GET /referral/leaderboard', () => {
   });
 
   it('MECHANISM: claimed conversions stay inside the unsettled input (no double-subtraction)', async () => {
+    const st = freshState();
     const app = await build();
     // c1 is claimed by p1: its 30k appears in accrued AND in committed, so
     // passing only unclaimed rows would understate unsettled by 30k.
-    seedConv({ id: 'c1', referrer_id: 'r1', status: 'QUALIFIED', commission_accrued: 30_000 });
-    seedConv({ id: 'c2', referrer_id: 'r1', status: 'QUALIFIED', commission_accrued: 20_000 });
-    state.payouts.push({ id: 'p1', referrer_id: 'r1', amount_paise: 30_000, status: 'PROCESSING' });
+    seedConv(st, { id: 'c1', referrer_id: 'r1', status: 'QUALIFIED', commission_accrued: 30_000 });
+    seedConv(st, { id: 'c2', referrer_id: 'r1', status: 'QUALIFIED', commission_accrued: 20_000 });
+    st.payouts.push({ id: 'p1', referrer_id: 'r1', amount_paise: 30_000, status: 'PROCESSING' });
 
     const res = await app.inject({
       method: 'GET',
@@ -368,8 +445,9 @@ describe('POST /referral/conversions/:id/clawback', () => {
   beforeEach(resetState);
 
   it('CASes PENDING → CLAWED_BACK with an audit row in the same transaction', async () => {
+    const st = freshState();
     const app = await build();
-    seedConv({ id: 'c1', referrer_id: 'r1', status: 'PENDING' });
+    seedConv(st, { id: 'c1', referrer_id: 'r1', status: 'PENDING' });
     const res = await app.inject({
       method: 'POST',
       url: '/referral/conversions/c1/clawback',
@@ -378,13 +456,14 @@ describe('POST /referral/conversions/:id/clawback', () => {
     });
     expect(res.statusCode).toBe(200);
     expect(res.json().data.status).toBe('CLAWED_BACK');
-    expect(state.audits.some((a) => a.action === 'REFERRAL_CLAWED_BACK_MANUAL')).toBe(true);
+    expect(st.audits.some((a) => a.action === 'REFERRAL_CLAWED_BACK_MANUAL')).toBe(true);
     await app.close();
   });
 
   it('refuses PAID with a message naming why (money may have moved)', async () => {
+    const st = freshState();
     const app = await build();
-    seedConv({ id: 'c1', referrer_id: 'r1', status: 'PAID' });
+    seedConv(st, { id: 'c1', referrer_id: 'r1', status: 'PAID' });
     const res = await app.inject({
       method: 'POST',
       url: '/referral/conversions/c1/clawback',
@@ -394,14 +473,15 @@ describe('POST /referral/conversions/:id/clawback', () => {
     expect(res.statusCode).toBe(422);
     expect(res.json().error.message).toContain('Payouts against it may already have settled');
     // And nothing was written.
-    expect(state.conversions[0]?.status).toBe('PAID');
-    expect(state.audits).toHaveLength(0);
+    expect(st.conversions[0]?.status).toBe('PAID');
+    expect(st.audits).toHaveLength(0);
     await app.close();
   });
 
   it('refuses an already-clawed-back conversion', async () => {
+    const st = freshState();
     const app = await build();
-    seedConv({ id: 'c1', referrer_id: 'r1', status: 'CLAWED_BACK' });
+    seedConv(st, { id: 'c1', referrer_id: 'r1', status: 'CLAWED_BACK' });
     const res = await app.inject({
       method: 'POST',
       url: '/referral/conversions/c1/clawback',
@@ -413,12 +493,13 @@ describe('POST /referral/conversions/:id/clawback', () => {
   });
 
   it('409 when the status moves between the read and the CAS', async () => {
+    const st = freshState();
     const app = await build();
-    seedConv({ id: 'c1', referrer_id: 'r1', status: 'QUALIFIED' });
+    seedConv(st, { id: 'c1', referrer_id: 'r1', status: 'QUALIFIED' });
     // Simulate a concurrent webhook settling the conversion AFTER the route's
     // eligibility read but BEFORE updateMany: the stand-in's updateMany honours
     // the WHERE, so if the WHERE were wrong this would 200 and overwrite PAID.
-    const orig = state.conversions[0];
+    const orig = st.conversions[0];
     const res = await app.inject({
       method: 'POST',
       url: '/referral/conversions/c1/clawback',
@@ -434,8 +515,9 @@ describe('POST /referral/conversions/:id/clawback', () => {
   });
 
   it('requires a reason (min 3 chars)', async () => {
+    const st = freshState();
     const app = await build();
-    seedConv({ id: 'c1', referrer_id: 'r1', status: 'PENDING' });
+    seedConv(st, { id: 'c1', referrer_id: 'r1', status: 'PENDING' });
     const res = await app.inject({
       method: 'POST',
       url: '/referral/conversions/c1/clawback',
@@ -465,6 +547,7 @@ describe('POST /referral/payouts/trigger', () => {
   beforeEach(resetState);
 
   it('runs the T7 handler in MANUAL mode and audit-logs the run', async () => {
+    const st = freshState();
     const app = await build();
     const res = await app.inject({
       method: 'POST',
@@ -477,7 +560,7 @@ describe('POST /referral/payouts/trigger', () => {
     // 'manual' — the cadence gate lives in the handler, and the whole point of
     // this endpoint is that MANUAL settings do not block an admin's click.
     expect(handleReferralPayout).toHaveBeenCalledWith('manual');
-    expect(state.audits.some((a) => a.action === 'REFERRAL_PAYOUT_TRIGGERED')).toBe(true);
+    expect(st.audits.some((a) => a.action === 'REFERRAL_PAYOUT_TRIGGERED')).toBe(true);
     await app.close();
   });
 });
@@ -646,6 +729,115 @@ describe('falsification record', () => {
     // by the source scan asserting the import is used and no restatement
     // exists.
     expect(monitorSourceSnippet()).not.toMatch(/Math\.max\(0,\s*accrued\s*-/);
+  });
+});
+
+// ─── Fixture lifecycle (last: it leaves the fixture frozen) ────────
+
+describe('fixture lifecycle', () => {
+  beforeEach(resetState);
+
+  it("F6: a late write lands in the ABANDONED test's fixture and throws — it cannot poison the next test", () => {
+    // Replays the poisoning mechanism deterministically instead of racing a
+    // timeout: this is the exact write a timed-out test performed, and the
+    // exact next test that then read 30_000 where it expected 0 (which looks
+    // like the route summing FAILED batches — it was not).
+    //
+    // Both halves of the fix are asserted here, and each is falsifiable on its
+    // own:
+    //   1. OWNERSHIP — the abandoned test's fixture is a different object from
+    //      the next test's, so `next` cannot see its rows. Revert `resetState`
+    //      to clearing the arrays on one shared object (`state.payouts = []`)
+    //      and the `not.toBe` fails: one array, one leak. This is the arm that
+    //      caught the first, ineffective version of the fix.
+    //   2. RETIRING — the abandoned test's arrays were frozen when it ended,
+    //      so the late write THROWS. Make `retireState()` a no-op and the
+    //      `toThrow` fails: the push succeeds silently.
+    // Neither is sufficient alone — freezing without ownership freezes arrays
+    // the next `beforeEach` immediately replaces, which is why the freeze first
+    // shipped on its own and did NOT stop the flake.
+    //
+    // Scope, stated because it was measured: this test calls `retireState()`
+    // ITSELF, so it pins the function and can say nothing about whether that
+    // function is wired to the lifecycle. Deleting `afterEach(retireState)`
+    // leaves this test GREEN. The wiring is F8's job below — that split was not
+    // obvious until the deletion was actually tried.
+    const abandoned = freshState();
+    retireState(); // what `afterEach` does the moment the abandoned test ends
+    const next = freshState(); // the following test's `beforeEach` + binding
+
+    expect(abandoned.payouts).not.toBe(next.payouts);
+
+    expect(() =>
+      abandoned.payouts.push({
+        id: 'leaked',
+        referrer_id: 'r1',
+        amount_paise: 30_000,
+        status: 'PAID',
+      }),
+    ).toThrow(/not extensible|read.only|cannot add/i);
+
+    // The next test's fixture is untouched — what the assertion above buys.
+    expect(next.payouts).toHaveLength(0);
+  });
+
+  it('F7: no test body writes the shared fixture pointer directly (ownership is the rule)', () => {
+    // F6 above proves the ownership mechanism WORKS; this one keeps every test
+    // using it. A new test that writes `state.payouts.push(…)` — the current
+    // pointer, not its own `st` — re-opens the leak for its own
+    // abandoned-continuation case, and nothing else in this file would notice.
+    //
+    // Two scoping decisions, both load-bearing:
+    //   • comments are stripped first, because this file's prose quotes the
+    //     offending shape and would otherwise match its own documentation;
+    //   • the scan starts at `const seedConv`, i.e. after the prisma stand-in.
+    //     The stand-in's `auditLog.create` MUST insert into whatever fixture is
+    //     current, so it is the one legitimate bare write — and it is outside
+    //     the scanned region, not special-cased inside it.
+    //
+    // THIS FILE is located via `import.meta.url`, never by a literal name. A
+    // literal (`join(HERE, 'admin-referral-monitor.test.ts')`) was here first
+    // and it silently defeats the guard the moment the file is copied, renamed
+    // or probed: the scan then reads some OTHER file and passes. That was
+    // measured — a `state.payouts.push(…)` injected into a copy left this test
+    // green, which is exactly the false confidence the guard exists to prevent.
+    const raw = readFileSync(fileURLToPath(import.meta.url), 'utf8');
+    const bodies = raw.slice(raw.indexOf('const seedConv')).replace(/(^|[^:])\/\/[^\n]*/g, '$1');
+    const bareWrites = [
+      ...bodies.matchAll(/\bstate\.(conversions|payouts|codes|accounts|audits)\.(push|splice)/g),
+    ].map((m) => m[0]);
+    expect(bareWrites).toEqual([]);
+  });
+
+  // F8 is a PAIR, and it exists because F6 above cannot see the hook: F6 calls
+  // `retireState()` itself, so removing the `afterEach` registration leaves it
+  // green (measured). The only vantage point from which the WIRING is visible is
+  // a later test reading a fixture captured by an earlier one — vitest runs
+  // tests in declaration order within a file, so the pair is ordered, not
+  // independent.
+  let captured: Fixture | undefined;
+
+  it('F8a: captures its own fixture, unfrozen while the test runs (read by F8b)', () => {
+    captured = freshState();
+    // The fixture a test is using must NOT be frozen mid-test — a freeze that
+    // started too early would make every seed throw.
+    expect(Object.isFrozen(captured.payouts)).toBe(false);
+  });
+
+  it("F8b: afterEach froze the previous test's fixture — the hook is wired", () => {
+    // Falsified by deleting the `afterEach(retireState)` registration: this test
+    // goes red (`expected false to be true`) while F6 stays green. Between them
+    // the two guards cover the function AND its wiring.
+    expect(captured).toBeDefined();
+    expect(Object.isFrozen(captured?.payouts)).toBe(true);
+    expect(() =>
+      captured?.payouts.push({
+        id: 'leaked',
+        referrer_id: 'r1',
+        amount_paise: 30_000,
+        status: 'PAID',
+      }),
+    ).toThrow(/not extensible|read.only|cannot add/i);
   });
 });
 

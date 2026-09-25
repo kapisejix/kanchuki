@@ -21,13 +21,45 @@ export const PLAN_LIMITS = {
   },
 } as const;
 
-// ─── Plan Pricing (paise) ─────────────────────────────────────────
+// ─── "Unlimited" sentinel ─────────────────────────────────────────
+// One name for "this plan has no limit" the moment it crosses a boundary.
+//
+// `PLAN_LIMITS` above writes `Number.POSITIVE_INFINITY` because it is never
+// persisted and never serialised — it only feeds in-process comparisons.
+// Anything that *is* persisted or sent over the wire has to be a real number:
+// a PostgreSQL integer column cannot hold `Infinity`, and `JSON.stringify`
+// silently turns it into `null`. So the API fallbacks, the DB-backed plan
+// limits, the admin retailer page and the mobile analytics screen each wrote a
+// bare `999999` literal instead — a magic number in five files, two of which
+// *compare* against it (`max >= 999999 ? '∞'`) and would drift apart from the
+// values the other three write. This is the single name for it.
+//
+// "Unlimited" here means "no plan reaches this", not "infinity": never treat
+// it as a real capacity, never do arithmetic with it, and never store it where
+// a user could be shown it as a limit.
+export const UNLIMITED = 999999;
 
-export const PLAN_PRICING = {
-  STARTER: { monthly: 499900 }, // ₹4,999/mo base (ex-GST); retailer pays base + 18%
-  GROWTH: { monthly: 999900 }, // ₹9,999/mo base (ex-GST)
-  PRO: { monthly: 1499900 }, // ₹14,999/mo base (ex-GST)
-} as const;
+/** `PLAN_LIMITS` value → something a DB int column / JSON can hold. */
+export const orUnlimited = (value: number): number => (Number.isFinite(value) ? value : UNLIMITED);
+
+// ─── "Is this plan still live?" ───────────────────────────────────
+// RC-033: a CANCELLED term and a COMPLETED one are different events — churn
+// versus a term that ran its course — but every caller that asks "is this plan
+// still live?" wants the same answer for both, and four surfaces were each
+// writing their own `=== 'CANCELLED'` literal. That is how a newly added status
+// ends up handled correctly by three callers and wrongly by the fourth (the
+// RC-034 shape: one rule with several copies).
+//
+// PAST_DUE is deliberately NOT ended: dunning is recoverable, and T5's own
+// qualification gate refuses to claw back on it for exactly that reason.
+export function isPlanEnded(status: string | null | undefined): boolean {
+  return status === 'CANCELLED' || status === 'COMPLETED';
+}
+
+// Plan prices are NOT here: the plan_pricing table (Admin → Plan Pricing) is the
+// only source. Migration 074 seeds every plan and the app role cannot DELETE,
+// so a row is always present; a missing one is a loud error, never a stale
+// number charged or shown.
 
 // ─── Indian Ethnic Wear Categories ───────────────────────────────
 

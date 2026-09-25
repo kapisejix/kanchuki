@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { CheckSquare, Square, Save, Loader2, Sparkles } from 'lucide-react'
 import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
+import { rupees } from '@/lib/plan-pricing'
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
 
@@ -48,10 +49,11 @@ const FEATURES: { key: FeatureKey; label: string; description: string }[] = [
   { key: 'MULTI_STORE', label: 'Multi-Store', description: 'Manage multiple store locations' },
 ]
 
-const PLAN_LABELS: Record<Plan, { name: string; price: string; color: string }> = {
-  STARTER: { name: 'Starter', price: '₹999/mo', color: 'border-gray-200 bg-gray-50/50' },
-  GROWTH: { name: 'Growth', price: '₹2,499/mo', color: 'border-cyan-200 bg-cyan-50/30' },
-  PRO: { name: 'Pro', price: '₹4,999/mo', color: 'border-purple-200 bg-purple-50/30' },
+// Prices are NOT here — they come live from plan_pricing (Admin → Plan Pricing).
+const PLAN_LABELS: Record<Plan, { name: string; color: string }> = {
+  STARTER: { name: 'Starter', color: 'border-gray-200 bg-gray-50/50' },
+  GROWTH: { name: 'Growth', color: 'border-cyan-200 bg-cyan-50/30' },
+  PRO: { name: 'Pro', color: 'border-purple-200 bg-purple-50/30' },
 }
 
 const PLAN_ACCENT: Record<Plan, string> = {
@@ -68,10 +70,17 @@ export default function PlanFeaturesPage() {
   const [saving, setSaving] = useState<string | null>(null)
   const [status, setStatus] = useState('')
   const [loading, setLoading] = useState(true)
+  const [prices, setPrices] = useState<Partial<Record<Plan, number>>>({})
 
   const key = (plan: Plan, featureKey: FeatureKey) => `${plan}:${featureKey}`
 
   useEffect(() => {
+    fetch(`${API_URL}/v1/admin/plan-pricing`, adminGetOptions())
+      .then((r) => (r.ok ? r.json() : { data: [] }))
+      .then((j: { data?: { plan: Plan; monthly_paise: number }[] }) =>
+        setPrices(Object.fromEntries((j.data ?? []).map((p) => [p.plan, p.monthly_paise]))),
+      )
+      .catch(() => {}) // price label only — shows '—' if unavailable
     async function load() {
       try {
         const res = await fetch(`${API_URL}/v1/admin/plan-features`, adminGetOptions())
@@ -193,7 +202,7 @@ export default function PlanFeaturesPage() {
                   >
                     <div className="flex flex-col items-center gap-0.5">
                       <span>{PLAN_LABELS[plan].name}</span>
-                      <span className="text-[10px] font-normal opacity-70">{PLAN_LABELS[plan].price}</span>
+                      <span className="text-[10px] font-normal opacity-70">{prices[plan] != null ? `${rupees(prices[plan])}/mo` : '—'}</span>
                     </div>
                   </th>
                 ))}

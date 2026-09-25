@@ -1,9 +1,8 @@
 'use client'
 
+import { SIZE_OPTIONS } from '@kanchuki/shared'
 import { useState, useEffect, useCallback } from 'react'
 import { Users, Plus, X, Check, User } from 'lucide-react'
-
-const SIZE_OPTIONS = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', '4XL', '5XL', '6XL', '7XL', '8XL'] as const
 const RELATION_OPTIONS = ['Mom', 'Sister', 'Daughter', 'Wife', 'Friend', 'Other'] as const
 
 interface FamilyProfile {

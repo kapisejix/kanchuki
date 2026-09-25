@@ -1,3 +1,4 @@
+import { isPlanEnded } from '@kanchuki/shared';
 import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { ChevronLeft, CreditCard, Globe, Mail } from 'lucide-react-native';
@@ -25,6 +26,19 @@ export default function BillingScreen() {
     queryFn: () => retailerApi.getMe(),
   });
   const me = (meData as { data: { plan?: string; plan_status?: string } } | undefined)?.data;
+
+  // RC-033: `plan_status === 'ACTIVE' ? 'active' : 'free trial'` told a retailer
+  // whose paid term had COMPLETED (or been CANCELLED) that they were on a free
+  // trial. "Ended" covers both without claiming either event happened, and
+  // PAST_DUE stays its own state because dunning is recoverable.
+  const status = me?.plan_status ?? 'TRIAL';
+  const statusLabel = isPlanEnded(status)
+    ? 'Ended'
+    : status === 'ACTIVE'
+      ? 'Active'
+      : status === 'PAST_DUE'
+        ? 'Payment due'
+        : 'Free trial';
 
   return (
     <View className="flex-1 bg-[#F8F7FC]">
@@ -59,12 +73,13 @@ export default function BillingScreen() {
           <View className="flex-row items-center gap-2 mb-2">
             <CreditCard size={18} color="#BB3F95" />
             <Text className="font-bold text-sm text-spaceCadet-900">
-              {me?.plan ?? 'Starter'} Plan · {me?.plan_status ?? 'Trial'}
+              {me?.plan ?? 'Starter'} Plan · {statusLabel}
             </Text>
           </View>
           <Text className="text-xs text-heliotrope-500 leading-relaxed font-medium">
-            You&apos;re on the {me?.plan_status === 'ACTIVE' ? 'active' : 'free trial'}{' '}
-            {me?.plan ?? 'Starter'} plan — keep using all your features.
+            {isPlanEnded(status)
+              ? `Your ${me?.plan ?? 'Starter'} plan has ended — renew on the website to keep using your features.`
+              : `You're on the ${statusLabel.toLowerCase()} ${me?.plan ?? 'Starter'} plan — keep using all your features.`}
           </Text>
         </View>
 

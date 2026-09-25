@@ -64,6 +64,41 @@ export async function fetchIgPermalink(mediaId: string, accessToken: string): Pr
   return '';
 }
 
+export interface PostEngagement {
+  likes: number;
+  comments: number;
+}
+
+/**
+ * Read likes/comments counts on a published Facebook Page post
+ * (`pages_read_engagement`). Fail-open — engagement is presentational, a
+ * read miss must not break the post-history screen.
+ */
+export async function getPostEngagement(
+  postId: string,
+  pageToken: string,
+): Promise<PostEngagement> {
+  try {
+    const res = await fetch(
+      `${GRAPH_BASE}/${postId}?${new URLSearchParams({
+        access_token: pageToken,
+        fields: 'likes.summary(true),comments.summary(true)',
+      })}`,
+    );
+    const body = (await res.json()) as {
+      likes?: { summary?: { total_count?: number } };
+      comments?: { summary?: { total_count?: number } };
+    };
+    if (!res.ok) return { likes: 0, comments: 0 };
+    return {
+      likes: body.likes?.summary?.total_count ?? 0,
+      comments: body.comments?.summary?.total_count ?? 0,
+    };
+  } catch {
+    return { likes: 0, comments: 0 };
+  }
+}
+
 export interface MetaPage {
   id: string;
   name: string;

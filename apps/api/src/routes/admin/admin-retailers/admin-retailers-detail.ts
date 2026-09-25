@@ -1,5 +1,6 @@
 // Auto-split from admin/admin-retailers.ts (scripts/check-route-size.sh) — route bodies verbatim.
 import { prisma } from '@kanchuki/db';
+import { PLAN_LIMITS, orUnlimited } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { notFound } from '../../../plugins/error-handler.js';
@@ -143,7 +144,7 @@ export const adminRetailersDetailRoutes: FastifyPluginAsync = async (server) => 
     const body = z
       .object({
         plan: z.enum(['STARTER', 'GROWTH', 'PRO']),
-        status: z.enum(['TRIAL', 'ACTIVE', 'PAST_DUE', 'CANCELLED']),
+        status: z.enum(['TRIAL', 'ACTIVE', 'PAST_DUE', 'CANCELLED', 'COMPLETED']),
         extend_trial_days: z.number().int().min(0).max(90).optional(),
       })
       .parse(request.body);
@@ -153,20 +154,14 @@ export const adminRetailersDetailRoutes: FastifyPluginAsync = async (server) => 
     });
     if (!retailer) throw notFound('Retailer not found');
 
-    const limits: Record<string, { products: number; customers: number; try_on: number }> = {
-      STARTER: { products: 500, customers: 999999, try_on: 0 },
-      GROWTH: { products: 2000, customers: 999999, try_on: 100 },
-      PRO: { products: 999999, customers: 999999, try_on: 500 },
-    };
-
-    const planLimits = limits[body.plan];
-    if (!planLimits) throw notFound(`Plan ${body.plan} not found`);
+    // Same source the billing webhook writes from — one table of plan limits.
+    const planLimits = PLAN_LIMITS[body.plan];
 
     const updateData: Record<string, unknown> = {
       plan: body.plan,
       plan_status: body.status,
-      max_products: planLimits.products,
-      max_customers: planLimits.customers,
+      max_products: orUnlimited(planLimits.max_products),
+      max_customers: orUnlimited(planLimits.max_customers),
     };
 
     if (body.extend_trial_days && body.extend_trial_days > 0) {

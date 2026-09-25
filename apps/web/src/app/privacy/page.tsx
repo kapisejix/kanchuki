@@ -15,7 +15,7 @@ export default function PrivacyPolicyPage() {
         </Link>
 
         <h1 className="mt-6 font-display text-3xl font-semibold">Privacy Policy</h1>
-        <p className="mt-2 text-sm text-carbon/50">Last updated: September 20, 2026</p>
+        <p className="mt-2 text-sm text-carbon/50">Last updated: September 24, 2026</p>
 
         <div className="mt-8 space-y-6 text-carbon/70">
           <p>
@@ -204,6 +204,38 @@ export default function PrivacyPolicyPage() {
               <Link href="/account-deletion" className="text-cobalt-600 hover:underline">
                 account deletion page
               </Link>
+              .
+            </p>
+          </section>
+
+          <section>
+            <h2 className="font-display text-xl font-semibold text-carbon">
+              Product photos and AI training
+            </h2>
+            <p>
+              <strong>We do not use your photos to train AI models.</strong> A photo a
+              retailer uploads is used only for the features that retailer asks for —
+              auto-tagging category, colour and fabric; background clean-up and studio-style
+              catalog images; a short promotional video; and publishing to the storefront or a
+              connected social account.
+            </p>
+            <p>
+              That applies to our AI providers too: a photo is sent to a provider only to
+              perform the specific operation requested, under a contract that does not permit
+              the provider to use it to train its own models. An earlier consent-based
+              programme that collected try-on photos for model training was withdrawn and
+              removed on 31 August 2026, and no photos are collected for training now.
+            </p>
+            <p>
+              <strong>How long a photo is kept, and how to delete it.</strong> A photo is kept
+              while it belongs to a live product, design, or account. Delete the photo or the
+              product in the app and it disappears from your catalog immediately; the stored
+              file is soft-deleted at once and permanently purged after 15 days — including
+              the copy in our write-only recovery vault (see above). Deleting a retailer
+              account removes its photos the same way. To have a photo deleted sooner, email{' '}
+              <a href="mailto:privacy@kanchuki.app" className="text-cobalt-600 hover:underline">
+                privacy@kanchuki.app
+              </a>
               .
             </p>
           </section>

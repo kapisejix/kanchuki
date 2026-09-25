@@ -1,4 +1,4 @@
-import { randomBytes } from 'node:crypto';
+import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { type Prisma, prisma } from '@kanchuki/db';
 import { isValidIndianPhone, normalizeIndianPhone } from '@kanchuki/shared';
 import type { Session, User } from '@supabase/supabase-js';
@@ -161,6 +161,53 @@ function otpTestBypassActive(phone: string): boolean {
   return otpTestPhones().has(normalized);
 }
 
+// ─── APPLE REVIEW BYPASS (App Store review only) ──────────────────
+// A FIXED demo phone + FIXED code so an Apple reviewer can reach the app
+// without an SMS (their SIM is not Indian, and the real path depends on
+// DLT-registered delivery). Gated on BOTH `REVIEW_PHONE` and `REVIEW_OTP`
+// being set: unset either one and every function below returns early, which is
+// the production default. Unlike `OTP_TEST_BYPASS` this accepts exactly ONE
+// code, never "any 6 digits".
+//
+// NEVER log from here, and never let a call site log the review phone: the
+// phone and the code are credentials for the duration of the review. That is
+// why the two call sites below carry no `console.log` and why the verify path
+// skips the operator line it would otherwise print. Unset both vars once the
+// build is approved.
+const REVIEW_OTP_PATTERN = /^\d{6}$/;
+
+function reviewPhone(): string | null {
+  const raw = process.env.REVIEW_PHONE;
+  if (!raw) return null;
+  try {
+    return normalizeIndianPhone(raw);
+  } catch {
+    const digits = raw.replace(/\D/g, '').slice(-10);
+    return digits.length === 10 ? digits : null;
+  }
+}
+
+function reviewOtp(): string | null {
+  const raw = process.env.REVIEW_OTP;
+  return raw && REVIEW_OTP_PATTERN.test(raw) ? raw : null;
+}
+
+/** True only when both review env vars are set AND the phone is the review one. */
+function isReviewLogin(phone: string): boolean {
+  const expectedPhone = reviewPhone();
+  return expectedPhone !== null && reviewOtp() !== null && phone === expectedPhone;
+}
+
+/** Constant-time compare of the submitted code against `REVIEW_OTP`. */
+function reviewOtpMatches(otp: string | undefined): boolean {
+  const expected = reviewOtp();
+  if (!expected || !otp) return false;
+  const submitted = Buffer.from(otp);
+  const want = Buffer.from(expected);
+  if (submitted.length !== want.length) return false;
+  return timingSafeEqual(submitted, want);
+}
+
 async function ensureSupabaseSession(phone: string): Promise<{ user: User; session: Session }> {
   const e164 = `+91${phone}`;
   const password = randomBytes(24).toString('base64url');
@@ -214,6 +261,16 @@ export const authRoutes: FastifyPluginAsync = async (server) => {
 
     const phone = body.data.phone;
     const e164 = `+91${phone}`; // Indian numbers only for MVP
+
+    // APPLE REVIEW BYPASS (§7A.3): fixed phone + fixed code. Returns the same
+    // `bypass: true` shape as the test bypass so the app skips the native
+    // MSG91 widget and shows the code field the reviewer types into.
+    // Deliberately NOT logged — no phone, no code, no `path=` marker.
+    if (isReviewLogin(phone)) {
+      return reply.status(200).send({
+        data: { message: 'OTP sent', phone: `****${phone.slice(-4)}`, bypass: true },
+      });
+    }
 
     if (otpTestBypassActive(phone)) {
       // TEST BYPASS: whitelisted phone — no MSG91 call, no DLT-dropped SMS.
@@ -363,8 +420,17 @@ export const authRoutes: FastifyPluginAsync = async (server) => {
     let session: Session;
     let msg91Verified = false;
     const bypassActive = otpTestBypassActive(phone);
+    const reviewActive = isReviewLogin(phone);
 
-    if (bypassActive) {
+    if (reviewActive) {
+      // APPLE REVIEW BYPASS (§7A.3): the FIXED code only, never "any code".
+      // Checked before the test bypass so a review phone that also appears in
+      // OTP_TEST_PHONES still has to produce REVIEW_OTP. No log line.
+      if (!reviewOtpMatches(otp)) {
+        throw new AppError('INVALID_OTP', 'Invalid or expired OTP. Try again.', 401);
+      }
+      msg91Verified = true;
+    } else if (bypassActive) {
       // TEST BYPASS: any code the tester types is accepted.
       // biome-ignore lint/suspicious/noConsoleLog: operator-facing OTP diagnostics
       console.log(`[auth] /otp/verify phone=${phone} path=test-bypass`);
@@ -401,10 +467,14 @@ export const authRoutes: FastifyPluginAsync = async (server) => {
       // MSG91 verified the phone — mint a Supabase session for it (see
       // ensureSupabaseSession: find-or-create the auth user with a rotated
       // random password, then phone+password sign-in to obtain a session).
-      // biome-ignore lint/suspicious/noConsoleLog: operator-facing OTP diagnostics
-      console.log(
-        `[auth] /otp/verify phone=${phone} msg91Verified=true → minting Supabase session`,
-      );
+      // The review path is intentionally quiet, so this operator line — the
+      // one place the phone would reach the logs — is skipped for it.
+      if (!reviewActive) {
+        // biome-ignore lint/suspicious/noConsoleLog: operator-facing OTP diagnostics
+        console.log(
+          `[auth] /otp/verify phone=${phone} msg91Verified=true → minting Supabase session`,
+        );
+      }
       const created = await ensureSupabaseSession(phone);
       user = created.user;
       session = created.session;

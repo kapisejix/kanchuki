@@ -41,6 +41,7 @@ const {
   mockResolveMetaCredentials,
   mockPublishPhotoPost,
   mockPublishLinkPost,
+  mockGetPostEngagement,
   MockMetaApiError,
 } = vi.hoisted(() => {
   // Plain Error subclass mirroring meta-graph's MetaApiError (status + code,
@@ -68,6 +69,7 @@ const {
     mockResolveMetaCredentials: vi.fn(),
     mockPublishPhotoPost: vi.fn(),
     mockPublishLinkPost: vi.fn(),
+    mockGetPostEngagement: vi.fn(),
     MockMetaApiError,
   };
 });
@@ -129,6 +131,7 @@ vi.mock('../lib/meta-graph.js', () => ({
   listPages: vi.fn(),
   publishPhotoPost: mockPublishPhotoPost,
   publishLinkPost: mockPublishLinkPost,
+  getPostEngagement: mockGetPostEngagement,
 }));
 
 const RETAILER_ID = 'retailer_1';
@@ -862,6 +865,37 @@ describe('POST /retailers/me/banner-upload-url', () => {
     expect(res.statusCode).toBe(200);
     expect(res.json().data).toHaveLength(1);
     expect(res.json().data[0].external_post_url).toContain('facebook.com');
+    await app.close();
+  });
+
+  it('enriches Facebook post history with live likes/comments (pages_read_engagement)', async () => {
+    mockSocialAccountFindFirst.mockResolvedValue(FACEBOOK_ACCOUNT);
+    mockSocialPostFindMany.mockResolvedValue([
+      {
+        id: 'sp_1',
+        post_type: 'SINGLE_PRODUCT',
+        caption: 'New Kurti',
+        status: 'POSTED',
+        external_post_id: 'fb_post_1',
+        external_post_url: 'https://www.facebook.com/page_123/posts/fb_post_1',
+        error_message: null,
+        product_ids: ['prod_1'],
+        collection_id: null,
+        created_at: new Date(),
+      },
+    ]);
+    mockGetPostEngagement.mockResolvedValue({ likes: 12, comments: 3 });
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'GET',
+      url: '/v1/retailers/me/social/accounts/social_1/posts',
+    });
+    expect(res.statusCode).toBe(200);
+    const post = res.json().data[0];
+    expect(post.likes_count).toBe(12);
+    expect(post.comments_count).toBe(3);
+    expect(mockGetPostEngagement).toHaveBeenCalledWith('fb_post_1', 'page-token');
     await app.close();
   });
 

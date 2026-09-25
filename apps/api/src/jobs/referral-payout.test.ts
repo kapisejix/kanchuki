@@ -10,19 +10,34 @@ import { createHmac } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
 
 // ─── Prisma mock (same shape as referral-accrue.test.ts) ─────────
 
-const prismaState = {
-  settings: null as Record<string, unknown> | null,
-  payouts: [] as Array<Record<string, unknown>>,
-  conversions: [] as Array<Record<string, unknown>>,
-  accounts: [] as Array<Record<string, unknown>>,
-  auditRows: [] as Array<Record<string, unknown>>,
+type PayoutFixture = {
+  settings: Record<string, unknown> | null;
+  payouts: Array<Record<string, unknown>>;
+  conversions: Array<Record<string, unknown>>;
+  accounts: Array<Record<string, unknown>>;
+  auditRows: Array<Record<string, unknown>>;
 };
+
+/**
+ * A fresh, empty fixture. `settings` is left null here and filled in by
+ * `resetState()`, because this function also runs at module init — before
+ * `SETTINGS` below exists — purely to give the stand-in something to point at.
+ */
+function makeState(): PayoutFixture {
+  return { settings: null, payouts: [], conversions: [], accounts: [], auditRows: [] };
+}
+
+// Swapped whole, never cleared in place — see `freshState()` for why that
+// distinction is the entire fix (RC-039). The prisma stand-in below reads this
+// variable at CALL time, which is correct for the stand-in and is exactly why a
+// test must bind its own fixture instead of reaching for this name.
+let prismaState: PayoutFixture = makeState();
 
 vi.mock('@kanchuki/db', () => ({
   prisma: {
@@ -218,14 +233,59 @@ const SETTINGS = {
 };
 
 function resetState() {
-  prismaState.settings = { id: 'singleton', ...SETTINGS, updated_at: new Date() };
-  prismaState.payouts = [];
-  prismaState.conversions = [];
-  prismaState.accounts = [];
-  prismaState.auditRows = [];
+  prismaState = {
+    ...makeState(),
+    settings: { id: 'singleton', ...SETTINGS, updated_at: new Date() },
+  };
   vi.mocked(createPayout).mockReset();
 }
 
+/**
+ * Bind THIS test's fixture and return it. **Must be the first statement of a
+ * test that touches the fixture — before any `await`.**
+ *
+ * Why this exists (RC-039, found in the sibling `admin-referral-monitor` suite
+ * and applied here because this file carried the same amplifier): vitest
+ * abandoning a timed-out test does not cancel its promises. `build()`-style
+ * setup resolved afterwards, the abandoned continuation ran its seeds, and —
+ * with one shared fixture object that `beforeEach` merely cleared — those seeds
+ * landed in the NEXT test's state. That test then asserted against numbers a
+ * different test had put there, which reads as a job/payment bug and is not.
+ *
+ * Binding is only a fix because `resetState()` REPLACES the fixture object
+ * instead of clearing the arrays inside it: a test that captured its own
+ * object before its first await writes into its OWN (already retired) fixture,
+ * which the next test cannot see, whatever the timing.
+ *
+ * `afterEach(retireState)` is the second half. Neither layer is sufficient
+ * alone — freezing without ownership freezes arrays the next `beforeEach`
+ * immediately replaces, which is precisely why the earlier attempt at this
+ * (the freeze, shipped on its own and tested) did not stop the flake.
+ */
+function freshState(): PayoutFixture {
+  resetState();
+  return prismaState;
+}
+
+/**
+ * Freeze the retired fixture so a test that TIMED OUT fails loudly instead of
+ * poisoning its successor.
+ *
+ * Both the arrays AND the fixture object are frozen here, unlike the sibling
+ * file where arrays alone suffice: these tests assign whole arrays
+ * (`st.conversions = [...]`) as often as they push into them, and the prisma
+ * stand-in's rollback path does the same (`prismaState.payouts = before…`).
+ * Arrays-only would let a late reassignment through silently.
+ */
+function retireState() {
+  Object.freeze(prismaState.payouts);
+  Object.freeze(prismaState.conversions);
+  Object.freeze(prismaState.accounts);
+  Object.freeze(prismaState.auditRows);
+  Object.freeze(prismaState);
+}
+
+afterEach(retireState);
 beforeEach(resetState);
 
 const conv = (
@@ -377,42 +437,42 @@ describe('failureReasonFrom', () => {
 
 describe('settlePayout', () => {
   it('PAID stamps paid_at ONLY on conversions still attached to this batch', async () => {
-    prismaState.conversions = [
-      conv('c1', 100, 'QUALIFIED', 'po_1'),
-      conv('c2', 200, 'QUALIFIED', null),
-    ];
-    prismaState.payouts = [{ id: 'po_1', status: 'PROCESSING' }];
+    const st = freshState();
+    st.conversions = [conv('c1', 100, 'QUALIFIED', 'po_1'), conv('c2', 200, 'QUALIFIED', null)];
+    st.payouts = [{ id: 'po_1', status: 'PROCESSING' }];
     const before = new Date();
     await settlePayout('po_1', 'PAID', null, true);
-    expect(prismaState.conversions[0]).toMatchObject({ status: 'PAID', payout_id: 'po_1' });
-    expect(
-      (prismaState.conversions[0] as { paid_at: Date }).paid_at.getTime(),
-    ).toBeGreaterThanOrEqual(before.getTime());
-    expect(prismaState.conversions[1]!.status).toBe('QUALIFIED'); // untouched
-    expect(prismaState.auditRows.at(-1)).toMatchObject({ action: 'REFERRAL_PAYOUT_CONFIRMED' });
+    expect(st.conversions[0]).toMatchObject({ status: 'PAID', payout_id: 'po_1' });
+    expect((st.conversions[0] as { paid_at: Date }).paid_at.getTime()).toBeGreaterThanOrEqual(
+      before.getTime(),
+    );
+    expect(st.conversions[1]!.status).toBe('QUALIFIED'); // untouched
+    expect(st.auditRows.at(-1)).toMatchObject({ action: 'REFERRAL_PAYOUT_CONFIRMED' });
   });
 
   it('webhook_confirmed is stored ONLY when the webhook told us', async () => {
-    prismaState.payouts = [
+    const st = freshState();
+    st.payouts = [
       { id: 'po_1', status: 'PROCESSING' },
       { id: 'po_2_reconcile', status: 'PROCESSING' },
     ];
     await settlePayout('po_1', 'PAID', null, true);
-    expect(prismaState.payouts[0]).toMatchObject({ status: 'PAID', webhook_confirmed: true });
+    expect(st.payouts[0]).toMatchObject({ status: 'PAID', webhook_confirmed: true });
     await settlePayout('po_2_reconcile', 'PAID', null, false);
-    expect(prismaState.payouts[1]).toMatchObject({ status: 'PAID', webhook_confirmed: false });
+    expect(st.payouts[1]).toMatchObject({ status: 'PAID', webhook_confirmed: false });
   });
 
   it('FAILED releases the claim — payout_id cleared, status kept, money re-pools', async () => {
-    prismaState.conversions = [conv('c1', 100, 'QUALIFIED', 'po_1')];
-    prismaState.payouts = [{ id: 'po_1', status: 'PROCESSING' }];
+    const st = freshState();
+    st.conversions = [conv('c1', 100, 'QUALIFIED', 'po_1')];
+    st.payouts = [{ id: 'po_1', status: 'PROCESSING' }];
     await settlePayout('po_1', 'FAILED', 'beneficiary_bank_rejected');
-    expect(prismaState.conversions[0]).toMatchObject({ payout_id: null, status: 'QUALIFIED' });
-    expect(prismaState.payouts[0]).toMatchObject({
+    expect(st.conversions[0]).toMatchObject({ payout_id: null, status: 'QUALIFIED' });
+    expect(st.payouts[0]).toMatchObject({
       status: 'FAILED',
       failure_reason: 'beneficiary_bank_rejected',
     });
-    expect(prismaState.auditRows.at(-1)).toMatchObject({ action: 'REFERRAL_PAYOUT_RELEASED' });
+    expect(st.auditRows.at(-1)).toMatchObject({ action: 'REFERRAL_PAYOUT_RELEASED' });
   });
 });
 
@@ -420,15 +480,15 @@ describe('settlePayout', () => {
 
 describe('handleReferralPayout', () => {
   it('throws loudly when the settings singleton is missing', async () => {
-    prismaState.settings = null;
+    const st = freshState();
+    st.settings = null;
     await expect(handleReferralPayout('cron')).rejects.toThrow(/singleton missing/);
   });
 
   it('claims, submits, and leaves settlement to the webhook — never writes paid_at', async () => {
-    prismaState.conversions = [conv('c1', 60000)];
-    prismaState.accounts = [
-      { retailer_id: 'ret_A', is_active: true, razorpayx_fund_account_id: 'fa_1' },
-    ];
+    const st = freshState();
+    st.conversions = [conv('c1', 60000)];
+    st.accounts = [{ retailer_id: 'ret_A', is_active: true, razorpayx_fund_account_id: 'fa_1' }];
     vi.mocked(createPayout).mockResolvedValue({
       id: 'pout_1',
       status: 'initiated',
@@ -446,20 +506,19 @@ describe('handleReferralPayout', () => {
       expect.objectContaining({ amount: 60000, idempotencyKey: expect.stringMatching(/^refpo-/) }),
     );
     // The job must NOT have settled anything — status PROCESSING, no paid_at.
-    expect(prismaState.payouts[0]).toMatchObject({
+    expect(st.payouts[0]).toMatchObject({
       status: 'PROCESSING',
       razorpayx_payout_id: 'pout_1',
     });
-    expect(prismaState.conversions[0]!.status).toBe('QUALIFIED');
-    expect(prismaState.conversions[0]!.paid_at).toBeUndefined();
+    expect(st.conversions[0]!.status).toBe('QUALIFIED');
+    expect(st.conversions[0]!.paid_at).toBeUndefined();
   });
 
   it('sends NET (gross − TDS) and snapshots tds_paise when TDS is on', async () => {
-    prismaState.settings = { ...SETTINGS, tds_enabled: true, tds_pct: 10 };
-    prismaState.conversions = [conv('c1', 60000)];
-    prismaState.accounts = [
-      { retailer_id: 'ret_A', is_active: true, razorpayx_fund_account_id: 'fa_1' },
-    ];
+    const st = freshState();
+    st.settings = { ...SETTINGS, tds_enabled: true, tds_pct: 10 };
+    st.conversions = [conv('c1', 60000)];
+    st.accounts = [{ retailer_id: 'ret_A', is_active: true, razorpayx_fund_account_id: 'fa_1' }];
     vi.mocked(createPayout).mockResolvedValue({
       id: 'pout_1',
       status: 'initiated',
@@ -471,11 +530,12 @@ describe('handleReferralPayout', () => {
     });
     await handleReferralPayout('cron');
     expect(createPayout).toHaveBeenCalledWith(expect.objectContaining({ amount: 54000 }));
-    expect(prismaState.payouts[0]).toMatchObject({ amount_paise: 60000, tds_paise: 6000 });
+    expect(st.payouts[0]).toMatchObject({ amount_paise: 60000, tds_paise: 6000 });
   });
 
   it('re-submits a crashed PENDING row with the SAME idempotency key', async () => {
-    prismaState.payouts = [
+    const st = freshState();
+    st.payouts = [
       {
         id: 'po_stuck',
         referrer_id: 'ret_A',
@@ -486,9 +546,7 @@ describe('handleReferralPayout', () => {
         razorpayx_payout_id: null,
       },
     ];
-    prismaState.accounts = [
-      { retailer_id: 'ret_A', is_active: true, razorpayx_fund_account_id: 'fa_1' },
-    ];
+    st.accounts = [{ retailer_id: 'ret_A', is_active: true, razorpayx_fund_account_id: 'fa_1' }];
     vi.mocked(createPayout).mockResolvedValue({
       id: 'pout_original',
       status: 'initiated',
@@ -503,12 +561,13 @@ describe('handleReferralPayout', () => {
     expect(createPayout).toHaveBeenCalledWith(
       expect.objectContaining({ idempotencyKey: 'refpo-po_stuck' }),
     );
-    expect(prismaState.payouts[0]!.razorpayx_payout_id).toBe('pout_original');
+    expect(st.payouts[0]!.razorpayx_payout_id).toBe('pout_original');
   });
 
   it('never raises a second batch for the same money on one run (in-flight excluded)', async () => {
-    prismaState.conversions = [conv('c1', 60000, 'QUALIFIED', 'po_live')];
-    prismaState.payouts = [
+    const st = freshState();
+    st.conversions = [conv('c1', 60000, 'QUALIFIED', 'po_live')];
+    st.payouts = [
       {
         id: 'po_live',
         referrer_id: 'ret_A',
@@ -517,9 +576,7 @@ describe('handleReferralPayout', () => {
         idempotency_key: 'refpo-po_live',
       },
     ];
-    prismaState.accounts = [
-      { retailer_id: 'ret_A', is_active: true, razorpayx_fund_account_id: 'fa_1' },
-    ];
+    st.accounts = [{ retailer_id: 'ret_A', is_active: true, razorpayx_fund_account_id: 'fa_1' }];
     const summary = await handleReferralPayout('cron');
     // Unsettled = 60000 − 60000 = 0 → below min → no new batch, no submit.
     expect(summary.batches_claimed).toBe(0);
@@ -527,31 +584,29 @@ describe('handleReferralPayout', () => {
   });
 
   it('releases a definitively rejected submission (4xx) so the money re-pools', async () => {
-    prismaState.conversions = [conv('c1', 60000)];
-    prismaState.accounts = [
-      { retailer_id: 'ret_A', is_active: true, razorpayx_fund_account_id: 'fa_1' },
-    ];
+    const st = freshState();
+    st.conversions = [conv('c1', 60000)];
+    st.accounts = [{ retailer_id: 'ret_A', is_active: true, razorpayx_fund_account_id: 'fa_1' }];
     vi.mocked(createPayout).mockRejectedValue(new RazorpayxHttpError(400, 'bad fund account'));
     const summary = await handleReferralPayout('cron');
     expect(summary.errors).toBe(1);
-    expect(prismaState.payouts[0]).toMatchObject({
+    expect(st.payouts[0]).toMatchObject({
       status: 'FAILED',
       failure_reason: 'RazorpayX 400: bad fund account',
     });
-    expect(prismaState.conversions[0]!.payout_id).toBeNull();
+    expect(st.conversions[0]!.payout_id).toBeNull();
   });
 
   it('keeps an ambiguous submission (5xx/timeout) PENDING — releasing would re-pay under a new key', async () => {
-    prismaState.conversions = [conv('c1', 60000)];
-    prismaState.accounts = [
-      { retailer_id: 'ret_A', is_active: true, razorpayx_fund_account_id: 'fa_1' },
-    ];
+    const st = freshState();
+    st.conversions = [conv('c1', 60000)];
+    st.accounts = [{ retailer_id: 'ret_A', is_active: true, razorpayx_fund_account_id: 'fa_1' }];
     vi.mocked(createPayout).mockRejectedValueOnce(new RazorpayxHttpError(503, 'downtime'));
     const first = await handleReferralPayout('cron');
     expect(first.errors).toBe(1);
-    const key = prismaState.payouts[0]!.idempotency_key;
-    expect(prismaState.payouts[0]!.status).toBe('PENDING');
-    expect(prismaState.conversions[0]!.payout_id).toBe(prismaState.payouts[0]!.id);
+    const key = st.payouts[0]!.idempotency_key;
+    expect(st.payouts[0]!.status).toBe('PENDING');
+    expect(st.conversions[0]!.payout_id).toBe(st.payouts[0]!.id);
 
     // Next run re-submits the SAME row with the SAME key — no second batch.
     vi.mocked(createPayout).mockResolvedValue({
@@ -566,14 +621,15 @@ describe('handleReferralPayout', () => {
     const second = await handleReferralPayout('cron');
     expect(second.re_submitted_crash_recovered).toBe(1);
     expect(second.batches_claimed).toBe(0);
-    expect(prismaState.payouts).toHaveLength(1);
+    expect(st.payouts).toHaveLength(1);
     expect(createPayout).toHaveBeenLastCalledWith(expect.objectContaining({ idempotencyKey: key }));
   });
 
   it('pays again after a settled payout — later months re-attach from the PAID batch', async () => {
+    const st = freshState();
     // Month 1 paid 60000 via po_old; the conversion kept accruing to 120000.
-    prismaState.conversions = [{ ...conv('c1', 120000, 'PAID', 'po_old'), paid_at: new Date() }];
-    prismaState.payouts = [
+    st.conversions = [{ ...conv('c1', 120000, 'PAID', 'po_old'), paid_at: new Date() }];
+    st.payouts = [
       {
         id: 'po_old',
         referrer_id: 'ret_A',
@@ -584,9 +640,7 @@ describe('handleReferralPayout', () => {
         razorpayx_payout_id: 'pout_old',
       },
     ];
-    prismaState.accounts = [
-      { retailer_id: 'ret_A', is_active: true, razorpayx_fund_account_id: 'fa_1' },
-    ];
+    st.accounts = [{ retailer_id: 'ret_A', is_active: true, razorpayx_fund_account_id: 'fa_1' }];
     vi.mocked(createPayout).mockResolvedValue({
       id: 'pout_2',
       status: 'initiated',
@@ -600,14 +654,15 @@ describe('handleReferralPayout', () => {
     expect(summary.batches_claimed).toBe(1);
     expect(summary.skipped_concurrent).toBe(0);
     expect(createPayout).toHaveBeenCalledWith(expect.objectContaining({ amount: 60000 }));
-    const fresh = prismaState.payouts.at(-1)!;
+    const fresh = st.payouts.at(-1)!;
     expect(fresh.id).not.toBe('po_old');
-    expect(prismaState.conversions[0]!.payout_id).toBe(fresh.id);
+    expect(st.conversions[0]!.payout_id).toBe(fresh.id);
   });
 
   it('cron skips entirely under MANUAL cadence', async () => {
-    prismaState.settings = { ...SETTINGS, payout_cadence: 'MANUAL' };
-    prismaState.conversions = [conv('c1', 60000)];
+    const st = freshState();
+    st.settings = { ...SETTINGS, payout_cadence: 'MANUAL' };
+    st.conversions = [conv('c1', 60000)];
     const summary = await handleReferralPayout('cron');
     expect(summary.skipped_cadence).toBe(1);
     expect(createPayout).not.toHaveBeenCalled();
@@ -618,9 +673,9 @@ describe('handleReferralPayout', () => {
   // ledger is re-read under it, so the second run sees the first's batch.
   // Simulated by committing a "winner" batch while this run waits on the lock.
 
-  const winnerCommitsDuringLock = (amount: number) => {
+  const winnerCommitsDuringLock = (st: PayoutFixture, amount: number) => {
     vi.mocked(prisma.$executeRaw).mockImplementationOnce((async () => {
-      prismaState.payouts.push({
+      st.payouts.push({
         id: 'po_winner',
         referrer_id: 'ret_A',
         amount_paise: amount,
@@ -634,26 +689,24 @@ describe('handleReferralPayout', () => {
   };
 
   it('race: the loser re-reads under the lock, finds nothing left, and pays nothing', async () => {
-    prismaState.conversions = [conv('c1', 60000)];
-    prismaState.accounts = [
-      { retailer_id: 'ret_A', is_active: true, razorpayx_fund_account_id: 'fa_1' },
-    ];
-    winnerCommitsDuringLock(60000);
+    const st = freshState();
+    st.conversions = [conv('c1', 60000)];
+    st.accounts = [{ retailer_id: 'ret_A', is_active: true, razorpayx_fund_account_id: 'fa_1' }];
+    winnerCommitsDuringLock(st, 60000);
     const summary = await handleReferralPayout('cron');
     expect(summary.skipped_concurrent).toBe(1);
     expect(summary.batches_claimed).toBe(0);
     expect(createPayout).not.toHaveBeenCalled();
     // The loser's batch row (if any) rolled back with the tx.
-    expect(prismaState.payouts.filter((p) => p.id !== 'po_winner')).toHaveLength(0);
+    expect(st.payouts.filter((p) => p.id !== 'po_winner')).toHaveLength(0);
   });
 
   it('race: a partial remainder is sized from the locked re-read, not the stale pre-read', async () => {
-    prismaState.conversions = [conv('c1', 45000), conv('c2', 60000)];
-    prismaState.accounts = [
-      { retailer_id: 'ret_A', is_active: true, razorpayx_fund_account_id: 'fa_1' },
-    ];
+    const st = freshState();
+    st.conversions = [conv('c1', 45000), conv('c2', 60000)];
+    st.accounts = [{ retailer_id: 'ret_A', is_active: true, razorpayx_fund_account_id: 'fa_1' }];
     // Pre-read sees 105000; the winner commits 45000 while we wait -> 60000.
-    winnerCommitsDuringLock(45000);
+    winnerCommitsDuringLock(st, 45000);
     vi.mocked(createPayout).mockResolvedValue({
       id: 'pout_p',
       status: 'initiated',
@@ -667,7 +720,7 @@ describe('handleReferralPayout', () => {
     expect(summary.batches_claimed).toBe(1);
     expect(createPayout).toHaveBeenCalledWith(expect.objectContaining({ amount: 60000 }));
     // The STORED row carries the same figure — ledger and payment agree.
-    expect(prismaState.payouts.at(-1)).toMatchObject({ amount_paise: 60000 });
+    expect(st.payouts.at(-1)).toMatchObject({ amount_paise: 60000 });
   });
 });
 
@@ -838,5 +891,91 @@ describe('falsification record', () => {
       'reference_id',
       'narration',
     ]);
+  });
+
+  it("F8: a late write lands in the ABANDONED test's fixture and throws — it cannot poison the next test", () => {
+    // The poison this prevents (RC-039, the shape the admin referral-monitor
+    // suite hit for real): vitest abandoning a timed-out test does not cancel
+    // its promises, so the abandoned continuation runs its seeds afterwards.
+    // With ONE shared fixture object that `beforeEach` merely cleared, those
+    // seeds land in the NEXT test's state, which then asserts against numbers a
+    // different test put there.
+    //
+    // Both halves are asserted, and each is falsifiable on its own:
+    //   1. OWNERSHIP — revert `resetState` to clearing the arrays in place and
+    //      `abandoned` and `next` are the SAME object, so `not.toBe` fails.
+    //   2. RETIRING — delete `afterEach(retireState)` and the `toThrow`s fail:
+    //      the writes succeed silently into a dead fixture.
+    // Neither alone is sufficient, which is why the freeze shipped first on the
+    // sibling file and did not stop the flake (it froze arrays the next
+    // `beforeEach` immediately replaces).
+    const abandoned = freshState();
+    retireState(); // what `afterEach` does the moment the abandoned test ends
+    const next = freshState();
+
+    expect(abandoned.payouts).not.toBe(next.payouts);
+
+    expect(() =>
+      abandoned.payouts.push({ id: 'leaked', referrer_id: 'ret_A', amount_paise: 60000 }),
+    ).toThrow(/not extensible|read.only|cannot add/i);
+
+    // The REASSIGNMENT shape matters as much as the push in this file: these
+    // tests assign whole arrays (`st.conversions = [...]`) as often as they
+    // mutate them, and the stand-in's rollback does the same. Arrays-only
+    // freezing is what would let this one through.
+    expect(() => {
+      abandoned.conversions = [];
+    }).toThrow(/read.only|cannot assign|not extensible/i);
+
+    // What the two assertions above buy: the next test starts clean.
+    expect(next.payouts).toHaveLength(0);
+  });
+
+  // F9 is a PAIR, ordered on purpose: 9a captures its fixture, 9b reads it after
+  // 9a has ended — the only vantage point from which the HOOK is observable,
+  // since F8 calls `retireState()` itself and so can never see whether it is
+  // registered. Vitest runs tests in declaration order within a file.
+  let captured: PayoutFixture | undefined;
+
+  it('F9a: captures its own fixture, unfrozen while the test runs (read by F9b)', () => {
+    captured = freshState();
+    // A fixture frozen mid-test would make every seed throw, so assert the
+    // other direction too.
+    expect(Object.isFrozen(captured.payouts)).toBe(false);
+  });
+
+  it("F9b: afterEach froze the previous test's fixture — the hook is wired", () => {
+    // Falsified by deleting the `afterEach(retireState)` registration: this goes
+    // red (`expected false to be true`) while F8 stays green — measured on the
+    // sibling file, where that deletion left the whole suite passing.
+    expect(captured).toBeDefined();
+    expect(Object.isFrozen(captured?.payouts)).toBe(true);
+    expect(Object.isFrozen(captured)).toBe(true);
+  });
+
+  it('F10: no test body writes the module-level fixture directly (ownership is the rule)', () => {
+    // F8 proves the mechanism works; this keeps every test using it. A new test
+    // that reaches for the module-level name instead of its own `st` re-opens
+    // the leak for its own abandoned-continuation case, and nothing else in
+    // this file would notice.
+    //
+    // Three scoping decisions, all load-bearing:
+    //   • comments are stripped first, because the prose above quotes the
+    //     offending shape;
+    //   • the scan starts at the first `describe(`, so the prisma stand-in —
+    //     which MUST read whatever fixture is current — is out of scope rather
+    //     than special-cased inside;
+    //   • the file is located via `import.meta.url`, never a literal filename. A
+    //     literal scans some OTHER file the moment this one is copied or renamed,
+    //     which is exactly how the sibling file's scan was found green while a
+    //     mutant sat in the file it was supposed to be reading.
+    const raw = readFileSync(fileURLToPath(import.meta.url), 'utf8');
+    const bodies = raw
+      .slice(raw.indexOf("describe('computeUnsettledPaise'"))
+      .replace(/(^|[^:])\/\/[^\n]*/g, '$1');
+    const bareUses = [
+      ...bodies.matchAll(/\bprismaState\.(payouts|conversions|accounts|auditRows|settings)/g),
+    ].map((m) => m[0]);
+    expect(bareUses).toEqual([]);
   });
 });

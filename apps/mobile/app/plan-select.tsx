@@ -1,3 +1,4 @@
+import { isPlanEnded } from '@kanchuki/shared';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -79,7 +80,11 @@ export default function PlanSelectScreen() {
   const planStatus = sub?.plan_status ?? 'TRIAL';
   const isTrial = planStatus === 'TRIAL';
   const isActive = planStatus === 'ACTIVE';
-  const isCancelled = planStatus === 'CANCELLED';
+  // RC-033: a COMPLETED term has no live subscription either, so it belongs in
+  // the same "you must pick again" treatment as a cancelled one — comparing the
+  // literal here meant a completed retailer was told "You're already on the
+  // Growth plan" with no way forward.
+  const isCancelled = isPlanEnded(planStatus);
   // A Subscription row stays status 'TRIAL' until Razorpay's first charge, so
   // checking planStatus === 'ACTIVE' alone missed a retailer who already
   // picked a paid plan during their trial — tapping another plan skipped the

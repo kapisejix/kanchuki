@@ -106,10 +106,30 @@
 //  nothing by definition (its CHECK forbids accrual), and a clawed-back
 //  referral is dead forever; neither is ever selected.
 //
-// Refunds: still unimplemented repo-wide (nothing writes
-// SubscriptionPayment.status = 'refunded'), so there is no refund branch here
-// — adding one would be a guard that can never fire (the RC-027 class). The
-// payment-month check reads status = 'success' only.
+// ─── REFUNDS (this comment was wrong until 2026-09-24) ──────────────────
+//
+// It used to read "refunds are unimplemented repo-wide, so there is no refund
+// branch here — adding one would be a guard that can never fire". §5A.1 made
+// that false: `billing-webhook.ts` now handles `refund.processed` and DOES
+// write `SubscriptionPayment.status = 'refunded'`. What did not change is the
+// line above it — the loader reads `status: 'success'` only — and that is what
+// makes a refund work here without any refund-specific code:
+//
+//  * A month whose payment was refunded simply is not in `paid_periods`, so it
+//    is walked past exactly like a month that was never paid for. It earns
+//    nothing and — decision 3 — does not consume an installment either. A
+//    refund SKIPS a month; it does not advance the program.
+//  * A month already EARNED is never revisited. The cursor only moves forward
+//    from `accrued_through_period`, so a refund that lands afterwards cannot
+//    un-earn it, and this job writes no negative accrual. **A refund stops
+//    FUTURE months; it does not revoke a past one.** That is the honest bound
+//    of "a refunded month stops earning", pinned by test so nobody has to
+//    infer it — the opposite is what an operator would reasonably expect, and
+//    an owner deciding refund policy needs the real behaviour.
+//
+// The whitelist is load-bearing: a blacklist (`status: { not: 'refunded' }`)
+// would count a FAILED charge as a paid month. Asserted as an exact form, not
+// just as "filtered".
 
 import { prisma } from '@kanchuki/db';
 

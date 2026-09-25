@@ -5,6 +5,9 @@ import { SharedProductPage } from '../../../../c/[slug]/components/SharedProduct
 import { fetchCollection } from '../../../../c/[slug]/lib/fetchCollection';
 import { fetchProductDetail } from '../../../../c/[slug]/lib/fetchProductDetail';
 import { resolveStorefront } from '../../../lib/resolveStorefront';
+import { ldJson, productLd } from '../../../lib/store-seo';
+
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://kanchuki.app';
 import type { PublicCollection } from '@kanchuki/shared';
 
 interface Props {
@@ -99,14 +102,22 @@ export default async function SharedProductPageRoute({ params }: Props) {
     redirect(`/c/${collectionSlug}/product/${productId}`);
   }
 
+  const productUrl = `${SITE_URL}/${store}/${collectionSlug}/product/${productId}`;
   return (
-    <SharedProductPage
+    <>
+      <script
+        type="application/ld+json"
+        // biome-ignore lint/security/noDangerouslySetInnerHtml: JSON-LD, '<' escaped by ldJson
+        dangerouslySetInnerHTML={{ __html: ldJson(productLd(product, collection.retailer.shop_name, productUrl)) }}
+      />
+      <SharedProductPage
       collection={collection}
       product={product}
       // Real collection → back to the collection; pseudo-slug → back to the
       // browse page the customer was on (All Products / category), never the
       // pseudo-slug URL itself (no page behind it).
       collectionPath={backHref}
-    />
+      />
+    </>
   );
 }

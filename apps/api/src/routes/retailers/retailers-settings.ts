@@ -1,7 +1,7 @@
 // Auto-split from retailers.ts (scripts/check-route-size.sh) — route bodies verbatim.
 import { prisma, vaultDelete } from '@kanchuki/db';
 import type { QuotaPeriod, QuotaResourceType } from '@kanchuki/db';
-import { generateCollectionSlug } from '@kanchuki/shared';
+import { UNLIMITED, generateCollectionSlug } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { hardDeleteRetailer } from '../../jobs/purge-retailer-now.js';
@@ -70,8 +70,8 @@ export const retailersSettingsRoutes: FastifyPluginAsync = async (server) => {
       ? {
           plan: 'PRO' as const,
           plan_status: 'TRIAL' as const,
-          max_products: 999999,
-          max_customers: 999999,
+          max_products: UNLIMITED,
+          max_customers: UNLIMITED,
         }
       : body.data.plan
         ? { plan: body.data.plan }

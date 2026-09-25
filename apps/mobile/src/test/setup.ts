@@ -130,9 +130,12 @@ vi.mock('lucide-react-native', () => {
   )
 })
 
-// ── @kanchuki/shared (full mock with all exports) ───────────────────
+// ── @kanchuki/shared (real module + test overrides) ─────────────────
+// Spread the real exports first: a hand-listed whitelist broke every time
+// shared gained an export (isPlanEnded → RC-011 smoke went red).
 
-vi.mock('@kanchuki/shared', () => ({
+vi.mock('@kanchuki/shared', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
   // Design tokens (mirrors packages/shared/src/colors.ts)
   COLORS: {
     ink: {

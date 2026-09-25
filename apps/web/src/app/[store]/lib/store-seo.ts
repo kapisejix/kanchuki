@@ -60,3 +60,73 @@ export function localBusinessLd(p: StoreSeoProfile, slug: string): Record<string
     ...(p.phone ? { telephone: p.phone } : {}),
   };
 }
+
+interface LdProduct {
+  id: string;
+  name: string | null;
+  subtype?: string | null;
+  category?: string | null;
+  primary_photo_url?: string | null;
+  price_min: number | null; // paise
+  price_max: number | null; // paise
+  status?: string;
+}
+
+const productName = (p: LdProduct) => p.name ?? p.subtype ?? p.category ?? 'Product';
+const rupeesStr = (paise: number) => (paise / 100).toFixed(2);
+
+// schema.org Product JSON-LD for a shared product page. Offer is emitted only
+// when there is a price (Google rejects a Product offer without one).
+export function productLd(p: LdProduct, shopName: string, url: string): Record<string, unknown> {
+  const low = p.price_min ?? p.price_max;
+  const high = p.price_max ?? p.price_min;
+  const availability =
+    p.status === 'SOLD' ? 'https://schema.org/OutOfStock' : 'https://schema.org/InStock';
+  const offers =
+    low == null
+      ? undefined
+      : low === high
+        ? { '@type': 'Offer', price: rupeesStr(low), priceCurrency: 'INR', availability, url }
+        : {
+            '@type': 'AggregateOffer',
+            lowPrice: rupeesStr(low),
+            highPrice: rupeesStr(high as number),
+            priceCurrency: 'INR',
+            availability,
+            url,
+          };
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: productName(p),
+    ...(p.primary_photo_url ? { image: [p.primary_photo_url] } : {}),
+    ...(p.category ? { category: p.category } : {}),
+    brand: { '@type': 'Brand', name: shopName },
+    ...(offers ? { offers } : {}),
+  };
+}
+
+// schema.org ItemList JSON-LD for a collection page — one ListItem per product
+// on the rendered page, each pointing at its shared product URL.
+export function itemListLd(
+  title: string,
+  products: LdProduct[],
+  productUrl: (id: string) => string,
+): Record<string, unknown> {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name: title,
+    numberOfItems: products.length,
+    itemListElement: products.map((p, i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      url: productUrl(p.id),
+      name: productName(p),
+    })),
+  };
+}
+
+/** Safe inline JSON-LD: `<` escaped so a product name can never close the script tag. */
+export const ldJson = (data: Record<string, unknown>) =>
+  JSON.stringify(data).replace(/</g, String.raw`\u003c`);

@@ -75,8 +75,6 @@ const TYPE_ICONS: Record<string, string> = {
   PDF_FLYER: 'bg-purple-50 text-purple-500',
 }
 
-const OCCASIONS = ['Diwali', 'Wedding', 'Eid', 'Navratri', 'Pongal', 'Onam', 'Holi', 'Christmas', 'New Year', 'General']
-
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.06, delayChildren: 0.08 } },
@@ -215,7 +213,8 @@ export default function SocialTemplatesPage() {
             className="px-3 py-1.5 rounded-lg text-sm border border-gray-200 bg-white"
           >
             <option value="">All Occasions</option>
-            {OCCASIONS.map((o) => <option key={o} value={o}>{o}</option>)}
+            {/* Options = occasions templates actually carry (stats.by_occasion), so every choice matches something. */}
+            {(stats?.by_occasion ?? []).filter((r) => r.occasion).map((r) => <option key={r.occasion} value={r.occasion}>{r.occasion}</option>)}
           </select>
         </div>
 

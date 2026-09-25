@@ -24,16 +24,25 @@ interface ProfileData {
   enquiry_count: number
 }
 
-const STYLE_CHIPS = [
+// Fallback only — the live list comes from
+// `GET /v1/public/attributes?kind=STYLE` (Admin → Default Attributes), so a
+// style change no longer needs a web deploy. This copy is what we show when
+// that fetch fails or when the admin has configured nothing yet; unlike the
+// hardcoded list it replaces, it has no duplicate (the old one carried 'Gown'
+// twice — the drift a single source of truth avoids).
+const FALLBACK_STYLE_CHIPS = [
   'Casual', 'Party', 'Office', 'Wedding', 'Festive',
   'Anarkali', 'Lehenga', 'Saree', 'Kurti', 'Gown',
-  'Indo-Western', 'Sharara', 'Suit', 'Gown',
+  'Indo-Western', 'Sharara', 'Suit',
 ]
 
 export default function MyProfilePage() {
   const [profile, setProfile] = useState<ProfileData | null>(null)
   const [loading, setLoading] = useState(true)
   const [selectedStyles, setSelectedStyles] = useState<string[]>([])
+  const [styleOptions, setStyleOptions] = useState<string[]>([])
+  const [stylesStatus, setStylesStatus] = useState<'loading' | 'ready'>('loading')
+  const [stylesNotice, setStylesNotice] = useState<string | null>(null)
   const [notificationsEnabled, setNotificationsEnabled] = useState(true)
   const [personalizationEnabled, setPersonalizationEnabled] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -46,7 +55,38 @@ export default function MyProfilePage() {
 
   useEffect(() => {
     loadProfile()
+    loadStyles()
   }, [])
+
+  // Style chips come from the admin-editable taxonomy. Fail open in every
+  // direction: a taxonomy outage must not empty the picker, and the real error
+  // is surfaced rather than swallowed (RC-003).
+  async function loadStyles() {
+    setStylesStatus('loading')
+    const apiUrl = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
+    try {
+      const res = await fetch(`${apiUrl}/v1/public/attributes?kind=STYLE`)
+      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
+      const json = await res.json()
+      const names: string[] = json?.data?.names ?? []
+      if (names.length === 0) {
+        setStyleOptions(FALLBACK_STYLE_CHIPS)
+        setStylesNotice(
+          'No styles are configured in the admin panel yet — showing a built-in list.',
+        )
+      } else {
+        setStyleOptions(names)
+        setStylesNotice(null)
+      }
+    } catch (err) {
+      setStyleOptions(FALLBACK_STYLE_CHIPS)
+      setStylesNotice(
+        `Couldn't load the latest styles (${(err as Error).message}) — showing a built-in list.`,
+      )
+    } finally {
+      setStylesStatus('ready')
+    }
+  }
 
   async function loadProfile() {
     try {
@@ -170,21 +210,26 @@ export default function MyProfilePage() {
         <p className="text-sm text-stone-500 mb-4">
           Tap to select styles you love — we&apos;ll use this to personalize your feed.
         </p>
-        <div className="flex flex-wrap gap-2">
-          {STYLE_CHIPS.map((style) => (
-            <button
-              key={style}
-              onClick={() => toggleStyle(style)}
-              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                selectedStyles.includes(style)
-                  ? 'bg-amber-600 text-white'
-                  : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-              }`}
-            >
-              {style}
-            </button>
-          ))}
-        </div>
+        {stylesStatus === 'loading' ? (
+          <p className="text-sm text-stone-400">Loading styles…</p>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {styleOptions.map((style) => (
+              <button
+                key={style}
+                onClick={() => toggleStyle(style)}
+                className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                  selectedStyles.includes(style)
+                    ? 'bg-amber-600 text-white'
+                    : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                }`}
+              >
+                {style}
+              </button>
+            ))}
+          </div>
+        )}
+        {stylesNotice && <p className="mt-3 text-xs text-stone-500">{stylesNotice}</p>}
         {selectedStyles.length > 0 && (
           <button
             onClick={savePreferences}

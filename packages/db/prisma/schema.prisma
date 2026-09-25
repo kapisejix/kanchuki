@@ -24,11 +24,15 @@ enum SubscriptionPlan {
   PRO
 }
 
+// NOTE: this enum backs TWO columns — Retailer.plan_status and
+// Subscription.status (below). Any ADD VALUE changes both; RC-033 is the
+// reason COMPLETED exists (a finished term is not churn).
 enum SubscriptionStatus {
   TRIAL
   ACTIVE
   PAST_DUE
   CANCELLED
+  COMPLETED
 }
 
 enum KycStatus {
@@ -1167,6 +1171,27 @@ model PlanPricing {
   updated_at DateTime @updatedAt
 
   @@map("plan_pricing")
+}
+
+// ─── HSN RULES (admin-editable keyword → HSN map, §6.11 / migration 117) ──
+// Ordered by sort_order; first rule with a keyword found in the product text
+// wins. Keywords, not regex: admin-edited patterns run per product in the
+// catalog sync, and a regex would be a ReDoS/footgun at that boundary.
+// Rows are disabled via is_active, never deleted (kanchuki_app has no DELETE,
+// SECURITY §19). Empty/unreadable table → the in-code fallback in catalog-sync.
+
+model HsnRule {
+  id         String   @id @default(cuid())
+  keywords   String[] // lowercase substrings matched against name/category/subtype/description
+  hsn        String // 4, 6 or 8 digits
+  sort_order Int      @default(0)
+  is_active  Boolean  @default(true)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([is_active, sort_order])
+  @@map("hsn_rules")
 }
 
 // ─── PLATFORM GST PROFILE (seller identity for invoices) ──────────

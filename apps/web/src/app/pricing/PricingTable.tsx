@@ -17,20 +17,19 @@ const PLAN_NOTES = {
   PRO: 'Busy multi-staff shops that want automation and unlimited everything.',
 } as const
 
-export function PricingTable({ pricing, rows }: { pricing: PlanPricing; rows: { label: string; values: [string, string, string] }[] }) {
+export function PricingTable({ pricing, rows }: { pricing: PlanPricing | null; rows: { label: string; values: [string, string, string] }[] }) {
   return (
     <div>
       <div className="grid sm:grid-cols-3 gap-6 lg:gap-8 mb-14">
         {PLAN_KEYS.map((key) => {
-          const planPricing = pricing[key]
-          const price = planPricing.monthly / 100
+          const monthly = pricing?.[key].monthly
           const highlight = key === 'GROWTH'
           return (
             <div key={key} className={`relative rounded-2xl p-6 sm:p-8 border transition-all duration-300 ${highlight ? 'border-carbon bg-carbon text-cream shadow-[0_20px_48px_-16px_rgba(6,6,6,0.5)]' : 'border-carbon/10 bg-white hover:-translate-y-0.5 hover:border-carbon/25'}`}>
               {highlight && <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-volt text-carbon text-xs font-semibold px-4 py-1 rounded-full">MOST POPULAR</div>}
               <h3 className={`font-display text-xl font-semibold mb-1 ${highlight ? 'text-cream' : 'text-carbon'}`}>{PLAN_LABELS[key]}</h3>
               <div className={`font-display text-3xl sm:text-4xl font-semibold mb-1 ${highlight ? 'text-cream' : 'text-carbon'}`}>
-                <span className="inline-flex items-center"><IndianRupee size={22} strokeWidth={1.5} className={highlight ? 'text-cream/80' : 'text-carbon/40'} />{price.toLocaleString('en-IN')}</span>
+                <span className="inline-flex items-center"><IndianRupee size={22} strokeWidth={1.5} className={highlight ? 'text-cream/80' : 'text-carbon/40'} />{monthly != null ? (monthly / 100).toLocaleString('en-IN') : '—'}</span>
                 <span className={`text-base font-normal ${highlight ? 'text-cream/60' : 'text-carbon/40'}`}>/mo</span>
               </div>
               <p className={`text-sm mb-6 ${highlight ? 'text-cream/60' : 'text-carbon/40'}`}>{PLAN_NOTES[key]}</p>

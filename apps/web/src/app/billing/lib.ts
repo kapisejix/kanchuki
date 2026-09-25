@@ -27,6 +27,10 @@ export function planStatusLabel(status?: string | null): string {
       return 'Free trial';
     case 'CANCELLED':
       return 'Cancelled';
+    case 'COMPLETED':
+      // RC-033: a term that ran its full course, not churn. Distinct from
+      // 'Cancelled' on purpose — the retailer paid and stopped.
+      return 'Completed';
     case 'PAST_DUE':
       return 'Payment due';
     default:

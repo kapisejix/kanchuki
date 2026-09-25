@@ -82,7 +82,7 @@ export const adminSocialTemplateRoutes: FastifyPluginAsync = async (server) => {
         by: ['occasion'],
         _count: { id: true },
         orderBy: { _count: { id: 'desc' } },
-        take: 10,
+        // No take: this list is the admin occasion filter AND the 'Occasions' stat count.
       }),
       prisma.socialTemplate.findMany({
         orderBy: { usage_count: 'desc' },

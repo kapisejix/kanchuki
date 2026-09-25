@@ -62,7 +62,6 @@ vi.mock('@kanchuki/ai', () => ({
 vi.mock('@kanchuki/shared', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@kanchuki/shared')>()),
   INTEGRATION_KEYS: [],
-  PLAN_PRICING: {},
   R2_PATHS: {},
   // The admin route barrel builds `z.enum(STUDIO_ENGINES)` and
   // `z.enum(PRODUCT_DEMOGRAPHICS)` at module load (the photo-cleanup bench's

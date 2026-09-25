@@ -1,5 +1,5 @@
 import { prisma } from '@kanchuki/db';
-import { PLAN_LIMITS } from '@kanchuki/shared';
+import { PLAN_LIMITS, orUnlimited } from '@kanchuki/shared';
 // billing-webhook.ts — Razorpay webhook → subscription/payment + GST invoice (split from apps/api/src/routes/billing.ts — body byte-identical)
 import type { FastifyPluginAsync } from 'fastify';
 import { addGenerateGstInvoiceJob } from '../../jobs/generate-gst-invoice.js';
@@ -12,6 +12,7 @@ import {
   resolveStateCode,
   verifyWebhookSignature,
 } from './billing-helpers.js';
+
 export const billingWebhookRoutes: FastifyPluginAsync = async (server) => {
   // ─── POST /billing/webhook (Razorpay → server, no JWT) ──────────
   server.post('/webhook', async (request, reply) => {
@@ -32,6 +33,9 @@ export const billingWebhookRoutes: FastifyPluginAsync = async (server) => {
         payment?: {
           entity: { id: string; order_id?: string; amount: number; status: string };
         };
+        refund?: {
+          entity: { id: string; payment_id: string; amount: number; status?: string };
+        };
       };
     };
 
@@ -43,6 +47,88 @@ export const billingWebhookRoutes: FastifyPluginAsync = async (server) => {
       Math.abs(Date.now() / 1000 - event.created_at) > WEBHOOK_MAX_AGE_SECONDS
     ) {
       return reply.status(401).send({ error: { code: 'STALE_EVENT', status: 401 } });
+    }
+
+    // ─── Refunds (§5A.1) ────────────────────────────────────────
+    // `refund.processed` only: `refund.created` and `refund.failed` do not mean
+    // money moved back, and the ledger must not record a reversal that never
+    // happened. `refund.speed_changed` is webhook noise.
+    // Handled HERE, above the subscription lookup and its `if (!rzpSub)` early
+    // return, and that placement is the whole point: a refund event carries
+    // `payload.refund` plus the payment it reverses and need not carry
+    // `payload.subscription` at all. Left in the switch below it would have
+    // been dropped by that early return — silently, as an HTTP 200, which is
+    // the shape that makes a missing handler look like a working one.
+    if (event.event === 'refund.processed') {
+      const refund = event.payload?.refund?.entity;
+      const paymentId = refund?.payment_id;
+      if (!refund || !paymentId) {
+        request.log.warn({ event: event.event }, 'refund.processed without a refund entity');
+        return reply.send({ received: true });
+      }
+
+      // Razorpay amounts are paise, the same unit the row stores in
+      // `amount_inr` (misleading name — see the column comment; T5/T6 read it
+      // as paise too).
+      const row = await prisma.subscriptionPayment.findUnique({
+        where: { razorpay_payment_id: paymentId },
+        select: { id: true, amount_inr: true, status: true },
+      });
+
+      if (!row) {
+        // A refund against a charge this server never recorded — an add-on
+        // payment, or a subscription.charged we missed. Nothing to reverse,
+        // and said out loud rather than swallowed: this is exactly the case
+        // that surfaces later as "the ledger disagrees with the dashboard".
+        request.log.warn(
+          { razorpay_payment_id: paymentId, refund_id: refund.id },
+          'refund.processed for an unknown payment row',
+        );
+        return reply.send({ received: true });
+      }
+
+      // PARTIAL refunds are logged, never applied — and this is a decision, not
+      // an omission. The row has one whole-month flag and no column that could
+      // hold a refunded amount, and T5/T6 both read that flag as "this month
+      // was paid for": flipping it on a ₹1 refund would erase a month the
+      // retailer mostly paid for, while leaving it on a full reversal would
+      // keep earning commission on money that was handed back. Only full
+      // coverage flips it. **Decided 2026-09-24 (owner):** partial refunds are
+      // not applied, on the basis that a plan charge is refunded in full or not
+      // at all in practice — so this is a settled rule, not a placeholder. If
+      // partials ever do appear, the answer is a `refunded_amount` column
+      // (migration 117 — 116 is RC-033) and a pro-rata rule, not a quiet flip of
+      // this flag.
+      if (refund.amount < row.amount_inr) {
+        request.log.warn(
+          {
+            razorpay_payment_id: paymentId,
+            refund_id: refund.id,
+            refund_amount: refund.amount,
+            payment_amount: row.amount_inr,
+          },
+          'partial refund ignored — the payment row records whole months only',
+        );
+        return reply.send({ received: true });
+      }
+
+      // Idempotent: Razorpay redelivers (at-least-once), and `status` is a
+      // scalar with no second state to move to — so the guard is the WHERE.
+      // A replay matches 0 rows instead of rewriting the same value.
+      const applied = await prisma.subscriptionPayment.updateMany({
+        where: { razorpay_payment_id: paymentId, status: { not: 'refunded' } },
+        data: { status: 'refunded' },
+      });
+      request.log.info(
+        {
+          razorpay_payment_id: paymentId,
+          refund_id: refund.id,
+          previously: row.status,
+          applied: applied.count,
+        },
+        applied.count === 1 ? 'refund applied' : 'refund replayed — already recorded',
+      );
+      return reply.send({ received: true });
     }
 
     const rzpSub = event.payload?.subscription?.entity;
@@ -104,8 +190,8 @@ export const billingWebhookRoutes: FastifyPluginAsync = async (server) => {
               plan,
               plan_status: 'ACTIVE',
               plan_expires_at: end,
-              max_products: Number.isFinite(limits.max_products) ? limits.max_products : 999999,
-              max_customers: Number.isFinite(limits.max_customers) ? limits.max_customers : 999999,
+              max_products: orUnlimited(limits.max_products),
+              max_customers: orUnlimited(limits.max_customers),
             },
           });
 
@@ -175,8 +261,14 @@ export const billingWebhookRoutes: FastifyPluginAsync = async (server) => {
         break;
       }
 
-      case 'subscription.cancelled':
-      case 'subscription.completed': {
+      // RC-033: a term that finished and one that was cancelled are different
+      // events (a completed subscription means Razorpay exhausted its cycles —
+      // the retailer paid and stopped, which is not churn). They shared one
+      // block until now, and T5 keys an irreversible referral clawback off the
+      // result. Both still move BOTH columns: `plan_status` is what the
+      // retailer and admin surfaces read, so leaving it CANCELLED here would
+      // only relocate the collapse.
+      case 'subscription.cancelled': {
         await prisma.$transaction([
           prisma.subscription.update({
             where: { id: subscription.id },
@@ -185,6 +277,23 @@ export const billingWebhookRoutes: FastifyPluginAsync = async (server) => {
           prisma.retailer.update({
             where: { id: retailerId },
             data: { plan_status: 'CANCELLED', razorpay_subscription_id: null },
+          }),
+        ]);
+        break;
+      }
+
+      case 'subscription.completed': {
+        await prisma.$transaction([
+          prisma.subscription.update({
+            where: { id: subscription.id },
+            // `cancelled_at` stays null: nothing was cancelled, and stamping
+            // it here would make the two states indistinguishable again in
+            // the one field a reader might reach for.
+            data: { status: 'COMPLETED' },
+          }),
+          prisma.retailer.update({
+            where: { id: retailerId },
+            data: { plan_status: 'COMPLETED', razorpay_subscription_id: null },
           }),
         ]);
         break;

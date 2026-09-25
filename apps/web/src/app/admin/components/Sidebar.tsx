@@ -121,6 +121,7 @@ const NAV_ITEMS: NavItem[] = [
     children: [
       { label: 'Overview', href: '/admin/reports', icon: BarChart3 },
       { label: 'GST Reports', href: '/admin/reports/gst', icon: Receipt },
+      { label: 'HSN Rules', href: '/admin/hsn-rules', icon: Receipt, superAdminOnly: true },
       { label: 'Billing & Invoices', href: '/admin/billing', icon: CreditCard, superAdminOnly: true },
       { label: 'Commission', href: '/admin/commission', icon: Percent, superAdminOnly: true },
       { label: 'Referral Program', href: '/admin/referral-settings', icon: Handshake, superAdminOnly: true },

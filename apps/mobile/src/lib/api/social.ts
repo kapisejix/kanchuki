@@ -24,6 +24,8 @@ export interface SocialPostInfo {
   product_ids: string[]
   collection_id: string | null
   created_at: string
+  likes_count: number | null
+  comments_count: number | null
 }
 
 // ─── Composer fan-out (POST /me/social/posts — T-3.1) ───────────────────

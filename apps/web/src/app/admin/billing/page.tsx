@@ -11,6 +11,7 @@ import {
   Sparkles,
   type LucideIcon,
 } from 'lucide-react'
+import { PLAN_LIMITS } from '@kanchuki/shared'
 import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
@@ -32,17 +33,8 @@ type Usage = {
   mrr_inr: number
 }
 
-type PlanLimit = { plan: 'STARTER' | 'GROWTH' | 'PRO'; resource_type: string; limit_per_period: number }
 type PlanPricing = { plan: 'STARTER' | 'GROWTH' | 'PRO'; monthly_paise: number }
 
-// Same fallback convention as billing.ts: a missing plan-pricing/plan-limit
-// row means the DB hasn't been seeded for that plan yet, so show the
-// documented default instead of blank.
-const PRICING_FALLBACK: Record<'STARTER' | 'GROWTH' | 'PRO', { monthly: string; products: string }> = {
-  STARTER: { monthly: '₹4,999/mo', products: '500' },
-  GROWTH: { monthly: '₹9,999/mo', products: '2,000' },
-  PRO: { monthly: '₹14,999/mo', products: '∞' },
-}
 const PLAN_LABEL: Record<'STARTER' | 'GROWTH' | 'PRO', string> = {
   STARTER: 'Starter',
   GROWTH: 'Growth',
@@ -62,7 +54,6 @@ const itemVariants = {
 export default function BillingPage() {
   const [stats, setStats] = useState<Stats | null>(null)
   const [usage, setUsage] = useState<Usage | null>(null)
-  const [planLimits, setPlanLimits] = useState<PlanLimit[]>([])
   const [planPricing, setPlanPricing] = useState<PlanPricing[]>([])
   const [setupStatus, setSetupStatus] = useState('')
   const [setupLoading, setSetupLoading] = useState(false)
@@ -70,15 +61,13 @@ export default function BillingPage() {
   useEffect(() => {
     async function load() {
       const opts = adminGetOptions()
-      const [s, u, pl, pp] = await Promise.all([
+      const [s, u, pp] = await Promise.all([
         fetch(`${API_URL}/v1/admin/stats`, opts).then((r) => r.json()),
         fetch(`${API_URL}/v1/admin/usage`, opts).then((r) => r.json()),
-        fetch(`${API_URL}/v1/admin/plan-limits`, opts).then((r) => r.json()),
         fetch(`${API_URL}/v1/admin/plan-pricing`, opts).then((r) => r.json()),
       ])
       setStats(s.data)
       setUsage(u.data)
-      setPlanLimits(pl.data ?? [])
       setPlanPricing(pp.data ?? [])
     }
     load()
@@ -87,13 +76,15 @@ export default function BillingPage() {
   const paise = (n: number) => `₹${(n / 100).toLocaleString('en-IN')}`
   const pricingRows = (['STARTER', 'GROWTH', 'PRO'] as const).map((plan) => {
     const pricing = planPricing.find((p) => p.plan === plan)
-    const products = planLimits.find((l) => l.plan === plan && l.resource_type === 'PRODUCT_UPLOAD')
-    const fallback = PRICING_FALLBACK[plan]
+    // Catalog size comes from PLAN_LIMITS — the same table the billing webhook
+    // writes into retailers.max_products. plan_limits.PRODUCT_UPLOAD is a
+    // per-period upload quota, not catalog size, so it must not be shown here.
+    const maxProducts = PLAN_LIMITS[plan].max_products
     return {
       plan: PLAN_LABEL[plan],
-      monthly: pricing ? `${paise(pricing.monthly_paise)}/mo` : fallback.monthly,
-      // -1 means unlimited (same convention as plan-limits.tsx) — no row also means unlimited.
-      products: products ? (products.limit_per_period === -1 ? '∞' : products.limit_per_period.toLocaleString('en-IN')) : fallback.products,
+      // plan_pricing is the only source — no row means not configured, never a guessed price.
+      monthly: pricing ? `${paise(pricing.monthly_paise)}/mo` : 'Not set',
+      products: Number.isFinite(maxProducts) ? maxProducts.toLocaleString('en-IN') : '∞',
     }
   })
 

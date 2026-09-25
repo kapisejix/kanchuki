@@ -2,6 +2,11 @@ import type { Metadata } from 'next'
 import { Camera, Wand2, MessageCircle, Store, Heart, Package, ScanLine, WifiOff, Users } from 'lucide-react'
 import { Navbar, Footer, Section, SectionHeader, ColorCard, AnimatedSection, FinalCta, PageHero } from '@/components/site/Chrome'
 import { ACCENT_TEXT, ACCENT_SUBTLE } from '@/components/site/accents'
+import { PLAN_LIMITS } from '@kanchuki/shared'
+import { getPlanPricing, rupees } from '@/lib/plan-pricing'
+
+const perMonth = (p: { monthly: number } | undefined) => (p ? ` ${rupees(p.monthly)}/mo` : '')
+const count = (n: number) => (Number.isFinite(n) ? n.toLocaleString('en-IN') : 'unlimited')
 
 export const metadata: Metadata = {
   title: 'For Retailers — AI Catalog & WhatsApp Selling for Clothing Stores | Kanchuki',
@@ -27,7 +32,22 @@ const COMING_SOON = [
   { feature: 'Play Store / iOS app listings', status: 'Coming soon — Android APK available now' },
 ]
 
-export default function ForRetailersPage() {
+// §5B.1 — affiliate referral capture (docs/tasks/pending/post-referral-cleanup-and-launch.md §5B).
+// The shareable link T3 already mints (buildReferralLink) points HERE with
+// ?ref=<CODE> — reused rather than a new /r/<CODE> route, so there is one
+// referral-link shape, not two. Cosmetic shape check only (display gating,
+// not a security boundary): T4's server-side write is the real validator, and
+// a garbage ?ref= must render the page exactly as if it were absent.
+const REF_CODE_PATTERN = /^KAN-[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{6}$/
+
+export default async function ForRetailersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ ref?: string }>
+}) {
+  const price = await getPlanPricing()
+  const rawRef = (await searchParams).ref?.trim().toUpperCase()
+  const refCode = rawRef && REF_CODE_PATTERN.test(rawRef) ? rawRef : null
   return (
     <>
       <Navbar />
@@ -36,6 +56,34 @@ export default function ForRetailersPage() {
         title="Run your clothing shop online — from your phone, no website needed."
         lead="You take a photo of a dress. Kanchuki writes the catalog entry, cleans the photo, and gives you a link to share on WhatsApp. Your customers browse it like a real store — and message you when they want something. Here's everything the app does for your shop."
       />
+
+      {refCode && (
+        <Section className="bg-white">
+          <div className="max-w-xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="rounded-2xl border border-volt/40 bg-volt/10 p-6 sm:p-7 text-center">
+              <p className="text-sm text-carbon/70">
+                You were referred by a Kanchuki partner. Enter this code when you set up your shop
+                in the app to activate it:
+              </p>
+              <p className="mt-3 font-display text-2xl font-semibold tracking-wide text-carbon">
+                {refCode}
+              </p>
+              {/* ponytail: mobile onboarding does not read this param yet — the manual
+                  code field it already has (T4) works today; auto-prefilling from this
+                  deep link is apps/mobile work gated on an EAS build (board §5B.2). */}
+              <a
+                href={`kanchuki://onboarding?ref=${encodeURIComponent(refCode)}`}
+                className="mt-5 inline-flex items-center justify-center bg-volt text-carbon font-semibold px-6 py-3 rounded-full hover:bg-volt-600 transition active:scale-[0.97]"
+              >
+                Open in Kanchuki app
+              </a>
+              <p className="text-xs text-carbon/40 mt-3">
+                Opening this link needs the Kanchuki app already installed.
+              </p>
+            </div>
+          </div>
+        </Section>
+      )}
 
       <Section id="features">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -60,11 +108,11 @@ export default function ForRetailersPage() {
             <SectionHeader tag="Pricing" title="Pricing that fits a small shop" />
           </AnimatedSection>
           <ul className="space-y-3 text-carbon/70 text-sm sm:text-base leading-relaxed">
-            <li><strong className="text-carbon">Starter ₹999/mo</strong> — one shop, 500 products, unlimited customers, AI tagging included.</li>
-            <li><strong className="text-carbon">Growth ₹2,499/mo</strong> — 2,000 products, unlimited customers, unlimited links.</li>
-            <li><strong className="text-carbon">Pro ₹4,999/mo</strong> — unlimited products, WhatsApp automation, multi-staff, campaign system.</li>
+            <li><strong className="text-carbon">Starter{perMonth(price?.STARTER)}</strong> — one shop, {count(PLAN_LIMITS.STARTER.max_products)} products, unlimited customers, AI tagging included.</li>
+            <li><strong className="text-carbon">Growth{perMonth(price?.GROWTH)}</strong> — {count(PLAN_LIMITS.GROWTH.max_products)} products, unlimited customers, unlimited links.</li>
+            <li><strong className="text-carbon">Pro{perMonth(price?.PRO)}</strong> — {count(PLAN_LIMITS.PRO.max_products)} products, WhatsApp automation, multi-staff, campaign system.</li>
           </ul>
-          <p className="mt-6 text-sm text-carbon/50">14-day free trial, no credit card. UPI, cards, netbanking. GST invoices. Annual plans save 20%. Full details on <a href="/pricing" className="text-cobalt-600 font-medium hover:underline">the pricing page</a>.</p>
+          <p className="mt-6 text-sm text-carbon/50">14-day free trial, no credit card. UPI, cards, netbanking. GST invoices. Full details on <a href="/pricing" className="text-cobalt-600 font-medium hover:underline">the pricing page</a>.</p>
         </div>
       </Section>
 

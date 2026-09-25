@@ -184,6 +184,47 @@ describe('decideQualification', () => {
     ).toEqual({ outcome: 'CLAW_BACK', reason: 'REFERRED_CHURNED_AFTER_PAYMENT' });
   });
 
+  it('does NOT claw back a store whose paid term COMPLETED (RC-033, owner ruling 2026-09-24)', () => {
+    // A term that ran its full course is not churn: the retailer paid and
+    // stopped, which is the outcome the referral was supposed to produce. The
+    // clawback is irreversible by design (RC-036), so this must fall through to
+    // the inert WAIT path with nothing accrued taken back.
+    //
+    // Falsification: put `case 'subscription.completed'` back on the CANCELLED
+    // block in billing-webhook.ts — or add 'COMPLETED' to the `.some()` below —
+    // and this assertion turns red.
+    expect(
+      decideQualification({
+        referred: {
+          deleted_at: null,
+          is_suspended: false,
+          subscriptions: [{ status: 'COMPLETED', amount_inr: 999_900 }],
+        },
+        hasSuccessfulPayment: true,
+      }),
+    ).toEqual({ outcome: 'WAIT', reason: 'NO_ACTIVE_SUBSCRIPTION' });
+  });
+
+  it('still claws back when a CANCELLED row sits alongside a later COMPLETED one', () => {
+    // The decided edge case from the 4.2 ruling, pinned rather than inherited:
+    // `some()` reads the whole history, so a store that cancelled at some point
+    // and only later completed a term still counts as churned. Making the
+    // reading visible means whoever revisits it changes a test, not a silence.
+    expect(
+      decideQualification({
+        referred: {
+          deleted_at: null,
+          is_suspended: false,
+          subscriptions: [
+            { status: 'COMPLETED', amount_inr: 999_900 },
+            { status: 'CANCELLED', amount_inr: 999_900 },
+          ],
+        },
+        hasSuccessfulPayment: true,
+      }),
+    ).toEqual({ outcome: 'CLAW_BACK', reason: 'REFERRED_CHURNED_AFTER_PAYMENT' });
+  });
+
   it('qualifies when an ACTIVE subscription sits alongside an older cancellation', () => {
     // Churn requires the ABSENCE of an active subscription. Treating any
     // cancellation on record as churn would claw back every retailer who ever
@@ -201,6 +242,51 @@ describe('decideQualification', () => {
         hasSuccessfulPayment: true,
       }),
     ).toEqual({ outcome: 'QUALIFY', base_amount: 1_499_900 });
+  });
+
+  // ─── Refunds (§5A.2) — owner ruling 2026-09-24 ─────────────────────
+  // "A refund stops FUTURE earning; it never claws back." The board's
+  // original proposal was the opposite (`refund → CLAWED_BACK`), so this test
+  // is the decision, not an observation — reverting the ruling means changing
+  // this assertion on purpose.
+
+  it('a refunded qualifying payment reads as NEVER PAID — it waits, it does not claw back', () => {
+    // The store was charged, the charge was refunded, and its subscription is
+    // STILL ACTIVE (a refund of one month does not cancel a subscription) — so
+    // this cannot be mistaken for the churn branch. `hasSuccessfulPayment` is
+    // false because the loader reads `status: 'success'` only.
+    //
+    // Consequence, stated because it is the interesting part: the referral is
+    // not ended. If the store pays again inside its window it still qualifies,
+    // and nothing already accrued is taken back.
+    expect(
+      decideQualification({
+        referred: {
+          deleted_at: null,
+          is_suspended: false,
+          subscriptions: [{ status: 'ACTIVE', amount_inr: 999_900 }],
+        },
+        hasSuccessfulPayment: false, // the only difference from the happy path
+      }),
+    ).toEqual({ outcome: 'WAIT', reason: 'NOT_PAID' });
+  });
+
+  it('a refund on a store that is ALSO cancelled still claws back — the refund is not a shield', () => {
+    // Order of gates matters and is worth pinning: a refunded payment makes
+    // `hasSuccessfulPayment` false, which is checked BEFORE the churn branch, so
+    // a refunded-and-cancelled store waits instead of being clawed back. That is
+    // the correct read — "no successful payment" is the more fundamental fact,
+    // and there is no value to lose in either case.
+    expect(
+      decideQualification({
+        referred: {
+          deleted_at: null,
+          is_suspended: false,
+          subscriptions: [{ status: 'CANCELLED', amount_inr: 999_900 }],
+        },
+        hasSuccessfulPayment: false,
+      }),
+    ).toEqual({ outcome: 'WAIT', reason: 'NOT_PAID' });
   });
 
   it('waits on PAST_DUE — dunning is recoverable', () => {

@@ -219,7 +219,13 @@ At Phase 1 pilot volume (a handful of retailers), the fraud/edge-case tracking t
 - **Not built, deliberately:** any endpoint that resolves a typed code to a shop. That is a code-enumeration oracle — 456,976 candidates is minutes of requests and the answer is a list of who is in the program. Resolution returns only as part of T4's server-side signup write.
 - Files: `apps/api/src/lib/referral-codes.ts` (+27 tests), `apps/api/src/routes/retailers/retailers-referral.ts` (+8 tests), `apps/api/src/routes/team/team-members.ts` (namespace guard +2 tests), and the orphaned `growth-helpers.ts` helpers relocated.
 
-### T4 — Signup wiring
+### T4 — Signup wiring — ✅ BUILT 2026-09-22
+`apps/api/src/lib/referral-conversions.ts`, hooked into the **existing**
+`PUT /v1/retailers/me` (that route's `referral_code` field was F-018's
+self-serve field and already resolved against `TeamMember`; an affiliate code
+typed into it was arriving and being silently dropped until this shipped).
+See CLAUDE.md row 76 for the full T4 build record (self-referral guard,
+shape-based staff/affiliate disambiguation, RC-031/RC-032).
 - Onboarding flow captures `?ref=`/manual code → writes `pending` `ReferralConversion`.
 - Applies referred-side bonus per `ReferralSettings.referred_bonus_*` (not a hardcoded "1 free month").
 - Guardrail: block self-referral (same GSTIN/phone/bank account as referrer).
@@ -579,3 +585,67 @@ feature has been careful to preserve everywhere else.
   They are columns with defaults, so the code is unblocked — but T7's batching behaviour follows
   them, so confirm before shipping T7.
 - **Phase-1 audience** (§6 item 4) — existing retailers only, still unconfirmed.
+
+---
+
+## 13. Status + everything left — 2026-09-24 (supersedes §12's "what's next")
+
+### 13.1 Where things stand
+- **Branch:** `fix/post-referral-cleanup-and-launch` — 48 commits ahead of `origin/main`, **not pushed**. Parent `chore/remove-text-to-image-studio-engines` (F-038 T1–T10, 22 commits) is pushed but **not merged**. `docs/reorganize` (docs tree reorg, 8 commits) is a sibling, unmerged — will conflict on ~12 files (`CLAUDE.md`, `BUILD-LOG.md`, `PRO-REQUIREMENTS.md`, `SECURITY.md`, `schema.prisma`, …).
+- **Migrations:** 063, 104–117 all applied in prod (116 + 117 applied by owner 2026-09-24).
+- **Referral program (F-038):** T1–T7, T9, T10 built + migrations applied. RC-033 (completed ≠ cancelled) fixed. Refunds (5A.1) write `status='refunded'`; T6 stops future earning, never un-earns; T5 claws back nothing (owner rulings). **Pays nobody until RazorpayX is live.**
+- **Board §3/§4/§5A/§6 done** (see `docs/tasks/pending/post-referral-cleanup-and-launch.md`). Static `PLAN_PRICING` deleted — `plan_pricing` table is the only price source (prod verified ₹4,999/₹9,999/₹14,999).
+- **§7A.1 + §7A.2 done 2026-09-24:** JSON-LD on collection (`ItemList`) + product (`Product`/`Offer`) pages via new `productLd`/`itemListLd`/`ldJson` in `apps/web/src/app/[store]/lib/store-seo.ts`; store + categories pages switched from raw `JSON.stringify` to escaped `ldJson`. This is **RC-040** — a retailer `shop_name` containing `</script>` broke out of the JSON-LD tag (stored XSS on every storefront page), and the first written escape had **one** backslash (a no-op) until the test caught it. §7A.1 needed no work: the sitemap already exists at `app/sitemap.xml/route.ts` + `[id]/route.ts`, not the `sitemap.ts` path the board named. `store-seo.test.ts` **3/3** (falsified: bare `JSON.stringify` → red); web **326/326**, tsc clean. `docs/ai-studio/` = local test images — **never commit, owner deleting**.
+
+### 13.2 Left — code (Claude can do)
+
+**Superseded 2026-09-25 — this list is stale.** Items 1–7 (§7A.1–§7A.7) were all
+built across two later sessions and §7A is now **complete**; item 9's `?ref=`
+capture shipped in reduced form as **5B.1** (see below); T4 (signup wiring,
+listed as still-open in §7 above) also shipped. Full detail for all of it now
+lives in `docs/tasks/pending/post-referral-cleanup-and-launch.md` §7 and §5B —
+that board is the current source of truth, this file is the historical record.
+
+- ~~1–7 (§7A.1–§7A.7)~~ ✅ all built — board §7A, BUILD-LOG 2026-09-24 entries.
+- **§5B.1** ✅ done 2026-09-25, **scope reduced by a real blocker**: there is no
+  live Play Store listing (zero `play.google.com` URLs anywhere in the repo,
+  confirmed by grep), so Install Referrer — a Play-Console-only mechanism —
+  could not be wired against a listing that doesn't exist (the RC-025 shape).
+  Shipped instead: `?ref=<CODE>` capture reusing T3's **existing** link
+  (`/for-retailers?ref=<CODE>`, not a new `/r/<CODE>` route) + a
+  `kanchuki://onboarding?ref=<CODE>` deep link for retailers who already have
+  the app. Guard 5/5, falsified. Found + recorded (not fixed) **RC-041**: the
+  `/join` bridge's `intent://` link has the wrong Android package. Board §5B.1.
+- **§5B.2–§5B.3** still open — mobile prefill from the deep link, needs an EAS
+  build; explicitly deferred (ride with T8 or not — owner's call).
+- **T8** still open — mobile "Refer & Earn" screen, **owner said leave until
+  they say go** (Play Console review). Not started, per instruction.
+- **§2.1** still open — `purge-rls-live.test.ts` needs a local Docker Postgres,
+  never executed.
+- **Board §1.2** — doc-sync item, still open.
+- **Test debt / `/v1/team/*` gap** — both still open, unstarted, low priority.
+
+### 13.3 Left — owner only
+- Open PR `chore/remove-text-to-image-studio-engines` → `main`, merge; then PR this branch. Decide how/when to merge `docs/reorganize`.
+- Next **EAS build** — ships mobile `growth/templates.tsx` (DB studio styles + festivals) + everything mobile since the last build.
+- **RazorpayX** live keys + webhook secret (`docs/runbooks/razorpayx-referral-setup.md`) — until then T7 pays nobody.
+- **Razorpay webhook**: subscribe to `refund.processed` — until then refunds are never recorded.
+- CA conversation: TDS/GST on referral payouts + GST credit-note format for refunds (5A.3).
+- Pick the engine for the 8 `studio_styles` MODEL rows; AI Studio live bench run.
+- `SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN` in Railway; rotate dev `.env` credentials; lawyer review (PR #37); Play Store assets + Data Safety; MSG91 `verifyAccessToken` shape; read replica (B-002); full real-device pass.
+
+### 13.4 Kickoff prompt — paste into a new session
+```
+Kanchuki, branch fix/post-referral-cleanup-and-launch (48 commits ahead of main, not pushed — never push to main).
+Read docs/tasks/referral-program-retailer-affiliate.md §13 and docs/tasks/pending/post-referral-cleanup-and-launch.md §7 first.
+Do NOT commit docs/ai-studio/ (local test images).
+
+Step 1: finish §7A.2 already in the working tree — run apps/web/src/app/[store]/lib/store-seo.test.ts,
+web vitest + tsc, falsify the ldJson escape (revert to JSON.stringify → test must go red, then restore),
+add an RC entry (next ID after RC-039) for the JSON-LD </script> stored-XSS escape, tick 7A.1 (sitemap already
+exists) and 7A.2 on the board, commit.
+Step 2: continue §7A in order — 7A.3 (Apple reviewer bypass, env-gated, security review + security.test.ts +
+admin.login.test.ts), 7A.4 (disaster-recovery runbook), 7A.6 (retention notice), then 7A.7 (re-test every RC).
+One commit per item, tests + falsification for any logic, update board + BUILD-LOG each time.
+Stop and report before 7A.5 (staging load test) and before anything needing an EAS build (§5B, T8).
+```

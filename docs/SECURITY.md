@@ -115,6 +115,14 @@ Removed with Virtual Try-On (`chore/remove-unwanted-features`, 2026-08-31).
 `training_photo_consents`, the `training-data/` R2 prefix, the 180-day cleanup
 cron and the consent-version tracking no longer exist.
 
+**Retailer-facing notice (2026-09-24):** because no photo is collected for
+training any more, the notice that replaces the old consent copy states that
+directly — "we do not use your photos to train AI models" — together with what
+photos *are* used for and the 15-day deletion window. Live at
+`https://kanchuki.app/privacy` → *Product photos and AI training* (reachable
+from the app's Settings → Legal). Copy + assertions recorded for legal review
+in `docs/references/guides/photo-retention-notice.md`.
+
 ---
 
 ## 3c. Training-Data Consent Revocation — REMOVED (was: F-102d — token-based, no login)

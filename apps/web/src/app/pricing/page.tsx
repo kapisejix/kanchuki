@@ -1,38 +1,33 @@
 import type { Metadata } from 'next'
-import { PLAN_PRICING, ADDON_PRICING } from '@kanchuki/shared'
-
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
-
-type Plan = 'STARTER' | 'GROWTH' | 'PRO'
-
-async function getPlanPricing(): Promise<Record<Plan, { monthly: number }>> {
-  try {
-    const res = await fetch(`${API_URL}/v1/public/pricing`, { next: { revalidate: 60 } })
-    if (!res.ok) return PLAN_PRICING
-    const json = await res.json()
-    const rows: { plan: Plan; monthly: number }[] = json.data ?? []
-    if (rows.length === 0) return PLAN_PRICING
-    return Object.fromEntries(rows.map((r) => [r.plan, { monthly: r.monthly }])) as Record<
-      Plan,
-      { monthly: number }
-    >
-  } catch {
-    return PLAN_PRICING
-  }
-}
+import { PLAN_LIMITS, ADDON_PRICING } from '@kanchuki/shared'
 import { Navbar, Footer, Section, SectionHeader, AnimatedSection, FinalCta, PageHero } from '@/components/site/Chrome'
+import { getPlanPricing, rupees } from '@/lib/plan-pricing'
 import { PricingTable } from './PricingTable'
 
-export const metadata: Metadata = {
-  title: 'Pricing — ₹999/mo for Indian Clothing Stores | Kanchuki',
-  description:
-    'Kanchuki plans from ₹999/month — AI photo catalog, WhatsApp collections, store page. 14-day free trial, no credit card. UPI, GST invoices, INR only.',
+// Live Starter price from plan_pricing; generic copy if the API is unavailable.
+export async function generateMetadata(): Promise<Metadata> {
+  const starter = (await getPlanPricing())?.STARTER.monthly
+  const from = starter != null ? ` from ${rupees(starter)}/mo` : ''
+  return {
+    title: `Pricing${from ? ` —${from}` : ''} for Indian Clothing Stores | Kanchuki`,
+    description: `Kanchuki plans${from} — AI photo catalog, WhatsApp collections, store page. 14-day free trial, no credit card. UPI, GST invoices, INR only.`,
+  }
 }
 
+// Numeric cells come from PLAN_LIMITS — the table billing enforces.
+const PLAN_ORDER = ['STARTER', 'GROWTH', 'PRO'] as const
+const limitRow = (label: string, key: 'max_products' | 'max_customers' | 'max_collection_links_per_month', suffix = '') => ({
+  label,
+  values: PLAN_ORDER.map((p) => {
+    const n: number = PLAN_LIMITS[p][key]
+    return Number.isFinite(n) ? `${n.toLocaleString('en-IN')}${suffix}` : 'Unlimited'
+  }) as [string, string, string],
+})
+
 const ROWS: { label: string; values: [string, string, string] }[] = [
-  { label: 'Products', values: ['500', '2,000', 'Unlimited'] },
-  { label: 'Customers', values: ['Unlimited', 'Unlimited', 'Unlimited'] },
-  { label: 'Collection links', values: ['50/month', 'Unlimited', 'Unlimited'] },
+  limitRow('Products', 'max_products'),
+  limitRow('Customers', 'max_customers'),
+  limitRow('Collection links', 'max_collection_links_per_month', '/month'),
   { label: 'AI photo tagging', values: ['✅', '✅', '✅'] },
   { label: 'AI photo cleanup & backgrounds', values: ['✅', '✅', '✅'] },
   { label: 'Store page + QR code', values: ['✅', '✅', '✅'] },
@@ -44,11 +39,11 @@ const ROWS: { label: string; values: [string, string, string] }[] = [
   { label: 'Bulk onboarding (PDF / racks)', values: ['—', '✅', '✅'] },
 ]
 
-const OLD_WAY = [
+const oldWay = (from: string | null) => [
   { label: 'Catalog photos', old: 'Photographer + editor, ₹2,000–5,000 per shoot', kanchuki: 'Included (AI cleanup)' },
   { label: 'Writing product descriptions', old: 'Hours of typing or a hired assistant', kanchuki: 'Included (AI writes them)' },
   { label: 'A website', old: '₹10,000–50,000 + maintenance', kanchuki: 'Included (your store page + WhatsApp links)' },
-  { label: 'Monthly cost', old: 'Easily ₹2,000+ with no results yet', kanchuki: 'From ₹999, results the same week' },
+  { label: 'Monthly cost', old: 'Easily ₹2,000+ with no results yet', kanchuki: from ? `From ${from}, results the same week` : 'Results the same week' },
 ]
 
 const FAQ = [
@@ -132,7 +127,7 @@ export default async function PricingPage() {
                 </tr>
               </thead>
               <tbody>
-                {OLD_WAY.map((row, i) => (
+                {oldWay(pricing ? rupees(pricing.STARTER.monthly) : null).map((row, i) => (
                   <tr key={row.label} className={i % 2 === 0 ? 'bg-white' : 'bg-cream/60'}>
                     <td className="px-5 py-4 text-carbon font-medium">{row.label}</td>
                     <td className="px-5 py-4 text-carbon/60">{row.old}</td>

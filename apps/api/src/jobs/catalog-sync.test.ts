@@ -1,12 +1,14 @@
 // Unit tests for the Phase II WhatsApp Catalog Sync engine (C2–C8).
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  HSN_RULES_FALLBACK,
   buildCatalogItemPayload,
   handleCatalogSync,
   handleDailyCatalogSync,
   mapProductStatus,
   maybeEnqueueFullSync,
   maybeEnqueueProductSync,
+  refreshHsnRules,
   resolveHsnForCatalog,
   syncAllProducts,
   syncSingleProduct,
@@ -33,7 +35,9 @@ const {
   mockDeleteCatalogItem,
   mockResolveCatalogCredentials,
   mockAddCatalogSyncJob,
+  mockHsnRuleFindMany,
 } = vi.hoisted(() => ({
+  mockHsnRuleFindMany: vi.fn(async () => [] as { keywords: string[]; hsn: string }[]),
   mockRetailerFindMany: vi.fn(),
   mockRetailerFindUnique: vi.fn(),
   mockRetailerUpdate: vi.fn(),
@@ -59,6 +63,7 @@ const {
 vi.mock('@kanchuki/db', () => ({
   getSecret: mockGetSecret,
   prisma: {
+    hsnRule: { findMany: mockHsnRuleFindMany },
     retailer: {
       findMany: mockRetailerFindMany,
       findUnique: mockRetailerFindUnique,
@@ -159,6 +164,35 @@ describe('resolveHsnForCatalog', () => {
   });
   it('falls back to 6204 for unknown items', () => {
     expect(resolveHsnForCatalog({ name: 'Fancy Item' })).toBe('6204');
+  });
+  it('uses the rules it is given, first keyword hit wins, case-insensitive', () => {
+    const rules = [
+      { keywords: ['Lehenga'], hsn: '620442' },
+      { keywords: ['lehenga', 'suit'], hsn: '6204' },
+    ];
+    expect(resolveHsnForCatalog({ name: 'Bridal LEHENGA' }, rules)).toBe('620442');
+    expect(resolveHsnForCatalog({ name: 'Plain Kurta' }, rules)).toBe('6204');
+  });
+});
+
+describe('refreshHsnRules (§6.11 — admin-editable hsn_rules)', () => {
+  it('uses active DB rows when present', async () => {
+    mockHsnRuleFindMany.mockResolvedValueOnce([{ keywords: ['kaftan'], hsn: '6211' }]);
+    await refreshHsnRules();
+    expect(resolveHsnForCatalog({ name: 'Silk Kaftan' })).toBe('6211');
+  });
+  it('empty table → the in-code fallback', async () => {
+    mockHsnRuleFindMany.mockResolvedValueOnce([]);
+    expect(await refreshHsnRules()).toBe(HSN_RULES_FALLBACK);
+    expect(resolveHsnForCatalog({ name: 'Silk Kaftan' })).toBe('5007');
+  });
+  it('read error → keeps the last good rules, never throws', async () => {
+    mockHsnRuleFindMany.mockResolvedValueOnce([{ keywords: ['kaftan'], hsn: '6211' }]);
+    await refreshHsnRules();
+    mockHsnRuleFindMany.mockRejectedValueOnce(new Error('db down'));
+    await expect(refreshHsnRules()).resolves.toEqual([{ keywords: ['kaftan'], hsn: '6211' }]);
+    mockHsnRuleFindMany.mockResolvedValueOnce([]);
+    await refreshHsnRules(); // restore fallback for the rest of the file
   });
 });
 

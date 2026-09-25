@@ -48,6 +48,14 @@
  * bare `startsWith` (see {@link adminPathSegment}) — `startsWith` matches
  * `/admin/commission-x` for `commission`, and the reverse mistake (matching only
  * the exact path) leaves deeper routes open.
+ *
+ * SCOPE — what this list does NOT cover: it governs `/v1/admin/*` and the
+ * `/admin/*` web pages. Two entries (`reports`, `team-members`) gate pages whose
+ * *data* is fetched from `/v1/team/*`, and no list here covers that prefix —
+ * `teamAuthPreHandler` accepts any valid admin key and grants it unscoped Super
+ * Admin. The pages are therefore closed for a standard ADMIN while the routes
+ * behind them are not; locking those down is a separate decision (RC-034,
+ * post-referral cleanup board §3.3).
  */
 export const SUPER_ADMIN_ONLY_ADMIN_SEGMENTS = [
   // ── Money: what retailers are charged, and what the platform earns ──
@@ -63,11 +71,14 @@ export const SUPER_ADMIN_ONLY_ADMIN_SEGMENTS = [
   // ── Tax and legal documents ──
   'gst',
   'gst-profile',
+  'hsn-rules', // §6.11 keyword → HSN map used on WhatsApp catalog items (tax data)
   'invoices',
+  'reports', // admin reporting rollups (/admin/reports) — GST figures are tax data
   // ── Credentials and provider configuration ──
   'ai-providers',
   'integrations',
   'settings',
+  'team-members', // staff/sales-team accounts — invite + edit members via /v1/team/*
   // ── Infrastructure and destructive operations ──
   'backup',
   'backups',
@@ -115,11 +126,6 @@ export const STANDARD_ADMIN_ADMIN_SEGMENTS = [
   'post-templates', // social post templates (content)
   'ratings', // ratings & reviews moderation — web page segment
   'reporting', // support reporting rollups (admin-settings/ticket-reporting.ts)
-  // NOTE `reports`: /admin/reports/gst is TAX data, but its only fetches are
-  // /v1/admin/gst/*, and `gst` IS super-admin-only above. A standard admin who
-  // opens that page gets an empty report rather than the figures. If you ever
-  // move GST data behind a standard-admin route, move `reports` up with it.
-  'reports', // admin reporting overview
   'retailers', // retailer records — the core of support work
   'reviews', // product ratings moderation — API side of `ratings`
   'session', // session introspection for the admin UI shell
@@ -129,12 +135,6 @@ export const STANDARD_ADMIN_ADMIN_SEGMENTS = [
   'social-templates', // social template content
   'stats', // DASHBOARD REQUIRED — /admin renders it unconditionally
   'studio-styles', // AI Studio scenes/styles (content)
-  // FLAGGED `team-members`: staff/sales-team account management (invite + edit
-  // members, via /v1/team/* rather than /v1/admin/*). It was reachable by a
-  // standard ADMIN before this list existed and still is, so this change is not
-  // a regression — but it is credential-adjacent. Move it to the super-admin
-  // list above if you want it locked down.
-  'team-members', // staff account management — web page segment
   'suits-design-categories', // suits-designs taxonomy — web page segment
   'suits-designs', // suits-designs content — web page segment
   'support-tickets', // support ticket inbox — web page segment

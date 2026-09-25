@@ -4,7 +4,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { CollectionView } from '../c/[slug]/components/CollectionView';
 import { ContactGate } from './components/ContactGate';
-import { buildStoreDescription, localBusinessLd, storeOgImage } from './lib/store-seo';
+import { buildStoreDescription, ldJson, localBusinessLd, storeOgImage } from './lib/store-seo';
 
 export interface RetailerProfile {
   shop_name: string;
@@ -108,7 +108,7 @@ export default async function StoreProfilePage({ params }: Props) {
       <script
         type="application/ld+json"
         // biome-ignore lint/security/noDangerouslySetInnerHtml: JSON-LD from our own retailer data, no user input
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessLd(profile, store)) }}
+        dangerouslySetInnerHTML={{ __html: ldJson(localBusinessLd(profile, store)) }}
       />
       <ContactGate slug={store} profile={profile}>
         {data ? (

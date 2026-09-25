@@ -1,5 +1,6 @@
 'use client'
 
+import { UNLIMITED } from '@kanchuki/shared'
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
@@ -1012,9 +1013,9 @@ function LimitRow({ label, current, max }: { label: string; current: number; max
     <div>
       <div className="flex justify-between text-sm mb-1.5">
         <span className="text-gray-500">{label}</span>
-        <span className="text-gray-700 font-medium">{current}/{max === 999999 ? '∞' : max.toLocaleString('en-IN')}</span>
+        <span className="text-gray-700 font-medium">{current}/{max >= UNLIMITED ? '∞' : max.toLocaleString('en-IN')}</span>
       </div>
-      {max < 999999 && (
+      {max < UNLIMITED && (
         <div className="h-1.5 bg-gray-100/80 rounded-full overflow-hidden">
           <motion.div
             initial={{ width: 0 }}
