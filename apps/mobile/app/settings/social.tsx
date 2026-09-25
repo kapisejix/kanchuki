@@ -5,6 +5,8 @@ import {
   Check,
   ChevronLeft,
   Facebook,
+  Heart,
+  MessageCircle,
   RefreshCw,
   X,
 } from 'lucide-react-native';
@@ -341,6 +343,18 @@ function HistoryModal({
                   <Text className="text-xs text-sand-600 mb-1.5" numberOfLines={2}>
                     {post.caption}
                   </Text>
+                  {(post.likes_count !== null || post.comments_count !== null) && (
+                    <View className="flex-row items-center gap-3 mb-1.5">
+                      <View className="flex-row items-center gap-1">
+                        <Heart size={12} color={colors.rust[400]} />
+                        <Text className="text-[10px] text-sand-500">{post.likes_count ?? 0}</Text>
+                      </View>
+                      <View className="flex-row items-center gap-1">
+                        <MessageCircle size={12} color={colors.sand[400]} />
+                        <Text className="text-[10px] text-sand-500">{post.comments_count ?? 0}</Text>
+                      </View>
+                    </View>
+                  )}
                   <View className="flex-row items-center justify-between">
                     <Text className="text-[10px] text-sand-400">
                       {new Date(post.created_at).toLocaleString()}

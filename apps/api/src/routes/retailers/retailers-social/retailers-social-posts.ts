@@ -3,6 +3,7 @@ import { decryptSecret, prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import {
+  getPostEngagement,
   MetaApiError,
   publishLinkPost,
   publishPhotoPost,
@@ -247,7 +248,7 @@ export const retailersSocialPostsRoutes: FastifyPluginAsync = async (server) => 
   server.get<{ Params: { id: string } }>('/me/social/accounts/:id/posts', async (request) => {
     const account = await prisma.socialAccount.findFirst({
       where: { id: request.params.id, retailer_id: request.retailerId },
-      select: { id: true },
+      select: { id: true, platform: true, access_token_encrypted: true },
     });
     if (!account) throw notFound('Social account');
 
@@ -256,6 +257,24 @@ export const retailersSocialPostsRoutes: FastifyPluginAsync = async (server) => 
       orderBy: { created_at: 'desc' },
       take: 50,
     });
+
+    // Engagement (pages_read_engagement): read live likes/comments for the
+    // retailer's own most recent Facebook posts. Capped to 5 to bound Graph
+    // calls per screen load; older history stays without counts.
+    const engagementByPostId = new Map<string, { likes: number; comments: number }>();
+    if (account.platform === 'FACEBOOK') {
+      const token = decryptSecret(account.access_token_encrypted);
+      const recentFbPosts = posts
+        .filter((p) => p.status === 'POSTED' && p.external_post_id)
+        .slice(0, 5);
+      await Promise.all(
+        recentFbPosts.map(async (p) => {
+          const engagement = await getPostEngagement(p.external_post_id as string, token);
+          engagementByPostId.set(p.id, engagement);
+        }),
+      );
+    }
+
     return {
       data: posts.map((p) => ({
         id: p.id,
@@ -267,6 +286,8 @@ export const retailersSocialPostsRoutes: FastifyPluginAsync = async (server) => 
         product_ids: p.product_ids,
         collection_id: p.collection_id,
         created_at: p.created_at,
+        likes_count: engagementByPostId.get(p.id)?.likes ?? null,
+        comments_count: engagementByPostId.get(p.id)?.comments ?? null,
       })),
     };
   });
