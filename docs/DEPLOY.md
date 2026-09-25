@@ -1064,8 +1064,8 @@ Already in the repo — do not re-derive these:
 |---|---|---|
 | Meta **App ID** | `1758308975480748` | `apps/mobile/app.json` → `react-native-fbsdk-next` plugin |
 | App ID scheme | `fb1758308975480748` (must be `fb` + App ID) | same |
-| Android package | `app.kanchuki.retailer` | `apps/mobile/app.json` → `android.package` |
-| iOS bundle ID | `app.kanchuki.retailer` | `apps/mobile/app.json` → `ios.bundleIdentifier` |
+| Android package | `app.kanchuki.retailer` | `@kanchuki/shared` → `constants/app-identity.ts`; `apps/mobile/app.config.ts` sets `android.package` from it |
+| iOS bundle ID | `app.kanchuki.retailer` | same constant — `app.config.ts` sets `ios.bundleIdentifier` from it |
 | Web URL (for redirects) | `https://kanchuki.app` | `WEB_URL` — `docs/DEPLOY.md:164` |
 | Server secrets | `META_APP_ID`, `META_APP_SECRET` | read by `apps/api/src/lib/meta-graph.ts:117` from the F-012 secrets table / env |
 
