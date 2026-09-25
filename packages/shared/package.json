@@ -16,6 +16,11 @@
       "import": "./dist/testing/strip-comments.js",
       "default": "./dist/testing/strip-comments.js"
     },
+    "./testing/doc-table-guard": {
+      "types": "./src/testing/doc-table-guard.ts",
+      "import": "./dist/testing/doc-table-guard.js",
+      "default": "./dist/testing/doc-table-guard.js"
+    },
     "./constants/app-identity": {
       "types": "./src/constants/app-identity.ts",
       "default": "./src/constants/app-identity.ts"

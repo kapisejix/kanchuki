@@ -10,8 +10,8 @@
 |---|---|---|
 | Auto-generated per-variant collection links | ✅ Built | `syncVariantCollections()` in `growth-campaigns.ts` — creates/updates two `HIDDEN` collections on campaign create/edit. |
 | Hidden-collection status (new `Collection.status` value) | ✅ Built | `HIDDEN` enum value added to `CollectionStatus` in `schema.prisma` (line 45). Migration `064_ab_variant_collections` applied. |
-| Variant link generation on campaign send | ✅ Built | Send response includes `variant_collection_links: { a, b }` with `?variant=a|b` query params. |
-| Variant link cleanup / expiry | ✅ Built | `cleanup_ttl_days` column on `Campaign` model; variant collections archived when no longer needed.
+| Variant link generation on campaign send | ✅ Built | Send response includes `variant_collection_links: { a, b }` with `?variant=a\|b` query params. |
+| Variant link cleanup / expiry | ✅ Built | `cleanup_ttl_days` column on `Campaign` model; variant collections archived when no longer needed. |
 
 ---
 

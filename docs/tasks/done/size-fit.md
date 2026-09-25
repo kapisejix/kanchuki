@@ -9,7 +9,7 @@
 | Sub-Feature | Status | Blocker / Notes |
 |---|---|---|
 | Migration 058 (`customers.usual_size` column) | ✅ Applied | `packages/db/prisma/migrations/058_customer_usual_size/migration.sql` exists and is applied. |
-| Customer-facing "usual size" self-capture on PWA | ✅ Built | Retailer-side capture + size recommendation engine complete. Anonymous PWA capture deferred to post-launch (customers have no login).
+| Customer-facing "usual size" self-capture on PWA | ✅ Built | Retailer-side capture + size recommendation engine complete. Anonymous PWA capture deferred to post-launch (customers have no login). |
 
 ---
 

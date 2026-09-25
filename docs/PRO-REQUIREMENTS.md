@@ -2101,8 +2101,8 @@ Features.
 | R | Campaign analytics — send/open by festival/type/segment/hour + category + video-vs-photo + A/B results | ✅ Built 2026-08-17 (BUILD-LOG §47) |
 | S | A/B testing — per-variant product sets + stagger + variant stats + two-proportion z-test significance | ✅ Built 2026-08-17 (BUILD-LOG §47) |
 | E | AI Campaign Assistant | ✅ Built 2026-08-18 (BUILD-LOG §48) — NLP intent → audience/product filters → WhatsApp message template + save-to-campaign |
-| I | GST-ready invoicing | ✅ Built — PDF generation + HSN mapping | 2026-08-18 |
-| P | WhatsApp native catalog sync | ✅ Built — extends Meta integration | 2026-08-18 |
+| I | GST-ready invoicing | ✅ Built 2026-08-18 — PDF generation + HSN mapping |
+| P | WhatsApp native catalog sync | ✅ Built 2026-08-18 — extends Meta integration |
 
 > **Scope change 2026-08-17:** **Khata (H)** and **Udhar (O)** removed
 > completely — models, enums, routes, and migration sections deleted. No
