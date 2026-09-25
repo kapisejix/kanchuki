@@ -11,6 +11,7 @@
 // Session handling mirrors the billing page (phone-OTP → Supabase session in
 // sessionStorage → Bearer token on API calls).
 import { useEffect, useState } from 'react';
+import { appLink } from '@/lib/deep-links';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 const TOKEN_KEY = 'kanchuki_social_token';
@@ -90,7 +91,7 @@ export default function SocialConnectPage() {
     const code = params.get('code');
     const state = params.get('state');
     if (code && state) {
-      const target = `kanchuki://oauth/callback?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`;
+      const target = appLink('oauth/callback', { code, state });
       setDeepLinkTarget(target);
       window.location.href = target;
       return;

@@ -95,6 +95,14 @@ describe('web /join (staff-invite-tokens.md §7)', () => {
     // Bridge to the app: custom scheme link carrying the raw token.
     const deepLink = screen.getByRole('link', { name: /Open in Kanchuki app/ });
     expect(deepLink).toHaveAttribute('href', 'kanchuki://join?token=abc_invite_token_1234567890');
+    // RC-041: the Android link was never asserted, which is how a package name
+    // that belongs to no app (`in.kanchuki.app`) shipped on this page. Pin the
+    // whole URI — the package is the part that can be silently wrong.
+    const androidLink = screen.getByRole('link', { name: /Open with Android app/ });
+    expect(androidLink).toHaveAttribute(
+      'href',
+      'intent://join?token=abc_invite_token_1234567890#Intent;scheme=kanchuki;package=app.kanchuki.retailer;end',
+    );
     // The outbound fetch hit the public invite API with the token.
     expect(fetchMock).toHaveBeenCalledWith(inviteUrl, expect.anything());
   });

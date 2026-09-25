@@ -4,6 +4,7 @@ import { Navbar, Footer, Section, SectionHeader, ColorCard, AnimatedSection, Fin
 import { ACCENT_TEXT, ACCENT_SUBTLE } from '@/components/site/accents'
 import { PLAN_LIMITS } from '@kanchuki/shared'
 import { getPlanPricing, rupees } from '@/lib/plan-pricing'
+import { appLink } from '@/lib/deep-links'
 
 const perMonth = (p: { monthly: number } | undefined) => (p ? ` ${rupees(p.monthly)}/mo` : '')
 const count = (n: number) => (Number.isFinite(n) ? n.toLocaleString('en-IN') : 'unlimited')
@@ -72,7 +73,7 @@ export default async function ForRetailersPage({
                   code field it already has (T4) works today; auto-prefilling from this
                   deep link is apps/mobile work gated on an EAS build (board §5B.2). */}
               <a
-                href={`kanchuki://onboarding?ref=${encodeURIComponent(refCode)}`}
+                href={appLink('onboarding', { ref: refCode })}
                 className="mt-5 inline-flex items-center justify-center bg-volt text-carbon font-semibold px-6 py-3 rounded-full hover:bg-volt-600 transition active:scale-[0.97]"
               >
                 Open in Kanchuki app

@@ -1,5 +1,6 @@
 import { Footer, Navbar, Section } from '@/components/site/Chrome';
 import { API_URL as apiUrl } from '@/lib/apiUrl';
+import { androidIntentUrl, appLink } from '@/lib/deep-links';
 import { Smartphone } from 'lucide-react';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
@@ -50,8 +51,11 @@ export default async function JoinPage({ searchParams }: Props) {
   // API returns 404 for both, and we mirror that here).
   if (!invite) notFound();
 
-  const deepLink = `kanchuki://join?token=${encodeURIComponent(token)}`;
-  const openInApp = `intent://join?token=${encodeURIComponent(token)}#Intent;scheme=kanchuki;package=in.kanchuki.app;end`;
+  // RC-041: the Android package here was `in.kanchuki.app`, which is not an app
+  // that exists — see `@/lib/deep-links`, which now owns the value and is pinned
+  // to `apps/mobile/app.json` by its test.
+  const deepLink = appLink('join', { token });
+  const openInApp = androidIntentUrl('join', { token });
 
   return (
     <>
