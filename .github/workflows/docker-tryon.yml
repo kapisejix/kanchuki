@@ -24,8 +24,8 @@ jobs:
         uses: docker/login-action@v4
         with:
           registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          username: kapisejix
+          password: ${{ secrets.GHCR_PAT }}
 
       - name: Build and push CatVTON try-on image
         uses: docker/build-push-action@v7
