@@ -30,7 +30,9 @@ comm -13 <(cat 'docs/root-cause/root-cause issues.md' 'docs/root-cause/root-caus
 
 The first command is the one that matters — it is what catches a fixed bug whose row was never added. It found `RC-037` on 2026-09-25, two days after that row should have landed: the entry existed, the commit message used the ID, and rule 4 was simply not followed.
 
-**The invariant is the ID set, not the row order.** The table is newest-first by *fix date*, so the numbers read out of order on purpose (`RC-033` sits below `RC-032`; `RC-034`/`RC-035` share one commit). As of 2026-09-26 the set is contiguous `RC-001…RC-045` — if a number is missing from that range, exactly one of the two commands above is non-empty. `RC-044` (the F-040 withdrawal-deletion entry) and `RC-045` (the passport proxy's null-body status) were both added 2026-09-26, the latter found by an e2e stub fix rather than by a report.
+**The invariant is the ID set, not the row order.** The table is newest-first by *fix date*, so the numbers read out of order on purpose (`RC-033` sits below `RC-032`; `RC-034`/`RC-035` share one commit). As of 2026-09-26 the set is contiguous `RC-001…RC-046` — if a number is missing from that range, exactly one of the two commands above is non-empty. `RC-044` (the F-040 withdrawal-deletion entry), `RC-045` (the passport proxy's null-body status) and `RC-046` (the tracker's own stale owed list) were all added 2026-09-26, the last two found while fixing the tracker itself rather than by a report.
+
+Run `bash scripts/check-root-cause-tracker.sh` (or `pnpm check:root-cause`) to check all of this in one command — it folds in both `comm` commands above, the contiguity check, and the owed-list check below.
 
 ---
 
@@ -78,10 +80,10 @@ Run this before any production release. "Auto" = covered by a test that fails wi
 
 ## ⚠️ RC IDs referenced in commits that are NOT in the tracker yet
 
-**Currently: none.** The two commands under *Checking the tracker table* both print nothing, and the ID set is contiguous `RC-001…RC-045`.
+**Currently: none.** The two commands under *Checking the tracker table* both print nothing, and the ID set is contiguous `RC-001…RC-046`.
 
 **This section was last stale on 2026-09-26.** It previously listed **RC-028 … RC-038** as "in commit messages but with no entry", on the reasoning that their branches were unmerged. Every one of those branches has since merged (`ab086d62`, `d66ead2c`, `d738242c`, `1c543d15`, `b5a31478` are all ancestors of the current `HEAD`), all eleven entries and their `CLAUDE.md` rows landed, and the table below went on saying otherwise for several days. The list is kept here rather than deleted because the **lesson** is the durable part:
 
 - **A "these are still owed" list is a claim with an expiry date, and nothing re-derives it.** This is the RC-043 failure shape one level up — the bug's own lesson ("an inventory nothing re-derives drifts, and a hand-written list is not evidence") applied to the tracker about the tracker. The two `comm` commands above are the machine-checkable half; this section is not, so it drifted exactly where it could not be checked.
 - **Do not renumber an ID that is already in a commit message.** RC-028 … RC-038 are spoken for regardless of whether an entry existed at the time — which is why they were reserved here rather than reissued, and why the reservation was correct even after the entries were late.
-- **When this section is next populated, put a command next to it.** If a set of IDs is genuinely referenced-but-unwritten, the honest form names the commits and the branch and says when it was last true, so the next reader can re-run it instead of trusting it.
+- **When this section is next populated, put a command next to it.** If a set of IDs is genuinely referenced-but-unwritten, the honest form names the commits and the branch and says when it was last true, so the next reader can re-run it instead of trusting it. **Satisfied 2026-09-27:** `scripts/check-root-cause-tracker.sh` (RC-046) is that command — it re-derives this section instead of leaving it as prose.

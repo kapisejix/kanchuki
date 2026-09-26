@@ -27,7 +27,8 @@
     "db:backup:local": "tsx scripts/backup-database.ts --local-only",
     "db:restore": "tsx scripts/restore-database.ts",
     "db:restore:latest": "tsx scripts/restore-database.ts --latest",
-    "db:backup:list": "tsx scripts/restore-database.ts --list"
+    "db:backup:list": "tsx scripts/restore-database.ts --list",
+    "check:root-cause": "bash scripts/check-root-cause-tracker.sh"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.8.0",
