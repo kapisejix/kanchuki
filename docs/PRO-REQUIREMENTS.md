@@ -3095,6 +3095,13 @@ compute — cheapest number, but removed 2026-08-31 for an unresolved
 multi-piece-garment accuracy bug plus real debugging-ops cost, not GPU price).
 Recorded for the next owner conversation on D-3 — does not itself reopen VTO.
 
+**D-3 answered 2026-09-26:** owner chose the self-hosted path and gave the
+go-ahead to build now, gated behind a `VIRTUAL_TRY_ON_V2` plan-feature flag
+(default off, server-side-enforced, not a UI-only hide) until explicit launch,
+with separate admin-editable monthly quotas for retailers (example: 100) and
+phone-OTP-verified customers (example: 3–5). Full task list:
+`docs/tasks/pending/catvton-runpod-tryon-launch.md`.
+
 ---
 
 ## 36. Customer Profile & Shopper Passport — Research Background

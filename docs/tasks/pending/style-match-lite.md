@@ -269,6 +269,14 @@ accuracy bug) unless volume alone justifies re-absorbing that ops cost. Either
 way this is a fresh scoped decision, not a silent revival of the removed
 feature.
 
+### 9.4 D-3 answered (2026-09-26) — build self-hosted, launch gated
+
+Owner chose self-hosted CatVTON-on-RunPod (the ~₹3/try-on path) and gave the
+go-ahead to build it now, admin-gated behind a feature flag until explicit
+launch, with a separate admin-editable quota for retailers (example: 100/mo)
+and phone-OTP customers (example: 3–5/mo). Full task-by-task build spec:
+**`docs/tasks/pending/catvton-runpod-tryon-launch.md`**.
+
 ---
 
 ## 10. Effort estimate

@@ -22,6 +22,7 @@ Where work lives: **`pending/` = open**, **`done/` = built** (kept as the design
 | Prorated mid-cycle plan switch (Model B) | `pending/plan-switch-prorated.md` | 🔴 Planned — Model A is what shipped | Product sign-off (formula in the file) |
 | Social publishing phase 3/4 — IG Reels scheduling, catalog broadcast analytics | `pending/social-publishing-phase-3.md` | 🔴 Planned | Phases 1–2 + composer are built; only these extensions remain |
 | Style Match Lite / AI fit-style recommendation (F-039) | `pending/style-match-lite.md` | 🔴 Planned — not approved | Owner sign-off on §7 D-1/D-2 (scope + consent overhead) |
+| CatVTON-on-RunPod try-on, admin-gated launch + dual quota (F-039 Phase 2) | `pending/catvton-runpod-tryon-launch.md` | 🔴 Planned — build now, launch later (owner go-ahead 2026-09-26) | T0 RunPod infra still alive (owner check); T6 consent/notice text before flag flips on |
 | Kanchuki-managed WhatsApp sending (F-035) | `pending/whatsapp-managed-sending.md` | 🔴 Planned — post-launch | Meta Business Verification + App Review (4–8 weeks); design locked to Model A (per-retailer WABA) |
 | **This reorganization** | `pending/../reorganize-files-folders-structure.md` | 🟡 Phases 1–8 done; phase 9 awaits deletion approval | Owner approves the KEEP/DELETE list |
 
