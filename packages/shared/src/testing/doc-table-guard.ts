@@ -56,7 +56,7 @@ export function findTableCellMismatches(file: string, content: string): TableCel
   let headerCells: number | null = null
 
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i]
+    const line = lines[i] ?? ''
 
     if (FENCE.test(line)) {
       inFence = !inFence

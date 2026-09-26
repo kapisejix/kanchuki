@@ -2,7 +2,7 @@ import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { dirname, join, relative, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
-import { findTableCellMismatches } from './doc-table-guard'
+import { findTableCellMismatches } from './doc-table-guard.js'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 // packages/shared/src/testing -> repo root is four levels up.
