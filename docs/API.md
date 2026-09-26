@@ -49,7 +49,9 @@ Token obtained via Supabase Auth phone OTP flow (handled by Supabase SDK, not ou
 - `NOT_FOUND` — resource doesn't exist or belongs to other tenant
 - `VALIDATION_ERROR` — input validation failed (details in `field`)
 - `RATE_LIMITED` — too many requests
-- `PLAN_LIMIT_EXCEEDED` — subscription plan limit reached
+- `PLAN_LIMIT_EXCEEDED` — subscription plan limit reached (retailer-side metered resource)
+- `CUSTOMER_LIMIT_EXCEEDED` — a shopper's own metered-resource cap is reached (no plan to upgrade; distinct code so a client can tell the two caps apart)
+- `SERVICE_UNAVAILABLE` — a required integration is not configured yet (e.g. the try-on engine)
 - `AI_ERROR` — AI service failed (retry)
 
 ---
@@ -306,15 +308,45 @@ Body: { "product_id": "clxxx", "viewer_token": "anon_session_id" }
 
 ---
 
-### Virtual Try-On — REMOVED
+### Virtual Try-On — REBUILT (F-039 Phase 2), gated OFF
 
-Removed in `chore/remove-unwanted-features` (2026-08-31, migration 082). The
-`/try-on/*` and `/consent/*` route trees, the `try_on_jobs` / `try_on_usage_logs`
-/ `training_photo_consents` / `customer_measurements` tables and the
-`kanchuki:try-on` queue no longer exist. Also removed in the same pass:
-`/checkout/*` (orders), `/size-charts/*`, `/for-you`, and the growth
-sub-routes for incentives, suppliers, bookings, customer referrals, lookbooks
-and festival backgrounds. See `docs/BUILD-LOG.md (2026-08-31 teardown entry)`.
+The original `/try-on/*` and `/consent/*` route trees, the `try_on_jobs` /
+`try_on_usage_logs` / `training_photo_consents` / `customer_measurements`
+tables and the `kanchuki:try-on` queue were removed in
+`chore/remove-unwanted-features` (2026-08-31, migration 082).
+
+Rebuilt 2026-09-26 on the surviving CatVTON-on-RunPod worker — see
+`docs/tasks/pending/catvton-runpod-tryon-launch.md`. **It is invisible in
+product until an admin enables `VIRTUAL_TRY_ON_V2`** for a plan; the route
+itself answers 404 while the flag is off (the UI hiding the button is not the
+gate).
+
+```
+POST /v1/products/:id/try-on
+  Auth: retailer/staff Bearer token, OR the customer `kanchuki_passport` cookie
+  Body: multipart/form-data, one image part (the wearer's photo; JPEG/PNG/WebP, ≤10MB)
+  Garment: the product's own existing photo — never re-uploaded
+  → 202 { "data": { "job_id": "tryon_…", "status": "processing" } }
+  → 404  feature flag off for the plan (indistinguishable from a missing product)
+  → 503  try-on engine not configured (Admin → Integrations)
+  → 402  PLAN_LIMIT_EXCEEDED (retailer cap) or CUSTOMER_LIMIT_EXCEEDED (shopper cap)
+
+GET /v1/products/:id/try-on/status?job_id=…
+  Auth: same as above (a job id is scoped to its caller)
+  → 200 { "data": { "status": "processing" } }
+  → 200 { "data": { "status": "ready", "url": "<short-lived presigned URL>" } }
+  → 200 { "data": { "status": "failed", "error": "…" } }
+```
+
+The wearer's photo is **never persisted** — not to R2, not to the DB, and not
+to Redis (it is handed to the job in-process, not in the queue payload). Only
+the generated image is stored, and its URL is minted presigned per read. A
+shopper's request spends both the retailer's monthly `TRY_ON_GENERATION`
+allowance and the shopper's own `customer_resource_limits` number.
+
+Also removed in the 2026-08-31 pass: `/checkout/*` (orders), `/size-charts/*`,
+`/for-you`, and the growth sub-routes for incentives, suppliers, bookings,
+customer referrals, lookbooks and festival backgrounds.
 
 ---
 

@@ -158,6 +158,35 @@ def download_image(url: str) -> PILImage.Image:
     return img
 
 
+def decode_base64_image(value: str) -> PILImage.Image:
+    """Decode an inline base64 image (raw or data: URI) into a PIL Image.
+
+    Exists so the wearer's photo does not have to be persisted anywhere public
+    just to be handed to this worker: the Kanchuki API sends it inline as
+    `person_image_base64` and it lives only in this process's memory. See
+    `packages/ai/src/tryon.ts` for the client half and the retention rule.
+    """
+    # Accept both "<b64>" and "data:image/jpeg;base64,<b64>".
+    payload = value.split(",", 1)[1] if value.startswith("data:") else value
+
+    try:
+        raw = base64.b64decode(payload, validate=True)
+    except Exception as b64_err:
+        raise ValueError(f"Not valid base64: {b64_err}")
+
+    try:
+        img = PILImage.open(io.BytesIO(raw))
+        img.verify()  # Force PIL to actually decode the image
+        # Re-open after verify() closes the file
+        img = PILImage.open(io.BytesIO(raw))
+    except Exception as pil_err:
+        raise ValueError(f"Base64 payload is not a valid image: {pil_err}")
+
+    if img.mode != "RGB":
+        img = img.convert("RGB")
+    return img
+
+
 def generate_mask(person_pil: PILImage.Image, cloth_type: str = "upper") -> PILImage.Image:
     """AutoMasker (DensePose+SCHP) if loaded, else the heuristic rectangle-over-silhouette mask."""
     if automasker is not None:
@@ -250,12 +279,18 @@ def handler(job):
     """
     RunPod job handler.
     
-    Expected input:
+    Expected input — each image may be supplied either as a URL or inline as
+    base64 (`*_base64` wins when both are present):
     {
-        "person_image_url": "https://...",     # Customer full-body photo
-        "garment_image_url": "https://...",    # Product/garment photo
+        "person_image_base64": "data:image/jpeg;base64,...",  # wearer photo, inline
+        "person_image_url": "https://...",                    # fallback for the above
+        "garment_image_url": "https://...",                   # product/garment photo
+        "garment_image_base64": "data:image/jpeg;base64,...", # fallback for the above
         "mask_image_url": "https://..." (optional)
     }
+
+    Inline input is how the API keeps the wearer's photo out of storage: the
+    bytes arrive in the job payload and are discarded with the worker process.
     
     Returns:
     {
@@ -269,19 +304,23 @@ def handler(job):
         return {"error": "Model not loaded"}
 
     job_input = job["input"]
+    person_b64 = job_input.get("person_image_base64")
     person_url = job_input.get("person_image_url")
+    garment_b64 = job_input.get("garment_image_base64")
     garment_url = job_input.get("garment_image_url")
     mask_url = job_input.get("mask_image_url")
     cloth_type = job_input.get("cloth_type", "upper")
 
-    if not person_url or not garment_url:
-        return {"error": "person_image_url and garment_image_url are required"}
+    if not (person_b64 or person_url):
+        return {"error": "person_image_base64 or person_image_url is required"}
+    if not (garment_b64 or garment_url):
+        return {"error": "garment_image_base64 or garment_image_url is required"}
 
     start_time = time.time()
 
     try:
-        person_pil = download_image(person_url)
-        garment_pil = download_image(garment_url)
+        person_pil = decode_base64_image(person_b64) if person_b64 else download_image(person_url)
+        garment_pil = decode_base64_image(garment_b64) if garment_b64 else download_image(garment_url)
 
         if mask_url:
             mask_pil = download_image(mask_url)

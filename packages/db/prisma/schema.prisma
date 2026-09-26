@@ -146,6 +146,12 @@ enum PlanFeatureKey {
   LOOKBOOK_GENERATOR
   SOCIAL_TEMPLATES
   CHANNEL_SYNC
+  // F-039 Phase 2 — the try-on launch switch. Distinct from the @deprecated
+  // VIRTUAL_TRY_ON above (2026-08-31 teardown, migration 082): that value stays
+  // dead and must not be reused. Fails CLOSED like every PlanFeatureKey — no
+  // row means OFF — so the feature is invisible on mobile and customer web
+  // until an admin enables it in Admin → Plan Feature Matrix.
+  VIRTUAL_TRY_ON_V2
 }
 
 // ─── QUOTA & LIMITS (F-010) ──────────────────────────────────────
@@ -160,6 +166,9 @@ enum QuotaResourceType {
   API_REQUEST
   STUDIO_SHOOT
   SHOWCASE_DESIGNS
+  // F-039 Phase 2 — metered CatVTON generations. Distinct from the @deprecated
+  // TRY_ON above (same teardown); that value stays dead.
+  TRY_ON_GENERATION
 }
 
 enum QuotaPeriod {
@@ -342,6 +351,7 @@ model Retailer {
   store_visits          CustomerStoreVisit[]
   social_templates      SocialTemplate[]
   channel_syncs         ChannelSync[]
+  try_on_jobs           TryOnJob[]
   product_reviews       ProductReview[]
   store_reviews         StoreReview[]
   bug_reports         BugReport[]
@@ -565,6 +575,7 @@ model Product {
   recently_viewed  CustomerRecentlyViewed[]
   wishlist_items   CustomerWishlistItem[]
   catalog_item     CatalogItem?
+  try_on_jobs      TryOnJob[]
 
   @@unique([retailer_id, sku])
   @@index([retailer_id])
@@ -592,8 +603,11 @@ model ProductPhoto {
   ai_raw_response Json?
 
   // Retailer-tagged piece role for multi-piece outfits (kameez+salwar, kurta+
-  // pajama, choli+skirt) — 'upper' | 'lower' | null. Drives try-on chaining
-  // in packages/ai/src/tryon.ts; see PRO-REQUIREMENTS.md F-102.
+  // pajama, choli+skirt) — 'upper' | 'lower' | null. See PRO-REQUIREMENTS.md
+  // F-102. NOTE: the two-call try-on chaining this used to feed was removed
+  // with the 2026-08-31 teardown and is NOT part of the rebuilt
+  // packages/ai/src/tryon.ts (T3 takes one garment photo) — the tag is still
+  // captured and displayed, nothing reads it for try-on any more.
   piece_type String?
 
   // F-001d bulk onboarding: 64-bit aHash hex string, used to flag likely
@@ -1279,6 +1293,76 @@ model UsageCounter {
   @@unique([retailer_id, resource_type, period_start])
   @@index([retailer_id])
   @@map("usage_counters")
+}
+
+// ─── F-039 PHASE 2 — VIRTUAL TRY-ON (CatVTON on RunPod) ───────────
+// Build-now/launch-later per docs/tasks/pending/catvton-runpod-tryon-launch.md.
+// No RLS on any of these three: the zero-policy pattern is a Supabase-era
+// vestige and new tables ship without it, relying on app-layer tenant scoping
+// through the privileged app role (migration 099's header records the call).
+
+// One row per try-on generation. There is deliberately NO column for the
+// input/wearer photo — it is never persisted (T6); it reaches the RunPod
+// worker inline as base64 and dies with the request. `result_url` is the R2
+// KEY of the generated image, served presigned per read the way product
+// photos are, because it is a photo of a real person.
+model TryOnJob {
+  id                  String   @id @default(cuid())
+  retailer_id         String
+  // null = the retailer generated it in-store (their own customer in front of
+  // them); set = a passport-logged-in shopper generated it from the customer
+  // web product page. Only the latter counts against a customer quota.
+  customer_account_id String?
+  product_id          String
+  // PENDING | COMPLETED | FAILED. A String rather than a new enum: the
+  // teardown dropped TryOnJobStatus, and reviving an enum name that close to
+  // the deprecated TRY_ON values invites the wrong reader conclusion.
+  status              String
+  result_url          String?
+  failure_reason      String?
+
+  created_at   DateTime  @default(now())
+  completed_at DateTime?
+
+  retailer         Retailer         @relation(fields: [retailer_id], references: [id], onDelete: Cascade)
+  customer_account CustomerAccount? @relation(fields: [customer_account_id], references: [id], onDelete: SetNull)
+  product          Product          @relation(fields: [product_id], references: [id], onDelete: Cascade)
+
+  @@index([retailer_id, created_at])
+  @@index([customer_account_id])
+  @@map("try_on_jobs")
+}
+
+// Customer-side twin of plan_limits. Shoppers have no plan, so this is one
+// admin-editable number per resource rather than a per-tier matrix.
+model CustomerResourceLimit {
+  id               String            @id @default(cuid())
+  resource_type    QuotaResourceType @unique
+  limit_per_period Int // -1 = unlimited
+  period           QuotaPeriod       @default(MONTH)
+
+  updated_at    DateTime @updatedAt
+  updated_by_id String? // TeamMember.id — same audit convention as PlanFeature
+
+  @@map("customer_resource_limits")
+}
+
+// Customer-side twin of usage_counters — same period bucketing, keyed on the
+// shopper instead of the retailer.
+model CustomerUsageCounter {
+  id                  String            @id @default(cuid())
+  customer_account_id String
+  resource_type       QuotaResourceType
+  period_start        DateTime // truncated to period boundary (day/month start)
+  count               Int               @default(0)
+
+  updated_at DateTime @updatedAt
+
+  customer_account CustomerAccount @relation(fields: [customer_account_id], references: [id], onDelete: Cascade)
+
+  @@unique([customer_account_id, resource_type, period_start])
+  @@index([customer_account_id])
+  @@map("customer_usage_counters")
 }
 
 model QuotaAddonPurchase {
@@ -2476,6 +2560,8 @@ model CustomerAccount {
   wishlist_items      CustomerWishlistItem[]
   passport_sessions   PassportSession[]
   interactions        CustomerInteraction[]
+  try_on_jobs         TryOnJob[]
+  resource_usage      CustomerUsageCounter[]
 
   @@map("customer_accounts")
 }

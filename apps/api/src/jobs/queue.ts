@@ -22,6 +22,7 @@ export function getRedis(): Redis {
 let taggingQueue: Queue | null = null;
 let embeddingQueue: Queue | null = null;
 let studioShootQueue: Queue | null = null;
+let tryOnQueue: Queue | null = null;
 let catalogSyncQueue: Queue | null = null;
 let maintenanceQueue: Queue | null = null;
 
@@ -38,6 +39,11 @@ export function getEmbeddingQueue(): Queue {
 export function getStudioShootQueue(): Queue {
   studioShootQueue ??= new Queue(QUEUES.STUDIO_SHOOT, { connection: getRedis() });
   return studioShootQueue;
+}
+
+export function getTryOnQueue(): Queue {
+  tryOnQueue ??= new Queue(QUEUES.TRY_ON, { connection: getRedis() });
+  return tryOnQueue;
 }
 
 export function getCatalogSyncQueue(): Queue {

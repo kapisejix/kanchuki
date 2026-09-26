@@ -214,6 +214,19 @@ export function isRealOwner(request: FastifyRequest): boolean {
   return request.staffRole === null && !request.catalogDelegate;
 }
 
+// ─── Dual-identity try-on (F-039 Phase 2) ──────────────────────────
+// The try-on endpoints are called by two clients with two different credential
+// shapes: the retailer app with a Bearer token, the customer PWA with only the
+// `kanchuki_passport` cookie. The Bearer case is the normal flow below; the
+// cookie-only case is deferred to the route, which validates the session and
+// resolves the retailer from the product. Both paths are listed here together
+// so the route cannot silently gain a third URL that loses its handling.
+const TRY_ON_ROUTES = new Set(['/v1/products/:id/try-on', '/v1/products/:id/try-on/status']);
+
+export function isTryOnRoute(routeUrl: string | undefined): boolean {
+  return !!routeUrl && TRY_ON_ROUTES.has(routeUrl);
+}
+
 // ─── Plugin ───────────────────────────────────────────────────────
 
 /**
@@ -272,6 +285,14 @@ export const authPlugin: FastifyPluginAsync = fp(async (server) => {
 
     const authHeader = request.headers.authorization;
     if (!authHeader?.startsWith('Bearer ')) {
+      // F-039: a cookieless request to the try-on route is still a hard 401 here
+      // — only the cookie-bearing customer case is handed to the route handler.
+      if (
+        isTryOnRoute(request.routeOptions.url) &&
+        request.headers.cookie?.includes('kanchuki_passport=')
+      ) {
+        return;
+      }
       return reply.status(401).send({
         error: { code: 'UNAUTHORIZED', message: 'Missing Bearer token', status: 401 },
       });

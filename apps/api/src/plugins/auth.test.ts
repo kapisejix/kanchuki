@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { catalogDelegateCanAccess, staffCanAccess } from './auth.js';
+import { catalogDelegateCanAccess, isTryOnRoute, staffCanAccess } from './auth.js';
 
 // A retailer-added team member (Staff row) gets a retailer-scoped token but
 // must be limited to: products, categories, collections, size charts,
@@ -70,6 +70,23 @@ describe('staffCanAccess', () => {
     ['POST', '/v1/retailers/me/qr-slug'], // manager only
   ])('salesperson blocks %s %s', (method, path) => {
     expect(staffCanAccess(method, path, 'salesperson')).toBe(false);
+  });
+});
+
+// F-039: the try-on endpoints are the only routes where a Bearer-less request
+// is forwarded to the handler instead of 401'd here — the customer PWA carries
+// a passport cookie and the route validates it. Both paths must be listed.
+describe('isTryOnRoute', () => {
+  it('matches both try-on endpoints', () => {
+    expect(isTryOnRoute('/v1/products/:id/try-on')).toBe(true);
+    expect(isTryOnRoute('/v1/products/:id/try-on/status')).toBe(true);
+  });
+
+  it('leaves every other route hard-401', () => {
+    expect(isTryOnRoute('/v1/products')).toBe(false);
+    expect(isTryOnRoute('/v1/products/:id/photos/:photoId/studio-shoot')).toBe(false);
+    expect(isTryOnRoute('/v1/products/:id/try-on-2')).toBe(false);
+    expect(isTryOnRoute(undefined)).toBe(false);
   });
 });
 

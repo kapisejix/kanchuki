@@ -8,6 +8,7 @@ import {
   productsProCleanupRoutes,
   productsStudioRoutes,
   productsTrashRoutes,
+  productsTryOnRoutes,
   productsVariantsRoutes,
 } from './products/index.js';
 
@@ -26,4 +27,7 @@ export const productRoutes: FastifyPluginAsync = async (server) => {
   await server.register(productsAiRoutes);
   // products-studio — F-032 AI Studio Shoots
   await server.register(productsStudioRoutes);
+  // products-tryon — F-039 Phase 2 virtual try-on (dual-identity: retailer
+  // Bearer or customer passport cookie; see plugins/auth.ts)
+  await server.register(productsTryOnRoutes);
 };

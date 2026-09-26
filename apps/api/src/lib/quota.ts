@@ -1,10 +1,18 @@
 import { prisma } from '@kanchuki/db';
 import type { QuotaPeriod, QuotaResourceType } from '@kanchuki/db';
-import { planLimitExceeded } from '../plugins/error-handler.js';
+import { AppError, planLimitExceeded } from '../plugins/error-handler.js';
 
 // F-010 (docs/PRO-REQUIREMENTS.md): one gate + one counter for every metered
 // resource instead of a hardcoded column per resource. Call checkQuota before
 // the metered action runs, incrementUsage after it succeeds.
+//
+// F-039 Phase 2 added the customer-side pair below (checkCustomerQuota /
+// incrementCustomerUsage): a shopper has no plan, so they get one admin-editable
+// number per resource (customer_resource_limits) instead of the per-tier
+// plan_limits matrix. A try-on from a passport-logged-in shopper must pass BOTH
+// gates — the retailer's monthly cap AND that shopper's own — and the two
+// failures are deliberately different error codes so the caller can say which
+// one was hit.
 
 function periodStart(period: QuotaPeriod, now = new Date()): Date {
   if (period === 'DAY') return new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -35,6 +43,93 @@ async function effectiveLimit(
   return { limit: planLimit.limit_per_period, period: planLimit.period };
 }
 
+/**
+ * Customer-side twin of `effectiveLimit`: one global admin-editable number per
+ * resource (shoppers have no plan), or null when unconfigured. Like the retailer
+ * side this fails OPEN — an unseeded resource is "no limit" rather than an
+ * outage. Migration 119 seeds TRY_ON_GENERATION so that default is not reachable
+ * in practice for a metered GPU call, which is the case where fail-open would
+ * cost real money.
+ */
+async function effectiveCustomerLimit(
+  resourceType: QuotaResourceType,
+): Promise<{ limit: number; period: QuotaPeriod } | null> {
+  const row = await prisma.customerResourceLimit.findUnique({ where: { resource_type: resourceType } });
+  if (!row) return null;
+  return { limit: row.limit_per_period, period: row.period };
+}
+
+/**
+ * 402 for a shopper who has spent their allowance.
+ *
+ * A distinct code from PLAN_LIMIT_EXCEEDED on purpose: that message tells the
+ * reader to upgrade their plan, which is meaningless advice to someone who has
+ * no plan. It also keeps the two caps distinguishable in the response, which is
+ * what T3's route needs to report which limit was reached.
+ */
+function customerLimitExceeded(
+  resourceType: QuotaResourceType,
+  limit: number,
+  period: QuotaPeriod,
+): AppError {
+  const resource = resourceType.toLowerCase().replace(/_/g, ' ');
+  const periodWord = period === 'DAY' ? 'day' : period === 'LIFETIME' ? 'lifetime' : 'month';
+  return new AppError(
+    'CUSTOMER_LIMIT_EXCEEDED',
+    `You've reached your limit for ${resource} (${limit} per ${periodWord}).`,
+    402,
+  );
+}
+
+export async function checkCustomerQuota(
+  customerAccountId: string,
+  resourceType: QuotaResourceType,
+  amount = 1,
+): Promise<void> {
+  const effective = await effectiveCustomerLimit(resourceType);
+  if (!effective || effective.limit === -1) return; // unlimited, or not yet configured
+
+  const counter = await prisma.customerUsageCounter.findUnique({
+    where: {
+      customer_account_id_resource_type_period_start: {
+        customer_account_id: customerAccountId,
+        resource_type: resourceType,
+        period_start: periodStart(effective.period),
+      },
+    },
+  });
+  const used = counter?.count ?? 0;
+  if (used + amount > effective.limit) {
+    throw customerLimitExceeded(resourceType, effective.limit, effective.period);
+  }
+}
+
+export async function incrementCustomerUsage(
+  customerAccountId: string,
+  resourceType: QuotaResourceType,
+  amount = 1,
+): Promise<void> {
+  const effective = await effectiveCustomerLimit(resourceType);
+  const start = periodStart(effective?.period ?? 'MONTH');
+
+  await prisma.customerUsageCounter.upsert({
+    where: {
+      customer_account_id_resource_type_period_start: {
+        customer_account_id: customerAccountId,
+        resource_type: resourceType,
+        period_start: start,
+      },
+    },
+    create: {
+      customer_account_id: customerAccountId,
+      resource_type: resourceType,
+      period_start: start,
+      count: amount,
+    },
+    update: { count: { increment: amount } },
+  });
+}
+
 export async function checkQuota(
   retailerId: string,
   resourceType: QuotaResourceType,
@@ -60,9 +155,12 @@ export async function checkQuota(
 
 // ponytail: checkQuota + incrementUsage are two separate calls (not one
 // transaction), so two concurrent requests can both pass the check before
-// either increments — same race the existing try_on_credits decrement
-// already accepts (apps/api/src/routes/tryon.ts). Fine for a billing quota;
-// revisit with a DB-level constraint if overshoot ever matters financially.
+// either increments. Fine for a billing quota; revisit with a DB-level
+// constraint if overshoot ever matters financially. The customer-side pair
+// below has the identical shape and the identical race. (This comment used to
+// cite the deleted routes/tryon.ts as precedent for accepting it — that
+// precedent is gone, so the trade-off is now stated plainly rather than
+// inherited.)
 export async function incrementUsage(
   retailerId: string,
   resourceType: QuotaResourceType,

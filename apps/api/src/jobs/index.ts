@@ -25,6 +25,7 @@ import {
   getRedis,
   getStudioShootQueue,
   getTaggingQueue,
+  getTryOnQueue,
 } from './queue.js';
 import { handleReferralAccrue } from './referral-accrue.js';
 import { handleReferralPayout } from './referral-payout.js';
@@ -37,6 +38,8 @@ import {
 import { handleStudioShoot } from './studio-shoot.js';
 import type { StudioShootJobData } from './studio-shoot.js';
 import { handleTagProduct } from './tag-product.js';
+import { handleTryOn } from './tryon.js';
+import type { TryOnJobData } from './tryon.js';
 
 // Redis + queue accessors live in ./queue.js (shared with every producer).
 export { getRedis };
@@ -110,6 +113,16 @@ export async function addStudioShootJob(data: StudioShootJobData): Promise<void>
   });
 }
 
+/** F-039: enqueue one try-on. The payload carries NO image bytes — the wearer's
+ *  photo is handed over in-process via lib/tryon-photo-store.ts, so it never
+ *  reaches Redis (T6). */
+export async function addTryOnJob(data: TryOnJobData): Promise<void> {
+  await getTryOnQueue().add('try-on', data, {
+    removeOnComplete: { count: 100 },
+    removeOnFail: { count: 50 },
+  });
+}
+
 export async function addCatalogSyncJob(data: CatalogSyncJobData): Promise<string> {
   const job = await getCatalogSyncQueue().add('catalog-sync', data, {
     attempts: 3,
@@ -152,6 +165,17 @@ export async function startWorkers(): Promise<void> {
       await handleStudioShoot(data);
     },
     { connection: redis, concurrency: STUDIO_SHOOT_CONCURRENCY },
+  );
+
+  const tryOnWorker = new Worker(
+    QUEUES.TRY_ON,
+    async (job) => {
+      const data = job.data as TryOnJobData;
+      await handleTryOn(data);
+    },
+    // Bounded: every job is one RunPod GPU inference, and the endpoint scales
+    // per concurrent request — a burst here is a real bill, not just latency.
+    { connection: redis, concurrency: 2 },
   );
 
   const catalogSyncWorker = new Worker(
@@ -357,6 +381,10 @@ export async function startWorkers(): Promise<void> {
 
   studioShootWorker.on('failed', (job, err) => {
     console.error(`[jobs] studio-shoot failed ${job?.id}:`, err.message);
+  });
+
+  tryOnWorker.on('failed', (job, err) => {
+    console.error(`[jobs] try-on failed ${job?.id}:`, err.message);
   });
 
   catalogSyncWorker.on('failed', (job, err) => {

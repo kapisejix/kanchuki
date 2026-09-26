@@ -293,8 +293,12 @@ export const LOCALE_FALLBACK_CHAIN: readonly SupportedLocale[] = ['hi-IN', 'en-I
 export const R2_PATHS = {
   productPhoto: (retailerId: string, productId: string, filename: string) =>
     `retailers/${retailerId}/products/${productId}/${filename}`,
-  tryonInput: (jobId: string) => `tryon/${jobId}/input.jpg`,
-  tryonResult: (jobId: string) => `tryon/${jobId}/result.jpg`,
+  // `tryonInput` / `tryonResult` were deleted 2026-09-26 (F-039 T3). The
+  // former was the "upload the wearer's photo, then delete it" path that T6
+  // forbids outright — the photo never reaches storage, so a helper for its R2
+  // key is an invitation to write it. The latter was superseded by the
+  // try-on client's own `tryon-results/<jobId>/result.jpg`. Both had no
+  // callers outside the duplicated literal in the mobile test mock.
   measurementPhoto: (customerId: string, measurementId: string, side: 'front' | 'back') =>
     `measurements/${customerId}/${measurementId}/${side}.jpg`,
   retailerLogo: (retailerId: string, filename: string) =>
@@ -656,6 +660,13 @@ export const QUEUES = {
   STUDIO_SHOOT: 'kanchuki-studio-shoot',
   // Phase II: WhatsApp native catalog sync. Retailer-facing sync jobs.
   CATALOG_SYNC: 'kanchuki-catalog-sync',
+  // F-039 Phase 2: CatVTON try-on generation on the RunPod worker. Own queue
+  // for the same reason as STUDIO_SHOOT — a retailer/customer-facing hot path
+  // with an externally-metered GPU call, so it gets bounded concurrency
+  // instead of sharing the maintenance queue. The job payload deliberately
+  // carries NO image bytes; the wearer's photo is handed over in-process and
+  // never persisted (see apps/api/src/lib/tryon-photo-store.ts).
+  TRY_ON: 'kanchuki-try-on',
   // Cron-only, low-volume jobs share one queue — one Worker dispatches by job.name
   // instead of 4 separate Workers each holding their own duplicated Redis connection.
   MAINTENANCE: 'kanchuki-maintenance',

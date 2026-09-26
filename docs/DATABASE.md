@@ -704,7 +704,17 @@ model SubscriptionPayment {
   @@map("subscription_payments")
 }
 
-// VIRTUAL TRY-ON — model TryOnJob REMOVED 2026-08-31 (migration 082).
+// VIRTUAL TRY-ON — model TryOnJob REMOVED 2026-08-31 (migration 082), then
+// REBUILT 2026-09-26 for F-039 Phase 2
+// (docs/tasks/pending/catvton-runpod-tryon-launch.md T1). The new shape is NOT
+// the old one: `TryOnJob` returns with no input-photo column and a
+// `customer_account_id`, plus two new customer-side quota tables
+// (`customer_resource_limits`, `customer_usage_counters`), and the enums gain
+// `PlanFeatureKey.VIRTUAL_TRY_ON_V2` + `QuotaResourceType.TRY_ON_GENERATION`
+// (the deprecated `VIRTUAL_TRY_ON` / `TRY_ON` values stay dead). Migrations
+// 118/119 carry it; see schema.prisma for the authoritative shape.
+// ⚠️ Migrations 118/119 are PROPOSED, not yet applied — as of 2026-09-26 this
+// section describes the schema after the owner runs them.
 
 // ─────────────────────────────────────────────
 // PLAN FEATURE MATRIX (F-013, planned)

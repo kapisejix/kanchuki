@@ -2,6 +2,8 @@
 
 **Status:** 🔴 Planned — owner go-ahead given 2026-09-26 to **build now, launch later**.
 **T0 ✅ RESOLVED 2026-09-26 — endpoint alive, GHCR image pullable; worker readiness (`workersMax`) still needs the owner's RunPod API key (see T0 result below).**
+**T1 ✅ + T2 ✅ 2026-09-26 — schema + customer quota built (migrations 118/119 PROPOSED, not applied), `quota.test.ts` 10/10.**
+**T3 ✅ code-complete 2026-09-26 — client (`packages/ai/src/tryon.ts` + inline-photo worker input) AND the `POST /v1/products/:id/try-on` route + job. The worker image still needs a rebuild before the inline path is live, and migrations 118/119 must be applied at runtime — see the T3 results below.**
 **Parent:** `docs/tasks/pending/style-match-lite.md` §9 (readymade-only VTO re-scope,
 cost numbers) and `docs/PRO-REQUIREMENTS.md` §38.7.
 **Owner intent (verbatim, condensed):** build the whole thing now — retailer app,
@@ -212,6 +214,95 @@ A try-on request from a passport-logged-in customer must pass **both** checks
 (retailer's monthly cap AND that customer's monthly cap) before the RunPod call
 fires — fail on whichever hits first, message says which.
 
+### T1/T2 result — 2026-09-26: **both built, migration proposed (NOT applied)**
+
+**Schema (T1).** Both enum values and all three models are in
+`packages/db/prisma/schema.prisma`; `prisma validate` is clean. The new values
+are appended at the **end** of each enum, not beside their deprecated
+lookalikes — `ALTER TYPE ... ADD VALUE` can only append, and putting them
+mid-list would make Prisma generate a reorder that Postgres cannot express.
+
+- `PlanFeatureKey.VIRTUAL_TRY_ON_V2` — the launch switch. Fails CLOSED like
+every `PlanFeatureKey` value, so nothing shows anywhere until an admin ticks it.
+- `QuotaResourceType.TRY_ON_GENERATION` — the retailer-side meter.
+- `TryOnJob` — with **no input-photo column at all** (T6), and `result_url`
+  documented as the R2 *key*, served presigned per read.
+- `CustomerResourceLimit` (one admin-editable number per resource, since a
+  shopper has no plan) + `CustomerUsageCounter` (its counter).
+
+**Migrations — two files, and the split is load-bearing.**
+`118_try_on_v2_enum_values` is the two `ALTER TYPE ... ADD VALUE` statements
+alone, because PostgreSQL 55P04 forbids *using* a value in the same transaction
+that added it and Prisma runs each file as one transaction. `119_try_on_v2_tables`
+creates the tables, indexes and FKs and seeds the limit rows. This is the same
+split the repo already hit twice (growth 055/056/057, catalog sync 060/061/062)
+and the same shape as suits-designs' 094/095.
+
+**⚠️ Not applied.** Per the operational policy the agent does not run
+migrations; the owner applies 118 then 119 from the admin runner. Order matters.
+
+**Two deliberate deviations from the spec's T1 text, both worth knowing:**
+
+1. **Seeding moved from `seed-plan-limits.ts` into migration 119** (idempotent
+   `ON CONFLICT DO NOTHING`). The spec asked to extend the seed script instead,
+   but that script *upserts* — it overwrites the live values on every run. For a
+   resource whose entire purpose is being admin-edited at runtime, a re-run
+   would silently reset the owner's numbers (the same hazard exists for the
+   older resources; it is pre-existing, not introduced here).
+   `DO NOTHING` also grants the point the spec was reaching for: a fresh local DB
+   gets its rows because migrations run before anyone seeds, and the
+   `checkQuota` / `checkCustomerQuota` fail-open default is never what a metered
+   GPU call hits in practice. Starting numbers are the spec's — 20 / 50 / 100 per
+   month, and 3 per month for shoppers. (Noted in passing: `seed-plan-limits.ts`
+   still seeds rows for the **deprecated** `TRY_ON` enum value, so dead config
+   is showing in the admin Plan Limits screen. Left alone — it is teardown
+   residue, not part of this feature.)
+2. **No RLS on any of the three tables.** The spec's schema sketch does not
+   mention RLS either way, but the dropped predecessor *did* have it
+   (migrations 003/010/016), so silence here could be read as accidental. It is
+   deliberate: migration 099's header records that the zero-policy RLS pattern is
+   a Supabase-era vestige, that tables added since the Railway move ship without
+   it, and that adding it *breaks the pooled Prisma read path* (migration 111 is
+   the long-form version). Those old policies also named `authenticated`/`anon` —
+   roles the backend does not use — so this is not a revival of them.
+
+Also verified, because a new table is what tends to break these:
+`purge-rls-policy.test.ts` (no migration-111 entry needed — nothing enables RLS
+here) and `purge-soft-deleted.test.ts` (no purge sweep needed — `try_on_jobs`
+has a real CASCADE FK, and the test only demands an explicit sweep for tables
+with a **bare** `retailer_id` and no FK). Both green, so `try_on_jobs` needs
+neither a policy nor a purge-job change. No explicit GRANTs are needed either:
+`ALTER DEFAULT PRIVILEGES` (setup-role-separation §19.1) already gives
+`kanchuki_app` SELECT/INSERT/UPDATE on new tables, which covers the counter
+upsert.
+
+One doc fix rode along: `ProductPhoto.piece_type`'s comment claimed it "drives
+try-on chaining in `packages/ai/src/tryon.ts`", which stopped being true when
+that chaining was dropped in the T3 rebuild. The tag is still captured and
+displayed; nothing reads it for try-on any more.
+
+**Quota lib (T2).** `checkCustomerQuota` / `incrementCustomerUsage` mirror the
+retailer pair — same `periodStart` helper (no duplication), reading
+`CustomerResourceLimit`, writing `CustomerUsageCounter`, and failing **open**
+when unconfigured like `checkQuota` does.
+
+The two rejections are **deliberately different codes**: the retailer cap throws
+the existing `PLAN_LIMIT_EXCEEDED`, the customer cap throws
+`CUSTOMER_LIMIT_EXCEEDED` (both 402). That is what satisfies "message says
+which" — and the distinct code matters for a second reason, that
+`PLAN_LIMIT_EXCEEDED`'s message tells the reader to upgrade their plan, which is
+meaningless advice to a shopper who has no plan. ⚠️ `CUSTOMER_LIMIT_EXCEEDED` is
+a new code and is **not yet in `docs/API.md`'s error list** — add it with T3's
+route, when there is a client that can match on it.
+
+**Verified:** `prisma validate` clean; `prisma generate` run (this is a
+build-artifact step, no DB access); `@kanchuki/api` + `@kanchuki/ai` typecheck
+clean; `apps/api/src/lib/quota.test.ts` 10/10 (new — covers fail-open, unlimited,
+the cap boundary in both directions, period bucketing, and the two-codes
+assertion); full API suite **1446 passed / 1 failed**, the single failure being a
+5s `products.test.ts` timeout that passes 34/34 in isolation (pre-existing
+parallel-load flake, unrelated to this change).
+
 ---
 
 ## T3 — Audit + rebuild the generation call path (M–L)
@@ -241,6 +332,143 @@ survived the teardown before assuming), then `agent-skills:api-and-interface-des
      usage counters.
    - Discard the input person-photo buffer after the call — never write it
      anywhere (T6).
+
+### T3 result — 2026-09-26: **client path rebuilt; route + job still blocked on T1/T2**
+
+**Audit (step 1) — what actually survived.** Nothing of the old call path did.
+`triggerCatVTON` / `saveTryOnResultToR2` / `triggerTryOn` / `callVTONOnce` existed
+nowhere in live code — only `scripts/test-2piece-tryon.mjs`, which imports the
+deleted `packages/ai/dist/tryon.js`. The old source was recoverable from git
+(`git show f55d6099^:packages/ai/src/tryon.ts`).
+
+**A guard test owns this area — check it before touching try-on code.**
+`apps/api/src/lib/retired-tryon-guard.test.ts` fails the build if the **IDM-VTON**
+path reappears as code under `apps/`, `packages/` or `scripts/` (its endpoint,
+`generateIdmVtonTryon`, and its `human_img_url`/`garm_img_url`/`garment_des`
+params). **CatVTON is not in that list** — the guard was green with the rebuilt
+client in place (8/8), so T3 is legal. What is banned is IDM-VTON; do not read
+the `fal-client.ts` tombstone comment as banning CatVTON too.
+
+**Two things in the old client could not be carried over:**
+
+1. **`PIECE_TAGGABLE_CATEGORIES` no longer exists** — the teardown removed it from
+   `packages/shared/src/constants/index.ts` (`docs/build-log/part-3.md`).
+   `ProductPhoto.piece_type` survived, but the category list it was read against
+   did not, so the old two-call upper→lower chaining (and
+   `isPieceTaggableCategory`) is gone. T3's route takes **one** garment photo, so
+   the single-call path is the whole contract for now.
+2. **Background-removal preprocessing is dropped.** The old client ran the
+   garment through `@imgly/background-removal-node`, cached the cutout at
+   `tryon-preprocessed/<sha256>.png` and re-uploaded it. T3's route says the
+   garment is "the product's own existing photo (already on R2, **no re-upload**)",
+   so the presigned product-photo URL now goes straight to the worker — one less
+   R2 object per product and no onnxruntime work on the hot path. The cost is the
+   pre-teardown quality note ("raw uploads are rarely bg-clean"); it is the first
+   thing to add back if output quality needs it.
+
+**The privacy rule forced a worker change.** (PROMPT failure mode #1 — get T6
+right before anything works.) The worker's contract was URL-only:
+`handler_runpod.py` does `requests.get()` on `person_image_url`. A runpod
+base64 `data:` URI can't be re-fetched by that Python side, so there is no
+submit-a-URL-to-the-path that also satisfies "the wearer's photo is never
+persisted" — an upload *is* a write, and a crash between the two calls orphans
+the photo outside any retention policy. So the wearer's bytes go **inline in the
+job payload** instead:
+
+- `services/tryon/handler_runpod.py` grew `person_image_base64` /
+  `garment_image_base64` (additive — the URL inputs still work), decoded in memory
+  by a new `decode_base64_image()` that accepts a raw or `data:` payload.
+- `packages/ai/src/tryon.ts` (new) sends the photo as
+  `data:<content-type>;base64,...`, and never writes it — only
+  `saveTryOnResultToR2()` writes, and only the generated result, under
+  `tryon-results/<jobId>/result.jpg`. It returns the **key**, not a URL, so the
+  caller can hand out a per-read presigned URL (this is a photo of a real person;
+  the product-photo rule applies).
+
+**⚠️ Consequence — the GHCR image must be rebuilt before this path works live.**
+The deployed tag predates the handler change, so a live endpoint would reject
+`person_image_base64` (both inputs missing → the handler's own
+"... is required" error). This is the one place T0's "a re-point, not a full
+worker rebuild" reading is now out of date. `.github/workflows/docker-tryon.yml`
+was deleted in `f55d6099`, so **nothing rebuilds the image on push today** —
+restoring it (or a one-off manual build + push) is a prerequisite of T8 step 2,
+not of merging this code.
+
+**Config is now admin-manageable, not env-only.** The old client read
+`CATVTON_API_URL` / `RUNPOD_API_KEY` from `process.env` into module-load `const`s,
+which (a) bypassed the Admin → Integrations vault and (b) meant an admin-saved key
+did nothing until an API restart. Both now resolve through `getSecret()` per call
+(DB vault first, `.env` fallback; `getSecret` caches internally, so it is not a
+per-request DB hit) — the `RUNPOD_API_KEY` + `CATVTON_API_URL` rows added to
+`INTEGRATION_KEYS` on 2026-09-26 are what the owner sets in Admin.
+
+**Shipped this pass:** `packages/ai/src/tryon.ts` (+ exported from `index.ts`) and
+`services/tryon/handler_runpod.py`. 16 unit tests in `packages/ai/src/tryon.test.ts`
+cover the flag-off shape's prerequisites: `clothTypeForCategory` /
+`isUnsupportedTryOnCategory` mapping, not-configured behaviour, the inline-photo
+payload, both error layers (RunPod-level vs handler-level), and that
+`saveTryOnResultToR2` writes exactly once with the result bytes and never the
+wearer's photo (T7's storage assertion). Verified: `@kanchuki/ai` typecheck clean
++ 107/107 tests, `retired-tryon-guard` 8/8, `@kanchuki/api` typecheck clean.
+
+### T3 result (step 2) — 2026-09-26: **route + job built**
+
+`POST /v1/products/:id/try-on` and its `GET .../status` poll now exist, on their
+own BullMQ queue (`QUEUES.TRY_ON` → `kanchuki-try-on`, worker concurrency 2).
+
+**Dual identity, per the owner's call (asked and answered 2026-09-26).** The
+customer PWA has no Bearer token — only the `kanchuki_passport` cookie — so the
+auth plugin cannot hard-401 it. `plugins/auth.ts` now defers **only** the
+no-Bearer + passport-cookie case to the route (`isTryOnRoute`, exported and
+tested); a request that *does* carry a Bearer still runs the normal flow, so the
+staff allowlist and the suspension check still apply to it. Inside the route a
+valid Bearer wins (product must belong to that retailer); otherwise an
+authenticated shopper may try on any publicly-visible product, and the product
+row names the retailer whose quota it spends. `customer_account_id` is read from
+the passport session on either path, so a shopper grant spends both counters.
+
+**The launch gate is in the route, server-side, and it is a 404.** With
+`VIRTUAL_TRY_ON_V2` off for the plan the route throws `notFound('Product')`
+before touching config, quota or media — indistinguishable from a missing
+product, so an inspecting client learns nothing. (Not a 403: a 403 confirms the
+route exists and is merely locked.)
+
+**The wearer's photo never crosses a serialization boundary.** This was the
+non-obvious part. The async-job shape wants the bytes in `job.data`, but BullMQ
+serialises that payload into **Redis**, and Redis is persistent storage — the
+base64 photo would survive restarts under no retention policy, which is the same
+T6 violation as writing it to R2. So the route hands the photo over through a
+new in-process store (`apps/api/src/lib/tryon-photo-store.ts`): a one-shot Map
+keyed by job id, with a 3-minute TTL and a 256 MB ceiling that answers 503 when
+full. The BullMQ payload carries **ids only** — a test asserts that. This works
+because the workers run in the API process (`startWorkers()` in `index.ts`); if
+a dedicated worker process is ever split out, the job fails loudly
+("photo expired"), it does not silently start persisting.
+
+The `TryOnJob` row is the job's status source of truth (PENDING → COMPLETED /
+FAILED), because the row already has to exist for the quota/audit trail — unlike
+studio-shoot, which keeps live status in Redis. Only the generated image is
+written to R2, under `tryon-results/<jobId>/result.jpg`; the status route mints a
+per-read presigned URL for it.
+
+**Also cleaned up while here:** `R2_PATHS.tryonInput` / `tryonResult` deleted
+from `@kanchuki/shared`. `tryonInput` was the "upload the wearer photo, then
+delete it" path T6 forbids — a helper for its R2 key is an invitation to write
+it — and both had no callers left. (The `quota.ts` comment that still cited the
+deleted `routes/tryon.ts` was already fixed in T2.)
+
+**Verified:** `@kanchuki/api` + `@kanchuki/ai` typecheck clean; route-size guard
+passes; **full API suite 1479 passed / 5 skipped**, including the
+`retired-tryon-guard` (CatVTON is not on the ban list) and both purge guards. New
+tests: `routes/products-tryon.test.ts` (18 — the flag-off 404, the payload has no
+image bytes, both quota caps and their distinct codes, both identities, the
+store-full 503), `jobs/tryon.test.ts` (7 — the photo reaches `generateTryOn` and
+`saveTryOnResultToR2` is the only storage write, called once with the result),
+`lib/tryon-photo-store.test.ts` (5 — one-shot take, TTL, sweep), and
+`plugins/auth.test.ts` gained the `isTryOnRoute` predicate cases.
+
+**Still needed before this works live:** the GHCR image rebuild (T3 step 1's
+`person_image_base64` handler change) and migrations 118/119 applied in order.
 
 ---
 
