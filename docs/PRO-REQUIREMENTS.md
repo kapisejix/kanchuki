@@ -3013,6 +3013,90 @@ Full spec, research and the T1–T10 breakdown: `docs/tasks/referral-program-ret
 
 ---
 
+## 38. F-039 Style Match Lite (AI Fit/Style Recommendation) — 🔴 PLANNED, NOT APPROVED
+
+**Written 2026-09-26 on owner request** (scoping the research in §37's sibling doc
+`docs/tasks/pending/ai-fit-recommendation-research.md`, dated 2026-09-25). Full
+dev spec: **`docs/tasks/pending/style-match-lite.md`**.
+
+### 38.1 Problem
+
+Customers browsing (self or gifting) get stuck comparing 3–5 items and buy fewer
+than they shortlisted. Owner asked: is an AI agent for this feasible, can a
+customer photo drive fit/style matching, and what actually converts a doubtful
+shortlist into a purchase.
+
+### 38.2 Decision — MID tier only, VTO stays rejected
+
+Three tiers were researched (LOW/MID/HIGH). **MID is scoped here**: style quiz
+(wired to the backend for the first time — it currently only writes to
+`localStorage`, a gap this spec closes) + an optional one-shot selfie → Claude
+Vision skin-tone read, narrowing the catalog to 3 curated picks with a stated
+reason. **No rendered garment-on-body image, ever.**
+
+**Rejected: full virtual try-on (HIGH tier).** This is the VTO feature already
+built and deliberately removed 2026-08-31 (migration 082) for cost/accuracy
+reasons, made weaker here by the catalog's unstitched/semi-stitched-suit mix (no
+fixed "fit" exists pre-tailoring). Reopening it needs a fresh brainstorm + budget
+sign-off from the owner, not a silent rebuild.
+
+### 38.3 Scope summary
+
+- **Quiz wiring (real gap, not just reuse):** `StyleQuiz.tsx` currently persists
+  to `localStorage` only, never to `CustomerAccount`. New
+  `PATCH /v1/public/passport/style-quiz` maps answers into the existing
+  `pref_colors/pref_styles/pref_fabrics/pref_occasions/budget_*` columns.
+- **Schema:** additive migration — `CustomerAccount.skin_undertone`,
+  `skin_depth`, `skin_match_at` (all nullable); `QuotaResourceType` gains
+  `STYLE_MATCH_CALL`; `ConsentEvent.kind` gains `SELFIE_MATCH_CONSENTED` (no enum
+  change, string field).
+- **Selfie match:** `POST /v1/public/passport/skin-match` — one Claude Vision
+  call, tool-use with a strict enum (`warm|cool|neutral` undertone,
+  `fair|medium|deep` depth), **the photo is never uploaded to R2 or stored in any
+  row** — call-then-discard, stronger than the existing 15-day product-photo
+  retention promise because there is no retention clock to keep.
+- **Stylist extension:** `public-stylist.ts`'s existing prompt + `
+  COMPLEMENTARY_COLORS` table gain the skin-tone signal as an additional
+  pre-filter/rationale input; shortlist capped to 3 picks (Hick's Law).
+- **Quota:** new `STYLE_MATCH_CALL` resource, admin `plan_limits` row, same
+  hard-stop pattern as `STUDIO_SHOOT`/`AI_TAGGING_CALL`.
+
+### 38.4 Acceptance criteria
+
+See `style-match-lite.md` §6 in full. Headline: quiz answers persist across
+devices for a logged-in Shopper Passport; a selfie call never writes an image
+byte to storage; AI Stylist output visibly changes when a skin-tone result
+exists; per-retailer quota enforced.
+
+### 38.5 Not doing (F-039)
+
+Photoreal VTO/garment render; storing or displaying the selfie image; body-shape
+or height-based size recommendation (separately removed feature — this is
+color/style only); re-running the skin match every visit (cached, re-run only on
+staleness or explicit retake).
+
+### 38.6 Open decisions (owner, blocking)
+
+D-1 confirm MID-tier scope (this doc is that confirmation, pending final
+go-ahead) · D-2 is the consent/DPDP overhead worth it for this base, or ship
+LOW-only (quiz wiring + narrowing + badges, no vision call) · D-3 revisit HIGH/
+VTO — unanswered, not blocking · D-4 success metric — recommend tying to the
+existing ≥15% enquiry-to-order MVP metric rather than a new one.
+
+### 38.7 Readymade-only VTO — re-scoped HIGH option (still gated on D-3)
+
+Full VTO stays rejected for the catalog as a whole (unstitched-majority
+problem), but scoping strictly to `Readymade` `product_type` removes that
+specific objection — readymade garments have a fixed shape, which is what
+VTO models need. Priced two ways in `style-match-lite.md` §9: managed API
+(FASHN AI, $0.075/try-on ~₹6.6, no ops) vs. self-hosted CatVTON on RunPod
+(already built once, confirmed end-to-end 2026-07-11, ~$0.035/image ~₹3
+compute — cheapest number, but removed 2026-08-31 for an unresolved
+multi-piece-garment accuracy bug plus real debugging-ops cost, not GPU price).
+Recorded for the next owner conversation on D-3 — does not itself reopen VTO.
+
+---
+
 ## 36. Customer Profile & Shopper Passport — Research Background
 
 Background research behind F-036 (§32, Customer PWA / Shopper Passport, built) and F-037 (§33, Customer Engagement, built). Kept for the rationale and decisions-considered detail that §32/§33 don't restate.

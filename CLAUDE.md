@@ -235,6 +235,7 @@ Payment: Razorpay (UPI first). Retailer pays base + 18% GST. **Source of truth: 
 | 92 | RC-041 — every web deep link is now built by one module pinned to the mobile manifest. | ✅ Built | 2026-09-25 | BUILD-LOG §2026-09-25 (RC-041), RC-041 |
 | 91 | RC-042 — keyboard-inset shared primitives (`<Sheet>` web + `KeyboardScreen` mobile), replacing the per-surface convention that pro... | ✅ Built | 2026-09-25 | BUILD-LOG §2026-09-25 (same day, later), RC-042, board §7B.9 |
 | 90 | Launch readiness §5B.1 — `?ref=<CODE>` referral capture on `/for-retailers`, scope reduced by a real blocker. | ✅ Built | 2026-09-25 | BUILD-LOG §2026-09-25 (launch §5B.1) |
+| 94 | F-039 Style Match Lite (AI fit/style recommendation) — quiz-to-`CustomerAccount` wiring + optional one-shot Claude Vision selfie skin-tone read (no image stored) narrowing AI Stylist picks to 3, with stated rationale. VTO/full try-on stays rejected. | 🔴 Planned, not approved | 2026-09-26 | PRO-REQUIREMENTS §38, `docs/tasks/pending/style-match-lite.md` |
  
 ---
 
