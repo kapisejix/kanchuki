@@ -567,6 +567,12 @@ export const INTEGRATION_KEYS = [
   },
   { key_name: 'VTONE_API_URL', category: 'AI', label: 'Fashion V-Tone Endpoint URL' },
   { key_name: 'VTONE_SHARED_SECRET', category: 'AI', label: 'Fashion V-Tone Shared Secret' },
+  // CatVTON on RunPod serverless (F-039). RUNPOD_API_KEY authenticates the
+  // /v2/<endpoint_id>/run + /health calls; CATVTON_API_URL is the endpoint
+  // base URL (https://api.runpod.ai/v2/<endpoint_id>). Both resolve via
+  // getSecret() — DB vault first, .env fallback — same pattern as V-Tone.
+  { key_name: 'RUNPOD_API_KEY', category: 'AI', label: 'RunPod API Key (CatVTON try-on worker)' },
+  { key_name: 'CATVTON_API_URL', category: 'AI', label: 'CatVTON RunPod Endpoint URL' },
   {
     key_name: 'PHOTO_CLEANUP_SERVICE_URL',
     category: 'AI',

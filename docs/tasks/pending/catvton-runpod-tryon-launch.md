@@ -1,6 +1,7 @@
 # F-039 Phase 2 — CatVTON-on-RunPod Try-On, Admin-Gated Launch + Dual Quota
 
 **Status:** 🔴 Planned — owner go-ahead given 2026-09-26 to **build now, launch later**.
+**T0 ✅ RESOLVED 2026-09-26 — endpoint alive, GHCR image pullable; worker readiness (`workersMax`) still needs the owner's RunPod API key (see T0 result below).**
 **Parent:** `docs/tasks/pending/style-match-lite.md` §9 (readymade-only VTO re-scope,
 cost numbers) and `docs/PRO-REQUIREMENTS.md` §38.7.
 **Owner intent (verbatim, condensed):** build the whole thing now — retailer app,
@@ -51,7 +52,7 @@ improvising.
 
 ---
 
-## T0 — Verify the RunPod infra is still alive (owner/manual, no code)
+## T0 — Verify the RunPod infra is still alive (owner/manual, no code) — ✅ largely resolved 2026-09-26
 
 **Blocks T5.** The CatVTON worker (`endpoint pnvchif9f4bcom`, `template
 v76b819nle`) was confirmed working end-to-end 2026-07-11, then the *feature* was
@@ -65,6 +66,61 @@ handler_runpod.py, mask_utils.py — per
 repo's own docs).
 
 **Skill:** none (manual/dashboard check).
+
+### T0 result — 2026-09-26: **NOT gone. Endpoint exists + image pullable.**
+
+Checked without any secret. RunPod 404s a non-existent endpoint ID but 401s an
+existing one that just needs auth, so the ID is a pure existence probe:
+
+```
+GET /v2/pnvchif9f4bcom/health        → 401   (exists — auth required)
+GET /v2/zzzzzzzzzzzz/health          → 404   (control)
+GET /v2/notarealendpoint123/health   → 404   (control)
+```
+
+- ✅ **Endpoint `pnvchif9f4bcom` exists** — not torn down with the feature.
+- ✅ **Docker image `ghcr.io/kapisejix/kanchuki-tryon` alive + publicly pullable** —
+  anonymous GHCR token → tag list returned HTTP 200: `latest`,
+  `688ce1b85036ef67e635a074083b6180ad9dc298` (newest; commit `688ce1b8`, 2026-07-10,
+  "SHA-tag RunPod docker image to force fresh pulls"), + 8 older SHA tags. No build
+  after the 2026-07-16 CatVTON purge.
+- ⚠️ **`workersMax` / worker readiness NOT verified** — needs `RUNPOD_API_KEY`
+  (prod secret, not accessed). This is the only open question, and it decides
+  *alive-and-ready* vs *alive-but-scaled-to-zero*. Owner runs:
+  ```bash
+  curl -H "Authorization: Bearer $RUNPOD_API_KEY" https://api.runpod.ai/v2/pnvchif9f4bcom/health
+  # workers.ready/idle/running — >0 = scaled up; all 0 = scaled to zero
+  ```
+  Same probe as step `[0]` of `scripts/test-2piece-tryon.mjs` — **do not run the
+  full script** (it burns a real GPU call and writes test objects to R2).
+- ⚠️ **Template `v76b819nle` NOT verified** — RunPod exposes no anonymous route
+  for templates (REST API needs a key).
+
+**Repo-side correction (T0's rebuild instruction was stale):** `services/tryon/`
+(`Dockerfile.runpod`, `handler_runpod.py`, `mask_utils.py`, `app.py`,
+`requirements.txt`) and the GHCR build workflow `.github/workflows/docker-tryon.yml`
+were **deleted 2026-07-16** in `f55d6099` ("swap CatVTON for Fashion V-Tone
+v1.5, purge old engine"). The API call path (`packages/ai/src/tryon.ts`,
+`apps/api/src/routes/tryon.ts`, `apps/api/src/jobs/process-tryon.ts`) was deleted
+in the 2026-08-31 teardown (`8426e41e`, `76c5acdb`). Only
+`scripts/test-2piece-tryon.mjs` survives — and it imports the now-deleted
+`packages/ai/dist/tryon.js`. The worker source is **recoverable from git**:
+`git checkout f55d6099^ -- services/tryon/`.
+
+**Consequences for T3/T5:** T5 is unblocked. T3 is a **re-point, not a full
+worker rebuild** — the image is intact and pullable, provided the owner sets
+`workersMax > 0`; the client call path still has to be rebuilt from scratch
+(there is nothing left on disk to re-point from).
+
+**Update (same day):** `services/tryon/` restored from `f55d6099^` and pruned to
+the 5 files the RunPod build actually uses (`Dockerfile.runpod`,
+`handler_runpod.py`, `mask_utils.py`, `requirements.txt`, `README.md`) — the
+549-file vendored `CatVTON/` tree and the self-host `app.py` / `Dockerfile` /
+`docker-compose.yml` are **not** used by `Dockerfile.runpod` (it pulls CatVTON
+from GitHub upstream, pinned `999bdbe8`, and the weights from HuggingFace).
+`RUNPOD_API_KEY` + `CATVTON_API_URL` added to `INTEGRATION_KEYS` (F-012 vault) so
+the worker credentials are settable from Admin → Integrations — no migration,
+the catalog is enum-driven.
 
 ---
 
