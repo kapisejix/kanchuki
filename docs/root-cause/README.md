@@ -1,6 +1,6 @@
 # Root Cause — How to Use This Folder
 
-**Files:** `root-cause issues.md` (the tracker — one entry per root cause, newest first, `RC-###` IDs) and this page.
+**Files:** `root-cause issues.md` + `root-cause issues (part 2, RC-030 and older).md` (the tracker, split 2026-09-26 to stay under the 150k-char doc limit — one entry per root cause, newest first, `RC-###` IDs, one tracker across both files) and this page.
 
 ---
 
@@ -20,11 +20,11 @@ Rule 4 is only worth having if the table can be *checked*, so both halves are on
 
 ```bash
 # RC IDs that have a full entry but no row in the CLAUDE.md table  → must print nothing
-comm -23 <(grep -oE '^## RC-[0-9]+' 'docs/root-cause/root-cause issues.md' | sed 's/## //' | sort -u) \
+comm -23 <(cat 'docs/root-cause/root-cause issues.md' 'docs/root-cause/root-cause issues (part 2, RC-030 and older).md' | grep -oE '^## RC-[0-9]+' | sed 's/## //' | sort -u) \
          <(awk '/^\| RC-[0-9]+ \|/{print $2}' CLAUDE.md | sort -u)
 
 # rows in the table that have no entry  → must print nothing
-comm -13 <(grep -oE '^## RC-[0-9]+' 'docs/root-cause/root-cause issues.md' | sed 's/## //' | sort -u) \
+comm -13 <(cat 'docs/root-cause/root-cause issues.md' 'docs/root-cause/root-cause issues (part 2, RC-030 and older).md' | grep -oE '^## RC-[0-9]+' | sed 's/## //' | sort -u) \
          <(awk '/^\| RC-[0-9]+ \|/{print $2}' CLAUDE.md | sort -u)
 ```
 

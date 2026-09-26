@@ -12,7 +12,7 @@ This file is the map. If you are looking for something and it is not listed here
 |---|---|
 | `PRO-REQUIREMENTS.md` | Scope + feature-status index (every F-### with status and a link to its spec in `tasks/`). Full pre-shrink PRD: `references/history/superseded/PRO-REQUIREMENTS-full-2026-09-24.md`. |
 | `PLAN.md` | Roadmap — phase status, post-launch priorities, scaling, milestones. Full pre-shrink plan: `references/history/superseded/PLAN-full-2026-09-24.md`. |
-| `BUILD-LOG.md` | **The one and only history log** — append-only, chronological, file-level detail for every shipped feature and incident. Every build appends here. |
+| `BUILD-LOG.md` | **The one and only history log** — append-only, chronological, file-level detail for every shipped feature and incident. Split 2026-09-26 (150k-char doc limit): this file is now the index (Parts table), full detail lives in `docs/build-log/part-N.md`. **New entries append to the latest `part-N.md`, not here** — split a new `part-N+1.md` once the latest one nears 100k chars and add its row to the index. |
 | `TECH-STACK.md` | Locked technology choices with rationale. |
 | `API.md` | REST API contracts, endpoints, auth. |
 | `SECURITY.md` | Security model, OWASP, data privacy, governance. **§12–18 requires human review to edit.** |
@@ -39,7 +39,7 @@ This file is the map. If you are looking for something and it is not listed here
 ## Rules
 
 1. **New task** → add a file to `tasks/pending/`. Start it with a one-line `**Status:**` header.
-2. **Task finished** → move the file to `tasks/done/`, flip its `**Status:**` header, append the detail table to `BUILD-LOG.md`, and update the row in `CLAUDE.md`'s What's-Built index.
+2. **Task finished** → move the file to `tasks/done/`, flip its `**Status:**` header, append the detail table to the latest `docs/build-log/part-N.md` (see `BUILD-LOG.md`'s Parts table), and update the row in `CLAUDE.md`'s What's-Built index.
 3. **Found a bug?** → fix it, then add a new `RC-###` entry to `root-cause/root-cause issues.md` (one entry per **root cause**, not per symptom), add its row to the RC table in `CLAUDE.md`, and reference the RC ID in the commit message.
 4. **Before editing any feature area** → read `root-cause/README.md` and its regression checklist for that area.
 5. **`references/history/` is never current truth.** It is a frozen snapshot of what was believed at the time. Live status lives in `BUILD-LOG.md` + `CLAUDE.md`.
