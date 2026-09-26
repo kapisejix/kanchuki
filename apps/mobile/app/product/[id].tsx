@@ -13,7 +13,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Image } from 'expo-image'
 import { VideoView } from 'expo-video'
 import { useScreenInsets } from '../../src/lib/safe-area'
-import { ChevronLeft, Clapperboard, Heart, Share2, Star } from 'lucide-react-native'
+import { Camera, ChevronLeft, Clapperboard, Heart, Share2, Star } from 'lucide-react-native'
 import Gallery, { type GalleryRef } from 'react-native-awesome-gallery'
 import type { ProductDetail } from '@kanchuki/shared'
 
@@ -103,6 +103,12 @@ export default function ProductDetailScreen() {
   })
   const me = (meData as { data?: Record<string, any> } | undefined)?.data
   const publicSlug: string | null = me?.public_slug ?? null
+  // F-039 Phase 2 — the in-store try-on entry point shows only when the plan
+  // carries VIRTUAL_TRY_ON_V2. `features` comes from GET /retailers/me and
+  // fails closed (absent => hidden). The route re-checks server-side.
+  const tryOnEnabled: boolean = Array.isArray(me?.features)
+    ? me.features.includes('VIRTUAL_TRY_ON_V2')
+    : false
 
   const askForReview = () => {
     if (!publicSlug || !product) return
@@ -452,6 +458,34 @@ export default function ProductDetailScreen() {
               <Star size={16} color={primaryColor} />
               <Text className="text-sm font-bold" style={{ color: primaryColor }}>
                 Ask for Review
+              </Text>
+            </AnimatedPressable>
+          </View>
+        )}
+
+        {/* F-039 Phase 2 — in-store Virtual Try-On. Hidden unless the plan has
+            VIRTUAL_TRY_ON_V2; opens the full-screen capture/consent flow. */}
+        {tryOnEnabled && (
+          <View className="px-4 pb-2">
+            <AnimatedPressable
+              onPress={() =>
+                router.push({
+                  pathname: '/product/try-on',
+                  params: {
+                    productId: product.id,
+                    productName: product.name ?? product.category ?? '',
+                    photo: displayPhotos[0] ? displayUrl(displayPhotos[0]) : '',
+                  },
+                })
+              }
+              accessibilityRole="button"
+              accessibilityLabel="Try this outfit on a customer"
+              className="flex-row items-center justify-center gap-2 py-3.5 rounded-2xl border"
+              style={{ borderColor: primaryColor, backgroundColor: `${primaryColor}12` }}
+            >
+              <Camera size={16} color={primaryColor} />
+              <Text className="text-sm font-bold" style={{ color: primaryColor }}>
+                Try On Customer
               </Text>
             </AnimatedPressable>
           </View>

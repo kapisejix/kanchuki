@@ -10,7 +10,7 @@ import { API_URL as apiUrl } from '@/lib/apiUrl';
 // missing while /my-profile already PUT to this path, which made the
 // "Personalized recommendations" opt-out fail silently: fetch does not throw on
 // a 405, so the toggle looked saved and came back on reload (RC-026).
-const PASSPORT_PATHS = ['otp/send', 'otp/verify', 'me', 'logout', 'stores', 'events', 'preferences', 'profile', 'wishlist', 'recently-viewed', 'export', 'delete'];
+const PASSPORT_PATHS = ['otp/send', 'otp/verify', 'me', 'logout', 'stores', 'events', 'preferences', 'profile', 'wishlist', 'recently-viewed', 'export', 'delete', 'try-on/consent', 'try-on/withdraw'];
 
 type ProxyMethod = 'GET' | 'POST' | 'PUT';
 

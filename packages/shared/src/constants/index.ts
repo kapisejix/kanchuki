@@ -61,6 +61,42 @@ export function isPlanEnded(status: string | null | undefined): boolean {
 // so a row is always present; a missing one is a loud error, never a stale
 // number charged or shown.
 
+// ─── Admin-settable quota resources (F-010) ───────────────────────
+//
+// The values an admin may set a per-plan limit for. Two copies of this list used
+// to exist — a `z.enum([...])` in the API's PUT /admin/plan-limits and a
+// `RESOURCE_TYPES` array plus a hand-written union in
+// `apps/web/src/app/admin/plan-limits/page.tsx` — and they were the reason a
+// new resource could be added to the schema and be *unsettable* everywhere:
+// migration 119 seeded `TRY_ON_GENERATION` rows for all three plans, but the
+// value was in neither list, so the grid rendered no row for it and the PUT
+// rejected it. One list, imported by both, is the fix rather than a third guard
+// watching the first two (the RC-034/RC-041 shape: one rule, several copies,
+// only some of them enforced).
+//
+// NOT derived from the `QuotaResourceType` Prisma enum on purpose: that enum
+// also carries `@deprecated` values (TRY_ON, removed in migration 082) which
+// must stay dead, and the two lists answer different questions — "what can be
+// stored" versus "what may an admin name". A test reads `schema.prisma` and
+// asserts every entry here is a real enum value, so a typo cannot ship a value
+// the column will reject at write time.
+//
+// Adding a value here is what makes a new resource settable in BOTH apps; the
+// server still fails open on a missing row (see `effectiveLimit`), so a value
+// that is listable but unseeded shows as blank rather than as a limit of zero.
+export const PLAN_LIMIT_RESOURCE_TYPES = [
+  'PRODUCT_UPLOAD',
+  'AI_TAGGING_CALL',
+  'IMAGE_CROP',
+  'BG_REMOVAL',
+  'API_REQUEST',
+  'STUDIO_SHOOT',
+  // F-039 Phase 2 — metered CatVTON generations (retailer-side monthly cap).
+  'TRY_ON_GENERATION',
+] as const;
+
+export type PlanLimitResource = (typeof PLAN_LIMIT_RESOURCE_TYPES)[number];
+
 // ─── Indian Ethnic Wear Categories ───────────────────────────────
 
 export const PRODUCT_CATEGORIES = [

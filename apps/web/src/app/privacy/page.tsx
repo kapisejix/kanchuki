@@ -15,7 +15,7 @@ export default function PrivacyPolicyPage() {
         </Link>
 
         <h1 className="mt-6 font-display text-3xl font-semibold">Privacy Policy</h1>
-        <p className="mt-2 text-sm text-carbon/50">Last updated: September 24, 2026</p>
+        <p className="mt-2 text-sm text-carbon/50">Last updated: September 26, 2026</p>
 
         <div className="mt-8 space-y-6 text-carbon/70">
           <p>
@@ -233,6 +233,53 @@ export default function PrivacyPolicyPage() {
               file is soft-deleted at once and permanently purged after 15 days — including
               the copy in our write-only recovery vault (see above). Deleting a retailer
               account removes its photos the same way. To have a photo deleted sooner, email{' '}
+              <a href="mailto:privacy@kanchuki.app" className="text-cobalt-600 hover:underline">
+                privacy@kanchuki.app
+              </a>
+              .
+            </p>
+          </section>
+
+          {/* The anchor here is load-bearing: TRY_ON_CONSENT.full_notice_url
+              (@kanchuki/shared) points at #virtual-try-on, and that constant is
+              what the try-on consent screen links to. Rename the id and the
+              "read more" link lands on the top of the page instead — so the
+              guard test derives the id from the constant rather than naming it
+              twice. */}
+          <section id="virtual-try-on">
+            <h2 className="font-display text-xl font-semibold text-carbon">
+              Virtual try-on: photos of you
+            </h2>
+            <p>
+              A store may offer a virtual try-on, which uses AI to show you wearing an
+              outfit. It is always your choice: nothing happens until you read a short
+              notice and agree to it.
+            </p>
+            <p>
+              <strong>The photo you give us is never saved.</strong> It is used to make
+              the picture and then it is gone &mdash; not kept on our servers, not in our
+              database, not handed to any other store.
+            </p>
+            <p>
+              <strong>The picture we make is saved</strong>, because you and the store
+              need to be able to look at it again or share it. It is stored on that
+              store&apos;s account, is not shown publicly, and opens only through a
+              private link that expires within an hour. If a store offered you a try-on
+              at the counter instead of on your own phone, the same applies &mdash; you
+              are asked at the counter too.
+            </p>
+            <p>
+              <strong>Neither photo is used to train AI models.</strong>
+            </p>
+            <p>
+              <strong>You can take this back.</strong> Withdraw your consent at any time
+              from{' '}
+              <Link href="/my-profile" className="text-cobalt-600 hover:underline">
+                My Profile
+              </Link>
+              , and every try-on picture we made for you is deleted. If a try-on picture
+              of you was made in a store rather than on your own phone, you can ask that
+              store to delete it, or email us at{' '}
               <a href="mailto:privacy@kanchuki.app" className="text-cobalt-600 hover:underline">
                 privacy@kanchuki.app
               </a>

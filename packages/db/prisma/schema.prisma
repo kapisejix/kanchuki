@@ -1321,6 +1321,21 @@ model TryOnJob {
   result_url          String?
   failure_reason      String?
 
+  // ─── Consent (F-039 T6) ───────────────────────────────────────
+  // The generated image is a photo of a real person AND it is stored, so a
+  // consent record travels with the job that stored it. A passport shopper's
+  // grant is remembered (a ConsentEvent row), so it is written here without
+  // re-asking; an in-store walk-in has no account to remember it against, so
+  // it is re-taken per generation and `consent_method` marks which happened.
+  // Still no column for the input photo — that one is never persisted at all.
+  consent_at             DateTime?
+  consent_notice_version String?   // TRY_ON_CONSENT.version shown + accepted
+  consent_method         String?   // PASSPORT | IN_STORE
+  // Set by the shopper's withdrawal route, which also deletes the stored
+  // result. `result_url` is nulled at the same time, so a job with this set
+  // reads as "there was an image, and it was deleted on request".
+  consent_withdrawn_at   DateTime?
+
   created_at   DateTime  @default(now())
   completed_at DateTime?
 

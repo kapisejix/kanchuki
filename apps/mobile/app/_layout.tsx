@@ -240,6 +240,10 @@ function AppShell() {
           <Stack.Screen name="product/[id]" />
           <Stack.Screen name="product/[id]/add-color" />
           <Stack.Screen name="product/[id]/add-photos" />
+          {/* F-039 Phase 2 — in-store try-on. Full-screen because it owns the
+              camera. Its entry point is gated on the VIRTUAL_TRY_ON_V2 plan
+              feature, but the route 404s without that flag regardless. */}
+          <Stack.Screen name="product/try-on" options={{ presentation: "fullScreenModal" }} />
           <Stack.Screen name="collection/new" />
           <Stack.Screen name="collection/[id]" />
           <Stack.Screen name="category/new" />

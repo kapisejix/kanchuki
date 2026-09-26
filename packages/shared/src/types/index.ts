@@ -310,6 +310,11 @@ export interface PublicProductDetail extends PublicProduct {
   spin_frames: string[]
   variants: { color: string; photo_url: string | null; status: ProductStatus }[]
   is_unstitched?: boolean
+  // F-039 Phase 2: whether this store's plan has VIRTUAL_TRY_ON_V2 enabled.
+  // Drives the customer "Try it on" button; the API route re-checks the same
+  // flag server-side, so this is presentation only. Absent on older cached
+  // payloads — treat undefined as false.
+  try_on_enabled?: boolean
 }
 
 // ─── Search ──────────────────────────────────────────────────────

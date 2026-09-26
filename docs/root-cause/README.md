@@ -30,7 +30,7 @@ comm -13 <(cat 'docs/root-cause/root-cause issues.md' 'docs/root-cause/root-caus
 
 The first command is the one that matters — it is what catches a fixed bug whose row was never added. It found `RC-037` on 2026-09-25, two days after that row should have landed: the entry existed, the commit message used the ID, and rule 4 was simply not followed.
 
-**The invariant is the ID set, not the row order.** The table is newest-first by *fix date*, so the numbers read out of order on purpose (`RC-033` sits below `RC-032`; `RC-034`/`RC-035` share one commit). As of 2026-09-25 the set is contiguous `RC-001…RC-043` — if a number is missing from that range, exactly one of the two commands above is non-empty.
+**The invariant is the ID set, not the row order.** The table is newest-first by *fix date*, so the numbers read out of order on purpose (`RC-033` sits below `RC-032`; `RC-034`/`RC-035` share one commit). As of 2026-09-26 the set is contiguous `RC-001…RC-044` — if a number is missing from that range, exactly one of the two commands above is non-empty. `RC-044` (`RC-001…RC-043` were the set at the split's last check) is the F-039 withdrawal-deletion entry, added 2026-09-26.
 
 ---
 
@@ -78,20 +78,10 @@ Run this before any production release. "Auto" = covered by a test that fails wi
 
 ## ⚠️ RC IDs referenced in commits that are NOT in the tracker yet
 
-**RC-028 … RC-038** appear in commit messages but have **no entry in `root-cause issues.md`**. All of them are on **unmerged branches** — none is an ancestor of `origin/main` — so by rule 2 they are not yet "shipped bugs":
+**Currently: none.** The two commands under *Checking the tracker table* both print nothing, and the ID set is contiguous `RC-001…RC-044`.
 
-| RC | Commit | Subject | Branch |
-|---|---|---|---|
-| RC-028 | `ab086d62` | `fix(growth): promotion delete 42501 — route through purge client` | `chore/remove-text-to-image-studio-engines` |
-| RC-029 | `d66ead2c` | `feat(referrals): retailer affiliate program T1+T2 + purge-grant audit` | same |
-| RC-030 | `d738242c`, `baf9d665` | `fix(purge): sweep the 7 bare-retailer_id tables and guard the list with the schema` | same |
-| RC-031 | `40e7d53b` | `feat(referrals): T3 affiliate code namespace + mint endpoint` | same |
-| RC-032 | `49dae2fb` | `feat(referrals): T4 affiliate capture at signup, on the field F-018 already owns` | same |
-| RC-033 | `efc4446f` | `feat(referrals): T5 qualification cron — pending → qualified/clawed_back` | same |
-| RC-034 | `1c543d15` | `fix(admin): replace three drifted access lists with one shared, derivation-guarded list` | same |
-| RC-035 | `1c543d15` | stale assertion — a test pinned `grok_imagine` as the "unverified price" example after its price was verified | same |
-| RC-036 | `b5a31478` | `fix(referrals): close the double-pay claim race found by the early §11 run` | same |
-| RC-037 | `d585d26b` | `fix(referrals): five T7 payout defects hidden by mocks` | same |
-| RC-038 | `91ae9916` | `fix(web): run the customer e2e suite for real, fix the 204→503 proxy bug it hid` | `fix/e2e-customer-my-stores` |
+**This section was last stale on 2026-09-26.** It previously listed **RC-028 … RC-038** as "in commit messages but with no entry", on the reasoning that their branches were unmerged. Every one of those branches has since merged (`ab086d62`, `d66ead2c`, `d738242c`, `1c543d15`, `b5a31478` are all ancestors of the current `HEAD`), all eleven entries and their `CLAUDE.md` rows landed, and the table below went on saying otherwise for several days. The list is kept here rather than deleted because the **lesson** is the durable part:
 
-**Action when those branches merge:** add the eleven entries to `root-cause issues.md` with their proof lines, and add their rows to the `CLAUDE.md` RC table. **Do not renumber them** — the IDs are already in commit messages, so the numbers are spoken for whether or not the file knows yet.
+- **A "these are still owed" list is a claim with an expiry date, and nothing re-derives it.** This is the RC-043 failure shape one level up — the bug's own lesson ("an inventory nothing re-derives drifts, and a hand-written list is not evidence") applied to the tracker about the tracker. The two `comm` commands above are the machine-checkable half; this section is not, so it drifted exactly where it could not be checked.
+- **Do not renumber an ID that is already in a commit message.** RC-028 … RC-038 are spoken for regardless of whether an entry existed at the time — which is why they were reserved here rather than reissued, and why the reservation was correct even after the entries were late.
+- **When this section is next populated, put a command next to it.** If a set of IDs is genuinely referenced-but-unwritten, the honest form names the commits and the branch and says when it was last true, so the next reader can re-run it instead of trusting it.

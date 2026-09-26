@@ -8,8 +8,10 @@ import type { TryOnJobData } from './tryon.js';
 const {
   mockProductFindFirst,
   mockJobUpdate,
+  mockJobUpdateMany,
   mockGenerateTryOn,
   mockSaveTryOnResultToR2,
+  mockDeleteObject,
   mockClothTypeForCategory,
   mockIsUnsupportedTryOnCategory,
   mockIncrementUsage,
@@ -18,8 +20,10 @@ const {
 } = vi.hoisted(() => ({
   mockProductFindFirst: vi.fn(),
   mockJobUpdate: vi.fn(),
+  mockJobUpdateMany: vi.fn(),
   mockGenerateTryOn: vi.fn(),
   mockSaveTryOnResultToR2: vi.fn(),
+  mockDeleteObject: vi.fn(),
   mockClothTypeForCategory: vi.fn(),
   mockIsUnsupportedTryOnCategory: vi.fn(),
   mockIncrementUsage: vi.fn(),
@@ -30,13 +34,16 @@ const {
 vi.mock('@kanchuki/db', () => ({
   prisma: {
     product: { findFirst: mockProductFindFirst },
-    tryOnJob: { update: mockJobUpdate },
+    // `update` is markFailed's unconditional write; `updateMany` is the guarded
+    // completion, which is conditional on the consent still being live.
+    tryOnJob: { update: mockJobUpdate, updateMany: mockJobUpdateMany },
   },
 }));
 
 vi.mock('@kanchuki/ai', () => ({
   generateTryOn: mockGenerateTryOn,
   saveTryOnResultToR2: mockSaveTryOnResultToR2,
+  deleteObject: mockDeleteObject,
   getDownloadPresignedUrl: vi.fn(),
   clothTypeForCategory: mockClothTypeForCategory,
   isUnsupportedTryOnCategory: mockIsUnsupportedTryOnCategory,
@@ -75,6 +82,9 @@ beforeEach(() => {
   mockGenerateTryOn.mockResolvedValue({ outputUrl: 'https://worker/result.jpg', latencyMs: 900 });
   mockSaveTryOnResultToR2.mockResolvedValue('tryon-results/tryon_1/result.jpg');
   mockJobUpdate.mockResolvedValue({});
+  // The row matched — i.e. no withdrawal landed while the GPU was working.
+  mockJobUpdateMany.mockResolvedValue({ count: 1 });
+  mockDeleteObject.mockResolvedValue(undefined);
   mockIncrementUsage.mockResolvedValue(undefined);
   mockIncrementCustomerUsage.mockResolvedValue(undefined);
 });
@@ -94,21 +104,64 @@ describe('handleTryOn', () => {
     expect(mockSaveTryOnResultToR2).toHaveBeenCalledTimes(1);
     expect(mockSaveTryOnResultToR2).toHaveBeenCalledWith('tryon_1', 'https://worker/result.jpg');
 
-    expect(mockJobUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { id: 'tryon_1' },
-        data: expect.objectContaining({
-          status: 'COMPLETED',
-          result_url: 'tryon-results/tryon_1/result.jpg',
-        }),
+    // The completion is conditional on the consent still being live — the
+    // WHERE is the check, and the write is its consequence.
+    expect(mockJobUpdateMany).toHaveBeenCalledWith({
+      where: { id: 'tryon_1', consent_withdrawn_at: null },
+      data: expect.objectContaining({
+        status: 'COMPLETED',
+        result_url: 'tryon-results/tryon_1/result.jpg',
       }),
-    );
+    });
+    // Nothing was withdrawn, so the image it just wrote is kept.
+    expect(mockDeleteObject).not.toHaveBeenCalled();
     expect(mockIncrementUsage).toHaveBeenCalledWith('retailer_1', 'TRY_ON_GENERATION');
     // A retailer job does not touch a shopper's counter.
     expect(mockIncrementCustomerUsage).not.toHaveBeenCalled();
   });
 
   it('increments both counters for a customer job', async () => {
+    await handleTryOn({ ...DATA, customer_account_id: 'acct_1' });
+
+    expect(mockIncrementUsage).toHaveBeenCalledWith('retailer_1', 'TRY_ON_GENERATION');
+    expect(mockIncrementCustomerUsage).toHaveBeenCalledWith('acct_1', 'TRY_ON_GENERATION');
+  });
+
+  it('deletes the image it wrote when consent was withdrawn mid-run', async () => {
+    // The withdrawal landed while the GPU was working, so the row already
+    // carries `consent_withdrawn_at` and the guarded write matches nothing.
+    mockJobUpdateMany.mockResolvedValue({ count: 0 });
+
+    await handleTryOn({ ...DATA, customer_account_id: 'acct_1' });
+
+    // It was written to R2 before the loss was known...
+    expect(mockSaveTryOnResultToR2).toHaveBeenCalledTimes(1);
+    // ...and is deleted in the same run, so it cannot outlive the withdrawal.
+    expect(mockDeleteObject).toHaveBeenCalledWith('tryon-results/tryon_1/result.jpg');
+    // The completion write is not retried unconditionally: re-attaching a key to
+    // a withdrawn row is the thing the condition exists to prevent.
+    expect(mockJobUpdate).not.toHaveBeenCalled();
+  });
+
+  it('survives a failed cleanup delete, leaving the row for the sweep to retry', async () => {
+    mockJobUpdateMany.mockResolvedValue({ count: 0 });
+    mockDeleteObject.mockRejectedValue(new Error('R2 unreachable'));
+
+    // Must not throw — the generation itself succeeded, and a failed cleanup is
+    // the deletion sweep's job, not an error that should fail the BullMQ job.
+    await expect(handleTryOn(DATA)).resolves.toBeUndefined();
+
+    expect(mockDeleteObject).toHaveBeenCalled();
+    // Nothing cleared the key: it is the sweep's only way to find the object.
+    expect(mockJobUpdateMany).toHaveBeenCalledTimes(1);
+  });
+
+  it('still meters a generation that was withdrawn mid-run', async () => {
+    // Both counters, deliberately. The GPU ran either way, and skipping the
+    // store's increment would make withdraw-and-regenerate free — a shopper can
+    // re-grant (`hasLiveTryOnConsent`), so that loop is reachable from the UI.
+    mockJobUpdateMany.mockResolvedValue({ count: 0 });
+
     await handleTryOn({ ...DATA, customer_account_id: 'acct_1' });
 
     expect(mockIncrementUsage).toHaveBeenCalledWith('retailer_1', 'TRY_ON_GENERATION');

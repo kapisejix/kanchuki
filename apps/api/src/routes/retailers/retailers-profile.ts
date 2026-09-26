@@ -2,6 +2,7 @@ import { type Prisma, prisma } from '@kanchuki/db';
 import { generateCollectionSlug } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
+import { getEnabledFeatures } from '../../lib/features.js';
 import { sendOtpViaMsg91, verifyStoredOtp } from '../../lib/msg91-otp.js';
 import {
   type ReferralCaptureReport,
@@ -64,13 +65,18 @@ export const retailersProfileRoutes: FastifyPluginAsync = async (server) => {
     });
     if (!retailer) throw notFound('Retailer');
 
-    const [productCount, customerCount] = await Promise.all([
+    const [productCount, customerCount, features] = await Promise.all([
       prisma.product.count({
         where: { retailer_id: request.retailerId, deleted_at: null },
       }),
       prisma.customer.count({
         where: { retailer_id: request.retailerId, deleted_at: null },
       }),
+      // F-013 plan capabilities. The app gates entry points on this list (e.g.
+      // the virtual try-on screen shows only when VIRTUAL_TRY_ON_V2 is in it),
+      // but that is a convenience only — every gated route re-checks
+      // server-side with hasFeature(), because a client can be anything.
+      getEnabledFeatures(request.retailerId),
     ]);
 
     // Secret access token never rides along on the generic profile fetch —
@@ -81,6 +87,7 @@ export const retailersProfileRoutes: FastifyPluginAsync = async (server) => {
       data: {
         ...safeRetailer,
         whatsapp_api_configured: !!retailer.whatsapp_api_access_token,
+        features,
         usage: { product_count: productCount, customer_count: customerCount },
       },
     };

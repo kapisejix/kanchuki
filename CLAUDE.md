@@ -247,6 +247,7 @@ Payment: Razorpay (UPI first). Retailer pays base + 18% GST. **Source of truth: 
 
 | ID | Root cause (one line) | Fixed in |
 |----|----------------------|----------|
+| RC-044 | A withdrawn try-on's image was deleted by two separate best-effort code paths (the withdraw inline delete, the job's unconditional completion write) and **neither left a durable record or a retry** — so the pointer and the promise lived in the same column, and the failure state (withdrawn row still holding a key) had no reader. | root-cause issues.md |
 | RC-043 | Eleven copies of one test helper, two of them broken, and nothing tested the helper — so a guard that could not fail read exactly like a guard that passed. | root-cause issues.md |
 | RC-042 | The keyboard inset was a platform behaviour every overlay/screen had to apply and none did, because it lived as a convention (copy-pasted `useKeyboardInset` calls / `Platform.OS === 'ios' ? 'padding' : 'height'` ternarie... | root-cause issues.md |
 | RC-041 | A package name hand-duplicated across two files with no shared source and nothing pinning them together. | root-cause issues.md |

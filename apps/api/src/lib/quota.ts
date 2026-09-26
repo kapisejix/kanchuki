@@ -54,7 +54,9 @@ async function effectiveLimit(
 async function effectiveCustomerLimit(
   resourceType: QuotaResourceType,
 ): Promise<{ limit: number; period: QuotaPeriod } | null> {
-  const row = await prisma.customerResourceLimit.findUnique({ where: { resource_type: resourceType } });
+  const row = await prisma.customerResourceLimit.findUnique({
+    where: { resource_type: resourceType },
+  });
   if (!row) return null;
   return { limit: row.limit_per_period, period: row.period };
 }

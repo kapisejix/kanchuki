@@ -36,7 +36,8 @@ describe('try-on photo store', () => {
   it('discard drops the photo without using it', () => {
     putTryOnPhoto('job_discard', Buffer.from('abc'), 'image/jpeg');
     discardTryOnPhoto('job_discard');
-    expect(takeTryOnPhoto('job_discard')).toBeNull();    expect(tryOnPhotoCount()).toBe(0);
+    expect(takeTryOnPhoto('job_discard')).toBeNull();
+    expect(tryOnPhotoCount()).toBe(0);
   });
 
   it('sweeps an expired entry when the next photo is put', () => {

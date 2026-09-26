@@ -2,6 +2,7 @@
 import type { FastifyPluginAsync } from 'fastify';
 
 import {
+  type QuotaResourceType,
   encryptSecret,
   getReplicaPrisma,
   getSecret,
@@ -11,11 +12,29 @@ import {
   prisma,
   vaultDelete,
 } from '@kanchuki/db';
-import { INTEGRATION_KEYS, R2_PATHS } from '@kanchuki/shared';
+import { INTEGRATION_KEYS, PLAN_LIMIT_RESOURCE_TYPES, R2_PATHS } from '@kanchuki/shared';
 import { z } from 'zod';
 import { forbidden, notFound, validationError } from '../../plugins/error-handler.js';
 import { adminAuthPreHandler } from '../admin-auth.js';
 import { planPriceMissing } from '../billing/billing-helpers.js';
+
+/**
+ * Every resource that has a CUSTOMER-side writer.
+ *
+ * The `customer_resource_limits` table is general (one row per resource, no
+ * plan), but only resources some code path actually checks belong on the admin
+ * screen: a number with no writer reads as "we cap this" and caps nothing. One
+ * consumer today — `checkCustomerQuota(customerAccountId, 'TRY_ON_GENERATION')`
+ * in `routes/products/products-tryon.ts` (F-039 Phase 2).
+ *
+ * The list lives here and not in `@kanchuki/shared` because there is exactly one
+ * consumer (this route pair); sharing a constant with nowhere else to import it
+ * is how the two plan-limits copies started. The screen does NOT keep its own
+ * copy — it renders whatever `GET /plan-limits/customer` returns.
+ */
+export const CUSTOMER_LIMIT_RESOURCE_TYPES = [
+  'TRY_ON_GENERATION',
+] as const satisfies readonly QuotaResourceType[];
 
 export const adminPlansRoutes: FastifyPluginAsync = async (server) => {
   server.addHook('preHandler', adminAuthPreHandler);
@@ -109,14 +128,9 @@ export const adminPlansRoutes: FastifyPluginAsync = async (server) => {
     const body = z
       .object({
         plan: z.enum(['STARTER', 'GROWTH', 'PRO']),
-        resource_type: z.enum([
-          'PRODUCT_UPLOAD',
-          'AI_TAGGING_CALL',
-          'IMAGE_CROP',
-          'BG_REMOVAL',
-          'API_REQUEST',
-          'STUDIO_SHOOT',
-        ]),
+        // The shared list, not a local copy — it was a second hand-kept copy
+        // that let a seeded resource (TRY_ON_GENERATION) be unsettable here.
+        resource_type: z.enum(PLAN_LIMIT_RESOURCE_TYPES),
         limit_per_period: z.number().int().min(-1),
         period: z.enum(['DAY', 'MONTH', 'LIFETIME']),
       })
@@ -150,6 +164,103 @@ export const adminPlansRoutes: FastifyPluginAsync = async (server) => {
     });
 
     request.log.info({ plan: body.plan, resource_type: body.resource_type }, 'Plan limit updated');
+
+    return { data: row };
+  });
+
+  // ─── Customer-side limits (F-039 Phase 2) ───────────────────────
+  //
+  // Nested under `/plan-limits` deliberately. A shopper has no plan, so this is
+  // not a row of the matrix above — but it IS the same kind of number (a quota
+  // that gates a metered, money-spending call), so it belongs on the same admin
+  // screen, under the same access rule. The path keeps the first path segment
+  // `plan-limits`, which is what `isSuperAdminOnlyAdminPath()` classifies as
+  // Super-Admin-only (money) — a new top-level segment would be an unclassified
+  // route for a plain ADMIN key until somebody remembered to add it to the list
+  // in `packages/shared/src/constants/admin-access.ts` (the RC-034 fail-open).
+  //
+  // GET returns one entry per customer-side resource WHETHER OR NOT A ROW EXISTS.
+  // The screen renders exactly this list, so it cannot drift from the server the
+  // way two hand-kept arrays do; an unseeded resource comes back as `configured:
+  // false` with a null limit (the server fails open on a missing row) rather than
+  // silently vanishing from the page the way migration 119's seeded
+  // TRY_ON_GENERATION row did.
+  server.get('/plan-limits/customer', async () => {
+    const rows = await prisma.customerResourceLimit.findMany({
+      where: { resource_type: { in: [...CUSTOMER_LIMIT_RESOURCE_TYPES] } },
+    });
+    const byType = new Map(rows.map((row) => [row.resource_type, row]));
+
+    return {
+      data: CUSTOMER_LIMIT_RESOURCE_TYPES.map((resourceType) => {
+        const row = byType.get(resourceType);
+        return {
+          resource_type: resourceType,
+          limit_per_period: row?.limit_per_period ?? null,
+          period: row?.period ?? 'MONTH',
+          updated_at: row?.updated_at ?? null,
+          configured: Boolean(row),
+        };
+      }),
+    };
+  });
+
+  // ─── PUT /admin/plan-limits/customer ────────────────────────────
+  // Upsert one customer-side limit. Same contract as the plan row above: a
+  // missing row means unlimited, so this is also how the cap gets turned on.
+  //
+  // `resource_type` is validated against the customer allowlist rather than the
+  // full plan list — a plan-only resource would create a row that nothing reads,
+  // and an audit trail that says a cap exists when none does.
+  server.put('/plan-limits/customer', async (request) => {
+    const body = z
+      .object({
+        resource_type: z.enum(CUSTOMER_LIMIT_RESOURCE_TYPES),
+        limit_per_period: z.number().int().min(-1),
+        period: z.enum(['DAY', 'MONTH', 'LIFETIME']),
+        updated_by_id: z.string().optional(),
+      })
+      .parse(request.body);
+
+    const prev = await prisma.customerResourceLimit.findUnique({
+      where: { resource_type: body.resource_type },
+    });
+
+    const row = await prisma.customerResourceLimit.upsert({
+      where: { resource_type: body.resource_type },
+      create: {
+        resource_type: body.resource_type,
+        limit_per_period: body.limit_per_period,
+        period: body.period,
+        updated_by_id: body.updated_by_id,
+      },
+      update: {
+        limit_per_period: body.limit_per_period,
+        period: body.period,
+        updated_by_id: body.updated_by_id,
+      },
+    });
+
+    // Money-adjacent and shopper-visible, so before/after is recorded — an admin
+    // lowering the cap is the kind of change somebody will later ask about.
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'admin',
+        action: prev ? 'UPDATE' : 'CREATE',
+        resource_type: 'CustomerResourceLimit',
+        resource_id: body.resource_type,
+        metadata: {
+          before: prev ? { limit_per_period: prev.limit_per_period, period: prev.period } : null,
+          after: { limit_per_period: body.limit_per_period, period: body.period },
+        },
+        ip_address: request.ip,
+      },
+    });
+
+    request.log.info(
+      { resource_type: body.resource_type, limit_per_period: body.limit_per_period },
+      'Customer limit updated',
+    );
 
     return { data: row };
   });
@@ -222,6 +333,14 @@ export const adminPlansRoutes: FastifyPluginAsync = async (server) => {
           'CUSTOM_BACKGROUND_LIBRARY',
           'SPIN_360',
           'VIRTUAL_TRY_ON',
+          // F-039 Phase 2. This allowlist is what an admin may toggle, so a new
+          // feature that should be admin-enableable must be added BOTH here and
+          // in the web grid (admin/plan-features) — two hand-kept lists that
+          // drift silently otherwise (WHATSAPP_CATALOG_SYNC / SHOWCASE_DESIGNS /
+          // GROWTH_ENGINE are already enum values missing from both). It is NOT
+          // derived from the Prisma enum on purpose: the enum also carries
+          // @deprecated values that must stay non-toggleable.
+          'VIRTUAL_TRY_ON_V2',
           'WHATSAPP_BUSINESS_API',
           'CHECKOUT_CART',
           'DATA_EXPORT_CSV',

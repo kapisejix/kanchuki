@@ -2,19 +2,17 @@
 
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Gauge, IndianRupee, Save, Loader2 } from 'lucide-react'
+import { Gauge, IndianRupee, Save, Loader2, Users } from 'lucide-react'
+import { PLAN_LIMIT_RESOURCE_TYPES, type PlanLimitResource } from '@kanchuki/shared'
 import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
 
 type Plan = 'STARTER' | 'GROWTH' | 'PRO'
-type ResourceType =
-  | 'PRODUCT_UPLOAD'
-  | 'AI_TAGGING_CALL'
-  | 'IMAGE_CROP'
-  | 'BG_REMOVAL'
-  | 'API_REQUEST'
-  | 'STUDIO_SHOOT'
+// From the shared constant — this page used to carry its own union AND array,
+// which is how `TRY_ON_GENERATION` ended up settable nowhere (see the note on
+// PLAN_LIMIT_RESOURCE_TYPES). Adding a resource is now one edit in one file.
+type ResourceType = PlanLimitResource
 type Period = 'DAY' | 'MONTH' | 'LIFETIME'
 
 type PlanLimit = {
@@ -32,15 +30,23 @@ type PlanPricing = {
 }
 
 const PLANS: Plan[] = ['STARTER', 'GROWTH', 'PRO']
-const RESOURCE_TYPES: ResourceType[] = [
-  'PRODUCT_UPLOAD',
-  'AI_TAGGING_CALL',
-  'IMAGE_CROP',
-  'BG_REMOVAL',
-  'API_REQUEST',
-  'STUDIO_SHOOT',
-]
+const RESOURCE_TYPES = PLAN_LIMIT_RESOURCE_TYPES
 const PERIODS: Period[] = ['DAY', 'MONTH', 'LIFETIME']
+
+// Customer-side rows come from the API, NOT from a list here: `GET
+// /plan-limits/customer` returns one entry per resource with a customer-side
+// writer (whether or not a row exists yet), so the screen can never offer a
+// number the server would reject, nor hide one it would accept.
+type CustomerLimitRow = {
+  resource_type: string
+  limit_per_period: number | null
+  period: Period
+  configured: boolean
+}
+
+// Blank while editing = "no row", which the server reads as unlimited — same
+// convention as the plan cells above.
+type CustomerCell = { limit_per_period: string; period: Period }
 
 // One editable cell per (plan, resource_type) pair. A missing row means
 // "unlimited" (checkQuota fails open) — shown as blank, not zero.
@@ -65,13 +71,18 @@ export default function PlanLimitsPage() {
   })
   const [savingPrice, setSavingPrice] = useState<Plan | null>(null)
 
+  const [customerRows, setCustomerRows] = useState<CustomerLimitRow[]>([])
+  const [customerCells, setCustomerCells] = useState<Record<string, CustomerCell>>({})
+  const [savingCustomer, setSavingCustomer] = useState<string | null>(null)
+
   const key = (plan: Plan, resourceType: ResourceType) => `${plan}:${resourceType}`
 
   useEffect(() => {
     async function load() {
-      const [limitsRes, pricingRes] = await Promise.all([
+      const [limitsRes, pricingRes, customerRes] = await Promise.all([
         fetch(`${API_URL}/v1/admin/plan-limits`, adminGetOptions()),
         fetch(`${API_URL}/v1/admin/plan-pricing`, adminGetOptions()),
+        fetch(`${API_URL}/v1/admin/plan-limits/customer`, adminGetOptions()),
       ])
       const limitsJson = await limitsRes.json()
       const data: PlanLimit[] = limitsJson.data ?? []
@@ -97,6 +108,20 @@ export default function PlanLimitsPage() {
         }
         return next
       })
+
+      const customerJson = await customerRes.json()
+      const customerData: CustomerLimitRow[] = customerJson.data ?? []
+      setCustomerRows(customerData)
+      const nextCustomer: Record<string, CustomerCell> = {}
+      for (const row of customerData) {
+        nextCustomer[row.resource_type] = {
+          // An unconfigured row shows BLANK, not "0" — 0 would read as a cap of
+          // zero generations, the opposite of what a missing row means.
+          limit_per_period: row.limit_per_period === null ? '' : String(row.limit_per_period),
+          period: row.period,
+        }
+      }
+      setCustomerCells(nextCustomer)
 
       setLoading(false)
     }
@@ -126,6 +151,61 @@ export default function PlanLimitsPage() {
       setStatus(`❌ ${err instanceof Error ? err.message : 'Save failed'}`)
     } finally {
       setSavingPrice(null)
+    }
+  }
+
+  const saveCustomer = async (resourceType: string) => {
+    const cell = customerCells[resourceType] ?? { limit_per_period: '', period: 'MONTH' as Period }
+    const limit = cell.limit_per_period.trim()
+    if (limit === '') {
+      setStatus('❌ Enter a number, or -1 for unlimited')
+      return
+    }
+
+    setSavingCustomer(resourceType)
+    setStatus('')
+    try {
+      const res = await fetch(`${API_URL}/v1/admin/plan-limits/customer`, {
+        ...(await adminMutateOptions()),
+        method: 'PUT',
+        body: JSON.stringify({
+          resource_type: resourceType,
+          limit_per_period: Number(limit),
+          period: cell.period,
+        }),
+      })
+      if (!res.ok) throw new Error('Save failed')
+      const json = await res.json()
+      setCustomerRows((prev) =>
+        prev.map((row) =>
+          row.resource_type === resourceType
+            ? {
+                ...row,
+                limit_per_period: json.data.limit_per_period,
+                period: json.data.period,
+                configured: true,
+              }
+            : row,
+        ),
+      )
+      // Re-seed the editable cell from the response as well. The field renders
+      // from `customerCells`, not from the row, so without this the stored value
+      // never reaches the screen: a number the API normalises (or bounds) would
+      // keep displaying exactly what was typed, which is a quiet misreport of
+      // the cap actually in force.
+      setCustomerCells((prev) => ({
+        ...prev,
+        [resourceType]: {
+          limit_per_period:
+            json.data.limit_per_period === null ? '' : String(json.data.limit_per_period),
+          period: json.data.period as Period,
+        },
+      }))
+      setStatus(`✅ Customer ${resourceType} saved`)
+    } catch (err) {
+      setStatus(`❌ ${err instanceof Error ? err.message : 'Save failed'}`)
+    } finally {
+      setSavingCustomer(null)
     }
   }
 
@@ -317,6 +397,104 @@ export default function PlanLimitsPage() {
             ))}
           </tbody>
         </table>
+      </div>
+
+      <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-6 overflow-x-auto">
+        <div className="flex items-center gap-2 mb-4">
+          <Users size={16} className="text-cyan-500" />
+          <h2 className="text-sm font-semibold text-gray-900">Customer Limits</h2>
+        </div>
+        <p className="text-xs text-gray-500 mb-4">
+          Per-SHOPPER caps (F-039 Phase 2). A shopper has no plan, so this is one number for the whole
+          platform rather than a column per tier. A try-on counts against the shopper&apos;s cap AND the
+          store&apos;s own TRY_ON_GENERATION limit above — the two are separate on purpose, and whichever
+          runs out first is the one the shopper is told about. Blank = no row = unlimited.
+        </p>
+        {customerRows.length === 0 ? (
+          <p className="text-xs text-gray-400">No customer-metered resources yet.</p>
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-100">
+                <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500">Resource</th>
+                <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500">Per shopper</th>
+                <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500">Period</th>
+                <th className="px-3 py-2" />
+              </tr>
+            </thead>
+            <tbody>
+              {customerRows.map((row) => {
+                const cell = customerCells[row.resource_type] ?? {
+                  limit_per_period: '',
+                  period: 'MONTH' as Period,
+                }
+                return (
+                  <tr key={row.resource_type} className="border-b border-gray-50">
+                    <td className="px-3 py-3 font-mono text-xs text-gray-600 whitespace-nowrap">
+                      {row.resource_type}
+                      {/* Says which rows are live vs merely listable — an
+                          unseeded resource fails open, so "blank" here means
+                          no cap in force, not a cap of zero. */}
+                      {!row.configured && (
+                        <span className="ml-2 text-[10px] uppercase tracking-wide text-amber-600">
+                          not set
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2">
+                      <input
+                        type="number"
+                        value={cell.limit_per_period}
+                        onChange={(e) =>
+                          setCustomerCells((prev) => ({
+                            ...prev,
+                            [row.resource_type]: { ...cell, limit_per_period: e.target.value },
+                          }))
+                        }
+                        placeholder="unlimited"
+                        aria-label={`${row.resource_type} per-shopper limit`}
+                        className="w-24 px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                      />
+                    </td>
+                    <td className="px-3 py-2">
+                      <select
+                        value={cell.period}
+                        onChange={(e) =>
+                          setCustomerCells((prev) => ({
+                            ...prev,
+                            [row.resource_type]: { ...cell, period: e.target.value as Period },
+                          }))
+                        }
+                        aria-label={`${row.resource_type} period`}
+                        className="px-1.5 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                      >
+                        {PERIODS.map((p) => (
+                          <option key={p} value={p}>
+                            {p}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="px-3 py-2">
+                      <button
+                        onClick={() => saveCustomer(row.resource_type)}
+                        disabled={savingCustomer === row.resource_type}
+                        className="p-1.5 text-gray-400 hover:text-cyan-600 disabled:opacity-50 transition-colors"
+                        aria-label={`Save customer ${row.resource_type}`}
+                      >
+                        {savingCustomer === row.resource_type ? (
+                          <Loader2 size={14} className="animate-spin" />
+                        ) : (
+                          <Save size={14} />
+                        )}
+                      </button>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        )}
       </div>
     </motion.div>
   )

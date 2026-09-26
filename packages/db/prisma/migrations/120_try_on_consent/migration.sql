@@ -1,0 +1,82 @@
+-- 120_try_on_consent
+--
+-- F-039 Phase 2 consent columns (docs/tasks/pending/catvton-runpod-tryon-launch.md T6).
+-- Runs AFTER 119, which creates try_on_jobs.
+--
+-- WHY THIS IS A NEW MIGRATION AND NOT AN EDIT TO 119
+--
+-- 119 had only ever been PROPOSED when this work started (it is still not
+-- applied as of writing). Editing an unapplied migration is tempting for two
+-- columns, but it rewrites a file some local database may already have applied,
+-- which shows up as `_prisma_migrations` drift and a checksum mismatch rather
+-- than as a clear error. A forward migration costs one numbered file and cannot
+-- be wrong in that way.
+--
+-- WHAT THESE COLUMNS ARE FOR
+--
+-- try_on_jobs.result_url holds the R2 KEY of a generated image — a photo of a
+-- real person — and that image IS stored (unlike the input photo, which is not
+-- stored at all, on this table or anywhere else). A stored photograph of a
+-- person needs a consent record next to it, and there are two shapes of consent
+-- because there are two callers:
+--
+--   PASSPORT  a passport-logged-in shopper, whose grant is remembered as a
+--             `ConsentEvent` (`TRY_ON_CONSENTED`) and therefore recorded on
+--             later jobs without re-asking. They can withdraw; withdrawal logs
+--             `TRY_ON_CONSENT_WITHDRAWN` and deletes their stored results.
+--
+--   IN_STORE  a walk-in customer the retailer photographs in the shop. There is
+--             no account to remember a grant against (`customer_account_id` is
+--             null by design — see 119), so consent is taken per generation and
+--             this row is the only record that it was.
+--
+-- Consent is therefore auditable for both callers off one table, and
+-- `consent_notice_version` points at the exact wording accepted (the version
+-- string is `TRY_ON_CONSENT.version` in @kanchuki/shared, which is also what
+-- both UIs render — one source of truth, so the recorded version always names
+-- text a person could actually have seen).
+--
+-- WHY NOT ConsentEvent ALONE
+--
+-- `consent_events.customer_account_id` is NOT NULL, so it structurally cannot
+-- record the in-store case. Leaving the walk-in path unrecorded — or worse,
+-- relying on a UI checkbox with nothing behind it — is the RC-038 shape (a
+-- contract in prose with no producer). Both callers matter: a retailer
+-- photographing a customer is the more common flow, and DPDP does not care
+-- which one it was.
+--
+-- NO NEW GRANTS / SWEEPS / RLS
+--
+-- 119's header covers all three: try_on_jobs already has SELECT/INSERT/UPDATE
+-- from ALTER DEFAULT PRIVILEGES, it has a real CASCADE FK so the retailer purge
+-- carries it, and it deliberately ships without RLS. Adding columns changes none
+-- of that. DELETE is still not granted — the withdrawal path UPDATEs
+-- `result_url` to NULL (and deletes the R2 object, which is object storage, not
+-- this table) rather than deleting the job, because the job is also the quota
+-- and audit trail.
+
+-- ─── AlterTable: try_on_jobs ─────────────────────────────────────
+-- Nullable throughout: every row that exists before this migration was created
+-- without a consent gate, and a NOT NULL column would have to invent a value
+-- for them. Null means "no consent record", which is the true answer for them.
+
+ALTER TABLE "try_on_jobs" ADD COLUMN "consent_at" TIMESTAMP(3);
+ALTER TABLE "try_on_jobs" ADD COLUMN "consent_notice_version" TEXT;
+ALTER TABLE "try_on_jobs" ADD COLUMN "consent_method" TEXT;
+ALTER TABLE "try_on_jobs" ADD COLUMN "consent_withdrawn_at" TIMESTAMP(3);
+
+-- NO INDEX ON consent_withdrawn_at, deliberately.
+--
+-- The withdrawal lookup filters `customer_account_id = ? AND
+-- consent_withdrawn_at IS NULL`, and 119 already indexes customer_account_id —
+-- the selective half. A shopper holds a handful of jobs (their plan starts at
+-- 3/month), so the second column buys nothing.
+--
+-- It was briefly written here, and removed on noticing the asymmetry it would
+-- have created: an index in the SQL that `schema.prisma` does not declare is
+-- drift the other way round — `prisma migrate diff` would report the database
+-- as holding an object the schema does not know about. This repo's
+-- `_prisma_migrations` gaps are already an explicit DR known-gap; adding a hand-
+-- written index would add to that class for no query benefit. If a composite
+-- index is ever genuinely needed, declare it with `@@index` in the schema and
+-- let the migration match.

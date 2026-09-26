@@ -100,12 +100,17 @@ CREATE POLICY "retailers_own_data" ON products
 
 ## 3. Customer Photo Privacy (VTO) — REMOVED
 
+> ⚠️ **Superseded in part, 2026-09-26.** The VTO that was removed here is still
+> removed — but F-039 Phase 2 rebuilt a **gated** virtual try-on (CatVTON on
+> RunPod) whose rules are NOT covered by this stub. Read **§3d below** for the
+> current customer-photo rules. This stub is kept for the 2026-08-31 record.
+
 Virtual Try-On was removed in `chore/remove-unwanted-features` (2026-08-31,
 migration 082). No customer photo is uploaded for garment compositing anywhere
-in the product any more; `try_on_jobs`, `customer_measurements` and their R2
-prefixes (`try_on_jobs/`, `tryon-results/`, `tryon-preprocessed/`) no longer
-exist. §§3b and 3c below (training-data consent + revocation) are removed with
-it. See `docs/references/history/reports/2026-08-31-feature-teardown-spec.md`.
+in the product any more; `customer_measurements` and the `try_on_jobs/` and
+`tryon-preprocessed/` R2 prefixes no longer exist. §§3b and 3c below
+(training-data consent + revocation) are removed with it. See
+`docs/references/history/reports/2026-08-31-feature-teardown-spec.md`.
 
 ---
 
@@ -121,7 +126,8 @@ directly — "we do not use your photos to train AI models" — together with wh
 photos *are* used for and the 15-day deletion window. Live at
 `https://kanchuki.app/privacy` → *Product photos and AI training* (reachable
 from the app's Settings → Legal). Copy + assertions recorded for legal review
-in `docs/references/guides/photo-retention-notice.md`.
+in the **Retailer-Facing Photo Retention & AI-Training Notice** section of this
+file (that guide was merged into it).
 
 ---
 
@@ -130,6 +136,105 @@ in `docs/references/guides/photo-retention-notice.md`.
 Removed with Virtual Try-On (`chore/remove-unwanted-features`, 2026-08-31). The
 `/consent/revoke` endpoint, `revocation_token`, and the whole training-data
 deletion flow no longer exist.
+
+---
+
+## 3d. Virtual Try-On (F-039 Phase 2) — customer photo rules + consent notice
+
+**Built:** 2026-09-26 (task `catvton-runpod-tryon-launch.md` T6).
+**Status:** code complete, **not live** — gated behind `VIRTUAL_TRY_ON_V2`, which
+defaults `false` for every plan (T8 flips it).
+
+This is the one place in the product where a **photo of a real person is
+stored**, so it has both a stricter rule for the input and a consent + deletion
+story for the output. The two must not be conflated:
+
+| Photo | Rule | Where enforced |
+|---|---|---|
+| **Input** — the wearer's photo, whoever is being tried on | **Never persisted.** Held in API-process memory for one job, discarded after. Not in the DB, not on R2, and deliberately **not in the BullMQ payload** (Redis is persistent storage). | `apps/api/src/lib/tryon-photo-store.ts` (one-shot take, 180 s TTL, 256 MB ceiling), `apps/api/src/jobs/tryon.ts` (`takeTryOnPhoto`), test: `jobs/tryon.test.ts` asserts `saveTryOnResultToR2` is the only storage write and is called once with the result |
+| **Output** — the generated garment-on-person image | **Is stored**, as an R2 key on `try_on_jobs.result_url`, served only through a per-read presigned URL (1 h). Consent is required before it is created, and withdrawal deletes it. | `apps/api/src/routes/products/products-tryon.ts`, `apps/api/src/lib/tryon-consent.ts` |
+
+#### Consent is a server-side gate, not a UI checkbox
+
+The route refuses (422, `field: consent_version`) unless the request carries the
+**current** consent-notice version — or the caller is a passport shopper whose
+earlier grant is remembered. The UI hiding a button is not a control: a client
+can call the API directly, so the check lives in the route, exactly like the
+launch flag next to it (which is a 404, not a 403 — a 403 would confirm the
+route exists).
+
+| Caller | Consent shape | Record |
+|---|---|---|
+| Passport shopper (customer PWA) | Asked once; a live grant is remembered and not re-asked | `ConsentEvent` `TRY_ON_CONSENTED` / `TRY_ON_CONSENT_WITHDRAWN`; also stamped on the job |
+| In-store walk-in (retailer app) | Asked **per generation** — there is no account to remember a grant against | `try_on_jobs.consent_at` / `consent_notice_version` / `consent_method = IN_STORE` only |
+
+`consent_events.customer_account_id` is `NOT NULL`, so `ConsentEvent`
+**structurally cannot** record the walk-in case. That is why the job row carries
+its own consent columns rather than the in-store path going unrecorded — a
+consent screen with nothing behind it is the RC-038 shape.
+
+**Withdrawal is as easy as granting:** `POST /v1/public/passport/try-on/withdraw`
+logs `TRY_ON_CONSENT_WITHDRAWN`, deletes every stored result for that shopper
+(R2 object), clears `result_url`, and stamps `consent_withdrawn_at`. Future
+generations are refused until they consent again.
+
+⚠️ **Known gap, stated rather than implied.** A withdrawal whose R2 delete fails
+leaves `result_url` in place **on purpose** — it is the only pointer to an object
+we still owe that person a delete for — and reports `images_failed > 0` in the
+response and the logs. There is **no retry job yet**: the deletion is attempted
+once, at withdrawal. A failed delete is visible, not silent, but it is not
+automatically re-driven.
+
+#### The customer-facing notice (verbatim from `/privacy`)
+
+> **Virtual try-on: photos of you**
+>
+> A store may offer a virtual try-on, which uses AI to show you wearing an outfit.
+> It is always your choice: nothing happens until you read a short notice and agree to it.
+>
+> **The photo you give us is never saved.** It is used to make the picture and then it is gone —
+> not kept on our servers, not in our database, not handed to any other store.
+>
+> **The picture we make is saved**, because you and the store need to be able to look at it
+> again or share it. It is stored on that store's account, is not shown publicly, and opens only
+> through a private link that expires within an hour. If a store offered you a try-on at the
+> counter instead of on your own phone, the same applies — you are asked at the counter too.
+>
+> **Neither photo is used to train AI models.**
+>
+> **You can take this back.** Withdraw your consent at any time from My Profile, and every
+> try-on picture we made for you is deleted. If a try-on picture of you was made in a store
+> rather than on your own phone, you can ask that store to delete it, or email us at
+> privacy@kanchuki.app.
+
+**The consent screen's own copy** is a single source of truth in code —
+`TRY_ON_CONSENT` in `packages/shared/src/tryon-consent.ts` — because the version
+string the API records must name the text the person actually saw. Both UIs
+render it from there; do not inline it in a screen.
+
+#### Facts the notice asserts, and where each comes from
+
+| Claim | Source of truth | Notes |
+|---|---|---|
+| The input photo is never stored | `lib/tryon-photo-store.ts`, `packages/ai/src/tryon.ts` | Bytes go inline (`person_image_base64`) to the worker from process memory. **Re-verify if the worker is ever split into its own process** — the job then fails loudly ("photo expired") rather than persisting. |
+| The generated image is private, link expires within an hour | `getDownloadPresignedUrl(key, 3600)` in `routes/products/products-tryon.ts` | 3600 s = 1 h. **If that window changes, this copy and the page must change with it.** |
+| Stored on that store's account | `try_on_jobs.retailer_id`; the status route scopes by `retailer_id` **or** `customer_account_id` | A shopper polls only their own job; a retailer only their own store's. |
+| Consent required before creation | route step 4, `isCurrentTryOnConsent()` | Also covers a superseded (older) version string — refused, not silently upgraded. |
+| Withdrawal deletes every generated image | `withdrawTryOnConsent()` | See the known gap above. |
+| Neither photo used for training | Same provider contracts as the retailer notice (§4 table of the Retailer-Facing section) | A new provider needs the same contract before it handles either photo. |
+| In-store customers have a deletion route | The in-store path has no shopper account, so `My Profile` does not exist for them | The copy names the route that does: ask the store, or email `privacy@kanchuki.app`. |
+
+#### What legal must review (adds to §7B.1)
+
+- [ ] Is a **per-generation, retailer-attested** consent for a walk-in customer
+      adequate under DPDP, given there is no record tying it to an identified
+      person (only to the job)?
+- [ ] Is "stored on that store's account" the right framing when the store and
+      the platform are separate controllers in some flows?
+- [ ] Does the ±1 h presigned-link window need to be stated exactly, or is
+      "expires within an hour" sufficient?
+- [ ] Confirm the **withdrawal-with-failed-delete** gap needs no separate
+      notice, or is the response's `images_failed` count sufficient disclosure.
 
 ---
 
@@ -1115,7 +1220,12 @@ statements disappears.
 > retailer account removes its photos the same way. To have a photo deleted sooner, email
 > privacy@kanchuki.app.
 
-**Page updated:** “Last updated: September 24, 2026”.
+**Page updated:** “Last updated: September 26, 2026”.
+
+> The page gained a second load-bearing section on 2026-09-26 — the customer
+> virtual try-on notice. Its copy, facts and legal questions are recorded in
+> **§3d** above, not here, because §3d belongs with the customer-photo rules.
+> The drift warning and the change procedure in this section now cover both.
 
 ---
 
@@ -1157,5 +1267,8 @@ stale.
 1. Edit `apps/web/src/app/privacy/page.tsx`.
 2. Re-quote the section verbatim in §3 and bump “Last updated”.
 3. Run `npx vitest run src/app/privacy/__tests__/page.test.tsx` (it fails if the no-training
-   claim, the 15-day figure, the removal date, or the deletion route is dropped).
+   claim, the 15-day figure, the removal date, or the deletion route is dropped; the
+   try-on arms additionally pin §3d's both-halves claim, and derive the section
+   anchor from `TRY_ON_CONSENT.full_notice_url` so the consent screen's "read more"
+   link cannot point at a missing id).
 4. Re-request legal review (§7B.1) before merge if any §4 fact changed.

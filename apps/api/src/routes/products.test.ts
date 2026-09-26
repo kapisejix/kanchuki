@@ -112,10 +112,15 @@ vi.mock('@kanchuki/ai', () => ({
   detectColor: vi.fn(),
 }));
 
-vi.mock('@kanchuki/shared', () => ({
-  R2_PATHS: {},
-  SIZE_OPTIONS: [],
-}));
+// Spread the real module and override only the two tables this suite wants
+// empty. A hand-written object here listed just those two keys, so the day
+// anything in the import graph read a THIRD export at module load (this broke
+// on `TRY_ON_CONSENT`, pulled in via notice-versions.ts) the suite died in
+// collection with a mock error that names the wrong file.
+vi.mock('@kanchuki/shared', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@kanchuki/shared')>();
+  return { ...actual, R2_PATHS: {}, SIZE_OPTIONS: [] };
+});
 
 vi.mock('../jobs/index.js', () => ({
   addEmbeddingJob: vi.fn(),

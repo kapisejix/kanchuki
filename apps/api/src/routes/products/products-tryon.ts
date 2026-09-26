@@ -18,21 +18,37 @@
 // always call the API directly). It is the first thing after identity, before
 // config/quota/media, so a flag-off plan leaks nothing else.
 //
-// ─── The wearer's photo is never persisted ───────────────────────────────────
+// ─── The wearer's photo is never persisted ──────────────────────────────────
 // Read into a Buffer, stashed in-process for the job (lib/tryon-photo-store.ts),
 // and gone. It is not in the BullMQ payload, not on R2, not in the DB — Redis
 // is storage too, which is why the obvious "put the bytes in job.data" is not
 // what happens here. Only the GENERATED image is saved, under a key served
 // presigned per read.
+//
+// ─── Consent is required, server-side, before any of that happens ───────────
+// The generated image is a photo of a real person AND it is stored, so the
+// request must carry permission before it reaches storage. A passport shopper
+// who already granted consent is not asked again (`ConsentEvent` remembers it);
+// anyone else must send the CURRENT notice version in `?consent_version=`, which
+// is the client's assertion that this text was shown and accepted. A UI-only
+// consent checkbox is not the gate — this check is, because a client can always
+// call the API directly (same reasoning as the feature flag above).
 import multipart from '@fastify/multipart';
-import { getDownloadPresignedUrl, isCatVtonConfigured, isUnsupportedTryOnCategory } from '@kanchuki/ai';
+import {
+  getDownloadPresignedUrl,
+  isCatVtonConfigured,
+  isUnsupportedTryOnCategory,
+} from '@kanchuki/ai';
 import { type Prisma, prisma } from '@kanchuki/db';
+import { TRY_ON_CONSENT } from '@kanchuki/shared';
 import { createId } from '@paralleldrive/cuid2';
 import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { addTryOnJob } from '../../jobs/index.js';
 import { hasFeature } from '../../lib/features.js';
+import { isCurrentTryOnConsent } from '../../lib/notice-versions.js';
 import { checkCustomerQuota, checkQuota } from '../../lib/quota.js';
+import { hasLiveTryOnConsent, recordTryOnConsent } from '../../lib/tryon-consent.js';
 import { discardTryOnPhoto, putTryOnPhoto } from '../../lib/tryon-photo-store.js';
 import {
   AppError,
@@ -137,6 +153,16 @@ export const productsTryOnRoutes: FastifyPluginAsync = async (server) => {
   server.post('/:id/try-on', async (request, reply) => {
     const { id } = request.params as { id: string };
 
+    // Consent travels as a query param rather than a multipart field on
+    // purpose: @fastify/multipart only guarantees `data.fields` for fields it
+    // has already parsed, so a field ordered after the file can read as
+    // "absent" — and an absent consent field must fail closed, which would turn
+    // a client's field-ordering choice into a rejected request.
+    const consent = z
+      .object({ consent_version: z.string().min(1).optional() })
+      .safeParse(request.query);
+    if (!consent.success) throw validationError('Invalid consent version.', 'consent_version');
+
     const { retailerId, customerAccountId, product } = await resolveTryOnContext(request, id);
 
     // 1. Launch gate. 404 (not 403) so the route is invisible until the owner
@@ -161,7 +187,31 @@ export const productsTryOnRoutes: FastifyPluginAsync = async (server) => {
       throw validationError('This product has no photo to try on.', 'product');
     }
 
-    // 4. Both caps must pass — the retailer's monthly allowance AND, for a
+    // 4. Consent — before quota, because it is a request-validity check and a
+    //    request that will be refused should not read as "spent a credit".
+    //
+    //    A remembered grant is a passport shopper's earlier `ConsentEvent`. The
+    //    in-store path has no account to remember against, so it re-consents
+    //    per generation and the job row is the only record (see
+    //    lib/tryon-consent.ts for why `ConsentEvent` cannot hold that case).
+    const rememberedGrant = customerAccountId
+      ? await hasLiveTryOnConsent(customerAccountId)
+      : false;
+    if (!rememberedGrant && !isCurrentTryOnConsent(consent.data.consent_version)) {
+      throw validationError(
+        'Please read and accept how your photo is used before trying this on.',
+        'consent_version',
+      );
+    }
+    const consentMethod = customerAccountId ? 'PASSPORT' : 'IN_STORE';
+    if (customerAccountId && !rememberedGrant) {
+      await recordTryOnConsent(customerAccountId, retailerId, {
+        ip: request.ip,
+        userAgent: request.headers['user-agent'],
+      });
+    }
+
+    // 5. Both caps must pass — the retailer's monthly allowance AND, for a
     //    logged-in shopper, their own. Distinct error codes: the retailer cap
     //    is 402 PLAN_LIMIT_EXCEEDED ("upgrade"), the shopper's is 402
     //    CUSTOMER_LIMIT_EXCEEDED (advice aimed at someone with no plan).
@@ -170,7 +220,7 @@ export const productsTryOnRoutes: FastifyPluginAsync = async (server) => {
       await checkCustomerQuota(customerAccountId, 'TRY_ON_GENERATION');
     }
 
-    // 5. The wearer's photo.
+    // 6. The wearer's photo.
     if (!request.isMultipart()) {
       throw validationError('Expected a multipart form with one photo.', 'photo');
     }
@@ -178,13 +228,16 @@ export const productsTryOnRoutes: FastifyPluginAsync = async (server) => {
     if (!file) throw validationError('A photo is required.', 'photo');
 
     const contentType = normalizeContentType(file.mimetype);
-    if (!contentType) throw validationError('Only JPEG, PNG or WebP photos are supported.', 'photo');
+    if (!contentType)
+      throw validationError('Only JPEG, PNG or WebP photos are supported.', 'photo');
 
     const buffer = await file.toBuffer();
     if (buffer.length === 0) throw validationError('The submitted photo was empty.', 'photo');
 
-    // 6. Job row first, so the poll endpoint has something to read even if the
-    //    worker is slow to pick the job up.
+    // 7. Job row first, so the poll endpoint has something to read even if the
+    //    worker is slow to pick the job up. The consent record is written in the
+    //    same insert as the job it authorises — not after generation — so a job
+    //    can never exist holding a stored image with no consent beside it.
     const jobId = `tryon_${createId()}`;
     await prisma.tryOnJob.create({
       data: {
@@ -193,10 +246,13 @@ export const productsTryOnRoutes: FastifyPluginAsync = async (server) => {
         customer_account_id: customerAccountId,
         product_id: id,
         status: 'PENDING',
+        consent_at: new Date(),
+        consent_notice_version: TRY_ON_CONSENT.version,
+        consent_method: consentMethod,
       },
     });
 
-    // 7. Hand the photo to the job in-process — it must not cross Redis. A full
+    // 8. Hand the photo to the job in-process — it must not cross Redis. A full
     //    store means the server is saturated; fail this one job cleanly.
     if (!putTryOnPhoto(jobId, buffer, contentType)) {
       await prisma.tryOnJob
@@ -258,9 +314,22 @@ export const productsTryOnRoutes: FastifyPluginAsync = async (server) => {
           ? { retailer_id: request.retailerId }
           : { customer_account_id: customerAccountId ?? '' }),
       },
-      select: { status: true, result_url: true, failure_reason: true },
+      select: {
+        status: true,
+        result_url: true,
+        failure_reason: true,
+        consent_withdrawn_at: true,
+      },
     });
     if (!job) throw notFound('Try-on job');
+
+    // Checked BEFORE the COMPLETED arm, and that order is the whole point: a
+    // withdrawn job keeps status COMPLETED but has `result_url` nulled, so the
+    // COMPLETED arm would fall through to the final `processing` return and a
+    // poller would wait forever for an image that was deleted on request.
+    if (job.consent_withdrawn_at) {
+      return { data: { status: 'withdrawn' } };
+    }
 
     if (job.status === 'COMPLETED' && job.result_url) {
       // The generated image is a photo of a real person — a short-lived

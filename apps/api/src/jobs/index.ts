@@ -38,6 +38,7 @@ import {
 import { handleStudioShoot } from './studio-shoot.js';
 import type { StudioShootJobData } from './studio-shoot.js';
 import { handleTagProduct } from './tag-product.js';
+import { handleTryOnDeletionSweep } from './tryon-deletion-sweep.js';
 import { handleTryOn } from './tryon.js';
 import type { TryOnJobData } from './tryon.js';
 
@@ -229,6 +230,8 @@ export async function startWorkers(): Promise<void> {
           const data = (job.data ?? {}) as RewatermarkShowcaseDesignsJobData;
           return handleRewatermarkShowcaseDesigns(data);
         }
+        case 'tryon-deletion-sweep':
+          return handleTryOnDeletionSweep();
         default:
           throw new Error(`[jobs] unknown maintenance job: ${job.name}`);
       }
@@ -366,6 +369,22 @@ export async function startWorkers(): Promise<void> {
     {},
     {
       repeat: { pattern: '0 6 * * *', limit: 1 },
+      removeOnComplete: { count: 10 },
+      removeOnFail: { count: 10 },
+    },
+  );
+
+  // Try-on deletion sweep — hourly at :15. The withdrawal deletes inline, so
+  // this is only the retry for a delete that failed while the person's
+  // withdrawal was being recorded, plus the result a generation wrote after its
+  // consent was withdrawn. Hourly because each pass is a bounded query over a
+  // small table, and an unmet deletion promise is worth retrying sooner than
+  // daily.
+  await getMaintenanceQueue().add(
+    'tryon-deletion-sweep',
+    {},
+    {
+      repeat: { pattern: '15 * * * *', limit: 1 },
       removeOnComplete: { count: 10 },
       removeOnFail: { count: 10 },
     },

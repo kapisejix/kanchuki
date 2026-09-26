@@ -1,3 +1,4 @@
+import * as LegacyFileSystem from 'expo-file-system/legacy';
 import type {
   ProductDetail,
   ProductSummary,
@@ -6,7 +7,8 @@ import type {
   Pagination,
   ProductStatus,
 } from '@kanchuki/shared';
-import { request } from './client';
+import { compressImageForUpload } from '../compress-image';
+import { API_URL, ApiError, getToken, request } from './client';
 
 export const productApi = {
   getUploadUrl: (filename: string, contentType: string, sizeBytes: number) =>
@@ -334,4 +336,87 @@ export const productApi = {
     }>('/v1/products/pro-cleanup/status', {
       getCacheTtlMs: opts?.refresh ? 0 : 30_000,
     }),
+
+  // ─── F-039 Phase 2: in-store virtual try-on ──────────────────────
+  /**
+   * Start a try-on for a walk-in customer. The customer's photo goes up as a
+   * multipart part named `photo` — the same name the API reads with
+   * `request.file()` — and the accepted consent version rides in the QUERY
+   * STRING, not a form field, because @fastify/multipart only guarantees a
+   * field it has already parsed: a field ordered after the file can read as
+   * absent and the server (correctly) refuses an unconsented request.
+   *
+   * `consentVersion` is required — callers pass `TRY_ON_CONSENT.version` from
+   * `@kanchuki/shared` after the person taps accept. The server compares it to
+   * the current notice version and 422s a stale or missing one.
+   *
+   * Compressed to ≤80KB first (JPEG, quality-first — see compress-image.ts) so
+   * a phone photo never approaches the API's 10MB multipart cap.
+   */
+  startTryOn: async (
+    productId: string,
+    consentVersion: string,
+    photoUri: string,
+  ): Promise<{ data: { job_id: string; status: string } }> => {
+    const token = await getToken();
+    let uri = photoUri;
+    try {
+      uri = await compressImageForUpload(photoUri);
+    } catch (err) {
+      // Never block the generation on compression — the original still fits.
+      console.warn('Try-on photo compression failed — uploading original:', err);
+    }
+
+    const url = `${API_URL}/v1/products/${productId}/try-on?consent_version=${encodeURIComponent(
+      consentVersion,
+    )}`;
+    const result = await LegacyFileSystem.uploadAsync(url, uri, {
+      httpMethod: 'POST',
+      uploadType: LegacyFileSystem.FileSystemUploadType.MULTIPART,
+      fieldName: 'photo',
+      mimeType: 'image/jpeg',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+
+    const body = safeJson(result.body);
+    if (result.status >= 400) {
+      const envelope = body as { error?: { code?: string; message?: string } } | null;
+      throw new ApiError(
+        envelope?.error?.code ?? 'TRY_ON_FAILED',
+        envelope?.error?.message ?? 'Could not start the try-on. Please try again.',
+        result.status,
+      );
+    }
+    return body as { data: { job_id: string; status: string } };
+  },
+
+  /**
+   * Poll a try-on job. `processing` while the RunPod generation runs;
+   * `ready` carries a short-lived presigned URL for the generated image;
+   * `failed` carries a safe message; `withdrawn` means the shopper took their
+   * consent back and the stored image was deleted — a terminal state the UI
+   * must handle, not keep polling through.
+   */
+  getTryOnStatus: (productId: string, jobId: string) =>
+    request<{
+      data: {
+        status: 'processing' | 'ready' | 'failed' | 'withdrawn';
+        url?: string | null;
+        error?: string;
+      };
+    }>(`/v1/products/${productId}/try-on/status?job_id=${encodeURIComponent(jobId)}`, {
+      getCacheTtlMs: 0,
+      timeoutMs: 15_000,
+    }),
 };
+
+/** Best-effort JSON parse of an uploadAsync body — it is a plain string, and a
+ *  non-JSON error page must not surface as an unhandled parse throw. */
+function safeJson(raw: string | undefined): unknown {
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}

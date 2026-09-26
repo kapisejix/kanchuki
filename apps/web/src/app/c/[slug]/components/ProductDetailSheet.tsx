@@ -18,9 +18,12 @@ import { DesignGallery } from './DesignGallery'
 import { ShowcaseDesigns } from './ShowcaseDesigns'
 import { FamilyProfiles } from './FamilyProfiles'
 import { CustomerConsentModal } from './CustomerConsentModal'
+import { TryOnSheet } from './TryOnSheet'
 
-// VTO hidden for launch — backend live but buttons removed per pre-launch checklist.
-const TRY_ON_ENABLED = false
+// F-039 Phase 2: the Try-On button is driven by the product payload's
+// `try_on_enabled` (derived server-side from the store's plan), not a client
+// constant. It is false for every plan until an admin enables VIRTUAL_TRY_ON_V2
+// in the Plan Feature Matrix, so nothing shows on launch day.
 
 // Family-sizing card is parked, not deleted — flip to re-enable.
 const SHOW_FAMILY_SIZING = false
@@ -48,7 +51,6 @@ interface Props {
   // Store URL segment (public_slug). Null = legacy /c/{slug} URLs.
   store?: string | null
   onFavorite: (id: string) => void
-  onTryOn?: () => void
   onClose: () => void
   // Open another product in this same sheet (used by the Related Products
   // strip — in-place swap, same as AIStylist's onProductTap).
@@ -63,7 +65,6 @@ export function ProductDetailSheet({
   slug,
   store,
   onFavorite,
-  onTryOn,
   onClose,
   onSelectProduct,
 }: Props) {
@@ -74,6 +75,7 @@ export function ProductDetailSheet({
   const [isTransitioning, setIsTransitioning] = useState(false)
   const [showSpinModal, setShowSpinModal] = useState(false)
   const [showConsentModal, setShowConsentModal] = useState(false)
+  const [showTryOn, setShowTryOn] = useState(false)
 
   // Related products — same category, same retailer, excluding current
   const [relatedProducts, setRelatedProducts] = useState<PublicProduct[]>([])
@@ -820,11 +822,12 @@ export function ProductDetailSheet({
 
         </div>
 
-        {/* Try-On CTA — disabled for SOLD */}
-        {TRY_ON_ENABLED && !isSold && (
+        {/* Try-On CTA — disabled for SOLD. Shown only when this store's plan
+            carries VIRTUAL_TRY_ON_V2 (`try_on_enabled` on the product payload). */}
+        {detail?.try_on_enabled && !isSold && (
           <div className="px-4 pt-2">
             <button
-              onClick={onTryOn}
+              onClick={() => setShowTryOn(true)}
               className={`w-full font-semibold py-3.5 rounded-2xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
                 isReserved
                   ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
@@ -1027,6 +1030,15 @@ export function ProductDetailSheet({
           collectionTitle={collectionTitle}
           productUrl={productUrlFor(product.id)}
           onClose={() => setShowConsentModal(false)}
+        />
+      )}
+
+      {/* F-039 Phase 2 — customer virtual try-on (consent → selfie → result). */}
+      {showTryOn && (
+        <TryOnSheet
+          productId={product.id}
+          productName={product.name ?? product.category ?? 'this outfit'}
+          onClose={() => setShowTryOn(false)}
         />
       )}
     </div>

@@ -27,6 +27,7 @@
 // deps into every test that mocks @kanchuki/shared minimally.
 import {
   clothTypeForCategory,
+  deleteObject,
   generateTryOn,
   getDownloadPresignedUrl,
   isUnsupportedTryOnCategory,
@@ -82,7 +83,10 @@ export async function handleTryOn(data: TryOnJobData): Promise<void> {
   // succeeds or throws.
   const photo = takeTryOnPhoto(job_id);
   if (!photo) {
-    await markFailed(job_id, 'The submitted photo expired before it could be used. Please try again.');
+    await markFailed(
+      job_id,
+      'The submitted photo expired before it could be used. Please try again.',
+    );
     return;
   }
   if (photo.buffer.length === 0) {
@@ -135,19 +139,51 @@ export async function handleTryOn(data: TryOnJobData): Promise<void> {
     // not to Redis either.
     const resultKey = await saveTryOnResultToR2(job_id, result.outputUrl);
 
-    await prisma.tryOnJob.update({
-      where: { id: job_id },
+    // The completion write is CONDITIONAL on the consent still being live, and
+    // that is not belt-and-braces: consent can be withdrawn at any moment during
+    // the 35–45s this call takes. `withdrawTryOnConsent()` stamps
+    // `consent_withdrawn_at` and deletes every `result_url` it can see — so a
+    // key written AFTER that sweep is a stored photograph of someone who has
+    // withdrawn, sitting on a row no reader will ever consult again (the status
+    // route answers 'withdrawn' before it looks at anything else).
+    //
+    // `updateMany` with the condition in the WHERE makes the check and the write
+    // one statement, so there is no gap between them for a withdrawal to land
+    // in. `count === 0` means it landed.
+    const claimed = await prisma.tryOnJob.updateMany({
+      where: { id: job_id, consent_withdrawn_at: null },
       data: { status: 'COMPLETED', result_url: resultKey, completed_at: new Date() },
     });
 
+    if (claimed.count === 0) {
+      // Withdrawn while the GPU was working, so this image must not outlive the
+      // withdrawal. Best effort: the hourly `tryon-deletion-sweep` retries
+      // anything this delete misses — the same path a failed withdrawal delete
+      // takes, which is why the row is left for it (the sweep finds withdrawn
+      // rows that still carry a key, whichever way they got one).
+      await deleteObject(resultKey).catch((err) => {
+        console.error(
+          `[try-on] job ${job_id} finished after its consent was withdrawn and could not delete the result it had already written:`,
+          err,
+        );
+      });
+    }
+
     // Quota is spent only on success — both caps, because a customer job spends
-    // the retailer's monthly allowance AND that shopper's own.
+    // the retailer's monthly allowance AND that shopper's own. A withdrawal that
+    // landed mid-run still counts: the GPU ran regardless, and NOT counting it
+    // would make withdraw-and-regenerate a way to spend the store's allowance
+    // for free (`hasLiveTryOnConsent` lets a shopper re-grant, so that loop is
+    // reachable from the UI rather than theoretical).
     incrementUsage(retailer_id, 'TRY_ON_GENERATION').catch((err) => {
       console.error(`[try-on] failed to record retailer quota usage for ${retailer_id}:`, err);
     });
     if (customer_account_id) {
       incrementCustomerUsage(customer_account_id, 'TRY_ON_GENERATION').catch((err) => {
-        console.error(`[try-on] failed to record customer quota usage for ${customer_account_id}:`, err);
+        console.error(
+          `[try-on] failed to record customer quota usage for ${customer_account_id}:`,
+          err,
+        );
       });
     }
   } catch (err) {

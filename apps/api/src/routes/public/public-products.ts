@@ -1,6 +1,7 @@
 // Auto-split from public.ts (scripts/check-route-size.sh) — route bodies verbatim.
 import { prisma, withRetry } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
+import { hasFeatureForPlan } from '../../lib/features.js';
 import { isNewArrival, isOnSale } from '../../lib/product-flags.js';
 import { withPublicCache } from '../../lib/public-cache.js';
 import { notFound } from '../../plugins/error-handler.js';
@@ -43,9 +44,18 @@ export const publicProductsRoutes: FastifyPluginAsync = async (server) => {
                 variants: true,
                 videos: { orderBy: [{ is_main: 'desc' }, { created_at: 'asc' }] },
                 section: { select: { name: true } },
+                // The store's plan decides whether the shopper sees a Try-On
+                // button. It rides on this payload (rather than a separate
+                // fetch) because this is the request that already gates the
+                // button's screen, and it becomes a public field the moment it
+                // is here — so it is derived per request, never cached beyond
+                // the response's own 300s s-maxage.
+                retailer: { select: { plan: true } },
               },
             });
             if (!p) throw notFound('Product');
+
+            const tryOnEnabled = await hasFeatureForPlan(p.retailer.plan, 'VIRTUAL_TRY_ON_V2');
 
             const availableVariants = p.variants.filter((v) => v.status === 'AVAILABLE');
             // Raw retailer uploads are normally hidden from the customer catalog
@@ -66,6 +76,10 @@ export const publicProductsRoutes: FastifyPluginAsync = async (server) => {
                 // F-024 (Option A): virtual query-time flags, same as the grid summary
                 is_new_arrival: isNewArrival(p.created_at),
                 on_sale: isOnSale({ mrp: p.mrp, price_min: p.price_min }),
+                // F-039 Phase 2. False for every plan until an admin enables
+                // VIRTUAL_TRY_ON_V2 in the Plan Feature Matrix, so the button
+                // simply does not exist on the day this ships.
+                try_on_enabled: tryOnEnabled,
                 status: p.status,
                 category: p.category,
                 primary_color: p.primary_color,

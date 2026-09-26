@@ -33,6 +33,9 @@ vi.mock('../DesignGallery', () => ({ DesignGallery: () => null }));
 vi.mock('../ShowcaseDesigns', () => ({ ShowcaseDesigns: () => null }));
 vi.mock('../FamilyProfiles', () => ({ FamilyProfiles: () => null }));
 vi.mock('../CustomerConsentModal', () => ({ CustomerConsentModal: () => null }));
+// The try-on sheet is only mounted on demand; stubbed so its own overlay/SDK
+// imports never load in this file's focused tests.
+vi.mock('../TryOnSheet', () => ({ TryOnSheet: () => null }));
 vi.mock('../lib/recentlyViewed', () => ({ trackRecentlyViewed: vi.fn() }));
 vi.mock('../lib/cart', () => ({
   productToCartItem: vi.fn(),
@@ -79,7 +82,11 @@ function makeRelated(i: number): PublicProduct {
   };
 }
 
-const fetchMock = vi.fn(async (input: string) => {
+// The default network double. A named function, re-installed in beforeEach,
+// because `mockClear()` clears calls but NOT an implementation — a test that
+// swaps in its own `mockImplementation` (the try-on-flag test below) would
+// otherwise leak that implementation into every later test in this file.
+const defaultFetchImpl = async (input: string) => {
   const url = typeof input === 'string' ? input : String(input);
   if (url.includes('/related')) {
     return {
@@ -98,11 +105,14 @@ const fetchMock = vi.fn(async (input: string) => {
     };
   }
   return { ok: false, status: 404, json: async () => ({}) };
-});
+};
+
+const fetchMock = vi.fn(defaultFetchImpl);
 
 describe('ProductDetailSheet Related Products strip', () => {
   beforeEach(() => {
-    fetchMock.mockClear();
+    fetchMock.mockReset();
+    fetchMock.mockImplementation(defaultFetchImpl);
     vi.stubGlobal('fetch', fetchMock);
   });
 
@@ -128,6 +138,71 @@ describe('ProductDetailSheet Related Products strip', () => {
       expect(screen.getByText('Related Products')).toBeInTheDocument();
     });
     expect(screen.queryByText('Related suits')).not.toBeInTheDocument();
+  });
+
+  it('shows the Try-On button only when the product payload says try_on_enabled', async () => {
+    // The flag comes from the STORE's plan (derived server-side), so with it
+    // off there is no button — the same fail-closed default every plan gets
+    // until an admin enables VIRTUAL_TRY_ON_V2.
+    fetchMock.mockImplementation(async (input: string) => {
+      const url = String(input);
+      if (url.includes('/related')) {
+        return { ok: true, status: 200, json: async () => ({ data: [] }) };
+      }
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          data: {
+            photos: [],
+            spin_frames: [],
+            variants: [],
+            sizes: [],
+            fabric_estimate: null,
+            try_on_enabled: true,
+          },
+        }),
+      };
+    });
+
+    render(
+      <ProductDetailSheet
+        product={PRODUCT}
+        retailer={RETAILER}
+        collectionTitle="Festive Edit"
+        isFavorited={false}
+        slug="festive-edit"
+        store="meera-sarees"
+        onFavorite={() => undefined}
+        onClose={() => undefined}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Try This On')).toBeInTheDocument();
+    });
+  });
+
+  it('hides the Try-On button when the store plan does not have it', async () => {
+    // The default fetch mock returns a detail payload with no `try_on_enabled`
+    // — undefined must read as off, not as "show it and let the API 404".
+    render(
+      <ProductDetailSheet
+        product={PRODUCT}
+        retailer={RETAILER}
+        collectionTitle="Festive Edit"
+        isFavorited={false}
+        slug="festive-edit"
+        store="meera-sarees"
+        onFavorite={() => undefined}
+        onClose={() => undefined}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Related Products')).toBeInTheDocument();
+    });
+    expect(screen.queryByText('Try This On')).not.toBeInTheDocument();
   });
 
   it('clicking a related product swaps the sheet to it via onSelectProduct', async () => {

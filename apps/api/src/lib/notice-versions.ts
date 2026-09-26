@@ -1,4 +1,6 @@
 // DPDP notice version registry (Task 27).
+
+import { TRY_ON_CONSENT } from '@kanchuki/shared';
 //
 // Every ConsentEvent write MUST reference a notice_version from this
 // registry. The version tracks which privacy notice text was shown to
@@ -24,6 +26,45 @@ export const NOTICE_VERSIONS = {
 } as const;
 
 export type NoticeVersion = keyof typeof NOTICE_VERSIONS;
+
+/**
+ * Purpose-specific consents (F-039 T6 — virtual try-on).
+ *
+ * Deliberately a SEPARATE registry, not another key in `NOTICE_VERSIONS`.
+ * `getCurrentNoticeVersion()` returns the **last key** of `NOTICE_VERSIONS`,
+ * so appending a purpose notice there would silently become the
+ * `notice_version` recorded on every passport `ConsentEvent` write — the
+ * passport would start claiming shoppers agreed to try-on text. Add purpose
+ * consents here.
+ *
+ * The wording itself is NOT duplicated here: it lives in
+ * `@kanchuki/shared` (`TRY_ON_CONSENT`) so the API and both UIs cannot drift
+ * from the version the database says was shown.
+ */
+export const PURPOSE_CONSENTS = {
+  TRY_ON: {
+    /** `ConsentEvent.kind` for the grant (consent given). */
+    granted_kind: 'TRY_ON_CONSENTED',
+    /** `ConsentEvent.kind` for the withdrawal. */
+    withdrawn_kind: 'TRY_ON_CONSENT_WITHDRAWN',
+    /** Recorded on ConsentEvent + the job; equals TRY_ON_CONSENT.version. */
+    version: TRY_ON_CONSENT.version,
+  },
+} as const;
+
+/** The text for a purpose consent, for a server-rendered notice or an email. */
+export function getPurposeConsentCopy() {
+  return TRY_ON_CONSENT;
+}
+
+/**
+ * Is this the CURRENT try-on consent text? A stale version means the client
+ * showed older wording (or made the string up), so the gate rejects it rather
+ * than recording a version the person never saw. Re-accepting is one tap.
+ */
+export function isCurrentTryOnConsent(version: string | undefined): boolean {
+  return version !== undefined && version === PURPOSE_CONSENTS.TRY_ON.version;
+}
 
 /**
  * Get the current (latest) notice version.
