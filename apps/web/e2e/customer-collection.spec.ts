@@ -174,6 +174,20 @@ test.beforeAll(async () => {
       return
     }
 
+    // The behavioral-event beacon (`trackPassportEvent` → `/api/passport/events`),
+    // fired fire-and-forget by CollectionView, ProductDetailSheet and
+    // CustomerConsentModal — so this spec hits it as soon as a sheet is opened
+    // and a product is favourited or enquired on. 204 to match the /view ping:
+    // the caller never reads the body. Unstubbed this 404s through the proxy and
+    // the console check reports it as a page error, which is exactly how it sat
+    // here unnoticed — the app treats the failure as non-critical by design, and
+    // `.catch(() => {})` is why no test ever went red for it.
+    if (req.method === 'POST' && url.pathname === '/v1/public/passport/events') {
+      res.statusCode = 204
+      res.end()
+      return
+    }
+
     // Promotions — the storefront's PromotionBanner fetches
     // `/api/{store}/promotions`, which proxies to this upstream. Unstubbed it
     // answers 404, which the console check reports as a page error.

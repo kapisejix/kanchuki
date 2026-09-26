@@ -201,11 +201,53 @@ test.beforeAll(async () => {
       return
     }
 
+    // The nominee fields /my-profile reads on mount. GET is the half RC-026
+    // did not cover: that fix added `preferences` to the proxy allowlist and a
+    // PUT verb, and the stub below has answered the PUT ever since — but the
+    // *read* was never stubbed, so it 404'd. The page tolerates that (the
+    // nominee simply stays empty), which is why nothing but `expectClean`
+    // noticed.
+    if (path === '/v1/public/passport/preferences' && req.method === 'GET') {
+      // The real response, in full (passport-preferences.ts) — the page reads
+      // only the nominee pair today, but a stub narrower than the API would let
+      // a future read of the other fields pass here and fail in production.
+      json(res, 200, {
+        profiling_enabled: true,
+        pref_colors: [],
+        pref_styles: [],
+        pref_fabrics: [],
+        budget_min: null,
+        budget_max: null,
+        nominee_name: null,
+        nominee_phone: null,
+      })
+      return
+    }
+
     // The personalization opt-out. RC-026: /my-profile has always PUT to this
     // path, but the web proxy had no PUT verb and omitted `preferences` from
     // its allowlist, so the call 405'd before it ever got here.
     if (path === '/v1/public/passport/preferences' && req.method === 'PUT') {
       json(res, 200, { ok: true })
+      return
+    }
+
+    // Style chips on /my-profile, from the admin-editable taxonomy. Note what a
+    // missing stub does and does not break: the page falls back to a built-in
+    // list, and that list contains 'Festive' — the chip the profile test
+    // targets — so the chip assertion passes either way and `expectClean` is
+    // the only witness. 'Festive' is kept in the names below for the same
+    // reason: this route proves the taxonomy path renders, not that a chip
+    // exists.
+    if (path === '/v1/public/attributes' && url.searchParams.get('kind') === 'STYLE') {
+      json(res, 200, {
+        data: {
+          names: [
+            'Casual', 'Party', 'Office', 'Wedding', 'Festive',
+            'Anarkali', 'Lehenga', 'Saree', 'Kurti', 'Gown',
+          ],
+        },
+      })
       return
     }
 

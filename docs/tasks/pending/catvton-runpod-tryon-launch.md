@@ -1071,11 +1071,11 @@ quota numbers, and the smoke test. Two findings from writing it:
   missing from both hand-kept lists (T5), so Part 5 of the runbook would have been impossible before
   it — worth stating in a runbook whose step 5 is "flip it".
 
-**4. The regression checklist was re-run, and the customer e2e suite is red on `main` — not from this
+**4. The regression checklist was re-run, and the customer e2e suite was red on `main` — not from this
 feature.** `docs/root-cause/README.md`'s auto rows: API **1525 passed / 5 skipped**, web **421**
 (16 consecutive green runs), mobile **130 passed**, shared build, route-size guard, `tsc`
 (api/web/mobile), `biome check src/`, `next lint`, `expo lint` — all clean. The customer e2e run:
-**28 passed / 4 failed**, and the four are pre-existing:
+**28 passed / 4 failed**, and the four were pre-existing:
 
 | Failing spec | Console error |
 |---|---|
@@ -1086,15 +1086,59 @@ feature.** `docs/root-cause/README.md`'s auto rows: API **1525 passed / 5 skippe
 (`git show HEAD:` on each page), **no** file involved (the pages, `lib/passport-client.ts`, or the e2e
 support files) is touched by this branch, and the e2e **stub API** simply does not implement those
 three upstream routes — so the passport proxy forwards a genuine stub-404. The e2e's ignore list
-excuses only `/api/passport/(me|stores)`. **The two checklist rows that matter are green:** RC-019's
-offline/service-worker spec ✓ and RC-024's store-directory specs ✓. The fix is to serve those three
-routes from the stub (an ignore-list entry would hide the next real bug, which that file's own comment
-warns about) and it belongs in its own change.
+excuses only `/api/passport/(me|stores)`. **The two checklist rows that matter were already green:**
+RC-019's offline/service-worker spec ✓ and RC-024's store-directory specs ✓. The recorded fix was to
+serve those three routes from the stub — done in the pass below, where it turned out to be hiding a
+real defect.
 
 **5. All of F-039 Phase 2 is now committed** — see the commit message for the `RC-044` reference.
 
-**Owed and still open, as of this entry:** only the owner's T8 steps below. Nothing in the working
-tree is uncommitted.
+**Owed and still open, as of this entry:** only the owner's T8 steps below.
+
+---
+
+### T7 result — 2026-09-26 (the e2e pass): the stub fix found `RC-045`
+
+The deferred fix from item 4 was made: the e2e **stub API** now serves the three routes it was 404ing,
+with each stub matching the **real** API's shape rather than a shape chosen to avoid the bug.
+
+**The four red tests are green: customer e2e 32/32** (was 28 passed / 4 failed). What each stub
+answers, all read off the API source so they cannot drift into a shape that passes here and fails in
+production:
+
+| Route | Stub answer | Real answer |
+|---|---|---|
+| `GET /v1/public/passport/preferences` | the full 8-field object | `passport-preferences.ts` — all 8 fields |
+| `POST /v1/public/passport/events` | **204** | `passport-activity.ts` — 204 on every path |
+| `GET /v1/public/attributes?kind=STYLE` | `{ data: { names: [...] } }` | the taxonomy read `/my-profile` uses |
+
+**Answering the beacon with the real 204 is what exposed `RC-045`, and that is the point of the
+pass.** The passport proxy rebuilt every upstream response as `new NextResponse(body, { status })`,
+and a **null-body status may not carry a body** — so `new NextResponse('', { status: 204 })` throws
+`TypeError: Invalid response status code 204`, and the helper's `catch` (which exists to report an
+unreachable API) turned that throw into a **503**. The first attempt had the stub return 200 to dodge
+it; that would have been the wrong fix twice over — it would have made the stub lie about the API, and
+it would have left a live defect in place.
+
+**What was actually broken in production:** `POST /api/passport/events` is the customer web's
+behavioural beacon — favourite, unfavourite, enquiry — fired fire-and-forget to a literal
+`.catch(() => {})` in `lib/passport-client.ts`. It had **never reached the API**: every call came back
+503 and was swallowed, so F-037 Phase 1's web event tracking was dead with nothing in any log or
+dashboard saying so. (`POST /passport/recently-viewed` is 204 as well, so it was equally broken for any
+client using it; the web keeps recently-viewed in `localStorage` instead.)
+
+**Fix + proof:** `NULL_BODY_STATUS = new Set([204, 205, 304])` and a `null` body for those statuses;
+`route.test.ts` gained a `describe.each([204, 205, 304])`. **Falsified:** reverting the one line turns
+all three red with `expected 503 to be 204` (and 205, 304) — the production symptom reproduced
+exactly. Full entry in `RC-045`, including the two adjacent facts worth keeping: the proxy also drops
+the query string (`?limit=10` never reaches the API — recorded as latent, not fixed here, because
+forwarding an arbitrary query to an allowlisted path is a separate decision), and a **pre-existing,
+unrelated** failure in the *dev* config's e2e run (`the production build meets the installability
+prerequisites` asserts an active service worker, which `next dev` does not ship — `playwright.config.ts`
+ignores only `customer-collection.spec.ts`, and that spec is unchanged at `HEAD`).
+
+**Verified this pass:** web **424 passed** (was 421), `tsc --noEmit` + `next lint` clean, customer e2e
+**32/32**, root-cause tracker consistent (both `comm` commands empty, set contiguous `RC-001…RC-045`).
 
 ---
 

@@ -134,17 +134,19 @@ Migration `119` seeded `plan_limits` rows for all three plans with **placeholder
 4. **Withdrawal.** Customer → withdraw consent → the stored image must be gone from R2. Then confirm the retry path: `try_on_jobs` rows with `consent_withdrawn_at IS NOT NULL AND result_url IS NOT NULL` should be **zero** after the hourly sweep runs (`handleTryOnDeletionSweep`). A non-empty set means deletes are failing — check the `[try-on] deletion sweep` log line for the count. This is the RC-044 path; a failure here is a **deletion promise that is not being kept**, not cosmetic.
 5. **Not-configured behaviour.** With `CATVTON_API_URL` temporarily unset, the feature must say *not available*, not *failed*.
 
-### Known-red, pre-existing, not this feature
+### The customer e2e suite — ✅ 32/32, and it was hiding a production bug
 
-The **customer e2e suite is red on `main`** and was red before this branch (verified 2026-09-26: the failing assertions' callers exist unchanged at `HEAD`, and neither the pages nor the e2e support files are touched by F-039). Four responsive tests fail on `client.expectClean` because the e2e **stub API** does not implement three endpoints the pages already call at `HEAD`:
+**Before this work the suite was red on `main`:** 28 passed / 4 failed, four responsive tests failing on `client.expectClean` because the e2e **stub API** did not implement three endpoints the pages already called at `HEAD`:
 
-| URL that 404s | Called from |
+| URL that 404'd | Called from |
 |---|---|
 | `GET /v1/public/passport/preferences` | `(shopper)/my-profile/page.tsx` |
 | `GET /v1/public/passport/events` | `lib/passport-client.ts` |
 | `GET /v1/public/attributes?kind=STYLE` | `(shopper)/my-profile/page.tsx` |
 
-The e2e's ignore list (`e2e/support/responsive.ts`) excuses only `/api/passport/(me|stores)`, so the proxy's forwarded stub-404 is counted as a real console error. **28 tests pass, including the two the checklist actually needs** — RC-019's offline/service-worker spec and RC-024's store-directory specs are green. The right fix is to serve those three routes from the stub (an ignore-list entry would hide the next real bug, which that file's own comment warns about), and it belongs in its own change, not in F-039's.
+Serving those three from the stub fixed all four — and, because the stub answers `POST /v1/public/passport/events` with the **204 the real API actually returns**, it exposed a live defect on the way: the passport proxy rebuilt every upstream response with `new NextResponse(body, { status })`, and a null-body status may not carry a body, so 204 threw and the catch turned it into a **503**. Every behavioural event the customer web fired (favourite, unfavourite, enquiry) had been failing silently inside its own `.catch(() => {})`. Fixed, with the full story in **`RC-045`**. The suite is now **32/32**.
+
+**One pre-existing failure remains elsewhere, and it is NOT try-on:** the *dev-server* config (`playwright.config.ts`) ignores only `**/customer-collection.spec.ts`, so it also runs `customer-my-stores.spec.ts` — including `the production build meets the installability prerequisites`, which asserts an **active service worker**. `next dev` ships none, so that test cannot pass in the dev run and has been failing there independently of this work. It passes in the production config. The fix is a config decision (a production-only PWA assertion living in a spec the dev run picks up), not a stub.
 
 ---
 

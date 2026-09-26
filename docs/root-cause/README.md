@@ -30,7 +30,7 @@ comm -13 <(cat 'docs/root-cause/root-cause issues.md' 'docs/root-cause/root-caus
 
 The first command is the one that matters — it is what catches a fixed bug whose row was never added. It found `RC-037` on 2026-09-25, two days after that row should have landed: the entry existed, the commit message used the ID, and rule 4 was simply not followed.
 
-**The invariant is the ID set, not the row order.** The table is newest-first by *fix date*, so the numbers read out of order on purpose (`RC-033` sits below `RC-032`; `RC-034`/`RC-035` share one commit). As of 2026-09-26 the set is contiguous `RC-001…RC-044` — if a number is missing from that range, exactly one of the two commands above is non-empty. `RC-044` (`RC-001…RC-043` were the set at the split's last check) is the F-039 withdrawal-deletion entry, added 2026-09-26.
+**The invariant is the ID set, not the row order.** The table is newest-first by *fix date*, so the numbers read out of order on purpose (`RC-033` sits below `RC-032`; `RC-034`/`RC-035` share one commit). As of 2026-09-26 the set is contiguous `RC-001…RC-045` — if a number is missing from that range, exactly one of the two commands above is non-empty. `RC-044` (the F-039 withdrawal-deletion entry) and `RC-045` (the passport proxy's null-body status) were both added 2026-09-26, the latter found by an e2e stub fix rather than by a report.
 
 ---
 

@@ -14,6 +14,14 @@ const PASSPORT_PATHS = ['otp/send', 'otp/verify', 'me', 'logout', 'stores', 'eve
 
 type ProxyMethod = 'GET' | 'POST' | 'PUT';
 
+// Statuses that carry no body, and therefore may not be built with one: `new
+// Response('', { status: 204 })` throws `TypeError: Invalid response status
+// code 204`. The catch below would convert that throw into a 503, so an
+// upstream 204 — which is what every fire-and-forget passport write answers
+// with (see passport-activity.ts) — reached the browser as a 503 and failed
+// silently inside its own `.catch(() => {})`.
+const NULL_BODY_STATUS = new Set([204, 205, 304]);
+
 // One forwarder for every verb. A copy of this body per verb is what let PUT go
 // missing in the first place: adding a verb meant remembering to duplicate the
 // whole handler, and nothing failed loudly when it was forgotten.
@@ -39,7 +47,9 @@ async function forward(request: NextRequest, path: string[], method: ProxyMethod
       ...(hasBody ? { body: await request.text() } : {}),
     });
 
-    const body = await res.text();
+    // Pass null rather than the (empty) text for a null-body status — reading
+    // it would discard the throw, but there is nothing to read.
+    const body = NULL_BODY_STATUS.has(res.status) ? null : await res.text();
     const response = new NextResponse(body, { status: res.status });
 
     // Forward Set-Cookie headers from the API (session cookie on verify)

@@ -120,3 +120,23 @@ describe('the shared forwarder did not change GET or POST', () => {
     expect(upstream).not.toHaveBeenCalled()
   })
 })
+
+// 204 is the passport activity routes' answer to every fire-and-forget write —
+// the behavioural beacon (`POST /passport/events`, which carries favourites and
+// enquiries) and `POST /passport/recently-viewed` (passport-activity.ts). A
+// null-body status may not carry one, so rebuilding it as
+// `new NextResponse('', { status: 204 })` threw
+// `TypeError: Invalid response status code 204`, and the catch below turned
+// that into a 503. The caller is fire-and-forget with a `.catch(() => {})`, so
+// the beacon simply never arrived and nothing said so.
+describe.each([204, 205, 304])('a null-body upstream status (%i)', (status) => {
+  it('passes through intact rather than becoming a 503', async () => {
+    upstream.mockResolvedValue(new Response(null, { status }))
+
+    const res = await call('POST', ['events'], { body: JSON.stringify({ events: [] }) })
+
+    // Exactly the upstream status. Not 503 — which is what the browser saw, and
+    // what the whole proxy treats as an unreachable API rather than an answer.
+    expect(res.status).toBe(status)
+  })
+})
