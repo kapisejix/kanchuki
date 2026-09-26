@@ -1,4 +1,14 @@
-# F-039 Phase 2 — CatVTON-on-RunPod Try-On, Admin-Gated Launch + Dual Quota
+# F-040 — CatVTON-on-RunPod Try-On, Admin-Gated Launch + Dual Quota
+
+> **Numbering note (2026-09-26).** This feature was filed as **"F-039 Phase 2"**
+> for about 11 minutes: `F-039` was minted earlier the same day for **Style Match
+> Lite** (`style-match-lite.md`), and this try-on was attached to it as a sibling
+> phase. They have independent statuses (F-039 unapproved/not started; this one
+> built and launch-gated), so the owner split it off to its own number, **F-040**.
+> Five commit messages, the earlier entries in this file, and the comments in the
+> already-applied migrations `118`/`119`/`120` still say "F-039 Phase 2" — those
+> are historical and are **not** rewritten (editing an applied migration changes
+> its Prisma checksum); read "F-039 Phase 2" in them as **F-040**.
 
 **Status:** 🔴 Planned — owner go-ahead given 2026-09-26 to **build now, launch later**.
 **T0 ✅ RESOLVED 2026-09-26 — endpoint alive, GHCR image pullable; worker readiness (`workersMax`) still needs the owner's RunPod API key (see T0 result below).**
@@ -1091,7 +1101,7 @@ RC-019's offline/service-worker spec ✓ and RC-024's store-directory specs ✓.
 serve those three routes from the stub — done in the pass below, where it turned out to be hiding a
 real defect.
 
-**5. All of F-039 Phase 2 is now committed** — see the commit message for the `RC-044` reference.
+**5. All of F-040 is now committed** — see the commit message for the `RC-044` reference.
 
 **Owed and still open, as of this entry:** only the owner's T8 steps below.
 

@@ -1,6 +1,6 @@
 // T5 — admin plan-limits: the resource list, and the customer-side editor.
 //
-// F-039 Phase 2 (CatVTON try-on) meters two separate caps: a per-plan
+// F-040 (CatVTON try-on) meters two separate caps: a per-plan
 // retailer cap (`plan_limits.TRY_ON_GENERATION`) and a per-shopper cap
 // (`customer_resource_limits`). The admin panel is where both numbers are set,
 // and T5 turned out to be less "confirm it appears" than the spec assumed:

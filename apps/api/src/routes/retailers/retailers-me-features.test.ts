@@ -1,4 +1,4 @@
-// F-039 Phase 2 / T4 — GET /v1/retailers/me must carry the retailer's enabled
+// F-040 / T4 — GET /v1/retailers/me must carry the retailer's enabled
 // plan features.
 //
 // Why the client needs this at all: the mobile app hides plan-gated entry points

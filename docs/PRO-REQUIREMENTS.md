@@ -3026,19 +3026,26 @@ than they shortlisted. Owner asked: is an AI agent for this feasible, can a
 customer photo drive fit/style matching, and what actually converts a doubtful
 shortlist into a purchase.
 
-### 38.2 Decision — MID tier only, VTO stays rejected
+### 38.2 Decision — MID tier only; full VTO is not part of F-039
 
 Three tiers were researched (LOW/MID/HIGH). **MID is scoped here**: style quiz
 (wired to the backend for the first time — it currently only writes to
 `localStorage`, a gap this spec closes) + an optional one-shot selfie → Claude
 Vision skin-tone read, narrowing the catalog to 3 curated picks with a stated
-reason. **No rendered garment-on-body image, ever.**
+reason. **F-039 renders no garment-on-body image, ever.**
 
-**Rejected: full virtual try-on (HIGH tier).** This is the VTO feature already
+**Not in F-039: full virtual try-on (HIGH tier).** This is the VTO feature already
 built and deliberately removed 2026-08-31 (migration 082) for cost/accuracy
 reasons, made weaker here by the catalog's unstitched/semi-stitched-suit mix (no
 fixed "fit" exists pre-tailoring). Reopening it needs a fresh brainstorm + budget
 sign-off from the owner, not a silent rebuild.
+
+> **Superseded in part, 2026-09-26.** D-3 was answered (§38.7) and the owner
+> chose a **readymade-only** VTO. That feature has its own number, **F-040**
+> (`docs/tasks/pending/catvton-runpod-tryon-launch.md`) — it renders a
+> garment-on-body image, and it is built and launch-gated behind
+> `VIRTUAL_TRY_ON_V2`. F-039 and F-040 are independent: F-039 is unapproved/not
+> started, F-040 is built.
 
 ### 38.3 Scope summary
 
@@ -3070,7 +3077,8 @@ exists; per-retailer quota enforced.
 
 ### 38.5 Not doing (F-039)
 
-Photoreal VTO/garment render; storing or displaying the selfie image; body-shape
+Photoreal VTO/garment render (split out to **F-040** on 2026-09-26 — see §38.7);
+storing or displaying the selfie image; body-shape
 or height-based size recommendation (separately removed feature — this is
 color/style only); re-running the skin match every visit (cached, re-run only on
 staleness or explicit retake).
@@ -3083,7 +3091,7 @@ LOW-only (quiz wiring + narrowing + badges, no vision call) · D-3 revisit HIGH/
 VTO — unanswered, not blocking · D-4 success metric — recommend tying to the
 existing ≥15% enquiry-to-order MVP metric rather than a new one.
 
-### 38.7 Readymade-only VTO — re-scoped HIGH option (still gated on D-3)
+### 38.7 Readymade-only VTO — now F-040; D-3 answered
 
 Full VTO stays rejected for the catalog as a whole (unstitched-majority
 problem), but scoping strictly to `Readymade` `product_type` removes that
@@ -3101,6 +3109,15 @@ go-ahead to build now, gated behind a `VIRTUAL_TRY_ON_V2` plan-feature flag
 with separate admin-editable monthly quotas for retailers (example: 100) and
 phone-OTP-verified customers (example: 3–5). Full task list:
 `docs/tasks/pending/catvton-runpod-tryon-launch.md`.
+
+**Numbering:** that work is **F-040**. It was briefly filed as "F-039 Phase 2"
+for ~11 minutes on 2026-09-26 (see §38's sibling links below); renumbered so
+**F-039 = Style Match Lite** and **F-040 = the try-on**, because the two have
+independent statuses and a single index row could not express both. The five
+commit messages that say "F-039 Phase 2" are historical and are not rewritten.
+
+**Application status:** migrations `118`–`120` applied 2026-09-26; the launch
+itself is owner-side — see `docs/runbooks/tryon-launch-owner-steps.md`.
 
 ---
 

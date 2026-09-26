@@ -1,4 +1,4 @@
-// F-039 T7 — the try-on route. Covers the three things the spec calls
+// F-040 T7 — the try-on route. Covers the three things the spec calls
 // security-critical: the launch gate is a server-side 404 (not a 403 that
 // confirms the route exists), the wearer's photo is never handed to a
 // persisting store, and the consent gate is server-side (the generated image is

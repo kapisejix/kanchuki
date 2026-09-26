@@ -308,7 +308,7 @@ Body: { "product_id": "clxxx", "viewer_token": "anon_session_id" }
 
 ---
 
-### Virtual Try-On — REBUILT (F-039 Phase 2), gated OFF
+### Virtual Try-On — REBUILT (F-040), gated OFF
 
 The original `/try-on/*` and `/consent/*` route trees, the `try_on_jobs` /
 `try_on_usage_logs` / `training_photo_consents` / `customer_measurements`

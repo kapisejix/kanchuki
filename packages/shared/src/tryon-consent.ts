@@ -1,4 +1,4 @@
-// F-039 Phase 2 — virtual try-on consent copy (task T6).
+// F-040 — virtual try-on consent copy (task T6).
 //
 // ONE source of truth for the words on the consent screen. The API records
 // `TRY_ON_CONSENT.version` on every consent it accepts and on the job it

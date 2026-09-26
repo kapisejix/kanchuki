@@ -1,4 +1,4 @@
-// F-039 Phase 2 — in-process handoff for the wearer's photo.
+// F-040 — in-process handoff for the wearer's photo.
 //
 // WHY THIS EXISTS (T6, security-critical)
 //

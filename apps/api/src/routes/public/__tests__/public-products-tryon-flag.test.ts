@@ -1,4 +1,4 @@
-// F-039 Phase 2 / T4 — GET /v1/public/products/:id carries `try_on_enabled`,
+// F-040 / T4 — GET /v1/public/products/:id carries `try_on_enabled`,
 // derived from the STORE's plan (not the shopper's — a shopper has no plan).
 //
 // This is the flag the customer PWA's "Try it on" button reads. The one thing a

@@ -214,7 +214,7 @@ export function isRealOwner(request: FastifyRequest): boolean {
   return request.staffRole === null && !request.catalogDelegate;
 }
 
-// ─── Dual-identity try-on (F-039 Phase 2) ──────────────────────────
+// ─── Dual-identity try-on (F-040) ──────────────────────────
 // The try-on endpoints are called by two clients with two different credential
 // shapes: the retailer app with a Bearer token, the customer PWA with only the
 // `kanchuki_passport` cookie. The Bearer case is the normal flow below; the
@@ -285,7 +285,7 @@ export const authPlugin: FastifyPluginAsync = fp(async (server) => {
 
     const authHeader = request.headers.authorization;
     if (!authHeader?.startsWith('Bearer ')) {
-      // F-039: a cookieless request to the try-on route is still a hard 401 here
+      // F-040: a cookieless request to the try-on route is still a hard 401 here
       // — only the cookie-bearing customer case is handed to the route handler.
       if (
         isTryOnRoute(request.routeOptions.url) &&

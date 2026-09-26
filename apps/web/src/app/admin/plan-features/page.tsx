@@ -14,7 +14,7 @@ type FeatureKey =
   | 'CUSTOM_BACKGROUND_LIBRARY'
   | 'SPIN_360'
   | 'VIRTUAL_TRY_ON'
-  // F-039 Phase 2. Kept in step by hand with the API's admin-plans allowlist.
+  // F-040. Kept in step by hand with the API's admin-plans allowlist.
   | 'VIRTUAL_TRY_ON_V2'
   | 'WHATSAPP_BUSINESS_API'
   | 'CHECKOUT_CART'
@@ -40,7 +40,7 @@ const FEATURES: { key: FeatureKey; label: string; description: string }[] = [
   { key: 'BULK_ONBOARDING_IMPORT', label: 'Bulk Onboarding Import', description: 'Rack/shelf batch photo + PDF catalog import' },
   { key: 'CUSTOM_BACKGROUND_LIBRARY', label: 'Custom Background Library', description: 'Admin-curated product photo backdrops' },
   { key: 'VIRTUAL_TRY_ON', label: 'Virtual Try-On (retired)', description: 'Deprecated — superseded by the CatVTON try-on below' },
-  { key: 'VIRTUAL_TRY_ON_V2', label: 'Virtual Try-On (CatVTON)', description: 'In-store + customer-web try-on via the RunPod engine (F-039 Phase 2)' },
+  { key: 'VIRTUAL_TRY_ON_V2', label: 'Virtual Try-On (CatVTON)', description: 'In-store + customer-web try-on via the RunPod engine (F-040)' },
   { key: 'WHATSAPP_BUSINESS_API', label: 'WhatsApp Business API', description: 'Bring-your-own Meta credentials for bulk-send' },
   { key: 'CHECKOUT_CART', label: 'Shopping Cart / Checkout', description: 'Online checkout with Razorpay payments' },
   { key: 'DATA_EXPORT_CSV', label: 'Data Export (CSV)', description: 'Export product/customer data to CSV' },

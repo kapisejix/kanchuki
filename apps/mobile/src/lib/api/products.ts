@@ -337,7 +337,7 @@ export const productApi = {
       getCacheTtlMs: opts?.refresh ? 0 : 30_000,
     }),
 
-  // ─── F-039 Phase 2: in-store virtual try-on ──────────────────────
+  // ─── F-040: in-store virtual try-on ──────────────────────
   /**
    * Start a try-on for a walk-in customer. The customer's photo goes up as a
    * multipart part named `photo` — the same name the API reads with

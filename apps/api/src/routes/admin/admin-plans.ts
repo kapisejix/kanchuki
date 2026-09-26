@@ -25,7 +25,7 @@ import { planPriceMissing } from '../billing/billing-helpers.js';
  * plan), but only resources some code path actually checks belong on the admin
  * screen: a number with no writer reads as "we cap this" and caps nothing. One
  * consumer today — `checkCustomerQuota(customerAccountId, 'TRY_ON_GENERATION')`
- * in `routes/products/products-tryon.ts` (F-039 Phase 2).
+ * in `routes/products/products-tryon.ts` (F-040).
  *
  * The list lives here and not in `@kanchuki/shared` because there is exactly one
  * consumer (this route pair); sharing a constant with nowhere else to import it
@@ -168,7 +168,7 @@ export const adminPlansRoutes: FastifyPluginAsync = async (server) => {
     return { data: row };
   });
 
-  // ─── Customer-side limits (F-039 Phase 2) ───────────────────────
+  // ─── Customer-side limits (F-040) ───────────────────────
   //
   // Nested under `/plan-limits` deliberately. A shopper has no plan, so this is
   // not a row of the matrix above — but it IS the same kind of number (a quota
@@ -333,7 +333,7 @@ export const adminPlansRoutes: FastifyPluginAsync = async (server) => {
           'CUSTOM_BACKGROUND_LIBRARY',
           'SPIN_360',
           'VIRTUAL_TRY_ON',
-          // F-039 Phase 2. This allowlist is what an admin may toggle, so a new
+          // F-040. This allowlist is what an admin may toggle, so a new
           // feature that should be admin-enableable must be added BOTH here and
           // in the web grid (admin/plan-features) — two hand-kept lists that
           // drift silently otherwise (WHATSAPP_CATALOG_SYNC / SHOWCASE_DESIGNS /

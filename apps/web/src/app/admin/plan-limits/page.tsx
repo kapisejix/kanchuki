@@ -405,7 +405,7 @@ export default function PlanLimitsPage() {
           <h2 className="text-sm font-semibold text-gray-900">Customer Limits</h2>
         </div>
         <p className="text-xs text-gray-500 mb-4">
-          Per-SHOPPER caps (F-039 Phase 2). A shopper has no plan, so this is one number for the whole
+          Per-SHOPPER caps (F-040). A shopper has no plan, so this is one number for the whole
           platform rather than a column per tier. A try-on counts against the shopper&apos;s cap AND the
           store&apos;s own TRY_ON_GENERATION limit above — the two are separate on purpose, and whichever
           runs out first is the one the shopper is told about. Blank = no row = unlimited.

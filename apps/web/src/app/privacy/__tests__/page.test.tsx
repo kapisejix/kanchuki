@@ -41,7 +41,7 @@ describe('/privacy — photo retention & training notice (§7A.6)', () => {
   })
 })
 
-// F-039 T6 — the virtual try-on notice.
+// F-040 T6 — the virtual try-on notice.
 //
 // The try-on case is the one place a photo of a real person IS stored, so the
 // page has to draw the distinction the consent screen draws: the photo you give

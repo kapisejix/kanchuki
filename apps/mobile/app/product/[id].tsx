@@ -103,7 +103,7 @@ export default function ProductDetailScreen() {
   })
   const me = (meData as { data?: Record<string, any> } | undefined)?.data
   const publicSlug: string | null = me?.public_slug ?? null
-  // F-039 Phase 2 — the in-store try-on entry point shows only when the plan
+  // F-040 — the in-store try-on entry point shows only when the plan
   // carries VIRTUAL_TRY_ON_V2. `features` comes from GET /retailers/me and
   // fails closed (absent => hidden). The route re-checks server-side.
   const tryOnEnabled: boolean = Array.isArray(me?.features)
@@ -463,7 +463,7 @@ export default function ProductDetailScreen() {
           </View>
         )}
 
-        {/* F-039 Phase 2 — in-store Virtual Try-On. Hidden unless the plan has
+        {/* F-040 — in-store Virtual Try-On. Hidden unless the plan has
             VIRTUAL_TRY_ON_V2; opens the full-screen capture/consent flow. */}
         {tryOnEnabled && (
           <View className="px-4 pb-2">

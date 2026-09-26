@@ -1,4 +1,4 @@
-// F-039 Phase 2 — virtual try-on consent state + audit (task T6).
+// F-040 — virtual try-on consent state + audit (task T6).
 //
 // Read and written for the same reason twice: the GENERATED image is a photo of
 // a real person that the platform stores, so "was this person asked?" has to be

@@ -73,7 +73,7 @@ describe('staffCanAccess', () => {
   });
 });
 
-// F-039: the try-on endpoints are the only routes where a Bearer-less request
+// F-040: the try-on endpoints are the only routes where a Bearer-less request
 // is forwarded to the handler instead of 401'd here — the customer PWA carries
 // a passport cookie and the route validates it. Both paths must be listed.
 describe('isTryOnRoute', () => {

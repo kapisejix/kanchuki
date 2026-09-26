@@ -1,11 +1,11 @@
-# F-039 Try-On Launch — Owner Steps
+# F-040 Try-On Launch — Owner Steps
 
-**Feature:** F-039 Phase 2 — in-store CatVTON virtual try-on (retailer app + customer PWA)
+**Feature:** F-040 — in-store CatVTON virtual try-on (retailer app + customer PWA)
 **Audience:** The owner, working in the RunPod console/API, the Railway dashboard, and the admin panel.
 **Time:** ~1 hour of clicking + 2–7 days of waiting on the DLT-adjacent legal pieces (see Part 4).
 **Order matters:** the RunPod endpoint must answer a real inference **before** the flag is flipped, and the legal notice must be **live** before any customer's photo is accepted. Doing Parts 5–6 early creates a feature that looks on and fails.
 
-Everything here is **owner-only.** `CLAUDE.md`'s operational control policy forbids the AI agent from triggering deployments, running migrations, editing CI/CD config, or touching production secrets — so this is the human's checklist. The code half of F-039 is done and tested; nothing below is a code change except where it says so.
+Everything here is **owner-only.** `CLAUDE.md`'s operational control policy forbids the AI agent from triggering deployments, running migrations, editing CI/CD config, or touching production secrets — so this is the human's checklist. The code half of F-040 is done and tested; nothing below is a code change except where it says so.
 
 **Prerequisite — ✅ DONE 2026-09-26:** migrations **118 → 119 → 120** were applied in that order (`118` try-on tables, `119` plan-limits seeds, `120` consent). Confirmed by the owner. Nothing below works without them.
 

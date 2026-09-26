@@ -1,4 +1,4 @@
-// F-039 Phase 2 — virtual try-on (CatVTON on the RunPod worker).
+// F-040 — virtual try-on (CatVTON on the RunPod worker).
 //
 // Two clients, one route. The retailer app calls it with a Bearer token (the
 // in-store flow: photograph the customer, try the product on); the customer PWA

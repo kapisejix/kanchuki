@@ -5,7 +5,7 @@ import { GradientButton } from './GradientButton'
 import { AnimatedPressable } from './AnimatedPressable'
 
 /**
- * F-039 Phase 2 — the in-store consent screen.
+ * F-040 — the in-store consent screen.
  *
  * The copy is NOT written here. It is imported from `@kanchuki/shared`, the
  * same module the API records a version against (`TRY_ON_CONSENT.version`):

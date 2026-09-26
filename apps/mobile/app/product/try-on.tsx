@@ -14,7 +14,7 @@ import { GradientButton } from '../../src/components/GradientButton'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { TryOnConsent } from '../../src/components/TryOnConsent'
 
-// F-039 Phase 2 — in-store virtual try-on (retailer app).
+// F-040 — in-store virtual try-on (retailer app).
 //
 // The walk-in flow: photograph the customer, show the consent screen, generate,
 // show the result. The consent text is imported from `@kanchuki/shared` (see

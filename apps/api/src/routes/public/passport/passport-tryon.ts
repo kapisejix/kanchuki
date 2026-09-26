@@ -1,4 +1,4 @@
-// passport-tryon.ts — virtual try-on consent state + withdrawal (F-039 T6).
+// passport-tryon.ts — virtual try-on consent state + withdrawal (F-040 T6).
 //
 // The generated try-on image is a photo of a real person that the platform
 // stores, so the shopper who consented has to be able to see that consent and

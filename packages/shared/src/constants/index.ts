@@ -91,7 +91,7 @@ export const PLAN_LIMIT_RESOURCE_TYPES = [
   'BG_REMOVAL',
   'API_REQUEST',
   'STUDIO_SHOOT',
-  // F-039 Phase 2 — metered CatVTON generations (retailer-side monthly cap).
+  // F-040 — metered CatVTON generations (retailer-side monthly cap).
   'TRY_ON_GENERATION',
 ] as const;
 
@@ -329,7 +329,7 @@ export const LOCALE_FALLBACK_CHAIN: readonly SupportedLocale[] = ['hi-IN', 'en-I
 export const R2_PATHS = {
   productPhoto: (retailerId: string, productId: string, filename: string) =>
     `retailers/${retailerId}/products/${productId}/${filename}`,
-  // `tryonInput` / `tryonResult` were deleted 2026-09-26 (F-039 T3). The
+  // `tryonInput` / `tryonResult` were deleted 2026-09-26 (F-040 T3). The
   // former was the "upload the wearer's photo, then delete it" path that T6
   // forbids outright — the photo never reaches storage, so a helper for its R2
   // key is an invitation to write it. The latter was superseded by the
@@ -607,7 +607,7 @@ export const INTEGRATION_KEYS = [
   },
   { key_name: 'VTONE_API_URL', category: 'AI', label: 'Fashion V-Tone Endpoint URL' },
   { key_name: 'VTONE_SHARED_SECRET', category: 'AI', label: 'Fashion V-Tone Shared Secret' },
-  // CatVTON on RunPod serverless (F-039). RUNPOD_API_KEY authenticates the
+  // CatVTON on RunPod serverless (F-040). RUNPOD_API_KEY authenticates the
   // /v2/<endpoint_id>/run + /health calls; CATVTON_API_URL is the endpoint
   // base URL (https://api.runpod.ai/v2/<endpoint_id>). Both resolve via
   // getSecret() — DB vault first, .env fallback — same pattern as V-Tone.
@@ -696,7 +696,7 @@ export const QUEUES = {
   STUDIO_SHOOT: 'kanchuki-studio-shoot',
   // Phase II: WhatsApp native catalog sync. Retailer-facing sync jobs.
   CATALOG_SYNC: 'kanchuki-catalog-sync',
-  // F-039 Phase 2: CatVTON try-on generation on the RunPod worker. Own queue
+  // F-040: CatVTON try-on generation on the RunPod worker. Own queue
   // for the same reason as STUDIO_SHOOT — a retailer/customer-facing hot path
   // with an externally-metered GPU call, so it gets bounded concurrency
   // instead of sharing the maintenance queue. The job payload deliberately

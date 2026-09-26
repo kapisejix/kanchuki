@@ -20,7 +20,7 @@ import { FamilyProfiles } from './FamilyProfiles'
 import { CustomerConsentModal } from './CustomerConsentModal'
 import { TryOnSheet } from './TryOnSheet'
 
-// F-039 Phase 2: the Try-On button is driven by the product payload's
+// F-040: the Try-On button is driven by the product payload's
 // `try_on_enabled` (derived server-side from the store's plan), not a client
 // constant. It is false for every plan until an admin enables VIRTUAL_TRY_ON_V2
 // in the Plan Feature Matrix, so nothing shows on launch day.
@@ -1033,7 +1033,7 @@ export function ProductDetailSheet({
         />
       )}
 
-      {/* F-039 Phase 2 — customer virtual try-on (consent → selfie → result). */}
+      {/* F-040 — customer virtual try-on (consent → selfie → result). */}
       {showTryOn && (
         <TryOnSheet
           productId={product.id}

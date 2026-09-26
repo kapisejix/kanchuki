@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-// F-039 Phase 2 / T2 — the customer-side half of the F-010 quota lib. Context:
+// F-040 / T2 — the customer-side half of the F-010 quota lib. Context:
 // a try-on from a passport-logged-in shopper must clear BOTH the retailer's
 // monthly cap AND that shopper's own, and the two rejections must be
 // distinguishable so the route can say which one was hit.

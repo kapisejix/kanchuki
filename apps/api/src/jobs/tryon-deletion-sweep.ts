@@ -1,4 +1,4 @@
-// F-039 Phase 2 — retry sweep for try-on results that a withdrawal did not
+// F-040 — retry sweep for try-on results that a withdrawal did not
 // manage to delete (hourly maintenance job).
 //
 // WHY THIS EXISTS. `withdrawTryOnConsent()` deletes the stored images as part

@@ -1,4 +1,4 @@
-// F-039 Phase 2 — the retry path for try-on images a withdrawal could not
+// F-040 — the retry path for try-on images a withdrawal could not
 // delete. The assertion that carries the most weight is the first one: the
 // sweep's WHERE clause is what keeps it from ever touching an image whose owner
 // is still consented.

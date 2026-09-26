@@ -76,7 +76,7 @@ export const publicProductsRoutes: FastifyPluginAsync = async (server) => {
                 // F-024 (Option A): virtual query-time flags, same as the grid summary
                 is_new_arrival: isNewArrival(p.created_at),
                 on_sale: isOnSale({ mrp: p.mrp, price_min: p.price_min }),
-                // F-039 Phase 2. False for every plan until an admin enables
+                // F-040. False for every plan until an admin enables
                 // VIRTUAL_TRY_ON_V2 in the Plan Feature Matrix, so the button
                 // simply does not exist on the day this ships.
                 try_on_enabled: tryOnEnabled,

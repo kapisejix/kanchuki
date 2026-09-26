@@ -6,7 +6,7 @@ import { TRY_ON_CONSENT } from '@kanchuki/shared'
 import { Sheet } from '@/components/Sheet'
 import { RETURN_TO_PARAM, sanitizeReturnTo } from '@/lib/return-to'
 
-// F-039 Phase 2 — customer-web virtual try-on.
+// F-040 — customer-web virtual try-on.
 //
 // The consent screen comes FIRST and capture is not rendered until it is
 // accepted — the file input simply does not exist while `step === 'consent'`,

@@ -7,7 +7,7 @@ import { TryOnSheet } from '../TryOnSheet';
 // jest-dom matchers (toHaveAttribute / toBeInTheDocument) come from the global
 // setup file, same as the other component tests.
 
-// F-039 Phase 2 / T7 — the consent screen must BLOCK capture.
+// F-040 / T7 — the consent screen must BLOCK capture.
 //
 // The generated try-on image is a photo of a real person and it is stored, so
 // the accepting tap is not decoration: it is the assertion the API records a
@@ -43,7 +43,7 @@ async function submitSelfie() {
   fireEvent.change(input, { target: { files: [file] } });
 }
 
-// F-039 Phase 2 — a signed-out shopper gets a sign-in prompt, not the API's
+// F-040 — a signed-out shopper gets a sign-in prompt, not the API's
 // 401 sentence.
 //
 // The API's only 401 here means "no passport session", so the raw message
@@ -125,7 +125,7 @@ describe('TryOnSheet consent gate', () => {
   });
 });
 
-// F-039 Phase 2 — a session that lapses MID-RUN must end the wait, not extend it.
+// F-040 — a session that lapses MID-RUN must end the wait, not extend it.
 //
 // The status route 401s for the same reason the POST does (no passport session),
 // and that response carries no `data.status` — so the poller matches no branch

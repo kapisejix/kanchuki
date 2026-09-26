@@ -1,4 +1,4 @@
-// F-039 T7 — the try-on job. The two assertions that carry the most weight:
+// F-040 T7 — the try-on job. The two assertions that carry the most weight:
 // the wearer's photo reaches the GPU call and NOTHING else, and the generated
 // image is the only thing persisted.
 import { beforeEach, describe, expect, it, vi } from 'vitest';

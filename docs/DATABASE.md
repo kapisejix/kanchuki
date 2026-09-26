@@ -705,7 +705,7 @@ model SubscriptionPayment {
 }
 
 // VIRTUAL TRY-ON — model TryOnJob REMOVED 2026-08-31 (migration 082), then
-// REBUILT 2026-09-26 for F-039 Phase 2
+// REBUILT 2026-09-26 for F-040
 // (docs/tasks/pending/catvton-runpod-tryon-launch.md T1). The new shape is NOT
 // the old one: `TryOnJob` returns with no input-photo column and a
 // `customer_account_id`, plus two new customer-side quota tables

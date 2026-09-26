@@ -1,4 +1,4 @@
-// F-039 T7 — the wearer-photo handoff store. The privacy rule this module
+// F-040 T7 — the wearer-photo handoff store. The privacy rule this module
 // enforces is "the photo never crosses a serialization boundary", so the test
 // that matters most is the one-shot take (a retry must never see the photo).
 import { describe, expect, it, vi } from 'vitest';

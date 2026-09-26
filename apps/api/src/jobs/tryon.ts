@@ -1,4 +1,4 @@
-// F-039 Phase 2 — CatVTON try-on job (BullMQ TRY_ON queue).
+// F-040 — CatVTON try-on job (BullMQ TRY_ON queue).
 //
 // Retailer flow:  POST /v1/products/:id/try-on (multipart wearer photo) → 202
 // Customer flow:  same route, passport cookie instead of a Bearer token

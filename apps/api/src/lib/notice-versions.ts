@@ -28,7 +28,7 @@ export const NOTICE_VERSIONS = {
 export type NoticeVersion = keyof typeof NOTICE_VERSIONS;
 
 /**
- * Purpose-specific consents (F-039 T6 — virtual try-on).
+ * Purpose-specific consents (F-040 T6 — virtual try-on).
  *
  * Deliberately a SEPARATE registry, not another key in `NOTICE_VERSIONS`.
  * `getCurrentNoticeVersion()` returns the **last key** of `NOTICE_VERSIONS`,

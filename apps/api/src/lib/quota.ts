@@ -6,7 +6,7 @@ import { AppError, planLimitExceeded } from '../plugins/error-handler.js';
 // resource instead of a hardcoded column per resource. Call checkQuota before
 // the metered action runs, incrementUsage after it succeeds.
 //
-// F-039 Phase 2 added the customer-side pair below (checkCustomerQuota /
+// F-040 added the customer-side pair below (checkCustomerQuota /
 // incrementCustomerUsage): a shopper has no plan, so they get one admin-editable
 // number per resource (customer_resource_limits) instead of the per-tier
 // plan_limits matrix. A try-on from a passport-logged-in shopper must pass BOTH

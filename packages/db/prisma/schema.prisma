@@ -146,7 +146,7 @@ enum PlanFeatureKey {
   LOOKBOOK_GENERATOR
   SOCIAL_TEMPLATES
   CHANNEL_SYNC
-  // F-039 Phase 2 — the try-on launch switch. Distinct from the @deprecated
+  // F-040 — the try-on launch switch. Distinct from the @deprecated
   // VIRTUAL_TRY_ON above (2026-08-31 teardown, migration 082): that value stays
   // dead and must not be reused. Fails CLOSED like every PlanFeatureKey — no
   // row means OFF — so the feature is invisible on mobile and customer web
@@ -166,7 +166,7 @@ enum QuotaResourceType {
   API_REQUEST
   STUDIO_SHOOT
   SHOWCASE_DESIGNS
-  // F-039 Phase 2 — metered CatVTON generations. Distinct from the @deprecated
+  // F-040 — metered CatVTON generations. Distinct from the @deprecated
   // TRY_ON above (same teardown); that value stays dead.
   TRY_ON_GENERATION
 }
@@ -1295,7 +1295,7 @@ model UsageCounter {
   @@map("usage_counters")
 }
 
-// ─── F-039 PHASE 2 — VIRTUAL TRY-ON (CatVTON on RunPod) ───────────
+// ─── F-040 — VIRTUAL TRY-ON (CatVTON on RunPod) ───────────
 // Build-now/launch-later per docs/tasks/pending/catvton-runpod-tryon-launch.md.
 // No RLS on any of these three: the zero-policy pattern is a Supabase-era
 // vestige and new tables ship without it, relying on app-layer tenant scoping
@@ -1321,7 +1321,7 @@ model TryOnJob {
   result_url          String?
   failure_reason      String?
 
-  // ─── Consent (F-039 T6) ───────────────────────────────────────
+  // ─── Consent (F-040 T6) ───────────────────────────────────────
   // The generated image is a photo of a real person AND it is stored, so a
   // consent record travels with the job that stored it. A passport shopper's
   // grant is remembered (a ConsentEvent row), so it is written here without

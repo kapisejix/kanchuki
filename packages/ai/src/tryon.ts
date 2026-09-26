@@ -1,4 +1,4 @@
-// F-039 Phase 2 — CatVTON virtual try-on, on the RunPod serverless worker.
+// F-040 — CatVTON virtual try-on, on the RunPod serverless worker.
 //
 // Deleted with the feature on 2026-08-31 (migration 082) and rebuilt here
 // against the worker that survived that teardown (see

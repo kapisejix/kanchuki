@@ -101,7 +101,7 @@ CREATE POLICY "retailers_own_data" ON products
 ## 3. Customer Photo Privacy (VTO) — REMOVED
 
 > ⚠️ **Superseded in part, 2026-09-26.** The VTO that was removed here is still
-> removed — but F-039 Phase 2 rebuilt a **gated** virtual try-on (CatVTON on
+> removed — but F-040 rebuilt a **gated** virtual try-on (CatVTON on
 > RunPod) whose rules are NOT covered by this stub. Read **§3d below** for the
 > current customer-photo rules. This stub is kept for the 2026-08-31 record.
 
@@ -139,7 +139,7 @@ deletion flow no longer exist.
 
 ---
 
-## 3d. Virtual Try-On (F-039 Phase 2) — customer photo rules + consent notice
+## 3d. Virtual Try-On (F-040) — customer photo rules + consent notice
 
 **Built:** 2026-09-26 (task `catvton-runpod-tryon-launch.md` T6).
 **Status:** code complete, **not live** — gated behind `VIRTUAL_TRY_ON_V2`, which

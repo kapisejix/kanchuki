@@ -5,7 +5,7 @@ import { render } from '../../src/test/__mocks__/testing-library'
 import { useLocalSearchParams } from 'expo-router'
 import TryOnScreen from '../../app/product/try-on'
 
-// F-039 Phase 2 / T7 — the consent screen must BLOCK capture (retailer app).
+// F-040 / T7 — the consent screen must BLOCK capture (retailer app).
 //
 // Mobile mirror of `apps/web/.../__tests__/TryOnSheet.test.tsx`. The flow is
 // inverted here — the walk-in photo is taken FIRST and the consent follows —

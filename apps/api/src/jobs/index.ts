@@ -114,7 +114,7 @@ export async function addStudioShootJob(data: StudioShootJobData): Promise<void>
   });
 }
 
-/** F-039: enqueue one try-on. The payload carries NO image bytes — the wearer's
+/** F-040: enqueue one try-on. The payload carries NO image bytes — the wearer's
  *  photo is handed over in-process via lib/tryon-photo-store.ts, so it never
  *  reaches Redis (T6). */
 export async function addTryOnJob(data: TryOnJobData): Promise<void> {
