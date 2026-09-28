@@ -2,7 +2,7 @@
 
 import type { PublicCollection, PublicProductDetail } from '@kanchuki/shared';
 import { formatPriceRange } from '@kanchuki/shared';
-import { ArrowLeft, Info, MessageCircle, ShoppingBag, Sparkles, Star } from 'lucide-react';
+import { ArrowLeft, Eye, Heart, Info, MessageCircle, ShoppingBag, Sparkles, Star } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -14,6 +14,7 @@ import { KanchukiBrandBar } from './KanchukiBrandBar';
 import { ProductGallery } from './ProductGallery';
 import { ReviewForm } from './StarPicker';
 import { CustomerConsentModal } from './CustomerConsentModal';
+import { socialProofChip, useSocialProof } from '../lib/socialProof';
 
 interface Props {
   collection: PublicCollection;
@@ -40,6 +41,12 @@ export function SharedProductPage({ collection, product, collectionPath }: Props
   const [showConsentModal, setShowConsentModal] = useState(false);
 
   const storeSlug = collection.retailer.public_slug;
+
+  // F-037 §2 row 5 — real social-proof chip counts. Unlike the detail sheet this
+  // route has no grid parent holding the map, so it reads them itself; the hook
+  // is the same one the collection view uses, so the two cannot drift.
+  const socialProof = useSocialProof(storeSlug);
+  const proofChip = socialProofChip(socialProof?.products[product.id], socialProof?.window ?? null);
   const catalogTarget = storeSlug
     ? collectionPath.startsWith(`/${storeSlug}/categories/`) || collectionPath === `/${storeSlug}/all`
       ? collectionPath
@@ -148,6 +155,17 @@ export function SharedProductPage({ collection, product, collectionPath }: Props
                   ({product.rating_count})
                 </span>
               </div>
+            )}
+            {/* Real social proof — real counts only, never fabricated. */}
+            {proofChip && (
+              <span className="mt-1.5 inline-flex max-w-full items-center gap-1 rounded-full bg-[#F4F2FB] px-2 py-0.5 text-[10px] font-bold text-[#6B4773]">
+                {proofChip.kind === 'favorited' ? (
+                  <Heart size={10} className="flex-shrink-0 text-[#BB3F95] fill-[#BB3F95]" />
+                ) : (
+                  <Eye size={10} className="flex-shrink-0 text-[#6B4773]" />
+                )}
+                <span className="truncate">{proofChip.label}</span>
+              </span>
             )}
           </div>
           {product.name && (

@@ -3,10 +3,11 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
-import { X, ArrowLeft, Heart, MessageCircle, ChevronLeft, ChevronRight, Camera, Palette, MapPin, RotateCw, ShoppingCart, Share2, Sparkles, Info, Star } from 'lucide-react'
+import { X, ArrowLeft, Heart, MessageCircle, ChevronLeft, ChevronRight, Camera, Palette, MapPin, RotateCw, ShoppingCart, Share2, Sparkles, Info, Star, Eye } from 'lucide-react'
 import type { PublicProduct, PublicProductDetail, PublicCollection } from '@kanchuki/shared'
 import { formatPriceRange, resolveFashionColor } from '@kanchuki/shared'
 import { productToCartItem, saveCart, loadCart } from '../lib/cart'
+import { type SocialProof, socialProofChip } from '../lib/socialProof'
 import { Product360Viewer } from './Product360Viewer'
 import { ReviewList } from './ReviewList'
 import { FabricGlossary } from './FabricGlossary'
@@ -50,6 +51,11 @@ interface Props {
   slug: string
   // Store URL segment (public_slug). Null = legacy /c/{slug} URLs.
   store?: string | null
+  // F-037 §2 row 5 social-proof chip counts, already fetched by the parent grid.
+  // Passed down rather than refetched: the map is store-wide, so the entry for
+  // whichever product is open is already in memory — opening a product costs no
+  // extra request.
+  socialProof?: SocialProof | null
   onFavorite: (id: string) => void
   onClose: () => void
   // Open another product in this same sheet (used by the Related Products
@@ -64,11 +70,14 @@ export function ProductDetailSheet({
   isFavorited,
   slug,
   store,
+  socialProof,
   onFavorite,
   onClose,
   onSelectProduct,
 }: Props) {
   const router = useRouter()
+  // Real social proof for this product, if the store has a real count for it.
+  const proofChip = socialProofChip(socialProof?.products[product.id], socialProof?.window ?? null)
   const [photoIndex, setPhotoIndex] = useState(0)
   const [variantPhotoUrl, setVariantPhotoUrl] = useState<string | null>(null)
   const [variantColor, setVariantColor] = useState<string | null>(null)
@@ -671,6 +680,20 @@ export function ProductDetailSheet({
               <p className="text-xs text-[#6B4773] font-bold mt-0.5">
                 {product.category ?? 'Salwar Suits'} • Festive Collection
               </p>
+              {/* Real social proof — real counts only, never fabricated. The
+                  label is derived from the window the counts cover (the nightly
+                  rollup summarizes completed days, so it is normally
+                  "yesterday"). */}
+              {proofChip && (
+                <span className="mt-1.5 inline-flex max-w-full items-center gap-1 rounded-full bg-[#F4F2FB] px-2 py-0.5 text-[10px] font-bold text-[#6B4773]">
+                  {proofChip.kind === 'favorited' ? (
+                    <Heart size={10} className="flex-shrink-0 text-[#BB3F95] fill-[#BB3F95]" />
+                  ) : (
+                    <Eye size={10} className="flex-shrink-0 text-[#6B4773]" />
+                  )}
+                  <span className="truncate">{proofChip.label}</span>
+                </span>
+              )}
             </div>
             <div className="flex items-center gap-2">
               <button

@@ -22,7 +22,7 @@ import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { type SocialProof, fetchSocialProof, socialProofChip } from '../lib/socialProof';
+import { type SocialProof, socialProofChip, useSocialProof } from '../lib/socialProof';
 import {
   type WishlistItem,
   loadWishlist,
@@ -126,21 +126,10 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
   // carries products the API has a REAL count for; every other card renders no
   // chip at all — never a fabricated, rounded, or zeroed number.
   // Store slug: the route segment when there is one, else the retailer's own
-  // public slug (legacy /c/{slug} links carry no store segment).
+  // public slug (legacy /c/{slug} links carry no store segment). The fetch
+  // itself lives in the shared hook so the product page reads identically.
   const storeSlug = store ?? collection.retailer.public_slug;
-  const [socialProof, setSocialProof] = useState<SocialProof | null>(null);
-  useEffect(() => {
-    if (!storeSlug) return;
-    let cancelled = false;
-    void fetchSocialProof(storeSlug).then((proof) => {
-      // No proof leaves the state at its initial null — nothing to store, and
-      // "no chips" is already exactly what null renders.
-      if (!cancelled && proof) setSocialProof(proof);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [storeSlug]);
+  const socialProof = useSocialProof(storeSlug);
 
   // Product list, pagination, and loading are now server-driven — the initial
   // page comes from SSR (`collection`), further pages/filter changes refetch
@@ -550,6 +539,7 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
               isFavorited={favorites.has(selectedProduct.id)}
               slug={slug}
               store={store ?? null}
+              socialProof={socialProof}
               onFavorite={toggleFavorite}
               onSelectProduct={(p) => setSelectedProduct(p)}
               onClose={() => setSelectedProduct(null)}

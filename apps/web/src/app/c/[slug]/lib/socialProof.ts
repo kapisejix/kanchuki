@@ -8,6 +8,8 @@
 // products are stored), and a missing key means "did not make the top 10",
 // which is NOT the same fact as zero.
 
+import { useEffect, useState } from 'react';
+
 /** Both optional: a present key is a real summed count, a missing key is
  *  "no count to show" — never rendered as 0. */
 export interface SocialProofCounts {
@@ -100,27 +102,44 @@ export function favoritedChipText(count: number, window: SocialProofWindow | nul
 }
 
 /**
+ * Minimum real count before a chip is worth showing, per signal.
+ *
+ * Asymmetric on purpose. `favorited_week` counts deliberate saves — one is a
+ * genuine, if modest, signal, so it is enough on its own. `viewed_today` counts
+ * passive looks, where 1–2 reads as "nobody meaningful", and a chip saying
+ * "1 viewed today" argues against the product rather than for it.
+ *
+ * Note the structural ceiling when tuning these: the rollup stores only each
+ * day's top 10, so a small count means the store had a quiet day rather than
+ * that the number is random. In a low-traffic boutique most counts are small,
+ * so raising these suppresses most chips — which is the intended trade, since
+ * the feature's whole rule is "evidence only, never a placeholder".
+ */
+export const MIN_FAVORITED_CHIP = 1;
+export const MIN_VIEWED_CHIP = 3;
+
+/**
  * The one chip a card should render for this product, or null when there is no
  * real count to show — in which case the card renders nothing.
  *
  * Favorited wins when both exist: it is the higher-intent signal of the two,
- * and the spec's own example copy uses it. A non-positive count is treated as
- * absent rather than displayed — a chip is only ever evidence, never a
- * placeholder.
+ * and the spec's own example copy uses it. A count below its signal's minimum
+ * (MIN_* above) is treated as absent rather than displayed — a chip is only
+ * ever evidence, never a placeholder.
  */
 export function socialProofChip(
   counts: SocialProofCounts | undefined,
   window: SocialProofWindow | null,
 ): SocialProofChip | null {
   if (!counts) return null;
-  if (typeof counts.favorited_week === 'number' && counts.favorited_week > 0) {
+  if (typeof counts.favorited_week === 'number' && counts.favorited_week >= MIN_FAVORITED_CHIP) {
     return {
       kind: 'favorited',
       count: counts.favorited_week,
       label: favoritedChipText(counts.favorited_week, window),
     };
   }
-  if (typeof counts.viewed_today === 'number' && counts.viewed_today > 0) {
+  if (typeof counts.viewed_today === 'number' && counts.viewed_today >= MIN_VIEWED_CHIP) {
     return {
       kind: 'viewed',
       count: counts.viewed_today,
@@ -128,4 +147,32 @@ export function socialProofChip(
     };
   }
   return null;
+}
+
+/**
+ * Fetch the store's chip counts once and keep them, for any surface that needs
+ * a chip and has the store slug to hand.
+ *
+ * This exists so the effect lives in ONE place: the storefront grid and the
+ * shared product page both need it, and hand-copying the cancelled-flag effect
+ * into each is how a helper ends up with several subtly different versions
+ * (RC-043). The detail sheet mounted inside the grid does not use this — it
+ * receives the already-fetched map as a prop, so opening a product costs no
+ * extra request.
+ */
+export function useSocialProof(storeSlug: string | null | undefined): SocialProof | null {
+  const [proof, setProof] = useState<SocialProof | null>(null);
+  useEffect(() => {
+    if (!storeSlug) return;
+    let cancelled = false;
+    void fetchSocialProof(storeSlug).then((next) => {
+      // No proof leaves the state at its initial null — nothing to store, and
+      // "no chips" is already exactly what null renders.
+      if (!cancelled && next) setProof(next);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [storeSlug]);
+  return proof;
 }

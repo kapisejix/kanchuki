@@ -2,7 +2,7 @@
 
 **Document:** `docs/tasks/pending/customer-engagement-analytics.md`
 **Date:** 2026-09-17
-**Status:** 🟡 **Phase 1 ✅ Built (2026-09-18)** — `CustomerInteraction` model + migration `100_customer_interaction`, `POST /v1/public/passport/events` restored, `STORE_VISIT` write on QR lead capture, consent-gated client beacon (dwell-timed `view`, `favorite`/`unfavorite`, `enquiry`, debounced `search`). See `docs/BUILD-LOG.md` §2026-09-18. **Phase 2 ✅ Built (2026-09-29)** — nightly aggregation job (`apps/api/src/jobs/engagement-aggregate.ts`, cron `0 1 * * *`), migration `121_engagement_aggregates` (`RetailerEngagementDaily`, `CustomerEngagementSummary`). See `docs/BUILD-LOG.md` §2026-09-29. **Phase 3 ✅ Built (2026-09-29)** — admin store-level dashboard + audited per-customer drill-down (`apps/api/src/routes/admin/admin-engagement.ts`, `apps/web/src/app/admin/engagement/page.tsx`). **Phase 4 🟨 Partly built (2026-09-29)** — retailer-facing aggregate view shipped (`/v1/growth/engagement`, `apps/mobile/app/growth/engagement.tsx`), and of the two gated engagement ideas from §2 **item 5 (social-proof chips) ✅ Built (2026-09-29)** — `GET /v1/public/engagement-chips` + storefront chips, real counts only (see `docs/BUILD-LOG.md` §2026-09-29 (later, F-037 §2 row 5)). **Item 1 (personalized feed) is still not built** — blocked on the `CustomerFashionDNA` rebuild (separate, unshipped subsystem — building the feed without it would mean building that subsystem too, out of scope for this task). See `docs/BUILD-LOG.md` §2026-09-29 (Phase 3+4).
+**Status:** 🟡 **Phase 1 ✅ Built (2026-09-18)** — `CustomerInteraction` model + migration `100_customer_interaction`, `POST /v1/public/passport/events` restored, `STORE_VISIT` write on QR lead capture, consent-gated client beacon (dwell-timed `view`, `favorite`/`unfavorite`, `enquiry`, debounced `search`). See `docs/BUILD-LOG.md` §2026-09-18. **Phase 2 ✅ Built (2026-09-29)** — nightly aggregation job (`apps/api/src/jobs/engagement-aggregate.ts`, cron `0 1 * * *`), migration `121_engagement_aggregates` (`RetailerEngagementDaily`, `CustomerEngagementSummary`). See `docs/BUILD-LOG.md` §2026-09-29. **Phase 3 ✅ Built (2026-09-29)** — admin store-level dashboard + audited per-customer drill-down (`apps/api/src/routes/admin/admin-engagement.ts`, `apps/web/src/app/admin/engagement/page.tsx`). **Phase 4 🟨 Partly built (2026-09-29)** — retailer-facing aggregate view shipped (`/v1/growth/engagement`, `apps/mobile/app/growth/engagement.tsx`), and of the two gated engagement ideas from §2 **item 5 (social-proof chips) ✅ Built (2026-09-29)** — `GET /v1/public/engagement-chips` + storefront chips, real counts only (see `docs/BUILD-LOG.md` §2026-09-29 (later, F-037 §2 row 5)). **Item 1 (personalized feed) is still not built** — blocked on the `CustomerFashionDNA` rebuild (separate, unshipped subsystem — building the feed without it would mean building that subsystem too, out of scope for this task). §2 row 5's follow-ups (per-signal chip floors, chips on both product-detail surfaces) closed the same day; paginate-time refresh was assessed and **deliberately not built** — `docs/BUILD-LOG.md` §2026-09-29 (later, F-037 §2 row 5 follow-ups). Earlier phases: §2026-09-29 (Phase 3+4).
 **Answers:** owner follow-up on F-036 — (1) what else increases time-on-catalog/customer engagement, (2) how admin tracks per-customer dwell time, liked products, search terms, and view history in the admin dashboard.
 **Related:** `docs/tasks/pending/customer-pwa-push-notifications.md` (F-036), `docs/PRO-REQUIREMENTS.md §36 (Shopper Passport)` (Shopper Passport), `docs/PRO-REQUIREMENTS.md` §33.
 
@@ -39,11 +39,11 @@ These are prioritized by how directly they use infrastructure that already exist
 
 | # | Idea | Why it works | Reuses |
 |---|---|---|---|
-| 1 | **"For You" personalized feed as the catalog entry point** | Leads with best-match items instead of generic new-arrivals — proven pattern for session length | Already designed, passport doc §16.2 (blocked on the `CustomerFashionDNA` rebuild — §5 below) |
+| 1 | **"For You" personalized feed as the catalog entry point** | Leads with best-match items instead of generic new-arrivals — proven pattern for session length | Already designed — `docs/PRO-REQUIREMENTS.md` §16.1–§16.4, incl. §16.2 "For You" feed (this row's earlier pointer to a `passport doc §16.2` is stale: `docs/customers/` was consolidated away). Blocked on the `CustomerFashionDNA` rebuild — §5 below |
 | 2 | **Recently-viewed carousel surfaced prominently** | Cuts backtrack friction, encourages deeper browsing per visit | `CustomerRecentlyViewed` — already built, just needs a UI surface |
 | 3 | **AI Stylist chat promoted, not buried** | Conversational interaction is inherently longer-dwell than passive scrolling | Already built (Customer Profile P2) |
 | 4 | **"Complete the look" cross-sell within the same store** | More pages per session, keeps the customer in one store's catalog longer | New — pairs with the taxonomy (category/style/occasion/fabric) already built |
-| 5 | **Real social-proof chips** ("8 viewed today," "3 favorited this week") | Nudges longer looking + more clicks — real counts only, never fabricated | Needs the same interaction log this document specs anyway (§3) — dual-purpose build |
+| 5 | **Real social-proof chips** ("8 viewed today," "3 favorited this week") | Nudges longer looking + more clicks — real counts only, never fabricated | ✅ **Built 2026-09-29, follow-ups included** (§6 Phase 4) — needs the same interaction log this document specs anyway (§3), so it was a dual-purpose build |
 | 6 | **Video/Ken Burns collections over static photos** | Video dwell time measurably exceeds static-photo dwell time | Already built (F-033) |
 | 7 | **Ratings/reviews surfaced on product cards** | Social proof extends read time before a decision | F-021, currently planned |
 | 8 | **Size-match filter front-and-center** | Fewer irrelevant items shown → less bounce, more relevant browsing | Indian Size System, already built |
@@ -157,6 +157,29 @@ Two rules already locked in the passport doc apply directly, unchanged:
   the same fact as "nobody viewed it". The window the counts cover travels with them
   (`window.today`/`week_from`/`week_to`) so the label says "yesterday"/"recently" rather than
   misdating the number as "today" — the nightly job only ever summarizes completed days.
+- ✅ Item 5 **follow-ups** (2026-09-29, same day):
+  - **Minimum-count floors, asymmetric per signal** — `MIN_VIEWED_CHIP = 3`,
+    `MIN_FAVORITED_CHIP = 1`, exported from `lib/socialProof.ts` and asserted as a *relationship*
+    in test rather than left to a comment. A save is deliberate, so one is real evidence; a view is
+    passive, so 1–2 is indistinguishable from noise and a "1 viewed today" chip argues against the
+    product it is meant to sell. Equalising the two would either hide genuine single saves or
+    re-ship the exact chip the floor exists to prevent. Note the ceiling: the rollup keeps only
+    each day's top 10, so most counts in a quiet boutique are small and any floor suppresses most
+    chips — tune from the real distribution, not from taste.
+  - **Chips on both product-detail surfaces** — `ProductDetailSheet` takes the map as a **prop**,
+    because it already mounts inside `CollectionView` and the map is store-wide, so the open
+    product's entry is in memory: the chip costs **no** extra request. `SharedProductPage` renders
+    under two standalone routes with no map-holding parent, so it reads the counts itself through
+    the same `useSocialProof()` hook the grid now uses — the hook exists so this fetch effect is
+    not hand-copied a second and third time (the RC-043 shape).
+  - **Refresh as the visitor paginates — considered, deliberately not built.** Pagination adds no
+    countable events (product views are not page views), the nightly job writes once at 01:00 UTC
+    so the counts are frozen for the whole shopping day, a rollup older than a day degrades to
+    "recently" and so stays honest, and the endpoint serves
+    `public, max-age=300, s-maxage=300, stale-while-revalidate=3600` — a refetch inside 5 minutes is
+    answered from cache with byte-identical content. A refresh would add requests and a new failure
+    path for zero visible benefit; the only variant with any value is a re-focus across the rollup
+    boundary, a session nobody has. Recorded so it is not re-opened as an oversight.
 
 **Dependency note:** §2's items 1 and 5 (personalized feed, social-proof chips) need Phase 1–2 of this roadmap to exist first — they consume the interaction data, they don't produce it. Items 2, 3, 6, 7, 8 in §2 have no dependency on this tracking work and can ship independently, at any time.
 
