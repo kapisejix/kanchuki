@@ -1161,21 +1161,32 @@ rollback). This section stays as the index; the runbook is the procedure.
 
 1. Confirm T6's notice-text update is live (legal gate, not optional). — **verified 2026-09-26: NOT
    live** (the page still shows 24-Sept). It goes live when this branch merges and deploys, so this
-   step is now an ordering constraint: deploy *before* flipping the flag.
+   step is now an ordering constraint: deploy *before* flipping the flag. — **2026-09-28: pushed**
+   (`518d1bee..f0c22a03` → `origin/main`, Railway auto-deploy triggered). Owner confirms the live
+   `/privacy` page shows the new `#virtual-try-on` section before step 3.
 2. Confirm RunPod endpoint scaled up (`workersMax > 0`) — it may have been
    scaled to zero since the 2026-08-31 removal. **Plus:** re-point the template
-   `v76b819nle`, still SHA-pinned to a July commit, so the endpoint runs pre-consent worker code.
+   `v76b819nle`, still SHA-pinned to a July commit, so the endpoint runs pre-consent worker code. —
+   **owner action, pending** (needs `RUNPOD_API_KEY`, not held by the agent).
 3. Flip `VIRTUAL_TRY_ON_V2` to enabled for the chosen plan(s) in Admin → Plan
    Feature Matrix. This alone makes it appear on mobile + customer web — no
-   redeploy, matching the owner's original ask. Start with one plan and smoke-test.
+   redeploy, matching the owner's original ask. Start with one plan and smoke-test. —
+   **owner action, pending** (needs Admin dashboard login + the plan choice).
 4. Set the real retailer-per-plan numbers and the customer number in the two
    admin screens from T5 (the T1 seed values are placeholders). Blank means *no limit*;
-   a literal `0` means *nobody may generate* — they are not the same field state.
+   a literal `0` means *nobody may generate* — they are not the same field state. —
+   **owner action, pending** (Admin dashboard + the owner's numbers).
 5. Re-run the pre-production regression checklist (`docs/root-cause/README.md`)
-   before flipping the flag on a live plan. — **re-run 2026-09-26:** all auto rows clean; the
-   customer e2e suite carries 4 pre-existing stub-404 failures unrelated to this feature (see T7
-   above). Re-check them before launch so they are not mistaken for a try-on regression.
+   before flipping the flag on a live plan. — **re-run 2026-09-28: still clean, no drift** — API
+   1525 passed/5 skipped, web 424/424, mobile 130/130 (corrected runner — `apps/mobile` is
+   vitest, not jest), `apps/api`+`apps/web` typecheck clean, `scripts/check-root-cause-tracker.sh`
+   green (ID set contiguous, owed list empty). Matches the 2026-09-26 numbers exactly.
 6. Apply migrations **118 → 119 → 120** in that order — ✅ **done 2026-09-26** (owner; confirmed).
+
+**Status as of 2026-09-28: step 1 pushed/deploying, step 5 re-verified clean. Steps 2–4 remain
+owner-only — RunPod credentials and Admin dashboard access the agent does not hold, plus two
+business decisions (which plan, what numbers) that are the owner's to make. This file stays in
+`pending/` until 2–4 are done and the flag is live; move to `done/` only then.**
 
 ---
 
