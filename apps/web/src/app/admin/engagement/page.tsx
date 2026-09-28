@@ -218,7 +218,7 @@ export default function EngagementPage() {
 
           <Section title="Customer drill-down" icon={<Search size={16} />}>
             <p className="text-xs text-gray-500 mb-2">
-              Viewing a named customer's raw history is logged to the audit trail.
+              Viewing the raw history of a named customer is logged to the audit trail.
             </p>
             <div className="flex gap-2 mb-3">
               <input
