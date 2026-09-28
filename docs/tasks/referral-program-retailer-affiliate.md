@@ -552,10 +552,8 @@ KNOWN TRAPS — already paid for, do not re-discover
 OWNER ACTIONS STILL OUTSTANDING (nobody but the owner can close these)
   1. Apply migrations 109, 110, 111 from the admin dashboard. Until then the referral tables
      and the RLS policies do not exist in prod and T2's screen 404s its own data.
-  2. Run the opt-in purge-rls-live.test.ts against a real Postgres. It has NEVER EXECUTED —
-     no test in this repo touches a real DB, and RLS denies by FILTERING, so a broken policy
-     and a working one pass every static check. This is the only claim in the feature resting
-     on reasoning rather than measurement.
+  2. ✅ DONE 2026-09-28 — ran the opt-in purge-rls-live.test.ts against a real local Postgres.
+     5/5 pass, all three RLS phases behaved as claimed. See §2.1 below for detail.
   3. Two RC-034 classifications were flagged rather than decided: `team-members` (staff
      account management — credential-adjacent) and `reports` (/admin/reports/gst is tax data
      but its fetches are the gated /v1/admin/gst/*). Both carry an in-file note with the

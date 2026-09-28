@@ -6,17 +6,15 @@
 
 ---
 
-## ⚠️ 0. Branch — read first
+## ⚠️ 0. Branch — SUPERSEDED, stale as of 2026-09-28
 
-**The referral work (F-038, T1–T7 + T9, RC-033…RC-037) is on branch
-`chore/remove-text-to-image-studio-engines`, which is 23 commits ahead of `main` and NOT merged.
-It is NOT on `docs/reorganize` and NOT on `main`.**
+**This section was true 2026-09-24 and is stale now.** `chore/remove-text-to-image-studio-engines`
+merged to `main` in the sessions between then and now: `packages/shared/src/constants/admin-access.ts`,
+`apps/api/src/jobs/referral-*.ts`, and migrations `106`–`115` all live on `main` today (confirmed via
+`git log` while closing §2.1, 2026-09-28). 0.1/0.2 are done — do not re-open a PR for this branch.
 
-`packages/shared/src/constants/admin-access.ts`, `apps/api/src/jobs/referral-*.ts`,
-the T5 / `billing-webhook.ts` interaction, migrations `106`–`115` — all only exist on that branch.
-
-- [ ] **0.1** Open PR `chore/remove-text-to-image-studio-engines` → `main` (owner approves + merges; push to main = Railway auto-deploy, never `railway up`).
-- [ ] **0.2** Branch every task below from the merged `main` (or from that branch if the PR is still open). Do NOT build on `docs/reorganize`.
+- [x] **0.1** Merged to `main` (superseded — see note above).
+- [x] **0.2** N/A — work since has branched from `main` directly.
 
 ---
 
@@ -40,7 +38,7 @@ Result against `aws-1-ap-south-1.pooler.supabase.com` (prod):
 
 ## 2. Referral leftovers (F-038)
 
-- [ ] **2.1 Run `apps/api/src/jobs/purge-rls-live.test.ts` for real.** Never executed. Needs a real Postgres (local Docker `postgres:16` with migrations applied — NOT prod). Record pass/fail in the referral spec §11. Fails → new RC entry.
+- [x] **2.1 Run `apps/api/src/jobs/purge-rls-live.test.ts` for real.** ✅ 2026-09-28 — throwaway local Docker `postgres:16`, `PURGE_RLS_TEST_DATABASE_URL`. **5/5 pass**, all three RLS phases confirmed live (no policy / DELETE-only / migration 111's `FOR ALL`) plus the purge-role audit insert. No RC — recorded in referral spec §13 owner-actions + §2.1.
 - [ ] **2.2 (owner)** RazorpayX account live + `referral_payout_accounts` rows (runbook `docs/runbooks/razorpayx-referral-setup.md`). Until then T7 pays nobody.
 - [ ] **2.3 (owner)** CA conversation before touching TDS settings.
 - [ ] **2.4** T8 mobile "Refer & Earn" — blocked on Play Console review. Leave until owner says go.
@@ -300,6 +298,7 @@ What the automated tests pin is the *mechanism*, on a faked viewport: the measur
 ## Done log
 | Task | Commit | Date |
 |---|---|---|
+| **§2.1** — `purge-rls-live.test.ts` run for real against a throwaway local Docker `postgres:16` (never executed before — no test in this repo touched a real DB). **5/5 pass**: all three RLS phases (no policy silently hides rows / DELETE-only policy still hides them from SELECT so the sweep's batch-select never fires / migration 111's `FOR ALL` policy makes the sweep see and delete the row) plus the purge-role `audit_logs` insert. No RC — the policy is real, not just statically declared correct. Full `apps/api` suite re-run clean afterward (colors off, single clean run — two earlier concurrent/ANSI-garbled runs had shown spurious "3 failed" from resource contention, not real breaks): **1525 passed / 5 skipped (1530), 0 failed**. Also found + corrected: this board's own §0 branch-warning ("referral work is NOT on main") and the referral spec's owner-action #2 were both stale — the referral code has been on `main` for several sessions | *(this commit)* | 2026-09-28 |
 | **§8.4 — the delimiter-anchored table scan wired in as a real test** (`packages/shared/src/testing/doc-table-guard.{ts,test.ts}`, 12 tests: 9 mechanism unit tests on synthetic markdown + a scan of `CLAUDE.md` + every `docs/**/*.md`). Fixed the 2 mechanical clusters it named (`BUILD-LOG.md:2595` missing closing `\|`, `PRO-REQUIREMENTS.md` 2104–2105 undeclared date cell merged into the status cell) and 2 more real breaks the live scan found beyond the original 3 (`ab-testing-variant-links.md:13/14`, `size-fit.md:12`). `DESIGN.md` 803–810 and a newly-found twin, `staff-invite-tokens.md:52`, turned out to need a content decision (where to split a folded/never-split column) rather than a mechanical fix — both recorded as checked, both-directions exceptions in the test rather than left unguarded. Falsified against a real row (not just synthetic), restored, green. `packages/shared` 74/74 (was 62). Docs + one new test file — no app source, no migration | *(uncommitted at time of writing)* | 2026-09-25 |
 | **`CLAUDE.md` tracker — the missing `RC-037` row added, and the table's order question settled (§8.1 + §8.2)** — the two items the duplicate-row merge left open. §8.1: decided the table **is** the index of every `RC-###`, added the row (between `RC-038` and `RC-036`, matching `root-cause issues.md`'s order; `Fixed in` = `d585d26b`), and moved the completeness rule into the tracker — the section header now carries the `comm`/`awk` one-liner and states the ID set must be contiguous, so the property is checkable instead of remembered. Row 88's two bad claims annotated in place (dated record, not overwritten): `docs/root-cause/README.md` **does exist** and its rule 4 is what required the row, so the omission broke a written rule; and the count is now 43. §8.2: kept newest-first ordering and said so in one line above the table, explaining why `RC-033` sits below `RC-032` and why `RC-034`/`RC-035` cannot be ordered numerically (one commit). Verified: 43 rows; in-file − in-table empty; in-table − in-file empty; `uniq -d` empty. **§8.3 closed in the same pass** — the `RC-043` row's two unescaped pipes are escaped, and the sweep that followed found **16 more across 12 rows** (four of them written earlier the same session, in the RC-043 build-log entry) plus two structural repairs (a botched `\|\|` merge in rows 57/58, a stray pipe in a BUILD-LOG delimiter row); the detector took three attempts to get right, and the three remaining cell-count mismatches are §8.4. Docs only — no source file, no test, no migration | *(uncommitted at time of writing)* | 2026-09-25 |
 | **`CLAUDE.md` root-cause tracker — duplicate rows merged** (the table's own note is one row per `RC-###`). `RC-031` and `RC-032` each appeared **twice**: the full row, plus a short restatement sitting below `RC-033` with `this session` in the Fixed-in column. The restatements were entirely contained in the fuller rows (nothing unique to fold in, nothing lost), so the two lines were removed and both rows verified to still hold **3 fields** — ID, root cause, fixed-in. Found while verifying and **not** fixed: **`RC-037` has no row at all** though the entry exists in `root-cause issues.md` and its README → **§8.1**, plus the non-monotonic ordering → **§8.2**. Checked: `awk '/^\| RC-[0-9]+ \|/{print $2}' CLAUDE.md \| sort \| uniq -d` → **empty** (was `RC-031`, `RC-032`); 42 rows; no stale copy of the removed text anywhere in the file | *(this commit)* | 2026-09-25 |
