@@ -2,7 +2,7 @@
 
 **Document:** `docs/tasks/pending/customer-engagement-analytics.md`
 **Date:** 2026-09-17
-**Status:** 🟡 **Phase 1 ✅ Built (2026-09-18)** — `CustomerInteraction` model + migration `100_customer_interaction`, `POST /v1/public/passport/events` restored, `STORE_VISIT` write on QR lead capture, consent-gated client beacon (dwell-timed `view`, `favorite`/`unfavorite`, `enquiry`, debounced `search`). See `docs/BUILD-LOG.md` §2026-09-18. **Phases 2–4 🔴 Planned — no code started** (nightly aggregation job, admin behavior dashboard with per-customer drill-down, retailer-facing aggregate view).
+**Status:** 🟡 **Phase 1 ✅ Built (2026-09-18)** — `CustomerInteraction` model + migration `100_customer_interaction`, `POST /v1/public/passport/events` restored, `STORE_VISIT` write on QR lead capture, consent-gated client beacon (dwell-timed `view`, `favorite`/`unfavorite`, `enquiry`, debounced `search`). See `docs/BUILD-LOG.md` §2026-09-18. **Phase 2 ✅ Built (2026-09-29)** — nightly aggregation job (`apps/api/src/jobs/engagement-aggregate.ts`, cron `0 1 * * *`), migration `121_engagement_aggregates` (`RetailerEngagementDaily`, `CustomerEngagementSummary`). See `docs/BUILD-LOG.md` §2026-09-29. **Phases 3–4 🔴 Planned — no code started** (admin behavior dashboard with per-customer drill-down, retailer-facing aggregate view).
 **Answers:** owner follow-up on F-036 — (1) what else increases time-on-catalog/customer engagement, (2) how admin tracks per-customer dwell time, liked products, search terms, and view history in the admin dashboard.
 **Related:** `docs/tasks/pending/customer-pwa-push-notifications.md` (F-036), `docs/PRO-REQUIREMENTS.md §36 (Shopper Passport)` (Shopper Passport), `docs/PRO-REQUIREMENTS.md` §33.
 
@@ -130,8 +130,11 @@ Two rules already locked in the passport doc apply directly, unchanged:
 - `CustomerInteraction` model + RLS.
 - Client beacon for view/search/favorite/enquiry/store_visit, with real dwell-time measurement.
 
-**Phase 2 — Aggregation**
-- Nightly rollup job (dwell totals, top products, search terms incl. zero-result, funnel).
+**Phase 2 — Aggregation** ✅ Built 2026-09-29
+- Nightly rollup job (dwell totals, top products, search terms incl. zero-result). Funnel
+  conversion (view→favorite→enquiry) is derivable from the three counts already stored per
+  retailer-day/customer-summary row — a dedicated funnel field was not added since Phase 3's
+  dashboard is what actually needs the computed rate, not the storage layer.
 
 **Phase 3 — Admin dashboard**
 - Store-level analytics page.

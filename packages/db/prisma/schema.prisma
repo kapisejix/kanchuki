@@ -356,6 +356,8 @@ model Retailer {
   store_reviews         StoreReview[]
   bug_reports         BugReport[]
   showcase_designs     ShowcaseDesign[]
+  engagement_daily      RetailerEngagementDaily[]
+  engagement_summaries  CustomerEngagementSummary[]
   // Retailer referral / affiliate program (see the Referral* models below).
   // Two distinct relations to Retailer, so the referral edges are named.
   referral_code                 ReferralCode?
@@ -2577,6 +2579,7 @@ model CustomerAccount {
   interactions        CustomerInteraction[]
   try_on_jobs         TryOnJob[]
   resource_usage      CustomerUsageCounter[]
+  engagement_summaries CustomerEngagementSummary[]
 
   @@map("customer_accounts")
 }
@@ -2697,6 +2700,57 @@ model CustomerInteraction {
   @@index([customer_account_id, created_at])
   @@index([retailer_id, type, created_at])
   @@map("customer_interactions")
+}
+
+// Nightly rollup of CustomerInteraction, per retailer per day (F-037 Phase 2).
+// Never query CustomerInteraction directly for dashboard charts — this table
+// (and CustomerEngagementSummary below) is what the admin/retailer dashboards
+// (Phase 3/4) read. Fully recomputed each run for the target day, not
+// incremented, so a rerun for the same day is always safe.
+model RetailerEngagementDaily {
+  id                String   @id @default(cuid())
+  retailer_id       String
+  date              DateTime // UTC midnight of the summarized day
+  total_dwell_ms    BigInt   @default(0) // sum of VIEW metadata.dwell_ms
+  view_count        Int      @default(0)
+  search_count      Int      @default(0)
+  favorite_count    Int      @default(0)
+  unfavorite_count  Int      @default(0)
+  enquiry_count     Int      @default(0)
+  zero_result_count Int      @default(0) // SEARCH rows with metadata.result_count === 0
+  top_products      Json     @default("[]") // [{ product_id, count }], top 10 VIEWed that day
+  top_searches      Json     @default("[]") // [{ query, count }], top 10 that day
+  zero_result_terms Json     @default("[]") // [{ query, count }], top 10 zero-result searches that day
+  updated_at        DateTime @updatedAt
+
+  retailer Retailer @relation(fields: [retailer_id], references: [id], onDelete: Cascade)
+
+  @@unique([retailer_id, date])
+  @@index([retailer_id, date])
+  @@map("retailer_engagement_daily")
+}
+
+// Cumulative per (customer, retailer) totals, fully recomputed each nightly
+// run from all of that pair's CustomerInteraction rows — not incremented, so
+// a rerun is always safe and a future retention prune ages rows out cleanly.
+// Feeds the admin per-customer drill-down (Phase 3).
+model CustomerEngagementSummary {
+  id                   String    @id @default(cuid())
+  customer_account_id  String
+  retailer_id          String
+  total_dwell_ms       BigInt    @default(0)
+  view_count           Int       @default(0)
+  favorite_count       Int       @default(0)
+  enquiry_count        Int       @default(0)
+  last_active_at       DateTime?
+  updated_at           DateTime  @updatedAt
+
+  customer_account CustomerAccount @relation(fields: [customer_account_id], references: [id], onDelete: Cascade)
+  retailer         Retailer        @relation(fields: [retailer_id], references: [id], onDelete: Cascade)
+
+  @@unique([customer_account_id, retailer_id])
+  @@index([retailer_id, last_active_at])
+  @@map("customer_engagement_summaries")
 }
 
 // Nightly precomputed store-discovery score per shopper (§16.4)

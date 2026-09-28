@@ -7,6 +7,7 @@ import { handleCatalogSync, handleDailyCatalogSync } from './catalog-sync.js';
 import type { CatalogSyncJobData } from './catalog-sync.js';
 import { handleCompressR2Images } from './compress-r2-images.js';
 import { handleEmbeddingBackfill } from './embedding-backfill.js';
+import { handleEngagementAggregate } from './engagement-aggregate.js';
 import { handleGenerateEmbedding } from './generate-embedding.js';
 import {
   type GenerateGstInvoiceJobData,
@@ -202,6 +203,8 @@ export async function startWorkers(): Promise<void> {
           return handleReferralAccrue();
         case 'referral-payout':
           return handleReferralPayout('cron');
+        case 'engagement-aggregate':
+          return handleEngagementAggregate();
         case 'backup-database': {
           const data = (job.data ?? {}) as { type?: 'daily' | 'weekly' | 'manual' };
           return handleBackupDatabase(data.type ?? 'daily');
@@ -289,6 +292,20 @@ export async function startWorkers(): Promise<void> {
     {},
     {
       repeat: { pattern: '30 2 30 * *', limit: 1 },
+      removeOnComplete: { count: 10 },
+      removeOnFail: { count: 10 },
+    },
+  );
+
+  // Engagement aggregation (F-037 Phase 2) — daily at 1:00 AM UTC, before the
+  // 01:30 purge sweep, so a retailer purged tonight still has last night's
+  // rollup rather than a half-processed one. Summarizes the UTC day that just
+  // ended; fully recomputes on every run, so a manual re-trigger is safe.
+  await getMaintenanceQueue().add(
+    'engagement-aggregate',
+    {},
+    {
+      repeat: { pattern: '0 1 * * *', limit: 1 },
       removeOnComplete: { count: 10 },
       removeOnFail: { count: 10 },
     },
