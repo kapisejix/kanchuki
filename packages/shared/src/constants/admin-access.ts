@@ -118,6 +118,7 @@ export const STANDARD_ADMIN_ADMIN_SEGMENTS = [
   'default-categories', // taxonomy defaults
   'design-references', // unstitched design gallery (content)
   'discovery', // retailer discovery listing (content + ops)
+  'engagement', // F-037 Phase 3 behavior analytics — support/investigation data, same tier as 'customers'
   'festivals', // festival calendar used by campaigns
   'login', // must stay reachable — the guard skips it explicitly
   'notify', // POST /notify/test — sends a test notification (diagnostic)

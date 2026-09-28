@@ -107,6 +107,20 @@ export async function handleEngagementAggregate(
     dayEnd,
   );
 
+  // ─── Top-10 favorited products per retailer, that day ──────────
+  const topFavorited = await prisma.$queryRawUnsafe<TopRow[]>(
+    `SELECT retailer_id, product_id AS value, cnt::int AS cnt FROM (
+       SELECT retailer_id, product_id, COUNT(*) AS cnt,
+              ROW_NUMBER() OVER (PARTITION BY retailer_id ORDER BY COUNT(*) DESC) AS rn
+       FROM customer_interactions
+       WHERE type = 'FAVORITE' AND product_id IS NOT NULL
+         AND created_at >= $1 AND created_at < $2
+       GROUP BY retailer_id, product_id
+     ) ranked WHERE rn <= ${TOP_N}`,
+    dayStart,
+    dayEnd,
+  );
+
   // ─── Top-10 search terms per retailer, that day ────────────────
   const topSearches = await prisma.$queryRawUnsafe<TopRow[]>(
     `SELECT retailer_id, query AS value, cnt::int AS cnt FROM (
@@ -147,6 +161,7 @@ export async function handleEngagementAggregate(
     return map;
   };
   const topProductsByRetailer = groupByRetailer(topProducts);
+  const topFavoritedByRetailer = groupByRetailer(topFavorited);
   const topSearchesByRetailer = groupByRetailer(topSearches);
   const zeroResultByRetailer = groupByRetailer(zeroResultTerms);
 
@@ -165,6 +180,7 @@ export async function handleEngagementAggregate(
           enquiry_count: row.enquiry_count,
           zero_result_count: row.zero_result_count,
           top_products: (topProductsByRetailer.get(row.retailer_id) ?? []) as never,
+          top_favorited_products: (topFavoritedByRetailer.get(row.retailer_id) ?? []) as never,
           top_searches: (topSearchesByRetailer.get(row.retailer_id) ?? []) as never,
           zero_result_terms: (zeroResultByRetailer.get(row.retailer_id) ?? []) as never,
         },
@@ -177,6 +193,7 @@ export async function handleEngagementAggregate(
           enquiry_count: row.enquiry_count,
           zero_result_count: row.zero_result_count,
           top_products: (topProductsByRetailer.get(row.retailer_id) ?? []) as never,
+          top_favorited_products: (topFavoritedByRetailer.get(row.retailer_id) ?? []) as never,
           top_searches: (topSearchesByRetailer.get(row.retailer_id) ?? []) as never,
           zero_result_terms: (zeroResultByRetailer.get(row.retailer_id) ?? []) as never,
         },

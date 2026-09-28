@@ -33,3 +33,4 @@ export { adminSurveyRoutes } from './admin-survey.js';
 export { adminInvoicesRoutes } from './admin-invoices.js';
 export { adminReferralRoutes } from './admin-referral.js';
 export { adminReferralMonitorRoutes } from './admin-referral-monitor.js';
+export { adminEngagementRoutes } from './admin-engagement.js';

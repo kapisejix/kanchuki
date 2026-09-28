@@ -1,6 +1,7 @@
 import type { FastifyPluginAsync } from 'fastify';
 import { growthAiCampaignRoutes } from './growth-ai-campaign.js';
 import { growthCampaignRoutes } from './growth-campaigns.js';
+import { growthEngagementRoutes } from './growth-engagement.js';
 import { growthGstRoutes } from './growth-gst.js';
 import { growthInventoryRoutes } from './growth-inventory.js';
 import { growthPromotionRoutes } from './growth-promotions.js';
@@ -26,6 +27,7 @@ import { growthVideoRoutes } from './growth-videos.js';
 export const growthRoutes: FastifyPluginAsync = async (server) => {
   await server.register(growthAiCampaignRoutes);
   await server.register(growthCampaignRoutes);
+  await server.register(growthEngagementRoutes); // F-037 Phase 4 — retailer's own aggregate engagement view
   await server.register(growthGstRoutes); // GST Report (retailer-facing)
   await server.register(growthPromotionRoutes);
   await server.register(growthSizeRoutes); // N — size & fit recommendation

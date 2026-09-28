@@ -19,6 +19,7 @@ import {
   adminContactRoutes,
   adminDataRoutes,
   adminDesignReferenceRoutes,
+  adminEngagementRoutes,
   adminFestivalsRoutes,
   adminGstProfileRoutes,
   adminGstRoutes,
@@ -199,6 +200,8 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
   await server.register(adminReferralRoutes);
   // admin-referral-monitor — referral leaderboard / payout trigger / clawback / account entry (T9)
   await server.register(adminReferralMonitorRoutes);
+  // admin-engagement — F-037 Phase 3 behavior analytics (store view + audited per-customer drill-down)
+  await server.register(adminEngagementRoutes);
   // admin-data — auto-split module
   await server.register(adminDataRoutes);
   // admin-integrations — auto-split module

@@ -2719,6 +2719,7 @@ model RetailerEngagementDaily {
   enquiry_count     Int      @default(0)
   zero_result_count Int      @default(0) // SEARCH rows with metadata.result_count === 0
   top_products      Json     @default("[]") // [{ product_id, count }], top 10 VIEWed that day
+  top_favorited_products Json @default("[]") // [{ product_id, count }], top 10 FAVORITEd that day
   top_searches      Json     @default("[]") // [{ query, count }], top 10 that day
   zero_result_terms Json     @default("[]") // [{ query, count }], top 10 zero-result searches that day
   updated_at        DateTime @updatedAt

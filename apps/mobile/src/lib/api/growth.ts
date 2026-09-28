@@ -488,6 +488,35 @@ export type SeasonalAnalytics = {
 
 export type SeasonalPeriod = 'wedding' | 'daily'
 
+// ─── F-037 Phase 4 — retailer's own engagement view ──────────────
+
+export type EngagementTopEntry = { value: string; count: number }
+
+export type EngagementView = {
+  range_days: number
+  dwell_trend: { date: string; total_dwell_ms: string; view_count: number }[]
+  totals: {
+    total_dwell_ms: string
+    view_count: number
+    search_count: number
+    favorite_count: number
+    unfavorite_count: number
+    enquiry_count: number
+    zero_result_count: number
+  }
+  top_products: EngagementTopEntry[]
+  top_favorited_products: EngagementTopEntry[]
+  top_searches: EngagementTopEntry[]
+  zero_result_terms: EngagementTopEntry[]
+  funnel: {
+    view_count: number
+    favorite_count: number
+    enquiry_count: number
+    view_to_favorite_pct: number
+    view_to_enquiry_pct: number
+  }
+}
+
 // ─── Aggregator / Marketplace Sync (Phase 7) ─────────────────────
 
 export type ChannelType = 'MEESHO' | 'INSTAMOJO' | 'GLOAD' | 'CRAFTSVILLA' | 'FLIPKART' | 'AMAZON' | 'OTHER'
@@ -1029,6 +1058,12 @@ export const growthApi = {
       `/v1/growth/analytics/seasonal?period=${period}`,
       { getCacheTtlMs: 60_000 },
     ),
+
+  // ─── Engagement (F-037 Phase 4) — own store, aggregate only ─────
+  engagement: (days = 30) =>
+    request<{ data: EngagementView }>(`/v1/growth/engagement?days=${days}`, {
+      getCacheTtlMs: 60_000,
+    }),
 
   // ─── Partner Network Manager (Phase 2) ─────────────────────────
   partners: () =>

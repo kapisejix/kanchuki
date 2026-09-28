@@ -1,70 +1,70 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { createPortal } from 'react-dom'
-import { usePathname, useRouter } from 'next/navigation'
-import Link from 'next/link'
-import { motion, AnimatePresence } from 'framer-motion'
-import { isSuperAdminOnlyAdminPath } from '@kanchuki/shared'
-import { resetAdminFetchCache } from '@/lib/admin-fetch'
+import { resetAdminFetchCache } from '@/lib/admin-fetch';
+import { isSuperAdminOnlyAdminPath } from '@kanchuki/shared';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
-  LayoutDashboard,
-  Store,
-  CreditCard,
-  Gauge,
-  Layers,
-  LogOut,
-  ChevronLeft,
-  ChevronRight,
-  Shield,
-  Users,
-  Image as ImageIcon,
-  KeyRound,
-  UsersRound,
-  Ticket,
-  BarChart3,
-  ShoppingCart,
-  History,
-  Terminal,
-  HardDrive,
-  Settings,
-  Clock,
-  GitBranch,
-  Cpu,
   Activity,
-  CheckSquare,
   ActivitySquare,
   Archive,
+  BarChart3,
+  BookOpen,
+  Bot,
+  Bug,
+  CalendarDays,
+  CheckSquare,
+  ChevronLeft,
+  ChevronRight,
+  Clapperboard,
+  ClipboardList,
+  Clock,
+  Cpu,
+  CreditCard,
+  DatabaseBackup,
+  Gauge,
+  Gift,
+  GitBranch,
+  Handshake,
+  HardDrive,
+  History,
+  Image as ImageIcon,
+  KeyRound,
+  Layers,
+  LayoutDashboard,
+  LayoutGrid,
+  LogOut,
+  type LucideIcon,
+  Mail,
+  MapPin,
+  Megaphone,
+  MessageCircle,
   Package,
   Palette,
-  Bot,
-  LayoutGrid,
-  Tags,
-  Wand2,
-  DatabaseBackup,
-  Mail,
   Percent,
-  CalendarDays,
-  MessageCircle,
-  Gift,
-  Handshake,
-  ClipboardList,
-  MapPin,
-  Star,
-  Megaphone,
-  BookOpen,
-  Sparkles,
-  Share2,
   Receipt,
   RefreshCw,
-  Bug,
-  Clapperboard,
-  type LucideIcon,
-} from 'lucide-react'
+  Settings,
+  Share2,
+  Shield,
+  ShoppingCart,
+  Sparkles,
+  Star,
+  Store,
+  Tags,
+  Terminal,
+  Ticket,
+  Users,
+  UsersRound,
+  Wand2,
+} from 'lucide-react';
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
+import { useState } from 'react';
+import { createPortal } from 'react-dom';
 
-type Leaf = { label: string; href: string; icon: LucideIcon; superAdminOnly?: boolean }
-type Group = { label: string; icon: LucideIcon; superAdminOnly?: boolean; children: Leaf[] }
-type NavItem = Leaf | Group | { separator: true }
+type Leaf = { label: string; href: string; icon: LucideIcon; superAdminOnly?: boolean };
+type Group = { label: string; icon: LucideIcon; superAdminOnly?: boolean; children: Leaf[] };
+type NavItem = Leaf | Group | { separator: true };
 
 const NAV_ITEMS: NavItem[] = [
   {
@@ -82,6 +82,7 @@ const NAV_ITEMS: NavItem[] = [
     children: [
       { label: 'Retailers', href: '/admin/retailers', icon: Store },
       { label: 'Customers', href: '/admin/customers', icon: Users },
+      { label: 'Engagement', href: '/admin/engagement', icon: Activity },
       { label: 'Aggregators', href: '/admin/aggregators', icon: RefreshCw },
       { label: 'WhatsApp Catalog', href: '/admin/whatsapp-catalog', icon: MessageCircle },
     ],
@@ -122,14 +123,39 @@ const NAV_ITEMS: NavItem[] = [
       { label: 'Overview', href: '/admin/reports', icon: BarChart3 },
       { label: 'GST Reports', href: '/admin/reports/gst', icon: Receipt },
       { label: 'HSN Rules', href: '/admin/hsn-rules', icon: Receipt, superAdminOnly: true },
-      { label: 'Billing & Invoices', href: '/admin/billing', icon: CreditCard, superAdminOnly: true },
+      {
+        label: 'Billing & Invoices',
+        href: '/admin/billing',
+        icon: CreditCard,
+        superAdminOnly: true,
+      },
       { label: 'Commission', href: '/admin/commission', icon: Percent, superAdminOnly: true },
-      { label: 'Referral Program', href: '/admin/referral-settings', icon: Handshake, superAdminOnly: true },
+      {
+        label: 'Referral Program',
+        href: '/admin/referral-settings',
+        icon: Handshake,
+        superAdminOnly: true,
+      },
       { label: 'Referral Monitor', href: '/admin/referral', icon: Gift, superAdminOnly: true },
-      { label: 'Addon Purchases', href: '/admin/addon-purchases', icon: ShoppingCart, superAdminOnly: true },
+      {
+        label: 'Addon Purchases',
+        href: '/admin/addon-purchases',
+        icon: ShoppingCart,
+        superAdminOnly: true,
+      },
       { label: 'Plan Limits', href: '/admin/plan-limits', icon: Gauge, superAdminOnly: true },
-      { label: 'Resource Packs', href: '/admin/resource-packs', icon: Layers, superAdminOnly: true },
-      { label: 'Plan Features', href: '/admin/plan-features', icon: CheckSquare, superAdminOnly: true },
+      {
+        label: 'Resource Packs',
+        href: '/admin/resource-packs',
+        icon: Layers,
+        superAdminOnly: true,
+      },
+      {
+        label: 'Plan Features',
+        href: '/admin/plan-features',
+        icon: CheckSquare,
+        superAdminOnly: true,
+      },
     ],
   },
   {
@@ -137,25 +163,75 @@ const NAV_ITEMS: NavItem[] = [
     icon: Settings,
     superAdminOnly: true,
     children: [
-      { label: 'Integrations & API Keys', href: '/admin/integrations', icon: KeyRound, superAdminOnly: true },
+      {
+        label: 'Integrations & API Keys',
+        href: '/admin/integrations',
+        icon: KeyRound,
+        superAdminOnly: true,
+      },
       { label: 'AI Providers', href: '/admin/ai-providers', icon: Bot, superAdminOnly: true },
       { label: 'AI Usage', href: '/admin/ai-usage', icon: BarChart3, superAdminOnly: true },
       { label: 'General Settings', href: '/admin/settings', icon: Settings, superAdminOnly: true },
       { label: 'AI Config', href: '/admin/settings/ai-config', icon: Cpu, superAdminOnly: true },
-      { label: 'Rate Limits', href: '/admin/settings/rate-limits', icon: Gauge, superAdminOnly: true },
+      {
+        label: 'Rate Limits',
+        href: '/admin/settings/rate-limits',
+        icon: Gauge,
+        superAdminOnly: true,
+      },
       { label: 'Theme', href: '/admin/settings/theme', icon: Palette, superAdminOnly: true },
-      { label: 'Operations Overview', href: '/admin/operations', icon: Shield, superAdminOnly: true },
-      { label: 'Deployments', href: '/admin/operations/deployments', icon: GitBranch, superAdminOnly: true },
-      { label: 'Deployment Gate', href: '/admin/operations/gate', icon: Activity, superAdminOnly: true },
+      {
+        label: 'Operations Overview',
+        href: '/admin/operations',
+        icon: Shield,
+        superAdminOnly: true,
+      },
+      {
+        label: 'Deployments',
+        href: '/admin/operations/deployments',
+        icon: GitBranch,
+        superAdminOnly: true,
+      },
+      {
+        label: 'Deployment Gate',
+        href: '/admin/operations/gate',
+        icon: Activity,
+        superAdminOnly: true,
+      },
       { label: 'Audit Log', href: '/admin/audit-log', icon: History, superAdminOnly: true },
-      { label: 'Database Health', href: '/admin/database/status', icon: Activity, superAdminOnly: true },
-      { label: 'Query Console', href: '/admin/database/query', icon: Terminal, superAdminOnly: true },
-      { label: 'Backup & Restore', href: '/admin/database/backup', icon: HardDrive, superAdminOnly: true },
-      { label: 'Deletion Vault', href: '/admin/database/deletion-vault', icon: Archive, superAdminOnly: true },
-      { label: 'Storage Report', href: '/admin/storage-report', icon: DatabaseBackup, superAdminOnly: true },
+      {
+        label: 'Database Health',
+        href: '/admin/database/status',
+        icon: Activity,
+        superAdminOnly: true,
+      },
+      {
+        label: 'Query Console',
+        href: '/admin/database/query',
+        icon: Terminal,
+        superAdminOnly: true,
+      },
+      {
+        label: 'Backup & Restore',
+        href: '/admin/database/backup',
+        icon: HardDrive,
+        superAdminOnly: true,
+      },
+      {
+        label: 'Deletion Vault',
+        href: '/admin/database/deletion-vault',
+        icon: Archive,
+        superAdminOnly: true,
+      },
+      {
+        label: 'Storage Report',
+        href: '/admin/storage-report',
+        icon: DatabaseBackup,
+        superAdminOnly: true,
+      },
     ],
   },
-]
+];
 
 export function Sidebar({
   collapsed,
@@ -165,33 +241,35 @@ export function Sidebar({
   onLogout,
   role = 'SUPER_ADMIN',
 }: {
-  collapsed: boolean
-  onToggle: () => void
-  mobileOpen: boolean
-  onMobileClose: () => void
-  onLogout: () => void
-  role?: string
+  collapsed: boolean;
+  onToggle: () => void;
+  mobileOpen: boolean;
+  onMobileClose: () => void;
+  onLogout: () => void;
+  role?: string;
 }) {
-  const pathname = usePathname()
-  const router = useRouter()
-  const [openGroup, setOpenGroup] = useState<{ label: string; top: number; left: number } | null>(null)
+  const pathname = usePathname();
+  const router = useRouter();
+  const [openGroup, setOpenGroup] = useState<{ label: string; top: number; left: number } | null>(
+    null,
+  );
 
   const handleLogout = () => {
     // Clearing sessionStorage alone is not enough — the layout keeps its
     // `authed` state, so the dashboard would stay mounted. onLogout tells the
     // layout to flip back to the login screen.
-    sessionStorage.removeItem('admin_key')
+    sessionStorage.removeItem('admin_key');
     // The CSRF cookie+token pair is tied to the old session — drop the
     // cached token so the next login starts clean.
-    resetAdminFetchCache()
-    router.push('/admin')
-    onLogout()
-  }
+    resetAdminFetchCache();
+    router.push('/admin');
+    onLogout();
+  };
 
   const isLinkActive = (href: string) =>
-    href === '/admin' ? pathname === '/admin' : pathname.startsWith(href)
+    href === '/admin' ? pathname === '/admin' : pathname.startsWith(href);
 
-  const isSuperAdmin = role === 'SUPER_ADMIN'
+  const isSuperAdmin = role === 'SUPER_ADMIN';
 
   // A nav entry is Super-Admin-only if its own flag says so OR the shared
   // access list says so. The flag is per-entry and easy to forget when adding a
@@ -200,30 +278,30 @@ export function Sidebar({
   // Accepts NavItem (including `{ separator: true }`) and narrows, so a
   // separator or a group is never mistaken for a link.
   const isSuperAdminOnlyItem = (entry: NavItem) => {
-    const href = 'href' in entry ? entry.href : undefined
-    const flagged = 'superAdminOnly' in entry && entry.superAdminOnly === true
-    return flagged || isSuperAdminOnlyAdminPath(href)
-  }
+    const href = 'href' in entry ? entry.href : undefined;
+    const flagged = 'superAdminOnly' in entry && entry.superAdminOnly === true;
+    return flagged || isSuperAdminOnlyAdminPath(href);
+  };
 
   const filteredNavItems = NAV_ITEMS.filter((item) => {
     if (isSuperAdminOnlyItem(item) && !isSuperAdmin) {
-      return false
+      return false;
     }
-    return true
+    return true;
   })
     .map((item) => {
       if ('children' in item) {
         const visibleChildren = item.children.filter(
           (child) => !isSuperAdminOnlyItem(child) || isSuperAdmin,
-        )
-        return { ...item, children: visibleChildren }
+        );
+        return { ...item, children: visibleChildren };
       }
-      return item
+      return item;
     })
     .filter((item) => {
-      if ('children' in item && item.children.length === 0) return false
-      return true
-    })
+      if ('children' in item && item.children.length === 0) return false;
+      return true;
+    });
 
   return (
     <>
@@ -276,21 +354,23 @@ export function Sidebar({
         <nav className="flex-1 py-4 px-2 space-y-1 overflow-y-auto">
           {filteredNavItems.map((item, index) => {
             if ('separator' in item) {
-              return (
-                <div key={`sep-${index}`} className="my-2 border-t border-white/[0.06]" />
-              )
+              return <div key={`sep-${index}`} className="my-2 border-t border-white/[0.06]" />;
             }
 
             if ('children' in item) {
-              const isGroupActive = item.children.some((c) => isLinkActive(c.href))
-              const isOpen = openGroup?.label === item.label
+              const isGroupActive = item.children.some((c) => isLinkActive(c.href));
+              const isOpen = openGroup?.label === item.label;
 
               return (
                 <div
                   key={item.label}
                   className="relative"
                   onMouseEnter={(e) =>
-                    setOpenGroup({ label: item.label, top: e.currentTarget.getBoundingClientRect().top, left: e.currentTarget.getBoundingClientRect().right })
+                    setOpenGroup({
+                      label: item.label,
+                      top: e.currentTarget.getBoundingClientRect().top,
+                      left: e.currentTarget.getBoundingClientRect().right,
+                    })
                   }
                   onMouseLeave={() => setOpenGroup(null)}
                 >
@@ -308,46 +388,52 @@ export function Sidebar({
                     />
                     {!collapsed && (
                       <>
-                        <span className="relative z-10 whitespace-nowrap flex-1 text-left">{item.label}</span>
+                        <span className="relative z-10 whitespace-nowrap flex-1 text-left">
+                          {item.label}
+                        </span>
                         <ChevronRight size={14} className="relative z-10 shrink-0 text-gray-600" />
                       </>
                     )}
                   </button>
 
-                  {isOpen && openGroup && createPortal(
-                    <div
-                      style={{ position: 'fixed', top: openGroup.top, left: openGroup.left + 8 }}
-                      className="w-56 bg-gray-900 border border-white/[0.08] rounded-xl shadow-2xl py-2 z-50"
-                      onMouseEnter={() => setOpenGroup(openGroup)}
-                      onMouseLeave={() => setOpenGroup(null)}
-                    >
-                      {item.children.map((child) => {
-                          const childActive = isLinkActive(child.href)
+                  {isOpen &&
+                    openGroup &&
+                    createPortal(
+                      <div
+                        style={{ position: 'fixed', top: openGroup.top, left: openGroup.left + 8 }}
+                        className="w-56 bg-gray-900 border border-white/[0.08] rounded-xl shadow-2xl py-2 z-50"
+                        onMouseEnter={() => setOpenGroup(openGroup)}
+                        onMouseLeave={() => setOpenGroup(null)}
+                      >
+                        {item.children.map((child) => {
+                          const childActive = isLinkActive(child.href);
                           return (
                             <Link
                               key={child.href}
                               href={child.href}
                               onClick={() => {
-                                onMobileClose()
-                                setOpenGroup(null)
+                                onMobileClose();
+                                setOpenGroup(null);
                               }}
                               className={`flex items-center gap-3 px-3 py-2 text-sm font-medium transition-colors ${
-                                childActive ? 'text-cyan-400 bg-cyan-500/10' : 'text-gray-400 hover:text-gray-200 hover:bg-white/[0.04]'
+                                childActive
+                                  ? 'text-cyan-400 bg-cyan-500/10'
+                                  : 'text-gray-400 hover:text-gray-200 hover:bg-white/[0.04]'
                               }`}
                             >
                               <child.icon size={16} className="shrink-0" />
                               <span className="whitespace-nowrap">{child.label}</span>
                             </Link>
-                          )
+                          );
                         })}
-                    </div>,
-                    document.body
-                  )}
+                      </div>,
+                      document.body,
+                    )}
                 </div>
-              )
+              );
             }
 
-            const isActive = isLinkActive(item.href)
+            const isActive = isLinkActive(item.href);
 
             return (
               <motion.div
@@ -397,7 +483,7 @@ export function Sidebar({
                   </AnimatePresence>
                 </Link>
               </motion.div>
-            )
+            );
           })}
         </nav>
 
@@ -466,7 +552,7 @@ export function Sidebar({
         </motion.button>
       </motion.aside>
     </>
-  )
+  );
 }
 
-export default Sidebar
+export default Sidebar;

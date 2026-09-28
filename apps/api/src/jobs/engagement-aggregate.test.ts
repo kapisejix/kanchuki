@@ -4,8 +4,8 @@
 // Three things are asserted:
 //  1. targetDayStart is pure and picks the day BEFORE `now`, at UTC midnight —
 //     the job must never summarize a day that has not fully ended.
-//  2. The five raw queries' results land in the right upsert fields — the
-//     bigint dwell sum, the per-type counts, and the three top-N lists each
+//  2. The six raw queries' results land in the right upsert fields — the
+//     bigint dwell sum, the per-type counts, and the four top-N lists each
 //     grouped by their own retailer_id, not cross-contaminated.
 //  3. A write failure on one row is isolated (counted, not thrown) so one bad
 //     row cannot abandon the rest of the night's rollup.
@@ -40,7 +40,7 @@ describe('handleEngagementAggregate', () => {
   });
 
   it('summarizes the day BEFORE now, never the day still in progress', async () => {
-    mockQueryRawUnsafe.mockResolvedValue([]); // all 5 raw calls return empty
+    mockQueryRawUnsafe.mockResolvedValue([]); // all 6 raw calls return empty
     const summary = await handleEngagementAggregate({ now: NOW });
     expect(summary.target_day).toBe('2026-09-28');
 
@@ -78,6 +78,7 @@ describe('handleEngagementAggregate', () => {
         { retailer_id: 'r_1', value: 'p_1', cnt: 3 },
         { retailer_id: 'r_2', value: 'p_9', cnt: 5 },
       ]) // topProducts
+      .mockResolvedValueOnce([{ retailer_id: 'r_1', value: 'p_2', cnt: 1 }]) // topFavorited
       .mockResolvedValueOnce([{ retailer_id: 'r_1', value: 'pink cotton suit', cnt: 2 }]) // topSearches
       .mockResolvedValueOnce([{ retailer_id: 'r_1', value: 'lehenga under 1500', cnt: 1 }]) // zeroResultTerms
       .mockResolvedValueOnce([]); // customerSummaries
@@ -101,6 +102,7 @@ describe('handleEngagementAggregate', () => {
         enquiry_count: 1,
         zero_result_count: 1,
         top_products: [{ value: 'p_1', count: 3 }],
+        top_favorited_products: [{ value: 'p_2', count: 1 }],
         top_searches: [{ value: 'pink cotton suit', count: 2 }],
         zero_result_terms: [{ value: 'lehenga under 1500', count: 1 }],
       }),
@@ -115,6 +117,7 @@ describe('handleEngagementAggregate', () => {
     expect(r2Call[0].create).toMatchObject({
       total_dwell_ms: 9000n,
       top_products: [{ value: 'p_9', count: 5 }],
+      top_favorited_products: [],
       top_searches: [],
       zero_result_terms: [],
     });
@@ -124,6 +127,7 @@ describe('handleEngagementAggregate', () => {
     mockQueryRawUnsafe
       .mockResolvedValueOnce([]) // dayCounts
       .mockResolvedValueOnce([]) // topProducts
+      .mockResolvedValueOnce([]) // topFavorited
       .mockResolvedValueOnce([]) // topSearches
       .mockResolvedValueOnce([]) // zeroResultTerms
       .mockResolvedValueOnce([
@@ -188,6 +192,7 @@ describe('handleEngagementAggregate', () => {
           zero_result_count: 0,
         },
       ])
+      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
