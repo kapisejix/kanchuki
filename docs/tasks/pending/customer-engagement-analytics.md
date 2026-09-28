@@ -2,7 +2,7 @@
 
 **Document:** `docs/tasks/pending/customer-engagement-analytics.md`
 **Date:** 2026-09-17
-**Status:** 🟡 **Phase 1 ✅ Built (2026-09-18)** — `CustomerInteraction` model + migration `100_customer_interaction`, `POST /v1/public/passport/events` restored, `STORE_VISIT` write on QR lead capture, consent-gated client beacon (dwell-timed `view`, `favorite`/`unfavorite`, `enquiry`, debounced `search`). See `docs/BUILD-LOG.md` §2026-09-18. **Phase 2 ✅ Built (2026-09-29)** — nightly aggregation job (`apps/api/src/jobs/engagement-aggregate.ts`, cron `0 1 * * *`), migration `121_engagement_aggregates` (`RetailerEngagementDaily`, `CustomerEngagementSummary`). See `docs/BUILD-LOG.md` §2026-09-29. **Phase 3 ✅ Built (2026-09-29)** — admin store-level dashboard + audited per-customer drill-down (`apps/api/src/routes/admin/admin-engagement.ts`, `apps/web/src/app/admin/engagement/page.tsx`). **Phase 4 🟨 Partly built (2026-09-29)** — retailer-facing aggregate view shipped (`/v1/growth/engagement`, `apps/mobile/app/growth/engagement.tsx`); the two gated engagement ideas from §2 are **not** built — item 1 (personalized feed) stays blocked on the `CustomerFashionDNA` rebuild (separate, unshipped subsystem — building the feed without it would mean building that subsystem too, out of scope for this task); item 5 (social-proof chips) is deferred, not blocked — the data to build it honestly now exists, it just was not built in this pass. See `docs/BUILD-LOG.md` §2026-09-29 (Phase 3+4).
+**Status:** 🟡 **Phase 1 ✅ Built (2026-09-18)** — `CustomerInteraction` model + migration `100_customer_interaction`, `POST /v1/public/passport/events` restored, `STORE_VISIT` write on QR lead capture, consent-gated client beacon (dwell-timed `view`, `favorite`/`unfavorite`, `enquiry`, debounced `search`). See `docs/BUILD-LOG.md` §2026-09-18. **Phase 2 ✅ Built (2026-09-29)** — nightly aggregation job (`apps/api/src/jobs/engagement-aggregate.ts`, cron `0 1 * * *`), migration `121_engagement_aggregates` (`RetailerEngagementDaily`, `CustomerEngagementSummary`). See `docs/BUILD-LOG.md` §2026-09-29. **Phase 3 ✅ Built (2026-09-29)** — admin store-level dashboard + audited per-customer drill-down (`apps/api/src/routes/admin/admin-engagement.ts`, `apps/web/src/app/admin/engagement/page.tsx`). **Phase 4 🟨 Partly built (2026-09-29)** — retailer-facing aggregate view shipped (`/v1/growth/engagement`, `apps/mobile/app/growth/engagement.tsx`), and of the two gated engagement ideas from §2 **item 5 (social-proof chips) ✅ Built (2026-09-29)** — `GET /v1/public/engagement-chips` + storefront chips, real counts only (see `docs/BUILD-LOG.md` §2026-09-29 (later, F-037 §2 row 5)). **Item 1 (personalized feed) is still not built** — blocked on the `CustomerFashionDNA` rebuild (separate, unshipped subsystem — building the feed without it would mean building that subsystem too, out of scope for this task). See `docs/BUILD-LOG.md` §2026-09-29 (Phase 3+4).
 **Answers:** owner follow-up on F-036 — (1) what else increases time-on-catalog/customer engagement, (2) how admin tracks per-customer dwell time, liked products, search terms, and view history in the admin dashboard.
 **Related:** `docs/tasks/pending/customer-pwa-push-notifications.md` (F-036), `docs/PRO-REQUIREMENTS.md §36 (Shopper Passport)` (Shopper Passport), `docs/PRO-REQUIREMENTS.md` §33.
 
@@ -142,15 +142,21 @@ Two rules already locked in the passport doc apply directly, unchanged:
 - Per-customer drill-down, `AuditLog`-gated — every lookup writes the audit row before returning
   data, verified by test (`admin-engagement.test.ts`).
 
-**Phase 4 — Retailer-facing view + engagement features** 🟨 Partly built 2026-09-29
+**Phase 4 — Retailer-facing view + engagement features** 🟨 Partly built 2026-09-29 (§2 item 5 added later the same day)
 - ✅ Retailer aggregate view (§4 boundary enforced by construction — `GET /v1/growth/engagement`
   takes no customer id and no other-retailer id; it only ever reads `request.retailerId`).
   Mobile screen `apps/mobile/app/growth/engagement.tsx`.
 - ❌ Item 1 (personalized feed) — still blocked on the `CustomerFashionDNA` rebuild, a separate
   unshipped subsystem (§2 row 1). Not attempted.
-- ⏸️ Item 5 (social-proof chips) — deferred, not blocked. The data now exists to build this
-  honestly (real per-product view/favorite counts, from `top_products`/`top_favorited_products`);
-  it was not built in this pass. Left as an open next step.
+- ✅ Item 5 (social-proof chips) — **built** 2026-09-29. `GET /v1/public/engagement-chips?store=<slug>`
+  folds the same `RetailerEngagementDaily` rows through the same `mergeTopLists()` the two views
+  above use (`viewed_today` = newest day alone; `favorited_week` = 7 days summed and re-ranked),
+  and the customer storefront renders one chip per card from that map. Honesty rule (§2 row 5,
+  §7.4) enforced in the response shape: a product with no count is **absent** from the map, never
+  present-with-zero, because the rollup only stores each day's top 10 — "not in the top 10" is not
+  the same fact as "nobody viewed it". The window the counts cover travels with them
+  (`window.today`/`week_from`/`week_to`) so the label says "yesterday"/"recently" rather than
+  misdating the number as "today" — the nightly job only ever summarizes completed days.
 
 **Dependency note:** §2's items 1 and 5 (personalized feed, social-proof chips) need Phase 1–2 of this roadmap to exist first — they consume the interaction data, they don't produce it. Items 2, 3, 6, 7, 8 in §2 have no dependency on this tracking work and can ship independently, at any time.
 

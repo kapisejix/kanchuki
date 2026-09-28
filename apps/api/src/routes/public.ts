@@ -7,6 +7,7 @@ import {
   publicCatalogPaymentRoutes,
   publicCollectionsRoutes,
   publicDesignRoutes,
+  publicEngagementChipsRoutes,
   publicMiscRoutes,
   publicNearMeRoutes,
   publicProductsRoutes,
@@ -42,6 +43,9 @@ export const publicRoutes: FastifyPluginAsync = async (server) => {
   await server.register(publicDesignRoutes);
   // public-showcase-designs — Suits Designs strip / browse / permalink
   await server.register(publicShowcaseDesignsRoutes);
+  // public-engagement-chips — real per-product view/favorite counts for the
+  // storefront's social-proof chips (F-037 §2 row 5)
+  await server.register(publicEngagementChipsRoutes);
   // passport — Shopper Passport OTP + session (Tasks 2-3)
   await server.register(passportRoutes, { prefix: '/passport' });
   // public-search — cross-retailer product search (Task 22)

@@ -176,3 +176,109 @@ describe('CollectionView favorites survive a client-side route change', () => {
     expect(localStorage.getItem('kanchuki_wishlist_festive-edit')).toContain('prod-1')
   })
 })
+
+// F-037 §2 row 5 — real social-proof chips. Two properties matter, and both are
+// load-bearing for the honesty rule: one request covers the whole grid (not one
+// per card), and only the products the API returned a real count for get a chip
+// at all — an absent entry renders nothing, never "0 viewed".
+describe('CollectionView social-proof chips', () => {
+  const DAY_MS = 86_400_000
+  const isoDaysAgo = (days: number) =>
+    new Date(Date.now() - days * DAY_MS).toISOString().slice(0, 10)
+
+  const CHIPS_URL = '/api/engagement-chips?store=meera-sarees'
+
+  // prod-1 has a real count; prod-2 and prod-3 have none.
+  function stubFetch() {
+    const fetchMock = vi.fn(async (input: unknown) => {
+      if (String(input).startsWith('/api/engagement-chips')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            data: {
+              products: { 'prod-1': { viewed_today: 8, favorited_week: 3 } },
+              // The nightly rollup summarizes completed days — the newest window
+              // is yesterday, which is what the chip label must reflect.
+              window: {
+                today: isoDaysAgo(1),
+                week_from: isoDaysAgo(7),
+                week_to: isoDaysAgo(1),
+              },
+            },
+          }),
+        }
+      }
+      return { ok: true, status: 200, json: async () => ({ data: {} }) }
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    return fetchMock
+  }
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
+  it('fetches once for the grid and chips only the products the API returned', async () => {
+    const fetchMock = stubFetch()
+    render(
+      <CollectionView
+        collection={COLLECTION}
+        slug="festive-edit"
+        store="meera-sarees"
+        productsApiPath="/api/meera-sarees/festive-edit/products"
+      />,
+    )
+
+    // prod-1's real count, labelled from the window the API reported — the
+    // favourite count wins over the view count when both exist.
+    expect(await screen.findByText('3 saved this week')).toBeInTheDocument()
+
+    // One request for all three products — not one per card.
+    const chipRequests = fetchMock.mock.calls
+      .map((call) => String(call[0]))
+      .filter((url) => url.startsWith('/api/engagement-chips'))
+    expect(chipRequests).toEqual([CHIPS_URL])
+
+    // prod-2 and prod-3 had no entry: no chip at all — no "0 viewed", no
+    // rounded stand-in, and no second chip anywhere in the grid.
+    expect(screen.getAllByText('3 saved this week')).toHaveLength(1)
+    expect(screen.queryByText(/viewed/)).toBeNull()
+    expect(screen.queryByText(/0 saved|0 viewed/)).toBeNull()
+  })
+
+  it('renders no chip at all when the store has no real counts', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: unknown) =>
+        String(input).startsWith('/api/engagement-chips')
+          ? {
+              ok: true,
+              status: 200,
+              json: async () => ({
+                data: {
+                  products: {},
+                  window: { today: null, week_from: null, week_to: null },
+                },
+              }),
+            }
+          : { ok: true, status: 200, json: async () => ({ data: {} }) },
+      ),
+    )
+
+    render(
+      <CollectionView
+        collection={COLLECTION}
+        slug="festive-edit"
+        store="meera-sarees"
+        productsApiPath="/api/meera-sarees/festive-edit/products"
+      />,
+    )
+
+    // The grid itself is up...
+    expect(await screen.findByText('Festive Design 1')).toBeInTheDocument()
+    // ...and no chip was invented for any of it.
+    expect(screen.queryByText(/viewed|saved this week|saved recently/)).toBeNull()
+  })
+})

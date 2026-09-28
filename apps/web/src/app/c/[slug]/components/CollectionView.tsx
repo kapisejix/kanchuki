@@ -3,6 +3,7 @@
 import type { PublicCollection, PublicProduct } from '@kanchuki/shared';
 import { buildEnquiryMessage, buildWhatsAppEnquiryLink, formatPriceRange } from '@kanchuki/shared';
 import {
+  Eye,
   Filter,
   Heart,
   MessageCircle,
@@ -21,6 +22,7 @@ import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { type SocialProof, fetchSocialProof, socialProofChip } from '../lib/socialProof';
 import {
   type WishlistItem,
   loadWishlist,
@@ -117,6 +119,28 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
       body: JSON.stringify({}),
     }).catch(() => undefined)
   }, [apiBasePath])
+
+  // F-037 §2 row 5 — real social-proof chip counts. ONE request per collection
+  // load, for the whole store, shared by every card: the API answers per store,
+  // so a per-card fetch would be N requests for the same payload. The map only
+  // carries products the API has a REAL count for; every other card renders no
+  // chip at all — never a fabricated, rounded, or zeroed number.
+  // Store slug: the route segment when there is one, else the retailer's own
+  // public slug (legacy /c/{slug} links carry no store segment).
+  const storeSlug = store ?? collection.retailer.public_slug;
+  const [socialProof, setSocialProof] = useState<SocialProof | null>(null);
+  useEffect(() => {
+    if (!storeSlug) return;
+    let cancelled = false;
+    void fetchSocialProof(storeSlug).then((proof) => {
+      // No proof leaves the state at its initial null — nothing to store, and
+      // "no chips" is already exactly what null renders.
+      if (!cancelled && proof) setSocialProof(proof);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [storeSlug]);
 
   // Product list, pagination, and loading are now server-driven — the initial
   // page comes from SSR (`collection`), further pages/filter changes refetch
@@ -486,7 +510,7 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
                   onTap={() => setSelectedProduct(product)}
                   collectionSlug={slug}
                   priority={idx < 2}
-
+                  socialProof={socialProof}
                 />
               ))}
             </div>
@@ -602,13 +626,26 @@ interface CardProps {
   collectionSlug?: string;
   priority?: boolean;
   onTryOn?: (product: PublicProduct) => void;
+  // Whole-store chip map, fetched once per collection load (see above).
+  socialProof?: SocialProof | null;
 }
 
-function ProductCard({ product, isFavorited, onFavorite, onTap, priority, onTryOn }: CardProps) {
+function ProductCard({
+  product,
+  isFavorited,
+  onFavorite,
+  onTap,
+  priority,
+  onTryOn,
+  socialProof,
+}: CardProps) {
   const isSold = product.status === 'SOLD';
   const isReserved = product.status === 'RESERVED';
   const isUnavailable = isSold || isReserved;
   const badgeLabel = product.subtype ?? product.category;
+  // Null for every product the API returned no real count for — this product
+  // then renders no chip, which is the whole point (F-037 §2 row 5).
+  const proofChip = socialProofChip(socialProof?.products[product.id], socialProof?.window ?? null);
 
   return (
     <div
@@ -690,6 +727,20 @@ function ProductCard({ product, isFavorited, onFavorite, onTap, priority, onTryO
             </span>
           )}
         </div>
+
+        {/* Real social proof — real counts only, never fabricated. The label
+            comes from the window the counts cover (the nightly rollup
+            summarizes completed days, so it is normally "yesterday"). */}
+        {proofChip && (
+          <span className="mt-1 inline-flex max-w-full items-center gap-1 rounded-full bg-[#F4F2FB] px-2 py-0.5 text-[9px] font-bold text-[#6B4773]">
+            {proofChip.kind === 'favorited' ? (
+              <Heart size={9} className="flex-shrink-0 text-[#BB3F95] fill-[#BB3F95]" />
+            ) : (
+              <Eye size={9} className="flex-shrink-0 text-[#6B4773]" />
+            )}
+            <span className="truncate">{proofChip.label}</span>
+          </span>
+        )}
       </div>
     </div>
   );
