@@ -36,12 +36,6 @@ export const DEFAULT_AI_CONFIG: Record<
     max_tokens: 3000,
     timeout_ms: 45000,
   },
-  fashion_dna: {
-    model: 'text-embedding-3-small',
-    temperature: 0,
-    max_tokens: 0,
-    timeout_ms: 30000,
-  },
 };
 
 export const adminAiConfigRoutes: FastifyPluginAsync = async (server) => {

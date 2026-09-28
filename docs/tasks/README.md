@@ -32,6 +32,7 @@ Where work lives: **`pending/` = open**, **`done/` = built** (kept as the design
 |---|---|---|
 | A/B testing for collections (roadmap S) | `done/ab-testing-variant-links.md` | 2026-08-18 |
 | Campaign analytics — seasonal (roadmap R) | `done/campaign-analytics-seasonal.md` | 2026-08-18 |
+| Dead code cleanup — orphaned Fashion DNA config key + Lookbook/Festival Background client bindings | `done/dead-code-cleanup.md` | 2026-09-28 |
 | Product & store ratings (F-021) | `done/ratings-reviews.md` | 2026-08-20 |
 | `return_to` post-login redirect + `/login` route | `done/return-to-post-login-redirect.md` | 2026-09-17 |
 | Indian size & fit (roadmap N) — ⚠️ size-chart engine later removed | `done/size-fit.md` | 2026-08-18 |
