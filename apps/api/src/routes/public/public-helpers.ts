@@ -2,7 +2,7 @@
 // (scripts/check-route-size.sh split). Route modules import from here.
 import { getDownloadPresignedUrl } from '@kanchuki/ai';
 import type { Prisma } from '@kanchuki/db';
-import { PUBLIC_PRICE_BUCKETS } from '@kanchuki/shared';
+import { PUBLIC_PRICE_BUCKETS, SIZE_OPTIONS } from '@kanchuki/shared';
 import { z } from 'zod';
 import { isNewArrival, isOnSale } from '../../lib/product-flags.js';
 
@@ -24,6 +24,15 @@ export const publicProductQuerySchema = z.object({
   category: z.string().optional(),
   price: z.string().optional(),
   color: z.string().optional(),
+  // Roadmap N — Indian Size System. Products carry a `sizes` array the retailer
+  // picks from the shared SIZE_OPTIONS list, so this is an exact element match
+  // (`has`), not a substring: "L" must not match "XL", which any case-insensitive
+  // `contains` would do. Normalised to uppercase to match how the retailer app
+  // stores them, so a lowercase `?size=l` still works.
+  size: z
+    .string()
+    .transform((s) => s.trim().toUpperCase())
+    .optional(),
 });
 
 export type PublicProductQuery = z.infer<typeof publicProductQuerySchema>;
@@ -35,6 +44,7 @@ export function buildProductFilterWhere(query: PublicProductQuery): Prisma.Produ
   const where: Prisma.ProductWhereInput = { deleted_at: null };
   if (query.category) where.category = query.category;
   if (query.color) where.primary_color = { equals: query.color, mode: 'insensitive' };
+  if (query.size) where.sizes = { has: query.size };
 
   const bucket = PUBLIC_PRICE_BUCKETS.find((b) => b.label === query.price);
   if (bucket) {
@@ -106,6 +116,69 @@ export async function toPublicProductSummary(p: {
   };
 }
 
+// ─── Related products ────────────────────────────────────────────────────
+// Weighted attribute overlap, replacing the old "same category, newest six".
+// Category alone is a weak signal in Indian ethnic wear: "Saree" spans a ₹700
+// cotton daily-wear saree and a ₹40,000 Banarasi, and neither is a useful
+// suggestion for the other. Fabric, subtype and colour are what a shopper
+// actually means by "more like this".
+export interface RelatedCandidate {
+  category: string | null;
+  subtype: string | null;
+  fabrics: string[] | null;
+  primary_color: string | null;
+  price_min: number | null;
+  created_at: Date;
+}
+
+// Weights are ordered by how much each attribute narrows intent, not by how easy
+// they are to match. Category still leads because it is the field the AI tagger
+// always fills; fabric and subtype are frequently null.
+const W_CATEGORY = 6;
+const W_SUBTYPE = 4;
+const W_FABRIC_SHARED = 3;
+const W_COLOR = 2;
+const W_PRICE_NEAR = 1;
+
+export function scoreRelatedProduct(base: RelatedCandidate, cand: RelatedCandidate): number {
+  let score = 0;
+  if (base.category && cand.category === base.category) score += W_CATEGORY;
+  if (base.subtype && cand.subtype === base.subtype) score += W_SUBTYPE;
+  if ((base.fabrics ?? []).some((f) => (cand.fabrics ?? []).includes(f))) {
+    score += W_FABRIC_SHARED;
+  }
+  if (
+    base.primary_color &&
+    cand.primary_color &&
+    cand.primary_color.toLowerCase() === base.primary_color.toLowerCase()
+  ) {
+    score += W_COLOR;
+  }
+  if (base.price_min && cand.price_min) {
+    // Loose band, not equality — prices are per-product, so exact matching would
+    // never fire. A shopper who tapped a ₹2,000 suit should not be shown a
+    // ₹20,000 lehenga as "related".
+    const ratio = cand.price_min / base.price_min;
+    if (ratio >= 0.6 && ratio <= 1.6) score += W_PRICE_NEAR;
+  }
+  return score;
+}
+
+// Newest-first tie-break so equally-relevant products don't reshuffle between
+// requests — the response is CDN-cached for 10 minutes, and an unstable order
+// would show a different "related" row for the same product URL.
+export function rankRelatedProducts<T extends RelatedCandidate>(
+  base: RelatedCandidate,
+  candidates: T[],
+  limit: number,
+): T[] {
+  return candidates
+    .map((c) => ({ c, score: scoreRelatedProduct(base, c) }))
+    .sort((a, b) => b.score - a.score || b.c.created_at.getTime() - a.c.created_at.getTime())
+    .slice(0, limit)
+    .map((e) => e.c);
+}
+
 // Distinct filter-chip options with counts — always computed from the full
 // unfiltered product set for the collection/category so picking one filter
 // doesn't shrink the options for the others (matches prior client-side
@@ -118,9 +191,32 @@ function countBy<T>(values: T[]): { value: T; count: number }[] {
   );
 }
 
-export function buildFacets(products: { category: string | null; primary_color: string | null }[]) {
+// Sizes are the one facet where count-descending order is wrong: a size row
+// has to read S, M, L, XL — "XXL (1), L (5), M (4)" looks like a bug to a
+// shopper. So this sorts by the shared SIZE_OPTIONS order instead of by count,
+// and drops anything the retailer typed that isn't a known label rather than
+// offering a chip that can't be filtered consistently.
+export function buildSizeFacet(sizes: string[][]): { value: string; count: number }[] {
+  const counts = new Map<string, number>();
+  for (const list of sizes) {
+    for (const size of new Set(list)) counts.set(size, (counts.get(size) ?? 0) + 1);
+  }
+  return SIZE_OPTIONS.filter((size) => counts.has(size)).map((size) => ({
+    value: size,
+    count: counts.get(size) ?? 0,
+  }));
+}
+
+export function buildFacets(
+  products: {
+    category: string | null;
+    primary_color: string | null;
+    sizes?: string[];
+  }[],
+) {
   return {
     categories: countBy(products.map((p) => p.category).filter((c): c is string => c !== null)),
     colors: countBy(products.map((p) => p.primary_color).filter((c): c is string => c !== null)),
+    sizes: buildSizeFacet(products.map((p) => p.sizes ?? [])),
   };
 }

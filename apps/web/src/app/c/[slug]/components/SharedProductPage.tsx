@@ -131,6 +131,7 @@ export function SharedProductPage({ collection, product, collectionPath }: Props
             photoUrl: v.photo_url,
             status: v.status,
           }))}
+          videos={product.videos ?? []}
           alt={galleryAlt}
           isSold={isSold}
           isReserved={isReserved}

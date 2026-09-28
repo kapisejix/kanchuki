@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
-import { X, ArrowLeft, Heart, MessageCircle, ChevronLeft, ChevronRight, Camera, Palette, MapPin, RotateCw, ShoppingCart, Share2, Sparkles, Info, Star, Eye } from 'lucide-react'
+import { X, ArrowLeft, Heart, MessageCircle, ChevronLeft, ChevronRight, Camera, Palette, MapPin, Play, RotateCw, ShoppingCart, Share2, Sparkles, Info, Star, Eye } from 'lucide-react'
 import type { PublicProduct, PublicProductDetail, PublicCollection } from '@kanchuki/shared'
 import { formatPriceRange, resolveFashionColor } from '@kanchuki/shared'
 import { productToCartItem, saveCart, loadCart } from '../lib/cart'
@@ -12,6 +12,7 @@ import { Product360Viewer } from './Product360Viewer'
 import { ReviewList } from './ReviewList'
 import { FabricGlossary } from './FabricGlossary'
 import { trackRecentlyViewed } from '../lib/recentlyViewed'
+import { recordCurrentVisitProduct } from '../lib/currentVisit'
 import { trackPassportEvent } from '@/lib/passport-client'
 import { NotifyWhenAvailable } from './NotifyWhenAvailable'
 import { SavedSize } from './SavedSize'
@@ -117,16 +118,18 @@ export function ProductDetailSheet({
 
   // Track this product as recently viewed
   useEffect(() => {
+    recordCurrentVisitProduct(store ?? retailer.public_slug ?? '', product.id)
     trackRecentlyViewed(slug, {
       id: product.id,
       name: product.name,
       category: product.category,
+      subtype: product.subtype,
       primary_color: product.primary_color,
       price_min: product.price_min,
       price_max: product.price_max,
       primary_photo_url: product.primary_photo_url,
     })
-  }, [product, slug])
+  }, [product, slug, store, retailer.public_slug])
 
   // F-037 Phase 1 — dwell-time view event. Fires on unmount/product-swap so
   // dwell_ms reflects real time-on-product, not just page load (§3.1). Silently
@@ -222,6 +225,11 @@ export function ProductDetailSheet({
   const variants = detail?.variants ?? []
   const fabricEstimate = detail?.fabric_estimate ?? null
   const sizes = detail?.sizes ?? []
+  // Roadmap Q / F-033 — the detail API has always returned `videos`, but
+  // `PublicProductDetail` never declared the field, so every consumer dropped
+  // it silently. Clips with no URL are dropped rather than left as a slide that
+  // renders nothing.
+  const videos = (detail?.videos ?? []).filter((v) => !!v.url)
 
   // Build photos array: detail photos (once loaded) + optionally a variant
   // photo — falls back to just the grid thumbnail until detail arrives.
@@ -235,9 +243,23 @@ export function ProductDetailSheet({
   // Before detail loads, trust the grid's has_360 flag so the slide dot/icon
   // don't pop in late; once loaded, the real frame count is authoritative.
   const has360 = detail ? spinFrames.length > 0 : product.has_360
-  // 360 view is appended as one more slide after the photos, not a separate mode.
-  const totalSlides = totalPhotos + (has360 ? 1 : 0)
-  const isSpinSlide = has360 && photoIndex === totalPhotos
+  // Video clips sit between the photos and the 360 slide. Photos stay first on
+  // purpose: the crossfade/zoom layer below is indexed by photo, and the first
+  // thing a shopper should see on a garment is the photograph of it rather than
+  // an animated pass over those same frames. What was actually missing is that
+  // nothing rendered the clips at all — they are now one swipe, or one
+  // thumbnail tap, away.
+  const videoSlides = videos.length
+  const firstVideoSlide = totalPhotos
+  // 360 view is appended as one more slide after all the media, not a separate mode.
+  const totalSlides = totalPhotos + videoSlides + (has360 ? 1 : 0)
+  const isSpinSlide = has360 && photoIndex === totalPhotos + videoSlides
+  const videoIndex = photoIndex - firstVideoSlide
+  const isVideoSlide = videoIndex >= 0 && videoIndex < videoSlides
+  const currentVideo = isVideoSlide ? videos[videoIndex] : undefined
+  // Swipe / pinch-zoom / tap-to-expand belong to photos only — on a clip they
+  // fight the player's own scrubber.
+  const isMediaSlide = isSpinSlide || isVideoSlide
 
   const goTo = useCallback((i: number) => {
     if (isTransitioning) return
@@ -367,7 +389,9 @@ export function ProductDetailSheet({
         // double-tap zoom before opening the fullscreen viewer.
         singleTapTimeoutRef.current = setTimeout(() => {
           singleTapTimeoutRef.current = null
-          if (currentScaleRef.current <= 1 && !isSpinSlide) setFullscreenOpen(true)
+          // A pending single-tap timeout can still fire after a swipe moved us
+          // onto a clip — don't open the photo viewer over a playing video.
+          if (currentScaleRef.current <= 1 && !isMediaSlide) setFullscreenOpen(true)
         }, 300)
       }
     }
@@ -383,7 +407,7 @@ export function ProductDetailSheet({
       }
     }
     touchStartX.current = null
-  }, [photoIndex, totalSlides, goTo, isSpinSlide])
+  }, [photoIndex, totalSlides, goTo, isMediaSlide])
 
   // Variant click handler: show variant photo in carousel
   const handleVariantClick = useCallback((color: string, photoUrl: string | null) => {
@@ -474,11 +498,11 @@ export function ProductDetailSheet({
         {/* Photo carousel with crossfade transition + pinch-to-zoom, or 360 viewer */}
         <div
           className="relative aspect-square w-full bg-gray-50 overflow-hidden select-none"
-          onTouchStart={isSpinSlide ? undefined : handleTouchStart}
-          onTouchMove={isSpinSlide ? undefined : handleTouchMove}
-          onTouchEnd={isSpinSlide ? undefined : handleTouchEnd}
+          onTouchStart={isMediaSlide ? undefined : handleTouchStart}
+          onTouchMove={isMediaSlide ? undefined : handleTouchMove}
+          onTouchEnd={isMediaSlide ? undefined : handleTouchEnd}
           onClick={(e) => {
-            if (isSpinSlide) return
+            if (isMediaSlide) return
             if ((e.target as HTMLElement).closest('button')) return
             // Touch taps are already handled by the single/double-tap timer
             // above — only act here for a genuine mouse click.
@@ -490,6 +514,21 @@ export function ProductDetailSheet({
             <Product360Viewer
               frames={spinFrames}
               alt={product.name ?? product.category ?? 'Product'}
+            />
+          ) : isVideoSlide && currentVideo ? (
+            // `key` on the clip id so React remounts the element per slide —
+            // without it the previous clip keeps playing while the src swaps.
+            <video
+              key={currentVideo.id}
+              src={currentVideo.url}
+              className="w-full h-full object-cover bg-black"
+              autoPlay
+              muted
+              loop
+              playsInline
+              controls
+              preload="metadata"
+              aria-label={`${product.name ?? product.category ?? 'Product'} video`}
             />
           ) : (
           /* Zoom container — wraps crossfade layers, transforms for zoom/pan */
@@ -543,8 +582,8 @@ export function ProductDetailSheet({
           </div>
           )}
 
-          {/* Keyframes + photo-only chrome — hidden while the 360 slide is active */}
-          {!isSpinSlide && (
+          {/* Keyframes + photo-only chrome — hidden on the 360 and video slides */}
+          {!isMediaSlide && (
             <>
               <style jsx>{`
                 @keyframes fadeIn {
@@ -583,8 +622,18 @@ export function ProductDetailSheet({
             </div>
           )}
 
+          {/* Video slide badge — same corner, and it names the clip order so a
+              shopper knows whether this is the retailer's own footage or an
+              F-033 auto-generated one (those land last). */}
+          {isVideoSlide && (
+            <div className="absolute bottom-3 left-3 z-10 bg-[#231F48]/85 text-white text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1.5 backdrop-blur-sm">
+              <Play size={12} />
+              {videoSlides > 1 ? `Video ${videoIndex + 1} of ${videoSlides}` : 'Video'}
+            </div>
+          )}
+
           {/* Floating Left-side Thumbnail Strip Container (matches Spec #10 / #12 in HTML) */}
-          {totalPhotos > 1 && !isSpinSlide && (
+          {(totalPhotos > 1 || videoSlides > 0) && !isMediaSlide && (
             <div className="absolute top-1/2 -translate-y-1/2 left-3 z-20 bg-white/85 backdrop-blur-md rounded-[20px] p-1.5 flex flex-col gap-2 shadow-lg border border-white/80">
               {photos.slice(0, 4).map((photoUrl, i) => (
                 <button
@@ -607,6 +656,22 @@ export function ProductDetailSheet({
                     sizes="44px"
                     className="object-cover"
                   />
+                </button>
+              ))}
+              {/* Clips get a thumbnail too, otherwise the only way to learn they
+                  exist is to swipe to the end of the photos. */}
+              {videos.map((video, j) => (
+                <button
+                  key={video.id}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    goTo(firstVideoSlide + j)
+                  }}
+                  className="relative w-9 h-11 rounded-[12px] overflow-hidden border-2 bg-[#231F48] flex items-center justify-center transition-all duration-200 border-transparent opacity-80 hover:opacity-100"
+                  aria-label={`Play video ${j + 1}`}
+                >
+                  <Play size={14} className="text-white" />
                 </button>
               ))}
             </div>
@@ -641,7 +706,7 @@ export function ProductDetailSheet({
 
           {/* Counter — bottom-right */}
           <div className="absolute bottom-3.5 right-3.5 bg-[#231F48]/85 backdrop-blur-md text-white text-[10px] font-extrabold px-3 py-1 rounded-full shadow-sm z-10">
-            {isSpinSlide ? '360°' : `${totalPhotos} Photos`}
+            {isSpinSlide ? '360°' : isVideoSlide ? 'Video' : `${totalPhotos} Photos`}
           </div>
         </div>
 

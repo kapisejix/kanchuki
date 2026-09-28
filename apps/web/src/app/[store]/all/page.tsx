@@ -3,6 +3,7 @@ import type { PublicCollection } from '@kanchuki/shared';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { CollectionView } from '../../c/[slug]/components/CollectionView';
+import { CATALOG_PAGE_SIZE } from '@/lib/catalog';
 
 interface Props {
   params: Promise<{ store: string }>;
@@ -58,7 +59,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function StoreAllProductsPage({ params }: Props) {
   const { store } = await params;
-  const data = await fetchAllProducts(store, { page: 1, pageSize: 12 });
+  const data = await fetchAllProducts(store, { page: 1, pageSize: CATALOG_PAGE_SIZE });
   if (!data) notFound();
 
   // Store-scoped slug (mirrors the category page's `cat-${categoryId}`) so the

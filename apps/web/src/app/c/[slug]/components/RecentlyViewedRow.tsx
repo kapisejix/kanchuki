@@ -7,11 +7,11 @@ import {
   type RecentlyViewedProduct,
   loadRecentlyViewed,
 } from '../lib/recentlyViewed'
-import { formatPriceRange } from '@kanchuki/shared'
+import { type PublicProduct, formatPriceRange } from '@kanchuki/shared'
 
 interface Props {
   storeSlug: string
-  onProductTap: (product: { id: string; name: string | null; category: string | null; primary_color: string | null; primary_photo_url: string | null; price_min: number | null; price_max: number | null; status: string; avg_rating: number; rating_count: number; has_360: boolean }) => void
+  onProductTap: (product: PublicProduct) => void
 }
 
 export function RecentlyViewed({ storeSlug, onProductTap }: Props) {
@@ -39,20 +39,36 @@ export function RecentlyViewed({ storeSlug, onProductTap }: Props) {
       <div className="flex gap-2.5 overflow-x-auto -mx-4 px-4 pb-1 scrollbar-hide snap-x snap-mandatory">
         {items.map((item) => (
           <button
-            key={item.id}
-            onClick={() => onProductTap({
-              id: item.id,
-              name: item.name,
-              category: item.category,
-              primary_color: item.primary_color,
-              primary_photo_url: item.photo_url,
-              price_min: item.price_min,
-              price_max: item.price_max,
-              status: 'AVAILABLE',
-              avg_rating: 0,
-              rating_count: 0,
-              has_360: false,
-            })}
+            key={item.id}            onClick={() =>
+              onProductTap({
+                id: item.id,
+                name: item.name,
+                category: item.category,
+                subtype: item.subtype ?? null,
+                primary_color: item.primary_color,
+                // `PublicProduct` types this as a required string, but the tracked
+                // record can genuinely have no photo. Empty is the honest value:
+                // the sheet's photo builder treats it as "no photos yet" and
+                // falls back to the fetched detail gallery.
+                primary_photo_url: item.photo_url ?? '',
+                price_min: item.price_min,
+                price_max: item.price_max,
+                // Not tracked locally — this record exists so a returning shopper
+                // can re-open what they looked at, not to be a full summary. The
+                // detail sheet re-fetches the real product by id, so these only
+                // shape the first paint: `rating_count: 0` makes its ReviewList
+                // render nothing rather than "0.0 (0 reviews)", and `has_360` is
+                // replaced by the fetched spin frames on arrival. The grid passes
+                // the real summary instead whenever it already has one in hand.
+                status: 'AVAILABLE',
+                location: null,
+                is_new_arrival: false,
+                on_sale: false,
+                avg_rating: 0,
+                rating_count: 0,
+                has_360: false,
+              })
+            }
             className="flex-shrink-0 w-20 snap-start group text-left"
           >
             <div className="relative w-20 h-24 rounded-xl overflow-hidden bg-gray-100 border border-gray-100 group-hover:border-cyan-200 transition-colors">

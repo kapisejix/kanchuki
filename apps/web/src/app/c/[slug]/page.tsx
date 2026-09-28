@@ -3,6 +3,7 @@ import { notFound, redirect } from 'next/navigation'
 import { CollectionView } from './components/CollectionView'
 import { SuspendedNotice } from './components/SuspendedNotice'
 import { fetchCollection } from './lib/fetchCollection'
+import { CATALOG_PAGE_SIZE } from '@/lib/catalog'
 
 interface Props {
   params: Promise<{ slug: string }>
@@ -28,7 +29,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function LegacyCollectionPage({ params }: Props) {
   const { slug } = await params
-  const collection = await fetchCollection(slug, { page: 1, pageSize: 12 })
+  const collection = await fetchCollection(slug, { page: 1, pageSize: CATALOG_PAGE_SIZE })
   if (!collection) notFound()
 
   // F-015: suspended retailer — retailer/products fields aren't populated,

@@ -31,7 +31,8 @@ import {
   wishlistKey,
 } from '../lib/wishlist';
 import { trackPassportEvent } from '@/lib/passport-client';
-import { CategoryChips, FilterBar } from './FilterBar';
+import { CategoryChips, FilterBar, SizeChips } from './FilterBar';
+import { CATALOG_PAGE_SIZE } from '@/lib/catalog';
 import { KanchukiBrandBar } from './KanchukiBrandBar';
 import { PageTransitionWrapper } from '@/components/PageTransitionWrapper';
 
@@ -45,12 +46,26 @@ const ProductDetailSheet = dynamic(
 
 const PromotionBanner = dynamic(() => import('./PromotionBanner').then((m) => m.PromotionBanner), { ssr: false });
 const RecentlyViewed = dynamic(() => import('./RecentlyViewedRow').then((m) => m.RecentlyViewed), { ssr: false });
+const PickedForYou = dynamic(() => import('./PickedForYou').then((m) => m.PickedForYou), { ssr: false });
 const StyleQuiz = dynamic(() => import('./StyleQuiz').then((m) => m.StyleQuiz), { ssr: false });
 const AIStylist = dynamic(() => import('./AIStylist').then((m) => m.AIStylist), { ssr: false });
 // Feature flags for customer catalog screen
 const REGIONAL_FILTERS_ENABLED = false;
 
-const PAGE_SIZE = 12;
+// One shape for the active filters, so the replace path, the append path and
+// the background prefetch cannot disagree about what a page request means.
+interface CatalogFilters {
+  category: string | null;
+  price: string | null;
+  color: string | null;
+  size: string | null;
+}
+
+// Stable string for the active filter set — the prefetch cache is keyed by it so
+// a page 2 fetched under one set of filters can never be served under another.
+function filtersSignature(f: CatalogFilters): string {
+  return [f.category, f.price, f.color, f.size].map((v) => v ?? '').join('|');
+}
 
 interface Props {
   collection: PublicCollection;
@@ -93,6 +108,7 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
   const [filterCategory, setFilterCategory] = useState<string | null>(null);
   const [filterPrice, setFilterPrice] = useState<string | null>(null);
   const [filterColor, setFilterColor] = useState<string | null>(null);
+  const [filterSize, setFilterSize] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
 
   const [showQuiz, setShowQuiz] = useState(false);
@@ -136,10 +152,28 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
   // through productsApiPath.
   const [products, setProducts] = useState(collection.products);
   const [total, setTotal] = useState(collection.total);
+  // `page` is the HIGHEST page currently rendered, not the start of the window:
+  // the grid appends as the shopper scrolls, so this is what the "Page X of Y"
+  // label reports and what Prev/Next step from.
   const [page, setPage] = useState(collection.page);
   const [loading, setLoading] = useState(false);
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  // Deliberately separate from `loading` — appending must not dim the grid the
+  // shopper is already reading, the way a filter change legitimately does.
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [loadMoreError, setLoadMoreError] = useState(false);
+  const totalPages = Math.max(1, Math.ceil(total / CATALOG_PAGE_SIZE));
   const isFirstRun = useRef(true);
+  // Page 2, fetched once page 1 has painted, so the first scroll lands on data
+  // rather than on a spinner.
+  const prefetchedPageRef = useRef<{
+    signature: string;
+    page: number;
+    promise: Promise<PublicCollection | null>;
+    data?: PublicCollection;
+  } | null>(null);
+  const appendInFlightRef = useRef(false);
+  const catalogRequestGenerationRef = useRef(0);
+  const activeSignatureRef = useRef<string | null>(null);
 
   // Fetch-on-demand cache: products seen this session are cached here for
   // the "Enquire about N items" detail resolution when a favorite wasn't
@@ -150,35 +184,102 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
     new Map(collection.products.map((p) => [p.id, p])),
   );
 
-  const fetchProducts = useCallback(
-    async (
-      nextPage: number,
-      filters: {
-        category: string | null;
-        price: string | null;
-        color: string | null;
-      },
-    ) => {
-      setLoading(true);
-      const qs = new URLSearchParams({ page: String(nextPage), pageSize: String(PAGE_SIZE) });
-      if (filters.category) qs.set('category', filters.category);
-      if (filters.price) qs.set('price', filters.price);
-      if (filters.color) qs.set('color', filters.color);
+  const buildCatalogQs = useCallback((nextPage: number, filters: CatalogFilters) => {
+    const qs = new URLSearchParams({
+      page: String(nextPage),
+      pageSize: String(CATALOG_PAGE_SIZE),
+    });
+    if (filters.category) qs.set('category', filters.category);
+    if (filters.price) qs.set('price', filters.price);
+    if (filters.color) qs.set('color', filters.color);
+    if (filters.size) qs.set('size', filters.size);
+    return qs;
+  }, []);
+
+  const fetchPage = useCallback(
+    async (nextPage: number, filters: CatalogFilters): Promise<PublicCollection | null> => {
       try {
-        const res = await fetch(`${productsApiPath}?${qs}`);
-        if (!res.ok) return;
+        const res = await fetch(`${productsApiPath}?${buildCatalogQs(nextPage, filters)}`);
+        if (!res.ok) return null;
         const json = (await res.json()) as { data: PublicCollection };
-        setProducts(json.data.products);
-        setTotal(json.data.total);
-        setPage(json.data.page);
-        for (const p of json.data.products) {
-          productCacheRef.current.set(p.id, p);
-        }
-      } finally {
-        setLoading(false);
+        return json.data;
+      } catch {
+        return null;
       }
     },
-    [productsApiPath],
+    [productsApiPath, buildCatalogQs],
+  );
+
+  // Every response warms the session cache, so resolving a favorite or an
+  // enquiry never needs a second round trip for a product already on screen.
+  const rememberProducts = useCallback((list: PublicProduct[]) => {
+    for (const p of list) productCacheRef.current.set(p.id, p);
+  }, []);
+
+  // Replace the window — Prev/Next and every filter change go through here.
+  const fetchProducts = useCallback(
+    async (nextPage: number, filters: CatalogFilters) => {
+      const generation = ++catalogRequestGenerationRef.current;
+      prefetchedPageRef.current = null;
+      setLoadMoreError(false);
+      setLoading(true);
+      try {
+        const data = await fetchPage(nextPage, filters);
+        if (!data || generation !== catalogRequestGenerationRef.current) return;
+        setProducts(data.products);
+        setTotal(data.total);
+        setPage(data.page);
+        rememberProducts(data.products);
+      } finally {
+        if (generation === catalogRequestGenerationRef.current) setLoading(false);
+      }
+    },
+    [fetchPage, rememberProducts],
+  );
+
+  // Append the next page rather than replacing it — what scrolling does.
+  // Deduped by id because a product can change pages between requests (marking
+  // stock sold reorders the listing), and a duplicate React key in this grid is
+  // a real bug, not a cosmetic one.
+  const appendNextPage = useCallback(
+    async (filters: CatalogFilters, signature: string) => {
+      // State updates are batched; this ref closes the window where two scroll
+      // events can both start the same page request before `loadingMore` paints.
+      if (appendInFlightRef.current || page >= totalPages) return;
+      appendInFlightRef.current = true;
+      const generation = catalogRequestGenerationRef.current;
+      setLoadingMore(true);
+      setLoadMoreError(false);
+      try {
+        // Reuse an in-flight or completed prefetch for this exact page, rather
+        // than duplicating the request if the shopper reaches the bottom early.
+        const cached = prefetchedPageRef.current;
+        const cachedPage =
+          cached && cached.signature === signature && cached.page === page + 1 ? cached : null;
+        prefetchedPageRef.current = null;
+        const data = cachedPage
+          ? (cachedPage.data ?? (await cachedPage.promise))
+          : await fetchPage(page + 1, filters);
+        if (generation !== catalogRequestGenerationRef.current || signature !== activeSignatureRef.current) return;
+        if (!data) {
+          setLoadMoreError(true);
+          return;
+        }
+        setProducts((prev) => {
+          const seen = new Set(prev.map((p) => p.id));
+          return [...prev, ...data.products.filter((p) => !seen.has(p.id))];
+        });
+        setTotal(data.total);
+        setPage(data.page);
+        rememberProducts(data.products);
+      } catch {
+        if (generation === catalogRequestGenerationRef.current) setLoadMoreError(true);
+      } finally {
+        appendInFlightRef.current = false;
+        setLoadingMore(false);
+      }
+    },
+    [fetchPage, rememberProducts, page, totalPages],
   );
 
   // Filter change → refetch page 1. Skips the very first run since SSR
@@ -187,23 +288,104 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
     if (isFirstRun.current) {
       isFirstRun.current = false;
       return;
-    }      void fetchProducts(1, {
-        category: filterCategory,
-        price: filterPrice,
-        color: filterColor,
-      });
-  }, [filterCategory, filterPrice, filterColor, fetchProducts]);
+    }
+    void fetchProducts(1, {
+      category: filterCategory,
+      price: filterPrice,
+      color: filterColor,
+      size: filterSize,
+    });
+  }, [filterCategory, filterPrice, filterColor, filterSize, fetchProducts]);
 
+  // Prev/Next keep their original meaning — jump to a page and REPLACE the grid
+  // — which is what keeps them coherent once scrolling appends. If Next appended
+  // too, the label would advance while the buttons stopped changing anything.
   const goToPage = useCallback(
     (nextPage: number) => {
       void fetchProducts(nextPage, {
         category: filterCategory,
         price: filterPrice,
         color: filterColor,
+        size: filterSize,
       });
     },
-    [fetchProducts, filterCategory, filterPrice, filterColor],
+    [fetchProducts, filterCategory, filterPrice, filterColor, filterSize],
   );
+
+  // Primitive-only deps for the two effects below: a fresh object every render
+  // would re-subscribe the scroll listener on every render.
+  const activeFilters: CatalogFilters = {
+    category: filterCategory,
+    price: filterPrice,
+    color: filterColor,
+    size: filterSize,
+  };
+  const activeSignature = filtersSignature(activeFilters);
+  activeSignatureRef.current = activeSignature;
+
+  // Append-on-scroll. A scroll listener rather than an IntersectionObserver on
+  // purpose: replacing the grid via Prev shrinks the document, and an observer
+  // watching a sentinel would fire immediately and silently undo the
+  // navigation. This only ever runs because the shopper actually scrolled.
+  useEffect(() => {
+    if (loading || loadingMore || page >= totalPages) return;
+    const onScroll = () => {
+      const remaining =
+        document.documentElement.scrollHeight - window.scrollY - window.innerHeight;
+      // 500px of run-up, so the next page is normally resolved before the
+      // shopper reaches the bottom and there is no visible stall.
+      if (remaining > 500) return;
+      void appendNextPage(activeFilters, activeSignature);
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+    // `activeFilters` is a fresh object each render; the primitives below are
+    // what actually decide whether the handler is stale.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    loading,
+    loadingMore,
+    page,
+    totalPages,
+    activeSignature,
+    filterCategory,
+    filterPrice,
+    filterColor,
+    filterSize,
+    appendNextPage,
+  ]);
+
+  // Warm the next page while the shopper reads the current one. Deferred past
+  // first paint and skipped when any filter is active, so it can't compete with
+  // the images that decide LCP. This repeats after each append, keeping scroll
+  // loading smooth beyond page 2 rather than prefetching only once.
+  useEffect(() => {
+    const prefetchFilters = { category: null, price: null, color: null, size: null };
+    const prefetchSignature = filtersSignature(prefetchFilters);
+    if (page >= totalPages || activeSignature !== prefetchSignature) {
+      if (prefetchedPageRef.current?.signature !== activeSignature) {
+        prefetchedPageRef.current = null;
+      }
+      return;
+    }
+    const nextPage = page + 1;
+    const timer = setTimeout(() => {
+      const promise = fetchPage(nextPage, prefetchFilters).catch(() => null);
+      const prefetch = { signature: prefetchSignature, page: nextPage, promise };
+      prefetchedPageRef.current = prefetch;
+      void promise.then((data) => {
+        if (data && prefetchedPageRef.current === prefetch) {
+          prefetchedPageRef.current = { ...prefetch, data };
+        }
+      });
+    }, 1500);
+    return () => {
+      clearTimeout(timer);
+      if (prefetchedPageRef.current?.signature === prefetchSignature) {
+        prefetchedPageRef.current = null;
+      }
+    };
+  }, [totalPages, page, activeSignature, fetchPage]);
 
   const toggleFavorite = useCallback(
     (
@@ -316,7 +498,12 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
         retailer_id: collection.retailer.id,
         metadata: {
           query: searchQuery.trim(),
-          filters: { category: filterCategory, price: filterPrice, color: filterColor },
+          filters: {
+            category: filterCategory,
+            price: filterPrice,
+            color: filterColor,
+            size: filterSize,
+          },
           result_count: filteredProducts.length,
         },
       });
@@ -379,7 +566,7 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
               <button
                 onClick={() => setShowFilters((v) => !v)}
                 className={`w-10 h-10 rounded-2xl flex items-center justify-center border transition-all active:scale-90 ${
-                  showFilters || filterPrice || filterColor
+                  showFilters || filterPrice || filterColor || filterSize
                     ? 'bg-[#231F48] text-white border-[#231F48]'
                     : 'bg-white text-[#231F48] border-[#E0E1F6] shadow-sm'
                 }`}
@@ -464,6 +651,39 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
           />
         </div>
 
+        {/* Size row — always visible, not behind the filter toggle. A shopper
+            whose size isn't stocked bounces on the first product they open, so
+            this question has to be answerable before the tap. Hidden by
+            SizeChips itself when the store only stocks one size. */}
+        <div className="mb-4 -mx-1 px-1">
+          <SizeChips
+            sizes={collection.filters.sizes ?? []}
+            filterSize={filterSize}
+            onSizeChange={setFilterSize}
+          />
+        </div>
+
+        {/* Recently-viewed carousel — F-037 §2 item 2. Reads localStorage, so it
+            costs no request and renders nothing for a first-time visitor. Sits
+            above the grid because its whole job is to shorten the trip back to
+            something this shopper already opened. */}
+        <RecentlyViewed
+          storeSlug={store ?? slug}
+          onProductTap={(recent) =>
+            // Prefer the real summary when this session already loaded it — a
+            // fresh record then carries the rating/photo fields the sheet
+            // paints before its own detail fetch lands. A record from an
+            // earlier session has only the thin tracked shape, which is enough
+            // because the sheet re-fetches the product by id anyway.
+            setSelectedProduct(productCacheRef.current.get(recent.id) ?? recent)
+          }
+        />
+
+        <PickedForYou
+          storeSlug={storeSlug}
+          onProductTap={(product) => setSelectedProduct(productCacheRef.current.get(product.id) ?? product)}
+        />
+
         {filteredProducts.length === 0 ? (
           <div className="text-center py-16 px-6">
             <div className="w-16 h-16 rounded-3xl bg-white border border-[#E0E1F6] shadow-sm flex items-center justify-center mx-auto mb-4">
@@ -479,6 +699,7 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
                 setFilterCategory(null);
                 setFilterPrice(null);
                 setFilterColor(null);
+                setFilterSize(null);
               }}
               className="text-[#231F48] bg-white border border-[#E0E1F6] hover:bg-[#F8F7FC] text-xs font-bold px-4 py-2 rounded-full transition-colors shadow-sm"
             >
@@ -504,6 +725,29 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
               ))}
             </div>
 
+            {/* Append progress. Deliberately small and non-blocking — the grid
+                above stays interactive while the next page lands. */}
+            {loadingMore && (
+              <p
+                className="mt-4 text-center text-xs font-medium text-[#6B4773]"
+                aria-live="polite"
+              >
+                Loading more…
+              </p>
+            )}
+            {loadMoreError && (
+              <div className="mt-4 flex items-center justify-center gap-3 text-xs text-[#6B4773]" role="alert">
+                <span>Could not load more products.</span>
+                <button
+                  type="button"
+                  onClick={() => void appendNextPage(activeFilters, activeSignature)}
+                  className="font-bold text-[#231F48] underline underline-offset-2"
+                >
+                  Try again
+                </button>
+              </div>
+            )}
+
             {totalPages > 1 && (
               <div className="flex items-center justify-center gap-3 mt-5">
                 <button
@@ -517,8 +761,8 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
                   Page {page} of {totalPages}
                 </span>
                 <button
-                  onClick={() => goToPage(Math.min(totalPages, page + 1))}
-                  disabled={page === totalPages || loading}
+                  onClick={() => void appendNextPage(activeFilters, activeSignature)}
+                  disabled={page === totalPages || loading || loadingMore}
                   className="px-4 py-2 rounded-full text-sm font-semibold bg-white border border-sand-100 text-sand-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-sand-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-500"
                 >
                   Next

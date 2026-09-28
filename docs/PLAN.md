@@ -34,7 +34,7 @@
 | 1 | Launch-readiness leftovers — read replica (B-002), Sentry DSNs, verify migration `063`, real-device FB connect, first live-provider AI Studio run | `tasks/pending/launch-readiness.md` | Owner actions |
 | 2 | F-035 Kanchuki-managed WhatsApp sending (Embedded Signup) | `tasks/pending/whatsapp-managed-sending.md` | Meta Business Verification + App Review (4–8 weeks) |
 | 3 | F-036 Phases B–D — web push, iOS install flow, consent/mute UI | `tasks/pending/customer-pwa-push-notifications.md` | — |
-| 4 | F-037 Phases 2–4 — nightly aggregation, admin + retailer behaviour dashboards | `tasks/pending/customer-engagement-analytics.md` | — |
+| 4 | F-037 follow-up — phases 1–3 built; phase 4 partly built. Storefront items 1, 2, 4, 5, 6, 8, 9 and retailer aggregate view are built; product-card ratings/reviews (item 7) remain planned. The store-local feed has no `CustomerFashionDNA` dependency. | `tasks/pending/customer-engagement-analytics.md` | Implement item 7 if still desired; verify/implement raw-event retention pruning |
 | 5 | AI Studio — owner picks engines per style, applies migrations `104`/`105`; F-034 retailer video phase | `tasks/pending/ai-photo-generation.md` | Bench sign-off |
 | 6 | AI credit packs (retailer purchase side) | `tasks/pending/ai-credit-billing-model.md` | F-034 retailer phase |
 | 7 | Prorated plan upgrades (Model B) | `tasks/pending/plan-switch-prorated.md` | — |

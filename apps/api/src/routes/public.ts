@@ -11,6 +11,7 @@ import {
   publicMiscRoutes,
   publicNearMeRoutes,
   publicProductsRoutes,
+  publicRecommendationsRoutes,
   publicRetailersRoutes,
   publicReviewsRoutes,
   publicSearchRoutes,
@@ -27,6 +28,8 @@ export const publicRoutes: FastifyPluginAsync = async (server) => {
   await server.register(publicCollectionsRoutes);
   // public-products — auto-split module
   await server.register(publicProductsRoutes);
+  // public-recommendations — personalized feed, always limited to active store
+  await server.register(publicRecommendationsRoutes);
   // public-retailers — auto-split module
   await server.register(publicRetailersRoutes);
   // public-catalog-payment — auto-split module

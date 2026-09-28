@@ -46,8 +46,34 @@ describe('ProductGallery', () => {
     expect(screen.queryByRole('button', { name: 'Next photo' })).not.toBeInTheDocument();
   });
 
-  it('renders the variant color chip and jumps to its slide on tap', () => {
+  it('only autoplays the selected clip and keeps videos out of the photo lightbox', () => {
     const { container } = render(
+      <ProductGallery
+        photos={PHOTOS}
+        variants={[]}
+        videos={[
+          { id: 'clip-1', url: 'https://cdn.test/clip-1.mp4', is_main: true },
+          { id: 'clip-2', url: 'https://cdn.test/clip-2.mp4', is_main: false },
+        ]}
+        alt="Kurta Set"
+      />,
+    );
+
+    expect(container.textContent).toContain('3 Photos · 2 Videos');
+    expect(screen.getByRole('button', { name: 'Play video 1' })).toBeInTheDocument();
+    const videos = screen.getAllByLabelText('Kurta Set video') as HTMLVideoElement[];
+    expect(videos).toHaveLength(2);
+    expect(videos.every((video) => !video.autoplay)).toBe(true);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Play video 1' }));
+    const selected = screen.getAllByLabelText('Kurta Set video') as HTMLVideoElement[];
+    expect(selected.find((video) => video.getAttribute('src')?.endsWith('clip-1.mp4'))?.autoplay).toBe(true);
+    expect(selected.find((video) => video.getAttribute('src')?.endsWith('clip-2.mp4'))?.autoplay).toBe(false);
+    expect(screen.queryByRole('button', { name: 'Close fullscreen photo' })).not.toBeInTheDocument();
+  });
+
+  it('renders the variant color chip and jumps to its slide on tap', () => {
+        const { container } = render(
       <ProductGallery photos={PHOTOS} variants={VARIANTS} alt="Kurta Set" />,
     );
     // Chip exists for the photo variant; Teal (no photo) is a static chip.

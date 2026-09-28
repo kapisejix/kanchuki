@@ -1,7 +1,7 @@
 'use client';
 
 import { resolveFashionColor } from '@kanchuki/shared';
-import { ChevronLeft, ChevronRight, Palette, ShoppingBag, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Palette, Play, ShoppingBag, X } from 'lucide-react';
 import Image from 'next/image';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import type { Swiper as SwiperClass } from 'swiper';
@@ -21,6 +21,10 @@ interface Variant {
 interface Props {
   photos: string[];
   variants: Variant[];
+  // Roadmap Q / F-033 — short product clips. The detail API has always returned
+  // these; the shared type simply never declared them, so this gallery never
+  // received any. They render after the photos, same as the detail sheet.
+  videos?: { id: string; url: string; is_main: boolean }[];
   alt: string;
   isSold?: boolean;
   isReserved?: boolean;
@@ -29,6 +33,8 @@ interface Props {
 interface Slide {
   url: string;
   color: string | null;
+  /** Set for a clip — `url` is then a video source, not an image. */
+  video?: boolean;
 }
 
 // Swipeable photo/variant gallery for the shared product page, built on
@@ -36,7 +42,7 @@ interface Slide {
 // fullscreen lightbox) modules. Slides are the product's photos followed by
 // any variant photos (deduped, variants last so tapping a color chip scrolls
 // to its photo). Pure client component — the page it lives on stays server.
-export function ProductGallery({ photos, variants, alt, isSold, isReserved }: Props) {
+export function ProductGallery({ photos, variants, videos, alt, isSold, isReserved }: Props) {
   const slides = useMemo<Slide[]>(() => {
     const seen = new Set<string>();
     const list: Slide[] = [];
@@ -52,8 +58,22 @@ export function ProductGallery({ photos, variants, alt, isSold, isReserved }: Pr
         list.push({ url: v.photoUrl, color: v.color });
       }
     }
+    // Clips last, so `photoCount` stays a contiguous 0..n-1 range and the
+    // fullscreen lightbox (photos only) can index straight into it.
+    for (const v of videos ?? []) {
+      if (v.url && !seen.has(v.url)) {
+        seen.add(v.url);
+        list.push({ url: v.url, color: null, video: true });
+      }
+    }
     return list;
-  }, [photos, variants]);
+  }, [photos, variants, videos]);
+
+  // Everything before this index is a photo. The lightbox renders photos only —
+  // Swiper's Zoom module can't zoom a <video>, and swapping the src into
+  // next/image would just break the tile.
+  const photoCount = useMemo(() => slides.filter((s) => !s.video).length, [slides]);
+  const videoCount = slides.length - photoCount;
 
   const [index, setIndex] = useState(0);
   const [fullscreen, setFullscreen] = useState(false);
@@ -86,12 +106,18 @@ export function ProductGallery({ photos, variants, alt, isSold, isReserved }: Pr
     setFullscreen(true);
   }, []);
 
+  const isVideoSlide = current?.video === true;
+
   return (
     <div>
       {/* ── Carousel ── */}
       <div className="relative w-full aspect-[3/4] max-h-[75vh] rounded-3xl overflow-hidden bg-gray-100 shadow-soft border border-gray-100 select-none">
         <span className="sr-only" aria-live="polite">
-          {slideCount > 1 ? `Photo ${index + 1} of ${slideCount}${current?.color ? `, ${current.color}` : ''}` : ''}
+          {slideCount > 1
+            ? isVideoSlide
+              ? `Video ${index - photoCount + 1} of ${videoCount}`
+              : `Photo ${index + 1} of ${photoCount}${current?.color ? `, ${current.color}` : ''}`
+            : ''}
         </span>
         {slideCount > 0 ? (
           <>
@@ -104,24 +130,44 @@ export function ProductGallery({ photos, variants, alt, isSold, isReserved }: Pr
             >
               {slides.map((slide, i) => (
                 <SwiperSlide key={slide.url}>
-                  {/* The photo layer is a real button — tap/click opens the
-                      fullscreen viewer. */}
-                  <button
-                    type="button"
-                    onClick={openFullscreen}
-                    aria-label="Open photo in fullscreen"
-                    className="absolute inset-0 block w-full h-full p-0 border-0 bg-transparent cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
-                  >
-                    <Image
+                  {slide.video ? (
+                    // `key` on the source so React remounts the element when the
+                    // active clip changes — otherwise the previous clip keeps
+                    // playing while the src swaps underneath it. Only the
+                    // active slide auto-plays; Swiper keeps neighbouring slides
+                    // mounted, so unconditional autoPlay can play every clip.
+                    <video
+                      key={slide.url}
                       src={slide.url}
-                      alt={alt}
-                      fill
-                      priority={i === 0} // Only first slide gets priority for LCP
-                      loading={i === 0 ? undefined : 'lazy'} // Lazy load non-priority images
-                      sizes="(max-width: 640px) 100vw, 448px"
-                      className={`object-cover ${sold ? 'grayscale opacity-80' : ''}`}
+                      className="w-full h-full object-cover bg-black"
+                      autoPlay={i === index}
+                      muted
+                      loop
+                      playsInline
+                      controls
+                      preload="metadata"
+                      aria-label={`${alt} video`}
                     />
-                  </button>
+                  ) : (
+                    /* The photo layer is a real button — tap/click opens the
+                       fullscreen viewer. */
+                    <button
+                      type="button"
+                      onClick={openFullscreen}
+                      aria-label="Open photo in fullscreen"
+                      className="absolute inset-0 block w-full h-full p-0 border-0 bg-transparent cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
+                    >
+                      <Image
+                        src={slide.url}
+                        alt={alt}
+                        fill
+                        priority={i === 0} // Only first slide gets priority for LCP
+                        loading={i === 0 ? undefined : 'lazy'} // Lazy load non-priority images
+                        sizes="(max-width: 640px) 100vw, 448px"
+                        className={`object-cover ${sold ? 'grayscale opacity-80' : ''}`}
+                      />
+                    </button>
+                  )}
                 </SwiperSlide>
               ))}
             </Swiper>
@@ -137,20 +183,30 @@ export function ProductGallery({ photos, variants, alt, isSold, isReserved }: Pr
                       e.stopPropagation();
                       goTo(i);
                     }}
-                    aria-label={slide.color ? `${slide.color} photo` : `Photo ${i + 1}`}
+                    aria-label={
+                      slide.video
+                        ? `Play video ${i - photoCount + 1}`
+                        : slide.color
+                          ? `${slide.color} photo`
+                          : `Photo ${i + 1}`
+                    }
                     className={`relative w-9 h-11 rounded-[12px] overflow-hidden border-2 transition-all duration-200 ${
                       i === index
                         ? 'border-[#BB3F95] scale-105 shadow-sm'
                         : 'border-transparent opacity-80 hover:opacity-100'
-                    }`}
+                    } ${slide.video ? 'bg-[#231F48] flex items-center justify-center' : ''}`}
                   >
-                    <Image
-                      src={slide.url}
-                      alt=""
-                      fill
-                      sizes="44px"
-                      className="object-cover"
-                    />
+                    {slide.video ? (
+                      <Play size={14} className="text-white" />
+                    ) : (
+                      <Image
+                        src={slide.url}
+                        alt=""
+                        fill
+                        sizes="44px"
+                        className="object-cover"
+                      />
+                    )}
                   </button>
                 ))}
               </div>
@@ -192,9 +248,11 @@ export function ProductGallery({ photos, variants, alt, isSold, isReserved }: Pr
             )}
 
             {/* Counter — bottom-right */}
-            {slideCount > 1 && (
+            {photoCount > 1 && (
               <div className="absolute bottom-3.5 right-3.5 z-10 bg-[#231F48]/85 backdrop-blur-md text-white text-[10px] font-extrabold px-3 py-1 rounded-full shadow-sm pointer-events-none">
-                {slideCount} Photos
+                {videoCount > 0
+                  ? `${photoCount} Photos · ${videoCount} Video${videoCount > 1 ? 's' : ''}`
+                  : `${photoCount} Photos`}
               </div>
             )}
 
@@ -269,7 +327,7 @@ export function ProductGallery({ photos, variants, alt, isSold, isReserved }: Pr
       )}
 
       {/* ── Fullscreen lightbox — Zoom module gives pinch/double-tap zoom ── */}
-      {fullscreen && current && (
+      {fullscreen && current && !isVideoSlide && (
         <div
           className="fixed inset-0 z-[60] bg-black flex items-center justify-center"
           onClick={() => setFullscreen(false)}
@@ -301,7 +359,7 @@ export function ProductGallery({ photos, variants, alt, isSold, isReserved }: Pr
               <ChevronLeft size={20} className="text-white" />
             </button>
           )}
-          {index < slideCount - 1 && (
+          {index < photoCount - 1 && (
             <button
               type="button"
               onClick={(e) => {
@@ -330,7 +388,7 @@ export function ProductGallery({ photos, variants, alt, isSold, isReserved }: Pr
               onSlideChange={(s) => setIndex(s.activeIndex)}
               className="w-full h-full"
             >
-              {slides.map((slide, i) => (
+              {slides.slice(0, photoCount).map((slide, i) => (
                 <SwiperSlide key={slide.url} zoom>
                   <div className="relative w-full h-full">
                     <Image
@@ -348,7 +406,7 @@ export function ProductGallery({ photos, variants, alt, isSold, isReserved }: Pr
               ))}
             </Swiper>
             <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-black/60 text-white text-xs font-medium px-2.5 py-1 rounded-full pointer-events-none z-10">
-              {index + 1} / {slideCount}
+              {index + 1} / {photoCount}
             </div>
           </div>
         </div>
