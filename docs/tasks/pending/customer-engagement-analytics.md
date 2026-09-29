@@ -2,7 +2,7 @@
 
 **Document:** `docs/tasks/pending/customer-engagement-analytics.md`
 **Date:** 2026-09-17
-**Status (updated 2026-09-28):** **Phase 1 ✅ built (2026-09-18)** — `CustomerInteraction` model + migration `100_customer_interaction`, `POST /v1/public/passport/events` restored, `STORE_VISIT` write on QR lead capture, and consent-gated beacon for dwell-timed `view`, `favorite`/`unfavorite`, `enquiry`, and debounced `search`. **Phase 2 ✅ built (2026-09-29)** — nightly aggregation (`apps/api/src/jobs/engagement-aggregate.ts`, cron `0 1 * * *`), migration `121_engagement_aggregates`. **Phase 3 ✅ built (2026-09-29)** — admin aggregate dashboard + audited customer drill-down (`apps/api/src/routes/admin/admin-engagement.ts`, `apps/web/src/app/admin/engagement/page.tsx`); migration `122` is applied and verified. **Phase 4 🟨 partly built** — retailer aggregate view and engagement items 1, 2, 4, 5, 6, 8, 9 are built. Item 1, store-local “Picked for you,” uses consent-gated same-store interactions for recognized shoppers and validated per-tab visit IDs for anonymous shoppers; it requires no `CustomerFashionDNA` rebuild or migration. Item 7, ratings/reviews on product cards, remains planned. Pagination-time social-proof refresh was considered and deliberately not built. Details: `docs/build-log/part-6.md` (F-037 entries).
+**Status (updated 2026-09-29):** **Phase 1 ✅ built (2026-09-18)** — `CustomerInteraction` model + migration `100_customer_interaction`, `POST /v1/public/passport/events` restored, `STORE_VISIT` write on QR lead capture, and consent-gated beacon for dwell-timed `view`, `favorite`/`unfavorite`, `enquiry`, and debounced `search`. **Phase 2 ✅ built (2026-09-29)** — nightly aggregation (`apps/api/src/jobs/engagement-aggregate.ts`, cron `0 1 * * *`), migration `121_engagement_aggregates`. **Phase 3 ✅ built (2026-09-29)** — admin aggregate dashboard + audited customer drill-down (`apps/api/src/routes/admin/admin-engagement.ts`, `apps/web/src/app/admin/engagement/page.tsx`); migration `122` is applied and verified. **Phase 4 🟨 partly built** — retailer aggregate view and engagement items 1, 2, 4, 5, 6, 8, 9 are built. Item 1, store-local “Picked for you,” uses consent-gated same-store interactions for recognized shoppers and validated per-tab visit IDs for anonymous shoppers; it requires no `CustomerFashionDNA` rebuild or migration. Item 7 is ✅ built at product level — catalog cards show ★ + average when `rating_count > 0` (`CollectionView.tsx`, commit `d73c8c54`), reviews list on the detail sheet; store-level rating on `/stores` is not built (owner decision pending). Pagination-time social-proof refresh was considered and deliberately not built. Details: `docs/build-log/part-6.md` (F-037 entries).
 **Answers:** owner follow-up on F-036 — (1) what else increases time-on-catalog/customer engagement, (2) how admin tracks per-customer dwell time, liked products, search terms, and view history in the admin dashboard.
 **Related:** `docs/tasks/pending/customer-pwa-push-notifications.md` (F-036), `docs/PRO-REQUIREMENTS.md §36 (Shopper Passport)` (Shopper Passport), `docs/PRO-REQUIREMENTS.md` §33.
 
@@ -45,7 +45,7 @@ These are prioritized by how directly they use infrastructure that already exist
 | 4 | **"Complete the look" cross-sell within the same store** | More pages per session, keeps the customer in one store's catalog longer | ✅ Built 2026-09-28 — same-retailer related endpoint ranks by category, subtype, fabric, colour and price proximity |
 | 5 | **Real social-proof chips** ("8 viewed today," "3 favorited this week") | Nudges longer looking + more clicks — real counts only, never fabricated | ✅ **Built 2026-09-29, follow-ups included** (§6 Phase 4) — needs the same interaction log this document specs anyway (§3), so it was a dual-purpose build |
 | 6 | **Video/Ken Burns collections over static photos** | Video dwell time measurably exceeds static-photo dwell time | F-033 plus ✅ product clips now rendered in both product-detail gallery surfaces (2026-09-28) |
-| 7 | **Ratings/reviews surfaced on product cards** | Social proof extends read time before a decision | F-021, currently planned |
+| 7 | **Ratings/reviews surfaced on product cards** | Social proof extends read time before a decision | ✅ Product cards built (`d73c8c54` — ★ + avg when `rating_count > 0`; `ReviewList` on detail sheet). Store-level rating on `/stores` not built — owner decision pending |
 | 8 | **Size-match filter front-and-center** | Fewer irrelevant items shown → less bounce, more relevant browsing | ✅ Built 2026-09-28 — always-visible size chips backed by exact size filtering and canonical facets |
 | 9 | **Perf: prefetch + smooth infinite scroll** | Load lag kills session length faster than weak content does | ✅ Built 2026-09-28 — shared 20-item page size, guarded append/prefetch, retry state |
 
@@ -78,7 +78,7 @@ A single `CustomerInteraction` table (net-new, not a revival of the dropped one)
 
 - `customer_account_id`, `retailer_id`, `type` (the event types in §3.1), `metadata` (JSON, shape per type), `created_at`.
 - High write volume — this table should never be queried live for dashboard charts (§3.3 handles that).
-- Retention: the design called for 24 months of raw rows. A prune cron was not found in the source scan for this update, so the retention policy and purge implementation remain open and must be verified before claiming this requirement is met.
+- Retention: the design called for 24 months of raw rows. Verified 2026-09-29: no prune job exists (no delete path for `customer_interactions` anywhere in the source). Retention policy + prune job remain open. First rows date from 2026-09-18, so nothing reaches 24 months before 2028-09.
 
 ### 3.3 Aggregation (nightly job, not live queries)
 
@@ -123,7 +123,7 @@ These are code-path boundaries. Any change to profiling, consent copy, or data r
 | Store-level analytics admin page | Web (admin) | ✅ Built |
 | Per-customer drill-down admin page | Web (admin) | ✅ Built; `AuditLog`-gated |
 | Retailer-facing aggregate view | Mobile app | ✅ Built; retailer-scoped, aggregate-only per §4 |
-| Raw-event retention policy + prune job | Worker / policy | 🔴 Open: source scan did not find the promised retention job; verify intended period and implement/verify safe pruning |
+| Raw-event retention policy + prune job | Worker / policy | 🔴 Open: verified absent 2026-09-29 — agree the period (design: 24 months) and implement safe pruning via the purge role |
 
 ---
 
@@ -132,7 +132,7 @@ These are code-path boundaries. Any change to profiling, consent copy, or data r
 **Phase 1 — Event capture + storage** ✅ Core capture built 2026-09-18; retention follow-up open
 - `CustomerInteraction` model + RLS.
 - Consent-gated client beacon for view/search/favorite/enquiry/store_visit, with real dwell-time measurement.
-- 🔴 Verify/implement the intended raw-event retention and 24-month prune job; it was not located in the current source scan.
+- 🔴 Implement the raw-event retention prune job — verified absent 2026-09-29; design says 24 months.
 
 **Phase 2 — Aggregation** ✅ Built 2026-09-29
 - Nightly rollup job (dwell totals, top products, search terms incl. zero-result). Funnel
@@ -184,7 +184,7 @@ These are code-path boundaries. Any change to profiling, consent copy, or data r
     path for zero visible benefit; the only variant with any value is a re-focus across the rollup
     boundary, a session nobody has. Recorded so it is not re-opened as an oversight.
 
-**Dependency note:** Phase 1 interaction capture supplies the recognized shopper's same-store signals; anonymous shoppers use only the current tab's store-scoped visit IDs. The feed is built on these independent paths and does not depend on `CustomerFashionDNA`. Item 5 (social-proof chips) is built. Items 2, 3, 4, 6, 8 and 9 are also built; item 7 (ratings/reviews on product cards) is the only §2 storefront item still planned. Separately, raw-event retention/pruning still needs verification or implementation (§5).
+**Dependency note:** Phase 1 interaction capture supplies the recognized shopper's same-store signals; anonymous shoppers use only the current tab's store-scoped visit IDs. The feed is built on these independent paths and does not depend on `CustomerFashionDNA`. Item 5 (social-proof chips) is built. Items 2, 3, 4, 6, 8 and 9 are also built; item 7 is built at product-card level; only a store-level rating on `/stores` remains, pending an owner decision. Separately, raw-event retention/pruning still needs verification or implementation (§5).
 
 ---
 
@@ -194,4 +194,4 @@ These are code-path boundaries. Any change to profiling, consent copy, or data r
 2. ✅ **Precomputed dashboard data** — Phase 2 aggregation is built; do not replace it with live raw-table chart queries.
 3. ✅ **Aggregate-first admin view** — store dashboard is aggregate; named-customer drill-down is deliberate and `AuditLog`-gated.
 4. ✅ **Use real engagement evidence** — social-proof chips omit products without a qualifying count; no fabricated numbers. The feed's fallback is explicitly labeled as ordinary store catalog content.
-5. **Remaining F-037 work:** item 7, surface product/store ratings and reviews on product cards (rating primitives exist under F-021); verify/implement the raw-event retention policy and prune job called for in §3.2.
+5. **Remaining F-037 work:** decide whether to add a store-level rating on `/stores` (product-card ratings are built); implement the raw-event retention policy and prune job called for in §3.2.
