@@ -12,6 +12,20 @@
 
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
+## RC-048 — a fix stranded on an unmerged PR and new client fetches shipped with no e2e stubs, so the customer e2e suite was red for reasons unrelated to what it tests — and that red hid a real regression: `eb72f117` rewired **Next** to append, contradicting its own comment
+
+- **Component:** `apps/web/playwright.config.ts` (`testIgnore`), `apps/web/e2e/customer-collection.spec.ts` + `customer-my-stores.spec.ts` (network stubs), `apps/web/src/app/c/[slug]/components/CollectionView.tsx` (pager Next `onClick`). Found 2026-09-29 while making PR #41's customer e2e green.
+- **Symptom:** the customer suite ran 28–31/32 on PR #41 with three unrelated failure shapes: the installability test failing in the dev-server pass, console errors from unstubbed storefront fetches, and `customer-collection.spec.ts` "Festive Design 1" still visible after **Next** with the label reading "Page 2 of 2".
+- **Root cause (three, one shape — a change whose other half lived somewhere nothing checked):**
+  1. **Stranded fix.** #36's `e7de7397` widened the dev-server pass's `testIgnore` from `**/customer-collection.spec.ts` to `**/customer-*.spec.ts` (no SW under `next dev`, so the installability test can never pass there). #36 was never merged; its other fixes reached `main` by other routes, so nothing noticed this one had not.
+  2. **Client fetches with no stubs.** `d77f357b` (GET `/v1/public/engagement-chips`) and `eb72f117` (POST `/v1/public/recommendations`) added storefront calls; the e2e stub API had no route for either, so storefront specs failed their console check on a 404 — noise that read as "e2e is flaky again".
+  3. **Behaviour change contradicting its own comment.** `eb72f117` switched Next from `goToPage(page + 1)` to `appendNextPage(...)` while the same commit's comment says "Prev/Next keep their original meaning — jump to a page and REPLACE the grid". Its unit tests were rewritten to pin the append, so only the e2e — already red for reasons 1–2 — disagreed.
+- **Fix (`d9993d8b`):** `testIgnore: '**/customer-*.spec.ts'`; stubs for both endpoints; SW poll 25 s; `pinTallViewport()` for the Prev/Next test (Playwright's auto-scroll to the pager otherwise fires append-on-scroll before the click lands); Next → `goToPage(Math.min(totalPages, page + 1))`; the unit tests that drove append via Next now drive it via scroll, and one test pins both (scroll appends, Prev/Next replace).
+- **Proof:** customer e2e **32/32** locally (prod build); `CollectionView.test.tsx` 8/8; web `tsc` clean. The new unit assertion (`queryByText('Festive Design 1')` absent after Next) is the e2e failure's exact condition, so reverting the Next line turns it red.
+- **Open (product, not code):** with append-on-scroll, a shopper who scrolls to the pager has usually already appended the last page, so Next is disabled in practice. Keep both, or drop the pager — owner decision.
+
+---
+
 ## RC-047 — The deploy pipeline had no signal for "the new revision is live": `railway up --detach` never reports a build outcome, and `verify-deploy` checked liveness of the public URL that the **incumbent** revision answers — so a failed build was reported as a successful deploy
 
 - **Component:** `.github/workflows/deploy.yml` — `deploy-web`'s `railway up --detach --environment production` step and `verify-deploy`'s two `curl … || echo "⚠️ …"` checks. Compounded by the absence of branch protection on `main`. Found 2026-09-28 while verifying the F-037 §2 row 5 deploy, when the platform's own report and the platform's own logs disagreed about the same commit.

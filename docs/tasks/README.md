@@ -18,6 +18,7 @@ Where work lives: **`pending/` = open**, **`done/` = built** (kept as the design
 | Ghost mannequin AI generation (F-001e) | `pending/ghost-mannequin.md` | 🔴 Planned, P2 — not built | **Snappyit has no public API**; a local LaMa version exists but is reachable only from the admin photo-cleanup bench |
 | Google Business Profile auto-post (F-022) | `pending/google-business-profile-autopost.md` | ⏸ **On hold** | Blocked on Google API access. **Do not start without an explicit go-ahead.** |
 | Launch readiness | `pending/launch-readiness.md` | 🟡 Open items | Mostly owner/account actions + 3 pre-launch verifications |
+| i18n + dynamic-content audit (no-hardcoded-values program) | `pending/i18n-and-dynamic-content-audit.md` | 📋 Audit — awaiting owner approval (2026-09-29) | §5 open questions; Phase B starts only after approval |
 | Multi-language i18n (roadmap M) | `pending/multi-language-i18n.md` | 🟡 Partial — AI translate ✅; UI i18n not started | Migration `063` applied state **unverified**; there is no i18n infrastructure to build on |
 | Prorated mid-cycle plan switch (Model B) | `pending/plan-switch-prorated.md` | 🔴 Planned — Model A is what shipped | Product sign-off (formula in the file) |
 | Social publishing phase 3/4 — IG Reels scheduling, catalog broadcast analytics | `pending/social-publishing-phase-3.md` | 🔴 Planned | Phases 1–2 + composer are built; only these extensions remain |
