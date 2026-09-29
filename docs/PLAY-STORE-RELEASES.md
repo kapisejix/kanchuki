@@ -16,8 +16,13 @@
 |---|---|---|---|---|---|---|
 | 2 | 1.0.0 | 2026-09-09 | Closed testing | `34348392715` | `6fc542ae` | media-permissions hardening, OTP keyboard fix |
 | 3 | 1.0.0 | 2026-09-11 | Open testing | `34617176198` *or* `34619372677` | `c14cc6f3` *or* `0305d589` | AD_ID strip (`b1ccefce`), OTP double-send (RC-015), FB reconnect loop (RC-016), AI Studio tab bug (RC-017), AI Studio pick-reset + FB login loop fixed (RC-017/RC-018), CI lint fully green — **see the ambiguity note below** |
+| 5 | 1.0.0 | 2026-09-12 | Closed testing (Alpha) | `34693579778` | `066ee6b2` | AD_ID + RECORD_AUDIO stripped (fixes the v4 "Incomplete advertising ID declaration" block). Bundle uploaded 12:56, rolled out 19:09 per Play Console; row added 2026-09-29 from the Console listing — it had been missing, so the guard still read 3 as the highest |
 
-### 🚧 In flight — versionCode 5 is built and merged-manifest-verified, awaiting upload; versionCode 4 is superseded
+### ✅ Resolved — versionCode 5 was uploaded 2026-09-12 (closed testing, see Uploads); versionCode 4 is superseded. Next build is versionCode 6
+
+_History below kept as written._
+
+#### Original note
 
 `apps/mobile/app.json` was bumped to **`versionCode: 4`** on 2026-09-12, and the AAB
 was built from `10c8f2d` and uploaded the same day. **Play never accepted it** — the
