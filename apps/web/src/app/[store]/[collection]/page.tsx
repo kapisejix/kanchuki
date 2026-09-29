@@ -5,6 +5,7 @@ import { SuspendedNotice } from '../../c/[slug]/components/SuspendedNotice';
 import { fetchCollection } from '../../c/[slug]/lib/fetchCollection';
 import { resolveStorefront } from '../lib/resolveStorefront';
 import { itemListLd, ldJson } from '../lib/store-seo';
+import { CATALOG_PAGE_SIZE } from '@/lib/catalog';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://kanchuki.app';
 
@@ -63,7 +64,7 @@ export default async function CollectionPage({ params }: Props) {
     redirect(`/${store}/categories/${collection.slice(4)}`);
   }
 
-  const data = await fetchCollection(collection, { page: 1, pageSize: 12 });
+  const data = await fetchCollection(collection, { page: 1, pageSize: CATALOG_PAGE_SIZE });
   if (!data) {
     // If collection does not exist, gracefully route to the store's categories
     // rather than throwing a 404 error on a customer link.

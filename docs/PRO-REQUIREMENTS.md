@@ -2863,10 +2863,11 @@ live in Chrome. Detail: `docs/BUILD-LOG.md` §2026-09-17 (later still).
 
 ---
 
-## 33. F-037 Customer Engagement Enhancements + Admin Behavior Analytics — 🟨 Phase 1 ✅ Built; 2–4 🔴 Planned
+## 33. F-037 Customer Engagement Enhancements + Admin Behavior Analytics — 🟨 Phases 1–3 ✅ Built; Phase 4 partly built (2026-09-28)
 
-**Written 2026-09-17 on owner follow-up to F-036.** Full research, schema
-correction, and roadmap: **`docs/tasks/customer-engagement-and-admin-behavior-analytics.md`**.
+**Written 2026-09-17 on owner follow-up to F-036.** Current status and detailed
+work plan: **`docs/tasks/pending/customer-engagement-analytics.md`**; build history:
+`docs/build-log/part-6.md` (F-037 entries dated 2026-09-28/29).
 
 **Phase 1 built 2026-09-18** — `CustomerInteraction` model (migration `100_customer_interaction`,
 net-new per §33.1, RLS on/default-deny) + `POST /v1/public/passport/events` now writes
@@ -2896,14 +2897,22 @@ Two asks: (1) beyond F-036, what increases customer time-on-catalog; (2) how doe
 admin see, per customer, time spent per store, most-liked products, search
 queries, and view history.
 
-### 33.3 Engagement recommendations (no dependency on new tracking)
+### 33.3 Engagement recommendations and current status
 
-Recently-viewed carousel surfaced prominently, AI Stylist promoted rather than
-buried, "complete the look" cross-sell, ratings/reviews (F-021) on product cards,
-size-match filter front-and-center, prefetch/infinite-scroll perf. Full table
-with rationale: task doc §2. **Two items — personalized "For You" feed and real
-social-proof chips — depend on the tracking data in §33.4 existing first**; do not
-ship fabricated counts to simulate them early.
+The task table and rationale are in `docs/tasks/pending/customer-engagement-analytics.md` §2.
+Built storefront items are: store-local “Picked for you” (item 1), recently viewed
+(item 2), same-store related products (item 4), real social-proof chips (item 5),
+product videos (item 6), prominent size filtering (item 8), and guarded catalog
+paging/prefetch (item 9). AI Stylist promotion (item 3) was already built as part
+of Customer Profile P2. Ratings/reviews on product cards (item 7) remain planned.
+
+The “Picked for you” feed uses consent-gated interactions scoped to the current
+retailer for recognized shoppers and validated current-tab visit IDs for anonymous
+shoppers. It does **not** depend on, restore, or rebuild `CustomerFashionDNA` and
+uses no cross-store profile signals. Social-proof chips use real aggregates only;
+missing values are omitted rather than fabricated. Pagination-time chip refresh
+was considered and deliberately not built; see the task spec and BUILD-LOG
+§2026-09-29 follow-ups.
 
 **Explicitly not recommending:** 360° spin, Virtual Try-On, purchase-tied loyalty
 — all deliberately removed in `chore/remove-unwanted-features`; reintroducing any
@@ -2917,8 +2926,9 @@ feature.
   result count), `favorite`/`unfavorite`, `enquiry`, `store_visit` (session
   dwell, entry channel).
 - **Storage:** new `CustomerInteraction` model, `CustomerAccount`-scoped, RLS
-  from day one, 24-month raw retention (matches passport doc §13-i) with a prune
-  cron.
+  from day one. The design calls for 24-month raw retention; a prune job was not
+  found in the source scan for this status update and remains to be verified or
+  implemented before this retention requirement can be claimed complete.
 - **Aggregation:** nightly rollup job — never query the raw table for dashboard
   charts. Computes per store: dwell totals, top-viewed/top-favorited products,
   top search terms **including zero-result searches** (doubles as a catalog-gap
@@ -2943,10 +2953,10 @@ F-014), so "who looked at this customer's data" always has an answer.
 
 | Phase | Deliverable |
 |---|---|
-| 1 | `CustomerInteraction` model + RLS; client beacon (view dwell, search, favorite, enquiry, store_visit) |
-| 2 | Nightly aggregation job (dwell totals, top products, search terms + zero-result, funnel) |
-| 3 | Admin dashboard: store-level page + `AuditLog`-gated per-customer drill-down |
-| 4 | Retailer-facing aggregate view; ship the data-dependent engagement items from §33.3 |
+| 1 | `CustomerInteraction` model + RLS; consent-gated client beacon (view dwell, search, favorite, enquiry, store_visit) — ✅ Built 2026-09-18 |
+| 2 | Nightly aggregation job (dwell totals, top products, search terms + zero-result, funnel) — ✅ Built 2026-09-29 (migration `121`) |
+| 3 | Admin dashboard: store-level page + `AuditLog`-gated per-customer drill-down — ✅ Built 2026-09-29 (migration `122` applied and verified live) |
+| 4 | Retailer-facing aggregate view — ✅ Built; engagement items 1, 2, 4, 5, 6, 8, 9 — ✅ Built; item 7 (ratings/reviews on product cards) — 🔴 Planned. Separately, raw-event retention/pruning still needs verification or implementation. |
 
 ### 33.7 Not doing (F-037 v1)
 
@@ -2954,7 +2964,10 @@ Reviving the dropped retailer-scoped `CustomerInteraction`/`CustomerFashionDNA`
 tables as-is; live dashboard queries against raw interaction rows; fabricated
 social-proof numbers; a default admin view that exposes named-customer raw
 behavior without an audit trail; any re-introduction of 360°/VTO/loyalty-points
-under the engagement banner.
+under the engagement banner. The store-local “Picked for you” feed is not a
+FashionDNA revival: it is explicitly bounded to the active store and current
+shopper signals. No schema change or migration was needed for the two 2026-09-28
+storefront batches; item 7 remains the open engagement UI item.
 
 ---
 

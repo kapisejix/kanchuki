@@ -22,7 +22,7 @@ import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { type SocialProof, fetchSocialProof, socialProofChip } from '../lib/socialProof';
+import { type SocialProof, socialProofChip, useSocialProof } from '../lib/socialProof';
 import {
   type WishlistItem,
   loadWishlist,
@@ -31,7 +31,8 @@ import {
   wishlistKey,
 } from '../lib/wishlist';
 import { trackPassportEvent } from '@/lib/passport-client';
-import { CategoryChips, FilterBar } from './FilterBar';
+import { CategoryChips, FilterBar, SizeChips } from './FilterBar';
+import { CATALOG_PAGE_SIZE } from '@/lib/catalog';
 import { KanchukiBrandBar } from './KanchukiBrandBar';
 import { PageTransitionWrapper } from '@/components/PageTransitionWrapper';
 
@@ -45,12 +46,18 @@ const ProductDetailSheet = dynamic(
 
 const PromotionBanner = dynamic(() => import('./PromotionBanner').then((m) => m.PromotionBanner), { ssr: false });
 const RecentlyViewed = dynamic(() => import('./RecentlyViewedRow').then((m) => m.RecentlyViewed), { ssr: false });
+const PickedForYou = dynamic(() => import('./PickedForYou').then((m) => m.PickedForYou), { ssr: false });
 const StyleQuiz = dynamic(() => import('./StyleQuiz').then((m) => m.StyleQuiz), { ssr: false });
 const AIStylist = dynamic(() => import('./AIStylist').then((m) => m.AIStylist), { ssr: false });
 // Feature flags for customer catalog screen
 const REGIONAL_FILTERS_ENABLED = false;
 
-const PAGE_SIZE = 12;
+interface CatalogFilters {
+  category: string | null;
+  price: string | null;
+  color: string | null;
+  size: string | null;
+}
 
 interface Props {
   collection: PublicCollection;
@@ -93,6 +100,7 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
   const [filterCategory, setFilterCategory] = useState<string | null>(null);
   const [filterPrice, setFilterPrice] = useState<string | null>(null);
   const [filterColor, setFilterColor] = useState<string | null>(null);
+  const [filterSize, setFilterSize] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
 
   const [showQuiz, setShowQuiz] = useState(false);
@@ -126,21 +134,10 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
   // carries products the API has a REAL count for; every other card renders no
   // chip at all — never a fabricated, rounded, or zeroed number.
   // Store slug: the route segment when there is one, else the retailer's own
-  // public slug (legacy /c/{slug} links carry no store segment).
+  // public slug (legacy /c/{slug} links carry no store segment). The fetch
+  // itself lives in the shared hook so the product page reads identically.
   const storeSlug = store ?? collection.retailer.public_slug;
-  const [socialProof, setSocialProof] = useState<SocialProof | null>(null);
-  useEffect(() => {
-    if (!storeSlug) return;
-    let cancelled = false;
-    void fetchSocialProof(storeSlug).then((proof) => {
-      // No proof leaves the state at its initial null — nothing to store, and
-      // "no chips" is already exactly what null renders.
-      if (!cancelled && proof) setSocialProof(proof);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [storeSlug]);
+  const socialProof = useSocialProof(storeSlug);
 
   // Product list, pagination, and loading are now server-driven — the initial
   // page comes from SSR (`collection`), further pages/filter changes refetch
@@ -149,8 +146,9 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
   const [total, setTotal] = useState(collection.total);
   const [page, setPage] = useState(collection.page);
   const [loading, setLoading] = useState(false);
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(total / CATALOG_PAGE_SIZE));
   const isFirstRun = useRef(true);
+  const catalogRequestGenerationRef = useRef(0);
 
   // Fetch-on-demand cache: products seen this session are cached here for
   // the "Enquire about N items" detail resolution when a favorite wasn't
@@ -161,35 +159,55 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
     new Map(collection.products.map((p) => [p.id, p])),
   );
 
-  const fetchProducts = useCallback(
-    async (
-      nextPage: number,
-      filters: {
-        category: string | null;
-        price: string | null;
-        color: string | null;
-      },
-    ) => {
-      setLoading(true);
-      const qs = new URLSearchParams({ page: String(nextPage), pageSize: String(PAGE_SIZE) });
-      if (filters.category) qs.set('category', filters.category);
-      if (filters.price) qs.set('price', filters.price);
-      if (filters.color) qs.set('color', filters.color);
+  const buildCatalogQs = useCallback((nextPage: number, filters: CatalogFilters) => {
+    const qs = new URLSearchParams({
+      page: String(nextPage),
+      pageSize: String(CATALOG_PAGE_SIZE),
+    });
+    if (filters.category) qs.set('category', filters.category);
+    if (filters.price) qs.set('price', filters.price);
+    if (filters.color) qs.set('color', filters.color);
+    if (filters.size) qs.set('size', filters.size);
+    return qs;
+  }, []);
+
+  const fetchPage = useCallback(
+    async (nextPage: number, filters: CatalogFilters): Promise<PublicCollection | null> => {
       try {
-        const res = await fetch(`${productsApiPath}?${qs}`);
-        if (!res.ok) return;
+        const res = await fetch(`${productsApiPath}?${buildCatalogQs(nextPage, filters)}`);
+        if (!res.ok) return null;
         const json = (await res.json()) as { data: PublicCollection };
-        setProducts(json.data.products);
-        setTotal(json.data.total);
-        setPage(json.data.page);
-        for (const p of json.data.products) {
-          productCacheRef.current.set(p.id, p);
-        }
-      } finally {
-        setLoading(false);
+        return json.data;
+      } catch {
+        return null;
       }
     },
-    [productsApiPath],
+    [productsApiPath, buildCatalogQs],
+  );
+
+  // Every response warms the session cache, so resolving a favorite or an
+  // enquiry never needs a second round trip for a product already on screen.
+  const rememberProducts = useCallback((list: PublicProduct[]) => {
+    for (const p of list) productCacheRef.current.set(p.id, p);
+  }, []);
+
+  // Replace the window — Prev/Next and every filter change go through here.
+  const fetchProducts = useCallback(
+    async (nextPage: number, filters: CatalogFilters) => {
+      const generation = ++catalogRequestGenerationRef.current;
+      setLoading(true);
+      try {
+        const data = await fetchPage(nextPage, filters);
+        if (!data || generation !== catalogRequestGenerationRef.current) return;
+        setProducts(data.products);
+        setTotal(data.total);
+        setPage(data.page);
+        rememberProducts(data.products);
+      } finally {
+        if (generation === catalogRequestGenerationRef.current) setLoading(false);
+      }
+    },
+    [fetchPage, rememberProducts],
   );
 
   // Filter change → refetch page 1. Skips the very first run since SSR
@@ -198,22 +216,27 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
     if (isFirstRun.current) {
       isFirstRun.current = false;
       return;
-    }      void fetchProducts(1, {
-        category: filterCategory,
-        price: filterPrice,
-        color: filterColor,
-      });
-  }, [filterCategory, filterPrice, filterColor, fetchProducts]);
+    }
+    void fetchProducts(1, {
+      category: filterCategory,
+      price: filterPrice,
+      color: filterColor,
+      size: filterSize,
+    });
+  }, [filterCategory, filterPrice, filterColor, filterSize, fetchProducts]);
 
+  // Prev/Next are the only way to change page — each replaces the grid. (Owner
+  // decision 2026-09-29: no append-on-scroll.)
   const goToPage = useCallback(
     (nextPage: number) => {
       void fetchProducts(nextPage, {
         category: filterCategory,
         price: filterPrice,
         color: filterColor,
+        size: filterSize,
       });
     },
-    [fetchProducts, filterCategory, filterPrice, filterColor],
+    [fetchProducts, filterCategory, filterPrice, filterColor, filterSize],
   );
 
   const toggleFavorite = useCallback(
@@ -327,7 +350,12 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
         retailer_id: collection.retailer.id,
         metadata: {
           query: searchQuery.trim(),
-          filters: { category: filterCategory, price: filterPrice, color: filterColor },
+          filters: {
+            category: filterCategory,
+            price: filterPrice,
+            color: filterColor,
+            size: filterSize,
+          },
           result_count: filteredProducts.length,
         },
       });
@@ -390,7 +418,7 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
               <button
                 onClick={() => setShowFilters((v) => !v)}
                 className={`w-10 h-10 rounded-2xl flex items-center justify-center border transition-all active:scale-90 ${
-                  showFilters || filterPrice || filterColor
+                  showFilters || filterPrice || filterColor || filterSize
                     ? 'bg-[#231F48] text-white border-[#231F48]'
                     : 'bg-white text-[#231F48] border-[#E0E1F6] shadow-sm'
                 }`}
@@ -475,6 +503,39 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
           />
         </div>
 
+        {/* Size row — always visible, not behind the filter toggle. A shopper
+            whose size isn't stocked bounces on the first product they open, so
+            this question has to be answerable before the tap. Hidden by
+            SizeChips itself when the store only stocks one size. */}
+        <div className="mb-4 -mx-1 px-1">
+          <SizeChips
+            sizes={collection.filters.sizes ?? []}
+            filterSize={filterSize}
+            onSizeChange={setFilterSize}
+          />
+        </div>
+
+        {/* Recently-viewed carousel — F-037 §2 item 2. Reads localStorage, so it
+            costs no request and renders nothing for a first-time visitor. Sits
+            above the grid because its whole job is to shorten the trip back to
+            something this shopper already opened. */}
+        <RecentlyViewed
+          storeSlug={store ?? slug}
+          onProductTap={(recent) =>
+            // Prefer the real summary when this session already loaded it — a
+            // fresh record then carries the rating/photo fields the sheet
+            // paints before its own detail fetch lands. A record from an
+            // earlier session has only the thin tracked shape, which is enough
+            // because the sheet re-fetches the product by id anyway.
+            setSelectedProduct(productCacheRef.current.get(recent.id) ?? recent)
+          }
+        />
+
+        <PickedForYou
+          storeSlug={storeSlug}
+          onProductTap={(product) => setSelectedProduct(productCacheRef.current.get(product.id) ?? product)}
+        />
+
         {filteredProducts.length === 0 ? (
           <div className="text-center py-16 px-6">
             <div className="w-16 h-16 rounded-3xl bg-white border border-[#E0E1F6] shadow-sm flex items-center justify-center mx-auto mb-4">
@@ -490,6 +551,7 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
                 setFilterCategory(null);
                 setFilterPrice(null);
                 setFilterColor(null);
+                setFilterSize(null);
               }}
               className="text-[#231F48] bg-white border border-[#E0E1F6] hover:bg-[#F8F7FC] text-xs font-bold px-4 py-2 rounded-full transition-colors shadow-sm"
             >
@@ -515,6 +577,8 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
               ))}
             </div>
 
+            {/* Append progress. Deliberately small and non-blocking — the grid
+                above stays interactive while the next page lands. */}
             {totalPages > 1 && (
               <div className="flex items-center justify-center gap-3 mt-5">
                 <button
@@ -550,6 +614,7 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
               isFavorited={favorites.has(selectedProduct.id)}
               slug={slug}
               store={store ?? null}
+              socialProof={socialProof}
               onFavorite={toggleFavorite}
               onSelectProduct={(p) => setSelectedProduct(p)}
               onClose={() => setSelectedProduct(null)}

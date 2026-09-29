@@ -197,6 +197,27 @@ test.beforeAll(async () => {
       return
     }
 
+    // Social-proof chip counts (F-037 §2 row 5) behind `/api/engagement-chips`.
+    // Unstubbed it 404s, and the proxy's `revalidate: 300` caches that 404 for
+    // every later spec in the same build. Empty counts = no chips rendered.
+    if (req.method === 'GET' && url.pathname === '/v1/public/engagement-chips') {
+      res.statusCode = 200
+      res.end(
+        JSON.stringify({
+          data: { products: {}, window: { today: null, week_from: null, week_to: null } },
+        }),
+      )
+      return
+    }
+
+    // "Picked for you" (F-037) POSTs `/api/recommendations`. Unstubbed it 404s
+    // into the console check; no products = the section stays hidden.
+    if (req.method === 'POST' && url.pathname === '/v1/public/recommendations') {
+      res.statusCode = 200
+      res.end(JSON.stringify({ data: { personalized: false, products: [] } }))
+      return
+    }
+
     if (req.method === 'GET' && collectionMatch) {
       const slug = decodeURIComponent(collectionMatch[1])
       if (KNOWN_SLUGS.has(slug)) {

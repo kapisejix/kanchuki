@@ -275,6 +275,12 @@ export interface PublicCollection {
   filters: {
     categories: { value: string; count: number }[]
     colors: { value: string; count: number }[]
+    // Sizes the products in this view actually offer, counted across the whole
+    // unfiltered set like the other facets. Optional because payloads served
+    // from the CDN/Redis cache before the size filter shipped genuinely have
+    // no `sizes` key — consumers read it as []. (Same reasoning as
+    // `try_on_enabled` below.)
+    sizes?: { value: string; count: number }[]
   }
 }
 
@@ -309,6 +315,12 @@ export interface PublicProductDetail extends PublicProduct {
   photos: string[]
   spin_frames: string[]
   variants: { color: string; photo_url: string | null; status: ProductStatus }[]
+  // Roadmap Q / F-033 — short product clips. `GET /public/products/:id` has
+  // always returned these; the type simply never declared the field, so every
+  // consumer dropped them silently. `is_main` marks the clip the retailer
+  // chose to lead with (or the Ken Burns auto-video, when it generated one).
+  // Optional: cached payloads predating this declaration have no key.
+  videos?: { id: string; url: string; duration_sec: number | null; is_main: boolean }[]
   is_unstitched?: boolean
   // F-040: whether this store's plan has VIRTUAL_TRY_ON_V2 enabled.
   // Drives the customer "Try it on" button; the API route re-checks the same

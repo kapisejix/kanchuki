@@ -2,6 +2,7 @@
 export { publicMiscRoutes } from './public-misc.js';
 export { publicCollectionsRoutes } from './public-collections.js';
 export { publicProductsRoutes } from './public-products.js';
+export { publicRecommendationsRoutes } from './public-recommendations.js';
 export { publicRetailersRoutes } from './public-retailers.js';
 export { publicCatalogPaymentRoutes } from './public-catalog-payment.js';
 export { publicNearMeRoutes } from './near-me.js';

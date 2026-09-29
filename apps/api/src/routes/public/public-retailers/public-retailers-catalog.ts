@@ -192,7 +192,7 @@ export const publicRetailersCatalogRoutes: FastifyPluginAsync = async (server) =
         prisma.product.count({ where: productWhere }),
         prisma.product.findMany({
           where: { deleted_at: null, retailer_id: retailer.id },
-          select: { category: true, primary_color: true },
+          select: { category: true, primary_color: true, sizes: true },
         }),
       ]);
 
@@ -321,7 +321,7 @@ export const publicRetailersCatalogRoutes: FastifyPluginAsync = async (server) =
         prisma.product.count({ where: productWhere }),
         prisma.product.findMany({
           where: productWhere,
-          select: { category: true, primary_color: true },
+          select: { category: true, primary_color: true, sizes: true },
         }),
       ]);
 

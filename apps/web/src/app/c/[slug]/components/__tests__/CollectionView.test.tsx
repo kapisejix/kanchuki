@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { usePathname } from 'next/navigation'
 import { createControllablePathname } from '@/test/__mocks__/next-navigation'
 import { CollectionView } from '../CollectionView'
@@ -79,11 +79,12 @@ const COLLECTION: PublicCollection = {
   products: [makeProduct(1), makeProduct(2), makeProduct(3)],
   total: 3,
   page: 1,
-  page_size: 12,
-  filters: {
-    categories: [{ value: 'Anarkali Suit', count: 3 }],
-    colors: [{ value: 'Maroon', count: 3 }],
-  },
+  page_size: 12,    filters: {
+      categories: [{ value: 'Anarkali Suit', count: 3 }],
+      colors: [{ value: 'Maroon', count: 3 }],
+      sizes: [{ value: 'M', count: 4 }, { value: 'L', count: 2 }],
+    },
+
 }
 
 // Mirrors app/c/[slug]/layout.tsx's route-change keying: the page subtree is
@@ -181,6 +182,117 @@ describe('CollectionView favorites survive a client-side route change', () => {
 // load-bearing for the honesty rule: one request covers the whole grid (not one
 // per card), and only the products the API returned a real count for get a chip
 // at all — an absent entry renders nothing, never "0 viewed".
+describe('CollectionView pagination', () => {
+  const paginatedCollection = (page = 1, total = 40): PublicCollection => ({
+    ...COLLECTION,
+    products: Array.from({ length: 20 }, (_, i) => makeProduct((page - 1) * 20 + i + 1)),
+    total,
+    page,
+    page_size: 20,
+    filters: {
+      ...COLLECTION.filters,
+      sizes: [{ value: 'M', count: 4 }, { value: 'L', count: 2 }],
+    },
+  })
+
+
+  const pageResponse = (page: number, total = 40) => ({
+    ok: true,
+    status: 200,
+    json: async () => ({ data: paginatedCollection(page, total) }),
+  })
+
+  beforeEach(() => {
+    localStorage.clear()
+    Object.defineProperty(document.documentElement, 'scrollHeight', {
+      configurable: true,
+      value: 1000,
+    })
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 600 })
+    Object.defineProperty(window, 'scrollY', { configurable: true, value: 0 })
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
+  it('changes page only via Prev/Next, each replacing the grid — scrolling loads nothing', async () => {
+    const fetchMock = vi.fn(async (input: unknown) => {
+      const url = new URL(String(input), 'https://kanchuki.test')
+      if (url.pathname.endsWith('/products')) return pageResponse(Number(url.searchParams.get('page')))
+      if (url.pathname.startsWith('/api/engagement-chips')) {
+        return { ok: true, status: 200, json: async () => ({ data: { products: {}, window: {} } }) }
+      }
+      return { ok: true, status: 200, json: async () => ({ data: {} }) }
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    const productRequests = () =>
+      fetchMock.mock.calls
+        .map(([input]) => new URL(String(input), 'https://kanchuki.test'))
+        .filter((url) => url.pathname.endsWith('/products'))
+
+    render(
+      <CollectionView
+        collection={paginatedCollection()}
+        slug="festive-edit"
+        productsApiPath="/api/c/festive-edit/products"
+      />,
+    )
+    expect(await screen.findByText('Festive Design 20')).toBeInTheDocument()
+
+    // Owner decision 2026-09-29: no append-on-scroll. The page is within 500px
+    // of the bottom (beforeEach), which is where the removed listener fired.
+    act(() => {
+      window.dispatchEvent(new Event('scroll'))
+    })
+    expect(productRequests()).toHaveLength(0)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }))
+    expect(await screen.findByText('Festive Design 40')).toBeInTheDocument()
+    expect(screen.queryByText('Festive Design 1')).not.toBeInTheDocument()
+    expect(screen.getByText('Page 2 of 2')).toBeInTheDocument()
+    expect(productRequests()[0]?.searchParams.get('pageSize')).toBe('20')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Prev' }))
+    expect(await screen.findByText('Festive Design 1')).toBeInTheDocument()
+    expect(screen.queryByText('Festive Design 40')).not.toBeInTheDocument()
+    expect(screen.getByText('Page 1 of 2')).toBeInTheDocument()
+  })
+
+  it('shows size chips and sends the selected size as a replace request', async () => {
+    const fetchMock = vi.fn(async (input: unknown) => {
+      const url = new URL(String(input), 'https://kanchuki.test')
+      if (url.pathname.endsWith('/products')) return pageResponse(Number(url.searchParams.get('page')))
+      if (url.pathname.startsWith('/api/engagement-chips')) {
+        return { ok: true, status: 200, json: async () => ({ data: { products: {}, window: {} } }) }
+      }
+      return { ok: true, status: 200, json: async () => ({ data: {} }) }
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(
+      <CollectionView
+        collection={paginatedCollection()}
+        slug="festive-edit"
+        productsApiPath="/api/c/festive-edit/products"
+      />,
+    )
+
+    expect(screen.getByRole('group', { name: 'Filter by size' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'M (4)' }))
+
+    await waitFor(() => {
+      expect(fetchMock.mock.calls.some(([input]) => {
+        const url = new URL(String(input), 'https://kanchuki.test')
+        return url.pathname.endsWith('/products') && url.searchParams.get('size') === 'M'
+      })).toBe(true)
+    })
+    expect(screen.getByRole('button', { name: 'M (4)' })).toHaveAttribute('aria-pressed', 'true')
+  })
+})
+
 describe('CollectionView social-proof chips', () => {
   const DAY_MS = 86_400_000
   const isoDaysAgo = (days: number) =>

@@ -5,7 +5,18 @@ import { hasFeatureForPlan } from '../../lib/features.js';
 import { isNewArrival, isOnSale } from '../../lib/product-flags.js';
 import { withPublicCache } from '../../lib/public-cache.js';
 import { notFound } from '../../plugins/error-handler.js';
-import { customerVisiblePhotos, displayUrl, toPublicProductSummary } from './public-helpers.js';
+import {
+  customerVisiblePhotos,
+  displayUrl,
+  rankRelatedProducts,
+  toPublicProductSummary,
+} from './public-helpers.js';
+
+// How many "more like this" products the strip shows, and how many candidates
+// are ranked to choose them from. The pool is what bounds the cost of the
+// in-process scoring above — it is not a page size.
+const RELATED_LIMIT = 6;
+const RELATED_CANDIDATE_POOL = 60;
 
 export const publicProductsRoutes: FastifyPluginAsync = async (server) => {
   // ─── GET /public/products/:productId ───────────────────────────
@@ -125,8 +136,10 @@ export const publicProductsRoutes: FastifyPluginAsync = async (server) => {
   );
 
   // ─── GET /public/products/:productId/related ─────────────────────
-  // Related products: same category, same retailer, excluding current product.
-  // Returns up to 6 PublicProduct summaries (thin shape with primary photo).
+  // Related products: same retailer, excluding the current product, ranked by
+  // attribute overlap (category / subtype / fabric / colour / price band) rather
+  // than category alone. Returns up to 6 PublicProduct summaries (thin shape
+  // with primary photo).
   server.get(
     '/products/:productId/related',
     {
@@ -148,20 +161,42 @@ export const publicProductsRoutes: FastifyPluginAsync = async (server) => {
           async () => {
             const product = await prisma.product.findFirst({
               where: { id: productId, deleted_at: null, retailer: { is_suspended: false } },
-              select: { category: true, retailer_id: true },
+              select: {
+                category: true,
+                subtype: true,
+                fabrics: true,
+                primary_color: true,
+                price_min: true,
+                created_at: true,
+                retailer_id: true,
+              },
             });
-            if (!product || !product.category) return { data: [] };
+            // Nothing to match on at all — not even a fabric. (This used to bail
+            // on a missing category alone, which hid every related product for a
+            // garment the tagger left uncategorised but described by fabric.)
+            const hasSignal =
+              !!product &&
+              !!(product.category || product.subtype || (product.fabrics?.length ?? 0) > 0);
+            if (!product || !hasSignal) return { data: [] };
 
+            // Candidates must share at least one real attribute, so the pool is
+            // relevant; the ranking below then decides the order. Bounded rather
+            // than "every AVAILABLE product in the store" — a 3,000-SKU retailer
+            // would otherwise pull the whole catalog on each detail open.
             const related = await prisma.product.findMany({
               where: {
                 retailer_id: product.retailer_id,
-                category: product.category,
                 id: { not: productId },
                 deleted_at: null,
                 status: 'AVAILABLE',
+                OR: [
+                  ...(product.category ? [{ category: product.category }] : []),
+                  ...(product.subtype ? [{ subtype: product.subtype }] : []),
+                  ...(product.fabrics?.length ? [{ fabrics: { hasSome: product.fabrics } }] : []),
+                ],
               },
               orderBy: { created_at: 'desc' },
-              take: 6,
+              take: RELATED_CANDIDATE_POOL,
               include: {
                 photos: { orderBy: [{ is_primary: 'desc' }, { sort_order: 'asc' }], take: 1 },
                 section: { select: { name: true } },
@@ -169,7 +204,8 @@ export const publicProductsRoutes: FastifyPluginAsync = async (server) => {
               },
             });
 
-            const publicProducts = await Promise.all(related.map((r) => toPublicProductSummary(r)));
+            const ranked = rankRelatedProducts(product, related, RELATED_LIMIT);
+            const publicProducts = await Promise.all(ranked.map((r) => toPublicProductSummary(r)));
 
             return { data: publicProducts };
           },

@@ -3,6 +3,7 @@ import type { PublicCollection } from '@kanchuki/shared';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { CollectionView } from '../../../c/[slug]/components/CollectionView';
+import { CATALOG_PAGE_SIZE } from '@/lib/catalog';
 
 interface Props {
   params: Promise<{ store: string; categoryId: string }>;
@@ -75,7 +76,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function StoreCategoryProductsPage({ params }: Props) {
   const { store, categoryId } = await params;
-  const category = await fetchCategory(store, categoryId, { page: 1, pageSize: 12 });
+  const category = await fetchCategory(store, categoryId, { page: 1, pageSize: CATALOG_PAGE_SIZE });
   if (!category) notFound();
 
   // Reuses CollectionView as-is — the public API shapes category products

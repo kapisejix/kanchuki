@@ -80,7 +80,7 @@ Run this before any production release. "Auto" = covered by a test that fails wi
 
 ## ⚠️ RC IDs referenced in commits that are NOT in the tracker yet
 
-**Currently: none.** The two commands under *Checking the tracker table* both print nothing, and the ID set is contiguous `RC-001…RC-046`.
+**Currently: none.** The two commands under *Checking the tracker table* both print nothing, and the ID set is contiguous `RC-001…RC-048`.
 
 **This section was last stale on 2026-09-26.** It previously listed **RC-028 … RC-038** as "in commit messages but with no entry", on the reasoning that their branches were unmerged. Every one of those branches has since merged (`ab086d62`, `d66ead2c`, `d738242c`, `1c543d15`, `b5a31478` are all ancestors of the current `HEAD`), all eleven entries and their `CLAUDE.md` rows landed, and the table below went on saying otherwise for several days. The list is kept here rather than deleted because the **lesson** is the durable part:
 

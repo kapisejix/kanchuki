@@ -5,6 +5,11 @@ export interface RecentlyViewedProduct {
   id: string
   name: string | null
   category: string | null
+  // Added with the storefront carousel: the detail sheet renders subtype as a
+  // badge at the top of the product, so a row that omitted it made every
+  // re-opened product show the generic fallback. Optional because records
+  // written before this field existed are already in shoppers' localStorage.
+  subtype?: string | null
   primary_color: string | null
   price_min: number | null
   price_max: number | null
@@ -35,6 +40,7 @@ export function trackRecentlyViewed(
     id: string
     name: string | null
     category: string | null
+    subtype?: string | null
     primary_color: string | null
     price_min: number | null
     price_max: number | null
@@ -52,6 +58,7 @@ export function trackRecentlyViewed(
         id: product.id,
         name: product.name,
         category: product.category,
+        subtype: product.subtype ?? null,
         primary_color: product.primary_color,
         price_min: product.price_min,
         price_max: product.price_max,

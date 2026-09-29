@@ -18,7 +18,7 @@ import {
 import { handleGenerateKenBurnsVideo } from './generate-ken-burns-video.js';
 import type { KenBurnsVideoJobData } from './generate-ken-burns-video.js';
 import { handleMeasureR2Storage } from './measure-r2-storage.js';
-import { handlePurgeSoftDeleted } from './purge-soft-deleted.js';
+import { handlePurgeSoftDeleted, pruneCustomerInteractions } from './purge-soft-deleted.js';
 import {
   getCatalogSyncQueue,
   getEmbeddingQueue,
@@ -195,8 +195,11 @@ export async function startWorkers(): Promise<void> {
       switch (job.name) {
         case 'backfill-missing-ai-fields':
           return handleBackfillMissingAiFields();
-        case 'purge-soft-deleted':
-          return handlePurgeSoftDeleted();
+        case 'purge-soft-deleted': {
+          const result = await handlePurgeSoftDeleted();
+          await pruneCustomerInteractions();
+          return result;
+        }
         case 'referral-qualify':
           return handleReferralQualify();
         case 'referral-accrue':

@@ -57,6 +57,46 @@ export function CategoryChips({
   )
 }
 
+// Size row — deliberately NOT behind the filter toggle. A shopper whose size
+// isn't stocked bounces on the first product they open, so "do you have my
+// size" is a question the grid has to answer before the tap, not after. The
+// API returns sizes in the canonical S–8XL ladder (buildSizeFacet), so the row
+// reads like a size chart instead of a frequency table.
+interface SizeChipsProps {
+  sizes: FilterOption[]
+  filterSize: string | null
+  onSizeChange: (size: string | null) => void
+}
+
+export function SizeChips({ sizes, filterSize, onSizeChange }: SizeChipsProps) {
+  // One size is not a choice — every product has it, so the row would be
+  // decoration. Same reason the colour row hides at length <= 1.
+  if (sizes.length <= 1) return null
+
+  return (
+    <div
+      className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide"
+      role="group"
+      aria-label="Filter by size"
+    >
+      <span className="text-xs text-gray-500 flex-shrink-0">Size:</span>
+      <button onClick={() => onSizeChange(null)} className={chipClass(filterSize === null)}>
+        All
+      </button>
+      {sizes.map((size) => (
+        <button
+          key={size.value}
+          onClick={() => onSizeChange(filterSize === size.value ? null : size.value)}
+          aria-pressed={filterSize === size.value}
+          className={chipClass(filterSize === size.value)}
+        >
+          {size.value} ({size.count})
+        </button>
+      ))}
+    </div>
+  )
+}
+
 // Secondary filters (price / color) — revealed behind the filter toggle. The
 // category row lives in CategoryChips above the grid instead.
 interface FilterBarProps {

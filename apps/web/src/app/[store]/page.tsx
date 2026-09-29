@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation';
 import { CollectionView } from '../c/[slug]/components/CollectionView';
 import { ContactGate } from './components/ContactGate';
 import { buildStoreDescription, ldJson, localBusinessLd, storeOgImage } from './lib/store-seo';
+import { CATALOG_PAGE_SIZE } from '@/lib/catalog';
 
 export interface RetailerProfile {
   shop_name: string;
@@ -99,7 +100,7 @@ export default async function StoreProfilePage({ params }: Props) {
   // #4: catalog rendered behind the gate — ContactGate reveals these children
   // instead of router.replace'ing to /categories (removes one full-page load
   // per visit). Mirrors the /all route's data + CollectionView props exactly.
-  const data = await fetchAllProducts(store, { page: 1, pageSize: 12 });
+  const data = await fetchAllProducts(store, { page: 1, pageSize: CATALOG_PAGE_SIZE });
 
   return (
     <>

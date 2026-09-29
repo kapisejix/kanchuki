@@ -2,6 +2,7 @@ import type { PublicCollection, PublicProduct } from '@kanchuki/shared';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ProductDetailSheet } from '../ProductDetailSheet';
+import { recordCurrentVisitProduct } from '../../lib/currentVisit';
 
 // The sheet is a product-detail modal used by CollectionView — this test locks
 // the Related Products strip behaviour: the heading is "Related Products"
@@ -37,6 +38,7 @@ vi.mock('../CustomerConsentModal', () => ({ CustomerConsentModal: () => null }))
 // imports never load in this file's focused tests.
 vi.mock('../TryOnSheet', () => ({ TryOnSheet: () => null }));
 vi.mock('../lib/recentlyViewed', () => ({ trackRecentlyViewed: vi.fn() }));
+vi.mock('../../lib/currentVisit', () => ({ recordCurrentVisitProduct: vi.fn() }));
 vi.mock('../lib/cart', () => ({
   productToCartItem: vi.fn(),
   saveCart: vi.fn(),
@@ -108,6 +110,88 @@ const defaultFetchImpl = async (input: string) => {
 };
 
 const fetchMock = vi.fn(defaultFetchImpl);
+
+describe('ProductDetailSheet current-visit tracking', () => {
+  beforeEach(() => {
+    vi.mocked(recordCurrentVisitProduct).mockClear();
+    vi.stubGlobal('fetch', vi.fn(defaultFetchImpl));
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('records the opened product against the active store, not local history', () => {
+    render(
+      <ProductDetailSheet
+        product={PRODUCT}
+        retailer={RETAILER}
+        collectionTitle="Festive Edit"
+        isFavorited={false}
+        slug="festive-edit"
+        store="meera-sarees"
+        onFavorite={() => undefined}
+        onClose={() => undefined}
+      />,
+    );
+
+    expect(recordCurrentVisitProduct).toHaveBeenCalledWith('meera-sarees', 'prod-1');
+  });
+});
+
+describe('ProductDetailSheet media slides', () => {
+  beforeEach(() => {
+    fetchMock.mockReset();
+    fetchMock.mockImplementation(async (input: string) => {
+      const url = String(input);
+      if (url.includes('/related')) {
+        return { ok: true, status: 200, json: async () => ({ data: [] }) };
+      }
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          data: {
+            photos: ['https://cdn.test/detail-photo.jpg'],
+            spin_frames: [],
+            variants: [],
+            sizes: [],
+            fabric_estimate: null,
+            videos: [
+              { id: 'clip-1', url: 'https://cdn.test/clip-1.mp4', duration_sec: 9, is_main: true },
+            ],
+          },
+        }),
+      };
+    });
+    vi.stubGlobal('fetch', fetchMock);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('opens a playable video slide without routing it through the photo viewer', async () => {
+    render(
+      <ProductDetailSheet
+        product={PRODUCT}
+        retailer={RETAILER}
+        collectionTitle="Festive Edit"
+        isFavorited={false}
+        slug="festive-edit"
+        onFavorite={() => undefined}
+        onClose={() => undefined}
+      />,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Play video 1' }));
+    const video = screen.getByLabelText('Maroon Silk Saree video');
+    expect(video).toHaveAttribute('src', 'https://cdn.test/clip-1.mp4');
+    expect(video).toHaveAttribute('controls');
+    fireEvent.click(video);
+    expect(screen.queryByRole('button', { name: 'Close fullscreen image' })).not.toBeInTheDocument();
+  });
+});
 
 describe('ProductDetailSheet Related Products strip', () => {
   beforeEach(() => {

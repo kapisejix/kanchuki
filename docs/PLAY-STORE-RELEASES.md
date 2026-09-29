@@ -16,8 +16,73 @@
 |---|---|---|---|---|---|---|
 | 2 | 1.0.0 | 2026-09-09 | Closed testing | `34348392715` | `6fc542ae` | media-permissions hardening, OTP keyboard fix |
 | 3 | 1.0.0 | 2026-09-11 | Open testing | `34617176198` *or* `34619372677` | `c14cc6f3` *or* `0305d589` | AD_ID strip (`b1ccefce`), OTP double-send (RC-015), FB reconnect loop (RC-016), AI Studio tab bug (RC-017), AI Studio pick-reset + FB login loop fixed (RC-017/RC-018), CI lint fully green — **see the ambiguity note below** |
+| 5 | 1.0.0 | 2026-09-12 | Closed testing (Alpha) | `34693579778` | `066ee6b2` | AD_ID + RECORD_AUDIO stripped (fixes the v4 "Incomplete advertising ID declaration" block). Bundle uploaded 12:56, rolled out 19:09 per Play Console; row added 2026-09-29 from the Console listing — it had been missing, so the guard still read 3 as the highest |
+| 6 | 1.0.0 | 2026-09-29 | Production (in review) + Internal testing | `36526549029` | `ed401912` | First production submission. OTP double-SMS fix (RC-020..023) + everything since `066ee6b2`. Merged manifest verified: no `AD_ID`, no `RECORD_AUDIO`; Play lists 19 permissions = our 17 + `CHECK_LICENSE` (Play's Automatic protection) + `READ_EXTERNAL_STORAGE` (implied by `WRITE_EXTERNAL_STORAGE`). Built from branch `kapisejix/feat/f037-storefront-engagement` — merge it to `main` or `main` still says versionCode 5 |
 
-### 🚧 In flight — versionCode 5 is built and merged-manifest-verified, awaiting upload; versionCode 4 is superseded
+## ▶ Next release — versionCode 7 (do these, in order)
+
+Written 2026-09-29 after the v6 production submission. Tick each box in the PR that
+ships v7; delete this section once v7 is accepted and write the next one.
+
+### A. Code changes carried into v7
+
+- [ ] **Enable R8 (shrink + obfuscate).** Play flagged v6: *"DEX code optimization is
+      below our threshold — Obfuscation (1%)"*; under 25% in any category "may impact
+      your visibility and publishing capabilities" after a deadline (read the date on
+      the release dashboard's "Learn more"). Steps:
+  - `pnpm --filter mobile add expo-build-properties` (not installed today)
+  - `apps/mobile/app.json` plugins: `["expo-build-properties", { "android": { "enableProguardInReleaseBuilds": true, "enableShrinkResourcesInReleaseBuilds": true } }]`
+  - ProGuard keep rules for reflection-heavy native modules: Facebook SDK
+    (`react-native-fbsdk-next`), MSG91 widget, Sentry, Reanimated, Hermes
+  - CI (`android-release.yml`): upload `app/build/outputs/mapping/release/mapping.txt`
+    as a second artifact; attach it in Play → App bundle explorer → v7 →
+    Downloads → ReTrace mapping file. Clears the *"no deobfuscation file"* warning too.
+  - **Full real-device pass on the R8 build** — R8 breaks RN modules silently:
+    OTP login, camera/photo add, Facebook connect, gallery save, Sentry crash report.
+- [ ] **Optional — drop the two extra permissions** (Play shows 19, we request 17):
+  - `CHECK_LICENSE`: Play Console → App integrity → Automatic protection → off (no code). Leaving it on is fine.
+  - `READ_EXTERNAL_STORAGE`: only goes away with `WRITE_EXTERNAL_STORAGE` → add it to
+    `blockedPermissions` in `app.json`, then test gallery save on an **Android 9** phone
+    (`expo-media-library` in `useProductAiStudio.ts`, `store-profile.tsx`). Skip if unsure.
+
+### B. Build
+
+- [x] `apps/mobile/app.json` → `"versionCode": 7` — already reserved 2026-09-29 in the same commit that logged v6 (guard rule). Re-run `node scripts/check-android-version-code.mjs` before dispatch
+- [ ] Build from **`main`** (GitHub → Actions → *Android Release (AAB)* → Run workflow)
+- [ ] Download artifact `app-release-aab`; verify:
+      `node scripts/inspect-aab-manifest.mjs --aab <path>` → `AD_ID` absent, `RECORD_AUDIO` absent
+
+### C. Play Console pre-submit checklist (every release — these cost v4 and v6 days)
+
+- [ ] **App content → Need attention is empty.** The *"Incomplete advertising ID
+      declaration"* block is a **Console form**, not code — no build can clear it.
+      Answer stays **No** (FB SDK: `advertiserIDCollectionEnabled:false`,
+      `autoLogAppEventsEnabled:false`, `AD_ID` stripped).
+- [ ] **No stale bundle active on any track.** An old pre-strip bundle (v1 on Internal
+      testing) kept the ad-ID block alive after the form said "No". Every track
+      (Internal / Closed / Open / Production) must carry v7 or a post-v3 bundle.
+- [ ] **App access** (App content → Actioned → App access → Manage): review phone +
+      code + instructions. Railway **API** service must have `REVIEW_PHONE` (10 digits,
+      starts 6–9, not a real retailer's number) and `REVIEW_OTP` (6 digits) set
+      **before** sending — test the login on the new build first. Demo store must have
+      products.
+- [ ] Upload once to the right track. A versionCode is spent on upload; to move a
+      bundle between tracks use **Add from library** (or *Promote release*), never re-upload.
+- [ ] Release name `1.0.0 (7)` (bump `version` in `app.json` if user-visible changes
+      warrant `1.0.1`); release notes in `<en-IN>…</en-IN>` (≤500 chars, tag must match a listing language).
+- [ ] Publishing overview → no issues → **Send changes for review**. Don't edit while in review.
+
+### D. After acceptance
+
+- [ ] Add the v7 row to **Uploads** above (the CI guard reads it)
+- [ ] Remove `REVIEW_PHONE` / `REVIEW_OTP` from Railway (or keep only for a data-free demo account)
+- [ ] Also record v6's final outcome (approved date) in its row
+
+### ✅ Resolved — versionCode 5 was uploaded 2026-09-12 (closed testing, see Uploads); versionCode 4 is superseded. Next build is versionCode 6
+
+_History below kept as written._
+
+#### Original note
 
 `apps/mobile/app.json` was bumped to **`versionCode: 4`** on 2026-09-12, and the AAB
 was built from `10c8f2d` and uploaded the same day. **Play never accepted it** — the
