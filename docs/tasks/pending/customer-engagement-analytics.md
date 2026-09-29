@@ -78,7 +78,7 @@ A single `CustomerInteraction` table (net-new, not a revival of the dropped one)
 
 - `customer_account_id`, `retailer_id`, `type` (the event types in §3.1), `metadata` (JSON, shape per type), `created_at`.
 - High write volume — this table should never be queried live for dashboard charts (§3.3 handles that).
-- Retention: the design called for 24 months of raw rows. Verified 2026-09-29: no prune job exists (no delete path for `customer_interactions` anywhere in the source). Retention policy + prune job remain open. First rows date from 2026-09-18, so nothing reaches 24 months before 2028-09.
+- Retention: 24 months of raw rows (owner-approved 2026-09-29). Built 2026-09-29: `pruneCustomerInteractions()` in `apps/api/src/jobs/purge-soft-deleted.ts` deletes older rows in 5,000-row batches via the purge role, run daily from the 01:30 UTC `purge-soft-deleted` job. Rollup tables are not pruned. First rows date from 2026-09-18, so nothing is deleted before 2028-09.
 
 ### 3.3 Aggregation (nightly job, not live queries)
 
@@ -107,7 +107,7 @@ The shipped code enforces these data-use boundaries; this section records implem
 - **Retailer isolation:** retailers receive aggregate analytics for their own store only. Named-customer drill-down is an admin investigation surface and is `AuditLog`-gated; retailers do not receive raw per-customer trails.
 - **Recognized shopper:** event capture and use of persisted interaction signals for the store-local feed are gated by `profiling_enabled`. When disabled, the event beacon does not write behavioral events and the recommendation route does not use persisted or current-tab signals for that recognized session.
 - **Anonymous shopper:** the feed may use product IDs from the current tab's visit history only after validating that each ID belongs to the active store. This history is not linked to a passport account by this route.
-- **Notice and retention:** confirm the shopper-facing notice and preference controls accurately explain these uses and the raw-event retention period. The intended 24-month retention/prune job is still unverified (§3.2, §5); do not treat this document as legal approval.
+- **Notice and retention:** confirm the shopper-facing notice and preference controls accurately explain these uses and the raw-event retention period. Raw events are kept 24 months, then pruned daily (§3.2); the notice must state this period; do not treat this document as legal approval.
 
 These are code-path boundaries. Any change to profiling, consent copy, or data retention needs the project's normal privacy/legal review before release.
 
@@ -123,7 +123,7 @@ These are code-path boundaries. Any change to profiling, consent copy, or data r
 | Store-level analytics admin page | Web (admin) | ✅ Built |
 | Per-customer drill-down admin page | Web (admin) | ✅ Built; `AuditLog`-gated |
 | Retailer-facing aggregate view | Mobile app | ✅ Built; retailer-scoped, aggregate-only per §4 |
-| Raw-event retention policy + prune job | Worker / policy | 🔴 Open: verified absent 2026-09-29 — agree the period (design: 24 months) and implement safe pruning via the purge role |
+| Raw-event retention policy + prune job | Worker / policy | ✅ Built 2026-09-29 — 24 months, `pruneCustomerInteractions()` in `apps/api/src/jobs/purge-soft-deleted.ts` |
 
 ---
 
@@ -132,7 +132,7 @@ These are code-path boundaries. Any change to profiling, consent copy, or data r
 **Phase 1 — Event capture + storage** ✅ Core capture built 2026-09-18; retention follow-up open
 - `CustomerInteraction` model + RLS.
 - Consent-gated client beacon for view/search/favorite/enquiry/store_visit, with real dwell-time measurement.
-- 🔴 Implement the raw-event retention prune job — verified absent 2026-09-29; design says 24 months.
+- ✅ Raw-event retention prune job — built 2026-09-29, 24 months (`pruneCustomerInteractions()` in `apps/api/src/jobs/purge-soft-deleted.ts`).
 
 **Phase 2 — Aggregation** ✅ Built 2026-09-29
 - Nightly rollup job (dwell totals, top products, search terms incl. zero-result). Funnel
@@ -194,4 +194,4 @@ These are code-path boundaries. Any change to profiling, consent copy, or data r
 2. ✅ **Precomputed dashboard data** — Phase 2 aggregation is built; do not replace it with live raw-table chart queries.
 3. ✅ **Aggregate-first admin view** — store dashboard is aggregate; named-customer drill-down is deliberate and `AuditLog`-gated.
 4. ✅ **Use real engagement evidence** — social-proof chips omit products without a qualifying count; no fabricated numbers. The feed's fallback is explicitly labeled as ordinary store catalog content.
-5. **Remaining F-037 work:** decide whether to add a store-level rating on `/stores` (product-card ratings are built); implement the raw-event retention policy and prune job called for in §3.2.
+5. **Remaining F-037 work:** decide whether to add a store-level rating on `/stores` (product-card ratings are built).

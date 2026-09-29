@@ -45,7 +45,7 @@ vi.mock('@kanchuki/db', () => ({
   }),
 }));
 
-import { handlePurgeSoftDeleted } from './purge-soft-deleted.js';
+import { handlePurgeSoftDeleted, pruneCustomerInteractions } from './purge-soft-deleted.js';
 
 /** Collapse the SQL's indentation so assertions read as one line. */
 const norm = (sql: string) => sql.replace(/\s+/g, ' ').trim();
@@ -417,4 +417,40 @@ describe('RC-030 — every bare-`retailer_id` table has a purge decision', () =>
       ).toEqual([]);
     });
   }
+});
+
+describe('pruneCustomerInteractions — F-037 24-month raw-event retention', () => {
+  it('deletes only rows older than 24 months, batch by batch until a short batch', async () => {
+    // Two full batches, then a partial one — the loop must stop there.
+    const counts = [5000, 5000, 12];
+    mockTransaction.mockImplementation(async (ops: unknown[]) => {
+      for (const op of ops) await op;
+      return [null, counts.shift()];
+    });
+
+    const total = await pruneCustomerInteractions(new Date('2028-10-15T00:00:00Z'));
+
+    expect(total).toBe(10_012);
+    const prunes = deletes().map(norm);
+    expect(prunes).toHaveLength(3);
+    for (const sql of prunes) {
+      // Scoped by age and batched — never a bare table delete.
+      expect(sql).toContain('DELETE FROM "customer_interactions" WHERE id IN (');
+      expect(sql).toContain('WHERE created_at < $1 LIMIT 5000');
+    }
+    for (const cutoff of cutoffArgs()) {
+      expect(cutoff.toISOString()).toBe('2026-10-15T00:00:00.000Z');
+    }
+    // Hard-delete bypass paired with every DELETE in the same transaction.
+    expect(statements().filter((s) => s.includes('allow_hard_delete'))).toHaveLength(3);
+  });
+
+  it('stops after one statement when nothing is old enough', async () => {
+    mockTransaction.mockImplementation(async (ops: unknown[]) => {
+      for (const op of ops) await op;
+      return [null, 0];
+    });
+    expect(await pruneCustomerInteractions()).toBe(0);
+    expect(deletes()).toHaveLength(1);
+  });
 });

@@ -174,6 +174,48 @@ async function purgeChildren(
   return result ?? 0;
 }
 
+/** F-037 raw-event retention (owner-approved 2026-09-29). The nightly rollups
+ * (`retailer_engagement_daily`, `customer_engagement_summaries`) keep the
+ * aggregates, so only raw rows go. */
+export const INTERACTION_RETENTION_MONTHS = 24;
+const PRUNE_BATCH_SIZE = 5000;
+
+/**
+ * Deletes `customer_interactions` rows older than the retention window, in
+ * batches so no single statement holds locks on a large range. Runs from the
+ * same daily maintenance job as the soft-delete purge (same purge role).
+ */
+// ponytail: no index leads with created_at, so each batch's inner SELECT is a
+// seq scan — fine at pilot volume; add an index on (created_at) if this gets slow.
+export async function pruneCustomerInteractions(now = new Date()): Promise<number> {
+  const cutoff = new Date(now);
+  cutoff.setUTCMonth(cutoff.getUTCMonth() - INTERACTION_RETENTION_MONTHS);
+
+  let total = 0;
+  while (true) {
+    const [, deleted] = await db.$transaction([
+      db.$executeRawUnsafe(`SET app.allow_hard_delete = 'true';`),
+      db.$executeRawUnsafe(
+        `DELETE FROM "customer_interactions"
+         WHERE id IN (
+           SELECT id FROM "customer_interactions"
+           WHERE created_at < $1
+           LIMIT ${PRUNE_BATCH_SIZE}
+         );`,
+        cutoff,
+      ),
+    ]);
+    total += deleted ?? 0;
+    if ((deleted ?? 0) < PRUNE_BATCH_SIZE) break;
+  }
+
+  // biome-ignore lint/suspicious/noConsoleLog: admin cron job logging
+  console.log(
+    `[purge-soft-deleted] Pruned ${total} customer_interactions older than ${cutoff.toISOString()}`,
+  );
+  return total;
+}
+
 export async function handlePurgeSoftDeleted(): Promise<PurgeResult> {
   const cutoff = new Date(Date.now() - PURGE_AFTER_DAYS * 24 * 60 * 60 * 1000);
 
