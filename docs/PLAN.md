@@ -40,6 +40,7 @@
 | 7 | Prorated plan upgrades (Model B) | `tasks/pending/plan-switch-prorated.md` | — |
 | 8 | Multi-language UI (Hindi first) | `tasks/pending/multi-language-i18n.md` | Year-1 target |
 | 9 | Coupon codes · social publishing phase 3 · ghost-mannequin (F-001e) | `tasks/pending/coupon-codes.md`, `tasks/pending/social-publishing-phase-3.md`, `tasks/pending/ghost-mannequin.md` | — |
+| 10 | F-041 Pre-Loved — shoppers sell / rent / family-gift used clothes; fit badge + tailor; handover at partner store (idea, not approved) | `tasks/pending/how-customer-earn-from-this-platform.md` | Owner D-1…D-7 + legal/CA review; no-code P0 WhatsApp pilot first (Diwali 2026) |
 | — | F-022 Google Business Profile auto-post | `tasks/pending/google-business-profile-autopost.md` | ⏸ blocked on Google API access |
 
 ---

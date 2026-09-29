@@ -21,6 +21,7 @@ Where work lives: **`pending/` = open**, **`done/` = built** (kept as the design
 | Launch readiness | `pending/launch-readiness.md` | 🟡 Open items | Mostly owner/account actions + 3 pre-launch verifications |
 | i18n + dynamic-content audit (no-hardcoded-values program) | `pending/i18n-and-dynamic-content-audit.md` | 📋 Audit — awaiting owner approval (2026-09-29) | §5 open questions; Phase B starts only after approval |
 | Multi-language i18n (roadmap M) | `pending/multi-language-i18n.md` | 🟡 Partial — AI translate ✅; UI i18n not started | Migration `063` applied state **unverified**; there is no i18n infrastructure to build on |
+| Pre-Loved — customer resale / rental / family gifting of used clothes (F-041) | `pending/how-customer-earn-from-this-platform.md` (spec + research merged) | 🔴 Idea — not approved (2026-09-29) | Owner decisions §13 D-1…D-7; legal review (intermediary, GST, DPDP) before P1; recommend no-code P0 pilot first |
 | Prorated mid-cycle plan switch (Model B) | `pending/plan-switch-prorated.md` | 🔴 Planned — Model A is what shipped | Product sign-off (formula in the file) |
 | Social publishing phase 3/4 — IG Reels scheduling, catalog broadcast analytics | `pending/social-publishing-phase-3.md` | 🔴 Planned | Phases 1–2 + composer are built; only these extensions remain |
 | Style Match Lite / AI fit-style recommendation (F-039) | `pending/style-match-lite.md` | 🔴 Planned — not approved | Owner sign-off on §7 D-1/D-2 (scope + consent overhead) |
