@@ -761,7 +761,7 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
                   Page {page} of {totalPages}
                 </span>
                 <button
-                  onClick={() => void appendNextPage(activeFilters, activeSignature)}
+                  onClick={() => goToPage(Math.min(totalPages, page + 1))}
                   disabled={page === totalPages || loading || loadingMore}
                   className="px-4 py-2 rounded-full text-sm font-semibold bg-white border border-sand-100 text-sand-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-sand-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-500"
                 >

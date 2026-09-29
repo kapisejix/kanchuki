@@ -197,6 +197,27 @@ test.beforeAll(async () => {
       return
     }
 
+    // Social-proof chip counts (F-037 §2 row 5) behind `/api/engagement-chips`.
+    // Unstubbed it 404s, and the proxy's `revalidate: 300` caches that 404 for
+    // every later spec in the same build. Empty counts = no chips rendered.
+    if (req.method === 'GET' && url.pathname === '/v1/public/engagement-chips') {
+      res.statusCode = 200
+      res.end(
+        JSON.stringify({
+          data: { products: {}, window: { today: null, week_from: null, week_to: null } },
+        }),
+      )
+      return
+    }
+
+    // "Picked for you" (F-037) POSTs `/api/recommendations`. Unstubbed it 404s
+    // into the console check; no products = the section stays hidden.
+    if (req.method === 'POST' && url.pathname === '/v1/public/recommendations') {
+      res.statusCode = 200
+      res.end(JSON.stringify({ data: { personalized: false, products: [] } }))
+      return
+    }
+
     if (req.method === 'GET' && collectionMatch) {
       const slug = decodeURIComponent(collectionMatch[1])
       if (KNOWN_SLUGS.has(slug)) {
@@ -299,6 +320,15 @@ async function mockBrowserNetwork(context: BrowserContext): Promise<void> {
 // Sentinel that only survives client-side navigation (wiped by a full reload)
 type TestWindow = Window & { __e2eSentinel?: string }
 
+// CollectionView appends the next page on scroll (eb72f117). Playwright's
+// click auto-scrolls Next into view, which fires that listener, appends page 2
+// and disables Next before the click lands. The Prev/Next tests are about the
+// buttons' replace-the-grid behaviour, so they use a viewport tall enough that
+// the pagination bar is already visible and nothing scrolls.
+async function pinTallViewport(page: Page): Promise<void> {
+  await page.setViewportSize({ width: 1280, height: 4000 })
+}
+
 async function pinSentinel(page: Page): Promise<void> {
   await page.evaluate(() => {
     ;(window as TestWindow).__e2eSentinel = 'alive'
@@ -330,6 +360,7 @@ test('collection page renders and interactions are client-side (no full reload)'
     loadCount += 1
   })
 
+  await pinTallViewport(page)
   await page.goto(`/${STORE_SLUG}/festive-edit`)
   // The Discovery redesign renders the collection title as a summary line
   // ("{title} · {total} curated items"), not a heading element — assert on the
@@ -388,6 +419,7 @@ test('collection pages work offline via the service worker', async ({ context, p
   await mockBrowserNetwork(context)
 
   // 1. Online visit — SW installs and claims the page
+  await pinTallViewport(page)
   await page.goto(`/${STORE_SLUG}/festive-edit`)
   await expect(page.getByText('Festive Edit · 24 curated items', { exact: true })).toBeVisible()
   await waitForServiceWorkerControl(page)

@@ -218,7 +218,7 @@ describe('CollectionView pagination', () => {
     vi.restoreAllMocks()
   })
 
-  it('requests page size 20 and appends the next page without replacing SSR products', async () => {
+  it('appends on scroll, while Prev and Next replace the grid', async () => {
     const fetchMock = vi.fn(async (input: unknown) => {
       const url = new URL(String(input), 'https://kanchuki.test')
       if (url.pathname.endsWith('/products')) return pageResponse(Number(url.searchParams.get('page')))
@@ -238,7 +238,9 @@ describe('CollectionView pagination', () => {
     )
 
     expect(await screen.findByText('Festive Design 20')).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Next' }))
+    act(() => {
+      window.dispatchEvent(new Event('scroll'))
+    })
 
     expect(await screen.findByText('Festive Design 40')).toBeInTheDocument()
     expect(screen.getByText('Festive Design 1')).toBeInTheDocument()
@@ -252,6 +254,12 @@ describe('CollectionView pagination', () => {
     expect(await screen.findByText('Festive Design 1')).toBeInTheDocument()
     expect(screen.queryByText('Festive Design 40')).not.toBeInTheDocument()
     expect(screen.getByText('Page 1 of 2')).toBeInTheDocument()
+
+    // Next replaces too — scrolling is the only append path.
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }))
+    expect(await screen.findByText('Festive Design 40')).toBeInTheDocument()
+    expect(screen.queryByText('Festive Design 1')).not.toBeInTheDocument()
+    expect(screen.getByText('Page 2 of 2')).toBeInTheDocument()
   })
 
   it('shows size chips and sends the selected size as a replace request', async () => {
@@ -314,7 +322,9 @@ describe('CollectionView pagination', () => {
     )
     expect(await screen.findByText('Festive Design 1')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Next' }))
+    act(() => {
+      window.dispatchEvent(new Event('scroll'))
+    })
     expect(await screen.findByRole('alert')).toHaveTextContent('Could not load more products.')
 
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
@@ -322,7 +332,7 @@ describe('CollectionView pagination', () => {
     expect(pageTwoAttempts).toBe(2)
   })
 
-  it('reuses the in-flight page-two prefetch when the shopper reaches Next', async () => {
+  it('reuses the in-flight page-two prefetch when the shopper scrolls to the end', async () => {
     vi.useFakeTimers()
     let resolvePage!: (response: ReturnType<typeof pageResponse>) => void
     const pendingPage = new Promise<ReturnType<typeof pageResponse>>((resolve) => {
@@ -353,7 +363,9 @@ describe('CollectionView pagination', () => {
       vi.advanceTimersByTime(1500)
       await Promise.resolve()
     })
-    fireEvent.click(screen.getByRole('button', { name: 'Next' }))
+    act(() => {
+      window.dispatchEvent(new Event('scroll'))
+    })
 
     const pageTwoRequests = fetchMock.mock.calls.filter(([input]) => {
       const url = new URL(String(input), 'https://kanchuki.test')

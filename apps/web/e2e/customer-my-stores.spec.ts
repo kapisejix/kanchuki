@@ -326,6 +326,24 @@ test.beforeAll(async () => {
       return
     }
 
+    // Social-proof chip counts (F-037 §2 row 5) — the catalog fetches
+    // `/api/engagement-chips`, which proxies here. Unstubbed, the proxy answered
+    // 404 and the console check failed main CI even though the app renders no
+    // chips on a failed read. Empty counts is the real "nothing to show" reply.
+    if (req.method === 'GET' && path === '/v1/public/engagement-chips') {
+      json(res, 200, {
+        data: { products: {}, window: { today: null, week_from: null, week_to: null } },
+      })
+      return
+    }
+
+    // "Picked for you" (F-037) POSTs `/api/recommendations`. Unstubbed it 404s
+    // into the console check; no products = the section stays hidden.
+    if (req.method === 'POST' && path === '/v1/public/recommendations') {
+      json(res, 200, { data: { personalized: false, products: [] } })
+      return
+    }
+
     // Storefront product listing (page 1 of the gated catalog).
     const productsMatch = path.match(/^\/v1\/public\/retailers\/([^/]+)\/products$/)
     if (req.method === 'GET' && productsMatch) {
@@ -587,16 +605,29 @@ test('the production build meets the installability prerequisites (valid manifes
   page,
   context,
 }) => {
+  test.setTimeout(60_000)
   await page.goto('/my-stores')
   await expect(page.getByRole('heading', { name: 'My Stores' })).toBeVisible()
 
   // The SW must be active for Chrome to consider the page installable.
-  const swState = await page.evaluate(() =>
-    Promise.race([
-      navigator.serviceWorker?.ready.then((reg) => (reg.active ? 'active' : 'no-active')),
-      new Promise((resolve) => setTimeout(() => resolve('timeout'), 5000)),
-    ]),
-  )
+  // Polls registrations instead of awaiting `.ready`: `.ready` never resolves if
+  // no registration was ever created, and a 5 s race flaked on CI runners with
+  // identical code. On failure this reports what exists (scope + states).
+  const swState = await page.evaluate(async () => {
+    const snapshot = async () =>
+      (await navigator.serviceWorker.getRegistrations()).map((r) => ({
+        scope: r.scope,
+        installing: r.installing?.state ?? null,
+        waiting: r.waiting?.state ?? null,
+        active: r.active?.state ?? null,
+      }))
+    const deadline = Date.now() + 25_000
+    while (Date.now() < deadline) {
+      if ((await snapshot()).some((r) => r.active === 'activated')) return 'active'
+      await new Promise((resolve) => setTimeout(resolve, 250))
+    }
+    return `not active after 25s: ${JSON.stringify(await snapshot())}`
+  })
   expect(swState).toBe('active')
 
   const cdp = await context.newCDPSession(page)
