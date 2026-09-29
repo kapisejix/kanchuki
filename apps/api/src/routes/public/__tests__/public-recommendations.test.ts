@@ -191,6 +191,29 @@ describe('POST /v1/public/recommendations', () => {
     await app.close();
   });
 
+  it('falls back to the store catalog when the signed-in signal read fails', async () => {
+    mockGetPassportSession.mockResolvedValue({
+      customer_account_id: 'account-1',
+      customer_account: { profiling_enabled: true },
+    });
+    mockInteractionFindMany.mockRejectedValue(
+      new Error('The table `public.customer_interactions` does not exist in the current database.'),
+    );
+    mockProductFindMany.mockResolvedValue([product('newest-a')]);
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/public/recommendations',
+      headers: { cookie: 'kanchuki_passport=session-1' },
+      payload: { slug: 'store-a', visit_product_ids: ['seen-a'] },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data.personalized).toBe(false);
+    expect(res.json().data.products.map((item: { id: string }) => item.id)).toEqual(['newest-a']);
+    await app.close();
+  });
+
   it('falls back to the active store catalog when there are no usable signals', async () => {
     mockProductFindMany.mockResolvedValue([product('newest-a'), product('older-a')]);
     const app = await buildApp();

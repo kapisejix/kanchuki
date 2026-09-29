@@ -126,60 +126,68 @@ export const publicRecommendationsRoutes: FastifyPluginAsync = async (server) =>
     if (session) {
       // Opt-out means no profiling signals, including anonymous visit IDs.
       if (session.customer_account.profiling_enabled) {
-        const events = await prisma.customerInteraction.findMany({
-          where: {
-            customer_account_id: session.customer_account_id,
-            retailer_id: retailer.id,
-            type: { in: ['FAVORITE', 'UNFAVORITE', 'ENQUIRY', 'VIEW'] },
-            created_at: { gte: new Date(Date.now() - SIGNAL_WINDOW_MS) },
-          },
-          orderBy: { created_at: 'desc' },
-          take: SIGNAL_LIMIT,
-          select: { type: true, product_id: true },
-        });
-        const weights = new Map<string, number>();
-        const favoriteStateSeen = new Set<string>();
-        for (const event of events) {
-          if (!event.product_id) continue;
-          if (event.type === 'FAVORITE' || event.type === 'UNFAVORITE') {
-            // Events are newest-first; the latest favorite toggle is the
-            // current state, so an old favorite cannot override a later unlike.
-            if (favoriteStateSeen.has(event.product_id)) continue;
-            favoriteStateSeen.add(event.product_id);
-            if (event.type === 'UNFAVORITE') continue;
+        // Signals are an enhancement: a failed signal read (e.g. the
+        // customer_interactions table missing in prod) must degrade to the
+        // store's catalog below, not blank the whole "Picked for you" row.
+        try {
+          const events = await prisma.customerInteraction.findMany({
+            where: {
+              customer_account_id: session.customer_account_id,
+              retailer_id: retailer.id,
+              type: { in: ['FAVORITE', 'UNFAVORITE', 'ENQUIRY', 'VIEW'] },
+              created_at: { gte: new Date(Date.now() - SIGNAL_WINDOW_MS) },
+            },
+            orderBy: { created_at: 'desc' },
+            take: SIGNAL_LIMIT,
+            select: { type: true, product_id: true },
+          });
+          const weights = new Map<string, number>();
+          const favoriteStateSeen = new Set<string>();
+          for (const event of events) {
+            if (!event.product_id) continue;
+            if (event.type === 'FAVORITE' || event.type === 'UNFAVORITE') {
+              // Events are newest-first; the latest favorite toggle is the
+              // current state, so an old favorite cannot override a later unlike.
+              if (favoriteStateSeen.has(event.product_id)) continue;
+              favoriteStateSeen.add(event.product_id);
+              if (event.type === 'UNFAVORITE') continue;
+            }
+            const weight = event.type === 'ENQUIRY' ? 4 : event.type === 'FAVORITE' ? 3 : 1;
+            weights.set(event.product_id, (weights.get(event.product_id) ?? 0) + weight);
           }
-          const weight = event.type === 'ENQUIRY' ? 4 : event.type === 'FAVORITE' ? 3 : 1;
-          weights.set(event.product_id, (weights.get(event.product_id) ?? 0) + weight);
+          // A recognized shopper also contributes the current browser visit,
+          // but only after the IDs are revalidated against this retailer. This
+          // complements (never replaces) their persisted signals for this store.
+          for (const id of new Set(parsed.data.visit_product_ids ?? [])) {
+            if (!weights.has(id)) weights.set(id, 1);
+          }
+          const products = weights.size
+            ? await prisma.product.findMany({
+                where: {
+                  id: { in: [...weights.keys()] },
+                  retailer_id: retailer.id,
+                  deleted_at: null,
+                  status: 'AVAILABLE',
+                },
+                select: {
+                  id: true,
+                  category: true,
+                  subtype: true,
+                  fabrics: true,
+                  primary_color: true,
+                  price_min: true,
+                  created_at: true,
+                },
+              })
+            : [];
+          signals = products.map((product) => ({
+            product: toSignalProduct(product),
+            weight: weights.get(product.id) ?? 1,
+          }));
+        } catch (err) {
+          request.log.warn({ err }, 'recommendations: session signals unavailable');
+          signals = [];
         }
-        // A recognized shopper also contributes the current browser visit,
-        // but only after the IDs are revalidated against this retailer. This
-        // complements (never replaces) their persisted signals for this store.
-        for (const id of new Set(parsed.data.visit_product_ids ?? [])) {
-          if (!weights.has(id)) weights.set(id, 1);
-        }
-        const products = weights.size
-          ? await prisma.product.findMany({
-              where: {
-                id: { in: [...weights.keys()] },
-                retailer_id: retailer.id,
-                deleted_at: null,
-                status: 'AVAILABLE',
-              },
-              select: {
-                id: true,
-                category: true,
-                subtype: true,
-                fabrics: true,
-                primary_color: true,
-                price_min: true,
-                created_at: true,
-              },
-            })
-          : [];
-        signals = products.map((product) => ({
-          product: toSignalProduct(product),
-          weight: weights.get(product.id) ?? 1,
-        }));
       }
     } else {
       const visitIds = [...new Set(parsed.data.visit_product_ids ?? [])];
