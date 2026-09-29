@@ -218,7 +218,7 @@ describe('CollectionView pagination', () => {
     vi.restoreAllMocks()
   })
 
-  it('appends on scroll, while Prev and Next replace the grid', async () => {
+  it('changes page only via Prev/Next, each replacing the grid — scrolling loads nothing', async () => {
     const fetchMock = vi.fn(async (input: unknown) => {
       const url = new URL(String(input), 'https://kanchuki.test')
       if (url.pathname.endsWith('/products')) return pageResponse(Number(url.searchParams.get('page')))
@@ -228,6 +228,10 @@ describe('CollectionView pagination', () => {
       return { ok: true, status: 200, json: async () => ({ data: {} }) }
     })
     vi.stubGlobal('fetch', fetchMock)
+    const productRequests = () =>
+      fetchMock.mock.calls
+        .map(([input]) => new URL(String(input), 'https://kanchuki.test'))
+        .filter((url) => url.pathname.endsWith('/products'))
 
     render(
       <CollectionView
@@ -236,30 +240,25 @@ describe('CollectionView pagination', () => {
         productsApiPath="/api/c/festive-edit/products"
       />,
     )
-
     expect(await screen.findByText('Festive Design 20')).toBeInTheDocument()
+
+    // Owner decision 2026-09-29: no append-on-scroll. The page is within 500px
+    // of the bottom (beforeEach), which is where the removed listener fired.
     act(() => {
       window.dispatchEvent(new Event('scroll'))
     })
+    expect(productRequests()).toHaveLength(0)
 
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }))
     expect(await screen.findByText('Festive Design 40')).toBeInTheDocument()
-    expect(screen.getByText('Festive Design 1')).toBeInTheDocument()
+    expect(screen.queryByText('Festive Design 1')).not.toBeInTheDocument()
     expect(screen.getByText('Page 2 of 2')).toBeInTheDocument()
-    const pageTwoRequest = fetchMock.mock.calls
-      .map(([input]) => new URL(String(input), 'https://kanchuki.test'))
-      .find((url) => url.pathname.endsWith('/products') && url.searchParams.get('page') === '2')
-    expect(pageTwoRequest?.searchParams.get('pageSize')).toBe('20')
+    expect(productRequests()[0]?.searchParams.get('pageSize')).toBe('20')
 
     fireEvent.click(screen.getByRole('button', { name: 'Prev' }))
     expect(await screen.findByText('Festive Design 1')).toBeInTheDocument()
     expect(screen.queryByText('Festive Design 40')).not.toBeInTheDocument()
     expect(screen.getByText('Page 1 of 2')).toBeInTheDocument()
-
-    // Next replaces too — scrolling is the only append path.
-    fireEvent.click(screen.getByRole('button', { name: 'Next' }))
-    expect(await screen.findByText('Festive Design 40')).toBeInTheDocument()
-    expect(screen.queryByText('Festive Design 1')).not.toBeInTheDocument()
-    expect(screen.getByText('Page 2 of 2')).toBeInTheDocument()
   })
 
   it('shows size chips and sends the selected size as a replace request', async () => {
@@ -291,134 +290,6 @@ describe('CollectionView pagination', () => {
       })).toBe(true)
     })
     expect(screen.getByRole('button', { name: 'M (4)' })).toHaveAttribute('aria-pressed', 'true')
-  })
-
-  it('shows a retry action when loading the next page fails', async () => {
-    let pageTwoAttempts = 0
-    const fetchMock = vi.fn(async (input: unknown) => {
-      const url = new URL(String(input), 'https://kanchuki.test')
-      if (url.pathname.endsWith('/products')) {
-        if (url.searchParams.get('page') === '2') {
-          pageTwoAttempts += 1
-          return pageTwoAttempts === 1
-            ? { ok: false, status: 503, json: async () => ({}) }
-            : pageResponse(2)
-        }
-        return pageResponse(1)
-      }
-      if (url.pathname.startsWith('/api/engagement-chips')) {
-        return { ok: true, status: 200, json: async () => ({ data: { products: {}, window: {} } }) }
-      }
-      return { ok: true, status: 200, json: async () => ({ data: {} }) }
-    })
-    vi.stubGlobal('fetch', fetchMock)
-
-    render(
-      <CollectionView
-        collection={paginatedCollection()}
-        slug="festive-edit"
-        productsApiPath="/api/c/festive-edit/products"
-      />,
-    )
-    expect(await screen.findByText('Festive Design 1')).toBeInTheDocument()
-
-    act(() => {
-      window.dispatchEvent(new Event('scroll'))
-    })
-    expect(await screen.findByRole('alert')).toHaveTextContent('Could not load more products.')
-
-    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
-    expect(await screen.findByText('Festive Design 40')).toBeInTheDocument()
-    expect(pageTwoAttempts).toBe(2)
-  })
-
-  it('reuses the in-flight page-two prefetch when the shopper scrolls to the end', async () => {
-    vi.useFakeTimers()
-    let resolvePage!: (response: ReturnType<typeof pageResponse>) => void
-    const pendingPage = new Promise<ReturnType<typeof pageResponse>>((resolve) => {
-      resolvePage = resolve
-    })
-    const fetchMock = vi.fn(async (input: unknown) => {
-      const url = new URL(String(input), 'https://kanchuki.test')
-      if (url.pathname.endsWith('/products')) {
-        return url.searchParams.get('page') === '2' ? pendingPage : pageResponse(1)
-      }
-      if (url.pathname.startsWith('/api/engagement-chips')) {
-        return { ok: true, status: 200, json: async () => ({ data: { products: {}, window: {} } }) }
-      }
-      return { ok: true, status: 200, json: async () => ({ data: {} }) }
-    })
-    vi.stubGlobal('fetch', fetchMock)
-
-    render(
-      <CollectionView
-        collection={paginatedCollection()}
-        slug="festive-edit"
-        productsApiPath="/api/c/festive-edit/products"
-      />,
-    )
-    expect(screen.getByText('Festive Design 1')).toBeInTheDocument()
-
-    await act(async () => {
-      vi.advanceTimersByTime(1500)
-      await Promise.resolve()
-    })
-    act(() => {
-      window.dispatchEvent(new Event('scroll'))
-    })
-
-    const pageTwoRequests = fetchMock.mock.calls.filter(([input]) => {
-      const url = new URL(String(input), 'https://kanchuki.test')
-      return url.pathname.endsWith('/products') && url.searchParams.get('page') === '2'
-    })
-    expect(pageTwoRequests).toHaveLength(1)
-
-    await act(async () => {
-      resolvePage(pageResponse(2))
-      await pendingPage
-    })
-    expect(screen.getByText('Festive Design 40')).toBeInTheDocument()
-  })
-
-  it('synchronously guards repeated scroll events from requesting the same page twice', async () => {
-    let resolvePage!: (response: ReturnType<typeof pageResponse>) => void
-    const pendingPage = new Promise<ReturnType<typeof pageResponse>>((resolve) => {
-      resolvePage = resolve
-    })
-    const fetchMock = vi.fn(async (input: unknown) => {
-      const url = new URL(String(input), 'https://kanchuki.test')
-      if (url.pathname.endsWith('/products')) {
-        return url.searchParams.get('page') === '2' ? pendingPage : pageResponse(1)
-      }
-      if (url.pathname.startsWith('/api/engagement-chips')) {
-        return { ok: true, status: 200, json: async () => ({ data: { products: {}, window: {} } }) }
-      }
-      return { ok: true, status: 200, json: async () => ({ data: {} }) }
-    })
-    vi.stubGlobal('fetch', fetchMock)
-
-    render(
-      <CollectionView
-        collection={paginatedCollection()}
-        slug="festive-edit"
-        productsApiPath="/api/c/festive-edit/products"
-      />,
-    )
-    expect(await screen.findByText('Festive Design 1')).toBeInTheDocument()
-
-    act(() => {
-      window.dispatchEvent(new Event('scroll'))
-      window.dispatchEvent(new Event('scroll'))
-    })
-
-    const pageTwoRequests = fetchMock.mock.calls.filter(([input]) => {
-      const url = new URL(String(input), 'https://kanchuki.test')
-      return url.pathname.endsWith('/products') && url.searchParams.get('page') === '2'
-    })
-    expect(pageTwoRequests).toHaveLength(1)
-
-    resolvePage(pageResponse(2))
-    await waitFor(() => expect(screen.getByText('Festive Design 40')).toBeInTheDocument())
   })
 })
 

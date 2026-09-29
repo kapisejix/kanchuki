@@ -22,7 +22,7 @@
   3. **Behaviour change contradicting its own comment.** `eb72f117` switched Next from `goToPage(page + 1)` to `appendNextPage(...)` while the same commit's comment says "Prev/Next keep their original meaning — jump to a page and REPLACE the grid". Its unit tests were rewritten to pin the append, so only the e2e — already red for reasons 1–2 — disagreed.
 - **Fix (`d9993d8b`):** `testIgnore: '**/customer-*.spec.ts'`; stubs for both endpoints; SW poll 25 s; `pinTallViewport()` for the Prev/Next test (Playwright's auto-scroll to the pager otherwise fires append-on-scroll before the click lands); Next → `goToPage(Math.min(totalPages, page + 1))`; the unit tests that drove append via Next now drive it via scroll, and one test pins both (scroll appends, Prev/Next replace).
 - **Proof:** customer e2e **32/32** locally (prod build); `CollectionView.test.tsx` 8/8; web `tsc` clean. The new unit assertion (`queryByText('Festive Design 1')` absent after Next) is the e2e failure's exact condition, so reverting the Next line turns it red.
-- **Open (product, not code):** with append-on-scroll, a shopper who scrolls to the pager has usually already appended the last page, so Next is disabled in practice. Keep both, or drop the pager — owner decision.
+- **Resolved (product, 2026-09-29):** with append-on-scroll a shopper who reached the pager had usually already appended the last page, so Next was disabled in practice. Owner decision: **Prev/Next pager only** — append-on-scroll, the page-2 prefetch and the load-more retry UI were deleted from `CollectionView.tsx`; the unit test now also asserts a near-bottom scroll requests nothing.
 
 ---
 

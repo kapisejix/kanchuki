@@ -47,7 +47,7 @@ These are prioritized by how directly they use infrastructure that already exist
 | 6 | **Video/Ken Burns collections over static photos** | Video dwell time measurably exceeds static-photo dwell time | F-033 plus ✅ product clips now rendered in both product-detail gallery surfaces (2026-09-28) |
 | 7 | **Ratings/reviews surfaced on product cards** | Social proof extends read time before a decision | ✅ Product cards built (`d73c8c54` — ★ + avg when `rating_count > 0`; `ReviewList` on detail sheet). Store-level rating on `/stores` not built — owner decision pending |
 | 8 | **Size-match filter front-and-center** | Fewer irrelevant items shown → less bounce, more relevant browsing | ✅ Built 2026-09-28 — always-visible size chips backed by exact size filtering and canonical facets |
-| 9 | **Perf: prefetch + smooth infinite scroll** | Load lag kills session length faster than weak content does | ✅ Built 2026-09-28 — shared 20-item page size, guarded append/prefetch, retry state |
+| 9 | **Perf: prefetch + smooth infinite scroll** | Load lag kills session length faster than weak content does | ↩️ Built 2026-09-28, **reverted 2026-09-29 by owner decision** — Prev/Next pager only; append-on-scroll, page-2 prefetch and retry state removed. Shared 20-item page size kept |
 
 **Explicitly not recommending:** 360° spin, Virtual Try-On, purchase-tied loyalty points — all were deliberately removed in `chore/remove-unwanted-features` (2026-08-31); re-introducing any of them for engagement purposes would contradict that decision without a fresh case being made to the owner.
 

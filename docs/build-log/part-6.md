@@ -332,3 +332,16 @@ no migration, no schema change, and **no new request on any surface**.
 | Existing deletes (unchanged) | Retailer purge (`purge-retailer-now.ts`, `purge-soft-deleted.ts` child sweep) and customer-account cascade already removed rows. This adds only the age-based cutoff. |
 | Known ceiling | No index leads with `created_at`, so each batch's inner SELECT scans. Fine at pilot volume; add a `(created_at)` index if the job gets slow. First rows are from 2026-09-18, so nothing is deleted before 2028-09. |
 | Tests | `purge-soft-deleted.test.ts` 13/13, `purge-rls-policy.test.ts` 11/11, `purge-retailer-now.test.ts` pass (26 total); `apps/api` `tsc --noEmit` clean. |
+
+## 2026-09-29 (F-037 storefront pager) — Prev/Next only, infinite scroll removed; customer e2e green; RC-048
+
+**Change:** `apps/web/src/app/c/[slug]/components/CollectionView.tsx` (−172 lines), `__tests__/CollectionView.test.tsx`, `apps/web/e2e/customer-collection.spec.ts`, `customer-my-stores.spec.ts`, `apps/web/playwright.config.ts`. PR #41.
+
+| Piece | Detail |
+|---|---|
+| Bug | `eb72f117` wired **Next** to `appendNextPage` (append) while its own comment said Prev/Next replace — "Page 2 of 2" with page 1 still on screen. Fixed `d9993d8b`. |
+| Owner decision | Prev/Next pager only. Deleted: append-on-scroll listener, page-2 background prefetch, `loadingMore` / load-more retry UI, `filtersSignature`. Kept: 20-item page size, replace-on-page-change via `goToPage`/`fetchProducts`, stale-response generation guard. Reverses F-037 §2 item 9. |
+| e2e | Dev-server pass ignores `customer-*.spec.ts` (#36's stranded glob); stubs for `GET /v1/public/engagement-chips` + `POST /v1/public/recommendations`; SW poll 25 s. `pinTallViewport()` workaround deleted with the scroll listener. |
+| RC | RC-048 — stranded fix + unstubbed fetches kept the suite red and hid the Next rewire. |
+| PRs | #36 and #38 closed as superseded (content on `main` or in #41). |
+| Tests | `CollectionView.test.tsx` 5/5 (pager test asserts a near-bottom scroll requests nothing); customer e2e 32/32 local; web `tsc` + eslint clean; #41 CI green on `547152a1`. |
