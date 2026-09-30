@@ -39,9 +39,12 @@ const DIRECTORY: StoresDirectoryData = {
       public_slug: 'meera-sarees',
       shop_name: 'Meera Sarees',
       city: 'Jaipur',
+      address: '12 MI Road',
       logo_url: null,
       product_count: 12,
       is_featured: true,
+      store_types: ['LADIES'],
+      distance_km: null,
     },
   ],
   total: 12,
@@ -49,6 +52,8 @@ const DIRECTORY: StoresDirectoryData = {
   page_size: 12,
   total_pages: 1,
   cities: [{ city: 'Jaipur', count: 1 }],
+  nearby: false,
+  radius_km: null,
 }
 
 const ACCOUNT: PassportAccount = {

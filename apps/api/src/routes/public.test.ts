@@ -11,7 +11,9 @@ const {
   mockCustomerUpsert,
   mockCollectionFindFirst,
   mockAuditLogCreate,
+  mockCategoryFindMany,
 } = vi.hoisted(() => ({
+  mockCategoryFindMany: vi.fn(),
   mockRetailerFindFirst: vi.fn(),
   mockRetailerFindMany: vi.fn(),
   mockRetailerCount: vi.fn(),
@@ -29,6 +31,7 @@ vi.mock('@kanchuki/db', () => ({
       count: mockRetailerCount,
       groupBy: mockRetailerGroupBy,
     },
+    productCategory: { findMany: mockCategoryFindMany },
     customer: { upsert: mockCustomerUpsert },
     collection: { findFirst: mockCollectionFindFirst, count: vi.fn(), update: vi.fn() },
     product: { count: vi.fn() },
@@ -327,11 +330,21 @@ describe('GET /public/stores (store directory)', () => {
     shop_name: 'Test Shop',
     city: 'Jaipur',
     logo_url: null,
+    address_line1: '12 MI Road',
+    address_line2: null,
     is_featured: false,
     _count: { products: 134 },
   };
 
+  beforeEach(() => {
+    mockCategoryFindMany.mockResolvedValue([]);
+  });
+
   it('returns paginated stores with the city list for filter chips', async () => {
+    mockCategoryFindMany.mockResolvedValue([
+      { segment: 'LADIES', retailer: { public_slug: 'test-shop-ab12' } },
+      { segment: 'KIDS', retailer: { public_slug: 'test-shop-ab12' } },
+    ]);
     mockRetailerFindMany.mockResolvedValue([liveStore]);
     mockRetailerCount.mockResolvedValue(1);
     mockRetailerGroupBy.mockResolvedValue([
@@ -351,11 +364,15 @@ describe('GET /public/stores (store directory)', () => {
         public_slug: 'test-shop-ab12',
         shop_name: 'Test Shop',
         city: 'Jaipur',
+        address: '12 MI Road',
         logo_url: null,
         product_count: 134,
         is_featured: false,
+        store_types: ['LADIES', 'KIDS'],
+        distance_km: null,
       },
     ]);
+    expect(body.data.nearby).toBe(false);
     expect(body.data.total).toBe(1);
     expect(body.data.page).toBe(1);
     expect(body.data.total_pages).toBe(1);
@@ -423,6 +440,81 @@ describe('GET /public/stores (store directory)', () => {
     const bad = await app.inject({ method: 'GET', url: '/v1/public/stores?pageSize=999' });
     expect(bad.statusCode).toBe(422);
     await app.close();
+  });
+
+  describe('nearby mode (lat + lng)', () => {
+    // Jaipur centre ≈ 26.9124, 75.7873. 0.01° lat ≈ 1.1 km.
+    const at = (name: string, dLat: number) => ({
+      ...liveStore,
+      public_slug: name,
+      shop_name: name,
+      latitude: 26.9124 + dLat,
+      longitude: 75.7873,
+    });
+
+    it('lists stores within 2 km nearest first and reports the radius used', async () => {
+      mockRetailerFindMany.mockResolvedValue([
+        at('far-1.6km', 0.0145),
+        at('near-0.5km', 0.0045),
+        at('out-5km', 0.045),
+      ]);
+      mockRetailerGroupBy.mockResolvedValue([]);
+
+      const app = await buildApp();
+      const res = await app.inject({
+        method: 'GET',
+        url: '/v1/public/stores?lat=26.9124&lng=75.7873',
+      });
+      const body = res.json();
+
+      expect(res.statusCode).toBe(200);
+      expect(body.data.nearby).toBe(true);
+      expect(body.data.radius_km).toBe(2);
+      expect(body.data.stores.map((s: { public_slug: string }) => s.public_slug)).toEqual([
+        'near-0.5km',
+        'far-1.6km',
+      ]);
+      expect(body.data.stores[0].distance_km).toBeCloseTo(0.5, 1);
+      expect(body.data.total).toBe(2);
+      await app.close();
+    });
+
+    it('widens 2 → 5 km when nothing is within 2 km', async () => {
+      mockRetailerFindMany.mockResolvedValue([at('four-km', 0.036)]);
+      mockRetailerGroupBy.mockResolvedValue([]);
+
+      const app = await buildApp();
+      const res = await app.inject({
+        method: 'GET',
+        url: '/v1/public/stores?lat=26.9124&lng=75.7873&pageSize=5',
+      });
+
+      expect(res.json().data.radius_km).toBe(5);
+      expect(res.json().data.stores).toHaveLength(1);
+      await app.close();
+    });
+
+    it('returns an empty list (radius 10) when nothing is within 10 km', async () => {
+      mockRetailerFindMany.mockResolvedValue([at('twenty-km', 0.18)]);
+      mockRetailerGroupBy.mockResolvedValue([]);
+
+      const app = await buildApp();
+      const res = await app.inject({
+        method: 'GET',
+        url: '/v1/public/stores?lat=26.9124&lng=75.7873&pageSize=6',
+      });
+
+      expect(res.json().data.radius_km).toBe(10);
+      expect(res.json().data.stores).toEqual([]);
+      await app.close();
+    });
+
+    it('rejects lat without lng with 422', async () => {
+      const app = await buildApp();
+      const res = await app.inject({ method: 'GET', url: '/v1/public/stores?lat=26.9' });
+      expect(res.statusCode).toBe(422);
+      await app.close();
+    });
   });
 
   it('sorts admin-pinned stores first, then pin order, then recency', async () => {

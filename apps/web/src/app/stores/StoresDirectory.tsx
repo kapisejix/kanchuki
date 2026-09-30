@@ -1,10 +1,11 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { ChevronLeft, ChevronRight, MapPin, Search, Star, Store, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Search, Store, X } from 'lucide-react'
 import Link from 'next/link'
-import StoreLogo from '@/components/site/StoreLogo'
-import { ColorCard } from '@/components/site/Chrome'
+import NearMeBar from '@/components/site/NearMeBar'
+import StoreCard from '@/components/site/StoreCard'
+import { locationParams, useUserLocation } from '@/lib/nearby-stores'
 import ShopperEntry from './ShopperEntry'
 import type { StoresDirectoryData } from './page'
 
@@ -24,6 +25,9 @@ export default function StoresDirectory({ initial }: { initial: StoresDirectoryD
   const [initialFetchFailed, setInitialFetchFailed] = useState(initial === null)
   const [retryToken, setRetryToken] = useState(0)
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const loc = useUserLocation()
+  // Nearby found nothing within 10 km → fall back to the full directory.
+  const [nearbyEmpty, setNearbyEmpty] = useState(false)
 
   // Debounce the search box — the query only hits the API after the user
   // pauses typing.
@@ -35,12 +39,15 @@ export default function StoresDirectory({ initial }: { initial: StoresDirectoryD
     }
   }, [query])
 
+  // Explicit browsing (a search or a city chip) beats "near me".
+  const nearbyCoords = debouncedQuery || city || nearbyEmpty ? null : loc.coords
+
   // A filter change resets to page 1; the data effect below does the fetch.
   useEffect(() => {
     setPage(1)
-  }, [debouncedQuery, city])
+  }, [debouncedQuery, city, nearbyCoords])
 
-  // Single data-fetch effect — one fetch per (query, city, page) change.
+  // Single data-fetch effect — one fetch per (query, city, location, page) change.
   useEffect(() => {
     let cancelled = false
     setError(false)
@@ -48,12 +55,18 @@ export default function StoresDirectory({ initial }: { initial: StoresDirectoryD
     const params = new URLSearchParams({ page: String(page), pageSize: String(PAGE_SIZE) })
     if (city) params.set('city', city)
     if (debouncedQuery) params.set('q', debouncedQuery)
+    for (const [k, v] of Object.entries(locationParams(nearbyCoords))) params.set(k, v)
 
     fetch(`${API_URL}/v1/public/stores?${params}`)
       .then(async (res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         const json = (await res.json()) as { data: StoresDirectoryData }
-        if (!cancelled) setData(json.data)
+        if (cancelled) return
+        if (json.data.nearby && json.data.stores.length === 0) {
+          setNearbyEmpty(true) // re-runs this effect without coordinates
+          return
+        }
+        setData(json.data)
       })
       .catch(() => {
         if (!cancelled) setError(true)
@@ -62,7 +75,7 @@ export default function StoresDirectory({ initial }: { initial: StoresDirectoryD
     return () => {
       cancelled = true
     }
-  }, [debouncedQuery, city, page, retryToken])
+  }, [debouncedQuery, city, page, retryToken, nearbyCoords])
 
   const stores = data?.stores ?? []
   const cities = data?.cities ?? []
@@ -79,6 +92,8 @@ export default function StoresDirectory({ initial }: { initial: StoresDirectoryD
       <div className="mb-6 flex justify-end">
         <ShopperEntry />
       </div>
+
+      <NearMeBar loc={loc} radiusKm={data?.nearby ? data.radius_km : null} empty={nearbyEmpty} />
 
       {/* Search + city chips */}
       <div className="mb-10">
@@ -182,38 +197,9 @@ export default function StoresDirectory({ initial }: { initial: StoresDirectoryD
       {/* Store cards */}
       {!error && !initialFetchFailed && stores.length > 0 && (
         <>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
+          <div className="grid md:grid-cols-2 gap-4 sm:gap-5">
             {stores.map((s) => (
-              <ColorCard key={s.public_slug} accent="cobalt" className="group">
-                <Link href={`/${s.public_slug}`} className="block p-5 sm:p-6">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="w-16 h-16 rounded-xl overflow-hidden border border-white/20 bg-white/10 mb-4">
-                      <StoreLogo shopName={s.shop_name} logoUrl={s.logo_url} />
-                    </div>
-                    {s.is_featured && (
-                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-carbon bg-volt px-2 py-1 rounded-full">
-                        <Star size={11} strokeWidth={1.5} className="fill-carbon text-carbon" />
-                        Featured
-                      </span>
-                    )}
-                  </div>
-                  <h3 className="font-display font-semibold text-white mb-1 group-hover:text-volt transition-colors">
-                    {s.shop_name}
-                  </h3>
-                  <p className="text-sm text-white/70 mb-4 flex items-center gap-1.5">
-                    <MapPin size={14} strokeWidth={1.5} className="text-white/50" />
-                    {s.city ?? 'India'}
-                  </p>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-white/60">
-                      {s.product_count.toLocaleString('en-IN')} product{s.product_count === 1 ? '' : 's'}
-                    </span>
-                    <span className="text-sm font-semibold text-volt group-hover:text-white transition-colors">
-                      Visit store →
-                    </span>
-                  </div>
-                </Link>
-              </ColorCard>
+              <StoreCard key={s.public_slug} store={s} />
             ))}
           </div>
 

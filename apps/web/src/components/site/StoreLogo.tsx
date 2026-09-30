@@ -7,7 +7,7 @@ import Image from 'next/image'
 // /stores directory cards and the homepage store teaser.
 export default function StoreLogo({ shopName, logoUrl }: { shopName: string; logoUrl: string | null }) {
   if (logoUrl) {
-    return <Image src={logoUrl} alt={`${shopName} logo`} width={64} height={64} className="w-full h-full object-cover" />
+    return <Image src={logoUrl} alt={`${shopName} logo`} width={160} height={160} className="w-full h-full object-cover" />
   }
   return (
     <div className="w-full h-full bg-cobalt-600 flex items-center justify-center text-white font-display text-3xl font-semibold">

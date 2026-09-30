@@ -8,8 +8,6 @@ import {
   Search,
   Heart,
   Store,
-  MapPin,
-  Star,
   ArrowRight,
   ChevronDown,
   Check,
@@ -25,7 +23,9 @@ import {
 import type { LucideIcon } from 'lucide-react'
 import Link from 'next/link'
 import { getPlanPricing, type PlanPrices } from '@/lib/plan-pricing'
-import StoreLogo from '@/components/site/StoreLogo'
+import NearMeBar from '@/components/site/NearMeBar'
+import StoreCard from '@/components/site/StoreCard'
+import { locationParams, type StoreCardData, useUserLocation } from '@/lib/nearby-stores'
 import { Section, SectionHeader, ColorCard, AnimatedSection, Marquee, Footer, fadeUp, stagger, ACCENT_BG, ACCENT_TEXT, ACCENT_SUBTLE } from '@/components/site/Chrome'
 import { type ColorAccent } from '@/components/site/accents'
 
@@ -285,32 +285,41 @@ function ComparisonMatrix() {
 
 // ── Store Directory Teaser ─────────────────────────────────────────
 
-interface TeaserStore {
-  public_slug: string
-  shop_name: string
-  city: string | null
-  logo_url: string | null
-  product_count: number
-  is_featured: boolean
-}
-
 function StoreTeaser() {
-  const [stores, setStores] = useState<TeaserStore[] | null>(null)
+  const [stores, setStores] = useState<StoreCardData[] | null>(null)
+  const [radiusKm, setRadiusKm] = useState<number | null>(null)
+  // Nearby found nothing within 10 km → fall back to the full directory.
+  const [nearbyEmpty, setNearbyEmpty] = useState(false)
+  const loc = useUserLocation()
+  const coords = nearbyEmpty ? null : loc.coords
   const ref = useRef(null)
   const isInView = useInView(ref, { once: true, margin: '-60px' })
 
   useEffect(() => {
+    let cancelled = false
     const apiUrl = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
-    fetch(`${apiUrl}/v1/public/stores?pageSize=6`)
+    const params = new URLSearchParams({ pageSize: '6', ...locationParams(coords) })
+    fetch(`${apiUrl}/v1/public/stores?${params}`)
       .then((r) => r.json())
       .then((res) => {
-        if (Array.isArray(res?.data?.stores)) setStores(res.data.stores)
+        const d = res?.data
+        if (cancelled || !Array.isArray(d?.stores)) return
+        if (d.nearby && d.stores.length === 0) {
+          setNearbyEmpty(true) // re-runs this effect without coordinates
+          return
+        }
+        setStores(d.stores)
+        setRadiusKm(d.nearby ? d.radius_km : null)
       })
       .catch(() => {})
-  }, [])
+    return () => {
+      cancelled = true
+    }
+  }, [coords])
 
   const count = stores?.length ?? 0
-  const showBeFirst = stores !== null && count < 3
+  // A short NEARBY list is not "no stores yet" — only the plain directory is.
+  const showBeFirst = stores !== null && count < 3 && radiusKm === null
 
   return (
     <Section id="store-directory" className="bg-white">
@@ -323,35 +332,12 @@ function StoreTeaser() {
           />
         </AnimatedSection>
 
-        <motion.div initial="hidden" animate={isInView ? 'visible' : 'hidden'} variants={stagger} className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
+        <NearMeBar loc={loc} radiusKm={radiusKm} empty={nearbyEmpty} />
+
+        <motion.div initial="hidden" animate={isInView ? 'visible' : 'hidden'} variants={stagger} className="grid md:grid-cols-2 gap-4 sm:gap-5">
           {(stores ?? []).slice(0, 6).map((s) => (
             <motion.div key={s.public_slug} variants={fadeUp}>
-              <ColorCard accent="cobalt" className="group h-full">
-                <Link href={`/${s.public_slug}`} className="block p-5 sm:p-6">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="w-14 h-14 rounded-xl overflow-hidden border border-white/20 bg-white/10 mb-4">
-                      <StoreLogo shopName={s.shop_name} logoUrl={s.logo_url} />
-                    </div>
-                    {s.is_featured && (
-                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-carbon bg-volt px-2 py-1 rounded-full">
-                        <Star size={11} strokeWidth={1.5} className="fill-carbon text-carbon" />
-                        Featured
-                      </span>
-                    )}
-                  </div>
-                  <h3 className="font-display font-semibold text-white mb-1 group-hover:text-volt transition-colors">{s.shop_name}</h3>
-                  <p className="text-sm text-white/70 mb-4 flex items-center gap-1.5">
-                    <MapPin size={14} strokeWidth={1.5} className="text-white/50" />
-                    {s.city ?? 'India'}
-                  </p>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-white/60">
-                      {s.product_count.toLocaleString('en-IN')} product{s.product_count === 1 ? '' : 's'}
-                    </span>
-                    <span className="text-sm font-semibold text-volt group-hover:text-white transition-colors">Visit store →</span>
-                  </div>
-                </Link>
-              </ColorCard>
+              <StoreCard store={s} />
             </motion.div>
           ))}
         </motion.div>
