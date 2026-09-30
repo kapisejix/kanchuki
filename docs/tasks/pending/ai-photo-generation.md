@@ -89,7 +89,7 @@ The gap is **not mainly resolution or `image_size`** (an earlier draft over-weig
 | Bench A/B over both pipeline orders, strict arms + stage-qualified errors | ✅ done | `generateStudioOrderAb()`, `POST /admin/photo-cleanup/studio-ab`, `c1ca817b` | — |
 | Dead IDM-VTON helper deleted **+ regression guard** | ✅ done | `retired-tryon-guard.test.ts`, `c1ca817b` | — |
 | **Engine picked per MODEL row** | 🔴 **left** | all 8 rows are `engine = NULL` → Kontext | owner selects per row in `/admin/studio-styles` (R7) |
-| **First run against the live providers** | 🔴 **left** | never run from a build session | owner runs the bench (§3.3 A explains the "no change" result) |
+| **First run against the live providers** | 🟡 run 1 done 2026-09-20 (outdoor + model, 14 runs, 11 engines, 0 errors — §8.1d) | `docs/ai-studio/bench-results.json` | run 2 (indoor + model), run 3 (product only), `gemini_image_pro` director A/B/C |
 
 ### B. Current requirement — garment-set completeness (R1–R3, R6)
 
@@ -865,7 +865,7 @@ Draft written 2026-09-19. A first implementation was made and **reverted the sam
 
 **Sources:** [fal pricing](https://fal.ai/pricing), [fal pricing API](https://fal.ai/docs/platform-apis/v1/models/pricing), [fal models API](https://fal.ai/docs/platform-apis/v1/models), [fal GPT Image 2 edit](https://fal.ai/models/openai/gpt-image-2/edit), [fal Recraft V4](https://fal.ai/models/fal-ai/recraft/v4/text-to-image), [Gemini API pricing](https://ai.google.dev/gemini-api/docs/pricing), [buildmvpfast image-cost tracker](https://www.buildmvpfast.com/api-costs/ai-image), [Midjourney API status](https://unifically.com/blogs/midjourney-api). Endpoint IDs above were read from fal's live `GET /v1/models?q=…` on 2026-09-19.
 
-#### 8.1c Admin model bench ✅ built 2026-09-19 (not yet run live)
+#### 8.1c Admin model bench ✅ built 2026-09-19 (run 1 done 2026-09-20, §8.1d)
 
 Full detail, tables and the results view: `docs/ai-studio/AI Cost Comparison.html` §8.2. Summary:
 
@@ -877,7 +877,7 @@ Full detail, tables and the results view: `docs/ai-studio/AI Cost Comparison.htm
 
 #### 8.1d Bench run 1 — outdoor, with model (2026-09-20)
 
-Raw rows + images: `docs/tasks/bench-results.json` / `.js` and `docs/tasks/effect-photos/preview/` (saved with `node scripts/save-bench.mjs`). 14 runs, 11 engines, 0 errors, six real garment photos (2 pink lehenga shots, red kurti, green saree, blue suit, yellow printed suit). **n = 1-2 per engine on different garments — a shortlist, not a ranking.** Visual garment-fidelity verdicts:
+Raw rows + images: `docs/ai-studio/bench-results.json` / `.js` and `docs/ai-studio/effect-photos/previews/` (saved with `node scripts/save-bench.mjs`; moved from `docs/tasks/` 2026-09-30 so `AI Cost Comparison.html` finds them). 14 runs, 11 engines, 0 errors, six real garment photos (2 pink lehenga shots, red kurti, green saree, blue suit, yellow printed suit). **n = 1-2 per engine on different garments — a shortlist, not a ranking.** Visual garment-fidelity verdicts:
 
 | Engine | Verdict | Notes |
 |---|---|---|
@@ -917,7 +917,7 @@ Changing this is a **storage + egress cost decision** for the owner, not a code 
 | Retired-model guard | included in API suite (`retired-tryon-guard.test.ts`) | passes |
 | Doc test | counts in this file vs reality | must match |
 
-**What these gates do NOT prove:** output quality. Nothing in this area has been run against the live providers from a build session. **The first real run is the owner's, on the bench.**
+**What these gates do NOT prove:** output quality. Nothing here has been run against the live providers from a build session; bench run 1 (2026-09-20, §8.1d) was the owner's. **Further runs are the owner's, on the bench.**
 
 ---
 

@@ -11,7 +11,6 @@ Open these directly in a browser. They are self-contained (Tailwind via CDN, no 
 | File | What it is |
 |---|---|
 | `AI Studio Effects.html` | The preset catalog — every scene/pose/lighting/frame/presentation combination the studio can compose, per garment class and audience. Loads photos from `effect-photos/`. |
-| `AI Models and Scenes.html` | The model-set + scene reference board (demographic person-swap work). Loads `models/*.png`. |
 | `AI Motion Styles.html` | The AI image→video preset catalog (F-034, admin-test-only for now). Uses external Unsplash stills — no local dependency. |
 | `AI Cost Comparison.html` | Vendor cost comparison + bench results. Reads a **sibling** `bench-results.js`, written by `scripts/save-bench.mjs`. Until a bench run happens, that script 404s and the results section renders empty (by design — never fake data). |
 | `ghost-mannequin-research.html` / `.md` | The Snappyit/ghost-mannequin vendor evaluation. Conclusion: Snappyit has **no public API**; a local LaMa-inpainting version now does the hollow-gap-fill step. |
@@ -22,8 +21,7 @@ Open these directly in a browser. They are self-contained (Tailwind via CDN, no 
 |---|---|
 | `effect-photos/models/` | 8 audience model tiles (`woman-30`, `man-70`, `teen-girl-16`, `kid-boy-4`, …) — the `<img>` targets for `AI Studio Effects.html`. |
 | `effect-photos/products/` | 23 garment photos with simulated AI tags, one per category/audience, used as bench inputs. |
-| `effect-photos/previews/` | **Empty on purpose.** Bench outputs land here (`<CODE>.jpg`). A missing file renders a "no photo yet" placeholder in the catalog — never a fabricated image. |
-| `models/` | The 6 transparent-PNG model figures used by `AI Models and Scenes.html`. |
+| `effect-photos/previews/` | Bench outputs land here: run-1 images (`<timestamp>-<engine>-<scene>.jpg` + `-input.jpg`) written by `save-bench.mjs`, and catalog previews (`<CODE>.jpg`). A missing catalog file renders a "no photo yet" placeholder — never a fabricated image. |
 | `photoshoots/backgrounds/` | The backdrop library set (the local mirror of what's in Admin → Background images). |
 | `photoshoots/models/` | Model/reference photos (couples, kids, outdoor, male-with-car, …). |
 | `photoshoots/style-output/` | One output per studio style, named `studio-<Style Name>.jpg` — the visual reference for what each style produces. |
@@ -39,6 +37,6 @@ All three now point here — they wrote to the old paths until the move, so if a
 | `scripts/studio-shoot-demo.mjs` | `photoshoots/out/` (`OUT_DIR`) |
 | `scripts/batch-clean-photos.py` | comment only → `ghost-mannequin-research.md` |
 
-`bench-results.json` / `bench-results.js` **do not exist until a bench run happens** — `save-bench.mjs` generates them, and `AI Cost Comparison.html` loads the `.js` with a plain `<script>` tag (a `file://` page cannot `fetch()` a `.json`). The results section renders empty until then; that is expected, not breakage.
+`bench-results.json` / `bench-results.js` hold bench run 1 (2026-09-20, 14 rows; moved here from `docs/tasks/` 2026-09-30). `save-bench.mjs` appends to them, and `AI Cost Comparison.html` loads the `.js` with a plain `<script>` tag (a `file://` page cannot `fetch()` a `.json`). The results section renders empty until then; that is expected, not breakage.
 
 `history/` holds the frozen pre-merge photo-feature documents (the 5 files merged into the spec, plus the older progress logs). Not current truth.

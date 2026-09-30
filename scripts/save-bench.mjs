@@ -63,7 +63,7 @@ for (const row of rows) {
   if (row.result_url) {
     try {
       await download(row.result_url, join(previewDir, `${base}.jpg`));
-      image = `effect-photos/preview/${base}.jpg`;
+      image = `effect-photos/previews/${base}.jpg`;
     } catch (err) {
       imageError = err instanceof Error ? err.message : String(err);
     }
@@ -74,7 +74,7 @@ for (const row of rows) {
     const name = `${stamp}-input.jpg`;
     try {
       await download(row.product_url, join(previewDir, name));
-      inputImage = `effect-photos/preview/${name}`;
+      inputImage = `effect-photos/previews/${name}`;
       inputFiles.set(row.product_url, inputImage);
     } catch {
       // the output is what matters; a missing input thumbnail is not fatal

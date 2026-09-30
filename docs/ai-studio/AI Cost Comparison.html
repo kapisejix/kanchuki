@@ -376,7 +376,7 @@ plan_ai_budget    = owner-decided share of Starter ₹4,999 / Growth ₹9,999 / 
 </div>
 
 <!-- ================= 8.2 model bench ================= -->
-<h2 id="s82">8.2 Model bench — scene + gender + age + auto pose, every model side by side <span class="pill g-good">✅ BUILT</span> <span class="hint">2026-09-19 · not yet run against live providers</span></h2>
+<h2 id="s82">8.2 Model bench — scene + gender + age + auto pose, every model side by side <span class="pill g-good">✅ BUILT</span> <span class="hint">2026-09-19 · run 1 (outdoor, with model) done 2026-09-20 · runs 2–3 pending</span></h2>
 
 <div class="note">
   The admin test page (<code>/admin/photo-cleanup-test</code> → <em>AI Studio Shoot</em>) now takes a scene, a gender and an age bucket; the pose is picked for you. Tick any number of models and press <strong>Run batch</strong> — the same product photo, scene, person and pose go through each model, so outputs, time and cost compare like for like. Cost figures are <strong>estimates</strong> from the §8.1a price sheet at ₹96/USD; the real bill comes from Fal / Google.
@@ -442,7 +442,7 @@ plan_ai_budget    = owner-decided share of Starter ₹4,999 / Growth ₹9,999 / 
 </div>
 
 <div class="note warn">
-  <strong>Not yet run live.</strong> Every new Fal request body was read from the endpoint's own OpenAPI (no guessed parameter names — a guessed name is what 404'd the first FASHN helper), but no call has been made against Fal with your key. Expect the first run to surface an endpoint-specific quirk. A bench run is <strong>strict</strong>: a failing model shows its own error instead of quietly returning a Kontext image under its name.
+  <strong>Run 1 done (2026-09-20):</strong> 14 runs, 11 engines, 0 errors — see the results table below and spec §8.1d. Runs 2 (indoor, with model) and 3 (product only) are still to do. Every new Fal request body was read from the endpoint's own OpenAPI (no guessed parameter names — a guessed name is what 404'd the first FASHN helper). A bench run is <strong>strict</strong>: a failing model shows its own error instead of quietly returning a Kontext image under its name.
 </div>
 
 <h3>Admin test page — fields removed, replaced, kept</h3>
