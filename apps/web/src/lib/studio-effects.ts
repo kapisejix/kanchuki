@@ -891,12 +891,40 @@ const GUARD =
 const HALF_GUARD =
   'Do NOT show legs, hips-down or feet, and do NOT invent any trousers, palazzo, leggings or skirt not visible in the source photo.';
 
+/** Photography style: an image-treatment clause, independent of scene, light and
+ * framing (so it never restates them). Owner list 2026-09-30. */
+export const PHOTO_STYLE = {
+  catalog: [
+    'Catalog',
+    'Catalog photography: neutral, even and true to the garment, no props, no dramatic angles.',
+  ],
+  ecommerce: [
+    'E-Commerce',
+    'E-commerce photography: marketplace-ready, garment centred and fully visible, crisp clean edges, true-to-life colour, no props.',
+  ],
+  commercial: [
+    'Commercial',
+    'Commercial advertising photography: polished, aspirational, retouched brand-campaign look.',
+  ],
+  editorial: [
+    'Editorial',
+    'Editorial fashion photography: magazine composition, expressive styling, artistic and dynamic.',
+  ],
+  product: [
+    'Product Photography',
+    'Product photography: the garment is the hero, sharp fabric and embroidery detail, the model kept secondary.',
+  ],
+} as const;
+export type PhotoStyleId = keyof typeof PHOTO_STYLE;
+export const BENCH_PHOTO_STYLES = Object.keys(PHOTO_STYLE) as PhotoStyleId[];
+
 export interface ComposeOpts {
   cls: Cls;
   aud: Aud;
   senior?: boolean;
   po?: string;
   li?: LightId;
+  style?: PhotoStyleId;
 }
 
 export function composePrompt(p: Preset, o: ComposeOpts): string {
@@ -905,11 +933,13 @@ export function composePrompt(p: Preset, o: ComposeOpts): string {
   const light = LIGHT[o.li ?? p.li][1];
   const action = poseOrPres(p.mode, o.po ?? p.po)[1];
   const frame = FRAME[p.fr][1];
+  // style sits before the guards: the preservation clause stays last
+  const style = o.style ? `${PHOTO_STYLE[o.style][1]} ` : '';
   if (p.mode === 'product')
-    return `Present this ${cls} ${action}, set in ${scene}. Lit by ${light}. ${frame}. ${GUARD}`;
+    return `Present this ${cls} ${action}, set in ${scene}. Lit by ${light}. ${frame}. ${style}${GUARD}`;
   const who = (o.senior && SENIOR_DESC[o.aud]) || AUD_DESC[o.aud];
   const where = p.env === 'indoor' ? 'in' : 'outdoors in';
-  return `Place this ${cls} on ${who}, ${action}, ${where} ${scene}. Lit by ${light}. ${frame}. ${HALF.has(o.cls) ? `${HALF_GUARD} ` : ''}${GUARD}`;
+  return `Place this ${cls} on ${who}, ${action}, ${where} ${scene}. Lit by ${light}. ${frame}. ${style}${HALF.has(o.cls) ? `${HALF_GUARD} ` : ''}${GUARD}`;
 }
 
 // ── Real sample photos (public/effect-photos) ──
@@ -1061,6 +1091,7 @@ export function composeBenchPrompt(o: {
   age: BenchAge;
   light?: BenchLight;
   shot?: BenchShot;
+  style?: PhotoStyleId;
 }): string {
   const { aud, senior } = audFor(o.gender, o.age);
   const shot = o.shot ?? 'full';
@@ -1079,5 +1110,5 @@ export function composeBenchPrompt(o: {
     group: SCENE[o.scene][2],
     combo: false,
   };
-  return composePrompt(preset, { cls: o.cls, aud, senior });
+  return composePrompt(preset, { cls: o.cls, aud, senior, style: o.style });
 }

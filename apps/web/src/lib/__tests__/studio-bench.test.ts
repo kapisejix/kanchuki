@@ -98,6 +98,15 @@ describe('bench light + shot', () => {
     const p = composeBenchPrompt({ ...base, cls: 'kurti', shot: 'full' });
     expect(p).toContain('waist-up');
   });
+  it('adds the photography-style clause before the preservation guard', () => {
+    const p = composeBenchPrompt({ ...base, cls: 'suit', style: 'ecommerce' });
+    expect(p).toContain('E-commerce photography');
+    expect(p.indexOf('E-commerce photography')).toBeLessThan(p.indexOf('100% preserved'));
+  });
+  it('leaves the prompt unchanged when no style is chosen', () => {
+    const p = composeBenchPrompt({ ...base, cls: 'suit' });
+    expect(p).not.toContain('photography:');
+  });
 });
 
 describe('engine cost estimate', () => {

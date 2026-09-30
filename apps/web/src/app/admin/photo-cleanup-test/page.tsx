@@ -17,6 +17,7 @@ import {
   BENCH_AGES,
   BENCH_GENDERS,
   BENCH_LIGHTS,
+  BENCH_PHOTO_STYLES,
   BENCH_SCENES,
   BENCH_SHOTS,
   type BenchAge,
@@ -28,6 +29,8 @@ import {
   type Cls,
   FRAME,
   LIGHT,
+  PHOTO_STYLE,
+  type PhotoStyleId,
   POSE,
   type SceneId,
   audFor,
@@ -285,6 +288,8 @@ export default function PhotoCleanupTestPage() {
   const [benchScene, setBenchScene] = useState<SceneId>('white_studio');
   const [benchLight, setBenchLight] = useState<BenchLight>('soft');
   const [benchShot, setBenchShot] = useState<BenchShot>('full');
+  // '' = no style clause (the prompt is exactly as before)
+  const [benchStyle, setBenchStyle] = useState<PhotoStyleId | ''>('');
   const [benchGender, setBenchGender] = useState<BenchGender>('female');
   const [benchAge, setBenchAge] = useState<BenchAge>('adult');
   // 'auto' → one random pick per batch, shared by every engine so results compare.
@@ -345,6 +350,7 @@ export default function PhotoCleanupTestPage() {
       age: benchAge,
       light: benchLight,
       shot: benchShot,
+      style: benchStyle || undefined,
     });
 
   // Effects catalog → bench: load the sample photo as the product photo and fill
@@ -416,7 +422,9 @@ export default function PhotoCleanupTestPage() {
           gender: benchGender,
           age: benchAge,
           pose: POSE[pose][0],
-          photography: FRAME[benchShot][0],
+          photography: benchStyle
+            ? `${FRAME[benchShot][0]} · ${PHOTO_STYLE[benchStyle][0]}`
+            : FRAME[benchShot][0],
           prompt,
           ranAt: new Date().toISOString(),
         };
@@ -933,7 +941,7 @@ export default function PhotoCleanupTestPage() {
           </div>
           <div className="flex flex-col gap-1">
             <label htmlFor="bench-shot" className="text-xs text-gray-500">
-              Photography
+              Product view
             </label>
             <select
               id="bench-shot"
@@ -944,6 +952,24 @@ export default function PhotoCleanupTestPage() {
               {BENCH_SHOTS.map((k) => (
                 <option key={k} value={k}>
                   {FRAME[k][0]}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label htmlFor="bench-style" className="text-xs text-gray-500">
+              Photography style
+            </label>
+            <select
+              id="bench-style"
+              value={benchStyle}
+              onChange={(e) => setBenchStyle(e.target.value as PhotoStyleId | '')}
+              className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2"
+            >
+              <option value="">None (default)</option>
+              {BENCH_PHOTO_STYLES.map((k) => (
+                <option key={k} value={k}>
+                  {PHOTO_STYLE[k][0]}
                 </option>
               ))}
             </select>
