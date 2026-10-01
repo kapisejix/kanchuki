@@ -289,7 +289,11 @@ export const adminPhotoCleanupRoutes: FastifyPluginAsync = async (server) => {
       humanImageUrl: body.model_image_url,
       product,
       inputHasPerson,
-      promptOverride: directed?.prompt,
+      // Product Only styles (tab PRODUCT + free-text prompt) go out verbatim: the
+      // scene guard / colour clause that buildStudioPrompt prepends contradicts a
+      // prompt that replaces the original display (matrix §14.2). Single-shot engines only.
+      promptOverride:
+        directed?.prompt ?? (body.tab === 'PRODUCT' && body.prompt ? body.prompt : undefined),
       // A bench run must show the engine it names, not a Kontext fallback.
       strict: true,
     });

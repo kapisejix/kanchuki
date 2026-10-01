@@ -944,17 +944,29 @@ Strict product protection: do not redesign, recolor, simplify, stretch, shorten,
     id: 'PS-03',
     label: 'Luxury Studio Product',
     light: 'Softbox',
-    prompt: `Create a premium luxury fashion product photograph from the uploaded garment image using a hollow/invisible mannequin presentation. Preserve the garment’s exact original identity, including color, fabric, print, embroidery, neckline, sleeves, proportions, texture, stitching, borders, length, and every visible design detail.
-Present the garment naturally on a hollow mannequin with no visible head, face, skin, or mannequin features, positioned on an elegant pedestal inside a sophisticated luxury studio with a warm gold architectural arch in the background. Use softbox lighting with warm refined illumination, subtle highlights, realistic fabric shadows, dimensional depth, and premium fashion-commerce composition.
-Strict garment protection: do not redesign, recolor, simplify, stretch, shorten, distort, replace, add, remove, duplicate, or alter any garment detail. Only change the presentation, environment, and lighting. Photorealistic, sharp, luxurious, high-end commercial product photography.`,
+    prompt: `Replace the existing product presentation completely while preserving the uploaded garment itself exactly.
+
+Remove the original hanger, person, model, mannequin, or existing display method. Re-present the garment as a premium product display on a true headless torso dress form positioned on an elegant pedestal. The dress form has no head, face, ears, hair, skin, facial features, or human head shape; only the torso, shoulders and short neck/collar area are visible. This is a product display, not clothing worn by a person.
+
+Place the garment inside a sophisticated luxury fashion studio featuring a warm gold architectural arch in the background and an elegant premium pedestal beneath the garment. Use refined warm softbox lighting with controlled highlights, realistic fabric shadows, dimensional depth and premium commercial composition. Show the complete garment in a centered, full-length, front-facing view with realistic fabric drape, accurate proportions, crisp textile detail and photorealistic high-end fashion-commerce quality.
+
+STRICT GARMENT PROTECTION: Preserve the uploaded garment exactly as shown, including its original color, fabric, print, embroidery, motifs, neckline, sleeves, borders, length, texture, stitching, proportions, construction, dupatta and every visible design detail. Do not redesign, recolor, simplify, stretch, shorten, reshape, distort, replace, add, remove, duplicate or invent any garment detail.
+
+Change only the product presentation, environment, composition, pedestal and lighting.`,
   },
   {
     id: 'PS-04',
     label: 'Editorial Studio Product',
     light: 'Natural Light',
-    prompt: `Create a premium editorial product photograph of the uploaded garment on a hollow/headless mannequin, preserving the product exactly as provided. Place it in a sophisticated grey editorial studio with a textured grey wall, clean light floor, minimal architectural styling, and elegant white decorative vases on simple pedestals.
-Use natural window light entering from one side, creating distinct soft diagonal window shadows across the wall and floor, with warm daylight highlights and gentle natural contrast. Full-length front-facing composition, centered product, realistic fabric drape and texture, refined fashion-editorial styling, photorealistic commercial quality.
-Strict product protection: preserve the garment's exact color, embroidery, print, motifs, neckline, sleeves, borders, fabric texture, proportions, construction, dupatta and all visible details. Do not redesign, recolor, simplify, stretch, shorten, distort, replace, duplicate or remove any product detail.`,
+    prompt: `Replace the existing product presentation completely while preserving the uploaded garment itself exactly.
+
+Remove the original hanger, person, model, mannequin, or existing display method. Re-present the garment as a premium product display on a true headless torso dress form. The dress form has no head, face, ears, hair, skin, facial features, or human head shape; only the torso, shoulders and short neck/collar area are visible. This is a product display, not clothing worn by a person.
+
+Place the garment in a sophisticated grey editorial studio with a textured grey wall, clean light floor, minimal architectural styling and elegant white decorative vases on simple pedestals. Use natural side window light creating distinct soft diagonal window shadows across the wall and floor, warm daylight highlights and gentle natural contrast. Show the complete garment in a centered, full-length, front-facing composition with realistic fabric drape, accurate proportions, detailed textile texture, refined editorial styling and premium photorealistic commercial quality.
+
+STRICT GARMENT PROTECTION: Preserve the uploaded garment exactly as shown, including its original color, fabric, print, embroidery, motifs, neckline, sleeves, borders, length, texture, stitching, proportions, construction, dupatta and every visible design detail. Do not redesign, recolor, simplify, stretch, shorten, reshape, distort, replace, add, remove, duplicate or invent any garment detail.
+
+Change only the product presentation, environment, composition and lighting.`,
   },
 ] as const;
 export type ProductStyleId = (typeof PRODUCT_STYLES)[number]['id'];
