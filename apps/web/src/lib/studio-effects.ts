@@ -918,6 +918,47 @@ export const PHOTO_STYLE = {
 export type PhotoStyleId = keyof typeof PHOTO_STYLE;
 export const BENCH_PHOTO_STYLES = Object.keys(PHOTO_STYLE) as PhotoStyleId[];
 
+/**
+ * Product Only base styles (option matrix §14.2) — owner-written prompts, sent
+ * verbatim on the PRODUCT tab. Each carries its own lighting; the lighting is
+ * not a separate choice. Add PS-05…15 here as the owner supplies them.
+ */
+export const PRODUCT_STYLES = [
+  {
+    id: 'PS-01',
+    label: 'White Background Studio',
+    light: 'High Key',
+    prompt: `Create a high-key, premium e-commerce studio product image using the uploaded garment as the exact source reference. Preserve the garment’s exact color, fabric, pattern, embroidery, neckline, sleeves, proportions, construction, texture, and every visible design detail without redesigning or altering anything.
+Present the garment as a clean full-length product display on a simple faceless white mannequin, centered and upright against a pure seamless white background. Use bright high-key studio lighting, soft diffused illumination, minimal natural grounding shadow, clean edges, even exposure, crisp textile detail, realistic fabric texture, and marketplace-safe commercial photography. Keep the composition uncluttered and professional, with the complete garment fully visible from top to bottom.
+Strict product protection: do not recolor, redesign, simplify, replace, stretch, shorten, distort, add, remove, duplicate, or change any garment detail. The uploaded product must remain visually identical to the source while only the presentation, background, and lighting are transformed.`,
+  },
+  {
+    id: 'PS-02',
+    label: 'Grey Background Studio',
+    light: 'Softbox',
+    prompt: `Create a premium commercial product photograph from the uploaded garment image. Preserve the exact product identity and construction, including the original color, fabric, print, embroidery, neckline, sleeves, proportions, texture, stitching, borders, accessories, and every visible design detail.
+Present the product alone with no model, no mannequin, no hanger, and no props, neatly arranged as a clean full-product display against a plain seamless medium-grey studio background. Use softbox lighting with soft, even illumination, subtle controlled shadows, realistic fabric texture, crisp product edges, balanced exposure, and professional e-commerce composition.
+Strict product protection: do not redesign, recolor, simplify, stretch, shorten, distort, replace, add, remove, duplicate, or alter any garment detail. Only change the presentation, background, and lighting. Make it photorealistic, clean, premium, and marketplace-ready.`,
+  },
+  {
+    id: 'PS-03',
+    label: 'Luxury Studio Product',
+    light: 'Softbox',
+    prompt: `Create a premium luxury fashion product photograph from the uploaded garment image using a hollow/invisible mannequin presentation. Preserve the garment’s exact original identity, including color, fabric, print, embroidery, neckline, sleeves, proportions, texture, stitching, borders, length, and every visible design detail.
+Present the garment naturally on a hollow mannequin with no visible head, face, skin, or mannequin features, positioned on an elegant pedestal inside a sophisticated luxury studio with a warm gold architectural arch in the background. Use softbox lighting with warm refined illumination, subtle highlights, realistic fabric shadows, dimensional depth, and premium fashion-commerce composition.
+Strict garment protection: do not redesign, recolor, simplify, stretch, shorten, distort, replace, add, remove, duplicate, or alter any garment detail. Only change the presentation, environment, and lighting. Photorealistic, sharp, luxurious, high-end commercial product photography.`,
+  },
+  {
+    id: 'PS-04',
+    label: 'Editorial Studio Product',
+    light: 'Natural Light',
+    prompt: `Create a premium editorial product photograph of the uploaded garment on a hollow/headless mannequin, preserving the product exactly as provided. Place it in a sophisticated grey editorial studio with a textured grey wall, clean light floor, minimal architectural styling, and elegant white decorative vases on simple pedestals.
+Use natural window light entering from one side, creating distinct soft diagonal window shadows across the wall and floor, with warm daylight highlights and gentle natural contrast. Full-length front-facing composition, centered product, realistic fabric drape and texture, refined fashion-editorial styling, photorealistic commercial quality.
+Strict product protection: preserve the garment's exact color, embroidery, print, motifs, neckline, sleeves, borders, fabric texture, proportions, construction, dupatta and all visible details. Do not redesign, recolor, simplify, stretch, shorten, distort, replace, duplicate or remove any product detail.`,
+  },
+] as const;
+export type ProductStyleId = (typeof PRODUCT_STYLES)[number]['id'];
+
 export interface ComposeOpts {
   cls: Cls;
   aud: Aud;

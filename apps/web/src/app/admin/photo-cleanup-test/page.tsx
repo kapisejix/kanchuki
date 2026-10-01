@@ -32,6 +32,8 @@ import {
   PHOTO_STYLE,
   type PhotoStyleId,
   POSE,
+  PRODUCT_STYLES,
+  type ProductStyleId,
   type SceneId,
   audFor,
   benchPoseChoices,
@@ -290,6 +292,9 @@ export default function PhotoCleanupTestPage() {
   const [benchShot, setBenchShot] = useState<BenchShot>('full');
   // '' = no style clause (the prompt is exactly as before)
   const [benchStyle, setBenchStyle] = useState<PhotoStyleId | ''>('');
+  // '' = model scene (above). A Product Only style (PS-##) replaces the composed
+  // prompt with the owner's verbatim one and runs on the PRODUCT tab (no person).
+  const [benchProductStyle, setBenchProductStyle] = useState<ProductStyleId | ''>('');
   const [benchGender, setBenchGender] = useState<BenchGender>('female');
   const [benchAge, setBenchAge] = useState<BenchAge>('adult');
   // 'auto' → one random pick per batch, shared by every engine so results compare.
@@ -340,8 +345,10 @@ export default function PhotoCleanupTestPage() {
   const benchTotalInr = benchEngines.reduce((s, e) => s + (studioEngineCost(e)?.inr ?? 0), 0);
   const benchUnpriced = benchEngines.filter((e) => studioEngineCost(e) === null).length;
   const benchHasTwoStep = benchEngines.some((e) => e === 'vton_kontext' || e === 'vton_gemini');
+  const productStyle = PRODUCT_STYLES.find((s) => s.id === benchProductStyle);
   const buildBenchPrompt = (pose: BenchPose): string =>
     studioPrompt.trim() ||
+    productStyle?.prompt ||
     composeBenchPrompt({
       scene: benchScene,
       pose,
@@ -405,7 +412,9 @@ export default function PhotoCleanupTestPage() {
     // One pose + prompt for the whole batch: the models are compared like for like.
     const pose = resolveBenchPose();
     const prompt = buildBenchPrompt(pose);
-    const sceneLabel = BENCH_SCENES.find((s) => s.id === benchScene)?.label ?? benchScene;
+    const sceneLabel = productStyle
+      ? `${productStyle.id} ${productStyle.label}`
+      : (BENCH_SCENES.find((s) => s.id === benchScene)?.label ?? benchScene);
     try {
       const productUrl = await uploadToR2(productFile);
       const runOne = async (engine: StudioEngine): Promise<BenchRow> => {
@@ -434,6 +443,7 @@ export default function PhotoCleanupTestPage() {
             method: 'POST',
             body: JSON.stringify({
               ...benchRequestFields(productUrl, prompt),
+              ...(productStyle ? { tab: 'PRODUCT' as const } : {}),
               engine,
               length_cm: Number.parseInt(studioLengthCm, 10) || undefined,
               model_height_cm: Number.parseInt(studioModelHeightCm, 10) || undefined,
@@ -901,6 +911,25 @@ export default function PhotoCleanupTestPage() {
           </div>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+          <div className="flex flex-col gap-1 sm:col-span-4">
+            <label htmlFor="bench-product-style" className="text-xs text-gray-500">
+              Product Only style (owner prompt, sent verbatim — overrides the scene / light / view /
+              gender / age / pose below)
+            </label>
+            <select
+              id="bench-product-style"
+              value={benchProductStyle}
+              onChange={(e) => setBenchProductStyle(e.target.value as ProductStyleId | '')}
+              className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2"
+            >
+              <option value="">None — use a model scene</option>
+              {PRODUCT_STYLES.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.id} · {s.label} · {s.light}
+                </option>
+              ))}
+            </select>
+          </div>
           <div className="flex flex-col gap-1">
             <label htmlFor="bench-scene" className="text-xs text-gray-500">
               Scene (Indoor)

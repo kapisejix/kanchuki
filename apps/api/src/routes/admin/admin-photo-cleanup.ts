@@ -232,6 +232,9 @@ export const adminPhotoCleanupRoutes: FastifyPluginAsync = async (server) => {
         // wearing the garment (false = hanger / flat-lay → placement wording
         // instead of "edit only the background").
         input_has_person: z.boolean().optional(),
+        // Tab for a free-text `prompt` (a slug carries its own). PRODUCT = no
+        // person injected — the Product Only styles (matrix §14.2).
+        tab: z.enum(['PRODUCT', 'MODEL']).optional(),
         // Run the prompt director (vision pass) and send ITS prompt instead.
         // Single-shot engines only — the vton_* pair builds its own prompts.
         director: z.boolean().default(false),
@@ -250,7 +253,7 @@ export const adminPhotoCleanupRoutes: FastifyPluginAsync = async (server) => {
     // garment-identity + colour clauses the retailer path does.
     const product = studioProductFromBench(body);
 
-    const tab = style?.tab ?? 'MODEL';
+    const tab = style?.tab ?? body.tab ?? 'MODEL';
     // The guard above guarantees at least one of the two is present; the
     // `?? ''` only satisfies the type checker.
     const prompt = body.prompt ?? style?.prompt ?? '';
