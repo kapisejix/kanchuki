@@ -1146,11 +1146,13 @@ export default function PhotoCleanupTestPage() {
               );
             })}
           </div>
-          <p className="text-[10px] text-gray-400">
-            Estimates from the price sheet in <code>docs/ai-studio/AI Cost Comparison.html</code> at ₹
-            {BENCH_USD_TO_INR}/USD. Real spend is billed by Fal / Google, and a two-step model is
-            several calls.
-          </p>
+          {!rawProduct && (
+            <p className="text-[10px] text-gray-400">
+              Estimates from the price sheet in <code>docs/ai-studio/AI Cost Comparison.html</code> at ₹
+              {BENCH_USD_TO_INR}/USD. Real spend is billed by Fal / Google, and a two-step model is
+              several calls.
+            </p>
+          )}
         </div>
         {benchHasTwoStep && (
           <div className="flex flex-col gap-1">
@@ -1166,6 +1168,7 @@ export default function PhotoCleanupTestPage() {
             />
           </div>
         )}
+        {!rawProduct && (<>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {(
             [
@@ -1216,7 +1219,9 @@ export default function PhotoCleanupTestPage() {
           garment type is never named, which is how a salwar gets rendered as a dhoti. Real
           products fill these from the AI tagger, so fill them to test what production sends.
         </p>
+        </>)}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {!rawProduct && (
           <div className="flex flex-col gap-1">
             <label htmlFor="studio-length" className="text-xs text-gray-500">
               Garment length, shoulder→hem (cm)
@@ -1245,6 +1250,7 @@ export default function PhotoCleanupTestPage() {
               className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2"
             />
           </div>
+          )}
           <label className="flex items-start gap-2 text-xs text-gray-600 sm:col-span-1">
             <input
               type="checkbox"
