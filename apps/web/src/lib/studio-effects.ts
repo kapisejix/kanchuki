@@ -968,6 +968,19 @@ STRICT GARMENT PROTECTION: Preserve the uploaded garment exactly as shown, inclu
 
 Change only the product presentation, environment, composition and lighting.`,
   },
+  // PS-05…15: owner prompts not written yet (empty = paste into the custom
+  // prompt box on the bench). Lights are the proposed defaults, §14.2.
+  { id: 'PS-05', label: 'Color Background', light: 'Softbox', prompt: '' },
+  { id: 'PS-06', label: 'Premium Product Shot', light: 'Natural Light', prompt: '' },
+  { id: 'PS-07', label: 'Flat Lay', light: 'Daylight', prompt: '' },
+  { id: 'PS-08', label: 'Folded Boutique Fold', light: 'Natural Light', prompt: '' },
+  { id: 'PS-09', label: 'Hanger Boutique', light: 'Natural Light', prompt: '' },
+  { id: 'PS-10', label: 'Boutique Fold', light: 'Natural Light', prompt: '' },
+  { id: 'PS-11', label: 'Table Display', light: 'Natural Light', prompt: '' },
+  { id: 'PS-12', label: 'Pedestal Display', light: 'Softbox', prompt: '' },
+  { id: 'PS-13', label: 'Product Commercial Shot', light: 'High Key', prompt: '' },
+  { id: 'PS-14', label: 'Creative Display Product Composition', light: 'Softbox', prompt: '' },
+  { id: 'PS-15', label: 'Social Media Commerce', light: 'High Key', prompt: '' },
 ] as const;
 export type ProductStyleId = (typeof PRODUCT_STYLES)[number]['id'];
 
