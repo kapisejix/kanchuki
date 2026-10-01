@@ -34,14 +34,14 @@ export default function WhatsAppCloudConfigScreen() {
   const [testResult, setTestResult] = useState<{ connected: boolean; verified_name?: string } | null>(null)
   const [error, setError] = useState('')
 
-  const canSave = (phoneNumberId.trim() || displayNumber.trim()) && !saving
+  const canSave = !!phoneNumberId.trim() && !!accessToken.trim() && !saving
 
   const saveMutation = useMutation({
     mutationFn: () =>
       growthApi.configureWhatsAppCloud({
-        phone_number_id: phoneNumberId.trim() || 'demo_phone_id',
-        waba_id: wabaId.trim() || 'demo_waba_id',
-        access_token: accessToken.trim() || 'demo_token',
+        phone_number_id: phoneNumberId.trim(),
+        waba_id: wabaId.trim(),
+        access_token: accessToken.trim(),
         display_number: displayNumber.trim() || undefined,
       }),
     onSuccess: () => {
@@ -107,6 +107,14 @@ export default function WhatsAppCloudConfigScreen() {
           Connect your Meta WhatsApp Cloud API credentials to enable verified green-tick broadcasts,
           catalog interactive buttons, and automated VIP order notifications.
         </Text>
+
+        <View className="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 mb-4">
+          <Text className="text-xs text-amber-800 leading-relaxed font-medium">
+            Messages sent through the Cloud API are billed by Meta to your own WhatsApp Business
+            account, per template (marketing ₹1.09, utility ₹0.145). Keep a payment method active in
+            Meta Business Manager. Sharing from Kanchuki with the normal WhatsApp button stays free.
+          </Text>
+        </View>
 
         <AnimatedPressable
           onPress={() => Linking.openURL('https://developers.facebook.com/docs/whatsapp/cloud-api')}
