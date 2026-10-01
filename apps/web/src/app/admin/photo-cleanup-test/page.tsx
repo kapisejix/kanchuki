@@ -345,6 +345,12 @@ export default function PhotoCleanupTestPage() {
   const benchTotalInr = benchEngines.reduce((s, e) => s + (studioEngineCost(e)?.inr ?? 0), 0);
   const benchUnpriced = benchEngines.filter((e) => studioEngineCost(e) === null).length;
   const benchHasTwoStep = benchEngines.some((e) => e === 'vton_kontext' || e === 'vton_gemini');
+  // The two-step vton_* engines build their own prompts and ignore a Product Only
+  // style's verbatim prompt, so they are not offered while one is selected.
+  const isTwoStepEngine = (e: StudioEngine) => e === 'vton_kontext' || e === 'vton_gemini';
+  const shownEngines = benchProductStyle
+    ? STUDIO_ENGINES.filter((e) => !isTwoStepEngine(e))
+    : [...STUDIO_ENGINES];
   const productStyle = PRODUCT_STYLES.find((s) => s.id === benchProductStyle);
   const buildBenchPrompt = (pose: BenchPose): string =>
     studioPrompt.trim() ||
@@ -919,7 +925,11 @@ export default function PhotoCleanupTestPage() {
             <select
               id="bench-product-style"
               value={benchProductStyle}
-              onChange={(e) => setBenchProductStyle(e.target.value as ProductStyleId | '')}
+              onChange={(e) => {
+                const v = e.target.value as ProductStyleId | '';
+                setBenchProductStyle(v);
+                if (v) setBenchEngines((prev) => prev.filter((x) => !isTwoStepEngine(x)));
+              }}
               className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2"
             >
               <option value="">None — use a model scene</option>
@@ -1073,7 +1083,7 @@ export default function PhotoCleanupTestPage() {
             <div className="flex gap-2 text-[10px]">
               <button
                 type="button"
-                onClick={() => setBenchEngines([...STUDIO_ENGINES])}
+                onClick={() => setBenchEngines(shownEngines)}
                 className="text-blue-600 hover:underline"
               >
                 All
@@ -1088,7 +1098,7 @@ export default function PhotoCleanupTestPage() {
             </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5">
-            {STUDIO_ENGINES.map((e) => {
+            {shownEngines.map((e) => {
               const info = STUDIO_ENGINE_INFO[e];
               const cost = studioEngineCost(e);
               return (
