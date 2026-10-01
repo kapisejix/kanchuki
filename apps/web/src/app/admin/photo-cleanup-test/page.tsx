@@ -295,6 +295,9 @@ export default function PhotoCleanupTestPage() {
   // '' = model scene (above). A Product Only style (PS-##) replaces the composed
   // prompt with the owner's verbatim one and runs on the PRODUCT tab (no person).
   const [benchProductStyle, setBenchProductStyle] = useState<ProductStyleId | ''>('');
+  // Product Only mode: the custom prompt box is sent exactly as typed on the
+  // PRODUCT tab (no person, no guard). A PS-## style turns it on and fills the box.
+  const [rawProduct, setRawProduct] = useState(false);
   const [benchGender, setBenchGender] = useState<BenchGender>('female');
   const [benchAge, setBenchAge] = useState<BenchAge>('adult');
   // 'auto' → one random pick per batch, shared by every engine so results compare.
@@ -348,7 +351,7 @@ export default function PhotoCleanupTestPage() {
   // The two-step vton_* engines build their own prompts and ignore a Product Only
   // style's verbatim prompt, so they are not offered while one is selected.
   const isTwoStepEngine = (e: StudioEngine) => e === 'vton_kontext' || e === 'vton_gemini';
-  const shownEngines = benchProductStyle
+  const shownEngines = rawProduct
     ? STUDIO_ENGINES.filter((e) => !isTwoStepEngine(e))
     : [...STUDIO_ENGINES];
   const productStyle = PRODUCT_STYLES.find((s) => s.id === benchProductStyle);
@@ -418,8 +421,15 @@ export default function PhotoCleanupTestPage() {
     // One pose + prompt for the whole batch: the models are compared like for like.
     const pose = resolveBenchPose();
     const prompt = buildBenchPrompt(pose);
-    const sceneLabel = productStyle
-      ? `${productStyle.id} ${productStyle.label}`
+    if (rawProduct && !prompt.trim()) {
+      setError('Product Only needs a prompt — pick a PS style or type one in the custom prompt box.');
+      setBenchBusy(false);
+      return;
+    }
+    const sceneLabel = rawProduct
+      ? productStyle
+        ? `${productStyle.id} ${productStyle.label}`
+        : 'Custom (Product Only)'
       : (BENCH_SCENES.find((s) => s.id === benchScene)?.label ?? benchScene);
     try {
       const productUrl = await uploadToR2(productFile);
@@ -449,7 +459,7 @@ export default function PhotoCleanupTestPage() {
             method: 'POST',
             body: JSON.stringify({
               ...benchRequestFields(productUrl, prompt),
-              ...(productStyle ? { tab: 'PRODUCT' as const } : {}),
+              ...(rawProduct ? { tab: 'PRODUCT' as const } : {}),
               engine,
               length_cm: Number.parseInt(studioLengthCm, 10) || undefined,
               model_height_cm: Number.parseInt(studioModelHeightCm, 10) || undefined,
@@ -928,7 +938,11 @@ export default function PhotoCleanupTestPage() {
               onChange={(e) => {
                 const v = e.target.value as ProductStyleId | '';
                 setBenchProductStyle(v);
-                if (v) setBenchEngines((prev) => prev.filter((x) => !isTwoStepEngine(x)));
+                if (v) {
+                  setStudioPrompt(PRODUCT_STYLES.find((s) => s.id === v)?.prompt ?? '');
+                  setRawProduct(true);
+                  setBenchEngines((prev) => prev.filter((x) => !isTwoStepEngine(x)));
+                }
               }}
               className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2"
             >
@@ -1244,6 +1258,23 @@ export default function PhotoCleanupTestPage() {
             </span>
           </label>
         </div>
+        <label className="flex items-start gap-2 text-xs text-gray-700">
+          <input
+            type="checkbox"
+            checked={rawProduct}
+            onChange={(e) => {
+              setRawProduct(e.target.checked);
+              if (e.target.checked) {
+                setBenchEngines((prev) => prev.filter((x) => !isTwoStepEngine(x)));
+              }
+            }}
+            className="mt-0.5"
+          />
+          <span>
+            Product Only — send the custom prompt below exactly as typed (no person, no guard
+            text). Picking a PS style fills the box so you can edit it. Single-shot engines only.
+          </span>
+        </label>
         <div className="flex flex-col gap-1">
           <label htmlFor="studio-prompt" className="text-xs text-gray-500">
             Custom prompt (optional — replaces the scene / gender / age / pose prompt; paste a formula from{' '}
