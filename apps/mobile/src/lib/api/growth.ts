@@ -1387,7 +1387,7 @@ export const growthApi = {
     request<{ data: { configured: boolean } }>('/v1/retailers/me/integrations/whatsapp', {
       method: 'POST',
       body: JSON.stringify(payload),
-    }).catch(() => ({ data: { configured: true } })),
+    }),
 
   disconnectWhatsAppCloud: () =>
     request<void>('/v1/retailers/me/integrations/whatsapp', { method: 'DELETE' }).catch(() => undefined),
