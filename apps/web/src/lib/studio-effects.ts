@@ -952,9 +952,15 @@ Strict garment protection: do not redesign, recolor, simplify, stretch, shorten,
     id: 'PS-04',
     label: 'Editorial Studio Product',
     light: 'Natural Light',
-    prompt: `Create a premium editorial product photograph of the uploaded garment on a hollow/headless mannequin, preserving the product exactly as provided. Place it in a sophisticated grey editorial studio with a textured grey wall, clean light floor, minimal architectural styling, and elegant white decorative vases on simple pedestals.
-Use natural window light entering from one side, creating distinct soft diagonal window shadows across the wall and floor, with warm daylight highlights and gentle natural contrast. Full-length front-facing composition, centered product, realistic fabric drape and texture, refined fashion-editorial styling, photorealistic commercial quality.
-Strict product protection: preserve the garment's exact color, embroidery, print, motifs, neckline, sleeves, borders, fabric texture, proportions, construction, dupatta and all visible details. Do not redesign, recolor, simplify, stretch, shorten, distort, replace, duplicate or remove any product detail.`,
+    prompt: `Replace the existing product presentation completely while preserving the uploaded garment itself exactly.
+
+Remove the original hanger, person, model, mannequin, or any existing display method. Re-present the uploaded garment as a product display on a true headless torso dress form. The dress form must have no head, face, ears, hair, facial features, or human head shape; only the torso, shoulders and short neck/collar area are visible. This is a product presentation, not clothing worn by a person.
+
+Place the garment in a sophisticated grey editorial studio with a textured grey wall, clean light floor, minimal architectural styling, and elegant white decorative vases on simple pedestals. Use natural side window light with distinct soft diagonal window shadows across the wall and floor, warm daylight highlights, and gentle natural contrast. Create a centered, full-length, front-facing product composition with realistic fabric drape, accurate proportions, detailed textile texture, refined editorial styling, and premium photorealistic commercial quality.
+
+STRICT PRODUCT PROTECTION: Preserve the uploaded garment exactly as shown, including its original color, embroidery, print, motifs, neckline, sleeves, borders, fabric texture, stitching, proportions, construction, dupatta and every visible design detail. Do not redesign, recolor, simplify, stretch, shorten, reshape, distort, replace, add, remove, duplicate, or invent any garment detail.
+
+Change only the product presentation, environment, composition, and lighting. Do not preserve or recreate the original hanger, person, model, or mannequin presentation.`,
   },
 ] as const;
 export type ProductStyleId = (typeof PRODUCT_STYLES)[number]['id'];
