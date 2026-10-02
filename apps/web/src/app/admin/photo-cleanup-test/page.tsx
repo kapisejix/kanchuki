@@ -32,6 +32,8 @@ import {
   PHOTO_STYLE,
   type PhotoStyleId,
   POSE,
+  MODEL_STYLES,
+  type ModelStyleId,
   PRODUCT_STYLES,
   type ProductStyleId,
   type SceneId,
@@ -295,6 +297,9 @@ export default function PhotoCleanupTestPage() {
   // '' = model scene (above). A Product Only style (PS-##) replaces the composed
   // prompt with the owner's verbatim one and runs on the PRODUCT tab (no person).
   const [benchProductStyle, setBenchProductStyle] = useState<ProductStyleId | ''>('');
+  // Model Only style (MI-## indoor / MO-## outdoor): fills the custom prompt box;
+  // a person is generated, so Product Only mode is switched off.
+  const [benchModelStyle, setBenchModelStyle] = useState<ModelStyleId | ''>('');
   // Product Only mode: the custom prompt box is sent exactly as typed on the
   // PRODUCT tab (no person, no guard). A PS-## style turns it on and fills the box.
   const [rawProduct, setRawProduct] = useState(false);
@@ -939,6 +944,7 @@ export default function PhotoCleanupTestPage() {
                 const v = e.target.value as ProductStyleId | '';
                 setBenchProductStyle(v);
                 if (v) {
+                  setBenchModelStyle('');
                   setStudioPrompt(PRODUCT_STYLES.find((s) => s.id === v)?.prompt ?? '');
                   setRawProduct(true);
                   setBenchEngines((prev) => prev.filter((x) => !isTwoStepEngine(x)));
@@ -952,6 +958,42 @@ export default function PhotoCleanupTestPage() {
                   {s.id} · {s.label} · {s.light}
                 </option>
               ))}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1 sm:col-span-4">
+            <label htmlFor="bench-model-style" className="text-xs text-gray-500">
+              Model Only style (Indoor MI / Outdoor MO — fills the custom prompt box with the
+              style prompt; paste the prompt there while it is empty)
+            </label>
+            <select
+              id="bench-model-style"
+              value={benchModelStyle}
+              onChange={(e) => {
+                const v = e.target.value as ModelStyleId | '';
+                setBenchModelStyle(v);
+                if (v) {
+                  setBenchProductStyle('');
+                  setRawProduct(false);
+                  setStudioPrompt(MODEL_STYLES.find((s) => s.id === v)?.prompt ?? '');
+                }
+              }}
+              className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2"
+            >
+              <option value="">None</option>
+              <optgroup label="Indoor">
+                {MODEL_STYLES.filter((s) => s.id.startsWith('MI')).map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.id} · {s.label} · {s.light}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="Outdoor">
+                {MODEL_STYLES.filter((s) => s.id.startsWith('MO')).map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.id} · {s.label} · {s.light}
+                  </option>
+                ))}
+              </optgroup>
             </select>
           </div>
           <div className="flex flex-col gap-1">

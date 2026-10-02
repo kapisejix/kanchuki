@@ -984,6 +984,33 @@ Change only the product presentation, environment, composition and lighting.`,
 ] as const;
 export type ProductStyleId = (typeof PRODUCT_STYLES)[number]['id'];
 
+/**
+ * Model Only base styles (option matrix §14.3 indoor MI-##, §14.4 outdoor MO-##).
+ * Same shape as PRODUCT_STYLES; empty prompt = owner pastes it into the custom
+ * prompt box. Lights are the proposed defaults.
+ */
+export const MODEL_STYLES = [
+  { id: 'MI-01', label: 'Product Composition', light: 'Softbox', prompt: '' },
+  { id: 'MI-02', label: 'Courtyard', light: 'Daylight', prompt: '' },
+  { id: 'MI-03', label: 'Royal Interior', light: 'Natural Light', prompt: '' },
+  { id: 'MI-04', label: 'Boutique', light: 'Softbox', prompt: '' },
+  { id: 'MI-05', label: 'Shopping Mall', light: 'High Key', prompt: '' },
+  { id: 'MI-06', label: 'Fashion Gallery', light: 'Softbox', prompt: '' },
+  { id: 'MI-07', label: 'Editorial Product', light: 'Natural Light', prompt: '' },
+  { id: 'MI-08', label: 'Social Commerce', light: 'High Key', prompt: '' },
+  { id: 'MI-09', label: 'Penthouse', light: 'Natural Light', prompt: '' },
+  { id: 'MI-10', label: 'Grey Background Studio', light: 'Softbox', prompt: '' },
+  { id: 'MI-11', label: 'White Background Studio', light: 'High Key', prompt: '' },
+  { id: 'MO-01', label: 'Modern Street', light: 'Daylight', prompt: '' },
+  { id: 'MO-02', label: 'Cafe', light: 'Natural Light', prompt: '' },
+  { id: 'MO-03', label: 'Terrace', light: 'Daylight', prompt: '' },
+  { id: 'MO-04', label: 'Balcony', light: 'Natural Light', prompt: '' },
+  { id: 'MO-05', label: 'Beach', light: 'Daylight', prompt: '' },
+  { id: 'MO-06', label: 'Poolside', light: 'Daylight', prompt: '' },
+  { id: 'MO-07', label: 'Tropical Resort', light: 'Natural Light', prompt: '' },
+] as const;
+export type ModelStyleId = (typeof MODEL_STYLES)[number]['id'];
+
 export interface ComposeOpts {
   cls: Cls;
   aud: Aud;
