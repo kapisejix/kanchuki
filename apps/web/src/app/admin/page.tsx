@@ -20,6 +20,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import Link from 'next/link'
+import { ServerMemoryCard } from './components/ServerMemoryCard'
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
 
@@ -339,6 +340,11 @@ export default function AdminDashboard() {
               </div>
             </motion.div>
           )}
+
+          {/* API process memory (Super Admin only — hides itself on 403) */}
+          <motion.div variants={itemVariants}>
+            <ServerMemoryCard />
+          </motion.div>
 
           {/* Conversion funnel */}
           <motion.div variants={itemVariants}>

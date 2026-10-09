@@ -13,6 +13,7 @@ export { adminModerationRoutes } from './admin-moderation.js';
 export { adminAiRoutes } from './admin-ai.js';
 export { adminPhotoCleanupRoutes } from './admin-photo-cleanup.js';
 export { adminStorageRoutes } from './admin-storage.js';
+export { adminServerMemoryRoutes } from './admin-server-memory.js';
 export { adminCommissionRoutes } from './admin-commission.js';
 export { adminFestivalsRoutes } from './admin-festivals.js';
 export { adminHsnRulesRoutes } from './admin-hsn-rules.js';
