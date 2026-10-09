@@ -98,7 +98,7 @@ then commit `pnpm-lock.yaml`. My two attempts failed: one on an npm registry net
 | `watermark.ts` (+ `apps/api/src/lib/showcase-watermark.ts`) | Suits Designs watermark | **KEPT** |
 | `image-rotate.ts` | photo rotate | **REMOVED** (file + test + `POST /products/:id/photos/:photoId/rotate`) |
 | `detector.ts` crop / `getImageDimensions` / multi-item `detectItems` | crop each garment from a catalog photo | **REMOVED** |
-| `image-quality.ts` | best-shot ranking | **REMOVED** (file + test; it had no API caller — dead code) |
+| `image-quality.ts` | sharpness score, luminance, best-shot pick | **KEPT / RESTORED 2026-10-09** — I first deleted it believing it was dead code; it is NOT: the kept Pro cleanup route (`products-pro-cleanup.ts`) imports `pickSharpest`, `scoreSharpness`, `isDarkImage`. Removing it breaks the API build. Sharp is therefore used by compress, watermark **and** image-quality. Remove only together with the Pro cleanup path. |
 | `phash.ts` | duplicate detection | **REMOVED** (+ `flagDuplicates` in `catalog-import.ts`) |
 | `tagger.ts` `extractDominantColorFromBuffer` + `detectColor` | colour auto-fill | **REMOVED** (+ `POST /products/detect-color`) |
 

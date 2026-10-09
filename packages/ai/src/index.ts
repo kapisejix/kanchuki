@@ -5,6 +5,7 @@ export * from './r2.js';
 export * from './detector.js';
 export * from './campaign-assistant.js';
 export * from './safe-fetch.js';
+export * from './image-quality.js';
 export * from './image-compress.js';
 export * from './watermark.js';
 export * from './tryon.js';
