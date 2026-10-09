@@ -339,12 +339,6 @@ export default function ProductDetailScreen() {
           handleDownloadCurrentMedia={studio.handleDownloadCurrentMedia}
           deletingMedia={studio.deletingMedia}
           handleDeleteCurrentMedia={studio.handleDeleteCurrentMedia}
-          detectingColor={form.detectingColor}
-          handleDetectColor={form.handleDetectColor}
-          detectedColor={form.detectedColor}
-          setDetectedColor={form.setDetectedColor}
-          dirtyColorSetter={form.dirty(form.setEditedColor)}
-          colorDetectError={form.colorDetectError}
           goToPhoto={goToPhoto}
           handleProductVideoPress={studio.handleProductVideoPress}
           videoGenerating={studio.videoGenerating}
@@ -358,19 +352,9 @@ export default function ProductDetailScreen() {
           ProductVideoSlide={ProductVideoSlide}
         />
 
-        {/* Per-photo backdrop + shadow controls (remove/replace background,
-            grounding shadow) — opt-in, applied after upload */}
+        {/* Set as Main control */}
         <ProductPhotoControls
           currentPhoto={currentPhoto}
-          currentPhotoIsOriginal={currentPhotoIsOriginal}
-          currentPhotoIsVariant={currentPhotoIsVariant}
-          backgroundImages={studio.backgroundImages}
-          photoBackgrounds={studio.photoBackgrounds}
-          backgroundSaving={studio.backgroundSaving}
-          handleSetBackground={studio.handleSetBackground}
-          shadowOn={currentPhoto ? studio.shadowFor(currentPhoto.id) : false}
-          shadowSaving={studio.shadowSaving}
-          handleSetShadow={studio.handleSetShadow}
           handleSetPrimary={studio.handleSetPrimary}
           settingPrimaryId={studio.settingPrimaryId}
           primaryColor={primaryColor}

@@ -111,7 +111,7 @@ vi.mock('node:dns/promises', () => {
   return { lookup, default: { lookup } }
 })
 
-const { tagProductImages, detectColor } = await import('./tagger.js')
+const { tagProductImages } = await import('./tagger.js')
 const { __resetProviderHealth } = await import('./providers.js')
 
 // A real (if tiny) product image — 1×1 transparent PNG.
@@ -218,37 +218,5 @@ describe('e2e — seeded Llama vision fallback serves tagging + attribution', ()
       }),
     ])
     expect(result.category).toBe('Saree')
-  })
-
-  it('attributes AI_COLOR_DETECT to the Llama provider via detectColor', async () => {
-    // detectColor fetches the image by URL first (global fetch), then runs the
-    // vision ask through the OpenAI adapter. Gemini is skipped (no key), so the
-    // only fetch call is the image fetch — serve a real PNG response here.
-    mockGeminiFetch.mockResolvedValue({
-      ok: true,
-      headers: { get: () => 'image/png' },
-      arrayBuffer: async () => PRODUCT_IMG.buffer.slice(0, PRODUCT_IMG.length),
-    })
-    mockOpenAICreate.mockResolvedValue({
-      choices: [{ message: { content: 'Bottle Green' } }],
-    })
-
-    const used: unknown[] = []
-    const color = await detectColor('https://cdn.example.com/garment.png', {
-      onProviderUsed: (info) => used.push(info),
-    })
-
-    expect(color).toBe('Bottle Green')
-    expect(mockOpenAICreate).toHaveBeenCalledTimes(1)
-    // The one fetch call was the image download — Gemini was skipped (no key),
-    // otherwise the Gemini adapter would have hit the global fetch a second time.
-    expect(mockGeminiFetch).toHaveBeenCalledTimes(1)
-    expect(used).toEqual([
-      expect.objectContaining({
-        provider_id: 'seed-llama-90b',
-        model_name: 'meta/llama-3.2-90b-vision-instruct',
-        resource_type: 'AI_COLOR_DETECT',
-      }),
-    ])
   })
 })

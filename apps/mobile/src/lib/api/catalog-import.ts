@@ -7,9 +7,6 @@ export type CatalogDetectedItem = {
   cropped_url: string
   cropped_r2_key: string
   page_number?: number
-  phash: string
-  is_duplicate: boolean
-  duplicate_of_product_id: string | null
   tags: {
     category: string | null
     subtype: string | null
@@ -111,7 +108,6 @@ export const catalogImportApi = {
       price_min?: number | null
       price_max?: number | null
       section_id?: string | null
-      phash?: string | null
     }[],
     default_section_id?: string | null,
   ) =>

@@ -16,9 +16,8 @@ import {
   Video,
   Sparkles,
   Clapperboard,
-  X,
 } from 'lucide-react-native'
-import { resolveFashionColor, STUDIO_CREDITS_PER_IMAGE } from '@kanchuki/shared'
+import { STUDIO_CREDITS_PER_IMAGE } from '@kanchuki/shared'
 import { AnimatedPressable } from '../AnimatedPressable'
 import type { ProductDetail } from '@kanchuki/shared'
 
@@ -54,12 +53,6 @@ interface ProductMediaCarouselProps {
   handleDownloadCurrentMedia: () => void
   deletingMedia: boolean
   handleDeleteCurrentMedia: () => void
-  detectingColor: boolean
-  handleDetectColor: () => void
-  detectedColor: string | null
-  setDetectedColor: (c: string | null) => void
-  dirtyColorSetter: (c: string) => void
-  colorDetectError: string | null
   goToPhoto: (idx: number) => void
   handleProductVideoPress: () => void
   videoGenerating: boolean
@@ -94,12 +87,6 @@ export function ProductMediaCarousel({
   handleDownloadCurrentMedia,
   deletingMedia,
   handleDeleteCurrentMedia,
-  detectingColor,
-  handleDetectColor,
-  detectedColor,
-  setDetectedColor,
-  dirtyColorSetter,
-  colorDetectError,
   goToPhoto,
   handleProductVideoPress,
   videoGenerating,
@@ -273,67 +260,6 @@ export function ProductMediaCarousel({
               <Trash2 size={16} color="#dc2626" />
             )}
           </AnimatedPressable>
-        )}
-
-        {/* Detect color from photo */}
-        {!currentPhoto?.is_video && (
-          <AnimatedPressable
-            onPress={handleDetectColor}
-            disabled={detectingColor}
-            accessibilityLabel="Detect color from photo"
-            accessibilityRole="button"
-            className="absolute right-3 top-3 w-9 h-9 rounded-full bg-white/90 items-center justify-center shadow-md border border-lavender-200"
-            style={{ elevation: 3, zIndex: 10 }}
-          >
-            {detectingColor ? (
-              <ActivityIndicator size="small" color="#BB3F95" />
-            ) : (
-              <Palette size={16} color="#231F48" />
-            )}
-          </AnimatedPressable>
-        )}
-
-        {/* Detected-color confirm chip */}
-        {detectedColor && (
-          <View
-            className="absolute right-3 bottom-12 bg-white/95 rounded-2xl px-3 py-2 flex-row items-center gap-2 shadow-md border border-lavender-200"
-            style={{ elevation: 4, zIndex: 10 }}
-          >
-            <View
-              className="w-6 h-6 rounded-full border-2 border-white"
-              style={{ backgroundColor: resolveFashionColor(detectedColor) }}
-            />
-            <Text className="text-xs font-bold text-spaceCadet-900 max-w-[120px]" numberOfLines={1}>
-              {detectedColor}
-            </Text>
-            <AnimatedPressable
-              onPress={() => {
-                dirtyColorSetter(detectedColor)
-                setDetectedColor(null)
-              }}
-              className="bg-spaceCadet-900 px-2.5 py-1 rounded-full"
-            >
-              <Text className="text-white text-[10px] font-bold">Use</Text>
-            </AnimatedPressable>
-            <AnimatedPressable
-              onPress={() => setDetectedColor(null)}
-              accessibilityLabel="Dismiss detected color"
-              accessibilityRole="button"
-              hitSlop={6}
-            >
-              <X size={14} color="#6B4773" />
-            </AnimatedPressable>
-          </View>
-        )}
-
-        {/* Color detection error hint */}
-        {colorDetectError && (
-          <View
-            className="absolute left-3 right-3 bottom-12 bg-red-50/95 rounded-xl px-3 py-1.5 border border-red-200"
-            style={{ zIndex: 10 }}
-          >
-            <Text className="text-red-600 text-[10px] text-center font-medium">{colorDetectError}</Text>
-          </View>
         )}
 
         {/* Dot indicators (Point 10 PDP spec) */}

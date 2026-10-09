@@ -1,10 +1,8 @@
 import { createHash, randomBytes } from 'node:crypto';
 import {
-  DUPLICATE_HAMMING_THRESHOLD,
   detectCropAndTag,
   fetchImageBuffer,
   getUploadPresignedUrl,
-  hammingDistance,
   publicUrl,
   reserveAiCredits,
 } from '@kanchuki/ai';
@@ -25,9 +23,6 @@ interface DetectedItemResponse {
   cropped_url: string;
   cropped_r2_key: string;
   page_number?: number;
-  phash: string;
-  is_duplicate: boolean;
-  duplicate_of_product_id: string | null;
   tags: {
     category: string | null;
     subtype: string | null;
@@ -84,7 +79,6 @@ const BulkCreateProductsSchema = z.object({
         price_min: z.number().int().nullable().optional(),
         price_max: z.number().int().nullable().optional(),
         section_id: z.string().nullable().optional(),
-        phash: z.string().nullable().optional(),
       }),
     )
     .min(1)
@@ -101,36 +95,6 @@ const UploadUrlSchema = z.object({
 
 function randHex(length: number): string {
   return randomBytes(length).toString('hex');
-}
-
-// F-001d: flags a crop as a likely duplicate of something already in the
-// retailer's catalog (same rack shot twice, or already present via a
-// supplier PDF import). Non-blocking — caller still lets the retailer save.
-async function flagDuplicates(
-  retailerId: string,
-  items: Array<{ phash: string }>,
-): Promise<Array<{ is_duplicate: boolean; duplicate_of_product_id: string | null }>> {
-  if (items.length === 0) return [];
-
-  const existing = await prisma.productPhoto.findMany({
-    where: { retailer_id: retailerId, phash: { not: null } },
-    select: { phash: true, product_id: true },
-  });
-
-  return items.map((item) => {
-    let best: { product_id: string; distance: number } | null = null;
-    for (const photo of existing) {
-      const photoPhash = photo.phash;
-      if (!photoPhash) continue;
-      const distance = hammingDistance(item.phash, photoPhash);
-      if (!best || distance < best.distance) best = { product_id: photo.product_id, distance };
-    }
-    const isDuplicate = best !== null && best.distance <= DUPLICATE_HAMMING_THRESHOLD;
-    return {
-      is_duplicate: isDuplicate,
-      duplicate_of_product_id: isDuplicate ? (best?.product_id ?? null) : null,
-    };
-  });
 }
 
 // ─── Plugin ───────────────────────────────────────────────────────
@@ -204,15 +168,11 @@ export const catalogImportRoutes: FastifyPluginAsync = async (server) => {
       incrementUsage(retailerId, 'IMAGE_CROP', items.length).catch((err) => {
         request.log.error({ err, retailer_id: retailerId }, 'Failed to record crop usage');
       });
-      const dupes = await flagDuplicates(retailerId, items);
 
-      const response: DetectedItemResponse[] = items.map((item, i) => ({
+      const response: DetectedItemResponse[] = items.map((item) => ({
         description: item.description,
         cropped_url: item.croppedUrl,
         cropped_r2_key: item.r2Key,
-        phash: item.phash,
-        is_duplicate: dupes[i]?.is_duplicate ?? false,
-        duplicate_of_product_id: dupes[i]?.duplicate_of_product_id ?? null,
         tags: item.tags,
       }));
 
@@ -272,9 +232,6 @@ export const catalogImportRoutes: FastifyPluginAsync = async (server) => {
                 cropped_url: item.croppedUrl,
                 cropped_r2_key: item.r2Key,
                 page_number: i + 1,
-                phash: item.phash,
-                is_duplicate: false,
-                duplicate_of_product_id: null,
                 tags: item.tags,
               });
             }
@@ -285,12 +242,6 @@ export const catalogImportRoutes: FastifyPluginAsync = async (server) => {
 
         incrementUsage(retailerId, 'IMAGE_CROP', allItems.length).catch((err) => {
           request.log.error({ err, retailer_id: retailerId }, 'Failed to record crop usage');
-        });
-
-        const dupes = await flagDuplicates(retailerId, allItems);
-        allItems.forEach((item, i) => {
-          item.is_duplicate = dupes[i]?.is_duplicate ?? false;
-          item.duplicate_of_product_id = dupes[i]?.duplicate_of_product_id ?? null;
         });
 
         return reply.status(200).send({
@@ -461,7 +412,6 @@ export const catalogImportRoutes: FastifyPluginAsync = async (server) => {
             is_primary: true,
             r2_key: item.cropped_r2_key,
             url: item.cropped_url,
-            phash: item.phash ?? undefined,
           },
         },
       })),

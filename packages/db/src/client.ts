@@ -5,7 +5,7 @@ import { PrismaClient, Prisma } from '@prisma/client'
 // Defaults are conservative; override via env vars if Railway's Postgres needs
 // different values (e.g. behind pgbouncer).
 const POOL_CONFIG = {
-  connection_limit: Number(process.env['DB_CONNECTION_LIMIT']) || 10,
+  connection_limit: Number(process.env['DB_CONNECTION_LIMIT']) || 5, // ponytail: was 10; each pooled conn costs engine memory, raise via env if P2024 appears
   pool_timeout: Number(process.env['DB_POOL_TIMEOUT']) || 10000, // 10s
   connect_timeout: Number(process.env['DB_CONNECT_TIMEOUT']) || 10000, // 10s
 }

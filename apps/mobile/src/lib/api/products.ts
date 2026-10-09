@@ -133,36 +133,6 @@ export const productApi = {
       },
     ),
 
-  /** Remove background on a specific photo (optionally compositing it onto an
-   * admin-curated backdrop — the edit screen's background picker targets the
-   * currently-viewed photo, not just the product's primary).
-   * F-030: addShadow is a per-call override of the product-level shadow
-   * setting — wins for THIS cleanup only, never persisted (the toggle chip
-   * on the edit screen behaves like the background swatches: bake-and-forget). */
-  cleanupPhoto: (
-    productId: string,
-    photoId: string,
-    backgroundImageId?: string | null,
-    addShadow?: boolean,
-  ) =>
-    request<{ data: { id: string; url: string } }>(
-      `/v1/products/${productId}/photos/${photoId}/cleanup`,
-      {
-        method: 'POST',
-        body: JSON.stringify({
-          background_image_id: backgroundImageId ?? null,
-          ...(addShadow !== undefined ? { add_shadow: addShadow } : {}),
-        }),
-        timeoutMs: 30_000,
-      },
-    ),
-
-  // F-011: admin-curated background library for the crop/cleanup picker.
-  getBackgroundImages: () =>
-    request<{
-      data: { id: string; name: string; image_url: string; thumbnail_url: string | null }[];
-    }>('/v1/products/background-images', { getCacheTtlMs: 60_000 }),
-
   /** Admin-curated AI Studio Shoot styles this retailer's plan can use.
    * Cached 60s — the picker falls back to the last response offline. */
   getStudioStyles: () =>
@@ -176,28 +146,6 @@ export const productApi = {
         thumbnail_url: string | null;
       }[];
     }>('/v1/products/studio-styles', { getCacheTtlMs: 60_000 }),
-
-  setBackground: (productId: string, backgroundImageId: string | null) =>
-    request<{ data: { background_image_id: string | null; photo_url: string | null } }>(
-      `/v1/products/${productId}/background`,
-      {
-        method: 'PATCH',
-        body: JSON.stringify({ background_image_id: backgroundImageId }),
-        timeoutMs: 30_000,
-      },
-    ),
-
-  /** Rotate a saved photo 90° clockwise server-side — either the current
-   * primary (target 'primary', default) or the preserved pre-cleanup
-   * original (target 'original'). Mirrors cleanupPhoto's POST+timeout shape. */
-  rotatePhoto: (productId: string, photoId: string, target: 'primary' | 'original' = 'primary') =>
-    request<{
-      data: { id: string; target: 'primary' | 'original'; url: string; width?: number; height?: number };
-    }>(`/v1/products/${productId}/photos/${photoId}/rotate`, {
-      method: 'POST',
-      body: JSON.stringify({ target }),
-      timeoutMs: 30_000,
-    }),
 
   addVariant: (productId: string, data: { color: string; r2_key: string; url: string }) =>
     request<{ data: unknown }>(`/v1/products/${productId}/variants`, {
@@ -213,14 +161,6 @@ export const productApi = {
   retag: (id: string) =>
     request<{ data: { retag_queued: boolean } }>(`/v1/products/${id}/retag`, {
       method: 'POST',
-    }),
-
-  /** Quick color-only AI detect — pre-fills color field on "Add Color" screen */
-  detectColor: (imageUrl: string) =>
-    request<{ data: { color: string | null } }>('/v1/products/detect-color', {
-      method: 'POST',
-      body: JSON.stringify({ image_url: imageUrl }),
-      timeoutMs: 15_000,
     }),
 
   // ─── F-032: AI Studio Shoots (FLUX Kontext, async job) ─────────────

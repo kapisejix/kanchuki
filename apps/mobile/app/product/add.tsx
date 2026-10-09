@@ -134,25 +134,6 @@ export default function AddProductScreen() {
   const [selectedFabrics, setSelectedFabrics] = useState<string[]>([])
   const [selectedSizes, setSelectedSizes] = useState<string[]>([])
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([])
-  // Default OFF — the raw photo is saved as-is. The retailer opts into
-  // background removal / contrast backdrop / shadow here or later on the
-  // product detail screen (per-photo Background + Shadow controls).
-  const [autoCleanup, setAutoCleanup] = useState(false)
-  // F-030: composite a soft drop shadow under the garment during cleanup —
-  // product-level default, applied by the background tag job after save.
-  const [addShadow, setAddShadow] = useState(false)
-  const [backgroundImages, setBackgroundImages] = useState<
-    { id: string; name: string; image_url: string; thumbnail_url: string | null }[]
-  >([])
-  const [backgroundImageId, setBackgroundImageId] = useState<string | null>(null)
-
-  useEffect(() => {
-    productApi
-      .getBackgroundImages()
-      .then((res) => setBackgroundImages(res.data))
-      .catch(() => {}) // ponytail: best-effort — picker just stays empty (white-only)
-  }, [])
-
   const checkProAvailability = useCallback((refresh = false) => {
     setProAvailability('checking')
     productApi
@@ -306,7 +287,6 @@ export default function AddProductScreen() {
         photos: uploads,
         remove_hardware: proRemoveHardware,
         tight_crop: proTightCrop,
-        background_image_id: backgroundImageId,
       })
       // User navigated back while this was in flight — the run is cancelled,
       // drop the result instead of yanking them to the edit screen.
@@ -323,7 +303,6 @@ export default function AddProductScreen() {
       if (!primaryClean) throw new Error('No photos could be processed')
       setProUploads(ordered.map((p) => ({ r2_key: p.r2_key, url: p.url })))
       setPhoto(primaryClean.url)
-      setAutoCleanup(false) // photos are already professionally cleaned
       setExtraFrames([])
       setStep('edit')
     } catch (err) {
@@ -484,9 +463,6 @@ export default function AddProductScreen() {
         category_id: primaryCategoryId,
         location_notes: location || undefined,
         notes: notes || undefined,
-        auto_cleanup: autoCleanup,
-        background_image_id: backgroundImageId,
-        add_shadow: addShadow,
       })
 
       // Pro-path extras are already cleaned + on R2 — attach directly.
@@ -895,7 +871,7 @@ export default function AddProductScreen() {
     )
   }
 
-  // ── Pro options step — backdrop + AI cleanup toggles ────────────
+  // ── Pro options step — AI cleanup toggles ────────────
 
   if (step === 'pro_options') {
     return (
@@ -922,36 +898,6 @@ export default function AddProductScreen() {
 
         <ScrollView className="flex-1">
           <View className="px-4 py-4 gap-4">
-            {/* Backdrop picker (F-011 library, White default) */}
-            <View className="bg-white rounded-2xl p-4 border border-sand-100">
-              <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-3">
-                Background
-              </Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                <View className="flex-row gap-2">
-                  <AnimatedPressable
-                    onPress={() => setBackgroundImageId(null)}
-                    className={`w-16 h-16 rounded-xl items-center justify-center border-2 bg-white ${backgroundImageId === null ? 'border-ink-600' : 'border-sand-200'}`}
-                  >
-                    <Text className="text-[10px] text-sand-500">Auto</Text>
-                  </AnimatedPressable>
-                  {backgroundImages.map((bg) => (
-                    <AnimatedPressable
-                      key={bg.id}
-                      onPress={() => setBackgroundImageId(bg.id)}
-                      className={`w-16 h-16 rounded-xl overflow-hidden border-2 ${backgroundImageId === bg.id ? 'border-ink-600' : 'border-sand-200'}`}
-                    >
-                      <Image
-                        source={{ uri: bg.thumbnail_url ?? bg.image_url }}
-                        style={{ width: '100%', height: '100%' }}
-                        contentFit="cover"
-                      />
-                    </AnimatedPressable>
-                  ))}
-                </View>
-              </ScrollView>
-            </View>
-
             {/* AI hanger/mannequin removal */}
             <View className="bg-white rounded-2xl p-4 border border-sand-100 flex-row items-center justify-between">
               <View className="flex-1 pr-3">
@@ -1102,69 +1048,6 @@ export default function AddProductScreen() {
             {/* Pro-cleaned photos are already finished — no client-side
                 tagging is pending for them (server tags after save), so the
                 "AI tagging..." overlay would be a lying spinner here. */}
-          </View>
-        )}
-
-        {/* Auto-clean toggle: crop + white-background removal (runs server-side after Save).
-            Hidden on the pro path — photos were already professionally cleaned. */}
-        {proUploads.length === 0 && (
-          <View className="bg-white rounded-2xl p-4 border border-sand-100 flex-row items-center justify-between">
-            <View className="flex-1 pr-3">
-              <Text className="text-sm font-semibold text-sand-900">Auto-clean photo</Text>
-              <Text className="text-xs text-sand-500 mt-0.5">
-                Crop to the garment, remove the background, and match a contrasting backdrop (dark garment → light, light garment → dark). Turn off for a styled/mannequin shot you want as-is.
-              </Text>
-            </View>
-            <Switch value={autoCleanup} onValueChange={setAutoCleanup} />
-          </View>
-        )}
-
-        {/* Shadow toggle — F-030, only meaningful once auto-clean is on */}
-        {autoCleanup && (
-          <View className="bg-white rounded-2xl p-4 border border-sand-100 flex-row items-center justify-between">
-            <View className="flex-1 pr-3">
-              <Text className="text-sm font-semibold text-sand-900">Shadow</Text>
-              <Text className="text-xs text-sand-500 mt-0.5">
-                Add a soft shadow under the product for a grounded, studio-like look.
-              </Text>
-            </View>
-            <Switch value={addShadow} onValueChange={setAddShadow} />
-          </View>
-        )}
-
-        {/* Background picker — F-011, only meaningful once auto-clean is on */}
-        {proUploads.length === 0 && autoCleanup && backgroundImages.length > 0 && (
-          <View className="bg-white rounded-2xl p-4 border border-sand-100">
-            <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-3">
-              Background
-            </Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View className="flex-row gap-2">
-                <AnimatedPressable
-                  onPress={() => setBackgroundImageId(null)}
-                  className={`w-16 h-16 rounded-xl items-center justify-center border-2 bg-white ${
-                    backgroundImageId === null ? 'border-ink-600' : 'border-sand-200'
-                  }`}
-                >
-                  <Text className="text-[10px] text-sand-500">Auto</Text>
-                </AnimatedPressable>
-                {backgroundImages.map((bg) => (
-                  <AnimatedPressable
-                    key={bg.id}
-                    onPress={() => setBackgroundImageId(bg.id)}
-                    className={`w-16 h-16 rounded-xl overflow-hidden border-2 ${
-                      backgroundImageId === bg.id ? 'border-ink-600' : 'border-sand-200'
-                    }`}
-                  >
-                    <Image
-                      source={{ uri: bg.thumbnail_url ?? bg.image_url }}
-                      style={{ width: '100%', height: '100%' }}
-                      contentFit="cover"
-                    />
-                  </AnimatedPressable>
-                ))}
-              </View>
-            </ScrollView>
           </View>
         )}
 
