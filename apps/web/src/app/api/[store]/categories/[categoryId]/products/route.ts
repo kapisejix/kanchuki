@@ -11,7 +11,7 @@ export async function GET(
   const { store, categoryId } = await params;
   const qs = request.nextUrl.search;
 
-  const res = await fetch(`${apiUrl}/v1/public/retailers/${store}/categories/${categoryId}${qs}`, {
+  const res = await fetch(`${apiUrl}/v1/public/retailers/${encodeURIComponent(store)}/categories/${encodeURIComponent(categoryId)}${qs}`, {
     next: { revalidate: 0 },
   });
   const body = await res.text();

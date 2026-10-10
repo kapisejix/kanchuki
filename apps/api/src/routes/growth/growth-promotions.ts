@@ -118,7 +118,7 @@ export const growthPromotionRoutes: FastifyPluginAsync = async (server) => {
     // app.allow_hard_delete inside the transaction (see categories.ts).
     const purgeDb = getPurgePrisma();
     await purgeDb.$transaction([
-      purgeDb.$executeRawUnsafe(`SET app.allow_hard_delete = 'true';`),
+      purgeDb.$executeRawUnsafe(`SET LOCAL app.allow_hard_delete = 'true';`),
       purgeDb.promotion.delete({ where: { id } }),
     ]);
 

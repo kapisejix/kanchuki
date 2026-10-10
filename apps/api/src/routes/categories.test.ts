@@ -180,7 +180,7 @@ describe('DELETE /v1/categories/:id — purge-role guardrail', () => {
 
     expect(res.statusCode).toBe(204);
     // Guardrail bypass + hard delete must both run inside the purge transaction.
-    expect(mockPurgeExecuteRaw).toHaveBeenCalledWith("SET app.allow_hard_delete = 'true';");
+    expect(mockPurgeExecuteRaw).toHaveBeenCalledWith("SET LOCAL app.allow_hard_delete = 'true';");
     expect(mockPurgeCategoryDelete).toHaveBeenCalledWith({ where: { id: 'cat_1' } });
     expect(mockPurgeTransaction).toHaveBeenCalledTimes(1);
     // The DELETE-less main client must never be used for the hard delete.

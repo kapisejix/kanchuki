@@ -116,7 +116,7 @@ export const productsVariantsRoutes: FastifyPluginAsync = async (server) => {
     // (same pattern as products-trash.ts's /:id/purge route).
     const purgeDb = getPurgePrisma();
     await purgeDb.$transaction([
-      purgeDb.$executeRawUnsafe(`SET app.allow_hard_delete = 'true';`),
+      purgeDb.$executeRawUnsafe(`SET LOCAL app.allow_hard_delete = 'true';`),
       purgeDb.productVariant.delete({ where: { id: variantId } }),
     ]);
 

@@ -11,7 +11,7 @@ import { getPurgePrisma, prisma } from '@kanchuki/db';
  * must be gone now so the retailer can sign up again immediately.
  *
  * Same scoped kanchuki_purge role (SECURITY §19) and the same
- * SET app.allow_hard_delete = 'true' guardrail-bypass pattern as the cron.
+ * SET LOCAL app.allow_hard_delete = 'true' guardrail-bypass pattern as the cron.
  * Deletes everything in ONE transaction: if any table is missing a grant or
  * the schema gains a new FK this doesn't know about, Postgres throws and the
  * whole thing rolls back — nothing partially deleted. F-016 vault snapshot
@@ -25,7 +25,7 @@ const purgeDb = getPurgePrisma();
 // a cryptic "permission denied" deep inside the transaction.
 const db = purgeDb;
 
-const SET_BYPASS = `SET app.allow_hard_delete = 'true';`;
+const SET_BYPASS = `SET LOCAL app.allow_hard_delete = 'true';`;
 
 function assertPurgeRole(): void {
   if (db === (prisma as unknown)) {

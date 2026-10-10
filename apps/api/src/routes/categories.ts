@@ -258,7 +258,7 @@ export const categoryRoutes: FastifyPluginAsync = async (server) => {
 
     const purgeDb = getPurgePrisma();
     await purgeDb.$transaction([
-      purgeDb.$executeRawUnsafe(`SET app.allow_hard_delete = 'true';`),
+      purgeDb.$executeRawUnsafe(`SET LOCAL app.allow_hard_delete = 'true';`),
       purgeDb.productCategory.delete({ where: { id } }),
     ]);
 

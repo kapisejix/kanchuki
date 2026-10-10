@@ -47,7 +47,7 @@ export async function resolveStorefront(
   // collection pages (and wins if a real collection ever shares a pseudo
   // prefix, which is the more correct resolution anyway).
   const real = await fetchJson<{ data: PublicCollection }>(
-    `${apiUrl}/v1/public/collections/${slug}`,
+    `${apiUrl}/v1/public/collections/${encodeURIComponent(slug)}`,
   );
   if (real?.data) {
     return { collection: real.data, backHref: `/${store}/${slug}`, key: slug };
@@ -57,7 +57,7 @@ export async function resolveStorefront(
 
   if (pseudo?.kind === 'category') {
     const data = await fetchJson<{ data: PublicCollection }>(
-      `${apiUrl}/v1/public/retailers/${store}/categories/${pseudo.id}`,
+      `${apiUrl}/v1/public/retailers/${encodeURIComponent(store)}/categories/${pseudo.id}`,
     );
     if (!data?.data) return null;
     return {
@@ -69,7 +69,7 @@ export async function resolveStorefront(
 
   if (pseudo?.kind === 'all') {
     const data = await fetchJson<{ data: PublicCollection }>(
-      `${apiUrl}/v1/public/retailers/${store}/products`,
+      `${apiUrl}/v1/public/retailers/${encodeURIComponent(store)}/products`,
     );
     if (!data?.data) return null;
     return { collection: data.data, backHref: `/${store}/all`, key: slug };

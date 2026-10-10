@@ -10,7 +10,7 @@ export async function GET(
   const { slug, categoryId } = await params
   const qs = request.nextUrl.search
 
-  const res = await fetch(`${apiUrl}/v1/public/retailers/${slug}/categories/${categoryId}${qs}`, {
+  const res = await fetch(`${apiUrl}/v1/public/retailers/${encodeURIComponent(slug)}/categories/${encodeURIComponent(categoryId)}${qs}`, {
     next: { revalidate: 0 },
   })
   const body = await res.text()

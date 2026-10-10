@@ -169,7 +169,7 @@ export const growthVideoRoutes: FastifyPluginAsync = async (server) => {
     // + app.allow_hard_delete; product_videos is already granted to it (migration 084).
     const purgeDb = getPurgePrisma();
     await purgeDb.$transaction([
-      purgeDb.$executeRawUnsafe(`SET app.allow_hard_delete = 'true';`),
+      purgeDb.$executeRawUnsafe(`SET LOCAL app.allow_hard_delete = 'true';`),
       purgeDb.productVideo.delete({ where: { id } }),
     ]);
     if (video.r2_key) {

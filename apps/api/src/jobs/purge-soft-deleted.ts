@@ -20,7 +20,7 @@ const db = getPurgePrisma();
  * across product/customer/collection/retailer soft-delete paths.
  *
  * Security model:
- * - Each raw SQL batch prepends SET app.allow_hard_delete = 'true' to bypass
+ * - Each raw SQL batch prepends SET LOCAL app.allow_hard_delete = 'true' to bypass
  *   the F-017 guardrail triggers. The flag must be set within each call
  *   because Prisma's connection pool may route different calls to different
  *   connections.
@@ -107,7 +107,7 @@ async function purgeTable(table: string, cutoff: Date, extraWhere?: string): Pro
     // Delete the batch with the session flag set (same tx = same connection,
     // so SET carries over to the DELETE)
     await db.$transaction([
-      db.$executeRawUnsafe(`SET app.allow_hard_delete = 'true';`),
+      db.$executeRawUnsafe(`SET LOCAL app.allow_hard_delete = 'true';`),
       db.$executeRawUnsafe(`DELETE FROM "${table}" WHERE id = ANY($1::text[]);`, ids),
     ]);
 
@@ -161,7 +161,7 @@ async function purgeChildren(
   cutoff: Date,
 ): Promise<number> {
   const [, result] = await db.$transaction([
-    db.$executeRawUnsafe(`SET app.allow_hard_delete = 'true';`),
+    db.$executeRawUnsafe(`SET LOCAL app.allow_hard_delete = 'true';`),
     db.$executeRawUnsafe(
       `DELETE FROM "${childTable}"
        WHERE "${childFkColumn}" IN (
@@ -194,7 +194,7 @@ export async function pruneCustomerInteractions(now = new Date()): Promise<numbe
   let total = 0;
   while (true) {
     const [, deleted] = await db.$transaction([
-      db.$executeRawUnsafe(`SET app.allow_hard_delete = 'true';`),
+      db.$executeRawUnsafe(`SET LOCAL app.allow_hard_delete = 'true';`),
       db.$executeRawUnsafe(
         `DELETE FROM "customer_interactions"
          WHERE id IN (

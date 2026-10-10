@@ -385,7 +385,7 @@ export const staffRoutes: FastifyPluginAsync = async (server) => {
 
       const purgeDb = getPurgePrisma();
       await purgeDb.$transaction([
-        purgeDb.$executeRawUnsafe(`SET app.allow_hard_delete = 'true';`),
+        purgeDb.$executeRawUnsafe(`SET LOCAL app.allow_hard_delete = 'true';`),
         purgeDb.staff.delete({ where: { id } }),
       ]);
 

@@ -10,7 +10,7 @@ export async function GET(
   const { store } = await params;
 
   try {
-    const res = await fetch(`${API_URL}/v1/public/retailers/${store}/promotions`, {
+    const res = await fetch(`${API_URL}/v1/public/retailers/${encodeURIComponent(store)}/promotions`, {
       next: { revalidate: 60 },
     });
     const data = await res.json();

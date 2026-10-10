@@ -11,7 +11,7 @@ export async function GET(
   const { slug } = await params
   const qs = request.nextUrl.search
 
-  const res = await fetch(`${apiUrl}/v1/public/collections/${slug}${qs}`, {
+  const res = await fetch(`${apiUrl}/v1/public/collections/${encodeURIComponent(slug)}${qs}`, {
     next: { revalidate: 0 },
   })
   const body = await res.text()

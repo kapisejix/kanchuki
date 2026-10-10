@@ -15,7 +15,7 @@ export default async function LegacyCollectionLayout({
 }) {
   const { slug } = await params
   try {
-    const res = await fetch(`${apiUrl}/v1/public/collections/${slug}?page=1&pageSize=1`, {
+    const res = await fetch(`${apiUrl}/v1/public/collections/${encodeURIComponent(slug)}?page=1&pageSize=1`, {
       next: { revalidate: 15 },
     })
     if (res.status === 404) notFound()

@@ -23,7 +23,7 @@ async function fetchCategory(
     : '';
   try {
     const res = await fetch(
-      `${apiUrl}/v1/public/retailers/${store}/categories/${categoryId}${qs}`,
+      `${apiUrl}/v1/public/retailers/${encodeURIComponent(store)}/categories/${encodeURIComponent(categoryId)}${qs}`,
       {
         next: { revalidate: 60 },
       },
