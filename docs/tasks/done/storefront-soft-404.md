@@ -1,6 +1,6 @@
 # Storefront returns HTTP 200 for unknown paths (soft-404)
 
-**Opened:** 2026-10-10 · **Status:** 🔴 Planned, not started · **Priority:** low (SEO + wasted renders, no data exposure) · **Found by:** a scanner probe in the Railway web HTTP log
+**Opened:** 2026-10-10 · **Status:** ✅ Built 2026-10-10 — §4.3 probe middleware (#59) + §4.2 unknown-store 404 via `apps/web/src/app/[store]/layout.tsx` + §4.4 e2e `apps/web/e2e/customer-store-404.spec.ts`. Root cause: root `app/loading.tsx` flushed the 200 above any layout — removed. Unknown collection on a known store still redirects to `/categories` by design; `/c/[slug]` not re-checked · **Priority:** low (SEO + wasted renders, no data exposure) · **Found by:** a scanner probe in the Railway web HTTP log
 
 ---
 
