@@ -47,3 +47,4 @@ Where work lives: **`pending/` = open**, **`done/` = built** (kept as the design
 | Suits Designs showcase (migrations `093`–`096`) | `done/suits-designs.md` | 2026-09-07 |
 | Retailer team members + access control (migration `098`) | `done/team-member-access-control.md` | 2026-09-09 |
 | WhatsApp native catalog sync, Phase II (migrations `060`–`062`) | `done/whatsapp-catalog-sync.md` | 2026-08-18 |
+| Storefront soft-404 — unknown store → real 404 (+ scanner-probe middleware) | `done/storefront-soft-404.md` | 2026-10-10 |
