@@ -1817,7 +1817,7 @@ Full detail: `docs/BUILD-LOG.md` §2026-09-18 (both entries), RC-027 in
 
 ### 24.14 Retailer option layer — 🟡 Spec final 2026-10-08; admin bench synced 2026-10-10; retailer layer 🔴 not built
 
-Spec: `docs/tasks/pending/studio-shoot-option-matrix.md` (companion: `docs/tasks/pending/ai-photo-generation.md`; resume notes: `docs/tasks/pending/studio-shoot-session-handoff.md`).
+Spec: `docs/tasks/done/studio-shoot-option-matrix.md` (companion: `docs/tasks/pending/ai-photo-generation.md`; resume notes: `docs/tasks/done/studio-shoot-session-handoff.md`).
 
 - **Options (owner-final):** two sections only. Product Only = 14 styles (PS-03..16); Model Only = 6 indoor (MI-01/02/04/05/08/10) + 7 outdoor (MO-01..07). 29 owner-written prompts, none missing. Lighting automatic per style. Pose lives inside each prompt (server picks from a per-scene pool). Frame / Angle / Photography Style / Product View / Mannequin-Ghost removed. Kids = Product Only; models 13+.
 - **Retailer model picker (spec §15, Fal.ai):** `Grok - Best` (default), `ChatGPT - Fast`, `Qwen - Good`, `Nano Banana - Best`; credits = admin-test-page credits + 2, no prices shown; models added from admin (`studio_engines` table, not yet created).

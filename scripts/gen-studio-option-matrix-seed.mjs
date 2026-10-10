@@ -70,7 +70,7 @@ const values = rows.map(({ s, tab, order }) => {
 });
 
 const sql = `-- F-032 option matrix: seed the owner's ${rows.length} Product Only / Model Only styles
--- (docs/tasks/pending/studio-shoot-option-matrix.md §14, rollout task 2.3).
+-- (docs/tasks/done/studio-shoot-option-matrix.md §14, rollout task 2.3).
 --
 -- ADDITIVE AND INVISIBLE. Every row is inserted as DRAFT, so GET /products/studio-styles
 -- and POST /studio-shoot (both require status = 'PUBLISHED') do not see them until the

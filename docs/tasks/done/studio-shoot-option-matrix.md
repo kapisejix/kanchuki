@@ -1,6 +1,8 @@
 # AI Studio Shoot — Option Matrix, Product-Aware Gating & Collage
 
 **Update 2026-10-08 (rounds 1–2):** owner's final prompts applied — **two sections only, Product Only and Model Only** (§14.2–§14.4); retailer-selectable AI models on **Fal.ai** spec'd in **§15**; round-2 decisions in §12. Still docs only — no code.
+**CLOSED to `done/` 2026-10-10:** all code built (#54), migration `123` applied (27 rows `DRAFT`). Remaining is admin/owner-only, done later from Admin → Studio Styles: 2.7 publish rows, 2.5 engine per row (after bench run 2), 2.4 retire legacy rows (after 2.7), 3.8 thumbnails. The status line below is the pre-build snapshot.
+
 **Status:** 🟡 Spec — option list finalized by owner 2026-09-30 and trimmed 2026-10-08: no draft/missing prompts (every listed style has an owner-written prompt), **no pose picker (pose lives inside each prompt)**, **no Frame / Angle / Photography Style / Product View / Mannequin-Ghost options**, no garment-back shots, lighting automatic per style. **Retailer layer nothing built; admin bench fully wired** — as of 2026-10-10 (`78ebf730`) `apps/web/src/lib/studio-effects.ts` carries all 27 owner prompts (PS-03..16, MI-01/02/04/05/08/10, MO-01..07) behind the admin test page only; nothing reaches `studio_styles` or the API yet. Rollout plan: `studio-shoot-retailer-rollout.md`. See `studio-shoot-session-handoff.md` §2.
 **Feature:** F-032 Studio Shoot, retailer-facing option layer.
 **Companion spec:** `docs/tasks/pending/ai-photo-generation.md` (engines, pipeline, quota, quality gap). This doc does **not** repeat that; it defines *which options a retailer sees for which product* and *what each option means*.
