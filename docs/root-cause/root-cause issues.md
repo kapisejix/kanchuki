@@ -12,6 +12,69 @@
 
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
+## RC-054 — No status-bar style was ever declared, so on a light app chrome the OS icons (signal / time / battery) rendered white-on-white
+
+- **Component:** `apps/mobile/app/_layout.tsx` (root layout). Fixed 2026-10-10 in `b6af02f7` (#55).
+- **Symptom:** on the retailer app the status-bar icons (mobile signal, time, battery) were invisible — white icons over the white/near-white header.
+- **Root cause:** nothing in `apps/mobile` declared a `StatusBar` (`grep -rn StatusBar apps/mobile/app` → no match; `app.json` only sets `userInterfaceStyle: "light"`). The icon colour was therefore whatever the platform default produced, which is light-on-dark — the opposite of this app's light chrome. A visual default that nobody owns is a default nobody tests.
+- **Fix:** `<StatusBar barStyle="dark-content" />` from `react-native` in the root layout (no new dependency; deliberately **not** `translucent`, which would shift every screen's top inset).
+- **Proof:** `grep -n "StatusBar barStyle" apps/mobile/app/_layout.tsx` → one hit; reverting the line restores white-on-white. **Manual** on a device (no unit test can see OS icon colour).
+
+---
+
+## RC-053 — Prev/Next on the customer catalog replaced the grid but never reset the window scroll offset, so the new page appeared scrolled to the bottom
+
+- **Component:** `apps/web/src/app/c/[slug]/components/CollectionView.tsx` — `goToPage`. Fixed 2026-10-10 in `b6af02f7` (#55).
+- **Symptom:** tapping **Next** at the bottom of the catalog loaded page 2 but left the viewport at the pager, so the shopper saw the *end* of the new page.
+- **Root cause:** pagination is a client-side window replace (`fetchProducts` → `setProducts`) — no navigation, so the browser's scroll restoration never runs — and the page scrolls on `window`, not an inner container. State changed; the scroll position, which is also state, was not part of the change.
+- **Fix:** `goToPage` chains `.then(() => window.scrollTo({ top: 0 }))` after the fetch resolves (scroll *after* the products land, so the jump targets the new content).
+- **Proof:** **Manual** — open a >1-page catalog, scroll to the pager, tap Next: the viewport must be at the top. (`CollectionView.test.tsx` pagination block covers the grid replace, not the scroll.)
+
+---
+
+## RC-052 — Admin sidebar flyout sat 8 px off its trigger and had no viewport clamp, so the submenu closed under the pointer and tall groups ran off-screen
+
+- **Component:** `apps/web/src/app/admin/components/Sidebar.tsx` — the `createPortal` flyout. Fixed 2026-10-10 in `b6af02f7` (#55).
+- **Symptom:** hovering a group opened its submenu, but moving the mouse toward a submenu item made it vanish; the longest group (Settings & Operations, 17 items) was cut off at the bottom of the screen with no way to reach the last entries.
+- **Root cause:** two independent layout assumptions. (1) `left: openGroup.left + 8` left a dead gap between trigger and flyout; the trigger's `onMouseLeave` fired in that gap and cleared `openGroup` before the flyout's `onMouseEnter` could run. (2) the flyout was positioned at the trigger's `top` with no max-height, so it assumed it always fits below its trigger.
+- **Fix:** flush `left` (no gap), `top` clamped to `[8, innerHeight − 8 − estimatedHeight]`, `maxHeight: calc(100vh − 16px)` + `overflow-y-auto`.
+- **Proof:** **Manual** — hover "Settings & Operations" on a short viewport: the menu must stay open while the pointer moves onto it, and scroll to its last item.
+
+---
+
+## RC-051 — Integration screens "connected" to routes that do not exist, and client `.catch()` fallbacks turned the resulting 404s into `configured: true / Verified`
+
+- **Component:** `apps/mobile/src/lib/api/growth.ts` (`configure*` / `test*` / `disconnect*` for Instagram, Facebook, YouTube, X, Pinterest, WhatsApp), `apps/mobile/app/growth/integrations.tsx`, `integrations/whatsapp.tsx`, `apps/api/src/routes/retailers/retailers-integrations.ts`. Found 2026-10-10 by cross-checking every mobile `/v1/...` call against the API's route definitions; fixed in `b6af02f7` (#55).
+- **Symptom:** the retailer pressed **Save & Link** on YouTube / X / Pinterest / WhatsApp, saw "Connected!", and nothing was stored. The hub never showed WhatsApp as connected.
+- **Root cause (one shape — an optimistic client over a backend that was never built):**
+  1. `POST/DELETE/test /me/integrations/{youtube,x,pinterest,whatsapp}` never existed server-side; the only real WhatsApp surface is `PATCH|DELETE /me/whatsapp-api` with a different payload.
+  2. each client method ended in `.catch(() => ({ data: { configured: true } }))` (or `Verified`), so a 404 was indistinguishable from success.
+  3. `GET /me/integrations` returned no `whatsapp` key, so the hub card could not reflect truth even when the config was saved.
+- **Fix:** YouTube/X/Pinterest cards removed from the hub (no backend, not in the MVP scope); WhatsApp screen rewritten onto `retailerApi.saveWhatsAppApiConfig` (`PATCH /me/whatsapp-api`: phone number id, token or keep-existing, template name/lang) and disconnect onto `DELETE /me/whatsapp-api`; `GET /me/integrations` now returns `whatsapp: { configured, phone_number_id, configured_at }`; dead WhatsApp client methods + `WhatsAppCloudConfig` deleted.
+- **Proof:** `grep -rnE "integrations/whatsapp" apps/mobile/src apps/mobile/app` → no client call to the non-existent route remains; a route audit (mobile `/v1` literals vs `server.<verb>(…)` strings) no longer lists it. **Still open:** the `.catch` fallbacks remain in `growth.ts` for the YouTube/X/Pinterest manual-credential methods (and Instagram/Facebook `configure*`/`test*`) that the UI no longer reaches — delete them with those screens.
+
+---
+
+## RC-050 — The retailer self-delete / admin delete transaction rolled back because five RESTRICT-FK child tables were missing from `hardDeleteRetailer()`'s hand-written list
+
+- **Component:** `apps/api/src/jobs/purge-retailer-now.ts` (`tables` list), used by `DELETE /v1/retailers/me` and the admin retailer delete. Fixed 2026-10-10 in `b6af02f7` (#55).
+- **Symptom:** *Settings → Delete Account* typed `DELETE`, the call failed, the retailer was told "Could not delete your account from the server" and the account stayed.
+- **Root cause:** the delete runs as **one transaction** over a hand-maintained list, so any table with a `RESTRICT` FK to `retailers`/`products`/`customers` that is not in the list makes `DELETE FROM retailers` throw and rolls everything back. Five such tables had been added to the schema after the list was written — `product_reviews`, `store_reviews`, `social_templates`, `channel_syncs`, `bug_reports`. The file's own header comment already records the same bug for `product_attributes`/`social_accounts`; nothing derived the list from the schema, so it drifted again.
+- **Fix:** the five `DELETE FROM … WHERE retailer_id = $1` statements added (reviews first — they FK products and customers); migration 124 grants `kanchuki_purge` DELETE on them (and on `campaigns`, `campaign_sends`, … that no earlier GRANT named).
+- **Proof:** from `packages/db/prisma`: list models whose `@relation` to `Retailer` is not `onDelete: Cascade` and check each `@@map` name appears as `DELETE FROM <t>` in `purge-retailer-now.ts` — the five names were the only misses. **Still open:** that check is a one-off; a CI guard deriving the list from `schema.prisma` is the class fix.
+
+---
+
+## RC-049 — The app DB role has DELETE revoked platform-wide, and ~19 routes/jobs still called `prisma.<model>.delete()` on it: each typechecks, ships and then 500s (or no-ops under a swallowed `.catch`) with `42501`
+
+- **Component:** `apps/api/src/routes/growth/growth-campaigns/growth-campaigns-crud.ts`, `growth-videos.ts`, plus (by audit) social templates, aggregators, product attributes, store sections, A/B campaign collection sync, WhatsApp catalog sync, customer wishlist, passport sessions, team-member territories and eight admin config tables. Migrations `124_campaigns_purge_grant`, `125_app_role_delete_grants`. Fixed 2026-10-10 in `b6af02f7` (#55); migrations applied by the owner the same day.
+- **Symptom:** *Delete campaign* did nothing useful (and sent campaigns had no Delete button at all); *Growth → Videos* delete failed; by audit, customer un-favourite, aggregator unlink, store-section / attribute / template delete and several admin deletes failed with `permission denied for table …`.
+- **Root cause:** `kanchuki_app` has `REVOKE DELETE` on every table (SECURITY §19.1) except four (`background_images`, `product_photos`, `showcase_designs`, `staff_invites`). That boundary is a **GRANT**, which no route's type signature or test can see — the same class as RC-004, RC-028 and RC-029, now shown to be repo-wide rather than per-route. The CI delete guard (`scripts/check-delete-guard.sh`) only covers seven business-model names, so config / join / ephemeral tables were never checked at all.
+- **Fix:** campaigns + product_videos now delete through `getPurgePrisma()` inside a transaction with `SET app.allow_hard_delete`; migration 124 grants `kanchuki_purge` the missing tables; migration 125 grants `kanchuki_app` DELETE on 17 tables that have no `deleted_at` and are not §19 business models (owner-approved, "Option A"), written as a `to_regclass`-guarded loop so a table absent on a given DB (`design_references` — migration 069 never applied there) is skipped instead of aborting the lot. Sent campaigns may now be deleted.
+- **Proof:** `select table_name, grantee from information_schema.role_table_grants where privilege_type='DELETE' and grantee in ('kanchuki_app','kanchuki_purge')` — all 17 tables listed in 125 appear under `kanchuki_app` except `design_references`; `grep -rnE "prisma\.\w+\.(delete|deleteMany)\(" apps/api/src --include=*.ts | grep -v test` — every remaining target is in that result set or goes through the purge client. **Still open:** (a) a guard that fails CI when a main-client delete targets an ungranted table; (b) `design_references` — apply migration 069 or the admin Design References page 500s.
+
+---
+
 ## RC-048 — a fix stranded on an unmerged PR and new client fetches shipped with no e2e stubs, so the customer e2e suite was red for reasons unrelated to what it tests — and that red hid a real regression: `eb72f117` rewired **Next** to append, contradicting its own comment
 
 - **Component:** `apps/web/playwright.config.ts` (`testIgnore`), `apps/web/e2e/customer-collection.spec.ts` + `customer-my-stores.spec.ts` (network stubs), `apps/web/src/app/c/[slug]/components/CollectionView.tsx` (pager Next `onClick`). Found 2026-09-29 while making PR #41's customer e2e green.
