@@ -35,7 +35,9 @@ async function forward(request: NextRequest, path: string[], method: ProxyMethod
   const hasBody = method !== 'GET';
 
   try {
-    const res = await fetch(`${apiUrl}/v1/public/passport/${subpath}`, {
+    // Allowlist above makes this a no-op today; encoding keeps it safe if a dynamic segment is ever added.
+    const upstream = path.map(encodeURIComponent).join('/');
+    const res = await fetch(`${apiUrl}/v1/public/passport/${upstream}`, {
       method,
       headers: {
         ...(hasBody

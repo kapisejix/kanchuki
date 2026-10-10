@@ -2706,7 +2706,7 @@ D (consent/mute + retailer visibility) are not started.
 
 **Written 2026-09-17 on owner request.** Full research, technical mechanics,
 platform limitations, and precedent analysis:
-**`docs/tasks/customer-pwa-store-list-and-push-notifications.md`**. Builds directly
+**`docs/tasks/pending/customer-pwa-push-notifications.md`**. Builds directly
 on the identity/consent architecture in `docs/customer/customer-qr-identity-solution.md`
 ("Shopper Passport" — `CustomerAccount`/`CustomerStoreVisit`, partially built via
 migrations `079_passport_core`, `080_passport_preferences`,
