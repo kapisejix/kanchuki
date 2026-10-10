@@ -1,5 +1,5 @@
 // growth-campaigns-crud.ts — festival calendar + campaign CRUD (split from apps/api/src/routes/growth/growth-campaigns.ts — body byte-identical)
-import { getPurgePrisma, Prisma, prisma } from '@kanchuki/db';
+import { Prisma, getPurgePrisma, prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { forbidden, notFound, validationError } from '../../../plugins/error-handler.js';
