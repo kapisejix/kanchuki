@@ -19,7 +19,7 @@ export default async function StoreLayout({
 }) {
   const { store } = await params;
   try {
-    const res = await fetch(`${apiUrl}/v1/public/retailers/${store}`, {
+    const res = await fetch(`${apiUrl}/v1/public/retailers/${encodeURIComponent(store)}`, {
       next: { revalidate: 60 },
     });
     if (res.status === 404) notFound();

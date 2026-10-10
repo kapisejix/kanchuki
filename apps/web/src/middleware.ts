@@ -9,5 +9,8 @@ export function middleware() {
 }
 
 export const config = {
-  matcher: ['/(.*[.](?:php|aspx?|jsp|cgi|sql|bak))', '/([.](?!well-known).*)'],
+  matcher: [
+    '/(.*[.](?:[pP][hH][pP]|[aA][sS][pP][xX]?|[jJ][sS][pP]|[cC][gG][iI]|[sS][qQ][lL]|[bB][aA][kK]))',
+    '/([.](?!well-known).*)',
+  ],
 };

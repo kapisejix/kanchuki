@@ -113,6 +113,10 @@ export const publicStoresRoutes: FastifyPluginAsync = async (server) => {
             longitude: { gte: box.minLng, lte: box.maxLng },
           },
           select: { ...storeSelect, latitude: true, longitude: true },
+          // ponytail: unordered cap so a dense city can't make one cache-miss unbounded;
+          // nearest-first is then approximate past 500 stores in the box — add a
+          // DB-side distance ORDER BY (earthdistance/PostGIS) if that ever happens.
+          take: 500,
         });
         const withDistance = candidates
           .map((r) => ({

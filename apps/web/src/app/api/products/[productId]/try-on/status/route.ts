@@ -17,7 +17,7 @@ export async function GET(
 
   try {
     const res = await fetch(
-      `${apiUrl}/v1/public/products/${productId}/try-on/status?job_id=${encodeURIComponent(jobId)}`,
+      `${apiUrl}/v1/public/products/${encodeURIComponent(productId)}/try-on/status?job_id=${encodeURIComponent(jobId)}`,
       {
         method: 'GET',
         headers: {

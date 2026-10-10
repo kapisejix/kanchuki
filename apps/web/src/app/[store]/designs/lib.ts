@@ -18,7 +18,7 @@ export interface StoreProfile {
 // agree on 60s so a store rename/suspension propagates quickly.
 export async function fetchStoreProfile(store: string): Promise<StoreProfile | null> {
   try {
-    const res = await fetch(`${apiUrl}/v1/public/retailers/${store}`, {
+    const res = await fetch(`${apiUrl}/v1/public/retailers/${encodeURIComponent(store)}`, {
       next: { revalidate: 60 },
     });
     if (!res.ok) return null;

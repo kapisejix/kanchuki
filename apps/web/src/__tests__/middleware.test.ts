@@ -6,7 +6,7 @@ const hits = (p: string) => config.matcher.some((m) => new RegExp(`^${m}$`).test
 
 describe('scanner-probe middleware', () => {
   it('returns 404', () => expect(middleware().status).toBe(404));
-  it.each(['/.git/config', '/.env', '/c/install.php', '/wp-login.php', '/x/y/dump.sql'])(
+  it.each(['/.git/config', '/.env', '/c/install.php', '/wp-login.php', '/x/y/dump.sql', '/WP-LOGIN.PHP'])(
     'matches %s',
     (p) => expect(hits(p)).toBe(true),
   );

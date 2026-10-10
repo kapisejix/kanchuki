@@ -6,7 +6,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const body: unknown = await request.json()
 
   try {
-    const res = await fetch(`${API_URL}/v1/public/retailers/${slug}/leads`, {
+    const res = await fetch(`${API_URL}/v1/public/retailers/${encodeURIComponent(slug)}/leads`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),

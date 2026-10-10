@@ -223,7 +223,7 @@ describe('handlePurgeSoftDeleted — sweep invariants', () => {
     stmts.forEach((sql, i) => {
       if (i % 2 === 0) {
         expect(sql, `call ${i} should be the bypass flag`).toContain(
-          "SET app.allow_hard_delete = 'true'",
+          "SET LOCAL app.allow_hard_delete = 'true'",
         );
       } else {
         expect(sql, `call ${i} should be a DELETE`).toMatch(/^DELETE FROM "/);

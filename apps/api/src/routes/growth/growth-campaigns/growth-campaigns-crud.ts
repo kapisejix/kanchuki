@@ -266,7 +266,9 @@ export const growthCampaignCrudRoutes: FastifyPluginAsync = async (server) => {
     // DELETE revoked, so use the scoped purge role + app.allow_hard_delete (migration 124 grants it).
     const purgeDb = getPurgePrisma();
     await purgeDb.$transaction([
-      purgeDb.$executeRawUnsafe(`SET app.allow_hard_delete = 'true';`),
+      purgeDb.$executeRawUnsafe(`SET LOCAL app.allow_hard_delete = 'true';`),
+      // campaign_sends has no FK — delete them with the campaign so a SENT campaign leaves no orphans.
+      purgeDb.campaignSend.deleteMany({ where: { campaign_id: id } }),
       purgeDb.campaign.delete({ where: { id } }),
     ]);
     return reply.status(204).send();

@@ -35,8 +35,8 @@ interface Props {
 async function fetchData(store: string): Promise<StoreCategoriesData | null> {
   try {
     const [profileRes, categoriesRes] = await Promise.all([
-      fetch(`${apiUrl}/v1/public/retailers/${store}`, { next: { revalidate: 60 } }),
-      fetch(`${apiUrl}/v1/public/retailers/${store}/categories`, { next: { revalidate: 60 } }),
+      fetch(`${apiUrl}/v1/public/retailers/${encodeURIComponent(store)}`, { next: { revalidate: 60 } }),
+      fetch(`${apiUrl}/v1/public/retailers/${encodeURIComponent(store)}/categories`, { next: { revalidate: 60 } }),
     ]);
     if (!profileRes.ok) return null;
     const profile = (await profileRes.json()) as {

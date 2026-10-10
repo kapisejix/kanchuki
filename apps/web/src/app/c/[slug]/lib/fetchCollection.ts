@@ -20,7 +20,7 @@ export async function fetchCollection(
       )}`
     : ''
   try {
-    const res = await fetch(`${apiUrl}/v1/public/collections/${slug}${qs}`, {
+    const res = await fetch(`${apiUrl}/v1/public/collections/${encodeURIComponent(slug)}${qs}`, {
       next: { revalidate: 15 }, // ISR — short window so retailer edits show fast
     })
     if (!res.ok) {

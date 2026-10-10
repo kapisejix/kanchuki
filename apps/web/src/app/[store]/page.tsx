@@ -25,7 +25,7 @@ interface Props {
 
 async function fetchProfile(store: string): Promise<RetailerProfile | null> {
   try {
-    const res = await fetch(`${apiUrl}/v1/public/retailers/${store}`, {
+    const res = await fetch(`${apiUrl}/v1/public/retailers/${encodeURIComponent(store)}`, {
       next: { revalidate: 60 },
     });
     if (!res.ok) return null;
@@ -50,7 +50,7 @@ async function fetchAllProducts(
       )}`
     : '';
   try {
-    const res = await fetch(`${apiUrl}/v1/public/retailers/${store}/products${qs}`, {
+    const res = await fetch(`${apiUrl}/v1/public/retailers/${encodeURIComponent(store)}/products${qs}`, {
       next: { revalidate: 60 },
     });
     if (!res.ok) return null;

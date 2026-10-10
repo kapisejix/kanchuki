@@ -23,7 +23,7 @@ export async function POST(
   const body: unknown = await request.json().catch(() => ({}))
 
   try {
-    await fetch(`${apiUrl}/v1/public/collections/${collection}/view`, {
+    await fetch(`${apiUrl}/v1/public/collections/${encodeURIComponent(collection)}/view`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),

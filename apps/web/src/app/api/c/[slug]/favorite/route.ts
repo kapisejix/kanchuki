@@ -9,7 +9,7 @@ export async function POST(
   const body: unknown = await request.json()
 
   try {
-    await fetch(`${apiUrl}/v1/public/collections/${slug}/favorite`, {
+    await fetch(`${apiUrl}/v1/public/collections/${encodeURIComponent(slug)}/favorite`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),

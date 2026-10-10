@@ -7,7 +7,7 @@ import type { PublicProductDetail } from '@kanchuki/shared';
 // the product + its WhatsApp/OG link preview. Same pattern as fetchCollection.
 export async function fetchProductDetail(productId: string): Promise<PublicProductDetail | null> {
   try {
-    const res = await fetch(`${apiUrl}/v1/public/products/${productId}`, {
+    const res = await fetch(`${apiUrl}/v1/public/products/${encodeURIComponent(productId)}`, {
       next: { revalidate: 15 }, // ISR — short window so retailer edits show fast
     });
     if (!res.ok) {

@@ -25,7 +25,7 @@ export async function POST(
 
   try {
     const res = await fetch(
-      `${apiUrl}/v1/public/products/${productId}/try-on${search}`,
+      `${apiUrl}/v1/public/products/${encodeURIComponent(productId)}/try-on${search}`,
       {
         method: 'POST',
         headers: {

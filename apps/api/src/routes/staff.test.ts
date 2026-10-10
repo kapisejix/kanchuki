@@ -653,7 +653,7 @@ describe('DELETE /v1/staff/:id — soft-remove & purge (FR-4.1/4.4)', () => {
     const purgeCallIndex = mockPurgeTransaction.mock.invocationCallOrder[0] ?? 0;
     expect(auditCallIndex).toBeLessThan(purgeCallIndex);
     // Hard delete via the scoped role, never the main (DELETE-revoked) client.
-    expect(mockPurgeExecuteRaw).toHaveBeenCalledWith("SET app.allow_hard_delete = 'true';");
+    expect(mockPurgeExecuteRaw).toHaveBeenCalledWith("SET LOCAL app.allow_hard_delete = 'true';");
     expect(mockPurgeStaffDelete).toHaveBeenCalledWith({ where: { id: 'staff_old' } });
     expect(mockPurgeTransaction).toHaveBeenCalledTimes(1);
     // The main client only did the ownership findFirst — no delete/update.
