@@ -751,7 +751,6 @@ export type IntegrationsStatus = {
   whatsapp?: {
     configured: boolean
     phone_number_id: string | null
-    waba_id: string | null
     configured_at: string | null
   }
   pinterest?: {
@@ -801,13 +800,6 @@ export type XConfig = {
   api_secret?: string
   bearer_token?: string
   access_token?: string
-}
-
-export type WhatsAppCloudConfig = {
-  phone_number_id: string
-  waba_id: string
-  access_token: string
-  display_number?: string
 }
 
 export type PinterestConfig = {
@@ -1382,21 +1374,6 @@ export const growthApi = {
       '/v1/retailers/me/integrations/x/test',
       { method: 'POST', body: JSON.stringify(payload ?? {}) },
     ).catch(() => ({ data: { connected: true, handle: payload?.handle ?? 'Verified' } })),
-
-  configureWhatsAppCloud: (payload: WhatsAppCloudConfig) =>
-    request<{ data: { configured: boolean } }>('/v1/retailers/me/integrations/whatsapp', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }),
-
-  disconnectWhatsAppCloud: () =>
-    request<void>('/v1/retailers/me/integrations/whatsapp', { method: 'DELETE' }).catch(() => undefined),
-
-  testWhatsAppCloud: (payload?: { phone_number_id?: string; access_token?: string }) =>
-    request<{ data: { connected: boolean; error?: string; verified_name?: string } }>(
-      '/v1/retailers/me/integrations/whatsapp/test',
-      { method: 'POST', body: JSON.stringify(payload ?? {}) },
-    ).catch(() => ({ data: { connected: true, verified_name: 'Verified Cloud API' } })),
 
   configurePinterest: (payload: PinterestConfig) =>
     request<{ data: { configured: boolean } }>('/v1/retailers/me/integrations/pinterest', {

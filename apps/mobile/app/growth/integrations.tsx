@@ -19,6 +19,7 @@ import {
 import { useScreenInsets } from '../../src/lib/safe-area'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { growthApi } from '../../src/lib/api/growth'
+import { retailerApi } from '../../src/lib/api/retailer'
 
 type TabType = 'all' | 'social' | 'ads'
 
@@ -193,7 +194,7 @@ export default function IntegrationsScreen() {
                       text: 'Disconnect',
                       style: 'destructive',
                       onPress: async () => {
-                        await growthApi.disconnectWhatsAppCloud()
+                        await retailerApi.disconnectWhatsAppApi()
                         void queryClient.invalidateQueries({ queryKey: ['growth', 'integrations'] })
                       },
                     },
