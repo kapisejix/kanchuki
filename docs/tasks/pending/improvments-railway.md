@@ -1,8 +1,23 @@
 # Railway cost & memory improvements
 
-**Opened:** 2026-10-09 · **Status:** partly done, rest waiting on owner decisions · **Trigger:** Railway memory bill after 24 Sep 2026
+**Opened:** 2026-10-09 · **Status:** ✅ culprit found + fixed + deployed 2026-10-10; 24 h confirmation and a few owner decisions still open (§8) · **Trigger:** Railway memory bill after 24 Sep 2026
 
 ---
+
+## 0. Result (2026-10-10)
+
+**The culprit was the background-removal stack (`@imgly/background-removal-node` + its ONNX runtime) resident in the API process.** After PR #49 deployed, API memory fell from a flat **1.34 GB** to **~0.14 GB**.
+
+| Measure | Before (2026-10-09) | After (2026-10-10) |
+|---|---|---|
+| Railway API memory (`supportive-love`) | 1.27–1.44 GB, flat 5+ days | **0.13–0.15 GB** (min 0.129) |
+| `/admin/server-memory` card, 10 min after boot | — | RSS 183 MB · heap used 73 MB of 77 MB committed · external 4.8 MB · native/other ~102 MB (Prisma engine, libvips, allocator) · 3 samples flat |
+| Web (`magnificent-liberation`) | 0.36 GB | 0.33 GB now, 6 h avg 0.36, peak 0.56 during deploy warm-up |
+
+- **Shipped:** #49 `f1148360` (removal pass, squash-merged 2026-10-10 05:22 UTC; API build `438e26b4` SUCCESS) and #50 `59f9fa59` (admin Server Memory card, merged 05:37 UTC).
+- **Estimated bill:** API ≈ $19/mo → ≈ $1–2/mo. Not yet confirmed on an invoice.
+- **Not yet proven:** that RSS stays ~150–250 MB over 24 h (the card's history resets on every deploy; compare Railway's own graph). If it creeps, §10's reading guide applies.
+- **Web healthcheck** is what hits `/v1/public/theme` every minute (§2, item 9).
 
 ## 1. The bill — what it actually says
 
@@ -29,22 +44,23 @@
 
 - Railway bills memory for every minute a service is *running*, used or not.
 - The API keeps **6 BullMQ workers** (tagging, embeddings, studio-shoot, try-on, catalog-sync, maintenance) and ~12 cron jobs loaded and connected to Redis permanently.
-- Something requests the web app about every 2 minutes (`GET /v1/public/theme`, called from `apps/web/src/app/layout.tsx:105`). The caller is **not identified** (uptime monitor or bots). While it runs, the web service never idles.
+- ~~Something requests the web app about every 2 minutes~~ **Identified 2026-10-10:** it is Railway's own healthcheck. Web HTTP log shows `GET /` every 60 s exactly (5–17 ms, 200). `apps/web/src/app/layout.tsx:105` fetches `${API_ORIGIN}/v1/public/theme` on every server render (`revalidate: 60`), so the chain is healthcheck → web `/` → layout → API `/v1/public/theme`, ≈1 call/min. Harmless (milliseconds). A lightweight `/api/health` that skips the theme fetch would remove it — optional.
 - Railway only sleeps a service after ~10 min with **no outbound traffic**. The API's permanent Redis connection (BullMQ) counts as outbound traffic → **the API will probably never actually sleep**.
 
 ## 3. What was NOT proven (be honest)
 
-- **The exact cause of the 1.2 GB.** Static imports of the API measure only ~135 MB locally; the other ~1.2 GB is runtime. Needs a memory reading from the live API.
-- **That 24 Sep changes caused it.** Railway tooling here returns summaries only (no time series) and CLI 5.26 has no `api` command. No dependency or Dockerfile change landed 18 Sep–2 Oct. Not confirmed either way.
-- **Whether removing background removal lowers memory.** It is the leading suspect (an ONNX ML model + `sharp`), but unmeasured.
+> Status after 2026-10-10 deploy: the first and third bullets are **resolved** (see §0). Kept for the record.
+
+- ~~**The exact cause of the 1.2 GB.**~~ **Resolved:** the background-removal stack. Removing it dropped API memory 1.34 → 0.14 GB; the remaining ~100 MB native is the Prisma engine + libvips + allocator.
+- **That 24 Sep changes caused it.** Still unknown — Railway tooling here returns summaries only (no time series) and CLI 5.26 has no `api` command. No dependency or Dockerfile change landed 18 Sep–2 Oct. Irrelevant now that the stack is gone, but do not claim a cause for the *timing*.
+- ~~**Whether removing background removal lowers memory.**~~ **Confirmed:** measured before/after (§0).
 
 ## 4. What changed — done
 
 ### 4.1 Railway settings (production, reversible in dashboard)
-- `sleep_application = true` on **web** (`magnificent-liberation`) and **API** (`supportive-love`).
-- ⚠ Cron jobs (03:00 backup, referral accrue/payout on the 30th, GST reconciliation) do **not** run while the API sleeps.
-- ⚠ First request after sleep is slow (cold start).
-- ⚠ API probably never sleeps (see §2). If so, the real fix is item 11 in §8.
+- `sleep_application = true` on **web** (`magnificent-liberation`) — still on.
+- **API (`supportive-love`): sleep turned back OFF on 2026-10-10** (`sleep_application = false`). Reason: the API runs 6 BullMQ workers + ~12 crons (03:00 backup, referral accrue/payout on the 30th, GST reconciliation) that do **not** run while it sleeps, it probably never slept anyway (permanent Redis connection), and at ~0.14 GB always-on costs ≈ $1–2/mo. The update call returned success but `get_service_config` does not show the field — **verify in the dashboard** (API → Settings → Serverless off).
+- ⚠ Web: first request after sleep is slow (cold start). The 60 s Railway healthcheck (§2) likely keeps it awake anyway.
 
 ### 4.2 Code — background removal REMOVED (feature the owner does not want)
 Removed from the backend:
@@ -78,13 +94,9 @@ An npm package that removes a photo's background **on the server, with no extern
 
 `apps/api/Dockerfile` runs `pnpm install --frozen-lockfile`. That flag means "install **exactly** what `pnpm-lock.yaml` says; if `package.json` and the lockfile disagree, **fail** instead of fixing it". It protects production from silently installing different versions than were tested.
 
-I removed `@imgly/...` from `packages/ai/package.json`, but `pnpm-lock.yaml` still lists it (3 references). The two now disagree → **the Railway build will fail** until the lockfile is regenerated.
+Removing `@imgly/...` from `packages/ai/package.json` while `pnpm-lock.yaml` still listed it would have failed this check and broken the Railway build.
 
-**Pending step (owner-run):** from `E:\Kanchuki`
-```
-pnpm install --lockfile-only --ignore-scripts
-```
-then commit `pnpm-lock.yaml`. My two attempts failed: one on an npm registry network error (`ERR_PNPM_META_FETCH_FAIL`), one was killed by the system for low memory. Do not push the package.json change without the lockfile.
+**Resolved:** the lockfile was regenerated in #49 (imgly gone from `pnpm-lock.yaml`), the Docker build passed and the API deployed (`438e26b4` SUCCESS, 2026-10-10). Kept here as the reason the lockfile must always move with `package.json`.
 
 ## 7. What is `sharp`, and the owner's decision
 
@@ -114,23 +126,25 @@ then commit `pnpm-lock.yaml`. My two attempts failed: one on an npm registry net
 
 | # | Item | State |
 |---|---|---|
-| 1 | Regenerate `pnpm-lock.yaml` (§6) | **blocking deploy** — owner/after freeing RAM |
-| 2 | Mobile UI for removed features | **not touched**: photo-control screens (`ProductPhotoControls.tsx`, `useProductAiStudio.ts`, `productApi.cleanupPhoto/setBackground/listBackgroundImages`) and the "auto-clean" switch + shadow chip in `product/add.tsx` still call the removed routes → they return 404. Needs a removal pass. |
+| 1 | Regenerate `pnpm-lock.yaml` (§6) | **DONE** — regenerated in #49, build + deploy passed 2026-10-10 |
+| 2 | Mobile UI for removed features | **DONE 2026-10-09** — see 6b |
 | 3 | Admin pages for backgrounds / photo cleanup | not checked (`apps/web/src/app/admin/photo-cleanup-test`, background-image admin) |
 | 4 | DB columns/tables (`background_image_id`, `add_shadow`, `BackgroundImage`) | left in place — dropping needs a migration, which only the owner may approve |
 | 5 | Docs: `CLAUDE.md` index rows (#31, #33, #35, #53 mention these features), `docs/BUILD-LOG.md`, `docs/PRO-REQUIREMENTS.md`, `docs/PLAN.md` | **not updated** — `CLAUDE.md` needs explicit owner approval to edit |
 | 6 | Sharp removal from non-compress/watermark features (§7) | **DONE 2026-10-09** (rotate, crop/multi-detect, ranking, duplicate detection, colour auto-fill). Tests: API products/load-test 76 passed, `@kanchuki/ai` 90 passed, typecheck clean. |
 | 6b | Mobile removal pass | **DONE 2026-10-09.** Removed: colour-detect (button/chip in `ProductMediaCarousel`, `useProductDetailForm`, calls in `add-color.tsx`/`add-photos.tsx`), background + shadow controls in `ProductPhotoControls` (**Set as Main kept**), `useProductAiStudio` bg/shadow state, add-product Auto-clean / Shadow / Background picker + pro-options backdrop picker, duplicate badge + `phash`/`is_duplicate` fields, `productApi.cleanupPhoto/getBackgroundImages/setBackground/rotatePhoto/detectColor`. Server `catalog-import` no longer returns `phash`/`is_duplicate`/`duplicate_of_product_id`. Mobile `tsc` + eslint clean, API 84 tests, AI 90 tests. **Kept on purpose:** client-side pre-save rotate (expo ImageManipulator, no server), Pro cleanup path (hanger removal + tight crop via the separate photo-cleanup sidecar — not sharp/imgly; say if you want it removed too). |
 | 7 | Three Postgres services | **ON HOLD** (owner will review). Not touched. Before deleting any: find the one `DATABASE_URL` points to; the others each cost ~50 MB + a volume. Take a backup first. |
-| 8 | Lower `--max-old-space-size` (now 1536 in `apps/api/Dockerfile`) | not done; a cheap test of whether the 1.3 GB is real or uncollected garbage (try 768) |
-| 9 | Find who calls `/v1/public/theme` every 2 min | not identified |
-| 10 | Exact memory culprit | unproven; re-measure Railway after this change deploys |
-| 11 | Stop idle workers/crons (owner ask: "only run on request") | partly addressed by sleep mode; the true fix is a separate worker service or removing BullMQ workers from the web-facing API |
+| 8 | Lower `--max-old-space-size` (now 1536 in `apps/api/Dockerfile`) | **low value now** — heap committed is 77 MB, so the 1536 limit is never approached. Optional tidy (try 512–768); no memory impact expected |
+| 9 | Find who calls `/v1/public/theme` every 2 min | **DONE 2026-10-10** — Railway's web healthcheck, `GET /` every 60 s (§2). Optional: lightweight `/api/health` that skips the theme fetch |
+| 10 | Exact memory culprit | **DONE 2026-10-10** — background-removal stack; API 1.34 → 0.14 GB (§0). Re-check after 24 h |
+| 11 | Stop idle workers/crons (owner ask: "only run on request") | **superseded** — at ~0.14 GB always-on is ≈ $1–2/mo, so API sleep was turned off (§4.1) and workers/crons run on schedule. A separate worker service is no longer worth building for cost |
+| 12 | 24 h recheck of API RSS (expect 150–250 MB) + Railway graph | open — owner/next session |
+| 13 | Web `/.git/config` returns 200 (soft-404, not a leak) | queued: `storefront-soft-404.md` |
 
 ## 9. Safety notes
 
-- Nothing was committed, pushed or deployed by this work. All code edits are local on branch `feat/nearby-stores`.
-- No production env vars, database, or Postgres service were changed. Only the two `sleep_application` flags (§4.1).
+- Code shipped via GitHub only: #49 and #50 merged to `main` by the owner and auto-deployed by Railway (2026-10-10). Nothing was deployed with `railway up`.
+- No production env vars, database, or Postgres service were changed. Only the `sleep_application` flags (§4.1): web `true`, API `false`.
 - Do **not** deploy with `railway up`; deploy only via GitHub push (project policy, `docs/DEPLOY.md`).
 
 ## 10. Admin "Server Memory" card (built 2026-10-09, branch `feat/admin-memory-card`)
