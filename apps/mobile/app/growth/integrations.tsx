@@ -62,8 +62,8 @@ export default function IntegrationsScreen() {
         <View className="flex-row gap-2 mt-3.5">
           {(
             [
-              { key: 'all', label: 'All Channels (9)' },
-              { key: 'social', label: 'Social Media (6)' },
+              { key: 'all', label: 'All Channels (6)' },
+              { key: 'social', label: 'Social Media (3)' },
               { key: 'ads', label: 'Ad Discovery (3)' },
             ] as const
           ).map((tab) => {
@@ -118,8 +118,8 @@ export default function IntegrationsScreen() {
               </Text>
             </View>
             <Text className="text-lavender-200 text-xs leading-relaxed mt-1 font-medium">
-              Publish catalog drops, lookbooks, and 6s photoshoot reels across Instagram, Facebook,
-              YouTube, X.com, and WhatsApp. Credentials are encrypted and securely stored.
+              Publish catalog drops, lookbooks, and 6s photoshoot reels across Instagram, Facebook
+              and WhatsApp. Credentials are encrypted and securely stored.
             </Text>
           </LinearGradient>
 
@@ -178,54 +178,6 @@ export default function IntegrationsScreen() {
                 }}
               />
 
-              {/* YouTube Channel & Shorts */}
-              <IntegrationCard
-                icon="📺"
-                title="YouTube Channel & Shorts"
-                subtitle="Upload luxury Ken Burns 6s video reels and bridal runway showcase tours"
-                configured={data?.youtube?.configured ?? false}
-                configuredAt={data?.youtube?.configured_at ?? null}
-                metaLabel={data?.youtube?.channel_name ?? undefined}
-                onConfigure={() => router.push('/growth/integrations/youtube' as any)}
-                onDisconnect={() => {
-                  Alert.alert('Disconnect YouTube?', 'Your YouTube Channel will be disconnected.', [
-                    { text: 'Cancel', style: 'cancel' },
-                    {
-                      text: 'Disconnect',
-                      style: 'destructive',
-                      onPress: async () => {
-                        await growthApi.disconnectYouTube()
-                        void queryClient.invalidateQueries({ queryKey: ['growth', 'integrations'] })
-                      },
-                    },
-                  ])
-                }}
-              />
-
-              {/* X.com (formerly Twitter) */}
-              <IntegrationCard
-                icon="𝕏"
-                title="X.com (formerly Twitter)"
-                subtitle="Tweet instant flash sales, new collection drops, and festival discounts"
-                configured={data?.x?.configured ?? false}
-                configuredAt={data?.x?.configured_at ?? null}
-                metaLabel={data?.x?.handle ? `@${data.x.handle}` : undefined}
-                onConfigure={() => router.push('/growth/integrations/x' as any)}
-                onDisconnect={() => {
-                  Alert.alert('Disconnect X.com?', 'Your X.com account will be disconnected.', [
-                    { text: 'Cancel', style: 'cancel' },
-                    {
-                      text: 'Disconnect',
-                      style: 'destructive',
-                      onPress: async () => {
-                        await growthApi.disconnectX()
-                        void queryClient.invalidateQueries({ queryKey: ['growth', 'integrations'] })
-                      },
-                    },
-                  ])
-                }}
-              />
-
               {/* WhatsApp Cloud API */}
               <IntegrationCard
                 icon="💬"
@@ -242,30 +194,6 @@ export default function IntegrationsScreen() {
                       style: 'destructive',
                       onPress: async () => {
                         await growthApi.disconnectWhatsAppCloud()
-                        void queryClient.invalidateQueries({ queryKey: ['growth', 'integrations'] })
-                      },
-                    },
-                  ])
-                }}
-              />
-
-              {/* Pinterest Business */}
-              <IntegrationCard
-                icon="📌"
-                title="Pinterest Business"
-                subtitle="Sync bridal lookbooks, lehenga boards, and Rich Fashion Pins with price tags"
-                configured={data?.pinterest?.configured ?? false}
-                configuredAt={data?.pinterest?.configured_at ?? null}
-                metaLabel={data?.pinterest?.username ? `@${data.pinterest.username}` : undefined}
-                onConfigure={() => router.push('/growth/integrations/pinterest' as any)}
-                onDisconnect={() => {
-                  Alert.alert('Disconnect Pinterest?', 'Your Pinterest Business account will be disconnected.', [
-                    { text: 'Cancel', style: 'cancel' },
-                    {
-                      text: 'Disconnect',
-                      style: 'destructive',
-                      onPress: async () => {
-                        await growthApi.disconnectPinterest()
                         void queryClient.invalidateQueries({ queryKey: ['growth', 'integrations'] })
                       },
                     },
