@@ -26,22 +26,35 @@
 -- deletes are single-row config / join / ephemeral rows — same reasoning as the
 -- background_images / showcase_designs exceptions. Owner-approved (Option A).
 -- Idempotent: GRANT is safe to repeat.
-GRANT DELETE ON TABLE
-  social_templates,
-  channel_syncs,
-  product_attributes,
-  store_sections,
-  collection_products,
-  catalog_items,
-  customer_wishlist_items,
-  passport_sessions,
-  team_member_territories,
-  ai_provider_configs,
-  studio_styles,
-  integration_settings,
-  resource_packs,
-  design_references,
-  showcase_design_categories,
-  post_templates,
-  retailer_limit_overrides
-TO kanchuki_app;
+-- Tables are granted one by one and skipped when absent: a table whose creating migration
+-- was never applied (design_references / 069 on this DB) must not abort the other grants.
+DO $$
+DECLARE t text;
+BEGIN
+  FOREACH t IN ARRAY ARRAY[
+    'social_templates',
+    'channel_syncs',
+    'product_attributes',
+    'store_sections',
+    'collection_products',
+    'catalog_items',
+    'customer_wishlist_items',
+    'passport_sessions',
+    'team_member_territories',
+    'ai_provider_configs',
+    'studio_styles',
+    'integration_settings',
+    'resource_packs',
+    'design_references',
+    'showcase_design_categories',
+    'post_templates',
+    'retailer_limit_overrides'
+  ] LOOP
+    IF to_regclass('public.' || t) IS NULL THEN
+      RAISE NOTICE 'skipping % (table does not exist)', t;
+    ELSE
+      EXECUTE format('GRANT DELETE ON TABLE %I TO kanchuki_app', t);
+    END IF;
+  END LOOP;
+END
+$$;
