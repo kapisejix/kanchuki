@@ -201,10 +201,7 @@ function AppShell() {
           <Stack.Screen name="growth/integrations/gmb" />
           <Stack.Screen name="growth/integrations/google-ads" />
           <Stack.Screen name="growth/integrations/instagram" />
-          <Stack.Screen name="growth/integrations/pinterest" />
           <Stack.Screen name="growth/integrations/whatsapp" />
-          <Stack.Screen name="growth/integrations/x" />
-          <Stack.Screen name="growth/integrations/youtube" />
           <Stack.Screen name="growth/ratings" />
           <Stack.Screen name="growth/templates" />
           <Stack.Screen name="settings/index" />

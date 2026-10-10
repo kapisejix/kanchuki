@@ -774,40 +774,6 @@ export type FbAdsConfig = {
   page_id: string
 }
 
-export type InstagramConfig = {
-  account_id: string
-  access_token: string
-  handle?: string
-  auto_publish_reels?: boolean
-}
-
-export type FacebookConfig = {
-  page_id: string
-  page_access_token: string
-  page_name?: string
-}
-
-export type YouTubeConfig = {
-  channel_id: string
-  api_key: string
-  channel_name?: string
-  auto_publish_shorts?: boolean
-}
-
-export type XConfig = {
-  handle: string
-  api_key: string
-  api_secret?: string
-  bearer_token?: string
-  access_token?: string
-}
-
-export type PinterestConfig = {
-  username: string
-  access_token: string
-  board_id?: string
-}
-
 export type FbAdCampaign = {
   name: string
   daily_budget: number
@@ -1315,80 +1281,11 @@ export const growthApi = {
     ),
 
   // ─── Social Media Integrations ───────────────────────────────────
-  configureInstagram: (payload: InstagramConfig) =>
-    request<{ data: { configured: boolean } }>('/v1/retailers/me/integrations/instagram', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }).catch(() => ({ data: { configured: true } })),
-
   disconnectInstagram: () =>
-    request<void>('/v1/retailers/me/integrations/instagram', { method: 'DELETE' }).catch(() => undefined),
-
-  testInstagram: (payload?: { account_id?: string; access_token?: string }) =>
-    request<{ data: { connected: boolean; error?: string; username?: string } }>(
-      '/v1/retailers/me/integrations/instagram/test',
-      { method: 'POST', body: JSON.stringify(payload ?? {}) },
-    ).catch(() => ({ data: { connected: true, username: 'Verified' } })),
-
-  configureFacebook: (payload: FacebookConfig) =>
-    request<{ data: { configured: boolean } }>('/v1/retailers/me/integrations/facebook', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }).catch(() => ({ data: { configured: true } })),
+    request<void>('/v1/retailers/me/integrations/instagram', { method: 'DELETE' }),
 
   disconnectFacebook: () =>
-    request<void>('/v1/retailers/me/integrations/facebook', { method: 'DELETE' }).catch(() => undefined),
-
-  testFacebook: (payload?: { page_id?: string; page_access_token?: string }) =>
-    request<{ data: { connected: boolean; error?: string; page_name?: string } }>(
-      '/v1/retailers/me/integrations/facebook/test',
-      { method: 'POST', body: JSON.stringify(payload ?? {}) },
-    ).catch(() => ({ data: { connected: true, page_name: 'Verified' } })),
-
-  configureYouTube: (payload: YouTubeConfig) =>
-    request<{ data: { configured: boolean } }>('/v1/retailers/me/integrations/youtube', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }).catch(() => ({ data: { configured: true } })),
-
-  disconnectYouTube: () =>
-    request<void>('/v1/retailers/me/integrations/youtube', { method: 'DELETE' }).catch(() => undefined),
-
-  testYouTube: (payload?: { channel_id?: string; api_key?: string }) =>
-    request<{ data: { connected: boolean; error?: string; channel_name?: string } }>(
-      '/v1/retailers/me/integrations/youtube/test',
-      { method: 'POST', body: JSON.stringify(payload ?? {}) },
-    ).catch(() => ({ data: { connected: true, channel_name: 'Verified' } })),
-
-  configureX: (payload: XConfig) =>
-    request<{ data: { configured: boolean } }>('/v1/retailers/me/integrations/x', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }).catch(() => ({ data: { configured: true } })),
-
-  disconnectX: () =>
-    request<void>('/v1/retailers/me/integrations/x', { method: 'DELETE' }).catch(() => undefined),
-
-  testX: (payload?: { handle?: string; api_key?: string }) =>
-    request<{ data: { connected: boolean; error?: string; handle?: string } }>(
-      '/v1/retailers/me/integrations/x/test',
-      { method: 'POST', body: JSON.stringify(payload ?? {}) },
-    ).catch(() => ({ data: { connected: true, handle: payload?.handle ?? 'Verified' } })),
-
-  configurePinterest: (payload: PinterestConfig) =>
-    request<{ data: { configured: boolean } }>('/v1/retailers/me/integrations/pinterest', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }).catch(() => ({ data: { configured: true } })),
-
-  disconnectPinterest: () =>
-    request<void>('/v1/retailers/me/integrations/pinterest', { method: 'DELETE' }).catch(() => undefined),
-
-  testPinterest: (payload?: { username?: string; access_token?: string }) =>
-    request<{ data: { connected: boolean; error?: string; username?: string } }>(
-      '/v1/retailers/me/integrations/pinterest/test',
-      { method: 'POST', body: JSON.stringify(payload ?? {}) },
-    ).catch(() => ({ data: { connected: true, username: 'Verified' } })),
+    request<void>('/v1/retailers/me/integrations/facebook', { method: 'DELETE' }),
 
   // ─── F-021 Ratings & Reviews ─────────────────────────────────────
   reviewSummary: () =>
