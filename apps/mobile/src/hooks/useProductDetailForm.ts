@@ -42,9 +42,6 @@ export function useProductDetailForm({
   const [deleting, setDeleting] = useState(false)
 
   // Color detection from current photo
-  const [detectingColor, setDetectingColor] = useState(false)
-  const [detectedColor, setDetectedColor] = useState<string | null>(null)
-  const [colorDetectError, setColorDetectError] = useState<string | null>(null)
 
   const dirty = useCallback(
     <T,>(setter: (v: T) => void) =>
@@ -54,12 +51,6 @@ export function useProductDetailForm({
       },
     [],
   )
-
-  // Clear detected color when switching photos
-  useEffect(() => {
-    setDetectedColor(null)
-    setColorDetectError(null)
-  }, [selectedPhotoIndex])
 
   // Hydrate fields from server
   const hydratedProductId = useRef<string | null>(null)
@@ -196,26 +187,6 @@ export function useProductDetailForm({
     ])
   }
 
-  const handleDetectColor = async () => {
-    const photo = displayPhotos[selectedPhotoIndex]
-    if (!photo || photo.is_video || detectingColor) return
-    setDetectingColor(true)
-    setColorDetectError(null)
-    setDetectedColor(null)
-    try {
-      const res = await productApi.detectColor(photo.url)
-      if (res.data?.color) {
-        setDetectedColor(res.data.color)
-      } else {
-        setColorDetectError('Could not detect dominant color')
-      }
-    } catch {
-      setColorDetectError('Color detection failed')
-    } finally {
-      setDetectingColor(false)
-    }
-  }
-
   return {
     price,
     setPrice,
@@ -253,15 +224,10 @@ export function useProductDetailForm({
     retagging,
     statusUpdating,
     deleting,
-    detectingColor,
-    detectedColor,
-    setDetectedColor,
-    colorDetectError,
     handleSave,
     handleRetag,
     handleStatusChange,
     handleDelete,
-    handleDetectColor,
   }
 }
 

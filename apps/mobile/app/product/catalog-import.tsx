@@ -182,7 +182,7 @@ export default function CatalogImportScreen() {
       setItems(
         merged.map((item) => ({
           original: item,
-          approved: !item.is_duplicate,
+          approved: true,
           edits: {
             product_name: item.tags.product_name ?? '',
             subtype: item.tags.subtype ?? '',

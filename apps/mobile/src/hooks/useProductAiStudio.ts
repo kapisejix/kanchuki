@@ -43,32 +43,6 @@ export function useProductAiStudio({
   const [studioEtaMs, setStudioEtaMs] = useState<number>(0)
   const [studioTab, setStudioTab] = useState<'product' | 'models'>('product')
 
-  // Background and shadow preferences
-  const [photoBackgrounds, setPhotoBackgrounds] = useState<Record<string, string | null>>({})
-  const [backgroundSaving, setBackgroundSaving] = useState(false)
-  const [photoShadows, setPhotoShadows] = useState<Record<string, boolean>>({})
-  const [shadowSaving, setShadowSaving] = useState(false)
-
-  // Admin-curated backdrop library for the per-photo Background picker.
-  const { data: backgroundImagesData } = useQuery({
-    queryKey: ['products', 'background-images'],
-    queryFn: () => productApi.getBackgroundImages(),
-  })
-  const backgroundImages = backgroundImagesData?.data ?? []
-
-  // Seed the currently-viewed photo's background + shadow from what the DB
-  // recorded for the product primary — merge, never replace, so a choice made
-  // this session isn't clobbered by a refetch.
-  useEffect(() => {
-    const primaryId = (product?.photos ?? []).find((p) => p.is_primary)?.id
-    if (!primaryId) return
-    setPhotoBackgrounds((prev) =>
-      primaryId in prev ? prev : { ...prev, [primaryId]: product?.background_image_id ?? null },
-    )
-    setPhotoShadows((prev) =>
-      primaryId in prev ? prev : { ...prev, [primaryId]: product?.add_shadow ?? false },
-    )
-  }, [product?.id, product?.background_image_id, product?.add_shadow, product?.photos])
   const [settingPrimaryId, setSettingPrimaryId] = useState<string | null>(null)
   const [downloadingMedia, setDownloadingMedia] = useState(false)
   const [deletingMedia, setDeletingMedia] = useState(false)
@@ -300,44 +274,6 @@ export function useProductAiStudio({
     }
   }, [studioResult, product, handleCloseStudioModal])
 
-  const handleSetBackground = async (bgId: string | null) => {
-    if (!product || !currentPhoto || currentPhotoIsOriginal || backgroundSaving) return
-    setBackgroundSaving(true)
-    const photoId = currentPhoto.id
-    try {
-      await productApi.cleanupPhoto(product.id, photoId, bgId, shadowFor(photoId))
-      setPhotoBackgrounds((prev) => ({ ...prev, [photoId]: bgId }))
-      setPhotoCacheBust((prev) => ({ ...prev, [photoId]: Date.now() }))
-      void queryClient.invalidateQueries({ queryKey: ['products', product.id] })
-    } catch (err) {
-      showError(err, 'Failed to change background')
-    } finally {
-      setBackgroundSaving(false)
-    }
-  }
-
-  const shadowFor = useCallback(
-    (photoId: string) => photoShadows[photoId] ?? product?.add_shadow ?? false,
-    [photoShadows, product],
-  )
-
-  const handleSetShadow = async (shadow: boolean) => {
-    if (!product || !currentPhoto || currentPhotoIsOriginal || shadowSaving) return
-    setShadowSaving(true)
-    const photoId = currentPhoto.id
-    try {
-      const currentBgId = photoBackgrounds[photoId] ?? null
-      await productApi.cleanupPhoto(product.id, photoId, currentBgId, shadow)
-      setPhotoShadows((prev) => ({ ...prev, [photoId]: shadow }))
-      setPhotoCacheBust((prev) => ({ ...prev, [photoId]: Date.now() }))
-      void queryClient.invalidateQueries({ queryKey: ['products', product.id] })
-    } catch (err) {
-      showError(err, 'Failed to update shadow')
-    } finally {
-      setShadowSaving(false)
-    }
-  }
-
   const handleDownloadCurrentMedia = useCallback(async () => {
     const photo = displayPhotos[selectedPhotoIndex]
     if (!photo || !product || downloadingMedia) return
@@ -459,16 +395,6 @@ export function useProductAiStudio({
     handlePostStudioResultToSocial,
     handleSetPrimary,
     settingPrimaryId,
-    backgroundImages,
-    photoBackgrounds,
-    setPhotoBackgrounds,
-    backgroundSaving,
-    handleSetBackground,
-    photoShadows,
-    setPhotoShadows,
-    shadowSaving,
-    shadowFor,
-    handleSetShadow,
     downloadingMedia,
     deletingMedia,
     handleDownloadCurrentMedia,

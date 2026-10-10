@@ -57,7 +57,7 @@ export default function AddColorVariantScreen() {
     await uploadAndAutoSave(compressed.uri)
   }
 
-  // Upload, auto-detect color, save and return immediately without manual friction.
+  // Upload, save and return immediately without manual friction.
   const uploadAndAutoSave = async (uri: string) => {
     try {
       const blob = await readLocalImage(uri)
@@ -66,15 +66,7 @@ export default function AddColorVariantScreen() {
       await uploadImageToR2(uri, info.upload_url, 'image/jpeg')
       uploadInfoRef.current = { r2_key: info.r2_key, public_url: info.public_url }
 
-      let detected = 'New Color'
-      try {
-        const colorResult = await productApi.detectColor(info.public_url)
-        if (colorResult?.data?.color?.trim()) {
-          detected = colorResult.data.color.trim()
-        }
-      } catch {
-        // Fallback color handled below
-      }
+      const detected = 'New Color'
 
       setColor(detected)
       await saveVariant(detected)

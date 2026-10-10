@@ -1,5 +1,4 @@
 import {
-  cleanupProductPhoto,
   fetchImageBuffer,
   reserveAiCredits,
   tagProductImageUrls,
@@ -19,7 +18,7 @@ import { addEmbeddingJob } from './index.js';
 import type { TaggingJobData } from './index.js';
 
 export async function handleTagProduct(data: TaggingJobData): Promise<void> {
-  const { product_id, retailer_id, photo_url, r2_key, auto_cleanup = true } = data;
+  const { product_id, retailer_id, photo_url } = data;
 
   try {
     // F-010: weighted quota gate — reserves the most expensive currently-
@@ -43,56 +42,6 @@ export async function handleTagProduct(data: TaggingJobData): Promise<void> {
     const tags = await tagProductImageUrls([photo_url], {
       onProviderUsed: recordAiUsage(retailer_id),
     });
-
-    // Auto catalog photo cleanup (PRO-REQUIREMENTS.md): overwrite the raw
-    // retailer upload in place with a background-stripped, white-backdrop
-    // version. Same r2_key, but the stored url IS re-versioned below —
-    // without it, every client that already fetched the raw photo (the
-    // retailer's own preview, storefront, CDN edge) keeps showing the
-    // pre-cleanup bytes forever since the URL never changes.
-    // Best-effort — ponytail: swallow failures, a raw-but-tagged photo beats a failed job.
-    // Retailer-toggleable via auto_cleanup (product/add.tsx) for shots that
-    // shouldn't be cropped/bg-stripped (e.g. styled mannequin display).
-    if (auto_cleanup) {
-      try {
-        await checkQuota(retailer_id, 'BG_REMOVAL');
-        // F-011/F-028: use the retailer's picked background if set; otherwise
-        // auto-match a backdrop whose tone OPPOSES the AI-detected garment
-        // color (dark garment → light backdrop, light → dark). Unmapped or
-        // mid-tone colors keep the plain white default.
-        const withBg = await prisma.product.findUnique({
-          where: { id: product_id },
-          include: { background_image: true },
-        });
-        let bgUrl = withBg?.background_image?.is_active
-          ? withBg.background_image.image_url
-          : undefined;
-        if (!bgUrl) {
-          const tone = classifyColorTone(tags.primary_color);
-          if (tone) bgUrl = (await pickContrastBackground(tone)) ?? undefined;
-        }
-        const raw = await fetchImageBuffer(photo_url);
-        const photoRow = await prisma.productPhoto.findFirst({
-          where: { product_id, retailer_id, r2_key },
-          select: { id: true, metadata: true, url: true },
-        });
-        if (photoRow) {
-          await preserveOriginalPhoto(photoRow.id, r2_key, photoRow.metadata, raw);
-        }
-        // F-030: honor the retailer's upload-time shadow toggle (product.add_shadow).
-        const cleaned = await cleanupProductPhoto(raw, bgUrl, withBg?.add_shadow);
-        await uploadBuffer(r2_key, cleaned, 'image/jpeg');
-        if (photoRow) {
-          await prisma.productPhoto.update({
-            where: { id: photoRow.id },
-            data: { url: bumpPhotoUrlVersion(photoRow.url) },
-          });
-        }
-        await incrementUsage(retailer_id, 'BG_REMOVAL');
-      } catch (err) {
-        console.error(`Photo cleanup failed for product ${product_id}, keeping raw photo:`, err);
-      }
-    }
 
     // Only fill name/sku/description/subtype/styles/fabrics when still unset
     // — never clobber a retailer's manual edit on a later re-tag/retry.

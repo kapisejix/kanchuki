@@ -118,7 +118,7 @@ export default function BulkOnboardScreen() {
       setItems(
         detected.data.items.map((item) => ({
           original: item,
-          approved: !item.is_duplicate,
+          approved: true,
           sectionId: selectedSectionId,
         })),
       )
@@ -170,7 +170,6 @@ export default function BulkOnboardScreen() {
           pattern: item.original.tags.pattern,
           search_tags: item.original.tags.search_tags,
           section_id: item.sectionId,
-          phash: item.original.phash,
         })),
         selectedSectionId,
       )
@@ -349,12 +348,6 @@ export default function BulkOnboardScreen() {
                     📍 {sectionName(item.sectionId)} {sections.length > 1 ? '(tap to change)' : ''}
                   </Text>
                 </AnimatedPressable>
-                {item.original.is_duplicate && (
-                  <View className="flex-row items-center gap-1 mt-1">
-                    <AlertTriangle size={12} color={colors.turmeric[600]} />
-                    <Text className="text-xs text-turmeric-600">Looks already catalogued</Text>
-                  </View>
-                )}
               </View>
               <AnimatedPressable
                 onPress={() => toggleApproval(index)}

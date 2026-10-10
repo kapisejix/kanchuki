@@ -17,9 +17,7 @@ const {
   mockHasFeature,
   mockFetchImageBuffer,
   mockUploadBuffer,
-  mockRotateImage,
   mockGetDownloadPresignedUrl,
-  mockCleanupProductPhoto,
   mockPhotoDelete,
   mockPhotoCreate,
   mockVariantFindFirst,
@@ -49,9 +47,7 @@ const {
     mockHasFeature: vi.fn(),
     mockFetchImageBuffer: vi.fn(),
     mockUploadBuffer: vi.fn(),
-    mockRotateImage: vi.fn(),
     mockGetDownloadPresignedUrl: vi.fn(),
-    mockCleanupProductPhoto: vi.fn().mockResolvedValue(Buffer.from('cleaned')),
     mockPhotoDelete: vi.fn().mockResolvedValue(undefined),
     mockVariantFindFirst: vi.fn().mockResolvedValue(null),
     mockVariantUpdate: vi.fn().mockResolvedValue(undefined),
@@ -99,17 +95,14 @@ vi.mock('@kanchuki/db', () => ({
 }));
 
 vi.mock('@kanchuki/ai', () => ({
-  cleanupProductPhoto: mockCleanupProductPhoto,
   fetchImageBuffer: mockFetchImageBuffer,
   getDownloadPresignedUrl: mockGetDownloadPresignedUrl,
   getUploadPresignedUrl: vi.fn(),
   publicUrl: vi.fn(),
   uploadBuffer: mockUploadBuffer,
-  rotateImage: mockRotateImage,
   deleteObject: mockDeleteObject,
   MATCH_SIMILARITY_THRESHOLD: 0.9,
   MIN_CONFIDENCE_FOR_MATCHING: 0.5,
-  detectColor: vi.fn(),
 }));
 
 // Spread the real module and override only the two tables this suite wants
@@ -344,127 +337,6 @@ describe('GET /products — F-025 SKU lookup', () => {
   });
 });
 
-describe('POST /products/:id/photos/:photoId/rotate', () => {
-  it('rotates the primary photo 90°, swaps stored width/height', async () => {
-    mockPhotoFindFirst.mockResolvedValue({
-      id: 'photo_1',
-      product_id: 'prod_1',
-      retailer_id: RETAILER_ID,
-      url: 'https://cdn.example.com/p.jpg',
-      r2_key: 'products/prod_1/p.jpg',
-      width: 800,
-      height: 600,
-      metadata: null,
-    });
-    mockFetchImageBuffer.mockResolvedValue(Buffer.from('raw'));
-    mockRotateImage.mockResolvedValue({ buffer: Buffer.from('rotated'), width: 600, height: 800 });
-    mockUploadBuffer.mockResolvedValue(undefined);
-    mockPhotoUpdate.mockResolvedValue({});
-
-    const app = await buildApp(null);
-    const res = await app.inject({
-      method: 'POST',
-      url: '/v1/products/prod_1/photos/photo_1/rotate',
-      payload: {},
-    });
-
-    expect(res.statusCode).toBe(200);
-    const body = res.json();
-    expect(body.data).toMatchObject({ id: 'photo_1', target: 'primary', width: 600, height: 800 });
-    // The stored URL must change (a version query param) even though the
-    // r2_key doesn't — otherwise CDN/client image caches keep showing the
-    // pre-rotate bytes at the unchanged URL forever.
-    expect(body.data.url).toMatch(/^https:\/\/cdn\.example\.com\/p\.jpg\?v=\d+$/);
-    expect(mockRotateImage).toHaveBeenCalledWith(Buffer.from('raw'), 90);
-    expect(mockUploadBuffer).toHaveBeenCalledWith(
-      'products/prod_1/p.jpg',
-      Buffer.from('rotated'),
-      'image/jpeg',
-    );
-    expect(mockPhotoUpdate).toHaveBeenCalledWith({
-      where: { id: 'photo_1' },
-      data: { url: body.data.url, width: 600, height: 800 },
-    });
-  });
-
-  it('rotates the preserved original, leaving primary width/height untouched', async () => {
-    mockPhotoFindFirst.mockResolvedValue({
-      id: 'photo_1',
-      product_id: 'prod_1',
-      retailer_id: RETAILER_ID,
-      url: 'https://cdn.example.com/p.jpg',
-      r2_key: 'products/prod_1/p.jpg',
-      width: 800,
-      height: 600,
-      metadata: { original_r2_key: 'products/prod_1/p-original.jpg' },
-    });
-    mockGetDownloadPresignedUrl.mockResolvedValue('https://signed.example.com/original.jpg');
-    mockFetchImageBuffer.mockResolvedValue(Buffer.from('raw-original'));
-    mockRotateImage.mockResolvedValue({
-      buffer: Buffer.from('rotated-original'),
-      width: 600,
-      height: 800,
-    });
-    mockUploadBuffer.mockResolvedValue(undefined);
-
-    const app = await buildApp(null);
-    const res = await app.inject({
-      method: 'POST',
-      url: '/v1/products/prod_1/photos/photo_1/rotate',
-      payload: { target: 'original' },
-    });
-
-    expect(res.statusCode).toBe(200);
-    const body = res.json();
-    expect(body.data).toMatchObject({
-      id: 'photo_1',
-      target: 'original',
-      url: 'https://signed.example.com/original.jpg',
-    });
-    expect(mockUploadBuffer).toHaveBeenCalledWith(
-      'products/prod_1/p-original.jpg',
-      Buffer.from('rotated-original'),
-      'image/jpeg',
-    );
-    expect(mockPhotoUpdate).not.toHaveBeenCalled();
-  });
-
-  it('422s when target=original has no preserved original', async () => {
-    mockPhotoFindFirst.mockResolvedValue({
-      id: 'photo_1',
-      product_id: 'prod_1',
-      retailer_id: RETAILER_ID,
-      url: 'https://cdn.example.com/p.jpg',
-      r2_key: 'products/prod_1/p.jpg',
-      width: 800,
-      height: 600,
-      metadata: null,
-    });
-
-    const app = await buildApp(null);
-    const res = await app.inject({
-      method: 'POST',
-      url: '/v1/products/prod_1/photos/photo_1/rotate',
-      payload: { target: 'original' },
-    });
-
-    expect(res.statusCode).toBe(422);
-  });
-
-  it('404s for a photo not owned by the requesting retailer', async () => {
-    mockPhotoFindFirst.mockResolvedValue(null);
-
-    const app = await buildApp(null);
-    const res = await app.inject({
-      method: 'POST',
-      url: '/v1/products/prod_1/photos/photo_1/rotate',
-      payload: {},
-    });
-
-    expect(res.statusCode).toBe(404);
-  });
-});
-
 describe('PATCH /products/:id/photos/:photoId — is_primary promotion (F-029)', () => {
   const photo = {
     id: 'photo_1',
@@ -577,190 +449,11 @@ describe('PATCH /products/:id/photos/:photoId — is_primary promotion (F-029)',
   });
 });
 
-describe('POST /products/:id/photos/:photoId/cleanup — per-photo background (F-029)', () => {
-  const photoWithProduct = {
-    id: 'photo_1',
-    product_id: 'prod_1',
-    retailer_id: RETAILER_ID,
-    url: 'https://cdn.example.com/p.jpg',
-    r2_key: 'products/prod_1/p.jpg',
-    width: 800,
-    height: 600,
-    is_primary: true,
-    metadata: null,
-    product: { background_image: null },
-  };
-
+describe('photo delete', () => {
   beforeEach(() => {
     mockFetchImageBuffer.mockResolvedValue(Buffer.from('raw'));
     mockUploadBuffer.mockResolvedValue(undefined);
-    mockCleanupProductPhoto.mockResolvedValue(Buffer.from('cleaned'));
     mockHasFeature.mockResolvedValue(true);
-  });
-
-  it('composites the viewed photo onto the requested active backdrop', async () => {
-    mockPhotoFindFirst.mockResolvedValue(photoWithProduct);
-    mockBackgroundImageFindFirst.mockResolvedValue({
-      id: 'bg_1',
-      image_url: 'https://cdn.example.com/bg.jpg',
-      is_active: true,
-    });
-
-    const app = await buildApp(null);
-    const res = await app.inject({
-      method: 'POST',
-      url: '/v1/products/prod_1/photos/photo_1/cleanup',
-      payload: { background_image_id: 'bg_1' },
-    });
-
-    expect(res.statusCode).toBe(200);
-    const body = res.json();
-    expect(body.data.id).toBe('photo_1');
-    // The stored URL must be re-versioned after the in-place overwrite —
-    // same reasoning as the rotate route above.
-    expect(body.data.url).toMatch(/^https:\/\/cdn\.example\.com\/p\.jpg\?v=\d+$/);
-    expect(mockPhotoUpdate).toHaveBeenCalledWith({
-      where: { id: 'photo_1' },
-      data: { url: body.data.url },
-    });
-    // Explicit per-photo backdrop wins over the product-level background.
-    expect(mockBackgroundImageFindFirst).toHaveBeenCalledWith({
-      where: { id: 'bg_1', is_active: true },
-    });
-  });
-
-  it('applies an admin backdrop even when the plan lacks CUSTOM_BACKGROUND_LIBRARY (gate removed 2026-08-09)', async () => {
-    // The CUSTOM_BACKGROUND_LIBRARY plan gate was removed per user decision —
-    // every retailer can composite onto an admin-curated backdrop now. The
-    // feature flag is explicitly OFF here to lock in that the lookup +
-    // composite path runs regardless of the plan feature.
-    mockPhotoFindFirst.mockResolvedValue(photoWithProduct);
-    mockHasFeature.mockResolvedValue(false);
-    mockBackgroundImageFindFirst.mockResolvedValue({
-      id: 'bg_1',
-      image_url: 'https://cdn.example.com/bg.jpg',
-      is_active: true,
-    });
-
-    const app = await buildApp(null);
-    const res = await app.inject({
-      method: 'POST',
-      url: '/v1/products/prod_1/photos/photo_1/cleanup',
-      payload: { background_image_id: 'bg_1' },
-    });
-
-    expect(res.statusCode).toBe(200);
-    expect(mockBackgroundImageFindFirst).toHaveBeenCalledWith({
-      where: { id: 'bg_1', is_active: true },
-    });
-    expect(mockUploadBuffer).toHaveBeenCalled();
-  });
-
-  it('422s when the requested backdrop is inactive or missing', async () => {
-    mockPhotoFindFirst.mockResolvedValue(photoWithProduct);
-    mockBackgroundImageFindFirst.mockResolvedValue(null);
-
-    const app = await buildApp(null);
-    const res = await app.inject({
-      method: 'POST',
-      url: '/v1/products/prod_1/photos/photo_1/cleanup',
-      payload: { background_image_id: 'bg_gone' },
-    });
-
-    expect(res.statusCode).toBe(422);
-    expect(mockUploadBuffer).not.toHaveBeenCalled();
-  });
-
-  it('falls back to the product-level background when no per-photo backdrop given', async () => {
-    mockPhotoFindFirst.mockResolvedValue({
-      ...photoWithProduct,
-      product: {
-        background_image: {
-          id: 'bg_prod',
-          image_url: 'https://cdn.example.com/prod-bg.jpg',
-          is_active: true,
-        },
-      },
-    });
-
-    const app = await buildApp(null);
-    const res = await app.inject({
-      method: 'POST',
-      url: '/v1/products/prod_1/photos/photo_1/cleanup',
-      payload: { background_image_id: null },
-    });
-
-    expect(res.statusCode).toBe(200);
-    // No per-photo lookup — the product-level backdrop is used as-is.
-    expect(mockBackgroundImageFindFirst).not.toHaveBeenCalled();
-  });
-
-  it('404s for a photo not owned by the requesting retailer', async () => {
-    mockPhotoFindFirst.mockResolvedValue(null);
-
-    const app = await buildApp(null);
-    const res = await app.inject({
-      method: 'POST',
-      url: '/v1/products/prod_1/photos/photo_1/cleanup',
-      payload: { background_image_id: 'bg_1' },
-    });
-
-    expect(res.statusCode).toBe(404);
-  });
-
-  // ── F-030: per-call shadow override ──────────────────────────────
-  it('passes an explicit add_shadow override through to the compositor', async () => {
-    mockPhotoFindFirst.mockResolvedValue({
-      ...photoWithProduct,
-      product: { background_image: null, add_shadow: false },
-    });
-
-    const app = await buildApp(null);
-    const res = await app.inject({
-      method: 'POST',
-      url: '/v1/products/prod_1/photos/photo_1/cleanup',
-      payload: { add_shadow: true },
-    });
-
-    expect(res.statusCode).toBe(200);
-    expect(mockCleanupProductPhoto).toHaveBeenCalledWith(Buffer.from('raw'), undefined, true);
-    await app.close();
-  });
-
-  it('falls back to the product-level add_shadow when the body omits the override', async () => {
-    mockPhotoFindFirst.mockResolvedValue({
-      ...photoWithProduct,
-      product: { background_image: null, add_shadow: true },
-    });
-
-    const app = await buildApp(null);
-    const res = await app.inject({
-      method: 'POST',
-      url: '/v1/products/prod_1/photos/photo_1/cleanup',
-      payload: { background_image_id: null },
-    });
-
-    expect(res.statusCode).toBe(200);
-    expect(mockCleanupProductPhoto).toHaveBeenCalledWith(Buffer.from('raw'), undefined, true);
-    await app.close();
-  });
-
-  it('defaults to no shadow when neither body nor product sets it', async () => {
-    mockPhotoFindFirst.mockResolvedValue({
-      ...photoWithProduct,
-      product: { background_image: null, add_shadow: false },
-    });
-
-    const app = await buildApp(null);
-    const res = await app.inject({
-      method: 'POST',
-      url: '/v1/products/prod_1/photos/photo_1/cleanup',
-      payload: {},
-    });
-
-    expect(res.statusCode).toBe(200);
-    expect(mockCleanupProductPhoto).toHaveBeenCalledWith(Buffer.from('raw'), undefined, false);
-    await app.close();
   });
 
   describe('DELETE /v1/products/:id/photos/:photoId', () => {

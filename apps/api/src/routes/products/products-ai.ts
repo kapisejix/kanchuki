@@ -1,5 +1,4 @@
 // Auto-split from products.ts (scripts/check-route-size.sh) — route bodies verbatim.
-import { detectColor } from '@kanchuki/ai';
 import { prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
@@ -53,26 +52,5 @@ export const productsAiRoutes: FastifyPluginAsync = async (server) => {
     });
 
     return reply.status(202).send({ data: { retag_queued: true } });
-  });
-
-  // ─── POST /products/detect-color ───────────────────────────────
-  // Lightweight lite-model call that extracts only the dominant color from a
-  // variant/product photo. Designed for the "Add Color Variant" screen to
-  // pre-fill the color field instead of requiring manual entry. Multi-provider
-  // failover keeps it working when the primary model is out of credits; usage
-  // is attributed per-call (AI_COLOR_DETECT) but not quota-gated.
-  server.post('/detect-color', async (request, reply) => {
-    const body = z.object({ image_url: z.string().url() }).safeParse(request.body);
-    if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
-
-    try {
-      const color = await detectColor(body.data.image_url, {
-        onProviderUsed: recordAiUsage(request.retailerId),
-      });
-      return reply.status(200).send({ data: { color: color || 'Multi-color' } });
-    } catch (err) {
-      request.log.error({ err, image_url: body.data.image_url }, 'Color detection failed');
-      return reply.status(200).send({ data: { color: 'Multi-color' } });
-    }
   });
 };
