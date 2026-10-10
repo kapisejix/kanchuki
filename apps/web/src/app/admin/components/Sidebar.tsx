@@ -206,6 +206,12 @@ const NAV_ITEMS: NavItem[] = [
         superAdminOnly: true,
       },
       {
+        label: 'Server Memory',
+        href: '/admin/server-memory',
+        icon: Activity,
+        superAdminOnly: true,
+      },
+      {
         label: 'Query Console',
         href: '/admin/database/query',
         icon: Terminal,

@@ -89,6 +89,7 @@ export const SUPER_ADMIN_ONLY_ADMIN_SEGMENTS = [
   'operations',
   'query',
   'schema',
+  'server-memory', // live process memory + 24 h history — infrastructure telemetry
   'storage-report',
   // ── Platform-wide audit + cost telemetry ──
   'ai-usage',

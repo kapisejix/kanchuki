@@ -37,6 +37,7 @@ import {
   adminReferralRoutes,
   adminResourcePacksRoutes,
   adminRetailersRoutes,
+  adminServerMemoryRoutes,
   adminShowcaseDesignCategoryRoutes,
   adminShowcaseDesignRoutes,
   adminSocialRoutes,
@@ -216,6 +217,8 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
   await server.register(adminPhotoCleanupRoutes);
   // admin-storage — R2 compression savings report (reads COMPRESS_R2_IMAGES audit entries)
   await server.register(adminStorageRoutes);
+  // admin-server-memory — live process memory + 24 h history (Railway RAM investigation)
+  await server.register(adminServerMemoryRoutes);
   // admin-commission — 3% monthly-commission pool + expense ledger
   await server.register(adminCommissionRoutes);
   await server.register(adminFestivalsRoutes);

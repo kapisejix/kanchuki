@@ -132,3 +132,27 @@ then commit `pnpm-lock.yaml`. My two attempts failed: one on an npm registry net
 - Nothing was committed, pushed or deployed by this work. All code edits are local on branch `feat/nearby-stores`.
 - No production env vars, database, or Postgres service were changed. Only the two `sleep_application` flags (§4.1).
 - Do **not** deploy with `railway up`; deploy only via GitHub push (project policy, `docs/DEPLOY.md`).
+
+## 10. Admin "Server Memory" card (built 2026-10-09, branch `feat/admin-memory-card`)
+
+Track API RAM from the admin dashboard instead of guessing.
+
+| Piece | Where |
+|---|---|
+| API route `GET /v1/admin/server-memory` (read-only) | `apps/api/src/routes/admin/admin-server-memory.ts` (+ test) |
+| Sampler: one reading every 5 min, in-process ring buffer of 288 (24 h) | same file; `unref`'d timer, no DB writes |
+| Admin page | `/admin/server-memory` (`apps/web/src/app/admin/server-memory/page.tsx`) — 4 stats, RSS + heap trend, last 12 samples, plain-English verdict |
+| Home-page card | `apps/web/src/app/admin/components/ServerMemoryCard.tsx`, rendered in `admin/page.tsx` before "Platform Funnel"; hides itself if the request is refused |
+| Access | **Super Admin only** — segment `server-memory` added to `SUPER_ADMIN_ONLY_ADMIN_SEGMENTS` (`packages/shared/src/constants/admin-access.ts`); Sidebar entry "Server Memory" under Operations |
+
+### How to read it
+- **RSS** = what Railway bills. **JS heap used** = live JavaScript objects. **External** = Buffers/native tied to JS. **Native/other** = `rss − heapTotal − external` (Prisma engine, libvips, allocator, loaded code).
+- Native/other large → not a JS leak; heap snapshots will not find it. Try `MALLOC_ARENA_MAX=2`, `sharp.cache(false)`, fewer Prisma connections.
+- Heap used large → live JS objects; take a heap snapshot (`--heapsnapshot-signal=SIGUSR2`, signal via `railway ssh`, open in Chrome DevTools → Memory).
+- Heap total ≫ heap used → uncollected garbage; lower `--max-old-space-size` (try 768).
+- A flat RSS line means a high baseline, not a leak; a climbing line over 24 h means a leak.
+
+### Limits
+- History lives in the process: **empty after every deploy, restart or wake from sleep.** With sleep mode on, expect gaps.
+- Only the API process is measured (not web, not Postgres). Railway's Metrics tab remains the source of truth for billing.
+- Not deployed until merged to `main`. Local tests: `admin-server-memory.test.ts` + `admin-access.test.ts` = 14 passed; API and web typecheck clean.
