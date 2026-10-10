@@ -348,7 +348,7 @@ no migration, no schema change, and **no new request on any surface**.
 
 ## 2026-10-10 (#55 batch) — 9-point mobile/admin fixes, delete-permission audit, WhatsApp Cloud API config, RLS on design_references, scanner-probe 404
 
-**PRs:** #55 `b6af02f7` (9-point batch + audit + WhatsApp config), #56 `6081643e` (RC-049..054), #57 `aaaee1df` (guard tests), #58 `52897e5e` (migration 126), #59 (soft-404 middleware, open), #60 (integrations cleanup, open).
+**PRs:** #55 `b6af02f7` (9-point batch + audit + WhatsApp config), #56 `6081643e` (RC-049..054), #57 `aaaee1df` (guard tests), #58 `52897e5e` (migration 126), #59 `3abc2f73` (soft-404 middleware), #60 `c8562a5e` (integrations cleanup), #61 `fc3eb4ee` (this log).
 **Migrations (owner-applied from the admin dashboard):** 124 `campaigns_purge_grant`, 125 `app_role_delete_grants`, 069 `design_gallery` (re-run; `SocialTemplateType` already existed), 126 `design_references_rls`. Schema / enum / seed drift checks came back clean.
 
 | Piece | Detail |
@@ -358,7 +358,7 @@ no migration, no schema change, and **no new request on any surface**.
 | WhatsApp Cloud API | Screen uses the real `PATCH` / `DELETE /me/whatsapp-api`; `GET /me/integrations` returns a `whatsapp` block so the hub shows Connected. No "Test API" button — no server verify endpoint (optional `POST /me/whatsapp-api/test` against Graph `/{phone_number_id}`). |
 | Guards (#57) | `apps/api/src/lib/db-delete-guards.test.ts` — vitest guard that fails if a route/job deletes on a table the app role cannot DELETE, and if the retailer purge list misses an FK child. CI config untouched (per rule). |
 | RLS (#58) | Migration 126 enables RLS on `design_references` with `backend_roles_full_access`; verified on prod (`pg_policies` returns the policy). |
-| Soft-404 (#59, open) | `apps/web/src/middleware.ts` returns a bare 404 for `*.php/.asp(x)/.jsp/.cgi/.sql/.bak` and dotfile paths (`.well-known` excluded) — scanner probes no longer render a 200 shell + 2 API calls. Test `middleware.test.ts` 11/11. Unknown real-looking slugs still redirect to `/[store]/categories` by design (spec §4.2 not done). |
-| Integrations cleanup (#60, open) | Deleted unreachable `growth/integrations/{youtube,x,pinterest}` screens; dropped configure/test for IG/FB/YT/X/Pinterest from `growth.ts` (server has only `DELETE` for IG/FB; the POSTs 404'd and `.catch` faked `connected: true / 'Verified'`); removed manual-token form + Verify Status in `instagram.tsx`. Leftover: "Auto-publish Reels" switch is local state only. |
+| Soft-404 (#59) | `apps/web/src/middleware.ts` returns a bare 404 for `*.php/.asp(x)/.jsp/.cgi/.sql/.bak` and dotfile paths (`.well-known` excluded) — scanner probes no longer render a 200 shell + 2 API calls. Test `middleware.test.ts` 11/11. Unknown real-looking slugs still redirect to `/[store]/categories` by design (spec §4.2 not done). |
+| Integrations cleanup (#60) | Deleted unreachable `growth/integrations/{youtube,x,pinterest}` screens; dropped configure/test for IG/FB/YT/X/Pinterest from `growth.ts` (server has only `DELETE` for IG/FB; the POSTs 404'd and `.catch` faked `connected: true / 'Verified'`); removed manual-token form + Verify Status in `instagram.tsx`. Leftover: "Auto-publish Reels" switch is local state only. |
 | RCs | RC-049 … RC-054 (see `docs/root-cause/root-cause issues.md`). |
 | Open | Manual tests (campaign delete, growth video, test-retailer account, storefront un-favourite, WhatsApp save → Connected); Railway deploy commit ≥ `b6af02f7` unconfirmed from logs; `[secrets] Failed to decrypt R2_*` → env fallback seen in API logs 2026-10-10 (uploads still work). |
