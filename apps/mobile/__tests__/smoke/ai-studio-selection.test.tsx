@@ -22,11 +22,11 @@ vi.mock('../../src/lib/api', () => ({
 // Controllable style feed. Each render re-reads `studio.styles`, which is
 // exactly the real-world condition RC-017 was about: React Query hands the
 // component a brand-new array on every render/refetch.
-const studio = vi.hoisted(() => ({ styles: [] as unknown[] }))
+const studio = vi.hoisted(() => ({ styles: [] as unknown[], meta: undefined as unknown }))
 
 vi.mock('@tanstack/react-query', () => ({
   useQuery: () => ({
-    data: { data: studio.styles },
+    data: { data: studio.styles, meta: studio.meta },
     isLoading: false,
     refetch: vi.fn(),
     isRefetching: false,
@@ -169,6 +169,7 @@ function makeModal(overrides: Partial<StudioProps> = {}) {
 beforeEach(() => {
   vi.clearAllMocks()
   studio.styles = [...productStyles, ...modelStyles]
+  studio.meta = undefined
 })
 
 // ── Bug 1: the tapped tab must look selected ───────────────────────
@@ -279,5 +280,51 @@ describe('AI Studio style selection (RC-017)', () => {
     })
     // No stale slug left behind.
     expect(baseProps.onStartShoot).toHaveBeenCalledWith('studio-white')
+  })
+})
+
+// -- Option-matrix gating + Indoor/Outdoor grouping (F-032 rollout 3.6/3.7) --
+
+describe('AI Studio product gating', () => {
+  it('disables the Models tab and shows the reason when models are unavailable', () => {
+    studio.meta = {
+      model_available: false,
+      model_unavailable_reason: 'Model shoots are not available for unstitched fabric.',
+    }
+    studio.styles = [...productStyles]
+    const tree = render(makeModal())
+
+    expect(collectText(tree.toTree() as TreeNode)).toContain(
+      'Model shoots are not available for unstitched fabric.',
+    )
+    // Tapping Models must not switch tabs: Product Only stays highlighted.
+    act(() => {
+      ;(findPressableByText(tree, 'Models')!.props.onPress as () => void)()
+    })
+    expect(classNameOf(tree, 'Product Only')).toContain('bg-white')
+    expect(classNameOf(tree, 'Models')).not.toContain('bg-white')
+  })
+
+  it('keeps Models enabled when meta is absent (older API)', () => {
+    const tree = render(makeModal())
+    act(() => {
+      ;(findPressableByText(tree, 'Models')!.props.onPress as () => void)()
+    })
+    expect(classNameOf(tree, 'Models')).toContain('bg-white')
+  })
+
+  it('groups model styles under Indoor and Outdoor headers', () => {
+    studio.styles = [
+      ...productStyles,
+      { slug: 'mi-02', label: 'Courtyard', description: 'd', tab: 'MODEL', audience: [], thumbnail_url: null },
+      { slug: 'mo-05', label: 'Beach', description: 'd', tab: 'MODEL', audience: [], thumbnail_url: null },
+    ]
+    const tree = render(makeModal())
+    act(() => {
+      ;(findPressableByText(tree, 'Models')!.props.onPress as () => void)()
+    })
+    const text = collectText(tree.toTree() as TreeNode)
+    expect(text).toContain('Indoor')
+    expect(text).toContain('Outdoor')
   })
 })

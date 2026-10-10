@@ -16,6 +16,7 @@
 // gates the enqueue here, incrementUsage fires in the job on success
 // (jobs/studio-shoot.ts). Admin sets the per-plan cap at /admin/plan-limits.
 import { prisma } from '@kanchuki/db';
+import { productProfile, studioStyleBlock } from '@kanchuki/shared';
 import { createId } from '@paralleldrive/cuid2';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
@@ -41,7 +42,15 @@ export const productsStudioRoutes: FastifyPluginAsync = async (server) => {
   // ─── GET /products/studio-styles ────────────────────────────────
   // The retailer-facing catalog: PUBLISHED styles this plan may use.
   // Prompt + engine are deliberately omitted (server-side only).
+  //
+  // `?product_id=` narrows the list to the styles that product may use (option
+  // matrix §4–§6, same rule POST enforces) and reports `meta.model_available` so
+  // the app can hide the Models tab with a reason instead of offering a 422.
+  // Without it the list is unchanged (older app builds).
   server.get('/studio-styles', async (request) => {
+    const q = z.object({ product_id: z.string().min(1).optional() }).safeParse(request.query);
+    if (!q.success) throw validationError('Invalid product_id', 'product_id');
+
     const retailer = await prisma.retailer.findUniqueOrThrow({
       where: { id: request.retailerId },
       select: { plan: true },
@@ -58,7 +67,30 @@ export const productsStudioRoutes: FastifyPluginAsync = async (server) => {
         thumbnail_url: true,
       },
     });
-    return { data: rows };
+    if (!q.data.product_id) {
+      return { data: rows, meta: { model_available: true, model_unavailable_reason: null } };
+    }
+
+    const product = await prisma.product.findFirst({
+      where: { id: q.data.product_id, retailer_id: request.retailerId },
+      select: {
+        name: true,
+        category: true,
+        subtype: true,
+        product_type: true,
+        is_unstitched: true,
+      },
+    });
+    if (!product) throw notFound('Product');
+    const profile = productProfile(product);
+    return {
+      data: rows.filter((r) => studioStyleBlock(r.slug, profile, r.tab) === null),
+      meta: {
+        model_available: profile.modelAllowed,
+        // Any model slug gives the same product-level reason; null when allowed.
+        model_unavailable_reason: studioStyleBlock('MI-01', profile, 'MODEL'),
+      },
+    };
   });
 
   // ─── POST /products/:id/photos/:photoId/studio-shoot ─────────────
@@ -154,6 +186,22 @@ export const productsStudioRoutes: FastifyPluginAsync = async (server) => {
         'photo',
       );
     }
+
+    // Hard gating (option matrix §4–§6): the same rule the app uses to filter the
+    // picker, enforced here so a stale client cannot reach e.g. a kids + model shoot.
+    const product = await prisma.product.findFirst({
+      where: { id, retailer_id: request.retailerId },
+      select: {
+        name: true,
+        category: true,
+        subtype: true,
+        product_type: true,
+        is_unstitched: true,
+      },
+    });
+    if (!product) throw notFound('Product');
+    const blocked = studioStyleBlock(style.slug, productProfile(product), style.tab);
+    if (blocked) throw validationError(blocked, 'template');
 
     const jobId = createId();
     await addStudioShootJob({

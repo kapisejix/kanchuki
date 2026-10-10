@@ -562,6 +562,7 @@ export default function ProductDetailScreen() {
         onPostToSocial={studio.handlePostStudioResultToSocial}
         productCategory={product.category ?? undefined}
         productName={product.name ?? undefined}
+        productId={product.id}
       />
     </View>
   )

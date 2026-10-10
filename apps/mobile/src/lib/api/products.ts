@@ -135,7 +135,7 @@ export const productApi = {
 
   /** Admin-curated AI Studio Shoot styles this retailer's plan can use.
    * Cached 60s — the picker falls back to the last response offline. */
-  getStudioStyles: () =>
+  getStudioStyles: (productId?: string) =>
     request<{
       data: {
         slug: string;
@@ -145,7 +145,15 @@ export const productApi = {
         audience: string[];
         thumbnail_url: string | null;
       }[];
-    }>('/v1/products/studio-styles', { getCacheTtlMs: 60_000 }),
+      // Present on a current API; with `productId` the list is already narrowed
+      // to the styles that product may use.
+      meta?: { model_available: boolean; model_unavailable_reason: string | null };
+    }>(
+      productId
+        ? `/v1/products/studio-styles?product_id=${encodeURIComponent(productId)}`
+        : '/v1/products/studio-styles',
+      { getCacheTtlMs: 60_000 },
+    ),
 
   addVariant: (productId: string, data: { color: string; r2_key: string; url: string }) =>
     request<{ data: unknown }>(`/v1/products/${productId}/variants`, {
