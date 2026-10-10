@@ -1,4 +1,4 @@
-// Read-only check: are migrations 063, 104–115 applied in the DB behind DATABASE_URL?
+// Read-only check: are migrations 063, 104–115, 123 applied in the DB behind DATABASE_URL?
 // Same shape as check-commission-migration.ts — SELECTs only, prints DB hostname
 // (never credentials) and one APPLIED/MISSING line per migration. Never writes.
 //
@@ -52,6 +52,11 @@ const CHECKS: Array<[string, string]> = [
     '115_referral_payout_account_fix',
     `SELECT EXISTS (SELECT 1 FROM pg_type WHERE typname='referral_payout_account_type') AS ok`,
   ],
+  // 123 seeds the option-matrix studio styles (ps-03..16, mi-01/02/04/05/08/10, mo-01..07 = 27).
+  [
+    '123_studio_styles_option_matrix',
+    `SELECT count(*) = 27 AS ok FROM studio_styles WHERE slug ~ '^(ps|mi|mo)-[0-9]{2}$'`,
+  ],
 ];
 
 async function main() {
@@ -67,7 +72,7 @@ async function main() {
   // Supabase SQL Editor applies leave no runner row — show what _prisma_migrations knows.
   const recorded = await prisma
     .$queryRawUnsafe<Array<{ migration_name: string }>>(
-      `SELECT migration_name FROM _prisma_migrations WHERE migration_name ~ '^(063|10[4-9]|11[0-5])_' ORDER BY 1`,
+      `SELECT migration_name FROM _prisma_migrations WHERE migration_name ~ '^(063|10[4-9]|11[0-5]|123)_' ORDER BY 1`,
     )
     .catch(() => []);
   console.log(

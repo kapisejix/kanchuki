@@ -38,6 +38,15 @@ interface ProductStudioModalProps {
   // Product context for demographic filter on MODEL tab
   productCategory?: string
   productName?: string
+  /** Lets the server drop styles this product may not use (kids, unstitched, bottoms...). */
+  productId?: string
+}
+
+/** Model styles seeded from the option matrix carry mi-/mo- slugs (Indoor / Outdoor). */
+function sceneGroup(slug: string): 'Indoor' | 'Outdoor' | null {
+  if (slug.startsWith('mi-')) return 'Indoor'
+  if (slug.startsWith('mo-')) return 'Outdoor'
+  return null
 }
 
 export function ProductStudioModal({
@@ -59,6 +68,7 @@ export function ProductStudioModal({
   onPostToSocial,
   productCategory,
   productName,
+  productId,
 }: ProductStudioModalProps) {
   // #7: bottom safe-area inset so the GENERATE button never sits under the
   // Android system nav bar (gesture bar / 3-button nav).
@@ -67,11 +77,15 @@ export function ProductStudioModal({
 
   // Fetch DB-backed styles — plan-filtered by the API
   const { data: stylesData, isLoading: stylesLoading } = useQuery({
-    queryKey: ['studio-styles'],
-    queryFn: () => productApi.getStudioStyles(),
+    queryKey: ['studio-styles', productId ?? null],
+    queryFn: () => productApi.getStudioStyles(productId),
     staleTime: 60_000,
   })
   const styles = stylesData?.data ?? []
+  // Hard gating (kids / unstitched / bottoms-only): no model shoots for this
+  // product. Default true so an older API or a missing meta changes nothing.
+  const modelAvailable = stylesData?.meta?.model_available ?? true
+  const modelReason = stylesData?.meta?.model_unavailable_reason ?? null
 
   // Filter by tab + demographic
   const demo = demographicForCategory(productCategory, productName)
@@ -79,7 +93,8 @@ export function ProductStudioModal({
   const modelStyles = styles.filter(
     (s) => s.tab === 'MODEL' && (s.audience.length === 0 || s.audience.includes(demo)),
   )
-  const activeList = tab === 'product' ? productStyles : modelStyles
+  const activeTab = modelAvailable ? tab : 'product'
+  const activeList = activeTab === 'product' ? productStyles : modelStyles
 
   // The retailer's explicit style pick, or null while they haven't picked one.
   //
@@ -103,7 +118,7 @@ export function ProductStudioModal({
   // only — never on `activeList`, which is a new array on every render.
   useEffect(() => {
     setPickedSlug(null)
-  }, [tab, visible])
+  }, [activeTab, visible])
 
   const handleStart = () => {
     if (selectedSlug) onStartShoot(selectedSlug)
@@ -262,28 +277,33 @@ export function ProductStudioModal({
           <AnimatedPressable
             onPress={() => setTab('product')}
             className={`flex-1 py-2 rounded-lg items-center ${
-              tab === 'product' ? 'bg-white shadow-sm' : ''
+              activeTab === 'product' ? 'bg-white shadow-sm' : ''
             }`}
           >
             <Text
-              className={`text-xs font-bold ${tab === 'product' ? 'text-fuchsia-700' : 'text-sand-500'}`}
+              className={`text-xs font-bold ${activeTab === 'product' ? 'text-fuchsia-700' : 'text-sand-500'}`}
             >
               Product Only
             </Text>
           </AnimatedPressable>
           <AnimatedPressable
-            onPress={() => setTab('models')}
+            onPress={() => modelAvailable && setTab('models')}
+            accessibilityState={{ disabled: !modelAvailable }}
             className={`flex-1 py-2 rounded-lg items-center ${
-              tab === 'models' ? 'bg-white shadow-sm' : ''
-            }`}
+              activeTab === 'models' ? 'bg-white shadow-sm' : ''
+            } ${modelAvailable ? '' : 'opacity-40'}`}
           >
             <Text
-              className={`text-xs font-bold ${tab === 'models' ? 'text-fuchsia-700' : 'text-sand-500'}`}
+              className={`text-xs font-bold ${activeTab === 'models' ? 'text-fuchsia-700' : 'text-sand-500'}`}
             >
               Models
             </Text>
           </AnimatedPressable>
         </View>
+
+        {!modelAvailable && modelReason && (
+          <Text className="text-[11px] text-sand-500 -mt-2 mb-3 leading-4">{modelReason}</Text>
+        )}
 
         <ScrollView className="mb-4" showsVerticalScrollIndicator={false}>
           {/* Loading */}
@@ -296,18 +316,27 @@ export function ProductStudioModal({
           {/* Empty */}
           {!stylesLoading && activeList.length === 0 && (
             <Text className="text-xs text-sand-500 py-8 text-center">
-              No {tab === 'product' ? 'product' : 'model'} styles available on your plan yet.
+              No {activeTab === 'product' ? 'product' : 'model'} styles available on your plan yet.
             </Text>
           )}
 
           {/* Style rows */}
           {!stylesLoading && activeList.length > 0 && (
             <View className="gap-3">
-              {activeList.map((s) => {
+              {activeList.map((s, i) => {
                 const isSelected = selectedSlug === s.slug
+                // Indoor / Outdoor header above the first row of each scene group.
+                const group = activeTab === 'models' ? sceneGroup(s.slug) : null
+                const prev = i > 0 ? activeList[i - 1] : undefined
+                const showHeader = group !== null && (!prev || sceneGroup(prev.slug) !== group)
                 return (
+                  <React.Fragment key={s.slug}>
+                    {showHeader && (
+                      <Text className="text-[11px] font-bold uppercase tracking-wide text-sand-400 -mb-1">
+                        {group}
+                      </Text>
+                    )}
                   <AnimatedPressable
-                    key={s.slug}
                     onPress={() => setPickedSlug(s.slug)}
                     className={`flex-row items-center p-3 rounded-2xl border-2 gap-3.5 ${
                       isSelected ? 'border-fuchsia-600 bg-fuchsia-50/50' : 'border-sand-100 bg-white'
@@ -340,6 +369,7 @@ export function ProductStudioModal({
                       </View>
                     )}
                   </AnimatedPressable>
+                  </React.Fragment>
                 )
               })}
             </View>

@@ -20,6 +20,7 @@ const {
   mockCheckQuota,
   mockStyleFindFirst,
   mockStyleFindMany,
+  mockProductFindFirst,
 } = vi.hoisted(() => ({
   mockRetailerFindUniqueOrThrow: vi.fn(),
   mockPhotoFindFirst: vi.fn(),
@@ -30,11 +31,13 @@ const {
   mockCheckQuota: vi.fn(),
   mockStyleFindFirst: vi.fn(),
   mockStyleFindMany: vi.fn(),
+  mockProductFindFirst: vi.fn(),
 }));
 
 vi.mock('@kanchuki/db', () => ({
   prisma: {
     retailer: { findUniqueOrThrow: mockRetailerFindUniqueOrThrow },
+    product: { findFirst: mockProductFindFirst },
     productPhoto: {
       findFirst: mockPhotoFindFirst,
       create: mockPhotoCreate,
@@ -79,6 +82,7 @@ beforeEach(() => {
   mockRetailerFindUniqueOrThrow.mockResolvedValue({ plan: 'GROWTH' });
   mockPhotoFindFirst.mockResolvedValue({ id: 'photo_1' });
   mockCheckQuota.mockResolvedValue(undefined);
+  mockProductFindFirst.mockResolvedValue({ name: 'Anarkali Suit', category: 'Ladies Suit' });
 });
 
 const STYLE_ROW = {
@@ -118,6 +122,45 @@ describe('POST /products/:id/photos/:photoId/studio-shoot', () => {
       }),
     );
     await app.close();
+  });
+
+  const shoot = async (template: string) => {
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/products/p1/photos/photo_1/studio-shoot',
+      payload: { template },
+    });
+    await app.close();
+    return res;
+  };
+
+  it('422 for a model style on a kids product (never reaches the queue)', async () => {
+    mockProductFindFirst.mockResolvedValue({ name: 'Kids Frock', category: 'Kids Ethnic Wear' });
+    mockStyleFindFirst.mockResolvedValueOnce(STYLE_ROW);
+    const res = await shoot('runway');
+    expect(res.statusCode).toBe(422);
+    expect(res.json().error.message).toMatch(/kids/i);
+    expect(mockAddStudioShootJob).not.toHaveBeenCalled();
+  });
+
+  it('422 for a torso-form style on a bottoms-only product', async () => {
+    mockProductFindFirst.mockResolvedValue({ name: 'Cotton Palazzo', category: 'Bottoms' });
+    mockStyleFindFirst.mockResolvedValueOnce({ ...STYLE_ROW, slug: 'ps-03', tab: 'PRODUCT' });
+    expect((await shoot('ps-03')).statusCode).toBe(422);
+    expect(mockAddStudioShootJob).not.toHaveBeenCalled();
+  });
+
+  it('202 for a surface product style on unstitched fabric', async () => {
+    mockProductFindFirst.mockResolvedValue({ name: 'Suit Piece', is_unstitched: true });
+    mockStyleFindFirst.mockResolvedValueOnce({ ...STYLE_ROW, slug: 'ps-07', tab: 'PRODUCT' });
+    expect((await shoot('ps-07')).statusCode).toBe(202);
+  });
+
+  it('404 when the product is not this retailer’s', async () => {
+    mockProductFindFirst.mockResolvedValue(null);
+    mockStyleFindFirst.mockResolvedValueOnce(STYLE_ROW);
+    expect((await shoot('runway')).statusCode).toBe(404);
   });
 
   it('enqueues for STARTER plan (all plans allowed; quota is the only limiter)', async () => {
@@ -247,6 +290,50 @@ describe('GET /studio-styles', () => {
       expect.objectContaining({ where: { status: 'PUBLISHED', plans: { has: 'STARTER' } } }),
     );
     await app.close();
+  });
+});
+
+describe('GET /studio-styles?product_id=', () => {
+  const ROWS = [
+    { slug: 'ps-03', label: 'Luxury', description: 'd', tab: 'PRODUCT', audience: [], thumbnail_url: null },
+    { slug: 'ps-07', label: 'Flat Lay', description: 'd', tab: 'PRODUCT', audience: [], thumbnail_url: null },
+    { slug: 'mi-02', label: 'Courtyard', description: 'd', tab: 'MODEL', audience: [], thumbnail_url: null },
+  ];
+  const get = async (qs = '?product_id=p1') => {
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: `/v1/products/studio-styles${qs}` });
+    await app.close();
+    return res;
+  };
+
+  it('stitched adult garment keeps every style and model_available', async () => {
+    mockStyleFindMany.mockResolvedValueOnce(ROWS);
+    const body = (await get()).json();
+    expect(body.data.map((r: { slug: string }) => r.slug)).toEqual(['ps-03', 'ps-07', 'mi-02']);
+    expect(body.meta).toEqual({ model_available: true, model_unavailable_reason: null });
+  });
+
+  it('unstitched fabric drops model + torso-form styles and says why', async () => {
+    mockProductFindFirst.mockResolvedValue({ name: 'Suit Piece', is_unstitched: true });
+    mockStyleFindMany.mockResolvedValueOnce(ROWS);
+    const body = (await get()).json();
+    expect(body.data.map((r: { slug: string }) => r.slug)).toEqual(['ps-07']);
+    expect(body.meta.model_available).toBe(false);
+    expect(body.meta.model_unavailable_reason).toMatch(/unstitched/i);
+  });
+
+  it('without product_id the list is unfiltered (older app builds)', async () => {
+    mockProductFindFirst.mockResolvedValue({ name: 'Cotton Palazzo' });
+    mockStyleFindMany.mockResolvedValueOnce(ROWS);
+    const body = (await get('')).json();
+    expect(body.data).toHaveLength(3);
+    expect(mockProductFindFirst).not.toHaveBeenCalled();
+  });
+
+  it('404 for a product that is not this retailer’s', async () => {
+    mockProductFindFirst.mockResolvedValue(null);
+    mockStyleFindMany.mockResolvedValueOnce(ROWS);
+    expect((await get()).statusCode).toBe(404);
   });
 });
 

@@ -8,7 +8,12 @@ import {
   uploadBuffer,
 } from '@kanchuki/ai';
 import { getSecret, prisma } from '@kanchuki/db';
-import { type Demographic, type STUDIO_ENGINES, demographicForCategory } from '@kanchuki/shared';
+import {
+  type Demographic,
+  type STUDIO_ENGINES,
+  demographicForCategory,
+  isTopOnlyGarment,
+} from '@kanchuki/shared';
 // F-032 Phase A — AI Studio Shoots via Black Forest Labs FLUX.1 Kontext [pro].
 //
 // What this is: a retailer taps "Studio shoot" on a product photo, picks a
@@ -154,20 +159,6 @@ function resolveDemographic(
 ): Demographic {
   if (explicit && explicit in PERSON_CLAUSE) return explicit as Demographic;
   return demographicForCategory(product?.category, product?.name);
-}
-
-/**
- * A garment that is only ever the top half of an outfit (kurti, blouse, tee,
- * top, tunic, crop top, shirt). MODEL scenes describe a full standing pose,
- * so with nothing else in frame Kontext invents legs and pairs the top with
- * trousers/palazzo/leggings that don't exist in the source photo — the
- * "auto adds a bottom" complaint. Detected once here so every MODEL caller
- * (retailer route, growth backgrounds, admin bench) gets the same guard,
- * not just the one template that names it explicitly.
- */
-const TOP_ONLY_RE = /\b(kurti|blouse|t-?shirt|tee|top|tunic|crop top|shirt)\b/i;
-function isTopOnlyGarment(...parts: (string | null | undefined)[]): boolean {
-  return TOP_ONLY_RE.test(parts.filter(Boolean).join(' '));
 }
 
 /**

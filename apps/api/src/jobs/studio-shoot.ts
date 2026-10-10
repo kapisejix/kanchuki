@@ -29,7 +29,7 @@
 // photoUrlToDisplay inline instead.
 import { getDownloadPresignedUrl } from '@kanchuki/ai';
 import { prisma } from '@kanchuki/db';
-import { R2_PATHS } from '@kanchuki/shared';
+import { R2_PATHS, poolsForSlug, resolveStyleTokens } from '@kanchuki/shared';
 import { createId } from '@paralleldrive/cuid2';
 import { recordBflStudioUsage } from '../lib/ai-usage.js';
 import { incrementUsage } from '../lib/quota.js';
@@ -130,9 +130,13 @@ export async function handleStudioShoot(data: StudioShootJobData): Promise<void>
       return;
     }
 
+    // One pick per `{{Pool}}` token per generation (option matrix §14.3). The
+    // DB row holds the prompt text; the pools come from the shared style table.
+    const resolved = resolveStyleTokens(prompt, poolsForSlug(slug));
+
     // 2. Generate (async submit + poll inside generateStudioImage).
     const result = await generateStudioImage(displayUrl, {
-      prompt,
+      prompt: resolved.prompt,
       tab,
       engine,
       onProgress: (progressInfo) => {
@@ -194,6 +198,8 @@ export async function handleStudioShoot(data: StudioShootJobData): Promise<void>
             engine: engine ?? 'auto',
             tab,
             source_photo_id: photo.id,
+            // The pool picks behind this render — reproducible / bench-able.
+            picks: resolved.picks,
             generated_at: startedAt.toISOString(),
           },
         },
