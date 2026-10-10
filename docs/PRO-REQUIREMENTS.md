@@ -1683,7 +1683,7 @@ Build this as a **generic "connected publishing accounts" module** (one `SocialA
 
 Post-launch feature. Not in locked MVP scope; the launch (Play Store batch, billing, privacy) is the current focus. Slots into Phase 1 (post-MVP) — see `docs/PLAN.md`. Meta app review should be requested well before development starts if this becomes a priority.
 
-## 24. F-032 AI Studio Shoots + Product Videos (PhotoRoom-style) — Phase A ✅ BUILT, Phase B/C 🔴 PLANNED; engine/photo path rebuilt 2026-09-18 (§24.13)
+## 24. F-032 AI Studio Shoots + Product Videos (PhotoRoom-style) — Phase A ✅ BUILT, Phase B/C 🔴 PLANNED; engine/photo path rebuilt 2026-09-18 (§24.13; retailer option layer re-specced 2026-10-08, bench synced 2026-10-10 (§24.14))
 
 **Correction 2026-08-20:** Phase A (studio backgrounds) was built without a
 doc update — commits `5d5ae44` (2026-08-13) and `d67484d` (2026-08-19),
@@ -1814,6 +1814,16 @@ cut; only the try-on step does, which is the point of the `vton_*` pair.
 
 Full detail: `docs/BUILD-LOG.md` §2026-09-18 (both entries), RC-027 in
 `docs/root-cause/root-cause issues.md`.
+
+### 24.14 Retailer option layer — 🟡 Spec final 2026-10-08; admin bench synced 2026-10-10; retailer layer 🔴 not built
+
+Spec: `docs/tasks/pending/studio-shoot-option-matrix.md` (companion: `docs/tasks/pending/ai-photo-generation.md`; resume notes: `docs/tasks/pending/studio-shoot-session-handoff.md`).
+
+- **Options (owner-final):** two sections only. Product Only = 14 styles (PS-03..16); Model Only = 6 indoor (MI-01/02/04/05/08/10) + 7 outdoor (MO-01..07). 29 owner-written prompts, none missing. Lighting automatic per style. Pose lives inside each prompt (server picks from a per-scene pool). Frame / Angle / Photography Style / Product View / Mannequin-Ghost removed. Kids = Product Only; models 13+.
+- **Retailer model picker (spec §15, Fal.ai):** `Grok - Best` (default), `ChatGPT - Fast`, `Qwen - Good`, `Nano Banana - Best`; credits = admin-test-page credits + 2, no prices shown; models added from admin (`studio_engines` table, not yet created).
+- **Built (admin bench only):** final prompts + `resolveStylePrompt()` in `apps/web/src/lib/studio-effects.ts` and the bench page (PR #52, `1220c8b5`, 2026-10-10).
+- **Not built:** product-aware gating on `studio_styles`, detection UI, Quick Looks, `studio_engines` + admin CRUD, "Generate with" list, server-side per-generation pool picks, collage.
+- **Blocked on:** bench runs 2 (indoor) and 3 (product only) — checklist in `ai-photo-generation.md` §8.1e, owner-run — then engine routing; owner decisions in spec §15.7 and `ai-photo-generation.md` §10.
 
 ### 24.1 Problem
 
