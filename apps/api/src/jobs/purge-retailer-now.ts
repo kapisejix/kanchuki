@@ -80,6 +80,14 @@ export async function hardDeleteRetailer(retailerId: string): Promise<void> {
 
   // Children-before-parents. See schema.prisma for the retailer_id FK graph.
   const tables = [
+    // RESTRICT-FK children that were missing from this list — `DELETE FROM
+    // retailers` threw an FK violation and the whole self-delete rolled back.
+    // Reviews reference products + customers, so they go first.
+    'DELETE FROM product_reviews WHERE retailer_id = $1;',
+    'DELETE FROM store_reviews WHERE retailer_id = $1;',
+    'DELETE FROM social_templates WHERE retailer_id = $1;',
+    'DELETE FROM channel_syncs WHERE retailer_id = $1;',
+    'DELETE FROM bug_reports WHERE retailer_id = $1;',
     'DELETE FROM product_variants WHERE retailer_id = $1;',
     'DELETE FROM product_photos WHERE product_id IN (SELECT id FROM products WHERE retailer_id = $1);',
     'DELETE FROM product_embeddings WHERE retailer_id = $1;',

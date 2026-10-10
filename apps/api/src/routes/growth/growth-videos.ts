@@ -1,5 +1,5 @@
 import { deleteObject, getUploadPresignedUrl, publicUrl } from '@kanchuki/ai';
-import { prisma } from '@kanchuki/db';
+import { getPurgePrisma, prisma } from '@kanchuki/db';
 import { R2_PATHS } from '@kanchuki/shared';
 import { createId } from '@paralleldrive/cuid2';
 import type { FastifyPluginAsync } from 'fastify';
@@ -165,7 +165,13 @@ export const growthVideoRoutes: FastifyPluginAsync = async (server) => {
     const { id } = request.params as { id: string };
     const video = await prisma.productVideo.findFirst({ where: { id, retailer_id: retailerId } });
     if (!video) throw notFound('Video');
-    await prisma.productVideo.delete({ where: { id } });
+    // RC-004 pattern: kanchuki_app has DELETE revoked (SECURITY §19) — scoped purge role
+    // + app.allow_hard_delete; product_videos is already granted to it (migration 084).
+    const purgeDb = getPurgePrisma();
+    await purgeDb.$transaction([
+      purgeDb.$executeRawUnsafe(`SET app.allow_hard_delete = 'true';`),
+      purgeDb.productVideo.delete({ where: { id } }),
+    ]);
     if (video.r2_key) {
       try {
         await deleteObject(video.r2_key);

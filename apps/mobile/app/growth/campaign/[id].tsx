@@ -412,19 +412,21 @@ export default function CampaignDetailScreen() {
         </View>
 
         {/* Actions */}
-        {canEdit && (
+        {(
           <View className="gap-3 mt-2">
-            <GradientButton
-              label={
-                sendMutation.isPending
-                  ? 'Sending…'
-                  : preview
-                    ? `Send to ${preview.audience_count} Customers`
-                    : 'Send Campaign'
-              }
-              onPress={confirmSend}
-              loading={sendMutation.isPending}
-            />
+            {canEdit && (
+              <GradientButton
+                label={
+                  sendMutation.isPending
+                    ? 'Sending…'
+                    : preview
+                      ? `Send to ${preview.audience_count} Customers`
+                      : 'Send Campaign'
+                }
+                onPress={confirmSend}
+                loading={sendMutation.isPending}
+              />
+            )}
             <AnimatedPressable
               onPress={confirmDelete}
               disabled={deleteMutation.isPending}

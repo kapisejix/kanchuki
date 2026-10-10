@@ -103,10 +103,13 @@ export default function TabsLayout() {
           tabBarLabel: 'Home',
           tabBarIcon: ({ color, size }) => <Home color={color} size={size} strokeWidth={1.8} />,
           headerTitleAlign: 'center',
+          // Compact header: default is ~56 + status bar (≈17px of air above/below the logo);
+          // halved here. Height includes the status-bar inset. Logo 105×21 → 84×17 (same 5:1).
+          headerStyle: { backgroundColor: '#F8F7FC', height: insets.top + 34 },
           headerTitle: () => (
             <Image
               source={require('../../assets/kanchuki-full-logo.png')}
-              style={{ width: 105, height: 21 }}
+              style={{ width: 84, height: 17 }}
               resizeMode="contain"
             />
           ),
@@ -133,7 +136,10 @@ export default function TabsLayout() {
               <AnimatedPressable
                 {...rest}
                 onPress={() => router.push('/product/add')}
-                style={[style, { top: -34, zIndex: 10, alignItems: 'center', justifyContent: 'center' }]}
+                // Tab slot is 54px tall (64 bar − 10 padding; the bottom inset cancels out) and the
+                // 56px circle centres in it, so −27 puts the circle's centre exactly on the bar's top
+                // edge: half on the bar, half above (−50%).
+                style={[style, { top: -27, zIndex: 10, alignItems: 'center', justifyContent: 'center' }]}
                 accessibilityLabel="Add New Product"
                 accessibilityRole="button"
               >

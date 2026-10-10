@@ -75,6 +75,8 @@ export const retailersIntegrationsRoutes: FastifyPluginAsync = async (server) =>
         fb_ads_configured_at: true,
         google_ads_customer_id: true,
         google_ads_configured_at: true,
+        whatsapp_api_phone_number_id: true,
+        whatsapp_api_configured_at: true,
       },
     });
     if (!retailer) throw notFound('Retailer');
@@ -124,6 +126,12 @@ export const retailersIntegrationsRoutes: FastifyPluginAsync = async (server) =>
           ig_user_id: igAccount?.platform_account_id ?? null,
           handle: igAccount?.platform_account_name ?? null,
           configured_at: igAccount?.created_at ?? null,
+        },
+        // Manual Cloud-API credentials (PATCH /me/whatsapp-api) — the token is never returned.
+        whatsapp: {
+          configured: !!retailer.whatsapp_api_phone_number_id,
+          phone_number_id: retailer.whatsapp_api_phone_number_id,
+          configured_at: retailer.whatsapp_api_configured_at,
         },
         gmb: {
           configured: !!retailer.gmb_account_id,

@@ -17,7 +17,7 @@ import { Stack } from "expo-router";
 import * as ExpoSplashScreen from "expo-splash-screen";
 import { vars } from "nativewind";
 import { useEffect, useRef, useState } from "react";
-import { AppState, Platform, Text, TextInput, View } from "react-native";
+import { AppState, Platform, StatusBar, Text, TextInput, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
@@ -140,6 +140,8 @@ function AppShell() {
         "--color-sand-100": surfaceColor,
       })}
     >
+      {/* App chrome is light — default status bar icons render white-on-white. */}
+      <StatusBar barStyle="dark-content" />
       <NetworkBanner />
       <CatalogDelegateBanner />
       <Stack

@@ -27,7 +27,6 @@ import {
   Handshake,
   HardDrive,
   History,
-  Image as ImageIcon,
   KeyRound,
   Layers,
   LayoutDashboard,
@@ -93,7 +92,6 @@ const NAV_ITEMS: NavItem[] = [
     children: [
       { label: 'Default Categories', href: '/admin/default-categories', icon: LayoutGrid },
       { label: 'Default Attributes', href: '/admin/default-attributes', icon: Tags },
-      { label: 'Backgrounds', href: '/admin/background-images', icon: ImageIcon },
       { label: 'Suits Designs', href: '/admin/suits-designs', icon: Sparkles },
       { label: 'Design Categories', href: '/admin/suits-design-categories', icon: Tags },
       { label: 'Festivals', href: '/admin/festivals', icon: CalendarDays },
@@ -406,8 +404,19 @@ export function Sidebar({
                     openGroup &&
                     createPortal(
                       <div
-                        style={{ position: 'fixed', top: openGroup.top, left: openGroup.left + 8 }}
-                        className="w-56 bg-gray-900 border border-white/[0.08] rounded-xl shadow-2xl py-2 z-50"
+                        // Flush against the trigger (no gap) so the pointer never leaves the
+                        // hover zone on the way in; clamped + scrollable so tall groups
+                        // (Settings & Operations) can't run off the bottom of the viewport.
+                        style={{
+                          position: 'fixed',
+                          top: Math.max(
+                            8,
+                            Math.min(openGroup.top, window.innerHeight - 8 - (item.children.length * 36 + 16)),
+                          ),
+                          left: openGroup.left,
+                          maxHeight: 'calc(100vh - 16px)',
+                        }}
+                        className="w-56 overflow-y-auto bg-gray-900 border border-white/[0.08] rounded-xl shadow-2xl py-2 z-50"
                         onMouseEnter={() => setOpenGroup(openGroup)}
                         onMouseLeave={() => setOpenGroup(null)}
                       >
