@@ -1,40 +1,26 @@
-'use client'
+import { API_URL as apiUrl } from '@/lib/apiUrl'
+import { notFound } from 'next/navigation'
+import type { ReactNode } from 'react'
+import CollectionShell from './components/CollectionShell'
 
-import { Bricolage_Grotesque } from 'next/font/google'
-import { usePathname } from 'next/navigation'
-import { motion, AnimatePresence } from 'framer-motion'
-import { ReactNode, Suspense } from 'react'
-
-// Scoped display font for the customer collection route.
-// next/font/google in a client component works fine — the CSS is compiled at
-// build time and the className/variable strings are the same either way.
-const display = Bricolage_Grotesque({
-  subsets: ['latin'],
-  variable: '--font-display',
-  display: 'swap',
-})
-
-interface Props {
+// Existence is decided here, outside the shell's <Suspense>, so an unknown slug
+// gets a real 404 instead of a streamed 200 "not found" (soft-404; same fix as
+// [store]/layout.tsx). Only a definite API 404 counts — outages fall through.
+export default async function LegacyCollectionLayout({
+  children,
+  params,
+}: {
   children: ReactNode
-}
-
-export default function CollectionLayout({ children }: Props) {
-  const pathname = usePathname()
-
-  return (
-    <AnimatePresence mode="wait">
-      <motion.div
-        key={pathname}
-        initial={{ opacity: 0, y: 20, scale: 0.97 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: -20, scale: 0.97, transition: { duration: 0.2, ease: [0.4, 0, 0.2, 1] } }}
-        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-        className={`min-h-screen ${display.variable}`}
-      >
-        <Suspense fallback={null}>
-          {children}
-        </Suspense>
-      </motion.div>
-    </AnimatePresence>
-  )
+  params: Promise<{ slug: string }>
+}) {
+  const { slug } = await params
+  try {
+    const res = await fetch(`${apiUrl}/v1/public/collections/${slug}?page=1&pageSize=1`, {
+      next: { revalidate: 15 },
+    })
+    if (res.status === 404) notFound()
+  } catch (e) {
+    if (e instanceof Error && 'digest' in e) throw e // let notFound() through
+  }
+  return <CollectionShell>{children}</CollectionShell>
 }
