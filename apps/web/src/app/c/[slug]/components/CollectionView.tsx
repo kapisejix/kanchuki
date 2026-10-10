@@ -229,12 +229,14 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
   // decision 2026-09-29: no append-on-scroll.)
   const goToPage = useCallback(
     (nextPage: number) => {
+      // The grid is replaced, so the old scroll offset would leave the viewer at the
+      // bottom of the new page — jump to the top once the new products land.
       void fetchProducts(nextPage, {
         category: filterCategory,
         price: filterPrice,
         color: filterColor,
         size: filterSize,
-      });
+      }).then(() => window.scrollTo({ top: 0 }));
     },
     [fetchProducts, filterCategory, filterPrice, filterColor, filterSize],
   );

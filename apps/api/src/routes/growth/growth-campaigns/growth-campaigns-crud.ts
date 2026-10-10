@@ -1,5 +1,5 @@
 // growth-campaigns-crud.ts — festival calendar + campaign CRUD (split from apps/api/src/routes/growth/growth-campaigns.ts — body byte-identical)
-import { Prisma, prisma } from '@kanchuki/db';
+import { getPurgePrisma, Prisma, prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { forbidden, notFound, validationError } from '../../../plugins/error-handler.js';
@@ -262,8 +262,13 @@ export const growthCampaignCrudRoutes: FastifyPluginAsync = async (server) => {
     const { id } = request.params as { id: string };
     const existing = await prisma.campaign.findFirst({ where: { id, retailer_id: retailerId } });
     if (!existing) throw notFound('Campaign');
-    if (existing.status === 'SENT') throw forbidden('Sent campaigns cannot be deleted');
-    await prisma.campaign.delete({ where: { id } });
+    // RC-004 pattern: campaigns is a hard-delete table (SECURITY §19) — kanchuki_app has
+    // DELETE revoked, so use the scoped purge role + app.allow_hard_delete (migration 124 grants it).
+    const purgeDb = getPurgePrisma();
+    await purgeDb.$transaction([
+      purgeDb.$executeRawUnsafe(`SET app.allow_hard_delete = 'true';`),
+      purgeDb.campaign.delete({ where: { id } }),
+    ]);
     return reply.status(204).send();
   });
 };
