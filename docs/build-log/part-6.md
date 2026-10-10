@@ -345,3 +345,20 @@ no migration, no schema change, and **no new request on any surface**.
 | RC | RC-048 — stranded fix + unstubbed fetches kept the suite red and hid the Next rewire. |
 | PRs | #36 and #38 closed as superseded (content on `main` or in #41). |
 | Tests | `CollectionView.test.tsx` 5/5 (pager test asserts a near-bottom scroll requests nothing); customer e2e 32/32 local; web `tsc` + eslint clean; #41 CI green on `547152a1`. |
+
+## 2026-10-10 (#55 batch) — 9-point mobile/admin fixes, delete-permission audit, WhatsApp Cloud API config, RLS on design_references, scanner-probe 404
+
+**PRs:** #55 `b6af02f7` (9-point batch + audit + WhatsApp config), #56 `6081643e` (RC-049..054), #57 `aaaee1df` (guard tests), #58 `52897e5e` (migration 126), #59 (soft-404 middleware, open), #60 (integrations cleanup, open).
+**Migrations (owner-applied from the admin dashboard):** 124 `campaigns_purge_grant`, 125 `app_role_delete_grants`, 069 `design_gallery` (re-run; `SocialTemplateType` already existed), 126 `design_references_rls`. Schema / enum / seed drift checks came back clean.
+
+| Piece | Detail |
+|---|---|
+| 9-point batch (#55) | Campaign delete (draft + sent), retailer self-delete (5 missing RESTRICT-FK child tables added to `hardDeleteRetailer()`), growth-video delete, admin background/shadow entry removed, catalog Prev/Next scrolls to top, admin sidebar flyout (gap + viewport clamp), dark status-bar icons, compact home header + smaller logo, Add button centred on the tab-bar edge. |
+| Delete-permission audit | `kanchuki_app` had DELETE on 4 tables, so ~17–19 raw `.delete()` / `.deleteMany()` call sites 500'd or silently no-op'd (`42501`). Migration 125 grants DELETE on the config / join / ephemeral tables (owner-approved, Option A); 124 grants the purge role the campaign tables. |
+| WhatsApp Cloud API | Screen uses the real `PATCH` / `DELETE /me/whatsapp-api`; `GET /me/integrations` returns a `whatsapp` block so the hub shows Connected. No "Test API" button — no server verify endpoint (optional `POST /me/whatsapp-api/test` against Graph `/{phone_number_id}`). |
+| Guards (#57) | `apps/api/src/lib/db-delete-guards.test.ts` — vitest guard that fails if a route/job deletes on a table the app role cannot DELETE, and if the retailer purge list misses an FK child. CI config untouched (per rule). |
+| RLS (#58) | Migration 126 enables RLS on `design_references` with `backend_roles_full_access`; verified on prod (`pg_policies` returns the policy). |
+| Soft-404 (#59, open) | `apps/web/src/middleware.ts` returns a bare 404 for `*.php/.asp(x)/.jsp/.cgi/.sql/.bak` and dotfile paths (`.well-known` excluded) — scanner probes no longer render a 200 shell + 2 API calls. Test `middleware.test.ts` 11/11. Unknown real-looking slugs still redirect to `/[store]/categories` by design (spec §4.2 not done). |
+| Integrations cleanup (#60, open) | Deleted unreachable `growth/integrations/{youtube,x,pinterest}` screens; dropped configure/test for IG/FB/YT/X/Pinterest from `growth.ts` (server has only `DELETE` for IG/FB; the POSTs 404'd and `.catch` faked `connected: true / 'Verified'`); removed manual-token form + Verify Status in `instagram.tsx`. Leftover: "Auto-publish Reels" switch is local state only. |
+| RCs | RC-049 … RC-054 (see `docs/root-cause/root-cause issues.md`). |
+| Open | Manual tests (campaign delete, growth video, test-retailer account, storefront un-favourite, WhatsApp save → Connected); Railway deploy commit ≥ `b6af02f7` unconfirmed from logs; `[secrets] Failed to decrypt R2_*` → env fallback seen in API logs 2026-10-10 (uploads still work). |
