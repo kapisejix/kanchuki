@@ -36,6 +36,7 @@ import {
   type ModelStyleId,
   PRODUCT_STYLES,
   type ProductStyleId,
+  resolveStylePrompt,
   type SceneId,
   audFor,
   benchPoseChoices,
@@ -362,7 +363,7 @@ export default function PhotoCleanupTestPage() {
   const productStyle = PRODUCT_STYLES.find((s) => s.id === benchProductStyle);
   const buildBenchPrompt = (pose: BenchPose): string =>
     studioPrompt.trim() ||
-    productStyle?.prompt ||
+    resolveStylePrompt(productStyle) ||
     composeBenchPrompt({
       scene: benchScene,
       pose,
@@ -945,7 +946,7 @@ export default function PhotoCleanupTestPage() {
                 setBenchProductStyle(v);
                 if (v) {
                   setBenchModelStyle('');
-                  setStudioPrompt(PRODUCT_STYLES.find((s) => s.id === v)?.prompt ?? '');
+                  setStudioPrompt(resolveStylePrompt(PRODUCT_STYLES.find((s) => s.id === v)));
                   setRawProduct(true);
                   setBenchEngines((prev) => prev.filter((x) => !isTwoStepEngine(x)));
                 }
@@ -974,7 +975,7 @@ export default function PhotoCleanupTestPage() {
                 if (v) {
                   setBenchProductStyle('');
                   setRawProduct(false);
-                  setStudioPrompt(MODEL_STYLES.find((s) => s.id === v)?.prompt ?? '');
+                  setStudioPrompt(resolveStylePrompt(MODEL_STYLES.find((s) => s.id === v)));
                 }
               }}
               className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2"

@@ -1,5 +1,7 @@
 # AI Photo & Video Generation — Single Source of Truth
 
+> **See also:** `docs/tasks/pending/studio-shoot-option-matrix.md` — the retailer-facing option list (Product Only / Model styles, poses, lighting), product-aware gating rules, and the collage design. This doc stays the source for engines, pipeline, quota and quality.
+
 **Created:** 2026-09-18 (merge of 5 docs)
 **Scope:** F-032 (AI Studio Shoots / Kontext + Gemini), F-034 (AI image→video for social promo), the photo-cleanup bench, and the current requirement: product-set completeness + Gemini/ChatGPT-parity output quality.
 **Owner of this file:** this is now the *only* spec for AI photo/video generation. The 5 files it replaces are listed in §13 and were deleted in the same change.
@@ -20,7 +22,7 @@
 
 ## §0a — SESSION HAND-OFF (read this first in a new session)
 
-**Updated 2026-09-18.** This file is now the single source of truth. The separate `ai-photo-quality-gap-analysis.md` was merged into it (§3B) and deleted.
+**Refreshed 2026-10-10 (status only; body below dated 2026-09-18–19).** Since then: bench run 1 done 2026-09-20 (§8.1d); retailer option layer re-specced in `studio-shoot-option-matrix.md` (2 sections, 29 final prompts, Fal.ai model picker §15); bench code `studio-effects.ts` still behind that spec. Retailer path remains unwired. This file is now the single source of truth. The separate `ai-photo-quality-gap-analysis.md` was merged into it (§3B) and deleted.
 
 ### What the owner wants (the target solution)
 
@@ -74,7 +76,7 @@ The gap is **not mainly resolution or `image_size`** (an earlier draft over-weig
 
 ## §0b — Task status board: what's done, what's left
 
-**Last updated:** 2026-09-18. Section refs point at the detail.
+**Last updated:** 2026-09-18 board; status headers refreshed 2026-10-10 (bench run 1 ✅ 2026-09-20; runs 2–3, engine per row, R1–R6 and retailer-path wiring still 🔴). Section refs point at the detail.
 
 ### A. F-032 Studio Shoot — engine + photo path (image generation)
 
@@ -894,6 +896,39 @@ Raw rows + images: `docs/ai-studio/bench-results.json` / `.js` and `docs/ai-stud
 | `vton_gemini` | Medium-poor | saree drape re-invented, sneakers added |
 
 Follow-ups planned: run 2 = indoor with model, run 3 = product only (no model); compare all three on the same garments. Grok priced at $0.04 from docs.x.ai (`grok-imagine-image-2.0`); Fal's own price for the edit endpoint is unconfirmed.
+
+#### 8.1e Bench runs 2 & 3 — checklist (owner runs on `/admin/photo-cleanup-test`; planned 2026-10-10, **not run**)
+
+Styles come from the final prompts (option matrix §14, `apps/web/src/lib/studio-effects.ts`, commit `78ebf730`). Each style select fills the custom prompt box with one random pool pick. Engines: the four retailer models (`grok_imagine`, `gpt_image_2_low`, `qwen_edit`, `nano_banana`) + `gemini_image` as a baseline. Same garments for both runs so rows compare across runs 1–3. Est. cost ≈ $0.12 per style per garment (run-1 prices, unverified).
+
+**Run 2 — indoor, with model** (≈ 6 styles × 3 garments ≈ $2)
+
+| Style | Check |
+|---|---|
+| MI-01 Product Composition | props never cover the garment; pose pool variety |
+| MI-02 Courtyard | reads as a courtyard, not a generic garden |
+| MI-04 Boutique | racks/shelves stay secondary |
+| MI-05 Shopping Mall | **signage blank** — no readable text or logos |
+| MI-08 Social Commerce | headline spelled exactly from the fixed list; 2–3 detail panels match real garment areas |
+| MI-10 Grey Background Studio | plain backdrop, head-to-toe, no mannequin |
+| All | kurti hem length unchanged; no garment back invented; front-facing walking |
+
+**Run 3 — product only, no model** (≈ 14 styles × 3 garments ≈ $5; include one **unstitched suit** and one **bottom**)
+
+| Style | Check |
+|---|---|
+| PS-03 / PS-04 | form is truly **headless**; garment holds on unstitched/bottoms |
+| PS-05 / PS-06 | solid blue only / full-length, not a close-up |
+| PS-07 Flat Lay | props never cover the garment |
+| PS-08 / PS-10 | exactly one fold / exactly a two-stack |
+| PS-09 / PS-11 / PS-12 | hanger on rail / drape over table edge / round pedestal under arch |
+| PS-13 / PS-15 | pure white + hard shadow / **no AI text** |
+| PS-14 / PS-16 | frame + florals don't cover garment / accessories stay separate props |
+| All | colour, print, embroidery, length unchanged vs source photo |
+
+**Also check (both runs):** Qwen ≈1 MP output vs the ≤80 KB compressor; GPT `low` tier detail loss on embroidery; whether the source photo's camera overlay leaks into output (Kontext did in run 1).
+
+**Then:** export bench JSON → `node scripts/save-bench.mjs <file>` → record verdicts here as a §8.1d-style table → pick engine routing per style (option matrix §15, `studio_styles.engine`).
 
 ### 8.2 The 80 KB ceiling — the decision table
 
