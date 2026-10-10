@@ -1,7 +1,7 @@
 # AI Studio Shoot Option Matrix — Session Hand-off (refreshed 2026-10-10)
 
 **Purpose:** resume Studio Shoot work in a fresh session with no loss.
-**Main spec:** `docs/tasks/pending/studio-shoot-option-matrix.md` (final option list, 29 owner prompts in §14, Fal.ai model picker in §15).
+**Main spec:** `docs/tasks/done/studio-shoot-option-matrix.md` (final option list, 29 owner prompts in §14, Fal.ai model picker in §15).
 **Companion spec:** `docs/tasks/pending/ai-photo-generation.md` (engines, pipeline, quota, bench results).
 **Rule of this thread:** spec work is docs only. Ask the owner before any edit to `CLAUDE.md`.
 

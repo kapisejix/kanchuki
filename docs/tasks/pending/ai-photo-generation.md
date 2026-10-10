@@ -1,6 +1,6 @@
 # AI Photo & Video Generation — Single Source of Truth
 
-> **See also:** `docs/tasks/pending/studio-shoot-option-matrix.md` — the retailer-facing option list (Product Only / Model styles, poses, lighting), product-aware gating rules, and the collage design. This doc stays the source for engines, pipeline, quota and quality.
+> **See also:** `docs/tasks/done/studio-shoot-option-matrix.md` — the retailer-facing option list (Product Only / Model styles, poses, lighting), product-aware gating rules, and the collage design. This doc stays the source for engines, pipeline, quota and quality.
 
 **Created:** 2026-09-18 (merge of 5 docs)
 **Scope:** F-032 (AI Studio Shoots / Kontext + Gemini), F-034 (AI image→video for social promo), the photo-cleanup bench, and the current requirement: product-set completeness + Gemini/ChatGPT-parity output quality.
