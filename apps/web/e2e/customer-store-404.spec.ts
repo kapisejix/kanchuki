@@ -42,3 +42,8 @@ test('existing store is not 404', async ({ request }) => {
   const res = await request.get('/real-store')
   expect(res.status()).not.toBe(404)
 })
+
+test('unknown legacy /c/{slug} returns 404', async ({ request }) => {
+  const res = await request.get('/c/ghost-collection')
+  expect(res.status()).toBe(404)
+})
