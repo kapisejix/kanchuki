@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { API_URL } from '@/lib/apiUrl'
 import { Footer, Navbar, PageHero, Section } from '@/components/site/Chrome'
+import type { StoreCardData } from '@/lib/nearby-stores'
 import StoresDirectory from './StoresDirectory'
 
 export const metadata: Metadata = {
@@ -12,14 +13,7 @@ export const metadata: Metadata = {
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://kanchuki.app'
 export const revalidate = 300 // 5 min — the directory page itself; filters run client-side
 
-export interface StoreCardData {
-  public_slug: string
-  shop_name: string
-  city: string | null
-  logo_url: string | null
-  product_count: number
-  is_featured: boolean
-}
+export type { StoreCardData }
 
 export interface StoresDirectoryData {
   stores: StoreCardData[]
@@ -28,6 +22,10 @@ export interface StoresDirectoryData {
   page_size: number
   total_pages: number
   cities: { city: string; count: number }[]
+  /** true when the list was fetched with the shopper's coordinates */
+  nearby: boolean
+  /** radius the API settled on (2 → 5 → 10 km); null outside nearby mode */
+  radius_km: number | null
 }
 
 async function fetchDirectory(): Promise<StoresDirectoryData | null> {

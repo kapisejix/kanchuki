@@ -3144,6 +3144,82 @@ itself is owner-side — see `docs/runbooks/tryon-launch-owner-steps.md`.
 
 ---
 
+## 39. F-041 Pre-Loved — Customer Resale, Rental & Family Gifting of Used Clothes — 🔴 IDEA, NOT APPROVED
+
+**Written 2026-09-29 on owner request.** Full spec + research (one file):
+**`docs/tasks/pending/how-customer-earn-from-this-platform.md`** — Part A is the
+spec, Part B the India + US/UK/EU/Asia research (figures from model knowledge,
+not live-verified).
+
+### 39.1 Problem
+
+Indian shoppers buy for occasions and wear an outfit 1–5 times; high-value ethnic
+wear then sits unused. Low-income families already buy used clothes offline
+(old-clothes markets, bartanwali resale) with no trust, size information, or
+reach. Kanchuki today only lets retailers earn — shoppers have no way to turn
+their wardrobe into value.
+
+### 39.2 Scope summary
+
+- **Shoppers list their own used clothes** from the existing phone-OTP
+  `CustomerAccount`, in four modes: `SELL`, `RENT` (suggested when original price
+  ≥ ₹5,000; rent per event + deposit), `FREE`, `FAMILY_FREE` (private WhatsApp
+  link only). Visibility `PUBLIC | LINK_ONLY | PROFILE`; shareable profile page.
+- **Size solved in four layers:** flat-garment measurements in inches (per garment
+  type), `stitched_state` (unstitched/sarees skip size logic), recorded
+  alteration margin, and a per-seeker **fit badge** (✅ fits / ✂️ fits with
+  alteration, naming the change / ❌ won't fit).
+- **Tailor directory (Phase 2):** nearby tailors with a price list; "Get it
+  altered" sends the alteration note + photos over WhatsApp.
+- **Handover defaults to a partner retailer's store** (safety, no home addresses,
+  retailer footfall). Phone numbers hidden until the lister accepts.
+- **No on-platform payments in Phase 1** — UPI/cash at handover. Checkout/orders
+  were removed 2026-08-31; this does not reintroduce them until Phase 3.
+- **Dignity rule:** no "poor" labelling anywhere; neutral "Free / Under ₹200" wording.
+- **Banned categories:** innerwear, nightwear, socks.
+
+### 39.3 How the shopper earns or saves
+
+Sell (P1) · rent out occasion wear via retailer custodian (P3) · retailer
+trade-in store credit (P2) · bonus voucher for selling/giving via Kanchuki (P2) ·
+buy cheaply with a fit badge (P1) · give free to family (P1) · retailer buy-back
+on new purchases. Listing and buying stay free for shoppers.
+
+### 39.4 Phases
+
+P0 no-code WhatsApp-group pilot at 2–3 stores (recommended: Diwali 2026 clear-out)
+· P1 listings + measurements + fit badge + share + store handover + moderation ·
+P2 tailor directory + retailer trade-in voucher + ratings · P3 rental with
+deposit, retailer custodian, Razorpay Route payments · P4 unsold → donate/recycle,
+pooled across retailers.
+
+### 39.5 Retailer benefit
+
+Handover footfall, same-visit voucher conversion, in-house tailor jobs, rental
+custodian cut (P3), consented listing/seeking insight, sustainability story.
+Kanchuki revenue comes later from retailer plans, rental commission, and featured
+listings — never from low-income buyers.
+
+### 39.6 Not doing (Phase 1)
+
+On-platform payments/escrow, courier shipping, P2P rental, public phone numbers,
+home-address display, tailor fees.
+
+### 39.7 Prerequisites before any code
+
+Legal/CA review — intermediary status (IT Rules 2021), Consumer Protection
+(E-Commerce) Rules 2020, GST/TCS once payments exist, DPDP for listing photos.
+Schema per `docs/DATABASE.md` with RLS on every new table (sketch in spec §11).
+
+### 39.8 Open decisions (owner, blocking)
+
+D-1 approve at all, before or after launch · D-2 Phase 1 local pickup, no
+payments (recommend yes) · D-3 store handover as default (recommend yes) · D-4
+launch categories · D-5 free-claim cap shape · D-6 tailor onboarding path · D-7
+inside customer PWA (recommend) or separate sub-brand. Full list: spec §13.
+
+---
+
 ## 36. Customer Profile & Shopper Passport — Research Background
 
 Background research behind F-036 (§32, Customer PWA / Shopper Passport, built) and F-037 (§33, Customer Engagement, built). Kept for the rationale and decisions-considered detail that §32/§33 don't restate.

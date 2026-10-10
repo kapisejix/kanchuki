@@ -8,42 +8,8 @@
 import { prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
+import { getBoundingBox, haversineDistance } from '../../lib/geo.js';
 import { validationError } from '../../plugins/error-handler.js';
-
-const EARTH_RADIUS_KM = 6371;
-
-/**
- * Calculate the bounding box for a given lat/lng and radius in km.
- * Used to narrow down the Prisma query before exact Haversine filtering.
- */
-function getBoundingBox(lat: number, lng: number, radiusKm: number) {
-  const latRadius = radiusKm / EARTH_RADIUS_KM;
-  const lngRadius = latRadius / Math.cos((lat * Math.PI) / 180);
-
-  return {
-    minLat: lat - (latRadius * 180) / Math.PI,
-    maxLat: lat + (latRadius * 180) / Math.PI,
-    minLng: lng - (lngRadius * 180) / Math.PI,
-    maxLng: lng + (lngRadius * 180) / Math.PI,
-  };
-}
-
-/**
- * Haversine distance between two points in kilometers.
- * Accurate to ~0.3% — plenty for "near me" retailer search.
- */
-function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLon = ((lon2 - lon1) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return EARTH_RADIUS_KM * c;
-}
 
 export const publicNearMeRoutes: FastifyPluginAsync = async (server) => {
   // ─── GET /near-me ───────────────────────────────────────────────
