@@ -1,14 +1,10 @@
 import { useEffect, useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { router } from 'expo-router'
 import {
   CheckCircle2,
-  ChevronDown,
   ChevronLeft,
-  ChevronUp,
-  ExternalLink,
   Lock,
-  RefreshCw,
   Sparkles,
   Zap,
 } from 'lucide-react-native'
@@ -18,14 +14,12 @@ import {
   ScrollView,
   Switch,
   Text,
-  TextInput,
   View,
 } from 'react-native'
 import * as Linking from 'expo-linking'
 import { useScreenInsets } from '../../../src/lib/safe-area'
 import { KeyboardScreen } from '../../../src/components/KeyboardScreen'
 import { AnimatedPressable } from '../../../src/components/AnimatedPressable'
-import { GradientButton } from '../../../src/components/GradientButton'
 import { growthApi } from '../../../src/lib/api/growth'
 import { socialApi } from '../../../src/lib/api/social'
 import { showError } from '../../../src/lib/errors'
@@ -48,15 +42,10 @@ export default function InstagramConfigScreen() {
   const currentInstagram = integrationsData?.data?.instagram
 
   const [accountId, setAccountId] = useState(currentInstagram?.account_id ?? '')
-  const [accessToken, setAccessToken] = useState('')
   const [handle, setHandle] = useState(currentInstagram?.handle ?? '')
   const [autoPublishReels, setAutoPublishReels] = useState(true)
   const [connecting, setConnecting] = useState(false)
   const [connectError, setConnectError] = useState<string | null>(null)
-  const [showManual, setShowManual] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const [testing, setTesting] = useState(false)
-  const [testResult, setTestResult] = useState<{ connected: boolean; username?: string } | null>(null)
 
   const isConnected = !!currentInstagram?.configured || !!handle.trim()
 
@@ -176,55 +165,12 @@ export default function InstagramConfigScreen() {
           await growthApi.disconnectInstagram()
           setHandle('')
           setAccountId('')
-          setAccessToken('')
-          setTestResult(null)
           void queryClient.invalidateQueries({ queryKey: ['growth', 'integrations'] })
           void refetchIntegrations()
         },
       },
     ])
   }
-
-  const saveMutation = useMutation({
-    mutationFn: () =>
-      growthApi.configureInstagram({
-        account_id: accountId.trim() || handle.trim(),
-        access_token: accessToken.trim() || 'demo_token',
-        handle: handle.trim().replace(/^@/, ''),
-        auto_publish_reels: autoPublishReels,
-      }),
-    onSuccess: () => {
-      setSaving(false)
-      void queryClient.invalidateQueries({ queryKey: ['growth', 'integrations'] })
-      Alert.alert('Saved!', 'Instagram Business credentials updated.', [
-        { text: 'OK', onPress: () => router.back() },
-      ])
-    },
-    onError: (err) => {
-      setSaving(false)
-      showError(err, 'Failed to save Instagram credentials')
-    },
-  })
-
-  const testMutation = useMutation({
-    mutationFn: () =>
-      growthApi.testInstagram({
-        account_id: accountId.trim() || currentInstagram?.account_id || undefined,
-        access_token: accessToken.trim() || 'oauth_token',
-      }),
-    onMutate: () => {
-      setTesting(true)
-      setTestResult(null)
-    },
-    onSuccess: (res) => {
-      setTesting(false)
-      setTestResult(res.data)
-    },
-    onError: () => {
-      setTesting(false)
-      setTestResult({ connected: false })
-    },
-  })
 
   return (
     <KeyboardScreen className="flex-1 bg-[#F8F7FC]">
@@ -299,22 +245,6 @@ export default function InstagramConfigScreen() {
                 </View>
               ) : null}
               <View className="flex-row gap-2 mt-2 pt-2 border-t border-lavender-200">
-                <View className="flex-1">
-                  <AnimatedPressable
-                    onPress={() => void testMutation.mutate()}
-                    disabled={testing}
-                    className="bg-white py-2.5 rounded-xl border border-lavender-200 items-center justify-center flex-row gap-1.5"
-                  >
-                    {testing ? (
-                      <ActivityIndicator size="small" color="#BB3F95" />
-                    ) : (
-                      <>
-                        <RefreshCw size={13} color="#231F48" />
-                        <Text className="text-xs font-bold text-spaceCadet-900">Verify Status</Text>
-                      </>
-                    )}
-                  </AnimatedPressable>
-                </View>
                 <View className="flex-1">
                   <AnimatedPressable
                     onPress={handleDisconnect}
@@ -392,110 +322,7 @@ export default function InstagramConfigScreen() {
           </View>
         </View>
 
-        {testResult && (
-          <View
-            className={`rounded-2xl px-4 py-3 mb-4 border ${
-              testResult.connected
-                ? 'bg-emerald-50 border-emerald-200'
-                : 'bg-rose-50 border-rose-200'
-            }`}
-          >
-            <Text
-              className={`text-xs font-bold ${
-                testResult.connected ? 'text-emerald-700' : 'text-rose-700'
-              }`}
-            >
-              {testResult.connected
-                ? `Active & Synced! Connected to @${handle.trim().replace(/^@/, '') || 'Verified'}`
-                : 'Connection test failed. Please reconnect your account.'}
-            </Text>
-          </View>
-        )}
-
-        {/* Collapsible Manual Setup for Developers */}
-        <View className="bg-white rounded-3xl p-4 border border-lavender-200 mb-4 shadow-sm">
-          <AnimatedPressable
-            onPress={() => setShowManual((v) => !v)}
-            className="flex-row items-center justify-between py-1"
-          >
-            <View className="flex-row items-center gap-2">
-              <Text className="text-xs font-bold text-spaceCadet-900">
-                Advanced / Manual Token Entry
-              </Text>
-              <Text className="text-[10px] bg-lavender-100 px-2 py-0.5 rounded-full text-heliotrope-600 font-bold">
-                Optional
-              </Text>
-            </View>
-            {showManual ? <ChevronUp size={16} color="#6B4773" /> : <ChevronDown size={16} color="#6B4773" />}
-          </AnimatedPressable>
-
-          {showManual && (
-            <View className="pt-4 border-t border-lavender-100 mt-2">
-              <AnimatedPressable
-                onPress={() => Linking.openURL('https://developers.facebook.com/docs/instagram-api')}
-                className="flex-row items-center gap-2 bg-lavender-50 rounded-2xl px-3.5 py-2.5 mb-3 border border-lavender-200"
-              >
-                <ExternalLink size={13} color="#BB3F95" />
-                <Text className="text-[11px] font-bold text-fuchsia-700">
-                  Meta for Developers Documentation →
-                </Text>
-              </AnimatedPressable>
-
-              <Label text="Instagram Handle / Username" />
-              <TextInput
-                value={handle}
-                onChangeText={setHandle}
-                placeholder="@yourboutique_couture"
-                placeholderTextColor="#928EB2"
-                className="bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-2.5 text-xs font-bold text-spaceCadet-900 mb-3"
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-
-              <Label text="Instagram Business Account ID" />
-              <TextInput
-                value={accountId}
-                onChangeText={setAccountId}
-                placeholder="17841400000000000"
-                placeholderTextColor="#928EB2"
-                className="bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-2.5 text-xs font-bold text-spaceCadet-900 mb-3"
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-
-              <Label text="Meta Graph User Access Token" />
-              <TextInput
-                value={accessToken}
-                onChangeText={setAccessToken}
-                placeholder="Paste Long-lived Meta Token"
-                placeholderTextColor="#928EB2"
-                className="bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-2.5 text-xs font-bold text-spaceCadet-900 mb-3"
-                secureTextEntry
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-
-              <GradientButton
-                label={saving ? 'Saving…' : 'Save Custom Credentials'}
-                onPress={() => {
-                  setSaving(true)
-                  void saveMutation.mutate()
-                }}
-                disabled={saving || !handle.trim()}
-              />
-            </View>
-          )}
-        </View>
       </ScrollView>
     </KeyboardScreen>
   )
 }
-
-function Label({ text }: { text: string }) {
-  return (
-    <Text className="text-[11px] font-bold text-heliotrope-500 uppercase tracking-wider mb-1">
-      {text}
-    </Text>
-  )
-}
-
