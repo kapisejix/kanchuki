@@ -295,9 +295,30 @@ describe('GET /studio-styles', () => {
 
 describe('GET /studio-styles?product_id=', () => {
   const ROWS = [
-    { slug: 'ps-03', label: 'Luxury', description: 'd', tab: 'PRODUCT', audience: [], thumbnail_url: null },
-    { slug: 'ps-07', label: 'Flat Lay', description: 'd', tab: 'PRODUCT', audience: [], thumbnail_url: null },
-    { slug: 'mi-02', label: 'Courtyard', description: 'd', tab: 'MODEL', audience: [], thumbnail_url: null },
+    {
+      slug: 'ps-03',
+      label: 'Luxury',
+      description: 'd',
+      tab: 'PRODUCT',
+      audience: [],
+      thumbnail_url: null,
+    },
+    {
+      slug: 'ps-07',
+      label: 'Flat Lay',
+      description: 'd',
+      tab: 'PRODUCT',
+      audience: [],
+      thumbnail_url: null,
+    },
+    {
+      slug: 'mi-02',
+      label: 'Courtyard',
+      description: 'd',
+      tab: 'MODEL',
+      audience: [],
+      thumbnail_url: null,
+    },
   ];
   const get = async (qs = '?product_id=p1') => {
     const app = await buildApp();

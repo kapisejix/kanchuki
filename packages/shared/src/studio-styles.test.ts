@@ -1,10 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  MODEL_STYLES,
-  PRODUCT_STYLES,
-  poolsForSlug,
-  resolveStyleTokens,
-} from './studio-styles.js';
+import { MODEL_STYLES, PRODUCT_STYLES, poolsForSlug, resolveStyleTokens } from './studio-styles.js';
 
 const ALL = [...PRODUCT_STYLES, ...MODEL_STYLES];
 
@@ -19,7 +14,8 @@ describe('studio styles', () => {
     for (const s of ALL) {
       const { prompt, picks } = resolveStyleTokens(s.prompt, 'pools' in s ? s.pools : undefined);
       expect(prompt, s.id).not.toMatch(/\{\{/);
-      for (const k of s.prompt.matchAll(/\{\{(\w+)\}\}/g)) expect(picks[k[1] as string], `${s.id} ${k[1]}`).toBeTruthy();
+      for (const k of s.prompt.matchAll(/\{\{(\w+)\}\}/g))
+        expect(picks[k[1] as string], `${s.id} ${k[1]}`).toBeTruthy();
     }
   });
 

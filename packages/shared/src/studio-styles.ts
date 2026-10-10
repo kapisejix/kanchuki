@@ -61,7 +61,7 @@ export function poolsForSlug(slug: string): StyleDef['pools'] {
   return all.find((s) => s.id === id)?.pools;
 }
 
-const PROTECT = `STRICT GARMENT PROTECTION: Preserve the uploaded garment exactly as shown, including its original color, fabric, print, embroidery, motifs, neckline, sleeves, borders, length, texture, stitching, proportions, construction, dupatta and every visible design detail. Do not redesign, recolor, simplify, stretch, shorten, reshape, distort, replace, add, remove, duplicate or invent any garment detail.`;
+const PROTECT = 'STRICT GARMENT PROTECTION: Preserve the uploaded garment exactly as shown, including its original color, fabric, print, embroidery, motifs, neckline, sleeves, borders, length, texture, stitching, proportions, construction, dupatta and every visible design detail. Do not redesign, recolor, simplify, stretch, shorten, reshape, distort, replace, add, remove, duplicate or invent any garment detail.';
 
 /** Shared Model Only wrapper (§14.3 MX-0). */
 const MX0 = `Create ONE premium commercial fashion photograph featuring one model wearing the uploaded garment. The uploaded garment is the single source of truth and must remain the primary visual focus. Keep the garment completely visible and unobstructed. Realistic anatomy, natural posture, realistic skin and hair, minimal elegant styling. Walking poses are toward the camera, never away.
@@ -84,7 +84,13 @@ COMPOSITION: one full-body or three-quarter fashion photograph. The complete gar
 const outdoor = (scene: string, light: string) =>
   `${MX0}\n\n${MO0}\n\nSCENE: ${scene}\nSCENE LIGHTING: ${light}.`;
 
-const POSE_CORE = ['Natural Standing', 'Relaxed Standing', 'Slightly Angled Standing', 'Gentle Walking', 'Looking Slightly Away'] as const;
+const POSE_CORE = [
+  'Natural Standing',
+  'Relaxed Standing',
+  'Slightly Angled Standing',
+  'Gentle Walking',
+  'Looking Slightly Away',
+] as const;
 
 /**
  * Product Only base styles (option matrix §14.2, PS-03…16) — sent verbatim on
@@ -287,9 +293,35 @@ ${PROTECT}
 
 BUNDLED LOOK RULE: accessories are separate styling props only. They must never become part of the garment, change its design, hide embroidery or details, or read as additional clothing. One garment, one presentation, one styling arrangement. No text, labels, logos or watermark. Change only the presentation, environment, styling props, composition and lighting.`,
     pools: {
-      Environment: ['Luxury Bedroom', 'Premium Living Room', 'Elegant Dressing Room', 'Boutique Corner', 'Heritage Interior', 'Modern Apartment', 'Designer Studio', 'Refined Courtyard', 'Minimal Editorial Interior'],
-      Presentation: ['Styled Flat Lay', 'Elegant Hanger Display', 'Premium Garment Rack', 'Draped Product Display', 'Neatly Folded Product', 'Editorial Chair Display', 'Boutique Table Display'],
-      Styling: ['Handbag + Shoes', 'Handbag + Jewellery', 'Shoes + Sunglasses', 'Jewellery + Perfume Bottle', 'Handbag + Jewellery + Shoes', 'Traditional Accessories + Handbag', 'Minimal Fashion Accessories'],
+      Environment: [
+        'Luxury Bedroom',
+        'Premium Living Room',
+        'Elegant Dressing Room',
+        'Boutique Corner',
+        'Heritage Interior',
+        'Modern Apartment',
+        'Designer Studio',
+        'Refined Courtyard',
+        'Minimal Editorial Interior',
+      ],
+      Presentation: [
+        'Styled Flat Lay',
+        'Elegant Hanger Display',
+        'Premium Garment Rack',
+        'Draped Product Display',
+        'Neatly Folded Product',
+        'Editorial Chair Display',
+        'Boutique Table Display',
+      ],
+      Styling: [
+        'Handbag + Shoes',
+        'Handbag + Jewellery',
+        'Shoes + Sunglasses',
+        'Jewellery + Perfume Bottle',
+        'Handbag + Jewellery + Shoes',
+        'Traditional Accessories + Handbag',
+        'Minimal Fashion Accessories',
+      ],
     },
   },
 ] as const satisfies readonly StyleDef[];
@@ -314,7 +346,15 @@ Place the model in the selected sophisticated indoor fashion environment with ta
 
 Use professional softbox lighting: bright clean exposure, gentle fill, soft natural shadows, accurate colors and crisp embroidery/print detail.`,
     pools: {
-      Scene: ['Premium Luxury Studio', 'Editorial Fashion Studio', 'Modern Boutique Interior', 'Designer Dressing Room', 'Heritage Interior', 'Luxury Fashion Gallery', 'Minimalist Studio'],
+      Scene: [
+        'Premium Luxury Studio',
+        'Editorial Fashion Studio',
+        'Modern Boutique Interior',
+        'Designer Dressing Room',
+        'Heritage Interior',
+        'Luxury Fashion Gallery',
+        'Minimalist Studio',
+      ],
       Pose: [...POSE_CORE, 'Simple Boutique Pose'],
     },
   },
@@ -344,8 +384,21 @@ Place the model naturally inside the selected boutique with tasteful boutique el
 
 Use professional softbox lighting: large diffused key light, gentle fill, controlled highlights, accurate exposure, realistic soft grounding shadows and crisp textile detail. Maintain natural skin tones and accurate garment colors.`,
     pools: {
-      Scene: ['Luxury Indian Boutique', 'Modern Designer Boutique', 'Premium Ethnic Wear Boutique', 'Elegant Fashion Showroom', 'Minimalist Designer Store', 'High-End Bridal Boutique', 'Contemporary Indian Fashion Store'],
-      Pose: [...POSE_CORE, 'Browsing a Garment Rack', 'Standing Near Display Shelves', 'Elegant Boutique Pose'],
+      Scene: [
+        'Luxury Indian Boutique',
+        'Modern Designer Boutique',
+        'Premium Ethnic Wear Boutique',
+        'Elegant Fashion Showroom',
+        'Minimalist Designer Store',
+        'High-End Bridal Boutique',
+        'Contemporary Indian Fashion Store',
+      ],
+      Pose: [
+        ...POSE_CORE,
+        'Browsing a Garment Rack',
+        'Standing Near Display Shelves',
+        'Elegant Boutique Pose',
+      ],
     },
   },
   {
@@ -363,8 +416,21 @@ Use high-key commercial lighting with bright, clean, evenly diffused illuminatio
 
 BLANK SIGNAGE ONLY: any visible storefront signs, banners, digital screens, posters or promotional panels must be completely blank, clean surfaces. No readable text, letters, numbers, brand names, logos, symbols or advertisements anywhere in the scene.`,
     pools: {
-      Scene: ['Luxury Fashion Mall', 'Premium Shopping Atrium', 'Modern Indian Shopping Mall', 'Designer Retail Floor', 'Elegant Mall Corridor', 'High-End Fashion Wing', 'Contemporary Shopping Gallery'],
-      Pose: [...POSE_CORE, 'Walking Through Mall', 'Standing Near Storefront', 'Browsing a Display'],
+      Scene: [
+        'Luxury Fashion Mall',
+        'Premium Shopping Atrium',
+        'Modern Indian Shopping Mall',
+        'Designer Retail Floor',
+        'Elegant Mall Corridor',
+        'High-End Fashion Wing',
+        'Contemporary Shopping Gallery',
+      ],
+      Pose: [
+        ...POSE_CORE,
+        'Walking Through Mall',
+        'Standing Near Storefront',
+        'Browsing a Display',
+      ],
     },
   },
   {
@@ -393,7 +459,16 @@ STRICT GARMENT PROTECTION: the uploaded garment is the ABSOLUTE SINGLE SOURCE OF
 IMPORTANT: this must look like a premium Instagram/Facebook fashion launch announcement, combining model + close-up product storytelling + graphic information + lifestyle styling. Not a simple catalogue photo, flat lay, mannequin shot or standard editorial image. Show the garment from the front only; never show or invent the back.
 
 FINAL: Model left • 2–3 detail panels right • New-product launch aesthetic • High-key • Premium typography • Jewellery/lifestyle props • Exact garment preservation • No duplicate garments • No watermark.`,
-    pools: { Theme: ['New Arrival', 'New Collection', 'Trending Design', 'Festive Edit', 'Designer Pick', 'New Season'] },
+    pools: {
+      Theme: [
+        'New Arrival',
+        'New Collection',
+        'Trending Design',
+        'Festive Edit',
+        'Designer Pick',
+        'New Season',
+      ],
+    },
   },
   {
     id: 'MI-10',
@@ -406,31 +481,53 @@ POSE: {{Pose}}.
 Plain seamless medium-light grey studio backdrop, clean and distraction-free, with a subtle tonal gradient and a smooth floor transition. No furniture, décor, artwork, shelves or unnecessary props. Show the complete outfit from head to toe whenever possible; no mannequin.
 
 Use professional softbox lighting: large diffused key light, subtle fill, soft natural grounding shadow, controlled highlights, accurate exposure, realistic skin tones and crisp fabric/detail visibility.`,
-    pools: { Pose: ['Natural Standing', 'Relaxed Standing', 'Slightly Angled Standing', 'Elegant Standing', 'Gentle Walking', 'Looking Slightly Away', 'Subtle Editorial Pose'] },
+    pools: {
+      Pose: [
+        'Natural Standing',
+        'Relaxed Standing',
+        'Slightly Angled Standing',
+        'Elegant Standing',
+        'Gentle Walking',
+        'Looking Slightly Away',
+        'Subtle Editorial Pose',
+      ],
+    },
   },
   {
     id: 'MO-01',
     label: 'Modern Street',
     light: 'Daylight',
-    prompt: outdoor('a stylish real urban street with sidewalks, buildings and street architecture.', 'Daylight'),
+    prompt: outdoor(
+      'a stylish real urban street with sidewalks, buildings and street architecture.',
+      'Daylight',
+    ),
   },
   {
     id: 'MO-02',
     label: 'Cafe',
     light: 'Natural Light',
-    prompt: outdoor('a clearly recognizable outdoor café with tables, chairs and café surroundings. Signage must be blank.', 'Natural Light'),
+    prompt: outdoor(
+      'a clearly recognizable outdoor café with tables, chairs and café surroundings. Signage must be blank.',
+      'Natural Light',
+    ),
   },
   {
     id: 'MO-03',
     label: 'Terrace',
     light: 'Daylight',
-    prompt: outdoor('an open terrace with visible railing, outdoor flooring and surrounding architecture.', 'Daylight'),
+    prompt: outdoor(
+      'an open terrace with visible railing, outdoor flooring and surrounding architecture.',
+      'Daylight',
+    ),
   },
   {
     id: 'MO-04',
     label: 'Balcony',
     light: 'Natural Light',
-    prompt: outdoor('a clearly recognizable open balcony with visible railing and exterior surroundings. Never make it look like an indoor room.', 'Natural Light'),
+    prompt: outdoor(
+      'a clearly recognizable open balcony with visible railing and exterior surroundings. Never make it look like an indoor room.',
+      'Natural Light',
+    ),
   },
   {
     id: 'MO-05',
@@ -442,13 +539,19 @@ Use professional softbox lighting: large diffused key light, subtle fill, soft n
     id: 'MO-06',
     label: 'Poolside',
     light: 'Daylight',
-    prompt: outdoor('a poolside with a clearly visible swimming pool, water and pool deck.', 'Daylight'),
+    prompt: outdoor(
+      'a poolside with a clearly visible swimming pool, water and pool deck.',
+      'Daylight',
+    ),
   },
   {
     id: 'MO-07',
     label: 'Tropical Resort',
     light: 'Natural Light',
-    prompt: outdoor('a tropical resort with recognizable resort architecture, tropical plants, palms and landscaped surroundings.', 'Natural Light'),
+    prompt: outdoor(
+      'a tropical resort with recognizable resort architecture, tropical plants, palms and landscaped surroundings.',
+      'Natural Light',
+    ),
   },
 ] as const satisfies readonly StyleDef[];
 export type ModelStyleId = (typeof MODEL_STYLES)[number]['id'];
