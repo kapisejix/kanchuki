@@ -7,6 +7,8 @@ describe('manager allowlist', () => {
   it('allows growth, social post/track, analytics, masked customer reads', () => {
     expect(m('POST', '/v1/growth/campaigns')).toBe(true);
     expect(m('POST', '/v1/growth/campaigns/:id/preview')).toBe(true);
+    expect(m('POST', '/v1/growth/campaigns/:id/send')).toBe(true);
+    expect(m('POST', '/v1/growth/reactivation-suggestions')).toBe(true);
     expect(m('POST', '/v1/retailers/me/social/posts')).toBe(true);
     expect(m('GET', '/v1/retailers/me/social/accounts')).toBe(true);
     expect(m('GET', '/v1/retailers/me/stats')).toBe(true);
@@ -14,8 +16,7 @@ describe('manager allowlist', () => {
     expect(m('GET', '/v1/customers/:id')).toBe(true);
   });
   it('still blocks number-returning, destructive and owner-only surfaces', () => {
-    expect(m('POST', '/v1/growth/campaigns/:id/send')).toBe(false);
-    expect(m('POST', '/v1/growth/reactivation-suggestions')).toBe(false);
+    expect(m('POST', '/v1/growth/campaigns/:id/delete-all')).toBe(false);
     expect(m('POST', '/v1/retailers/me/social/connect-native')).toBe(false);
     expect(m('POST', '/v1/retailers/me/social/accounts')).toBe(false);
     expect(m('DELETE', '/v1/retailers/me/social/accounts/:id')).toBe(false);
@@ -38,6 +39,7 @@ describe('salesperson allowlist', () => {
     expect(s('POST', '/v1/collections')).toBe(false);
     expect(s('GET', '/v1/customers')).toBe(false);
     expect(s('POST', '/v1/growth/campaigns')).toBe(false);
+    expect(s('POST', '/v1/growth/campaigns/:id/send')).toBe(false);
     expect(s('POST', '/v1/retailers/me/social/posts')).toBe(false);
   });
 });

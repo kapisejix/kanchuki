@@ -167,13 +167,17 @@ const MANAGER_ALLOWED_ROUTES: StaffRule[] = [
   { method: 'POST', path: '/v1/customers', exact: true }, // add new customers only — no list/edit/delete
   { method: 'GET', path: '/v1/retailers/me', exact: true }, // read-only shop info (name shown in app header)
   { method: 'POST', path: '/v1/retailers/me/qr-slug', exact: true }, // Store QR code
-  // Growth: campaigns (no /send, /reactivation-suggestions — they return numbers),
+  // Growth: campaigns (create/edit/preview/send), reactivation audiences,
   // promotions, festivals, analytics, social caption/templates.
   { method: 'GET', path: '/v1/growth/campaigns', exact: true },
   { method: 'POST', path: '/v1/growth/campaigns', exact: true },
   { method: 'GET', path: '/v1/growth/campaigns/stats', exact: true },
   { method: '*', path: '/v1/growth/campaigns/:id', exact: true },
   { method: 'POST', path: '/v1/growth/campaigns/:id/preview', exact: true },
+  // Send: allowed, but the handler refuses non-owners unless the server-side
+  // WhatsApp API path is in use (manual wa.me links would expose numbers).
+  { method: 'POST', path: '/v1/growth/campaigns/:id/send', exact: true },
+  { method: 'POST', path: '/v1/growth/reactivation-suggestions', exact: true }, // ids + counts only
   { method: '*', path: '/v1/growth/promotions' },
   { method: 'GET', path: '/v1/growth/festivals' },
   { method: 'GET', path: '/v1/growth/analytics' },
