@@ -4,6 +4,7 @@ import { getDownloadPresignedUrl } from '@kanchuki/ai';
 import type { Prisma } from '@kanchuki/db';
 import { PUBLIC_PRICE_BUCKETS, SIZE_OPTIONS } from '@kanchuki/shared';
 import { z } from 'zod';
+import { haversineDistance } from '../../lib/geo.js';
 import { isNewArrival, isOnSale } from '../../lib/product-flags.js';
 
 // Helper: generate a display-ready URL — uses stored public_url when valid,
@@ -219,4 +220,63 @@ export function buildFacets(
     colors: countBy(products.map((p) => p.primary_color).filter((c): c is string => c !== null)),
     sizes: buildSizeFacet(products.map((p) => p.sizes ?? [])),
   };
+}
+
+// ─── Homepage category feed (F-042) ──────────────────────────────────────
+// Per-category product rows for the marketing homepage. Rules from
+// docs/tasks/pending/homepage-product-browse.md §2b/§4: ≤2 products per shop
+// per row, ≤8 per row, nearest shop first when coordinates are known (else
+// newest), and a row that would look thin (<6 products or <3 shops) is dropped.
+export const FEED_PER_SHOP = 2;
+export const FEED_ROW_SIZE = 8;
+export const FEED_MIN_PRODUCTS = 6;
+export const FEED_MIN_SHOPS = 3;
+
+export interface FeedRow {
+  retailer: { public_slug: string | null; latitude: number | null; longitude: number | null };
+  product_category: { name: string } | null;
+}
+
+/** `rows` must arrive newest-first; that order is the tiebreak (and the no-geo order). */
+export function groupCategoryFeed<T extends FeedRow>(
+  rows: T[],
+  geo: { lat: number; lng: number } | null,
+): { category: string; items: { row: T; distance_km: number | null }[] }[] {
+  const withDistance = rows.map((row) => {
+    const { latitude, longitude } = row.retailer;
+    const distance_km =
+      geo && latitude !== null && longitude !== null
+        ? Math.round(haversineDistance(geo.lat, geo.lng, latitude, longitude) * 10) / 10
+        : null;
+    return { row, distance_km };
+  });
+  // Array.sort is stable, so equal distances keep their newest-first order.
+  if (geo) {
+    withDistance.sort(
+      (a, b) =>
+        (a.distance_km ?? Number.POSITIVE_INFINITY) - (b.distance_km ?? Number.POSITIVE_INFINITY),
+    );
+  }
+
+  type Item = { row: T; distance_km: number | null };
+  const byCategory = new Map<string, { items: Item[]; perShop: Map<string, number> }>();
+  for (const item of withDistance) {
+    const name = item.row.product_category?.name;
+    const slug = item.row.retailer.public_slug;
+    if (!name || !slug) continue;
+    const bucket = byCategory.get(name) ?? {
+      items: [] as Item[],
+      perShop: new Map<string, number>(),
+    };
+    byCategory.set(name, bucket);
+    const used = bucket.perShop.get(slug) ?? 0;
+    if (bucket.items.length >= FEED_ROW_SIZE || used >= FEED_PER_SHOP) continue;
+    bucket.perShop.set(slug, used + 1);
+    bucket.items.push(item);
+  }
+
+  return [...byCategory.entries()]
+    .filter(([, b]) => b.items.length >= FEED_MIN_PRODUCTS && b.perShop.size >= FEED_MIN_SHOPS)
+    .map(([category, b]) => ({ category, items: b.items }))
+    .sort((a, b) => b.items.length - a.items.length || a.category.localeCompare(b.category));
 }

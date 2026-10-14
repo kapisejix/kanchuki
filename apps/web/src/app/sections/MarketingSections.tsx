@@ -25,6 +25,7 @@ import Link from 'next/link'
 import { getPlanPricing, type PlanPrices } from '@/lib/plan-pricing'
 import NearMeBar from '@/components/site/NearMeBar'
 import StoreCard from '@/components/site/StoreCard'
+import CategoryProductRows from '@/components/site/CategoryProductRows'
 import { locationParams, type StoreCardData, useUserLocation } from '@/lib/nearby-stores'
 import { Section, SectionHeader, ColorCard, AnimatedSection, Marquee, Footer, fadeUp, stagger, ACCENT_BG, ACCENT_TEXT, ACCENT_SUBTLE } from '@/components/site/Chrome'
 import { type ColorAccent } from '@/components/site/accents'
@@ -542,6 +543,7 @@ export default function MarketingSections() {
       <FeaturesSection />
       <HowItWorks />
       <ComparisonMatrix />
+      <CategoryProductRows />
       <StoreTeaser />
       <TestimonialsSection />
       <PricingSection />
