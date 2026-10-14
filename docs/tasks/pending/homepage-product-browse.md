@@ -1,6 +1,6 @@
 # Homepage Product Browse — "New arrivals near you"
 
-**Status:** 🔴 Idea — **not approved, not built** · **Written:** 2026-09-30
+**Status:** 🟨 §2b category grid **built 2026-10-14** (PRs #72, #73; self-hides when thin) — rest of this spec still idea · **Written:** 2026-09-30
 **Feature ID:** F-042 *(proposed — not yet in `docs/PRO-REQUIREMENTS.md` or the CLAUDE.md index)*
 **Builds on:** nearby store cards (commit `d52efae9`, `feat/nearby-stores`) — `GET /v1/public/stores?lat&lng`, `StoreCard`, `NearMeBar`, `lib/geo.ts`.
 **Scope note:** outside the Phase 0 MVP list in `CLAUDE.md`. Customer web only (marketing homepage + `/stores`); no retailer-app change.

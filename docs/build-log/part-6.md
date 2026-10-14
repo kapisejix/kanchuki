@@ -362,3 +362,13 @@ no migration, no schema change, and **no new request on any surface**.
 | Integrations cleanup (#60) | Deleted unreachable `growth/integrations/{youtube,x,pinterest}` screens; dropped configure/test for IG/FB/YT/X/Pinterest from `growth.ts` (server has only `DELETE` for IG/FB; the POSTs 404'd and `.catch` faked `connected: true / 'Verified'`); removed manual-token form + Verify Status in `instagram.tsx`. Leftover: "Auto-publish Reels" switch is local state only. |
 | RCs | RC-049 … RC-054 (see `docs/root-cause/root-cause issues.md`). |
 | Open | Manual tests (campaign delete, growth video, test-retailer account, storefront un-favourite, WhatsApp save → Connected); Railway deploy commit ≥ `b6af02f7` unconfirmed from logs; `[secrets] Failed to decrypt R2_*` → env fallback seen in API logs 2026-10-10 (uploads still work). |
+
+## 2026-10-14 — F-042 homepage category-wise product grid (PRs #71, #72, #73)
+
+| Area | Detail |
+|---|---|
+| Spec | `docs/tasks/pending/homepage-product-browse.md` §2b "Category-wise layout" (#71). Owner asked for Meesho-style browse; gates G-1…G-3 still unchecked — section self-hides until a category has ≥6 products from ≥3 shops. |
+| API | `GET /v1/public/category-feed?lat&lng` (newest-400 window, per-shop cap 2, Redis `withPublicCache`, coords rounded to 3 decimals) and `GET /v1/public/category-products?category&page&pageSize` (exact category name, AVAILABLE, live shops, newest first, pageSize ≤48). `groupCategoryFeed()` + `FEED_*` constants in `public-helpers.ts`. Tests `routes/public/__tests__/category-feed.test.ts` (5). No dedicated test for `/category-products` yet. |
+| Web | `CategoryProductRows.tsx` on the marketing homepage above `StoreTeaser` — plain grid (5 cols × 3 rows = 15/category, no carousel), category chips, shared `NearMeBar`, "View more" → `/category/[name]` (server page, Prev/Next pager, `revalidate=300`). Shared card `FeedProductCard.tsx` → `/{shop}/all-{shop}/product/{id}`. |
+| Personalisation | "Picked for you" = device-local interests (`lib/interests.ts`, key `kanchuki_interests`, ≤40 terms; captured on product open, settled search words, card taps). No server profile, no cookies. |
+| Open | Not browser/phone verified; `/category/[name]` has no near-me sort; `/category` not in reserved-slug list; photo-upload "similar products" and ChunkLoadError auto-reload are un-built ideas. |
