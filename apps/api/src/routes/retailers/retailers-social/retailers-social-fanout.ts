@@ -481,7 +481,9 @@ export const retailersSocialFanoutRoutes: FastifyPluginAsync = async (server) =>
               token,
               snapshots.map((s) => s.url),
               caption,
-              linkUrl ?? undefined,
+              // No `link` param: Graph /feed turns a post with `link` into a
+              // link post and silently drops `attached_media` (text-only post).
+              // The URL is already appended to the caption (clickable on FB).
             );
             externalPostId = postId;
             externalPostUrl = `https://www.facebook.com/${account.platform_account_id}/posts/${postId}`;
