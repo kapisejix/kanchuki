@@ -1,13 +1,15 @@
 // Auto-split from public.ts (scripts/check-route-size.sh) — route bodies verbatim.
 import { prisma, withRetry } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
+import { z } from 'zod';
 import { hasFeatureForPlan } from '../../lib/features.js';
 import { isNewArrival, isOnSale } from '../../lib/product-flags.js';
 import { withPublicCache } from '../../lib/public-cache.js';
-import { notFound } from '../../plugins/error-handler.js';
+import { notFound, validationError } from '../../plugins/error-handler.js';
 import {
   customerVisiblePhotos,
   displayUrl,
+  groupCategoryFeed,
   rankRelatedProducts,
   toPublicProductSummary,
 } from './public-helpers.js';
@@ -18,7 +20,94 @@ import {
 const RELATED_LIMIT = 6;
 const RELATED_CANDIDATE_POOL = 60;
 
+// Newest-first candidate window the homepage feed groups from — bounds one
+// cache-miss regardless of catalog size.
+const FEED_CANDIDATES = 400;
+
+const feedQuerySchema = z
+  .object({
+    lat: z.coerce.number().min(-90).max(90).optional(),
+    lng: z.coerce.number().min(-180).max(180).optional(),
+  })
+  .refine((v) => (v.lat === undefined) === (v.lng === undefined), 'lat and lng go together');
+
+// ~110 m, same rounding as /public/stores: exact position is never a cache key.
+const round3 = (n: number) => Math.round(n * 1000) / 1000;
+
 export const publicProductsRoutes: FastifyPluginAsync = async (server) => {
+  // ─── GET /public/category-feed ─────────────────────────────────
+  // Homepage "shop by category" rows (F-042). Live products from live,
+  // non-suspended storefronts, grouped by the retailer's ProductCategory name
+  // (admin-seeded defaults, so spellings agree across shops). Optional lat/lng
+  // → nearest shop first.
+  server.get('/category-feed', async (request) => {
+    const parsed = feedQuerySchema.safeParse(request.query);
+    if (!parsed.success) throw validationError('Invalid query params');
+    const geo =
+      parsed.data.lat !== undefined && parsed.data.lng !== undefined
+        ? { lat: round3(parsed.data.lat), lng: round3(parsed.data.lng) }
+        : null;
+    const cacheUrl = geo
+      ? `/v1/public/category-feed?lat=${geo.lat}&lng=${geo.lng}`
+      : '/v1/public/category-feed';
+
+    return withPublicCache(cacheUrl, () =>
+      withRetry(
+        async () => {
+          // ponytail: newest-400 window then nearest-first inside it — a far-away
+          // shop's fresh upload can crowd out a near shop's older one in a very
+          // large directory; add a DB-side distance filter if that shows up.
+          const rows = await prisma.product.findMany({
+            where: {
+              deleted_at: null,
+              status: 'AVAILABLE',
+              category_id: { not: null },
+              photos: { some: {} },
+              retailer: { public_slug: { not: null }, is_suspended: false, deleted_at: null },
+            },
+            orderBy: { created_at: 'desc' },
+            take: FEED_CANDIDATES,
+            include: {
+              photos: { orderBy: [{ is_primary: 'desc' }, { sort_order: 'asc' }], take: 1 },
+              section: { select: { name: true } },
+              _count: { select: { photos: true } },
+              product_category: { select: { name: true } },
+              retailer: {
+                select: {
+                  public_slug: true,
+                  shop_name: true,
+                  city: true,
+                  latitude: true,
+                  longitude: true,
+                },
+              },
+            },
+          });
+
+          const groups = groupCategoryFeed(rows, geo);
+          const categories = await Promise.all(
+            groups.map(async (g) => ({
+              name: g.category,
+              products: await Promise.all(
+                g.items.map(async ({ row, distance_km }) => ({
+                  ...(await toPublicProductSummary(row)),
+                  shop: {
+                    public_slug: row.retailer.public_slug as string,
+                    shop_name: row.retailer.shop_name,
+                    city: row.retailer.city,
+                    distance_km,
+                  },
+                })),
+              ),
+            })),
+          );
+          return { data: { categories, nearby: geo !== null } };
+        },
+        { label: 'category-feed' },
+      ),
+    );
+  });
+
   // ─── GET /public/products/:productId ───────────────────────────
   // Full product detail (photos, spin frames, variants) — fetched on demand
   // when the customer opens a product from the grid, not on initial load.
