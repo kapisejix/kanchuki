@@ -13,16 +13,22 @@ const row = (shop: string, cat: string, lat: number | null = null, lng: number |
 const spread = (cat: string) => ['a', 'b', 'c'].flatMap((s) => [row(s, cat), row(s, cat)]); // 6 products, 3 shops
 
 describe('groupCategoryFeed', () => {
-  it('keeps a row that clears 6 products from 3 shops', () => {
+  it('keeps a row with products from several shops', () => {
     const out = groupCategoryFeed(spread('Suits'), null);
     expect(out.map((g) => g.category)).toEqual(['Suits']);
     expect(out[0]?.items).toHaveLength(6);
   });
 
-  it('drops thin rows: too few products, or too few shops', () => {
-    const fewProducts = ['a', 'b', 'c'].map((s) => row(s, 'Sarees')); // 3 products
-    const oneShop = Array.from({ length: 8 }, () => row('a', 'Kurtis')); // capped at 2
-    expect(groupCategoryFeed([...fewProducts, ...oneShop], null)).toEqual([]);
+  it('drops thin rows: a single product', () => {
+    expect(groupCategoryFeed([row('a', 'Sarees')], null)).toEqual([]);
+  });
+
+  it('keeps a small pilot row: one shop, two products', () => {
+    const out = groupCategoryFeed(
+      Array.from({ length: 8 }, () => row('a', 'Kurtis')),
+      null,
+    );
+    expect(out[0]?.items).toHaveLength(2); // capped at 2 per shop
   });
 
   it('caps each shop at 2 per row', () => {
