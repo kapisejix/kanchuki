@@ -31,6 +31,7 @@ import {
   wishlistKey,
 } from '../lib/wishlist';
 import { trackPassportEvent } from '@/lib/passport-client';
+import { recordInterest } from '@/lib/interests';
 import { CategoryChips, FilterBar, SizeChips } from './FilterBar';
 import { CATALOG_PAGE_SIZE } from '@/lib/catalog';
 import { KanchukiBrandBar } from './KanchukiBrandBar';
@@ -347,6 +348,7 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
   useEffect(() => {
     if (!searchQuery.trim()) return;
     const timer = setTimeout(() => {
+      recordInterest(searchQuery.split(/\s+/));
       trackPassportEvent({
         type: 'search',
         retailer_id: collection.retailer.id,

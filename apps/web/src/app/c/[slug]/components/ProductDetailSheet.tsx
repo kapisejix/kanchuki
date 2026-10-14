@@ -12,6 +12,7 @@ import { Product360Viewer } from './Product360Viewer'
 import { ReviewList } from './ReviewList'
 import { FabricGlossary } from './FabricGlossary'
 import { trackRecentlyViewed } from '../lib/recentlyViewed'
+import { recordInterest } from '@/lib/interests'
 import { recordCurrentVisitProduct } from '../lib/currentVisit'
 import { trackPassportEvent } from '@/lib/passport-client'
 import { NotifyWhenAvailable } from './NotifyWhenAvailable'
@@ -119,6 +120,7 @@ export function ProductDetailSheet({
   // Track this product as recently viewed
   useEffect(() => {
     recordCurrentVisitProduct(store ?? retailer.public_slug ?? '', product.id)
+    recordInterest([product.category, product.subtype, product.primary_color])
     trackRecentlyViewed(slug, {
       id: product.id,
       name: product.name,
