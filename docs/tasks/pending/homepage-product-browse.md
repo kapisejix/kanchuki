@@ -15,6 +15,31 @@ Today the marketing pages list **stores** (logo, name, address, distance). Add a
 
 **Add, don't replace.** Keep the store list as the main "near me" view (it is built and always looks fine). Add a **"New arrivals near you"** product row above it on the homepage and `/stores`, with a toggle/tab to a full product grid later.
 
+## 2b. Category-wise layout (added 2026-10-14, owner request — Meesho-style browse)
+
+Owner wants all products listed **category-wise** on the marketing homepage; tapping a product opens that shop's listing. Same "add, don't replace" and same gates (§3) apply.
+
+**Flow**
+1. Homepage: category tiles/chips (from the DB-backed taxonomy, F-024/F-027 — no hardcoded list).
+2. Under tiles: one horizontal product row per category (cap ~8 products, "See all" link).
+3. `See all` → `/category/<slug>` grid, Prev/Next pager (infinite scroll was reverted by owner, PR #41).
+4. Card tap → product sheet on that shop's page (rule 5). Shop name + distance stay on every card.
+
+**Rules (extend §4)**
+- Category rows use the same eligibility, per-shop cap (2 per shop per row/page) and self-hiding threshold, **applied per category**: a category with < 6 products from < 3 shops is hidden, not shown thin.
+- Ordering inside a category: nearest shop first (when location known), then newest.
+- Category pages are server-rendered with JSON-LD (reuse §7A.1 SEO pattern, RC-040 escaping) — organic search traffic.
+- No cart/checkout; CTA stays "view in shop" + WhatsApp enquiry.
+
+**Build additions (extend §6)**
+- API: `GET /v1/public/products?category=&lat&lng&page` (same live-store filter, Redis public-cache with rounded coords, page-size cap). Index check: products `(category_id, status, created_at)`.
+- Web: `CategoryTiles`, `CategoryRow`, `/category/[slug]` page; reuse `ProductCard`.
+- Verify first: can the storefront route open a given product via query param (rule 5)?
+
+**Staging:** (1) "New arrivals near you" row → (2) category rows on homepage → (3) `/category/<slug>` grid pages. Advance only if §7 metrics show pull.
+
+---
+
 ## 3. Preconditions — do not build until these hold
 
 | # | Gate | Why |
