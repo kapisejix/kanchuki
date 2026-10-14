@@ -183,6 +183,19 @@ const MANAGER_ALLOWED_ROUTES: StaffRule[] = [
   { method: 'GET', path: '/v1/growth/analytics' },
   { method: '*', path: '/v1/growth/social-caption-suggest' },
   { method: '*', path: '/v1/growth/social-templates' },
+  // Growth hub (store/catalog management + customer insight). None of these
+  // return customer phone numbers (pinned by staff-access.test.ts).
+  { method: 'POST', path: '/v1/growth/ai-campaign', exact: true },
+  { method: 'GET', path: '/v1/growth/engagement', exact: true },
+  { method: 'GET', path: '/v1/growth/inventory-alerts', exact: true },
+  { method: 'POST', path: '/v1/growth/products/:id/descriptions', exact: true },
+  { method: 'POST', path: '/v1/growth/translate/message', exact: true },
+  { method: '*', path: '/v1/growth/products/:id/videos' },
+  { method: 'POST', path: '/v1/growth/products/:id/video/generate', exact: true },
+  { method: 'DELETE', path: '/v1/growth/videos/:id', exact: true },
+  { method: 'GET', path: '/v1/retailers/reviews/products', exact: true },
+  { method: 'GET', path: '/v1/retailers/reviews/store', exact: true },
+  { method: 'GET', path: '/v1/retailers/reviews/summary', exact: true },
   // Social: post + track only — connect/disconnect/callback stay owner-only.
   { method: 'POST', path: '/v1/retailers/me/social/posts', exact: true },
   { method: 'GET', path: '/v1/retailers/me/social/accounts' },

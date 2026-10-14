@@ -14,6 +14,20 @@ describe('manager allowlist', () => {
     expect(m('GET', '/v1/retailers/me/stats')).toBe(true);
     expect(m('GET', '/v1/customers')).toBe(true);
     expect(m('GET', '/v1/customers/:id')).toBe(true);
+    for (const [method, url] of [
+      ['POST', '/v1/growth/ai-campaign'],
+      ['GET', '/v1/growth/engagement'],
+      ['GET', '/v1/growth/inventory-alerts'],
+      ['POST', '/v1/growth/products/:id/descriptions'],
+      ['POST', '/v1/growth/translate/message'],
+      ['POST', '/v1/growth/products/:id/videos'],
+      ['POST', '/v1/growth/products/:id/videos/upload-url'],
+      ['POST', '/v1/growth/products/:id/video/generate'],
+      ['DELETE', '/v1/growth/videos/:id'],
+      ['GET', '/v1/retailers/reviews/store'],
+    ] as const) {
+      expect(m(method, url), `${method} ${url}`).toBe(true);
+    }
   });
   it('still blocks number-returning, destructive and owner-only surfaces', () => {
     expect(m('POST', '/v1/growth/campaigns/:id/delete-all')).toBe(false);
@@ -25,6 +39,11 @@ describe('manager allowlist', () => {
     expect(m('PATCH', '/v1/retailers/me')).toBe(false);
     expect(m('GET', '/v1/billing/subscription')).toBe(false);
     expect(m('GET', '/v1/staff')).toBe(false);
+    // Moved to Settings — owner-only: tax, account connections, marketplace sync.
+    expect(m('GET', '/v1/growth/gst/summary')).toBe(false);
+    expect(m('GET', '/v1/retailers/me/integrations')).toBe(false);
+    expect(m('POST', '/v1/retailers/me/integrations/gmb')).toBe(false);
+    expect(m('GET', '/v1/retailers/me/aggregators')).toBe(false);
   });
 });
 

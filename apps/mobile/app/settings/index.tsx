@@ -23,6 +23,9 @@ import {
   User,
   Users,
   X,
+  Link2,
+  Plug,
+  Receipt,
 } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import { KeyboardScreen } from '../../src/components/KeyboardScreen';
@@ -1495,6 +1498,33 @@ export default function SettingsScreen() {
               label="Social Media"
               subtitle="Post products to your Facebook Page"
               onPress={() => router.push("/settings/social")}
+            />
+          )}
+
+          {!isStaff && (
+            <SettingsRow
+              icon={<Plug size={18} color={primaryColor} />}
+              label="Integrations"
+              subtitle="Google Business, Facebook & Google Ads"
+              onPress={() => router.push("/growth/integrations")}
+            />
+          )}
+
+          {!isStaff && (
+            <SettingsRow
+              icon={<Link2 size={18} color={primaryColor} />}
+              label="Marketplace Sync"
+              subtitle="Meesho, Instamojo & more"
+              onPress={() => router.push("/growth/aggregators")}
+            />
+          )}
+
+          {!isStaff && (
+            <SettingsRow
+              icon={<Receipt size={18} color={primaryColor} />}
+              label="GST Report"
+              subtitle="Tax summary & invoices"
+              onPress={() => router.push("/growth/gst")}
             />
           )}
 

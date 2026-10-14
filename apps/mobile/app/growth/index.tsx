@@ -6,12 +6,9 @@ import {
   ChevronLeft,
   ChevronRight,
   Languages,
-  Link2,
   Megaphone,
   PackageSearch,
   Percent,
-  Plug,
-  Receipt,
   Share2,
   Star,
   TrendingUp,
@@ -33,7 +30,8 @@ const TYPE_LABEL: Record<CampaignType, string> = {
   AB_TEST: 'A/B Test',
 }
 
-// Growth modules — only features that remain after the teardown
+// Growth modules — marketing, store/catalog management and customer insight.
+// GST, Integrations and Marketplace Sync live under Settings (owner-only).
 const GROWTH_MODULES = [
   { icon: Share2, label: 'Create Social Post', hint: 'Post to Facebook & Instagram', href: '/social/create?source=growth' as const },
   { icon: Wand2, label: 'AI Campaign Assistant', hint: 'Type a command, get a campaign', href: '/growth/ai-campaign' as const },
@@ -43,10 +41,7 @@ const GROWTH_MODULES = [
   { icon: PackageSearch, label: 'Inventory Alerts', hint: 'Dead stock & reorders', href: '/growth/inventory' as const },
   { icon: Video, label: 'Product Videos', hint: '5–10s clips on your catalog', href: '/growth/videos' as const },
   { icon: Languages, label: 'AI Translate', hint: 'Hindi & regional descriptions', href: '/growth/translate' as const },
-  { icon: Link2, label: 'Marketplace Sync', hint: 'Meesho, Instamojo & more', href: '/growth/aggregators' as const },
   { icon: Star, label: 'Ratings & Reviews', hint: 'Customer feedback & Google reviews', href: '/growth/ratings' as const },
-  { icon: Receipt, label: 'GST Report', hint: 'Tax summary & invoices', href: '/growth/gst' as const },
-  { icon: Plug, label: 'Integrations', hint: 'GMB, Facebook & Google Ads', href: '/growth/integrations' as const },
 ]
 
 function isFeatureUnavailable(err: unknown): boolean {
