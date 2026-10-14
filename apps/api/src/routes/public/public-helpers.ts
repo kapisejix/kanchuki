@@ -225,10 +225,10 @@ export function buildFacets(
 // ─── Homepage category feed (F-042) ──────────────────────────────────────
 // Per-category product rows for the marketing homepage. Rules from
 // docs/tasks/pending/homepage-product-browse.md §2b/§4: ≤2 products per shop
-// per row, ≤8 per row, nearest shop first when coordinates are known (else
+// per row, ≤15 per row, nearest shop first when coordinates are known (else
 // newest), and a row that would look thin (<6 products or <3 shops) is dropped.
 export const FEED_PER_SHOP = 2;
-export const FEED_ROW_SIZE = 8;
+export const FEED_ROW_SIZE = 15; // homepage grid: 5 columns x 3 rows
 export const FEED_MIN_PRODUCTS = 6;
 export const FEED_MIN_SHOPS = 3;
 
