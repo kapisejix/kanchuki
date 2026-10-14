@@ -2,6 +2,7 @@
 import { prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
 import { hasFeature } from '../../../lib/features.js';
+import { maskPhoneForRequest } from '../../../plugins/auth.js';
 import { forbidden, notFound, validationError } from '../../../plugins/error-handler.js';
 import { type AudienceSpec, buildWhatsAppDeepLink, fillTemplate } from '../growth-helpers.js';
 import {
@@ -29,7 +30,12 @@ export const growthCampaignSendRoutes: FastifyPluginAsync = async (server) => {
       where: { id: { in: customerIds.slice(0, 10) } },
       select: { id: true, name: true, phone: true },
     });
-    return { data: { audience_count: customerIds.length, sample } };
+    return {
+      data: {
+        audience_count: customerIds.length,
+        sample: sample.map((c) => ({ ...c, phone: maskPhoneForRequest(request, c.phone) })),
+      },
+    };
   });
   // ─── POST /growth/campaigns/:id/send ────────────────────────────
   // Creates CampaignSend rows for the audience and dispatches:

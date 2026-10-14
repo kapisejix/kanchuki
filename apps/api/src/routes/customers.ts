@@ -3,6 +3,7 @@ import { prisma, vaultDelete } from '@kanchuki/db';
 import { SIZE_OPTIONS, isValidIndianPhone, normalizeIndianPhone } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
+import { isRealOwner, maskPhoneForRequest } from '../plugins/auth.js';
 import { notFound, validationError } from '../plugins/error-handler.js';
 
 const CustomerSchema = z.object({
@@ -90,9 +91,11 @@ export const customerRoutes: FastifyPluginAsync = async (server) => {
         deleted_at: null,
         ...(search
           ? {
+              // Staff may not search by digits — that would let them
+              // reconstruct a masked number one prefix at a time.
               OR: [
                 { name: { contains: search, mode: 'insensitive' } },
-                { phone: { contains: search } },
+                ...(isRealOwner(request) ? [{ phone: { contains: search } }] : []),
               ],
             }
           : {}),
@@ -103,8 +106,12 @@ export const customerRoutes: FastifyPluginAsync = async (server) => {
     });
 
     const hasMore = customers.length > limit;
+    const page = (hasMore ? customers.slice(0, limit) : customers).map((c) => ({
+      ...c,
+      phone: maskPhoneForRequest(request, c.phone),
+    }));
     return {
-      data: hasMore ? customers.slice(0, limit) : customers,
+      data: page,
       pagination: {
         cursor: hasMore ? (customers[limit - 1]?.id ?? null) : null,
         has_more: hasMore,
@@ -121,7 +128,7 @@ export const customerRoutes: FastifyPluginAsync = async (server) => {
     });
     if (!customer) throw notFound('Customer');
 
-    return { data: customer };
+    return { data: { ...customer, phone: maskPhoneForRequest(request, customer.phone) } };
   });
 
   // ─── PUT /customers/:id ─────────────────────────────────────────
