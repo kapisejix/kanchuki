@@ -557,11 +557,27 @@ export default function CreateSocialPostScreen() {
     if (postType === 'IMAGE') {
       return designPost ? [{ kind: 'photo', url: designPost.url }] : [];
     }
-    if (postType === 'COLLECTION_LINK' && collectionFormat !== 'carousel') {
-      return collectionCoverPhotoUrl ? [{ kind: 'photo', url: collectionCoverPhotoUrl }] : [];
+    if (postType === 'COLLECTION_LINK') {
+      if (collectionFormat !== 'carousel') {
+        return collectionCoverPhotoUrl ? [{ kind: 'photo', url: collectionCoverPhotoUrl }] : [];
+      }
+      // Carousel format has no `items` (they come from the collection detail) —
+      // show the same first-photo-per-product set the payload will publish.
+      const ids = new Set(collectionCarouselItems.map((i) => i.product_id));
+      return (collectionDetailProducts ?? [])
+        .filter((r) => r.product?.id && ids.has(r.product.id) && r.product.photos?.[0]?.url)
+        .map((r) => ({ kind: 'photo' as const, url: r.product?.photos?.[0]?.url ?? '' }));
     }
     return items.map((x) => x.media);
-  }, [postType, designPost, items, collectionFormat, collectionCoverPhotoUrl]);
+  }, [
+    postType,
+    designPost,
+    items,
+    collectionFormat,
+    collectionCoverPhotoUrl,
+    collectionCarouselItems,
+    collectionDetailProducts,
+  ]);
 
   // ── Validation (T-4.7) ────────────────────────────────────────────
   const problems = useMemo(() => {

@@ -2,6 +2,7 @@
 import { prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
 import { hasFeature } from '../../../lib/features.js';
+import { isRealOwner, maskPhoneForRequest } from '../../../plugins/auth.js';
 import { forbidden, notFound, validationError } from '../../../plugins/error-handler.js';
 import { type AudienceSpec, buildWhatsAppDeepLink, fillTemplate } from '../growth-helpers.js';
 import {
@@ -29,7 +30,12 @@ export const growthCampaignSendRoutes: FastifyPluginAsync = async (server) => {
       where: { id: { in: customerIds.slice(0, 10) } },
       select: { id: true, name: true, phone: true },
     });
-    return { data: { audience_count: customerIds.length, sample } };
+    return {
+      data: {
+        audience_count: customerIds.length,
+        sample: sample.map((c) => ({ ...c, phone: maskPhoneForRequest(request, c.phone) })),
+      },
+    };
   });
   // ─── POST /growth/campaigns/:id/send ────────────────────────────
   // Creates CampaignSend rows for the audience and dispatches:
@@ -89,6 +95,16 @@ export const growthCampaignSendRoutes: FastifyPluginAsync = async (server) => {
       retailer.whatsapp_api_access_token &&
       retailer.whatsapp_api_template_name &&
       (await hasFeature(retailerId, 'WHATSAPP_BUSINESS_API'));
+
+    // Staff (manager) may send, but never receive customer numbers. The API
+    // path sends server-side and returns no numbers; the manual path returns
+    // wa.me links that embed the full number — so only the owner gets it.
+    // Checked BEFORE any CampaignSend row is written or status flipped.
+    if (!canUseApi && !isRealOwner(request)) {
+      throw forbidden(
+        'Sending needs WhatsApp Business API on this account. Ask the store owner to connect it, or to send this campaign.',
+      );
+    }
 
     // A/B split: assign each customer to a variant by cumulative percentage.
     // Variants carry an optional product set (collection A/B) and a stagger

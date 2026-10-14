@@ -14,6 +14,7 @@
 //      connected account in the mobile app.
 import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { appLink } from '@/lib/deep-links';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 const TOKEN_KEY = 'kanchuki_social_token';
@@ -122,6 +123,8 @@ function CallbackInner() {
         { method: 'POST', body: JSON.stringify({ platform_account_id: pageId, state }) },
       );
       setDone(`Connected to ${res.data.account_name}`);
+      // Hand control back to the app (no-op on desktop — the button below stays).
+      window.location.href = appLink('settings/social');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not connect this Page');
     } finally {
@@ -138,6 +141,12 @@ function CallbackInner() {
           Your Facebook Page is connected. You can close this tab and continue in the Kanchuki app
           — open Settings → Social Media to post products.
         </p>
+        <a
+          href={appLink('settings/social')}
+          className="inline-block bg-[#1877F2] text-white rounded-lg px-6 py-2.5 text-sm font-semibold mr-2"
+        >
+          Open Kanchuki app
+        </a>
         <button
           onClick={() => window.close()}
           className="bg-carbon text-cream rounded-lg px-6 py-2.5 text-sm font-semibold"

@@ -20,12 +20,12 @@ describe('staffCanAccess', () => {
     ['PATCH', '/v1/size-charts/chart_1'],
     ['GET', '/v1/retailers/me'],
     ['POST', '/v1/retailers/me/qr-slug'],
+    ['GET', '/v1/customers'], // read-only; phone is masked server-side for staff
   ])('allows %s %s', (method, path) => {
     expect(staffCanAccess(method, path)).toBe(true);
   });
 
   it.each([
-    ['GET', '/v1/customers'], // list — only create is allowed
     ['PATCH', '/v1/customers/cust_1'],
     ['DELETE', '/v1/customers/cust_1'],
     ['PUT', '/v1/retailers/me'], // profile edit — owner only

@@ -167,6 +167,42 @@ const MANAGER_ALLOWED_ROUTES: StaffRule[] = [
   { method: 'POST', path: '/v1/customers', exact: true }, // add new customers only — no list/edit/delete
   { method: 'GET', path: '/v1/retailers/me', exact: true }, // read-only shop info (name shown in app header)
   { method: 'POST', path: '/v1/retailers/me/qr-slug', exact: true }, // Store QR code
+  // Growth: campaigns (create/edit/preview/send), reactivation audiences,
+  // promotions, festivals, analytics, social caption/templates.
+  { method: 'GET', path: '/v1/growth/campaigns', exact: true },
+  { method: 'POST', path: '/v1/growth/campaigns', exact: true },
+  { method: 'GET', path: '/v1/growth/campaigns/stats', exact: true },
+  { method: '*', path: '/v1/growth/campaigns/:id', exact: true },
+  { method: 'POST', path: '/v1/growth/campaigns/:id/preview', exact: true },
+  // Send: allowed, but the handler refuses non-owners unless the server-side
+  // WhatsApp API path is in use (manual wa.me links would expose numbers).
+  { method: 'POST', path: '/v1/growth/campaigns/:id/send', exact: true },
+  { method: 'POST', path: '/v1/growth/reactivation-suggestions', exact: true }, // ids + counts only
+  { method: '*', path: '/v1/growth/promotions' },
+  { method: 'GET', path: '/v1/growth/festivals' },
+  { method: 'GET', path: '/v1/growth/analytics' },
+  { method: '*', path: '/v1/growth/social-caption-suggest' },
+  { method: '*', path: '/v1/growth/social-templates' },
+  // Growth hub (store/catalog management + customer insight). None of these
+  // return customer phone numbers (pinned by staff-access.test.ts).
+  { method: 'POST', path: '/v1/growth/ai-campaign', exact: true },
+  { method: 'GET', path: '/v1/growth/engagement', exact: true },
+  { method: 'GET', path: '/v1/growth/inventory-alerts', exact: true },
+  { method: 'POST', path: '/v1/growth/products/:id/descriptions', exact: true },
+  { method: 'POST', path: '/v1/growth/translate/message', exact: true },
+  { method: '*', path: '/v1/growth/products/:id/videos' },
+  { method: 'POST', path: '/v1/growth/products/:id/video/generate', exact: true },
+  { method: 'DELETE', path: '/v1/growth/videos/:id', exact: true },
+  { method: 'GET', path: '/v1/retailers/reviews/products', exact: true },
+  { method: 'GET', path: '/v1/retailers/reviews/store', exact: true },
+  { method: 'GET', path: '/v1/retailers/reviews/summary', exact: true },
+  // Social: post + track only — connect/disconnect/callback stay owner-only.
+  { method: 'POST', path: '/v1/retailers/me/social/posts', exact: true },
+  { method: 'GET', path: '/v1/retailers/me/social/accounts' },
+  { method: 'GET', path: '/v1/retailers/me/stats', exact: true },
+  { method: 'GET', path: '/v1/retailers/me/analytics', exact: true },
+  // Customer list/detail — read-only, phone masked server-side (maskPhoneForRequest).
+  { method: 'GET', path: '/v1/customers' },
 ];
 
 const SALESPERSON_ALLOWED_ROUTES: StaffRule[] = [
@@ -174,6 +210,7 @@ const SALESPERSON_ALLOWED_ROUTES: StaffRule[] = [
   { method: 'GET', path: '/v1/categories' }, // view only
   { method: 'POST', path: '/v1/customers', exact: true }, // add new customers only
   { method: 'GET', path: '/v1/retailers/me', exact: true }, // shop name shown in app header
+  { method: 'GET', path: '/v1/collections' }, // share a collection link on WhatsApp
 ];
 
 function matchesRules(method: string, routeUrl: string, rules: StaffRule[]): boolean {
@@ -212,6 +249,17 @@ export function catalogDelegateCanAccess(method: string, routeUrl: string): bool
 // than even the salesperson allowlist) reads as a real owner.
 export function isRealOwner(request: FastifyRequest): boolean {
   return request.staffRole === null && !request.catalogDelegate;
+}
+
+/**
+ * Staff (manager/salesperson) must never receive a customer's full number.
+ * Masking is done here, server-side — a UI-only mask still ships the number
+ * over the wire. "98•••••210" keeps enough to tell customers apart.
+ */
+export function maskPhoneForRequest(request: FastifyRequest, phone: string): string {
+  if (isRealOwner(request)) return phone;
+  const d = phone.replace(/\D/g, '');
+  return d.length < 6 ? '••••••' : `${d.slice(0, 2)}•••••${d.slice(-3)}`;
 }
 
 // ─── Dual-identity try-on (F-040) ──────────────────────────

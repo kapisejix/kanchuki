@@ -155,7 +155,7 @@ describe('POST /v1/staff', () => {
     // Tokenized invite (staff-invite-tokens.md §5.1): response carries a
     // working share link + expiry. The raw token appears ONLY in the url.
     expect(res.json().data.invite).toMatchObject({
-      url: expect.stringMatching(/^kanchuki:\/\/join\?token=[A-Za-z0-9_-]{20,}$/),
+      url: expect.stringMatching(/^https:\/\/[^/]+\/join\?token=[A-Za-z0-9_-]{20,}$/),
       expires_at: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/),
     });
     // Phone must be normalized to the bare 10-digit form before persistence.
@@ -700,7 +700,7 @@ describe('POST /v1/staff/:id/invite/resend', () => {
     expect(res.statusCode).toBe(200);
     // Fresh shareable link — the raw token appears ONLY in the url.
     expect(res.json().data.invite).toMatchObject({
-      url: expect.stringMatching(/^kanchuki:\/\/join\?token=[A-Za-z0-9_-]{20,}$/),
+      url: expect.stringMatching(/^https:\/\/[^/]+\/join\?token=[A-Za-z0-9_-]{20,}$/),
       expires_at: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/),
     });
     // D5: upsert keys on staff_id — replaces token_hash/status/expiry in one

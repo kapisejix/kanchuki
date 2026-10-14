@@ -30,9 +30,12 @@ const ROLE_FEATURES: Record<
 > = {
   'catalog.edit': 'manager',
   collections: 'manager',
-  growth: 'owner',
-  analytics: 'owner',
-  social: 'owner',
+  // Mirrors MANAGER_ALLOWED_ROUTES (apps/api/src/plugins/auth.ts): campaigns,
+  // promotions, analytics, social post + track. Connect/disconnect, billing,
+  // settings and staff management stay owner-only on the server.
+  growth: 'manager',
+  analytics: 'manager',
+  social: 'manager',
 }
 
 export function staffCan(role: string | null | undefined, feature: StaffFeature): boolean {
@@ -46,6 +49,6 @@ export function staffCan(role: string | null | undefined, feature: StaffFeature)
 /** Plain-language capability summary shown under each member's name. */
 export const ROLE_SUMMARY: Record<string, string> = {
   manager:
-    'Can add & edit products, categories, collections and size charts, and add customers.',
-  salesperson: 'Can view the catalog and add customers. Cannot edit products or create collections.',
+    'Can manage products, collections, campaigns and social posts, and view analytics. Customer phone numbers are hidden. No settings or billing.',
+  salesperson: 'Can view the catalog and add customers. Cannot edit products, create collections or run campaigns.',
 }

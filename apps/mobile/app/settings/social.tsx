@@ -57,6 +57,11 @@ export default function SocialSettingsScreen() {
     const handleDeepLink = async (event: { url: string }) => {
       try {
         const url = event.url;
+        // Web callback page already linked the Page and deep-links back here.
+        if (url?.includes('settings/social') && !url.includes('code=')) {
+          refresh();
+          return;
+        }
         if (!url || (!url.includes('code=') && !url.includes('oauth/callback'))) return;
 
         const parsed = ExpoLinking.parse(url);
