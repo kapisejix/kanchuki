@@ -31,6 +31,12 @@ const feedQuerySchema = z
   })
   .refine((v) => (v.lat === undefined) === (v.lng === undefined), 'lat and lng go together');
 
+const categoryProductsQuerySchema = z.object({
+  category: z.string().trim().min(1).max(100),
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(48).default(20),
+});
+
 // ~110 m, same rounding as /public/stores: exact position is never a cache key.
 const round3 = (n: number) => Math.round(n * 1000) / 1000;
 
@@ -104,6 +110,66 @@ export const publicProductsRoutes: FastifyPluginAsync = async (server) => {
           return { data: { categories, nearby: geo !== null } };
         },
         { label: 'category-feed' },
+      ),
+    );
+  });
+
+  // ─── GET /public/category-products ─────────────────────────────
+  // Full listing behind a homepage row's "View more": every live product in one
+  // category (exact ProductCategory name), newest first, paginated.
+  server.get('/category-products', async (request) => {
+    const parsed = categoryProductsQuerySchema.safeParse(request.query);
+    if (!parsed.success) throw validationError('Invalid query params');
+    const { category, page, pageSize } = parsed.data;
+
+    return withPublicCache(request.url, () =>
+      withRetry(
+        async () => {
+          const where = {
+            deleted_at: null,
+            status: 'AVAILABLE' as const,
+            photos: { some: {} },
+            product_category: { name: category },
+            retailer: { public_slug: { not: null }, is_suspended: false, deleted_at: null },
+          };
+          const [rows, total] = await Promise.all([
+            prisma.product.findMany({
+              where,
+              orderBy: { created_at: 'desc' },
+              skip: (page - 1) * pageSize,
+              take: pageSize,
+              include: {
+                photos: { orderBy: [{ is_primary: 'desc' }, { sort_order: 'asc' }], take: 1 },
+                section: { select: { name: true } },
+                _count: { select: { photos: true } },
+                retailer: { select: { public_slug: true, shop_name: true, city: true } },
+              },
+            }),
+            prisma.product.count({ where }),
+          ]);
+          const products = await Promise.all(
+            rows.map(async (row) => ({
+              ...(await toPublicProductSummary(row)),
+              shop: {
+                public_slug: row.retailer.public_slug as string,
+                shop_name: row.retailer.shop_name,
+                city: row.retailer.city,
+                distance_km: null,
+              },
+            })),
+          );
+          return {
+            data: {
+              category,
+              products,
+              total,
+              page,
+              page_size: pageSize,
+              total_pages: Math.max(1, Math.ceil(total / pageSize)),
+            },
+          };
+        },
+        { label: 'category-products' },
       ),
     );
   });
