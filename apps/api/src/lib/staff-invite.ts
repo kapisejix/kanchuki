@@ -5,7 +5,6 @@
 // or logged — only its sha256 hash, so a DB leak can't be replayed and a
 // leaked share-link can't be brute-forced from the hash column.
 import { createHash, randomBytes } from 'node:crypto';
-import { appLink } from '@kanchuki/shared';
 
 // 7-day invite lifetime (spec §3.1). Expired invites lazily read as
 // 'expired' and can be refreshed via Resend.
@@ -44,7 +43,11 @@ export function staffInviteExpiry(now = new Date()): Date {
  * emitted link is byte-identical to the literal it replaces.
  */
 export function buildStaffInviteUrl(raw: string): string {
-  return appLink('join', { token: raw });
+  // https, not kanchuki://: WhatsApp (and most chat apps) only auto-link
+  // http(s), so a custom-scheme link is plain, untappable text. The web /join
+  // bridge validates the token and opens the app (kanchuki://join?token=…).
+  const base = (process.env.WEB_URL || 'https://kanchuki.app').replace(/\/+$/, '');
+  return `${base}/join?token=${encodeURIComponent(raw)}`;
 }
 
 /**

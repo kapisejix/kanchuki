@@ -2,6 +2,7 @@ import { Footer, Navbar, Section } from '@/components/site/Chrome';
 import { API_URL as apiUrl } from '@/lib/apiUrl';
 import { androidIntentUrl, appLink } from '@/lib/deep-links';
 import { Smartphone } from 'lucide-react';
+import { AutoOpenApp } from './AutoOpenApp';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
@@ -99,6 +100,7 @@ export default async function JoinPage({ searchParams }: Props) {
                   need a password.
                 </p>
 
+                <AutoOpenApp deepLink={deepLink} intentLink={openInApp} />
                 <a
                   href={deepLink}
                   className="inline-flex items-center justify-center bg-volt text-carbon font-semibold px-8 py-3.5 rounded-full mt-8 hover:bg-volt-600 transition active:scale-[0.97]"
