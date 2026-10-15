@@ -568,6 +568,7 @@ describe('GET /status', () => {
         id: 'fb_1',
         platform: 'FACEBOOK',
         platform_account_name: 'Anita Boutique',
+        is_active: true,
         token_expires_at: new Date(Date.now() + 3 * DAY),
       },
     ]);
@@ -616,9 +617,45 @@ describe('GET /status', () => {
     expect(d.needs_attention).toBe(true); // token expiring
   });
 
+  it('an inactive account with a paused plan stays visible as EXPIRED', async () => {
+    m.accountFindMany.mockResolvedValue([
+      {
+        id: 'fb_1',
+        platform: 'FACEBOOK',
+        platform_account_name: 'A',
+        is_active: false,
+        token_expires_at: new Date(Date.now() + 30 * 86_400_000),
+      },
+    ]);
+    m.planFindMany.mockResolvedValue([
+      {
+        id: 'pl_1',
+        social_account_id: 'fb_1',
+        status: 'PAUSED',
+        pause_reason: 'Paused',
+        post_time: '19:30',
+      },
+    ]);
+    const d = (await get()).json().data;
+    expect(d.platforms[0]).toMatchObject({
+      token: { state: 'EXPIRED' },
+      plan: { status: 'PAUSED' },
+    });
+    expect(d.needs_attention).toBe(true);
+    // the query must ask for accounts that still carry a live plan
+    const where = m.accountFindMany.mock.calls.at(-1)?.[0]?.where;
+    expect(JSON.stringify(where)).toContain('schedule_plans');
+  });
+
   it('flags a paused plan and surfaces stored failure reasons', async () => {
     m.accountFindMany.mockResolvedValue([
-      { id: 'fb_1', platform: 'FACEBOOK', platform_account_name: 'A', token_expires_at: null },
+      {
+        id: 'fb_1',
+        platform: 'FACEBOOK',
+        platform_account_name: 'A',
+        is_active: true,
+        token_expires_at: null,
+      },
     ]);
     m.planFindMany.mockResolvedValue([
       {

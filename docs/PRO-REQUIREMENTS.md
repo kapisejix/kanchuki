@@ -4322,7 +4322,7 @@ What actually shipped diverged early and stayed diverged: development committed 
 
 
 
-## 40. F-043 Social Post Scheduler — daily FB/IG carousel plans — 🟨 APPROVED 2026-10-15, TASKS 1–2 BUILT (3–5 pending)
+## 40. F-043 Social Post Scheduler — daily FB/IG carousel plans — 🟨 APPROVED 2026-10-15, TASKS 1–5 BUILT (PRs #80–#82 + hardening unmerged except Task 1)
 
 > Full spec: `docs/tasks/pending/post-scheduler.md` (decisions D1–D9, build order §10). Extends F-031 Phase 2 composer;
 > closes its "auto-post" and "scheduling" open items.
@@ -4354,5 +4354,8 @@ only, curated failure reasons from `MetaApiError` codes, daily token-health paus
 remove, pause / resume / end) and the derived `GET /v1/retailers/me/social/schedule/status`; banner on the home tab +
 Growth hub. **Task 4 built 2026-10-16** — five free image templates rendered with sharp (white + price strip, New Arrival badge,
 festival frame, store-logo corner, collage cover), styled per slide / post / plan with a rotation pool; rendered at
-publish so price and festival are current. Not built: hardening + launch checklist (Task 5). Built-vs-spec deviations:
-`docs/tasks/pending/post-scheduler.md` §10a, §10b, §10c.
+publish so price and festival are current. **Task 5 built 2026-10-16** — hardening: API image now ships a font (template
+text rendered blank on `node:22-slim`), status card keeps platforms whose account went inactive while a plan is live,
+manager/styling route pins; launch checklist `docs/runbooks/f-043-scheduler-launch-checklist.md`. Not built: Meta
+code-map widening, ended-plan R2 cleanup, scheduled-row retention purge (triggers in the checklist). Not verified on
+device / live Meta / live R2. Built-vs-spec deviations: `docs/tasks/pending/post-scheduler.md` §10a–§10e.

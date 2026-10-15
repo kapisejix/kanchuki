@@ -425,3 +425,14 @@ no migration, no schema change, and **no new request on any surface**.
 | Tests | templates 9 (real sharp), render orchestration 11, style routes 18, tick +2 (28). API tsc clean; schedule, fan-out, security, db-delete-guards, plugins, meta-graph green; shared 98; mobile eslint clean. |
 | Not verified | No live R2 or device run; cold-start render about 5 s; font availability on the Railway image unconfirmed. |
 | Open | Task 5 (hardening, launch checklist). Admin template catalog only if templates need retiring or per-plan gating. |
+
+## 2026-10-16 - F-043 Social Post Scheduler, Task 5 (hardening + launch checklist)
+
+| Area | Detail |
+|---|---|
+| Spec | `docs/tasks/pending/post-scheduler.md` 10e. Task 5 of 5; branch `feat/f-043-hardening`, stacked on Task 4 (PR #82). |
+| Fix | `apps/api/Dockerfile`: `fonts-dejavu-core` (slim image had no fonts, template text rendered blank). Status endpoint now keeps accounts that still carry a live plan, so a plan paused by a dead/inactive account stays on the card + banner. |
+| Tests | `staff-access.test.ts` +1 (status/templates readable, styling writes owner-only) +1 assertion; `retailers-social-schedule.test.ts` +1 (inactive account with paused plan) → 39. API tsc clean; security, db-delete-guards green. |
+| Docs | `docs/runbooks/f-043-scheduler-launch-checklist.md` (merge order, Meta App Review, smoke run, device script). |
+| Not built | Meta code-map widening, R2 cleanup for ended plans, scheduled_posts retention purge, cold-start warm-up. Triggers listed in the checklist. |
+| Not verified | No device / live R2 / live Meta run of any scheduler screen or job. Font fix confirmed only after Railway rebuild. |

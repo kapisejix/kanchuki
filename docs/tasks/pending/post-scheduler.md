@@ -315,5 +315,25 @@ Meta changes its rules, so re-verify each item against the live dashboard when s
   single-slide route is slow on a cold API instance (mobile allows 60 s). Fonts are the host sans stack; confirm the Railway
   image has one (DejaVu / Noto) before relying on the badge text.
 
+## 10e. Task 5 as built (2026-10-16) - hardening + launch checklist
+
+- **Font fix (real bug):** `apps/api/Dockerfile` is `node:22-slim` with no fonts, so librsvg rendered template text
+  (price strip, New Arrival badge, festival text) as blanks/boxes. Added `fonts-dejavu-core` to the apt line. Not
+  verified on Railway until the image rebuilds: check `fc-list` (checklist §1).
+- **Status card gap fixed:** `GET …/schedule/status` listed only `is_active` accounts, so a plan paused because its account
+  was disconnected or went inactive dropped off the card and the banner, hiding the pause reason and Reconnect prompt.
+  The query now also returns accounts that still carry an ACTIVE/PAUSED plan; an inactive one reports token `EXPIRED`.
+  Found before merge on an open PR, so no RC entry (RC is for shipped bugs).
+- **Manager pins:** `plugins/staff-access.test.ts` now pins `GET status` + `GET templates` readable by a manager, every
+  styling write (`items|posts|plans/:id/style`, `plans/:id/design`) owner-only, and salesperson denied `status`.
+- **Verified, unchanged:** the two scheduler jobs omit `repeat.limit` on purpose; the 13 older jobs keep `limit: 1`
+  (untouched). Alerts are derived state only (no table, no WhatsApp). Pause/resume + failure paths already covered by the
+  tick (28) and route (38) tests; resume after the 2 h grace yields MISSED, not a burst of posts.
+- **Deliberately not built:** Meta code-map widening (no observed prod errors, review `fb_code` logs after week 1);
+  R2 cleanup of rendered images for ended plans; retention purge of old `scheduled_posts` (needs purge role + GRANT +
+  migration); cold-start render warm-up (documented only). Triggers in `docs/runbooks/f-043-scheduler-launch-checklist.md` §4.
+- **Launch checklist:** `docs/runbooks/f-043-scheduler-launch-checklist.md` (merge order, Meta App Review, first live run,
+  device script for the 3 screens).
+
 ## 11. Docs to update on build
 CLAUDE.md index row, `docs/BUILD-LOG.md`, `docs/PLAN.md`, `docs/PRO-REQUIREMENTS.md`, `docs/DATABASE.md`.

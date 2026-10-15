@@ -67,6 +67,15 @@ describe('scheduler routes (F-043)', () => {
     expect(m('DELETE', `${base}/items/:id`)).toBe(false);
   });
 
+  it('manager: reads status + template registry; every styling write is owner-only', () => {
+    expect(m('GET', `${base}/status`)).toBe(true);
+    expect(m('GET', `${base}/templates`)).toBe(true);
+    expect(m('POST', `${base}/items/:id/style`)).toBe(false);
+    expect(m('POST', `${base}/posts/:id/style`)).toBe(false);
+    expect(m('POST', `${base}/plans/:id/style`)).toBe(false);
+    expect(m('PATCH', `${base}/plans/:id/design`)).toBe(false);
+  });
+
   it('reconnect / connect / disconnect stay owner-only for a manager', () => {
     expect(m('POST', '/v1/retailers/me/social/connect-native')).toBe(false);
     expect(m('POST', '/v1/retailers/me/social/accounts')).toBe(false);
@@ -77,6 +86,7 @@ describe('scheduler routes (F-043)', () => {
     expect(s('GET', `${base}/plans`)).toBe(false);
     expect(s('PATCH', `${base}/posts/:id`)).toBe(false);
     expect(s('PATCH', `${base}/plan-state/:id`)).toBe(false);
+    expect(s('GET', `${base}/status`)).toBe(false);
   });
 
   it('no support-session scope reaches the scheduler', () => {
