@@ -1,0 +1,223 @@
+# F-043 Social Post Scheduler (FB + IG daily carousel plans) — PENDING
+> Drafted 2026-10-15, revised same day after owner answers. **✅ APPROVED by owner 2026-10-15 — nothing built yet.**
+> F-043 assigned (F-042 was the last number used). Start at §10 step 1.
+> Owner-side (not code): Meta App Review per §9; migrations are applied by the owner from the admin dashboard.
+> Extends F-031 Phase 2 (composer) and closes its "Phase 3 open: auto-post" + "Phase 4: scheduling" items.
+
+## 1. Goal
+
+A retailer sets a posting plan once per platform (Facebook, Instagram). Kanchuki fills a calendar with
+daily carousel posts of their newest products, the retailer reviews the calendar once, and posts then
+publish automatically at a fixed time every day. No per-week approval.
+
+**Scheduling lives entirely in Kanchuki.** Facebook/Instagram are only the publish endpoint — we hold the
+queue and the clock, and call the normal publish API when a slot is due. We do not use Meta's native
+scheduling features.
+
+## 2. Decisions (owner, 2026-10-15)
+
+| # | Decision |
+|---|----------|
+| D1 | **Fully automatic after confirm.** Review happens once, when the calendar is generated. |
+| D2 | **No AI Studio generation inside the scheduler.** Retailers already generate images with AI Studio Shoot on the product itself; the scheduler just uses the product's existing images. No Studio quota is touched. (May return as a later option.) |
+| D3 | **Rotation pool of free templates** applied only to slides the retailer marks "style this" or "apply to all". Untouched slides stay original. |
+| D4 | **Batch size per day is a range** (e.g. Mon 4–5, Tue 7–8, Wed 5–6). Hard cap 10 slides (IG). |
+| D5 | **Free templates in v1:** plain white + price strip, "New Arrival" badge, festival frame, store-logo corner, collage cover. |
+| D6 | **Cover slide is optional**, retailer chooses a cover style (or none). |
+| D7 | **Caption auto-filled by AI, editable per post** (reuse Caption AI). |
+| D8 | **Alerts are in-app only — NO WhatsApp.** (Revised 2026-10-15; supersedes "WhatsApp + in-app".) Retailer dashboard and the retailer's manager both see connection/token status, allowance left, and failure messages inside the app. |
+| D9 | **All plans get the same access for now (post every day).** Limits are **admin-controlled** from the admin dashboard (plan feature matrix) — admin can assign/restrict scheduling per plan later with no code change. |
+
+## 3. Image levels per slide
+
+| Level | Cost | Notes |
+|-------|------|-------|
+| A. Original (default) | Free | The product's own photo — including any AI Studio image the retailer already attached/set as main. Cropped to one ratio for the whole carousel. |
+| B. Template | Free | Server-side compositing (sharp): price strip, badge, festival frame, logo corner, collage cover. |
+
+No generation step, so no image-prep job, no provider failures, and no per-image cost.
+
+## 4. Retailer flow
+
+1. **Create plan** (one per platform): post type, days of week, one daily time (IST), batch range per day,
+   product source (newest / category / manual), cover style (optional), template rotation pool, horizon
+   (1 wk / 2 wk / 1 mo).
+2. **Calendar preview**: day cards with a thumbnail strip. Tap a day → slides.
+3. **Per slide**: Keep · Swap product · Remove · Use another photo of the product · Style this (Template).
+   Bulk: apply a template to a day / the whole plan.
+4. **Per post**: caption pre-filled by AI, editable.
+5. **Confirm summary**: "34 posts — 22 original, 12 templated". If admin limits apply, show remaining allowance.
+6. Confirm → plan runs. Controls afterwards: pause/resume plan, skip/edit a slot, post-now, retry failed.
+
+## 4a. Status & alerts panel (retailer dashboard + manager)
+
+One "Scheduler status" card per platform, shown on the retailer's dashboard and to the retailer's manager
+(team member with manager role) — same data, same screen. All in-app; nothing is sent to WhatsApp.
+
+| Block | Shows |
+|-------|-------|
+| **Connection / token** | Connected Page / IG account name, token state (`OK` / `EXPIRING in N days` / `EXPIRED — reconnect`), days left, **Reconnect** button |
+| **Allowance left** | Posts left this month (`used / limit` from admin plan limits, D9), active plans (`n / max`) |
+| **AI Studio shoots left** | `remaining / limit` this month for the retailer's AI Studio Shoot quota, with a shortcut button to open Studio. **Display only** — the scheduler never generates images or spends this quota (D2); it tells the retailer how many product images they can still create before the calendar needs them. |
+| **Next post** | Date + time of next scheduled slot, slides count |
+| **Recent failures** | Last N failed/missed posts: when, platform, **plain-language reason**, **Retry** / **Edit** / **Skip** |
+| **Plan state** | ACTIVE / PAUSED (+ why: "paused — Facebook token expired") |
+
+Failure reason mapping (Meta/API error → retailer-readable text, never raw Graph errors; only
+`MetaApiError`-class messages surface, per composer review finding 4):
+- token expired / revoked → "Facebook connection expired. Reconnect to resume posting."
+- Page role removed / no permission → "You no longer have access to this Page."
+- IG not Business/Creator or unlinked → "Instagram account is not linked to a Facebook Page."
+- IG/FB rate limit → "Posting limit reached. Will retry automatically."
+- media rejected (ratio/size/format) → "A photo was rejected. Replace it and retry."
+- plan/admin limit reached or scheduling disabled → "Scheduling is not available on your plan."
+- unknown → "Post failed. We'll retry. If it keeps failing, contact support."
+
+Behavior:
+- **Banner on dashboard** while any plan is paused/failed/expiring (≤7 days); clears when resolved.
+- **Derived, not stored:** the card and banner are computed from plan/post rows + token expiry on each load
+  (§8 item 4) — no alerts table, no WhatsApp/push sender, nothing to dedupe.
+- **Manager sees the same card.** Manager can Retry / Skip / Edit caption / Pause; **Reconnect is owner-only**,
+  so the manager sees "Ask the shop owner to reconnect" (§8 item 3). Salesperson sees nothing.
+- Surfaces: retailer dashboard (home) banner + card; Growth hub → Scheduler screen with the full failure list.
+
+## 5. System
+
+### 5.1 Data (conceptual — final shape needs `docs/database/DATABASE.md` check + RLS per kanchuki-rls-convention)
+- `post_schedule_plans`: retailer_id, platform, post_type, weekdays, post_time, batch_min/max per weekday,
+  source, cover_style, rotation_pool (json), horizon, status (ACTIVE/PAUSED/ENDED).
+- `scheduled_posts`: plan_id, retailer_id, scheduled_at (UTC), caption, status
+  (`DRAFT → READY → PUBLISHING → POSTED | FAILED | MISSED | SKIPPED`), attempts, error,
+  social_post_id (link to existing `SocialPost` on success).
+- `scheduled_post_items`: scheduled_post_id, product_id, position, image_level (A/B), template_id,
+  resolved_image_key.
+
+### 5.2 Jobs
+- **Plan builder** (request-time): picks products (newest first, skip posted within N days, skip out-of-stock),
+  groups by category, fills batch ranges.
+- **Template render**: composites level-B slides at plan confirm (or just before publish); cheap, no network.
+- **Publish tick** (cron ~5 min): claim rows with an atomic compare-and-swap (RC-036 pattern, no double
+  post), publish through the **existing Composer fan-out path** (idempotent on `client_post_id`), retry
+  3× with backoff, grace window ~2 h then `MISSED`.
+- **Token health check** (daily): dead FB/IG token → pause plan + raise one in-app alert per event (§4a).
+
+### 5.3 Reuse (do not rebuild)
+- Composer publish + idempotency + partial-success: `POST /v1/retailers/me/social/posts`.
+- Caption AI: `POST /v1/growth/social/caption-suggest`, fail-open.
+- Admin-curated Post Templates (caption side) already exist — image-frame templates are **new** (see §8).
+- Server-side watermark pipeline (Suits Designs) as the compositing reference.
+- Existing purge/cron registration in `apps/api/src/jobs/index.ts`; F-010 quota system + F-013 feature matrix
+  for admin limits.
+
+## 6. Admin control (D9)
+
+- Add scheduling to the **plan feature matrix** (F-013) and the **quota/limits system** (F-010), editable in
+  Admin → Plan Limits & Pricing:
+  - `scheduling_enabled` (per plan)
+  - `scheduled_posts_per_month` (per plan; seeded unlimited / daily-everyday for all plans at launch)
+  - `max_active_plans` (per plan; seeded 1 per platform)
+- Fails **closed** on the enable flag (same as other matrix features), checked at plan creation **and** at
+  publish time so a downgrade stops the queue.
+- Seed all three plans identically at launch; the owner tightens per plan later from the dashboard.
+
+## 7. Platform constraints
+- IG carousel: 2–10 items, **all slides one aspect ratio** (first sets it) → normalize to 4:5 or 1:1.
+- A day with 1 product → single-image post.
+- IG ~50 API posts / 24 h / account — far above plan usage; tick still reads `content_publishing_limit`.
+- Long-lived tokens expire (~60 days) or die on password change / removed Page role → health check above.
+- IG needs a Business/Creator account linked to a Facebook Page (`NO_IG_FOUND` case) → validate at plan creation.
+- DB role has DELETE revoked (RC-049): any cleanup of old scheduled rows needs the purge role + GRANT.
+
+## 8. Open items before build
+1. ~~Template removal check~~ — **resolved 2026-10-15, nothing was removed, nothing to recover.**
+   - `SocialTemplate` (migration 069, `growth-social-templates.ts`, mobile `app/growth/templates.tsx`, admin
+     `/admin/social-templates`, plan key `SOCIAL_TEMPLATES`) is **still in the code and registered**. Only the
+     orphan stub `services/social-template/` was deleted (commit `48f3de06`). The CLAUDE.md "partly removed"
+     wording for row 46 is stale/misleading and should be corrected when this is built.
+   - It is the **wrong shape for the scheduler**: retailer-scoped rows, each one a FLUX studio-shoot AI image
+     generation (paid, async, quota). The scheduler needs free, deterministic frames. **Do not reuse or retrofit
+     it** (schema comment on `PostTemplate` says the same).
+   - `PostTemplate` (migration 091, admin-owned, plan-gated caption + hashtags + `{placeholders}`) **is reusable**:
+     scheduler captions = Caption AI prefill, with the admin Post Template picker as an optional caption base.
+   - Image frames (level B) are therefore **new**: a small admin-managed catalog (follow the `studio_styles` /
+     `background_images` pattern: status DRAFT/PUBLISHED/HIDDEN, `plans[]`, sort_order) rendered with sharp.
+2. ~~WhatsApp alert sender~~ — **dropped 2026-10-15 (D8).** Alerts are in-app only. No utility template, no
+   per-message cost, no consent/sender work. (Kanchuki-owned number idea shelved; revisit only if owner asks.)
+3. **Manager access (verified in `apps/api/src/plugins/auth.ts`).** "Manager" = a `Staff` row with role
+   `manager` on a **default-deny route allowlist** (`MANAGER_ALLOWED_ROUTES`; salesperson is a smaller subset).
+   Scheduler routes are owner-only until added. To add for managers, in the same commit as the routes:
+   - `GET` scheduler status/plans/calendar → manager allowed (read)
+   - `POST` retry / skip / edit-caption / pause-resume → manager allowed (mirrors "post + track" social rule)
+   - **Reconnect / connect / disconnect stays owner-only** (existing rule). Manager sees
+     "Ask the shop owner to reconnect Facebook" instead of a button.
+   - Mirror the new rules in `apps/mobile/src/lib/staff-can.ts` and extend `staff-access.test.ts`.
+   - Salesperson: no scheduler access.
+4. **No in-app notification inbox exists** (no notification screen/model found under `apps/mobile/app`).
+   Design uses **derived state, not an inbox**: the §4a card + dashboard banner are computed live from
+   `post_schedule_plans` / `scheduled_posts` / token expiry. No alerts table, no dedupe logic, always correct.
+   A real notification centre is out of scope; add later if wanted.
+5. ~~"Token left" meaning~~ — **decided 2026-10-15: show all three** on the same card: (a) Meta connection
+   token days left, (b) scheduling allowance left this month, (c) AI Studio shoots left.
+6. **Data source for (c):** the existing F-010 `STUDIO_SHOOT` quota via `getQuotaStatus(retailerId,
+   'STUDIO_SHOOT')` (`apps/api/src/lib/quota.ts`) → `{used, limit, remaining, period, unlimited}`. Read-only
+   call, no new counter. Caveats to handle in the UI/endpoint:
+   - When no limit row is configured, `getQuotaStatus` falls back to hard-coded tier defaults (Growth 30,
+     Pro 100, Starter 0 and `unlimited: false/true` logic that is easy to misread). Show "Not included in your
+     plan" for limit 0 and "Unlimited" only when `unlimited` is true — verify the Starter case against the
+     real Plan Limits rows before trusting it.
+   - Manager sees the same number (read), but cannot change plan/limits.
+   - Same call pattern can show `AI_TAGGING_CALL` if the AI caption fill counts against it — confirm whether
+     Caption AI should draw from that pool and surface it only if it is retailer-visible today.
+
+## 9. Meta developer dashboard checklist (owner action — App Review)
+
+The scheduler publishes with the **same permissions the Composer already uses**. Nothing new is requested for
+scheduling itself. Submit these in developers.facebook.com → App → **App Review → Permissions and Features**.
+Meta changes its rules, so re-verify each item against the live dashboard when submitting.
+
+### 9.1 Permissions to request (Advanced Access)
+| Permission | Used for |
+|------------|----------|
+| `pages_show_list` | List the Pages the retailer manages so they can pick one |
+| `pages_read_engagement` | Required companion to `pages_manage_posts`; read Page data for stats |
+| `pages_manage_posts` | Publish the scheduled post to the Facebook Page |
+| `business_management` | Read Pages through the Business asset API (Graph requirement) |
+| `instagram_basic` | Resolve the IG Professional account linked to the Page |
+| `instagram_content_publish` | Publish carousels/photos to the linked IG account |
+
+### 9.2 App-level requirements Meta checks (likely needed — verify)
+- [ ] App switched to **Live** mode (not Development)
+- [ ] **Business Verification** completed for the owning Business portfolio (required for Advanced Access on
+      business permissions)
+- [ ] Privacy Policy URL public and matching the app's real data use (photos, tokens, product data)
+- [ ] **Data Deletion** instructions URL or callback configured (we already have deletion flows — SECURITY.md)
+- [ ] Terms of Service URL, app icon (1024×1024), category, contact email
+- [ ] Valid OAuth Redirect URIs registered (incl. `https://kanchuki.app/social/connect/callback`)
+- [ ] Android key hashes added (already fixed 2026-10-14, App ID `1758308975480748`)
+- [ ] Annual **Data Use Checkup** completed when Meta asks
+
+### 9.3 What to put in each permission's submission
+- A **screencast per permission** showing the real flow end to end: connect Page → plan setup → calendar →
+  scheduled post going live on the Page/IG feed. **Show the scheduling flow** — it is unattended publishing,
+  which reviewers look at closely.
+- Plain-language **use-case description** per permission (what it does, why the app cannot work without it).
+- **Test instructions + test account** (a tester with a Page + linked IG Business account) so the reviewer
+  can reproduce.
+- State clearly that posts publish **only on content the retailer approved on the calendar**, at the time
+  they set, and that they can pause/skip/delete at any time (this is the justification for unattended publish).
+
+### 9.4 Not needed for this feature
+- No new scopes for scheduling; no Meta-side scheduling permission exists or is used.
+- `instagram_business_content_publish` is for *Instagram Login* (a different login type) — not what this app
+  uses (Facebook Login for Business). Do not request it.
+- WhatsApp permissions (`whatsapp_business_*`) belong to F-035 and the alert-sender decision in §8.3, not here.
+
+## 10. Build order (when approved)
+1. Schema + RLS + plan builder + calendar API + admin matrix keys.
+2. Publish tick on the Composer path, original photos only (shippable alone).
+3. Mobile UI: FB/IG tabs, plan form, calendar, per-post caption edit.
+4. Image templates (B) compositing.
+5. Token health, WhatsApp + in-app failure alerts, pause/resume, tests, RC regression pass.
+
+## 11. Docs to update on build
+CLAUDE.md index row, `docs/BUILD-LOG.md`, `docs/PLAN.md`, `docs/PRO-REQUIREMENTS.md`, `docs/DATABASE.md`.
