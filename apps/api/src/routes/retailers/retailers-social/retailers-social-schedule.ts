@@ -168,8 +168,7 @@ export const retailersSocialScheduleRoutes: FastifyPluginAsync = async (server) 
     const now = new Date();
     const [accounts, plans, nextPost, failures, eff, studio, planCap] = await Promise.all([
       prisma.socialAccount.findMany({
-        // An inactive account with a live plan stays visible: its plan was paused
-        // (token dead / disconnected) and the card must show why + Reconnect.
+        // inactive account + live plan stays visible: show why it paused + Reconnect
         where: {
           retailer_id: retailerId,
           OR: [
@@ -256,9 +255,7 @@ export const retailersSocialScheduleRoutes: FastifyPluginAsync = async (server) 
         account_id: a.id,
         platform: a.platform,
         account_name: a.platform_account_name,
-        token: a.is_active
-          ? tokenOf(a.token_expires_at)
-          : { state: 'EXPIRED' as const, days_left: 0 },
+        token: tokenOf(a.is_active ? a.token_expires_at : new Date(0)), // inactive reads EXPIRED
         plan: plan
           ? {
               id: plan.id,

@@ -432,7 +432,7 @@ no migration, no schema change, and **no new request on any surface**.
 |---|---|
 | Spec | `docs/tasks/pending/post-scheduler.md` 10e. Task 5 of 5; branch `feat/f-043-hardening`, stacked on Task 4 (PR #82). |
 | Fix | `apps/api/Dockerfile`: `fonts-dejavu-core` (slim image had no fonts, template text rendered blank). Status endpoint now keeps accounts that still carry a live plan, so a plan paused by a dead/inactive account stays on the card + banner. |
-| Tests | `staff-access.test.ts` +1 (status/templates readable, styling writes owner-only) +1 assertion; `retailers-social-schedule.test.ts` +1 (inactive account with paused plan) → 39. API tsc clean; security, db-delete-guards green. |
+| Tests | `staff-access.test.ts` +1 (status/templates readable, styling writes owner-only) +1 assertion; `retailers-social-schedule.test.ts` +1 (inactive account with paused plan) → 38. API tsc clean; security, db-delete-guards green. |
 | Docs | `docs/runbooks/f-043-scheduler-launch-checklist.md` (merge order, Meta App Review, smoke run, device script). |
 | Not built | Meta code-map widening, R2 cleanup for ended plans, scheduled_posts retention purge, cold-start warm-up. Triggers listed in the checklist. |
 | Not verified | No device / live R2 / live Meta run of any scheduler screen or job. Font fix confirmed only after Railway rebuild. |
