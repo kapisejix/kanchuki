@@ -386,3 +386,17 @@ no migration, no schema change, and **no new request on any surface**.
 | Tests | builder 14, migration guard 9 (RLS, DELETE grant only on items, cascades, seeds, enum-only 128), schedule routes 33, staff-access 11. Full API suite 1673 passed / 5 skipped (incl. `db-delete-guards`, `security.test.ts`, `admin.login.test.ts`); shared 98; web plan-limits 6; API/web typecheck + biome clean. Mobile `tsc` has 2 errors in the support-session screens — pre-existing on `main`, untouched. |
 | Not verified | Nothing run against a live DB (migrations unapplied); real-device and Meta publishing untested (Task 2). The default caption is a free template — Caption AI fill is on demand from the app (owner-approved deviation from D7). |
 | Open | Tasks 2–5. Owner: apply 128/129; Meta App Review (spec §9). |
+
+## 2026-10-16 — F-043 Social Post Scheduler, Task 2 (publish tick + token health)
+
+| Area | Detail |
+|---|---|
+| Spec | `docs/tasks/pending/post-scheduler.md` §10b records the as-built behaviour. Task 2 of 5; branch `feat/f-043-publish-tick`. |
+| Jobs | `jobs/scheduled-post-publish.ts`: `handleSchedulePublishTick` (cron `*/5 * * * *`) + `handleScheduleTokenHealth` (daily `45 1 * * *`), both registered in `jobs/index.ts` without `repeat.limit`. |
+| Claim / publish | CAS `READY→PUBLISHING` (RC-036 pattern); Composer Meta primitives + `createPostedRowWithRetry`; idempotent on `client_post_id`; original photos only; 1 slide = single photo, 2+ = carousel; `social_post_id` linked. |
+| Retry / grace | 3 attempts, 5 min then 15 min backoff; >2 h late → MISSED; stale PUBLISHING (>30 min) re-queued. |
+| Gates | `SOCIAL_SCHEDULER` flag, `SCHEDULED_POST` quota, retailer not suspended and `plan_status` ACTIVE/TRIAL — re-checked at publish; usage counted on success only. |
+| Errors | `MetaApiError` gained optional `fb:{code,subcode}` (`meta-graph.ts`, `retailers-social-helpers.ts`; additive). Only curated §4a strings are stored; token/access/IG-unlinked errors pause the plan. |
+| Tests | `scheduled-post-publish.test.ts` 23: double-claim race, retry+backoff, give-up, grace/MISSED, limit hit, feature off, cancelled plan, token dead, inactive account, partial platform failure, live-post row-write failure, live-post adoption, paused plan, classifier table, token health. API `tsc` clean; `security.test.ts`, `db-delete-guards`, `meta-graph`, schedule + fan-out suites green. |
+| Not verified | Never run against live Meta or a live DB; the Meta code→reason map is from docs, not observed errors. |
+| Open | Tasks 3–5 (mobile UI + status card, image templates, hardening). Review `fb_code` log lines after the first live week. Existing daily jobs use `repeat.limit: 1` — possibly once-per-boot; not touched here. |

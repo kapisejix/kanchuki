@@ -1,6 +1,11 @@
 import { randomBytes } from 'node:crypto';
 import { Redis } from 'ioredis';
-import { MetaApiError, clampIgCaption, fetchIgPermalink } from '../../../lib/meta-graph.js';
+import {
+  MetaApiError,
+  clampIgCaption,
+  fbCodesFrom,
+  fetchIgPermalink,
+} from '../../../lib/meta-graph.js';
 
 // Shared helpers/constants for the retailer social route modules (split from
 // retailers/retailers-social.ts — module-level code moved verbatim by
@@ -44,6 +49,7 @@ export async function publishInstagramPhoto(
       'Instagram rejected the photo container',
       400,
       'INSTAGRAM_CONTAINER_FAILED',
+      fbCodesFrom(await containerRes.json().catch(() => null)),
     );
   }
 
