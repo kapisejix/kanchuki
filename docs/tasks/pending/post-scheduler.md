@@ -289,5 +289,31 @@ Meta changes its rules, so re-verify each item against the live dashboard when s
   TS2345 locally because the gitignored `.expo/types/router.d.ts` is stale (two pre-existing instances too); regenerates on
   `expo start`.
 
+## 10d. Task 4 as built (2026-10-16) - image templates (level B)
+
+- **Registry in code, not a table** (owner decision): ids in `@kanchuki/shared` (`SCHEDULE_SLIDE_TEMPLATES`,
+  `SCHEDULE_COVER_STYLES`), renderers in `packages/ai/src/schedule-templates.ts` (sharp + SVG overlay, 1080x1350 4:5 JPEG).
+  Slide styles: `white_price`, `new_arrival`, `festival_frame`, `logo_corner`. Cover: `collage_cover`. Add an admin catalog
+  (status / plans / sort order, per spec 8.1) only when a template must be retired or gated per plan.
+- **Render at publish** (`apps/api/src/lib/schedule-render.ts`): the tick calls `resolvePostImages`; a styled slide is rendered
+  once and its R2 key stored on `resolved_image_key`. Bulk styling only writes the choice, so "apply to all" is instant and the
+  price strip shows the price at post time. Single-slide "Style this" renders immediately for the preview.
+- **One aspect ratio:** if any slide is styled or a cover is built, the remaining originals in that post are centre-cropped to
+  4:5 too. A post with no styling is untouched.
+- **Cover is not a DB row** (deviation from the planned item-at-position-0): built per publish from up to 4 slide photos and
+  prepended, only for 2-9 slides (cap 10). `plan.cover_style` carries the choice.
+- **Fallbacks:** any render failure degrades to the original photo; a cover failure skips the cover. A post never fails because
+  of a template.
+- **Routes** (`retailers-social-schedule-style.ts`, owner-only by default-deny): `GET /templates`, `POST /items/:id/style`,
+  `POST /posts/:id/style`, `POST /plans/:id/style` (`template` id | `rotate` | null), `PATCH /plans/:id/design`. Plan create
+  now validates `cover_style` / `rotation_pool` against the registry. Calendar GET adds `resolved_image_url` per slide.
+- **Mobile:** per-slide wand, "Style post", "Style all photos", rotation pool + cover toggle on the calendar; cover and pool
+  chips on the plan form; rendered thumbnails with a styled label.
+- **Festival frame** uses the nearest festival within 7 days of the post, else "Festive Collection". **Store logo** uses
+  `retailer.logo_r2_key`, else a store-name pill. Price is digits and the rupee sign only (no Indic shaping needed).
+- **Not verified:** no live R2 / device run. The first SVG text render in a process pays a cold start of about 5 s, so the
+  single-slide route is slow on a cold API instance (mobile allows 60 s). Fonts are the host sans stack; confirm the Railway
+  image has one (DejaVu / Noto) before relying on the badge text.
+
 ## 11. Docs to update on build
 CLAUDE.md index row, `docs/BUILD-LOG.md`, `docs/PLAN.md`, `docs/PRO-REQUIREMENTS.md`, `docs/DATABASE.md`.

@@ -19,6 +19,7 @@ import {
   publishPhotoPost,
 } from '../lib/meta-graph.js';
 import { checkQuota, incrementUsage } from '../lib/quota.js';
+import { resolvePostImages } from '../lib/schedule-render.js';
 import { AppError } from '../plugins/error-handler.js';
 import {
   accountToken,
@@ -235,7 +236,18 @@ async function publishOne(id: string, retailerId: string, now: Date): Promise<Ou
 
     if (!live) {
       const token = accountToken(account.access_token_encrypted);
-      const urls = media.map((m) => m.url);
+      // Task 4: rendered templates / 4:5 normalisation / cover. Falls back to
+      // the original photos if rendering as a whole fails.
+      const urls = await resolvePostImages({
+        retailerId,
+        postId: id,
+        scheduledAt: post.scheduled_at,
+        coverStyle: plan.cover_style,
+        items: post.items,
+      }).catch((err) => {
+        console.error('[schedule-publish] render failed, using originals', id, err);
+        return media.map((m) => m.url);
+      });
       const first = urls[0] as string;
       const single = urls.length === 1;
       let externalId: string;
@@ -264,7 +276,7 @@ async function publishOne(id: string, retailerId: string, now: Date): Promise<Ou
           post_type: single ? 'SINGLE_PRODUCT' : 'CAROUSEL',
           product_ids: [...new Set(productIds)],
           caption: post.caption,
-          media: media as unknown as object[],
+          media: urls.map((url) => ({ kind: 'photo', url })) as unknown as object[],
           link_url: null,
           link_type: 'none',
           client_post_id: post.client_post_id,

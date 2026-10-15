@@ -18,7 +18,9 @@
 //
 // Gating: `SOCIAL_SCHEDULER` fails CLOSED (hasFeature) at plan create, confirm
 // and resume; the publish tick re-checks at publish time (Task 2).
+import { publicUrl } from '@kanchuki/ai';
 import { prisma } from '@kanchuki/db';
+import { SCHEDULE_COVER_STYLES, SCHEDULE_SLIDE_TEMPLATES } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { hasFeature } from '../../../lib/features.js';
@@ -63,8 +65,8 @@ const createPlanSchema = z
     source: z.enum(['NEWEST', 'CATEGORY', 'MANUAL']).default('NEWEST'),
     category: z.string().min(1).max(80).optional(),
     product_ids: z.array(z.string()).max(310).optional(),
-    cover_style: z.string().max(40).nullable().optional(),
-    rotation_pool: z.array(z.string().max(40)).max(10).default([]),
+    cover_style: z.enum(SCHEDULE_COVER_STYLES).nullable().optional(),
+    rotation_pool: z.array(z.enum(SCHEDULE_SLIDE_TEMPLATES)).max(10).default([]),
     horizon: z.enum(['1W', '2W', '1M']),
     start_date: z
       .string()
@@ -308,7 +310,15 @@ export const retailersSocialScheduleRoutes: FastifyPluginAsync = async (server) 
       },
     });
     if (!plan) throw notFound('Plan');
-    return { data: plan };
+    // Rendered previews: the key is storage-internal, the app needs a URL.
+    const posts = plan.posts.map((post) => ({
+      ...post,
+      items: post.items.map((i) => ({
+        ...i,
+        resolved_image_url: i.resolved_image_key ? publicUrl(i.resolved_image_key) : null,
+      })),
+    }));
+    return { data: { ...plan, posts } };
   });
 
   // ── create plan + build DRAFT calendar ─────────────────────────

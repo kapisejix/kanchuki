@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
-import { ChevronLeft, Images, RefreshCw, Sparkles, X } from 'lucide-react-native';
+import { ChevronLeft, Images, RefreshCw, Sparkles, Wand2, X } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -19,11 +19,13 @@ import type { ComposeProduct } from '../../../src/components/social/types';
 import { socialApi } from '../../../src/lib/api';
 import {
   EDITABLE_POST_STATUSES,
+  TEMPLATE_OPTIONS,
   formatIst,
   istDayKey,
   scheduleApi,
+  templateLabel,
 } from '../../../src/lib/api/schedule';
-import type { SchedulePost } from '../../../src/lib/api/schedule';
+import type { SchedulePost, SlideTemplateId } from '../../../src/lib/api/schedule';
 import { useAuth } from '../../../src/lib/auth-context';
 import { showError } from '../../../src/lib/errors';
 import { useScreenInsets } from '../../../src/lib/safe-area';
@@ -44,11 +46,13 @@ function PostCard({
   canEditSlides,
   onChanged,
   onSwap,
+  onStyle,
 }: {
   post: SchedulePost;
   canEditSlides: boolean;
   onChanged: () => void;
   onSwap: (itemId: string) => void;
+  onStyle: (scope: 'item' | 'post', id: string) => void;
 }) {
   const editable = EDITABLE_POST_STATUSES.includes(post.status);
   const [caption, setCaption] = useState(post.caption);
@@ -120,8 +124,12 @@ function PostCard({
             return (
               <View key={item.id} className="w-24">
                 <View className="w-24 h-28 rounded-2xl overflow-hidden bg-lavender-100">
-                  {shown ? (
-                    <Image source={{ uri: shown.url }} className="w-24 h-28" resizeMode="cover" />
+                  {item.resolved_image_url || shown ? (
+                    <Image
+                      source={{ uri: item.resolved_image_url ?? (shown?.url as string) }}
+                      className="w-24 h-28"
+                      resizeMode="cover"
+                    />
                   ) : null}
                   {editable && canEditSlides ? (
                     <AnimatedPressable
@@ -137,6 +145,11 @@ function PostCard({
                 <Text className="text-[10px] text-spaceCadet-900 mt-1" numberOfLines={1}>
                   {item.product?.name ?? 'Product'}
                 </Text>
+                {item.image_level === 'TEMPLATE' ? (
+                  <Text className="text-[10px] font-bold text-fuchsia-700" numberOfLines={1}>
+                    ✦ {templateLabel(item.template_id) ?? 'Styled'}
+                  </Text>
+                ) : null}
                 {editable && canEditSlides ? (
                   <View className="flex-row gap-1 mt-1">
                     {photos.length > 1 ? (
@@ -153,6 +166,14 @@ function PostCard({
                         <Images size={12} color="#231F48" />
                       </AnimatedPressable>
                     ) : null}
+                    <AnimatedPressable
+                      accessibilityLabel="Style this photo"
+                      accessibilityRole="button"
+                      onPress={() => onStyle('item', item.id)}
+                      className="px-1.5 py-1 rounded-lg bg-lavender-100"
+                    >
+                      <Wand2 size={12} color="#BB3F95" />
+                    </AnimatedPressable>
                     <AnimatedPressable
                       accessibilityLabel="Swap this product"
                       accessibilityRole="button"
@@ -213,6 +234,15 @@ function PostCard({
               <Text className="text-xs font-bold text-spaceCadet-900">Retry</Text>
             </AnimatedPressable>
           ) : null}
+          {canEditSlides ? (
+            <AnimatedPressable
+              accessibilityRole="button"
+              onPress={() => onStyle('post', post.id)}
+              className="px-3 py-1.5 rounded-xl border border-lavender-200"
+            >
+              <Text className="text-xs font-bold text-spaceCadet-900">Style post</Text>
+            </AnimatedPressable>
+          ) : null}
           <AnimatedPressable
             accessibilityRole="button"
             disabled={act.isPending}
@@ -234,6 +264,10 @@ export default function ScheduleCalendarScreen() {
   const queryClient = useQueryClient();
   const canPlan = staffCan(staffRole, 'social.schedule.plan');
   const [swapItemId, setSwapItemId] = useState<string | null>(null);
+  const [styleTarget, setStyleTarget] = useState<{
+    scope: 'item' | 'post' | 'plan';
+    id: string;
+  } | null>(null);
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['social', 'schedule', 'plan', id],
@@ -291,7 +325,32 @@ export default function ScheduleCalendarScreen() {
     onError: (err) => showError(err, 'That product could not be used here. Pick another.'),
   });
 
+  const style = useMutation({
+    mutationFn: async (t: SlideTemplateId | 'rotate' | null): Promise<unknown> => {
+      if (!styleTarget) throw new Error('no target');
+      if (styleTarget.scope === 'item') {
+        return scheduleApi.styleItem(styleTarget.id, t === 'rotate' ? null : t);
+      }
+      return styleTarget.scope === 'post'
+        ? scheduleApi.stylePost(styleTarget.id, t)
+        : scheduleApi.stylePlan(styleTarget.id, t);
+    },
+    onSuccess: () => {
+      setStyleTarget(null);
+      changed();
+    },
+    onError: (err) =>
+      showError(err, 'Could not apply that style. Try another, or keep the original photo.'),
+  });
+  const design = useMutation({
+    mutationFn: (body: { cover_style?: 'collage_cover' | null; rotation_pool?: string[] }) =>
+      scheduleApi.design(id, body),
+    onSuccess: changed,
+    onError: (err) => showError(err, 'Could not save that setting. Please try again.'),
+  });
+
   const total = plan?.posts.filter((p) => p.status !== 'SKIPPED').length ?? 0;
+  const pool = plan?.rotation_pool ?? [];
 
   return (
     <View className="flex-1 bg-[#F8F7FC]">
@@ -350,6 +409,74 @@ export default function ScheduleCalendarScreen() {
             {plan.status === 'PAUSED' && plan.pause_reason ? (
               <Text className="text-xs font-semibold text-red-600">{plan.pause_reason}</Text>
             ) : null}
+            {canPlan && plan.status !== 'ENDED' ? (
+              <View className="bg-white rounded-3xl p-4 border border-lavender-200 gap-3">
+                <Text className="text-xs font-bold text-spaceCadet-900">Photo styles</Text>
+                <View className="flex-row flex-wrap gap-2">
+                  <AnimatedPressable
+                    accessibilityRole="button"
+                    onPress={() => setStyleTarget({ scope: 'plan', id })}
+                    className="px-3 py-1.5 rounded-xl bg-fuchsia-600 flex-row items-center gap-1"
+                  >
+                    <Wand2 size={12} color="white" />
+                    <Text className="text-xs font-bold text-white">Style all photos</Text>
+                  </AnimatedPressable>
+                  <AnimatedPressable
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: plan.cover_style === 'collage_cover' }}
+                    disabled={design.isPending}
+                    onPress={() =>
+                      design.mutate({
+                        cover_style: plan.cover_style === 'collage_cover' ? null : 'collage_cover',
+                      })
+                    }
+                    className={`px-3 py-1.5 rounded-xl border ${
+                      plan.cover_style === 'collage_cover'
+                        ? 'bg-fuchsia-600 border-fuchsia-600'
+                        : 'border-lavender-200'
+                    }`}
+                  >
+                    <Text
+                      className={`text-xs font-bold ${
+                        plan.cover_style === 'collage_cover' ? 'text-white' : 'text-spaceCadet-900'
+                      }`}
+                    >
+                      Collage cover
+                    </Text>
+                  </AnimatedPressable>
+                </View>
+                <Text className="text-[11px] text-heliotrope-500">
+                  Rotation pool, used by &quot;Rotate through my pool&quot;:
+                </Text>
+                <View className="flex-row flex-wrap gap-2">
+                  {TEMPLATE_OPTIONS.map((t) => {
+                    const on = pool.includes(t.id);
+                    return (
+                      <AnimatedPressable
+                        key={t.id}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected: on }}
+                        disabled={design.isPending}
+                        onPress={() =>
+                          design.mutate({
+                            rotation_pool: on ? pool.filter((x) => x !== t.id) : [...pool, t.id],
+                          })
+                        }
+                        className={`px-3 py-1.5 rounded-xl border ${
+                          on ? 'bg-fuchsia-600 border-fuchsia-600' : 'border-lavender-200'
+                        }`}
+                      >
+                        <Text
+                          className={`text-xs font-bold ${on ? 'text-white' : 'text-spaceCadet-900'}`}
+                        >
+                          {t.label}
+                        </Text>
+                      </AnimatedPressable>
+                    );
+                  })}
+                </View>
+              </View>
+            ) : null}
             {days.map(([day, posts]) => (
               <View key={day} className="gap-3">
                 <Text className="text-xs font-bold text-heliotrope-500 uppercase">
@@ -362,6 +489,7 @@ export default function ScheduleCalendarScreen() {
                     canEditSlides={canPlan}
                     onChanged={changed}
                     onSwap={setSwapItemId}
+                    onStyle={(scope, targetId) => setStyleTarget({ scope, id: targetId })}
                   />
                 ))}
               </View>
@@ -405,6 +533,81 @@ export default function ScheduleCalendarScreen() {
           ) : null}
         </>
       )}
+
+      <Modal
+        visible={styleTarget !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setStyleTarget(null)}
+      >
+        <View className="flex-1 bg-black/40 justify-end">
+          <View
+            className="bg-white rounded-t-3xl p-5 gap-2"
+            style={{ paddingBottom: screenPaddingBottom }}
+          >
+            <View className="flex-row items-center justify-between mb-1">
+              <Text className="text-base font-bold text-spaceCadet-900">
+                {styleTarget?.scope === 'item'
+                  ? 'Style this photo'
+                  : styleTarget?.scope === 'post'
+                    ? 'Style every photo in this post'
+                    : 'Style every photo in the plan'}
+              </Text>
+              <AnimatedPressable
+                accessibilityLabel="Close"
+                accessibilityRole="button"
+                onPress={() => setStyleTarget(null)}
+                className="w-9 h-9 rounded-full bg-lavender-100 items-center justify-center"
+              >
+                <X size={18} color="#231F48" />
+              </AnimatedPressable>
+            </View>
+            {style.isPending ? (
+              <View className="items-center py-6 gap-2">
+                <ActivityIndicator color="#BB3F95" />
+                <Text className="text-xs text-heliotrope-500">
+                  {styleTarget?.scope === 'item' ? 'Rendering your photo…' : 'Applying…'}
+                </Text>
+              </View>
+            ) : (
+              <>
+                {TEMPLATE_OPTIONS.map((t) => (
+                  <AnimatedPressable
+                    key={t.id}
+                    accessibilityRole="button"
+                    onPress={() => style.mutate(t.id)}
+                    className="px-4 py-3 rounded-2xl border border-lavender-200"
+                  >
+                    <Text className="text-sm font-bold text-spaceCadet-900">{t.label}</Text>
+                  </AnimatedPressable>
+                ))}
+                {styleTarget && styleTarget.scope !== 'item' ? (
+                  <AnimatedPressable
+                    accessibilityRole="button"
+                    disabled={pool.length === 0}
+                    onPress={() => style.mutate('rotate')}
+                    className={`px-4 py-3 rounded-2xl border border-lavender-200 ${
+                      pool.length === 0 ? 'opacity-40' : ''
+                    }`}
+                  >
+                    <Text className="text-sm font-bold text-spaceCadet-900">
+                      Rotate through my pool
+                      {pool.length === 0 ? ' (pick styles first)' : ` (${pool.length})`}
+                    </Text>
+                  </AnimatedPressable>
+                ) : null}
+                <AnimatedPressable
+                  accessibilityRole="button"
+                  onPress={() => style.mutate(null)}
+                  className="px-4 py-3 rounded-2xl bg-lavender-100"
+                >
+                  <Text className="text-sm font-bold text-spaceCadet-900">Original photo</Text>
+                </AnimatedPressable>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
 
       <Modal
         visible={swapItemId !== null}

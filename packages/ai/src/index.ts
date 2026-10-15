@@ -9,3 +9,4 @@ export * from './image-quality.js';
 export * from './image-compress.js';
 export * from './watermark.js';
 export * from './tryon.js';
+export * from './schedule-templates.js';

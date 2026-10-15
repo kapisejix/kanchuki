@@ -4352,5 +4352,7 @@ backoff, 2 h grace then MISSED, feature/quota/plan-status re-checked at publish 
 only, curated failure reasons from `MetaApiError` codes, daily token-health pause. **Task 3 built 2026-10-16** — mobile scheduler UI
 (`apps/mobile/app/social/schedule/*`: status card, plan form, calendar review + confirm, caption edit / skip / swap /
 remove, pause / resume / end) and the derived `GET /v1/retailers/me/social/schedule/status`; banner on the home tab +
-Growth hub. Not built: image templates (Task 4), hardening + launch checklist (Task 5). Built-vs-spec deviations:
+Growth hub. **Task 4 built 2026-10-16** — five free image templates rendered with sharp (white + price strip, New Arrival badge,
+festival frame, store-logo corner, collage cover), styled per slide / post / plan with a rotation pool; rendered at
+publish so price and festival are current. Not built: hardening + launch checklist (Task 5). Built-vs-spec deviations:
 `docs/tasks/pending/post-scheduler.md` §10a, §10b, §10c.

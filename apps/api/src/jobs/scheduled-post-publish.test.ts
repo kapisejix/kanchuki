@@ -24,6 +24,7 @@ const mocks = vi.hoisted(() => ({
   publishInstagramCarousel: vi.fn(),
   publishInstagramPhoto: vi.fn(),
   createPostedRowWithRetry: vi.fn(),
+  resolvePostImages: vi.fn(),
 }));
 
 function matches(row: Row, where: Row): boolean {
@@ -98,6 +99,7 @@ vi.mock('@kanchuki/db', () => ({
     },
   },
 }));
+vi.mock('../lib/schedule-render.js', () => ({ resolvePostImages: mocks.resolvePostImages }));
 vi.mock('../lib/features.js', () => ({ hasFeature: mocks.hasFeature }));
 vi.mock('../lib/quota.js', () => ({
   checkQuota: mocks.checkQuota,
@@ -169,6 +171,7 @@ beforeEach(() => {
   db.retailer = { plan_status: 'ACTIVE', is_suspended: false };
   db.photos = [{ id: 'ph1', product_id: 'p1', url: 'https://r2/p1.jpg', is_primary: true }];
   mocks.hasFeature.mockResolvedValue(true);
+  mocks.resolvePostImages.mockResolvedValue(['https://r2/p1.jpg']);
   mocks.checkQuota.mockResolvedValue(undefined);
   mocks.publishPhotoPost.mockResolvedValue({ postId: 'fb1' });
   mocks.createPostedRowWithRetry.mockResolvedValue({ post: { id: 'soc1' }, deduplicated: false });
@@ -316,6 +319,35 @@ describe('publish tick', () => {
     const s = await handleSchedulePublishTick(NOW);
     expect(s.posted).toBe(0);
     expect(db.posts[0]?.status).toBe('READY');
+  });
+});
+
+describe('templates (task 4)', () => {
+  it('publishes the rendered urls (cover + styled slides), as a carousel', async () => {
+    db.accounts[0]!.platform = 'FACEBOOK';
+    mocks.resolvePostImages.mockResolvedValue(['https://r2/cover.jpg', 'https://r2/s1.jpg']);
+    mocks.publishFacebookCarousel.mockResolvedValue({ postId: 'fbc1' });
+    await handleSchedulePublishTick(NOW);
+    expect(mocks.publishFacebookCarousel).toHaveBeenCalledWith(
+      'pg1',
+      'tok',
+      ['https://r2/cover.jpg', 'https://r2/s1.jpg'],
+      'New in',
+    );
+    expect(mocks.publishPhotoPost).not.toHaveBeenCalled();
+    expect(db.posts[0]?.status).toBe('POSTED');
+  });
+
+  it('a render failure falls back to the original photos and still posts', async () => {
+    mocks.resolvePostImages.mockRejectedValue(new Error('sharp exploded'));
+    await handleSchedulePublishTick(NOW);
+    expect(mocks.publishPhotoPost).toHaveBeenCalledWith(
+      'pg1',
+      'tok',
+      'https://r2/p1.jpg',
+      'New in',
+    );
+    expect(db.posts[0]?.status).toBe('POSTED');
   });
 });
 

@@ -55,6 +55,10 @@ export interface ScheduleItem {
   product_id: string;
   position: number;
   photo_id: string | null;
+  image_level: 'ORIGINAL' | 'TEMPLATE';
+  template_id: string | null;
+  /** Public URL of the rendered template, when one has been rendered. */
+  resolved_image_url: string | null;
   product?: {
     name: string | null;
     photos: { id: string; url: string; is_primary: boolean }[];
@@ -81,6 +85,8 @@ export interface SchedulePlan {
   post_time: string;
   weekdays: number[];
   horizon_days: number;
+  cover_style: string | null;
+  rotation_pool: string[];
   posts: SchedulePost[];
 }
 
@@ -92,10 +98,21 @@ export interface CreatePlanInput {
   post_time: string;
   source: 'NEWEST' | 'CATEGORY';
   category?: string;
-  cover_style: null;
+  cover_style: 'collage_cover' | null;
   rotation_pool: string[];
   horizon: '1W' | '2W' | '1M';
 }
+
+/** Mirrors SCHEDULE_SLIDE_TEMPLATES / SCHEDULE_COVER_STYLES in @kanchuki/shared. */
+export const TEMPLATE_OPTIONS = [
+  { id: 'white_price', label: 'White + price' },
+  { id: 'new_arrival', label: 'New Arrival badge' },
+  { id: 'festival_frame', label: 'Festival frame' },
+  { id: 'logo_corner', label: 'Store logo' },
+] as const;
+export type SlideTemplateId = (typeof TEMPLATE_OPTIONS)[number]['id'];
+export const templateLabel = (id: string | null) =>
+  TEMPLATE_OPTIONS.find((t) => t.id === id)?.label ?? null;
 
 const BASE = '/v1/retailers/me/social/schedule';
 const json = (body: unknown) => ({ body: JSON.stringify(body) });
@@ -128,6 +145,28 @@ export const scheduleApi = {
 
   patchPost: (id: string, body: { caption?: string; action?: 'skip' | 'retry' }) =>
     request<{ data: SchedulePost }>(`${BASE}/posts/${id}`, { method: 'PATCH', ...json(body) }),
+
+  /** Render one slide now; null → back to the original photo. */
+  styleItem: (id: string, template: SlideTemplateId | null) =>
+    request<{ data: { template: string | null; resolved_image_url: string | null } }>(
+      `${BASE}/items/${id}/style`,
+      { method: 'POST', ...json({ template }), timeoutMs: 60_000 },
+    ),
+
+  stylePost: (id: string, template: SlideTemplateId | 'rotate' | null) =>
+    request<{ data: { styled: number } }>(`${BASE}/posts/${id}/style`, {
+      method: 'POST',
+      ...json({ template }),
+    }),
+
+  stylePlan: (id: string, template: SlideTemplateId | 'rotate' | null) =>
+    request<{ data: { styled: number } }>(`${BASE}/plans/${id}/style`, {
+      method: 'POST',
+      ...json({ template }),
+    }),
+
+  design: (id: string, body: { cover_style?: 'collage_cover' | null; rotation_pool?: string[] }) =>
+    request<{ data: unknown }>(`${BASE}/plans/${id}/design`, { method: 'PATCH', ...json(body) }),
 
   swapItem: (id: string, product_id: string) =>
     request<{ data: unknown }>(`${BASE}/items/${id}`, {

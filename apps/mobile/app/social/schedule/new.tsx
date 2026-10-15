@@ -6,7 +6,7 @@ import { ActivityIndicator, ScrollView, Text, TextInput, View } from 'react-nati
 import { AnimatedPressable } from '../../../src/components/AnimatedPressable';
 import { GradientButton } from '../../../src/components/GradientButton';
 import { KeyboardScreen } from '../../../src/components/KeyboardScreen';
-import { scheduleApi } from '../../../src/lib/api/schedule';
+import { TEMPLATE_OPTIONS, scheduleApi } from '../../../src/lib/api/schedule';
 import type { CreatePlanInput } from '../../../src/lib/api/schedule';
 import { useAuth } from '../../../src/lib/auth-context';
 import { showError } from '../../../src/lib/errors';
@@ -104,6 +104,8 @@ export default function NewSchedulePlanScreen() {
   const [source, setSource] = useState<CreatePlanInput['source']>('NEWEST');
   const [category, setCategory] = useState('');
   const [horizon, setHorizon] = useState<CreatePlanInput['horizon']>('2W');
+  const [cover, setCover] = useState<CreatePlanInput['cover_style']>(null);
+  const [pool, setPool] = useState<string[]>([]);
 
   const selectedAccount = accountId ?? accounts.find((a) => !a.plan)?.account_id ?? null;
   const rangeOf = (d: number) => ranges[d] ?? { min: 4, max: 5 };
@@ -129,9 +131,8 @@ export default function NewSchedulePlanScreen() {
         post_time: time,
         source,
         ...(source === 'CATEGORY' ? { category: category.trim() } : {}),
-        // Task 4 (templates) — the form has no cover/template controls yet.
-        cover_style: null,
-        rotation_pool: [],
+        cover_style: cover,
+        rotation_pool: pool,
         horizon,
       };
       return scheduleApi.createPlan(input);
@@ -342,6 +343,43 @@ export default function NewSchedulePlanScreen() {
                   />
                 ))}
               </View>
+            </View>
+
+            <View>
+              <Text className="text-xs font-bold text-spaceCadet-900 mb-2">
+                Cover slide (optional)
+              </Text>
+              <View className="flex-row gap-2">
+                <Chip label="None" active={cover === null} onPress={() => setCover(null)} />
+                <Chip
+                  label="Collage cover"
+                  active={cover === 'collage_cover'}
+                  onPress={() => setCover('collage_cover')}
+                />
+              </View>
+            </View>
+
+            <View>
+              <Text className="text-xs font-bold text-spaceCadet-900 mb-2">
+                Photo styles to rotate (optional)
+              </Text>
+              <View className="flex-row flex-wrap gap-2">
+                {TEMPLATE_OPTIONS.map((t) => (
+                  <Chip
+                    key={t.id}
+                    label={t.label}
+                    active={pool.includes(t.id)}
+                    onPress={() =>
+                      setPool((cur) =>
+                        cur.includes(t.id) ? cur.filter((x) => x !== t.id) : [...cur, t.id],
+                      )
+                    }
+                  />
+                ))}
+              </View>
+              <Text className="text-[11px] text-heliotrope-500 mt-1.5">
+                Photos stay original unless you style them on the calendar next.
+              </Text>
             </View>
 
             <GradientButton

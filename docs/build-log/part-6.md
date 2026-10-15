@@ -412,3 +412,16 @@ no migration, no schema change, and **no new request on any surface**.
 | Tests | `retailers-social-schedule.test.ts` +4 (status: token/allowance/next post, paused + failures, studio not included, manager read) → 37; mobile `schedule.test.ts` 7 (IST grouping/format, token labels, editable statuses, role gating). API `tsc` clean; fan-out, security, db-delete-guards, plugins green. Mobile biome clean. |
 | Not verified | No device/emulator run; local `tsc` shows TS2345 on new `router.push` literals from stale gitignored router types (same class as 2 pre-existing errors). |
 | Open | Task 4 (image templates), Task 5 (hardening, launch checklist). Mobile UI needs a real-device pass before owner relies on it. |
+
+## 2026-10-16 - F-043 Social Post Scheduler, Task 4 (image templates)
+
+| Area | Detail |
+|---|---|
+| Spec | `docs/tasks/pending/post-scheduler.md` 10d. Task 4 of 5; branch `feat/f-043-templates`, stacked on Task 2 (PR #80) + Task 3 (PR #81). |
+| Renderers | `packages/ai/src/schedule-templates.ts`: white+price, New Arrival, festival frame, logo corner, collage cover; 1080x1350 JPEG via sharp + SVG; ids shared via `@kanchuki/shared`. |
+| Orchestration | `apps/api/src/lib/schedule-render.ts`: `resolvePostImages` (tick, render-at-publish, 4:5 normalisation, cover, fallbacks) and `styleItemNow` (immediate preview). Tick uses it; failure falls back to originals. |
+| API | `retailers-social-schedule-style.ts` (templates, item/post/plan style, design); create validates ids; calendar GET adds `resolved_image_url`. Route file split keeps the 800-line guard. |
+| Mobile | `[id].tsx` style picker (slide / post / plan, rotate pool, original), cover + pool controls; `new.tsx` cover + pool chips; `schedule.ts` client. |
+| Tests | templates 9 (real sharp), render orchestration 11, style routes 18, tick +2 (28). API tsc clean; schedule, fan-out, security, db-delete-guards, plugins, meta-graph green; shared 98; mobile eslint clean. |
+| Not verified | No live R2 or device run; cold-start render about 5 s; font availability on the Railway image unconfirmed. |
+| Open | Task 5 (hardening, launch checklist). Admin template catalog only if templates need retiring or per-plan gating. |
