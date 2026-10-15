@@ -57,10 +57,12 @@ export default function InstagramConfigScreen() {
         if (!url || (!url.includes('code=') && !url.includes('oauth/callback'))) return
 
         const parsed = Linking.parse(url)
-        const code = (parsed.queryParams?.code as string) || 'auth_code_sample'
-        const state = (parsed.queryParams?.state as string) || 'sample_state'
+        const code = parsed.queryParams?.code as string | undefined
+        const state = parsed.queryParams?.state as string | undefined
 
-        if (code) {
+        // Never fabricate a code/state: a redirect without them is a failed
+        // OAuth attempt, not a connection.
+        if (code && state) {
           setConnecting(true)
           // No redirect_uri → API defaults to its https URL (matches the OAuth
           // dialog's redirect). Facebook rejects custom schemes (#9).
