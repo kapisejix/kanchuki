@@ -4322,7 +4322,7 @@ What actually shipped diverged early and stayed diverged: development committed 
 
 
 
-## 40. F-043 Social Post Scheduler — daily FB/IG carousel plans — 🟨 APPROVED 2026-10-15, TASK 1 BUILT (2–5 pending)
+## 40. F-043 Social Post Scheduler — daily FB/IG carousel plans — 🟨 APPROVED 2026-10-15, TASKS 1–2 BUILT (3–5 pending)
 
 > Full spec: `docs/tasks/pending/post-scheduler.md` (decisions D1–D9, build order §10). Extends F-031 Phase 2 composer;
 > closes its "auto-post" and "scheduling" open items.
@@ -4345,6 +4345,10 @@ automatically through the existing Composer fan-out path. Caption is AI-filled a
 
 **Status:** spec approved. **Task 1 built 2026-10-15** — schema (`post_schedule_plans`, `scheduled_posts`,
 `scheduled_post_items`), plan builder, calendar API, admin keys (`SOCIAL_SCHEDULER`, `SCHEDULED_POST`,
-`ACTIVE_SCHEDULE_PLAN`), manager routes. Migrations **128 + 129 are written but NOT applied** (owner applies from the
-admin dashboard). Not built: publish tick (Task 2), mobile UI + status card (Task 3), image templates (Task 4),
-hardening + launch checklist (Task 5). Built-vs-spec deviations: `docs/tasks/pending/post-scheduler.md` §10a.
+`ACTIVE_SCHEDULE_PLAN`), manager routes. Migrations 128 + 129 applied in prod.
+**Task 2 built 2026-10-16** — publish tick (`jobs/scheduled-post-publish.ts`, cron every 5 min): CAS claim
+READY→PUBLISHING, original photos through the Composer's Meta primitives (idempotent on `client_post_id`), 3× retry with
+backoff, 2 h grace then MISSED, feature/quota/plan-status re-checked at publish time, `SCHEDULED_POST` counted on success
+only, curated failure reasons from `MetaApiError` codes, daily token-health pause. Not built: mobile UI + status card
+(Task 3), image templates (Task 4), hardening + launch checklist (Task 5). Built-vs-spec deviations:
+`docs/tasks/pending/post-scheduler.md` §10a, §10b.

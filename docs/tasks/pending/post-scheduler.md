@@ -1,7 +1,8 @@
 # F-043 Social Post Scheduler (FB + IG daily carousel plans) — PENDING
 > Drafted 2026-10-15, revised same day after owner answers. **✅ APPROVED by owner 2026-10-15 — nothing built yet.**
 > F-043 assigned (F-042 was the last number used).
-> **Task 1 (§10 step 1) built 2026-10-15** — branch `feat/f-043-schema-plan-builder`; migrations 128 (enums) + 129 (tables/RLS/seed) written, **owner must apply**. Next: §10 step 2.
+> **Task 1 (§10 step 1) built 2026-10-15** — merged (PR #79); migrations 128 + 129 applied in prod.
+> **Task 2 (§10 step 2) built 2026-10-16** — branch `feat/f-043-publish-tick`, see §10b. Next: §10 step 3.
 > Owner-side (not code): Meta App Review per §9; migrations are applied by the owner from the admin dashboard.
 > Extends F-031 Phase 2 (composer) and closes its "Phase 3 open: auto-post" + "Phase 4: scheduling" items.
 
@@ -236,6 +237,38 @@ Meta changes its rules, so re-verify each item against the live dashboard when s
   already in the past. Plan/post rows are never hard-deleted; only `scheduled_post_items` has DELETE granted (migration 129).
 - Manager rules (`MANAGER_ALLOWED_ROUTES`): `GET …/schedule`, `PATCH …/schedule/posts`, `PATCH …/schedule/plan-state`.
   Create/confirm/end and slide edits are owner-only by default-deny. Salesperson and every support-session scope: nothing.
+
+## 10b. Task 2 as built (2026-10-16) — publish tick + token health
+
+- **Files:** `apps/api/src/jobs/scheduled-post-publish.ts` (+ `.test.ts`, 23 tests); wired in `jobs/index.ts` as maintenance
+  jobs `schedule-publish-tick` (`*/5 * * * *`) and `schedule-token-health` (`45 1 * * *`).
+- **Claim:** `updateMany WHERE status=READY` → `PUBLISHING` (+`attempts`, `last_attempt_at`); only `count===1` publishes (RC-036).
+  Only ACTIVE plans' rows are picked; batch 20 per tick, oldest first.
+- **Publish path:** the same Meta primitives + `createPostedRowWithRetry` the Composer fan-out uses (the fan-out is a route
+  handler, not a callable — not extracted). 1 slide → single photo, 2+ → carousel. Original photos only (a missing
+  `photo_id` falls back to the product's primary photo).
+- **Idempotency:** the DB `client_post_id` row (an already-POSTED `SocialPost` is adopted, never re-published). The Redis
+  `claimSocialPostId` marker is not used — the CAS claim already serialises a single row.
+- **Retry/grace:** 3 attempts, wait 5 min then 15 min from `last_attempt_at`; READY rows >2 h past `scheduled_at` → MISSED
+  (error: "The posting window passed. Retry to post it now."). Stale PUBLISHING (>30 min, crashed worker) is re-queued.
+- **Publish-time gates** (fail → FAILED + "Scheduling is not available on your plan.", no retry): `SOCIAL_SCHEDULER` flag,
+  `checkQuota(SCHEDULED_POST)`, retailer not suspended and `plan_status` in `ACTIVE`/`TRIAL`. Usage counted on success only.
+- **Failure text:** only `MetaApiError` is mapped. `MetaApiError` gained optional `fb: {code, subcode}` (additive, set at the
+  publish error sites). 190/102/subcodes 458–467 → token (pauses plan); 10/200–299 → no access (pauses plan);
+  `ACCOUNT_NOT_FOUND` → IG not linked (pauses plan); 4/17/32/613 → rate limit (retries); 9004/36000–36003/2207xxx → photo rejected
+  (no retry) only on a media signal (9004, 36000–36003, subcode 2207xxx); plain `100` ("invalid parameter") → generic "Post failed. If it keeps failing, contact support." with no retry; anything else → generic "Post failed. We'll retry…" (retries). Raw messages go to the server log only.
+- **Account gone:** inactive `SocialAccount` → plan paused, post FAILED, attempt refunded.
+- **Row-write safety:** if the post is live but the `SocialPost` row write fails, the scheduled post is still marked POSTED
+  (`social_post_id` null) — never retried into a double post.
+- **No FAILED `SocialPost` rows:** failures live only on `scheduled_posts.error` (a FAILED row would occupy the unique
+  `client_post_id` slot).
+- **Token health:** daily, ACTIVE plans whose account is inactive or `token_expires_at <= now` → PAUSED with
+  `pause_reason` "Paused — {Facebook|Instagram} token expired". Pauses only on a dead token; "expiring in <=7 days" stays
+  derived state for the Task 3 card. No active Graph probe.
+- **Open:** the Meta code→reason map is from Graph documentation, not observed prod errors — review logs
+  (`[meta-graph] ... failed` carries `fb_code`/`fb_subcode`) after the first live week. Existing daily jobs register with
+  `repeat.limit: 1`; the new jobs deliberately omit `limit` (BullMQ stops repeating after it — a 5-min tick would die).
+  Not run against live Meta.
 
 ## 11. Docs to update on build
 CLAUDE.md index row, `docs/BUILD-LOG.md`, `docs/PLAN.md`, `docs/PRO-REQUIREMENTS.md`, `docs/DATABASE.md`.

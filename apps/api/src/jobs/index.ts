@@ -36,6 +36,7 @@ import {
   addRewatermarkShowcaseDesignsJob,
   handleRewatermarkShowcaseDesigns,
 } from './rewatermark-showcase-designs.js';
+import { handleSchedulePublishTick, handleScheduleTokenHealth } from './scheduled-post-publish.js';
 import { handleStudioShoot } from './studio-shoot.js';
 import type { StudioShootJobData } from './studio-shoot.js';
 import { handleTagProduct } from './tag-product.js';
@@ -238,6 +239,10 @@ export async function startWorkers(): Promise<void> {
         }
         case 'tryon-deletion-sweep':
           return handleTryOnDeletionSweep();
+        case 'schedule-publish-tick':
+          return handleSchedulePublishTick();
+        case 'schedule-token-health':
+          return handleScheduleTokenHealth();
         default:
           throw new Error(`[jobs] unknown maintenance job: ${job.name}`);
       }
@@ -405,6 +410,30 @@ export async function startWorkers(): Promise<void> {
     {},
     {
       repeat: { pattern: '15 * * * *', limit: 1 },
+      removeOnComplete: { count: 10 },
+      removeOnFail: { count: 10 },
+    },
+  );
+
+  // F-043 scheduler publish tick — every 5 min. No `limit` (that caps total
+  // repeats): this one must keep firing. Rows are claimed by CAS, so an
+  // overlapping or duplicate tick cannot double-post.
+  await getMaintenanceQueue().add(
+    'schedule-publish-tick',
+    {},
+    {
+      repeat: { pattern: '*/5 * * * *' },
+      removeOnComplete: { count: 10 },
+      removeOnFail: { count: 10 },
+    },
+  );
+
+  // F-043 token health — daily 01:45 UTC: pauses plans whose Meta connection died.
+  await getMaintenanceQueue().add(
+    'schedule-token-health',
+    {},
+    {
+      repeat: { pattern: '45 1 * * *' },
       removeOnComplete: { count: 10 },
       removeOnFail: { count: 10 },
     },

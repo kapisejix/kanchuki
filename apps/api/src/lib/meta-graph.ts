@@ -107,11 +107,27 @@ export interface MetaPage {
   category?: string;
 }
 
+/** Graph `error.code` / `error.error_subcode`, when the platform sent them. Never
+ * shown to a retailer — only the F-043 scheduler maps them to a curated reason. */
+export interface MetaFbCodes {
+  code?: number;
+  subcode?: number;
+}
+
+export function fbCodesFrom(body: unknown): MetaFbCodes {
+  const err = ((body ?? {}) as { error?: Record<string, unknown> }).error ?? {};
+  return {
+    code: typeof err.code === 'number' ? err.code : undefined,
+    subcode: typeof err.error_subcode === 'number' ? err.error_subcode : undefined,
+  };
+}
+
 export class MetaApiError extends Error {
   constructor(
     message: string,
     public readonly status: number = 400,
     public readonly code?: string,
+    public readonly fb?: MetaFbCodes,
   ) {
     super(message);
     this.name = 'MetaApiError';
@@ -351,7 +367,12 @@ export async function publishPhotoPost(
   const body = (await res.json()) as Record<string, unknown>;
   if (!res.ok || typeof body.id !== 'string') {
     logMetaError('publishPhotoPost', res, body);
-    throw new MetaApiError('Facebook rejected the photo post', 400, 'PUBLISH_FAILED');
+    throw new MetaApiError(
+      'Facebook rejected the photo post',
+      400,
+      'PUBLISH_FAILED',
+      fbCodesFrom(body),
+    );
   }
   return { postId: body.id as string };
 }
@@ -444,7 +465,12 @@ export async function publishFacebookCarousel(
     const body = (await res.json()) as Record<string, unknown>;
     if (!res.ok || typeof body.id !== 'string') {
       logMetaError('publishFacebookCarousel:photo', res, body);
-      throw new MetaApiError('Facebook rejected a carousel photo', 400, 'PUBLISH_FAILED');
+      throw new MetaApiError(
+        'Facebook rejected a carousel photo',
+        400,
+        'PUBLISH_FAILED',
+        fbCodesFrom(body),
+      );
     }
     mediaFbids.push(body.id as string);
   }
@@ -459,7 +485,12 @@ export async function publishFacebookCarousel(
   const body = (await res.json()) as Record<string, unknown>;
   if (!res.ok || typeof body.id !== 'string') {
     logMetaError('publishFacebookCarousel:feed', res, body);
-    throw new MetaApiError('Facebook rejected the carousel post', 400, 'PUBLISH_FAILED');
+    throw new MetaApiError(
+      'Facebook rejected the carousel post',
+      400,
+      'PUBLISH_FAILED',
+      fbCodesFrom(body),
+    );
   }
   return { postId: body.id as string };
 }
@@ -502,6 +533,7 @@ export async function publishInstagramCarousel(
         'Instagram rejected a carousel child',
         400,
         'INSTAGRAM_CONTAINER_FAILED',
+        fbCodesFrom(body),
       );
     }
     const childId = body.id as string;
@@ -524,7 +556,12 @@ export async function publishInstagramCarousel(
   );
   const parentBody = (await parentRes.json()) as Record<string, unknown>;
   if (!parentRes.ok || typeof parentBody.id !== 'string') {
-    throw new MetaApiError('Instagram rejected the carousel', 400, 'INSTAGRAM_CONTAINER_FAILED');
+    throw new MetaApiError(
+      'Instagram rejected the carousel',
+      400,
+      'INSTAGRAM_CONTAINER_FAILED',
+      fbCodesFrom(parentBody),
+    );
   }
   const parentId = parentBody.id as string;
   await ensureIgContainerReady(parentId, accessToken, parentBody.status_code);
@@ -538,7 +575,12 @@ export async function publishInstagramCarousel(
   );
   const publishBody = (await publishRes.json()) as Record<string, unknown>;
   if (!publishRes.ok || typeof publishBody.id !== 'string') {
-    throw new MetaApiError('Instagram rejected the media publish', 400, 'INSTAGRAM_PUBLISH_FAILED');
+    throw new MetaApiError(
+      'Instagram rejected the media publish',
+      400,
+      'INSTAGRAM_PUBLISH_FAILED',
+      fbCodesFrom(publishBody),
+    );
   }
   const postId = publishBody.id as string;
   // Permalink is presentational — fail-open (shared helper, finding 3).
