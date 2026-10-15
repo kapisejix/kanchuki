@@ -15,7 +15,7 @@ import { staffCan } from '../../../src/lib/staff-can';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const TIMES = ['11:00', '13:00', '17:00', '19:30', '21:00'];
-const HORIZONS: Array<{ v: CreatePlanInput['horizon']; label: string }> = [
+const HORIZONS: { v: CreatePlanInput['horizon']; label: string }[] = [
   { v: '1W', label: '1 week' },
   { v: '2W', label: '2 weeks' },
   { v: '1M', label: '1 month' },

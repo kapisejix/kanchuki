@@ -336,7 +336,9 @@ export default function ScheduleCalendarScreen() {
         </View>
       ) : isError || !plan ? (
         <View className="flex-1 items-center justify-center p-8 gap-3">
-          <Text className="text-sm text-heliotrope-500 text-center">Couldn't load this plan.</Text>
+          <Text className="text-sm text-heliotrope-500 text-center">
+            Couldn&apos;t load this plan.
+          </Text>
           <GradientButton label="Retry" onPress={() => void refetch()} />
         </View>
       ) : (

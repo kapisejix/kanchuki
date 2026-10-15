@@ -171,7 +171,7 @@ export default function SchedulerHomeScreen() {
       {!canView ? (
         <View className="flex-1 items-center justify-center p-8">
           <Text className="text-sm text-heliotrope-500 text-center">
-            Your role can't open the post scheduler. Ask the shop owner.
+            Your role can&apos;t open the post scheduler. Ask the shop owner.
           </Text>
         </View>
       ) : isLoading ? (
@@ -181,7 +181,7 @@ export default function SchedulerHomeScreen() {
       ) : isError || !s ? (
         <View className="flex-1 items-center justify-center p-8 gap-3">
           <Text className="text-sm text-heliotrope-500 text-center">
-            Couldn't load the scheduler. Check your connection.
+            Couldn&apos;t load the scheduler. Check your connection.
           </Text>
           <GradientButton label="Retry" onPress={() => void refetch()} />
         </View>

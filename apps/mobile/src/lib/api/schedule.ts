@@ -17,7 +17,7 @@ export type ScheduledPostStatus =
 export const EDITABLE_POST_STATUSES: ScheduledPostStatus[] = ['DRAFT', 'READY', 'FAILED', 'MISSED'];
 
 export interface ScheduleStatus {
-  platforms: Array<{
+  platforms: {
     account_id: string;
     platform: SchedulePlatform;
     account_name: string;
@@ -29,7 +29,7 @@ export interface ScheduleStatus {
       post_time: string;
     } | null;
     next_post: { id: string; scheduled_at: string; slides: number } | null;
-  }>;
+  }[];
   allowance: { used: number; limit: number | null; period: string };
   active_plans: { count: number; max: number | null };
   studio_shoots: {
@@ -39,14 +39,14 @@ export interface ScheduleStatus {
     limit: number;
     remaining: number;
   };
-  failures: Array<{
+  failures: {
     id: string;
     plan_id: string;
     platform: SchedulePlatform;
     status: 'FAILED' | 'MISSED';
     scheduled_at: string;
     reason: string | null;
-  }>;
+  }[];
   needs_attention: boolean;
 }
 
@@ -57,7 +57,7 @@ export interface ScheduleItem {
   photo_id: string | null;
   product?: {
     name: string | null;
-    photos: Array<{ id: string; url: string; is_primary: boolean }>;
+    photos: { id: string; url: string; is_primary: boolean }[];
   };
 }
 

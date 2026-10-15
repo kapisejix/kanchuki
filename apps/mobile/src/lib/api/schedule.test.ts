@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import { staffCan } from '../staff-can';
+import { EDITABLE_POST_STATUSES, formatIst, istDayKey, tokenLabel } from './schedule';
 
 // The helpers under test are pure; the real client pulls in Expo native modules.
 vi.mock('./client', () => ({ request: vi.fn() }));
-import { EDITABLE_POST_STATUSES, formatIst, istDayKey, tokenLabel } from './schedule';
 
 describe('schedule display helpers', () => {
   // 2026-10-17T14:00:00Z is 19:30 IST the same day; 2026-10-17T19:00:00Z is
