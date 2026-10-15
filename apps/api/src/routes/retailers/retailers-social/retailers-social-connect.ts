@@ -33,7 +33,7 @@ const defaultOAuthRedirect = () =>
 // both connect paths (OAuth `code` and native SDK token) surface this exact
 // message instead of fabricating a placeholder "connected" account.
 const NO_IG_LINKED_MESSAGE =
-  'No Instagram Business account is linked to your Facebook Page. In the Instagram app switch to a Professional (Business or Creator) account, link it to a Facebook Page you manage, then try again.';
+  'No Instagram Business account was shared with Kanchuki. Make sure your Instagram is a Professional (Business or Creator) account linked to your Facebook Page, and that you selected both the Page and the Instagram account on the Facebook permission screen. If you connected before, remove Kanchuki under Facebook Settings → Apps and websites and connect again.';
 
 export const retailersSocialConnectRoutes: FastifyPluginAsync = async (server) => {
   // ─── GET /retailers/me/social/connect — start OAuth (1-Click & Web) ──
