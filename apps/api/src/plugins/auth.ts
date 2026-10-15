@@ -207,6 +207,12 @@ const MANAGER_ALLOWED_ROUTES: StaffRule[] = [
   // Social: post + track only — connect/disconnect/callback stay owner-only.
   { method: 'POST', path: '/v1/retailers/me/social/posts', exact: true },
   { method: 'GET', path: '/v1/retailers/me/social/accounts' },
+  // Scheduler (F-043): view calendar/status, edit a caption, skip/retry a post,
+  // pause/resume a plan. Creating/confirming/ending a plan and slide edits are
+  // NOT listed → owner-only by default-deny. Connect/reconnect is unchanged.
+  { method: 'GET', path: '/v1/retailers/me/social/schedule' },
+  { method: 'PATCH', path: '/v1/retailers/me/social/schedule/posts' },
+  { method: 'PATCH', path: '/v1/retailers/me/social/schedule/plan-state' },
   { method: 'GET', path: '/v1/retailers/me/stats', exact: true },
   { method: 'GET', path: '/v1/retailers/me/analytics', exact: true },
   // Customer list/detail — read-only, phone masked server-side (maskPhoneForRequest).

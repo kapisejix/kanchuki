@@ -372,3 +372,17 @@ no migration, no schema change, and **no new request on any surface**.
 | Web | `CategoryProductRows.tsx` on the marketing homepage above `StoreTeaser` — plain grid (5 cols × 3 rows = 15/category, no carousel), category chips, shared `NearMeBar`, "View more" → `/category/[name]` (server page, Prev/Next pager, `revalidate=300`). Shared card `FeedProductCard.tsx` → `/{shop}/all-{shop}/product/{id}`. |
 | Personalisation | "Picked for you" = device-local interests (`lib/interests.ts`, key `kanchuki_interests`, ≤40 terms; captured on product open, settled search words, card taps). No server profile, no cookies. |
 | Open | Not browser/phone verified; `/category/[name]` has no near-me sort; `/category` not in reserved-slug list; photo-upload "similar products" and ChunkLoadError auto-reload are un-built ideas. |
+
+## 2026-10-15 — F-043 Social Post Scheduler, Task 1 (schema + plan builder + calendar API + admin keys + manager routes)
+
+| Area | Detail |
+|---|---|
+| Spec | `docs/tasks/pending/post-scheduler.md` (§10a records the as-built deviations). Task 1 of 5; nothing publishes yet. |
+| Migrations | **128** `scheduler_enums` (`PlanFeatureKey.SOCIAL_SCHEDULER`, `QuotaResourceType.SCHEDULED_POST` + `ACTIVE_SCHEDULE_PLAN`; enum-only, 55P04) and **129** `post_scheduler` (3 tables, enums, RLS + backend-role policy, `DELETE` grant on `scheduled_post_items` only, seeds). **Written, NOT applied — owner applies 128 then 129 from the admin dashboard.** |
+| API | `retailers-social-schedule.ts` under `/v1/retailers/me/social/schedule`: plans list/get/create/confirm/end, slide swap/other-photo/remove, post caption/skip/retry (CAS on status), plan pause/resume. `SOCIAL_SCHEDULER` fails closed at create, confirm and resume. `ACTIVE_SCHEDULE_PLAN` counted per platform against live ACTIVE/PAUSED plans (`effectiveLimit` now exported). |
+| Builder | `lib/post-schedule-builder.ts` — pure: IST weekday/time → UTC, per-weekday `[min,max]`, cap 10, lead-category grouping, no product reused in a plan. Pool excludes products POSTED to that platform in the last 14 days and any already queued. |
+| Access | `MANAGER_ALLOWED_ROUTES`: `GET …/schedule`, `PATCH …/schedule/posts`, `PATCH …/schedule/plan-state`. Create/confirm/end + slide edits owner-only; salesperson and all support-session scopes denied (pinned in `staff-access.test.ts`). `staff-can.ts` mirrors it (`social.schedule`, `social.schedule.plan`). |
+| Admin | `SOCIAL_SCHEDULER` added to the plan-features grid + API allowlist; `SCHEDULED_POST` / `ACTIVE_SCHEDULE_PLAN` added to the shared `PLAN_LIMIT_RESOURCE_TYPES` (feeds Plan Limits). |
+| Tests | builder 14, migration guard 9 (RLS, DELETE grant only on items, cascades, seeds, enum-only 128), schedule routes 33, staff-access 11. Full API suite 1673 passed / 5 skipped (incl. `db-delete-guards`, `security.test.ts`, `admin.login.test.ts`); shared 98; web plan-limits 6; API/web typecheck + biome clean. Mobile `tsc` has 2 errors in the support-session screens — pre-existing on `main`, untouched. |
+| Not verified | Nothing run against a live DB (migrations unapplied); real-device and Meta publishing untested (Task 2). The default caption is a free template — Caption AI fill is on demand from the app (owner-approved deviation from D7). |
+| Open | Tasks 2–5. Owner: apply 128/129; Meta App Review (spec §9). |

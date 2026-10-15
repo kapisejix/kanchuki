@@ -1093,6 +1093,19 @@ decided_at + 24 h, never extended), `revoked_at`, `revoked_by` (`RETAILER|STAFF|
   All status changes go through `transitionGrant` (status-guarded `updateMany`). Global switch =
   `support_sessions_enabled` in the admin settings KV (audit-log store), default OFF, fails closed.
 
+## Social post scheduler — `post_schedule_plans`, `scheduled_posts`, `scheduled_post_items` (migrations 128/129, F-043, written 2026-10-15, NOT yet applied)
+
+| Table | Purpose | Notes |
+|---|---|---|
+| `post_schedule_plans` | One posting plan per social account: weekdays (IST), `post_time` `HH:mm`, per-weekday `batch_ranges`, source, horizon, `status` DRAFT/ACTIVE/PAUSED/ENDED, `pause_reason` | FKs → `retailers`, `social_accounts` (both CASCADE). Never hard-deleted. |
+| `scheduled_posts` | One post per day slot: `scheduled_at` (UTC), `caption`, `status` DRAFT/READY/PUBLISHING/POSTED/FAILED/MISSED/SKIPPED, `attempts`, `error`, `client_post_id`, `social_post_id` | UNIQUE `(retailer_id, client_post_id)`; index `(status, scheduled_at)` for the Task 2 tick. Never hard-deleted. |
+| `scheduled_post_items` | Slides: `product_id`, `position` 0–9, `image_level` ORIGINAL/TEMPLATE, `photo_id`, Task 4 `template_id`/`resolved_image_key` | UNIQUE `(scheduled_post_id, position)`. **Only table with `DELETE` granted to `kanchuki_app`** (slide Remove; RC-049, migration-125 "Option A" reasoning). |
+
+- **RLS:** all three enabled with a `backend_roles_full_access` policy for `kanchuki_app` + `kanchuki_purge` (policy first, then ENABLE — RC-030). Retailer scoping is in the API (every query carries `retailer_id`).
+- **Enums (128, separate file — 55P04):** `PlanFeatureKey.SOCIAL_SCHEDULER` (fails closed), `QuotaResourceType.SCHEDULED_POST`, `QuotaResourceType.ACTIVE_SCHEDULE_PLAN`. Tables use new enums `SchedulePlanStatus`, `ScheduledPostStatus`, `ScheduleImageLevel`.
+- **Seeds (129):** `plan_features` SOCIAL_SCHEDULER=true ×3 plans; `plan_limits` SCHEDULED_POST=-1/MONTH ×3, ACTIVE_SCHEDULE_PLAN=1/LIFETIME ×3.
+- **Purge (RC-050):** every FK into `retailers`/`products` is `ON DELETE CASCADE`, so `hardDeleteRetailer()`'s list needs no new entries. Pinned by `apps/api/src/lib/post-scheduler-migration.test.ts`.
+
 ## Migrations Strategy
 
 - All schema changes via Prisma migrations (`prisma migrate dev`)

@@ -93,6 +93,9 @@ export const PLAN_LIMIT_RESOURCE_TYPES = [
   'STUDIO_SHOOT',
   // F-040 — metered CatVTON generations (retailer-side monthly cap).
   'TRY_ON_GENERATION',
+  // F-043 — scheduler: posts published per month, and max active plans per platform.
+  'SCHEDULED_POST',
+  'ACTIVE_SCHEDULE_PLAN',
 ] as const;
 
 export type PlanLimitResource = (typeof PLAN_LIMIT_RESOURCE_TYPES)[number];

@@ -1,6 +1,7 @@
 # F-043 Social Post Scheduler (FB + IG daily carousel plans) — PENDING
 > Drafted 2026-10-15, revised same day after owner answers. **✅ APPROVED by owner 2026-10-15 — nothing built yet.**
-> F-043 assigned (F-042 was the last number used). Start at §10 step 1.
+> F-043 assigned (F-042 was the last number used).
+> **Task 1 (§10 step 1) built 2026-10-15** — branch `feat/f-043-schema-plan-builder`; migrations 128 (enums) + 129 (tables/RLS/seed) written, **owner must apply**. Next: §10 step 2.
 > Owner-side (not code): Meta App Review per §9; migrations are applied by the owner from the admin dashboard.
 > Extends F-031 Phase 2 (composer) and closes its "Phase 3 open: auto-post" + "Phase 4: scheduling" items.
 
@@ -217,7 +218,24 @@ Meta changes its rules, so re-verify each item against the live dashboard when s
 2. Publish tick on the Composer path, original photos only (shippable alone).
 3. Mobile UI: FB/IG tabs, plan form, calendar, per-post caption edit.
 4. Image templates (B) compositing.
-5. Token health, WhatsApp + in-app failure alerts, pause/resume, tests, RC regression pass.
+5. Token health, in-app failure alerts (derived state — no WhatsApp, per D8), pause/resume, tests, RC regression pass.
+
+## 10a. Task 1 as built (2026-10-15) — deviations from the text above
+
+- Routes live under `/v1/retailers/me/social/schedule` (`retailers-social-schedule.ts`): plans list/get/create/confirm/**end**,
+  slide `PATCH`/`DELETE` (`items/:id`), post `PATCH` (caption / skip / retry), `plan-state/:id` (pause/resume).
+- **Added `POST /plans/:id/end`** (not in the spec): without it a plan could never leave ACTIVE/PAUSED and a per-platform
+  limit of 1 would lock the retailer out of replacing it. Owner-only.
+- **Admin keys:** `SOCIAL_SCHEDULER` (`PlanFeatureKey`, fails closed, seeded ON for all plans), `SCHEDULED_POST`
+  (`QuotaResourceType`, MONTH, seeded -1 = unlimited, enforced at publish in Task 2), `ACTIVE_SCHEDULE_PLAN`
+  (`QuotaResourceType`, LIFETIME, seeded 1, **counted per platform** against live ACTIVE/PAUSED plans — no usage counter).
+- **Default caption is a free server template**, not Caption AI (D7 deviation, owner-approved 2026-10-15): the app calls
+  the existing caption-suggest endpoint per post on demand and `PATCH`es the caption.
+- **Slide "Style this" (template) is not in Task 1** — slides are `ORIGINAL` only; template catalog is Task 4.
+- Preview = a persisted `DRAFT` plan; creating a new plan ends the previous draft for that account; confirm skips slots
+  already in the past. Plan/post rows are never hard-deleted; only `scheduled_post_items` has DELETE granted (migration 129).
+- Manager rules (`MANAGER_ALLOWED_ROUTES`): `GET …/schedule`, `PATCH …/schedule/posts`, `PATCH …/schedule/plan-state`.
+  Create/confirm/end and slide edits are owner-only by default-deny. Salesperson and every support-session scope: nothing.
 
 ## 11. Docs to update on build
 CLAUDE.md index row, `docs/BUILD-LOG.md`, `docs/PLAN.md`, `docs/PRO-REQUIREMENTS.md`, `docs/DATABASE.md`.

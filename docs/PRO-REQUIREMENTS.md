@@ -4322,7 +4322,7 @@ What actually shipped diverged early and stayed diverged: development committed 
 
 
 
-## 40. F-043 Social Post Scheduler — daily FB/IG carousel plans — 🟨 APPROVED 2026-10-15, NOT BUILT
+## 40. F-043 Social Post Scheduler — daily FB/IG carousel plans — 🟨 APPROVED 2026-10-15, TASK 1 BUILT (2–5 pending)
 
 > Full spec: `docs/tasks/pending/post-scheduler.md` (decisions D1–D9, build order §10). Extends F-031 Phase 2 composer;
 > closes its "auto-post" and "scheduling" open items.
@@ -4343,4 +4343,8 @@ automatically through the existing Composer fan-out path. Caption is AI-filled a
 
 **Owner-side:** Meta App Review checklist (spec §9); migrations applied by the owner from the admin dashboard.
 
-**Status:** spec approved; no schema, route, job or UI built yet.
+**Status:** spec approved. **Task 1 built 2026-10-15** — schema (`post_schedule_plans`, `scheduled_posts`,
+`scheduled_post_items`), plan builder, calendar API, admin keys (`SOCIAL_SCHEDULER`, `SCHEDULED_POST`,
+`ACTIVE_SCHEDULE_PLAN`), manager routes. Migrations **128 + 129 are written but NOT applied** (owner applies from the
+admin dashboard). Not built: publish tick (Task 2), mobile UI + status card (Task 3), image templates (Task 4),
+hardening + launch checklist (Task 5). Built-vs-spec deviations: `docs/tasks/pending/post-scheduler.md` §10a.

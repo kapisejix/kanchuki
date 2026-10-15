@@ -170,6 +170,9 @@ enum PlanFeatureKey {
   // row means OFF — so the feature is invisible on mobile and customer web
   // until an admin enables it in Admin → Plan Feature Matrix.
   VIRTUAL_TRY_ON_V2
+  // F-043 — social post scheduler. Fails CLOSED (no row = OFF); seeded ON for
+  // all plans in migration 129.
+  SOCIAL_SCHEDULER
 }
 
 // ─── QUOTA & LIMITS (F-010) ──────────────────────────────────────
@@ -187,6 +190,11 @@ enum QuotaResourceType {
   // F-040 — metered CatVTON generations. Distinct from the @deprecated
   // TRY_ON above (same teardown); that value stays dead.
   TRY_ON_GENERATION
+  // F-043 — scheduled posts published per month (counted at publish time).
+  SCHEDULED_POST
+  // F-043 — max ACTIVE/PAUSED plans per platform. Compared to a live row count;
+  // no usage_counters row is ever written for it.
+  ACTIVE_SCHEDULE_PLAN
 }
 
 enum QuotaPeriod {
@@ -367,6 +375,9 @@ model Retailer {
   support_session_grants SupportSessionGrant[]
   social_accounts       SocialAccount[]
   social_posts          SocialPost[]
+  schedule_plans        PostSchedulePlan[]
+  scheduled_posts       ScheduledPost[]
+  scheduled_post_items  ScheduledPostItem[]
   store_visits          CustomerStoreVisit[]
   social_templates      SocialTemplate[]
   channel_syncs         ChannelSync[]
@@ -588,6 +599,7 @@ model Product {
   background_image BackgroundImage?      @relation(fields: [background_image_id], references: [id], onDelete: SetNull)
   product_category ProductCategory?      @relation(fields: [category_id], references: [id], onDelete: SetNull)
   photos           ProductPhoto[]
+  scheduled_items  ScheduledPostItem[]
   videos           ProductVideo[]
   reviews          ProductReview[]
   variants         ProductVariant[]
@@ -1939,6 +1951,7 @@ model SocialAccount {
 
   retailer Retailer   @relation(fields: [retailer_id], references: [id])
   posts    SocialPost[]
+  schedule_plans PostSchedulePlan[]
 
   @@unique([retailer_id, platform, platform_account_id])
   @@index([retailer_id])
@@ -1993,6 +2006,107 @@ model SocialPost {
   @@index([retailer_id, created_at])
   @@index([social_account_id])
   @@map("social_posts")
+}
+
+// ─── F-043 SOCIAL POST SCHEDULER (migrations 128/129) ─────────────
+// Scheduling lives here; Meta is only the publish endpoint. Plans/posts are never
+// hard-deleted (ENDED / SKIPPED). Items ARE deleted (slide "Remove") — DELETE is
+// granted to kanchuki_app on scheduled_post_items only (RC-049).
+enum SchedulePlanStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  ENDED
+}
+
+enum ScheduledPostStatus {
+  DRAFT
+  READY
+  PUBLISHING
+  POSTED
+  FAILED
+  MISSED
+  SKIPPED
+}
+
+enum ScheduleImageLevel {
+  ORIGINAL
+  TEMPLATE
+}
+
+model PostSchedulePlan {
+  id                 String             @id @default(cuid())
+  retailer_id        String
+  social_account_id  String
+  platform           SocialPlatform
+  post_type          SocialPostType     @default(CAROUSEL)
+  weekdays           Int[]
+  post_time          String // 'HH:mm' IST
+  batch_ranges       Json // { "1": {min,max}, ... }
+  source             String             @default("NEWEST")
+  source_category    String?
+  source_product_ids String[]           @default([])
+  cover_style        String?
+  rotation_pool      Json               @default("[]")
+  horizon_days       Int
+  starts_on          String // 'YYYY-MM-DD' IST
+  status             SchedulePlanStatus @default(DRAFT)
+  pause_reason       String?
+  created_at         DateTime           @default(now())
+  updated_at         DateTime           @updatedAt
+
+  retailer Retailer        @relation(fields: [retailer_id], references: [id], onDelete: Cascade)
+  account  SocialAccount   @relation(fields: [social_account_id], references: [id], onDelete: Cascade)
+  posts    ScheduledPost[]
+
+  @@index([retailer_id, status])
+  @@map("post_schedule_plans")
+}
+
+model ScheduledPost {
+  id              String              @id @default(cuid())
+  plan_id         String
+  retailer_id     String
+  scheduled_at    DateTime // UTC
+  caption         String
+  status          ScheduledPostStatus @default(DRAFT)
+  attempts        Int                 @default(0)
+  last_attempt_at DateTime?
+  error           String?
+  client_post_id  String
+  social_post_id  String?
+  created_at      DateTime            @default(now())
+  updated_at      DateTime            @updatedAt
+
+  plan     PostSchedulePlan    @relation(fields: [plan_id], references: [id], onDelete: Cascade)
+  retailer Retailer            @relation(fields: [retailer_id], references: [id], onDelete: Cascade)
+  items    ScheduledPostItem[]
+
+  @@unique([retailer_id, client_post_id])
+  @@index([status, scheduled_at])
+  @@index([plan_id])
+  @@map("scheduled_posts")
+}
+
+model ScheduledPostItem {
+  id                 String             @id @default(cuid())
+  scheduled_post_id  String
+  retailer_id        String
+  product_id         String
+  position           Int
+  image_level        ScheduleImageLevel @default(ORIGINAL)
+  photo_id           String?
+  template_id        String?
+  resolved_image_key String?
+  created_at         DateTime           @default(now())
+
+  scheduled_post ScheduledPost @relation(fields: [scheduled_post_id], references: [id], onDelete: Cascade)
+  retailer       Retailer      @relation(fields: [retailer_id], references: [id], onDelete: Cascade)
+  product        Product       @relation(fields: [product_id], references: [id], onDelete: Cascade)
+
+  @@unique([scheduled_post_id, position])
+  @@index([product_id])
+  @@map("scheduled_post_items")
 }
 
 // ─── INDIA RETAILER GROWTH ENGINE (docs/marketing/india-retailer-growth.md) ─
