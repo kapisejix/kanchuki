@@ -24,6 +24,11 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { CatalogDelegateBanner } from "../src/components/CatalogDelegateBanner";
 import { ErrorBoundary } from "../src/components/ErrorBoundary";
 import { NetworkBanner } from "../src/components/NetworkBanner";
+import { SupportSessionPrompt } from "../src/components/SupportSessionPrompt";
+import {
+  getCatalogDelegateInfo,
+  onDelegateChange,
+} from "../src/lib/catalog-delegate";
 import { useSyncQueue } from "../src/hooks/useSyncQueue";
 import { AuthProvider, useAuth } from "../src/lib/auth-context";
 import {
@@ -120,6 +125,17 @@ function AppShell() {
   } = useTheme();
   const { status, isTeamMember } = useAuth();
 
+  // A Kanchuki staffer inside a retailer-approved support session must reach
+  // the retailer screens (tabs/growth/settings), which are otherwise
+  // !isTeamMember-only. The server still enforces the scope allowlist.
+  const [inSupportSession, setInSupportSession] = useState(false);
+  useEffect(() => {
+    const sync = () =>
+      void getCatalogDelegateInfo().then((i) => setInSupportSession(!!i?.support));
+    sync();
+    return onDelegateChange(sync);
+  }, []);
+
   // Never mount the Stack before the session is hydrated: with every
   // Stack.Protected guard still false the navigator has zero routeNames and
   // crashes on getInitialState. The native splash stays up until then (see
@@ -144,6 +160,7 @@ function AppShell() {
       <StatusBar barStyle="dark-content" />
       <NetworkBanner />
       <CatalogDelegateBanner />
+      {isAuthed && !isTeamMember && <SupportSessionPrompt />}
       <Stack
         screenOptions={{
           headerShown: false,
@@ -167,7 +184,7 @@ function AppShell() {
             screens can never sit in the back stack beneath these — hardware
             back pops to nothing (the dashboard's double-tap-to-exit handler)
             instead of to Login. */}
-        <Stack.Protected guard={isAuthed && !isTeamMember}>
+        <Stack.Protected guard={isAuthed && (!isTeamMember || inSupportSession)}>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="onboarding" options={{ headerShown: false }} />
           <Stack.Screen name="plan-select" options={{ headerShown: false }} />
@@ -209,6 +226,7 @@ function AppShell() {
           <Stack.Screen name="settings/deleted-products" />
           <Stack.Screen name="settings/social" />
           <Stack.Screen name="settings/staff" />
+          <Stack.Screen name="settings/support-sessions" />
           <Stack.Screen name="settings/whatsapp-catalog" />
           <Stack.Screen name="showcase-designs/index" />
           <Stack.Screen
