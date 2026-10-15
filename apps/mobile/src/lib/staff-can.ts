@@ -20,6 +20,8 @@ export type StaffFeature =
   | 'growth'
   | 'analytics'
   | 'social'
+  | 'social.schedule' // view calendar/status, caption edit, skip/retry, pause/resume
+  | 'social.schedule.plan' // create/confirm/end a plan, slide edits (owner only)
 
 // 'manager' = manager (and any non-salesperson staff role) may; 'owner' =
 // only the retailer owner. catalog.view / customers.add are allowed for
@@ -36,6 +38,8 @@ const ROLE_FEATURES: Record<
   growth: 'manager',
   analytics: 'manager',
   social: 'manager',
+  'social.schedule': 'manager',
+  'social.schedule.plan': 'owner',
 }
 
 export function staffCan(role: string | null | undefined, feature: StaffFeature): boolean {

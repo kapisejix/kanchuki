@@ -20,7 +20,7 @@ function periodStart(period: QuotaPeriod, now = new Date()): Date {
   return new Date(0); // LIFETIME — one counter row forever
 }
 
-async function effectiveLimit(
+export async function effectiveLimit(
   retailerId: string,
   resourceType: QuotaResourceType,
 ): Promise<{ limit: number; period: QuotaPeriod } | null> {

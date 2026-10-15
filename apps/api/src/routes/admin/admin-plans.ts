@@ -341,6 +341,8 @@ export const adminPlansRoutes: FastifyPluginAsync = async (server) => {
           // derived from the Prisma enum on purpose: the enum also carries
           // @deprecated values that must stay non-toggleable.
           'VIRTUAL_TRY_ON_V2',
+          // F-043 social post scheduler (fails closed; seeded ON in migration 129).
+          'SOCIAL_SCHEDULER',
           'WHATSAPP_BUSINESS_API',
           'CHECKOUT_CART',
           'DATA_EXPORT_CSV',
