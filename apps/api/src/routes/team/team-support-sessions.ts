@@ -5,8 +5,9 @@
 import { prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
+import { supportSessionsEnabled } from '../../lib/support-sessions-flag.js';
 import { forbidden, notFound, validationError } from '../../plugins/error-handler.js';
-import { signSupportToken, supportSessionsEnabled } from '../../plugins/team-auth.js';
+import { signSupportToken } from '../../plugins/team-auth.js';
 import { MANAGER_ROLES, requireRole, teamAuthPreHandler } from './team-helpers.js';
 
 export const SUPPORT_PENDING_TTL_MS = 15 * 60 * 1000; // retailer must answer within 15 min
@@ -86,14 +87,14 @@ export const teamSupportSessionsRoutes: FastifyPluginAsync = async (server) => {
     note: z.string().max(2000).optional(),
   });
 
-  function requireEnabled() {
-    if (!supportSessionsEnabled()) throw forbidden('Support sessions are not enabled');
+  async function requireEnabled() {
+    if (!(await supportSessionsEnabled())) throw forbidden('Support sessions are not enabled');
   }
 
   // ── POST /team/support-sessions ─────────────────────────────────
   // Managers only. Creates the ticket (assigned to the caller) + a PENDING grant.
   server.post('/support-sessions', async (request) => {
-    requireEnabled();
+    await requireEnabled();
     requireRole(request, MANAGER_ROLES);
     const tm = request.teamMember;
     if (!tm) throw forbidden('Not authenticated');
@@ -204,7 +205,7 @@ export const teamSupportSessionsRoutes: FastifyPluginAsync = async (server) => {
   // ── POST /team/support-sessions/:id/token ───────────────────────
   // Only the requesting staff member, only once APPROVED and unexpired.
   server.post<{ Params: { id: string } }>('/support-sessions/:id/token', async (request) => {
-    requireEnabled();
+    await requireEnabled();
     const tm = request.teamMember;
     if (!tm) throw forbidden('Not authenticated');
 

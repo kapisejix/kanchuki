@@ -2,9 +2,9 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 import { prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
 import fp from 'fastify-plugin';
+import { supportSessionsEnabled } from '../lib/support-sessions-flag.js';
 import {
   type SupportScope,
-  supportSessionsEnabled,
   verifyCatalogUploadToken,
   verifySupportToken,
 } from './team-auth.js';
@@ -539,7 +539,7 @@ export const authPlugin: FastifyPluginAsync = fp(async (server) => {
         reply.status(401).send({
           error: { code: 'UNAUTHORIZED', message: 'This support session has ended', status: 401 },
         });
-      if (!supportSessionsEnabled()) return ended();
+      if (!(await supportSessionsEnabled())) return ended();
 
       const grant = await prisma.supportSessionGrant.findUnique({
         where: { id: supportClaims.grant_id },

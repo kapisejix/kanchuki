@@ -233,6 +233,12 @@ const NAV_ITEMS: NavItem[] = [
         icon: DatabaseBackup,
         superAdminOnly: true,
       },
+      {
+        label: 'Support Sessions',
+        href: '/admin/support-sessions',
+        icon: KeyRound,
+        superAdminOnly: true,
+      },
     ],
   },
 ];

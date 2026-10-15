@@ -1,6 +1,6 @@
 # Support Session Access — Kanchuki sales/tech acting inside a retailer account
 
-**Status: 🔴 Planned, not approved.** Auth-boundary change — needs human review (SECURITY.md §12–18) before any code.
+**Status (2026-10-15): 🟨 Built, not live.** Slices 1–6 written on branch `feat/support-session-grants-schema` (commits 78440a1c, f9e63d4b, 02da6429, + slice 6). Not live until: owner reviews + applies migration 127, merges, and a Super Admin turns the switch on at Admin → Support Sessions (default OFF, server-enforced). Not yet device-tested end to end. Auth-boundary change — needs human review (SECURITY.md §12–18).
 **Builds on:** F-019/F-020 catalog delegate token (`docs/tasks/done/staff-assisted-catalog-upload.md`).
 
 ## Problem

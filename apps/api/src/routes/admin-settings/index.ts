@@ -1,6 +1,7 @@
 // Barrel — re-exports the auto-split admin-settings domain modules.
 export { adminRateLimitsRoutes, getCachedRateLimits, DEFAULT_RATE_LIMITS } from './rate-limits.js';
 export { adminCatalogPromoRoutes, getCatalogUploadPromo } from './catalog-promo.js';
+export { adminSupportSessionsRoutes } from './support-sessions.js';
 export type { CatalogUploadPromo } from './catalog-promo.js';
 export { adminThemeRoutes, getTheme } from './theme.js';
 export { adminShowcaseWatermarkRoutes } from './showcase-watermark.js';

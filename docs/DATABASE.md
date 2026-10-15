@@ -1088,7 +1088,10 @@ decided_at + 24 h, never extended), `revoked_at`, `revoked_by` (`RETAILER|STAFF|
   (no caller, so RC-049 does not apply); `kanchuki_purge` has DELETE for the retailer hard-delete path.
   FKs: ticket/retailer `ON DELETE CASCADE`, team_member `RESTRICT`.
 - RLS on, one `backend_roles_full_access` policy for `kanchuki_app`/`kanchuki_purge` (same shape as 126).
-- Writer map: none yet — API routes land in slices 2–4. Feature flag `SUPPORT_SESSIONS` arrives in slice 6.
+- Writer map: `routes/team/team-support-sessions.ts` (`transitionGrant`, create), `routes/support-sessions.ts`
+  (retailer approve/deny/revoke via `transitionGrant`), `routes/admin-settings/support-sessions.ts` (admin kill).
+  All status changes go through `transitionGrant` (status-guarded `updateMany`). Global switch =
+  `support_sessions_enabled` in the admin settings KV (audit-log store), default OFF, fails closed.
 
 ## Migrations Strategy
 

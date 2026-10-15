@@ -78,6 +78,7 @@ export const SUPER_ADMIN_ONLY_ADMIN_SEGMENTS = [
   'ai-providers',
   'integrations',
   'settings',
+  'support-sessions', // global switch + kill for Kanchuki-staff sessions inside retailer accounts
   'team-members', // staff/sales-team accounts — invite + edit members via /v1/team/*
   // ── Infrastructure and destructive operations ──
   'backup',

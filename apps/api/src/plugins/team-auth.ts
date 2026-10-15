@@ -120,11 +120,6 @@ export interface SupportTokenClaims {
   scope: SupportScope;
 }
 
-// ponytail: env kill switch until slice 6 adds the admin-managed SUPPORT_SESSIONS flag.
-export function supportSessionsEnabled(): boolean {
-  return process.env.SUPPORT_SESSIONS_ENABLED === 'true';
-}
-
 export async function signSupportToken(
   claims: SupportTokenClaims,
   expiresAt: Date,
