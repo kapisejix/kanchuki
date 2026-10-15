@@ -3,11 +3,7 @@ import { prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
 import fp from 'fastify-plugin';
 import { supportSessionsEnabled } from '../lib/support-sessions-flag.js';
-import {
-  type SupportScope,
-  verifyCatalogUploadToken,
-  verifySupportToken,
-} from './team-auth.js';
+import { type SupportScope, verifyCatalogUploadToken, verifySupportToken } from './team-auth.js';
 
 // ─── Types ────────────────────────────────────────────────────────
 
