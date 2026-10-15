@@ -4349,6 +4349,8 @@ automatically through the existing Composer fan-out path. Caption is AI-filled a
 **Task 2 built 2026-10-16** — publish tick (`jobs/scheduled-post-publish.ts`, cron every 5 min): CAS claim
 READY→PUBLISHING, original photos through the Composer's Meta primitives (idempotent on `client_post_id`), 3× retry with
 backoff, 2 h grace then MISSED, feature/quota/plan-status re-checked at publish time, `SCHEDULED_POST` counted on success
-only, curated failure reasons from `MetaApiError` codes, daily token-health pause. Not built: mobile UI + status card
-(Task 3), image templates (Task 4), hardening + launch checklist (Task 5). Built-vs-spec deviations:
-`docs/tasks/pending/post-scheduler.md` §10a, §10b.
+only, curated failure reasons from `MetaApiError` codes, daily token-health pause. **Task 3 built 2026-10-16** — mobile scheduler UI
+(`apps/mobile/app/social/schedule/*`: status card, plan form, calendar review + confirm, caption edit / skip / swap /
+remove, pause / resume / end) and the derived `GET /v1/retailers/me/social/schedule/status`; banner on the home tab +
+Growth hub. Not built: image templates (Task 4), hardening + launch checklist (Task 5). Built-vs-spec deviations:
+`docs/tasks/pending/post-scheduler.md` §10a, §10b, §10c.

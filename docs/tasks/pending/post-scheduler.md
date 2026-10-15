@@ -270,5 +270,24 @@ Meta changes its rules, so re-verify each item against the live dashboard when s
   `repeat.limit: 1`; the new jobs deliberately omit `limit` (BullMQ stops repeating after it — a 5-min tick would die).
   Not run against live Meta.
 
+## 10c. Task 3 as built (2026-10-16) — mobile UI + status endpoint
+
+- **API:** `GET /v1/retailers/me/social/schedule/status` (derived, nothing stored; owner + manager via the existing `…/schedule`
+  GET allowlist). Returns per-account token state (`OK` / `EXPIRING` ≤7 d / `EXPIRED`) + plan + next post, `SCHEDULED_POST`
+  allowance (own math — seeded `-1` reads as unlimited, not `getQuotaStatus`'s tier default), active-plans `n/max`, Studio
+  shoots (`getQuotaStatus(STUDIO_SHOOT)`; `included=false` when limit 0), last 5 FAILED/MISSED with the stored reason, and
+  `needs_attention`. The calendar GET now includes each slide's product name + photo urls. `quota.ts` exports `periodStart`.
+- **Mobile:** `app/social/schedule/index.tsx` (status card per platform, allowance, failures with Retry/Skip/Edit, pause/resume,
+  owner-only Reconnect, manager sees "Ask the shop owner to reconnect"), `new.tsx` (plan form: account, carousel/single,
+  weekdays, per-day min–max, IST time, newest/category, 1W/2W/1M — no cover/template controls until Task 4), `[id].tsx`
+  (calendar by IST day, thumbnails, caption edit, AI caption via caption-suggest, skip, remove slide, other photo, swap
+  product via `ProductGridPicker`, confirm summary, end plan). `SchedulerBanner` on home + Growth hub (hidden when nothing is
+  wrong or the role can't see it). Growth hub tile "Post Scheduler". Role gating via existing `social.schedule` /
+  `social.schedule.plan` keys.
+- **Not in the form:** MANUAL product source, cover style, template pool (Task 4), per-slide "style this".
+- **Not verified:** no device/emulator run — typecheck, lint and unit tests only. The new `router.push` literals show
+  TS2345 locally because the gitignored `.expo/types/router.d.ts` is stale (two pre-existing instances too); regenerates on
+  `expo start`.
+
 ## 11. Docs to update on build
 CLAUDE.md index row, `docs/BUILD-LOG.md`, `docs/PLAN.md`, `docs/PRO-REQUIREMENTS.md`, `docs/DATABASE.md`.

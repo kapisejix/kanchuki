@@ -29,7 +29,7 @@ import {
   istDateString,
 } from '../../../lib/post-schedule-builder.js';
 import { resolvePostTemplate } from '../../../lib/post-template-placeholders.js';
-import { effectiveLimit } from '../../../lib/quota.js';
+import { effectiveLimit, getQuotaStatus, periodStart } from '../../../lib/quota.js';
 import { isRealOwner } from '../../../plugins/auth.js';
 import {
   AppError,
@@ -93,6 +93,20 @@ const patchItemSchema = z.union([
 
 const planStateSchema = z.object({ status: z.enum(['PAUSED', 'ACTIVE']) });
 
+// Calendar slides carry the product name + photo urls so the app can draw
+// thumbnails without a second round-trip per slide.
+const ITEMS_WITH_PRODUCT = {
+  orderBy: { position: 'asc' as const },
+  include: {
+    product: {
+      select: {
+        name: true,
+        photos: { select: { id: true, url: true, is_primary: true } },
+      },
+    },
+  },
+};
+
 const conflict = (msg: string) => new AppError('CONFLICT', msg, 409);
 
 function defaultCaption(
@@ -145,6 +159,142 @@ export const retailersSocialScheduleRoutes: FastifyPluginAsync = async (server) 
     return { data: plans };
   });
 
+  // ── status card (§4a) — derived on every load, nothing stored ──
+  // Owner + manager read the same payload; the app hides Reconnect for managers.
+  server.get('/me/social/schedule/status', async (request) => {
+    const retailerId = request.retailerId;
+    const now = new Date();
+    const [accounts, plans, nextPost, failures, eff, studio, planCap] = await Promise.all([
+      prisma.socialAccount.findMany({
+        where: { retailer_id: retailerId, is_active: true },
+        select: {
+          id: true,
+          platform: true,
+          platform_account_name: true,
+          token_expires_at: true,
+        },
+      }),
+      prisma.postSchedulePlan.findMany({
+        where: { retailer_id: retailerId, status: { in: ['ACTIVE', 'PAUSED'] } },
+        orderBy: { created_at: 'desc' },
+        select: {
+          id: true,
+          social_account_id: true,
+          status: true,
+          pause_reason: true,
+          post_time: true,
+        },
+      }),
+      prisma.scheduledPost.findMany({
+        where: { retailer_id: retailerId, status: 'READY', plan: { status: 'ACTIVE' } },
+        orderBy: { scheduled_at: 'asc' },
+        take: 20,
+        select: {
+          id: true,
+          plan_id: true,
+          scheduled_at: true,
+          _count: { select: { items: true } },
+        },
+      }),
+      prisma.scheduledPost.findMany({
+        where: {
+          retailer_id: retailerId,
+          status: { in: ['FAILED', 'MISSED'] },
+          plan: { status: { in: ['ACTIVE', 'PAUSED'] } },
+        },
+        orderBy: { scheduled_at: 'desc' },
+        take: 5,
+        select: {
+          id: true,
+          plan_id: true,
+          status: true,
+          scheduled_at: true,
+          error: true,
+          plan: { select: { platform: true } },
+        },
+      }),
+      effectiveLimit(retailerId, 'SCHEDULED_POST'),
+      getQuotaStatus(retailerId, 'STUDIO_SHOOT'),
+      effectiveLimit(retailerId, 'ACTIVE_SCHEDULE_PLAN'),
+    ]);
+
+    // Own the allowance math: getQuotaStatus turns a -1 (unlimited) row into a
+    // tier default, which is right for Studio but wrong for this seeded -1.
+    const unlimited = !eff || eff.limit === -1;
+    const counter = await prisma.usageCounter.findUnique({
+      where: {
+        retailer_id_resource_type_period_start: {
+          retailer_id: retailerId,
+          resource_type: 'SCHEDULED_POST',
+          period_start: periodStart(eff?.period ?? 'MONTH'),
+        },
+      },
+    });
+
+    const tokenOf = (exp: Date | null) => {
+      if (!exp) return { state: 'OK' as const, days_left: null };
+      const days = Math.ceil((exp.getTime() - now.getTime()) / DAY_MS);
+      if (days <= 0) return { state: 'EXPIRED' as const, days_left: 0 };
+      return { state: days <= 7 ? ('EXPIRING' as const) : ('OK' as const), days_left: days };
+    };
+
+    const platforms = accounts.map((a) => {
+      const plan = plans.find((p) => p.social_account_id === a.id) ?? null;
+      const next = plan ? nextPost.find((p) => p.plan_id === plan.id) : undefined;
+      return {
+        account_id: a.id,
+        platform: a.platform,
+        account_name: a.platform_account_name,
+        token: tokenOf(a.token_expires_at),
+        plan: plan
+          ? {
+              id: plan.id,
+              status: plan.status,
+              pause_reason: plan.pause_reason,
+              post_time: plan.post_time,
+            }
+          : null,
+        next_post: next
+          ? { id: next.id, scheduled_at: next.scheduled_at, slides: next._count.items }
+          : null,
+      };
+    });
+
+    return {
+      data: {
+        platforms,
+        allowance: {
+          used: counter?.count ?? 0,
+          limit: unlimited ? null : eff.limit,
+          period: eff?.period ?? 'MONTH',
+        },
+        active_plans: {
+          count: plans.length,
+          max: planCap && planCap.limit !== -1 ? planCap.limit : null,
+        },
+        studio_shoots: {
+          included: studio.unlimited || studio.limit > 0,
+          unlimited: studio.unlimited,
+          used: studio.used,
+          limit: studio.limit,
+          remaining: studio.remaining,
+        },
+        failures: failures.map((f) => ({
+          id: f.id,
+          plan_id: f.plan_id,
+          platform: f.plan.platform,
+          status: f.status,
+          scheduled_at: f.scheduled_at,
+          reason: f.error,
+        })),
+        needs_attention:
+          plans.some((p) => p.status === 'PAUSED') ||
+          failures.length > 0 ||
+          platforms.some((p) => p.plan && p.token.state !== 'OK'),
+      },
+    };
+  });
+
   // ── calendar ───────────────────────────────────────────────────
   server.get('/me/social/schedule/plans/:id', async (request) => {
     const { id } = request.params as { id: string };
@@ -153,7 +303,7 @@ export const retailersSocialScheduleRoutes: FastifyPluginAsync = async (server) 
       include: {
         posts: {
           orderBy: { scheduled_at: 'asc' },
-          include: { items: { orderBy: { position: 'asc' } } },
+          include: { items: ITEMS_WITH_PRODUCT },
         },
       },
     });
@@ -333,7 +483,7 @@ export const retailersSocialScheduleRoutes: FastifyPluginAsync = async (server) 
       include: {
         posts: {
           orderBy: { scheduled_at: 'asc' },
-          include: { items: { orderBy: { position: 'asc' } } },
+          include: { items: ITEMS_WITH_PRODUCT },
         },
       },
     });

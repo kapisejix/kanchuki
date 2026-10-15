@@ -400,3 +400,15 @@ no migration, no schema change, and **no new request on any surface**.
 | Tests | `scheduled-post-publish.test.ts` 23: double-claim race, retry+backoff, give-up, grace/MISSED, limit hit, feature off, cancelled plan, token dead, inactive account, partial platform failure, live-post row-write failure, live-post adoption, paused plan, classifier table, token health. API `tsc` clean; `security.test.ts`, `db-delete-guards`, `meta-graph`, schedule + fan-out suites green. |
 | Not verified | Never run against live Meta or a live DB; the Meta code→reason map is from docs, not observed errors. |
 | Open | Tasks 3–5 (mobile UI + status card, image templates, hardening). Review `fb_code` log lines after the first live week. Existing daily jobs use `repeat.limit: 1` — possibly once-per-boot; not touched here. |
+
+## 2026-10-16 — F-043 Social Post Scheduler, Task 3 (mobile UI + status endpoint)
+
+| Area | Detail |
+|---|---|
+| Spec | `docs/tasks/pending/post-scheduler.md` §10c. Task 3 of 5; branch `feat/f-043-scheduler-ui` (off `main`, independent of Task 2 / PR #80). |
+| API | `GET …/schedule/status` (derived card: token state, allowance, active plans, Studio shoots, next post, last 5 failures, `needs_attention`); calendar GET includes product name + photo urls; `quota.periodStart` exported. |
+| Mobile | `app/social/schedule/{index,new,[id]}.tsx`, `src/lib/api/schedule.ts`, `src/components/social/SchedulerBanner.tsx`; Growth hub tile; banner on home + Growth; routes registered in `_layout.tsx`. |
+| Access | Owner: everything. Manager: view, caption/skip/retry, pause/resume — Reconnect and plan create/confirm/end/slide edits hidden. Salesperson: nothing. Mirrors `MANAGER_ALLOWED_ROUTES`. |
+| Tests | `retailers-social-schedule.test.ts` +4 (status: token/allowance/next post, paused + failures, studio not included, manager read) → 37; mobile `schedule.test.ts` 7 (IST grouping/format, token labels, editable statuses, role gating). API `tsc` clean; fan-out, security, db-delete-guards, plugins green. Mobile biome clean. |
+| Not verified | No device/emulator run; local `tsc` shows TS2345 on new `router.push` literals from stale gitignored router types (same class as 2 pre-existing errors). |
+| Open | Task 4 (image templates), Task 5 (hardening, launch checklist). Mobile UI needs a real-device pass before owner relies on it. |

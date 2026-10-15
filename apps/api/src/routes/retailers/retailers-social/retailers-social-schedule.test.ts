@@ -8,6 +8,10 @@ const m = vi.hoisted(() => {
   return {
     hasFeature: fn(),
     effectiveLimit: fn(),
+    getQuotaStatus: fn(),
+    accountFindMany: fn(),
+    postFindMany: fn(),
+    usageFindUnique: fn(),
     accountFindFirst: fn(),
     planFindFirst: fn(),
     planFindFirstOrThrow: fn(),
@@ -33,11 +37,16 @@ const m = vi.hoisted(() => {
 });
 
 vi.mock('../../../lib/features.js', () => ({ hasFeature: m.hasFeature }));
-vi.mock('../../../lib/quota.js', () => ({ effectiveLimit: m.effectiveLimit }));
+vi.mock('../../../lib/quota.js', () => ({
+  effectiveLimit: m.effectiveLimit,
+  getQuotaStatus: m.getQuotaStatus,
+  periodStart: () => new Date('2026-10-01T00:00:00Z'),
+}));
 
 vi.mock('@kanchuki/db', () => {
   const prisma: Record<string, unknown> = {
-    socialAccount: { findFirst: m.accountFindFirst },
+    socialAccount: { findFirst: m.accountFindFirst, findMany: m.accountFindMany },
+    usageCounter: { findUnique: m.usageFindUnique },
     postSchedulePlan: {
       findFirst: m.planFindFirst,
       findFirstOrThrow: m.planFindFirstOrThrow,
@@ -47,6 +56,7 @@ vi.mock('@kanchuki/db', () => {
       count: m.planCount,
     },
     scheduledPost: {
+      findMany: m.postFindMany,
       findFirst: m.postFindFirst,
       findFirstOrThrow: m.postFindFirstOrThrow,
       create: m.postCreate,
@@ -540,5 +550,115 @@ describe('POST /plans/:id/end', () => {
     const w = m.postUpdateMany.mock.calls[0]?.[0].where;
     expect(w.status.in).toEqual(['DRAFT', 'READY', 'FAILED', 'MISSED']);
     expect(w.status.in).not.toContain('PUBLISHING');
+  });
+});
+
+// ── status card (§4a) ────────────────────────────────────────────
+describe('GET /status', () => {
+  const DAY = 86_400_000;
+  const get = async (role: 'manager' | 'salesperson' | null = null) =>
+    (await buildApp(role)).inject({
+      method: 'GET',
+      url: '/v1/retailers/me/social/schedule/status',
+    });
+
+  beforeEach(() => {
+    m.accountFindMany.mockResolvedValue([
+      {
+        id: 'fb_1',
+        platform: 'FACEBOOK',
+        platform_account_name: 'Anita Boutique',
+        token_expires_at: new Date(Date.now() + 3 * DAY),
+      },
+    ]);
+    m.planFindMany.mockResolvedValue([
+      {
+        id: 'pl_1',
+        social_account_id: 'fb_1',
+        status: 'ACTIVE',
+        pause_reason: null,
+        post_time: '19:30',
+      },
+    ]);
+    m.postFindMany.mockResolvedValueOnce([
+      {
+        id: 'sp_1',
+        plan_id: 'pl_1',
+        scheduled_at: new Date(Date.now() + DAY),
+        _count: { items: 4 },
+      },
+    ]);
+    m.postFindMany.mockResolvedValueOnce([]);
+    m.effectiveLimit.mockResolvedValue({ limit: -1, period: 'MONTH' });
+    m.usageFindUnique.mockResolvedValue({ count: 7 });
+    m.getQuotaStatus.mockResolvedValue({
+      used: 2,
+      limit: 30,
+      remaining: 28,
+      period: 'MONTH',
+      unlimited: false,
+    });
+  });
+
+  it('derives token state, unlimited allowance, next post and studio quota', async () => {
+    const res = await get();
+    expect(res.statusCode).toBe(200);
+    const d = res.json().data;
+    expect(d.platforms[0]).toMatchObject({
+      platform: 'FACEBOOK',
+      token: { state: 'EXPIRING', days_left: 3 },
+      plan: { id: 'pl_1', status: 'ACTIVE' },
+      next_post: { id: 'sp_1', slides: 4 },
+    });
+    // seeded -1 must read as unlimited, not as a tier default
+    expect(d.allowance).toEqual({ used: 7, limit: null, period: 'MONTH' });
+    expect(d.studio_shoots).toMatchObject({ included: true, remaining: 28 });
+    expect(d.needs_attention).toBe(true); // token expiring
+  });
+
+  it('flags a paused plan and surfaces stored failure reasons', async () => {
+    m.accountFindMany.mockResolvedValue([
+      { id: 'fb_1', platform: 'FACEBOOK', platform_account_name: 'A', token_expires_at: null },
+    ]);
+    m.planFindMany.mockResolvedValue([
+      {
+        id: 'pl_1',
+        social_account_id: 'fb_1',
+        status: 'PAUSED',
+        pause_reason: 'Paused — Facebook token expired',
+        post_time: '19:30',
+      },
+    ]);
+    m.postFindMany.mockReset();
+    m.postFindMany.mockResolvedValueOnce([]);
+    m.postFindMany.mockResolvedValueOnce([
+      {
+        id: 'sp_9',
+        plan_id: 'pl_1',
+        status: 'FAILED',
+        scheduled_at: new Date(),
+        error: 'Facebook connection expired. Reconnect to resume posting.',
+        plan: { platform: 'FACEBOOK' },
+      },
+    ]);
+    const d = (await get()).json().data;
+    expect(d.platforms[0].plan.pause_reason).toBe('Paused — Facebook token expired');
+    expect(d.failures[0]).toMatchObject({ platform: 'FACEBOOK', status: 'FAILED' });
+    expect(d.needs_attention).toBe(true);
+  });
+
+  it('studio shoots not included when the plan limit is 0', async () => {
+    m.getQuotaStatus.mockResolvedValue({
+      used: 0,
+      limit: 0,
+      remaining: 0,
+      period: 'MONTH',
+      unlimited: false,
+    });
+    expect((await get()).json().data.studio_shoots.included).toBe(false);
+  });
+
+  it('manager can read it', async () => {
+    expect((await get('manager')).statusCode).toBe(200);
   });
 });
