@@ -100,3 +100,66 @@ export async function verifyCatalogUploadToken(
     return null;
   }
 }
+
+// ─── Support session (docs/tasks/pending/support-session-access.md) ─
+// Kanchuki staff acting inside a retailer account with that retailer's in-app
+// approval. Same shape as the catalog token, but the JWT's exp IS the grant's
+// expires_at (24h cap, never extended), and auth.ts re-reads the grant row on
+// every request — so a revoke or a reassigned ticket kills the token at once.
+
+const SUPPORT_SESSION_SCOPE = 'support_session';
+
+export type SupportScope = 'DEMO' | 'GROWTH' | 'MAINTENANCE';
+const SUPPORT_SCOPES: readonly string[] = ['DEMO', 'GROWTH', 'MAINTENANCE'];
+
+export interface SupportTokenClaims {
+  retailer_id: string;
+  ticket_id: string;
+  team_member_id: string;
+  grant_id: string;
+  scope: SupportScope;
+}
+
+export async function signSupportToken(
+  claims: SupportTokenClaims,
+  expiresAt: Date,
+): Promise<string> {
+  return new SignJWT({
+    scope: SUPPORT_SESSION_SCOPE,
+    tid: claims.ticket_id,
+    tm: claims.team_member_id,
+    gid: claims.grant_id,
+    sc: claims.scope,
+  })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setSubject(claims.retailer_id)
+    .setIssuedAt()
+    .setExpirationTime(Math.floor(expiresAt.getTime() / 1000))
+    .sign(secret());
+}
+
+export async function verifySupportToken(token: string): Promise<SupportTokenClaims | null> {
+  try {
+    const { payload } = await jwtVerify(token, secret());
+    if (
+      payload.scope !== SUPPORT_SESSION_SCOPE ||
+      !payload.sub ||
+      typeof payload.tid !== 'string' ||
+      typeof payload.tm !== 'string' ||
+      typeof payload.gid !== 'string' ||
+      typeof payload.sc !== 'string' ||
+      !SUPPORT_SCOPES.includes(payload.sc)
+    ) {
+      return null;
+    }
+    return {
+      retailer_id: payload.sub,
+      ticket_id: payload.tid,
+      team_member_id: payload.tm,
+      grant_id: payload.gid,
+      scope: payload.sc as SupportScope,
+    };
+  } catch {
+    return null;
+  }
+}

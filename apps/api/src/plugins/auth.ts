@@ -2,7 +2,8 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 import { prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
 import fp from 'fastify-plugin';
-import { verifyCatalogUploadToken } from './team-auth.js';
+import { supportSessionsEnabled } from '../lib/support-sessions-flag.js';
+import { type SupportScope, verifyCatalogUploadToken, verifySupportToken } from './team-auth.js';
 
 // ─── Types ────────────────────────────────────────────────────────
 
@@ -14,6 +15,13 @@ declare module 'fastify' {
     // F-020: set only when this request is authenticated via a delegated
     // catalog-upload session token, not a real retailer/staff login.
     catalogDelegate: { team_member_id: string; ticket_id: string } | null;
+    // Set only when authenticated via a retailer-approved support session token.
+    supportDelegate: {
+      team_member_id: string;
+      ticket_id: string;
+      grant_id: string;
+      scope: SupportScope;
+    } | null;
   }
 }
 
@@ -242,13 +250,109 @@ export function catalogDelegateCanAccess(method: string, routeUrl: string): bool
   return matchesRules(method, routeUrl, CATALOG_DELEGATE_ALLOWED_ROUTES);
 }
 
+// ─── Support-session access control ────────────────────────────────
+// Deny by default, per scope. Never reachable under any scope: billing,
+// subscription, payout/referral, team/staff management, account delete/suspend,
+// OTP, export, social connect/disconnect. No DELETE rule exists below.
+function rw(path: string): StaffRule[] {
+  return ['GET', 'POST', 'PATCH', 'PUT'].map((method) => ({ method, path }));
+}
+
+const SUPPORT_READ_ROUTES: StaffRule[] = [
+  { method: 'GET', path: '/v1/products' },
+  { method: 'GET', path: '/v1/collections' },
+  { method: 'GET', path: '/v1/customers' }, // phone masked server-side (isRealOwner false)
+  { method: 'GET', path: '/v1/retailers/me', exact: true },
+  { method: 'GET', path: '/v1/retailers/me/stats', exact: true },
+  { method: 'GET', path: '/v1/retailers/me/analytics', exact: true },
+  { method: 'GET', path: '/v1/growth/analytics' },
+];
+
+const SUPPORT_SCOPE_ROUTES: Record<SupportScope, StaffRule[]> = {
+  DEMO: SUPPORT_READ_ROUTES,
+  GROWTH: [
+    ...SUPPORT_READ_ROUTES,
+    ...rw('/v1/products'),
+    ...rw('/v1/collections'),
+    { method: 'GET', path: '/v1/growth/campaigns', exact: true },
+    { method: 'POST', path: '/v1/growth/campaigns', exact: true },
+    { method: 'GET', path: '/v1/growth/campaigns/stats', exact: true },
+    ...['GET', 'PATCH', 'PUT'].map((method) => ({
+      method,
+      path: '/v1/growth/campaigns/:id',
+      exact: true,
+    })),
+    { method: 'POST', path: '/v1/growth/campaigns/:id/preview', exact: true },
+    // Send: handler refuses non-owners on the manual wa.me path (numbers in links).
+    { method: 'POST', path: '/v1/growth/campaigns/:id/send', exact: true },
+    ...rw('/v1/growth/promotions'),
+    { method: 'GET', path: '/v1/growth/festivals' },
+    ...rw('/v1/growth/social-caption-suggest'),
+    ...rw('/v1/growth/social-templates'),
+    { method: 'POST', path: '/v1/growth/ai-campaign', exact: true },
+    // Composer + account list only; connect/disconnect/callback stay owner-only.
+    { method: 'POST', path: '/v1/retailers/me/social/posts', exact: true },
+    { method: 'GET', path: '/v1/retailers/me/social/accounts' },
+  ],
+  MAINTENANCE: [
+    ...SUPPORT_READ_ROUTES,
+    ...rw('/v1/products'),
+    ...rw('/v1/categories'),
+    ...rw('/v1/size-charts'),
+    { method: 'PUT', path: '/v1/retailers/me', exact: true }, // profile + GST fields
+    // ponytail: WhatsApp API config is read-only here; credential edit stays owner-only.
+    { method: 'GET', path: '/v1/retailers/me/whatsapp-api', exact: true },
+  ],
+};
+
+export function supportDelegateCanAccess(
+  method: string,
+  routeUrl: string,
+  scope: SupportScope,
+): boolean {
+  return matchesRules(method, routeUrl, SUPPORT_SCOPE_ROUTES[scope]);
+}
+
+/** Pure liveness check — re-run on every request so revoke/expiry/reassign bite at once. */
+export function supportGrantLive(
+  grant: {
+    status: string;
+    expires_at: Date | null;
+    retailer_id: string;
+    team_member_id: string;
+    ticket_id: string;
+    scope: string;
+    ticket: { status: string; assigned_to_id: string | null };
+    team_member: { is_active: boolean };
+    retailer: { is_suspended: boolean; deleted_at: Date | null };
+  } | null,
+  claims: { retailer_id: string; team_member_id: string; ticket_id: string; scope: string },
+  now: Date = new Date(),
+): boolean {
+  return (
+    !!grant &&
+    grant.status === 'APPROVED' &&
+    !!grant.expires_at &&
+    grant.expires_at.getTime() > now.getTime() &&
+    grant.retailer_id === claims.retailer_id &&
+    grant.team_member_id === claims.team_member_id &&
+    grant.ticket_id === claims.ticket_id &&
+    grant.scope === claims.scope &&
+    grant.ticket.status === 'ASSIGNED' &&
+    grant.ticket.assigned_to_id === claims.team_member_id &&
+    grant.team_member.is_active &&
+    !grant.retailer.is_suspended &&
+    !grant.retailer.deleted_at
+  );
+}
+
 // A delegated catalog-upload session gets staffRole = null — the same
 // sentinel value a real retailer owner has — because it isn't a Staff row.
 // Any route-level "owner only" check must use this instead of a bare
 // `staffRole !== null` comparison, or a delegate token (meant to be narrower
 // than even the salesperson allowlist) reads as a real owner.
 export function isRealOwner(request: FastifyRequest): boolean {
-  return request.staffRole === null && !request.catalogDelegate;
+  return request.staffRole === null && !request.catalogDelegate && !request.supportDelegate;
 }
 
 /**
@@ -286,6 +390,34 @@ export const authPlugin: FastifyPluginAsync = fp(async (server) => {
   server.decorateRequest('retailerAuthUserId', '');
   server.decorateRequest('staffRole', null);
   server.decorateRequest('catalogDelegate', null);
+  server.decorateRequest('supportDelegate', null);
+
+  // Support sessions: every mutation under a support token gets its own audit
+  // entry (actor_type 'support_delegate'), same one-hook approach as above.
+  server.addHook('onResponse', async (request: FastifyRequest, reply) => {
+    if (!request.supportDelegate) return;
+    if (!['POST', 'PATCH', 'PUT', 'DELETE'].includes(request.method)) return;
+    if (reply.statusCode >= 400) return;
+
+    await prisma.auditLog
+      .create({
+        data: {
+          actor_type: 'support_delegate',
+          actor_id: request.supportDelegate.team_member_id,
+          action: request.method.toLowerCase(),
+          resource_type: 'route',
+          resource_id: request.routeOptions.url ?? request.url,
+          metadata: {
+            ticket_id: request.supportDelegate.ticket_id,
+            grant_id: request.supportDelegate.grant_id,
+            scope: request.supportDelegate.scope,
+            retailer_id: request.retailerId,
+          },
+          ip_address: request.ip,
+        },
+      })
+      .catch((err) => request.log.error({ err }, 'Failed to write support-delegate audit log'));
+  });
 
   // F-020: every mutation made under a delegated catalog-upload session gets
   // its own audit trail entry, regardless of which route it hit — one hook
@@ -391,6 +523,55 @@ export const authPlugin: FastifyPluginAsync = fp(async (server) => {
       request.catalogDelegate = {
         team_member_id: delegateClaims.team_member_id,
         ticket_id: delegateClaims.ticket_id,
+      };
+      return;
+    }
+
+    // Support session: retailer-approved, scoped, ≤24h. The grant row is
+    // re-read on every request so revoke / expiry / reassignment bite at once.
+    const supportClaims = await verifySupportToken(token);
+    if (supportClaims) {
+      const ended = () =>
+        reply.status(401).send({
+          error: { code: 'UNAUTHORIZED', message: 'This support session has ended', status: 401 },
+        });
+      if (!(await supportSessionsEnabled())) return ended();
+
+      const grant = await prisma.supportSessionGrant.findUnique({
+        where: { id: supportClaims.grant_id },
+        select: {
+          status: true,
+          expires_at: true,
+          retailer_id: true,
+          team_member_id: true,
+          ticket_id: true,
+          scope: true,
+          ticket: { select: { status: true, assigned_to_id: true } },
+          team_member: { select: { is_active: true } },
+          retailer: { select: { is_suspended: true, deleted_at: true } },
+        },
+      });
+      if (!supportGrantLive(grant, supportClaims)) return ended();
+
+      const routeUrl = request.routeOptions.url ?? request.url;
+      if (!supportDelegateCanAccess(request.method, routeUrl, supportClaims.scope)) {
+        return reply.status(403).send({
+          error: {
+            code: 'FORBIDDEN',
+            message: 'This support session scope does not allow that action',
+            status: 403,
+          },
+        });
+      }
+
+      request.retailerId = supportClaims.retailer_id;
+      request.retailerAuthUserId = '';
+      request.staffRole = null;
+      request.supportDelegate = {
+        team_member_id: supportClaims.team_member_id,
+        ticket_id: supportClaims.ticket_id,
+        grant_id: supportClaims.grant_id,
+        scope: supportClaims.scope,
       };
       return;
     }

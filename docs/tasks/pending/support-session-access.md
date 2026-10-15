@@ -1,6 +1,6 @@
 # Support Session Access — Kanchuki sales/tech acting inside a retailer account
 
-**Status: 🔴 Planned, not approved.** Auth-boundary change — needs human review (SECURITY.md §12–18) before any code.
+**Status (2026-10-15): 🟨 Built, not live.** Slices 1–6 written on branch `feat/support-session-grants-schema` (commits 78440a1c, f9e63d4b, 02da6429, + slice 6). Not live until: owner reviews + applies migration 127, merges, and a Super Admin turns the switch on at Admin → Support Sessions (default OFF, server-enforced). Not yet device-tested end to end. Auth-boundary change — needs human review (SECURITY.md §12–18).
 **Builds on:** F-019/F-020 catalog delegate token (`docs/tasks/done/staff-assisted-catalog-upload.md`).
 
 ## Problem
@@ -87,10 +87,12 @@ Lighter option if one-tap-per-session is too much friction: a single standing op
 at onboarding ("Allow Kanchuki support to access my account when I raise a ticket"),
 with per-session notification + Revoke instead of per-session OTP.
 
+5. **Consent channel (2026-10-15):** in-app approve. Staff requests → retailer's app shows an Approve/Deny prompt → grant row written. No OTP/SMS. Retailer Settings row has Revoke.
+6. **Extension (2026-10-15):** none. 24 h hard cap; staff starts a new session, which needs a fresh approval and its own grant row.
+
 ## Still open
 
-- Consent channel (OTP vs in-app approve vs standing opt-in).
-- Whether sessions may be extended beyond 24 h.
+- None. Slices 1–6 ready to build (migration applied by owner only).
 
 ---
 

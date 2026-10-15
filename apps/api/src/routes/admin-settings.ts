@@ -11,6 +11,7 @@ import {
   adminOperationsRoutes,
   adminRateLimitsRoutes,
   adminShowcaseWatermarkRoutes,
+  adminSupportSessionsRoutes,
   adminThemeRoutes,
   adminTicketReportingRoutes,
 } from './admin-settings/index.js';
@@ -31,6 +32,8 @@ export const adminSettingsRoutes: FastifyPluginAsync = async (server) => {
   await server.register(adminCatalogPromoRoutes);
   // theme — auto-split module
   await server.register(adminThemeRoutes);
+  // support-sessions — Kanchuki-staff session list, kill, and global switch
+  await server.register(adminSupportSessionsRoutes);
   // showcase-watermark — auto-split module (Suits Designs platform logo config)
   await server.register(adminShowcaseWatermarkRoutes);
   // ai-config — auto-split module

@@ -6,6 +6,7 @@ import {
   teamReportingRoutes,
   teamRetailersRoutes,
   teamSessionRoutes,
+  teamSupportSessionsRoutes,
   teamSurveyRoutes,
   teamTerritoriesRoutes,
   teamTicketsRoutes,
@@ -28,4 +29,6 @@ export const teamRoutes: FastifyPluginAsync = async (server) => {
   await server.register(teamReportingRoutes);
   // team-survey — staff-only retailer discovery survey submissions
   await server.register(teamSurveyRoutes);
+  // team-support-sessions — retailer-approved Kanchuki-staff sessions
+  await server.register(teamSupportSessionsRoutes);
 };

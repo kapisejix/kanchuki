@@ -1504,6 +1504,15 @@ export default function SettingsScreen() {
           {!isStaff && (
             <SettingsRow
               icon={<Plug size={18} color={primaryColor} />}
+              label="Kanchuki support access"
+              subtitle="Approve or end support sessions"
+              onPress={() => router.push("/settings/support-sessions")}
+            />
+          )}
+
+          {!isStaff && (
+            <SettingsRow
+              icon={<Plug size={18} color={primaryColor} />}
               label="Integrations"
               subtitle="Google Business, Facebook & Google Ads"
               onPress={() => router.push("/growth/integrations")}

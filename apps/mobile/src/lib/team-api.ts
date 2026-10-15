@@ -169,6 +169,35 @@ export const teamApi = {
       { method: 'POST' },
     ),
 
+  /** Support sessions: request retailer consent (in-app), poll, mint token, end. */
+  startSupportSession: (data: {
+    retailer_id: string
+    scope: 'DEMO' | 'GROWTH' | 'MAINTENANCE'
+    note?: string
+  }) =>
+    teamRequest<{ data: { grant_id: string; status: string; answer_within_seconds: number } }>(
+      '/v1/team/support-sessions',
+      { method: 'POST', body: JSON.stringify(data) },
+    ),
+  getSupportSession: (id: string) =>
+    teamRequest<{
+      data: {
+        id: string
+        scope: 'DEMO' | 'GROWTH' | 'MAINTENANCE'
+        status: 'PENDING' | 'APPROVED' | 'DENIED' | 'REVOKED'
+        expires_at: string | null
+      }
+    }>(`/v1/team/support-sessions/${id}`),
+  getSupportSessionToken: (id: string) =>
+    teamRequest<{ data: { token: string; expires_at: string } }>(
+      `/v1/team/support-sessions/${id}/token`,
+      { method: 'POST' },
+    ),
+  endSupportSession: (id: string) =>
+    teamRequest<{ data: { status: string } }>(`/v1/team/support-sessions/${id}/end`, {
+      method: 'POST',
+    }),
+
   /** Get support ticket stats */
   getTicketStats: () =>
     teamRequest<{ data: SupportTicketStats }>('/v1/team/tickets/stats'),

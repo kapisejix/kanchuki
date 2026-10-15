@@ -207,6 +207,22 @@ export default function StaffDashboard() {
                 </View>
                 <ChevronRight size={16} color={colors.sand[300]} />
               </AnimatedPressable>
+
+              <AnimatedPressable
+                onPress={() => router.push('/staff/support-session')}
+                className="mt-3 flex-row items-center gap-3 bg-white rounded-2xl p-4 border border-sand-100"
+              >
+                <View className="w-10 h-10 rounded-xl bg-ink-50 items-center justify-center">
+                  <Store size={20} color={primaryColor} />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-sand-900 font-semibold text-sm">Support Session</Text>
+                  <Text className="text-sand-400 text-xs mt-0.5">
+                    Demo, grow or fix a retailer&apos;s account (needs their approval)
+                  </Text>
+                </View>
+                <ChevronRight size={16} color={colors.sand[300]} />
+              </AnimatedPressable>
             </View>
 
             {/* Ticket alerts */}
