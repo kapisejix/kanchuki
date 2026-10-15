@@ -4320,3 +4320,27 @@ The original blueprint envisioned a 4-tier network — Manufacturer → Wholesal
 
 What actually shipped diverged early and stayed diverged: development committed to Phase 1 only (Retailer + Customer, no Wholesaler/Manufacturer tier ever built — see §2 Target Users and §10 Out of Scope), and Fashion DNA matching was built then fully removed 2026-08-31 (migration 082 teardown, BUILD-LOG.md). The AI auto-tagging, color-variant, and in-store search ideas from this blueprint did ship, in simplified form, as part of the actual MVP (§3).
 
+
+
+## 40. F-043 Social Post Scheduler — daily FB/IG carousel plans — 🟨 APPROVED 2026-10-15, NOT BUILT
+
+> Full spec: `docs/tasks/pending/post-scheduler.md` (decisions D1–D9, build order §10). Extends F-031 Phase 2 composer;
+> closes its "auto-post" and "scheduling" open items.
+
+**What:** a retailer defines one posting plan per platform (Facebook, Instagram): weekdays, one daily IST time, a
+batch-size range per day (cap 10 slides, IG), product source, optional cover slide, free image-template rotation,
+horizon (1 wk / 2 wk / 1 mo). Kanchuki fills a calendar; the retailer reviews it once; posts then publish
+automatically through the existing Composer fan-out path. Caption is AI-filled and editable per post.
+
+**Rules locked by the owner:**
+- Scheduling is owned by Kanchuki (queue + clock in our app). Meta is only the publish endpoint.
+- No AI Studio generation inside the scheduler — it uses the product's existing images; free templates only.
+- Admin controls per-plan limits from the admin dashboard (plan feature matrix F-013 + quota system F-010);
+  all plans seeded equal (post daily) at launch.
+- Alerts are in-app only (no WhatsApp): a status card on the retailer dashboard and for the retailer's manager,
+  showing Meta token days left, scheduled posts left, AI Studio shoots left, and failures with plain-language
+  reasons. Manager can retry/skip/edit/pause; reconnecting Meta stays owner-only.
+
+**Owner-side:** Meta App Review checklist (spec §9); migrations applied by the owner from the admin dashboard.
+
+**Status:** spec approved; no schema, route, job or UI built yet.

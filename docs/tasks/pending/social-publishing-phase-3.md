@@ -26,7 +26,7 @@ Phase 1–2 (Facebook + Instagram + composer) are built — see `docs/tasks/done
 - Opt-in auto-post on new arrivals (mirror of F-022; default OFF, preview-first, never silently auto-post) — still open
 - UTM-tagged collection links (`?utm_source=instagram&utm_campaign=...`) for visit attribution — still open
 
-**Phase 4 — Stretch (decide later):** Instagram Stories link sticker, YouTube Shorts, scheduling (draft + pick time).
+**Phase 4 — Stretch (decide later):** Instagram Stories link sticker, YouTube Shorts, ~~scheduling (draft + pick time)~~ — **scheduling + opt-in auto-post are now F-043, approved 2026-10-15: `post-scheduler.md`.**
 
 ### 23.6 Usability requirements
 
