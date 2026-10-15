@@ -14,7 +14,7 @@ import { AppError, planLimitExceeded } from '../plugins/error-handler.js';
 // failures are deliberately different error codes so the caller can say which
 // one was hit.
 
-function periodStart(period: QuotaPeriod, now = new Date()): Date {
+export function periodStart(period: QuotaPeriod, now = new Date()): Date {
   if (period === 'DAY') return new Date(now.getFullYear(), now.getMonth(), now.getDate());
   if (period === 'MONTH') return new Date(now.getFullYear(), now.getMonth(), 1);
   return new Date(0); // LIFETIME — one counter row forever

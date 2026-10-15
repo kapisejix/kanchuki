@@ -4346,5 +4346,7 @@ automatically through the existing Composer fan-out path. Caption is AI-filled a
 **Status:** spec approved. **Task 1 built 2026-10-15** — schema (`post_schedule_plans`, `scheduled_posts`,
 `scheduled_post_items`), plan builder, calendar API, admin keys (`SOCIAL_SCHEDULER`, `SCHEDULED_POST`,
 `ACTIVE_SCHEDULE_PLAN`), manager routes. Migrations **128 + 129 are written but NOT applied** (owner applies from the
-admin dashboard). Not built: publish tick (Task 2), mobile UI + status card (Task 3), image templates (Task 4),
-hardening + launch checklist (Task 5). Built-vs-spec deviations: `docs/tasks/pending/post-scheduler.md` §10a.
+admin dashboard). **Task 3 built 2026-10-16** — mobile scheduler UI (`apps/mobile/app/social/schedule/*`: status card, plan
+form, calendar review + confirm, caption edit / skip / swap / remove, pause / resume / end) and the derived
+`GET /v1/retailers/me/social/schedule/status`; banner on the home tab + Growth hub. Not built: image templates (Task 4),
+hardening + launch checklist (Task 5). Publish tick = Task 2 (PR #80). Built-vs-spec deviations: `docs/tasks/pending/post-scheduler.md` §10a.

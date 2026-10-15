@@ -21,6 +21,7 @@ import { HomeScreenSkeleton } from '../../src/components/Skeleton';
 import { categoryApi, retailerApi } from '../../src/lib/api';
 import { useAuth } from '../../src/lib/auth-context';
 import { staffCan } from '../../src/lib/staff-can';
+import { SchedulerBanner } from '../../src/components/social/SchedulerBanner';
 import { useScreenInsets } from '../../src/lib/safe-area';
 
 type RankedProduct = {
@@ -163,6 +164,10 @@ export default function HomeScreen() {
         >
           <Settings size={16} color="#560A39" />
         </AnimatedPressable>
+      </View>
+
+      <View className="px-5 pb-3">
+        <SchedulerBanner />
       </View>
 
       {/* ── Signature Gradient Hero (#231F48 to #560A39) ── */}
