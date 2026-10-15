@@ -25,6 +25,7 @@ export * from "./collections";
 export * from "./categories";
 export * from "./attributes";
 export * from "./social";
+export * from "./schedule";
 export * from "./theme";
 export * from "./growth";
 export * from "./whatsapp-catalog";

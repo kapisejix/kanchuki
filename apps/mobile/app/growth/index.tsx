@@ -9,6 +9,7 @@ import {
   Megaphone,
   PackageSearch,
   Percent,
+  CalendarClock,
   Share2,
   Star,
   TrendingUp,
@@ -22,6 +23,7 @@ import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { GradientButton } from '../../src/components/GradientButton'
 import { growthApi, retailerApi, type CampaignType } from '../../src/lib/api'
 import { ApiError } from '../../src/lib/api/client'
+import { SchedulerBanner } from '../../src/components/social/SchedulerBanner'
 
 const TYPE_LABEL: Record<CampaignType, string> = {
   FESTIVAL: 'Festival',
@@ -34,6 +36,7 @@ const TYPE_LABEL: Record<CampaignType, string> = {
 // GST, Integrations and Marketplace Sync live under Settings (owner-only).
 const GROWTH_MODULES = [
   { icon: Share2, label: 'Create Social Post', hint: 'Post to Facebook & Instagram', href: '/social/create?source=growth' as const },
+  { icon: CalendarClock, label: 'Post Scheduler', hint: 'Auto-post daily to Facebook & Instagram', href: '/social/schedule' as const },
   { icon: Wand2, label: 'AI Campaign Assistant', hint: 'Type a command, get a campaign', href: '/growth/ai-campaign' as const },
   { icon: Users, label: 'Customer List', hint: 'Manage your customers', href: '/customers' as const },
   { icon: TrendingUp, label: 'Engagement', hint: 'Dwell time, top products & searches', href: '/growth/engagement' as const },
@@ -365,6 +368,10 @@ export default function GrowthHubScreen({ isTab = false }: { isTab?: boolean }) 
             </Text>
           </AnimatedPressable>
         )}
+
+        <View className="mb-4">
+          <SchedulerBanner />
+        </View>
 
         {/* All growth modules */}
         <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider px-1 mb-3">

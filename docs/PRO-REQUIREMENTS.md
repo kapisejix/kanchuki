@@ -4322,7 +4322,7 @@ What actually shipped diverged early and stayed diverged: development committed 
 
 
 
-## 40. F-043 Social Post Scheduler — daily FB/IG carousel plans — 🟨 APPROVED 2026-10-15, TASKS 1–2 BUILT (3–5 pending)
+## 40. F-043 Social Post Scheduler — daily FB/IG carousel plans — 🟨 APPROVED 2026-10-15, TASKS 1–5 BUILT (PRs #80–#82 + hardening unmerged except Task 1)
 
 > Full spec: `docs/tasks/pending/post-scheduler.md` (decisions D1–D9, build order §10). Extends F-031 Phase 2 composer;
 > closes its "auto-post" and "scheduling" open items.
@@ -4349,6 +4349,13 @@ automatically through the existing Composer fan-out path. Caption is AI-filled a
 **Task 2 built 2026-10-16** — publish tick (`jobs/scheduled-post-publish.ts`, cron every 5 min): CAS claim
 READY→PUBLISHING, original photos through the Composer's Meta primitives (idempotent on `client_post_id`), 3× retry with
 backoff, 2 h grace then MISSED, feature/quota/plan-status re-checked at publish time, `SCHEDULED_POST` counted on success
-only, curated failure reasons from `MetaApiError` codes, daily token-health pause. Not built: mobile UI + status card
-(Task 3), image templates (Task 4), hardening + launch checklist (Task 5). Built-vs-spec deviations:
-`docs/tasks/pending/post-scheduler.md` §10a, §10b.
+only, curated failure reasons from `MetaApiError` codes, daily token-health pause. **Task 3 built 2026-10-16** — mobile scheduler UI
+(`apps/mobile/app/social/schedule/*`: status card, plan form, calendar review + confirm, caption edit / skip / swap /
+remove, pause / resume / end) and the derived `GET /v1/retailers/me/social/schedule/status`; banner on the home tab +
+Growth hub. **Task 4 built 2026-10-16** — five free image templates rendered with sharp (white + price strip, New Arrival badge,
+festival frame, store-logo corner, collage cover), styled per slide / post / plan with a rotation pool; rendered at
+publish so price and festival are current. **Task 5 built 2026-10-16** — hardening: API image now ships a font (template
+text rendered blank on `node:22-slim`), status card keeps platforms whose account went inactive while a plan is live,
+manager/styling route pins; launch checklist `docs/runbooks/f-043-scheduler-launch-checklist.md`. Not built: Meta
+code-map widening, ended-plan R2 cleanup, scheduled-row retention purge (triggers in the checklist). Not verified on
+device / live Meta / live R2. Built-vs-spec deviations: `docs/tasks/pending/post-scheduler.md` §10a–§10e.

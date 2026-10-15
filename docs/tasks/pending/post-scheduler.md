@@ -270,5 +270,70 @@ Meta changes its rules, so re-verify each item against the live dashboard when s
   `repeat.limit: 1`; the new jobs deliberately omit `limit` (BullMQ stops repeating after it — a 5-min tick would die).
   Not run against live Meta.
 
+## 10c. Task 3 as built (2026-10-16) — mobile UI + status endpoint
+
+- **API:** `GET /v1/retailers/me/social/schedule/status` (derived, nothing stored; owner + manager via the existing `…/schedule`
+  GET allowlist). Returns per-account token state (`OK` / `EXPIRING` ≤7 d / `EXPIRED`) + plan + next post, `SCHEDULED_POST`
+  allowance (own math — seeded `-1` reads as unlimited, not `getQuotaStatus`'s tier default), active-plans `n/max`, Studio
+  shoots (`getQuotaStatus(STUDIO_SHOOT)`; `included=false` when limit 0), last 5 FAILED/MISSED with the stored reason, and
+  `needs_attention`. The calendar GET now includes each slide's product name + photo urls. `quota.ts` exports `periodStart`.
+- **Mobile:** `app/social/schedule/index.tsx` (status card per platform, allowance, failures with Retry/Skip/Edit, pause/resume,
+  owner-only Reconnect, manager sees "Ask the shop owner to reconnect"), `new.tsx` (plan form: account, carousel/single,
+  weekdays, per-day min–max, IST time, newest/category, 1W/2W/1M — no cover/template controls until Task 4), `[id].tsx`
+  (calendar by IST day, thumbnails, caption edit, AI caption via caption-suggest, skip, remove slide, other photo, swap
+  product via `ProductGridPicker`, confirm summary, end plan). `SchedulerBanner` on home + Growth hub (hidden when nothing is
+  wrong or the role can't see it). Growth hub tile "Post Scheduler". Role gating via existing `social.schedule` /
+  `social.schedule.plan` keys.
+- **Not in the form:** MANUAL product source, cover style, template pool (Task 4), per-slide "style this".
+- **Not verified:** no device/emulator run — typecheck, lint and unit tests only. The new `router.push` literals show
+  TS2345 locally because the gitignored `.expo/types/router.d.ts` is stale (two pre-existing instances too); regenerates on
+  `expo start`.
+
+## 10d. Task 4 as built (2026-10-16) - image templates (level B)
+
+- **Registry in code, not a table** (owner decision): ids in `@kanchuki/shared` (`SCHEDULE_SLIDE_TEMPLATES`,
+  `SCHEDULE_COVER_STYLES`), renderers in `packages/ai/src/schedule-templates.ts` (sharp + SVG overlay, 1080x1350 4:5 JPEG).
+  Slide styles: `white_price`, `new_arrival`, `festival_frame`, `logo_corner`. Cover: `collage_cover`. Add an admin catalog
+  (status / plans / sort order, per spec 8.1) only when a template must be retired or gated per plan.
+- **Render at publish** (`apps/api/src/lib/schedule-render.ts`): the tick calls `resolvePostImages`; a styled slide is rendered
+  once and its R2 key stored on `resolved_image_key`. Bulk styling only writes the choice, so "apply to all" is instant and the
+  price strip shows the price at post time. Single-slide "Style this" renders immediately for the preview.
+- **One aspect ratio:** if any slide is styled or a cover is built, the remaining originals in that post are centre-cropped to
+  4:5 too. A post with no styling is untouched.
+- **Cover is not a DB row** (deviation from the planned item-at-position-0): built per publish from up to 4 slide photos and
+  prepended, only for 2-9 slides (cap 10). `plan.cover_style` carries the choice.
+- **Fallbacks:** any render failure degrades to the original photo; a cover failure skips the cover. A post never fails because
+  of a template.
+- **Routes** (`retailers-social-schedule-style.ts`, owner-only by default-deny): `GET /templates`, `POST /items/:id/style`,
+  `POST /posts/:id/style`, `POST /plans/:id/style` (`template` id | `rotate` | null), `PATCH /plans/:id/design`. Plan create
+  now validates `cover_style` / `rotation_pool` against the registry. Calendar GET adds `resolved_image_url` per slide.
+- **Mobile:** per-slide wand, "Style post", "Style all photos", rotation pool + cover toggle on the calendar; cover and pool
+  chips on the plan form; rendered thumbnails with a styled label.
+- **Festival frame** uses the nearest festival within 7 days of the post, else "Festive Collection". **Store logo** uses
+  `retailer.logo_r2_key`, else a store-name pill. Price is digits and the rupee sign only (no Indic shaping needed).
+- **Not verified:** no live R2 / device run. The first SVG text render in a process pays a cold start of about 5 s, so the
+  single-slide route is slow on a cold API instance (mobile allows 60 s). Fonts are the host sans stack; confirm the Railway
+  image has one (DejaVu / Noto) before relying on the badge text.
+
+## 10e. Task 5 as built (2026-10-16) - hardening + launch checklist
+
+- **Font fix (real bug):** `apps/api/Dockerfile` is `node:22-slim` with no fonts, so librsvg rendered template text
+  (price strip, New Arrival badge, festival text) as blanks/boxes. Added `fonts-dejavu-core` to the apt line. Not
+  verified on Railway until the image rebuilds: check `fc-list` (checklist §1).
+- **Status card gap fixed:** `GET …/schedule/status` listed only `is_active` accounts, so a plan paused because its account
+  was disconnected or went inactive dropped off the card and the banner, hiding the pause reason and Reconnect prompt.
+  The query now also returns accounts that still carry an ACTIVE/PAUSED plan; an inactive one reports token `EXPIRED`.
+  Found before merge on an open PR, so no RC entry (RC is for shipped bugs).
+- **Manager pins:** `plugins/staff-access.test.ts` now pins `GET status` + `GET templates` readable by a manager, every
+  styling write (`items|posts|plans/:id/style`, `plans/:id/design`) owner-only, and salesperson denied `status`.
+- **Verified, unchanged:** the two scheduler jobs omit `repeat.limit` on purpose; the 13 older jobs keep `limit: 1`
+  (untouched). Alerts are derived state only (no table, no WhatsApp). Pause/resume + failure paths already covered by the
+  tick (28) and route (38) tests; resume after the 2 h grace yields MISSED, not a burst of posts.
+- **Deliberately not built:** Meta code-map widening (no observed prod errors, review `fb_code` logs after week 1);
+  R2 cleanup of rendered images for ended plans; retention purge of old `scheduled_posts` (needs purge role + GRANT +
+  migration); cold-start render warm-up (documented only). Triggers in `docs/runbooks/f-043-scheduler-launch-checklist.md` §4.
+- **Launch checklist:** `docs/runbooks/f-043-scheduler-launch-checklist.md` (merge order, Meta App Review, first live run,
+  device script for the 3 screens).
+
 ## 11. Docs to update on build
 CLAUDE.md index row, `docs/BUILD-LOG.md`, `docs/PLAN.md`, `docs/PRO-REQUIREMENTS.md`, `docs/DATABASE.md`.

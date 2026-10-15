@@ -30,6 +30,7 @@ RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
 # local dev boxes, where python is installed by hand.
 RUN apt-get update && apt-get install -y --no-install-recommends \
         ffmpeg \
+        fonts-dejavu-core \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

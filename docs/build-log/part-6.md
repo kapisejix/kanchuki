@@ -400,3 +400,39 @@ no migration, no schema change, and **no new request on any surface**.
 | Tests | `scheduled-post-publish.test.ts` 23: double-claim race, retry+backoff, give-up, grace/MISSED, limit hit, feature off, cancelled plan, token dead, inactive account, partial platform failure, live-post row-write failure, live-post adoption, paused plan, classifier table, token health. API `tsc` clean; `security.test.ts`, `db-delete-guards`, `meta-graph`, schedule + fan-out suites green. |
 | Not verified | Never run against live Meta or a live DB; the Meta code→reason map is from docs, not observed errors. |
 | Open | Tasks 3–5 (mobile UI + status card, image templates, hardening). Review `fb_code` log lines after the first live week. Existing daily jobs use `repeat.limit: 1` — possibly once-per-boot; not touched here. |
+
+## 2026-10-16 — F-043 Social Post Scheduler, Task 3 (mobile UI + status endpoint)
+
+| Area | Detail |
+|---|---|
+| Spec | `docs/tasks/pending/post-scheduler.md` §10c. Task 3 of 5; branch `feat/f-043-scheduler-ui` (off `main`, independent of Task 2 / PR #80). |
+| API | `GET …/schedule/status` (derived card: token state, allowance, active plans, Studio shoots, next post, last 5 failures, `needs_attention`); calendar GET includes product name + photo urls; `quota.periodStart` exported. |
+| Mobile | `app/social/schedule/{index,new,[id]}.tsx`, `src/lib/api/schedule.ts`, `src/components/social/SchedulerBanner.tsx`; Growth hub tile; banner on home + Growth; routes registered in `_layout.tsx`. |
+| Access | Owner: everything. Manager: view, caption/skip/retry, pause/resume — Reconnect and plan create/confirm/end/slide edits hidden. Salesperson: nothing. Mirrors `MANAGER_ALLOWED_ROUTES`. |
+| Tests | `retailers-social-schedule.test.ts` +4 (status: token/allowance/next post, paused + failures, studio not included, manager read) → 37; mobile `schedule.test.ts` 7 (IST grouping/format, token labels, editable statuses, role gating). API `tsc` clean; fan-out, security, db-delete-guards, plugins green. Mobile biome clean. |
+| Not verified | No device/emulator run; local `tsc` shows TS2345 on new `router.push` literals from stale gitignored router types (same class as 2 pre-existing errors). |
+| Open | Task 4 (image templates), Task 5 (hardening, launch checklist). Mobile UI needs a real-device pass before owner relies on it. |
+
+## 2026-10-16 - F-043 Social Post Scheduler, Task 4 (image templates)
+
+| Area | Detail |
+|---|---|
+| Spec | `docs/tasks/pending/post-scheduler.md` 10d. Task 4 of 5; branch `feat/f-043-templates`, stacked on Task 2 (PR #80) + Task 3 (PR #81). |
+| Renderers | `packages/ai/src/schedule-templates.ts`: white+price, New Arrival, festival frame, logo corner, collage cover; 1080x1350 JPEG via sharp + SVG; ids shared via `@kanchuki/shared`. |
+| Orchestration | `apps/api/src/lib/schedule-render.ts`: `resolvePostImages` (tick, render-at-publish, 4:5 normalisation, cover, fallbacks) and `styleItemNow` (immediate preview). Tick uses it; failure falls back to originals. |
+| API | `retailers-social-schedule-style.ts` (templates, item/post/plan style, design); create validates ids; calendar GET adds `resolved_image_url`. Route file split keeps the 800-line guard. |
+| Mobile | `[id].tsx` style picker (slide / post / plan, rotate pool, original), cover + pool controls; `new.tsx` cover + pool chips; `schedule.ts` client. |
+| Tests | templates 9 (real sharp), render orchestration 11, style routes 18, tick +2 (28). API tsc clean; schedule, fan-out, security, db-delete-guards, plugins, meta-graph green; shared 98; mobile eslint clean. |
+| Not verified | No live R2 or device run; cold-start render about 5 s; font availability on the Railway image unconfirmed. |
+| Open | Task 5 (hardening, launch checklist). Admin template catalog only if templates need retiring or per-plan gating. |
+
+## 2026-10-16 - F-043 Social Post Scheduler, Task 5 (hardening + launch checklist)
+
+| Area | Detail |
+|---|---|
+| Spec | `docs/tasks/pending/post-scheduler.md` 10e. Task 5 of 5; branch `feat/f-043-hardening`, stacked on Task 4 (PR #82). |
+| Fix | `apps/api/Dockerfile`: `fonts-dejavu-core` (slim image had no fonts, template text rendered blank). Status endpoint now keeps accounts that still carry a live plan, so a plan paused by a dead/inactive account stays on the card + banner. |
+| Tests | `staff-access.test.ts` +1 (status/templates readable, styling writes owner-only) +1 assertion; `retailers-social-schedule.test.ts` +1 (inactive account with paused plan) → 38. API tsc clean; security, db-delete-guards green. |
+| Docs | `docs/runbooks/f-043-scheduler-launch-checklist.md` (merge order, Meta App Review, smoke run, device script). |
+| Not built | Meta code-map widening, R2 cleanup for ended plans, scheduled_posts retention purge, cold-start warm-up. Triggers listed in the checklist. |
+| Not verified | No device / live R2 / live Meta run of any scheduler screen or job. Font fix confirmed only after Railway rebuild. |

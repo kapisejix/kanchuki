@@ -763,5 +763,15 @@ export const INDIAN_STATES = [
   'Ladakh',
 ] as const;
 
+// F-043 Task 4 — scheduler image templates. Ids only (pure, importable from
+// anywhere); the renderers live in packages/ai/src/schedule-templates.ts.
+export const SCHEDULE_SLIDE_TEMPLATES = [
+  'white_price',
+  'new_arrival',
+  'festival_frame',
+  'logo_corner',
+] as const;
+export const SCHEDULE_COVER_STYLES = ['collage_cover'] as const;
+
 export * from './admin-access.js';
 export * from './app-identity.js';

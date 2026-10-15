@@ -3,6 +3,7 @@ import { retailersSocialAccountsRoutes } from './retailers-social/retailers-soci
 import { retailersSocialConnectRoutes } from './retailers-social/retailers-social-connect.js';
 import { retailersSocialFanoutRoutes } from './retailers-social/retailers-social-fanout.js';
 import { retailersSocialPostsRoutes } from './retailers-social/retailers-social-posts.js';
+import { retailersSocialScheduleStyleRoutes } from './retailers-social/retailers-social-schedule-style.js';
 import { retailersSocialScheduleRoutes } from './retailers-social/retailers-social-schedule.js';
 
 // F-031 Social Media Publishing (Phase 1: Facebook Page).
@@ -44,4 +45,5 @@ export const retailersSocialRoutes: FastifyPluginAsync = async (server) => {
   await server.register(retailersSocialFanoutRoutes);
   // F-043 scheduler: plan builder + calendar (publish tick lands in Task 2).
   await server.register(retailersSocialScheduleRoutes);
+  await server.register(retailersSocialScheduleStyleRoutes);
 };
