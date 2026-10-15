@@ -1076,6 +1076,20 @@ Retailer → retailer: an existing paying retailer earns a recurring commission 
 
 No RLS: post-Railway tables rely on app-layer tenant scoping through the privileged app role (the zero-policy deny-all pattern breaks the pooled Prisma read path — see migration 099's header).
 
+## Support-session grants — `support_session_grants` (migration 127, written 2026-10-15, NOT yet applied)
+
+Retailer consent record for a Kanchuki-staff support session (`docs/tasks/pending/support-session-access.md`).
+One row per session: `ticket_id`, `retailer_id`, `team_member_id`, `scope` (`DEMO|GROWTH|MAINTENANCE`),
+`status` (`PENDING|APPROVED|DENIED|REVOKED`), `requested_at`, `decided_at`, `expires_at` (set at approval,
+decided_at + 24 h, never extended), `revoked_at`, `revoked_by` (`RETAILER|STAFF|ADMIN`).
+`TicketType` gains `DEMO`, `GROWTH_SETUP`, `MAINTENANCE`.
+
+- **Never deleted by the app** — audit record; ending a session = `REVOKED`. `kanchuki_app` has no DELETE
+  (no caller, so RC-049 does not apply); `kanchuki_purge` has DELETE for the retailer hard-delete path.
+  FKs: ticket/retailer `ON DELETE CASCADE`, team_member `RESTRICT`.
+- RLS on, one `backend_roles_full_access` policy for `kanchuki_app`/`kanchuki_purge` (same shape as 126).
+- Writer map: none yet — API routes land in slices 2–4. Feature flag `SUPPORT_SESSIONS` arrives in slice 6.
+
 ## Migrations Strategy
 
 - All schema changes via Prisma migrations (`prisma migrate dev`)

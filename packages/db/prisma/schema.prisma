@@ -111,6 +111,24 @@ enum TicketStatus {
 enum TicketType {
   GENERAL
   CATALOG_UPLOAD
+  // Support-session tickets (docs/tasks/pending/support-session-access.md) —
+  // Kanchuki staff acting inside a retailer account with retailer consent
+  DEMO
+  GROWTH_SETUP
+  MAINTENANCE
+}
+
+enum SupportSessionScope {
+  DEMO
+  GROWTH
+  MAINTENANCE
+}
+
+enum SupportSessionStatus {
+  PENDING // staff requested, retailer has not answered
+  APPROVED // retailer approved; live until expires_at
+  DENIED
+  REVOKED // ended early by retailer, staff, or admin (revoked_by says who)
 }
 
 // ─── PLAN FEATURE MATRIX (F-013) ─────────────────────────────────
@@ -346,6 +364,7 @@ model Retailer {
   support_owner         TeamMember?             @relation("SupportedRetailers", fields: [support_owner_id], references: [id])
   suspended_by          TeamMember?             @relation("SuspendedRetailers", fields: [suspended_by_id], references: [id])
   support_tickets       SupportTicket[]
+  support_session_grants SupportSessionGrant[]
   social_accounts       SocialAccount[]
   social_posts          SocialPost[]
   store_visits          CustomerStoreVisit[]
@@ -910,6 +929,7 @@ model TeamMember {
   supported_retailers Retailer[]            @relation("SupportedRetailers")
   suspended_retailers Retailer[]            @relation("SuspendedRetailers")
   assigned_tickets    SupportTicket[]
+  support_session_grants SupportSessionGrant[]
 
   @@index([email])
   @@map("team_members")
@@ -968,11 +988,41 @@ model SupportTicket {
 
   retailer    Retailer    @relation(fields: [retailer_id], references: [id])
   assigned_to TeamMember? @relation(fields: [assigned_to_id], references: [id])
+  session_grants SupportSessionGrant[]
 
   @@index([retailer_id])
   @@index([status])
   @@index([ticket_type])
   @@map("support_tickets")
+}
+
+// Retailer consent for one Kanchuki-staff support session. One row per
+// session; never deleted (audit record) — end = status REVOKED. expires_at is
+// set at approval (decided_at + 24h) and is never extended: a new session needs
+// a new request and a new approval. Auth re-checks status + expires_at on
+// every request, so revoke kills the token at once.
+model SupportSessionGrant {
+  id             String               @id @default(cuid())
+  ticket_id      String
+  retailer_id    String
+  team_member_id String // the Kanchuki staff member the session is for
+  scope          SupportSessionScope
+  status         SupportSessionStatus @default(PENDING)
+
+  requested_at DateTime  @default(now())
+  decided_at   DateTime? // approve or deny
+  expires_at   DateTime? // null until approved
+  revoked_at   DateTime?
+  revoked_by   String? // 'RETAILER' | 'STAFF' | 'ADMIN'
+
+  ticket      SupportTicket @relation(fields: [ticket_id], references: [id], onDelete: Cascade)
+  retailer    Retailer      @relation(fields: [retailer_id], references: [id], onDelete: Cascade)
+  team_member TeamMember    @relation(fields: [team_member_id], references: [id])
+
+  @@index([retailer_id, status])
+  @@index([ticket_id])
+  @@index([team_member_id])
+  @@map("support_session_grants")
 }
 
 // F-019: admin-editable price tiers for the paid catalog upload service,

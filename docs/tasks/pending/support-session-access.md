@@ -87,10 +87,12 @@ Lighter option if one-tap-per-session is too much friction: a single standing op
 at onboarding ("Allow Kanchuki support to access my account when I raise a ticket"),
 with per-session notification + Revoke instead of per-session OTP.
 
+5. **Consent channel (2026-10-15):** in-app approve. Staff requests → retailer's app shows an Approve/Deny prompt → grant row written. No OTP/SMS. Retailer Settings row has Revoke.
+6. **Extension (2026-10-15):** none. 24 h hard cap; staff starts a new session, which needs a fresh approval and its own grant row.
+
 ## Still open
 
-- Consent channel (OTP vs in-app approve vs standing opt-in).
-- Whether sessions may be extended beyond 24 h.
+- None. Slices 1–6 ready to build (migration applied by owner only).
 
 ---
 
