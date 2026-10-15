@@ -6,3 +6,4 @@ export { teamRetailersRoutes } from './team-retailers.js';
 export { teamTicketsRoutes, routeTicket } from './team-tickets.js';
 export { teamReportingRoutes } from './team-reporting.js';
 export { teamSurveyRoutes } from './team-survey.js';
+export { teamSupportSessionsRoutes } from './team-support-sessions.js';

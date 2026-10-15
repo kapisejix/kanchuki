@@ -30,6 +30,7 @@ import { publicGrowthRoutes } from './routes/public/public-growth.js';
 import { retailerRoutes } from './routes/retailers.js';
 import { searchRoutes } from './routes/search.js';
 import { staffRoutes } from './routes/staff.js';
+import { supportSessionRoutes } from './routes/support-sessions.js';
 import { teamRoutes } from './routes/team.js';
 import { msg91WebhookRoutes } from './routes/webhooks/msg91.js';
 import { razorpayxPayoutWebhookRoutes } from './routes/webhooks/razorpayx-payout.js';
@@ -168,6 +169,7 @@ await server.register(growthRoutes, { prefix: '/v1/growth' });
 await server.register(publicGrowthRoutes, { prefix: '/v1/public' });
 await server.register(catalogImportRoutes, { prefix: '/v1' });
 await server.register(staffRoutes, { prefix: '/v1/staff' });
+await server.register(supportSessionRoutes, { prefix: '/v1/support-sessions' });
 await server.register(teamRoutes, { prefix: '/v1/team' });
 await server.register(msg91WebhookRoutes, { prefix: '/v1' });
 // Phase II: WhatsApp catalog webhook (Meta → Kanchuki, HMAC-verified)
