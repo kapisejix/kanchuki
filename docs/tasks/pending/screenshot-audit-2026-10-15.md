@@ -136,22 +136,22 @@ Status key: ☐ open · ◐ in progress · ☑ done. Owner: **O** owner, **D** d
 | S-03 | Stylist silent fallback, canned rationale | Honesty | W+API | D+O | 0.4, 1.5 | ◐ 1.5 ☑ `5364c0ad` RC-059; cause (0.4) owner |
 | S-04 | GBP token-paste screen for unbuilt F-022 | Fake feature | M | D | 1.3 | ☑ `e547e726` RC-057 |
 | S-05 | Create Post preview empty / wrong name | Bug | M | D | 1.7 | ☑ `54c298c7` RC-061 (device re-check on v7) |
-| S-06 | Engagement all zeros + label wrap | Bug? + design | M | O+D | 0.5, 4.3 | ☐ |
-| S-07 | Privacy unbranded; stale copy cached on phone | Design + cache | W | D | 4.4 | ☐ |
-| S-08 | Product sheet hero cropped, duplicates | Design | W | D | 4.3, 4.5 | ☐ |
+| S-06 | Engagement all zeros + label wrap | Bug? + design | M | O+D | 0.5, 4.3 | ◐ UI ☑ `8cd712ee` (2×2 tiles, zero-state guidance); zeros-vs-beacon still owner step 0.5 |
+| S-07 | Privacy unbranded; stale copy cached on phone | Design + cache | W | D | 4.4 | ☑ `2f6a9fa2` (SW legal-pages rule, no 3 s timeout; logo header on privacy/terms/account-deletion) |
+| S-08 | Product sheet hero cropped, duplicates | Design | W | D | 4.3, 4.5 | ⏸ skipped by owner 2026-10-16 (label already "Share Product" `fddc0116`; top share/heart duplicate + hero crop remain, hero crop not reproducible from source) |
 | S-09 | IG auto-publish ON without connection | Honesty | M | D | 1.4 | ☑ `9f6fca7f` RC-058 (switch removed, not disabled) |
-| S-10 | Catalog home: truncation, FAB overlap, dup filter, serif | Design | W | D | 4.3, 4.5 | ☐ |
-| S-11 | Product edit header style, raw photo, keyboard | Design | M | D+O | 4.3 | ☐ |
-| S-12 | Product detail: ₹521 record, truncation, button style | Design + data | M | D+O | 4.3, 5.3 | ☐ |
+| S-10 | Catalog home: truncation, FAB overlap, dup filter, serif | Design | W | D | 4.3, 4.5 | ☑ `83fc70c1` (store name wraps, one filter icon, sans heading, non-personal "From this store" hidden, FAB brand gradient; FAB overlap is floating-by-design, unchanged) |
+| S-11 | Product edit header style, raw photo, keyboard | Design | M | D+O | 4.3 | ☑ `af5ecc72` (ScreenHeader + scroll bottom padding/tap-persist; raw photo = owner decision, untouched) |
+| S-12 | Product detail: ₹521 record, truncation, button style | Design + data | M | D+O | 4.3, 5.3 | ◐ `48378512` (design names wrap, shared price format, fake header heart removed); ₹521 record = owner data check |
 | C-01 | Palette ≠ docs | Design | All | O | 4.1 | ☐ |
-| C-02 | 3+ header styles | Design | M | D | 4.2 | ☐ |
-| C-03 | Emoji as icons | Design | M/W | D | 4.2 | ☐ |
+| C-02 | 3+ header styles | Design | M | D | 4.2 | ☑ `af5ecc72` + `8223a612` (`ScreenHeader`; 12 bare-chevron screens converted, 43 chip-style screens left as-is) |
+| C-03 | Emoji as icons | Design | M/W | D | 4.2 | ☑ `bba77016` (templates, marketplace tiles, ✦ Styled, 👗/🗂️ placeholders → lucide; ✓ glyphs in checkboxes and emoji in user-facing message text left) |
 | C-04 | Truncated buttons, washed disabled state | Design | M/W | D | 4.2 | ☐ |
 | C-05 | Serif/sans mix | Design | W | D | 4.4 | ☐ |
-| C-06 | Three price formats | Design + bug | M/W | D | 1.1, 4.2 | ◐ stylist ☑ `872067f2`; PriceText 4.2 open |
+| C-06 | Three price formats | Design + bug | M/W | D | 1.1, 4.2 | ◐ stylist ☑ `872067f2`; mobile inline paise→₹ strings → `formatPaiseShort`/`formatPrice` ☑ `48378512` `f6a7a7c7`; no PriceText component (shared formatters suffice) |
 | C-07 | Docs ✅ ≠ app | Process | Docs | D+O | 5, 6 | ☐ |
 | C-08 | Duplicate controls | Design | W | D | 4.5 | ☐ |
-| C-09 | Empty states without guidance | Design | M | D | 4.2 | ☐ |
+| C-09 | Empty states without guidance | Design | M | D | 4.2 | ☑ `8cd712ee` (Engagement was the only unguided one; list tabs already guide + CTA; no EmptyState primitive built) |
 | X-1 | Sandbox "simulated connected" branch must be unreachable in prod | Honesty | API | D | 1.6 | ☑ `32d7cc4b` RC-060 (branch deleted) |
 | X-2 | PWA service worker may pin legal pages | Bug? | W | D | 0.2, 4.4 | ☐ |
 | D-1 | `storefront-soft-404.md` in pending + done | Docs | — | D | 6.1 | ☐ |
