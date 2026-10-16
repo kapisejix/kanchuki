@@ -1019,7 +1019,11 @@ export function ProductDetailSheet({
         {/* Suits Designs — the <Category> Designs strip (admin-configured) —
             rendered under Related products, store-scoped (hidden when the
             retailer has no public_slug / this is a legacy /c/ URL). */}
-        <ShowcaseDesigns productId={product.id} storeSlug={store ?? null} />
+        {/* Only unstitched suits (suit designs) and sarees (blouse designs) get the strip. */}
+        {(/\bsar[ie]e?s?\b/i.test(product.category ?? '') ||
+          (/\bsuits?\b/i.test(product.category ?? '') && detail?.is_unstitched)) && (
+          <ShowcaseDesigns productId={product.id} storeSlug={store ?? null} />
+        )}
 
         <div className="pb-6" />
         </div>
