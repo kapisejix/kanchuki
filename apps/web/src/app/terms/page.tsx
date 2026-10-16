@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import Image from 'next/image'
 
 export const metadata: Metadata = {
   title: 'Terms of Service | Kanchuki',
@@ -10,8 +11,9 @@ export default function TermsOfServicePage() {
   return (
     <div className="min-h-screen bg-cream text-carbon">
       <div className="mx-auto max-w-2xl px-6 py-16">
-        <Link href="/" className="text-sm text-cobalt-600 hover:underline">
-          &larr; Back to Kanchuki
+        <Link href="/" className="inline-flex items-center gap-2 text-sm font-semibold text-carbon">
+          <Image src="/kanchuki-logo.png" alt="" width={28} height={28} />
+          Kanchuki
         </Link>
 
         <h1 className="mt-6 font-display text-3xl font-semibold">Terms of Service</h1>
