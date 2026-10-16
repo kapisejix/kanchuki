@@ -12,6 +12,16 @@
 
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
+## RC-060 — `POST /me/social/auto-connect` returned a fabricated `connected: true` account whenever Meta credentials were missing
+
+- **Component:** `apps/api/src/routes/retailers/retailers-social/retailers-social-connect.ts`. Fixed 2026-10-16 on `fix/audit-phase-1` (screenshot audit X-1).
+- **Symptom (latent):** in any environment where `resolveMetaCredentials()` returns null (env vars unset *or* the admin Integrations row cleared), the 1-Click connect returned `@boutique_official` / "Verified Social Store" with a made-up `act_<timestamp>` id. The app then showed **Connected** and every publish failed.
+- **Root cause:** a "dev / sandbox" convenience branch keyed on *missing configuration* rather than on an explicit dev flag — so the condition that means "this cannot work" was the one that reported success. The sibling `GET /me/social/connect` already threw 503 for the same condition; the two paths disagreed. Same family as RC-051/RC-056 (status written by the path that should have earned it).
+- **Fix:** branch deleted; missing Meta credentials now throw `503 Social publishing is not configured yet`, matching `GET /connect`. No env guard was added because no environment should ever see a fake connection — tests mock Meta instead.
+- **Proof:** `retailers-social-connect.test.ts` — instagram + facebook with `resolveMetaCredentials → null` assert 503, no `data`, no `socialAccount.upsert` (verified: both fail against the old branch).
+
+---
+
 ## RC-059 — The AI Stylist's non-AI fallback was silent and stamped every card with the same canned "rationale", so a dead provider looked like AI output
 
 - **Component:** `apps/api/src/routes/public/public-stylist.ts`, `apps/web/src/app/c/[slug]/components/AIStylist.tsx`. Fixed 2026-10-16 on `fix/audit-phase-1` (screenshot audit S-03).
