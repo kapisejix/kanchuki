@@ -52,13 +52,17 @@ export function PickedForYou({ storeSlug, onProductTap }: Props) {
   const currentStoreFailed = responseStoreSlug === storeSlug && failed;
   const isPersonalized = responseStoreSlug === storeSlug && personalized;
 
+  // The catalog-order fallback just repeats the grid below it (S-10), so only
+  // render once the feed is genuinely personal. Errors still show retry.
+  if (responseStoreSlug === storeSlug && !personalized && !failed) return null;
+
   return (
     <section className="mb-5" aria-labelledby="picked-for-you-heading" aria-busy={loading}>
       <div className="mb-2 flex items-center justify-between px-1">
         <div>
           <h2
             id="picked-for-you-heading"
-            className="text-sm font-bold text-[#231F48] font-marcellus"
+            className="text-sm font-bold text-[#231F48] font-sans"
           >
             {isPersonalized ? 'Picked for you' : 'From this store'}
           </h2>
