@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import Image from 'next/image'
 import { Sparkles, Send, Loader2, X, MessageCircle } from 'lucide-react'
-import { formatPriceRange } from '@kanchuki/shared'
+import { formatPrice } from '@kanchuki/shared'
 import { Sheet } from '@/components/Sheet'
 
 interface Recommendation {
@@ -254,12 +254,14 @@ export function AIStylist({ storeSlug, storeName, onProductTap }: Props) {
                         <p className="text-xs text-gray-500">{rec.category}{rec.color ? ` · ${rec.color}` : ''}</p>
                         {rec.price != null && (
                           <p className="text-xs font-bold text-cyan-700 mt-1">
-                            ₹{rec.price.toLocaleString('en-IN')}
+                            {formatPrice(rec.price)}
                           </p>
                         )}
-                        <p className="text-[10px] text-cyan-600 mt-1 leading-relaxed italic">
-                          ✨ {rec.rationale}
-                        </p>
+                        {rec.rationale && (
+                          <p className="text-[10px] text-cyan-600 mt-1 leading-relaxed italic">
+                            ✨ {rec.rationale}
+                          </p>
+                        )}
                       </div>
                     </button>
                   ))}

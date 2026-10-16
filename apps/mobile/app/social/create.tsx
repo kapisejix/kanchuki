@@ -40,6 +40,7 @@ import {
   firstCollectionProductPhotoUrl,
 } from '../../src/components/social/collection-carousel';
 import type { ComposeMedia, ComposeProduct } from '../../src/components/social/types';
+import { previewTargets } from '../../src/components/social/post-preview';
 import {
   collectionApi,
   productApi,
@@ -568,7 +569,11 @@ export default function CreateSocialPostScreen() {
         .filter((r) => r.product?.id && ids.has(r.product.id) && r.product.photos?.[0]?.url)
         .map((r) => ({ kind: 'photo' as const, url: r.product?.photos?.[0]?.url ?? '' }));
     }
-    return items.map((x) => x.media);
+    return items.map((x) =>
+      x.media.kind === 'video'
+        ? { ...x.media, poster_url: x.product.primary_photo_url ?? undefined }
+        : x.media,
+    );
   }, [
     postType,
     designPost,
@@ -860,13 +865,10 @@ export default function CreateSocialPostScreen() {
     }
   };
 
-  const previewPlatforms = useMemo(() => {
-    const set = new Set<'FACEBOOK' | 'INSTAGRAM'>();
-    accounts.forEach((a) => {
-      if (targetIds.includes(a.id)) set.add(a.platform);
-    });
-    return Array.from(set);
-  }, [accounts, targetIds]);
+  const previewTargetList = useMemo(
+    () => previewTargets(accounts, targetIds),
+    [accounts, targetIds],
+  );
 
   const sectionTitle = (step: string, title: string, hint?: string) => (
     <View className="flex-row items-center mb-2 mt-5 px-1">
@@ -1246,7 +1248,7 @@ export default function CreateSocialPostScreen() {
               'Preview',
             )}
             <PostPreview
-              platforms={previewPlatforms}
+              targets={previewTargetList}
               postType={postType}
               media={previewMedia}
               caption={caption}

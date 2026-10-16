@@ -5,14 +5,12 @@ import {
   CheckCircle2,
   ChevronLeft,
   Lock,
-  Sparkles,
   Zap,
 } from 'lucide-react-native'
 import {
   ActivityIndicator,
   Alert,
   ScrollView,
-  Switch,
   Text,
   View,
 } from 'react-native'
@@ -43,7 +41,6 @@ export default function InstagramConfigScreen() {
 
   const [accountId, setAccountId] = useState(currentInstagram?.account_id ?? '')
   const [handle, setHandle] = useState(currentInstagram?.handle ?? '')
-  const [autoPublishReels, setAutoPublishReels] = useState(true)
   const [connecting, setConnecting] = useState(false)
   const [connectError, setConnectError] = useState<string | null>(null)
 
@@ -298,29 +295,6 @@ export default function InstagramConfigScreen() {
             <Text className="text-[11px] text-heliotrope-400 font-medium">
               Official Meta Graph API OAuth • Tokens encrypted via 256-bit AES
             </Text>
-          </View>
-        </View>
-
-        {/* Feature Switches */}
-        <View className="bg-white rounded-3xl p-4 border border-lavender-200 mb-4 shadow-sm">
-          <View className="flex-row items-center justify-between">
-            <View className="flex-1 mr-3">
-              <View className="flex-row items-center gap-1.5 mb-1">
-                <Sparkles size={14} color="#BB3F95" />
-                <Text className="text-xs font-bold text-spaceCadet-900">
-                  Auto-publish AI Video Reels & Shoots
-                </Text>
-              </View>
-              <Text className="text-[11px] text-heliotrope-500 font-medium leading-relaxed">
-                Automatically post generated 6s Ken Burns video reels and new catalog arrivals to your Instagram profile.
-              </Text>
-            </View>
-            <Switch
-              value={autoPublishReels}
-              onValueChange={setAutoPublishReels}
-              trackColor={{ false: '#E0E1F6', true: '#BB3F95' }}
-              thumbColor="white"
-            />
           </View>
         </View>
 

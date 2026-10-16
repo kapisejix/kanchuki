@@ -72,18 +72,9 @@ export const retailersSocialConnectRoutes: FastifyPluginAsync = async (server) =
     }
 
     const meta = await resolveMetaCredentials();
-    if (!meta) {
-      // Return simulated connected state for dev / sandbox mode
-      return {
-        data: {
-          connected: true,
-          provider: body.data.provider,
-          handle: body.data.provider === 'instagram' ? '@boutique_official' : 'Official Page',
-          account_id: `act_${Date.now()}`,
-          account_name: 'Verified Social Store',
-        },
-      };
-    }
+    // No simulated "connected" result when Meta is unconfigured — it returned a
+    // fake @boutique_official account in any env that lacked creds (RC-060).
+    if (!meta) throw serviceUnavailable('Social publishing is not configured yet');
 
     const redirectUri = body.data.redirect_uri || defaultOAuthRedirect();
     const { accessToken, expiresAt } = await exchangeCodeForToken(

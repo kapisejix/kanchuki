@@ -12,6 +12,79 @@
 
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
+## RC-061 — The Create Post preview hard-coded "Your store" as the poster and looked only for photo media, so a video post (the single-product default) previewed with no image
+
+- **Component:** `apps/mobile/src/components/social/PostPreview.tsx`, `apps/mobile/app/social/create.tsx`; new `apps/mobile/src/components/social/post-preview.ts`. Fixed 2026-10-16 on `fix/audit-phase-1` (screenshot audit S-05).
+- **Symptom:** Create post → Preview showed an empty image area above the caption, headed "Your store" while step 6 targeted the Page "Kanchuki.App". The retailer was one tap from **Publish now** with no visual confirmation of what would post.
+- **Root cause:** the preview was a mock that did not read the same inputs as the payload. (1) The header was a string literal — the selected account list was reduced to a `Set` of platforms, dropping names. (2) The cover was `media.find(kind === 'photo')`, but `resolveMedia()` makes the product's main Ken Burns **video** the default for single-product posts, and a video has no image URL — so the post Meta would receive (a video) previewed as nothing.
+- **Fix:** `previewTargets(accounts, targetIds)` returns one card per platform headed by the *selected* account's `account_name`; `previewCover(media)` uses the first media item and, for a video, its `poster_url` (set by the composer from the product's primary photo, preview-only, never sent to the API) with a ▶ overlay. A video with no poster falls back to the empty state rather than handing an mp4 to `<Image>`.
+- **Not verified:** the screenshot's grey box may also be a render issue on the old v6 binary (G-1); re-check on v7 (Phase 2.3).
+- **Proof:** `post-preview.test.ts` — names come from the selected account (not the first on the platform); photo → itself; video → poster + `isVideo`; video without poster / no media → `null`.
+
+---
+
+## RC-060 — `POST /me/social/auto-connect` returned a fabricated `connected: true` account whenever Meta credentials were missing
+
+- **Component:** `apps/api/src/routes/retailers/retailers-social/retailers-social-connect.ts`. Fixed 2026-10-16 on `fix/audit-phase-1` (screenshot audit X-1).
+- **Symptom (latent):** in any environment where `resolveMetaCredentials()` returns null (env vars unset *or* the admin Integrations row cleared), the 1-Click connect returned `@boutique_official` / "Verified Social Store" with a made-up `act_<timestamp>` id. The app then showed **Connected** and every publish failed.
+- **Root cause:** a "dev / sandbox" convenience branch keyed on *missing configuration* rather than on an explicit dev flag — so the condition that means "this cannot work" was the one that reported success. The sibling `GET /me/social/connect` already threw 503 for the same condition; the two paths disagreed. Same family as RC-051/RC-056 (status written by the path that should have earned it).
+- **Fix:** branch deleted; missing Meta credentials now throw `503 Social publishing is not configured yet`, matching `GET /connect`. No env guard was added because no environment should ever see a fake connection — tests mock Meta instead.
+- **Proof:** `retailers-social-connect.test.ts` — instagram + facebook with `resolveMetaCredentials → null` assert 503, no `data`, no `socialAccount.upsert` (verified: both fail against the old branch).
+
+---
+
+## RC-059 — The AI Stylist's non-AI fallback was silent and stamped every card with the same canned "rationale", so a dead provider looked like AI output
+
+- **Component:** `apps/api/src/routes/public/public-stylist.ts`, `apps/web/src/app/c/[slug]/components/AIStylist.tsx`. Fixed 2026-10-16 on `fix/audit-phase-1` (screenshot audit S-03).
+- **Symptom:** customer AI Stylist showed four cards all reading *"A great pick from Radha Clothing Store's collection."* with ✨, under a small "temporarily busy" banner. Ops had no signal that the provider call was failing.
+- **Root cause:** two fallback branches (no `ANTHROPIC_API_KEY`; any error from the Claude call) each returned 200 with a hard-coded per-card rationale and **no log, no Sentry event, nothing machine-readable** — `catch (_err)` discarded the error. A degraded path that returns the same shape as the healthy one, with nobody told, is indistinguishable from success.
+- **Fix:** one `fallback(reason, err)` helper for both branches: `request.log.warn` + `Sentry.captureException` tagged `feature=ai_stylist, fallback_reason=missing_api_key|provider_error` (real error passed through), response carries `fallback: true`, `rationale: ''`, note says "AI stylist is unavailable right now". Web renders the ✨ rationale line only when non-empty.
+- **Not done:** the plan's "admin-visible counter" — no admin surface reads one, and `AiUsageLog` is quota-billed so fallback rows there would charge retailers. Sentry issue count is the counter once `SENTRY_DSN` is set (launch item E-3). The *cause* of the live fallback (key / quota / timeout) still needs owner input I-4.
+- **Proof:** `public-stylist.test.ts` "fallback is reported, not disguised as AI" — no-key and provider-error cases assert `fallback: true`, empty rationales, and the Sentry tag/error.
+
+---
+
+## RC-058 — The Instagram screen showed an "Auto-publish AI Video Reels" switch, ON by default, that no API stored and no job read
+
+- **Component:** `apps/mobile/app/growth/integrations/instagram.tsx`. Fixed 2026-10-16 on `fix/audit-phase-1` (screenshot audit S-09).
+- **Symptom:** Growth → Integrations → Instagram showed "Auto-publish AI Video Reels & Shoots" switched **ON** even with no Instagram account connected, implying reels were being posted automatically.
+- **Root cause:** the switch was `useState(true)` local to the screen — never sent to the API, never persisted, reset on every mount. `grep -ri "auto_publish\|autoPublish"` across `apps/api/src`, `schema.prisma` and `apps/mobile/src` finds nothing: there is no setting and no job. A control was drawn for a feature that does not exist, with a default that claimed it was running.
+- **Fix:** the switch, its state and its unused imports are removed. (The audit plan said "disable until connected"; disabling would still advertise a non-existent feature, so it was deleted instead.) Real scheduled publishing is F-043 (`/social/schedule`), which has its own server-side plan.
+- **Proof:** `apps/mobile/__tests__/unbuilt-integrations-hidden.test.ts` → `PHANTOM_SETTINGS` fails if the "Auto-publish AI Video Reels" label reappears in `app/` or `src/` (verified: fails with the old screen restored).
+
+---
+
+## RC-057 — A token-paste screen for Google Business Profile shipped as a live integration while F-022 is still "Planned (blocked on Google API access)"
+
+- **Component:** `apps/mobile/app/growth/integrations.tsx` (card), `apps/mobile/app/settings/index.tsx` (subtitle). Fixed 2026-10-16 on `fix/audit-phase-1` (screenshot audit S-04, D-7).
+- **Symptom:** Growth → Integrations showed a "Google Business Profile" card that opened a form asking the retailer to paste an OAuth access token and location ID — something no shop owner can produce — for a feature the docs list as not built.
+- **Root cause:** UI for an integration was shipped ahead of its backend prerequisite (Google API access + an OAuth consent flow), and nothing ties a visible entry point to the feature's build status. The screen existed, so it was linked; the "Planned" status lived only in docs. Same class as RC-051 / RC-056: a surface that implies a capability the platform does not have.
+- **Fix:** the GBP card is removed from Integrations and the Settings subtitle no longer advertises "Google Business". The `gmb.tsx` screen and `/me/integrations/gmb*` API stay in place (unreachable) so F-022 can re-link them once a real OAuth flow exists.
+- **Proof:** `apps/mobile/__tests__/unbuilt-integrations-hidden.test.ts` — `/growth/integrations/gmb` added to `HIDDEN`; fails if any screen under `app/` or `src/` links to it.
+
+---
+
+## RC-056 — Marketplace Sync wrote `status: CONNECTED` on connect and on "sync" with no marketplace call or job behind it
+
+- **Component:** `apps/api/src/routes/retailers/retailers-aggregators.ts`, `apps/mobile/app/settings/index.tsx`. Fixed 2026-10-16 on `fix/audit-phase-1` (screenshot audit S-02).
+- **Symptom:** Settings → Marketplace Sync let a retailer paste an API key for Meesho/Amazon/etc., then showed **Connected** and a "last synced" time. Nothing was ever pushed to any marketplace.
+- **Root cause:** the routes were a placeholder that stored the end state instead of the work. `POST /me/aggregators` created the row as `CONNECTED` without verifying the credentials, and `POST /me/aggregators/:id/sync` set `SYNCING` then immediately `CONNECTED` + `last_synced_at = now` under the comment *"For now, simulate success"*. `apps/api/src/jobs` has no channel-sync job and no marketplace client exists. Same failure class as RC-051 (a status written by the code path that was supposed to *earn* it).
+- **Fix:** connect and sync now throw `501 NOT_AVAILABLE` ("Marketplace Sync is coming soon.") after the plan gate — no row is created, no credentials are collected, no status is written. The Settings entry is removed. List/detail/update/disconnect stay so any existing rows can still be seen and removed.
+- **Proof:** `retailers-aggregators.test.ts` (connect → 501 + `channelSync.create` never called; sync → 501 + `channelSync.update` never called; plan gate still 402). `apps/mobile/__tests__/unbuilt-integrations-hidden.test.ts` fails if any screen links to `/growth/aggregators` again (verified: fails with the old Settings row restored).
+- **Not done (owner):** existing `channel_syncs` rows in prod may still read `CONNECTED`; correcting them is a data change, not run by the agent.
+
+---
+
+## RC-055 — The AI Stylist treated stored paise as rupees in two places (the card render and the catalog string sent to Claude), so ₹2,100 showed as ₹2,10,000
+
+- **Component:** `apps/web/src/app/c/[slug]/components/AIStylist.tsx`, `apps/api/src/routes/public/public-stylist.ts`. Fixed 2026-10-16 on `fix/audit-phase-1` (screenshot audit S-01).
+- **Symptom:** customer AI Stylist sheet showed *Red Printed Kurta Set* at **₹2,10,000** while the product sheet / catalog showed ₹2,100/- (every stylist card 100× too high).
+- **Root cause:** product prices are stored in **paise**, and every other surface formats them through `formatPrice()` / `formatPriceRange()` (`packages/shared/src/utils/index.ts`). The stylist was the one place that hand-rolled money formatting: the card printed `₹{rec.price.toLocaleString('en-IN')}` (no ÷100), and the API built the Claude catalog line as `` `₹${p.price_min}` `` — so the model also reasoned about budgets 100× too high. A hand-written `₹` + number next to a paise value has no unit check.
+- **Fix:** card renders `formatPrice(rec.price)`; the LLM catalog line uses `formatPriceRange(p.price_min, p.price_max)`. Grep of `apps/web/src` for `₹…toLocaleString` found no other un-divided price render (admin pages all `/ 100`). CI guard against bare `₹`+`toLocaleString` is Phase 4.6.
+- **Proof:** `AIStylist.test.tsx` "renders paise as rupees via formatPrice" (210000 → `₹2,100/-`, no `2,10,000`); `public-stylist.test.ts` "sends Claude the catalog price in rupees, not raw paise".
+
+---
+
 ## RC-054 — No status-bar style was ever declared, so on a light app chrome the OS icons (signal / time / battery) rendered white-on-white
 
 - **Component:** `apps/mobile/app/_layout.tsx` (root layout). Fixed 2026-10-10 in `b6af02f7` (#55).

@@ -23,7 +23,6 @@ import {
   User,
   Users,
   X,
-  Link2,
   Plug,
   Receipt,
 } from "lucide-react-native";
@@ -1514,17 +1513,8 @@ export default function SettingsScreen() {
             <SettingsRow
               icon={<Plug size={18} color={primaryColor} />}
               label="Integrations"
-              subtitle="Google Business, Facebook & Google Ads"
+              subtitle="Facebook, Instagram & WhatsApp"
               onPress={() => router.push("/growth/integrations")}
-            />
-          )}
-
-          {!isStaff && (
-            <SettingsRow
-              icon={<Link2 size={18} color={primaryColor} />}
-              label="Marketplace Sync"
-              subtitle="Meesho, Instamojo & more"
-              onPress={() => router.push("/growth/aggregators")}
             />
           )}
 

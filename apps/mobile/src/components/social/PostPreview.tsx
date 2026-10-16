@@ -1,7 +1,8 @@
-import { Facebook, Globe, Instagram, Link2 } from 'lucide-react-native'
+import { Facebook, Globe, Instagram, Link2, Play } from 'lucide-react-native'
 import { Image, Text, View } from 'react-native'
 import type { SocialPostComposeType } from '../../lib/api/social'
 import { useTheme } from '../../lib/theme'
+import { previewCover, type PreviewTarget } from './post-preview'
 import type { ComposeMedia } from './types'
 
 const PLATFORM_META: Record<'FACEBOOK' | 'INSTAGRAM', { label: string; bg: string }> = {
@@ -11,17 +12,18 @@ const PLATFORM_META: Record<'FACEBOOK' | 'INSTAGRAM', { label: string; bg: strin
 
 /**
  * Render mocks of the composed post the way it will look on the selected
- * platforms (R-2 step 7). One card per platform that has at least one target.
+ * platforms (R-2 step 7). One card per platform that has at least one target,
+ * headed by the selected account's name.
  * The link card note reflects that IG captions carry no clickable links.
  */
 export function PostPreview({
-  platforms,
+  targets,
   postType,
   media,
   caption,
   linkLabel,
 }: {
-  platforms: ('FACEBOOK' | 'INSTAGRAM')[]
+  targets: PreviewTarget[]
   postType: SocialPostComposeType
   /** First-image per media item, in publish order (carousel shows 1). */
   media: ComposeMedia[]
@@ -30,14 +32,14 @@ export function PostPreview({
   linkLabel: string
 }) {
   const { colors } = useTheme()
-  if (platforms.length === 0) return null
+  if (targets.length === 0) return null
 
-  const firstImage = media.find((m) => m.kind === 'photo')?.url
+  const cover = previewCover(media)
   const isLinkOnly = postType === 'COLLECTION_LINK'
 
   return (
     <View className="gap-3">
-      {platforms.map((platform) => {
+      {targets.map(({ platform, name }) => {
         const meta = PLATFORM_META[platform]
         const isIg = platform === 'INSTAGRAM'
         return (
@@ -51,7 +53,9 @@ export function PostPreview({
                 {isIg ? <Instagram size={17} color="#fff" /> : <Facebook size={17} color="#fff" />}
               </View>
               <View className="flex-1">
-                <Text className="text-xs font-bold text-sand-900">Your store</Text>
+                <Text className="text-xs font-bold text-sand-900" numberOfLines={1}>
+                  {name}
+                </Text>
                 <Text className="text-[10px] text-sand-400">Preview — {meta.label}</Text>
               </View>
             </View>
@@ -70,9 +74,16 @@ export function PostPreview({
                 </View>
                 <Globe size={14} color={colors.sand[400]} />
               </View>
-            ) : firstImage ? (
+            ) : cover ? (
               <View className="mx-4 rounded-xl overflow-hidden bg-sand-100 mb-1">
-                <Image source={{ uri: firstImage }} className="w-full aspect-[4/3]" resizeMode="cover" />
+                <Image source={{ uri: cover.url }} className="w-full aspect-[4/3]" resizeMode="cover" />
+                {cover.isVideo ? (
+                  <View className="absolute inset-0 items-center justify-center">
+                    <View className="w-10 h-10 rounded-full bg-black/60 items-center justify-center">
+                      <Play size={18} color="#fff" />
+                    </View>
+                  </View>
+                ) : null}
                 {media.length > 1 ? (
                   <View className="absolute bottom-2 right-2 bg-black/60 rounded-full px-2 py-0.5">
                     <Text className="text-white text-[10px] font-bold">
