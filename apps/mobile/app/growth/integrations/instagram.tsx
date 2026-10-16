@@ -8,7 +8,6 @@ import {
   Zap,
 } from 'lucide-react-native'
 import {
-  ActivityIndicator,
   Alert,
   ScrollView,
   Text,
@@ -18,6 +17,9 @@ import * as Linking from 'expo-linking'
 import { useScreenInsets } from '../../../src/lib/safe-area'
 import { KeyboardScreen } from '../../../src/components/KeyboardScreen'
 import { AnimatedPressable } from '../../../src/components/AnimatedPressable'
+import { BrandIcon } from '../../../src/components/BrandIcon'
+import { DangerButton } from '../../../src/components/DangerButton'
+import { GradientButton } from '../../../src/components/GradientButton'
 import { growthApi } from '../../../src/lib/api/growth'
 import { socialApi } from '../../../src/lib/api/social'
 import { showError } from '../../../src/lib/errors'
@@ -205,9 +207,7 @@ export default function InstagramConfigScreen() {
         <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm mb-4">
           <View className="flex-row items-center justify-between mb-3">
             <View className="flex-row items-center gap-2.5">
-              <View className="w-12 h-12 rounded-2xl items-center justify-center bg-fuchsia-600">
-                <Text className="text-2xl">📸</Text>
-              </View>
+              <BrandIcon brand="instagram" size={48} />
               <View>
                 <Text className="text-base font-bold text-spaceCadet-900">
                   Instagram App Connect
@@ -244,43 +244,19 @@ export default function InstagramConfigScreen() {
                 </View>
               ) : null}
               <View className="flex-row gap-2 mt-2 pt-2 border-t border-lavender-200">
-                <View className="flex-1">
-                  <AnimatedPressable
-                    onPress={handleDisconnect}
-                    className="bg-rose-50 py-2.5 rounded-xl border border-rose-200 items-center justify-center"
-                  >
-                    <Text className="text-xs font-bold text-rose-700">Disconnect</Text>
-                  </AnimatedPressable>
+                <View className="flex-1 pb-2">
+                  <DangerButton label="Disconnect" onPress={handleDisconnect} />
                 </View>
               </View>
             </View>
           ) : (
-            <AnimatedPressable
-              onPress={handleOneClickConnect}
-              disabled={connecting}
-              className="bg-fuchsia-600 py-3.5 px-4 rounded-2xl items-center justify-center flex-row gap-2 shadow-md"
-              style={{
-                shadowColor: '#BB3F95',
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.3,
-                shadowRadius: 8,
-                elevation: 4,
-              }}
-            >
-              {connecting ? (
-                <>
-                  <ActivityIndicator size="small" color="white" />
-                  <Text className="text-white text-sm font-bold">Connecting App…</Text>
-                </>
-              ) : (
-                <>
-                  <Zap size={18} color="white" strokeWidth={2.5} />
-                  <Text className="text-white text-sm font-bold">
-                    1-Click Connect Instagram
-                  </Text>
-                </>
-              )}
-            </AnimatedPressable>
+            <GradientButton
+              variant="web"
+              label="1-Click Connect Instagram"
+              icon={<Zap size={16} color="white" strokeWidth={2.5} />}
+              loading={connecting}
+              onPress={() => void handleOneClickConnect()}
+            />
           )}
 
           {connectError && !isConnected && (

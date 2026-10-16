@@ -5,6 +5,10 @@ import { AnimatedPressable } from './AnimatedPressable'
 
 /** Primary CTA — signature gradient fill (#231F48 Space Cadet → #560A39 Tyrian Purple) + shadow + press-scale.
  * Exactly matches .slide-btn-signature and .slide-btn-signature-compact from 2026 luxury design.
+ *
+ * `variant="web"` = the customer-web button (docs/tasks/pending/button-styles.md §1): horizontal
+ * gradient, centred icon + label, no arrow badge, radius 24. Opt-in while piloted on one screen.
+ * Only the web variant shows full labels (wraps, button grows); the default keeps its original look.
  */
 export function GradientButton({
   label,
@@ -15,6 +19,7 @@ export function GradientButton({
   accentBadge,
   colors,
   compact = false,
+  variant = 'signature',
   style,
 }: {
   label: string
@@ -27,25 +32,40 @@ export function GradientButton({
   colors?: [string, string]
   /** Auto-width compact centered button (just text + arrow badge, no stretched space) */
   compact?: boolean
+  /** 'signature' = current look; 'web' = matches the customer web product-sheet button */
+  variant?: 'signature' | 'web'
   style?: ViewStyle
 }) {
   const isDisabled = disabled || loading
+  const isWeb = variant === 'web'
   const gradientColors = colors ?? ['#231F48', '#560A39']
 
-  const shadow: ViewStyle = {
-    shadowColor: '#231F48',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.28,
-    shadowRadius: 14,
-    elevation: 6,
-  }
+  const shadow: ViewStyle = isWeb
+    ? {
+        // Web `shadow-lg shadow-[#231F48]/25`. Android draws elevation only from a filled,
+        // rounded view, so this wrapper carries the fill + radius (the gradient covers it).
+        backgroundColor: '#231F48',
+        borderRadius: 24,
+        shadowColor: '#231F48',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.25,
+        shadowRadius: 12,
+        elevation: 10,
+      }
+    : {
+        shadowColor: '#231F48',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.28,
+        shadowRadius: 14,
+        elevation: 6,
+      }
 
   const badgeContent =
-    accentBadge !== undefined ? (
-      accentBadge
-    ) : (
-      <ArrowRight size={16} color="white" strokeWidth={2.2} />
-    )
+    isWeb && accentBadge === undefined
+      ? null
+      : accentBadge !== undefined
+        ? accentBadge
+        : <ArrowRight size={16} color="white" strokeWidth={2.2} />
 
   return (
     <AnimatedPressable
@@ -62,14 +82,14 @@ export function GradientButton({
       <LinearGradient
         colors={gradientColors}
         start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
+        end={isWeb ? { x: 1, y: 0 } : { x: 1, y: 1 }}
         style={{
           borderRadius: 24,
           flexDirection: 'row',
           alignItems: 'center',
-          justifyContent: compact ? 'center' : 'space-between',
-          paddingVertical: 10,
-          paddingLeft: compact ? 20 : 18,
+          justifyContent: isWeb || compact ? 'center' : 'space-between',
+          paddingVertical: isWeb ? 14 : 10,
+          paddingLeft: isWeb ? 12 : compact ? 20 : 18,
           paddingRight: 12,
           opacity: isDisabled ? 0.5 : 1,
           minHeight: 48,
@@ -81,8 +101,19 @@ export function GradientButton({
           </View>
         ) : (
           <>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1, marginRight: 8 }}>
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: isWeb ? 'center' : undefined,
+                gap: 8,
+                flexShrink: 1,
+                marginRight: isWeb && !badgeContent ? 0 : 8,
+              }}
+            >
               {icon}
+              {/* web variant: no line limit — full label shows, wraps to a 2nd line if long.
+                  signature variant keeps its original one-line behaviour (other screens unchanged). */}
               <Text
                 style={{
                   color: '#FFFFFF',
@@ -90,8 +121,9 @@ export function GradientButton({
                   fontWeight: '800',
                   textTransform: 'uppercase',
                   letterSpacing: 0.8,
+                  ...(isWeb ? { textAlign: 'center', flexShrink: 1 } : null),
                 }}
-                numberOfLines={1}
+                numberOfLines={isWeb ? undefined : 1}
               >
                 {label}
               </Text>

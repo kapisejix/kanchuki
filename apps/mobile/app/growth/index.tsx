@@ -297,6 +297,7 @@ export default function GrowthHubScreen({ isTab = false }: { isTab?: boolean }) 
                   </Text>
                   <View className="mt-4">
                     <GradientButton
+                      variant="web"
                       label="Create Campaign"
                       onPress={() => router.push('/growth/campaign-new')}
                     />
@@ -341,6 +342,7 @@ export default function GrowthHubScreen({ isTab = false }: { isTab?: boolean }) 
                   <View className="flex-row gap-3 mt-4">
                     <View className="flex-1">
                       <GradientButton
+                        variant="web"
                         label="+ New Campaign"
                         onPress={() => router.push('/growth/campaign-new')}
                       />

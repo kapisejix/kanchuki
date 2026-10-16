@@ -7,6 +7,7 @@ import { useScreenInsets } from '../../../src/lib/safe-area'
 import { KeyboardScreen } from '../../../src/components/KeyboardScreen'
 import { AnimatedPressable } from '../../../src/components/AnimatedPressable'
 import { GradientButton } from '../../../src/components/GradientButton'
+import { WhiteButton, WHITE_BUTTON_INK } from '../../../src/components/WhiteButton'
 import { retailerApi } from '../../../src/lib/api/retailer'
 import { showError } from '../../../src/lib/errors'
 
@@ -108,15 +109,13 @@ export default function WhatsAppCloudConfigScreen() {
           </View>
         )}
 
-        <AnimatedPressable
-          onPress={() => Linking.openURL('https://developers.facebook.com/docs/whatsapp/cloud-api')}
-          className="flex-row items-center gap-2 bg-lavender-100 rounded-2xl px-4 py-3 mb-4 border border-lavender-200"
-        >
-          <ExternalLink size={14} color="#BB3F95" />
-          <Text className="text-xs font-bold text-fuchsia-700">
-            How to get WhatsApp Cloud API credentials →
-          </Text>
-        </AnimatedPressable>
+        <View className="mb-4 pb-1">
+          <WhiteButton
+            label="How to get WhatsApp Cloud API credentials"
+            icon={<ExternalLink size={14} color={WHITE_BUTTON_INK} />}
+            onPress={() => void Linking.openURL('https://developers.facebook.com/docs/whatsapp/cloud-api')}
+          />
+        </View>
 
         <Label text="Phone Number ID" />
         <TextInput
@@ -169,6 +168,7 @@ export default function WhatsAppCloudConfigScreen() {
             <ActivityIndicator color="#BB3F95" />
           ) : (
             <GradientButton
+              variant="web"
               label={configured ? 'Update' : 'Save & Link'}
               onPress={() => save.mutate()}
               disabled={!canSave}

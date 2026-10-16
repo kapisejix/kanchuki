@@ -18,6 +18,7 @@ import { useScreenInsets } from '../../../src/lib/safe-area'
 import { KeyboardScreen } from '../../../src/components/KeyboardScreen'
 import { AnimatedPressable } from '../../../src/components/AnimatedPressable'
 import { GradientButton } from '../../../src/components/GradientButton'
+import { WhiteButton, WHITE_BUTTON_INK } from '../../../src/components/WhiteButton'
 import { growthApi } from '../../../src/lib/api/growth'
 import { showError } from '../../../src/lib/errors'
 
@@ -88,15 +89,13 @@ export default function GoogleAdsConfigScreen() {
           and reach customers searching for luxury boutique clothing nearby.
         </Text>
 
-        <AnimatedPressable
-          onPress={() => Linking.openURL('https://developers.google.com/google-ads/api/docs/start')}
-          className="flex-row items-center gap-2 bg-lavender-100 rounded-2xl px-4 py-3 mb-4 border border-lavender-200"
-        >
-          <ExternalLink size={14} color="#BB3F95" />
-          <Text className="text-xs font-bold text-fuchsia-700">
-            How to get Google Ads API credentials →
-          </Text>
-        </AnimatedPressable>
+        <View className="mb-4 pb-1">
+          <WhiteButton
+            label="How to get Google Ads API credentials"
+            icon={<ExternalLink size={14} color={WHITE_BUTTON_INK} />}
+            onPress={() => void Linking.openURL('https://developers.google.com/google-ads/api/docs/start')}
+          />
+        </View>
 
         <Label text="Customer ID" />
         <TextInput
@@ -145,24 +144,21 @@ export default function GoogleAdsConfigScreen() {
           </View>
         ) : null}
 
-        <View className="flex-row gap-3 mt-2">
+        <View className="flex-row gap-3 mt-2 pb-2">
           <View className="flex-1">
             <GradientButton
-              label={saving ? 'Saving…' : '💾 Save & Connect'}
+              variant="web"
+              label={saving ? 'Saving…' : 'Save & Connect'}
               onPress={() => { setSaving(true); void saveMutation.mutate() }}
               disabled={!canSave}
             />
           </View>
           <View className="flex-1">
-            <AnimatedPressable
-              onPress={() => void testMutation.mutate()}
+            <WhiteButton
+              label={testing ? 'Testing…' : 'Test Connection'}
               disabled={testing || !canSave}
-              className="items-center justify-center bg-lavender-100 rounded-2xl py-3.5 border border-lavender-200"
-            >
-              <Text className="text-sm font-bold text-spaceCadet-900">
-                {testing ? 'Testing…' : 'Test Connection'}
-              </Text>
-            </AnimatedPressable>
+              onPress={() => void testMutation.mutate()}
+            />
           </View>
         </View>
       </ScrollView>

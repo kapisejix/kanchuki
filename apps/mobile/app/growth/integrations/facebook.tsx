@@ -1,11 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as Linking from 'expo-linking';
 import { router } from 'expo-router';
-import { CheckCircle2, ChevronLeft, Facebook, Lock, RefreshCw, Zap } from 'lucide-react-native';
+import { CheckCircle2, ChevronLeft, Lock, RefreshCw, Zap } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, Text, View } from 'react-native';
 import { useScreenInsets } from '../../../src/lib/safe-area';
 import { AnimatedPressable } from '../../../src/components/AnimatedPressable';
+import { BrandIcon } from '../../../src/components/BrandIcon';
+import { DangerButton } from '../../../src/components/DangerButton';
+import { GradientButton } from '../../../src/components/GradientButton';
+import { WhiteButton, WHITE_BUTTON_INK } from '../../../src/components/WhiteButton';
 import { type SocialAccountInfo, socialApi } from '../../../src/lib/api/social';
 import { showError } from '../../../src/lib/errors';
 import {
@@ -163,9 +167,7 @@ export default function FacebookConfigScreen() {
         <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm mb-4">
           <View className="flex-row items-center justify-between mb-3">
             <View className="flex-row items-center gap-2.5">
-              <View className="w-12 h-12 rounded-2xl items-center justify-center bg-[#1877F2]">
-                <Facebook size={24} color="white" />
-              </View>
+              <BrandIcon brand="facebook" size={48} />
               <View>
                 <Text className="text-base font-bold text-spaceCadet-900">
                   Facebook Page Connect
@@ -204,63 +206,32 @@ export default function FacebookConfigScreen() {
                   </Text>
                 </View>
               ) : null}
-              <View className="flex-row gap-2 mt-2 pt-2 border-t border-lavender-200">
+              <View className="flex-row gap-3 mt-2 pt-3 pb-2 border-t border-lavender-200">
                 <View className="flex-1">
-                  <AnimatedPressable
+                  <WhiteButton
+                    label="Verify Status"
+                    icon={<RefreshCw size={14} color={WHITE_BUTTON_INK} />}
+                    loading={isRefetching}
                     onPress={() => void refetch()}
-                    disabled={isRefetching}
-                    className="bg-white py-2.5 rounded-xl border border-lavender-200 items-center justify-center flex-row gap-1.5"
-                  >
-                    {isRefetching ? (
-                      <ActivityIndicator size="small" color="#1877F2" />
-                    ) : (
-                      <>
-                        <RefreshCw size={13} color="#231F48" />
-                        <Text className="text-xs font-bold text-spaceCadet-900">Verify Status</Text>
-                      </>
-                    )}
-                  </AnimatedPressable>
+                  />
                 </View>
                 <View className="flex-1">
-                  <AnimatedPressable
-                    onPress={handleDisconnect}
+                  <DangerButton
+                    label={disconnectMutation.isPending ? 'Disconnecting…' : 'Disconnect'}
                     disabled={disconnectMutation.isPending}
-                    className="bg-rose-50 py-2.5 rounded-xl border border-rose-200 items-center justify-center"
-                  >
-                    <Text className="text-xs font-bold text-rose-700">
-                      {disconnectMutation.isPending ? 'Disconnecting…' : 'Disconnect'}
-                    </Text>
-                  </AnimatedPressable>
+                    onPress={handleDisconnect}
+                  />
                 </View>
               </View>
             </View>
           ) : (
-            <AnimatedPressable
-              onPress={handleConnect}
-              disabled={connecting}
-              className="bg-[#1877F2] py-3.5 px-4 rounded-2xl items-center justify-center flex-row gap-2 shadow-md"
-              style={{
-                shadowColor: '#1877F2',
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.3,
-                shadowRadius: 8,
-                elevation: 4,
-              }}
-            >
-              {connecting ? (
-                <>
-                  <ActivityIndicator size="small" color="white" />
-                  <Text className="text-white text-sm font-bold">Connecting Facebook…</Text>
-                </>
-              ) : (
-                <>
-                  <Zap size={18} color="white" strokeWidth={2.5} />
-                  <Text className="text-white text-sm font-bold">
-                    1-Click Connect Facebook Page
-                  </Text>
-                </>
-              )}
-            </AnimatedPressable>
+            <GradientButton
+              variant="web"
+              label="1-Click Connect Facebook Page"
+              icon={<Zap size={16} color="white" strokeWidth={2.5} />}
+              loading={connecting}
+              onPress={() => void handleConnect()}
+            />
           )}
 
           {connectError && !isConnected && (
