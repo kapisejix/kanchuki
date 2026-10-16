@@ -862,7 +862,7 @@ export function ProductDetailSheet({
                       : 'border-[#E0E1F6] text-[#231F48] bg-white hover:border-[#BB3F95]'
                   }`}
                 >
-                  <Heart size={16} className={isFavorited ? 'fill-current text-[#BB3F95]' : 'text-amber-500 fill-amber-500'} />
+                  <Heart size={16} className={isFavorited ? 'fill-current text-[#BB3F95]' : 'text-[#231F48]'} />
                   <span className="uppercase tracking-wider">{isFavorited ? 'Liked' : 'I like this'}</span>
                 </button>
                 <button
@@ -870,7 +870,7 @@ export function ProductDetailSheet({
                   className="w-full py-3.5 rounded-3xl border border-[#E0E1F6] bg-white text-[#231F48] font-bold text-xs flex items-center justify-center gap-2 shadow-sm hover:border-[#BB3F95] transition-all active:scale-[0.98]"
                 >
                   <Share2 size={16} className="shrink-0" />
-                  <span className="uppercase tracking-wider">Share it with friends</span>
+                  <span className="uppercase tracking-wider">Share Product</span>
                 </button>
               </div>
             </div>

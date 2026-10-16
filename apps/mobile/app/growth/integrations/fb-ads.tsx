@@ -6,7 +6,6 @@ import {
   ExternalLink,
 } from 'lucide-react-native'
 import {
-  ActivityIndicator,
   Alert,
   ScrollView,
   Text,
@@ -18,6 +17,7 @@ import { useScreenInsets } from '../../../src/lib/safe-area'
 import { KeyboardScreen } from '../../../src/components/KeyboardScreen'
 import { AnimatedPressable } from '../../../src/components/AnimatedPressable'
 import { GradientButton } from '../../../src/components/GradientButton'
+import { WhiteButton, WHITE_BUTTON_INK } from '../../../src/components/WhiteButton'
 import { growthApi } from '../../../src/lib/api/growth'
 import { showError } from '../../../src/lib/errors'
 
@@ -88,15 +88,13 @@ export default function FbAdsConfigScreen() {
           that reach shoppers near your boutique.
         </Text>
 
-        <AnimatedPressable
-          onPress={() => Linking.openURL('https://www.facebook.com/business/learn/how-to-create-facebook-ads')}
-          className="flex-row items-center gap-2 bg-lavender-100 rounded-2xl px-4 py-3 mb-4 border border-lavender-200"
-        >
-          <ExternalLink size={14} color="#BB3F95" />
-          <Text className="text-xs font-bold text-fuchsia-700">
-            How to get Facebook Ads API credentials →
-          </Text>
-        </AnimatedPressable>
+        <View className="mb-4 pb-1">
+          <WhiteButton
+            label="How to get Facebook Ads API credentials"
+            icon={<ExternalLink size={14} color={WHITE_BUTTON_INK} />}
+            onPress={() => void Linking.openURL('https://www.facebook.com/business/learn/how-to-create-facebook-ads')}
+          />
+        </View>
 
         <Label text="Business Access Token" />
         <TextInput
@@ -148,24 +146,22 @@ export default function FbAdsConfigScreen() {
           </View>
         ) : null}
 
-        <View className="flex-row gap-3 mt-2">
+        <View className="flex-row gap-3 mt-2 pb-2">
           <View className="flex-1">
             <GradientButton
-              label={saving ? 'Saving…' : '💾 Save & Connect'}
+              variant="web"
+              label={saving ? 'Saving…' : 'Save & Connect'}
               onPress={() => { setSaving(true); void saveMutation.mutate() }}
               disabled={!canSave}
             />
           </View>
           <View className="flex-1">
-            <AnimatedPressable
+            <WhiteButton
+              label="Test Connection"
+              loading={testing}
+              disabled={!canSave}
               onPress={() => void testMutation.mutate()}
-              disabled={testing || !canSave}
-              className="items-center justify-center bg-lavender-100 rounded-2xl py-3.5 border border-lavender-200"
-            >
-              {testing ? <ActivityIndicator size="small" color="#BB3F95" /> : (
-                <Text className="text-sm font-bold text-spaceCadet-900">Test Connection</Text>
-              )}
-            </AnimatedPressable>
+            />
           </View>
         </View>
       </ScrollView>

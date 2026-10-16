@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { router } from 'expo-router'
 import { LinearGradient } from 'expo-linear-gradient'
 import {
+  ArrowRight,
   ChevronLeft,
   CheckCircle,
   XCircle,
@@ -18,6 +19,10 @@ import {
 } from 'react-native'
 import { useScreenInsets } from '../../src/lib/safe-area'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
+import { BrandIcon, type Brand } from '../../src/components/BrandIcon'
+import { DangerButton } from '../../src/components/DangerButton'
+import { GradientButton } from '../../src/components/GradientButton'
+import { WhiteButton } from '../../src/components/WhiteButton'
 import { growthApi } from '../../src/lib/api/growth'
 import { retailerApi } from '../../src/lib/api/retailer'
 
@@ -133,7 +138,7 @@ export default function IntegrationsScreen() {
 
               {/* Instagram Business */}
               <IntegrationCard
-                icon="📸"
+                brand="instagram"
                 title="Instagram Business & Creator"
                 subtitle="Auto-publish 6s video reels, catalog photo carousels, and stories"
                 configured={data?.instagram?.configured ?? false}
@@ -157,7 +162,7 @@ export default function IntegrationsScreen() {
 
               {/* Facebook Page */}
               <IntegrationCard
-                icon="📘"
+                brand="facebook"
                 title="Facebook Boutique Page"
                 subtitle="Publish festival lookbooks, collection links, and status announcements"
                 configured={data?.facebook?.configured ?? false}
@@ -181,7 +186,7 @@ export default function IntegrationsScreen() {
 
               {/* WhatsApp Cloud API */}
               <IntegrationCard
-                icon="💬"
+                brand="whatsapp"
                 title="WhatsApp Business API"
                 subtitle="Verified green-tick broadcasts, interactive catalog buttons, and 1-click cart links"
                 configured={data?.whatsapp?.configured ?? false}
@@ -213,7 +218,7 @@ export default function IntegrationsScreen() {
 
               {/* Facebook Ads */}
               <IntegrationCard
-                icon="📢"
+                brand="facebook-ads"
                 title="Facebook Local Awareness Ads"
                 subtitle="Create local luxury ad campaigns across Instagram & Facebook"
                 configured={data?.facebook_ads.configured ?? false}
@@ -236,7 +241,7 @@ export default function IntegrationsScreen() {
 
               {/* Google Ads */}
               <IntegrationCard
-                icon="📊"
+                brand="google-ads"
                 title="Google Local Service Ads (LSA)"
                 subtitle="Manage Google LSA and Search campaigns for local shoppers"
                 configured={data?.google_ads.configured ?? false}
@@ -267,7 +272,7 @@ export default function IntegrationsScreen() {
 // ─── Integration Card ─────────────────────────────────────────────
 
 function IntegrationCard({
-  icon,
+  brand,
   title,
   subtitle,
   configured,
@@ -276,7 +281,7 @@ function IntegrationCard({
   onConfigure,
   onDisconnect,
 }: {
-  icon: string
+  brand: Brand
   title: string
   subtitle: string
   configured: boolean
@@ -288,11 +293,7 @@ function IntegrationCard({
   return (
     <View className="bg-white rounded-3xl border border-lavender-200 p-4 mb-3.5 shadow-sm">
       <View className="flex-row items-start gap-3">
-        <View
-          className="w-12 h-12 rounded-2xl items-center justify-center bg-lavender-100 border border-lavender-200"
-        >
-          <Text className="text-2xl">{icon}</Text>
-        </View>
+        <BrandIcon brand={brand} size={48} />
         <View className="flex-1">
           <View className="flex-row items-center gap-2 mb-1">
             <Text
@@ -328,30 +329,26 @@ function IntegrationCard({
               )}
             </View>
           )}
-          <View className="flex-row gap-2 mt-1">
-            <AnimatedPressable
-              onPress={onConfigure}
-              className={`rounded-2xl px-4 py-2 border ${
-                configured
-                  ? 'bg-lavender-50 border-lavender-200'
-                  : 'bg-spaceCadet-900 border-spaceCadet-900 shadow-sm'
-              }`}
-            >
-              <Text
-                className={`text-xs font-bold ${
-                  configured ? 'text-spaceCadet-900' : 'text-white'
-                }`}
-              >
-                {configured ? 'Reconfigure' : 'Connect Account'}
-              </Text>
-            </AnimatedPressable>
+          {/* Buttons: dark = GradientButton web, white = WhiteButton, red keeps its colour
+              (same radius 24 + navy shadow). Labels wrap, never cut off. */}
+          <View className="flex-row gap-3 mt-2 pb-2">
+            <View className="flex-1">
+              {configured ? (
+                <WhiteButton radius={16} label="Reconfigure" onPress={onConfigure} />
+              ) : (
+                <GradientButton
+                  variant="web"
+                  radius={16}
+                  label="Connect Account"
+                  iconRight={<ArrowRight size={16} color="#FFFFFF" strokeWidth={2.5} />}
+                  onPress={onConfigure}
+                />
+              )}
+            </View>
             {configured && (
-              <AnimatedPressable
-                onPress={onDisconnect}
-                className="rounded-2xl px-4 py-2 bg-rose-50 border border-rose-200"
-              >
-                <Text className="text-xs font-bold text-rose-700">Disconnect</Text>
-              </AnimatedPressable>
+              <View className="flex-1">
+                <DangerButton radius={16} label="Disconnect" onPress={onDisconnect} />
+              </View>
             )}
           </View>
         </View>

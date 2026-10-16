@@ -43,6 +43,7 @@ import { useScreenInsets } from "../../src/lib/safe-area";
 import { AnimatedPressable } from "../../src/components/AnimatedPressable";
 import { BuildInfoFooter } from "../../src/components/BuildInfoFooter";
 import { GradientButton } from "../../src/components/GradientButton";
+import { WhiteButton } from "../../src/components/WhiteButton";
 import { SettingsSkeleton } from "../../src/components/Skeleton";
 import {
   ApiError,
@@ -501,22 +502,24 @@ function WhatsAppModal({
             />
           )}
           <View className="flex-row gap-3 mt-2">
-            <AnimatedPressable
-              onPress={onClose}
-              disabled={saving || sendingOtp}
-              className="flex-1 bg-sand-100 py-3.5 rounded-2xl items-center"
-            >
-              <Text className="text-sand-700 font-semibold">Cancel</Text>
-            </AnimatedPressable>
+            <View className="flex-1">
+              <WhiteButton
+                label="Cancel"
+                onPress={onClose}
+                disabled={saving || sendingOtp}
+              />
+            </View>
             <View className="flex-1">
               {otpSent ? (
                 <GradientButton
+                  variant="web"
                   label="Verify & Save"
                   onPress={() => void handleSave()}
                   loading={saving}
                 />
               ) : (
                 <GradientButton
+                  variant="web"
                   label="Send OTP"
                   onPress={() => void handleSendOtp()}
                   loading={sendingOtp}
@@ -897,15 +900,16 @@ function WhatsAppApiModal({
               />
 
               <View className="flex-row gap-3 mt-2">
-                <AnimatedPressable
-                  onPress={onClose}
-                  disabled={saving}
-                  className="flex-1 bg-sand-100 py-3.5 rounded-2xl items-center"
-                >
-                  <Text className="text-sand-700 font-semibold">Cancel</Text>
-                </AnimatedPressable>
+                <View className="flex-1">
+                  <WhiteButton
+                    label="Cancel"
+                    onPress={onClose}
+                    disabled={saving}
+                  />
+                </View>
                 <View className="flex-1">
                   <GradientButton
+                    variant="web"
                     label="Save"
                     onPress={() => void handleSave()}
                     disabled={!canSave}
@@ -1595,6 +1599,7 @@ export default function SettingsScreen() {
           {/* Signature Sign Out Button (Point 8 Spec) */}
           <View className="mt-3">
             <GradientButton
+              variant="web"
               label="Sign Out of Account"
               onPress={handleLogout}
             />
