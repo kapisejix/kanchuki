@@ -255,7 +255,7 @@ export async function startWorkers(): Promise<void> {
     'purge-soft-deleted',
     {},
     {
-      repeat: { pattern: '30 1 * * *', limit: 1 },
+      repeat: { pattern: '30 1 * * *' },
       removeOnComplete: { count: 10 },
       removeOnFail: { count: 10 },
     },
@@ -270,7 +270,7 @@ export async function startWorkers(): Promise<void> {
     'referral-qualify',
     {},
     {
-      repeat: { pattern: '0 2 * * *', limit: 1 },
+      repeat: { pattern: '0 2 * * *' },
       removeOnComplete: { count: 10 },
       removeOnFail: { count: 10 },
     },
@@ -284,7 +284,7 @@ export async function startWorkers(): Promise<void> {
     'referral-accrue',
     {},
     {
-      repeat: { pattern: '15 2 * * *', limit: 1 },
+      repeat: { pattern: '15 2 * * *' },
       removeOnComplete: { count: 10 },
       removeOnFail: { count: 10 },
     },
@@ -295,6 +295,9 @@ export async function startWorkers(): Promise<void> {
   // is monthly; settings.payout_cadence MANUAL makes the cron skip anyway.
   // February has no 30th, so February's batch pays on March 30 (the unsettled
   // balance carries — nothing lost, nothing doubled).
+  // `limit: 1` KEPT on purpose (RC-062): it caps this job to one run per API
+  // boot. Every other cron had it removed because it silently stopped them;
+  // payout moves real money, so a true monthly repeat is an owner decision.
   await getMaintenanceQueue().add(
     'referral-payout',
     {},
@@ -313,7 +316,7 @@ export async function startWorkers(): Promise<void> {
     'engagement-aggregate',
     {},
     {
-      repeat: { pattern: '0 1 * * *', limit: 1 },
+      repeat: { pattern: '0 1 * * *' },
       removeOnComplete: { count: 10 },
       removeOnFail: { count: 10 },
     },
@@ -324,7 +327,7 @@ export async function startWorkers(): Promise<void> {
     'backfill-missing-ai-fields',
     {},
     {
-      repeat: { pattern: '30 2 * * *', limit: 1 },
+      repeat: { pattern: '30 2 * * *' },
       removeOnComplete: { count: 10 },
       removeOnFail: { count: 10 },
     },
@@ -335,7 +338,7 @@ export async function startWorkers(): Promise<void> {
     'backup-database',
     { type: 'daily' },
     {
-      repeat: { pattern: '0 3 * * *', limit: 1 },
+      repeat: { pattern: '0 3 * * *' },
       removeOnComplete: { count: 10 },
       removeOnFail: { count: 10 },
     },
@@ -346,7 +349,7 @@ export async function startWorkers(): Promise<void> {
     'compress-r2-images',
     {},
     {
-      repeat: { pattern: '30 4 * * *', limit: 1 },
+      repeat: { pattern: '30 4 * * *' },
       removeOnComplete: { count: 10 },
       removeOnFail: { count: 10 },
     },
@@ -358,7 +361,7 @@ export async function startWorkers(): Promise<void> {
     'catalog-daily-full-sync',
     {},
     {
-      repeat: { pattern: catalogSyncCron, limit: 1 },
+      repeat: { pattern: catalogSyncCron },
       removeOnComplete: { count: 10 },
       removeOnFail: { count: 10 },
     },
@@ -369,7 +372,7 @@ export async function startWorkers(): Promise<void> {
     'backup-database',
     { type: 'weekly' },
     {
-      repeat: { pattern: '0 4 * * 0', limit: 1 },
+      repeat: { pattern: '0 4 * * 0' },
       removeOnComplete: { count: 10 },
       removeOnFail: { count: 10 },
     },
@@ -380,7 +383,7 @@ export async function startWorkers(): Promise<void> {
     'embedding-backfill',
     {},
     {
-      repeat: { pattern: '0 7 * * 0', limit: 1 },
+      repeat: { pattern: '0 7 * * 0' },
       removeOnComplete: { count: 10 },
       removeOnFail: { count: 10 },
     },
@@ -393,7 +396,7 @@ export async function startWorkers(): Promise<void> {
     'backfill-gst-invoices',
     {},
     {
-      repeat: { pattern: '0 6 * * *', limit: 1 },
+      repeat: { pattern: '0 6 * * *' },
       removeOnComplete: { count: 10 },
       removeOnFail: { count: 10 },
     },
@@ -409,7 +412,7 @@ export async function startWorkers(): Promise<void> {
     'tryon-deletion-sweep',
     {},
     {
-      repeat: { pattern: '15 * * * *', limit: 1 },
+      repeat: { pattern: '15 * * * *' },
       removeOnComplete: { count: 10 },
       removeOnFail: { count: 10 },
     },
