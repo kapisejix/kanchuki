@@ -15,6 +15,14 @@ const HIDDEN: Record<string, string> = {
   '/growth/integrations/gmb': 'RC-057 — F-022 Google Business Profile not built (needs Google API access + OAuth)',
 }
 
+/**
+ * Toggles for settings that no API stores. The Instagram screen showed an
+ * "Auto-publish" switch, ON by default, backed only by local useState (RC-058).
+ */
+const PHANTOM_SETTINGS: Record<string, string> = {
+  'Auto-publish AI Video Reels': 'RC-058 — no auto-publish setting or job exists in the API',
+}
+
 const ROOT = join(__dirname, '..')
 
 function files(dir: string): string[] {
@@ -36,6 +44,13 @@ describe('unbuilt integrations are not linked from any screen', () => {
       const hits = sources
         .filter(({ code }) => code.includes(`'${route}'`) || code.includes(`"${route}"`))
         .map(({ rel }) => rel)
+      expect(hits).toEqual([])
+    })
+  }
+
+  for (const [label, reason] of Object.entries(PHANTOM_SETTINGS)) {
+    it(`no screen shows a "${label}" toggle (${reason})`, () => {
+      const hits = sources.filter(({ code }) => code.includes(label)).map(({ rel }) => rel)
       expect(hits).toEqual([])
     })
   }

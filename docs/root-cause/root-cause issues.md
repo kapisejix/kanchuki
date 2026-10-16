@@ -12,6 +12,16 @@
 
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
+## RC-058 — The Instagram screen showed an "Auto-publish AI Video Reels" switch, ON by default, that no API stored and no job read
+
+- **Component:** `apps/mobile/app/growth/integrations/instagram.tsx`. Fixed 2026-10-16 on `fix/audit-phase-1` (screenshot audit S-09).
+- **Symptom:** Growth → Integrations → Instagram showed "Auto-publish AI Video Reels & Shoots" switched **ON** even with no Instagram account connected, implying reels were being posted automatically.
+- **Root cause:** the switch was `useState(true)` local to the screen — never sent to the API, never persisted, reset on every mount. `grep -ri "auto_publish\|autoPublish"` across `apps/api/src`, `schema.prisma` and `apps/mobile/src` finds nothing: there is no setting and no job. A control was drawn for a feature that does not exist, with a default that claimed it was running.
+- **Fix:** the switch, its state and its unused imports are removed. (The audit plan said "disable until connected"; disabling would still advertise a non-existent feature, so it was deleted instead.) Real scheduled publishing is F-043 (`/social/schedule`), which has its own server-side plan.
+- **Proof:** `apps/mobile/__tests__/unbuilt-integrations-hidden.test.ts` → `PHANTOM_SETTINGS` fails if the "Auto-publish AI Video Reels" label reappears in `app/` or `src/` (verified: fails with the old screen restored).
+
+---
+
 ## RC-057 — A token-paste screen for Google Business Profile shipped as a live integration while F-022 is still "Planned (blocked on Google API access)"
 
 - **Component:** `apps/mobile/app/growth/integrations.tsx` (card), `apps/mobile/app/settings/index.tsx` (subtitle). Fixed 2026-10-16 on `fix/audit-phase-1` (screenshot audit S-04, D-7).
