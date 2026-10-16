@@ -157,3 +157,24 @@ describe('GET /public/stylist/suggestions — catalog-derived starter chips', ()
     await app.close();
   });
 });
+
+describe('POST /public/stylist — paise → rupees (RC-055)', () => {
+  it('sends Claude the catalog price in rupees, not raw paise', async () => {
+    process.env.ANTHROPIC_API_KEY = 'test-key';
+    const fetchMock = vi.fn().mockRejectedValue(new Error('network disabled in tests'));
+    vi.stubGlobal('fetch', fetchMock);
+    mockProductFindMany.mockResolvedValue([{ ...LADIES_SUIT, price_min: 210000, price_max: 210000 }]);
+    const app = await buildApp();
+    await app.inject({
+      method: 'POST',
+      url: '/v1/public/stylist',
+      payload: { slug: 'meera', query: 'something for a wedding' },
+    });
+    expect(fetchMock).toHaveBeenCalled();
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const body = String(init.body);
+    expect(body).toContain('₹2,100/-');
+    expect(body).not.toContain('210000');
+    await app.close();
+  });
+});

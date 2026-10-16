@@ -155,3 +155,48 @@ describe('AIStylist keyboard inset', () => {
     expect(fake.count('scroll')).toBe(1)
   })
 })
+
+// RC-055: the API sends `price` in paise (same as every catalog surface).
+// The card used to print it raw with a literal ₹ — ₹2,100 showed as ₹2,10,000.
+describe('AIStylist price', () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('renders paise as rupees via formatPrice', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((_url: string, init?: RequestInit) =>
+        Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve(
+              init?.method === 'POST'
+                ? {
+                    data: {
+                      stylist_note: '',
+                      recommendations: [
+                        {
+                          product_id: 'p1',
+                          name: 'Red Printed Kurta Set',
+                          category: 'Kurti',
+                          color: 'Red',
+                          price: 210000,
+                          photo_url: null,
+                          rationale: 'x',
+                        },
+                      ],
+                    },
+                  }
+                : { data: { suggestions: [] } },
+            ),
+        }),
+      ),
+    )
+    render(<AIStylist storeSlug="s" storeName="S" />)
+    openSheet()
+    const input = screen.getByPlaceholderText('e.g. Pink silk suit for a wedding')
+    fireEvent.change(input, { target: { value: 'kurta' } })
+    fireEvent.keyDown(input, { key: 'Enter' })
+    expect(await screen.findByText('₹2,100/-')).toBeTruthy()
+    expect(screen.queryByText(/2,10,000/)).toBeNull()
+  })
+})

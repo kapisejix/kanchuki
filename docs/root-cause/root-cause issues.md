@@ -12,6 +12,16 @@
 
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
+## RC-055 — The AI Stylist treated stored paise as rupees in two places (the card render and the catalog string sent to Claude), so ₹2,100 showed as ₹2,10,000
+
+- **Component:** `apps/web/src/app/c/[slug]/components/AIStylist.tsx`, `apps/api/src/routes/public/public-stylist.ts`. Fixed 2026-10-16 on `fix/audit-phase-1` (screenshot audit S-01).
+- **Symptom:** customer AI Stylist sheet showed *Red Printed Kurta Set* at **₹2,10,000** while the product sheet / catalog showed ₹2,100/- (every stylist card 100× too high).
+- **Root cause:** product prices are stored in **paise**, and every other surface formats them through `formatPrice()` / `formatPriceRange()` (`packages/shared/src/utils/index.ts`). The stylist was the one place that hand-rolled money formatting: the card printed `₹{rec.price.toLocaleString('en-IN')}` (no ÷100), and the API built the Claude catalog line as `` `₹${p.price_min}` `` — so the model also reasoned about budgets 100× too high. A hand-written `₹` + number next to a paise value has no unit check.
+- **Fix:** card renders `formatPrice(rec.price)`; the LLM catalog line uses `formatPriceRange(p.price_min, p.price_max)`. Grep of `apps/web/src` for `₹…toLocaleString` found no other un-divided price render (admin pages all `/ 100`). CI guard against bare `₹`+`toLocaleString` is Phase 4.6.
+- **Proof:** `AIStylist.test.tsx` "renders paise as rupees via formatPrice" (210000 → `₹2,100/-`, no `2,10,000`); `public-stylist.test.ts` "sends Claude the catalog price in rupees, not raw paise".
+
+---
+
 ## RC-054 — No status-bar style was ever declared, so on a light app chrome the OS icons (signal / time / battery) rendered white-on-white
 
 - **Component:** `apps/mobile/app/_layout.tsx` (root layout). Fixed 2026-10-10 in `b6af02f7` (#55).

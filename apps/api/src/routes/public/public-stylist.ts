@@ -5,6 +5,7 @@
 // subset so the LLM doesn't propose invalid combos.
 
 import { prisma } from '@kanchuki/db';
+import { formatPriceRange } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { withPublicCache } from '../../lib/public-cache.js';
@@ -281,9 +282,8 @@ export const publicStylistRoutes: FastifyPluginAsync = async (server) => {
         subtype: p.subtype ?? '',
         color: p.primary_color ?? 'Unknown',
         fabric: p.fabric_estimate ?? 'Unknown',
-        price: p.price_min
-          ? `₹${p.price_min}${p.price_max && p.price_max !== p.price_min ? `–₹${p.price_max}` : ''}`
-          : 'Price on request',
+        // Prices are stored in paise — formatPriceRange divides by 100 (RC-055).
+        price: formatPriceRange(p.price_min, p.price_max),
         occasions: p.occasions.join(', ') || 'General',
       }));
 
