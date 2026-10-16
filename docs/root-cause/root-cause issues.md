@@ -12,6 +12,17 @@
 
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
+## RC-061 — The Create Post preview hard-coded "Your store" as the poster and looked only for photo media, so a video post (the single-product default) previewed with no image
+
+- **Component:** `apps/mobile/src/components/social/PostPreview.tsx`, `apps/mobile/app/social/create.tsx`; new `apps/mobile/src/components/social/post-preview.ts`. Fixed 2026-10-16 on `fix/audit-phase-1` (screenshot audit S-05).
+- **Symptom:** Create post → Preview showed an empty image area above the caption, headed "Your store" while step 6 targeted the Page "Kanchuki.App". The retailer was one tap from **Publish now** with no visual confirmation of what would post.
+- **Root cause:** the preview was a mock that did not read the same inputs as the payload. (1) The header was a string literal — the selected account list was reduced to a `Set` of platforms, dropping names. (2) The cover was `media.find(kind === 'photo')`, but `resolveMedia()` makes the product's main Ken Burns **video** the default for single-product posts, and a video has no image URL — so the post Meta would receive (a video) previewed as nothing.
+- **Fix:** `previewTargets(accounts, targetIds)` returns one card per platform headed by the *selected* account's `account_name`; `previewCover(media)` uses the first media item and, for a video, its `poster_url` (set by the composer from the product's primary photo, preview-only, never sent to the API) with a ▶ overlay. A video with no poster falls back to the empty state rather than handing an mp4 to `<Image>`.
+- **Not verified:** the screenshot's grey box may also be a render issue on the old v6 binary (G-1); re-check on v7 (Phase 2.3).
+- **Proof:** `post-preview.test.ts` — names come from the selected account (not the first on the platform); photo → itself; video → poster + `isVideo`; video without poster / no media → `null`.
+
+---
+
 ## RC-060 — `POST /me/social/auto-connect` returned a fabricated `connected: true` account whenever Meta credentials were missing
 
 - **Component:** `apps/api/src/routes/retailers/retailers-social/retailers-social-connect.ts`. Fixed 2026-10-16 on `fix/audit-phase-1` (screenshot audit X-1).

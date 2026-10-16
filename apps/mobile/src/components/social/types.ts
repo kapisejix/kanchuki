@@ -21,4 +21,6 @@ export interface ComposeMedia {
   photo_id?: string;
   video_id?: string;
   url: string;
+  /** Preview only: still image shown for a video (never sent to the API). */
+  poster_url?: string;
 }
