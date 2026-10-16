@@ -262,7 +262,7 @@ export default function NewCategoryScreen() {
           </View>
         </View>
 
-        <GradientButton
+        <GradientButton variant="web"
           label="Create Category"
           disabled={!canCreate}
           loading={create.isPending}

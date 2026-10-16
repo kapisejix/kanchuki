@@ -13,7 +13,9 @@ import {
   View,
 } from 'react-native';
 import { AnimatedPressable } from '../../../src/components/AnimatedPressable';
+import { DangerButton } from '../../../src/components/DangerButton';
 import { GradientButton } from '../../../src/components/GradientButton';
+import { WHITE_BUTTON_INK, WhiteButton } from '../../../src/components/WhiteButton';
 import { ProductGridPicker } from '../../../src/components/social';
 import type { ComposeProduct } from '../../../src/components/social/types';
 import { socialApi } from '../../../src/lib/api';
@@ -204,53 +206,38 @@ function PostCard({
       {editable ? (
         <View className="flex-row flex-wrap gap-2 mt-3">
           {dirty ? (
-            <AnimatedPressable
-              accessibilityRole="button"
+            <GradientButton
+              variant="web"
+              compact
+              label="Save caption"
               disabled={act.isPending || caption.trim().length === 0}
               onPress={() => act.mutate({ caption: caption.trim() })}
-              className="px-3 py-1.5 rounded-xl bg-fuchsia-600"
-            >
-              <Text className="text-xs font-bold text-white">Save caption</Text>
-            </AnimatedPressable>
+            />
           ) : null}
-          <AnimatedPressable
-            accessibilityRole="button"
+          <WhiteButton
+            compact
+            label={ai.isPending ? 'Writing…' : 'AI caption'}
+            icon={<Sparkles size={14} color={WHITE_BUTTON_INK} />}
             disabled={ai.isPending}
             onPress={() => ai.mutate()}
-            className="px-3 py-1.5 rounded-xl border border-lavender-200 flex-row items-center gap-1"
-          >
-            <Sparkles size={12} color="#BB3F95" />
-            <Text className="text-xs font-bold text-spaceCadet-900">
-              {ai.isPending ? 'Writing…' : 'AI caption'}
-            </Text>
-          </AnimatedPressable>
+          />
           {post.status === 'FAILED' || post.status === 'MISSED' ? (
-            <AnimatedPressable
-              accessibilityRole="button"
+            <WhiteButton
+              compact
+              label="Retry"
               disabled={act.isPending}
               onPress={() => act.mutate({ action: 'retry' })}
-              className="px-3 py-1.5 rounded-xl border border-lavender-200"
-            >
-              <Text className="text-xs font-bold text-spaceCadet-900">Retry</Text>
-            </AnimatedPressable>
+            />
           ) : null}
           {canEditSlides ? (
-            <AnimatedPressable
-              accessibilityRole="button"
-              onPress={() => onStyle('post', post.id)}
-              className="px-3 py-1.5 rounded-xl border border-lavender-200"
-            >
-              <Text className="text-xs font-bold text-spaceCadet-900">Style post</Text>
-            </AnimatedPressable>
+            <WhiteButton compact label="Style post" onPress={() => onStyle('post', post.id)} />
           ) : null}
-          <AnimatedPressable
-            accessibilityRole="button"
+          <WhiteButton
+            compact
+            label="Skip this post"
             disabled={act.isPending}
             onPress={() => act.mutate({ action: 'skip' })}
-            className="px-3 py-1.5 rounded-xl border border-lavender-200"
-          >
-            <Text className="text-xs font-bold text-spaceCadet-900">Skip this post</Text>
-          </AnimatedPressable>
+          />
         </View>
       ) : null}
     </View>
@@ -398,7 +385,7 @@ export default function ScheduleCalendarScreen() {
           <Text className="text-sm text-heliotrope-500 text-center">
             Couldn&apos;t load this plan.
           </Text>
-          <GradientButton label="Retry" onPress={() => void refetch()} />
+          <GradientButton variant="web" label="Retry" onPress={() => void refetch()} />
         </View>
       ) : (
         <>
@@ -413,14 +400,13 @@ export default function ScheduleCalendarScreen() {
               <View className="bg-white rounded-3xl p-4 border border-lavender-200 gap-3">
                 <Text className="text-xs font-bold text-spaceCadet-900">Photo styles</Text>
                 <View className="flex-row flex-wrap gap-2">
-                  <AnimatedPressable
-                    accessibilityRole="button"
+                  <GradientButton
+                    variant="web"
+                    compact
+                    label="Style all photos"
+                    icon={<Wand2 size={14} color="white" />}
                     onPress={() => setStyleTarget({ scope: 'plan', id })}
-                    className="px-3 py-1.5 rounded-xl bg-fuchsia-600 flex-row items-center gap-1"
-                  >
-                    <Wand2 size={12} color="white" />
-                    <Text className="text-xs font-bold text-white">Style all photos</Text>
-                  </AnimatedPressable>
+                  />
                   <AnimatedPressable
                     accessibilityRole="button"
                     accessibilityState={{ selected: plan.cover_style === 'collage_cover' }}
@@ -500,8 +486,9 @@ export default function ScheduleCalendarScreen() {
               </Text>
             ) : null}
             {canPlan && plan.status !== 'DRAFT' && plan.status !== 'ENDED' ? (
-              <AnimatedPressable
-                accessibilityRole="button"
+              <DangerButton
+                label="End plan"
+                style={{ width: 'auto', alignSelf: 'center', paddingHorizontal: 28 }}
                 disabled={end.isPending}
                 onPress={() =>
                   Alert.alert('End this plan?', 'Remaining scheduled posts will be skipped.', [
@@ -509,10 +496,7 @@ export default function ScheduleCalendarScreen() {
                     { text: 'End plan', style: 'destructive', onPress: () => end.mutate() },
                   ])
                 }
-                className="self-center px-4 py-2 rounded-xl border border-red-200"
-              >
-                <Text className="text-xs font-bold text-red-600">End plan</Text>
-              </AnimatedPressable>
+              />
             ) : null}
           </ScrollView>
 
@@ -525,6 +509,7 @@ export default function ScheduleCalendarScreen() {
                 {total} posts will go out automatically at the times shown.
               </Text>
               <GradientButton
+                variant="web"
                 label={confirm.isPending ? 'Confirming…' : `Confirm ${total} posts`}
                 disabled={confirm.isPending || total === 0}
                 onPress={() => confirm.mutate()}

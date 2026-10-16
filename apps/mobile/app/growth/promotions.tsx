@@ -103,7 +103,7 @@ export default function PromotionsScreen() {
               Create a discount code — percentage off or flat ₹ — for your store or specific products.
             </Text>
             <View className="w-48 mt-5">
-              <GradientButton label="Create Promotion" onPress={() => router.push('/growth/promotion-form')} />
+              <GradientButton variant="web" label="Create Promotion" onPress={() => router.push('/growth/promotion-form')} />
             </View>
           </View>
         </ScrollView>
@@ -173,7 +173,7 @@ export default function PromotionsScreen() {
             ))}
           </View>
           <View className="mt-5">
-            <GradientButton label="+ New Promotion" onPress={() => router.push('/growth/promotion-form')} />
+            <GradientButton variant="web" label="+ New Promotion" onPress={() => router.push('/growth/promotion-form')} />
           </View>
         </ScrollView>
       )}

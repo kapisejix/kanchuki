@@ -924,7 +924,7 @@ export default function OnboardingScreen() {
             </LinearGradient>
 
             <View className="w-full gap-3">
-            <GradientButton
+            <GradientButton variant="web"
               label="Go to Dashboard →"
               onPress={() => void handleNext()}
               loading={saving}
@@ -1055,7 +1055,7 @@ export default function OnboardingScreen() {
           }}
         >
           <View className="max-w-[540px] w-full self-center">
-            <GradientButton
+            <GradientButton variant="web"
               label={
                 showConfetti
                   ? "🎉 You're in!"

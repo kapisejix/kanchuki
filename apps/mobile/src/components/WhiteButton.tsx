@@ -51,9 +51,9 @@ export function WhiteButton({
           alignItems: 'center',
           justifyContent: 'center',
           gap: 8,
-          paddingVertical: 14,
-          paddingHorizontal: 12,
-          minHeight: 48,
+          paddingVertical: 12,
+          paddingHorizontal: 10,
+          minHeight: 44,
           opacity: isDisabled ? 0.5 : 1,
           // Web `shadow-sm` (customer suit-detail white buttons). Fill + radius are on this
           // view, so Android elevation renders.
@@ -73,7 +73,7 @@ export function WhiteButton({
             <Text
               style={{
                 color: WHITE_BUTTON_INK,
-                fontSize: 14, // web text-sm font-bold, sentence case
+                fontSize: 12, // owner 2026-10-16: -2px from web text-sm; sentence case
                 fontWeight: '700',
                 textAlign: 'center',
                 flexShrink: 1,

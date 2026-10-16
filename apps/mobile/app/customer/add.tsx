@@ -77,7 +77,7 @@ export default function AddCustomerScreen() {
         >
           New Customer
         </Text>
-        <GradientButton label="Save" onPress={() => void handleSave()} loading={saving} />
+        <GradientButton variant="web" label="Save" onPress={() => void handleSave()} loading={saving} />
       </View>
 
       <View className="px-4 py-4 gap-4">

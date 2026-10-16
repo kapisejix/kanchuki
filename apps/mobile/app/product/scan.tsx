@@ -8,6 +8,7 @@ import { COLORS } from '@kanchuki/shared'
 import { productApi } from '../../src/lib/api'
 import { showError } from '../../src/lib/errors'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
+import { WhiteButton } from '../../src/components/WhiteButton'
 import { KeyboardScreen } from '../../src/components/KeyboardScreen'
 
 /**
@@ -60,12 +61,7 @@ export default function ScanScreen() {
         <Text className="text-white text-center text-base mb-6">
           Camera access needed to scan product SKU tags
         </Text>
-        <AnimatedPressable
-          onPress={() => void requestPermission()}
-          className="bg-ink-600 px-6 py-3 rounded-xl"
-        >
-          <Text className="text-white font-semibold">Allow Camera</Text>
-        </AnimatedPressable>
+        <WhiteButton compact label="Allow Camera" onPress={() => void requestPermission()} />
       </View>
     )
   }

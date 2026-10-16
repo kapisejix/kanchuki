@@ -8,6 +8,7 @@ import { useScreenInsets } from '../../src/lib/safe-area'
 import { KeyboardScreen } from '../../src/components/KeyboardScreen'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { GradientButton } from '../../src/components/GradientButton'
+import { WHITE_BUTTON_INK, WhiteButton } from '../../src/components/WhiteButton'
 import { productApi } from '../../src/lib/api'
 import { growthApi, type ProductVideo } from '../../src/lib/api/growth'
 import { readLocalImage, uploadImageToR2 } from '../../src/lib/api/client'
@@ -308,6 +309,7 @@ export default function VideosScreen() {
               ) : (
                 <>
                   <GradientButton
+                    variant="web"
                     label={uploading ? `Uploading clip… ${uploadPct}%` : '+ Add Video Clip'}
                     onPress={() => void handleUpload()}
                     loading={uploading}
@@ -341,18 +343,13 @@ export default function VideosScreen() {
                       </View>
                     </View>
                   ) : (
-                    <AnimatedPressable
-                      onPress={() => generate.mutate()}
+                    <WhiteButton
+                      style={{ marginTop: 12 }}
+                      label="Generate 6s Ken Burns video from photos"
+                      icon={<Sparkles size={14} color={WHITE_BUTTON_INK} />}
                       disabled={generate.isPending}
-                      accessibilityRole="button"
-                      accessibilityLabel="Generate video from photos"
-                      className="flex-row items-center justify-center gap-2 bg-white border border-lavender-200 rounded-3xl py-3.5 mt-3 shadow-sm"
-                    >
-                      <Sparkles size={16} color="#BB3F95" />
-                      <Text className="text-sm font-bold text-spaceCadet-900">
-                        ✨ Generate 6s Ken Burns Video from Photos
-                      </Text>
-                    </AnimatedPressable>
+                      onPress={() => generate.mutate()}
+                    />
                   )}
                 </>
               )}

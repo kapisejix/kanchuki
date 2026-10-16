@@ -8,6 +8,7 @@ import { customerApi } from '../../src/lib/api'
 import { useScreenInsets } from '../../src/lib/safe-area'
 import { CustomerListSkeleton } from '../../src/components/Skeleton'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
+import { GradientButton } from '../../src/components/GradientButton'
 
 type Customer = {
   id: string
@@ -149,12 +150,13 @@ export default function CustomersScreen() {
             <Text className="text-heliotrope-500 text-xs text-center mt-1 leading-5 font-medium">
               Scan a QR code or add customers manually{'\n'}to start building your CRM.
             </Text>
-            <AnimatedPressable
+            <GradientButton
+              variant="web"
+              compact
+              label="Add First Customer"
+              style={{ marginTop: 20 }}
               onPress={() => router.push('/customer/add')}
-              className="mt-5 bg-spaceCadet-900 px-6 py-3 rounded-2xl"
-            >
-              <Text className="text-white text-xs font-bold uppercase tracking-wider">Add First Customer</Text>
-            </AnimatedPressable>
+            />
           </>
         )}
       </View>

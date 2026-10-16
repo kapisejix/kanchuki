@@ -19,6 +19,8 @@ import {
 import { showError } from '../../src/lib/errors'
 import { useTheme } from '../../src/lib/theme'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
+import { DangerButton } from '../../src/components/DangerButton'
+import { WHITE_BUTTON_INK, WhiteButton } from '../../src/components/WhiteButton'
 import { GradientButton } from '../../src/components/GradientButton'
 import { ROLE_SUMMARY } from '../../src/lib/staff-can'
 import { buildStaffInviteMessage, buildWhatsAppInviteUrl } from '../../src/lib/staff-invite'
@@ -186,15 +188,11 @@ function AddStaffModal({
           </View>
 
           <View className="flex-row gap-3 mt-2">
-            <AnimatedPressable
-              onPress={onClose}
-              disabled={save.isPending}
-              className="flex-1 bg-sand-100 py-3.5 rounded-2xl items-center"
-            >
-              <Text className="text-sand-700 font-semibold">Cancel</Text>
-            </AnimatedPressable>
             <View className="flex-1">
-              <GradientButton
+              <WhiteButton label="Cancel" disabled={save.isPending} onPress={onClose} />
+            </View>
+            <View className="flex-1">
+              <GradientButton variant="web"
                 label={editing ? 'Save' : 'Add'}
                 onPress={() => save.mutate()}
                 disabled={!name.trim() || phone.replace(/\D/g, '').length !== 10}
@@ -267,25 +265,16 @@ function PurgeModal({
             autoCapitalize="characters"
           />
           <View className="flex-row gap-3">
-            <AnimatedPressable
-              onPress={onClose}
-              disabled={deleting}
-              className="flex-1 bg-sand-100 py-3.5 rounded-2xl items-center"
-            >
-              <Text className="text-sand-700 font-semibold">Cancel</Text>
-            </AnimatedPressable>
-            <AnimatedPressable
-              onPress={() => void handlePurge()}
-              disabled={!isConfirmed || deleting}
-              className={`flex-1 py-3.5 rounded-2xl items-center ${isConfirmed ? 'bg-rust-600' : 'bg-rust-200'}`}
-              accessibilityLabel="Confirm permanent delete"
-            >
-              {deleting ? (
-                <Text className="text-white font-semibold">Deleting…</Text>
-              ) : (
-                <Text className="text-white font-semibold">Delete Forever</Text>
-              )}
-            </AnimatedPressable>
+            <View className="flex-1">
+              <WhiteButton label="Cancel" disabled={deleting} onPress={onClose} />
+            </View>
+            <View className="flex-1">
+              <DangerButton
+                label={deleting ? 'Deleting…' : 'Delete Forever'}
+                disabled={!isConfirmed || deleting}
+                onPress={() => void handlePurge()}
+              />
+            </View>
           </View>
         </View>
       </KeyboardScreen>
@@ -384,24 +373,21 @@ function InvitePromptModal({
             <Text className="text-white font-semibold">Send on WhatsApp</Text>
           </AnimatedPressable>
           <View className="flex-row gap-3">
-            <AnimatedPressable
-              onPress={() => void handleCopy()}
-              className="flex-1 bg-sand-100 py-3.5 rounded-2xl flex-row items-center justify-center gap-2"
-              accessibilityLabel="Copy invite message"
-              accessibilityRole="button"
-            >
-              <Copy size={16} color={colors.sand[700]} />
-              <Text className="text-sand-700 font-semibold">Copy</Text>
-            </AnimatedPressable>
-            <AnimatedPressable
-              onPress={() => void handleShare()}
-              className="flex-1 bg-ink-600 py-3.5 rounded-2xl flex-row items-center justify-center gap-2"
-              accessibilityLabel="Share invite message"
-              accessibilityRole="button"
-            >
-              <MessageCircle size={16} color="white" />
-              <Text className="text-white font-semibold">Share</Text>
-            </AnimatedPressable>
+            <View className="flex-1">
+              <WhiteButton
+                label="Copy"
+                icon={<Copy size={14} color={WHITE_BUTTON_INK} />}
+                onPress={() => void handleCopy()}
+              />
+            </View>
+            <View className="flex-1">
+              <GradientButton
+                variant="web"
+                label="Share"
+                icon={<MessageCircle size={14} color="white" />}
+                onPress={() => void handleShare()}
+              />
+            </View>
           </View>
         </View>
       </View>

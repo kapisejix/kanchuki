@@ -23,6 +23,7 @@ import { DetailScreenSkeleton } from '../../src/components/Skeleton'
 import { useTheme } from '../../src/lib/theme'
 import { useSafeVideoPlayer } from '../../src/lib/safe-video-player'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
+import { WHITE_BUTTON_INK, WhiteButton } from '../../src/components/WhiteButton'
 import { RelatedProductsSection } from '../../src/components/product-detail/RelatedProducts'
 import { ShowcaseDesignsSection } from '../../src/components/product-detail/ShowcaseDesigns'
 import { SkuTagModal } from '../../src/components/product-detail/SkuTagModal'
@@ -432,18 +433,11 @@ export default function ProductDetailScreen() {
             opens the product's rating form (SharedProductPage ?review=1). */}
         {publicSlug && (
           <View className="px-4 pb-2">
-            <AnimatedPressable
+            <WhiteButton
+              label="Ask for Review"
+              icon={<Star size={14} color={WHITE_BUTTON_INK} />}
               onPress={askForReview}
-              accessibilityRole="button"
-              accessibilityLabel="Ask customer for a review on WhatsApp"
-              className="flex-row items-center justify-center gap-2 py-3.5 rounded-2xl border"
-              style={{ borderColor: primaryColor, backgroundColor: `${primaryColor}12` }}
-            >
-              <Star size={16} color={primaryColor} />
-              <Text className="text-sm font-bold" style={{ color: primaryColor }}>
-                Ask for Review
-              </Text>
-            </AnimatedPressable>
+            />
           </View>
         )}
 
@@ -451,7 +445,9 @@ export default function ProductDetailScreen() {
             VIRTUAL_TRY_ON_V2; opens the full-screen capture/consent flow. */}
         {tryOnEnabled && (
           <View className="px-4 pb-2">
-            <AnimatedPressable
+            <WhiteButton
+              label="Try On Customer"
+              icon={<Camera size={14} color={WHITE_BUTTON_INK} />}
               onPress={() =>
                 router.push({
                   pathname: '/product/try-on',
@@ -462,16 +458,7 @@ export default function ProductDetailScreen() {
                   },
                 })
               }
-              accessibilityRole="button"
-              accessibilityLabel="Try this outfit on a customer"
-              className="flex-row items-center justify-center gap-2 py-3.5 rounded-2xl border"
-              style={{ borderColor: primaryColor, backgroundColor: `${primaryColor}12` }}
-            >
-              <Camera size={16} color={primaryColor} />
-              <Text className="text-sm font-bold" style={{ color: primaryColor }}>
-                Try On Customer
-              </Text>
-            </AnimatedPressable>
+            />
           </View>
         )}
 

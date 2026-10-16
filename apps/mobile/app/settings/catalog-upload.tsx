@@ -82,7 +82,7 @@ function RequestForm() {
       </View>
 
       <View className="mt-6">
-        <GradientButton
+        <GradientButton variant="web"
           label="Request Catalog Upload Help"
           onPress={() => create.mutate()}
           disabled={!canSubmit}

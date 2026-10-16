@@ -4,9 +4,7 @@ import {
   AlertCircle,
   CheckCircle2,
   ChevronLeft,
-  Facebook,
   Images,
-  Instagram,
   Link2,
   Send,
   XCircle,
@@ -24,6 +22,7 @@ import {
   View,
 } from 'react-native';
 import { AnimatedPressable } from '../../src/components/AnimatedPressable';
+import { BrandIcon } from '../../src/components/BrandIcon';
 import { GradientButton } from '../../src/components/GradientButton';
 import {
   CAROUSEL_CAP,
@@ -919,6 +918,7 @@ export default function CreateSocialPostScreen() {
             Connect a Facebook Page or Instagram account first, then come back here to create posts.
           </Text>
           <GradientButton
+            variant="web"
             label="Connect in Settings"
             onPress={() => router.push('/settings/social')}
           />
@@ -1272,6 +1272,7 @@ export default function CreateSocialPostScreen() {
               </View>
             ) : null}
             <GradientButton
+              variant="web"
               label={publishing ? 'Publishing…' : 'Publish now'}
               onPress={() => void handlePublish()}
               disabled={problems.length > 0}
@@ -1343,16 +1344,8 @@ function ResultSheet({
                   key={r.social_account_id}
                   className="flex-row items-center bg-sand-50 rounded-2xl px-4 py-3 mb-2"
                 >
-                  <View
-                    className={`w-9 h-9 rounded-xl items-center justify-center mr-3 ${
-                      isIg ? 'bg-[#E1306C]/10' : 'bg-[#1877F2]/10'
-                    }`}
-                  >
-                    {isIg ? (
-                      <Instagram size={17} color="#E1306C" />
-                    ) : (
-                      <Facebook size={17} color="#1877F2" />
-                    )}
+                  <View className="mr-3">
+                    <BrandIcon brand={isIg ? 'instagram' : 'facebook'} size={36} />
                   </View>
                   <View className="flex-1">
                     <Text className="text-sm font-bold text-sand-900" numberOfLines={1}>
@@ -1387,7 +1380,7 @@ function ResultSheet({
               );
             })}
           </ScrollView>
-          <GradientButton label="Done" onPress={onDone} style={{ marginTop: 12 }} />
+          <GradientButton variant="web" label="Done" onPress={onDone} style={{ marginTop: 12 }} />
         </View>
       </View>
     </Modal>

@@ -365,7 +365,7 @@ export default function BulkOnboardScreen() {
         )}
       </ScrollView>
       <View className="bg-white border-t border-sand-100 px-4 pt-4" style={{ paddingBottom: 16 + insets.bottom }}>
-        <GradientButton
+        <GradientButton variant="web"
           label={`Save ${approvedCount} & photograph next rack`}
           onPress={() => void handleSaveBatch()}
           disabled={approvedCount === 0}

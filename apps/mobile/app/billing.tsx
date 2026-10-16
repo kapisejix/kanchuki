@@ -14,6 +14,7 @@ import { ChevronLeft, CreditCard, Globe, Mail } from 'lucide-react-native';
 import { Linking, ScrollView, Text, View } from 'react-native';
 import { useScreenInsets } from '../src/lib/safe-area';
 import { AnimatedPressable } from '../src/components/AnimatedPressable';
+import { GradientButton } from '../src/components/GradientButton';
 import { retailerApi } from '../src/lib/api';
 
 const SUPPORT_EMAIL = 'support@kanchuki.app';
@@ -102,12 +103,12 @@ export default function BillingScreen() {
             units.
           </Text>
 
-          <AnimatedPressable
+          <GradientButton
+            variant="web"
+            label="Manage my plan"
+            style={{ marginTop: 16 }}
             onPress={() => router.push('/plan-select')}
-            className="mt-4 bg-spaceCadet-900 py-3.5 rounded-2xl items-center shadow-sm"
-          >
-            <Text className="text-white font-bold text-sm">Manage my plan</Text>
-          </AnimatedPressable>
+          />
 
           <AnimatedPressable
             onPress={() =>

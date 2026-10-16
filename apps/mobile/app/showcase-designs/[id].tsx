@@ -262,7 +262,7 @@ export default function ShowcaseDesignDetailScreen() {
 
         {editable && (
           <>
-            <GradientButton label="Save Changes" disabled={save.isPending} loading={save.isPending} onPress={() => save.mutate()} />
+            <GradientButton variant="web" label="Save Changes" disabled={save.isPending} loading={save.isPending} onPress={() => save.mutate()} />
             <AnimatedPressable
               onPress={handleDelete}
               className="flex-row items-center justify-center gap-2 py-3 rounded-2xl border border-red-200 bg-red-50"

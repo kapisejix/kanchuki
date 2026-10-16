@@ -187,7 +187,7 @@ export default function PhoneScreen() {
 
           {/* Get Instant OTP Button — compact width & center aligned */}
           <View className="items-center w-full mt-1">
-            <GradientButton
+            <GradientButton variant="web"
               label="Get Instant OTP"
               onPress={() => void handleSend()}
               disabled={!isValid}

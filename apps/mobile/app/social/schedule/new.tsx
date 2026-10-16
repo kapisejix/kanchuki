@@ -383,6 +383,7 @@ export default function NewSchedulePlanScreen() {
             </View>
 
             <GradientButton
+              variant="web"
               label={create.isPending ? 'Building calendar…' : 'Preview calendar'}
               disabled={!valid || create.isPending}
               onPress={() => create.mutate()}

@@ -130,7 +130,7 @@ export default function AddProductsToCategoryScreen() {
         className="bg-white px-5 pt-3.5 border-t border-lavender-200"
         style={{ paddingBottom: 16 + insets.bottom }}
       >
-        <GradientButton
+        <GradientButton variant="web"
           label={`Add ${selected.size || ''} Design${selected.size === 1 ? '' : 's'}`.trim()}
           disabled={!canAssign}
           loading={assign.isPending}

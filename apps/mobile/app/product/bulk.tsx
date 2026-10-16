@@ -340,7 +340,7 @@ export default function BulkImportScreen() {
             className="bg-white border-t border-sand-100 px-4 pt-4"
             style={{ paddingBottom: 16 + insets.bottom }}
           >
-            <GradientButton
+            <GradientButton variant="web"
               label={`Import ${photos.length > 0 ? `${photos.length} Product${photos.length !== 1 ? 's' : ''}` : ''}`}
               onPress={() => void handleImport()}
               disabled={photos.length === 0}

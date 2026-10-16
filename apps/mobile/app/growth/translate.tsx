@@ -17,6 +17,7 @@ import { useScreenInsets } from '../../src/lib/safe-area'
 import { KeyboardScreen } from '../../src/components/KeyboardScreen'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { GradientButton } from '../../src/components/GradientButton'
+import { WHITE_BUTTON_INK, WhiteButton } from '../../src/components/WhiteButton'
 import { productApi } from '../../src/lib/api'
 import { growthApi, TRANSLATE_LANGUAGES, type TranslateLanguage, type TranslateResult } from '../../src/lib/api/growth'
 import { showError } from '../../src/lib/errors'
@@ -363,14 +364,15 @@ export default function TranslateScreen() {
 
           {/* Generate */}
           <GradientButton
+            variant="web"
             label={
               translate.isPending
                 ? 'Writing Translation…'
                 : resultText
                   ? 'Regenerate Translation'
                   : mode === 'description'
-                    ? '✨ Generate Luxury Description'
-                    : '✨ Translate Broadcast'
+                    ? 'Generate Luxury Description'
+                    : 'Translate Broadcast'
             }
             onPress={() => {
               if (mode === 'message' && !messageInput.trim()) {
@@ -407,24 +409,18 @@ export default function TranslateScreen() {
                   {mode === 'description' ? 'Generated Description' : 'Translated Message'} ·{' '}
                   {TRANSLATE_LANGUAGES.find((l) => l.key === language)?.label}
                 </Text>
-                <AnimatedPressable
+                <WhiteButton
+                  compact
+                  label={copied ? 'Copied' : 'Copy'}
+                  icon={
+                    copied ? (
+                      <Check size={14} color={WHITE_BUTTON_INK} />
+                    ) : (
+                      <Copy size={14} color={WHITE_BUTTON_INK} />
+                    )
+                  }
                   onPress={handleCopy}
-                  hitSlop={8}
-                  accessibilityLabel="Copy text"
-                  accessibilityRole="button"
-                  className="flex-row items-center gap-1 bg-fuchsia-500/10 px-3 py-1 rounded-full border border-fuchsia-500/20"
-                >
-                  {copied ? (
-                    <Check size={12} color="#16a34a" />
-                  ) : (
-                    <Copy size={12} color="#BB3F95" />
-                  )}
-                  <Text
-                    className={`text-xs font-bold ${copied ? 'text-emerald-700' : 'text-fuchsia-700'}`}
-                  >
-                    {copied ? 'Copied' : 'Copy'}
-                  </Text>
-                </AnimatedPressable>
+                />
               </View>
               <Text className="text-xs text-spaceCadet-900 leading-relaxed font-medium">{resultText}</Text>
             </View>

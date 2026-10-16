@@ -226,7 +226,7 @@ export default function WhatsAppCatalogSettingsScreen() {
             </View>
 
             {/* ── F4: Sync Now ── */}
-            <GradientButton
+            <GradientButton variant="web"
               label={syncMutation.isPending ? 'Syncing…' : 'Sync Now'}
               icon={<Zap size={16} color="white" />}
               disabled={!status.configured || syncMutation.isPending}

@@ -503,7 +503,7 @@ export default function CampaignFormScreen() {
             {isEdit ? 'Edit Campaign' : 'New Campaign'}
           </Text>
         </View>
-        <GradientButton
+        <GradientButton variant="web"
           label={saving ? 'Saving…' : 'Save'}
           onPress={() => void handleSave()}
           loading={saving}
@@ -694,7 +694,7 @@ export default function CampaignFormScreen() {
                       )
                     })}
                   </View>
-                  <GradientButton
+                  <GradientButton variant="web"
                     label={
                       translateMut.isPending
                         ? 'Translating…'
@@ -850,7 +850,7 @@ export default function CampaignFormScreen() {
                 >
                   Variant {variantPicker} · Products
                 </Text>
-                <GradientButton
+                <GradientButton variant="web"
                   label={`Done (${pickerSelection.size})`}
                   onPress={commitPicker}
                 />
@@ -1042,7 +1042,7 @@ export default function CampaignFormScreen() {
 
           {/* Save */}
           <View className="mt-2">
-            <GradientButton
+            <GradientButton variant="web"
               label={isEdit ? 'Save Changes' : 'Create Campaign'}
               onPress={() => void handleSave()}
               loading={saving}

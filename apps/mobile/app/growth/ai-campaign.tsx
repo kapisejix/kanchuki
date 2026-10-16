@@ -163,7 +163,7 @@ export default function AiCampaignScreen() {
               ))}
             </View>
             <View className="mt-4">
-              <GradientButton
+              <GradientButton variant="web"
                 label={generating ? 'Generating…' : 'Generate Campaign'}
                 onPress={() => void handleGenerate()}
                 loading={generating}
@@ -261,7 +261,7 @@ export default function AiCampaignScreen() {
               </Section>
 
               <View>
-                <GradientButton
+                <GradientButton variant="web"
                   label="Save Campaign"
                   onPress={() => void handleSave()}
                   loading={generating}

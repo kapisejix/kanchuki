@@ -145,7 +145,7 @@ function EditModal({
               <Text className="text-spaceCadet-900 font-bold text-xs uppercase tracking-wider">Cancel</Text>
             </AnimatedPressable>
             <View className="flex-1">
-              <GradientButton
+              <GradientButton variant="web"
                 label="Save"
                 onPress={() => void handleSave()}
                 disabled={saving || !title.trim()}
@@ -376,7 +376,7 @@ function ShareModal({
               )}
               {apiConfigured && (
                 <View className="mt-4">
-                  <GradientButton
+                  <GradientButton variant="web"
                     label={`Send via WhatsApp Business API (${selected.size})`}
                     disabled={selected.size === 0}
                     loading={bulkSending}

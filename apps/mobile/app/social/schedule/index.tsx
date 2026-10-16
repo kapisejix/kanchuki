@@ -1,9 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import { CalendarClock, ChevronLeft, Facebook, Instagram } from 'lucide-react-native';
+import { CalendarClock, ChevronLeft } from 'lucide-react-native';
 import { ActivityIndicator, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { AnimatedPressable } from '../../../src/components/AnimatedPressable';
+import { BrandIcon } from '../../../src/components/BrandIcon';
 import { GradientButton } from '../../../src/components/GradientButton';
+import { WhiteButton } from '../../../src/components/WhiteButton';
 import { formatIst, scheduleApi, tokenLabel } from '../../../src/lib/api/schedule';
 import type { ScheduleStatus } from '../../../src/lib/api/schedule';
 import { useAuth } from '../../../src/lib/auth-context';
@@ -33,7 +35,6 @@ function PlatformCard({
   isOwner: boolean;
   onChanged: () => void;
 }) {
-  const Icon = p.platform === 'FACEBOOK' ? Facebook : Instagram;
   const toggle = useMutation({
     mutationFn: (to: 'PAUSED' | 'ACTIVE') => scheduleApi.setPlanState(p.plan?.id as string, to),
     onSuccess: onChanged,
@@ -44,9 +45,7 @@ function PlatformCard({
   return (
     <View className="bg-white rounded-3xl p-5 border border-lavender-200">
       <View className="flex-row items-center gap-3 mb-3">
-        <View className="w-10 h-10 rounded-2xl bg-lavender-100 items-center justify-center">
-          <Icon size={18} color="#BB3F95" />
-        </View>
+        <BrandIcon brand={p.platform === 'FACEBOOK' ? 'facebook' : 'instagram'} size={40} />
         <View className="flex-1">
           <Text className="text-base font-bold text-spaceCadet-900" numberOfLines={1}>
             {p.account_name}
@@ -61,7 +60,7 @@ function PlatformCard({
 
       {tokenBad &&
         (isOwner ? (
-          <GradientButton label="Reconnect" onPress={() => router.push('/settings/social')} />
+          <GradientButton variant="web" label="Reconnect" onPress={() => router.push('/settings/social')} />
         ) : (
           <Text className="text-xs text-red-600 font-semibold">
             Ask the shop owner to reconnect {p.platform === 'FACEBOOK' ? 'Facebook' : 'Instagram'}.
@@ -90,25 +89,24 @@ function PlatformCard({
           <View className="flex-row gap-3 mt-3">
             <View className="flex-1">
               <GradientButton
+                variant="web"
                 label="View calendar"
                 onPress={() => router.push(`/social/schedule/${p.plan?.id}`)}
               />
             </View>
-            <AnimatedPressable
-              accessibilityRole="button"
+            <WhiteButton
+              compact
+              style={{ alignSelf: 'stretch' }}
+              label={p.plan.status === 'ACTIVE' ? 'Pause' : 'Resume'}
               disabled={toggle.isPending || (p.plan.status === 'PAUSED' && tokenBad)}
               onPress={() => toggle.mutate(p.plan?.status === 'ACTIVE' ? 'PAUSED' : 'ACTIVE')}
-              className="px-4 rounded-2xl border border-lavender-200 items-center justify-center"
-            >
-              <Text className="text-xs font-bold text-spaceCadet-900">
-                {p.plan.status === 'ACTIVE' ? 'Pause' : 'Resume'}
-              </Text>
-            </AnimatedPressable>
+            />
           </View>
         </View>
       ) : canPlan ? (
         <View className="mt-3">
           <GradientButton
+            variant="web"
             label="Create posting plan"
             onPress={() => router.push(`/social/schedule/new?account=${p.account_id}`)}
           />
@@ -183,7 +181,7 @@ export default function SchedulerHomeScreen() {
           <Text className="text-sm text-heliotrope-500 text-center">
             Couldn&apos;t load the scheduler. Check your connection.
           </Text>
-          <GradientButton label="Retry" onPress={() => void refetch()} />
+          <GradientButton variant="web" label="Retry" onPress={() => void refetch()} />
         </View>
       ) : (
         <ScrollView
@@ -205,6 +203,7 @@ export default function SchedulerHomeScreen() {
               {isOwner ? (
                 <View className="mt-4 w-52">
                   <GradientButton
+                    variant="web"
                     label="Connect account"
                     onPress={() => router.push('/settings/social')}
                   />
@@ -256,15 +255,12 @@ export default function SchedulerHomeScreen() {
               shoots.
             </Text>
             {s.studio_shoots.included ? (
-              <AnimatedPressable
+              <WhiteButton
+                compact
+                style={{ marginTop: 12, alignSelf: 'flex-start' }}
+                label="Create photos in AI Studio"
                 onPress={() => router.push('/(tabs)/catalog')}
-                accessibilityRole="button"
-                className="mt-3 self-start px-4 py-2 rounded-xl border border-lavender-200"
-              >
-                <Text className="text-xs font-bold text-spaceCadet-900">
-                  Create photos in AI Studio
-                </Text>
-              </AnimatedPressable>
+              />
             ) : null}
           </View>
 
@@ -282,30 +278,25 @@ export default function SchedulerHomeScreen() {
                   <Text className="text-xs text-red-600 mt-0.5">
                     {f.reason ?? "Post failed. We'll retry. If it keeps failing, contact support."}
                   </Text>
-                  <View className="flex-row gap-2 mt-2">
-                    <AnimatedPressable
-                      accessibilityRole="button"
+                  <View className="flex-row flex-wrap gap-2 mt-2">
+                    <GradientButton
+                      variant="web"
+                      compact
+                      label="Retry"
                       disabled={fix.isPending}
                       onPress={() => fix.mutate({ id: f.id, action: 'retry' })}
-                      className="px-3 py-1.5 rounded-xl bg-fuchsia-600"
-                    >
-                      <Text className="text-xs font-bold text-white">Retry</Text>
-                    </AnimatedPressable>
-                    <AnimatedPressable
-                      accessibilityRole="button"
+                    />
+                    <WhiteButton
+                      compact
+                      label="Skip"
                       disabled={fix.isPending}
                       onPress={() => fix.mutate({ id: f.id, action: 'skip' })}
-                      className="px-3 py-1.5 rounded-xl border border-lavender-200"
-                    >
-                      <Text className="text-xs font-bold text-spaceCadet-900">Skip</Text>
-                    </AnimatedPressable>
-                    <AnimatedPressable
-                      accessibilityRole="button"
+                    />
+                    <WhiteButton
+                      compact
+                      label="Edit"
                       onPress={() => router.push(`/social/schedule/${f.plan_id}`)}
-                      className="px-3 py-1.5 rounded-xl border border-lavender-200"
-                    >
-                      <Text className="text-xs font-bold text-spaceCadet-900">Edit</Text>
-                    </AnimatedPressable>
+                    />
                   </View>
                 </View>
               ))

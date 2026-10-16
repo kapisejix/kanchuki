@@ -415,7 +415,7 @@ export default function CampaignDetailScreen() {
         {(
           <View className="gap-3 mt-2">
             {canEdit && (
-              <GradientButton
+              <GradientButton variant="web"
                 label={
                   sendMutation.isPending
                     ? 'Sending…'

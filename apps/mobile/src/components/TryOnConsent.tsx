@@ -56,7 +56,7 @@ export function TryOnConsent({
       <Text className="text-xs text-ink-700 leading-4 mb-2">{TRY_ON_CONSENT.training}</Text>
       <Text className="text-xs text-ink-600 leading-4 mb-5">{TRY_ON_CONSENT.withdrawal}</Text>
 
-      <GradientButton
+      <GradientButton variant="web"
         label={TRY_ON_CONSENT.acceptLabel}
         onPress={onAccept}
         loading={busy}

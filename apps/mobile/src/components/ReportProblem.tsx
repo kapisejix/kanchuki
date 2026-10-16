@@ -210,7 +210,7 @@ export function ReportProblem({
               Thank you! Our team will review this and get back to you. Your
               feedback helps us improve Kanchuki for everyone.
             </Text>
-            <GradientButton label="Done" onPress={onClose} />
+            <GradientButton variant="web" label="Done" onPress={onClose} />
           </View>
         </View>
       </Modal>
@@ -387,7 +387,7 @@ export function ReportProblem({
             </View>
 
             {/* Submit */}
-            <GradientButton
+            <GradientButton variant="web"
               label={submitting ? "Submitting..." : "Submit Report"}
               onPress={() => void handleSubmit()}
               disabled={
