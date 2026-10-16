@@ -9,6 +9,11 @@ import {
   Plus,
   Trash2,
   AlertTriangle,
+  Package,
+  Palette,
+  ShoppingBag,
+  Wallet,
+  type LucideIcon,
 } from 'lucide-react-native'
 import {
   ActivityIndicator,
@@ -39,14 +44,14 @@ const CHANNEL_LABELS: Record<ChannelType, string> = {
   OTHER: 'Other',
 }
 
-const CHANNEL_EMOJI: Record<ChannelType, string> = {
-  MEESHO: '🛍️',
-  INSTAMOJO: '💰',
-  GLOAD: '📦',
-  CRAFTSVILLA: '🎨',
-  FLIPKART: '🛒',
-  AMAZON: '📦',
-  OTHER: '🔗',
+const CHANNEL_ICON: Record<ChannelType, LucideIcon> = {
+  MEESHO: ShoppingBag,
+  INSTAMOJO: Wallet,
+  GLOAD: Package,
+  CRAFTSVILLA: Palette,
+  FLIPKART: ShoppingBag,
+  AMAZON: Package,
+  OTHER: Link2,
 }
 
 const STATUS_LABELS: Record<string, { label: string; bg: string; text: string; border: string }> = {
@@ -191,7 +196,10 @@ export default function AggregatorsScreen() {
                       <View
                         className="w-10 h-10 rounded-2xl items-center justify-center bg-lavender-100 border border-lavender-200"
                       >
-                        <Text className="text-lg">{CHANNEL_EMOJI[s.channel]}</Text>
+                        {(() => {
+                          const Icon = CHANNEL_ICON[s.channel]
+                          return <Icon size={20} color="#231F48" />
+                        })()}
                       </View>
                       <View className="flex-1">
                         <Text
@@ -283,14 +291,14 @@ export default function AggregatorsScreen() {
 
 // ─── Connect Channel Modal ─────────────────────────────────────────
 
-const CHANNELS: { value: ChannelType; label: string; emoji: string }[] = [
-  { value: 'MEESHO', label: 'Meesho', emoji: '🛍️' },
-  { value: 'INSTAMOJO', label: 'Instamojo', emoji: '💰' },
-  { value: 'GLOAD', label: 'Glroad', emoji: '📦' },
-  { value: 'CRAFTSVILLA', label: 'Craftsvilla', emoji: '🎨' },
-  { value: 'FLIPKART', label: 'Flipkart', emoji: '🛒' },
-  { value: 'AMAZON', label: 'Amazon', emoji: '📦' },
-  { value: 'OTHER', label: 'Other', emoji: '🔗' },
+const CHANNELS: { value: ChannelType; label: string }[] = [
+  { value: 'MEESHO', label: 'Meesho' },
+  { value: 'INSTAMOJO', label: 'Instamojo' },
+  { value: 'GLOAD', label: 'Glroad' },
+  { value: 'CRAFTSVILLA', label: 'Craftsvilla' },
+  { value: 'FLIPKART', label: 'Flipkart' },
+  { value: 'AMAZON', label: 'Amazon' },
+  { value: 'OTHER', label: 'Other' },
 ]
 
 function ConnectChannelModal({
@@ -357,7 +365,10 @@ function ConnectChannelModal({
                   active ? 'bg-spaceCadet-900 border-spaceCadet-900 shadow-sm' : 'bg-lavender-50 border-lavender-200'
                 }`}
               >
-                <Text className="text-sm">{c.emoji}</Text>
+                {(() => {
+                  const Icon = CHANNEL_ICON[c.value]
+                  return <Icon size={14} color={active ? '#FFFFFF' : '#231F48'} />
+                })()}
                 <Text
                   className={`text-xs font-bold ${active ? 'text-white' : 'text-spaceCadet-900'}`}
                 >

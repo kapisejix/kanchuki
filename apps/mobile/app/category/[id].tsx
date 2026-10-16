@@ -6,7 +6,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useScreenInsets } from '../../src/lib/safe-area'
 import { KeyboardScreen } from '../../src/components/KeyboardScreen'
 import * as ImagePicker from 'expo-image-picker'
-import { Plus, Trash2, Pencil, X, ImagePlus, ChevronLeft } from 'lucide-react-native'
+import { Plus, Trash2, Pencil, X, ImagePlus, ChevronLeft, FolderOpen } from 'lucide-react-native'
 import ProductCard from '../../src/components/ProductCard'
 import { DetailScreenSkeleton, ProductGridSkeleton } from '../../src/components/Skeleton'
 import { useGridColumns } from '../../src/hooks/useIsTablet'
@@ -263,7 +263,7 @@ export default function CategoryDetailScreen() {
           {category.image_url ? (
             <Image source={{ uri: category.image_url }} style={{ width: 56, height: 56 }} resizeMode="cover" />
           ) : (
-            <Text className="text-xl">🗂️</Text>
+            <FolderOpen size={22} color="#928EB2" />
           )}
         </View>
         <View className="flex-1">

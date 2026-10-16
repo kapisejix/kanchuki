@@ -5,7 +5,7 @@ import { KeyboardScreen } from '../../src/components/KeyboardScreen'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useScreenInsets } from '../../src/lib/safe-area'
-import { Eye, Heart, MessageCircle, Link2, Users, Edit, Trash2, Search, Check, ChevronLeft, Share2 } from 'lucide-react-native'
+import { Eye, Heart, MessageCircle, Link2, Users, Edit, Trash2, Search, Check, ChevronLeft, Share2, Shirt } from 'lucide-react-native'
 import { collectionApi, customerApi, retailerApi } from '../../src/lib/api'
 import { showError } from '../../src/lib/errors'
 import { CollectionDetailSkeleton } from '../../src/components/Skeleton'
@@ -578,7 +578,7 @@ export default function CollectionDetailScreen() {
                   />
                 ) : (
                   <View className="w-full h-28 bg-lavender-100 items-center justify-center">
-                    <Text className="text-xl">👗</Text>
+                    <Shirt size={24} color="#928EB2" />
                   </View>
                 )}
                 <Text className="text-[10px] font-bold text-spaceCadet-900 p-2 truncate" numberOfLines={1}>
