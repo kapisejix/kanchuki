@@ -3,25 +3,58 @@ import { AlertTriangle, BarChart2 } from 'lucide-react-native'
 import { Text, View } from 'react-native'
 import { retailerApi } from '../lib/api'
 
-/** F-010 plan usage vs limits (AI tagging, uploads, …). Shared by Home and Settings.
- * Renders nothing while loading, on error (e.g. staff roles without access), or when
- * every resource is unlimited. */
+/** F-010 plan usage vs limits (uploads, AI tagging, studio shoots). The API only
+ * returns those three. Renders nothing while loading, on error (e.g. staff roles
+ * without access), or when every resource is unlimited. */
 const LABELS: Record<string, string> = {
   PRODUCT_UPLOAD: 'Product Uploads',
   AI_TAGGING_CALL: 'AI Tagging',
-  TRY_ON: 'Try-Ons',
-  IMAGE_CROP: 'Image Crops',
-  BG_REMOVAL: 'Bg Removals',
-  API_REQUEST: 'API Calls',
+  STUDIO_SHOOT: 'Studio Shoots',
 }
 
-export function UsageCard() {
+function useActiveUsage() {
   const { data } = useQuery({
     queryKey: ['retailer', 'usage'],
     queryFn: () => retailerApi.getUsage(),
   })
+  return (data?.data ?? []).filter((r) => r.limit > 0 && r.resource_type in LABELS)
+}
 
-  const active = (data?.data ?? []).filter((r) => r.limit > 0)
+/** Compact "N left" rows for the Home catalog overview (light text on the dark hero). */
+export function UsageRows() {
+  const active = useActiveUsage()
+  if (active.length === 0) return null
+
+  return (
+    <View
+      style={{
+        marginTop: 12,
+        paddingTop: 12,
+        borderTopWidth: 1,
+        borderTopColor: 'rgba(255, 255, 255, 0.15)',
+        gap: 6,
+      }}
+    >
+      {active.map((r) => {
+        const left = Math.max(r.limit - r.used, 0)
+        const pctLeft = Math.round((left / r.limit) * 100)
+        return (
+          <View key={r.resource_type} className="flex-row justify-between items-center">
+            <Text className="text-[9px] text-lavender-200/70 font-extrabold uppercase tracking-wider">
+              {LABELS[r.resource_type]}
+            </Text>
+            <Text className={`text-xs font-extrabold ${left === 0 ? 'text-red-300' : 'text-white'}`}>
+              {left} left · {pctLeft}%
+            </Text>
+          </View>
+        )
+      })}
+    </View>
+  )
+}
+
+export function UsageCard() {
+  const active = useActiveUsage()
   if (active.length === 0) return null
 
   return (
@@ -37,9 +70,7 @@ export function UsageCard() {
         return (
           <View key={r.resource_type} className="mb-2.5">
             <View className="flex-row justify-between items-center mb-1">
-              <Text className="text-xs text-heliotrope-600 font-medium">
-                {LABELS[r.resource_type] ?? r.resource_type}
-              </Text>
+              <Text className="text-xs text-heliotrope-600 font-medium">{LABELS[r.resource_type]}</Text>
               <Text className={`text-xs font-bold ${isOver ? 'text-red-600' : 'text-spaceCadet-900'}`}>
                 {r.used}/{r.limit} {r.period === 'MONTH' ? 'mo' : r.period === 'DAY' ? 'day' : ''}
               </Text>

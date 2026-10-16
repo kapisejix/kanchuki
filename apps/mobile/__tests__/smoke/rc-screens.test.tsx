@@ -109,6 +109,14 @@ vi.mock('expo-clipboard', () => ({
   setStringAsync: vi.fn(async () => true),
 }))
 
+// settings/index.tsx imports expo-location (store-pin capture); same
+// __DEV__ / expo-modules-core reason as expo-clipboard above.
+vi.mock('expo-location', () => ({
+  requestForegroundPermissionsAsync: vi.fn(async () => ({ status: 'denied' })),
+  getCurrentPositionAsync: vi.fn(),
+  Accuracy: { High: 4 },
+}))
+
 // ── Data-driven react-query mock (overrides setup's empty-data mock) ──
 vi.mock('@tanstack/react-query', () => ({
   useQuery: ({ queryKey }: { queryKey: unknown[] }) => ({

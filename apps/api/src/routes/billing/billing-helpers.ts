@@ -39,7 +39,19 @@ export async function razorpay<T>(path: string, init?: RequestInit): Promise<T> 
   });
   if (!res.ok) {
     const body = await res.text();
-    throw new Error(`Razorpay ${res.status}: ${body}`);
+    // A plain Error becomes the sanitised 500 "Something went wrong", which hid
+    // every Razorpay rejection (bad plan id, test/live key mismatch, invalid
+    // start_at) from the retailer and from the logs. Surface Razorpay's own
+    // description as a 502 so the cause is visible and the client can show it.
+    let description = `Razorpay ${res.status}`;
+    try {
+      const parsed = JSON.parse(body) as { error?: { description?: string } };
+      if (parsed.error?.description) description = parsed.error.description;
+    } catch {
+      // non-JSON body — keep the status-only description
+    }
+    console.error(`[razorpay] ${init?.method ?? 'GET'} ${path} -> ${res.status}: ${body}`);
+    throw new AppError('BILLING_PROVIDER_ERROR', `Payment provider error: ${description}`, 502);
   }
   return res.json() as Promise<T>;
 }

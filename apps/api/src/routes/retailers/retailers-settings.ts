@@ -252,10 +252,7 @@ export const retailersSettingsRoutes: FastifyPluginAsync = async (server) => {
     const ALL_RESOURCES: QuotaResourceType[] = [
       'PRODUCT_UPLOAD',
       'AI_TAGGING_CALL',
-      'TRY_ON',
-      'IMAGE_CROP',
-      'BG_REMOVAL',
-      'API_REQUEST',
+      'STUDIO_SHOOT',
     ];
 
     // Check for per-retailer override

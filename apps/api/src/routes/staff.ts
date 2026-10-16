@@ -366,11 +366,11 @@ export const staffRoutes: FastifyPluginAsync = async (server) => {
     if (!existing) throw notFound('Staff');
 
     if (purge === 'true') {
-      if (existing.is_active)
-        throw validationError('Deactivate the team member before deleting permanently', 'purge');
-
       // Audit the erasure itself first — the auditLog row must survive even
-      // though the staff row (and its name/phone) is gone.
+      // though the staff row is gone. The phone number is deliberately NOT
+      // copied into the audit row: erasure removes it from the record too.
+      // Active members can be purged directly — the row is what auth looks the
+      // member up by, so deleting it also ends their access.
       await prisma.auditLog.create({
         data: {
           actor_type: 'retailer',
@@ -378,7 +378,7 @@ export const staffRoutes: FastifyPluginAsync = async (server) => {
           action: 'purge',
           resource_type: 'Staff',
           resource_id: id,
-          metadata: { name: existing.name, phone: existing.phone, role: existing.role },
+          metadata: { name: existing.name, role: existing.role },
           ip_address: request.ip,
         },
       });

@@ -365,13 +365,14 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
                       href={`https://www.google.com/maps/dir/?api=1&destination=${collection.retailer.latitude},${collection.retailer.longitude}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex-shrink-0 w-5 h-5 rounded-full bg-[#BB3F95]/10 flex items-center justify-center"
+                      className="flex-shrink-0 h-5 pl-1.5 pr-2 rounded-full bg-[#BB3F95]/10 flex items-center gap-1 text-[10px] font-bold text-[#BB3F95]"
                       aria-label="Get directions to store"
                     >
                       <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#BB3F95" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
                         <circle cx="12" cy="10" r="3" />
                       </svg>
+                      Directions
                     </a>
                   )}
                 </div>

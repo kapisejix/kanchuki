@@ -7,7 +7,7 @@ import { AnimatedPressable } from '../../src/components/AnimatedPressable';
 import { GradientButton } from '../../src/components/GradientButton';
 import { KeyboardScreen } from '../../src/components/KeyboardScreen';
 import { WhiteButton } from '../../src/components/WhiteButton';
-import { type SupportTicket, type SupportTicketType, ticketApi } from '../../src/lib/api';
+import { ApiError, type SupportTicket, type SupportTicketType, ticketApi } from '../../src/lib/api';
 import { showError } from '../../src/lib/errors';
 import { useScreenInsets } from '../../src/lib/safe-area';
 
@@ -85,7 +85,14 @@ export default function HelpSupportScreen() {
       setNeedsVisit(false);
       void queryClient.invalidateQueries({ queryKey: TICKETS_KEY });
     },
-    onError: (err) => showError(err, 'Could not raise your ticket. Please try again.'),
+    // 4xx carries a user-actionable reason (e.g. "You already have 5 open tickets"); anything else stays generic.
+    onError: (err) =>
+      showError(
+        err,
+        err instanceof ApiError && err.status >= 400 && err.status < 500 && err.status !== 401
+          ? err.message
+          : 'Could not raise your ticket. Please try again.',
+      ),
   });
 
   return (
