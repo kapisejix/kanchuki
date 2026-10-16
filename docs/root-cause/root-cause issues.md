@@ -12,6 +12,36 @@
 
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
+## RC-065 — AI Stylist's close handler popped browser history twice, so hiding the stylist also closed an open product sheet
+
+- **Component:** `apps/web/src/app/c/[slug]/components/AIStylist.tsx`, `ProductDetailSheet.tsx`. Fixed 2026-10-16 on `fix/studio-variant-invite-stylist-catalog`.
+- **Symptom:** a product opened from the stylist appeared *behind* it; hiding the stylist then closed the product detail too and showed the catalog.
+- **Root cause:** `closeOverlay` called `setOpen(false)` **and** `history.back()`; the effect cleanup ran before the popstate and called `history.back()` again, popping the product sheet's entry. The product sheet (z-50) also sat under the stylist (z-50, later in DOM).
+- **Fix:** close = `history.back()` only (popstate flips `open`); cleanup only pops if the top entry is ours; product sheet is `z-[55]`.
+- **Not verified:** browser/device check.
+
+---
+
+## RC-064 — Staff-invite "send OTP" used the 10 s default client timeout while the MSG91 send is slow, so the app showed an error (and never opened the OTP screen) after the SMS had already been sent
+
+- **Component:** `apps/mobile/src/lib/api/staff-invite.ts` (`staffInviteApi.sendOtp`). Fixed 2026-10-16 on `fix/studio-variant-invite-stylist-catalog`.
+- **Symptom:** invite link → Continue → "Could not send the OTP. Try again." while the OTP SMS arrived; no OTP screen.
+- **Root cause:** `authApi.sendOtp` carries `timeoutMs: 30_000` for exactly this slowness; the sibling invite call copied none of it. Per-call timeouts are a convention nothing enforces.
+- **Fix:** `timeoutMs: 30_000`. Server route limits 3 sends/min, so rapid retries can still 429.
+- **Not verified:** on-device; mobile jest suite for the join screen does not load in this environment.
+
+---
+
+## RC-063 — Studio-shoot status poll looked color-variant photos up in `ProductPhoto`, so every poll 404'd and the shoot looked broken
+
+- **Component:** `apps/api/src/routes/products/products-studio.ts` (GET `.../studio-shoot/status`). Fixed 2026-10-16 on `fix/studio-variant-invite-stylist-catalog`.
+- **Symptom:** AI Studio worked on the main photo only; on a color-variant photo the job ran (quota spent) but the app got "Product photo not found".
+- **Root cause:** the app addresses variant previews as `variant-<id>`; POST resolved that prefix, the status route did not — two routes, one id convention, only one handled it.
+- **Fix:** status route checks `ProductVariant` for `variant-` ids. Regression test added.
+- **Not verified:** real provider run; variants with a photo URL but no `r2_key` still 404 on POST.
+
+---
+
 ## RC-062 — 13 daily/weekly maintenance crons were registered with BullMQ `repeat.limit: 1`, which caps the job to ONE run per API boot, so they silently stopped repeating
 
 - **Component:** `apps/api/src/jobs/index.ts`. Found 2026-10-16 (Customer Engagement stayed at zero); fixed on `fix/cron-repeat-limit`.

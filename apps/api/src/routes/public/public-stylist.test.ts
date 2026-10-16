@@ -118,7 +118,7 @@ describe('POST /public/stylist — category/age/gender filter', () => {
     await app.close();
   });
 
-  it('a query naming no category/age/gender still falls back across the full catalog (unchanged behavior)', async () => {
+  it('a query matching nothing in the store returns no products (never the whole catalog)', async () => {
     mockProductFindMany.mockResolvedValue([LADIES_SUIT, KIDS_WEAR]);
     const app = await buildApp();
     const res = await app.inject({
@@ -127,8 +127,24 @@ describe('POST /public/stylist — category/age/gender filter', () => {
       payload: { slug: 'meera', query: 'something nice under a budget' },
     });
     expect(res.statusCode).toBe(200);
-    const data = res.json().data;
-    expect(data.recommendations).toHaveLength(2);
+    expect(res.json().data.recommendations).toEqual([]);
+    await app.close();
+  });
+
+  it('a colour query returns only products of that colour', async () => {
+    mockProductFindMany.mockResolvedValue([
+      { ...LADIES_SUIT, id: 'p_pink', name: 'Anarkali A', primary_color: 'Pink' },
+      { ...LADIES_SUIT, id: 'p_blue', name: 'Anarkali B', primary_color: 'Blue' },
+    ]);
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/public/stylist',
+      payload: { slug: 'meera', query: 'pink suit' },
+    });
+    expect(res.statusCode).toBe(200);
+    const ids = res.json().data.recommendations.map((r: { product_id: string }) => r.product_id);
+    expect(ids).toEqual(['p_pink']);
     await app.close();
   });
 });

@@ -1015,7 +1015,10 @@ export default function AddProductScreen() {
   }
 
   return (
-    <KeyboardScreen className="flex-1 bg-ink-50">
+    // 'padding' on both platforms: Expo 54 Android is edge-to-edge, so the window
+    // no longer resizes for the keyboard and the shared 'height' default left the
+    // Price/Notes fields behind it. (Try Android 'height' again if this double-pads.)
+    <KeyboardScreen className="flex-1 bg-ink-50" behavior="padding">
       {/* Header — fixed outside the scroll area so back/save stay reachable */}
       <ScreenHeader
         title="Product Details"

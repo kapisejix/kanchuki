@@ -27,6 +27,50 @@ const COMPLEMENTARY_COLORS: Record<string, string[]> = {
   purple: ['gold', 'pink', 'yellow'],
 };
 
+// Colour words a shopper may type — matched as whole words against the query.
+const QUERY_COLORS = [
+  'royal blue',
+  'sky blue',
+  'pink',
+  'red',
+  'blue',
+  'green',
+  'yellow',
+  'black',
+  'white',
+  'orange',
+  'purple',
+  'maroon',
+  'navy',
+  'mustard',
+  'beige',
+  'cream',
+  'grey',
+  'gray',
+  'brown',
+  'gold',
+  'peach',
+  'wine',
+  'violet',
+  'lavender',
+];
+
+const STOPWORDS = new Set([
+  'for',
+  'the',
+  'and',
+  'with',
+  'show',
+  'something',
+  'want',
+  'need',
+  'looking',
+  'under',
+  'below',
+  'above',
+  'best',
+]);
+
 interface ProductCandidate {
   id: string;
   name: string | null;
@@ -196,7 +240,7 @@ export const publicStylistRoutes: FastifyPluginAsync = async (server) => {
         (OCCASION_SYNONYMS[key] ?? []).some((syn) => queryLower.includes(syn)),
       );
 
-      const _colorHints = Object.keys(COMPLEMENTARY_COLORS).filter((c) => queryLower.includes(c));
+      const colorHints = QUERY_COLORS.filter((c) => new RegExp(`\\b${c}\\b`).test(queryLower));
       const fabricHints = [
         'cotton',
         'silk',
@@ -243,6 +287,19 @@ export const publicStylistRoutes: FastifyPluginAsync = async (server) => {
         });
         if (filtered.length === 0) noStockForRequest = true;
         candidates = filtered;
+      }
+
+      // Colour — HARD, like garment type: "pink suit" must not return blue
+      // suits. Matches the primary/secondary colour or the product name.
+      if (!noStockForRequest && colorHints.length > 0) {
+        candidates = candidates.filter((p) => {
+          const hay = [p.primary_color, ...p.secondary_colors, p.name]
+            .filter(Boolean)
+            .join(' ')
+            .toLowerCase();
+          return colorHints.some((c) => hay.includes(c));
+        });
+        if (candidates.length === 0) noStockForRequest = true;
       }
 
       // Occasion filter — soft, same threshold convention as fabric below
@@ -293,6 +350,34 @@ export const publicStylistRoutes: FastifyPluginAsync = async (server) => {
       // the same canned "rationale", so a dead provider looked like AI output
       // (RC-059). Now it is logged + reported, flagged `fallback: true`, and
       // carries no fake styling tip.
+      // Fallback picks must still be what the customer typed: when no structured
+      // hint (type/colour/fabric/occasion) narrowed the list, keep only products
+      // whose text shares a query word instead of the first 6 of the whole store.
+      // Only type + colour are hard filters above; fabric/occasion are soft, so
+      // they still go through the word match.
+      const hasHint = typeHints.length > 0 || colorHints.length > 0;
+      const queryWords = queryLower
+        .split(/[^a-z0-9]+/)
+        .filter((w) => w.length > 2 && !STOPWORDS.has(w));
+      const fallbackPicks = (
+        hasHint
+          ? candidates
+          : candidates.filter((p) => {
+              const hay = [
+                p.name,
+                p.category,
+                p.subtype,
+                p.primary_color,
+                p.fabric_estimate,
+                ...p.occasions,
+              ]
+                .filter(Boolean)
+                .join(' ')
+                .toLowerCase();
+              return queryWords.some((w) => hay.includes(w));
+            })
+      ).slice(0, 6);
+
       const fallback = (reason: string, err?: unknown) => {
         request.log.warn({ err, reason, retailer_id: retailer.id }, 'stylist fallback (no AI)');
         Sentry.captureException(err ?? new Error(`stylist fallback: ${reason}`), {
@@ -302,7 +387,7 @@ export const publicStylistRoutes: FastifyPluginAsync = async (server) => {
         return reply.status(200).send({
           data: {
             fallback: true,
-            recommendations: candidates.slice(0, 6).map((p) => ({
+            recommendations: fallbackPicks.map((p) => ({
               product_id: p.id,
               name: p.name ?? p.category ?? 'Product',
               category: p.category,
@@ -343,12 +428,9 @@ Here is the store's available catalog (JSON array):
 ${JSON.stringify(catalogForLLM, null, 2)}
 
 RULES:
-- Suggest 3-6 products that best match the customer's request
+- Return ONLY products that directly match what the customer asked for (up to 6). Fewer is fine; if only one matches, return one; if none match, return []
 - Recommend ONLY from the catalog above — every product_id must exist in it, never invent or substitute one
-- If the customer names an age group, gender, or specific garment type, every recommendation must match it — do not suggest a different category just because it's popular in this store
-- Mix items for a complete look (e.g., kurta + dupatta, suit + accessories)
-- Respect color coordination: analogous colors for daily wear, complementary for festive
-- Match fabric weight: embroidered suit → plain dupatta, solid suit → printed dupatta
+- Every recommendation must match every attribute the customer named (garment type, colour, fabric, age group, gender, occasion, budget) — never add unrelated or "complementary" items to complete a look, and do not pad the list
 - Respect budget if mentioned
 - Each recommendation must be a JSON object with: product_id, name, category, color, price, photo_url (use the id from catalog), rationale (one-line styling tip in the customer's language)
 - Return ONLY a valid JSON array, no markdown, no explanation`,

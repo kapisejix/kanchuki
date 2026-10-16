@@ -26,6 +26,9 @@ export const staffInviteApi = {
   sendOtp: (token: string) =>
     request<{ data: { sent_to: string } }>(
       `/v1/public/staff-invite/${encodeURIComponent(token)}/otp`,
-      { method: 'POST' },
+      // 30s like authApi.sendOtp: the MSG91 send is slow on a cold API. At the
+      // 10s default the client aborted, showed "Could not send the OTP" and
+      // never opened the OTP screen — while the SMS still arrived.
+      { method: 'POST', timeoutMs: 30_000 },
     ),
 }

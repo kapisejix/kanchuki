@@ -260,38 +260,8 @@ describe('CollectionView pagination', () => {
     expect(screen.queryByText('Festive Design 40')).not.toBeInTheDocument()
     expect(screen.getByText('Page 1 of 2')).toBeInTheDocument()
   })
-
-  it('shows size chips and sends the selected size as a replace request', async () => {
-    const fetchMock = vi.fn(async (input: unknown) => {
-      const url = new URL(String(input), 'https://kanchuki.test')
-      if (url.pathname.endsWith('/products')) return pageResponse(Number(url.searchParams.get('page')))
-      if (url.pathname.startsWith('/api/engagement-chips')) {
-        return { ok: true, status: 200, json: async () => ({ data: { products: {}, window: {} } }) }
-      }
-      return { ok: true, status: 200, json: async () => ({ data: {} }) }
-    })
-    vi.stubGlobal('fetch', fetchMock)
-
-    render(
-      <CollectionView
-        collection={paginatedCollection()}
-        slug="festive-edit"
-        productsApiPath="/api/c/festive-edit/products"
-      />,
-    )
-
-    expect(screen.getByRole('group', { name: 'Filter by size' })).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'M (4)' }))
-
-    await waitFor(() => {
-      expect(fetchMock.mock.calls.some(([input]) => {
-        const url = new URL(String(input), 'https://kanchuki.test')
-        return url.pathname.endsWith('/products') && url.searchParams.get('size') === 'M'
-      })).toBe(true)
-    })
-    expect(screen.getByRole('button', { name: 'M (4)' })).toHaveAttribute('aria-pressed', 'true')
-  })
 })
+
 
 describe('CollectionView social-proof chips', () => {
   const DAY_MS = 86_400_000

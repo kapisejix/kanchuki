@@ -21,7 +21,9 @@ const {
   mockStyleFindFirst,
   mockStyleFindMany,
   mockProductFindFirst,
+  mockVariantFindFirst,
 } = vi.hoisted(() => ({
+  mockVariantFindFirst: vi.fn(),
   mockRetailerFindUniqueOrThrow: vi.fn(),
   mockPhotoFindFirst: vi.fn(),
   mockPhotoCreate: vi.fn(),
@@ -42,6 +44,7 @@ vi.mock('@kanchuki/db', () => ({
       findFirst: mockPhotoFindFirst,
       create: mockPhotoCreate,
     },
+    productVariant: { findFirst: mockVariantFindFirst },
     studioStyle: {
       findFirst: mockStyleFindFirst,
       findMany: mockStyleFindMany,
@@ -377,6 +380,26 @@ describe('GET /products/:id/photos/:photoId/studio-shoot/status', () => {
       photo_id: 'photo_new',
       url: 'https://r2.example/studio.jpg',
     });
+    await app.close();
+  });
+
+  it('polls a color-variant photo (variant-<id>) via the variant row, not ProductPhoto', async () => {
+    mockVariantFindFirst.mockResolvedValue({ id: 'v1' });
+    mockPhotoFindFirst.mockResolvedValue(null); // no ProductPhoto has id "variant-v1"
+    mockGetStudioJobStatus.mockResolvedValue({ status: 'processing' });
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'GET',
+      url: '/v1/products/p1/photos/variant-v1/studio-shoot/status?job_id=job_1',
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data.status).toBe('processing');
+    expect(mockVariantFindFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'v1', product_id: 'p1', retailer_id: RETAILER_ID },
+      }),
+    );
     await app.close();
   });
 
