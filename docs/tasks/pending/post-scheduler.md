@@ -1,8 +1,9 @@
 # F-043 Social Post Scheduler (FB + IG daily carousel plans) — PENDING
-> Drafted 2026-10-15, revised same day after owner answers. **✅ APPROVED by owner 2026-10-15 — nothing built yet.**
+> Drafted 2026-10-15, revised same day after owner answers. **✅ APPROVED by owner 2026-10-15 — Tasks 1–5 built (see below).**
 > F-043 assigned (F-042 was the last number used).
 > **Task 1 (§10 step 1) built 2026-10-15** — merged (PR #79); migrations 128 + 129 applied in prod.
-> **Task 2 (§10 step 2) built 2026-10-16** — branch `feat/f-043-publish-tick`, see §10b. Next: §10 step 3.
+> **Task 2 (§10 step 2) built 2026-10-16** — merged (PR #80), see §10b.
+> **Tasks 3–5 built** — landed on `main` via stacked PR #83 (#81/#82 were closed unmerged; their code is in #83), see §10c–§10e. Not device-tested.
 > Owner-side (not code): Meta App Review per §9; migrations are applied by the owner from the admin dashboard.
 > Extends F-031 Phase 2 (composer) and closes its "Phase 3 open: auto-post" + "Phase 4: scheduling" items.
 
