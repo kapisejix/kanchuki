@@ -1,4 +1,4 @@
-import { isPlanEnded } from '@kanchuki/shared';
+import { formatPaiseShort, isPlanEnded } from '@kanchuki/shared';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -260,7 +260,7 @@ export default function PlanSelectScreen() {
               const isCurrent = planKey === currentPlan && !isCancelled;
               const price = planData?.pricing.monthly ?? 0;
               const priceDisplay = price > 0
-                ? `₹${(price / 100).toLocaleString('en-IN')}`
+                ? formatPaiseShort(price)
                 : '—';
               const highlights = buildHighlights(planData?.limits);
 

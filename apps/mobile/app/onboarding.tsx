@@ -1,3 +1,4 @@
+import { formatPaiseShort } from '@kanchuki/shared';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
@@ -831,7 +832,7 @@ export default function OnboardingScreen() {
                 const meta = PLAN_META[planKey];
                 const apiPlan = plansData?.data?.find((p) => p.plan === planKey);
                 const priceLabel = apiPlan
-                  ? `₹${(apiPlan.pricing.monthly / 100).toLocaleString('en-IN')}/mo`
+                  ? `${formatPaiseShort(apiPlan.pricing.monthly)}/mo`
                   : '—';
                 const features = apiPlan ? planFeatureLine(apiPlan.limits) : '';
                 const isSelected = selectedPlan === planKey;
