@@ -516,7 +516,7 @@ Run from repo root; each hit is a *candidate*, then read the line.
 | Fabricated "connected/ok" | `connected: true\|configured: true\|status: 'CONNECTED'` | same |
 | Errors swallowed into fake data | `\.catch\(\(\) *=> *\(\{\|catch *{ *return` and `?? \[\]` / `?? 0` on API data | mobile `src/lib/api*` |
 | Hard-coded lists in UI | arrays of literal objects in `.tsx` (`const ITEMS = [ {` with names/prices) | `app/**`, `src/components/**` |
-| Static numbers shown as stats | `"\d+\+? (retailers|stores|products)"` in JSX / marketing sections | `apps/web/src/app/sections` |
+| Static numbers shown as stats | `"\d+\+? (retailers\|stores\|products)"` in JSX / marketing sections | `apps/web/src/app/sections` |
 | Enum lists duplicated from DB | literal category/style/fabric arrays (F-024/F-027 moved these to DB) | mobile + web |
 | Dev/sandbox branches reachable in prod | `NODE_ENV !== 'production'`, `sandbox`, `dev mode` | `apps/api/src` |
 
