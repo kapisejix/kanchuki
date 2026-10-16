@@ -249,6 +249,57 @@ Stop after Phase 1 and report: what changed, test output, what is left.
 Phase 2 (build v7) goes right after Phase 1. Run `! railway login` at the start of the session if you
 want I-2 and I-4 read.
 
+## A.8 v7 device re-test script (Phase 2 step 2.3 — Owner fills Result)
+
+Phone: the test phone, v7 installed from the Internal testing track. Log in as the demo retailer
+that has products. Result: ✅ pass · ❌ fail (one-line note + screenshot) · — not run.
+R8 was deferred to v8, so R-1…R-8 are a plain regression smoke on v7; re-run them on the v8 (R8) build.
+
+**0. Preconditions**
+
+| # | Check | Expect | Result |
+|---|---|---|---|
+| P-1 | Settings → Apps → Kanchuki | Version `1.0.0`, build **7** → then G-1 goes ☑ | |
+| P-2 | Migration 127 applied (Admin migration runner) | Applied — else Settings → Kanchuki support access is a silent empty list and every app-open 500s (PLAY-STORE-RELEASES v7 §A) | |
+
+**1. The 11 audit screens — re-take each screenshot, re-classify its S-row**
+
+| Screen | Where | Steps | Expect | Closes | Result |
+|---|---|---|---|---|---|
+| A | Web — customer product sheet | Open any product from the store link | (Phase 4 — expected still open) hero cropped / duplicate controls | S-08 | |
+| B | App → Settings | Look for "Marketplace Sync" | Entry gone; nothing in the app shows a marketplace as Connected | S-02 | |
+| C | App → Growth → Integrations | Look for Google Business Profile | No GBP card; subtitle reads "Facebook, Instagram & WhatsApp"; no token-paste form reachable | S-04 | |
+| D | Web — store → AI Stylist | Ask for an outfit | Prices equal the catalog (₹2,100/-, not ₹2,10,000); if AI is down, cards show **no** ✨ rationale line | S-01, S-03 | |
+| E | Web — `/privacy` in incognito | Open | Dated September 26, 2026 (styling = Phase 4) | S-07 copy, I-5 | |
+| F | App → Social → Create Post | Pick 1 product with a photo, pick an account | Preview shows the photo **and** the account / page name — not "Your store", not a grey box | S-05 | |
+| G | App → Customer Engagement | Open | Numbers, or a clear empty state | S-06 (needs Phase 0.5) | |
+| H | App → Growth → Integrations → Instagram | Open with no IG connected | No auto-publish switch; plain "not shared" guidance | S-09, L-04 | |
+| I | App → product → Edit | Open, tap a lower field | (Phase 4) note header style + keyboard overlap | S-11 | |
+| J | App → product detail | Scroll to bottom | (Phase 4) note price format vs web | S-12 | |
+| K | Web — store catalog home | Scroll to the end | (Phase 4) note FAB overlap / truncation | S-10 | |
+
+**2. Smoke — the flows R8 breaks (run on v7 now, again on v8)**
+
+| # | Flow | Steps | Expect | Result |
+|---|---|---|---|---|
+| R-1 | OTP login | Log out → phone → OTP | Exactly one SMS; lands on home | |
+| R-2 | Camera / photo add | Add product → camera → shoot → save | Photo saved; AI tags fill in | |
+| R-3 | Facebook connect | Settings → Social → Connect Facebook | FB sheet opens; returns with page name, or a readable red error — never a silent loop | |
+| R-4 | Gallery save | AI Studio result or store QR → Save to gallery | Image appears in the phone gallery | |
+| R-5 | Sentry crash | Trigger the error path you use for testing | Event in Sentry with a readable stack | |
+| R-6 | Create Post preview | = screen F | Photo + page name | |
+| R-7 | Integrations | Growth → Integrations | No GBP, no Marketplace Sync, no YouTube / X / Pinterest | |
+| R-8 | Instagram screen | = screen H | No auto-publish switch | |
+
+**3. Also new in v7 (since v6)**
+
+| # | Item | Expect | Closes | Result |
+|---|---|---|---|---|
+| N-1 | FB carousel post (2+ products) | All photos posted, not text only | L-03 | |
+| N-2 | Home / Growth scheduler banner, Social → Schedule | Screen opens; status card renders (publishing still needs Meta review, 3.4) | L-01 (app side) | |
+| N-3 | Settings → WhatsApp API | Save errors shown; no fake credentials | L-12 | |
+| N-4 | Growth → Integrations | No YouTube / X / Pinterest | L-11 | |
+
 ---
 
 # PART B — EVIDENCE (findings, ledger, inventory, full 20-day record)
