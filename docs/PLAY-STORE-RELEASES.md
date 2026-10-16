@@ -26,6 +26,48 @@ ships v7; delete this section once v7 is accepted and write the next one.
 
 ### A. Code changes carried into v7
 
+**Owner decision 2026-10-16: v7 = current `main`, no code changes. R8 deferred to v8**
+(fastest path to get the phone off v6 — audit root cause R1/G-1). The R8 steps below
+move to v8 unchanged. **v8 also adds `expo-updates` (OTA)** — owner decision 2026-10-16
+(audit A.2 step 2.4).
+
+**Pre-build checks run 2026-10-16 on `fc27fa00`:** `check-android-version-code.mjs` ✅
+(7 > 6) · `app.json` version `1.0.0` / versionCode `7` · mobile vitest 153/153 ·
+`expo lint` exit 0 · `tsc --noEmit` = the 9 known stale expo-router typed-route errors, none new.
+
+**Mobile commits v7 carries** (`git log ed401912..main -- apps/mobile packages/shared`):
+`fc27fa00` audit Phase 1 (S-02/04/05/09, RC-055…061) · `8b1cf41b` IG not-shared guidance ·
+`3c3b1137` + `29e81f4f` + `f53942a5` F-043 scheduler · `0503c851` support sessions ·
+`ecea0383` FB carousel + preview · `c8562a5e` dead integrations removed · `b6af02f7` #55
+batch + WhatsApp Cloud API config · `be8c48c1` Studio option-matrix picker · `59f9fa59`
+admin memory card · `f1148360` photo tools removed · `c76fba2c` WhatsApp API screen ·
+`ef594f46` F-037 storefront engagement.
+
+**⚠️ Before v7 reaches retailers — migration 127.** v7 is the first binary that mounts
+`SupportSessionPrompt` (`apps/mobile/app/_layout.tsx`), which calls `GET /v1/support-sessions`
+on every app foreground. That handler reads `support_session_grants` whether or not the
+admin switch is on, so with 127 unapplied every retailer app-open is an API 500 (the prompt
+swallows it; Settings → Kanchuki support access shows an empty list). Apply 127 (switch can
+stay OFF) before rollout.
+
+**Release notes draft:**
+
+```
+<en-IN>
+New: plan Facebook and Instagram posts once — they publish on schedule.
+• Facebook carousel posts now include every photo.
+• Create Post preview shows your photo and page name.
+• Clearer Instagram setup steps.
+• WhatsApp API settings now show save errors.
+• Removed integrations that were not ready yet.
+• Bug fixes.
+</en-IN>
+```
+
+Drop the first line if `SOCIAL_SCHEDULER` is off for retailers at submit time.
+
+#### Deferred to v8
+
 - [ ] **Enable R8 (shrink + obfuscate).** Play flagged v6: *"DEX code optimization is
       below our threshold — Obfuscation (1%)"*; under 25% in any category "may impact
       your visibility and publishing capabilities" after a deadline (read the date on

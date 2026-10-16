@@ -1,6 +1,6 @@
 # Screenshot Audit — 2026-10-15 (11 screens: retailer mobile app + customer web PWA)
 
-**Status: 🟨 Phase 1 built 2026-10-16 on `fix/audit-phase-1` (7 commits, RC-055…RC-061) — not merged, not deployed. Phases 0, 2–7 open.** Owner uploaded 11 device screenshots and
+**Status: 🟨 Phase 1 merged 2026-10-16 (PR #85, `fc27fa00`, RC-055…RC-061). Phase 2 prep on `release/v7` (v7 = `main`, R8 deferred to v8) — build + upload owner-side. Phases 0, 3–7 open.** Owner uploaded 11 device screenshots and
 said: most issues are (a) **design inconsistency** and (b) **work documented as built that does not
 show up in the real app**. Owner will explain the exact issues per screen in a follow-up session;
 this doc is the reviewer's independent first pass so that discussion starts from evidence.
@@ -60,10 +60,10 @@ test; a step is done only when its test passes.
 ### Phase 2 — Ship the app (Day 2–3, Dev + Owner)
 | Step | Action | Accept when |
 |---|---|---|
-| 2.1 | Build **v7** per `docs/PLAY-STORE-RELEASES.md` "Next release" checklist (R8 shrink/obfuscate, versionCode 7, pre-submit checklist) | AAB built from current `main`, row logged |
+| 2.1 | Build **v7** per `docs/PLAY-STORE-RELEASES.md` "Next release" checklist (versionCode 7, pre-submit checklist). **R8 deferred to v8 — owner 2026-10-16.** Pre-build checks ☑ 2026-10-16 | AAB built from current `main`, row logged |
 | 2.2 | Install v7 on the test phone (internal testing track) | Phone build = v7 |
-| 2.3 | Re-take the 11 screenshots | Each S-row re-classified fixed / still open |
-| 2.4 | **Decision (Owner):** add `expo-updates` for OTA JS updates so future JS fixes reach phones without a store build | Decision recorded; if yes, Dev adds it in v8 |
+| 2.3 | Re-take the 11 screenshots — script in **A.8** | Each S-row re-classified fixed / still open |
+| 2.4 | **Decision (Owner):** add `expo-updates` for OTA JS updates so future JS fixes reach phones without a store build | ☑ **Yes — owner 2026-10-16.** Dev adds `expo-updates` in v8 (with R8) |
 
 ### Phase 3 — Un-gate what is built (Owner, Week 1)
 | Step | Action | Unlocks |
@@ -129,7 +129,7 @@ Status key: ☐ open · ◐ in progress · ☑ done. Owner: **O** owner, **D** d
 
 | ID | Item | Type | Surface | Owner | Phase | Status |
 |---|---|---|---|---|---|---|
-| G-1 | Phone runs old binary (v6); no OTA | Deploy | M | O+D | 0, 2 | ☐ |
+| G-1 | Phone runs old binary (v6); no OTA | Deploy | M | O+D | 0, 2 | ◐ phone = `1.0.0 (6)` confirmed 2026-10-16; v7 prep on `release/v7`; ☑ when phone shows build 7 (A.8 P-1); OTA in v8 |
 | G-2 | Web stale? → **refuted** (cache) | Deploy | W | — | 0.2 | ☑ |
 | S-01 | AI Stylist price ×100 | Bug | W | D | 1.1 | ☑ `872067f2` RC-055 |
 | S-02 | Marketplace Sync fakes CONNECTED | Fake data | M+API | D | 1.2 | ☑ `48e7795e` RC-056 |
@@ -165,18 +165,18 @@ Status key: ☐ open · ◐ in progress · ☑ done. Owner: **O** owner, **D** d
 | D-9 | PLAY-STORE-RELEASES stale snapshot | Docs | — | D | 6.5 | ☐ |
 | D-10 | Palette in CLAUDE.md vs app | Docs | — | O | 4.1, 6.4 | ☐ |
 | D-11 | Root-cause filenames with spaces | Docs | — | D | 6.5 | ☐ |
-| L-01 | F-043 scheduler (code on main; not in v6; Meta review) | Gated | M/A/API | O+D | 2, 3.4 | ☐ |
+| L-01 | F-043 scheduler (code on main; not in v6; Meta review) | Gated | M/A/API | O+D | 2, 3.4 | ◐ app side carried in v7 (`f53942a5`, `29e81f4f`, `3c3b1137`); A.8 N-2; Meta review 3.4 |
 | L-02 | Support sessions (migr 127, switch OFF) | Gated | M/A/API | O | 3.1 | ☐ |
-| L-03 | FB carousel fix (after v6) | Ship | M/W/API | D | 2 | ☐ |
-| L-04 | IG guidance fix (after v6) | Ship | M/API | D | 2 | ☐ |
+| L-03 | FB carousel fix (after v6) | Ship | M/W/API | D | 2 | ◐ carried in v7 (`ecea0383`); A.8 N-1 |
+| L-04 | IG guidance fix (after v6) | Ship | M/API | D | 2 | ◐ carried in v7 (`8b1cf41b`); A.8 H |
 | L-05 | FB `pages_read_engagement` | Meta | M/API | O | 3.4 | ☐ |
 | L-06 | F-042 homepage grid — browser verify | Verify | W | O | 0 | ☐ |
 | L-07 | Feed thresholds + fallback | Live | API | — | — | ☑ |
 | L-08 | Soft-404 | Live | W | — | — | ☑ |
 | L-09 | Nearby store cards | Verify | W | O | 0 | ☐ |
 | L-10 | #55 batch — manual test pass | Verify | M/W/A | O | 2.3 | ☐ |
-| L-11 | Dead integrations removed (after v6) | Ship | M | D | 2 | ☐ |
-| L-12 | WhatsApp API screen fix (after v6) | Ship | M | D | 2 | ☐ |
+| L-11 | Dead integrations removed (after v6) | Ship | M | D | 2 | ◐ carried in v7 (`c8562a5e`); A.8 N-4 |
+| L-12 | WhatsApp API screen fix (after v6) | Ship | M | D | 2 | ◐ carried in v7 (`c76fba2c`, `b6af02f7`); A.8 N-3 |
 | L-13 | Studio option matrix (27 rows DRAFT) | Gated | M/W/API | O | 3.2 | ☐ |
 | L-14 | Admin studio bench | Live | A | — | — | ☑ |
 | L-15 | Photo tools removed (docs still say built) | Docs | M | D | 6.4 | ☐ |
@@ -216,7 +216,7 @@ Status key: ☐ open · ◐ in progress · ☑ done. Owner: **O** owner, **D** d
 
 | # | Missing | Why I can't get it | Who / how | Fill in here |
 |---|---|---|---|---|
-| I-1 | App version + build number on the test phone | Lives on the device | Owner: Settings → Apps → Kanchuki | ______ |
+| I-1 | App version + build number on the test phone | Lives on the device | Owner: Settings → Apps → Kanchuki | `1.0.0 (6)` — 2026-10-16 |
 | I-2 | Railway service's deployed SHA (web + API) | Railway MCP returned *Unauthorized* | Owner: `! railway login` in the session, then Dev reads it | ______ |
 | I-3 | Live flag / switch / migration state (127, `VIRTUAL_TRY_ON_V2`, Support Sessions switch, Studio rows `DRAFT`, 093–096, 122) | Policy: agent never reads prod DB | Owner: Admin panel (Feature flags, Support Sessions, Studio Styles, migration runner) | ______ |
 | I-4 | Stylist provider status (key / quota / errors) | Admin + Railway logs | Owner: Admin → AI Providers; Dev reads logs after I-2 | ______ |
@@ -248,6 +248,57 @@ Stop after Phase 1 and report: what changed, test output, what is left.
 **Before that session (Owner, 10 min):** fill I-1, I-5, and if possible I-3. If I-1 shows build ≤ v6,
 Phase 2 (build v7) goes right after Phase 1. Run `! railway login` at the start of the session if you
 want I-2 and I-4 read.
+
+## A.8 v7 device re-test script (Phase 2 step 2.3 — Owner fills Result)
+
+Phone: the test phone, v7 installed from the Internal testing track. Log in as the demo retailer
+that has products. Result: ✅ pass · ❌ fail (one-line note + screenshot) · — not run.
+R8 was deferred to v8, so R-1…R-8 are a plain regression smoke on v7; re-run them on the v8 (R8) build.
+
+**0. Preconditions**
+
+| # | Check | Expect | Result |
+|---|---|---|---|
+| P-1 | Settings → Apps → Kanchuki | Version `1.0.0`, build **7** → then G-1 goes ☑ | |
+| P-2 | Migration 127 applied (Admin migration runner) | Applied — else Settings → Kanchuki support access is a silent empty list and every app-open 500s (PLAY-STORE-RELEASES v7 §A) | |
+
+**1. The 11 audit screens — re-take each screenshot, re-classify its S-row**
+
+| Screen | Where | Steps | Expect | Closes | Result |
+|---|---|---|---|---|---|
+| A | Web — customer product sheet | Open any product from the store link | (Phase 4 — expected still open) hero cropped / duplicate controls | S-08 | |
+| B | App → Settings | Look for "Marketplace Sync" | Entry gone; nothing in the app shows a marketplace as Connected | S-02 | |
+| C | App → Growth → Integrations | Look for Google Business Profile | No GBP card; subtitle reads "Facebook, Instagram & WhatsApp"; no token-paste form reachable | S-04 | |
+| D | Web — store → AI Stylist | Ask for an outfit | Prices equal the catalog (₹2,100/-, not ₹2,10,000); if AI is down, cards show **no** ✨ rationale line | S-01, S-03 | |
+| E | Web — `/privacy` in incognito | Open | Dated September 26, 2026 (styling = Phase 4) | S-07 copy, I-5 | |
+| F | App → Social → Create Post | Pick 1 product with a photo, pick an account | Preview shows the photo **and** the account / page name — not "Your store", not a grey box | S-05 | |
+| G | App → Customer Engagement | Open | Numbers, or a clear empty state | S-06 (needs Phase 0.5) | |
+| H | App → Growth → Integrations → Instagram | Open with no IG connected | No auto-publish switch; plain "not shared" guidance | S-09, L-04 | |
+| I | App → product → Edit | Open, tap a lower field | (Phase 4) note header style + keyboard overlap | S-11 | |
+| J | App → product detail | Scroll to bottom | (Phase 4) note price format vs web | S-12 | |
+| K | Web — store catalog home | Scroll to the end | (Phase 4) note FAB overlap / truncation | S-10 | |
+
+**2. Smoke — the flows R8 breaks (run on v7 now, again on v8)**
+
+| # | Flow | Steps | Expect | Result |
+|---|---|---|---|---|
+| R-1 | OTP login | Log out → phone → OTP | Exactly one SMS; lands on home | |
+| R-2 | Camera / photo add | Add product → camera → shoot → save | Photo saved; AI tags fill in | |
+| R-3 | Facebook connect | Settings → Social → Connect Facebook | FB sheet opens; returns with page name, or a readable red error — never a silent loop | |
+| R-4 | Gallery save | AI Studio result or store QR → Save to gallery | Image appears in the phone gallery | |
+| R-5 | Sentry crash | Trigger the error path you use for testing | Event in Sentry with a readable stack | |
+| R-6 | Create Post preview | = screen F | Photo + page name | |
+| R-7 | Integrations | Growth → Integrations | No GBP, no Marketplace Sync, no YouTube / X / Pinterest | |
+| R-8 | Instagram screen | = screen H | No auto-publish switch | |
+
+**3. Also new in v7 (since v6)**
+
+| # | Item | Expect | Closes | Result |
+|---|---|---|---|---|
+| N-1 | FB carousel post (2+ products) | All photos posted, not text only | L-03 | |
+| N-2 | Home / Growth scheduler banner, Social → Schedule | Screen opens; status card renders (publishing still needs Meta review, 3.4) | L-01 (app side) | |
+| N-3 | Settings → WhatsApp API | Save errors shown; no fake credentials | L-12 | |
+| N-4 | Growth → Integrations | No YouTube / X / Pinterest | L-11 | |
 
 ---
 
