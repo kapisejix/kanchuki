@@ -231,11 +231,26 @@ export const productsStudioRoutes: FastifyPluginAsync = async (server) => {
 
     // Photo must belong to this retailer (also makes job_id an opaque,
     // retailer-scoped handle — can't probe other retailers' jobs).
-    const photo = await prisma.productPhoto.findFirst({
-      where: { id: photoId, product_id: id, retailer_id: request.retailerId },
-      select: { id: true },
-    });
-    if (!photo) throw notFound('Product photo');
+    // Color-variant previews arrive as `variant-<id>` (same handle POST
+    // accepts) and have no ProductPhoto row under that id — check the variant
+    // instead or the poll 404s and the shoot looks failed.
+    if (photoId.startsWith('variant-')) {
+      const variant = await prisma.productVariant.findFirst({
+        where: {
+          id: photoId.replace('variant-', ''),
+          product_id: id,
+          retailer_id: request.retailerId,
+        },
+        select: { id: true },
+      });
+      if (!variant) throw notFound('Product photo');
+    } else {
+      const photo = await prisma.productPhoto.findFirst({
+        where: { id: photoId, product_id: id, retailer_id: request.retailerId },
+        select: { id: true },
+      });
+      if (!photo) throw notFound('Product photo');
+    }
 
     const status = await getStudioJobStatus(jobId);
     if (status) return { data: status };
