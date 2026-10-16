@@ -9,12 +9,14 @@ import Fastify from 'fastify';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { errorHandler } from '../../plugins/error-handler.js';
 
-const { mockRetailerFindFirst, mockProductFindMany, mockWithPublicCache, mockCapture } = vi.hoisted(() => ({
-  mockRetailerFindFirst: vi.fn(),
-  mockProductFindMany: vi.fn(),
-  mockWithPublicCache: vi.fn(),
-  mockCapture: vi.fn(),
-}));
+const { mockRetailerFindFirst, mockProductFindMany, mockWithPublicCache, mockCapture } = vi.hoisted(
+  () => ({
+    mockRetailerFindFirst: vi.fn(),
+    mockProductFindMany: vi.fn(),
+    mockWithPublicCache: vi.fn(),
+    mockCapture: vi.fn(),
+  }),
+);
 
 vi.mock('../../instrument.js', () => ({
   Sentry: { captureException: mockCapture },
@@ -168,7 +170,9 @@ describe('POST /public/stylist — paise → rupees (RC-055)', () => {
     process.env.ANTHROPIC_API_KEY = 'test-key';
     const fetchMock = vi.fn().mockRejectedValue(new Error('network disabled in tests'));
     vi.stubGlobal('fetch', fetchMock);
-    mockProductFindMany.mockResolvedValue([{ ...LADIES_SUIT, price_min: 210000, price_max: 210000 }]);
+    mockProductFindMany.mockResolvedValue([
+      { ...LADIES_SUIT, price_min: 210000, price_max: 210000 },
+    ]);
     const app = await buildApp();
     await app.inject({
       method: 'POST',
@@ -203,7 +207,9 @@ describe('POST /public/stylist — fallback is reported, not disguised as AI (RC
     expect(data.recommendations.every((r: { rationale: string }) => r.rationale === '')).toBe(true);
     expect(mockCapture).toHaveBeenCalledWith(
       expect.any(Error),
-      expect.objectContaining({ tags: expect.objectContaining({ fallback_reason: 'missing_api_key' }) }),
+      expect.objectContaining({
+        tags: expect.objectContaining({ fallback_reason: 'missing_api_key' }),
+      }),
     );
   });
 

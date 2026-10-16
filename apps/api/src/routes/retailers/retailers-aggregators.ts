@@ -48,8 +48,7 @@ const UpdateSchema = z.object({
 // write status CONNECTED anyway, so retailers saw "Connected" + a sync time for
 // work that never ran (RC-056). Until a real channel adapter ships, both fail
 // honestly and no credentials are collected.
-const notAvailable = () =>
-  new AppError('NOT_AVAILABLE', 'Marketplace Sync is coming soon.', 501);
+const notAvailable = () => new AppError('NOT_AVAILABLE', 'Marketplace Sync is coming soon.', 501);
 
 export const retailersAggregatorRoutes: FastifyPluginAsync = async (server) => {
   const guard = async (retailerId: string) => {

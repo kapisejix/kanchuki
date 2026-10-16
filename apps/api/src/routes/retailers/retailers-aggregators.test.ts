@@ -38,7 +38,12 @@ async function buildApp() {
 beforeEach(() => {
   vi.clearAllMocks();
   mockHasFeature.mockResolvedValue(true);
-  mockFindFirst.mockResolvedValue({ id: 'cs1', retailer_id: 'retailer_1', channel: 'MEESHO', status: 'DISCONNECTED' });
+  mockFindFirst.mockResolvedValue({
+    id: 'cs1',
+    retailer_id: 'retailer_1',
+    channel: 'MEESHO',
+    status: 'DISCONNECTED',
+  });
 });
 
 describe('Marketplace Sync is not available yet (RC-056)', () => {
