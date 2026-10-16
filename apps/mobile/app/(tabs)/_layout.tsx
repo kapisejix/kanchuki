@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { View, ActivityIndicator, Image } from 'react-native'
 import { Tabs, router } from 'expo-router'
 import { useQuery } from '@tanstack/react-query'
-import { Home, Grid3X3, Plus, TrendingUp, Link2 } from 'lucide-react-native'
+import { Home, Grid3X3, Plus, TrendingUp, MessageCircle } from 'lucide-react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { retailerApi } from '../../src/lib/api'
@@ -20,10 +20,10 @@ export default function TabsLayout() {
   // of the server allowlist (src/lib/staff-can.ts) — so tab visibility can't
   // drift from what the API enforces. Owner (staffRole null) passes every
   // check; growth/analytics/social are owner-only; salesperson also loses
-  // Add (POST products) and Collections.
+  // Add (POST products). Collections is reachable from Home, not a tab.
   const canSeeGrowth = staffCan(staffRole, 'growth')
   const canSeeAdd = staffCan(staffRole, 'catalog.edit')
-  const canSeeCollections = staffCan(staffRole, 'collections')
+  const canSeeSocial = staffCan(staffRole, 'social')
 
   // Gate: retailer must finish the registration/onboarding form before the
   // dashboard renders — otherwise a dropped-off signup (or any later relaunch)
@@ -78,12 +78,21 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: '#BB3F95',
-        tabBarInactiveTintColor: '#928EB2',
+        tabBarInactiveTintColor: '#4B476B',
+        tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
+        // White rounded surface; the Add button floats over its top edge.
         tabBarStyle: {
-          backgroundColor: '#231F48',
-          borderTopColor: 'rgba(224, 225, 246, 0.12)',
+          backgroundColor: '#FFFFFF',
+          borderTopWidth: 0,
+          borderTopLeftRadius: 24,
+          borderTopRightRadius: 24,
           height: 64 + insets.bottom,
           paddingBottom: 10 + insets.bottom,
+          shadowColor: '#231F48',
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: 0.08,
+          shadowRadius: 8,
+          elevation: 10,
         },
         headerStyle: { backgroundColor: '#F8F7FC' },
         headerTitleStyle: {
@@ -153,11 +162,11 @@ export default function TabsLayout() {
                     alignItems: 'center',
                     shadowColor: '#BB3F95',
                     shadowOffset: { width: 0, height: 4 },
-                    shadowOpacity: 0.5,
+                    shadowOpacity: 0.35,
                     shadowRadius: 8,
                     elevation: 8,
-                    borderWidth: 3,
-                    borderColor: '#231F48',
+                    borderWidth: 4,
+                    borderColor: '#FFFFFF',
                   }}
                 >
                   <Plus color="#ffffff" size={26} strokeWidth={2.5} />
@@ -178,11 +187,19 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="social"
+        options={{
+          href: canSeeSocial ? undefined : null,
+          title: 'Social',
+          tabBarIcon: ({ color, size }) => <MessageCircle color={color} size={size} strokeWidth={1.8} />,
+          headerShown: false,
+        }}
+      />
+      <Tabs.Screen
         name="collections"
         options={{
-          href: canSeeCollections ? undefined : null,
-          title: 'Collections',
-          tabBarIcon: ({ color, size }) => <Link2 color={color} size={size} />,
+          // Still reachable from Home; no longer a tab.
+          href: null,
           headerShown: false,
         }}
       />
