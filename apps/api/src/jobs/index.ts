@@ -295,14 +295,13 @@ export async function startWorkers(): Promise<void> {
   // is monthly; settings.payout_cadence MANUAL makes the cron skip anyway.
   // February has no 30th, so February's batch pays on March 30 (the unsettled
   // balance carries — nothing lost, nothing doubled).
+  // `limit: 1` KEPT on purpose (RC-062): it caps this job to one run per API
+  // boot. Every other cron had it removed because it silently stopped them;
+  // payout moves real money, so a true monthly repeat is an owner decision.
   await getMaintenanceQueue().add(
     'referral-payout',
     {},
     {
-      // `limit: 1` KEPT on purpose (RC-062): it caps this job to one run per API
-      // boot. Every other cron had it removed because it silently stopped them;
-      // payout moves real money, so enabling a true monthly repeat is an owner
-      // decision, not a side effect of the RC-062 fix.
       repeat: { pattern: '30 2 30 * *', limit: 1 },
       removeOnComplete: { count: 10 },
       removeOnFail: { count: 10 },
