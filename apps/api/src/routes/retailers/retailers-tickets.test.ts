@@ -132,7 +132,11 @@ describe('POST /me/tickets', () => {
 
   it('rejects a too-short note and the CATALOG_UPLOAD type', async () => {
     const app = await buildApp();
-    const short = await app.inject({ method: 'POST', url: '/me/tickets', payload: { note: 'help' } });
+    const short = await app.inject({
+      method: 'POST',
+      url: '/me/tickets',
+      payload: { note: 'help' },
+    });
     expect(short.statusCode).toBe(422);
     const wrongType = await app.inject({
       method: 'POST',
