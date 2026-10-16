@@ -431,24 +431,25 @@ export default function StaffScreen() {
     void queryClient.invalidateQueries({ queryKey: ['staff'] })
   }, [queryClient])
 
-  // FR-4.1 — deactivate copy states exactly what happens: access cut + seat
-  // freed, record kept and restorable.
+  // Delete is permanent and immediate: access ends, the seat is freed and the
+  // member's name + phone are erased from the database (DPDP), so the number is
+  // free to be added again. (Older deactivated rows still show under "Removed".)
   const handleRemove = useCallback(
     (member: StaffMember) => {
       Alert.alert(
-        'Remove Team Member',
-        `Remove "${member.name}" from your team? They lose app access immediately and the seat is freed. Their record is kept (deactivated) and can be restored.`,
+        'Delete Team Member',
+        `Delete "${member.name}"? They lose app access immediately and their name and phone number are permanently erased. This cannot be undone.`,
         [
           { text: 'Cancel', style: 'cancel' },
           {
-            text: 'Remove',
+            text: 'Delete',
             style: 'destructive',
             onPress: async () => {
               try {
-                await staffApi.delete(member.id)
+                await staffApi.purge(member.id)
                 invalidate()
               } catch (err) {
-                showError(err, 'Failed to remove')
+                showError(err, 'Failed to delete')
               }
             },
           },

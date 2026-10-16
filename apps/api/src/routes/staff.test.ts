@@ -596,11 +596,13 @@ describe('DELETE /v1/staff/:id — soft-remove & purge (FR-4.1/4.4)', () => {
     await app.close();
   });
 
-  it('blocks purge=true while the member is still active (422)', async () => {
+  it('purges an ACTIVE member directly (204) — no deactivate-first step', async () => {
     mockStaffFindFirst.mockResolvedValueOnce({
       id: 'staff_1',
       retailer_id: RETAILER_ID,
       name: 'Ramesh',
+      phone: '9876543210',
+      role: 'salesperson',
       is_active: true,
     });
 
@@ -610,10 +612,8 @@ describe('DELETE /v1/staff/:id — soft-remove & purge (FR-4.1/4.4)', () => {
       url: '/v1/staff/staff_1?purge=true',
     });
 
-    expect(res.statusCode).toBe(422);
-    expect(res.json().error.message).toContain('Deactivate the team member');
-    expect(mockPurgeStaffDelete).not.toHaveBeenCalled();
-    expect(mockAuditLogCreate).not.toHaveBeenCalled();
+    expect(res.statusCode).toBe(204);
+    expect(mockPurgeStaffDelete).toHaveBeenCalledWith({ where: { id: 'staff_1' } });
     await app.close();
   });
 
@@ -634,18 +634,15 @@ describe('DELETE /v1/staff/:id — soft-remove & purge (FR-4.1/4.4)', () => {
     });
 
     expect(res.statusCode).toBe(204);
-    // Audit row written with the pre-erasure name/phone (it must survive the
-    // hard delete) and BEFORE the purge transaction runs.
+    // Audit row written with the pre-erasure name/role (it must survive the
+    // hard delete) and BEFORE the purge transaction runs. The phone is NOT
+    // copied into it — erasure removes the number from the record too.
     expect(mockAuditLogCreate).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
           action: 'purge',
           resource_id: 'staff_old',
-          metadata: expect.objectContaining({
-            name: 'Old Name',
-            phone: '9876543210',
-            role: 'salesperson',
-          }),
+          metadata: { name: 'Old Name', role: 'salesperson' },
         }),
       }),
     );
