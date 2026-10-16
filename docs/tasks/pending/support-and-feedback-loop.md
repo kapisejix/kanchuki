@@ -1,6 +1,6 @@
 # Support Tickets + Feedback Loop — retailer raises ticket, Kanchuki team collects feedback, admin reports
 
-**Status (2026-10-15): 🔴 Review only — nothing built, not approved.** Findings from a code review
+**Status (2026-10-16): 🟨 Build step 1 DONE (owner said "build tickets"): retailer `POST/GET /v1/retailers/me/tickets` (`retailers-tickets.ts`, 8 tests, max 5 open, reuses `routeTicket`, no access grant) + mobile Settings → Help & Support (`settings/help-support.tsx`; owner-only, hidden for staff). Not device-tested, not deployed. Step 2 DONE 2026-10-16: staff `app/staff/tickets.tsx` (Active/Resolved/All, Call, Pick up, Mark resolved via existing `PATCH /team/tickets/:id`; no API change) + the dead "View Ticket Details" button on staff home now opens it. Steps 3–8 (feedback loop) still 🔴 not approved.** (Original 2026-10-15 note: review only.) Findings from a code review
 requested by the owner. F-number unassigned. Decisions in "Open questions" are the owner's.
 **Builds on:** `support-session-access.md` (staff session grants, built, not live), F-019/F-020
 catalog-upload tickets, `BugReport`, `StoreReview`/`ProductReview`, staff discovery survey.

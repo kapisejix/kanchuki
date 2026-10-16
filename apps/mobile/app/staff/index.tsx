@@ -313,15 +313,13 @@ export default function StaffDashboard() {
                     <TicketStat label="Resolved" value={ticketStats.resolved} color="green" />
                     <TicketStat label="Closed" value={ticketStats.closed} color="gray" />
                   </View>
-                  {retailers.length > 0 && ticketStats.open > 0 && (
-                    <AnimatedPressable
-                      className="bg-ink-50 rounded-xl py-2.5 items-center"
-                    >
-                      <Text className="text-ink-700 text-xs font-semibold">
-                        View Ticket Details
-                      </Text>
-                    </AnimatedPressable>
-                  )}
+                  <AnimatedPressable
+                    onPress={() => router.push('/staff/tickets')}
+                    accessibilityRole="button"
+                    className="bg-ink-50 rounded-xl py-2.5 items-center"
+                  >
+                    <Text className="text-ink-700 text-xs font-semibold">View all tickets</Text>
+                  </AnimatedPressable>
                 </View>
               </View>
             )}

@@ -249,7 +249,7 @@ export default function RetailerOnboardScreen() {
         className="bg-white border-t border-sand-100 px-4 py-4"
         style={{ paddingBottom: insets.bottom + 12 }}
       >
-        <GradientButton
+        <GradientButton variant="web"
           label="Onboard Retailer"
           onPress={() => void handleSubmit()}
           disabled={!isFormValid}

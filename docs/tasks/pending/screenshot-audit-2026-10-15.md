@@ -188,8 +188,8 @@ Status key: ☐ open · ◐ in progress · ☑ done. Owner: **O** owner, **D** d
 | L-21 | `?ref=` capture | Verify | W | O | 0 | ☐ |
 | L-22 | k6 run on staging (scripts built) | Ops | API | O | 7 | ☐ |
 | L-23 | Dead-code sweep | Live | — | — | — | ☑ |
-| T-1 | Retailer support tickets + Help & Support screen | Feature | M/API | D | 7 | ☐ |
-| T-2 | Staff general-ticket list | Feature | M | D | 7 | ☐ |
+| T-1 | Retailer support tickets + Help & Support screen | Feature | M/API | D | 7 | ◐ built 2026-10-16 (API + `settings/help-support`), not deployed / device-tested |
+| T-2 | Staff general-ticket list | Feature | M | D | 7 | ◐ built 2026-10-16 (`staff/tickets.tsx`), not device-tested |
 | T-3 | `FeedbackEntry` + retailer/staff/customer capture + admin report | Feature | All | D (migr: O) | 7 | ☐ |
 | E-1 | Lawyer review privacy/terms/consent copy | Launch | — | O | 7 | ☐ |
 | E-2 | Play listing assets + Data Safety | Launch | — | O | 7 | ☐ |

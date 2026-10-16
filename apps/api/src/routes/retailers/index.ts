@@ -13,6 +13,7 @@ export { retailersIntegrationsRoutes } from './retailers-integrations.js';
 export { retailersRatingsRoutes } from './retailers-ratings.js';
 export { retailersShowcaseDesignRoutes } from './retailers-showcase-designs.js';
 export { retailersBugReportRoutes } from './retailers-bug-reports.js';
+export { retailersTicketRoutes } from './retailers-tickets.js';
 export { retailersInvoicesRoutes } from './retailers-invoices.js';
 export { retailersReferralRoutes } from './retailers-referral.js';
 export { retailersPayoutAccountRoutes } from './retailers-payout-account.js';
