@@ -12,6 +12,17 @@
 
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
+## RC-059 — The AI Stylist's non-AI fallback was silent and stamped every card with the same canned "rationale", so a dead provider looked like AI output
+
+- **Component:** `apps/api/src/routes/public/public-stylist.ts`, `apps/web/src/app/c/[slug]/components/AIStylist.tsx`. Fixed 2026-10-16 on `fix/audit-phase-1` (screenshot audit S-03).
+- **Symptom:** customer AI Stylist showed four cards all reading *"A great pick from Radha Clothing Store's collection."* with ✨, under a small "temporarily busy" banner. Ops had no signal that the provider call was failing.
+- **Root cause:** two fallback branches (no `ANTHROPIC_API_KEY`; any error from the Claude call) each returned 200 with a hard-coded per-card rationale and **no log, no Sentry event, nothing machine-readable** — `catch (_err)` discarded the error. A degraded path that returns the same shape as the healthy one, with nobody told, is indistinguishable from success.
+- **Fix:** one `fallback(reason, err)` helper for both branches: `request.log.warn` + `Sentry.captureException` tagged `feature=ai_stylist, fallback_reason=missing_api_key|provider_error` (real error passed through), response carries `fallback: true`, `rationale: ''`, note says "AI stylist is unavailable right now". Web renders the ✨ rationale line only when non-empty.
+- **Not done:** the plan's "admin-visible counter" — no admin surface reads one, and `AiUsageLog` is quota-billed so fallback rows there would charge retailers. Sentry issue count is the counter once `SENTRY_DSN` is set (launch item E-3). The *cause* of the live fallback (key / quota / timeout) still needs owner input I-4.
+- **Proof:** `public-stylist.test.ts` "fallback is reported, not disguised as AI" — no-key and provider-error cases assert `fallback: true`, empty rationales, and the Sentry tag/error.
+
+---
+
 ## RC-058 — The Instagram screen showed an "Auto-publish AI Video Reels" switch, ON by default, that no API stored and no job read
 
 - **Component:** `apps/mobile/app/growth/integrations/instagram.tsx`. Fixed 2026-10-16 on `fix/audit-phase-1` (screenshot audit S-09).

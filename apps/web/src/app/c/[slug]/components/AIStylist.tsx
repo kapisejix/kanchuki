@@ -257,9 +257,11 @@ export function AIStylist({ storeSlug, storeName, onProductTap }: Props) {
                             {formatPrice(rec.price)}
                           </p>
                         )}
-                        <p className="text-[10px] text-cyan-600 mt-1 leading-relaxed italic">
-                          ✨ {rec.rationale}
-                        </p>
+                        {rec.rationale && (
+                          <p className="text-[10px] text-cyan-600 mt-1 leading-relaxed italic">
+                            ✨ {rec.rationale}
+                          </p>
+                        )}
                       </div>
                     </button>
                   ))}

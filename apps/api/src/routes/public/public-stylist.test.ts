@@ -9,10 +9,15 @@ import Fastify from 'fastify';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { errorHandler } from '../../plugins/error-handler.js';
 
-const { mockRetailerFindFirst, mockProductFindMany, mockWithPublicCache } = vi.hoisted(() => ({
+const { mockRetailerFindFirst, mockProductFindMany, mockWithPublicCache, mockCapture } = vi.hoisted(() => ({
   mockRetailerFindFirst: vi.fn(),
   mockProductFindMany: vi.fn(),
   mockWithPublicCache: vi.fn(),
+  mockCapture: vi.fn(),
+}));
+
+vi.mock('../../instrument.js', () => ({
+  Sentry: { captureException: mockCapture },
 }));
 
 vi.mock('@kanchuki/db', () => ({
@@ -176,5 +181,38 @@ describe('POST /public/stylist — paise → rupees (RC-055)', () => {
     expect(body).toContain('₹2,100/-');
     expect(body).not.toContain('210000');
     await app.close();
+  });
+});
+
+describe('POST /public/stylist — fallback is reported, not disguised as AI (RC-059)', () => {
+  async function ask() {
+    mockProductFindMany.mockResolvedValue([LADIES_SUIT, KIDS_WEAR]);
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/public/stylist',
+      payload: { slug: 'meera', query: 'something for a wedding' },
+    });
+    await app.close();
+    return res.json().data;
+  }
+
+  it('no API key → fallback flag, no canned rationale, Sentry event tagged missing_api_key', async () => {
+    const data = await ask();
+    expect(data.fallback).toBe(true);
+    expect(data.recommendations.every((r: { rationale: string }) => r.rationale === '')).toBe(true);
+    expect(mockCapture).toHaveBeenCalledWith(
+      expect.any(Error),
+      expect.objectContaining({ tags: expect.objectContaining({ fallback_reason: 'missing_api_key' }) }),
+    );
+  });
+
+  it('provider failure → same fallback, Sentry event carries the real error', async () => {
+    process.env.ANTHROPIC_API_KEY = 'test-key';
+    const data = await ask();
+    expect(data.fallback).toBe(true);
+    const [err, ctx] = mockCapture.mock.calls[0] as [Error, { tags: Record<string, string> }];
+    expect(err.message).toBe('network disabled in tests');
+    expect(ctx.tags.fallback_reason).toBe('provider_error');
   });
 });

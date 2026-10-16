@@ -8,6 +8,7 @@ import { prisma } from '@kanchuki/db';
 import { formatPriceRange } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
+import { Sentry } from '../../instrument.js';
 import { withPublicCache } from '../../lib/public-cache.js';
 import { notFound, validationError } from '../../plugins/error-handler.js';
 
@@ -287,13 +288,20 @@ export const publicStylistRoutes: FastifyPluginAsync = async (server) => {
         occasions: p.occasions.join(', ') || 'General',
       }));
 
-      // Call Claude for recommendations
-      const anthropicKey = process.env.ANTHROPIC_API_KEY;
-      if (!anthropicKey) {
-        // Fallback: return top products by relevance without LLM.
-        // Already filtered by category/subtype/color/fabric above.
+      // Non-AI fallback: candidates are already filtered by category/age/
+      // gender/occasion/fabric above. It used to be silent and gave every card
+      // the same canned "rationale", so a dead provider looked like AI output
+      // (RC-059). Now it is logged + reported, flagged `fallback: true`, and
+      // carries no fake styling tip.
+      const fallback = (reason: string, err?: unknown) => {
+        request.log.warn({ err, reason, retailer_id: retailer.id }, 'stylist fallback (no AI)');
+        Sentry.captureException(err ?? new Error(`stylist fallback: ${reason}`), {
+          tags: { feature: 'ai_stylist', fallback_reason: reason },
+          level: 'warning',
+        });
         return reply.status(200).send({
           data: {
+            fallback: true,
             recommendations: candidates.slice(0, 6).map((p) => ({
               product_id: p.id,
               name: p.name ?? p.category ?? 'Product',
@@ -301,15 +309,19 @@ export const publicStylistRoutes: FastifyPluginAsync = async (server) => {
               color: p.primary_color,
               price: p.price_min,
               photo_url: p.photo_url,
-              rationale: `Great choice from ${retailer.shop_name}'s collection.`,
+              rationale: '',
             })),
             stylist_note:
               typeHints.length > 0
-                ? `AI stylist is warming up. Showing top ${typeHints[0]} picks.`
-                : 'AI stylist is warming up. Showing top picks for now.',
+                ? `AI stylist is unavailable right now. Showing popular ${typeHints[0]} picks.`
+                : 'AI stylist is unavailable right now. Showing popular picks.',
           },
         });
-      }
+      };
+
+      // Call Claude for recommendations
+      const anthropicKey = process.env.ANTHROPIC_API_KEY;
+      if (!anthropicKey) return fallback('missing_api_key');
 
       try {
         const response = await fetch(ANTHROPIC_API_URL, {
@@ -384,26 +396,8 @@ RULES:
             stylist_note: `Stylist picked ${validRecommendations.length} items from ${catalogForLLM.length} products in ${retailer.shop_name}'s catalog.`,
           },
         });
-      } catch (_err) {
-        // Fallback on Claude failure.
-        // Already filtered by category/age/gender/occasion/fabric above.
-        return reply.status(200).send({
-          data: {
-            recommendations: candidates.slice(0, 6).map((p) => ({
-              product_id: p.id,
-              name: p.name ?? p.category ?? 'Product',
-              category: p.category,
-              color: p.primary_color,
-              price: p.price_min,
-              photo_url: p.photo_url,
-              rationale: `A great pick from ${retailer.shop_name}'s collection.`,
-            })),
-            stylist_note:
-              typeHints.length > 0
-                ? `AI stylist is temporarily busy. Showing top ${typeHints[0]} picks.`
-                : 'AI stylist is temporarily busy. Showing top picks.',
-          },
-        });
+      } catch (err) {
+        return fallback('provider_error', err);
       }
     },
   );
