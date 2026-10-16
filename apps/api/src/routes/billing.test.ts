@@ -311,7 +311,7 @@ describe('POST /v1/billing/addon-checkout', () => {
 
     globalThis.fetch = originalFetch;
 
-    expect(res.statusCode).toBe(500);
+    expect(res.statusCode).toBe(502);
     expect(mockQuotaAddonPurchaseCreate).not.toHaveBeenCalled();
     await app.close();
   });
