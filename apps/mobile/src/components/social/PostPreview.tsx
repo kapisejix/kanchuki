@@ -35,7 +35,9 @@ export function PostPreview({
   if (targets.length === 0) return null
 
   const cover = previewCover(media)
-  const isLinkOnly = postType === 'COLLECTION_LINK'
+  // Link card only when there is no photo to show — a collection link with a
+  // cover photo, or the Photo carousel format, renders its media like any post.
+  const isLinkOnly = postType === 'COLLECTION_LINK' && !cover
 
   return (
     <View className="gap-3">
