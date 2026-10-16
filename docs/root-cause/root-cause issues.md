@@ -12,6 +12,16 @@
 
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
+## RC-057 — A token-paste screen for Google Business Profile shipped as a live integration while F-022 is still "Planned (blocked on Google API access)"
+
+- **Component:** `apps/mobile/app/growth/integrations.tsx` (card), `apps/mobile/app/settings/index.tsx` (subtitle). Fixed 2026-10-16 on `fix/audit-phase-1` (screenshot audit S-04, D-7).
+- **Symptom:** Growth → Integrations showed a "Google Business Profile" card that opened a form asking the retailer to paste an OAuth access token and location ID — something no shop owner can produce — for a feature the docs list as not built.
+- **Root cause:** UI for an integration was shipped ahead of its backend prerequisite (Google API access + an OAuth consent flow), and nothing ties a visible entry point to the feature's build status. The screen existed, so it was linked; the "Planned" status lived only in docs. Same class as RC-051 / RC-056: a surface that implies a capability the platform does not have.
+- **Fix:** the GBP card is removed from Integrations and the Settings subtitle no longer advertises "Google Business". The `gmb.tsx` screen and `/me/integrations/gmb*` API stay in place (unreachable) so F-022 can re-link them once a real OAuth flow exists.
+- **Proof:** `apps/mobile/__tests__/unbuilt-integrations-hidden.test.ts` — `/growth/integrations/gmb` added to `HIDDEN`; fails if any screen under `app/` or `src/` links to it.
+
+---
+
 ## RC-056 — Marketplace Sync wrote `status: CONNECTED` on connect and on "sync" with no marketplace call or job behind it
 
 - **Component:** `apps/api/src/routes/retailers/retailers-aggregators.ts`, `apps/mobile/app/settings/index.tsx`. Fixed 2026-10-16 on `fix/audit-phase-1` (screenshot audit S-02).

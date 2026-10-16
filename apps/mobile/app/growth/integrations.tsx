@@ -211,29 +211,6 @@ export default function IntegrationsScreen() {
                 Ad Platforms & Local Search
               </Text>
 
-              {/* Google Business Profile */}
-              <IntegrationCard
-                icon="📍"
-                title="Google Business Profile"
-                subtitle="Post updates and review alerts to your boutique Google listing & Maps"
-                configured={data?.gmb.configured ?? false}
-                configuredAt={data?.gmb.configured_at ?? null}
-                onConfigure={() => router.push('/growth/integrations/gmb' as any)}
-                onDisconnect={() => {
-                  Alert.alert('Disconnect GMB?', 'Your Google Business Profile will be disconnected.', [
-                    { text: 'Cancel', style: 'cancel' },
-                    {
-                      text: 'Disconnect',
-                      style: 'destructive',
-                      onPress: async () => {
-                        await growthApi.disconnectGmb()
-                        void queryClient.invalidateQueries({ queryKey: ['growth', 'integrations'] })
-                      },
-                    },
-                  ])
-                }}
-              />
-
               {/* Facebook Ads */}
               <IntegrationCard
                 icon="📢"

@@ -12,6 +12,7 @@ import { stripComments } from '@kanchuki/shared/testing'
  */
 const HIDDEN: Record<string, string> = {
   '/growth/aggregators': 'RC-056 — no marketplace adapter or sync job exists',
+  '/growth/integrations/gmb': 'RC-057 — F-022 Google Business Profile not built (needs Google API access + OAuth)',
 }
 
 const ROOT = join(__dirname, '..')

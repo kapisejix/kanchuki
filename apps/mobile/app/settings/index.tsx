@@ -1513,7 +1513,7 @@ export default function SettingsScreen() {
             <SettingsRow
               icon={<Plug size={18} color={primaryColor} />}
               label="Integrations"
-              subtitle="Google Business, Facebook & Google Ads"
+              subtitle="Facebook, Instagram & WhatsApp"
               onPress={() => router.push("/growth/integrations")}
             />
           )}
