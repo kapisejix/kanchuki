@@ -2,13 +2,14 @@ import { useState, useEffect, useRef } from 'react'
 import { View, Text, ScrollView, ActivityIndicator, Alert } from 'react-native'
 import { router } from 'expo-router'
 import { useQuery } from '@tanstack/react-query'
-import { ChevronLeft, Store, ShieldCheck } from 'lucide-react-native'
+import { Store, ShieldCheck } from 'lucide-react-native'
 import { useScreenInsets } from '../../src/lib/safe-area'
 import { teamApi, type TerritoryRetailer } from '../../src/lib/team-api'
 import { enterSupportSession, type SupportScope } from '../../src/lib/catalog-delegate'
 import { showError } from '../../src/lib/errors'
 import { useTheme } from '../../src/lib/theme'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
+import { ScreenHeader } from '../../src/components/ScreenHeader'
 
 // Kanchuki manager → asks the retailer for in-app consent → on approval, enters
 // a scoped, ≤24h session in the retailer's account. No OTP, no extension: a new
@@ -25,8 +26,8 @@ const POLL_MS = 3000
 type Waiting = { grantId: string; shop: string; scope: SupportScope; deadline: number }
 
 export default function SupportSessionScreen() {
-  const { primaryColor, colors } = useTheme()
-  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets()
+  const { primaryColor } = useTheme()
+  const { screenPaddingBottom } = useScreenInsets()
   const [scope, setScope] = useState<SupportScope>('GROWTH')
   const [starting, setStarting] = useState<string | null>(null)
   const [waiting, setWaiting] = useState<Waiting | null>(null)
@@ -112,22 +113,7 @@ export default function SupportSessionScreen() {
 
   return (
     <View className="flex-1 bg-white">
-      <View
-        className="bg-white border-b border-sand-100 px-4 pb-4"
-        style={{ paddingTop: headerPaddingTop }}
-      >
-        <View className="flex-row items-center gap-3">
-          <AnimatedPressable
-            onPress={() => router.back()}
-            hitSlop={8}
-            accessibilityLabel="Go back"
-            accessibilityRole="button"
-          >
-            <ChevronLeft size={24} color={colors.sand[700]} />
-          </AnimatedPressable>
-          <Text className="text-base font-bold text-sand-900">Support Session</Text>
-        </View>
-      </View>
+      <ScreenHeader title="Support Session" />
 
       {waiting ? (
         <View className="flex-1 items-center justify-center px-8">

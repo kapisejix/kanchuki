@@ -68,7 +68,7 @@ describe('PickedForYou', () => {
   });
 
   it('reloads only after the matching tab-scoped store visit changes', async () => {
-    fetchMock.mockResolvedValue({ personalized: false, products: [pick] });
+    fetchMock.mockResolvedValue({ personalized: true, products: [pick] });
 
     render(<PickedForYou storeSlug="store-a" onProductTap={() => undefined} />);
     await screen.findByRole('button', { name: 'View Maroon Silk Saree' });
@@ -81,15 +81,15 @@ describe('PickedForYou', () => {
     expect(fetchMock).toHaveBeenLastCalledWith('store-a', ['seen-store-a']);
   });
 
-  it('labels the catalog-order fallback honestly when the API has no usable signals', async () => {
+  it('renders nothing for the catalog-order fallback (it would repeat the grid)', async () => {
     fetchMock.mockResolvedValue({ personalized: false, products: [pick] });
     render(<PickedForYou storeSlug="store-a" onProductTap={() => undefined} />);
 
-    expect(await screen.findByRole('heading', { name: 'From this store' })).toBeInTheDocument();
-    expect(screen.getByText('More available styles')).toBeInTheDocument();
-    expect(
-      await screen.findByRole('button', { name: 'View Maroon Silk Saree' }),
-    ).toBeInTheDocument();
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(screen.queryByRole('heading', { name: 'From this store' })).not.toBeInTheDocument(),
+    );
+    expect(screen.queryByRole('button', { name: /View / })).not.toBeInTheDocument();
   });
 
   it('keeps an empty feed hidden and offers retry for an API error', async () => {

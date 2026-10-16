@@ -133,7 +133,7 @@ export function AIStylist({ storeSlug, storeName, onProductTap }: Props) {
       {!open && (
         <button
           onClick={openOverlay}
-          className="fixed bottom-24 right-4 z-40 w-14 h-14 bg-gradient-to-br from-cyan-500 to-indigo-600 text-white rounded-full shadow-lg hover:shadow-xl flex items-center justify-center transition-all active:scale-90 hover:-translate-y-0.5"
+          className="fixed bottom-24 right-4 z-40 w-14 h-14 bg-gradient-to-br from-[#231F48] to-[#560A39] text-white rounded-full shadow-lg hover:shadow-xl flex items-center justify-center transition-all active:scale-90 hover:-translate-y-0.5"
           aria-label="Open AI Stylist"
         >
           <Sparkles size={22} />

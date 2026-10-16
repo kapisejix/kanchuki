@@ -10,8 +10,7 @@
 // badges live in the catalog tab (F7), driven by whatsappCatalogApi.getItems().
 
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
-import { router } from 'expo-router';
-import { ChevronLeft, MessageCircle, RefreshCw, Zap } from 'lucide-react-native';
+import { MessageCircle, RefreshCw, Zap } from 'lucide-react-native';
 import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
@@ -23,6 +22,7 @@ import {
 } from 'react-native';
 import { useScreenInsets } from '../../src/lib/safe-area';
 import { AnimatedPressable } from '../../src/components/AnimatedPressable';
+import { ScreenHeader } from '../../src/components/ScreenHeader';
 import { GradientButton } from '../../src/components/GradientButton';
 import { categoryApi, whatsappCatalogApi } from '../../src/lib/api';
 import type { WhatsAppCatalogStatus } from '../../src/lib/api/whatsapp-catalog';
@@ -48,7 +48,7 @@ const LOG_STATUS_COLOR: Record<string, string> = {
 
 export default function WhatsAppCatalogSettingsScreen() {
   const { primaryColor, colors } = useTheme();
-  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets();
+  const { screenPaddingBottom } = useScreenInsets();
   const queryClient = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
 
@@ -134,22 +134,7 @@ export default function WhatsAppCatalogSettingsScreen() {
   return (
     <View className="flex-1 bg-ink-50">
       {/* Header (F1) */}
-      <View
-        className="bg-white border-b border-sand-100 px-4 pb-4"
-        style={{ paddingTop: headerPaddingTop }}
-      >
-        <View className="flex-row items-center gap-3">
-          <AnimatedPressable
-            onPress={() => router.back()}
-            hitSlop={8}
-            accessibilityLabel="Go back"
-            accessibilityRole="button"
-          >
-            <ChevronLeft size={24} color={colors.sand[700]} />
-          </AnimatedPressable>
-          <Text className="text-base font-bold text-sand-900">WhatsApp Catalog</Text>
-        </View>
-      </View>
+      <ScreenHeader title="WhatsApp Catalog" />
 
       <ScrollView
         className="flex-1 px-4 pt-4"

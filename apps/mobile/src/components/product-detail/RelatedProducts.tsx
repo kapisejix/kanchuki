@@ -2,7 +2,8 @@
 import { useEffect, useState } from 'react'
 import { View, Text, ScrollView } from 'react-native'
 import { Image } from 'expo-image'
-import { ShoppingBag } from 'lucide-react-native'
+import { Shirt, ShoppingBag } from 'lucide-react-native'
+import { formatPrice } from '@kanchuki/shared'
 import { AnimatedPressable } from '../AnimatedPressable'
 
 interface RelatedProduct {
@@ -79,7 +80,7 @@ export function RelatedProductsSection({
                   />
                 ) : (
                   <View className="flex-1 items-center justify-center">
-                    <Text className="text-heliotrope-400 text-2xl">👗</Text>
+                    <Shirt size={24} color="#928EB2" />
                   </View>
                 )}
                 {rp.status === 'SOLD' && (
@@ -92,7 +93,7 @@ export function RelatedProductsSection({
                 style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
                 className="text-xs font-bold text-spaceCadet-900 mt-1.5"
               >
-                {rp.price_min ? `₹${(rp.price_min / 100).toLocaleString('en-IN')}` : ''}
+                {rp.price_min ? formatPrice(rp.price_min) : ''}
               </Text>
               {rp.primary_color && (
                 <Text className="text-[10px] text-heliotrope-500 font-medium truncate">{rp.primary_color}</Text>

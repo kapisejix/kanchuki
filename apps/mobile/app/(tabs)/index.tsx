@@ -196,9 +196,6 @@ export default function HomeScreen() {
             <Text className="text-[10px] uppercase tracking-wider font-extrabold text-lavender-200/80">
               Active Catalog Overview
             </Text>
-            <View className="px-2 py-0.5 rounded-full bg-fuchsia-500/30 border border-fuchsia-400">
-              <Text className="text-white text-[10px] font-extrabold">+18.4%</Text>
-            </View>
           </View>
 
           <View className="flex-row items-baseline gap-2 mb-1">

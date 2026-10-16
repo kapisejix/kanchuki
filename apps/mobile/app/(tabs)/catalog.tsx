@@ -22,6 +22,7 @@ import {
   Camera,
   Search,
   CheckSquare,
+  Shirt,
 } from 'lucide-react-native'
 import ProductCard from '../../src/components/ProductCard'
 import { useGridColumns } from '../../src/hooks/useIsTablet'
@@ -540,7 +541,7 @@ export default function CatalogScreen() {
                                   <Image source={{ uri: photoUrl }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
                                 ) : (
                                   <View className="flex-1 items-center justify-center">
-                                    <Text className="text-heliotrope-400 text-xl">👗</Text>
+                                    <Shirt size={20} color="#928EB2" />
                                   </View>
                                 )}
                               </View>

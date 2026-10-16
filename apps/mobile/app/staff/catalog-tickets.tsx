@@ -6,12 +6,13 @@ import {
 import { router, useFocusEffect } from 'expo-router'
 import { useScreenInsets } from '../../src/lib/safe-area'
 import { useQuery } from '@tanstack/react-query'
-import { ChevronLeft, Store, MapPin, Package, ArrowRight } from 'lucide-react-native'
+import { Store, MapPin, Package, ArrowRight } from 'lucide-react-native'
 import { teamApi, type SupportTicket, type TeamMemberInfo } from '../../src/lib/team-api'
 import { enterCatalogSession } from '../../src/lib/catalog-delegate'
 import { showError } from '../../src/lib/errors'
 import { useTheme } from '../../src/lib/theme'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
+import { ScreenHeader } from '../../src/components/ScreenHeader'
 
 // F-020: only tickets ready for an on-site upload — assigned to me, paid,
 // and a visit slot confirmed. General support tickets aren't shown here;
@@ -27,7 +28,7 @@ function readyForSession(ticket: SupportTicket, myId: string): boolean {
 
 export default function CatalogTicketsScreen() {
   const { primaryColor, colors } = useTheme()
-  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets()
+  const { screenPaddingBottom } = useScreenInsets()
   const [starting, setStarting] = useState<string | null>(null)
 
   const { data: meData } = useQuery({ queryKey: ['staff', 'me'], queryFn: () => teamApi.getMe() })
@@ -71,17 +72,7 @@ export default function CatalogTicketsScreen() {
 
   return (
     <View className="flex-1 bg-white">
-      <View
-        className="bg-white border-b border-sand-100 px-4 pb-4"
-        style={{ paddingTop: headerPaddingTop }}
-      >
-        <View className="flex-row items-center gap-3">
-          <AnimatedPressable onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
-            <ChevronLeft size={24} color={colors.sand[700]} />
-          </AnimatedPressable>
-          <Text className="text-base font-bold text-sand-900">Catalog Upload Jobs</Text>
-        </View>
-      </View>
+      <ScreenHeader title="Catalog Upload Jobs" />
 
       {isLoading ? (
         <ActivityIndicator color={primaryColor} className="mt-12" />

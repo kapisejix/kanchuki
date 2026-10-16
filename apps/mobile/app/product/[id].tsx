@@ -13,7 +13,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Image } from 'expo-image'
 import { VideoView } from 'expo-video'
 import { useScreenInsets } from '../../src/lib/safe-area'
-import { Camera, ChevronLeft, Clapperboard, Heart, Share2, Star } from 'lucide-react-native'
+import { Camera, ChevronLeft, Clapperboard, Share2, Star } from 'lucide-react-native'
 import Gallery, { type GalleryRef } from 'react-native-awesome-gallery'
 import type { ProductDetail } from '@kanchuki/shared'
 
@@ -148,7 +148,6 @@ export default function ProductDetailScreen() {
   const [skuTagOpen, setSkuTagOpen] = useState(false)
   const [imageErrors, setImageErrors] = useState<Set<string>>(new Set())
   const [photoCacheBust, setPhotoCacheBust] = useState<Record<string, number>>({})
-  const [isFavorite, setIsFavorite] = useState(false)
 
   const galleryRef = useRef<GalleryRef>(null)
 
@@ -295,21 +294,7 @@ export default function ProductDetailScreen() {
                 <Text className="text-white font-bold text-xs uppercase tracking-wider">Save</Text>
               )}
             </AnimatedPressable>
-          ) : (
-            <AnimatedPressable
-              onPress={() => setIsFavorite((f) => !f)}
-              className="w-10 h-10 rounded-full bg-lavender-100 items-center justify-center border border-lavender-200"
-              hitSlop={8}
-              accessibilityLabel="Favorite"
-              accessibilityRole="button"
-            >
-              <Heart
-                size={18}
-                color={isFavorite ? "#BB3F95" : "#231F48"}
-                fill={isFavorite ? "#BB3F95" : "transparent"}
-              />
-            </AnimatedPressable>
-          )}
+          ) : null}
         </View>
       </View>
 

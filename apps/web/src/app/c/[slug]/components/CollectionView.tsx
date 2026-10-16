@@ -397,7 +397,7 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
                   Hi, Welcome!
                 </p>
                 <div className="flex items-center gap-1.5">
-                  <p className="text-[10px] text-[#6B4773] font-bold uppercase tracking-wider truncate">
+                  <p className="text-[10px] text-[#6B4773] font-bold uppercase tracking-wider leading-tight">
                     {collection.retailer.shop_name} {collection.retailer.city ? `· ${collection.retailer.city}` : ''}
                   </p>
                   {collection.retailer.latitude != null && collection.retailer.longitude != null && (
@@ -474,19 +474,13 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
               placeholder="Search by outfit, fabric, color..."
               className="w-full text-xs font-semibold text-[#231F48] placeholder-[#928EB2] bg-transparent focus:outline-none"
             />
-            {searchQuery ? (
+            {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
                 className="w-7 h-7 rounded-xl bg-[#F8F7FC] flex items-center justify-center text-[#231F48] text-xs absolute right-3 border border-[#E0E1F6]"
+                aria-label="Clear search"
               >
                 <X size={14} />
-              </button>
-            ) : (
-              <button
-                onClick={() => setShowFilters((v) => !v)}
-                className="w-7 h-7 rounded-xl bg-[#F8F7FC] flex items-center justify-center text-[#231F48] text-xs absolute right-3 border border-[#E0E1F6]"
-              >
-                <SlidersHorizontal size={14} />
               </button>
             )}
           </div>

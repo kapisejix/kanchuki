@@ -30,7 +30,10 @@ function Section({
 
 function StatTile({ icon, label, value }: { icon: React.ReactNode; label: string; value: number }) {
   return (
-    <View className="flex-1 bg-white rounded-2xl p-3.5 border border-lavender-200 items-center gap-1">
+    <View
+      className="bg-white rounded-2xl p-3.5 border border-lavender-200 items-center gap-1"
+      style={{ width: '48.5%' }}
+    >
       {icon}
       <Text className="text-lg font-bold text-spaceCadet-900">{value.toLocaleString('en-IN')}</Text>
       <Text className="text-[10px] text-heliotrope-500 font-medium uppercase tracking-wider">
@@ -88,6 +91,13 @@ export default function GrowthEngagementScreen() {
     queryFn: () => growthApi.engagement(30),
   });
   const view = data?.data;
+  const isEmpty = view
+    ? view.totals.view_count +
+        view.totals.search_count +
+        view.totals.favorite_count +
+        view.totals.enquiry_count ===
+      0
+    : false;
   const maxDwell = view ? Math.max(1, ...view.dwell_trend.map((d) => Number(d.total_dwell_ms))) : 1;
 
   return (
@@ -133,7 +143,7 @@ export default function GrowthEngagementScreen() {
           }
         >
           <View className="gap-4">
-            <View className="flex-row gap-2">
+            <View className="flex-row flex-wrap justify-between gap-y-2">
               <StatTile
                 icon={<Eye size={16} color="#BB3F95" />}
                 label="Views"
@@ -156,6 +166,18 @@ export default function GrowthEngagementScreen() {
               />
             </View>
 
+            {isEmpty ? (
+              <View className="bg-white rounded-3xl p-5 border border-lavender-200 items-center">
+                <Text className="text-sm font-bold text-spaceCadet-900 mb-1">
+                  No activity yet
+                </Text>
+                <Text className="text-xs text-heliotrope-500 text-center">
+                  Stats update every night. Share your store link or a collection on WhatsApp to
+                  start getting views, favorites and enquiries.
+                </Text>
+              </View>
+            ) : (
+              <>
             <Section icon={<TrendingUp size={16} color="#BB3F95" />} title="Dwell time trend">
               {view.dwell_trend.length === 0 ? (
                 <Text className="text-xs text-heliotrope-400">No data yet</Text>
@@ -187,6 +209,8 @@ export default function GrowthEngagementScreen() {
               <TopList title="Top favorited products" entries={view.top_favorited_products} />
               <TopList title="Top searches" entries={view.top_searches} />
             </Section>
+              </>
+            )}
           </View>
         </ScrollView>
       )}

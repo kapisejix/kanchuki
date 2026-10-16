@@ -7,12 +7,13 @@ import {
 import { router } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import {
-  Store, ChevronLeft, Phone, MapPin, User, CheckCircle2,
+  Store, Phone, MapPin, User, CheckCircle2,
   UserPlus,
 } from 'lucide-react-native'
 import { teamApi } from '../../src/lib/team-api'
 import { useTheme } from '../../src/lib/theme'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
+import { ScreenHeader } from '../../src/components/ScreenHeader'
 import { GradientButton } from '../../src/components/GradientButton'
 
 export default function RetailerOnboardScreen() {
@@ -112,19 +113,7 @@ export default function RetailerOnboardScreen() {
       className="flex-1 bg-slate-50"
     >
       {/* Header */}
-      <View
-        className="bg-white border-b border-sand-100 px-4 pb-4"
-      >
-        <View className="flex-row items-center gap-3">
-          <AnimatedPressable onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
-            <ChevronLeft size={24} color={colors.sand[700]} />
-          </AnimatedPressable>
-          <View>
-            <Text className="text-base font-bold text-sand-900">New Retailer</Text>
-            <Text className="text-xs text-sand-400">Quick field onboarding</Text>
-          </View>
-        </View>
-      </View>
+      <ScreenHeader title="New Retailer" subtitle="Quick field onboarding" />
 
       <ScrollView
         className="flex-1 px-4 pt-4"

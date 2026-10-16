@@ -1,3 +1,4 @@
+import { formatPaiseShort } from '@kanchuki/shared'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import {
@@ -119,8 +120,8 @@ export default function CampaignDetailScreen() {
     if (a.colors?.length) parts.push(`Likes ${a.colors.join(', ')}`)
     if (a.styles?.length) parts.push(`Styles: ${a.styles.join(', ')}`)
     if (a.fabrics?.length) parts.push(`Fabrics: ${a.fabrics.join(', ')}`)
-    if (a.min_total_spent_paise) parts.push(`Spent ≥ ₹${(a.min_total_spent_paise / 100).toLocaleString('en-IN')}`)
-    if (a.max_budget_paise) parts.push(`Budget ≤ ₹${(a.max_budget_paise / 100).toLocaleString('en-IN')}`)
+    if (a.min_total_spent_paise) parts.push(`Spent ≥ ${formatPaiseShort(a.min_total_spent_paise)}`)
+    if (a.max_budget_paise) parts.push(`Budget ≤ ${formatPaiseShort(a.max_budget_paise)}`)
     if (a.sources?.length) parts.push(`Source: ${a.sources.join(', ')}`)
     return parts.length ? parts.join(' · ') : 'No filters'
   })()

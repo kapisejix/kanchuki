@@ -272,7 +272,7 @@ export function SharedProductPage({ collection, product, collectionPath }: Props
             <Link
               href={catalogTarget}
               prefetch
-              className="flex items-center justify-center gap-2 w-full font-bold py-3.5 rounded-3xl bg-white border border-[#E0E1F6] text-[#231F48] shadow-sm hover:border-[#BB3F95] transition text-xs uppercase tracking-wider"
+              className="flex items-center justify-center gap-2 w-full font-bold py-3.5 rounded-2xl bg-white border border-[#E0E1F6] text-[#231F48] shadow-sm hover:border-[#BB3F95] transition text-xs uppercase tracking-wider"
             >
               <ShoppingBag size={16} />
               View Full Catalog

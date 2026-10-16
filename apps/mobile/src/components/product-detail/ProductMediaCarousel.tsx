@@ -16,6 +16,7 @@ import {
   Video,
   Sparkles,
   Clapperboard,
+  Shirt,
 } from 'lucide-react-native'
 import { STUDIO_CREDITS_PER_IMAGE } from '@kanchuki/shared'
 import { AnimatedPressable } from '../AnimatedPressable'
@@ -132,7 +133,7 @@ export function ProductMediaCarousel({
                 />
               ) : (
                 <View className="w-full h-full bg-lavender-100 items-center justify-center">
-                  <Text className="text-heliotrope-400 text-5xl mb-2">👗</Text>
+                  <Shirt size={40} color="#928EB2" style={{ marginBottom: 8 }} />
                   <Text className="text-heliotrope-500 text-xs">Image unavailable</Text>
                 </View>
               )
@@ -140,7 +141,7 @@ export function ProductMediaCarousel({
           />
         ) : (
           <View className="w-full h-full bg-lavender-100 items-center justify-center">
-            <Text className="text-heliotrope-400 text-5xl mb-2">👗</Text>
+            <Shirt size={40} color="#928EB2" style={{ marginBottom: 8 }} />
             <Text className="text-heliotrope-500 text-xs">No photos</Text>
           </View>
         )}

@@ -15,6 +15,14 @@ import {
   Eye,
   MessageSquare,
   Image as ImageIcon,
+  BookOpen,
+  Camera,
+  Clapperboard,
+  FileText,
+  MessageCircle,
+  ShoppingBag,
+  Users,
+  type LucideIcon,
 } from 'lucide-react-native'
 import {
   ActivityIndicator,
@@ -52,15 +60,20 @@ const TYPE_LABELS: Record<SocialTemplateType, string> = {
   PDF_FLYER: 'PDF Flyer',
 }
 
-const TYPE_EMOJI: Record<SocialTemplateType, string> = {
-  INSTAGRAM_POST: '📸',
-  INSTAGRAM_REEL: '🎬',
-  INSTAGRAM_STORY: '📖',
-  WHATSAPP_STATUS: '💬',
-  WHATSAPP_CATALOG: '🛒',
-  FACEBOOK_POST: '👥',
-  FACEBOOK_STORY: '📖',
-  PDF_FLYER: '📄',
+const TYPE_ICON: Record<SocialTemplateType, LucideIcon> = {
+  INSTAGRAM_POST: Camera,
+  INSTAGRAM_REEL: Clapperboard,
+  INSTAGRAM_STORY: BookOpen,
+  WHATSAPP_STATUS: MessageCircle,
+  WHATSAPP_CATALOG: ShoppingBag,
+  FACEBOOK_POST: Users,
+  FACEBOOK_STORY: BookOpen,
+  PDF_FLYER: FileText,
+}
+
+function TypeIcon({ type, size = 16, color = '#231F48' }: { type: SocialTemplateType; size?: number; color?: string }) {
+  const Icon = TYPE_ICON[type]
+  return <Icon size={size} color={color} />
 }
 
 // ─── Main Screen ──────────────────────────────────────────────────
@@ -228,7 +241,7 @@ export default function TemplatesScreen() {
                 <View className="p-4">
                   <View className="flex-row items-center justify-between mb-1.5">
                     <View className="flex-row items-center gap-2 flex-1 mr-2">
-                      <Text className="text-base">{TYPE_EMOJI[t.template_type]}</Text>
+                      <TypeIcon type={t.template_type} />
                       <Text
                         style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
                         className="text-base font-bold text-spaceCadet-900"
@@ -471,7 +484,7 @@ function CreateTemplateModal({
                     active ? 'bg-spaceCadet-900 border-spaceCadet-900 shadow-sm' : 'bg-lavender-50 border-lavender-200'
                   }`}
                 >
-                  <Text className="text-xs">{TYPE_EMOJI[t]}</Text>
+                  <TypeIcon type={t} size={14} color={active ? '#FFFFFF' : '#231F48'} />
                   <Text
                     className={`text-xs font-bold ${active ? 'text-white' : 'text-spaceCadet-900'}`}
                   >
@@ -812,7 +825,7 @@ function TemplateDetailModal({
           <View className="px-5 pt-4 pb-8">
             {/* Title */}
             <View className="flex-row items-center gap-2 mb-1">
-              <Text className="text-base">{TYPE_EMOJI[template.template_type]}</Text>
+              <TypeIcon type={template.template_type} />
               <Text
                 style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
                 className="text-lg font-bold text-spaceCadet-900 flex-1"

@@ -17,7 +17,7 @@ import * as ImageManipulator from 'expo-image-manipulator'
 import { File } from 'expo-file-system'
 import { Image } from 'expo-image'
 import { useScreenInsets } from '../../src/lib/safe-area'
-import { X, ImagePlus, ChevronLeft, Check, Sparkles } from 'lucide-react-native'
+import { X, ImagePlus, Check, Sparkles } from 'lucide-react-native'
 import {
   productApi,
   categoryApi,
@@ -29,6 +29,7 @@ import { showError, logError } from '../../src/lib/errors'
 import { useTheme } from '../../src/lib/theme'
 import { ProductAddSkeleton } from '../../src/components/Skeleton'
 import { KeyboardScreen } from '../../src/components/KeyboardScreen'
+import { ScreenHeader } from '../../src/components/ScreenHeader'
 import { GradientButton } from '../../src/components/GradientButton'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 
@@ -63,7 +64,7 @@ const PRO_MIN_KEEP = 3
 
 export default function AddProductScreen() {
   const { colors } = useTheme()
-  const { insets, headerPaddingTop } = useScreenInsets()
+  const { insets } = useScreenInsets()
   const queryClient = useQueryClient()
   const [step, setStep] = useState<Step>('camera')
   const [captureMode, setCaptureMode] = useState<CaptureMode>('photo')
@@ -876,25 +877,17 @@ export default function AddProductScreen() {
   if (step === 'pro_options') {
     return (
       <View className="flex-1 bg-ink-50">
-        <View
-          className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-sand-100"
-          style={{ paddingTop: headerPaddingTop }}
-        >
-          <AnimatedPressable
-            onPress={() => setStep('pro_review')}
-            hitSlop={8}
-            accessibilityLabel="Go back"
-            accessibilityRole="button"
-          >
-            <ChevronLeft size={24} color={colors.sand[700]} />
-          </AnimatedPressable>
-          <Text className="text-base font-bold text-sand-900">Photo Settings</Text>
-          <GradientButton variant="web"
-            label={proProcessing ? 'Processing…' : 'Process'}
-            onPress={() => void handleProProcess()}
-            loading={proProcessing}
-          />
-        </View>
+        <ScreenHeader
+          title="Photo Settings"
+          onBack={() => setStep('pro_review')}
+          right={
+            <GradientButton variant="web"
+              label={proProcessing ? 'Processing…' : 'Process'}
+              onPress={() => void handleProProcess()}
+              loading={proProcessing}
+            />
+          }
+        />
 
         <ScrollView className="flex-1">
           <View className="px-4 py-4 gap-4">
@@ -1024,22 +1017,22 @@ export default function AddProductScreen() {
   return (
     <KeyboardScreen className="flex-1 bg-ink-50">
       {/* Header — fixed outside the scroll area so back/save stay reachable */}
-      <View
-        className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-sand-100"
-        style={{ paddingTop: headerPaddingTop }}
-      >
-        <AnimatedPressable onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
-          <ChevronLeft size={24} color={colors.sand[700]} />
-        </AnimatedPressable>
-        <Text className="text-base font-bold text-sand-900">Product Details</Text>
-        <GradientButton variant="web"
-          label="Save"
-          onPress={() => void handleSave()}
-          loading={step === 'saving'}
-        />
-      </View>
+      <ScreenHeader
+        title="Product Details"
+        right={
+          <GradientButton variant="web"
+            label="Save"
+            onPress={() => void handleSave()}
+            loading={step === 'saving'}
+          />
+        }
+      />
 
-      <ScrollView className="flex-1">
+      <ScrollView
+        className="flex-1"
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{ paddingBottom: insets.bottom + 120 }}
+      >
       <View className="px-4 py-4 gap-4">
         {/* Photo preview */}
         {photo && (

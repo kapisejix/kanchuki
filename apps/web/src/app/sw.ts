@@ -66,6 +66,14 @@ const serwist = new Serwist({
       matcher: ({ url }) => url.pathname.startsWith('/store/'),
       handler: new NetworkFirst({ cacheName: 'store-pages', networkTimeoutSeconds: 3 }),
     },
+    // Legal pages are 1-segment paths, so the storefront rule below would
+    // cache them with a 3s network timeout and serve a stale copy on a slow
+    // phone connection (S-07: "Last updated" date lagged the deploy). No
+    // timeout here — cache is used only when the network actually fails.
+    {
+      matcher: ({ url }) => ['/privacy', '/terms', '/account-deletion'].includes(url.pathname),
+      handler: new NetworkFirst({ cacheName: 'legal-pages' }),
+    },
     // Canonical storefront pages — same bug class as the legacy /store/
     // rule: defaultCache caches RSC prefetch/nav payloads by URL only, so a
     // stale payload got served on click and the page hung until a hard

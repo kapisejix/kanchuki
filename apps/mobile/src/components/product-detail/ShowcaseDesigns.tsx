@@ -79,7 +79,7 @@ export function ShowcaseDesignsSection({
                 />
               </View>
               {d.name ? (
-                <Text className="text-[11px] font-bold text-spaceCadet-900 mt-1.5 truncate" numberOfLines={1}>
+                <Text className="text-[11px] font-bold text-spaceCadet-900 mt-1.5" numberOfLines={2}>
                   {d.name}
                 </Text>
               ) : (

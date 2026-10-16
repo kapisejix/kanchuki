@@ -148,9 +148,12 @@ function PostCard({
                   {item.product?.name ?? 'Product'}
                 </Text>
                 {item.image_level === 'TEMPLATE' ? (
-                  <Text className="text-[10px] font-bold text-fuchsia-700" numberOfLines={1}>
-                    ✦ {templateLabel(item.template_id) ?? 'Styled'}
-                  </Text>
+                  <View className="flex-row items-center gap-1">
+                    <Sparkles size={10} color="#A21CAF" />
+                    <Text className="text-[10px] font-bold text-fuchsia-700 flex-shrink" numberOfLines={1}>
+                      {templateLabel(item.template_id) ?? 'Styled'}
+                    </Text>
+                  </View>
                 ) : null}
                 {editable && canEditSlides ? (
                   <View className="flex-row gap-1 mt-1">
