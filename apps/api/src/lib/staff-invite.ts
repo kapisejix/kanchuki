@@ -6,6 +6,15 @@
 // leaked share-link can't be brute-forced from the hash column.
 import { createHash, randomBytes } from 'node:crypto';
 
+/**
+ * Invite links are OFF by default — staff join by logging in with the phone the
+ * owner added (auth.ts staff-by-phone path). Set STAFF_INVITE_LINKS_ENABLED=true
+ * to bring the link flow back; nothing else needs to change.
+ */
+export function staffInviteLinksEnabled(): boolean {
+  return process.env.STAFF_INVITE_LINKS_ENABLED === 'true';
+}
+
 // 7-day invite lifetime (spec §3.1). Expired invites lazily read as
 // 'expired' and can be refreshed via Resend.
 export const STAFF_INVITE_TTL_DAYS = 7;

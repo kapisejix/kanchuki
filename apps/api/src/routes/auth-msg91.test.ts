@@ -53,6 +53,8 @@ vi.mock('@kanchuki/db', () => ({
     defaultProductCategory: { findMany: vi.fn().mockResolvedValue([]) },
     defaultProductAttribute: { findMany: vi.fn().mockResolvedValue([]) },
     staff: { findFirst: mockStaffFindFirst, update: mockStaffUpdate },
+    staffInvite: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
+    $transaction: vi.fn().mockResolvedValue([]),
     teamMember: { findFirst: mockTeamMemberFindFirst },
     retailer: {
       findUnique: mockRetailerFindUnique,

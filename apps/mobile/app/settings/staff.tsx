@@ -360,35 +360,44 @@ function InvitePromptModal({
             {message}
           </Text>
           <Text className="text-xs text-sand-400 leading-relaxed">
-            Share this link with them — they tap it, verify their number, and they&apos;re in. The link
-            expires {invite ? new Date(invite.expires_at).toLocaleDateString() : 'in 7 days'}.
+            {member ? `${member.name} can open the Kanchuki app and log in with ${member.phone} — no link needed. ` : ''}
+            {invite
+              ? `You can also share the link below; it expires ${new Date(invite.expires_at).toLocaleDateString()}.`
+              : ''}
           </Text>
-          <AnimatedPressable
-            onPress={() => void handleWhatsApp()}
-            className="w-full bg-emerald-600 py-4 rounded-2xl flex-row items-center justify-center gap-2 mt-2"
-            accessibilityLabel="Send invite on WhatsApp"
-            accessibilityRole="button"
-          >
-            <MessageCircle size={18} color="white" />
-            <Text className="text-white font-semibold">Send on WhatsApp</Text>
-          </AnimatedPressable>
-          <View className="flex-row gap-3">
-            <View className="flex-1">
-              <WhiteButton
-                label="Copy"
-                icon={<Copy size={14} color={WHITE_BUTTON_INK} />}
-                onPress={() => void handleCopy()}
-              />
-            </View>
-            <View className="flex-1">
-              <GradientButton
-                variant="web"
-                label="Share"
-                icon={<MessageCircle size={14} color="white" />}
-                onPress={() => void handleShare()}
-              />
-            </View>
-          </View>
+          {/* ponytail: invite links are off server-side (STAFF_INVITE_LINKS_ENABLED); no invite in the response = no link UI */}
+          {invite ? (
+            <>
+              <AnimatedPressable
+                onPress={() => void handleWhatsApp()}
+                className="w-full bg-emerald-600 py-4 rounded-2xl flex-row items-center justify-center gap-2 mt-2"
+                accessibilityLabel="Send invite on WhatsApp"
+                accessibilityRole="button"
+              >
+                <MessageCircle size={18} color="white" />
+                <Text className="text-white font-semibold">Send on WhatsApp</Text>
+              </AnimatedPressable>
+              <View className="flex-row gap-3">
+                <View className="flex-1">
+                  <WhiteButton
+                    label="Copy"
+                    icon={<Copy size={14} color={WHITE_BUTTON_INK} />}
+                    onPress={() => void handleCopy()}
+                  />
+                </View>
+                <View className="flex-1">
+                  <GradientButton
+                    variant="web"
+                    label="Share"
+                    icon={<MessageCircle size={14} color="white" />}
+                    onPress={() => void handleShare()}
+                  />
+                </View>
+              </View>
+            </>
+          ) : (
+            <GradientButton variant="web" label="Done" onPress={onClose} />
+          )}
         </View>
       </View>
     </Modal>
@@ -521,21 +530,10 @@ export default function StaffScreen() {
   const renderInviteChip = useCallback(
     (member: StaffMember) => {
       if (member.auth_user_id) return null
-      if (!member.invite) {
-        // No invite row (shouldn't happen — create/backfill always mints one)
-        // — offer WhatsApp so the retailer can always get a link out.
-        return (
-          <AnimatedPressable
-            onPress={() => void handleSendWhatsApp(member)}
-            className="mt-2 self-start bg-emerald-600 px-3 py-1.5 rounded-lg flex-row items-center gap-1.5"
-            accessibilityLabel={`Send WhatsApp invite to ${member.name}`}
-            accessibilityRole="button"
-          >
-            <MessageCircle size={13} color="white" />
-            <Text className="text-[11px] font-semibold text-white">Send on WhatsApp</Text>
-          </AnimatedPressable>
-        )
-      }
+      // ponytail: invite links off → API sends invite: null → no chip. Re-enable
+      // with STAFF_INVITE_LINKS_ENABLED=true (server) and restore the
+      // "Send on WhatsApp" fallback button here if you want it back.
+      if (!member.invite) return null
       const isExpired = member.invite.status === 'expired'
       return (
         <View className="mt-2 flex-row items-center gap-2">

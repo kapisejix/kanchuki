@@ -22,6 +22,7 @@ import { authRoutes } from './auth.js';
 const mockStaffInviteFindUnique = vi.hoisted(() => vi.fn());
 const mockStaffUpdate = vi.hoisted(() => vi.fn());
 const mockStaffInviteUpdate = vi.hoisted(() => vi.fn());
+const mockStaffInviteUpdateMany = vi.hoisted(() => vi.fn());
 const mockStaffFindFirst = vi.hoisted(() => vi.fn());
 const mockTeamMemberFindFirst = vi.hoisted(() => vi.fn());
 const mockRetailerFindUnique = vi.hoisted(() => vi.fn());
@@ -40,7 +41,11 @@ vi.mock('@kanchuki/db', () => ({
     defaultProductCategory: { findMany: vi.fn().mockResolvedValue([]) },
     defaultProductAttribute: { findMany: vi.fn().mockResolvedValue([]) },
     staff: { findFirst: mockStaffFindFirst, update: mockStaffUpdate },
-    staffInvite: { findUnique: mockStaffInviteFindUnique, update: mockStaffInviteUpdate },
+    staffInvite: {
+      findUnique: mockStaffInviteFindUnique,
+      update: mockStaffInviteUpdate,
+      updateMany: mockStaffInviteUpdateMany,
+    },
     teamMember: { findFirst: mockTeamMemberFindFirst },
     retailer: {
       findUnique: mockRetailerFindUnique,
@@ -135,11 +140,15 @@ beforeEach(() => {
   });
   mockStaffUpdate.mockResolvedValue({});
   mockStaffInviteUpdate.mockResolvedValue({});
+  mockStaffInviteUpdateMany.mockResolvedValue({ count: 1 });
 });
 
 afterEach(() => {
   delete process.env.OTP_TEST_BYPASS;
 });
+
+// These suites cover the links-ON flow; links are OFF by default (staffInviteLinksEnabled).
+process.env.STAFF_INVITE_LINKS_ENABLED = 'true';
 
 describe('POST /v1/auth/otp/verify — invite_token branch', () => {
   it('joins as staff: links auth_user_id, marks invite used, returns staff payload (never retailer.upsert)', async () => {
@@ -341,6 +350,36 @@ describe('POST /v1/auth/otp/verify — invite_token ABSENT (no regression)', () 
     // No token → normal flow: a new retailer row is created (today's behavior).
     expect(mockRetailerUpsert).toHaveBeenCalled();
     expect(mockStaffInviteFindUnique).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('phone-only first login links the staff row and consumes its pending invite', async () => {
+    mockStaffFindFirst.mockResolvedValue({
+      id: 'staff_1',
+      name: 'Ramesh',
+      role: 'salesperson',
+      retailer_id: 'retailer_1',
+      auth_user_id: null,
+      retailer: { id: 'retailer_1', shop_name: 'Ramesh Textiles', city: 'Jaipur' },
+    });
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/auth/otp/verify',
+      payload: { phone: BOUND_PHONE, otp: '123456' },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data.is_staff).toBe(true);
+    expect(mockStaffUpdate).toHaveBeenCalledWith({
+      where: { id: 'staff_1' },
+      data: { auth_user_id: 'supabase-user-1' },
+    });
+    expect(mockStaffInviteUpdateMany).toHaveBeenCalledWith({
+      where: { staff_id: 'staff_1', status: 'pending' },
+      data: { status: 'used', accepted_at: expect.any(Date) },
+    });
     await app.close();
   });
 

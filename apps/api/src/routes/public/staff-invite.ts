@@ -18,7 +18,11 @@
 import { prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
 import { sendOtpViaMsg91 } from '../../lib/msg91-otp.js';
-import { hashStaffInviteToken, maskPhone } from '../../lib/staff-invite.js';
+import {
+  hashStaffInviteToken,
+  maskPhone,
+  staffInviteLinksEnabled,
+} from '../../lib/staff-invite.js';
 import { AppError, notFound } from '../../plugins/error-handler.js';
 
 type InviteStatus = 'pending' | 'used' | 'expired' | 'revoked';
@@ -68,7 +72,7 @@ export const publicStaffInviteRoutes: FastifyPluginAsync = async (server) => {
     },
     async (request, reply) => {
       const { token } = request.params as { token: string };
-      if (!token || token.length < 20) throw notFound('Invite');
+      if (!staffInviteLinksEnabled() || !token || token.length < 20) throw notFound('Invite');
 
       const invite = await findInviteByToken(token);
       // Unknown + expired + revoked all read as 404 — don't leak existence.
@@ -114,7 +118,7 @@ export const publicStaffInviteRoutes: FastifyPluginAsync = async (server) => {
     },
     async (request, reply) => {
       const { token } = request.params as { token: string };
-      if (!token || token.length < 20) throw notFound('Invite');
+      if (!staffInviteLinksEnabled() || !token || token.length < 20) throw notFound('Invite');
 
       const invite = await findInviteByToken(token);
       // Same code + message as the verify branch in auth.ts — the OTP-send

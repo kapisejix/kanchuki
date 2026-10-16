@@ -6,6 +6,7 @@ import {
   buildStaffInviteUrl,
   generateStaffInviteToken,
   staffInviteExpiry,
+  staffInviteLinksEnabled,
 } from '../lib/staff-invite.js';
 import {
   AppError,
@@ -69,9 +70,10 @@ export const staffRoutes: FastifyPluginAsync = async (server) => {
       include: { staff_invites: true },
     });
     const now = Date.now();
+    const linksOn = staffInviteLinksEnabled();
     return {
       data: staff.map((row) => {
-        const invite = row.staff_invites[0];
+        const invite = linksOn ? row.staff_invites[0] : undefined;
         const inviteStatus =
           invite && invite.status === 'pending' && invite.expires_at.getTime() < now
             ? 'expired'
@@ -149,6 +151,7 @@ export const staffRoutes: FastifyPluginAsync = async (server) => {
     // who already joined once (auth_user_id set) needs no invite — they just
     // log in with their phone. A member added but never logged in gets a
     // fresh invite (replace the row — staff_id is unique, D5).
+    const linksOn = staffInviteLinksEnabled();
     const invite = generateStaffInviteToken();
     const expiresAt = staffInviteExpiry();
 
@@ -167,7 +170,7 @@ export const staffRoutes: FastifyPluginAsync = async (server) => {
         });
       }
 
-      if (!row.auth_user_id) {
+      if (linksOn && !row.auth_user_id) {
         await tx.staffInvite.upsert({
           where: { staff_id: row.id },
           create: {
@@ -207,7 +210,7 @@ export const staffRoutes: FastifyPluginAsync = async (server) => {
     // the shareable link so the retailer can send it to the member. Present
     // only when an invite was actually minted (member never logged in).
     const data: Record<string, unknown> = { ...staff };
-    if (!staff.auth_user_id) {
+    if (linksOn && !staff.auth_user_id) {
       data.invite = {
         url: buildStaffInviteUrl(invite.raw),
         expires_at: expiresAt.toISOString(),
@@ -223,6 +226,12 @@ export const staffRoutes: FastifyPluginAsync = async (server) => {
   // default (/v1/staff is not on the staffCanAccess allowlist). Already-joined
   // members (auth_user_id set) just log in — no re-invite, 409.
   server.post('/:id/invite/resend', async (request, reply) => {
+    if (!staffInviteLinksEnabled())
+      throw new AppError(
+        'INVITE_LINKS_DISABLED',
+        'Invite links are turned off. Team members can log in with their phone number.',
+        404,
+      );
     const { id } = request.params as { id: string };
 
     const existing = await prisma.staff.findFirst({

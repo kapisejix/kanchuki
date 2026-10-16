@@ -13,7 +13,7 @@ import {
   verifyMsg91WidgetToken,
   verifyStoredOtp,
 } from '../lib/msg91-otp.js';
-import { hashStaffInviteToken } from '../lib/staff-invite.js';
+import { hashStaffInviteToken, staffInviteLinksEnabled } from '../lib/staff-invite.js';
 import { AppError, validationError } from '../plugins/error-handler.js';
 import { signTeamToken } from '../plugins/team-auth.js';
 
@@ -368,6 +368,9 @@ export const authRoutes: FastifyPluginAsync = async (server) => {
       };
     } | null = null;
     if (invite_token) {
+      if (!staffInviteLinksEnabled()) {
+        throw new AppError('INVITE_INVALID', 'This invite link is no longer valid.', 400);
+      }
       invite = await prisma.staffInvite.findUnique({
         where: { token_hash: hashStaffInviteToken(invite_token) },
         include: {
@@ -570,10 +573,19 @@ export const authRoutes: FastifyPluginAsync = async (server) => {
       if (staffMember?.retailer) {
         // Link the Supabase auth user to this staff member if not already linked
         if (!staffMember.auth_user_id) {
-          await prisma.staff.update({
-            where: { id: staffMember.id },
-            data: { auth_user_id: user.id },
-          });
+          // Phone-only join (no link): the verified OTP already proves the
+          // number the owner invited, so consume the pending invite here too
+          // — otherwise the owner's list shows "invite pending" forever.
+          await prisma.$transaction([
+            prisma.staff.update({
+              where: { id: staffMember.id },
+              data: { auth_user_id: user.id },
+            }),
+            prisma.staffInvite.updateMany({
+              where: { staff_id: staffMember.id, status: 'pending' },
+              data: { status: 'used', accepted_at: new Date() },
+            }),
+          ]);
         }
 
         return reply.status(200).send({

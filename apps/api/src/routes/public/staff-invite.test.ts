@@ -64,6 +64,9 @@ beforeEach(() => {
   mockSendOtpViaMsg91.mockResolvedValue('****3210');
 });
 
+// These suites cover the links-ON flow; links are OFF by default (staffInviteLinksEnabled).
+process.env.STAFF_INVITE_LINKS_ENABLED = 'true';
+
 describe('GET /v1/public/staff-invite/:token', () => {
   it('returns the masked join summary for a pending invite (200)', async () => {
     mockStaffInviteFindUnique.mockResolvedValue(pendingInvite());

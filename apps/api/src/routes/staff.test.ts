@@ -1,5 +1,5 @@
 import Fastify from 'fastify';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { errorHandler } from '../plugins/error-handler.js';
 import { staffRoutes } from './staff.js';
 
@@ -126,6 +126,9 @@ beforeEach(() => {
   mockStaffInviteUpsert.mockResolvedValue({ id: 'inv_1', status: 'pending' });
   mockStaffInviteUpdateMany.mockResolvedValue({ count: 1 });
 });
+
+// These suites cover the links-ON flow; links are OFF by default (staffInviteLinksEnabled).
+process.env.STAFF_INVITE_LINKS_ENABLED = 'true';
 
 describe('POST /v1/staff', () => {
   it('creates a staff member on the happy path (201, normalized phone)', async () => {
@@ -862,6 +865,53 @@ describe('GET /v1/staff — invite status', () => {
 
     expect(res.statusCode).toBe(200);
     expect(res.json().data[0].invite).toBeNull();
+    await app.close();
+  });
+});
+
+describe('invite links disabled (default)', () => {
+  beforeEach(() => {
+    vi.stubEnv('STAFF_INVITE_LINKS_ENABLED', 'false');
+  });
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('POST /v1/staff creates the member with no invite minted or returned', async () => {
+    mockRetailerFindUniqueOrThrow.mockResolvedValue({ max_staff_seats: 3 });
+    mockStaffCount.mockResolvedValue(0);
+    mockStaffFindFirst.mockResolvedValueOnce(null);
+    mockRetailerFindFirst.mockResolvedValueOnce(null);
+    mockStaffCreate.mockResolvedValue({
+      id: 'staff_1',
+      retailer_id: RETAILER_ID,
+      name: 'Ramesh',
+      phone: '9876543210',
+      role: 'salesperson',
+      is_active: true,
+      auth_user_id: null,
+    });
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/staff',
+      payload: { name: 'Ramesh', phone: '9876543210', role: 'salesperson' },
+    });
+
+    expect(res.statusCode).toBe(201);
+    expect(res.json().data.invite).toBeUndefined();
+    expect(mockStaffInviteUpsert).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('POST /v1/staff/:id/invite/resend → 404 INVITE_LINKS_DISABLED', async () => {
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: '/v1/staff/staff_1/invite/resend' });
+
+    expect(res.statusCode).toBe(404);
+    expect(res.json().error.code).toBe('INVITE_LINKS_DISABLED');
+    expect(mockStaffInviteUpsert).not.toHaveBeenCalled();
     await app.close();
   });
 });
