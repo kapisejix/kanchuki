@@ -848,7 +848,7 @@ export function ProductDetailSheet({
             <div className="space-y-3 pt-2">
               <button
                 onClick={() => setShowConsentModal(true)}
-                className="w-full py-3.5 px-3 rounded-3xl bg-gradient-to-r from-[#231F48] to-[#560A39] text-white flex items-center justify-center gap-2 shadow-lg shadow-[#231F48]/25 hover:shadow-xl transition-all active:scale-[0.98]"
+                className="w-full py-3.5 px-3 rounded-2xl bg-gradient-to-r from-[#231F48] to-[#560A39] text-white flex items-center justify-center gap-2 shadow-lg shadow-[#231F48]/25 hover:shadow-xl transition-all active:scale-[0.98]"
               >
                 <MessageCircle size={16} className="fill-current text-emerald-400 shrink-0" />
                 <span className="text-xs font-extrabold uppercase tracking-wider">Enquire Now</span>
@@ -856,7 +856,7 @@ export function ProductDetailSheet({
               <div className="grid grid-cols-2 gap-3">
                 <button
                   onClick={() => onFavorite(product.id)}
-                  className={`w-full py-3.5 rounded-3xl border font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-all active:scale-[0.98] ${
+                  className={`w-full py-3.5 rounded-2xl border font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-all active:scale-[0.98] ${
                     isFavorited
                       ? 'border-[#BB3F95] text-[#BB3F95] bg-[#BB3F95]/5'
                       : 'border-[#E0E1F6] text-[#231F48] bg-white hover:border-[#BB3F95]'
@@ -867,7 +867,7 @@ export function ProductDetailSheet({
                 </button>
                 <button
                   onClick={() => void handleShare()}
-                  className="w-full py-3.5 rounded-3xl border border-[#E0E1F6] bg-white text-[#231F48] font-bold text-xs flex items-center justify-center gap-2 shadow-sm hover:border-[#BB3F95] transition-all active:scale-[0.98]"
+                  className="w-full py-3.5 rounded-2xl border border-[#E0E1F6] bg-white text-[#231F48] font-bold text-xs flex items-center justify-center gap-2 shadow-sm hover:border-[#BB3F95] transition-all active:scale-[0.98]"
                 >
                   <Share2 size={16} className="shrink-0" />
                   <span className="uppercase tracking-wider">Share Product</span>

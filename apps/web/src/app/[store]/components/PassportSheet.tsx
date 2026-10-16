@@ -145,7 +145,7 @@ export function PassportSheet({ slug, profile, account, onSuccess }: Props) {
           type="button"
           onClick={() => void handleEnter()}
           disabled={submitting}
-          className="w-full bg-gradient-to-r from-[#231F48] to-[#560A39] disabled:opacity-50 text-white font-bold text-xs uppercase tracking-wider py-3.5 rounded-3xl flex items-center justify-center gap-2 shadow-lg transition-all active:scale-[0.98]"
+          className="w-full bg-gradient-to-r from-[#231F48] to-[#560A39] disabled:opacity-50 text-white font-bold text-xs uppercase tracking-wider py-3.5 rounded-2xl flex items-center justify-center gap-2 shadow-lg transition-all active:scale-[0.98]"
         >
           {submitting ? (
             <Loader2 size={16} className="animate-spin" />

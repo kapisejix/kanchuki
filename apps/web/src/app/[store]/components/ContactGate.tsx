@@ -465,7 +465,7 @@ export function ContactGate({ slug, profile, onSuccess, children }: Props) {
             type="button"
             onClick={() => void handleSendOtp()}
             disabled={otpPhone.trim().length < 10 || !otpConsent || otpSending}
-            className="w-full bg-gradient-to-r from-[#231F48] to-[#560A39] disabled:opacity-50 text-white font-bold text-xs uppercase tracking-wider py-3.5 rounded-3xl flex items-center justify-center gap-2 shadow-lg transition-all active:scale-[0.98] mb-3"
+            className="w-full bg-gradient-to-r from-[#231F48] to-[#560A39] disabled:opacity-50 text-white font-bold text-xs uppercase tracking-wider py-3.5 rounded-2xl flex items-center justify-center gap-2 shadow-lg transition-all active:scale-[0.98] mb-3"
           >
             {otpSending ? <Loader2 size={16} className="animate-spin" /> : <ShieldCheck size={14} />}
             {otpSending ? 'Sending...' : 'Verify with OTP'}
@@ -474,7 +474,7 @@ export function ContactGate({ slug, profile, onSuccess, children }: Props) {
           <button
             type="button"
             onClick={() => void handleJustBrowse()}
-            className="w-full bg-transparent text-[#6B4773] font-bold text-xs uppercase tracking-wider py-3 rounded-3xl flex items-center justify-center gap-2 border border-[#E0E1F6] hover:bg-[#F8F7FC] transition-all"
+            className="w-full bg-transparent text-[#6B4773] font-bold text-xs uppercase tracking-wider py-3 rounded-2xl flex items-center justify-center gap-2 border border-[#E0E1F6] hover:bg-[#F8F7FC] transition-all"
           >
             <Eye size={14} />
             Skip — just browse
@@ -518,7 +518,7 @@ export function ContactGate({ slug, profile, onSuccess, children }: Props) {
             type="button"
             onClick={() => void handleVerifyOtp()}
             disabled={otpCode.trim().length !== 6 || otpVerifying}
-            className="w-full bg-gradient-to-r from-[#231F48] to-[#560A39] disabled:opacity-50 text-white font-bold text-xs uppercase tracking-wider py-3.5 rounded-3xl flex items-center justify-center gap-2 shadow-lg transition-all active:scale-[0.98] mb-3"
+            className="w-full bg-gradient-to-r from-[#231F48] to-[#560A39] disabled:opacity-50 text-white font-bold text-xs uppercase tracking-wider py-3.5 rounded-2xl flex items-center justify-center gap-2 shadow-lg transition-all active:scale-[0.98] mb-3"
           >
             {otpVerifying ? (
               <Loader2 size={16} className="animate-spin" />
@@ -538,7 +538,7 @@ export function ContactGate({ slug, profile, onSuccess, children }: Props) {
               type="button"
               onClick={() => void handleResendOtp()}
               disabled={resending}
-              className="w-full bg-transparent text-[#BB3F95] font-bold text-xs uppercase tracking-wider py-2.5 rounded-3xl flex items-center justify-center gap-2 hover:bg-[#F8F7FC] transition-all"
+              className="w-full bg-transparent text-[#BB3F95] font-bold text-xs uppercase tracking-wider py-2.5 rounded-2xl flex items-center justify-center gap-2 hover:bg-[#F8F7FC] transition-all"
             >
               {resending ? 'Sending...' : 'Resend OTP'}
             </button>
@@ -553,7 +553,7 @@ export function ContactGate({ slug, profile, onSuccess, children }: Props) {
               setOtpReqId('');
               setResendTimer(0);
             }}
-            className="w-full bg-transparent text-[#6B4773] font-bold text-xs uppercase tracking-wider py-3 rounded-3xl border border-[#E0E1F6] hover:bg-[#F8F7FC] transition-all"
+            className="w-full bg-transparent text-[#6B4773] font-bold text-xs uppercase tracking-wider py-3 rounded-2xl border border-[#E0E1F6] hover:bg-[#F8F7FC] transition-all"
           >
             ← Change number
           </button>
@@ -652,7 +652,7 @@ export function ContactGate({ slug, profile, onSuccess, children }: Props) {
             <button
               type="submit"
               disabled={!canSubmit || submitting}
-              className="w-full bg-gradient-to-r from-[#231F48] to-[#560A39] disabled:opacity-50 text-white font-bold text-xs uppercase tracking-wider py-3.5 rounded-3xl flex items-center justify-center gap-2 shadow-lg transition-all active:scale-[0.98]"
+              className="w-full bg-gradient-to-r from-[#231F48] to-[#560A39] disabled:opacity-50 text-white font-bold text-xs uppercase tracking-wider py-3.5 rounded-2xl flex items-center justify-center gap-2 shadow-lg transition-all active:scale-[0.98]"
             >
               {submitting ? <Loader2 size={16} className="animate-spin" /> : 'Enter Catalog →'}
             </button>
