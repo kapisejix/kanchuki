@@ -15,18 +15,6 @@ import { notFound, validationError } from '../../plugins/error-handler.js';
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 const CLAUDE_MODEL = 'claude-sonnet-4-20250514';
 
-// Deterministic color pairing rules (§4 of customer-profile-req.md)
-const COMPLEMENTARY_COLORS: Record<string, string[]> = {
-  'royal blue': ['gold', 'orange', 'coral'],
-  mustard: ['maroon', 'purple', 'navy'],
-  maroon: ['gold', 'cream', 'mustard'],
-  pink: ['green', 'gold', 'white'],
-  green: ['pink', 'gold', 'red'],
-  red: ['gold', 'green', 'white'],
-  navy: ['gold', 'coral', 'white'],
-  purple: ['gold', 'pink', 'yellow'],
-};
-
 // Colour words a shopper may type — matched as whole words against the query.
 const QUERY_COLORS = [
   'royal blue',
