@@ -4,9 +4,9 @@ import { router } from 'expo-router';
 import {
   Check,
   ChevronLeft,
-  Facebook,
   Heart,
   MessageCircle,
+  Plus,
   RefreshCw,
   X,
 } from 'lucide-react-native';
@@ -22,7 +22,10 @@ import {
 } from 'react-native';
 import { useScreenInsets } from '../../src/lib/safe-area';
 import { AnimatedPressable } from '../../src/components/AnimatedPressable';
+import { BrandIcon } from '../../src/components/BrandIcon';
+import { DangerButton } from '../../src/components/DangerButton';
 import { GradientButton } from '../../src/components/GradientButton';
+import { WhiteButton, WHITE_BUTTON_INK } from '../../src/components/WhiteButton';
 import { socialApi } from '../../src/lib/api';
 import type { SocialAccountInfo, SocialPostInfo } from '../../src/lib/api/social';
 import { showError } from '../../src/lib/errors';
@@ -200,14 +203,15 @@ export default function SocialSettingsScreen() {
           <>
             {accounts.length === 0 ? (
               <View className="bg-white rounded-2xl p-6 border border-sand-100 items-center mb-5">
-                <View className="w-14 h-14 rounded-2xl bg-[#1877F2]/10 items-center justify-center mb-3">
-                  <Facebook size={28} color="#1877F2" />
+                <View className="mb-3">
+                  <BrandIcon brand="facebook" size={56} />
                 </View>
                 <Text className="text-sm font-bold text-sand-900 mb-1">No accounts connected</Text>
                 <Text className="text-xs text-sand-400 text-center mb-4">
                   Connect your Facebook Page to start posting your products.
                 </Text>
                 <GradientButton
+                  variant="web"
                   label="Connect Facebook Page"
                   loading={connecting}
                   onPress={() => void openConnect()}
@@ -218,8 +222,8 @@ export default function SocialSettingsScreen() {
                 {accounts.map((account) => (
                   <View key={account.id} className="bg-white rounded-2xl p-4 border border-sand-100 mb-3">
                     <View className="flex-row items-center mb-2">
-                      <View className="w-10 h-10 rounded-xl bg-[#1877F2]/10 items-center justify-center mr-3">
-                        <Facebook size={20} color="#1877F2" />
+                      <View className="mr-3">
+                        <BrandIcon brand="facebook" size={40} />
                       </View>
                       <View className="flex-1">
                         <Text className="text-sm font-bold text-sand-900">
@@ -230,48 +234,36 @@ export default function SocialSettingsScreen() {
                           {new Date(account.connected_at).toLocaleDateString()}
                         </Text>
                       </View>
-                      <AnimatedPressable
+                      <GradientButton
+                        variant="web"
+                        compact
+                        label="Post"
                         onPress={() => router.push('/social/create')}
-                        accessibilityLabel={`Create a social post`}
-                        accessibilityRole="button"
-                        className="bg-ink-600 px-3.5 py-2 rounded-xl"
-                      >
-                        <Text className="text-white text-xs font-semibold">Post</Text>
-                      </AnimatedPressable>
+                      />
                     </View>
-                    <View className="flex-row gap-3 mt-1">
-                      <AnimatedPressable
-                        onPress={() => setHistoryAccount(account)}
-                        className="flex-1 flex-row items-center justify-center gap-1.5 bg-sand-50 rounded-xl py-2.5"
-                      >
-                        <RefreshCw size={14} color={colors.sand[600]} />
-                        <Text className="text-xs font-semibold text-sand-600">History</Text>
-                      </AnimatedPressable>
-                      <AnimatedPressable
-                        onPress={() => confirmDisconnect(account)}
-                        className="flex-1 flex-row items-center justify-center gap-1.5 bg-sand-50 rounded-xl py-2.5"
-                      >
-                        <X size={14} color={colors.rust[600]} />
-                        <Text className="text-xs font-semibold text-rust-600">Disconnect</Text>
-                      </AnimatedPressable>
+                    <View className="flex-row gap-3 mt-3 pb-2">
+                      <View className="flex-1">
+                        <WhiteButton
+                          label="History"
+                          icon={<RefreshCw size={14} color={WHITE_BUTTON_INK} />}
+                          onPress={() => setHistoryAccount(account)}
+                        />
+                      </View>
+                      <View className="flex-1">
+                        <DangerButton label="Disconnect" onPress={() => confirmDisconnect(account)} />
+                      </View>
                     </View>
                   </View>
                 ))}
 
-                <AnimatedPressable
-                  onPress={() => void openConnect()}
-                  disabled={connecting}
-                  className="flex-row items-center justify-center gap-2 bg-white rounded-2xl py-3.5 border border-dashed border-sand-300 mb-5"
-                >
-                  {connecting ? (
-                    <ActivityIndicator size="small" color="#1877F2" />
-                  ) : (
-                    <Facebook size={16} color="#1877F2" />
-                  )}
-                  <Text className="text-sm font-semibold text-sand-700">
-                    {connecting ? 'Connecting…' : 'Connect another Page'}
-                  </Text>
-                </AnimatedPressable>
+                <View className="mb-5 pb-2">
+                  <WhiteButton
+                    label="Connect another Page"
+                    icon={<Plus size={16} color={WHITE_BUTTON_INK} />}
+                    loading={connecting}
+                    onPress={() => void openConnect()}
+                  />
+                </View>
               </>
             )}
           </>
