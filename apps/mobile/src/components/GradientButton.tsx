@@ -94,11 +94,11 @@ export function GradientButton({
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: isWeb || compact ? 'center' : 'space-between',
-          paddingVertical: isWeb ? 14 : 10,
-          paddingLeft: isWeb ? 12 : compact ? 20 : 18,
-          paddingRight: 12,
+          paddingVertical: isWeb ? 12 : 10,
+          paddingLeft: isWeb ? 10 : compact ? 20 : 18,
+          paddingRight: isWeb ? 10 : 12,
           opacity: isDisabled ? 0.5 : 1,
-          minHeight: 48,
+          minHeight: isWeb ? 44 : 48,
         }}
       >
         {loading ? (
@@ -123,7 +123,7 @@ export function GradientButton({
               <Text
                 style={{
                   color: '#FFFFFF',
-                  fontSize: 12,
+                  fontSize: isWeb ? 10 : 12,
                   fontWeight: '800',
                   textTransform: 'uppercase',
                   letterSpacing: 0.8,

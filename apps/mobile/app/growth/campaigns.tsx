@@ -135,6 +135,7 @@ export default function CampaignsScreen() {
             </Text>
             <View className="w-48 mt-5">
               <GradientButton
+                variant="web"
                 label="Create Campaign"
                 onPress={() => router.push('/growth/campaign-new')}
               />

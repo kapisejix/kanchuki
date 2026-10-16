@@ -114,7 +114,7 @@ export default function CategoryListScreen() {
                 Organize your catalog into luxury collections for easy browsing.
               </Text>
               <View className="w-full max-w-xs">
-                <GradientButton
+                <GradientButton variant="web"
                   label="+ Add First Category"
                   onPress={() => router.push('/category/new')}
                 />

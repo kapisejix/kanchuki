@@ -142,7 +142,7 @@ function EditCategoryModal({
               <Text className="text-spaceCadet-900 font-bold text-xs uppercase tracking-wider">Cancel</Text>
             </AnimatedPressable>
             <View className="flex-1">
-              <GradientButton
+              <GradientButton variant="web"
                 label="Save Changes"
                 onPress={() => void handleSave()}
                 loading={saving}

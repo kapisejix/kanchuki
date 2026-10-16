@@ -889,7 +889,7 @@ export default function AddProductScreen() {
             <ChevronLeft size={24} color={colors.sand[700]} />
           </AnimatedPressable>
           <Text className="text-base font-bold text-sand-900">Photo Settings</Text>
-          <GradientButton
+          <GradientButton variant="web"
             label={proProcessing ? 'Processing…' : 'Process'}
             onPress={() => void handleProProcess()}
             loading={proProcessing}
@@ -1008,7 +1008,7 @@ export default function AddProductScreen() {
             )}
           </AnimatedPressable>
           <View className="flex-1">
-            <GradientButton label='Use Photo →' onPress={() => setStep('edit')} />
+            <GradientButton variant="web" label='Use Photo →' onPress={() => setStep('edit')} />
           </View>
         </View>
       </View>
@@ -1032,7 +1032,7 @@ export default function AddProductScreen() {
           <ChevronLeft size={24} color={colors.sand[700]} />
         </AnimatedPressable>
         <Text className="text-base font-bold text-sand-900">Product Details</Text>
-        <GradientButton
+        <GradientButton variant="web"
           label="Save"
           onPress={() => void handleSave()}
           loading={step === 'saving'}

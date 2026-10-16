@@ -10,6 +10,7 @@ import { X, ImagePlus, Check } from 'lucide-react-native'
 import { productApi, uploadImageToR2, readLocalImage } from '../../../src/lib/api'
 import { showError } from '../../../src/lib/errors'
 import { AnimatedPressable } from '../../../src/components/AnimatedPressable'
+import { WhiteButton } from '../../../src/components/WhiteButton'
 
 const PHOTO_LIMIT = 10
 const MAX_SHOTS_PER_SESSION = 4
@@ -95,12 +96,7 @@ export default function AddPhotosScreen() {
         <Text className="text-white text-center text-base mb-6">
           Camera access needed to add photos
         </Text>
-        <AnimatedPressable
-          onPress={() => void requestPermission()}
-          className="bg-ink-600 px-6 py-3 rounded-xl"
-        >
-          <Text className="text-white font-semibold">Allow Camera</Text>
-        </AnimatedPressable>
+        <WhiteButton compact label="Allow Camera" onPress={() => void requestPermission()} />
       </View>
     )
   }

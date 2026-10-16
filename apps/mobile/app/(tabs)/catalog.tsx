@@ -381,7 +381,7 @@ export default function CatalogScreen() {
               Take a photo of any product — AI tags it{'\n'}with category, color, and fabric in seconds.
             </Text>
             <View className="mt-5 w-full max-w-xs">
-              <GradientButton
+              <GradientButton variant="web"
                 label="Add First Product"
                 onPress={() => router.push('/product/add')}
               />

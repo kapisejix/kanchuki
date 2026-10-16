@@ -6,6 +6,8 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
+  Copy,
+  RefreshCw,
   Share2,
   Plus,
   Trash2,
@@ -28,6 +30,7 @@ import { useScreenInsets } from '../../src/lib/safe-area'
 import { KeyboardScreen } from '../../src/components/KeyboardScreen'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { GradientButton } from '../../src/components/GradientButton'
+import { WHITE_BUTTON_INK, WhiteButton } from '../../src/components/WhiteButton'
 import { productApi } from '../../src/lib/api'
 import {
   growthApi,
@@ -156,7 +159,7 @@ export default function TemplatesScreen() {
               and get a ready-to-share image with caption & hashtags.
             </Text>
             <View className="w-48 mt-5">
-              <GradientButton label="Create Template" onPress={() => setCreating(true)} />
+              <GradientButton variant="web" label="Create Template" onPress={() => setCreating(true)} />
             </View>
           </View>
         </ScrollView>
@@ -278,7 +281,7 @@ export default function TemplatesScreen() {
           </View>
 
           <View className="mt-5">
-            <GradientButton label="+ New Template" onPress={() => setCreating(true)} />
+            <GradientButton variant="web" label="+ New Template" onPress={() => setCreating(true)} />
           </View>
         </ScrollView>
       )}
@@ -586,17 +589,15 @@ function CreateTemplateModal({
           <View className="flex-row gap-3">
             <View className="flex-1">
               <GradientButton
+                variant="web"
                 label={saving ? 'Creating…' : 'Create Template'}
                 onPress={() => void submit()}
                 disabled={!canSubmit}
               />
             </View>
-            <AnimatedPressable
-              onPress={onClose}
-              className="flex-1 items-center justify-center bg-lavender-100 rounded-2xl py-3 border border-lavender-200"
-            >
-              <Text className="text-sm font-bold text-spaceCadet-900">Cancel</Text>
-            </AnimatedPressable>
+            <View className="flex-1">
+              <WhiteButton label="Cancel" onPress={onClose} />
+            </View>
           </View>
         </ScrollView>
       </View>
@@ -841,7 +842,9 @@ function TemplateDetailModal({
             {!template.image_url && (
               <View className="mb-4">
                 <GradientButton
-                  label={generating ? 'Generating…' : '✨ Generate AI Design Photo'}
+                  variant="web"
+                  icon={<Sparkles size={14} color="white" />}
+                  label={generating ? 'Generating…' : 'Generate AI Design Photo'}
                   onPress={() => {
                     setGenerating(true)
                     void generateMutation.mutate()
@@ -901,6 +904,7 @@ function TemplateDetailModal({
                     />
                     <View className="mt-2.5">
                       <GradientButton
+                        variant="web"
                         label="Save Caption"
                         onPress={() => void updateMutation.mutate()}
                         disabled={updateMutation.isPending}
@@ -933,36 +937,34 @@ function TemplateDetailModal({
               {template.image_url && (
                 <View className="flex-row gap-2.5">
                   <View className="flex-1">
-                    <GradientButton label="📤 Share Now" onPress={() => void handleShare()} />
+                    <GradientButton
+                      variant="web"
+                      label="Share Now"
+                      icon={<Share2 size={14} color="white" />}
+                      onPress={() => void handleShare()}
+                    />
                   </View>
                   <View className="flex-1">
-                    <AnimatedPressable
+                    <WhiteButton
+                      label="Copy Text"
+                      icon={<Copy size={14} color={WHITE_BUTTON_INK} />}
                       onPress={() => void handleCopyCaption()}
-                      className="items-center justify-center bg-lavender-100 rounded-2xl py-3.5 border border-lavender-200"
-                    >
-                      <Text className="text-sm font-bold text-spaceCadet-900">📋 Copy Text</Text>
-                    </AnimatedPressable>
+                    />
                   </View>
                 </View>
               )}
               {template.image_url && (
-                <AnimatedPressable
+                <WhiteButton
+                  label="Regenerate Photo"
+                  icon={<RefreshCw size={14} color={WHITE_BUTTON_INK} />}
+                  disabled={generating}
                   onPress={() => {
                     setGenerating(true)
                     void generateMutation.mutate()
                   }}
-                  disabled={generating}
-                  className="items-center justify-center bg-lavender-50 rounded-2xl py-3 border border-lavender-200"
-                >
-                  <Text className="text-sm font-bold text-fuchsia-700">🔄 Regenerate Photo</Text>
-                </AnimatedPressable>
+                />
               )}
-              <AnimatedPressable
-                onPress={onClose}
-                className="items-center justify-center bg-lavender-100 rounded-2xl py-3 border border-lavender-200"
-              >
-                <Text className="text-sm font-bold text-spaceCadet-900">Close</Text>
-              </AnimatedPressable>
+              <WhiteButton label="Close" onPress={onClose} />
             </View>
           </View>
         </ScrollView>

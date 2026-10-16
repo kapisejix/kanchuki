@@ -31,10 +31,10 @@ export function DangerButton({
       style={[
         {
           width: '100%',
-          minHeight: 48,
+          minHeight: 44,
           borderRadius: radius,
-          paddingVertical: 14,
-          paddingHorizontal: 12,
+          paddingVertical: 12,
+          paddingHorizontal: 10,
           alignItems: 'center',
           justifyContent: 'center',
           backgroundColor: '#DC2626', // solid red, white label
@@ -54,7 +54,7 @@ export function DangerButton({
         <Text
           style={{
             color: '#FFFFFF',
-            fontSize: 12,
+            fontSize: 10,
             fontWeight: '800',
             textTransform: 'uppercase',
             letterSpacing: 0.8,

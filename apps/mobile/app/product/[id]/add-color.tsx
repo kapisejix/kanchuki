@@ -13,6 +13,7 @@ import { productApi, uploadImageToR2, readLocalImage } from '../../../src/lib/ap
 import { showError } from '../../../src/lib/errors'
 import { useTheme } from '../../../src/lib/theme'
 import { AnimatedPressable } from '../../../src/components/AnimatedPressable'
+import { WhiteButton } from '../../../src/components/WhiteButton'
 import { GradientButton } from '../../../src/components/GradientButton'
 
 type Step = 'camera' | 'detecting' | 'saving' | 'manual'
@@ -119,12 +120,7 @@ export default function AddColorVariantScreen() {
         <Text className="text-white text-center text-base mb-6">
           Camera access needed to photograph this color
         </Text>
-        <AnimatedPressable
-          onPress={() => void requestPermission()}
-          className="bg-rust-500 px-6 py-3 rounded-xl"
-        >
-          <Text className="text-white font-semibold">Allow Camera</Text>
-        </AnimatedPressable>
+        <WhiteButton compact label="Allow Camera" onPress={() => void requestPermission()} />
       </View>
     )
   }
@@ -237,7 +233,7 @@ export default function AddColorVariantScreen() {
             className="bg-white/10 text-white px-4 py-3 rounded-xl text-base"
             autoFocus
           />
-          <GradientButton
+          <GradientButton variant="web"
             label="Save Color Variant"
             onPress={() => void saveVariant(color)}
             disabled={!color.trim()}

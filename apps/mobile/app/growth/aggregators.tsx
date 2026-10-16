@@ -23,6 +23,7 @@ import { useScreenInsets } from '../../src/lib/safe-area'
 import { KeyboardScreen } from '../../src/components/KeyboardScreen'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { GradientButton } from '../../src/components/GradientButton'
+import { WhiteButton } from '../../src/components/WhiteButton'
 import { growthApi, type ChannelSync, type ChannelType } from '../../src/lib/api/growth'
 import { showError } from '../../src/lib/errors'
 
@@ -170,7 +171,7 @@ export default function AggregatorsScreen() {
               your product catalog and orders in one place.
             </Text>
             <View className="w-48 mt-5">
-              <GradientButton label="Connect Channel" onPress={() => setConnecting(true)} />
+              <GradientButton variant="web" label="Connect Channel" onPress={() => setConnecting(true)} />
             </View>
           </View>
         </ScrollView>
@@ -261,7 +262,7 @@ export default function AggregatorsScreen() {
           </View>
 
           <View className="mt-5">
-            <GradientButton label="+ Connect Channel" onPress={() => setConnecting(true)} />
+            <GradientButton variant="web" label="+ Connect Channel" onPress={() => setConnecting(true)} />
           </View>
         </ScrollView>
       )}
@@ -420,17 +421,15 @@ function ConnectChannelModal({
         <View className="flex-row gap-3">
           <View className="flex-1">
             <GradientButton
+              variant="web"
               label={saving ? 'Connecting…' : 'Connect Channel'}
               onPress={() => void submit()}
               disabled={!canSubmit}
             />
           </View>
-          <AnimatedPressable
-            onPress={onClose}
-            className="flex-1 items-center justify-center bg-lavender-100 rounded-2xl py-3 border border-lavender-200"
-          >
-            <Text className="text-sm font-bold text-spaceCadet-900">Cancel</Text>
-          </AnimatedPressable>
+          <View className="flex-1">
+            <WhiteButton label="Cancel" onPress={onClose} />
+          </View>
         </View>
       </View>
     </KeyboardScreen>

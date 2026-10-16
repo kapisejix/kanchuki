@@ -195,7 +195,7 @@ export default function TryOnScreen() {
                 Camera access is needed to photograph the customer.
               </Text>
               <View className="mt-4 w-full">
-                <GradientButton label="Allow camera" onPress={() => void requestPermission()} />
+                <GradientButton variant="web" label="Allow camera" onPress={() => void requestPermission()} />
               </View>
             </View>
           )}
@@ -257,14 +257,14 @@ export default function TryOnScreen() {
               />
               <View className="flex-row gap-3 mt-4 w-full">
                 <View className="flex-1">
-                  <GradientButton
+                  <GradientButton variant="web"
                     label="Share"
                     icon={<Share2 size={16} color="#fff" />}
                     onPress={() => void handleShare()}
                   />
                 </View>
                 <View className="flex-1">
-                  <GradientButton
+                  <GradientButton variant="web"
                     label="Try another"
                     icon={<RotateCcw size={16} color="#fff" />}
                     onPress={reset}
@@ -278,7 +278,7 @@ export default function TryOnScreen() {
                 {error ?? 'Something went wrong.'}
               </Text>
               <View className="mt-4 w-full">
-                <GradientButton label="Try again" onPress={reset} />
+                <GradientButton variant="web" label="Try again" onPress={reset} />
               </View>
             </>
           )}

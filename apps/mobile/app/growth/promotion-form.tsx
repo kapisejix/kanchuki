@@ -152,7 +152,7 @@ export default function PromotionFormScreen() {
             {isEdit ? 'Edit Promotion' : 'New Promotion'}
           </Text>
         </View>
-        <GradientButton label={saving ? 'Saving…' : 'Save'} onPress={() => void handleSave()} loading={saving} />
+        <GradientButton variant="web" label={saving ? 'Saving…' : 'Save'} onPress={() => void handleSave()} loading={saving} />
       </View>
 
       <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: screenPaddingBottom }}>

@@ -17,6 +17,7 @@ import {
 import { useScreenInsets } from '../../../src/lib/safe-area'
 import { KeyboardScreen } from '../../../src/components/KeyboardScreen'
 import { AnimatedPressable } from '../../../src/components/AnimatedPressable'
+import { WhiteButton } from '../../../src/components/WhiteButton'
 import { GradientButton } from '../../../src/components/GradientButton'
 import { growthApi } from '../../../src/lib/api/growth'
 import { showError } from '../../../src/lib/errors'
@@ -166,22 +167,18 @@ export default function GmbConfigScreen() {
 
         <View className="flex-row gap-3 mt-2">
           <View className="flex-1">
-            <GradientButton
-              label={saving ? 'Saving…' : '💾 Save & Connect'}
+            <GradientButton variant="web"
+              label={saving ? 'Saving…' : 'Save & Connect'}
               onPress={() => { setSaving(true); void saveMutation.mutate() }}
               disabled={!canSave}
             />
           </View>
           <View className="flex-1">
-            <AnimatedPressable
-              onPress={() => void testMutation.mutate()}
+            <WhiteButton
+              label={testing ? 'Testing…' : 'Test Connection'}
               disabled={testing || !canSave}
-              className="items-center justify-center bg-lavender-100 rounded-2xl py-3.5 border border-lavender-200"
-            >
-              <Text className="text-sm font-bold text-spaceCadet-900">
-                {testing ? 'Testing…' : 'Test Connection'}
-              </Text>
-            </AnimatedPressable>
+              onPress={() => void testMutation.mutate()}
+            />
           </View>
         </View>
       </ScrollView>

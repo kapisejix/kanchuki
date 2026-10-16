@@ -186,7 +186,7 @@ export default function NewShowcaseDesignScreen() {
           </View>
         </View>
 
-        <GradientButton label="Save Design" disabled={!canSave} loading={create.isPending} onPress={() => create.mutate()} />
+        <GradientButton variant="web" label="Save Design" disabled={!canSave} loading={create.isPending} onPress={() => create.mutate()} />
       </ScrollView>
       </KeyboardScreen>
     </>

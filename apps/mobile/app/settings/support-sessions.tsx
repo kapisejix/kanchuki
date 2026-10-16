@@ -12,6 +12,9 @@ import {
 import { showError } from '../../src/lib/errors'
 import { useTheme } from '../../src/lib/theme'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
+import { DangerButton } from '../../src/components/DangerButton'
+import { GradientButton } from '../../src/components/GradientButton'
+import { WhiteButton } from '../../src/components/WhiteButton'
 
 // Retailer view of Kanchuki support access: answer a pending request, or
 // Revoke a live session at any time (docs/tasks/pending/support-session-access.md §6).
@@ -112,30 +115,30 @@ export default function SupportSessionsScreen() {
 
                   {r.status === 'PENDING' ? (
                     <View className="flex-row gap-2 mt-3">
-                      <AnimatedPressable
-                        onPress={() =>
-                          void act(supportSessionApi.deny, r.id, 'Could not send your answer')
-                        }
-                        className="flex-1 items-center bg-sand-100 py-3 rounded-xl"
-                      >
-                        <Text className="text-sand-700 text-sm font-bold">Deny</Text>
-                      </AnimatedPressable>
-                      <AnimatedPressable
-                        onPress={() =>
-                          void act(supportSessionApi.approve, r.id, 'Could not send your answer')
-                        }
-                        className="flex-1 items-center bg-ink-600 py-3 rounded-xl"
-                      >
-                        <Text className="text-white text-sm font-bold">Approve</Text>
-                      </AnimatedPressable>
+                      <View className="flex-1">
+                        <WhiteButton
+                          label="Deny"
+                          onPress={() =>
+                            void act(supportSessionApi.deny, r.id, 'Could not send your answer')
+                          }
+                        />
+                      </View>
+                      <View className="flex-1">
+                        <GradientButton
+                          variant="web"
+                          label="Approve"
+                          onPress={() =>
+                            void act(supportSessionApi.approve, r.id, 'Could not send your answer')
+                          }
+                        />
+                      </View>
                     </View>
                   ) : (
-                    <AnimatedPressable
+                    <DangerButton
+                      label="End access now"
+                      style={{ marginTop: 12 }}
                       onPress={() => confirmRevoke(r)}
-                      className="mt-3 items-center bg-sand-100 py-3 rounded-xl"
-                    >
-                      <Text className="text-sand-700 text-sm font-bold">End access now</Text>
-                    </AnimatedPressable>
+                    />
                   )}
                 </View>
               ))}

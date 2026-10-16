@@ -6,7 +6,7 @@ import { router } from 'expo-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useScreenInsets } from '../src/lib/safe-area'
 import { KeyboardScreen } from '../src/components/KeyboardScreen'
-import { X, Share2, Check, Download, Trash2 } from 'lucide-react-native'
+import { X, Share2, Check, Download } from 'lucide-react-native'
 import QRCode from 'react-native-qrcode-svg'
 import { Paths } from 'expo-file-system'
 // writeAsStringAsync throws (deprecated) from the SDK 54 barrel — the legacy
@@ -16,6 +16,8 @@ import { retailerApi, collectionApi } from '../src/lib/api'
 import { showError } from '../src/lib/errors'
 import { useTheme } from '../src/lib/theme'
 import { AnimatedPressable } from '../src/components/AnimatedPressable'
+import { DangerButton } from '../src/components/DangerButton'
+import { WHITE_BUTTON_INK, WhiteButton } from '../src/components/WhiteButton'
 import { GradientButton } from '../src/components/GradientButton'
 
 type QrSlug = { public_slug: string; profile_url: string }
@@ -205,7 +207,7 @@ export default function StoreProfileScreen() {
                 Generate one to let customers scan straight into your luxury catalog.
               </Text>
               <View className="w-full">
-                <GradientButton
+                <GradientButton variant="web"
                   label="Generate QR Code"
                   onPress={() => generateQr.mutate()}
                   loading={generateQr.isPending}
@@ -227,34 +229,24 @@ export default function StoreProfileScreen() {
               </Text>
             </AnimatedPressable>
 
-            <GradientButton
+            <GradientButton variant="web"
               label="Share Store Link"
               onPress={() => void Share.share({ message: qr.profile_url })}
               icon={<Share2 size={16} color="white" />}
             />
 
             <View className="flex-row gap-3 mt-1">
-              <AnimatedPressable
-                onPress={() => void handleExportImage()}
-                disabled={exporting}
-                className="flex-1 flex-row items-center justify-center gap-2 bg-lavender-100 border border-lavender-200 py-3 rounded-2xl"
-              >
-                {exporting ? (
-                  <ActivityIndicator size="small" color="#231F48" />
-                ) : (
-                  <>
-                    <Download size={16} color="#231F48" />
-                    <Text className="text-spaceCadet-900 font-bold text-xs uppercase tracking-wider">Save Image</Text>
-                  </>
-                )}
-              </AnimatedPressable>
-              <AnimatedPressable
-                onPress={() => setConfirmingDelete(true)}
-                className="flex-1 flex-row items-center justify-center gap-2 bg-white border border-red-200 py-3 rounded-2xl"
-              >
-                <Trash2 size={16} color="#dc2626" />
-                <Text className="text-red-600 font-bold text-xs uppercase tracking-wider">Delete QR</Text>
-              </AnimatedPressable>
+              <View className="flex-1">
+                <WhiteButton
+                  label="Save Image"
+                  icon={<Download size={14} color={WHITE_BUTTON_INK} />}
+                  loading={exporting}
+                  onPress={() => void handleExportImage()}
+                />
+              </View>
+              <View className="flex-1">
+                <DangerButton label="Delete QR" onPress={() => setConfirmingDelete(true)} />
+              </View>
             </View>
           </View>
         )}
@@ -277,28 +269,23 @@ export default function StoreProfileScreen() {
               className="bg-sand-50 border border-sand-200 rounded-xl px-3 py-2.5 text-sm text-sand-900 mb-3"
             />
             <View className="flex-row gap-3">
-              <AnimatedPressable
-                onPress={() => {
-                  setConfirmingDelete(false)
-                  setDeleteConfirmText('')
-                }}
-                className="flex-1 py-3 rounded-2xl border border-sand-200 items-center"
-              >
-                <Text className="text-sand-700 font-semibold text-sm">Cancel</Text>
-              </AnimatedPressable>
-              <AnimatedPressable
-                onPress={() => deleteQr.mutate()}
-                disabled={deleteQr.isPending || !deleteMatched}
-                className={`flex-1 py-3 rounded-2xl items-center ${
-                  deleteQr.isPending || !deleteMatched ? 'bg-sand-300' : 'bg-rust-500'
-                }`}
-              >
-                {deleteQr.isPending ? (
-                  <ActivityIndicator size="small" color="white" />
-                ) : (
-                  <Text className="text-white font-semibold text-sm">Delete QR</Text>
-                )}
-              </AnimatedPressable>
+              <View className="flex-1">
+                <WhiteButton
+                  label="Cancel"
+                  onPress={() => {
+                    setConfirmingDelete(false)
+                    setDeleteConfirmText('')
+                  }}
+                />
+              </View>
+              <View className="flex-1">
+                <DangerButton
+                  label="Delete QR"
+                  loading={deleteQr.isPending}
+                  disabled={!deleteMatched}
+                  onPress={() => deleteQr.mutate()}
+                />
+              </View>
             </View>
           </View>
         )}

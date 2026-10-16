@@ -23,6 +23,7 @@ import {
 } from 'react-native';
 import { useScreenInsets } from '../src/lib/safe-area';
 import { AnimatedPressable } from '../src/components/AnimatedPressable';
+import { GradientButton } from '../src/components/GradientButton';
 import { billingApi } from '../src/lib/api';
 import { useTheme } from '../src/lib/theme';
 import { WEB_URL } from '../src/lib/web-url';
@@ -223,14 +224,13 @@ export default function PlanSelectScreen() {
             <Text className="text-[11px] text-heliotrope-500 mt-1 text-center font-medium">
               Check your connection and try again. You can also manage billing on the website.
             </Text>
-            <AnimatedPressable
+            <GradientButton
+              variant="web"
+              compact
+              label="Retry"
+              style={{ marginTop: 16 }}
               onPress={retry}
-              className="mt-4 bg-spaceCadet-900 rounded-2xl px-6 py-3"
-              accessibilityLabel="Retry loading plans"
-              accessibilityRole="button"
-            >
-              <Text className="text-white text-xs font-bold">Retry</Text>
-            </AnimatedPressable>
+            />
           </View>
         ) : (
           <>

@@ -30,4 +30,5 @@ export * from "./theme";
 export * from "./growth";
 export * from "./whatsapp-catalog";
 export * from "./bug-reports";
+export * from "./tickets";
 export * from "./showcase-designs";

@@ -8,6 +8,7 @@ import { collectionApi, retailerApi } from '../../src/lib/api'
 import { CollectionListSkeleton } from '../../src/components/Skeleton'
 import { showError } from '../../src/lib/errors'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
+import { WhiteButton } from '../../src/components/WhiteButton'
 import { GradientButton } from '../../src/components/GradientButton'
 
 type Collection = {
@@ -121,15 +122,11 @@ function EditCollectionModal({
           </View>
 
           <View className="flex-row gap-3 mt-2">
-            <AnimatedPressable
-              onPress={onClose}
-              disabled={saving}
-              className="flex-1 bg-lavender-100 py-3.5 rounded-2xl items-center border border-lavender-200"
-            >
-              <Text className="text-spaceCadet-900 font-bold text-xs uppercase tracking-wider">Cancel</Text>
-            </AnimatedPressable>
             <View className="flex-1">
-              <GradientButton
+              <WhiteButton label="Cancel" disabled={saving} onPress={onClose} />
+            </View>
+            <View className="flex-1">
+              <GradientButton variant="web"
                 label="Save"
                 onPress={() => void handleSave()}
                 disabled={saving || !title.trim()}
@@ -367,7 +364,7 @@ export default function CollectionsScreen() {
           Create a collection and share it on WhatsApp{'\n'}so customers can browse and enquire.
         </Text>
         <View className="mt-5 w-full max-w-xs">
-          <GradientButton
+          <GradientButton variant="web"
             label="Create Collection"
             onPress={() => router.push('/collection/new')}
           />

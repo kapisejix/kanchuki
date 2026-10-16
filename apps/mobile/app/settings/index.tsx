@@ -3,9 +3,8 @@ import * as ImageManipulator from "expo-image-manipulator";
 import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
 import {
-  AlertTriangle,
-  BarChart2,
   Bug,
+  LifeBuoy,
   Check,
   ChevronLeft,
   ChevronRight,
@@ -43,6 +42,7 @@ import { useScreenInsets } from "../../src/lib/safe-area";
 import { AnimatedPressable } from "../../src/components/AnimatedPressable";
 import { BuildInfoFooter } from "../../src/components/BuildInfoFooter";
 import { GradientButton } from "../../src/components/GradientButton";
+import { UsageCard } from "../../src/components/UsageCard";
 import { WhiteButton } from "../../src/components/WhiteButton";
 import { SettingsSkeleton } from "../../src/components/Skeleton";
 import {
@@ -1065,96 +1065,6 @@ function SettingsRow({
   );
 }
 
-// ─── Usage Section (F-010) ─────────────────────────────────────────
-
-function UsageSection() {
-  const { data: usageData, isLoading } = useQuery({
-    queryKey: ["retailer", "usage"],
-    queryFn: () => retailerApi.getUsage(),
-  });
-
-  const resources =
-    (
-      usageData as
-        | {
-            data: {
-              resource_type: string;
-              limit: number;
-              used: number;
-              period: string;
-              source: string;
-            }[];
-          }
-        | undefined
-    )?.data ?? [];
-
-  if (isLoading || resources.length === 0) return null;
-
-  const labelMap: Record<string, string> = {
-    PRODUCT_UPLOAD: "Product Uploads",
-    AI_TAGGING_CALL: "AI Tagging",
-    TRY_ON: "Try-Ons",
-    IMAGE_CROP: "Image Crops",
-    BG_REMOVAL: "Bg Removals",
-    API_REQUEST: "API Calls",
-  };
-
-  const activeResources = resources.filter(
-    (r) => r.limit !== -1 && r.limit > 0,
-  );
-  if (activeResources.length === 0) return null;
-
-  return (
-    <View className="bg-white rounded-3xl p-5 border border-lavender-200 mb-4 shadow-sm">
-      <View className="flex-row items-center gap-2 mb-3">
-        <BarChart2 size={16} color="#BB3F95" />
-        <Text className="text-sm font-bold text-spaceCadet-900 font-marcellus">Usage & Quotas</Text>
-      </View>
-      {activeResources.map((r) => {
-        const pct = Math.min(Math.round((r.used / r.limit) * 100), 100);
-        const isOver = r.used >= r.limit;
-        const barColor = isOver
-          ? "#dc2626"
-          : pct > 80
-            ? "#BB3F95"
-            : "#231F48";
-        return (
-          <View key={r.resource_type} className="mb-2.5">
-            <View className="flex-row justify-between items-center mb-1">
-              <Text className="text-xs text-heliotrope-600 font-medium">
-                {labelMap[r.resource_type] ?? r.resource_type}
-              </Text>
-              <Text
-                className={`text-xs font-bold ${isOver ? "text-red-600" : "text-spaceCadet-900"}`}
-              >
-                {r.used}/{r.limit}{" "}
-                {r.period === "MONTH" ? "mo" : r.period === "DAY" ? "day" : ""}
-              </Text>
-            </View>
-            <View className="h-2 bg-lavender-100 rounded-full overflow-hidden">
-              <View
-                style={{
-                  width: `${Math.max(pct, 3)}%`,
-                  backgroundColor: barColor,
-                }}
-                className="h-full rounded-full"
-              />
-            </View>
-            {isOver && (
-              <View className="flex-row items-center gap-1 mt-1">
-                <AlertTriangle size={10} color="#dc2626" />
-                <Text className="text-[10px] text-red-600">
-                  Limit reached. Upgrade or contact support.
-                </Text>
-              </View>
-            )}
-          </View>
-        );
-      })}
-    </View>
-  );
-}
-
 // ─── Main Settings Screen ──────────────────────────────────────────
 
 export default function SettingsScreen() {
@@ -1412,7 +1322,7 @@ export default function SettingsScreen() {
           )}
 
         {/* F-010: Usage section — owner-only endpoint */}
-        {!isStaff && <UsageSection />}
+        {!isStaff && (<View className="mb-4"><UsageCard /></View>)}
 
         {/* Sections */}
         <View className="gap-2.5">
@@ -1579,6 +1489,15 @@ export default function SettingsScreen() {
           <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide px-1 mb-0.5">
             Actions
           </Text>
+
+          {!isStaff && (
+            <SettingsRow
+              icon={<LifeBuoy size={18} color={primaryColor} />}
+              label="Help & Support"
+              subtitle="Raise a ticket and track its status"
+              onPress={() => router.push("/settings/help-support")}
+            />
+          )}
 
           <SettingsRow
             icon={<Bug size={18} color={colors.rust[500]} />}

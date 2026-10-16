@@ -21,6 +21,7 @@ import {
 import { analyticsApi } from '../src/lib/api'
 import { AnalyticsSkeleton } from '../src/components/Skeleton'
 import { AnimatedPressable } from '../src/components/AnimatedPressable'
+import { GradientButton } from '../src/components/GradientButton'
 
 // ── Types ─────────────────────────────────────────────────────────
 
@@ -443,14 +444,12 @@ export default function AnalyticsScreen() {
               current={analytics.recent_collections.length}
               max={analytics.plan.max_customers}
             />
-            <AnimatedPressable
+            <GradientButton
+              variant="web"
+              label="Manage Subscription & Billing"
+              style={{ marginTop: 12 }}
               onPress={() => router.push('/plan-select')}
-              className="mt-3 bg-spaceCadet-900 py-3 rounded-2xl items-center"
-            >
-              <Text className="text-white text-xs font-bold uppercase tracking-wider">
-                Manage Subscription & Billing
-              </Text>
-            </AnimatedPressable>
+            />
           </View>
         )}
 

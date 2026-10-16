@@ -98,7 +98,7 @@ export type SupportTicket = {
   resolved_at: string | null
   assigned_to: { id: string; name: string } | null
   retailer: { id: string; shop_name: string; city: string; phone: string }
-  ticket_type: 'GENERAL' | 'CATALOG_UPLOAD'
+  ticket_type: 'GENERAL' | 'CATALOG_UPLOAD' | 'DEMO' | 'GROWTH_SETUP' | 'MAINTENANCE'
   item_count_requested: number | null
   quoted_price_inr: number | null
   proposed_slots: string[] | null

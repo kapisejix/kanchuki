@@ -180,7 +180,7 @@ export default function NewCollectionScreen() {
           className="bg-white px-4 pt-3.5 border-t border-lavender-200"
           style={{ paddingBottom: 14 + insets.bottom }}
         >
-          <GradientButton
+          <GradientButton variant="web"
             label={`Create & Share (${selected.size} selected)`}
             disabled={!canCreate}
             loading={create.isPending}

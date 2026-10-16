@@ -16,6 +16,7 @@ import {
   retailersShowcaseDesignRoutes,
   retailersSocialRoutes,
   retailersStatsRoutes,
+  retailersTicketRoutes,
   retailersUploadsRoutes,
   retailersWhatsappCatalogRoutes,
   retailersWhatsappRoutes,
@@ -50,6 +51,8 @@ export const retailerRoutes: FastifyPluginAsync = async (server) => {
   await server.register(retailersRatingsRoutes);
   // retailers-bug-reports — retailer-submitted bug reports from the mobile app
   await server.register(retailersBugReportRoutes);
+  // retailers-tickets — retailer raises/lists support tickets (support-and-feedback-loop §1)
+  await server.register(retailersTicketRoutes);
   // retailers-invoices — GST invoice list + PDF download
   await server.register(retailersInvoicesRoutes);
   // retailers-referral — F-038 affiliate program, own referral code + link (T3)

@@ -230,6 +230,7 @@ function AppShell() {
           <Stack.Screen name="settings/social" />
           <Stack.Screen name="settings/staff" />
           <Stack.Screen name="settings/support-sessions" />
+          <Stack.Screen name="settings/help-support" />
           <Stack.Screen name="settings/whatsapp-catalog" />
           <Stack.Screen name="showcase-designs/index" />
           <Stack.Screen

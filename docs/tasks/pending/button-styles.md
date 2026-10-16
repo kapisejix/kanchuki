@@ -67,10 +67,15 @@ React Native equivalent (new `WhiteButton`, to be created):
 | `growth/index.tsx` | Create Campaign, + New Campaign |
 | `growth/integrations.tsx` (Social & Marketing Channels) | brand icons (`BrandIcon`), Connect / Reconfigure / Disconnect |
 | `growth/integrations/{instagram,facebook,whatsapp,fb-ads,google-ads}.tsx` | dark `GradientButton variant="web"`, `WhiteButton` (docs link, Test, Verify), `DangerButton` (Disconnect), 📸/💾 emoji removed |
+| `social/create.tsx` (Create Post) | Publish now / Done / Connect in Settings → dark web variant; result-sheet platform tiles → `BrandIcon`. Chips/list rows left as-is (not buttons). |
+| `social/schedule/{index,new,[id]}.tsx` | all CTAs → dark web variant; Pause/Resume, Skip, Edit, Retry, Style post, AI caption, AI Studio → `WhiteButton`; End plan → `DangerButton`; platform tiles → `BrandIcon`. Toggle chips, steppers, icon-only tools, style-picker rows left as-is. |
+| `growth/{campaigns,promotions,videos,translate,templates,aggregators}.tsx` | CTAs → dark web variant; Cancel/Close/Copy/Regenerate/Generate-video → `WhiteButton` (navy icons); ✨📤📋🔄 emoji in button labels removed. `analytics.tsx` has no buttons. Left: header `+` icon buttons, filter chips, icon-only trash/sync, marketplace/template emoji tiles (C-03). |
+| **All remaining screens (2026-10-16)** | Every plain `<GradientButton>` in `app/**` + `src/components/**` (48 uses) → `variant="web"` (skipped 4 with `colors=`/`accentBadge` overrides: `ProductStudioModal` x3, `collection/[id]` accent QR, Home QR CTA). Hand-built buttons → shared components: `gmb`, `(tabs)/collections`, `(tabs)/customers`, `plan-select`, `billing`, `analytics`, `store-profile` (Save Image / Delete QR → White/Danger), `settings/support-sessions` (Deny/Approve/End access), `settings/staff` (Cancel, Delete Forever, Copy, Share), `product/[id]` (Ask for Review, Try On Customer → White), camera-permission buttons x3 (white on black). Left: coloured WhatsApp/emerald CTA in `staff.tsx`, banner/hero gradients, selected-card gradients, chips. |
 | `settings/social.tsx` (Social Media) | Facebook `BrandIcon`, Connect / Post (dark), History / Connect another Page (white), Disconnect (red) |
 
-**Not yet migrated (next):** `social/create.tsx` (Create Post), `social/schedule/*`, `growth/*` (campaigns, promotions,
-templates, videos, translate, aggregators, analytics…), `(tabs)/*`, onboarding, plan-select, store-profile, product add/edit,
+**Size reduction (owner 2026-10-16, after testing):** web-variant dark/red labels 12→**10px**, white label 14→**12px**; padding 14/12→**12/10**, minHeight 48→**44**. Signature (default) variant unchanged.
+
+**Not yet migrated (next):** `growth/{campaign-new,promotion-form,ai-campaign,campaign/[id],inventory,analytics}`, `(tabs)/*`, onboarding, plan-select, store-profile, product add/edit,
 customer screens, collection/category screens; 15 files hard-code the navy→plum gradient; 12 hand-build white buttons.
 
 New components: `WhiteButton`, `DangerButton` (solid red `#DC2626`, white label, same radius/shadow), `BrandIcon` (FontAwesome brand glyphs from `@expo/vector-icons`, available via Expo but not listed in `apps/mobile/package.json`).

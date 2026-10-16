@@ -443,7 +443,7 @@ export default function OtpScreen() {
 
         {/* Verify button */}
         <View className="mt-8">
-          <GradientButton
+          <GradientButton variant="web"
             label="Verify & Continue →"
             onPress={() => void handleVerify(otp)}
             disabled={otp.length !== 6 || loading}

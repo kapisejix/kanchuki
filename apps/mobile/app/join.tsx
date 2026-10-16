@@ -173,7 +173,7 @@ export default function JoinScreen() {
 
       <View className="mt-8 gap-3">
         {state.kind === 'ready' && (
-          <GradientButton
+          <GradientButton variant="web"
             label={sending ? 'Sending OTP…' : 'Continue'}
             onPress={() => void handleContinue()}
             disabled={sending}
@@ -181,10 +181,10 @@ export default function JoinScreen() {
           />
         )}
         {(state.kind === 'used' || state.kind === 'dead') && (
-          <GradientButton label="Log in with phone" onPress={goToLogin} />
+          <GradientButton variant="web" label="Log in with phone" onPress={goToLogin} />
         )}
         {state.kind === 'error' && (
-          <GradientButton label="Retry" onPress={() => setReload((r) => r + 1)} />
+          <GradientButton variant="web" label="Retry" onPress={() => setReload((r) => r + 1)} />
         )}
         {state.kind === 'ready' && (
           <Pressable onPress={goToLogin} className="py-3 items-center">
