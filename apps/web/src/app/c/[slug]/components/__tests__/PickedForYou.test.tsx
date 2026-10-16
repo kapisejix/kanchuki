@@ -92,15 +92,12 @@ describe('PickedForYou', () => {
     expect(screen.queryByRole('button', { name: /View / })).not.toBeInTheDocument();
   });
 
-  it('keeps an empty feed hidden and offers retry for an API error', async () => {
-    fetchMock
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce({ personalized: false, products: [] });
+  it('renders nothing (no "From this store" section) when the feed fails to load', async () => {
+    fetchMock.mockResolvedValueOnce(null);
     render(<PickedForYou storeSlug="store-a" onProductTap={() => undefined} />);
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Could not load picks right now.');
-    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    expect(screen.queryByRole('heading')).not.toBeInTheDocument();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /View / })).not.toBeInTheDocument();
   });

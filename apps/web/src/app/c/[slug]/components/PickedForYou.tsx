@@ -54,7 +54,9 @@ export function PickedForYou({ storeSlug, onProductTap }: Props) {
 
   // The catalog-order fallback just repeats the grid below it (S-10), so only
   // render once the feed is genuinely personal. Errors still show retry.
-  if (responseStoreSlug === storeSlug && !personalized && !failed) return null;
+  // Also nothing before the first response and nothing on a first-load failure:
+  // the non-personal "From this store" state was removed (owner request).
+  if (!isPersonalized) return null;
 
   return (
     <section className="mb-5" aria-labelledby="picked-for-you-heading" aria-busy={loading}>

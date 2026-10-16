@@ -105,8 +105,11 @@ export function AIStylist({ storeSlug, storeName, onProductTap }: Props) {
     window.history.pushState({ kanchukiAiStylist: true }, '')
   }, [])
 
+  // Close by popping our history entry only — the popstate handler below flips
+  // `open`. Calling setOpen(false) here too made the effect cleanup fire a
+  // second history.back() that also popped an open product sheet's entry, so
+  // hiding the stylist closed the product detail with it.
   const closeOverlay = useCallback(() => {
-    setOpen(false)
     window.history.back()
   }, [])
 
@@ -122,7 +125,7 @@ export function AIStylist({ storeSlug, storeName, onProductTap }: Props) {
       window.removeEventListener('popstate', handlePopState)
       // If the component unmounts without a popstate (e.g. parent re-renders),
       // clean up the history entry we pushed.
-      if (!poppedByUser) window.history.back()
+      if (!poppedByUser && window.history.state?.kanchukiAiStylist === true) window.history.back()
     }
   }, [open])
 

@@ -14,9 +14,7 @@ import {
   Calendar,
   ChevronRight,
   LayoutGrid,
-  Search,
   SlidersHorizontal,
-  X,
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
@@ -31,8 +29,7 @@ import {
   wishlistKey,
 } from '../lib/wishlist';
 import { trackPassportEvent } from '@/lib/passport-client';
-import { recordInterest } from '@/lib/interests';
-import { CategoryChips, FilterBar, SizeChips } from './FilterBar';
+import { FilterBar } from './FilterBar';
 import { CATALOG_PAGE_SIZE } from '@/lib/catalog';
 import { KanchukiBrandBar } from './KanchukiBrandBar';
 import { PageTransitionWrapper } from '@/components/PageTransitionWrapper';
@@ -96,7 +93,6 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
   useEffect(() => {
     setFavorites(loadWishlist(slug));
   }, [slug]);
-  const [searchQuery, setSearchQuery] = useState('');
   const [selectedProduct, setSelectedProduct] = useState<PublicProduct | null>(null);
   const [filterCategory, setFilterCategory] = useState<string | null>(null);
   const [filterPrice, setFilterPrice] = useState<string | null>(null);
@@ -330,43 +326,7 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
     }
   }, [collection.title]);
 
-  const filteredProducts = products.filter((p) => {
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase().trim();
-      const matchName = (p.name ?? '').toLowerCase().includes(q);
-      const matchCat = (p.category ?? '').toLowerCase().includes(q);
-      const matchSubtype = (p.subtype ?? '').toLowerCase().includes(q);
-      const matchColor = (p.primary_color ?? '').toLowerCase().includes(q);
-      const matchLocation = (p.location ?? '').toLowerCase().includes(q);
-      if (!matchName && !matchCat && !matchSubtype && !matchColor && !matchLocation) return false;
-    }
-    return true;
-  });
-
-  // F-037 Phase 1 — search event, debounced so a beacon isn't fired per
-  // keystroke. Fires the settled query + active filters + result count.
-  useEffect(() => {
-    if (!searchQuery.trim()) return;
-    const timer = setTimeout(() => {
-      recordInterest(searchQuery.split(/\s+/));
-      trackPassportEvent({
-        type: 'search',
-        retailer_id: collection.retailer.id,
-        metadata: {
-          query: searchQuery.trim(),
-          filters: {
-            category: filterCategory,
-            price: filterPrice,
-            color: filterColor,
-            size: filterSize,
-          },
-          result_count: filteredProducts.length,
-        },
-      });
-    }, 600);
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchQuery]);
+  const filteredProducts = products;
 
   return (
     <PageTransitionWrapper>
@@ -463,54 +423,9 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
           </p>
         </div>
 
-        {/* ── Discovery Search Bar (Spec #9) ── */}
-        <div className="relative mb-4">
-          <div className="w-full bg-white rounded-2xl py-3 pl-11 pr-12 shadow-sm border border-[#E0E1F6] flex items-center">
-            <Search size={18} className="text-[#928EB2] absolute left-4" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by outfit, fabric, color..."
-              className="w-full text-xs font-semibold text-[#231F48] placeholder-[#928EB2] bg-transparent focus:outline-none"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery('')}
-                className="w-7 h-7 rounded-xl bg-[#F8F7FC] flex items-center justify-center text-[#231F48] text-xs absolute right-3 border border-[#E0E1F6]"
-                aria-label="Clear search"
-              >
-                <X size={14} />
-              </button>
-            )}
-          </div>
-        </div>
-
         {/* ── Promotion Banner ── */}
         <div className="mb-4">
           <PromotionBanner storeSlug={store ?? slug} />
-        </div>
-
-        {/* Always-visible category chip bar */}
-        <div className="mb-4 -mx-1 px-1">
-          <CategoryChips
-            categories={collection.filters.categories}
-            filterCategory={filterCategory}
-            totalCount={collection.total}
-            onCategoryChange={setFilterCategory}
-          />
-        </div>
-
-        {/* Size row — always visible, not behind the filter toggle. A shopper
-            whose size isn't stocked bounces on the first product they open, so
-            this question has to be answerable before the tap. Hidden by
-            SizeChips itself when the store only stocks one size. */}
-        <div className="mb-4 -mx-1 px-1">
-          <SizeChips
-            sizes={collection.filters.sizes ?? []}
-            filterSize={filterSize}
-            onSizeChange={setFilterSize}
-          />
         </div>
 
         {/* Recently-viewed carousel — F-037 §2 item 2. Reads localStorage, so it
@@ -545,7 +460,6 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
             </p>
             <button
               onClick={() => {
-                setSearchQuery('');
                 setFilterCategory(null);
                 setFilterPrice(null);
                 setFilterColor(null);
