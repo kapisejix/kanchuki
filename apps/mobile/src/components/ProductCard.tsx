@@ -97,13 +97,13 @@ const ProductCard = memo(function ProductCard({
     <AnimatedPressable
       onPress={onPress}
       onLongPress={onLongPress}
-      className={`bg-white border border-lavender-200 rounded-[28px] ${flex ? 'flex-1' : ''}`}
+      className={`bg-white border border-lavender-200 rounded-2xl ${flex ? 'flex-1' : ''}`}
       style={[{ elevation }, CARD_SHADOW, style]}
     >
-      <View className="rounded-[28px] overflow-hidden p-1.5 bg-white">
+      <View className="rounded-2xl overflow-hidden p-1.5 bg-white">
         {/* Image container */}
         <View
-          className="w-full bg-lavender-100 rounded-[24px] overflow-hidden relative"
+          className="w-full bg-lavender-100 rounded-[10px] overflow-hidden relative"
           style={
             imageHeight
               ? { height: imageHeight }

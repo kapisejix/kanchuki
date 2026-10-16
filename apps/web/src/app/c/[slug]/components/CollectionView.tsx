@@ -628,12 +628,12 @@ function ProductCard({
   return (
     <div
       onClick={onTap}
-      className={`group bg-white rounded-[28px] overflow-hidden shadow-sm hover:shadow-md border border-[#E0E1F6] transition-all p-1.5 cursor-pointer flex flex-col justify-between ${
+      className={`group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md border border-[#E0E1F6] transition-all p-1.5 cursor-pointer flex flex-col justify-between ${
         isSold ? 'opacity-75' : ''
       }`}
     >
       {/* Photo Container */}
-      <div className="relative w-full aspect-[3/4] rounded-[24px] overflow-hidden bg-[#FAF9FE]">
+      <div className="relative w-full aspect-[3/4] rounded-[10px] overflow-hidden bg-[#FAF9FE]">
         {product.primary_photo_url ? (
           <Image
             src={product.primary_photo_url}

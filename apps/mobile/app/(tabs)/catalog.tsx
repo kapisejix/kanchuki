@@ -6,7 +6,6 @@ import {
   TextInput,
   FlatList,
   ScrollView,
-  ActivityIndicator,
   Alert,
   Image,
 } from 'react-native'
@@ -17,7 +16,6 @@ import {
   MapPin,
   SlidersHorizontal,
   X,
-  Trash2,
   ScanLine,
   Camera,
   Search,
@@ -33,6 +31,7 @@ import { prefetchProductImages } from '../../src/lib/image-prefetch'
 import { enqueueStatusMutation } from '../../src/lib/mutation-queue'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { GradientButton } from '../../src/components/GradientButton'
+import { DangerButton } from '../../src/components/DangerButton'
 
 type Product = {
   id: string
@@ -144,12 +143,7 @@ const CatalogCard = memo(function CatalogCard({
             </View>
           )}
           {product.status === 'AVAILABLE' && (
-            <AnimatedPressable
-              onPress={onMarkSold}
-              className="mt-2 bg-lavender-100 py-1.5 rounded-xl items-center border border-lavender-200"
-            >
-              <Text className="text-[11px] text-spaceCadet-900 font-bold">Mark Sold</Text>
-            </AnimatedPressable>
+            <GradientButton variant="web" label="Mark Sold" onPress={onMarkSold} style={{ marginTop: 8 }} />
           )}
         </View>
       }
@@ -363,9 +357,9 @@ export default function CatalogScreen() {
             <Text className="text-heliotrope-500 text-sm font-medium">
               No products match the filter
             </Text>
-            <AnimatedPressable onPress={clearFilters} className="mt-3 bg-spaceCadet-900 px-5 py-2.5 rounded-2xl">
-              <Text className="text-white text-xs font-bold uppercase tracking-wider">Clear Filters</Text>
-            </AnimatedPressable>
+            <View className="mt-3 w-full max-w-xs">
+              <GradientButton variant="web" label="Clear Filters" onPress={clearFilters} />
+            </View>
           </>
         ) : (
           <>
@@ -628,21 +622,13 @@ export default function CatalogScreen() {
           <Text className="text-white text-sm font-bold font-marcellus">
             {selectedIds.size > 0 ? `${selectedIds.size} Selected` : 'Tap products to select'}
           </Text>
-          <AnimatedPressable
+          <DangerButton
+            label="Delete"
             onPress={handleBulkDelete}
-            disabled={deleting || selectedIds.size === 0}
-            className="flex-row items-center gap-1.5 bg-red-600 px-3.5 py-2 rounded-2xl"
-            style={{ opacity: selectedIds.size === 0 ? 0.4 : 1 }}
-          >
-            {deleting ? (
-              <ActivityIndicator size="small" color="white" />
-            ) : (
-              <>
-                <Trash2 size={14} color="white" />
-                <Text className="text-white text-xs font-bold">Delete</Text>
-              </>
-            )}
-          </AnimatedPressable>
+            loading={deleting}
+            disabled={selectedIds.size === 0}
+            style={{ width: 96, minHeight: 40, paddingVertical: 8 }}
+          />
         </View>
       )}
     </View>
