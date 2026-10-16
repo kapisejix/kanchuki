@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as ImageManipulator from "expo-image-manipulator";
 import * as ImagePicker from "expo-image-picker";
+import * as Location from "expo-location";
 import { router } from "expo-router";
 import {
   Bug,
@@ -12,6 +13,7 @@ import {
   FileText,
   FolderKanban,
   ImagePlus,
+  MapPin,
   MessageCircle,
   QrCode,
   Share2,
@@ -54,6 +56,7 @@ import {
 import { showError } from "../../src/lib/errors";
 import { clearPersistedCache } from "../../src/lib/offline-persister";
 import { useAuth } from "../../src/lib/auth-context";
+import { resolveMapsLink } from "../../src/lib/maps-link";
 import { getItem } from "../../src/lib/storage";
 import { useTheme } from "../../src/lib/theme";
 import { WEB_URL } from "../../src/lib/web-url";
@@ -82,6 +85,12 @@ function ProfileEditModal({
   const [city, setCity] = useState("");
   const [stateVal, setStateVal] = useState("");
   const [addressLine1, setAddressLine1] = useState("");
+  // Shop map pin — customers get a Google Maps directions link from it.
+  const [latitude, setLatitude] = useState<number | null>(null);
+  const [longitude, setLongitude] = useState<number | null>(null);
+  const [locating, setLocating] = useState(false);
+  const [mapsLink, setMapsLink] = useState("");
+  const [resolvingLink, setResolvingLink] = useState(false);
   const [gstin, setGstin] = useState("");
   const [saving, setSaving] = useState(false);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
@@ -98,6 +107,8 @@ function ProfileEditModal({
       setCity(retailer.city ?? "");
       setStateVal(retailer.state ?? "");
       setAddressLine1(retailer.address_line1 ?? "");
+      setLatitude(typeof retailer.latitude === "number" ? retailer.latitude : null);
+      setLongitude(typeof retailer.longitude === "number" ? retailer.longitude : null);
       setGstin(retailer.gstin ?? "");
       setLogoUrl(retailer.logo_url ?? null);
       setLogoR2Key(retailer.logo_r2_key ?? null);
@@ -184,6 +195,48 @@ function ProfileEditModal({
   const gstinChanged =
     (gstin.trim() || "") !== String(retailer?.gstin ?? "").trim();
 
+  // Stand in the shop and tap — saves the device's current position as the pin.
+  const handleSetLocation = async () => {
+    setLocating(true);
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert(
+          "Location Permission",
+          "Please enable location access in your device settings to set your shop location.",
+        );
+        return;
+      }
+      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+      setLatitude(loc.coords.latitude);
+      setLongitude(loc.coords.longitude);
+    } catch (err) {
+      showError(err, "Could not get your location. Please try again.");
+    } finally {
+      setLocating(false);
+    }
+  };
+
+  // Paste a Google Maps "Share" link instead of using GPS.
+  const handleUseMapsLink = async () => {
+    setResolvingLink(true);
+    try {
+      const point = await resolveMapsLink(mapsLink);
+      if (!point) {
+        Alert.alert(
+          "Link not recognised",
+          "Open your shop in Google Maps, tap Share, and paste that link here.",
+        );
+        return;
+      }
+      setLatitude(point.lat);
+      setLongitude(point.lng);
+      setMapsLink("");
+    } finally {
+      setResolvingLink(false);
+    }
+  };
+
   const handleSave = async () => {
     if (!canSave) return;
     setSaving(true);
@@ -194,6 +247,8 @@ function ProfileEditModal({
         city: city.trim() || undefined,
         state: stateVal.trim() || undefined,
         address_line1: addressLine1.trim() || undefined,
+        latitude,
+        longitude,
         ...(gstinChanged
           ? { gstin: gstin.trim() || "" }
           : {}),
@@ -326,6 +381,69 @@ function ProfileEditModal({
             />
             <Field label="City" value={city} onChange={setCity} />
             <Field label="State" value={stateVal} onChange={setStateVal} />
+
+            {/* Store location — customers see a Directions button that opens Google Maps */}
+            <View className="mb-3">
+              <Text className="text-xs font-semibold text-sand-600 mb-1">Store location</Text>
+              <AnimatedPressable
+                onPress={() => void handleSetLocation()}
+                disabled={locating}
+                accessibilityLabel="Set store location from my current position"
+                accessibilityRole="button"
+                className="flex-row items-center gap-3 bg-white border border-sand-200 rounded-2xl p-3"
+              >
+                <MapPin size={18} color={latitude !== null ? primaryColor : colors.sand[500]} />
+                <View className="flex-1">
+                  <Text className="text-sm font-semibold text-sand-900">
+                    {latitude !== null ? "Location saved" : "Use my current location"}
+                  </Text>
+                  <Text className="text-[11px] text-sand-400 mt-0.5">
+                    {latitude !== null && longitude !== null
+                      ? `${latitude.toFixed(4)}, ${longitude.toFixed(4)} — tap to update (stand inside your shop)`
+                      : "Stand inside your shop and tap. Customers get a Directions button."}
+                  </Text>
+                </View>
+                {locating ? <ActivityIndicator size="small" color={primaryColor} /> : null}
+              </AnimatedPressable>
+              <View className="flex-row items-center gap-2 mt-2">
+                <TextInput
+                  value={mapsLink}
+                  onChangeText={setMapsLink}
+                  placeholder="Or paste a Google Maps link"
+                  placeholderTextColor={colors.sand[400]}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  keyboardType="url"
+                  className="flex-1 bg-white border border-sand-200 rounded-xl px-3 py-2.5 text-sm text-sand-900"
+                />
+                <AnimatedPressable
+                  onPress={() => void handleUseMapsLink()}
+                  disabled={resolvingLink || mapsLink.trim().length === 0}
+                  accessibilityLabel="Use pasted Google Maps link"
+                  accessibilityRole="button"
+                  className="bg-ink-600 px-4 py-2.5 rounded-xl"
+                  style={{ opacity: mapsLink.trim().length === 0 ? 0.5 : 1 }}
+                >
+                  {resolvingLink ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Text className="text-white text-sm font-semibold">Use</Text>
+                  )}
+                </AnimatedPressable>
+              </View>
+              {latitude !== null ? (
+                <AnimatedPressable
+                  onPress={() => {
+                    setLatitude(null);
+                    setLongitude(null);
+                  }}
+                  className="mt-1"
+                >
+                  <Text className="text-[10px] text-rust-500">Remove location</Text>
+                </AnimatedPressable>
+              ) : null}
+            </View>
+
             <Field
               label="GSTIN"
               value={gstin}
