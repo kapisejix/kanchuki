@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { router } from 'expo-router'
 import { LinearGradient } from 'expo-linear-gradient'
 import {
+  ArrowRight,
   ChevronLeft,
   CheckCircle,
   XCircle,
@@ -333,14 +334,20 @@ function IntegrationCard({
           <View className="flex-row gap-3 mt-2 pb-2">
             <View className="flex-1">
               {configured ? (
-                <WhiteButton label="Reconfigure" onPress={onConfigure} />
+                <WhiteButton radius={16} label="Reconfigure" onPress={onConfigure} />
               ) : (
-                <GradientButton variant="web" label="Connect Account" onPress={onConfigure} />
+                <GradientButton
+                  variant="web"
+                  radius={16}
+                  label="Connect Account"
+                  iconRight={<ArrowRight size={16} color="#FFFFFF" strokeWidth={2.5} />}
+                  onPress={onConfigure}
+                />
               )}
             </View>
             {configured && (
               <View className="flex-1">
-                <DangerButton label="Disconnect" onPress={onDisconnect} />
+                <DangerButton radius={16} label="Disconnect" onPress={onDisconnect} />
               </View>
             )}
           </View>

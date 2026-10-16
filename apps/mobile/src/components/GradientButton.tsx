@@ -20,6 +20,8 @@ export function GradientButton({
   colors,
   compact = false,
   variant = 'signature',
+  iconRight,
+  radius = 16,
   style,
 }: {
   label: string
@@ -34,6 +36,10 @@ export function GradientButton({
   compact?: boolean
   /** 'signature' = current look; 'web' = matches the customer web product-sheet button */
   variant?: 'signature' | 'web'
+  /** web variant only: icon after the label (e.g. a white arrow) */
+  iconRight?: React.ReactNode
+  /** corner radius, web variant (default 16 — owner 2026-10-16; signature variant stays 24) */
+  radius?: number
   style?: ViewStyle
 }) {
   const isDisabled = disabled || loading
@@ -45,7 +51,7 @@ export function GradientButton({
         // Web `shadow-lg shadow-[#231F48]/25`. Android draws elevation only from a filled,
         // rounded view, so this wrapper carries the fill + radius (the gradient covers it).
         backgroundColor: '#231F48',
-        borderRadius: 24,
+        borderRadius: radius,
         shadowColor: '#231F48',
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.25,
@@ -84,7 +90,7 @@ export function GradientButton({
         start={{ x: 0, y: 0 }}
         end={isWeb ? { x: 1, y: 0 } : { x: 1, y: 1 }}
         style={{
-          borderRadius: 24,
+          borderRadius: isWeb ? radius : 24,
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: isWeb || compact ? 'center' : 'space-between',
@@ -127,6 +133,7 @@ export function GradientButton({
               >
                 {label}
               </Text>
+              {isWeb ? iconRight : null}
             </View>
             {badgeContent ? (
               <View

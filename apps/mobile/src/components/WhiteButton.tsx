@@ -16,6 +16,7 @@ export function WhiteButton({
   icon,
   uppercase = false,
   compact = false,
+  radius = 16,
   style,
 }: {
   label: string
@@ -26,6 +27,8 @@ export function WhiteButton({
   /** Product-sheet style is uppercase; design-page style is sentence case (default). */
   uppercase?: boolean
   compact?: boolean
+  /** corner radius (default 16 — owner 2026-10-16) */
+  radius?: number
   style?: ViewStyle
 }) {
   const isDisabled = disabled || loading
@@ -43,7 +46,7 @@ export function WhiteButton({
           backgroundColor: '#FFFFFF',
           borderWidth: 1,
           borderColor: '#E0E1F6',
-          borderRadius: 24,
+          borderRadius: radius,
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'center',
@@ -52,13 +55,13 @@ export function WhiteButton({
           paddingHorizontal: 12,
           minHeight: 48,
           opacity: isDisabled ? 0.5 : 1,
-          // Same navy glow as the dark button (owner: "same kind of shadow on all buttons").
-          // Fill + radius are on this view, so Android elevation renders.
+          // Web `shadow-sm` (customer suit-detail white buttons). Fill + radius are on this
+          // view, so Android elevation renders.
           shadowColor: '#231F48',
-          shadowOffset: { width: 0, height: 8 },
-          shadowOpacity: 0.25,
-          shadowRadius: 12,
-          elevation: 10,
+          shadowOffset: { width: 0, height: 1 },
+          shadowOpacity: 0.08,
+          shadowRadius: 3,
+          elevation: 2,
         }}
       >
         {loading ? (
@@ -70,7 +73,7 @@ export function WhiteButton({
             <Text
               style={{
                 color: WHITE_BUTTON_INK,
-                fontSize: 12,
+                fontSize: 14, // web text-sm font-bold, sentence case
                 fontWeight: '700',
                 textAlign: 'center',
                 flexShrink: 1,

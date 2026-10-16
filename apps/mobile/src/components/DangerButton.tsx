@@ -10,12 +10,15 @@ export function DangerButton({
   onPress,
   disabled,
   loading,
+  radius = 16,
   style,
 }: {
   label: string
   onPress: () => void
   disabled?: boolean
   loading?: boolean
+  /** corner radius (default 16 — owner 2026-10-16) */
+  radius?: number
   style?: ViewStyle
 }) {
   const isDisabled = disabled || loading
@@ -29,14 +32,12 @@ export function DangerButton({
         {
           width: '100%',
           minHeight: 48,
-          borderRadius: 24,
+          borderRadius: radius,
           paddingVertical: 14,
           paddingHorizontal: 12,
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: '#FFF1F2',
-          borderWidth: 1,
-          borderColor: '#FECDD3',
+          backgroundColor: '#DC2626', // solid red, white label
           opacity: isDisabled ? 0.5 : 1,
           shadowColor: '#231F48',
           shadowOffset: { width: 0, height: 8 },
@@ -48,11 +49,11 @@ export function DangerButton({
       ]}
     >
       {loading ? (
-        <ActivityIndicator size="small" color="#BE123C" />
+        <ActivityIndicator size="small" color="#FFFFFF" />
       ) : (
         <Text
           style={{
-            color: '#BE123C',
+            color: '#FFFFFF',
             fontSize: 12,
             fontWeight: '800',
             textTransform: 'uppercase',
