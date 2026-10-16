@@ -12,6 +12,17 @@
 
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
+## RC-062 — 13 daily/weekly maintenance crons were registered with BullMQ `repeat.limit: 1`, which caps the job to ONE run per API boot, so they silently stopped repeating
+
+- **Component:** `apps/api/src/jobs/index.ts`. Found 2026-10-16 (Customer Engagement stayed at zero); fixed on `fix/cron-repeat-limit`.
+- **Symptom:** Customer Engagement showed all zeros even after products were opened for days — the nightly `engagement-aggregate` rollup never produced rows. Same defect meant backups, purge, GST backfill, R2 compression, embedding backfill, catalog sync, referral qualify/accrue and try-on sweep ran only once after each deploy/restart.
+- **Root cause:** `limit` in BullMQ is the *total number of repetitions* (`repeat.js`: `iterationCount > repeatOpts.limit` → stop scheduling the next job), not a per-run guard. With `limit: 1` the first scheduled run executes and no successor is ever scheduled; the next `add()` at boot schedules one more. Copy-pasted into every cron; the F-043 jobs omitted it after the same suspicion (build-log part-6, post-scheduler.md) but the older 13 were "not touched".
+- **Fix:** `limit` removed from 12 jobs. **`referral-payout` deliberately keeps `limit: 1`** (real-money RazorpayX payout; making it truly monthly is an owner decision) — marked with a comment. `repeat-limit.test.ts` fails if any other repeat re-adds `limit`.
+- **Not verified:** actual Redis repeat state in prod; confirm after deploy that the maintenance queue shows next run times for the 12 jobs and `RetailerEngagementDaily` gets a row the morning after traffic.
+- **Proof:** `apps/api/src/jobs/repeat-limit.test.ts`; BullMQ 5.79.2 source `classes/repeat.js`.
+
+---
+
 ## RC-061 — The Create Post preview hard-coded "Your store" as the poster and looked only for photo media, so a video post (the single-product default) previewed with no image
 
 - **Component:** `apps/mobile/src/components/social/PostPreview.tsx`, `apps/mobile/app/social/create.tsx`; new `apps/mobile/src/components/social/post-preview.ts`. Fixed 2026-10-16 on `fix/audit-phase-1` (screenshot audit S-05).
