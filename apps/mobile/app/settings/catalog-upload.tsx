@@ -1,6 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { router } from 'expo-router';
-import { Check, ChevronLeft, Clock, IndianRupee, Package } from 'lucide-react-native';
+import { Check, Clock, IndianRupee, Package } from 'lucide-react-native';
 import { useState } from 'react';
 import {
   ActivityIndicator,
@@ -13,6 +12,7 @@ import {
 } from 'react-native';
 import { useScreenInsets } from '../../src/lib/safe-area';
 import { AnimatedPressable } from '../../src/components/AnimatedPressable';
+import { ScreenHeader } from '../../src/components/ScreenHeader';
 import { KeyboardScreen } from '../../src/components/KeyboardScreen';
 import { GradientButton } from '../../src/components/GradientButton';
 import { type CatalogUploadTicket, catalogUploadApi } from '../../src/lib/api';
@@ -238,8 +238,8 @@ function TicketStatus({ ticket }: { ticket: CatalogUploadTicket }) {
 // ─── Main Screen ────────────────────────────────────────────────────
 
 export default function CatalogUploadScreen() {
-  const { primaryColor, colors } = useTheme();
-  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets();
+  const { primaryColor } = useTheme();
+  const { screenPaddingBottom } = useScreenInsets();
 
   const { data, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ['catalog-upload-request'],
@@ -253,22 +253,7 @@ export default function CatalogUploadScreen() {
 
   return (
     <KeyboardScreen className="flex-1 bg-white">
-      <View
-        className="bg-white border-b border-sand-100 px-4 pb-4"
-        style={{ paddingTop: headerPaddingTop }}
-      >
-        <View className="flex-row items-center gap-3">
-          <AnimatedPressable
-            onPress={() => router.back()}
-            hitSlop={8}
-            accessibilityLabel="Go back"
-            accessibilityRole="button"
-          >
-            <ChevronLeft size={24} color={colors.sand[700]} />
-          </AnimatedPressable>
-          <Text className="text-base font-bold text-sand-900">Catalog Upload Help</Text>
-        </View>
-      </View>
+      <ScreenHeader title="Catalog Upload Help" />
 
       {isLoading ? (
         <ActivityIndicator color={primaryColor} className="mt-12" />

@@ -4,15 +4,15 @@ import {
   View, Text, FlatList, Image,
   Alert,
 } from 'react-native'
-import { router } from 'expo-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useScreenInsets } from '../../src/lib/safe-area'
-import { RotateCcw, Trash2, PackageX, ChevronLeft } from 'lucide-react-native'
+import { RotateCcw, Trash2, PackageX } from 'lucide-react-native'
 import { CustomerListSkeleton } from '../../src/components/Skeleton'
 import { productApi } from '../../src/lib/api'
 import { showError } from '../../src/lib/errors'
 import { useTheme } from '../../src/lib/theme'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
+import { ScreenHeader } from '../../src/components/ScreenHeader'
 
 type DeletedProduct = {
   id: string
@@ -26,7 +26,7 @@ type DeletedProduct = {
 
 export default function DeletedProductsScreen() {
   const { primaryColor, colors } = useTheme()
-  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets()
+  const { screenPaddingBottom } = useScreenInsets()
   const queryClient = useQueryClient()
 
   const { data, isLoading } = useQuery({
@@ -109,17 +109,7 @@ export default function DeletedProductsScreen() {
 
   return (
     <View className="flex-1 bg-ink-50">
-      <View
-        className="bg-white border-b border-sand-100 px-4 pb-4"
-        style={{ paddingTop: headerPaddingTop }}
-      >
-        <View className="flex-row items-center gap-3">
-          <AnimatedPressable onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
-            <ChevronLeft size={24} color={colors.sand[700]} />
-          </AnimatedPressable>
-          <Text className="text-base font-bold text-sand-900">Recently Deleted</Text>
-        </View>
-      </View>
+      <ScreenHeader title="Recently Deleted" />
 
       <View className="flex-1 px-4 pt-4">
         {isLoading ? (

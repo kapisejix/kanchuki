@@ -3,13 +3,12 @@ import {
   View, Text, FlatList, TextInput,
   Alert, Modal, Pressable, Share, Platform, Linking,
 } from 'react-native'
-import { router } from 'expo-router'
 import * as Clipboard from 'expo-clipboard'
 import { useScreenInsets } from '../../src/lib/safe-area'
 import { KeyboardScreen } from '../../src/components/KeyboardScreen'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
-  Plus, Trash2, X, User, ChevronLeft, Pencil, RotateCcw, Check, MessageCircle, Copy,
+  Plus, Trash2, X, User, Pencil, RotateCcw, Check, MessageCircle, Copy,
 } from 'lucide-react-native'
 import { CustomerListSkeleton } from '../../src/components/Skeleton'
 import {
@@ -19,6 +18,7 @@ import {
 import { showError } from '../../src/lib/errors'
 import { useTheme } from '../../src/lib/theme'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
+import { ScreenHeader } from '../../src/components/ScreenHeader'
 import { DangerButton } from '../../src/components/DangerButton'
 import { WHITE_BUTTON_INK, WhiteButton } from '../../src/components/WhiteButton'
 import { GradientButton } from '../../src/components/GradientButton'
@@ -405,7 +405,7 @@ export default function StaffScreen() {
   const [purgeTarget, setPurgeTarget] = useState<StaffMember | null>(null)
   const [inviteTarget, setInviteTarget] = useState<StaffCreateResult | null>(null)
   const queryClient = useQueryClient()
-  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets()
+  const { screenPaddingBottom } = useScreenInsets()
 
   const { data, isLoading } = useQuery({
     queryKey: ['staff'],
@@ -651,17 +651,7 @@ export default function StaffScreen() {
   return (
     <View className="flex-1 bg-ink-50">
       {/* Header */}
-      <View
-        className="bg-white border-b border-sand-100 px-4 pb-4"
-        style={{ paddingTop: headerPaddingTop }}
-      >
-        <View className="flex-row items-center gap-3">
-          <AnimatedPressable onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
-            <ChevronLeft size={24} color={colors.sand[700]} />
-          </AnimatedPressable>
-          <Text className="text-base font-bold text-sand-900">Team Members</Text>
-        </View>
-      </View>
+      <ScreenHeader title="Team Members" />
 
       <View className="flex-1 px-4 pt-4">
         {isLoading ? (

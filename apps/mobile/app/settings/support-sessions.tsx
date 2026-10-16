@@ -1,8 +1,8 @@
 import { useCallback } from 'react'
 import { View, Text, ScrollView, ActivityIndicator, Alert, RefreshControl } from 'react-native'
-import { router, useFocusEffect } from 'expo-router'
+import { useFocusEffect } from 'expo-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronLeft, ShieldCheck } from 'lucide-react-native'
+import { ShieldCheck } from 'lucide-react-native'
 import { useScreenInsets } from '../../src/lib/safe-area'
 import {
   SUPPORT_SCOPE_LABEL,
@@ -11,7 +11,7 @@ import {
 } from '../../src/lib/api/support-sessions'
 import { showError } from '../../src/lib/errors'
 import { useTheme } from '../../src/lib/theme'
-import { AnimatedPressable } from '../../src/components/AnimatedPressable'
+import { ScreenHeader } from '../../src/components/ScreenHeader'
 import { DangerButton } from '../../src/components/DangerButton'
 import { GradientButton } from '../../src/components/GradientButton'
 import { WhiteButton } from '../../src/components/WhiteButton'
@@ -21,7 +21,7 @@ import { WhiteButton } from '../../src/components/WhiteButton'
 
 export default function SupportSessionsScreen() {
   const { primaryColor, colors } = useTheme()
-  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets()
+  const { screenPaddingBottom } = useScreenInsets()
   const qc = useQueryClient()
 
   const { data, isLoading, refetch, isRefetching } = useQuery({
@@ -60,22 +60,7 @@ export default function SupportSessionsScreen() {
 
   return (
     <View className="flex-1 bg-white">
-      <View
-        className="bg-white border-b border-sand-100 px-4 pb-4"
-        style={{ paddingTop: headerPaddingTop }}
-      >
-        <View className="flex-row items-center gap-3">
-          <AnimatedPressable
-            onPress={() => router.back()}
-            hitSlop={8}
-            accessibilityLabel="Go back"
-            accessibilityRole="button"
-          >
-            <ChevronLeft size={24} color={colors.sand[700]} />
-          </AnimatedPressable>
-          <Text className="text-base font-bold text-sand-900">Kanchuki support access</Text>
-        </View>
-      </View>
+      <ScreenHeader title="Kanchuki support access" />
 
       {isLoading ? (
         <ActivityIndicator color={primaryColor} className="mt-12" />

@@ -3,7 +3,6 @@ import { router, useLocalSearchParams } from 'expo-router';
 import {
   AlertCircle,
   CheckCircle2,
-  ChevronLeft,
   Images,
   Link2,
   Send,
@@ -22,6 +21,7 @@ import {
   View,
 } from 'react-native';
 import { AnimatedPressable } from '../../src/components/AnimatedPressable';
+import { ScreenHeader } from '../../src/components/ScreenHeader';
 import { BrandIcon } from '../../src/components/BrandIcon';
 import { GradientButton } from '../../src/components/GradientButton';
 import {
@@ -134,7 +134,7 @@ const LINK_OPTIONS: { value: SocialLinkType; label: string }[] = [
 
 export default function CreateSocialPostScreen() {
   const { colors, primaryColor } = useTheme();
-  const { insets, headerPaddingTop } = useScreenInsets();
+  const { insets } = useScreenInsets();
   const queryClient = useQueryClient();
   const params = useLocalSearchParams<{
     product_id?: string;
@@ -884,25 +884,7 @@ export default function CreateSocialPostScreen() {
   return (
     <KeyboardScreen className="flex-1 bg-ink-50">
       {/* Header */}
-      <View
-        className="bg-white border-b border-sand-100 px-4 pb-4"
-        style={{ paddingTop: headerPaddingTop }}
-      >
-        <View className="flex-row items-center gap-3">
-          <AnimatedPressable
-            onPress={() => router.back()}
-            hitSlop={8}
-            accessibilityLabel="Go back"
-            accessibilityRole="button"
-          >
-            <ChevronLeft size={24} color={colors.sand[700]} />
-          </AnimatedPressable>
-          <View className="flex-1">
-            <Text className="text-base font-bold text-sand-900">Create post</Text>
-            <Text className="text-[10px] text-sand-400">One post → every connected account</Text>
-          </View>
-        </View>
-      </View>
+      <ScreenHeader title="Create post" subtitle="One post → every connected account" />
 
       {loadingAccounts ? (
         <ActivityIndicator color={primaryColor} className="py-16" />

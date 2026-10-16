@@ -1,10 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { router, useFocusEffect } from 'expo-router';
-import { ChevronLeft, MapPin, Store, Ticket } from 'lucide-react-native';
+import { useFocusEffect } from 'expo-router';
+import { MapPin, Store, Ticket } from 'lucide-react-native';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Linking, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { AnimatedPressable } from '../../src/components/AnimatedPressable';
 import { GradientButton } from '../../src/components/GradientButton';
+import { ScreenHeader } from '../../src/components/ScreenHeader';
 import { WhiteButton } from '../../src/components/WhiteButton';
 import { showError } from '../../src/lib/errors';
 import { useScreenInsets } from '../../src/lib/safe-area';
@@ -46,7 +47,7 @@ function matches(filter: Filter, t: SupportTicket) {
 
 export default function StaffTicketsScreen() {
   const { primaryColor, colors } = useTheme();
-  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets();
+  const { screenPaddingBottom } = useScreenInsets();
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState<Filter>('ACTIVE');
 
@@ -83,18 +84,7 @@ export default function StaffTicketsScreen() {
 
   return (
     <View className="flex-1 bg-white">
-      <View className="bg-white border-b border-sand-100 px-4 pb-3" style={{ paddingTop: headerPaddingTop }}>
-        <View className="flex-row items-center gap-3">
-          <AnimatedPressable
-            onPress={() => router.back()}
-            hitSlop={8}
-            accessibilityLabel="Go back"
-            accessibilityRole="button"
-          >
-            <ChevronLeft size={24} color={colors.sand[700]} />
-          </AnimatedPressable>
-          <Text className="text-base font-bold text-sand-900">Support Tickets</Text>
-        </View>
+      <ScreenHeader title="Support Tickets">
         <View className="flex-row gap-2 mt-3">
           {FILTERS.map((f) => {
             const active = filter === f.key;
@@ -115,7 +105,7 @@ export default function StaffTicketsScreen() {
             );
           })}
         </View>
-      </View>
+      </ScreenHeader>
 
       {isLoading ? (
         <ActivityIndicator color={primaryColor} className="mt-12" />

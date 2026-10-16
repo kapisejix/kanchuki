@@ -3,7 +3,6 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import {
   Check,
-  ChevronLeft,
   Heart,
   MessageCircle,
   Plus,
@@ -22,6 +21,7 @@ import {
 } from 'react-native';
 import { useScreenInsets } from '../../src/lib/safe-area';
 import { AnimatedPressable } from '../../src/components/AnimatedPressable';
+import { ScreenHeader } from '../../src/components/ScreenHeader';
 import { BrandIcon } from '../../src/components/BrandIcon';
 import { DangerButton } from '../../src/components/DangerButton';
 import { GradientButton } from '../../src/components/GradientButton';
@@ -37,8 +37,8 @@ import {
 import { useTheme } from '../../src/lib/theme';
 
 export default function SocialSettingsScreen() {
-  const { primaryColor, colors } = useTheme();
-  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets();
+  const { primaryColor } = useTheme();
+  const { screenPaddingBottom } = useScreenInsets();
   const queryClient = useQueryClient();
 
   const { data: accountsData, isLoading: loadingAccounts } = useQuery({
@@ -167,22 +167,7 @@ export default function SocialSettingsScreen() {
   return (
     <View className="flex-1 bg-ink-50">
       {/* Header */}
-      <View
-        className="bg-white border-b border-sand-100 px-4 pb-4"
-        style={{ paddingTop: headerPaddingTop }}
-      >
-        <View className="flex-row items-center gap-3">
-          <AnimatedPressable
-            onPress={() => router.back()}
-            hitSlop={8}
-            accessibilityLabel="Go back"
-            accessibilityRole="button"
-          >
-            <ChevronLeft size={24} color={colors.sand[700]} />
-          </AnimatedPressable>
-          <Text className="text-base font-bold text-sand-900">Social Media</Text>
-        </View>
-      </View>
+      <ScreenHeader title="Social Media" />
 
       <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: screenPaddingBottom }}>
         <Text className="text-xs text-sand-500 leading-5 mb-4">
