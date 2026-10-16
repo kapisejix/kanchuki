@@ -18,7 +18,7 @@ import { BackHandler, Platform, RefreshControl, ScrollView, Text, ToastAndroid, 
 import { AnimatedPressable } from '../../src/components/AnimatedPressable';
 import { GradientButton } from '../../src/components/GradientButton';
 import { HomeScreenSkeleton } from '../../src/components/Skeleton';
-import { UsageCard } from '../../src/components/UsageCard';
+import { UsageRows } from '../../src/components/UsageCard';
 import { categoryApi, retailerApi } from '../../src/lib/api';
 import { useAuth } from '../../src/lib/auth-context';
 import { staffCan } from '../../src/lib/staff-can';
@@ -171,11 +171,6 @@ export default function HomeScreen() {
         <SchedulerBanner />
       </View>
 
-      {/* F-010 plan usage vs limits — hidden when nothing is metered or staff lack access */}
-      <View className="px-4 pb-3">
-        <UsageCard />
-      </View>
-
       {/* ── Signature Gradient Hero (#231F48 to #560A39) ── */}
       <View className="px-4 pb-3">
         <LinearGradient
@@ -235,6 +230,9 @@ export default function HomeScreen() {
               </Text>
             </View>
           </View>
+
+          {/* F-010 plan limits left — hidden when nothing is metered or staff lack access */}
+          <UsageRows />
         </LinearGradient>
       </View>
 
