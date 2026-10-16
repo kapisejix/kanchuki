@@ -12,6 +12,17 @@
 
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
+## RC-056 — Marketplace Sync wrote `status: CONNECTED` on connect and on "sync" with no marketplace call or job behind it
+
+- **Component:** `apps/api/src/routes/retailers/retailers-aggregators.ts`, `apps/mobile/app/settings/index.tsx`. Fixed 2026-10-16 on `fix/audit-phase-1` (screenshot audit S-02).
+- **Symptom:** Settings → Marketplace Sync let a retailer paste an API key for Meesho/Amazon/etc., then showed **Connected** and a "last synced" time. Nothing was ever pushed to any marketplace.
+- **Root cause:** the routes were a placeholder that stored the end state instead of the work. `POST /me/aggregators` created the row as `CONNECTED` without verifying the credentials, and `POST /me/aggregators/:id/sync` set `SYNCING` then immediately `CONNECTED` + `last_synced_at = now` under the comment *"For now, simulate success"*. `apps/api/src/jobs` has no channel-sync job and no marketplace client exists. Same failure class as RC-051 (a status written by the code path that was supposed to *earn* it).
+- **Fix:** connect and sync now throw `501 NOT_AVAILABLE` ("Marketplace Sync is coming soon.") after the plan gate — no row is created, no credentials are collected, no status is written. The Settings entry is removed. List/detail/update/disconnect stay so any existing rows can still be seen and removed.
+- **Proof:** `retailers-aggregators.test.ts` (connect → 501 + `channelSync.create` never called; sync → 501 + `channelSync.update` never called; plan gate still 402). `apps/mobile/__tests__/unbuilt-integrations-hidden.test.ts` fails if any screen links to `/growth/aggregators` again (verified: fails with the old Settings row restored).
+- **Not done (owner):** existing `channel_syncs` rows in prod may still read `CONNECTED`; correcting them is a data change, not run by the agent.
+
+---
+
 ## RC-055 — The AI Stylist treated stored paise as rupees in two places (the card render and the catalog string sent to Claude), so ₹2,100 showed as ₹2,10,000
 
 - **Component:** `apps/web/src/app/c/[slug]/components/AIStylist.tsx`, `apps/api/src/routes/public/public-stylist.ts`. Fixed 2026-10-16 on `fix/audit-phase-1` (screenshot audit S-01).
