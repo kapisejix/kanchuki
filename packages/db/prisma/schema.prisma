@@ -195,6 +195,8 @@ enum QuotaResourceType {
   // F-043 — max ACTIVE/PAUSED plans per platform. Compared to a live row count;
   // no usage_counters row is ever written for it.
   ACTIVE_SCHEDULE_PLAN
+  // F-045 — customer My Style photo/style analyses per month (customer_resource_limits).
+  STYLE_ANALYSIS
 }
 
 enum QuotaPeriod {
@@ -534,6 +536,9 @@ model Product {
   subtype          String? // finer-grained garment type, e.g. "Lehenga Skirt", "Kurta Set", "Suit with Dupatta"
   product_type     String?
   primary_color    String?
+  // F-045 — normalised family of primary_color ("Mustard" → "yellow"), matches
+  // color_families.name. NULL = unmapped; set by PR-2, never required.
+  color_family     String?
   secondary_colors String[]
   fabric_estimate  String?
   pattern          String?
@@ -617,6 +622,7 @@ model Product {
   @@index([retailer_id, subtype])
   @@index([retailer_id, category_id])
   @@index([retailer_id, deleted_at])
+  @@index([color_family])
   @@map("products")
 }
 
@@ -2730,6 +2736,13 @@ model CustomerAccount {
   budget_max     Int? // paise
   notes          String?
 
+  // F-045 My Style — derived profile only; the photo itself is never stored.
+  // Cleared with UPDATE … = NULL (no hard deletes, RC-049). Values pinned by CHECKs in 133.
+  skin_undertone   String? // warm | cool | neutral
+  skin_depth       String? // fair | medium | deep
+  body_frame       String? // petite | average | tall | curvy
+  style_profile_at DateTime?
+
   // Personalization toggle — when false, behavioral writes (view/favorite/
   // search) are suppressed and the preference vector is frozen/cleared.
   profiling_enabled Boolean @default(true)
@@ -2756,6 +2769,57 @@ model CustomerAccount {
   engagement_summaries CustomerEngagementSummary[]
 
   @@map("customer_accounts")
+}
+
+// ─── F-045 My Style (migration 133) ──────────────────────────────
+// Global admin config — no retailer_id / customer_id, no relations, no hard deletes
+// (RC-049: "remove" = is_active=false). Seeded in the migration.
+
+// Canonical colour families + the spellings that map to them ("Mustard", "Haldi" → yellow).
+// `name` is what products.color_family stores.
+model ColorFamily {
+  id         String   @id @default(cuid())
+  name       String   @unique // lowercase, CHECK-enforced
+  aliases    String[] @default([])
+  is_active  Boolean  @default(true)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@map("color_families")
+}
+
+// Which families suit / wash out a given skin undertone × depth. good/avoid hold
+// color_families.name values (array elements cannot be FKs; validated in apps/api).
+model StylePalette {
+  id             String   @id @default(cuid())
+  undertone      String // warm | cool | neutral
+  depth          String // fair | medium | deep
+  good_families  String[] @default([])
+  avoid_families String[] @default([])
+  version        Int      @default(1)
+  is_active      Boolean  @default(true)
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  @@unique([undertone, depth, version])
+  @@map("style_palettes")
+}
+
+// Admin-curated trend boosts, read by PR-10. Empty at launch.
+model StyleTrend {
+  id             String    @id @default(cuid())
+  label          String
+  kind           String // vocabulary defined by PR-10
+  match_keywords String[]  @default([])
+  boost          Float     @default(0) // 0..1, CHECK-enforced
+  starts_at      DateTime?
+  ends_at        DateTime?
+  is_active      Boolean   @default(true)
+  created_at     DateTime  @default(now())
+  updated_at     DateTime  @updatedAt
+
+  @@index([is_active])
+  @@map("style_trends")
 }
 
 // One row per (shopper, retailer). Tracks scan + per-store consent state.
