@@ -186,7 +186,7 @@ describe('POST /v1/billing/addon-checkout', () => {
 
     expect(mockRetailerFindUnique).toHaveBeenCalledWith({
       where: { id: RETAILER_ID },
-      select: { phone: true, shop_name: true },
+      select: { phone: true, shop_name: true, plan: true },
     });
     expect(mockQuotaAddonPurchaseCreate).toHaveBeenCalledWith(
       expect.objectContaining({

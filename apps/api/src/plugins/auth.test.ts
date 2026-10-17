@@ -119,3 +119,16 @@ describe('catalogDelegateCanAccess', () => {
     expect(catalogDelegateCanAccess(method, path)).toBe(false);
   });
 });
+
+// F-044 R2 T6: top-up packs are a money action - owner only. Nothing under
+// /v1/billing is in any staff / delegate allowlist (default-deny).
+describe('billing add-on routes stay owner-only', () => {
+  it.each([
+    ['POST', '/v1/billing/addon-checkout'],
+    ['GET', '/v1/billing/try-on-packs'],
+  ])('manager, salesperson and catalog delegate are refused %s %s', (method, path) => {
+    expect(staffCanAccess(method, path, 'manager')).toBe(false);
+    expect(staffCanAccess(method, path, 'salesperson')).toBe(false);
+    expect(catalogDelegateCanAccess(method, path)).toBe(false);
+  });
+});

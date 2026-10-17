@@ -4,6 +4,7 @@ import { type QuotaResourceType, getSecret, prisma } from '@kanchuki/db';
 import { ADDON_PRICING } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
+import { hasFeature } from '../../lib/features.js';
 import { notFound, validationError } from '../../plugins/error-handler.js';
 import { hexEquals, razorpay } from './billing-helpers.js';
 export const billingAddonRoutes: FastifyPluginAsync = async (server) => {
@@ -12,6 +13,36 @@ export const billingAddonRoutes: FastifyPluginAsync = async (server) => {
   server.get('/addon-pricing', async () => ({
     data: ADDON_PRICING,
   }));
+  // ─── GET /billing/try-on-packs ───────────────────────────────────
+  // Owner-only (default-deny staff allowlist). Active admin packs this retailer's
+  // plan may buy; [] when none or when the plan lacks VIRTUAL_TRY_ON_V2.
+  server.get('/try-on-packs', async (request) => {
+    const retailer = await prisma.retailer.findUnique({
+      where: { id: request.retailerId },
+      select: { plan: true },
+    });
+    if (!retailer || !(await hasFeature(request.retailerId, 'VIRTUAL_TRY_ON_V2'))) {
+      return { data: [] };
+    }
+    const rows = await prisma.resourcePack.findMany({
+      where: {
+        resource_type: 'TRY_ON_GENERATION',
+        is_active: true,
+        price_paise: { gt: 0 },
+        pack_size: { gt: 0 },
+        OR: [{ plans: { isEmpty: true } }, { plans: { has: retailer.plan } }],
+      },
+      orderBy: [{ sort_order: 'asc' }, { created_at: 'asc' }],
+    });
+    return {
+      data: rows.map((r) => ({
+        id: r.id,
+        label: r.label,
+        pack_size: r.pack_size,
+        price_paise: r.price_paise,
+      })),
+    };
+  });
   // ─── POST /billing/addon-checkout ──────────────────────────────
   // Creates a Razorpay Payment Link + Order for an addon purchase.
   // The payment link's short_url is opened in the user's browser for checkout.
@@ -25,23 +56,54 @@ export const billingAddonRoutes: FastifyPluginAsync = async (server) => {
           'IMAGE_CROP',
           'BG_REMOVAL',
           'API_REQUEST',
+          'TRY_ON_GENERATION',
         ] as const),
-        pack_index: z.number().int().min(0),
+        pack_index: z.number().int().min(0).optional(),
+        pack_id: z.string().min(1).max(64).optional(),
       })
       .parse(request.body);
 
-    const packs = ADDON_PRICING[body.resource_type];
-    const pack = packs?.[body.pack_index];
-    if (!pack) {
-      throw validationError('Invalid resource_type or pack_index');
+    const isTryOn = body.resource_type === 'TRY_ON_GENERATION';
+    // Legacy types: hardcoded ADDON_PRICING by index. Try-on: admin ResourcePack by id.
+    // ponytail: mixed sources; migrate the legacy five to the DB table when needed.
+    let pack: { label: string; pack_size: number; price_paise: number } | undefined;
+    if (isTryOn) {
+      if (!body.pack_id) throw validationError('pack_id is required', 'pack_id');
+    } else {
+      pack =
+        body.pack_index === undefined
+          ? undefined
+          : ADDON_PRICING[body.resource_type as keyof typeof ADDON_PRICING]?.[body.pack_index];
+      if (!pack) throw validationError('Invalid resource_type or pack_index');
     }
 
     // Get retailer info for the payment link customer
     const retailer = await prisma.retailer.findUnique({
       where: { id: request.retailerId },
-      select: { phone: true, shop_name: true },
+      select: { phone: true, shop_name: true, plan: true },
     });
     if (!retailer) throw notFound('Retailer');
+
+    if (isTryOn) {
+      // Every refusal here is a 404 (invisible, like the try-on routes) and
+      // happens before Razorpay is called or a purchase row exists.
+      if (!(await hasFeature(request.retailerId, 'VIRTUAL_TRY_ON_V2'))) throw notFound('Product');
+      const row = await prisma.resourcePack.findFirst({
+        where: {
+          id: body.pack_id,
+          resource_type: 'TRY_ON_GENERATION',
+          is_active: true,
+          OR: [{ plans: { isEmpty: true } }, { plans: { has: retailer.plan } }],
+        },
+      });
+      if (!row) throw notFound('Product');
+      if (row.price_paise <= 0 || row.pack_size <= 0) {
+        request.log.error({ pack_id: row.id }, 'Try-on pack has a non-positive price or size');
+        throw notFound('Product');
+      }
+      pack = row;
+    }
+    if (!pack) throw notFound('Product'); // unreachable; narrows the type
 
     // Create a Razorpay Payment Link — generates a hosted checkout URL
     // that the retailer opens in their browser on any device.
@@ -96,7 +158,11 @@ export const billingAddonRoutes: FastifyPluginAsync = async (server) => {
         action: 'create',
         resource_type: 'QuotaAddonPurchase',
         resource_id: addonPurchase.id,
-        metadata: { resource_type: body.resource_type, quantity: pack.pack_size },
+        metadata: {
+          resource_type: body.resource_type,
+          quantity: pack.pack_size,
+          ...(body.pack_id ? { pack_id: body.pack_id } : {}),
+        },
         ip_address: request.ip,
       },
     });
