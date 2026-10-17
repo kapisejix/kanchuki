@@ -201,6 +201,7 @@ What to change, minimal:
 | E8 | "Try on with customer" multi-product session screen from an enquiry (owner/manager) | M | E3, F-040 launch |
 | E9 | Option C in-app WhatsApp reply (inbound webhook, service window, templates) | L | F-035 |
 | E10 | Docs: PRO-REQUIREMENTS entry (assign F-number), BUILD-LOG, PLAN.md, tasks index | XS | owner approval |
+| E12 | Try-on top-up packs (D6b): add `TRY_ON_GENERATION` to the addon-checkout enum + admin resource-pack list; seed 25/50/100 at ₹8 ex-GST; decide expiry (month-end vs carry-over) | S | F-040 launch |
 
 Launch gates that still apply (from `catvton-runpod-tryon-launch.md`): `VIRTUAL_TRY_ON_V2` is OFF; the RunPod template tag must be re-pointed to the image carrying the `person_image_base64` handler; owner enables per plan from admin; consent screen T4 satisfied.
 
@@ -216,11 +217,13 @@ Launch gates that still apply (from `catvton-runpod-tryon-launch.md`): `VIRTUAL_
 - **D6 Quota math:** one product = one try-on; is 100/month enough for 3–4-item sessions?
 - **D7 Studio Shoot real-person upload:** leave bench-only (proposed; F-040 covers the use case).
 
-## 8. Not decided / not verified
+## 8. Verified 2026-10-17 (read-only code check)
 
-- Whether the retailer app already registers devices for push (not found in this read — verify before E4).
-- Whether an inbound WhatsApp webhook for the retailer's WABA exists beyond F-307 catalog sync (needed for E9).
-- Exact `EnquiryStatus` values beyond `NEW` (read the enum before E3).
+- **(a) Retailer push: NOT present.** No `expo-notifications`, `getExpoPushTokenAsync`, `expo-server-sdk` or `push_token` anywhere under `apps/`. E4 v1 = in-app unread badge + poll; real push is a separate release (needs the package, a device-token table, a send path).
+- **(b) Inbound WhatsApp webhook: catalog only.** `apps/api/src/routes/webhooks/whatsapp-catalog.ts` handles catalog / out-of-stock fields; no handler for customer `messages`. E9 (option C) needs a new inbound-messages webhook plus the 24 h window and templates.
+- **(c) `EnquiryStatus`** (`packages/db/prisma/schema.prisma:52`): `NEW`, `SEEN`, `REPLIED`, `CLOSED`.
+- **(d) Add-on rail exists but excludes try-on:** `POST /billing/addon-checkout` (`billing-addons.ts:22`) and admin `resource-packs` (`admin-resource-packs.ts:15`) do not list `TRY_ON_GENERATION` → task E12.
+- **Still unverified:** live `plan_pricing` values (migration 074 seed is stale); RunPod `workersMin`/`workersMax`; whether purchased add-on packs expire at month-end or carry over; effort to make try-on results "discard on exit" (D5) given F-040 stores results in R2 today; WhatsApp's linked-device limit (doc says 4).
 
 ---
 
@@ -323,13 +326,14 @@ Time: ~46 s per try-on; four products run one after another ≈ **3 minutes** un
 
 | ID | Decision | State | My recommendation |
 |---|---|---|---|
-| D1 | Reply channel (A shared Business number + linked devices / B wa.me button / C in-app Cloud API) | ⏳ owner reviewing | **A now, C later (with F-035).** B only as owner-only fallback. |
-| D2 | Who sees the Enquiries inbox | ⏳ owner reviewing | **Owner + manager see/take/reply; salesperson sees (read-only) and can hand off to a manager.** Try-on stays owner + manager. |
-| D3 | Assignment | ⏳ | First-to-tap "Take" (simple, no on-duty roster needed). |
-| D4 | Remote customers | ⏳ | In-store only for v1. |
-| D5 | Keep generated try-on image | ⏳ | Discard after session by default; add "Save for N days" only with a retention notice. |
-| D6 | Try-on quota per plan | ⏳ | See §11.3 for a starting table using the ₹4 unit. |
-| D7 | Studio Shoot real-person upload | ⏳ | Leave bench-only. |
+| D1 | Reply channel (A shared Business number + linked devices / B wa.me button / C in-app Cloud API) | ✅ **Decided 2026-10-17: A now, C later with F-035.** Staff may see customer numbers inside WhatsApp itself; B (wa.me button) not offered; the API still never returns a full customer number to staff. Caveat: `retailer.phone` (the wa.me target) must be the shared Business number. Under A, `REPLIED` is marked by hand in-app. | — |
+| D2 | Who sees the Enquiries inbox | ✅ **Decided 2026-10-17: Option 1.** Owner, manager and salesperson all see, take, and mark replied/closed. Reassign = owner + manager only. Try-on = owner + manager only (salesperson 403, pinned by E7). Phone stays masked server-side for non-owners. Needs one new salesperson allowlist line in `auth.ts` (stays default-deny). Optional "Needs try-on" flag (salesperson → manager) is not in the first release. | — |
+| D3 | Assignment | ✅ **Decided 2026-10-17: first-to-tap "Take".** Other staff see "Being handled by <name>"; owner + manager can reassign. No round-robin, no on-duty roster. Under D1-A the app cannot prevent two people replying in WhatsApp at once. | — |
+| D4 | Remote customers | ✅ **Decided 2026-10-17: in-store only.** Staff photographs the customer in the shop; no customer-sent photos over WhatsApp. Remote customers still get the enquiry and a WhatsApp reply, just no try-on. Revisit after the first month of real use. | — |
+| D5 | Keep generated try-on image | ✅ **Decided 2026-10-17: discard after the session.** Nothing kept; re-viewing means a new try-on (another quota unit). No retention notice or withdraw UX needed in v1. Open build check before E8: F-040 stores results in R2 today, so "discard" is new behaviour (delete on exit, or never persist) and its effort is unread. A "keep N days" option can come later with a notice. | — |
+| D6 | Try-on quota per plan | ✅ **Decided 2026-10-17: Starter 40 / Growth 100 / Pro 200 try-ons per month** (worst case ₹160 / ₹400 / ₹800 at ₹4, i.e. 3.2 / 4.0 / 5.3 % of the CLAUDE.md prices — live `plan_pricing` values NOT verified, seed in migration 074 is stale). Admin can tune live. **Plus: a retailer who hits the limit can buy more try-ons (top-up pack).** Code finding 2026-10-17: the add-on rail exists (`POST /billing/addon-checkout` Razorpay payment link + `ADDON_PRICING` + admin `resource-packs`) but `TRY_ON_GENERATION` is in NEITHER enum (`billing-addons.ts:22`, `admin-resource-packs.ts:15`), so the top-up needs a new task (E12). Pack sizes/prices not yet decided (open D6b). | — |
+| D6b | Try-on top-up packs | ✅ **Decided 2026-10-17: 25 / 50 / 100 try-ons at ₹8 each ex-GST → ₹200 / ₹400 / ₹800** (2× the ₹4 cost unit; GST +18 % on top). Admin-editable via resource packs. Needs E12 (add `TRY_ON_GENERATION` to the checkout enum + admin pack list). Open: whether purchased packs expire at month-end or carry over — `QuotaAddonPurchase` expiry rule NOT yet read. | — |
+| D7 | Studio Shoot real-person upload | ✅ **Decided 2026-10-17: leave admin-bench only.** F-040 try-on covers "garment on a real person" with consent + quota + deletion sweep; Studio Shoot has none of those. Revisit only if a retailer asks for real-person catalogue shoots. | — |
 | **D8** | **Budget unit for try-on** | ✅ **Decided 2026-10-16: ₹4 per try-on; self-hosted CatVTON kept as the engine** | — |
 
 ### 11.2 Suggested build order (once D1, D2, D6 are answered)
@@ -423,3 +427,27 @@ CONSTRAINTS
 4. **Default try-on to "view only, nothing kept"** — it removes the largest privacy question (D5) and the R2 storage cost, and can be relaxed later.
 5. **Show the staff member the remaining quota and an estimated cost before running** ("4 try-ons, ~₹16") — keeps usage conscious and prevents surprise overage.
 6. **Re-evaluate FASHN only if** CatVTON quality fails the bake-off on common categories; keep the engine behind one interface so it can be swapped without redoing the inbox.
+
+### 11.7 Release plan — ✅ approved by owner 2026-10-17 (supersedes §11.2 ordering)
+
+Principle: ship only what has no GPU dependency first; try-on waits for the F-040 launch gates (flag OFF, RunPod image re-point, accuracy bake-off).
+
+**Release 1 — basket → inbox → take (no try-on, no push)**
+
+| Order | Task | Note |
+|---|---|---|
+| 1 | E7 | test: manager allowed / salesperson 403 on try-on POST |
+| 2 | E6 | split customer try-on off `VIRTUAL_TRY_ON_V2`; must land BEFORE the flag is ever flipped |
+| 3 | E1 | persist all `product_ids`, validate they belong to the retailer, names in WhatsApp text; migration PROPOSED only — columns `product_ids`, `assigned_staff_id`, `assigned_at` |
+| 4 | E2 | customer web "Send my picks to the store" |
+| 5 | E3 | Enquiries inbox: Take, status NEW/SEEN/REPLIED/CLOSED, reassign (owner + manager), one new salesperson allowlist line (default-deny kept) |
+| 6 | E4-lite | unread badge + poll, no push |
+| 7 | E5 | onboarding + card copy: use the shared Business number; check `retailer.phone` is that number |
+
+Deferred columns (add when something reads them): `first_reply_at`, `last_reply_by_staff_id`, `source`, `try_on_done`.
+
+**Release 2 — try-on (after F-040 launch gates + accuracy bake-off):** E11 GPU-seconds logging; E8 "Try on with customer" session screen (owner + manager, discard on exit per D5); E12 top-up packs.
+
+**Release 3:** real push notifications (new infra); E9 in-app WhatsApp replies once F-035 lands.
+
+Not in any release for now: the salesperson "Needs try-on" flag (D2 optional), "keep image N days" (D5), remote try-on (D4).
