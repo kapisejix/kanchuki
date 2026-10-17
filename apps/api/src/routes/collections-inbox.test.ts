@@ -98,9 +98,8 @@ beforeEach(() => {
       ? { assigned_staff_id: row.assigned_staff_id }
       : null,
   );
-  db.staffFindMany.mockImplementation(
-    async ({ where }: { where: { id?: { in: string[] } } }) =>
-      Object.values(STAFF).filter((s) => !where.id || where.id.in.includes(s.id)),
+  db.staffFindMany.mockImplementation(async ({ where }: { where: { id?: { in: string[] } } }) =>
+    Object.values(STAFF).filter((s) => !where.id || where.id.in.includes(s.id)),
   );
   db.staffFindFirst.mockImplementation(
     async ({ where }: { where: { id: string; retailer_id: string } }) =>
@@ -173,11 +172,14 @@ describe('GET /collections/enquiries', () => {
     expect(e3.assigned_to).toBeNull();
   });
 
-  it.each(['manager', 'salesperson', 'support'] as const)('masks the phone for %s', async (actor) => {
-    const body = (await call(actor, 'GET', '/v1/collections/enquiries')).body;
-    expect(body).not.toContain(PHONE);
-    expect(JSON.parse(body).data[0].customer_phone).toBe('98•••••210');
-  });
+  it.each(['manager', 'salesperson', 'support'] as const)(
+    'masks the phone for %s',
+    async (actor) => {
+      const body = (await call(actor, 'GET', '/v1/collections/enquiries')).body;
+      expect(body).not.toContain(PHONE);
+      expect(JSON.parse(body).data[0].customer_phone).toBe('98•••••210');
+    },
+  );
 
   it('owner sees the full number', async () => {
     const res = await call('owner', 'GET', '/v1/collections/enquiries');
@@ -196,37 +198,66 @@ describe('GET /collections/enquiries/unread-count', () => {
   it('counts NEW only for this retailer; payload is just the count', async () => {
     const res = await call('salesperson', 'GET', '/v1/collections/enquiries/unread-count');
     expect(res.statusCode).toBe(200);
-    expect(db.enquiryCount).toHaveBeenCalledWith({ where: { retailer_id: 'ret_1', status: 'NEW' } });
+    expect(db.enquiryCount).toHaveBeenCalledWith({
+      where: { retailer_id: 'ret_1', status: 'NEW' },
+    });
     expect(res.json()).toEqual({ data: { count: 3 } });
     expect(Object.keys(res.json().data)).toEqual(['count']);
   });
 
   it('drops once an enquiry is marked SEEN (taking alone does not)', async () => {
     const rows = [
-      { id: 'enq_1', collection_id: 'c1', retailer_id: 'ret_1', status: 'NEW', assigned_staff_id: null },
-      { id: 'enq_2', collection_id: 'c1', retailer_id: 'ret_1', status: 'NEW', assigned_staff_id: null },
-      { id: 'enq_x', collection_id: 'cx', retailer_id: 'ret_2', status: 'NEW', assigned_staff_id: null },
+      {
+        id: 'enq_1',
+        collection_id: 'c1',
+        retailer_id: 'ret_1',
+        status: 'NEW',
+        assigned_staff_id: null,
+      },
+      {
+        id: 'enq_2',
+        collection_id: 'c1',
+        retailer_id: 'ret_1',
+        status: 'NEW',
+        assigned_staff_id: null,
+      },
+      {
+        id: 'enq_x',
+        collection_id: 'cx',
+        retailer_id: 'ret_2',
+        status: 'NEW',
+        assigned_staff_id: null,
+      },
     ];
-    db.enquiryCount.mockImplementation(async ({ where }: { where: Record<string, unknown> }) =>
-      rows.filter((r) => r.retailer_id === where.retailer_id && r.status === where.status).length,
+    db.enquiryCount.mockImplementation(
+      async ({ where }: { where: Record<string, unknown> }) =>
+        rows.filter((r) => r.retailer_id === where.retailer_id && r.status === where.status).length,
     );
     db.enquiryUpdateMany.mockImplementation(
-      async ({ where, data }: { where: Record<string, unknown>; data: Record<string, unknown> }) => {
+      async ({
+        where,
+        data,
+      }: { where: Record<string, unknown>; data: Record<string, unknown> }) => {
         const hits = rows.filter((r) =>
           Object.entries(where).every(([k, v]) => r[k as keyof typeof r] === v),
         );
-        hits.forEach((r) => Object.assign(r, data));
+        for (const r of hits) Object.assign(r, data);
         return { count: hits.length };
       },
     );
     db.collectionFindFirst.mockResolvedValue({ id: 'c1', retailer_id: 'ret_1' });
     const count = async () =>
-      (await call('salesperson', 'GET', '/v1/collections/enquiries/unread-count')).json().data.count;
+      (await call('salesperson', 'GET', '/v1/collections/enquiries/unread-count')).json().data
+        .count;
 
     expect(await count()).toBe(2);
-    expect((await call('salesperson', 'POST', '/v1/collections/enquiries/enq_1/take')).statusCode).toBe(200);
+    expect(
+      (await call('salesperson', 'POST', '/v1/collections/enquiries/enq_1/take')).statusCode,
+    ).toBe(200);
     expect(await count()).toBe(2);
-    const seen = await call('salesperson', 'PATCH', '/v1/collections/c1/enquiries/enq_1', { status: 'SEEN' });
+    const seen = await call('salesperson', 'PATCH', '/v1/collections/c1/enquiries/enq_1', {
+      status: 'SEEN',
+    });
     expect(seen.statusCode).toBe(200);
     expect(await count()).toBe(1);
   });
