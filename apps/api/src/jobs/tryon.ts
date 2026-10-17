@@ -169,7 +169,7 @@ export async function handleTryOn(data: TryOnJobData): Promise<void> {
       const recorded = await prisma.tryOnJob
         .updateMany({
           where: { id: job_id, status: 'DISCARDED', result_url: null },
-          data: { result_url: resultKey, completed_at: new Date() },
+          data: { result_url: resultKey, completed_at: new Date(), gpu_ms: result.gpuMs },
         })
         .catch((err) => {
           console.error(`[try-on] job ${job_id} could not record its discarded result key:`, err);

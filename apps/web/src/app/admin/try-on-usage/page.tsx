@@ -56,7 +56,7 @@ export default function TryOnUsagePage() {
           <Cpu size={20} className="text-cyan-500" />
         </div>
         <p className="text-sm text-gray-500">
-          GPU time per finished try-on. Failed jobs are counted but add 0 ms.
+          GPU time per finished try-on. Failed jobs are counted but add 0 ms. Try-ons includes pending and discarded jobs; the average is over rows with a recorded GPU time. Days are UTC.
         </p>
       </div>
 
@@ -108,7 +108,7 @@ export default function TryOnUsagePage() {
 
           <Table
             title="Per day"
-            head={['Day', 'Try-ons', 'GPU seconds', 'Est. cost']}
+            head={['Day (UTC)', 'Try-ons', 'GPU seconds', 'Est. cost']}
             rows={data.by_day.map((d) => [
               d.day,
               d.jobs,

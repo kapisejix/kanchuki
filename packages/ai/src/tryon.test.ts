@@ -161,6 +161,20 @@ describe('generateTryOn', () => {
     expect((await generateTryOn(request)).gpuMs).toBeNull();
   });
 
+  it('rounds a fractional gpuMs and ignores NaN/negative/non-finite values', async () => {
+    secretState.keys.set('CATVTON_API_URL', ENDPOINT);
+    const out = { result_url: 'https://r2.example.com/out.jpg' };
+    mockFetchOnce({ executionTime: 40_999.6, output: out });
+    expect((await generateTryOn(request)).gpuMs).toBe(41_000);
+
+    // bad executionTime falls through to latency_ms
+    mockFetchOnce({ executionTime: -5, output: { ...out, latency_ms: 700.4 } });
+    expect((await generateTryOn(request)).gpuMs).toBe(700);
+
+    mockFetchOnce({ executionTime: Number.NaN, output: { ...out, latency_ms: -1 } });
+    expect((await generateTryOn(request)).gpuMs).toBeNull();
+  });
+
   it('tolerates a missing RUNPOD_API_KEY header-less call for a self-hosted URL', async () => {
     secretState.keys.set('CATVTON_API_URL', 'http://localhost:8000');
     const fetchFn = mockFetchOnce({ output: { result_url: 'https://r2.example.com/out.jpg' } });

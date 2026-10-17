@@ -188,12 +188,14 @@ async function postTryOnJob(
   }
 
   const latencyMs = output?.['latency_ms'];
-  const executionTime = raw['executionTime'];
-  const latency = typeof latencyMs === 'number' ? latencyMs : null;
+  // gpu_ms is a Prisma Int?: a fraction would throw after the GPU is paid for,
+  // so round, and ignore NaN/negative/non-finite values.
+  const msOrNull = (v: unknown): number | null =>
+    typeof v === 'number' && Number.isFinite(v) && v >= 0 ? Math.round(v) : null;
   return {
     outputUrl: resultUrl,
-    latencyMs: latency,
-    gpuMs: typeof executionTime === 'number' ? executionTime : latency,
+    latencyMs: typeof latencyMs === 'number' ? latencyMs : null,
+    gpuMs: msOrNull(raw['executionTime']) ?? msOrNull(latencyMs),
   };
 }
 

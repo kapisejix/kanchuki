@@ -171,7 +171,7 @@ describe('handleTryOn', () => {
     const key = 'tryon-results/tryon_1/result.jpg';
     expect(mockJobUpdateMany.mock.calls[1]?.[0]).toEqual({
       where: { id: 'tryon_1', status: 'DISCARDED', result_url: null },
-      data: { result_url: key, completed_at: expect.any(Date) },
+      data: { result_url: key, completed_at: expect.any(Date), gpu_ms: 1200 },
     });
     expect(mockDeleteObject).toHaveBeenCalledWith(key);
     expect(mockJobUpdateMany.mock.calls[2]?.[0]).toEqual({

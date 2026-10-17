@@ -23,7 +23,7 @@ export const adminTryOnUsageRoutes: FastifyPluginAsync = async (server) => {
     const rows = await prisma.tryOnJob.findMany({
       where: { created_at: { gte: since } },
       select: { retailer_id: true, status: true, gpu_ms: true, created_at: true },
-      orderBy: { created_at: 'asc' },
+      orderBy: { created_at: 'desc' }, // newest kept if the cap bites
       take: MAX_ROWS,
     });
 
@@ -53,7 +53,7 @@ export const adminTryOnUsageRoutes: FastifyPluginAsync = async (server) => {
     }
 
     const top = [...byRetailer.entries()]
-      .sort((a, b) => b[1].gpu_ms_sum - a[1].gpu_ms_sum)
+      .sort((a, b) => b[1].gpu_ms_sum - a[1].gpu_ms_sum || a[0].localeCompare(b[0]))
       .slice(0, 20);
     const names = top.length
       ? await prisma.retailer.findMany({

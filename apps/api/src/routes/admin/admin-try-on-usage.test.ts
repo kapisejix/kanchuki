@@ -96,6 +96,26 @@ describe('GET /try-on-usage', () => {
     expect(mockJobFindMany).not.toHaveBeenCalled();
   });
 
+  it('rejects days=366 with 422', async () => {
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/try-on-usage?days=366' });
+    expect(res.statusCode).toBe(422);
+  });
+
+  it('keeps the newest rows when capped (orders created_at desc) and ties break by retailer_id', async () => {
+    mockJobFindMany.mockResolvedValue([
+      job('r2', 'COMPLETED', 10_000, '2026-10-02T05:00:00Z'),
+      job('r1', 'COMPLETED', 10_000, '2026-10-02T06:00:00Z'),
+    ]);
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/try-on-usage' });
+    expect(mockJobFindMany.mock.calls[0]![0].orderBy).toEqual({ created_at: 'desc' });
+    expect(res.json().data.by_retailer.map((r: { retailer_id: string }) => r.retailer_id)).toEqual([
+      'r1',
+      'r2',
+    ]);
+  });
+
   it('rejects a non-admin with 401', async () => {
     adminOk = false;
     const app = await buildApp();
