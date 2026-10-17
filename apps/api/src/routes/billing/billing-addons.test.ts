@@ -46,7 +46,7 @@ vi.mock('./billing-helpers.js', async () => {
   return { ...actual, razorpay: m.razorpay };
 });
 
-vi.mock('../../lib/features.js', () => ({ hasFeature: m.hasFeature }));
+vi.mock('../../lib/features.js', () => ({ hasFeatureForPlan: m.hasFeature }));
 
 import { errorHandler } from '../../plugins/error-handler.js';
 import { billingAddonRoutes } from './billing-addons.js';
@@ -84,6 +84,8 @@ beforeEach(() => {
     plan: 'GROWTH',
   });
   m.hasFeature.mockResolvedValue(true);
+  m.overrideFindUnique.mockResolvedValue(null);
+  m.planLimitFindUnique.mockResolvedValue({ limit_per_period: 50, period: 'MONTH' });
   m.razorpay.mockResolvedValue({ id: 'plink_1', short_url: 'https://rzp.io/x', status: 'created' });
   m.purchaseCreate.mockResolvedValue({ id: 'purchase_1' });
   m.auditCreate.mockResolvedValue({});
@@ -132,6 +134,9 @@ describe('POST /addon-checkout - TRY_ON_GENERATION packs', () => {
     ['inactive / other-plan / missing pack', () => m.packFindFirst.mockResolvedValue(null)],
     ['plan lacks VIRTUAL_TRY_ON_V2', () => m.hasFeature.mockResolvedValue(false)],
     ['price_paise is 0', () => m.packFindFirst.mockResolvedValue({ ...PACK, price_paise: 0 })],
+    ['override is unlimited (-1)', () => m.overrideFindUnique.mockResolvedValue({ limit_per_period: -1, period: 'MONTH' })],
+    ['plan limit is unlimited (-1)', () => m.planLimitFindUnique.mockResolvedValue({ limit_per_period: -1, period: 'MONTH' })],
+    ['no limit row at all', () => m.planLimitFindUnique.mockResolvedValue(null)],
     ['pack_size is 0', () => m.packFindFirst.mockResolvedValue({ ...PACK, pack_size: 0 })],
   ])('%s -> 404, no Razorpay call, no purchase row', async (_n, arrange) => {
     arrange();
@@ -161,6 +166,12 @@ describe('POST /addon-checkout - legacy resource types unchanged', () => {
     expect(m.razorpay).toHaveBeenCalledOnce();
   });
 
+  it('legacy type ignores a stray pack_id in the audit metadata', async () => {
+    const app = await buildApp();
+    await checkout(app, { resource_type: 'AI_TAGGING_CALL', pack_index: 0, pack_id: 'x' });
+    expect(m.auditCreate.mock.calls[0]?.[0].data.metadata).not.toHaveProperty('pack_id');
+  });
+
   it('legacy type without pack_index -> 422', async () => {
     const app = await buildApp();
     const res = await checkout(app, { resource_type: 'AI_TAGGING_CALL' });
@@ -187,6 +198,17 @@ describe('GET /try-on-packs', () => {
       },
       orderBy: [{ sort_order: 'asc' }, { created_at: 'asc' }],
     });
+  });
+
+  it.each([
+    ['override -1', () => m.overrideFindUnique.mockResolvedValue({ limit_per_period: -1, period: 'MONTH' })],
+    ['plan -1', () => m.planLimitFindUnique.mockResolvedValue({ limit_per_period: -1, period: 'MONTH' })],
+    ['no limit row', () => m.planLimitFindUnique.mockResolvedValue(null)],
+  ])('returns [] when a pack would credit nothing (%s)', async (_n, arrange) => {
+    arrange();
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/v1/billing/try-on-packs' });
+    expect(res.json()).toEqual({ data: [] });
   });
 
   it('returns [] when nothing matches', async () => {

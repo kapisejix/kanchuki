@@ -102,6 +102,7 @@ export default function EnquiryTryOnScreen() {
   // T6: top-up packs the admin has switched on; [] hides the button.
   const [packs, setPacks] = useState<{ id: string; label: string; price_paise: number }[]>([])
   const [buying, setBuying] = useState(false)
+  const buyingRef = useRef(false) // sync double-tap guard (RC-015)
   useEffect(() => {
     void loadBuyablePacks().then(setPacks)
   }, [])
@@ -114,7 +115,8 @@ export default function EnquiryTryOnScreen() {
   }, [loadQuota])
 
   const buyMore = async (packId: string) => {
-    if (buying) return
+    if (buyingRef.current) return
+    buyingRef.current = true
     setBuying(true)
     try {
       const { data } = await billingApi.addonCheckout('TRY_ON_GENERATION', undefined, packId)
@@ -122,6 +124,7 @@ export default function EnquiryTryOnScreen() {
     } catch {
       Alert.alert('Could not open payment', 'Please try again in a moment.')
     } finally {
+      buyingRef.current = false
       setBuying(false)
     }
   }
@@ -289,7 +292,7 @@ export default function EnquiryTryOnScreen() {
           <GradientButton
             key={p.id}
             variant="web"
-            label={`Buy more try-ons: ${p.label} - Rs ${(p.price_paise / 100).toFixed(0)}`}
+            label={`Buy more try-ons: ${p.label} - Rs ${p.price_paise % 100 === 0 ? p.price_paise / 100 : (p.price_paise / 100).toFixed(2)}`}
             disabled={buying}
             onPress={() => void buyMore(p.id)}
           />

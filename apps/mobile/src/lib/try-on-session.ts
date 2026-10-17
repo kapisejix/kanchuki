@@ -30,7 +30,6 @@ export function isAppCacheUri(uri: string, cacheDir: string | null | undefined):
   return !!cacheDir && uri.startsWith(cacheDir);
 }
 
-/** First `remaining` products run; the rest are skipped (quota pre-flight). */
 /**
  * Top-up packs the admin has switched on for this plan (F-044 R2 T6). Any
  * failure (managers get 403, offline, flag off) is `[]` so the "Buy more
@@ -46,6 +45,7 @@ export async function loadBuyablePacks(): Promise<
   }
 }
 
+/** First `remaining` products run; the rest are skipped (quota pre-flight). */
 export function planSession<T>(products: T[], remaining: number): { run: T[]; skipped: T[] } {
   const n = Math.max(0, remaining);
   return { run: products.slice(0, n), skipped: products.slice(n) };

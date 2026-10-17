@@ -1,12 +1,18 @@
 // billing-addons.ts — one-time addon packs (payment link + order + verification) (split from apps/api/src/routes/billing.ts — body byte-identical)
 import { createHmac } from 'node:crypto';
-import { type QuotaResourceType, getSecret, prisma } from '@kanchuki/db';
+import { type QuotaResourceType, type SubscriptionPlan, getSecret, prisma } from '@kanchuki/db';
 import { ADDON_PRICING } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
-import { hasFeature } from '../../lib/features.js';
+import { hasFeatureForPlan } from '../../lib/features.js';
 import { notFound, validationError } from '../../plugins/error-handler.js';
-import { hexEquals, razorpay } from './billing-helpers.js';
+import { getEffectiveLimit, hexEquals, razorpay } from './billing-helpers.js';
+// The callback credits only a limited resource (limit !== -1, row exists); a pack
+// bought otherwise would take payment and credit nothing.
+async function canCredit(retailerId: string, plan: SubscriptionPlan): Promise<boolean> {
+  const eff = await getEffectiveLimit(retailerId, 'TRY_ON_GENERATION', plan);
+  return !!eff && eff.limit !== -1;
+}
 export const billingAddonRoutes: FastifyPluginAsync = async (server) => {
   // ─── GET /billing/addon-pricing ──────────────────────────────────
   // Returns available addon packs with their prices. No auth needed for pricing.
@@ -21,7 +27,12 @@ export const billingAddonRoutes: FastifyPluginAsync = async (server) => {
       where: { id: request.retailerId },
       select: { plan: true },
     });
-    if (!retailer || !(await hasFeature(request.retailerId, 'VIRTUAL_TRY_ON_V2'))) {
+    // [] unless the pack would actually credit (limited resource) - never sell nothing.
+    if (
+      !retailer ||
+      !(await hasFeatureForPlan(retailer.plan, 'VIRTUAL_TRY_ON_V2')) ||
+      !(await canCredit(request.retailerId, retailer.plan))
+    ) {
       return { data: [] };
     }
     const rows = await prisma.resourcePack.findMany({
@@ -87,7 +98,8 @@ export const billingAddonRoutes: FastifyPluginAsync = async (server) => {
     if (isTryOn) {
       // Every refusal here is a 404 (invisible, like the try-on routes) and
       // happens before Razorpay is called or a purchase row exists.
-      if (!(await hasFeature(request.retailerId, 'VIRTUAL_TRY_ON_V2'))) throw notFound('Product');
+      if (!(await hasFeatureForPlan(retailer.plan, 'VIRTUAL_TRY_ON_V2'))) throw notFound('Product');
+      if (!(await canCredit(request.retailerId, retailer.plan))) throw notFound('Product');
       const row = await prisma.resourcePack.findFirst({
         where: {
           id: body.pack_id,
@@ -161,7 +173,7 @@ export const billingAddonRoutes: FastifyPluginAsync = async (server) => {
         metadata: {
           resource_type: body.resource_type,
           quantity: pack.pack_size,
-          ...(body.pack_id ? { pack_id: body.pack_id } : {}),
+          ...(isTryOn ? { pack_id: body.pack_id } : {}),
         },
         ip_address: request.ip,
       },
@@ -268,31 +280,7 @@ export const billingAddonRoutes: FastifyPluginAsync = async (server) => {
     }
 
     // Credit the addon to the retailer's usage counter
-    const effective = await (async () => {
-      const override = await prisma.retailerLimitOverride.findUnique({
-        where: {
-          retailer_id_resource_type: {
-            retailer_id: purchase.retailer_id,
-            resource_type: purchase.resource_type,
-          },
-        },
-      });
-      if (override) return { limit: override.limit_per_period, period: override.period };
-
-      const retailer = await prisma.retailer.findUniqueOrThrow({
-        where: { id: purchase.retailer_id },
-        select: { plan: true },
-      });
-      const planLimit = await prisma.planLimit.findUnique({
-        where: {
-          plan_resource_type: {
-            plan: retailer.plan,
-            resource_type: purchase.resource_type,
-          },
-        },
-      });
-      return planLimit ? { limit: planLimit.limit_per_period, period: planLimit.period } : null;
-    })();
+    const effective = await getEffectiveLimit(purchase.retailer_id, purchase.resource_type);
 
     if (effective && effective.limit !== -1) {
       const period = effective.period;
