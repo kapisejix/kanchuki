@@ -9,7 +9,7 @@ import {
 import { ArrowLeft, Heart, LayoutGrid, MapPin, MessageCircle, ShoppingBag } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { KanchukiBrandBar } from '../components/KanchukiBrandBar';
 import { type WishlistItem, loadWishlist } from '../lib/wishlist';
 
@@ -24,37 +24,89 @@ interface Props {
   backHref?: string;
 }
 
+type Pick = { id: string; name: string | null; price_min: number | null };
+type PassportRow = { product: Pick & { retailer: { id: string } } };
+
 export function WishlistView({ collection, slug, store, backHref }: Props) {
   const basePath = store ? `/${store}/${slug}` : `/c/${slug}`;
+  const apiBase = store ? `/api/${store}/${slug}` : `/api/c/${slug}`;
   const browseHref = backHref ?? basePath;
   const [savedMap, setSavedMap] = useState<Map<string, WishlistItem> | null>(null);
+  const [passportPicks, setPassportPicks] = useState<Pick[]>([]);
+  const sending = useRef(false);
 
   useEffect(() => {
     setSavedMap(loadWishlist(slug));
   }, [slug]);
+
+  // Signed-in shoppers' saved items live server-side across stores — keep only
+  // this store's (the API 422s the whole basket on a foreign id).
+  useEffect(() => {
+    let alive = true;
+    fetch('/api/passport/wishlist', { credentials: 'include' })
+      .then((r) => (r.ok ? r.json() : { items: [] }))
+      .then((d: { items?: PassportRow[] }) => {
+        if (!alive) return;
+        setPassportPicks(
+          (d.items ?? [])
+            .filter((i) => i.product.retailer.id === collection.retailer.id)
+            .map(({ product: p }) => ({ id: p.id, name: p.name, price_min: p.price_min })),
+        );
+      })
+      .catch(() => {}); // ponytail: signed out / offline → localStorage picks only
+    return () => {
+      alive = false;
+    };
+  }, [collection.retailer.id]);
 
   const savedProducts = useMemo(
     () => (savedMap === null ? [] : collection.products.filter((p) => savedMap.has(p.id))),
     [savedMap, collection.products],
   );
 
-  const handleEnquireAll = useCallback(() => {
-    const message = buildEnquiryMessage({
-      shopName: collection.retailer.shop_name,
-      collectionTitle: collection.title,
-      // Deep link each saved product to its shared page so the retailer can
-      // open it directly instead of matching by name alone.
-      products: (savedProducts.length > 0 ? savedProducts : collection.products.slice(0, 3)).map(
-        (p) => ({
-          name: p.name,
-          price_min: p.price_min,
-          product_url: `${window.location.origin}${basePath}/product/${p.id}`,
+  // localStorage ∪ passport, local first, deduped by id.
+  const picks = useMemo(() => {
+    const m = new Map<string, Pick>(Array.from(savedMap?.values() ?? [], (p) => [p.id, p]));
+    for (const p of passportPicks) if (!m.has(p.id)) m.set(p.id, p);
+    return Array.from(m.values());
+  }, [savedMap, passportPicks]);
+
+  // F-044 E2: ONE POST so the store's inbox gets every pick; any failure falls
+  // back to the old client-built wa.me link so the customer is never stuck.
+  // '_self' because a '_blank' open after an await is popup-blocked.
+  const handleSendPicks = useCallback(async () => {
+    if (sending.current || picks.length === 0) return; // RC-015: sync guard, not state
+    sending.current = true;
+    const fallback = () =>
+      buildWhatsAppEnquiryLink(
+        collection.retailer.phone,
+        buildEnquiryMessage({
+          shopName: collection.retailer.shop_name,
+          collectionTitle: collection.title,
+          // Deep link each pick so the retailer can open it, not match by name.
+          products: picks.map((p) => ({
+            name: p.name,
+            price_min: p.price_min,
+            product_url: `${window.location.origin}${basePath}/product/${p.id}`,
+          })),
         }),
-      ),
-    });
-    const url = buildWhatsAppEnquiryLink(collection.retailer.phone, message);
-    window.open(url, '_blank');
-  }, [collection, savedProducts, basePath]);
+      );
+    try {
+      const res = await fetch(`${apiBase}/enquire`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ product_ids: picks.map((p) => p.id) }),
+      });
+      const url = res.ok
+        ? ((await res.json()) as { data?: { whatsapp_url?: string } }).data?.whatsapp_url
+        : undefined;
+      window.open(url ?? fallback(), '_self');
+    } catch {
+      window.open(fallback(), '_self');
+    } finally {
+      sending.current = false;
+    }
+  }, [collection, picks, basePath, apiBase]);
 
   if (savedMap === null) return null;
 
@@ -139,6 +191,15 @@ export function WishlistView({ collection, slug, store, backHref }: Props) {
             ))}
           </div>
         )}
+        <button
+          type="button"
+          onClick={handleSendPicks}
+          disabled={picks.length === 0}
+          className="mt-5 w-full flex items-center justify-center gap-2 rounded-full bg-emerald-600 py-3 text-sm font-semibold text-white active:scale-[0.98] transition-all disabled:bg-gray-200 disabled:text-gray-400"
+        >
+          <MessageCircle size={18} />
+          Send my picks to the store{picks.length > 0 && ` (${picks.length})`}
+        </button>
       </main>
 
       {/* ── Fixed Bottom Overlay Nav: Catalog, Saved, Enquire ── */}
@@ -169,8 +230,9 @@ export function WishlistView({ collection, slug, store, backHref }: Props) {
             <span className="text-[10px] font-semibold">Saved</span>
           </Link>
           <button
-            onClick={handleEnquireAll}
-            className="flex flex-col items-center justify-center gap-0.5 py-1 text-emerald-600 hover:text-emerald-700 active:scale-95 transition-all"
+            onClick={handleSendPicks}
+            disabled={picks.length === 0}
+            className="flex flex-col items-center justify-center gap-0.5 py-1 text-emerald-600 hover:text-emerald-700 active:scale-95 transition-all disabled:text-gray-300"
           >
             <MessageCircle size={20} />
             <span className="text-[10px] font-semibold">Enquire</span>
