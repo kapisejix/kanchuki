@@ -19,6 +19,8 @@ const {
   mockJobCreate,
   mockJobUpdate,
   mockJobFindFirst,
+  mockJobCount,
+  mockGetQuotaStatus,
   mockAddTryOnJob,
   mockHasFeature,
   mockCheckQuota,
@@ -40,6 +42,8 @@ const {
   mockJobCreate: vi.fn(),
   mockJobUpdate: vi.fn(),
   mockJobFindFirst: vi.fn(),
+  mockJobCount: vi.fn(),
+  mockGetQuotaStatus: vi.fn(),
   mockAddTryOnJob: vi.fn(),
   mockHasFeature: vi.fn(),
   mockCheckQuota: vi.fn(),
@@ -57,7 +61,12 @@ const {
 vi.mock('@kanchuki/db', () => ({
   prisma: {
     product: { findFirst: mockProductFindFirst },
-    tryOnJob: { create: mockJobCreate, update: mockJobUpdate, findFirst: mockJobFindFirst },
+    tryOnJob: {
+      create: mockJobCreate,
+      update: mockJobUpdate,
+      findFirst: mockJobFindFirst,
+      count: mockJobCount,
+    },
   },
 }));
 
@@ -73,6 +82,7 @@ vi.mock('../lib/features.js', () => ({
 vi.mock('../lib/quota.js', () => ({
   checkQuota: mockCheckQuota,
   checkCustomerQuota: mockCheckCustomerQuota,
+  getQuotaStatus: mockGetQuotaStatus,
 }));
 
 vi.mock('../lib/tryon-photo-store.js', () => ({
@@ -124,12 +134,14 @@ function multipartHeaders() {
   return { 'content-type': `multipart/form-data; boundary=${BOUNDARY}` };
 }
 
-async function buildApp(opts: { retailerId?: string } = {}) {
+async function buildApp(opts: { retailerId?: string; staffRole?: string | null } = {}) {
   const app = Fastify();
   app.setErrorHandler(errorHandler);
   app.decorateRequest('retailerId', '');
+  app.decorateRequest('staffRole', null);
   app.addHook('preHandler', async (request) => {
     request.retailerId = opts.retailerId ?? '';
+    request.staffRole = opts.staffRole ?? null;
   });
   await app.register(productsTryOnRoutes, { prefix: '/v1/products' });
   await app.ready();
@@ -169,6 +181,14 @@ beforeEach(() => {
   mockProductFindFirst.mockResolvedValue(PRODUCT);
   mockCheckQuota.mockResolvedValue(undefined);
   mockCheckCustomerQuota.mockResolvedValue(undefined);
+  mockJobCount.mockResolvedValue(0);
+  mockGetQuotaStatus.mockResolvedValue({
+    used: 1,
+    limit: 3,
+    remaining: 2,
+    period: 'MONTH',
+    unlimited: false,
+  });
   mockPutTryOnPhoto.mockReturnValue(true);
   mockJobCreate.mockResolvedValue({});
   mockJobUpdate.mockResolvedValue({});
@@ -383,7 +403,7 @@ describe('POST /products/:id/try-on', () => {
 
     expect(res.statusCode).toBe(402);
     expect(res.json().error.code).toBe('CUSTOMER_LIMIT_EXCEEDED');
-    expect(mockCheckQuota).toHaveBeenCalledWith(RETAILER_ID, 'TRY_ON_GENERATION');
+    expect(mockCheckQuota).toHaveBeenCalledWith(RETAILER_ID, 'TRY_ON_GENERATION', 1);
     expect(mockCheckCustomerQuota).toHaveBeenCalledWith(CUSTOMER_ID, 'TRY_ON_GENERATION');
     expect(mockAddTryOnJob).not.toHaveBeenCalled();
     await app.close();
@@ -395,12 +415,118 @@ describe('POST /products/:id/try-on', () => {
     const res = await post(app, 'kanchuki_passport=sess_1');
 
     expect(res.statusCode).toBe(202);
-    expect(mockCheckQuota).toHaveBeenCalledWith(RETAILER_ID, 'TRY_ON_GENERATION');
+    expect(mockCheckQuota).toHaveBeenCalledWith(RETAILER_ID, 'TRY_ON_GENERATION', 1);
     expect(mockAddTryOnJob).toHaveBeenCalledWith(
       expect.objectContaining({ retailer_id: RETAILER_ID, customer_account_id: CUSTOMER_ID }),
     );
     await app.close();
   });
+
+  // ─── F-044 R2 T1 ──────────────────────────────────────────────
+
+  it('Bearer + passport cookie: still IN_STORE, no customer, customer quota untouched', async () => {
+    mockGetPassportSession.mockResolvedValue({ customer_account_id: CUSTOMER_ID });
+    const app = await buildApp({ retailerId: RETAILER_ID });
+    const res = await post(app, 'kanchuki_passport=sess_1');
+
+    expect(res.statusCode).toBe(202);
+    expect(mockJobCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ customer_account_id: null, consent_method: 'IN_STORE' }),
+      }),
+    );
+    expect(mockCheckCustomerQuota).not.toHaveBeenCalled();
+    expect(mockRecordTryOnConsent).not.toHaveBeenCalled();
+    expect(mockAddTryOnJob).toHaveBeenCalledWith(
+      expect.objectContaining({ customer_account_id: null }),
+    );
+    await app.close();
+  });
+
+  it('quota check counts recent PENDING jobs (10 min window): limit 3, used 1', async () => {
+    // Mirror checkQuota's real arithmetic: used(1) + amount > limit(3) → 402.
+    mockCheckQuota.mockImplementation(async (_r: string, _t: string, amount = 1) => {
+      if (1 + amount > 3) throw planLimitExceeded('try on generation');
+    });
+    const app = await buildApp({ retailerId: RETAILER_ID });
+
+    mockJobCount.mockResolvedValue(1);
+    const ok = await post(app);
+    expect(ok.statusCode).toBe(202);
+    expect(mockCheckQuota).toHaveBeenLastCalledWith(RETAILER_ID, 'TRY_ON_GENERATION', 2);
+    const where = mockJobCount.mock.calls[0]?.[0].where;
+    expect(where).toMatchObject({ retailer_id: RETAILER_ID, status: 'PENDING' });
+    const age = Date.now() - (where.created_at.gte as Date).getTime();
+    expect(age).toBeGreaterThan(9 * 60_000);
+    expect(age).toBeLessThan(11 * 60_000);
+
+    mockJobCount.mockResolvedValue(2);
+    const over = await post(app);
+    expect(over.statusCode).toBe(402);
+    expect(over.json().error.code).toBe('PLAN_LIMIT_EXCEEDED');
+    await app.close();
+  });
+});
+
+describe('GET /products/try-on/quota', () => {
+  const get = (app: Awaited<ReturnType<typeof buildApp>>) =>
+    app.inject({ method: 'GET', url: '/v1/products/try-on/quota' });
+
+  it('owner: remaining numbers only', async () => {
+    const app = await buildApp({ retailerId: RETAILER_ID });
+    const res = await get(app);
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data).toEqual({ used: 1, limit: 3, remaining: 2, unlimited: false });
+    expect(mockGetQuotaStatus).toHaveBeenCalledWith(RETAILER_ID, 'TRY_ON_GENERATION');
+    await app.close();
+  });
+
+  it('manager is allowed', async () => {
+    const app = await buildApp({ retailerId: RETAILER_ID, staffRole: 'manager' });
+    expect((await get(app)).statusCode).toBe(200);
+    await app.close();
+  });
+
+  it('salesperson is 403 (owner rule: salesperson 403 on try-on routes)', async () => {
+    const app = await buildApp({ retailerId: RETAILER_ID, staffRole: 'salesperson' });
+    const res = await get(app);
+    expect(res.statusCode).toBe(403);
+    expect(mockGetQuotaStatus).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('404 for a cookie-only shopper', async () => {
+    mockGetPassportSession.mockResolvedValue({ customer_account_id: CUSTOMER_ID });
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'GET',
+      url: '/v1/products/try-on/quota',
+      headers: { cookie: 'kanchuki_passport=sess_1' },
+    });
+    expect(res.statusCode).toBe(404);
+    expect(mockGetQuotaStatus).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('404 when VIRTUAL_TRY_ON_V2 is off', async () => {
+    mockHasFeature.mockResolvedValue(false);
+    const app = await buildApp({ retailerId: RETAILER_ID });
+    expect((await get(app)).statusCode).toBe(404);
+    expect(mockGetQuotaStatus).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('route order: /try-on/quota is not swallowed by /:id/try-on/status', async () => {
+    const app = await buildApp({ retailerId: RETAILER_ID });
+    await get(app);
+    // The :id route would have hit the job lookup / 422 for a missing job_id.
+    expect(mockJobFindFirst).not.toHaveBeenCalled();
+    expect(mockGetQuotaStatus).toHaveBeenCalledTimes(1);
+    await app.close();
+  });
+});
+
+describe('POST /products/:id/try-on (request validity)', () => {
 
   it('401 when there is no bearer and no passport session', async () => {
     const app = await buildApp();

@@ -47,11 +47,12 @@ import { z } from 'zod';
 import { addTryOnJob } from '../../jobs/index.js';
 import { CUSTOMER_TRY_ON_ENABLED, hasFeature } from '../../lib/features.js';
 import { isCurrentTryOnConsent } from '../../lib/notice-versions.js';
-import { checkCustomerQuota, checkQuota } from '../../lib/quota.js';
+import { checkCustomerQuota, checkQuota, getQuotaStatus } from '../../lib/quota.js';
 import { hasLiveTryOnConsent, recordTryOnConsent } from '../../lib/tryon-consent.js';
 import { discardTryOnPhoto, putTryOnPhoto } from '../../lib/tryon-photo-store.js';
 import {
   AppError,
+  forbidden,
   notFound,
   serviceUnavailable,
   validationError,
@@ -61,6 +62,9 @@ import { getPassportSession } from '../public/passport/passport-helpers.js';
 /** Phone JPEGs run 2–8 MB; 10 MB is generous without making the parser a
  *  memory amplifier. Over this, Fastify answers 413. */
 const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
+
+/** PENDING jobs younger than this count as already-spent quota. */
+const PENDING_WINDOW_MS = 10 * 60 * 1000;
 
 const PRODUCT_SELECT = {
   id: true,
@@ -105,17 +109,20 @@ async function resolveTryOnContext(
   request: FastifyRequest,
   productId: string,
 ): Promise<TryOnContext> {
-  const session = await getPassportSession(request.headers.cookie ?? '');
-  const customerAccountId = session?.customer_account_id ?? null;
-
+  // Bearer (in-store) path first, and it never reads the cookie: a stray
+  // passport cookie on the staff phone must not turn an in-store job into a
+  // PASSPORT one or charge a customer's quota (F-044 R2 T1).
   if (request.retailerId) {
     const product = await prisma.product.findFirst({
       where: { id: productId, retailer_id: request.retailerId, deleted_at: null },
       select: PRODUCT_SELECT,
     });
     if (!product) throw notFound('Product');
-    return { retailerId: request.retailerId, customerAccountId, product };
+    return { retailerId: request.retailerId, customerAccountId: null, product };
   }
+
+  const session = await getPassportSession(request.headers.cookie ?? '');
+  const customerAccountId = session?.customer_account_id ?? null;
 
   // E6: customer try-on is off — the cookie-only path is invisible. 404 like
   // the plan gate, and before the 401 so an anonymous probe learns nothing.
@@ -150,6 +157,21 @@ export const productsTryOnRoutes: FastifyPluginAsync = async (server) => {
   // route below and is not registered against the whole API.
   await server.register(multipart, {
     limits: { fileSize: MAX_PHOTO_BYTES, files: 1 },
+  });
+
+  // ─── GET /products/try-on/quota ─────────────────────────────────
+  // Static segment, registered before the `/:id/...` routes. Bearer only.
+  server.get('/try-on/quota', async (request) => {
+    if (!request.retailerId) throw notFound('Product');
+    // Owner + manager only. The staff allowlist lets salesperson through any
+    // GET under /v1/products, so this route refuses them itself.
+    if (request.staffRole === 'salesperson') throw forbidden();
+    if (!(await hasFeature(request.retailerId, 'VIRTUAL_TRY_ON_V2'))) throw notFound('Product');
+    const { used, limit, remaining, unlimited } = await getQuotaStatus(
+      request.retailerId,
+      'TRY_ON_GENERATION',
+    );
+    return { data: { used, limit, remaining, unlimited } };
   });
 
   // ─── POST /products/:id/try-on ──────────────────────────────────
@@ -218,7 +240,17 @@ export const productsTryOnRoutes: FastifyPluginAsync = async (server) => {
     //    logged-in shopper, their own. Distinct error codes: the retailer cap
     //    is 402 PLAN_LIMIT_EXCEEDED ("upgrade"), the shopper's is 402
     //    CUSTOMER_LIMIT_EXCEEDED (advice aimed at someone with no plan).
-    await checkQuota(retailerId, 'TRY_ON_GENERATION');
+    //    Usage is only incremented on job SUCCESS, so a multi-product session
+    //    firing several POSTs back-to-back would all pass; count recent PENDING
+    //    jobs as already spent. The 10-minute window bounds orphaned PENDING rows.
+    const pending = await prisma.tryOnJob.count({
+      where: {
+        retailer_id: retailerId,
+        status: 'PENDING',
+        created_at: { gte: new Date(Date.now() - PENDING_WINDOW_MS) },
+      },
+    });
+    await checkQuota(retailerId, 'TRY_ON_GENERATION', 1 + pending);
     if (customerAccountId) {
       await checkCustomerQuota(customerAccountId, 'TRY_ON_GENERATION');
     }
