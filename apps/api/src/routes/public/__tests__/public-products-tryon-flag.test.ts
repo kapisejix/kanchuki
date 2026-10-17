@@ -10,9 +10,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { errorHandler } from '../../../plugins/error-handler.js';
 import { publicProductsRoutes } from '../public-products.js';
 
-const { mockProductFindFirst, mockHasFeatureForPlan } = vi.hoisted(() => ({
+const { mockProductFindFirst, mockHasFeatureForPlan, flags } = vi.hoisted(() => ({
   mockProductFindFirst: vi.fn(),
   mockHasFeatureForPlan: vi.fn(),
+  // E6: customer try-on ships OFF; the plan-flag tests below run with it ON.
+  flags: { customerTryOn: true },
 }));
 
 vi.mock('@kanchuki/db', () => ({
@@ -24,6 +26,9 @@ vi.mock('@kanchuki/db', () => ({
 
 vi.mock('../../../lib/features.js', () => ({
   hasFeatureForPlan: mockHasFeatureForPlan,
+  get CUSTOMER_TRY_ON_ENABLED() {
+    return flags.customerTryOn;
+  },
 }));
 
 // The public cache would otherwise reach Redis in a hermetic test.
@@ -70,6 +75,7 @@ async function buildApp() {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  flags.customerTryOn = true;
 });
 
 describe('GET /v1/public/products/:id — try_on_enabled', () => {
@@ -96,6 +102,20 @@ describe('GET /v1/public/products/:id — try_on_enabled', () => {
 
     expect(res.statusCode).toBe(200);
     expect(res.json().data.try_on_enabled).toBe(false);
+    await app.close();
+  });
+
+  it('E6: false with customer try-on off, even when the plan has V2 — and no plan read', async () => {
+    flags.customerTryOn = false;
+    mockProductFindFirst.mockResolvedValue(productRow('PRO'));
+    mockHasFeatureForPlan.mockResolvedValue(true);
+
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/v1/public/products/prod-1' });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data.try_on_enabled).toBe(false);
+    expect(mockHasFeatureForPlan).not.toHaveBeenCalled();
     await app.close();
   });
 });

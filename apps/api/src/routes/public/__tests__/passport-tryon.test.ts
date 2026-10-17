@@ -18,7 +18,10 @@ const {
   mockSessionDelete,
   mockHasLiveTryOnConsent,
   mockWithdrawTryOnConsent,
+  flags,
 } = vi.hoisted(() => ({
+  // E6: customer try-on ships OFF; the consent tests run with it ON.
+  flags: { customerTryOn: true },
   mockSessionFindUnique: vi.fn(),
   mockSessionUpdate: vi.fn(),
   mockSessionDelete: vi.fn(),
@@ -44,6 +47,14 @@ vi.mock('../../../lib/tryon-consent.js', () => ({
   withdrawTryOnConsent: mockWithdrawTryOnConsent,
 }));
 
+// Spread the real module: other passport sub-routes may import from it.
+vi.mock('../../../lib/features.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../../lib/features.js')>()),
+  get CUSTOMER_TRY_ON_ENABLED() {
+    return flags.customerTryOn;
+  },
+}));
+
 const ACCOUNT = 'ca_123';
 const SESSION_COOKIE = 'kanchuki_passport=session_abc123';
 
@@ -63,6 +74,7 @@ function buildApp() {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  flags.customerTryOn = true;
   mockSessionFindUnique.mockResolvedValue(mockSession);
   mockSessionUpdate.mockResolvedValue({});
   mockSessionDelete.mockResolvedValue({});
@@ -175,5 +187,41 @@ describe('POST /v1/public/passport/try-on/withdraw', () => {
 
     expect(res.statusCode).toBe(401);
     expect(mockWithdrawTryOnConsent).not.toHaveBeenCalled();
+  });
+});
+
+describe('E6 — customer try-on switched off', () => {
+  beforeEach(() => {
+    flags.customerTryOn = false;
+  });
+
+  it('consent GET is 404 and no consent is read', async () => {
+    const app = buildApp();
+    await app.ready();
+
+    const res = await app.inject({
+      method: 'GET',
+      url: '/v1/public/passport/try-on/consent',
+      headers: { cookie: SESSION_COOKIE },
+    });
+
+    expect(res.statusCode).toBe(404);
+    expect(mockHasLiveTryOnConsent).not.toHaveBeenCalled();
+  });
+
+  it('withdraw stays live — grants made before the switch-off remain withdrawable', async () => {
+    mockWithdrawTryOnConsent.mockResolvedValue({ images_deleted: 1, images_failed: 0 });
+    const app = buildApp();
+    await app.ready();
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/public/passport/try-on/withdraw',
+      headers: { cookie: SESSION_COOKIE },
+      payload: {},
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ ok: true, images_deleted: 1, images_failed: 0 });
   });
 });

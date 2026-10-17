@@ -436,3 +436,12 @@ no migration, no schema change, and **no new request on any surface**.
 | Docs | `docs/runbooks/f-043-scheduler-launch-checklist.md` (merge order, Meta App Review, smoke run, device script). |
 | Not built | Meta code-map widening, R2 cleanup for ended plans, scheduled_posts retention purge, cold-start warm-up. Triggers listed in the checklist. |
 | Not verified | No device / live R2 / live Meta run of any scheduler screen or job. Font fix confirmed only after Railway rebuild. |
+
+## 2026-10-17 - F-044 Enquiry Basket Release 1, E6 (customer try-on off)
+
+| Area | Detail |
+|---|---|
+| Spec | `docs/tasks/pending/enquiry-basket-team-inbox-and-instore-tryon.md` §11.7 step 2. Branch `feat/enquiry-r1-t2-customer-tryon-off`, stacked on E7. |
+| Change | `lib/features.ts` `CUSTOMER_TRY_ON_ENABLED = false` (constant, promote to a PlanFeatureKey later). `public-products.ts`: `try_on_enabled` short-circuits to false with no PlanFeature read. `products-tryon.ts`: cookie-only POST and status → 404 (before the 401, so anonymous probes also see 404); Bearer retailer/manager path unchanged. `passport-tryon.ts`: GET consent → 404; POST withdraw stays live (owner Q2). |
+| Tests | `products-tryon.test.ts` +5 (real constant is false; cookie-only POST 404 with no lookup/quota/enqueue; anonymous 404; cookie-only status 404 with no job read; Bearer POST 202 + status unchanged). `public-products-tryon-flag.test.ts` +1 (false, `hasFeatureForPlan` not called). `passport-tryon.test.ts` +2 (consent 404, withdraw 200). Existing customer-path tests kept with the flag mocked ON. 41/41 in the three files; security + staff-access 20/20; API tsc clean; full API suite 1769 passed, 1 timeout flake (`retired-tryon-guard`, 8/8 alone). |
+| Not verified | No deploy. Customer PWA already hides the button when `try_on_enabled` is false. |

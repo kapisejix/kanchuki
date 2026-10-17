@@ -45,7 +45,7 @@ import { createId } from '@paralleldrive/cuid2';
 import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { addTryOnJob } from '../../jobs/index.js';
-import { hasFeature } from '../../lib/features.js';
+import { CUSTOMER_TRY_ON_ENABLED, hasFeature } from '../../lib/features.js';
 import { isCurrentTryOnConsent } from '../../lib/notice-versions.js';
 import { checkCustomerQuota, checkQuota } from '../../lib/quota.js';
 import { hasLiveTryOnConsent, recordTryOnConsent } from '../../lib/tryon-consent.js';
@@ -117,6 +117,9 @@ async function resolveTryOnContext(
     return { retailerId: request.retailerId, customerAccountId, product };
   }
 
+  // E6: customer try-on is off — the cookie-only path is invisible. 404 like
+  // the plan gate, and before the 401 so an anonymous probe learns nothing.
+  if (!CUSTOMER_TRY_ON_ENABLED) throw notFound('Product');
   if (!customerAccountId) throw unauthorized();
 
   // Customer path: the product must be publicly visible, and its retailer is
@@ -299,6 +302,9 @@ export const productsTryOnRoutes: FastifyPluginAsync = async (server) => {
     const { id } = request.params as { id: string };
     const q = z.object({ job_id: z.string().min(1) }).safeParse(request.query);
     if (!q.success) throw validationError('job_id is required', 'job_id');
+
+    // E6: same invisibility as the POST for the customer poll.
+    if (!request.retailerId && !CUSTOMER_TRY_ON_ENABLED) throw notFound('Product');
 
     const session = await getPassportSession(request.headers.cookie ?? '');
     const customerAccountId = session?.customer_account_id ?? null;

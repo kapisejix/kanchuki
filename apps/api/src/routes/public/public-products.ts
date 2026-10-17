@@ -2,7 +2,7 @@
 import { prisma, withRetry } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
-import { hasFeatureForPlan } from '../../lib/features.js';
+import { CUSTOMER_TRY_ON_ENABLED, hasFeatureForPlan } from '../../lib/features.js';
 import { isNewArrival, isOnSale } from '../../lib/product-flags.js';
 import { withPublicCache } from '../../lib/public-cache.js';
 import { notFound, validationError } from '../../plugins/error-handler.js';
@@ -221,7 +221,10 @@ export const publicProductsRoutes: FastifyPluginAsync = async (server) => {
             });
             if (!p) throw notFound('Product');
 
-            const tryOnEnabled = await hasFeatureForPlan(p.retailer.plan, 'VIRTUAL_TRY_ON_V2');
+            // E6: short-circuits — no PlanFeature read while customer try-on is off.
+            const tryOnEnabled =
+              CUSTOMER_TRY_ON_ENABLED &&
+              (await hasFeatureForPlan(p.retailer.plan, 'VIRTUAL_TRY_ON_V2'));
 
             const availableVariants = p.variants.filter((v) => v.status === 'AVAILABLE');
             // Raw retailer uploads are normally hidden from the customer catalog

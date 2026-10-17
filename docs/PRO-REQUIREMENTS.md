@@ -4359,3 +4359,19 @@ text rendered blank on `node:22-slim`), status card keeps platforms whose accoun
 manager/styling route pins; launch checklist `docs/runbooks/f-043-scheduler-launch-checklist.md`. Not built: Meta
 code-map widening, ended-plan R2 cleanup, scheduled-row retention purge (triggers in the checklist). Not verified on
 device / live Meta / live R2. Built-vs-spec deviations: `docs/tasks/pending/post-scheduler.md` §10a–§10e.
+
+## 41. F-044 Enquiry Basket → Team Inbox (Release 1) — 🟨 APPROVED 2026-10-17, IN BUILD
+
+**Spec:** `docs/tasks/pending/enquiry-basket-team-inbox-and-instore-tryon.md` (§3, §8, decisions §11.1, release plan §11.7).
+
+Customer sends all their picks to the store in one enquiry; the store team sees them in an Enquiries inbox, one person takes each one (owner, manager, salesperson), owner + manager can reassign. Phone masked server-side for non-owners. No try-on, no push in Release 1.
+
+| Task | Status |
+|---|---|
+| E7 — pin try-on POST to owner + manager (`staff-access.test.ts`) | ✅ Built 2026-10-17 |
+| E6 — customer try-on off (`CUSTOMER_TRY_ON_ENABLED = false`, customer routes 404, `try_on_enabled` false with no plan read; in-store try-on unchanged; withdraw stays live) | ✅ Built 2026-10-17 |
+| E1 — persist all `product_ids` + assignment columns (migration 130 proposed), RC-066 phone-mask fix | 🔴 Next |
+| E2 — customer web "Send my picks to the store" | 🔴 Planned |
+| E3 — Enquiries inbox + Take / reassign | 🔴 Planned |
+| E4-lite — unread badge (poll) | 🔴 Planned |
+| E5 — route to `whatsapp_number ?? phone` + shared-number copy | 🔴 Planned |

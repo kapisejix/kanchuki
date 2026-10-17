@@ -31,7 +31,11 @@ const {
   mockGetDownloadPresignedUrl,
   mockHasLiveTryOnConsent,
   mockRecordTryOnConsent,
+  flags,
 } = vi.hoisted(() => ({
+  // E6: the customer path is shipped OFF. The existing customer-path tests run
+  // with it ON (reset in beforeEach); the E6 block below turns it off.
+  flags: { customerTryOn: true },
   mockProductFindFirst: vi.fn(),
   mockJobCreate: vi.fn(),
   mockJobUpdate: vi.fn(),
@@ -59,7 +63,12 @@ vi.mock('@kanchuki/db', () => ({
 
 vi.mock('../jobs/index.js', () => ({ addTryOnJob: mockAddTryOnJob }));
 
-vi.mock('../lib/features.js', () => ({ hasFeature: mockHasFeature }));
+vi.mock('../lib/features.js', () => ({
+  hasFeature: mockHasFeature,
+  get CUSTOMER_TRY_ON_ENABLED() {
+    return flags.customerTryOn;
+  },
+}));
 
 vi.mock('../lib/quota.js', () => ({
   checkQuota: mockCheckQuota,
@@ -152,6 +161,7 @@ function post(
 
 beforeEach(() => {
   vi.clearAllMocks();
+  flags.customerTryOn = true;
   mockGetPassportSession.mockResolvedValue(null);
   mockHasFeature.mockResolvedValue(true);
   mockIsCatVtonConfigured.mockResolvedValue(true);
@@ -564,6 +574,70 @@ describe('GET /products/:id/try-on/status', () => {
     });
 
     expect(res.statusCode).toBe(404);
+    await app.close();
+  });
+});
+
+describe('E6 — customer try-on switched off (CUSTOMER_TRY_ON_ENABLED = false)', () => {
+  beforeEach(() => {
+    flags.customerTryOn = false;
+  });
+
+  it('ships OFF — the real constant, not the mock', async () => {
+    const actual = await vi.importActual<typeof import('../lib/features.js')>('../lib/features.js');
+    expect(actual.CUSTOMER_TRY_ON_ENABLED).toBe(false);
+  });
+
+  it('cookie-only POST is 404 and nothing is looked up, spent or enqueued', async () => {
+    mockGetPassportSession.mockResolvedValue({ customer_account_id: CUSTOMER_ID });
+    const app = await buildApp();
+    const res = await post(app, 'kanchuki_passport=sess_1');
+
+    expect(res.statusCode).toBe(404);
+    expect(mockProductFindFirst).not.toHaveBeenCalled();
+    expect(mockCheckQuota).not.toHaveBeenCalled();
+    expect(mockAddTryOnJob).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('anonymous POST is 404 too — the route stays invisible', async () => {
+    const app = await buildApp();
+    const res = await post(app);
+
+    expect(res.statusCode).toBe(404);
+    await app.close();
+  });
+
+  it('cookie-only status poll is 404 and no job is read', async () => {
+    mockGetPassportSession.mockResolvedValue({ customer_account_id: CUSTOMER_ID });
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'GET',
+      url: '/v1/products/p1/try-on/status?job_id=tryon_1',
+      headers: { cookie: 'kanchuki_passport=sess_1' },
+    });
+
+    expect(res.statusCode).toBe(404);
+    expect(mockJobFindFirst).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('in-store (Bearer retailer/manager) POST and status are unchanged', async () => {
+    const app = await buildApp({ retailerId: RETAILER_ID });
+    const res = await post(app);
+    expect(res.statusCode).toBe(202);
+
+    mockJobFindFirst.mockResolvedValue({
+      status: 'PENDING',
+      result_url: null,
+      failure_reason: null,
+    });
+    const status = await app.inject({
+      method: 'GET',
+      url: '/v1/products/p1/try-on/status?job_id=tryon_1',
+    });
+    expect(status.statusCode).toBe(200);
+    expect(status.json().data.status).toBe('processing');
     await app.close();
   });
 });
