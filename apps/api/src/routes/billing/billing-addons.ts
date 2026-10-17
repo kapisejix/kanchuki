@@ -282,51 +282,61 @@ export const billingAddonRoutes: FastifyPluginAsync = async (server) => {
     // Credit the addon to the retailer's usage counter
     const effective = await getEffectiveLimit(purchase.retailer_id, purchase.resource_type);
 
-    if (effective && effective.limit !== -1) {
-      const period = effective.period;
-      const now = new Date();
-      const start =
-        period === 'DAY'
-          ? new Date(now.getFullYear(), now.getMonth(), now.getDate())
-          : period === 'MONTH'
-            ? new Date(now.getFullYear(), now.getMonth(), 1)
-            : new Date(0);
-
-      await prisma.$transaction([
-        prisma.usageCounter.upsert({
-          where: {
-            retailer_id_resource_type_period_start: {
+    // Claim + credit in ONE transaction: the conditional PENDING -> COMPLETED flip
+    // is the compare-and-set, so concurrent/replayed callbacks credit once. If the
+    // credit throws, the claim rolls back with it and the purchase stays PENDING
+    // (a later callback replay can still credit it).
+    const period = effective?.period;
+    const now = new Date();
+    const start =
+      period === 'DAY'
+        ? new Date(now.getFullYear(), now.getMonth(), now.getDate())
+        : period === 'MONTH'
+          ? new Date(now.getFullYear(), now.getMonth(), 1)
+          : new Date(0);
+    const shouldCredit = !!effective && effective.limit !== -1;
+    let claimed: boolean;
+    try {
+      claimed = await prisma.$transaction(async (tx) => {
+        const res = await tx.quotaAddonPurchase.updateMany({
+          where: { id: purchase.id, status: 'PENDING' },
+          data: { status: 'COMPLETED', razorpay_payment_id, completed_at: new Date() },
+        });
+        if (res.count !== 1) return false;
+        if (shouldCredit) {
+          await tx.usageCounter.upsert({
+            where: {
+              retailer_id_resource_type_period_start: {
+                retailer_id: purchase.retailer_id,
+                resource_type: purchase.resource_type,
+                period_start: start,
+              },
+            },
+            create: {
               retailer_id: purchase.retailer_id,
               resource_type: purchase.resource_type,
               period_start: start,
+              count: -purchase.quantity,
             },
-          },
-          create: {
-            retailer_id: purchase.retailer_id,
-            resource_type: purchase.resource_type,
-            period_start: start,
-            count: -purchase.quantity,
-          },
-          update: { count: { decrement: purchase.quantity } },
-        }),
-        prisma.quotaAddonPurchase.update({
-          where: { id: purchase.id },
-          data: {
-            status: 'COMPLETED',
-            razorpay_payment_id,
-            completed_at: new Date(),
-          },
-        }),
-      ]);
-    } else {
-      await prisma.quotaAddonPurchase.update({
-        where: { id: purchase.id },
-        data: {
-          status: 'COMPLETED',
-          razorpay_payment_id,
-          completed_at: new Date(),
-        },
+            update: { count: { decrement: purchase.quantity } },
+          });
+        }
+        return true;
       });
+    } catch (err) {
+      request.log.error(
+        { err, purchase_id: purchase.id, razorpay_payment_id },
+        'PAID addon purchase NOT credited - left PENDING, needs replay or manual credit',
+      );
+      return reply.redirect(
+        `${process.env.WEB_URL ?? 'http://localhost:3000'}/billing/addon-success?status=error`,
+      );
+    }
+    if (!claimed) {
+      request.log.info({ purchase_id: purchase.id }, 'Addon callback already processed');
+      return reply.redirect(
+        `${process.env.WEB_URL ?? 'http://localhost:3000'}/billing/addon-success?status=success`,
+      );
     }
 
     request.log.info(

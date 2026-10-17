@@ -13,6 +13,7 @@ const m = vi.hoisted(() => ({
   purchaseCreate: vi.fn(),
   purchaseFindFirst: vi.fn(),
   purchaseUpdate: vi.fn(),
+  purchaseUpdateMany: vi.fn(),
   overrideFindUnique: vi.fn(),
   planLimitFindUnique: vi.fn(),
   usageUpsert: vi.fn(),
@@ -20,6 +21,11 @@ const m = vi.hoisted(() => ({
   razorpay: vi.fn(),
   hasFeature: vi.fn(),
 }));
+
+const txClient = () => ({
+  quotaAddonPurchase: { updateMany: m.purchaseUpdateMany },
+  usageCounter: { upsert: m.usageUpsert },
+});
 
 vi.mock('@kanchuki/db', () => ({
   getSecret: async () => 'rzp_test_key_secret',
@@ -30,12 +36,13 @@ vi.mock('@kanchuki/db', () => ({
       create: m.purchaseCreate,
       findFirst: m.purchaseFindFirst,
       update: m.purchaseUpdate,
+      updateMany: m.purchaseUpdateMany,
     },
     retailerLimitOverride: { findUnique: m.overrideFindUnique },
     planLimit: { findUnique: m.planLimitFindUnique },
     usageCounter: { upsert: m.usageUpsert },
     auditLog: { create: m.auditCreate },
-    $transaction: vi.fn((ops: unknown[]) => Promise.all(ops)),
+    $transaction: (ops: unknown) => (typeof ops === 'function' ? ops(txClient()) : Promise.all(ops as unknown[])),
   },
 }));
 
@@ -243,6 +250,7 @@ describe('GET /addon-callback - try-on credit (regression pin)', () => {
     m.planLimitFindUnique.mockResolvedValue({ limit_per_period: 50, period: 'MONTH' });
     m.usageUpsert.mockResolvedValue({});
     m.purchaseUpdate.mockResolvedValue({});
+    m.purchaseUpdateMany.mockResolvedValue({ count: 1 });
     m.razorpay.mockResolvedValue({ amount: 23600, status: 'captured' });
 
     const app = await buildApp();
@@ -258,5 +266,52 @@ describe('GET /addon-callback - try-on credit (regression pin)', () => {
     expect(call.where.retailer_id_resource_type_period_start.period_start).toEqual(monthStart);
     expect(call.update).toEqual({ count: { decrement: 25 } });
     expect(call.create.count).toBe(-25);
+  });
+});
+
+describe('GET /addon-callback - credits exactly once', () => {
+  const link = 'plink_1';
+  const pay = 'pay_1';
+  const sig = createHmac('sha256', 'rzp_test_key_secret').update(`${link}|${pay}`).digest('hex');
+  const url = `/v1/billing/addon-callback?razorpay_payment_id=${pay}&razorpay_payment_link_id=${link}&razorpay_signature=${sig}`;
+  const purchase = {
+    id: 'purchase_1',
+    retailer_id: RETAILER_ID,
+    resource_type: 'TRY_ON_GENERATION',
+    quantity: 25,
+    amount_inr: 23600,
+  };
+
+  beforeEach(() => {
+    m.purchaseFindFirst.mockResolvedValue(purchase);
+    m.razorpay.mockResolvedValue({ amount: 23600, status: 'captured' });
+  });
+
+  it('two concurrent callbacks for one link credit once (claim count 1 then 0)', async () => {
+    m.purchaseUpdateMany.mockResolvedValueOnce({ count: 1 }).mockResolvedValueOnce({ count: 0 });
+    const app = await buildApp();
+    const [a, b] = await Promise.all([
+      app.inject({ method: 'GET', url }),
+      app.inject({ method: 'GET', url }),
+    ]);
+    expect(a.statusCode).toBe(302);
+    expect(b.statusCode).toBe(302);
+    expect(m.usageUpsert).toHaveBeenCalledOnce();
+    expect(m.purchaseUpdateMany.mock.calls[0]?.[0].where).toEqual({
+      id: 'purchase_1',
+      status: 'PENDING',
+    });
+  });
+
+  it('a failed credit rolls the claim back (stays PENDING) and is logged, not success', async () => {
+    m.purchaseUpdateMany.mockResolvedValue({ count: 1 });
+    m.usageUpsert.mockRejectedValue(new Error('db down'));
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url });
+    expect(res.statusCode).toBe(302);
+    expect(res.headers.location).toContain('status=error');
+    // the claim lives in the same transaction as the credit, so nothing is
+    // marked COMPLETED outside it
+    expect(m.purchaseUpdate).not.toHaveBeenCalled();
   });
 });
