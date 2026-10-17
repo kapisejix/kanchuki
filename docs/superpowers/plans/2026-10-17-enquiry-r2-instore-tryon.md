@@ -65,6 +65,7 @@ Failure modes the spec implies but no spec task tests; each is pinned by a named
 | `apps/mobile/app/enquiry-try-on.tsx` (new) | capture → consent → progress → gallery → exit cleanup | T4 |
 | `apps/mobile/app/enquiries.tsx`, `apps/mobile/src/lib/staff-can.ts` | button + `enquiries.tryon` key (manager) | T4 |
 | `apps/api/src/routes/billing/billing-addons.ts`, `admin-resource-packs.ts`, `apps/mobile/src/lib/api/billing.ts` | try-on top-up packs behind `ResourcePack.is_active` | T6 |
+| `packages/db/prisma/schema.prisma`, `packages/ai/src/tryon.ts`, `apps/api/src/jobs/tryon.ts`, `admin-try-on-usage.ts`, `apps/web/src/app/admin/try-on-usage/page.tsx` | E11 GPU-ms logging + admin report (migration PROPOSED) | T7 |
 | docs (`PRO-REQUIREMENTS §41`, `BUILD-LOG`, spec §11.7, `SECURITY.md` try-on row *proposed*) | status sync | T5 |
 
 ---
@@ -155,7 +156,7 @@ Failure modes the spec implies but no spec task tests; each is pinned by a named
 
 Screen behaviour (one step per row, in order):
 1. **Pre-flight:** show "N try-ons · M left this month". If `remaining < N`, let staff pick which products to run (checkboxes, cap at `remaining`); if `remaining = 0` show the limit message, no camera.
-2. **Capture:** `CameraView` plus a gallery-import button (owner decision 7). Full-length framing hint. Cleanup deletes only URIs under the app cache directory (guard: `uri.startsWith(FileSystem.cacheDirectory)`), never an original gallery asset.
+2. **Capture:** `CameraView` plus a gallery-import button (owner: gallery import yes). Full-length framing hint. Cleanup deletes only URIs under the app cache directory (guard: `uri.startsWith(FileSystem.cacheDirectory)`), never an original gallery asset.
 3. **Consent:** `TryOnConsent` — shown **after** capture, customer reads/accepts on the staff phone; Decline → delete photo, back to capture, zero API calls.
 4. **Progress:** per-product row (queued/running/ready/failed + reason). Keep-awake while running.
 5. **Gallery:** horizontal paged `FlatList`, `expo-image` with `cachePolicy="none"`; failed items show the reason; no Share button; quota line refreshed. Retry on a failed item = a new quota unit (say so).
@@ -173,7 +174,7 @@ Screen behaviour (one step per row, in order):
 
 ### Task T5: Docs + owner-side checklist
 
-**Size:** XS. **Depends on:** T1–T4 and T6 landing.
+**Size:** XS. **Depends on:** T1–T4, T6, T7 landing.
 
 - [ ] Update spec §11.7 Release 2 progress, `PRO-REQUIREMENTS.md` §41 status table, `docs/BUILD-LOG.md`, CLAUDE.md index row 101 (needs owner approval — CLAUDE.md edits are gated).
 - [ ] **Propose** (do not edit without approval) a `SECURITY.md` try-on row update: in-store results discarded on exit + swept after `IN_STORE_RESULT_TTL_HOURS`. SECURITY.md §12–18 is governance — human review required.
@@ -210,6 +211,34 @@ Screen behaviour (one step per row, in order):
 
 ---
 
+### Task T7: E11 — GPU-usage logging + admin report
+
+**Size:** M. **Depends on:** nothing technical (independent; ship with or before the flag flip so real data starts accruing). Owner 2026-10-17: wanted, so an admin can track GPU usage.
+
+**What is recorded:** per finished try-on job, the GPU time. Source = RunPod's billed `executionTime` (ms) in the `runsync` response when present, else the worker's own `output.latency_ms` (already surfaced as `TryOnResult.latencyMs`, currently dropped by `handleTryOn`). Failed jobs have no measured time: they are **counted** (so the admin sees failures that burned GPU unmetered) but add 0 ms.
+
+**Migration (PROPOSED ONLY — owner applies; check `docs/database/DATABASE.md` first):** `ALTER TABLE try_on_jobs ADD COLUMN gpu_ms INTEGER NULL;` Rollback: `ALTER TABLE try_on_jobs DROP COLUMN gpu_ms;`. Number = next free after 130 (verify). Table already has RLS; additive nullable column, no backfill, no new grants. API deploy must wait for the migration (write would fail otherwise) — same precondition pattern as migration 130.
+
+**Files:**
+- Modify: `packages/db/prisma/schema.prisma` (`TryOnJob.gpu_ms Int?`), `packages/ai/src/tryon.ts` (`TryOnResult.gpuMs: number | null`, prefer top-level `executionTime`), `apps/api/src/jobs/tryon.ts` (write `gpu_ms` in the existing completion `updateMany`)
+- Create: `apps/api/src/routes/admin/admin-try-on-usage.ts`, `apps/web/src/app/admin/try-on-usage/page.tsx`
+- Modify: admin route registration + sidebar entry (follow how `ai-usage` is wired); classify the new admin route per RC-034 (the access-boundary test fails if it is unclassified — super-admin only)
+- Test: `packages/ai/src/tryon.test.ts`, `apps/api/src/jobs/tryon.test.ts`, `apps/api/src/routes/admin/admin-try-on-usage.test.ts`
+
+**Interfaces:**
+- Produces: `GET /v1/admin/try-on-usage?days=30` (admin auth, `days` 1–365) → `{ data: { totals: { jobs: number; completed: number; failed: number; gpu_ms_sum: number; gpu_ms_avg: number | null }; by_day: { day: string /* YYYY-MM-DD */; jobs: number; gpu_ms_sum: number }[]; by_retailer: { retailer_id: string; shop_name: string; jobs: number; gpu_ms_sum: number }[] /* top 20 by gpu_ms_sum */ } }`.
+- UI: summary tiles (jobs, failed, GPU hours, avg seconds/try-on), per-day table, top-retailers table, and an **estimated ₹** column = GPU seconds × a rate field in the page (default ₹0.066/s = ₹3 ÷ 45.9 s from spec §10.2; labelled "estimate — set your RunPod rate"). No rate is stored server-side (ponytail: add a setting if the rate needs to be shared).
+
+- [ ] **Step 1: Failing tests:** `tryon.test.ts` — `generateTryOn` returns `gpuMs` from top-level `executionTime`, falls back to `output.latency_ms`, `null` when neither; `jobs/tryon.test.ts` — completion `updateMany` data contains `gpu_ms`; a failed job writes no `gpu_ms`; admin route — aggregates two retailers across two days correctly, counts a FAILED job in `failed` with 0 ms, `avg` is `null` when nothing completed, `days=0` → 422, non-admin → 401.
+- [ ] **Step 2: Run** `pnpm --filter @kanchuki/ai exec vitest run src/tryon.test.ts` and `pnpm --filter @kanchuki/api exec vitest run src/jobs/tryon.test.ts src/routes/admin/admin-try-on-usage.test.ts` — FAIL.
+- [ ] **Step 3: Implement** schema field + `pnpm --filter @kanchuki/db exec prisma generate` (no DB touched), the `gpuMs` extraction, the job write, the route (aggregate in JS from a bounded `findMany` over the window — volume is quota-capped), and the page.
+- [ ] **Step 4: Run** the tests + API typecheck + web typecheck — PASS.
+- [ ] **Step 5: Commit** `feat(admin): try-on GPU usage logging + report (F-044 R2 T7)`.
+
+**Not verified:** the exact field names in a live RunPod `runsync` response (`executionTime` is what the 2026-07-11 measurement note cites — confirm against one real response); whether cold-start/initialisation time is billed and therefore missing from `executionTime`; the page in a browser; the real RunPod ₹ rate.
+
+---
+
 ## Owner answers (2026-10-17) and what is still open
 
 **Answered:**
@@ -224,11 +253,12 @@ Screen behaviour (one step per row, in order):
 - **GST on packs: option (a).** Admin enters the GST-inclusive price when creating the pack in Admin → Resource Packs: 25 = ₹236 (23600 paise), 50 = ₹472 (47200), 100 = ₹944 (94400) at ₹8 ex-GST + 18 %. Checkout charges that amount unchanged. **Still true and not fixed by (a):** the callback never fills `gst_amount` / `gst_invoice_number`, so no GST invoice is generated for a pack purchase. Packs stay switched off until an invoice path exists or the owner accepts that gap.
 - **Quota:** keep the migration-119 seed **20 / 50 / 100** — no admin change needed (removes the "set 40/100/200" step). Consequence: a 4-item session uses 20 % of a Starter month (≈5 sessions); the pre-flight screen (T4) and top-up packs (T6) are the mitigation.
 
-**Still open:**
-1. **E11 GPU-seconds cost logging** — explained to the owner; no answer yet. Default: **out of this release** (nothing in T1–T6 depends on it).
+**Also answered:** E11 **wanted** (owner: so an admin can track GPU usage) → T7. Migration for `gpu_ms` is PROPOSED only.
+
+**Still open:** none blocking. Owner must apply the T7 migration before the T7 API deploys, and must still decide when to enable packs (invoice gap) and the F-040 flag.
 
 ## Self-review
 
-- Spec coverage: E8 items 1–5 → T3/T4 (photo, in-store consent, N jobs + polling, staff-only gallery, discard-on-exit); quota display → T1+T4; E7/E6 already built; E12 → T6; E11 → open decision 3; D4/sharing → Global Constraints.
+- Spec coverage: E8 items 1–5 → T3/T4 (photo, in-store consent, N jobs + polling, staff-only gallery, discard-on-exit); quota display → T1+T4; E7/E6 already built; E12 → T6; E11 → T7; D4/sharing → Global Constraints.
 - Type consistency: `SessionItem`, `runTryOnSession`, `cleanupSession`, `planSession`, `getTryOnQuota`, `discardTryOnJobs`, route paths `/try-on/quota` + `/try-on/discard` used identically in T1–T4.
 - Proportion: plan is ~⅓ of the spec's length; bodies are signatures + assertions only.
