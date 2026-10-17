@@ -4390,3 +4390,18 @@ Owner / manager photographs the customer once from an enquiry card and gets a sw
 | T6 — try-on top-up packs (admin `ResourcePack`, Razorpay web checkout, inactive until launch) | ✅ Built 2026-10-17 — no real Razorpay round trip |
 | T7 (E11) — GPU-seconds logging + super-admin usage report | ✅ Built 2026-10-17 — migration 131 **applied in prod 2026-10-17 (owner)** |
 | T5 — docs + owner checklist | ✅ 2026-10-17 |
+
+---
+
+## 42. F-045 My Style — customer photo → cross-store suggestions — 🔴 SPEC WRITTEN 2026-10-17, NOT STARTED
+
+**Spec:** `docs/tasks/pending/my-style.md` (decisions D1–D6 §0, PR map §6, test plan §7). Supersedes F-039 MID; independent of F-040 customer try-on (which is OFF, F-044 E6).
+
+Signed-in customer opens `/my-style` (customer web only), gives a selfie / a garment screenshot / a short form (kids: form or AI Stylist text only, never a photo), and gets in-stock articles ranked **best-match first** across stores (sort: Best match · Nearest · Price), then enquires per store. **Enquire only — no online purchase for the next 3–5 months (owner decision D6); online purchase is a later phase and nothing for it is built.** Photos are never stored. Kanchuki pays AI cost; per-customer monthly limit is admin-editable.
+
+| Phase | PRs | Status |
+|---|---|---|
+| 0 — no photo (schema, colour families, feed API, web shell, multi-store enquiry) | PR-1…PR-5 | 🔴 Not started |
+| 1 — selfie analysis + admin | PR-6…PR-8 | 🔴 Not started |
+| 2 — find-similar + complete-the-look | PR-9, PR-10 | 🔴 Not started |
+| 3 — try-on hand-off | PR-11 | ⛔ Gated on `CUSTOMER_TRY_ON_ENABLED` + F-040 launch |
