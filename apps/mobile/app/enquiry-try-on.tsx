@@ -64,6 +64,9 @@ export default function EnquiryTryOnScreen() {
   const [step, setStep] = useState<Step>('preflight')
   const [remaining, setRemaining] = useState<number | null>(null)
   const [quotaError, setQuotaError] = useState(false)
+  // 403/404 on the quota read = this role (catalog / support delegate) or this
+  // store cannot use try-on at all; Retry can never succeed, so say so instead.
+  const [unavailable, setUnavailable] = useState(false)
   const [selected, setSelected] = useState<string[]>([])
   const [photoUri, setPhotoUri] = useState<string | null>(null)
   const [items, setItems] = useState<SessionItem[]>([])
@@ -101,8 +104,10 @@ export default function EnquiryTryOnScreen() {
       setQuotaError(false)
       setSelected(planSession(products, left).run.map((p) => p.id))
       return left
-    } catch {
-      setQuotaError(true)
+    } catch (err) {
+      const status = (err as { status?: number }).status
+      if (status === 403 || status === 404) setUnavailable(true)
+      else setQuotaError(true)
       return null
     }
   }, [products])
@@ -335,7 +340,11 @@ export default function EnquiryTryOnScreen() {
       {step === 'preflight' && (
         <View className="flex-1 px-5">
           {remaining == null ? (
-            quotaError ? (
+            unavailable ? (
+              <Text className="text-white text-sm text-center mt-10">
+                Try-on is not available for your account. Ask the store owner.
+              </Text>
+            ) : quotaError ? (
               <View className="items-center mt-10">
                 <Text className="text-white text-sm text-center">Could not check your try-on balance.</Text>
                 <View className="mt-4 w-full">

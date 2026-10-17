@@ -9,6 +9,7 @@ const {
   mockProductFindFirst,
   mockJobUpdate,
   mockJobUpdateMany,
+  mockJobFindUnique,
   mockGenerateTryOn,
   mockSaveTryOnResultToR2,
   mockDeleteObject,
@@ -21,6 +22,7 @@ const {
   mockProductFindFirst: vi.fn(),
   mockJobUpdate: vi.fn(),
   mockJobUpdateMany: vi.fn(),
+  mockJobFindUnique: vi.fn(),
   mockGenerateTryOn: vi.fn(),
   mockSaveTryOnResultToR2: vi.fn(),
   mockDeleteObject: vi.fn(),
@@ -36,7 +38,11 @@ vi.mock('@kanchuki/db', () => ({
     product: { findFirst: mockProductFindFirst },
     // `update` is markFailed's unconditional write; `updateMany` is the guarded
     // completion, which is conditional on the consent still being live.
-    tryOnJob: { update: mockJobUpdate, updateMany: mockJobUpdateMany },
+    tryOnJob: {
+      update: mockJobUpdate,
+      updateMany: mockJobUpdateMany,
+      findUnique: mockJobFindUnique,
+    },
   },
 }));
 
@@ -82,6 +88,7 @@ beforeEach(() => {
   mockGenerateTryOn.mockResolvedValue({ outputUrl: 'https://worker/result.jpg', latencyMs: 900, gpuMs: 1200 });
   mockSaveTryOnResultToR2.mockResolvedValue('tryon-results/tryon_1/result.jpg');
   mockJobUpdate.mockResolvedValue({});
+  mockJobFindUnique.mockResolvedValue({ status: 'PENDING' });
   // The row matched — i.e. no withdrawal landed while the GPU was working.
   mockJobUpdateMany.mockResolvedValue({ count: 1 });
   mockDeleteObject.mockResolvedValue(undefined);
@@ -213,6 +220,18 @@ describe('handleTryOn', () => {
 
     expect(mockIncrementUsage).toHaveBeenCalledWith('retailer_1', 'TRY_ON_GENERATION');
     expect(mockIncrementCustomerUsage).toHaveBeenCalledWith('acct_1', 'TRY_ON_GENERATION');
+  });
+
+  it('discarded while still queued: skips the GPU, writes nothing, does not meter', async () => {
+    mockJobFindUnique.mockResolvedValue({ status: 'DISCARDED' });
+
+    await handleTryOn(DATA);
+
+    expect(mockGenerateTryOn).not.toHaveBeenCalled();
+    expect(mockSaveTryOnResultToR2).not.toHaveBeenCalled();
+    expect(mockJobUpdate).not.toHaveBeenCalled();
+    expect(mockJobUpdateMany).not.toHaveBeenCalled();
+    expect(mockIncrementUsage).not.toHaveBeenCalled();
   });
 
   it('fails without generating when the photo has expired', async () => {

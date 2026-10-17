@@ -94,6 +94,16 @@ export async function handleTryOn(data: TryOnJobData): Promise<void> {
     return;
   }
 
+  // Discarded while still queued (staff closed the in-store session before the
+  // worker picked this up): no GPU call, no result, and no charge - the GPU
+  // never ran. The photo is already out of the store (taken above). The row is
+  // left DISCARDED; markFailed would overwrite that status.
+  const current = await prisma.tryOnJob.findUnique({
+    where: { id: job_id },
+    select: { status: true },
+  });
+  if (current?.status === 'DISCARDED') return;
+
   try {
     // Re-verify ownership at execution time (queue = trust boundary): the
     // route checked, but a stale job must not be trusted, and for a customer

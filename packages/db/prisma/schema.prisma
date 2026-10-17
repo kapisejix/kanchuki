@@ -1383,7 +1383,8 @@ model TryOnJob {
   // web product page. Only the latter counts against a customer quota.
   customer_account_id String?
   product_id          String
-  // PENDING | COMPLETED | FAILED. A String rather than a new enum: the
+  // PENDING | COMPLETED | FAILED | DISCARDED (in-store session closed before the
+  // result was wanted; written by POST /try-on/discard). A String rather than a new enum: the
   // teardown dropped TryOnJobStatus, and reviving an enum name that close to
   // the deprecated TRY_ON values invites the wrong reader conclusion.
   status              String
