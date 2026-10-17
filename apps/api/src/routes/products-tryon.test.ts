@@ -584,8 +584,7 @@ describe('E6 — customer try-on switched off (CUSTOMER_TRY_ON_ENABLED = false)'
   });
 
   it('ships OFF — the real constant, not the mock', async () => {
-    const actual =
-      await vi.importActual<typeof import('../lib/features.js')>('../lib/features.js');
+    const actual = await vi.importActual<typeof import('../lib/features.js')>('../lib/features.js');
     expect(actual.CUSTOMER_TRY_ON_ENABLED).toBe(false);
   });
 
@@ -628,7 +627,11 @@ describe('E6 — customer try-on switched off (CUSTOMER_TRY_ON_ENABLED = false)'
     const res = await post(app);
     expect(res.statusCode).toBe(202);
 
-    mockJobFindFirst.mockResolvedValue({ status: 'PENDING', result_url: null, failure_reason: null });
+    mockJobFindFirst.mockResolvedValue({
+      status: 'PENDING',
+      result_url: null,
+      failure_reason: null,
+    });
     const status = await app.inject({
       method: 'GET',
       url: '/v1/products/p1/try-on/status?job_id=tryon_1',
