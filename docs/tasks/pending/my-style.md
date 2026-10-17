@@ -161,7 +161,7 @@ model StyleTrend         { id label kind match_keywords String[] boost Float sta
 
 | Route | Purpose | Guard |
 |---|---|---|
-| `POST /analyze` | multipart photo, `consent_version`, `mode=selfie|garment` → `{job_id}` | passport session, `checkCustomerQuota(STYLE_ANALYSIS)`, image size/MIME validation (reuse product-upload validator) |
+| `POST /analyze` | multipart photo, `consent_version`, `mode=selfie\|garment` → `{job_id}` | passport session, `checkCustomerQuota(STYLE_ANALYSIS)`, image size/MIME validation (reuse product-upload validator) |
 | `GET /analyze/:jobId` | poll | passport session, job owner only |
 | `POST /feed` | filters + sort → ranked cards | passport session; `Cache-Control: private, no-store` |
 | `POST /profile/clear` | null the style columns (UPDATE, never DELETE) | passport session |
