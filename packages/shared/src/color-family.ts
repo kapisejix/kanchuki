@@ -81,5 +81,5 @@ export function normalizeColorFamily(
       found.add(family);
     }
   }
-  return found.size === 1 ? ([...found][0] ?? null) : null;
+  return found.size === 1 ? (Array.from(found)[0] ?? null) : null;
 }
