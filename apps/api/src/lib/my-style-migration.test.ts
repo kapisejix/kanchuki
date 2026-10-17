@@ -44,7 +44,9 @@ const known = new Set(families.map((f) => f.name));
 
 describe('migration 132 — enum-only (55P04)', () => {
   it('adds STYLE_ANALYSIS and nothing that uses it', () => {
-    expect(enums).toMatch(/ALTER TYPE "QuotaResourceType" ADD VALUE IF NOT EXISTS 'STYLE_ANALYSIS'/);
+    expect(enums).toMatch(
+      /ALTER TYPE "QuotaResourceType" ADD VALUE IF NOT EXISTS 'STYLE_ANALYSIS'/,
+    );
     expect(enums.match(/ADD VALUE/g)).toHaveLength(1);
     expect(enums).not.toMatch(/INSERT|CREATE TABLE/i);
   });
