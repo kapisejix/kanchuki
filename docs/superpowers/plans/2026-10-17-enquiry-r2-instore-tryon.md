@@ -1,5 +1,7 @@
 # F-044 Release 2 — E8 "Try on with customer" (in-store session) Implementation Plan
 
+> **Status 2026-10-17:** T1, T2, RC-068, T3, T4 (+ keep-awake, server-side discard), T6, T7 and T5 built on the branch stack ending `feat/enquiry-r2-t5-docs` (unpushed, unmerged). Migration 131 proposed only. Owner checklist + known gaps: spec §11.7.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Owner/manager taps "Try on with customer" on an enquiry card, photographs the customer once, and gets a swipeable gallery of one try-on per enquiry product on the staff phone only; the wearer photo and (per D5) the generated images are gone on exit.

@@ -4360,7 +4360,7 @@ manager/styling route pins; launch checklist `docs/runbooks/f-043-scheduler-laun
 code-map widening, ended-plan R2 cleanup, scheduled-row retention purge (triggers in the checklist). Not verified on
 device / live Meta / live R2. Built-vs-spec deviations: `docs/tasks/pending/post-scheduler.md` §10a–§10e.
 
-## 41. F-044 Enquiry Basket → Team Inbox (Release 1) — 🟨 APPROVED 2026-10-17, IN BUILD
+## 41. F-044 Enquiry Basket → Team Inbox (Release 1) + In-Store Try-On (Release 2) — 🟨 APPROVED 2026-10-17, IN BUILD
 
 **Spec:** `docs/tasks/pending/enquiry-basket-team-inbox-and-instore-tryon.md` (§3, §8, decisions §11.1, release plan §11.7).
 
@@ -4375,3 +4375,18 @@ Customer sends all their picks to the store in one enquiry; the store team sees 
 | E3 — Enquiries inbox + Take / reassign | ✅ Built 2026-10-17 — every role sees + takes (D2), reassign owner + manager, phone masked for non-owners; migration 130 live 2026-10-17 |
 | E4-lite — unread badge (poll) | ✅ Built 2026-10-17 — home "Enquiries" tile shows the NEW count, polled every 30 s only while Home is focused, refetched on return from the inbox |
 | E5 — route to `whatsapp_number ?? phone` + shared-number copy | ✅ Built 2026-10-17 — enquire route + every public payload resolve the number once (`enquiryPhone`), same `phone` key; settings copy + "Not set" warning; RC-067 (+91 dropped for 91-prefixed numbers) fixed |
+
+### Release 2 — in-store try-on ("Try on with customer", E8) — 🟨 CODE COMPLETE 2026-10-17, unpushed, unmerged, device-unverified
+
+Owner / manager photographs the customer once from an enquiry card and gets a swipeable gallery of one try-on per enquiry product, on the staff phone only. The wearer photo is never stored; results are discarded on exit (and swept after `IN_STORE_RESULT_TTL_HOURS` = 2). Customer-facing try-on stays OFF. Plan: `docs/superpowers/plans/2026-10-17-enquiry-r2-instore-tryon.md`; owner checklist + known gaps: spec §11.7.
+
+| Task | Status |
+|---|---|
+| T1 — pending-aware quota, in-store-pure Bearer path, `GET /v1/products/try-on/quota` | ✅ Built 2026-10-17 |
+| T2 — `POST /v1/products/try-on/discard` + 2 h in-store age sweep | ✅ Built 2026-10-17 |
+| RC-068 — delegates refused on all try-on routes (`requireTryOnStaff`) | ✅ Fixed 2026-10-17 |
+| T3 — mobile session orchestrator | ✅ Built 2026-10-17 |
+| T4 — `enquiry-try-on` screen + keep-awake (EAS rebuild) + server-side discard of running jobs | ✅ Built 2026-10-17 — device-unverified |
+| T6 — try-on top-up packs (admin `ResourcePack`, Razorpay web checkout, inactive until launch) | ✅ Built 2026-10-17 — no real Razorpay round trip |
+| T7 (E11) — GPU-seconds logging + super-admin usage report | ✅ Built 2026-10-17 — **migration 131 proposed, not applied** |
+| T5 — docs + owner checklist | ✅ 2026-10-17 |

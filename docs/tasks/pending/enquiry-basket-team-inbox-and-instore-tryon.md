@@ -457,6 +457,27 @@ Deferred columns (add when something reads them): `first_reply_at`, `last_reply_
 
 **Release 2 — try-on (after F-040 launch gates + accuracy bake-off):** E11 GPU-seconds logging; E8 "Try on with customer" session screen (owner + manager, discard on exit per D5); E12 top-up packs.
 
+**Release 2 progress (plan `docs/superpowers/plans/2026-10-17-enquiry-r2-instore-tryon.md`; branch stack ends `feat/enquiry-r2-t5-docs`, NOT pushed, NOT merged):**
+- T1 ✅ built 2026-10-17 — quota check counts PENDING jobs (no overshoot in a 3-4 job session); Bearer path forced `IN_STORE` even if a passport cookie is present; `GET /v1/products/try-on/quota`.
+- T2 ✅ built 2026-10-17 — `POST /v1/products/try-on/discard` (owner + manager; own-retailer in-store results; returns `{discarded, failed, skipped}`; R2 key kept when the delete fails); status route reports `discarded`; deletion sweep gains an in-store pass for results older than `IN_STORE_RESULT_TTL_HOURS` (2). No migration.
+- RC-068 ✅ fixed 2026-10-17 — one `requireTryOnStaff` helper on all four Bearer try-on routes; catalog/support delegates (staffRole null like an owner) can no longer spend the retailer's try-on quota.
+- T3 ✅ built 2026-10-17 — mobile orchestrator `src/lib/try-on-session.ts` (one on-device photo, N jobs, per-item reasons).
+- T4 ✅ built 2026-10-17 — `app/enquiry-try-on.tsx` reached from the enquiry card: quota pre-flight, camera/gallery, consent after capture, progress, swipe gallery (no Share, `cachePolicy="none"`), cleanup on every exit path. Follow-ups: `expo-keep-awake` while a session runs (**new native dep, EAS rebuild**); server-side discard of still-running jobs (PENDING tombstoned to `DISCARDED`; late result deleted on completion; still charged, GPU ran).
+- T6 ✅ built 2026-10-17 — try-on top-up packs behind the admin `ResourcePack.is_active` switch; `addon-checkout` takes `pack_id` and reads `ResourcePack` (price = GST-inclusive `price_paise`); `GET /v1/billing/try-on-packs`; mobile "Buy more try-ons" opens the Razorpay web checkout; addon callback credits exactly once. Pack credit expires at month-end. Owner-only (managers see no Buy button).
+- T7 ✅ built 2026-10-17 (E11) — `try_on_jobs.gpu_ms` (RunPod `executionTime`, else worker `latency_ms`), super-admin `GET /v1/admin/try-on-usage`, admin page `/admin/try-on-usage` (₹/GPU-second rate is a page field, not stored). **Migration `131_try_on_gpu_ms` PROPOSED, NOT applied.**
+- T5 ✅ docs (this section).
+
+**Release 2 owner checklist (not agent work):**
+1. Apply migration `131_try_on_gpu_ms` **before** the API deploy (job completion writes `gpu_ms`).
+2. Keep `TRY_ON_GENERATION` plan limits at the seeded 20 / 50 / 100 (owner decision; the §11.1 D6 40 / 100 / 200 table is superseded).
+3. Admin → Resource Packs: create three `TRY_ON_GENERATION` packs 25 / 50 / 100, **inactive**, GST-inclusive 23600 / 47200 / 94400 paise (no GST invoice is generated for packs).
+4. EAS rebuild for `expo-keep-awake`.
+5. Enable `VIRTUAL_TRY_ON_V2` per plan, after the F-040 launch gates (needed for enabling only).
+6. Device pass (never run): camera file deleted from cache, `expo-image` disk cache empty after exit, hardware back + background exits, Android permission dialog, gallery-picker cache copy, swipe feel, 4-job timing, keep-awake, Buy-more button, admin pack page, GPU usage page.
+7. Real checks nobody has done: Razorpay round trip, `TRY_ON_GENERATION` plan-limit rows in prod, RunPod `runsync` really returns `executionTime`, whether cold start is billed, migration 131 and pack filters against a real DB.
+
+**Release 2 known gaps (owner decides):** (a) `/addon-callback` verify-failure path still does an unguarded update to FAILED, and a paid purchase whose credit keeps failing stays PENDING with only a log line; (b) a withdrawn-mid-run job whose R2 delete fails never records its key, so the sweep cannot find it (RC-044 shape, pre-existing); (c) `getQuotaStatus` ignores PENDING and falls back to plan defaults when the limit is -1; (d) sweep drains 100 rows/hour and its cron registration is unverified (RC-062 shape); (e) discard `skipped` inflates on duplicate ids; (f) managers see no Buy button; (g) "valid this month only" copy assumes the `TRY_ON_GENERATION` period is MONTH; (h) failures after a successful GPU call (e.g. R2 save error) are not metered, and the usage window drops the oldest rows silently above 100k (unreachable under quotas).
+
 **Release 3:** real push notifications (new infra); E9 in-app WhatsApp replies once F-035 lands.
 
 Not in any release for now: the salesperson "Needs try-on" flag (D2 optional), "keep image N days" (D5), remote try-on (D4).
