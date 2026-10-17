@@ -567,6 +567,80 @@ describe('GET /products/try-on/quota', () => {
   // different literal segments, so it could not fail.
 });
 
+// RC-068 — every Bearer try-on route is owner + manager only. Delegates
+// (catalog-upload, support session) have staffRole = null like an owner, so the
+// role alone cannot tell them apart; one helper refuses them on all four routes.
+describe('RC-068 — try-on routes refuse delegates and salesperson', () => {
+  const routes = {
+    'quota GET': (app: Awaited<ReturnType<typeof buildApp>>) =>
+      app.inject({ method: 'GET', url: '/v1/products/try-on/quota' }),
+    'discard POST': (app: Awaited<ReturnType<typeof buildApp>>) =>
+      app.inject({
+        method: 'POST',
+        url: '/v1/products/try-on/discard',
+        payload: { job_ids: ['j1'] },
+      }),
+    'try-on POST': (app: Awaited<ReturnType<typeof buildApp>>) => post(app),
+    'status GET': (app: Awaited<ReturnType<typeof buildApp>>) =>
+      app.inject({ method: 'GET', url: '/v1/products/p1/try-on/status?job_id=j1' }),
+  };
+  const names = Object.keys(routes) as (keyof typeof routes)[];
+
+  beforeEach(() => {
+    mockJobFindFirst.mockResolvedValue({
+      status: 'FAILED',
+      result_url: null,
+      failure_reason: 'x',
+      consent_withdrawn_at: null,
+    });
+  });
+
+  for (const name of names) {
+    describe(name, () => {
+      it.each(['catalog', 'support'] as const)('%s delegate is 403 and touches nothing', async (d) => {
+        const app = await buildApp({ retailerId: RETAILER_ID, delegate: d });
+        expect((await routes[name](app)).statusCode).toBe(403);
+        expect(mockProductFindFirst).not.toHaveBeenCalled();
+        expect(mockJobFindFirst).not.toHaveBeenCalled();
+        expect(mockJobCreate).not.toHaveBeenCalled();
+        expect(mockGetQuotaStatus).not.toHaveBeenCalled();
+        await app.close();
+      });
+
+      it.each(['catalog', 'support'] as const)('%s delegate + flag off is 404 (before 403)', async (d) => {
+        mockHasFeature.mockResolvedValue(false);
+        const app = await buildApp({ retailerId: RETAILER_ID, delegate: d });
+        expect((await routes[name](app)).statusCode).toBe(404);
+        await app.close();
+      });
+
+      it('owner and manager pass the role gate', async () => {
+        for (const staffRole of [null, 'manager']) {
+          const app = await buildApp({ retailerId: RETAILER_ID, staffRole });
+          const status = (await routes[name](app)).statusCode;
+          expect([403, 404]).not.toContain(status);
+          await app.close();
+        }
+      });
+    });
+  }
+
+  it.each(['quota GET', 'discard POST', 'status GET'] as const)(
+    'salesperson is 403 on %s',
+    async (name) => {
+      const app = await buildApp({ retailerId: RETAILER_ID, staffRole: 'salesperson' });
+      expect((await routes[name](app)).statusCode).toBe(403);
+      await app.close();
+    },
+  );
+
+  it('salesperson is 403 on POST try-on too', async () => {
+    const app = await buildApp({ retailerId: RETAILER_ID, staffRole: 'salesperson' });
+    expect((await routes['try-on POST'](app)).statusCode).toBe(403);
+    await app.close();
+  });
+});
+
 describe('POST /products/try-on/discard (F-044 R2 T2)', () => {
   const discard = (
     app: Awaited<ReturnType<typeof buildApp>>,

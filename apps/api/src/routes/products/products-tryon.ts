@@ -154,6 +154,22 @@ function normalizeContentType(mimetype: string | undefined): string | null {
   return lower === 'image/jpg' ? 'image/jpeg' : lower;
 }
 
+/**
+ * The one "who may use Bearer try-on" rule (RC-068): owner + manager only.
+ * Order: no retailer -> 404, flag off -> 404 (route stays invisible), then
+ * salesperson / catalog delegate / support delegate -> 403. Delegates have
+ * staffRole = null like an owner, so the role alone cannot tell them apart.
+ * Returns the caller's retailer id.
+ */
+async function requireTryOnStaff(request: FastifyRequest): Promise<string> {
+  if (!request.retailerId) throw notFound('Product');
+  if (!(await hasFeature(request.retailerId, 'VIRTUAL_TRY_ON_V2'))) throw notFound('Product');
+  if (request.staffRole === 'salesperson' || request.catalogDelegate || request.supportDelegate) {
+    throw forbidden();
+  }
+  return request.retailerId;
+}
+
 export const productsTryOnRoutes: FastifyPluginAsync = async (server) => {
   // Scoped to this plugin — the multipart parser is only needed by the one
   // route below and is not registered against the whole API.
@@ -164,22 +180,9 @@ export const productsTryOnRoutes: FastifyPluginAsync = async (server) => {
   // ─── GET /products/try-on/quota ─────────────────────────────────
   // Static segment, registered before the `/:id/...` routes. Bearer only.
   server.get('/try-on/quota', async (request) => {
-    if (!request.retailerId) throw notFound('Product');
-    // Gate first so a refused role learns nothing while the flag is off.
-    if (!(await hasFeature(request.retailerId, 'VIRTUAL_TRY_ON_V2'))) throw notFound('Product');
-    // Owner + manager only. The staff allowlist lets salesperson through any
-    // GET under /v1/products, and the catalog/support delegates (staffRole =
-    // null, like an owner) through via their own /v1/products rules, so this
-    // route refuses them itself.
-    if (
-      request.staffRole === 'salesperson' ||
-      request.catalogDelegate ||
-      request.supportDelegate
-    ) {
-      throw forbidden();
-    }
+    const retailerId = await requireTryOnStaff(request);
     const { used, limit, remaining, unlimited } = await getQuotaStatus(
-      request.retailerId,
+      retailerId,
       'TRY_ON_GENERATION',
     );
     return { data: { used, limit, remaining, unlimited } };
@@ -190,15 +193,7 @@ export const productsTryOnRoutes: FastifyPluginAsync = async (server) => {
   // segment, registered before the `/:id/...` routes. Bearer only; same
   // refusal order as the quota read (404 → 404 → 403).
   server.post('/try-on/discard', async (request) => {
-    if (!request.retailerId) throw notFound('Product');
-    if (!(await hasFeature(request.retailerId, 'VIRTUAL_TRY_ON_V2'))) throw notFound('Product');
-    if (
-      request.staffRole === 'salesperson' ||
-      request.catalogDelegate ||
-      request.supportDelegate
-    ) {
-      throw forbidden();
-    }
+    const retailerId = await requireTryOnStaff(request);
     const body = z
       .object({ job_ids: z.array(z.string().min(1)).max(10) })
       .safeParse(request.body);
@@ -209,7 +204,7 @@ export const productsTryOnRoutes: FastifyPluginAsync = async (server) => {
     const jobs = await prisma.tryOnJob.findMany({
       where: {
         id: { in: body.data.job_ids },
-        retailer_id: request.retailerId,
+        retailer_id: retailerId,
         customer_account_id: null,
         result_url: { not: null },
       },
@@ -271,6 +266,9 @@ export const productsTryOnRoutes: FastifyPluginAsync = async (server) => {
       .safeParse(request.query);
     if (!consent.success) throw validationError('Invalid consent version.', 'consent_version');
 
+    // Role gate before any product lookup, so a refused caller learns nothing
+    // about product existence (RC-068). Cookie path is unchanged.
+    if (request.retailerId) await requireTryOnStaff(request);
     const { retailerId, customerAccountId, product } = await resolveTryOnContext(request, id);
 
     // 1. Launch gate. 404 (not 403) so the route is invisible until the owner
@@ -418,6 +416,8 @@ export const productsTryOnRoutes: FastifyPluginAsync = async (server) => {
     const q = z.object({ job_id: z.string().min(1) }).safeParse(request.query);
     if (!q.success) throw validationError('job_id is required', 'job_id');
 
+    // Bearer poll: same gate + role rule as the POST (RC-068).
+    if (request.retailerId) await requireTryOnStaff(request);
     // E6: same invisibility as the POST for the customer poll.
     if (!request.retailerId && !CUSTOMER_TRY_ON_ENABLED) throw notFound('Product');
 
