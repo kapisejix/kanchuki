@@ -73,7 +73,8 @@ export default function EnquiryTryOnScreen() {
   const jobIds = useRef(new Set<string>())
   const abort = useRef(new AbortController())
   const exited = useRef(false)
-  const picking = useRef(false) // the gallery picker can background the app
+  const picking = useRef(false) // gallery picker / permission dialog can background the app
+  const runningRef = useRef(false) // sync double-tap guard (RC-015)
   const itemsRef = useRef<SessionItem[]>([])
   const stepRef = useRef<Step>('preflight')
   stepRef.current = step
@@ -84,18 +85,17 @@ export default function EnquiryTryOnScreen() {
       const left = data.unlimited ? products.length : Math.max(0, data.remaining)
       setRemaining(left)
       setQuotaError(false)
+      setSelected(planSession(products, left).run.map((p) => p.id))
       return left
     } catch {
       setQuotaError(true)
       return null
     }
-  }, [products.length])
+  }, [products])
 
   useEffect(() => {
-    void loadQuota().then((left) => {
-      if (left != null) setSelected(planSession(products, left).run.map((p) => p.id))
-    })
-  }, [loadQuota, products])
+    void loadQuota()
+  }, [loadQuota])
 
   // Idempotent: abort first, delete files + discard results, clear image cache.
   const exit = useCallback(async () => {
@@ -112,7 +112,8 @@ export default function EnquiryTryOnScreen() {
   }, [])
 
   const leave = useCallback(() => {
-    void exit().finally(() => router.back())
+    router.back()
+    void exit()
   }, [exit])
 
   const close = useCallback(() => {
@@ -126,12 +127,18 @@ export default function EnquiryTryOnScreen() {
 
   // Unmount, hardware back, and app-to-background all funnel into exit().
   useEffect(() => {
+    // StrictMode re-runs effects: start each setup from a live state.
+    exited.current = false
+    abort.current = new AbortController()
     const back = BackHandler.addEventListener('hardwareBackPress', () => {
       close()
       return true
     })
     const appState = AppState.addEventListener('change', (s) => {
-      if (s === 'background' && !picking.current && !exited.current) leave()
+      // Nothing to clean unless a photo or results exist.
+      const hasData =
+        photoUris.current.length > 0 || jobIds.current.size > 0 || itemsRef.current.length > 0
+      if (s === 'background' && !picking.current && !exited.current && hasData) leave()
     })
     return () => {
       back.remove()
@@ -141,6 +148,11 @@ export default function EnquiryTryOnScreen() {
   }, [close, leave, exit])
 
   const trackPhoto = (uri: string) => {
+    if (exited.current) {
+      // Arrived after exit (e.g. compress finished late): delete right away.
+      void cleanupSession({ photoUris: [uri], jobIds: [] })
+      return
+    }
     if (!photoUris.current.includes(uri)) photoUris.current.push(uri)
   }
 
@@ -153,6 +165,15 @@ export default function EnquiryTryOnScreen() {
   const handleCapture = async () => {
     const photo = await cameraRef.current?.takePictureAsync({ quality: 0.85 })
     if (photo?.uri) takePhoto(photo.uri)
+  }
+
+  const askCamera = async () => {
+    picking.current = true
+    try {
+      await requestPermission()
+    } finally {
+      picking.current = false
+    }
   }
 
   const handlePickFromGallery = async () => {
@@ -177,8 +198,14 @@ export default function EnquiryTryOnScreen() {
   }
 
   const onItem = useCallback((i: SessionItem) => {
+    if (i.jobId) {
+      jobIds.current.add(i.jobId)
+      if (exited.current) {
+        // Created after exit cleanup ran: discard this id right away.
+        void cleanupSession({ photoUris: [], jobIds: [i.jobId] })
+      }
+    }
     if (exited.current) return
-    if (i.jobId) jobIds.current.add(i.jobId)
     const next = [...itemsRef.current]
     const idx = next.findIndex((x) => x.productId === i.productId)
     if (idx >= 0) next[idx] = i
@@ -189,19 +216,24 @@ export default function EnquiryTryOnScreen() {
 
   const run = useCallback(
     async (list: Product[]) => {
-      if (!photoUri || list.length === 0) return
-      setStep('running')
-      await runTryOnSession({
-        products: list,
-        photoUri,
-        consentVersion: TRY_ON_CONSENT.version,
-        onItem,
-        signal: abort.current.signal,
-        onCompressed: trackPhoto,
-      })
-      if (exited.current) return
-      setStep('gallery')
-      void loadQuota()
+      if (!photoUri || list.length === 0 || runningRef.current) return
+      runningRef.current = true
+      try {
+        setStep('running')
+        await runTryOnSession({
+          products: list,
+          photoUri,
+          consentVersion: TRY_ON_CONSENT.version,
+          onItem,
+          signal: abort.current.signal,
+          onCompressed: trackPhoto,
+        })
+        if (exited.current) return
+        setStep('gallery')
+        void loadQuota()
+      } finally {
+        runningRef.current = false
+      }
     },
     [photoUri, onItem, loadQuota],
   )
@@ -310,7 +342,7 @@ export default function EnquiryTryOnScreen() {
                 Camera access is needed to photograph the customer.
               </Text>
               <View className="mt-4 w-full">
-                <GradientButton variant="web" label="Allow camera" onPress={() => void requestPermission()} />
+                <GradientButton variant="web" label="Allow camera" onPress={() => void askCamera()} />
               </View>
             </View>
           )}

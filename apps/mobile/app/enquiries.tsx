@@ -24,7 +24,7 @@ export default function EnquiriesScreen() {
   const { staffRole } = useAuth()
   const canAssign = staffCan(staffRole, 'enquiries.assign')
   const queryClient = useQueryClient()
-  // F-044 R2 — same fail-closed flag read as product/[id].tsx; the API re-checks.
+  // F-044 R2 - same fail-closed flag read as product/[id].tsx; the API re-checks.
   const { data: meData } = useQuery({
     queryKey: ['retailer', 'me'],
     queryFn: () => retailerApi.getMe(),
@@ -108,7 +108,7 @@ export default function EnquiriesScreen() {
 
       {canTryOn && e.products.length > 0 && (
         <AnimatedPressable
-          // Ids + product names only — never the customer's phone or name.
+          // Ids + product names only - never the customer's phone or name.
           onPress={() =>
             router.push({
               pathname: '/enquiry-try-on',
