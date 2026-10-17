@@ -24,6 +24,7 @@ export type StaffFeature =
   | 'social.schedule.plan' // create/confirm/end a plan, slide edits (owner only)
   | 'enquiries' // F-044 inbox: read, take, set status — every role (D2)
   | 'enquiries.assign' // reassign an enquiry (owner + manager)
+  | 'enquiries.tryon' // F-044 R2 in-store "Try on with customer" (owner + manager)
 
 // 'manager' = manager (and any non-salesperson staff role) may; 'owner' =
 // only the retailer owner. catalog.view / customers.add / enquiries are
@@ -43,6 +44,7 @@ const ROLE_FEATURES: Record<
   'social.schedule': 'manager',
   'social.schedule.plan': 'owner',
   'enquiries.assign': 'manager',
+  'enquiries.tryon': 'manager',
 }
 
 export function staffCan(role: string | null | undefined, feature: StaffFeature): boolean {
