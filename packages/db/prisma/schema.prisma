@@ -1405,6 +1405,10 @@ model TryOnJob {
   // reads as "there was an image, and it was deleted on request".
   consent_withdrawn_at   DateTime?
 
+  // F-044 R2 T7: GPU ms for a finished job (RunPod executionTime, else worker
+  // latency_ms). null on failed/unmetered jobs.
+  gpu_ms Int?
+
   created_at   DateTime  @default(now())
   completed_at DateTime?
 

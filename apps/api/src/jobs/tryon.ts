@@ -152,7 +152,12 @@ export async function handleTryOn(data: TryOnJobData): Promise<void> {
     // in. `count === 0` means it landed.
     const claimed = await prisma.tryOnJob.updateMany({
       where: { id: job_id, consent_withdrawn_at: null, status: { not: 'DISCARDED' } },
-      data: { status: 'COMPLETED', result_url: resultKey, completed_at: new Date() },
+      data: {
+        status: 'COMPLETED',
+        result_url: resultKey,
+        completed_at: new Date(),
+        gpu_ms: result.gpuMs,
+      },
     });
 
     if (claimed.count === 0) {

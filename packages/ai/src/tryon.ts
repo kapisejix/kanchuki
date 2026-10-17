@@ -99,6 +99,9 @@ export interface TryOnResult {
   outputUrl: string;
   /** Worker-reported inference time, when it reported one. */
   latencyMs: number | null;
+  /** GPU time to record: RunPod's billed `executionTime` (ms) when present,
+   *  else the worker's own `latency_ms`, else null. */
+  gpuMs: number | null;
 }
 
 /** Raised when no CatVTON endpoint is configured — distinct from a failed
@@ -185,9 +188,12 @@ async function postTryOnJob(
   }
 
   const latencyMs = output?.['latency_ms'];
+  const executionTime = raw['executionTime'];
+  const latency = typeof latencyMs === 'number' ? latencyMs : null;
   return {
     outputUrl: resultUrl,
-    latencyMs: typeof latencyMs === 'number' ? latencyMs : null,
+    latencyMs: latency,
+    gpuMs: typeof executionTime === 'number' ? executionTime : latency,
   };
 }
 

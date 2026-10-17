@@ -79,7 +79,7 @@ beforeEach(() => {
   mockProductFindFirst.mockResolvedValue(PRODUCT);
   mockIsUnsupportedTryOnCategory.mockReturnValue(false);
   mockClothTypeForCategory.mockReturnValue('upper');
-  mockGenerateTryOn.mockResolvedValue({ outputUrl: 'https://worker/result.jpg', latencyMs: 900 });
+  mockGenerateTryOn.mockResolvedValue({ outputUrl: 'https://worker/result.jpg', latencyMs: 900, gpuMs: 1200 });
   mockSaveTryOnResultToR2.mockResolvedValue('tryon-results/tryon_1/result.jpg');
   mockJobUpdate.mockResolvedValue({});
   // The row matched — i.e. no withdrawal landed while the GPU was working.
@@ -111,6 +111,7 @@ describe('handleTryOn', () => {
       data: expect.objectContaining({
         status: 'COMPLETED',
         result_url: 'tryon-results/tryon_1/result.jpg',
+        gpu_ms: 1200,
       }),
     });
     // Nothing was withdrawn, so the image it just wrote is kept.
@@ -259,6 +260,11 @@ describe('handleTryOn', () => {
     await expect(handleTryOn(DATA)).rejects.toThrow('RunPod timeout');
 
     expect(mockSaveTryOnResultToR2).not.toHaveBeenCalled();
+    expect(mockJobUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.not.objectContaining({ gpu_ms: expect.anything() }),
+      }),
+    );
     expect(mockJobUpdate).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({ status: 'FAILED', failure_reason: 'RunPod timeout' }),
