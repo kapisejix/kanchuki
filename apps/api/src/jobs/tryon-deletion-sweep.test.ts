@@ -81,6 +81,8 @@ describe('handleTryOnDeletionSweep', () => {
 
     const where = mockFindMany.mock.calls[1]?.[0].where;
     expect(where.customer_account_id).toBeNull();
+    // Never in both passes.
+    expect(where.consent_withdrawn_at).toBeNull();
     expect(where.result_url).toEqual({ not: null });
     expect(IN_STORE_RESULT_TTL_HOURS).toBe(2);
     // Cutoff is "now - TTL": a row TTL+1 min old is swept, TTL-1 min old is not.
@@ -110,6 +112,27 @@ describe('handleTryOnDeletionSweep', () => {
 
     expect(result).toEqual({ owed: 1, deleted: 0, failed: 1 });
     expect(mockUpdateMany).not.toHaveBeenCalled();
+  });
+
+  it('a throw in the first pass still runs the second, logs the summary, then rethrows', async () => {
+    const boom = new Error('db down');
+    mockFindMany.mockRejectedValueOnce(boom).mockResolvedValueOnce([J2]);
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {});
+
+    await expect(handleTryOnDeletionSweep()).rejects.toBe(boom);
+
+    expect(mockDeleteObject).toHaveBeenCalledWith(J2.result_url);
+    expect(info).toHaveBeenCalled();
+    info.mockRestore();
+  });
+
+  it('warns (not info) when deletes are still owed', async () => {
+    mockFindMany.mockResolvedValueOnce([J1]);
+    mockDeleteObject.mockRejectedValue(new Error('R2 unreachable'));
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    await handleTryOnDeletionSweep();
+    expect(warn).toHaveBeenCalled();
+    warn.mockRestore();
   });
 
   it('does nothing, quietly, when nothing is owed', async () => {

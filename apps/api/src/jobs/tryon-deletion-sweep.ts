@@ -52,31 +52,50 @@ export interface TryOnDeletionSweepResult {
 export const IN_STORE_RESULT_TTL_HOURS = 2;
 
 export async function handleTryOnDeletionSweep(): Promise<TryOnDeletionSweepResult> {
-  const withdrawn = await sweep({
-    where: { consent_withdrawn_at: { not: null }, result_url: { not: null } },
-    // Oldest promise first — a backlog drains in the order it was incurred.
-    orderBy: { consent_withdrawn_at: 'asc' },
-  });
-  const aged = await sweep({
-    where: {
-      customer_account_id: null,
-      result_url: { not: null },
-      completed_at: { lt: new Date(Date.now() - IN_STORE_RESULT_TTL_HOURS * 3600_000) },
+  // Passes are isolated: a throw in one must not starve the other. The first
+  // error is rethrown after the summary so the job still reports failure.
+  const passes = [
+    {
+      where: { consent_withdrawn_at: { not: null }, result_url: { not: null } },
+      // Oldest promise first — a backlog drains in the order it was incurred.
+      orderBy: { consent_withdrawn_at: 'asc' },
     },
-    orderBy: { completed_at: 'asc' },
-  });
-  const result = {
-    owed: withdrawn.owed + aged.owed,
-    deleted: withdrawn.deleted + aged.deleted,
-    failed: withdrawn.failed + aged.failed,
-  };
+    {
+      where: {
+        customer_account_id: null,
+        // Never in both passes. completed_at is always set together with
+        // result_url (jobs/tryon.ts), so a row with a key always has a time.
+        consent_withdrawn_at: null,
+        result_url: { not: null },
+        completed_at: { lt: new Date(Date.now() - IN_STORE_RESULT_TTL_HOURS * 3600_000) },
+      },
+      orderBy: { completed_at: 'asc' },
+    },
+  ] as const;
+  const result: TryOnDeletionSweepResult = { owed: 0, deleted: 0, failed: 0 };
+  let firstError: unknown;
+  let threw = false;
+  for (const pass of passes) {
+    try {
+      const r = await sweep({ where: pass.where, orderBy: pass.orderBy });
+      result.owed += r.owed;
+      result.deleted += r.deleted;
+      result.failed += r.failed;
+    } catch (err) {
+      if (!threw) firstError = err;
+      threw = true;
+      console.error('[try-on] deletion sweep pass failed:', err);
+    }
+  }
 
   if (result.owed > 0) {
-    console.info(
+    const log = result.failed > 0 ? console.warn : console.info;
+    log(
       `[try-on] deletion sweep: ${result.deleted}/${result.owed} owed images deleted, ${result.failed} still owed`,
     );
   }
 
+  if (threw) throw firstError;
   return result;
 }
 

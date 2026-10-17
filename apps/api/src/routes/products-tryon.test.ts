@@ -581,7 +581,7 @@ describe('POST /products/try-on/discard (F-044 R2 T2)', () => {
     const app = await buildApp({ retailerId: RETAILER_ID });
     const res = await discard(app, { job_ids: ['j1', 'j2', 'foreign'] });
     expect(res.statusCode).toBe(200);
-    expect(res.json().data).toEqual({ discarded: 2 });
+    expect(res.json().data).toEqual({ discarded: 2, failed: 0, skipped: 1 });
     // Scoped to caller's retailer + in-store (passport jobs have an account id).
     expect(mockJobFindMany.mock.calls[0]?.[0].where).toEqual({
       id: { in: ['j1', 'j2', 'foreign'] },
@@ -601,7 +601,7 @@ describe('POST /products/try-on/discard (F-044 R2 T2)', () => {
     const app = await buildApp({ retailerId: RETAILER_ID });
     const res = await discard(app);
     expect(res.statusCode).toBe(200);
-    expect(res.json().data).toEqual({ discarded: 0 });
+    expect(res.json().data).toEqual({ discarded: 0, failed: 0, skipped: 1 });
     expect(mockDeleteObject).not.toHaveBeenCalled();
     await app.close();
   });
@@ -614,9 +614,48 @@ describe('POST /products/try-on/discard (F-044 R2 T2)', () => {
     mockDeleteObject.mockRejectedValueOnce(new Error('R2 down'));
     const app = await buildApp({ retailerId: RETAILER_ID });
     const res = await discard(app, { job_ids: ['j1', 'j2'] });
-    expect(res.json().data).toEqual({ discarded: 1 });
+    expect(res.json().data).toEqual({ discarded: 1, failed: 1, skipped: 0 });
     expect(mockJobUpdateMany).toHaveBeenCalledTimes(1);
     expect(mockJobUpdateMany.mock.calls[0]?.[0].where.id).toBe('j2');
+    await app.close();
+  });
+
+  it('updateMany rejecting counts as failed, not discarded', async () => {
+    mockJobFindMany.mockResolvedValue([
+      { id: 'j1', result_url: 'k/j1.jpg' },
+      { id: 'j2', result_url: 'k/j2.jpg' },
+    ]);
+    mockJobUpdateMany.mockRejectedValueOnce(new Error('db down'));
+    const app = await buildApp({ retailerId: RETAILER_ID });
+    const res = await discard(app, { job_ids: ['j1', 'j2'] });
+    expect(res.json().data).toEqual({ discarded: 1, failed: 1, skipped: 0 });
+    await app.close();
+  });
+
+  it('updateMany count 0 (raced) is not counted as discarded', async () => {
+    mockJobFindMany.mockResolvedValue([{ id: 'j1', result_url: 'k/j1.jpg' }]);
+    mockJobUpdateMany.mockResolvedValue({ count: 0 });
+    const app = await buildApp({ retailerId: RETAILER_ID });
+    const res = await discard(app);
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data).toEqual({ discarded: 0, failed: 0, skipped: 0 });
+    await app.close();
+  });
+
+  it('a requested id the scoped lookup did not return (e.g. still PENDING) is skipped', async () => {
+    mockJobFindMany.mockResolvedValue([{ id: 'j1', result_url: 'k/j1.jpg' }]);
+    const app = await buildApp({ retailerId: RETAILER_ID });
+    const res = await discard(app, { job_ids: ['j1', 'pending_job'] });
+    expect(res.json().data).toEqual({ discarded: 1, failed: 0, skipped: 1 });
+    await app.close();
+  });
+
+  it('every attempted discard failing is a 502', async () => {
+    mockJobFindMany.mockResolvedValue([{ id: 'j1', result_url: 'k/j1.jpg' }]);
+    mockDeleteObject.mockRejectedValue(new Error('R2 down'));
+    const app = await buildApp({ retailerId: RETAILER_ID });
+    const res = await discard(app);
+    expect(res.statusCode).toBe(502);
     await app.close();
   });
 

@@ -45,6 +45,7 @@ import { TRY_ON_CONSENT } from '@kanchuki/shared';
 import { createId } from '@paralleldrive/cuid2';
 import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
 import { z } from 'zod';
+import { Sentry } from '../../instrument.js';
 import { addTryOnJob } from '../../jobs/index.js';
 import { CUSTOMER_TRY_ON_ENABLED, hasFeature } from '../../lib/features.js';
 import { isCurrentTryOnConsent } from '../../lib/notice-versions.js';
@@ -214,25 +215,46 @@ export const productsTryOnRoutes: FastifyPluginAsync = async (server) => {
       },
       select: { id: true, result_url: true },
     });
+    // Known limit: a job still PENDING here has no result_url yet and lands its
+    // result later (reported as `skipped`). The client must call discard again
+    // after the job settles; the age sweep is the backstop (~2 h + hourly cron).
     let discarded = 0;
+    let failed = 0;
     for (const job of jobs) {
       const key = job.result_url;
       if (!key) continue;
+      // Only the pointer goes, and only after the delete: on failure the key
+      // stays (sole pointer, same rule as withdrawTryOnConsent) and the
+      // age sweep retries.
       try {
         await deleteObject(key);
-        // Only the pointer goes, and only after the delete: on failure the key
-        // stays (sole pointer, same rule as withdrawTryOnConsent) and the
-        // age sweep retries.
-        await prisma.tryOnJob.updateMany({
+      } catch (err) {
+        failed += 1;
+        console.error(`[try-on] discard could not delete ${key} for job ${job.id}:`, err);
+        Sentry.captureException(err);
+        continue;
+      }
+      try {
+        const { count } = await prisma.tryOnJob.updateMany({
           where: { id: job.id, result_url: key },
           data: { result_url: null },
         });
-        discarded += 1;
+        if (count > 0) discarded += 1;
       } catch (err) {
-        console.error(`[try-on] discard could not delete ${key} for job ${job.id}:`, err);
+        failed += 1;
+        console.error(
+          `[try-on] discard deleted ${key} but could not clear it on job ${job.id} — the sweep will retry:`,
+          err,
+        );
+        Sentry.captureException(err);
       }
     }
-    return { data: { discarded } };
+    if (failed > 0 && discarded === 0) {
+      throw new AppError('TRY_ON_DISCARD_FAILED', 'Could not discard the try-on results.', 502);
+    }
+    return {
+      data: { discarded, failed, skipped: body.data.job_ids.length - jobs.length },
+    };
   });
 
   // ─── POST /products/:id/try-on ──────────────────────────────────
