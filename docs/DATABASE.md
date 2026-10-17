@@ -1112,6 +1112,22 @@ decided_at + 24 h, never extended), `revoked_at`, `revoked_by` (`RETAILER|STAFF|
 - **Seeds (129):** `plan_features` SOCIAL_SCHEDULER=true ×3 plans; `plan_limits` SCHEDULED_POST=-1/MONTH ×3, ACTIVE_SCHEDULE_PLAN=1/LIFETIME ×3.
 - **Purge (RC-050):** every FK into `retailers`/`products` is `ON DELETE CASCADE`, so `hardDeleteRetailer()`'s list needs no new entries. Pinned by `apps/api/src/lib/post-scheduler-migration.test.ts`.
 
+## My Style — `color_families`, `style_palettes`, `style_trends` + new columns (migrations 132/133, F-045 PR-1, written 2026-10-17, NOT yet applied)
+
+| Table | Purpose | Notes |
+|---|---|---|
+| `color_families` | Canonical colour family (`name`, lowercase) + `aliases[]` ("Mustard", "Haldi" → `yellow`). 22 seeded | UNIQUE `name`, CHECK `name = lower(name)`. `is_active`; never hard-deleted. |
+| `style_palettes` | `good_families[]` / `avoid_families[]` per `(undertone, depth, version)`. 9 seeded (3 × 3) | UNIQUE `(undertone, depth, version)`; CHECKs on undertone `warm/cool/neutral`, depth `fair/medium/deep`. Array elements are `color_families.name` — not FK-able; validated in `apps/api` and the seed is pinned by test. |
+| `style_trends` | Admin trend boosts (`label`, `kind`, `match_keywords[]`, `boost` 0–1, `starts_at`/`ends_at`). Empty at launch | Read by PR-10. `kind` is free text until PR-10 defines it. |
+
+- **New columns (all nullable, no default → no table rewrite):** `products.color_family` (+ index `products_color_family_idx`; set by PR-2, NULL = unmapped); `customer_accounts.skin_undertone`, `skin_depth`, `body_frame` (CHECK-constrained values), `style_profile_at`. **Derived profile only — the photo is never stored.** "Clear my data" = `UPDATE … SET … = NULL`.
+- **Enum (132, separate file — 55P04):** `QuotaResourceType.STYLE_ANALYSIS`. 133 seeds `customer_resource_limits` `STYLE_ANALYSIS` = 3 / `MONTH` (`ON CONFLICT DO NOTHING`, so an admin edit survives a re-run; `checkCustomerQuota` fails open without it).
+- **RLS:** all three tables enabled with a `backend_roles_full_access` policy for `kanchuki_app` + `kanchuki_purge` (policy first, then ENABLE — RC-030). Global config: no `retailer_id`, no customer link.
+- **No DELETE granted** on any of them (RC-049): admin "remove" = `is_active = false`. Default privileges give `kanchuki_app` SELECT/INSERT/UPDATE.
+- **Purge (RC-050):** no FK into `retailers` / `products` / `customer_accounts`, so `hardDeleteRetailer()`'s list needs no entry.
+- **Writer map (planned):** `color_family` ← `jobs/tag-product.ts` + `jobs/color-family-backfill.ts` (PR-2); `skin_*` / `body_frame` / `style_profile_at` ← `jobs/my-style-analyze.ts` (PR-6), cleared by `POST /v1/public/my-style/profile/clear`; config tables ← admin routes (PR-8).
+- **Pinned by** `apps/api/src/lib/my-style-migration.test.ts`: enum-only 132, additive-only 133, RLS order, no GRANT/DELETE, seeds load, every palette references only known families, good ∩ avoid = ∅.
+
 ## Migrations Strategy
 
 - All schema changes via Prisma migrations (`prisma migrate dev`)
