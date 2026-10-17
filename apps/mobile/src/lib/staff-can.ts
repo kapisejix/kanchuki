@@ -22,12 +22,14 @@ export type StaffFeature =
   | 'social'
   | 'social.schedule' // view calendar/status, caption edit, skip/retry, pause/resume
   | 'social.schedule.plan' // create/confirm/end a plan, slide edits (owner only)
+  | 'enquiries' // F-044 inbox: read, take, set status — every role (D2)
+  | 'enquiries.assign' // reassign an enquiry (owner + manager)
 
 // 'manager' = manager (and any non-salesperson staff role) may; 'owner' =
-// only the retailer owner. catalog.view / customers.add are allowed for
-// every role and handled in staffCan directly.
+// only the retailer owner. catalog.view / customers.add / enquiries are
+// allowed for every role and handled in staffCan directly.
 const ROLE_FEATURES: Record<
-  Exclude<StaffFeature, 'catalog.view' | 'customers.add'>,
+  Exclude<StaffFeature, 'catalog.view' | 'customers.add' | 'enquiries'>,
   'owner' | 'manager'
 > = {
   'catalog.edit': 'manager',
@@ -40,11 +42,14 @@ const ROLE_FEATURES: Record<
   social: 'manager',
   'social.schedule': 'manager',
   'social.schedule.plan': 'owner',
+  'enquiries.assign': 'manager',
 }
 
 export function staffCan(role: string | null | undefined, feature: StaffFeature): boolean {
   if (!role || role === 'owner') return true
-  if (feature === 'catalog.view' || feature === 'customers.add') return true
+  if (feature === 'catalog.view' || feature === 'customers.add' || feature === 'enquiries') {
+    return true
+  }
   if (role === 'salesperson') return false
   // manager (or any non-salesperson staff role) — check the map.
   return ROLE_FEATURES[feature] === 'manager'
@@ -54,5 +59,6 @@ export function staffCan(role: string | null | undefined, feature: StaffFeature)
 export const ROLE_SUMMARY: Record<string, string> = {
   manager:
     'Can manage products, collections, campaigns and social posts, and view analytics. Customer phone numbers are hidden. No settings or billing.',
-  salesperson: 'Can view the catalog and add customers. Cannot edit products, create collections or run campaigns.',
+  salesperson:
+    'Can view the catalog, add customers and handle customer enquiries. Customer phone numbers are hidden. Cannot edit products, create collections or run campaigns.',
 }
