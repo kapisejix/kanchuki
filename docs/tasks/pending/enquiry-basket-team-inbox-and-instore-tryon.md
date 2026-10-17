@@ -446,6 +446,7 @@ Principle: ship only what has no GPU dependency first; try-on waits for the F-04
 
 **Release 1 progress:**
 - E7 ✅ built 2026-10-17 — `apps/api/src/plugins/staff-access.test.ts` pins manager `POST /v1/products/:id/try-on` (+ status GET) allowed, salesperson 403; mutation-checked (removing the manager `/v1/products` rule fails it). Branch `feat/enquiry-r1-t1-staff-test`.
+- E6 ✅ built 2026-10-17 — `CUSTOMER_TRY_ON_ENABLED = false` in `apps/api/src/lib/features.ts`. Customer (cookie-only) try-on POST + status → 404, `GET /passport/try-on/consent` → 404, public product `try_on_enabled` false with no PlanFeature read. In-store Bearer path unchanged; `POST /passport/try-on/withdraw` stays live (Q2). Branch `feat/enquiry-r1-t2-customer-tryon-off`.
 
 Deferred columns (add when something reads them): `first_reply_at`, `last_reply_by_staff_id`, `source`, `try_on_done`.
 

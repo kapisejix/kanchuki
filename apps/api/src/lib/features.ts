@@ -2,6 +2,15 @@ import { prisma } from '@kanchuki/db';
 import type { PlanFeatureKey, SubscriptionPlan } from '@kanchuki/db';
 
 /**
+ * F-044 / E6: customer-side virtual try-on (the PWA shopper path, cookie-only)
+ * is OFF for Release 1. In-store try-on (Bearer retailer/manager) is unaffected
+ * and still gated by VIRTUAL_TRY_ON_V2. Off means the customer routes answer
+ * 404 and `try_on_enabled` is false without reading PlanFeature.
+ */
+// ponytail: compile-time constant; promote to a PlanFeatureKey when the owner wants it per plan.
+export const CUSTOMER_TRY_ON_ENABLED = false;
+
+/**
  * F-013: Check if a feature is enabled for a retailer's current plan.
  *
  * **Fails CLOSED** — the opposite of checkQuota()'s fail-open behavior:

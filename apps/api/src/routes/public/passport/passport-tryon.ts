@@ -21,6 +21,7 @@
 // recording the change of mind. See lib/tryon-consent.ts.
 
 import type { FastifyPluginAsync } from 'fastify';
+import { CUSTOMER_TRY_ON_ENABLED } from '../../../lib/features.js';
 import { PURPOSE_CONSENTS } from '../../../lib/notice-versions.js';
 import { hasLiveTryOnConsent, withdrawTryOnConsent } from '../../../lib/tryon-consent.js';
 import { getPassportSession } from './passport-helpers.js';
@@ -31,6 +32,11 @@ export const passportTryOnRoutes: FastifyPluginAsync = async (server) => {
   // the try-on screen can show "you can withdraw this" only when that is true
   // and can re-ask when the wording has moved on.
   server.get('/try-on/consent', async (request, reply) => {
+    // E6: no customer try-on, so no consent screen to feed. Withdraw (below)
+    // stays live — grants made before the switch-off must stay withdrawable.
+    if (!CUSTOMER_TRY_ON_ENABLED) {
+      return reply.status(404).send({ error: { code: 'NOT_FOUND', message: 'Not found' } });
+    }
     const session = await getPassportSession(request.headers.cookie || '');
     if (!session) {
       return reply
