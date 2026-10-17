@@ -1,6 +1,6 @@
 # F-044 Release 2 — E8 "Try on with customer" (in-store session) Implementation Plan
 
-> **Status 2026-10-17:** T1, T2, RC-068, T3, T4 (+ keep-awake, server-side discard), T6, T7 and T5 built on the branch stack ending `feat/enquiry-r2-t5-docs` (unpushed, unmerged). Migration 131 proposed only. Owner checklist + known gaps: spec §11.7.
+> **Status 2026-10-17:** T1, T2, RC-068, T3, T4 (+ keep-awake, server-side discard), T6, T7 and T5 built and MERGED to `main` 2026-10-17 (PR #103, `2343e492`). Migration 131 applied in prod 2026-10-17 (owner). Owner checklist + known gaps: spec §11.7.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
