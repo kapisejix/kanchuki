@@ -206,18 +206,33 @@ export const productsTryOnRoutes: FastifyPluginAsync = async (server) => {
         id: { in: body.data.job_ids },
         retailer_id: retailerId,
         customer_account_id: null,
-        result_url: { not: null },
+        OR: [{ result_url: { not: null } }, { status: 'PENDING' }],
       },
-      select: { id: true, result_url: true },
+      select: { id: true, result_url: true, status: true },
     });
-    // Known limit: a job still PENDING here has no result_url yet and lands its
-    // result later (reported as `skipped`). The client must call discard again
-    // after the job settles; the age sweep is the backstop (~2 h + hourly cron).
     let discarded = 0;
     let failed = 0;
     for (const job of jobs) {
       const key = job.result_url;
-      if (!key) continue;
+      if (!key) {
+        // Still running: no result yet. Tombstone it (CAS on PENDING) so the
+        // worker's guarded completion write loses and deletes what it wrote
+        // (jobs/tryon.ts). A job that finished first no longer matches PENDING;
+        // the client's next discard pass or the age sweep covers it.
+        if (job.status !== 'PENDING') continue;
+        try {
+          const { count } = await prisma.tryOnJob.updateMany({
+            where: { id: job.id, status: 'PENDING' },
+            data: { status: 'DISCARDED', completed_at: new Date() },
+          });
+          if (count > 0) discarded += 1;
+        } catch (err) {
+          failed += 1;
+          console.error(`[try-on] discard could not mark running job ${job.id}:`, err);
+          Sentry.captureException(err);
+        }
+        continue;
+      }
       // Only the pointer goes, and only after the delete: on failure the key
       // stays (sole pointer, same rule as withdrawTryOnConsent) and the
       // age sweep retries.
@@ -454,7 +469,7 @@ export const productsTryOnRoutes: FastifyPluginAsync = async (server) => {
 
     // Same fall-through trap as withdrawn: COMPLETED with the pointer cleared
     // means the result was discarded (F-044 R2), not that it is still working.
-    if (job.status === 'COMPLETED' && !job.result_url) {
+    if (job.status === 'DISCARDED' || (job.status === 'COMPLETED' && !job.result_url)) {
       return { data: { status: 'discarded' } };
     }
 

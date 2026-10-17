@@ -107,7 +107,7 @@ describe('handleTryOn', () => {
     // The completion is conditional on the consent still being live — the
     // WHERE is the check, and the write is its consequence.
     expect(mockJobUpdateMany).toHaveBeenCalledWith({
-      where: { id: 'tryon_1', consent_withdrawn_at: null },
+      where: { id: 'tryon_1', consent_withdrawn_at: null, status: { not: 'DISCARDED' } },
       data: expect.objectContaining({
         status: 'COMPLETED',
         result_url: 'tryon-results/tryon_1/result.jpg',
@@ -152,8 +152,54 @@ describe('handleTryOn', () => {
     await expect(handleTryOn(DATA)).resolves.toBeUndefined();
 
     expect(mockDeleteObject).toHaveBeenCalled();
-    // Nothing cleared the key: it is the sweep's only way to find the object.
-    expect(mockJobUpdateMany).toHaveBeenCalledTimes(1);
+    // Nothing cleared the key: guarded completion + the (no-match) DISCARDED
+    // record attempt only.
+    expect(mockJobUpdateMany).toHaveBeenCalledTimes(2);
+  });
+
+  it('discarded mid-run: records the key durably, deletes it, clears the pointer, never flips status', async () => {
+    // 1st updateMany = guarded completion (matches nothing: row is DISCARDED),
+    // 2nd = durable record of the key, 3rd = pointer clear after the delete.
+    mockJobUpdateMany
+      .mockResolvedValueOnce({ count: 0 })
+      .mockResolvedValueOnce({ count: 1 })
+      .mockResolvedValueOnce({ count: 1 });
+
+    await handleTryOn(DATA);
+
+    const key = 'tryon-results/tryon_1/result.jpg';
+    expect(mockJobUpdateMany.mock.calls[1]?.[0]).toEqual({
+      where: { id: 'tryon_1', status: 'DISCARDED', result_url: null },
+      data: { result_url: key, completed_at: expect.any(Date) },
+    });
+    expect(mockDeleteObject).toHaveBeenCalledWith(key);
+    expect(mockJobUpdateMany.mock.calls[2]?.[0]).toEqual({
+      where: { id: 'tryon_1', result_url: key },
+      data: { result_url: null },
+    });
+    // No status write other than the guarded ones.
+    expect(mockJobUpdate).not.toHaveBeenCalled();
+    for (const c of mockJobUpdateMany.mock.calls.slice(1)) {
+      expect(c[0].data.status).toBeUndefined();
+    }
+  });
+
+  it('discarded mid-run + failed delete: key stays recorded for the sweep', async () => {
+    mockJobUpdateMany
+      .mockResolvedValueOnce({ count: 0 })
+      .mockResolvedValueOnce({ count: 1 });
+    mockDeleteObject.mockRejectedValue(new Error('R2 unreachable'));
+
+    await expect(handleTryOn(DATA)).resolves.toBeUndefined();
+
+    // Record write happened, pointer was NOT cleared (still the only pointer).
+    expect(mockJobUpdateMany).toHaveBeenCalledTimes(2);
+  });
+
+  it('discarded mid-run still meters the generation (GPU ran)', async () => {
+    mockJobUpdateMany.mockResolvedValue({ count: 0 });
+    await handleTryOn(DATA);
+    expect(mockIncrementUsage).toHaveBeenCalledWith('retailer_1', 'TRY_ON_GENERATION');
   });
 
   it('still meters a generation that was withdrawn mid-run', async () => {

@@ -661,7 +661,7 @@ describe('POST /products/try-on/discard (F-044 R2 T2)', () => {
       id: { in: ['j1', 'j2', 'foreign'] },
       retailer_id: RETAILER_ID,
       customer_account_id: null,
-      result_url: { not: null },
+      OR: [{ result_url: { not: null } }, { status: 'PENDING' }],
     });
     expect(mockDeleteObject.mock.calls.map((c) => c[0])).toEqual(['k/j1.jpg', 'k/j2.jpg']);
     expect(mockJobUpdateMany).toHaveBeenCalledWith({
@@ -713,6 +713,45 @@ describe('POST /products/try-on/discard (F-044 R2 T2)', () => {
     const res = await discard(app);
     expect(res.statusCode).toBe(200);
     expect(res.json().data).toEqual({ discarded: 0, failed: 0, skipped: 0 });
+    await app.close();
+  });
+
+  it('marks still-running (PENDING) own in-store jobs DISCARDED with a CAS update', async () => {
+    mockJobFindMany.mockResolvedValue([{ id: 'pending_job', result_url: null, status: 'PENDING' }]);
+    mockJobUpdateMany.mockResolvedValue({ count: 1 });
+    const app = await buildApp({ retailerId: RETAILER_ID });
+    const res = await discard(app, { job_ids: ['pending_job'] });
+    expect(res.json().data).toEqual({ discarded: 1, failed: 0, skipped: 0 });
+    expect(mockJobUpdateMany).toHaveBeenCalledWith({
+      where: { id: 'pending_job', status: 'PENDING' },
+      data: { status: 'DISCARDED', completed_at: expect.any(Date) },
+    });
+    expect(mockDeleteObject).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('a PENDING job that finished before the CAS is not counted (raced)', async () => {
+    mockJobFindMany.mockResolvedValue([{ id: 'j1', result_url: null, status: 'PENDING' }]);
+    mockJobUpdateMany.mockResolvedValue({ count: 0 });
+    const app = await buildApp({ retailerId: RETAILER_ID });
+    const res = await discard(app);
+    expect(res.json().data).toEqual({ discarded: 0, failed: 0, skipped: 0 });
+    await app.close();
+  });
+
+  it('status reports discarded for a DISCARDED (never-finished) job', async () => {
+    mockJobFindFirst.mockResolvedValue({
+      status: 'DISCARDED',
+      result_url: null,
+      failure_reason: null,
+      consent_withdrawn_at: null,
+    });
+    const app = await buildApp({ retailerId: RETAILER_ID });
+    const res = await app.inject({
+      method: 'GET',
+      url: '/v1/products/p1/try-on/status?job_id=j1',
+    });
+    expect(res.json().data).toEqual({ status: 'discarded' });
     await app.close();
   });
 
