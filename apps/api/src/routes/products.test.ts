@@ -121,7 +121,7 @@ vi.mock('../jobs/index.js', () => ({
   addTaggingJob: vi.fn(),
 }));
 
-import { addTaggingJob } from '../jobs/index.js';
+import { addEmbeddingJob, addTaggingJob } from '../jobs/index.js';
 
 vi.mock('../lib/quota.js', () => ({
   checkQuota: vi.fn(),
@@ -131,6 +131,9 @@ vi.mock('../lib/quota.js', () => ({
 vi.mock('../lib/features.js', () => ({
   hasFeature: mockHasFeature,
 }));
+
+const mockResolveColorFamily = vi.hoisted(() => vi.fn());
+vi.mock('../lib/color-families.js', () => ({ resolveColorFamily: mockResolveColorFamily }));
 
 const RETAILER_ID = 'retailer_1';
 
@@ -150,6 +153,47 @@ async function buildApp(staffRole: string | null) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+});
+
+describe('PUT /products/:id — F-045 color_family', () => {
+  const put = async (payload: Record<string, unknown>) => {
+    mockProductFindFirst.mockResolvedValue({ id: 'p1', retailer_id: RETAILER_ID });
+    mockProductUpdate.mockResolvedValue({ id: 'p1', photos: [] });
+    vi.mocked(addEmbeddingJob).mockResolvedValue(undefined as never);
+    const app = await buildApp(null);
+    const res = await app.inject({ method: 'PUT', url: '/v1/products/p1', payload });
+    await app.close();
+    return res;
+  };
+
+  it('re-derives color_family when primary_color is edited', async () => {
+    mockResolveColorFamily.mockResolvedValue('yellow');
+    const res = await put({ primary_color: 'Mustard' });
+    expect(res.statusCode).toBe(200);
+    expect(mockResolveColorFamily).toHaveBeenCalledWith('Mustard');
+    expect(mockProductUpdate.mock.calls[0]?.[0].data).toMatchObject({
+      primary_color: 'Mustard',
+      color_family: 'yellow',
+    });
+  });
+
+  it('clears color_family (null) when the new colour is unmapped', async () => {
+    mockResolveColorFamily.mockResolvedValue(null);
+    await put({ primary_color: 'Chartreuse' });
+    expect(mockProductUpdate.mock.calls[0]?.[0].data.color_family).toBeNull();
+  });
+
+  it('leaves color_family alone (not null) when the family lookup failed', async () => {
+    mockResolveColorFamily.mockResolvedValue(undefined);
+    await put({ primary_color: 'Mustard' });
+    expect(mockProductUpdate.mock.calls[0]?.[0].data).not.toHaveProperty('color_family');
+  });
+
+  it('leaves color_family untouched when primary_color is not in the edit', async () => {
+    await put({ name: 'New name' });
+    expect(mockResolveColorFamily).not.toHaveBeenCalled();
+    expect(mockProductUpdate.mock.calls[0]?.[0].data).not.toHaveProperty('color_family');
+  });
 });
 
 describe('GET /products/deleted', () => {

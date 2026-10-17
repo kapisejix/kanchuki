@@ -6,3 +6,4 @@ export * from './theme.js'
 export * from './tryon-consent.js'
 export * from './studio-styles.js'
 export * from './studio-gating.js'
+export * from './color-family.js';
