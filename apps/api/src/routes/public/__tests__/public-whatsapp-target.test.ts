@@ -57,10 +57,26 @@ const retailerRow = (whatsapp_number: string | null) => ({
 
 // Keys the payload exposed BEFORE E5 — the fix must not add any.
 const COLLECTION_RETAILER_KEYS = [
-  'banner_url', 'city', 'id', 'is_suspended', 'latitude', 'logo_url', 'longitude',
-  'phone', 'public_slug', 'shop_name',
+  'banner_url',
+  'city',
+  'id',
+  'is_suspended',
+  'latitude',
+  'logo_url',
+  'longitude',
+  'phone',
+  'public_slug',
+  'shop_name',
 ];
-const CATALOG_RETAILER_KEYS = ['banner_url', 'city', 'id', 'logo_url', 'phone', 'public_slug', 'shop_name'];
+const CATALOG_RETAILER_KEYS = [
+  'banner_url',
+  'city',
+  'id',
+  'logo_url',
+  'phone',
+  'public_slug',
+  'shop_name',
+];
 
 async function buildApp() {
   const app = Fastify();
@@ -91,7 +107,9 @@ describe('buildWhatsAppEnquiryLink (RC-067)', () => {
     },
   );
   it('ordinary number unchanged', () => {
-    expect(buildWhatsAppEnquiryLink('+91 98765 43210', 'hi')).toBe('https://wa.me/919876543210?text=hi');
+    expect(buildWhatsAppEnquiryLink('+91 98765 43210', 'hi')).toBe(
+      'https://wa.me/919876543210?text=hi',
+    );
   });
 });
 
