@@ -1,6 +1,6 @@
 # Enquiry basket → team inbox → in-store try-on (retailer/manager only)
 
-**Status:** 🔴 Idea / design only — not approved, no F-number assigned, nothing built. **D8 decided 2026-10-16** (₹4/try-on budget unit, self-hosted CatVTON kept); D1–D7 await the owner's review — see §11 (decision register + next-session prompt).
+**Status (2026-10-17):** 🟨 **F-044 — approved and built.** Release 1 (basket → inbox → take) and Release 2 (E8 in-store try-on, E11 GPU logging, E12 top-up packs) are merged to `main` (PRs #95–#100, #103). Decisions D1–D8 are all decided (§11.1). Try-on stays OFF (`VIRTUAL_TRY_ON_V2`) until the F-040 launch gates clear. Not built: real push notifications (Release 3), E9 in-app WhatsApp reply (blocked on F-035), and the deferred §5.1 columns. Progress, owner checklist and known gaps: §11.7. Sections 1-10 below are the original design record; where they disagree with §11.7, §11.7 wins (e.g. quotas stay 20 / 50 / 100, pack prices are GST-inclusive).
 **Filed:** 2026-10-16. **Related:** `catvton-runpod-tryon-launch.md` (F-040), `whatsapp-managed-sending.md` (F-035),
 `customer-engagement-analytics.md` (F-037), `docs/PRO-REQUIREMENTS.md` (enquiry + staff sections).
 **Source:** two owner questions asked in one session; the first (§1) is a code-read explanation, the second (§2–§8) is the design.
