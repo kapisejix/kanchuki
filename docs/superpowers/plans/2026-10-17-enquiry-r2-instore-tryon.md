@@ -32,9 +32,13 @@
 6. **Extra on-device copies of the wearer photo.** `productApi.startTryOn` calls `compressImageForUpload` on every call, writing a compressed JPEG to the app cache — 4 jobs = 4 extra copies, none deleted. Camera `takePictureAsync` also writes a cache file. "Discard the on-device photo on exit" must delete **all** of them (T3/T4).
 7. **Result image is cached on the staff phone.** `expo-image` caches remote images to disk by default; the presigned result URL (1 h) would persist on-device. Gallery must use `cachePolicy="none"` and call `Image.clearDiskCache()`/`clearMemoryCache()` on exit (T4).
 8. **The existing screen has a Share button** that shares the presigned URL. The session screen must not copy it.
-9. **Gallery picker on the existing screen** (`launchImageLibraryAsync`) puts the customer's photo in/through the device gallery; the session screen is camera-only.
-10. **Spec §6 lists E11 (cost logging) under Release 2 but gives it no task row**; this plan treats it as out of scope unless the owner says otherwise (decision 5).
-11. **Spec §11.1 already records D5 and D6/D6b as DECIDED (2026-10-17).** The request brief treats them as open; they are listed below as "confirm", with the build impact of each answer.
+9. **Gallery import (owner: YES, 2026-10-17).** The existing screen's `launchImageLibraryAsync` is kept in the session. Consequence: the customer's photo may already live in the staff phone's gallery (outside our control), and cleanup must delete **only app-owned cache copies** — never the user's original gallery asset. Whether the picker hands back a cache copy or the original URI differs by OS/version: not verified.
+10. **Spec §6 lists E11 (cost logging) under Release 2 but gives it no task row.** `generateTryOn()` already returns `latencyMs` (worker-reported inference time) but `handleTryOn` drops it. See decision 5.
+11. **Spec §11.1 already records D5 and D6/D6b as DECIDED (2026-10-17).** D5 still has sub-questions (decision 1).
+12. **E12 premise is wrong:** adding `TRY_ON_GENERATION` to `admin-resource-packs.ts` does **not** make packs buyable. `POST /billing/addon-checkout` reads the hardcoded `ADDON_PRICING` const (`packages/shared/src/constants/index.ts:667`), never the admin `ResourcePack` table (only the admin page reads it). T6 makes checkout read `ResourcePack` for try-on packs.
+13. **Pack expiry is answered by code:** the callback credits by `decrement`-ing the **current month's** `UsageCounter` row, so a purchased pack **expires at month-end, no carry-over**. (Nothing is credited when the plan limit is `-1`.) `used` can go negative → UI must clamp.
+14. **GST gap:** checkout charges `pack.price_paise` as-is; `gst_amount` / `gst_invoice_number` on `QuotaAddonPurchase` exist but the callback never fills them. Spec says ₹8 **ex**-GST + 18 % on top; CLAUDE.md says GST invoicing is non-negotiable. See decision 2.
+15. **No mobile screen buys add-ons today** — `billing.ts` has `addonCheckout` but no screen calls it.
 
 ## Review Focus
 
@@ -60,6 +64,7 @@ Failure modes the spec implies but no spec task tests; each is pinned by a named
 | `apps/mobile/src/lib/try-on-session.ts` (new) | pure orchestrator: run N jobs, concurrency 2, per-item result, cleanup | T3 |
 | `apps/mobile/app/enquiry-try-on.tsx` (new) | capture → consent → progress → gallery → exit cleanup | T4 |
 | `apps/mobile/app/enquiries.tsx`, `apps/mobile/src/lib/staff-can.ts` | button + `enquiries.tryon` key (manager) | T4 |
+| `apps/api/src/routes/billing/billing-addons.ts`, `admin-resource-packs.ts`, `apps/mobile/src/lib/api/billing.ts` | try-on top-up packs behind `ResourcePack.is_active` | T6 |
 | docs (`PRO-REQUIREMENTS §41`, `BUILD-LOG`, spec §11.7, `SECURITY.md` try-on row *proposed*) | status sync | T5 |
 
 ---
@@ -150,13 +155,13 @@ Failure modes the spec implies but no spec task tests; each is pinned by a named
 
 Screen behaviour (one step per row, in order):
 1. **Pre-flight:** show "N try-ons · M left this month". If `remaining < N`, let staff pick which products to run (checkboxes, cap at `remaining`); if `remaining = 0` show the limit message, no camera.
-2. **Capture:** `CameraView` only (no gallery button). Full-length framing hint.
+2. **Capture:** `CameraView` plus a gallery-import button (owner decision 7). Full-length framing hint. Cleanup deletes only URIs under the app cache directory (guard: `uri.startsWith(FileSystem.cacheDirectory)`), never an original gallery asset.
 3. **Consent:** `TryOnConsent` — shown **after** capture, customer reads/accepts on the staff phone; Decline → delete photo, back to capture, zero API calls.
 4. **Progress:** per-product row (queued/running/ready/failed + reason). Keep-awake while running.
 5. **Gallery:** horizontal paged `FlatList`, `expo-image` with `cachePolicy="none"`; failed items show the reason; no Share button; quota line refreshed. Retry on a failed item = a new quota unit (say so).
 6. **Exit (every path):** `useEffect` cleanup + Close button + hardware back + `AppState` → `background` all call `cleanupSession` then `Image.clearDiskCache()`/`clearMemoryCache()`. Confirm dialog on Close while results exist ("Pictures are deleted when you leave").
 
-- [ ] **Step 1: Failing tests (vitest, logic only):** `staff-can.test.ts` — manager/owner true, salesperson false for `enquiries.tryon`; `planSession` (remaining 2 of 4 → run 2, skipped 2; 0 → run none).
+- [ ] **Step 1: Failing tests (vitest, logic only):** `staff-can.test.ts` — manager/owner true, salesperson false for `enquiries.tryon`; `planSession` (remaining 2 of 4 → run 2, skipped 2; 0 → run none); `cleanupSession` never calls `deleteAsync` on a URI outside the cache directory (pure helper `isAppCacheUri(uri, cacheDir)` in `try-on-session.ts`).
 - [ ] **Step 2: Run** `pnpm --filter @kanchuki/mobile exec vitest run src/lib/staff-can.test.ts src/lib/try-on-session.test.ts` — FAIL.
 - [ ] **Step 3: Implement** `staffCan` key + `planSession`, then the screen and the card button (follow `product/try-on.tsx` styling, `useScreenInsets`, `AnimatedPressable`, `GradientButton`).
 - [ ] **Step 4: Run** tests + `pnpm --filter @kanchuki/mobile typecheck` + lint — PASS.
@@ -168,27 +173,60 @@ Screen behaviour (one step per row, in order):
 
 ### Task T5: Docs + owner-side checklist
 
-**Size:** XS. **Depends on:** T1–T4 landing.
+**Size:** XS. **Depends on:** T1–T4 and T6 landing.
 
 - [ ] Update spec §11.7 Release 2 progress, `PRO-REQUIREMENTS.md` §41 status table, `docs/BUILD-LOG.md`, CLAUDE.md index row 101 (needs owner approval — CLAUDE.md edits are gated).
 - [ ] **Propose** (do not edit without approval) a `SECURITY.md` try-on row update: in-store results discarded on exit + swept after `IN_STORE_RESULT_TTL_HOURS`. SECURITY.md §12–18 is governance — human review required.
-- [ ] Owner checklist (not done by the agent): set `TRY_ON_GENERATION` plan limits to 40/100/200 in Admin → Plan Limits (seed is 20/50/100); enable `VIRTUAL_TRY_ON_V2` per plan; F-040 launch gates (decision 3).
+- [ ] Owner checklist (not done by the agent): set `TRY_ON_GENERATION` plan limits to 40/100/200 in Admin → Plan Limits (seed is 20/50/100); enable `VIRTUAL_TRY_ON_V2` per plan; F-040 launch gates (needed for enabling only — owner 2026-10-17).
 - [ ] Commit `docs: F-044 Release 2 status`.
 
 ---
 
-## Owner decisions (one message, most important first)
+### Task T6: Try-on top-up packs behind an admin switch (E12 / D6b)
 
-1. **D5 — confirm "discard", and the backstop.** Spec §11.1 says decided: discard after session. Code reality: in-store results are stored in R2 **forever today** with no withdraw path. Discard-on-exit (T2) is therefore new, and the age sweep will also purge the existing single-product in-store results (the current screen's Share button links would die after the TTL). Confirm: (a) discard applies to the single-product screen too; (b) backstop TTL = 2 h (proposal) or other; (c) no `discarded_at` column (proposal) vs audit column (migration).
-2. **D6/E12 — quota.** Spec says decided 40/100/200 + packs 25/50/100 at ₹8. Live seed is 20/50/100, so until an admin edits it a 4-item session burns 20 % of Starter. Confirm: is 40/100/200 enough for 3–4-item sessions (≈10/25/50 sessions/month)? Is **E12 top-up packs in this release or later?** (this plan assumes **later**: without it, a retailer who hits the limit sees "upgrade your plan" and nothing to buy).
-3. **F-040 launch gates — precondition for merge, or only for enabling?** `VIRTUAL_TRY_ON_V2` is OFF and the RunPod template tag must be re-pointed to the image with `person_image_base64`. Recommendation: **enabling only** — T1–T4 are inert behind the 404 flag gate and can merge/deploy dark; the accuracy bake-off and re-point gate the flip, not the merge. Say if you want the opposite.
-4. **Retailer push does not exist (spec §8a).** Confirm in-app only for v1 (the session is in-store and staff-initiated, so no push is needed for E8 itself).
-5. **E11 GPU-seconds cost logging** — spec lists it under Release 2 with no task. In this release, or separate?
-6. **Consent granularity.** Plan: one consent screen per wearer photo, version sent on each of the N POSTs (each job row records consent). Retaking the photo re-shows consent. If you meant a separate consent per product, say so (4 screens per customer).
-7. **Gallery picker removed** from the session (camera only) so the customer photo never passes through the device gallery. Say if staff need gallery import.
+**Size:** M. **Depends on:** nothing technical (independent of T1–T4; ship dark). Owner 2026-10-17: build now, switch on later.
+
+**The switch:** the admin `ResourcePack` table already has `is_active` and a per-plan `plans[]` filter, editable in Admin → Resource Packs. Packs for `TRY_ON_GENERATION` are created there (25 / 50 / 100 try-ons) with `is_active = false`. **No migration, no new feature key, nothing seeded in code.** Off = checkout refuses (server-side) and the mobile button is hidden.
+
+**Files:**
+- Modify: `apps/api/src/routes/billing/billing-addons.ts` (checkout enum + DB lookup; new `GET /billing/try-on-packs`)
+- Modify: `apps/api/src/routes/admin/admin-resource-packs.ts` (add `'TRY_ON_GENERATION'` to `RESOURCE_TYPES`)
+- Modify: `apps/mobile/src/lib/api/billing.ts` (`tryOnPacks()`, `addonCheckout` accepts `packId`), `apps/mobile/app/enquiry-try-on.tsx` (button on the limit / pre-flight screen)
+- Test: `apps/api/src/routes/billing/billing-addons.test.ts` (create if absent), `apps/mobile/src/lib/try-on-session.test.ts`
+
+**Interfaces:**
+- Produces: `GET /v1/billing/try-on-packs` (Bearer) → `{ data: { id: string; label: string; pack_size: number; price_paise: number }[] }` — rows where `resource_type = 'TRY_ON_GENERATION' AND is_active AND (plans = [] OR plans has retailer.plan)`; `[]` when none.
+- Changes: `POST /v1/billing/addon-checkout` body gains `pack_id?: string`; `resource_type: 'TRY_ON_GENERATION'` **requires** `pack_id`, looks the pack up in `ResourcePack` with the same active/plan filter, else 404 `Product`-style not-found (never 403 — same invisibility rule as the try-on gate). The five existing resource types keep reading `ADDON_PRICING` unchanged (ponytail: mixed sources, migrate the rest to the DB table when someone needs them).
+- Mobile: "Buy more try-ons" shows only when `tryOnPacks()` returns ≥1 pack; opens `checkout_url` in the browser (existing web-billing pattern).
+
+- [ ] **Step 1: Failing tests:** checkout with an inactive pack → 404 and **no** Razorpay call and no `QuotaAddonPurchase` row; pack restricted to `['PRO']` requested by a GROWTH retailer → 404; active pack → creates the payment link with `amount = pack.price_paise` and `notes.quantity = pack.pack_size`; `GET /try-on-packs` returns `[]` when all inactive and omits other-plan packs; callback crediting decrements the current-month `UsageCounter` by `quantity` (regression pin for the month-end expiry fact); mobile: button hidden when `[]`.
+- [ ] **Step 2: Run** `pnpm --filter @kanchuki/api exec vitest run src/routes/billing` — FAIL.
+- [ ] **Step 3: Implement** as specified; reuse the existing audit-log write.
+- [ ] **Step 4: Run** tests + API typecheck + `security.test.ts` — PASS.
+- [ ] **Step 5: Commit** `feat(billing): try-on top-up packs behind admin switch (F-044 R2 T6)`.
+
+**Not verified:** a real Razorpay payment-link round trip (needs test keys; the agent has none); GST — decision 2; that `quota` UI clamps negative `used` after a credit.
+**Owner steps afterwards (not the agent):** in Admin → Resource Packs create 25 / 50 / 100 try-ons, set price, leave inactive until launch.
+
+---
+
+## Owner answers (2026-10-17) and what is still open
+
+**Answered:**
+- **#2 E12 top-up packs:** build now, ship switched off, admin enables later → T6.
+- **#3 F-040 launch gates:** needed **only for enabling**, not for merging. T1–T4 and T6 can merge and deploy dark.
+- **#4 Retailer push:** confirmed — in-app only for v1.
+- **#6 Consent:** **per wearer photo** (one consent screen per photo; version sent on each of the N POSTs; retake ⇒ consent again). Matches T3/T4 as written.
+- **#7 Gallery import:** yes — see spec-check item 9 and T4 step 2.
+
+**Still open (most important first):**
+1. **D5 sub-questions.** Discard-on-exit + 2 h age backstop is planned (T2). Confirm: (a) it also applies to the existing single-product screen (its Share link would die after the TTL; today those images are kept forever); (b) 2 h backstop or other; (c) no `discarded_at` column (proposal) vs audit column (needs a migration).
+2. **GST on top-up packs.** Spec: ₹8 ex-GST + 18 %. Checkout charges `price_paise` with no GST and never fills the invoice fields. Do you want (a) admin enters the GST-inclusive price (₹9.44/try-on → 25 = ₹236, 50 = ₹472, 100 = ₹944), or (b) a separate GST-line + invoice task before the switch is turned on? Either way, do not enable packs before this is settled.
+3. **E11 cost logging — explained in the chat reply.** Include in this release (adds `try_on_jobs.latency_ms`, migration PROPOSED) or separate?
+4. **Quota numbers:** is 40/100/200 enough for 3–4-item sessions? (Seed is 20/50/100 until an admin edits Plan Limits.)
 
 ## Self-review
 
-- Spec coverage: E8 items 1–5 → T3/T4 (photo, in-store consent, N jobs + polling, staff-only gallery, discard-on-exit); quota display → T1+T4; E7/E6 already built; E12/E11 → decisions 2/5; D4/sharing → Global Constraints.
+- Spec coverage: E8 items 1–5 → T3/T4 (photo, in-store consent, N jobs + polling, staff-only gallery, discard-on-exit); quota display → T1+T4; E7/E6 already built; E12 → T6; E11 → open decision 3; D4/sharing → Global Constraints.
 - Type consistency: `SessionItem`, `runTryOnSession`, `cleanupSession`, `planSession`, `getTryOnQuota`, `discardTryOnJobs`, route paths `/try-on/quota` + `/try-on/discard` used identically in T1–T4.
 - Proportion: plan is ~⅓ of the spec's length; bodies are signatures + assertions only.
