@@ -4376,7 +4376,7 @@ Customer sends all their picks to the store in one enquiry; the store team sees 
 | E4-lite — unread badge (poll) | ✅ Built 2026-10-17 — home "Enquiries" tile shows the NEW count, polled every 30 s only while Home is focused, refetched on return from the inbox |
 | E5 — route to `whatsapp_number ?? phone` + shared-number copy | ✅ Built 2026-10-17 — enquire route + every public payload resolve the number once (`enquiryPhone`), same `phone` key; settings copy + "Not set" warning; RC-067 (+91 dropped for 91-prefixed numbers) fixed |
 
-### Release 2 — in-store try-on ("Try on with customer", E8) — 🟨 CODE COMPLETE 2026-10-17, unpushed, unmerged, device-unverified
+### Release 2 — in-store try-on ("Try on with customer", E8) — 🟨 MERGED to `main` 2026-10-17 (PR #103, `2343e492`), flag OFF, device-unverified
 
 Owner / manager photographs the customer once from an enquiry card and gets a swipeable gallery of one try-on per enquiry product, on the staff phone only. The wearer photo is never stored; results are discarded on exit (and swept after `IN_STORE_RESULT_TTL_HOURS` = 2). Customer-facing try-on stays OFF. Plan: `docs/superpowers/plans/2026-10-17-enquiry-r2-instore-tryon.md`; owner checklist + known gaps: spec §11.7.
 
@@ -4388,5 +4388,5 @@ Owner / manager photographs the customer once from an enquiry card and gets a sw
 | T3 — mobile session orchestrator | ✅ Built 2026-10-17 |
 | T4 — `enquiry-try-on` screen + keep-awake (EAS rebuild) + server-side discard of running jobs | ✅ Built 2026-10-17 — device-unverified |
 | T6 — try-on top-up packs (admin `ResourcePack`, Razorpay web checkout, inactive until launch) | ✅ Built 2026-10-17 — no real Razorpay round trip |
-| T7 (E11) — GPU-seconds logging + super-admin usage report | ✅ Built 2026-10-17 — **migration 131 proposed, not applied** |
+| T7 (E11) — GPU-seconds logging + super-admin usage report | ✅ Built 2026-10-17 — migration 131 **applied in prod 2026-10-17 (owner)** |
 | T5 — docs + owner checklist | ✅ 2026-10-17 |
