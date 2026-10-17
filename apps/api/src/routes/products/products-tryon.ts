@@ -35,6 +35,7 @@
 // call the API directly (same reasoning as the feature flag above).
 import multipart from '@fastify/multipart';
 import {
+  deleteObject,
   getDownloadPresignedUrl,
   isCatVtonConfigured,
   isUnsupportedTryOnCategory,
@@ -181,6 +182,57 @@ export const productsTryOnRoutes: FastifyPluginAsync = async (server) => {
       'TRY_ON_GENERATION',
     );
     return { data: { used, limit, remaining, unlimited } };
+  });
+
+  // ─── POST /products/try-on/discard ──────────────────────────────
+  // F-044 R2 (D5): delete in-store results right after the session. Static
+  // segment, registered before the `/:id/...` routes. Bearer only; same
+  // refusal order as the quota read (404 → 404 → 403).
+  server.post('/try-on/discard', async (request) => {
+    if (!request.retailerId) throw notFound('Product');
+    if (!(await hasFeature(request.retailerId, 'VIRTUAL_TRY_ON_V2'))) throw notFound('Product');
+    if (
+      request.staffRole === 'salesperson' ||
+      request.catalogDelegate ||
+      request.supportDelegate
+    ) {
+      throw forbidden();
+    }
+    const body = z
+      .object({ job_ids: z.array(z.string().min(1)).max(10) })
+      .safeParse(request.body);
+    if (!body.success) throw validationError('job_ids must be up to 10 job ids.', 'job_ids');
+
+    // In-store only (`customer_account_id` null): passport results follow the
+    // withdrawal path. Foreign/unknown ids simply don't match.
+    const jobs = await prisma.tryOnJob.findMany({
+      where: {
+        id: { in: body.data.job_ids },
+        retailer_id: request.retailerId,
+        customer_account_id: null,
+        result_url: { not: null },
+      },
+      select: { id: true, result_url: true },
+    });
+    let discarded = 0;
+    for (const job of jobs) {
+      const key = job.result_url;
+      if (!key) continue;
+      try {
+        await deleteObject(key);
+        // Only the pointer goes, and only after the delete: on failure the key
+        // stays (sole pointer, same rule as withdrawTryOnConsent) and the
+        // age sweep retries.
+        await prisma.tryOnJob.updateMany({
+          where: { id: job.id, result_url: key },
+          data: { result_url: null },
+        });
+        discarded += 1;
+      } catch (err) {
+        console.error(`[try-on] discard could not delete ${key} for job ${job.id}:`, err);
+      }
+    }
+    return { data: { discarded } };
   });
 
   // ─── POST /products/:id/try-on ──────────────────────────────────
@@ -376,6 +428,12 @@ export const productsTryOnRoutes: FastifyPluginAsync = async (server) => {
     // poller would wait forever for an image that was deleted on request.
     if (job.consent_withdrawn_at) {
       return { data: { status: 'withdrawn' } };
+    }
+
+    // Same fall-through trap as withdrawn: COMPLETED with the pointer cleared
+    // means the result was discarded (F-044 R2), not that it is still working.
+    if (job.status === 'COMPLETED' && !job.result_url) {
+      return { data: { status: 'discarded' } };
     }
 
     if (job.status === 'COMPLETED' && job.result_url) {

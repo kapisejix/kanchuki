@@ -156,6 +156,10 @@ describe('try-on (F-040) — owner + manager only', () => {
   it('salesperson cannot start a try-on', () => {
     expect(staffCanAccess('POST', '/v1/products/:id/try-on', 'salesperson')).toBe(false);
   });
+  it('discard: manager passes the allowlist; salesperson is default-denied (POST on /v1/products)', () => {
+    expect(staffCanAccess('POST', '/v1/products/try-on/discard', 'manager')).toBe(true);
+    expect(staffCanAccess('POST', '/v1/products/try-on/discard', 'salesperson')).toBe(false);
+  });
   it('quota read: manager passes the allowlist; salesperson passes it too (GET-only rule) so the handler 403s them', () => {
     expect(staffCanAccess('GET', '/v1/products/try-on/quota', 'manager')).toBe(true);
     // Not a leak: the route handler itself refuses salesperson (products-tryon.test.ts).

@@ -30,7 +30,7 @@
 // makes this the slowest thing in the maintenance queue, that is the moment to
 // add it — not before.
 import { deleteObject } from '@kanchuki/ai';
-import { prisma } from '@kanchuki/db';
+import { type Prisma, prisma } from '@kanchuki/db';
 
 /** Bounded, because the first run after a long outage could owe thousands of
  *  deletes and the maintenance worker is a single concurrency-1 lane shared with
@@ -45,14 +45,47 @@ export interface TryOnDeletionSweepResult {
   failed: number;
 }
 
+/** F-044 R2 (D5): in-store results are discarded right after the session by
+ *  `POST /try-on/discard`; this is the backstop for sessions that never got to
+ *  call it (app killed, offline). Passport rows are untouched (they have an
+ *  account id and follow the withdrawal path). */
+export const IN_STORE_RESULT_TTL_HOURS = 2;
+
 export async function handleTryOnDeletionSweep(): Promise<TryOnDeletionSweepResult> {
-  const jobs = await prisma.tryOnJob.findMany({
-    where: {
-      consent_withdrawn_at: { not: null },
-      result_url: { not: null },
-    },
+  const withdrawn = await sweep({
+    where: { consent_withdrawn_at: { not: null }, result_url: { not: null } },
     // Oldest promise first — a backlog drains in the order it was incurred.
     orderBy: { consent_withdrawn_at: 'asc' },
+  });
+  const aged = await sweep({
+    where: {
+      customer_account_id: null,
+      result_url: { not: null },
+      completed_at: { lt: new Date(Date.now() - IN_STORE_RESULT_TTL_HOURS * 3600_000) },
+    },
+    orderBy: { completed_at: 'asc' },
+  });
+  const result = {
+    owed: withdrawn.owed + aged.owed,
+    deleted: withdrawn.deleted + aged.deleted,
+    failed: withdrawn.failed + aged.failed,
+  };
+
+  if (result.owed > 0) {
+    console.info(
+      `[try-on] deletion sweep: ${result.deleted}/${result.owed} owed images deleted, ${result.failed} still owed`,
+    );
+  }
+
+  return result;
+}
+
+async function sweep(query: {
+  where: Prisma.TryOnJobWhereInput;
+  orderBy: Prisma.TryOnJobOrderByWithRelationInput;
+}): Promise<TryOnDeletionSweepResult> {
+  const jobs = await prisma.tryOnJob.findMany({
+    ...query,
     take: BATCH_SIZE,
     select: { id: true, result_url: true },
   });
@@ -89,12 +122,6 @@ export async function handleTryOnDeletionSweep(): Promise<TryOnDeletionSweepResu
           err,
         );
       });
-  }
-
-  if (result.owed > 0) {
-    console.info(
-      `[try-on] deletion sweep: ${result.deleted}/${result.owed} owed images deleted, ${result.failed} still owed`,
-    );
   }
 
   return result;

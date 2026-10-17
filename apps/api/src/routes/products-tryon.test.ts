@@ -20,6 +20,9 @@ const {
   mockJobUpdate,
   mockJobFindFirst,
   mockJobCount,
+  mockJobFindMany,
+  mockJobUpdateMany,
+  mockDeleteObject,
   mockGetQuotaStatus,
   mockAddTryOnJob,
   mockHasFeature,
@@ -43,6 +46,9 @@ const {
   mockJobUpdate: vi.fn(),
   mockJobFindFirst: vi.fn(),
   mockJobCount: vi.fn(),
+  mockJobFindMany: vi.fn(),
+  mockJobUpdateMany: vi.fn(),
+  mockDeleteObject: vi.fn(),
   mockGetQuotaStatus: vi.fn(),
   mockAddTryOnJob: vi.fn(),
   mockHasFeature: vi.fn(),
@@ -66,6 +72,8 @@ vi.mock('@kanchuki/db', () => ({
       update: mockJobUpdate,
       findFirst: mockJobFindFirst,
       count: mockJobCount,
+      findMany: mockJobFindMany,
+      updateMany: mockJobUpdateMany,
     },
   },
 }));
@@ -109,6 +117,7 @@ vi.mock('@kanchuki/ai', () => ({
   isCatVtonConfigured: mockIsCatVtonConfigured,
   isUnsupportedTryOnCategory: mockIsUnsupportedTryOnCategory,
   getDownloadPresignedUrl: mockGetDownloadPresignedUrl,
+  deleteObject: mockDeleteObject,
 }));
 
 const RETAILER_ID = 'retailer_1';
@@ -202,6 +211,9 @@ beforeEach(() => {
   mockCheckQuota.mockResolvedValue(undefined);
   mockCheckCustomerQuota.mockResolvedValue(undefined);
   mockJobCount.mockResolvedValue(0);
+  mockJobFindMany.mockResolvedValue([]);
+  mockJobUpdateMany.mockResolvedValue({ count: 1 });
+  mockDeleteObject.mockResolvedValue(undefined);
   mockGetQuotaStatus.mockResolvedValue({
     used: 1,
     limit: 3,
@@ -553,6 +565,122 @@ describe('GET /products/try-on/quota', () => {
 
   // Route-order test deleted (T1 fix 3): the static and :id routes have
   // different literal segments, so it could not fail.
+});
+
+describe('POST /products/try-on/discard (F-044 R2 T2)', () => {
+  const discard = (
+    app: Awaited<ReturnType<typeof buildApp>>,
+    body: unknown = { job_ids: ['j1'] },
+  ) => app.inject({ method: 'POST', url: '/v1/products/try-on/discard', payload: body as never });
+
+  it('deletes own-retailer in-store results and clears only the pointer', async () => {
+    mockJobFindMany.mockResolvedValue([
+      { id: 'j1', result_url: 'k/j1.jpg' },
+      { id: 'j2', result_url: 'k/j2.jpg' },
+    ]);
+    const app = await buildApp({ retailerId: RETAILER_ID });
+    const res = await discard(app, { job_ids: ['j1', 'j2', 'foreign'] });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data).toEqual({ discarded: 2 });
+    // Scoped to caller's retailer + in-store (passport jobs have an account id).
+    expect(mockJobFindMany.mock.calls[0]?.[0].where).toEqual({
+      id: { in: ['j1', 'j2', 'foreign'] },
+      retailer_id: RETAILER_ID,
+      customer_account_id: null,
+      result_url: { not: null },
+    });
+    expect(mockDeleteObject.mock.calls.map((c) => c[0])).toEqual(['k/j1.jpg', 'k/j2.jpg']);
+    expect(mockJobUpdateMany).toHaveBeenCalledWith({
+      where: { id: 'j1', result_url: 'k/j1.jpg' },
+      data: { result_url: null },
+    });
+    await app.close();
+  });
+
+  it('foreign / passport / unknown ids are ignored: discarded 0, not a 404', async () => {
+    const app = await buildApp({ retailerId: RETAILER_ID });
+    const res = await discard(app);
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data).toEqual({ discarded: 0 });
+    expect(mockDeleteObject).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('an R2 failure keeps the key (and does not abort the batch)', async () => {
+    mockJobFindMany.mockResolvedValue([
+      { id: 'j1', result_url: 'k/j1.jpg' },
+      { id: 'j2', result_url: 'k/j2.jpg' },
+    ]);
+    mockDeleteObject.mockRejectedValueOnce(new Error('R2 down'));
+    const app = await buildApp({ retailerId: RETAILER_ID });
+    const res = await discard(app, { job_ids: ['j1', 'j2'] });
+    expect(res.json().data).toEqual({ discarded: 1 });
+    expect(mockJobUpdateMany).toHaveBeenCalledTimes(1);
+    expect(mockJobUpdateMany.mock.calls[0]?.[0].where.id).toBe('j2');
+    await app.close();
+  });
+
+  it('manager is allowed', async () => {
+    const app = await buildApp({ retailerId: RETAILER_ID, staffRole: 'manager' });
+    expect((await discard(app)).statusCode).toBe(200);
+    await app.close();
+  });
+
+  it('salesperson is 403', async () => {
+    const app = await buildApp({ retailerId: RETAILER_ID, staffRole: 'salesperson' });
+    expect((await discard(app)).statusCode).toBe(403);
+    expect(mockJobFindMany).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it.each(['catalog', 'support'] as const)('%s delegate is 403', async (d) => {
+    const app = await buildApp({ retailerId: RETAILER_ID, delegate: d });
+    expect((await discard(app)).statusCode).toBe(403);
+    expect(mockJobFindMany).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('404 when VIRTUAL_TRY_ON_V2 is off (even for salesperson)', async () => {
+    mockHasFeature.mockResolvedValue(false);
+    const app = await buildApp({ retailerId: RETAILER_ID, staffRole: 'salesperson' });
+    expect((await discard(app)).statusCode).toBe(404);
+    await app.close();
+  });
+
+  it('404 for a cookie-only shopper', async () => {
+    mockGetPassportSession.mockResolvedValue({ customer_account_id: CUSTOMER_ID });
+    const app = await buildApp();
+    expect((await discard(app)).statusCode).toBe(404);
+    expect(mockJobFindMany).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it.each([
+    {},
+    { job_ids: 'j1' },
+    { job_ids: [1] },
+    { job_ids: Array.from({ length: 11 }, (_, i) => `j${i}`) },
+  ])('bad body %# is 422', async (body) => {
+    const app = await buildApp({ retailerId: RETAILER_ID });
+    expect((await discard(app, body)).statusCode).toBe(422);
+    await app.close();
+  });
+
+  it('status reports discarded for a completed job whose result was discarded', async () => {
+    mockJobFindFirst.mockResolvedValue({
+      status: 'COMPLETED',
+      result_url: null,
+      failure_reason: null,
+      consent_withdrawn_at: null,
+    });
+    const app = await buildApp({ retailerId: RETAILER_ID });
+    const res = await app.inject({
+      method: 'GET',
+      url: '/v1/products/p1/try-on/status?job_id=j1',
+    });
+    expect(res.json().data).toEqual({ status: 'discarded' });
+    await app.close();
+  });
 });
 
 describe('POST /products/:id/try-on (request validity)', () => {
