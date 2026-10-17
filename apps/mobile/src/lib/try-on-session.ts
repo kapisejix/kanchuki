@@ -6,6 +6,7 @@
  * photo URI is ever logged.
  */
 import * as LegacyFileSystem from 'expo-file-system/legacy';
+import { billingApi } from './api/billing';
 import { productApi } from './api/products';
 import { compressImageForUpload } from './compress-image';
 import { pollWithBackoff } from './polling';
@@ -30,6 +31,21 @@ export function isAppCacheUri(uri: string, cacheDir: string | null | undefined):
 }
 
 /** First `remaining` products run; the rest are skipped (quota pre-flight). */
+/**
+ * Top-up packs the admin has switched on for this plan (F-044 R2 T6). Any
+ * failure (managers get 403, offline, flag off) is `[]` so the "Buy more
+ * try-ons" button stays hidden.
+ */
+export async function loadBuyablePacks(): Promise<
+  { id: string; label: string; pack_size: number; price_paise: number }[]
+> {
+  try {
+    return (await billingApi.tryOnPacks()).data;
+  } catch {
+    return [];
+  }
+}
+
 export function planSession<T>(products: T[], remaining: number): { run: T[]; skipped: T[] } {
   const n = Math.max(0, remaining);
   return { run: products.slice(0, n), skipped: products.slice(n) };

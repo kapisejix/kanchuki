@@ -60,7 +60,7 @@ export const billingApi = {
     }>('/v1/billing/addon-pricing', { getCacheTtlMs: 300_000 }),
 
   /** F-010: Create a Razorpay Payment Link for an addon purchase */
-  addonCheckout: (resourceType: string, packIndex: number) =>
+  addonCheckout: (resourceType: string, packIndex?: number, packId?: string) =>
     request<{
       data: {
         checkout_url: string;
@@ -71,6 +71,13 @@ export const billingApi = {
       };
     }>('/v1/billing/addon-checkout', {
       method: 'POST',
-      body: JSON.stringify({ resource_type: resourceType, pack_index: packIndex }),
+      body: JSON.stringify({ resource_type: resourceType, pack_index: packIndex, pack_id: packId }),
+      timeoutMs: 60_000, // creates a real Razorpay payment link
     }),
+
+  /** F-044 R2 T6: admin-enabled try-on top-up packs for this plan ([] = none). Owner only. */
+  tryOnPacks: () =>
+    request<{
+      data: { id: string; label: string; pack_size: number; price_paise: number }[];
+    }>('/v1/billing/try-on-packs'),
 };

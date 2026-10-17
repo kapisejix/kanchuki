@@ -5,6 +5,7 @@ import {
   AppState,
   BackHandler,
   FlatList,
+  Linking,
   Text,
   useWindowDimensions,
   View,
@@ -16,10 +17,11 @@ import { Image } from 'expo-image'
 import { Camera, Check, ImagePlus, RotateCcw, Square, X } from 'lucide-react-native'
 import { TRY_ON_CONSENT } from '@kanchuki/shared'
 
-import { productApi } from '../src/lib/api'
+import { billingApi, productApi } from '../src/lib/api'
 import { useScreenInsets } from '../src/lib/safe-area'
 import {
   cleanupSession,
+  loadBuyablePacks,
   planSession,
   runTryOnSession,
   type SessionItem,
@@ -96,6 +98,33 @@ export default function EnquiryTryOnScreen() {
   useEffect(() => {
     void loadQuota()
   }, [loadQuota])
+
+  // T6: top-up packs the admin has switched on; [] hides the button.
+  const [packs, setPacks] = useState<{ id: string; label: string; price_paise: number }[]>([])
+  const [buying, setBuying] = useState(false)
+  useEffect(() => {
+    void loadBuyablePacks().then(setPacks)
+  }, [])
+  // Back from the payment page: re-read the balance (credit lands via callback).
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (s) => {
+      if (s === 'active' && stepRef.current === 'preflight') void loadQuota()
+    })
+    return () => sub.remove()
+  }, [loadQuota])
+
+  const buyMore = async (packId: string) => {
+    if (buying) return
+    setBuying(true)
+    try {
+      const { data } = await billingApi.addonCheckout('TRY_ON_GENERATION', undefined, packId)
+      await Linking.openURL(data.checkout_url)
+    } catch {
+      Alert.alert('Could not open payment', 'Please try again in a moment.')
+    } finally {
+      setBuying(false)
+    }
+  }
 
   // Idempotent: abort first, delete files + discard results, clear image cache.
   const exit = useCallback(async () => {
@@ -252,6 +281,23 @@ export default function EnquiryTryOnScreen() {
     if (p) void run([p])
   }
 
+  // Packs expire at month end (credit lands on this month's counter).
+  const buyButtons =
+    packs.length > 0 ? (
+      <View className="mt-4 gap-2">
+        {packs.map((p) => (
+          <GradientButton
+            key={p.id}
+            variant="web"
+            label={`Buy more try-ons: ${p.label} - Rs ${(p.price_paise / 100).toFixed(0)}`}
+            disabled={buying}
+            onPress={() => void buyMore(p.id)}
+          />
+        ))}
+        <Text className="text-white/60 text-xs text-center">Valid for this month only.</Text>
+      </View>
+    ) : null
+
   return (
     <View className="flex-1 bg-black" style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}>
       <View className="flex-row items-center justify-between px-4 py-3">
@@ -285,9 +331,12 @@ export default function EnquiryTryOnScreen() {
               <ActivityIndicator color="#fff" className="mt-10" />
             )
           ) : remaining === 0 ? (
-            <Text className="text-white text-base font-semibold text-center mt-10">
-              You have used all your try-ons for this month.
-            </Text>
+            <>
+              <Text className="text-white text-base font-semibold text-center mt-10">
+                You have used all your try-ons for this month.
+              </Text>
+              {buyButtons}
+            </>
           ) : (
             <>
               <Text className="text-white text-base font-semibold">
@@ -298,6 +347,7 @@ export default function EnquiryTryOnScreen() {
                   Pick up to {remaining} to try on.
                 </Text>
               )}
+              {remaining < products.length && buyButtons}
               <View className="mt-4 gap-2">
                 {products.map((p) => {
                   const on = selected.includes(p.id)

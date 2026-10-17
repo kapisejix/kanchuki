@@ -4,6 +4,7 @@ const m = vi.hoisted(() => ({
   startTryOn: vi.fn(),
   getTryOnStatus: vi.fn(),
   discardTryOnJobs: vi.fn(),
+  tryOnPacks: vi.fn(),
   compress: vi.fn(),
   deleteAsync: vi.fn(),
 }))
@@ -15,6 +16,7 @@ vi.mock('./api/products', () => ({
     discardTryOnJobs: m.discardTryOnJobs,
   },
 }))
+vi.mock('./api/billing', () => ({ billingApi: { tryOnPacks: m.tryOnPacks } }))
 vi.mock('./compress-image', () => ({ compressImageForUpload: m.compress }))
 vi.mock('expo-file-system/legacy', () => ({
   cacheDirectory: 'file:///cache/',
@@ -50,6 +52,7 @@ import {
   runTryOnSession,
   cleanupSession,
   planSession,
+  loadBuyablePacks,
   isAppCacheUri,
   type SessionItem,
 } from './try-on-session'
@@ -252,5 +255,22 @@ describe('isAppCacheUri', () => {
     expect(isAppCacheUri('file:///gallery/x.jpg', 'file:///cache/')).toBe(false)
     expect(isAppCacheUri('file:///cache/x.jpg', '')).toBe(false)
     expect(isAppCacheUri('file:///cache/x.jpg', null)).toBe(false)
+  })
+})
+
+// T6: the "Buy more try-ons" button shows only when this returns >= 1 pack.
+describe('loadBuyablePacks', () => {
+  const pack = { id: 'p1', label: '25 try-ons', pack_size: 25, price_paise: 23600 }
+  it('returns the packs when there are some', async () => {
+    m.tryOnPacks.mockResolvedValue({ data: [pack] })
+    await expect(loadBuyablePacks()).resolves.toEqual([pack])
+  })
+  it('returns [] (button hidden) when none', async () => {
+    m.tryOnPacks.mockResolvedValue({ data: [] })
+    await expect(loadBuyablePacks()).resolves.toEqual([])
+  })
+  it('returns [] when the call fails (e.g. manager gets 403)', async () => {
+    m.tryOnPacks.mockRejectedValue(new Error('403'))
+    await expect(loadBuyablePacks()).resolves.toEqual([])
   })
 })
