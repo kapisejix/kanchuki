@@ -98,9 +98,8 @@ beforeEach(() => {
       ? { assigned_staff_id: row.assigned_staff_id }
       : null,
   );
-  db.staffFindMany.mockImplementation(
-    async ({ where }: { where: { id?: { in: string[] } } }) =>
-      Object.values(STAFF).filter((s) => !where.id || where.id.in.includes(s.id)),
+  db.staffFindMany.mockImplementation(async ({ where }: { where: { id?: { in: string[] } } }) =>
+    Object.values(STAFF).filter((s) => !where.id || where.id.in.includes(s.id)),
   );
   db.staffFindFirst.mockImplementation(
     async ({ where }: { where: { id: string; retailer_id: string } }) =>
@@ -173,11 +172,14 @@ describe('GET /collections/enquiries', () => {
     expect(e3.assigned_to).toBeNull();
   });
 
-  it.each(['manager', 'salesperson', 'support'] as const)('masks the phone for %s', async (actor) => {
-    const body = (await call(actor, 'GET', '/v1/collections/enquiries')).body;
-    expect(body).not.toContain(PHONE);
-    expect(JSON.parse(body).data[0].customer_phone).toBe('98•••••210');
-  });
+  it.each(['manager', 'salesperson', 'support'] as const)(
+    'masks the phone for %s',
+    async (actor) => {
+      const body = (await call(actor, 'GET', '/v1/collections/enquiries')).body;
+      expect(body).not.toContain(PHONE);
+      expect(JSON.parse(body).data[0].customer_phone).toBe('98•••••210');
+    },
+  );
 
   it('owner sees the full number', async () => {
     const res = await call('owner', 'GET', '/v1/collections/enquiries');
@@ -196,7 +198,9 @@ describe('GET /collections/enquiries/unread-count', () => {
   it('counts NEW only for this retailer; payload is just the count', async () => {
     const res = await call('salesperson', 'GET', '/v1/collections/enquiries/unread-count');
     expect(res.statusCode).toBe(200);
-    expect(db.enquiryCount).toHaveBeenCalledWith({ where: { retailer_id: 'ret_1', status: 'NEW' } });
+    expect(db.enquiryCount).toHaveBeenCalledWith({
+      where: { retailer_id: 'ret_1', status: 'NEW' },
+    });
     expect(res.json()).toEqual({ data: { count: 3 } });
     expect(Object.keys(res.json().data)).toEqual(['count']);
   });
