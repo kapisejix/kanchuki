@@ -105,8 +105,8 @@ export function buildWhatsAppEnquiryLink(
   retailerPhone: string,
   message: string,
 ): string {
-  const phone = retailerPhone.replace(/\D/g, '')
-  const fullPhone = phone.startsWith('91') ? phone : `91${phone}`
+  // RC-067: length-based, not prefix-based — a 10-digit 91xxxxxxxx is a mobile.
+  const fullPhone = `91${normalizeIndianPhone(retailerPhone)}`
   const encoded = encodeURIComponent(message)
   return `https://wa.me/${fullPhone}?text=${encoded}`
 }

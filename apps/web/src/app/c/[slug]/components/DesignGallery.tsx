@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import Image from 'next/image'
 import { X, Share2, Scissors, ChevronDown } from 'lucide-react'
+import { buildWhatsAppEnquiryLink } from '@kanchuki/shared'
 
 interface Design {
   id: string
@@ -68,9 +69,7 @@ export function DesignGallery({ retailerPhone, retailerName }: Props) {
 
   const handleShare = useCallback((design: Design) => {
     const message = `Hi! I'd like this design for my unstitched suit:\n\n${design.name} (${design.category.replace(/_/g, ' ').toLowerCase()})\n\nPlease share this with my tailor.`
-    const phone = retailerPhone.replace(/\D/g, '')
-    const fullPhone = phone.startsWith('91') ? phone : `91${phone}`
-    const url = `https://wa.me/${fullPhone}?text=${encodeURIComponent(message)}`
+    const url = buildWhatsAppEnquiryLink(retailerPhone, message)
     window.open(url, '_blank')
   }, [retailerPhone])
 

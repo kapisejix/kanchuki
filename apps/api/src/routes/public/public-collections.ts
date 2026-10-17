@@ -1,7 +1,7 @@
 // Auto-split from public.ts (scripts/check-route-size.sh) — route bodies verbatim.
 import { createHash } from 'node:crypto';
 import { prisma, withRetry } from '@kanchuki/db';
-import { buildEnquiryMessage } from '@kanchuki/shared';
+import { buildEnquiryMessage, buildWhatsAppEnquiryLink } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { withPublicCache } from '../../lib/public-cache.js';
@@ -10,6 +10,7 @@ import { notFound, validationError } from '../../plugins/error-handler.js';
 import {
   buildFacets,
   buildProductFilterWhere,
+  enquiryPhone,
   publicProductQuerySchema,
   toPublicProductSummary,
 } from './public-helpers.js';
@@ -55,6 +56,7 @@ export const publicCollectionsRoutes: FastifyPluginAsync = async (server) => {
                     shop_name: true,
                     city: true,
                     phone: true,
+                    whatsapp_number: true,
                     logo_url: true,
                     banner_url: true,
                     is_suspended: true,
@@ -143,9 +145,10 @@ export const publicCollectionsRoutes: FastifyPluginAsync = async (server) => {
               rows.map((cp) => toPublicProductSummary(cp.product)),
             );
 
+            const { whatsapp_number: _wa, ...retailer } = collection.retailer;
             return {
               data: {
-                retailer: collection.retailer,
+                retailer: { ...retailer, phone: enquiryPhone(collection.retailer) },
                 title: collection.title,
                 description: collection.description,
                 expires_at: collection.expires_at?.toISOString() ?? null,
@@ -243,7 +246,7 @@ export const publicCollectionsRoutes: FastifyPluginAsync = async (server) => {
         id: true,
         retailer_id: true,
         title: true,
-        retailer: { select: { shop_name: true, phone: true } },
+        retailer: { select: { shop_name: true, phone: true, whatsapp_number: true } },
       },
     });
     if (!collection) throw notFound('Collection');
@@ -297,9 +300,7 @@ export const publicCollectionsRoutes: FastifyPluginAsync = async (server) => {
         products: ordered.map((p) => ({ name: p.name, price_min: p.price_min })),
       });
 
-    const phone = collection.retailer.phone.replace(/\D/g, '');
-    const fullPhone = phone.startsWith('91') ? phone : `91${phone}`;
-    const waUrl = `https://wa.me/${fullPhone}?text=${encodeURIComponent(whatsappMessage)}`;
+    const waUrl = buildWhatsAppEnquiryLink(enquiryPhone(collection.retailer), whatsappMessage);
 
     return reply.status(200).send({ data: { whatsapp_url: waUrl } });
   });

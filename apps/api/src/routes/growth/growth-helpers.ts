@@ -1,4 +1,5 @@
 import type { Customer, Product, Promotion } from '@kanchuki/db';
+import { buildWhatsAppEnquiryLink } from '@kanchuki/shared';
 import { z } from 'zod';
 
 // ─── Audience spec (stored on Campaign.audience_json) ─────────────
@@ -134,9 +135,7 @@ export function fillTemplate(template: string, vars: TemplateVars): string {
 }
 
 export function buildWhatsAppDeepLink(phone: string, message: string): string {
-  const digits = phone.replace(/\D/g, '');
-  const intl = digits.startsWith('91') ? digits : `91${digits}`;
-  return `https://wa.me/${intl}?text=${encodeURIComponent(message)}`;
+  return buildWhatsAppEnquiryLink(phone, message);
 }
 
 // ─── Referral codes → MOVED ───────────────────────────────────────

@@ -12,6 +12,17 @@
 
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
+## RC-067 — wa.me links dropped the +91 country code for any 10-digit mobile starting with 91
+
+- **Component:** `packages/shared/src/utils/index.ts` (`buildWhatsAppEnquiryLink`), plus two hand-copied builders: `apps/web/src/app/c/[slug]/components/DesignGallery.tsx` and `apps/api/src/routes/growth/growth-helpers.ts` (`buildWhatsAppDeepLink`). Fixed 2026-10-17 on `feat/enquiry-r1-t7-whatsapp-target` (F-044 E5).
+- **Symptom:** a store or customer number like `9123456789` (valid Indian mobile) produced `wa.me/9123456789`, which WhatsApp reads as country code 91 + an 8-digit number. The customer enquiry or campaign message opened a wrong or invalid chat. Found by the E5 test: once enquiries route to `whatsapp_number` (always stored as 10 bare digits), every store whose number starts with 91 hit it.
+- **Root cause:** the country code was added by a prefix check (`startsWith('91') ? digits : '91' + digits`) instead of by length. `91` is both the country code and a valid first two digits of a mobile, so a prefix cannot tell them apart. The correct normaliser (`normalizeIndianPhone`, length-based) already lived in the same file and the mobile builders already used it; the three copies above never did.
+- **Fix:** `buildWhatsAppEnquiryLink` = `91${normalizeIndianPhone(phone)}`; `DesignGallery` and `buildWhatsAppDeepLink` now call it, so there is one builder.
+- **Proof:** `apps/api/src/routes/public/__tests__/public-whatsapp-target.test.ts` — `9123456789`, `+919123456789`, `919123456789`, `09123456789`, `91234 56789` all → `wa.me/919123456789`; enquire route with a 91-prefixed `whatsapp_number` → `wa.me/919123456789` (failed first: `expected 'https://wa.me/9123456789?text=hi'`). Growth suite unchanged green.
+- **Not verified:** no device check.
+
+---
+
 ## RC-066 — Collection enquiries returned the customer's full phone to staff and delegates
 
 - **Component:** `apps/api/src/routes/collections.ts` (GET `/collections/:id` embedded `enquiries`, PATCH `/collections/:id/enquiries/:enquiryId`). Fixed 2026-10-17 on `feat/enquiry-r1-t3-enquiry-products` (F-044 E1).

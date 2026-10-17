@@ -596,8 +596,9 @@ function WhatsAppModal({
             WhatsApp Number
           </Text>
           <Text className="text-xs text-sand-500">
-            Used for collection link enquiries and remote try-on. Leave empty to
-            use your account phone number.
+            Customer enquiries open WhatsApp on this number. Use the shop
+            WhatsApp Business number and link staff phones to it (WhatsApp →
+            Linked devices) so the whole team sees every chat.
           </Text>
           <Field
             label="WhatsApp Number"
@@ -1467,7 +1468,11 @@ export default function SettingsScreen() {
               <SettingsRow
                 icon={<Smartphone size={18} color={colors.danger} />}
                 label="WhatsApp Number"
-                subtitle={whatsapp}
+                subtitle={
+                  retailer?.whatsapp_number
+                    ? whatsapp
+                    : `Not set — enquiries go to ${phone}`
+                }
                 onPress={() => setShowWhatsApp(true)}
               />
 
