@@ -444,6 +444,9 @@ Principle: ship only what has no GPU dependency first; try-on waits for the F-04
 | 6 | E4-lite | unread badge + poll, no push |
 | 7 | E5 | onboarding + card copy: use the shared Business number; check `retailer.phone` is that number |
 
+**Release 1 progress:**
+- E7 ✅ built 2026-10-17 — `apps/api/src/plugins/staff-access.test.ts` pins manager `POST /v1/products/:id/try-on` (+ status GET) allowed, salesperson 403; mutation-checked (removing the manager `/v1/products` rule fails it). Branch `feat/enquiry-r1-t1-staff-test`.
+
 Deferred columns (add when something reads them): `first_reply_at`, `last_reply_by_staff_id`, `source`, `try_on_done`.
 
 **Release 2 — try-on (after F-040 launch gates + accuracy bake-off):** E11 GPU-seconds logging; E8 "Try on with customer" session screen (owner + manager, discard on exit per D5); E12 top-up packs.
