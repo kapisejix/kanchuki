@@ -14,7 +14,7 @@ Spec: `docs/tasks/pending/enquiry-basket-team-inbox-and-instore-tryon.md` (§3, 
 | T6 E4-lite badge | ✅ pushed, PR #99 (→ T5 branch, stacked) | `feat/enquiry-r1-t6-badge` `783f4f86` |
 | T7 E5 whatsapp_number routing + RC-067 | ✅ built (PR stacked on T6) | `feat/enquiry-r1-t7-whatsapp-target` |
 
-- Migration `130_enquiry_inbox` is PROPOSED only. Owner must apply it BEFORE T3 code deploys (enquire writes `product_ids`).
+- Migration `130_enquiry_inbox` APPLIED in prod 2026-10-17 by owner (verified: 3 columns, backfill unbackfilled=0, `kanchuki_app` privilege true). It was a precondition for T3 deploy (enquire writes `product_ids`).
 - Gate baseline: `security.test.ts` + `staff-access.test.ts` = 20 passed. Full API suite: 1784 passed; `src/lib/retired-tryon-guard.test.ts` times out under full-suite load only (8/8 alone) — known flake, not ours.
 - Error helper `validationError` returns **422** (not 400); tests assert 422.
 
