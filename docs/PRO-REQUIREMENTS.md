@@ -4373,5 +4373,5 @@ Customer sends all their picks to the store in one enquiry; the store team sees 
 | E1 — persist all `product_ids` + assignment columns (migration 130 proposed, not applied), RC-066 phone-mask fix | ✅ Built 2026-10-17 — apply 130 before deploy |
 | E2 — customer web "Send my picks to the store" (web enquire proxies + one POST from the wishlist, wa.me fallback) | ✅ Built 2026-10-17 — needs E1 + migration 130 live |
 | E3 — Enquiries inbox + Take / reassign | ✅ Built 2026-10-17 — every role sees + takes (D2), reassign owner + manager, phone masked for non-owners; needs migration 130 live |
-| E4-lite — unread badge (poll) | 🔴 Planned |
+| E4-lite — unread badge (poll) | ✅ Built 2026-10-17 — home "Enquiries" tile shows the NEW count, polled every 30 s only while Home is focused, refetched on return from the inbox |
 | E5 — route to `whatsapp_number ?? phone` + shared-number copy | 🔴 Planned |

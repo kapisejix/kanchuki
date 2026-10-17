@@ -20,6 +20,12 @@ export const collectionApi = {
   enquiries: () =>
     request<{ data: Enquiry[]; assignees?: Assignee[] }>('/v1/collections/enquiries'),
 
+  // No GET cache: the badge must drop as soon as the inbox marks one SEEN.
+  unreadEnquiries: () =>
+    request<{ data: { count: number } }>('/v1/collections/enquiries/unread-count', {
+      getCacheTtlMs: 0,
+    }),
+
   takeEnquiry: (id: string) =>
     request<{ data: { id: string; assigned_to: Assignee } }>(
       `/v1/collections/enquiries/${id}/take`,

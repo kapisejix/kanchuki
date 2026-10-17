@@ -24,6 +24,7 @@ import { useAuth } from '../../src/lib/auth-context';
 import { staffCan } from '../../src/lib/staff-can';
 import { SchedulerBanner } from '../../src/components/social/SchedulerBanner';
 import { useScreenInsets } from '../../src/lib/safe-area';
+import { useUnreadEnquiries } from '../../src/lib/use-unread-enquiries';
 
 type RankedProduct = {
   product: {
@@ -62,6 +63,7 @@ export default function HomeScreen() {
   const canGrowth = staffCan(staffRole, 'growth');
   const canAnalytics = staffCan(staffRole, 'analytics');
   const canSocial = staffCan(staffRole, 'social');
+  const unreadEnquiries = useUnreadEnquiries();
   const { data: meData, isLoading: meLoading } = useQuery({
     queryKey: ['retailer', 'me'],
     queryFn: () => retailerApi.getMe(),
@@ -368,7 +370,7 @@ export default function HomeScreen() {
               />
             )}
           </View>
-          {/* F-044 E3 — every role (D2); T6 adds the unread badge here. */}
+          {/* F-044 E3 — every role (D2); E4-lite badge = NEW count. */}
           <View className="flex-row gap-3">
             <QuickAction
               icon={<MessageCircle size={20} color="#BB3F95" />}
@@ -376,6 +378,7 @@ export default function HomeScreen() {
               sublabel="Customer picks inbox"
               onPress={() => router.push('/enquiries')}
               accent="#E0E1F6"
+              badge={unreadEnquiries}
             />
           </View>
           {/* Suits Designs — retailer entry hidden by owner decision
@@ -460,12 +463,14 @@ function QuickAction({
   sublabel,
   onPress,
   accent,
+  badge = 0,
 }: {
   icon: React.ReactNode;
   label: string;
   sublabel: string;
   onPress: () => void;
   accent: string;
+  badge?: number;
 }) {
   return (
     <AnimatedPressable
@@ -492,6 +497,14 @@ function QuickAction({
         {label}
       </Text>
       <Text className="text-[10px] text-heliotrope-500 mt-0.5 font-medium">{sublabel}</Text>
+      {badge > 0 && (
+        <View
+          className="absolute top-3 right-3 min-w-[20px] h-5 px-1.5 rounded-full bg-fuchsia-600 items-center justify-center"
+          accessibilityLabel={`${badge} new`}
+        >
+          <Text className="text-[10px] font-bold text-white">{badge > 99 ? '99+' : badge}</Text>
+        </View>
+      )}
     </AnimatedPressable>
   );
 }
