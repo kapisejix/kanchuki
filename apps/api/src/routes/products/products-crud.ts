@@ -4,6 +4,7 @@ import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { maybeEnqueueFullSync, maybeEnqueueProductSync } from '../../jobs/catalog-sync.js';
 import { addEmbeddingJob, addTaggingJob } from '../../jobs/index.js';
+import { resolveColorFamily } from '../../lib/color-families.js';
 import { NEW_ARRIVAL_DAYS, isNewArrival } from '../../lib/product-flags.js';
 import { checkQuota, incrementUsage } from '../../lib/quota.js';
 import {
@@ -271,6 +272,10 @@ export const productsCrudRoutes: FastifyPluginAsync = async (server) => {
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
 
     const { metadata, ...rest } = body.data;
+    // F-045: a manual colour edit re-derives color_family (null if unmapped) so it never
+    // keeps pointing at the old colour; the backfill only fills NULLs, not stale values.
+    const colorFamily =
+      rest.primary_color !== undefined ? await resolveColorFamily(rest.primary_color) : undefined;
     let updated: Awaited<ReturnType<typeof prisma.product.update>>;
     try {
       updated = await prisma.product.update({
@@ -278,6 +283,7 @@ export const productsCrudRoutes: FastifyPluginAsync = async (server) => {
         data: {
           metadata: metadata !== undefined ? (metadata as Prisma.InputJsonValue) : undefined,
           ...rest,
+          ...(colorFamily !== undefined ? { color_family: colorFamily } : {}),
         },
         include: { photos: true, section: { select: { name: true } } },
       });
