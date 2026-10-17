@@ -1112,7 +1112,7 @@ decided_at + 24 h, never extended), `revoked_at`, `revoked_by` (`RETAILER|STAFF|
 - **Seeds (129):** `plan_features` SOCIAL_SCHEDULER=true ×3 plans; `plan_limits` SCHEDULED_POST=-1/MONTH ×3, ACTIVE_SCHEDULE_PLAN=1/LIFETIME ×3.
 - **Purge (RC-050):** every FK into `retailers`/`products` is `ON DELETE CASCADE`, so `hardDeleteRetailer()`'s list needs no new entries. Pinned by `apps/api/src/lib/post-scheduler-migration.test.ts`.
 
-## My Style — `color_families`, `style_palettes`, `style_trends` + new columns (migrations 132/133, F-045 PR-1, written 2026-10-17, NOT yet applied)
+## My Style — `color_families`, `style_palettes`, `style_trends` + new columns (migrations 132/133, F-045 PR-1, written 2026-10-17, applied 2026-10-17 by the owner via the Supabase SQL editor — 132 and 133 as two separate runs, 55P04; verified: 22 families, 9 palettes, `STYLE_ANALYSIS` limit 3/MONTH, RLS on all three tables)
 
 | Table | Purpose | Notes |
 |---|---|---|
