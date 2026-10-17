@@ -11,8 +11,8 @@ Spec: `docs/tasks/pending/enquiry-basket-team-inbox-and-instore-tryon.md` (§3, 
 | T3 E1 product_ids + RC-066 mask | ✅ pushed, PR #96 (→ T2 branch, stacked) | `feat/enquiry-r1-t3-enquiry-products` `40c08d62` |
 | T4 E2 web "Send my picks" | ✅ pushed, PR #97 (→ T3 branch, stacked) | `feat/enquiry-r1-t4-send-picks` `36fc9bf7` |
 | T5 E3 inbox + Take | ✅ pushed, PR #98 (→ T4 branch, stacked) | `feat/enquiry-r1-t5-inbox` `757ca746` |
-| T6 E4-lite badge | ✅ built (PR stacked on T5) | `feat/enquiry-r1-t6-badge` |
-| T7 E5 whatsapp_number routing | planned | — |
+| T6 E4-lite badge | ✅ pushed, PR #99 (→ T5 branch, stacked) | `feat/enquiry-r1-t6-badge` `783f4f86` |
+| T7 E5 whatsapp_number routing + RC-067 | ✅ built (PR stacked on T6) | `feat/enquiry-r1-t7-whatsapp-target` |
 
 - Migration `130_enquiry_inbox` is PROPOSED only. Owner must apply it BEFORE T3 code deploys (enquire writes `product_ids`).
 - Gate baseline: `security.test.ts` + `staff-access.test.ts` = 20 passed. Full API suite: 1784 passed; `src/lib/retired-tryon-guard.test.ts` times out under full-suite load only (8/8 alone) — known flake, not ours.
