@@ -851,6 +851,11 @@ model CollectionEnquiry {
   retailer_id   String
 
   product_id     String?
+  // F-044: every product the customer sent; product_id stays = product_ids[0] for old readers.
+  product_ids    String[] @default([])
+  // F-044 inbox Take: Staff.id, or retailer.id when the owner takes it — no FK (two target tables).
+  assigned_staff_id String?
+  assigned_at       DateTime?
   message        String?
   customer_name  String?
   customer_phone String?

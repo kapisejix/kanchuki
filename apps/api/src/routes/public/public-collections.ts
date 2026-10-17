@@ -250,12 +250,31 @@ export const publicCollectionsRoutes: FastifyPluginAsync = async (server) => {
 
     const { product_id, product_ids, customer_name, customer_phone, message } = body.data;
 
+    // F-044: dedupe, product_id first, so old single-product clients keep working.
+    const ids = [...new Set([...(product_id ? [product_id] : []), ...(product_ids ?? [])])];
+    if (ids.length > 20) throw validationError('Up to 20 products per enquiry', 'product_ids');
+
+    // Every id must be a live product of THIS store — checked before any write,
+    // so a forged id can neither be stored nor named in the WhatsApp text.
+    const products = ids.length
+      ? await prisma.product.findMany({
+          where: { id: { in: ids }, retailer_id: collection.retailer_id, deleted_at: null },
+          select: { id: true, name: true, price_min: true },
+        })
+      : [];
+    if (products.length !== ids.length) {
+      throw validationError('One or more products are not in this store', 'product_ids');
+    }
+    const byId = new Map(products.map((p) => [p.id, p]));
+    const ordered = ids.flatMap((id) => byId.get(id) ?? []);
+
     // Record enquiry for analytics
     await prisma.collectionEnquiry.create({
       data: {
         collection_id: collection.id,
         retailer_id: collection.retailer_id,
-        product_id: product_id ?? null,
+        product_id: ids[0] ?? null,
+        product_ids: ids,
         customer_name: customer_name ?? null,
         customer_phone: customer_phone ?? null,
         message: message ?? null,
@@ -270,13 +289,12 @@ export const publicCollectionsRoutes: FastifyPluginAsync = async (server) => {
     });
 
     // Build WhatsApp redirect URL
-    const interestedProducts = product_ids ?? (product_id ? [product_id] : []);
     const whatsappMessage =
       message ??
       buildEnquiryMessage({
         shopName: collection.retailer.shop_name,
         collectionTitle: collection.title,
-        products: interestedProducts.map((id) => ({ name: id, price_min: null })),
+        products: ordered.map((p) => ({ name: p.name, price_min: p.price_min })),
       });
 
     const phone = collection.retailer.phone.replace(/\D/g, '');

@@ -501,7 +501,10 @@ model CollectionEnquiry {
   collection_id String
   retailer_id   String
   
-  product_id    String?  // which product(s) interested in
+  product_id    String?  // first product (= product_ids[0]), kept for old readers
+  product_ids   String[] @default([]) // F-044 (migration 130): every product sent, deduped, all same retailer
+  assigned_staff_id String? // F-044 inbox Take: Staff.id, or retailer.id for owner — no FK
+  assigned_at   DateTime?
   message       String?  // pre-filled message content
   customer_name String?  // if customer shared name
   customer_phone String? // if customer shared phone

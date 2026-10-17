@@ -12,6 +12,17 @@
 
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
+## RC-066 — Collection enquiries returned the customer's full phone to staff and delegates
+
+- **Component:** `apps/api/src/routes/collections.ts` (GET `/collections/:id` embedded `enquiries`, PATCH `/collections/:id/enquiries/:enquiryId`). Fixed 2026-10-17 on `feat/enquiry-r1-t3-enquiry-products` (F-044 E1).
+- **Symptom:** manager (`*` on `/v1/collections`), salesperson (GET) and support/catalog delegates received `customer_phone` unmasked in the collection detail and the enquiry-status response — found while designing the F-044 inbox.
+- **Root cause:** masking is per-route (`maskPhoneForRequest` is called in `customers.ts` and campaign send), not per-field. The enquiry rows were returned via `...collection` / the raw Prisma row, so the column shipped as stored. A new route returning a phone column is unmasked unless its author remembers.
+- **Fix:** local `maskEnquiry()` applied to both responses (owner still sees the full number). The T5 inbox routes reuse it.
+- **Proof:** `apps/api/src/routes/collections-enquiries.test.ts` — masked for manager, salesperson, support delegate on GET + PATCH; full for owner.
+- **Not verified:** no device check of the mobile collection screen (it shows the masked value as-is).
+
+---
+
 ## RC-065 — AI Stylist's close handler popped browser history twice, so hiding the stylist also closed an open product sheet
 
 - **Component:** `apps/web/src/app/c/[slug]/components/AIStylist.tsx`, `ProductDetailSheet.tsx`. Fixed 2026-10-16 on `fix/studio-variant-invite-stylist-catalog`.

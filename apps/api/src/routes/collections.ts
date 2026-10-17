@@ -1,11 +1,24 @@
 import { prisma, vaultDelete } from '@kanchuki/db';
 import type { Prisma } from '@kanchuki/db';
 import { addDays, generateCollectionSlug, normalizeIndianPhone } from '@kanchuki/shared';
-import type { FastifyPluginAsync } from 'fastify';
+import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { hasFeature } from '../lib/features.js';
 import { buildCollectionUrl } from '../lib/store-urls.js';
+import { maskPhoneForRequest } from '../plugins/auth.js';
 import { featureUnavailable, notFound, validationError } from '../plugins/error-handler.js';
+
+// RC-066: manager / salesperson / delegates reach these routes through the
+// /v1/collections allowlist; the customer's number must be masked server-side.
+function maskEnquiry<T extends { customer_phone: string | null }>(
+  request: FastifyRequest,
+  e: T,
+): T {
+  return {
+    ...e,
+    customer_phone: e.customer_phone ? maskPhoneForRequest(request, e.customer_phone) : null,
+  };
+}
 
 // The retailer's public_slug (store URL segment). Null when the retailer has
 // never generated a store QR — buildCollectionUrl falls back to /c/{slug}.
@@ -172,6 +185,7 @@ export const collectionRoutes: FastifyPluginAsync = async (server) => {
     return {
       data: {
         ...collection,
+        enquiries: collection.enquiries.map((e) => maskEnquiry(request, e)),
         url: buildCollectionUrl(await retailerPublicSlug(request.retailerId), collection.slug),
       },
     };
@@ -229,7 +243,7 @@ export const collectionRoutes: FastifyPluginAsync = async (server) => {
     if (count === 0) throw notFound('Enquiry');
 
     const updated = await prisma.collectionEnquiry.findUnique({ where: { id: enquiryId } });
-    return { data: updated };
+    return { data: updated && maskEnquiry(request, updated) };
   });
 
   // ─── POST /collections/auto-suggest ─────────────────────────────
