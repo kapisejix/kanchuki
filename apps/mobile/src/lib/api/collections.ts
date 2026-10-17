@@ -1,6 +1,43 @@
 import { request } from './client'
 
+export type EnquiryStatus = 'NEW' | 'SEEN' | 'REPLIED' | 'CLOSED'
+export type Assignee = { id: string; name: string }
+// F-044 E3 inbox row. customer_phone is masked server-side for staff.
+export type Enquiry = {
+  id: string
+  collection_id: string
+  customer_name: string | null
+  customer_phone: string | null
+  message: string | null
+  status: EnquiryStatus
+  created_at: string
+  collection: { id: string; title: string }
+  products: { id: string; name: string | null; photo_url: string | null }[]
+  assigned_to: Assignee | null
+}
+
 export const collectionApi = {
+  enquiries: () =>
+    request<{ data: Enquiry[]; assignees?: Assignee[] }>('/v1/collections/enquiries'),
+
+  takeEnquiry: (id: string) =>
+    request<{ data: { id: string; assigned_to: Assignee } }>(
+      `/v1/collections/enquiries/${id}/take`,
+      { method: 'POST' },
+    ),
+
+  assignEnquiry: (id: string, staffId: string) =>
+    request<{ data: { id: string; assigned_to: Assignee } }>(
+      `/v1/collections/enquiries/${id}/assign`,
+      { method: 'PATCH', body: JSON.stringify({ staff_id: staffId }) },
+    ),
+
+  setEnquiryStatus: (collectionId: string, id: string, status: EnquiryStatus) =>
+    request<{ data: unknown }>(`/v1/collections/${collectionId}/enquiries/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    }),
+
   list: () =>
     request<{ data: unknown[] }>('/v1/collections', { getCacheTtlMs: 15_000 }),
 

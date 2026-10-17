@@ -368,6 +368,16 @@ export default function HomeScreen() {
               />
             )}
           </View>
+          {/* F-044 E3 — every role (D2); T6 adds the unread badge here. */}
+          <View className="flex-row gap-3">
+            <QuickAction
+              icon={<MessageCircle size={20} color="#BB3F95" />}
+              label="Enquiries"
+              sublabel="Customer picks inbox"
+              onPress={() => router.push('/enquiries')}
+              accent="#E0E1F6"
+            />
+          </View>
           {/* Suits Designs — retailer entry hidden by owner decision
               (2026-09-07). Only admin-uploaded (global) designs show to
               customers. Screens + route stay registered; restore this tile

@@ -192,6 +192,7 @@ function AppShell() {
           <Stack.Screen name="analytics" />
           <Stack.Screen name="billing" />
           <Stack.Screen name="store-profile" />
+          <Stack.Screen name="enquiries" />
           <Stack.Screen name="social/create" />
           <Stack.Screen name="social/schedule/index" />
           <Stack.Screen name="social/schedule/new" />

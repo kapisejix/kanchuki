@@ -121,6 +121,30 @@ describe('salesperson allowlist', () => {
   });
 });
 
+describe('enquiry inbox (F-044 E3, D2)', () => {
+  const s = (method: string, url: string) => staffCanAccess(method, url, 'salesperson');
+  const m = (method: string, url: string) => staffCanAccess(method, url, 'manager');
+  it('salesperson reads, takes, sets status', () => {
+    expect(s('GET', '/v1/collections/enquiries')).toBe(true);
+    expect(s('GET', '/v1/collections/enquiries/unread-count')).toBe(true);
+    expect(s('POST', '/v1/collections/enquiries/:id/take')).toBe(true);
+    expect(s('PATCH', '/v1/collections/:id/enquiries/:enquiryId')).toBe(true);
+  });
+  it('salesperson: reassign + every other collection write stays denied', () => {
+    expect(s('PATCH', '/v1/collections/enquiries/:id/assign')).toBe(false);
+    expect(s('POST', '/v1/collections')).toBe(false);
+    expect(s('PATCH', '/v1/collections/:id')).toBe(false);
+    expect(s('DELETE', '/v1/collections/:id')).toBe(false);
+    expect(s('POST', '/v1/collections/:id/bulk-send')).toBe(false);
+    expect(s('POST', '/v1/collections/enquiries/:id/untake')).toBe(false); // default-deny
+  });
+  it('manager gets read, take and reassign', () => {
+    expect(m('GET', '/v1/collections/enquiries')).toBe(true);
+    expect(m('POST', '/v1/collections/enquiries/:id/take')).toBe(true);
+    expect(m('PATCH', '/v1/collections/enquiries/:id/assign')).toBe(true);
+  });
+});
+
 describe('try-on (F-040) — owner + manager only', () => {
   // The in-store try-on runs on the staff phone. Manager reaches it through the
   // `*` /v1/products wildcard; salesperson is GET-only on /v1/products, so the
