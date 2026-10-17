@@ -8,8 +8,8 @@ Spec: `docs/tasks/pending/enquiry-basket-team-inbox-and-instore-tryon.md` (§3, 
 |---|---|---|
 | T1 E7 try-on role pin (test) | ✅ pushed, in PR #95 | `feat/enquiry-r1-t1-staff-test` `eb631d8a` |
 | T2 E6 customer try-on off | ✅ pushed, PR #95 (→ main) | `feat/enquiry-r1-t2-customer-tryon-off` `f637773a` |
-| T3 E1 product_ids + RC-066 mask | ✅ committed, NOT pushed, no PR | `feat/enquiry-r1-t3-enquiry-products` `40c08d62` |
-| T4 E2 web "Send my picks" | next | — |
+| T3 E1 product_ids + RC-066 mask | ✅ pushed, PR #96 (→ T2 branch, stacked) | `feat/enquiry-r1-t3-enquiry-products` `40c08d62` |
+| T4 E2 web "Send my picks" | ✅ committed, NOT pushed | `feat/enquiry-r1-t4-send-picks` |
 | T5 E3 inbox + Take | planned | — |
 | T6 E4-lite badge | planned | — |
 | T7 E5 whatsapp_number routing | planned | — |

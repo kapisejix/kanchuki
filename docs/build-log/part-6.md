@@ -455,3 +455,12 @@ no migration, no schema change, and **no new request on any surface**.
 | Change | `public-collections.ts` enquire: dedupe ids (`product_id` first), max 20, every id must be a live product of the collection's retailer (422 before any write), `product_id = ids[0]`, WhatsApp text uses product names + prices. `collections.ts`: `maskEnquiry()` on GET `/:id` embedded enquiries and the PATCH enquiry-status response (RC-066). |
 | Tests | `public-collections-enquire.test.ts` 7 (4 saved; foreign → 422 + no write; names not ids; 20 ok / 21 → 422; old `product_id`; dedupe; no-product enquiry). `collections-enquiries.test.ts` 8 (masked for manager / salesperson / support delegate on GET + PATCH; owner full; null stays null). 13 failed first. With `public.test.ts`, security, staff-access: 56/56; API tsc clean. |
 | Not verified | Migration not run against any DB. No device / browser check. |
+
+## 2026-10-17 - F-044 Enquiry Basket Release 1, E2 (customer web "Send my picks to the store")
+
+| Area | Detail |
+|---|---|
+| Spec | `docs/tasks/pending/enquiry-basket-team-inbox-and-instore-tryon.md` §11.7 step 4. Branch `feat/enquiry-r1-t4-send-picks`, stacked on E1. |
+| Change | New proxies `api/c/[slug]/enquire` and `api/[store]/[collection]/enquire` (the store twin calls the legacy one with the collection segment); status + JSON pass through, 503 when the API is down. `WishlistView.tsx`: "Send my picks to the store (N)" button + bottom-nav Enquire send ONE POST with localStorage ids ∪ passport `/api/passport/wishlist` rows filtered to this retailer; opens the API `whatsapp_url`; any non-200 / network error opens the old client-built wa.me link (pseudo-slug 404, 422, >20 picks). Sync `useRef` guard (RC-015). Disabled at 0 picks (bottom-nav Enquire no longer sends "first 3 products"). Opens with `'_self'` — a `'_blank'` open after an await is popup-blocked. |
+| Tests | `api/c/[slug]/enquire/__tests__/route.test.ts` 4 (200 body + URL + forwarded body; 422 passthrough; 503 down; store twin uses collection segment). `wishlist/__tests__/WishlistView.test.tsx` 4 (disabled at 0; local ∪ this-store passport ids, other store excluded; double click → 1 POST; 404 → wa.me fallback). 8 failed first (missing route / button), 8/8 after. Web tsc + eslint clean. |
+| Not verified | No browser / device check. Passport picks not on this collection page count in (N) but are not drawn in the grid. |
