@@ -121,6 +121,19 @@ describe('salesperson allowlist', () => {
   });
 });
 
+describe('try-on (F-040) — owner + manager only', () => {
+  // The in-store try-on runs on the staff phone. Manager reaches it through the
+  // `*` /v1/products wildcard; salesperson is GET-only on /v1/products, so the
+  // POST is default-denied. Pinned so a widened salesperson rule can't leak it.
+  it('manager can start a try-on and poll its status', () => {
+    expect(staffCanAccess('POST', '/v1/products/:id/try-on', 'manager')).toBe(true);
+    expect(staffCanAccess('GET', '/v1/products/:id/try-on/status', 'manager')).toBe(true);
+  });
+  it('salesperson cannot start a try-on', () => {
+    expect(staffCanAccess('POST', '/v1/products/:id/try-on', 'salesperson')).toBe(false);
+  });
+});
+
 describe('maskPhoneForRequest', () => {
   const req = (staffRole: string | null) => ({ staffRole }) as unknown as FastifyRequest;
   it('owner sees the full number', () => {
