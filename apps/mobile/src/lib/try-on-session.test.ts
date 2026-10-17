@@ -7,6 +7,13 @@ const m = vi.hoisted(() => ({
   tryOnPacks: vi.fn(),
   compress: vi.fn(),
   deleteAsync: vi.fn(),
+  activate: vi.fn(),
+  deactivate: vi.fn(),
+}))
+
+vi.mock('expo-keep-awake', () => ({
+  activateKeepAwakeAsync: m.activate,
+  deactivateKeepAwake: m.deactivate,
 }))
 
 vi.mock('./api/products', () => ({
@@ -272,5 +279,36 @@ describe('loadBuyablePacks', () => {
   it('returns [] when the call fails (e.g. manager gets 403)', async () => {
     m.tryOnPacks.mockRejectedValue(new Error('403'))
     await expect(loadBuyablePacks()).resolves.toEqual([])
+  })
+})
+
+
+describe('keep-awake (F-044 R2 T4b)', () => {
+  beforeEach(() => {
+    m.activate.mockReset().mockResolvedValue(undefined)
+    m.deactivate.mockReset().mockResolvedValue(undefined)
+  })
+
+  it('is wanted only while running or showing results', async () => {
+    const { shouldKeepAwake } = await import('./try-on-session')
+    expect(
+      (['preflight', 'capture', 'consent', 'running', 'gallery'] as const).filter(shouldKeepAwake),
+    ).toEqual(['running', 'gallery'])
+  })
+
+  it('activates and deactivates under the session tag', async () => {
+    const { setSessionKeepAwake } = await import('./try-on-session')
+    await setSessionKeepAwake(true)
+    expect(m.activate).toHaveBeenCalledWith('enquiry-try-on')
+    await setSessionKeepAwake(false)
+    expect(m.deactivate).toHaveBeenCalledWith('enquiry-try-on')
+  })
+
+  it('swallows native failures in both directions', async () => {
+    const { setSessionKeepAwake } = await import('./try-on-session')
+    m.activate.mockRejectedValue(new Error('no native module'))
+    m.deactivate.mockRejectedValue(new Error('no native module'))
+    await expect(setSessionKeepAwake(true)).resolves.toBeUndefined()
+    await expect(setSessionKeepAwake(false)).resolves.toBeUndefined()
   })
 })

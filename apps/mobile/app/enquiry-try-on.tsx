@@ -24,6 +24,8 @@ import {
   loadBuyablePacks,
   planSession,
   runTryOnSession,
+  setSessionKeepAwake,
+  shouldKeepAwake,
   type SessionItem,
 } from '../src/lib/try-on-session'
 import { GradientButton } from '../src/components/GradientButton'
@@ -36,8 +38,7 @@ import { TryOnConsent } from '../src/components/TryOnConsent'
 // (see `exit`). No Share button by design. Route params carry product ids and
 // names only — never the customer's phone or name.
 //
-// ponytail: no keep-awake (expo-keep-awake is not a dependency); the screen
-// stays open while the staff member watches the progress rows.
+// Keep-awake is held while running / showing results (see the effect below).
 type Step = 'preflight' | 'capture' | 'consent' | 'running' | 'gallery'
 type Product = { id: string; name: string }
 
@@ -80,6 +81,17 @@ export default function EnquiryTryOnScreen() {
   const itemsRef = useRef<SessionItem[]>([])
   const stepRef = useRef<Step>('preflight')
   stepRef.current = step
+
+  // Screen stays on while a session runs or results show; always released on
+  // step change / unmount. Failures are swallowed inside setSessionKeepAwake.
+  const awake = shouldKeepAwake(step)
+  useEffect(() => {
+    if (!awake) return
+    void setSessionKeepAwake(true)
+    return () => {
+      void setSessionKeepAwake(false)
+    }
+  }, [awake])
 
   const loadQuota = useCallback(async () => {
     try {

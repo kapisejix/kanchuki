@@ -5,6 +5,7 @@
  * Privacy: items carry product id/name only (never customer phone/name) and no
  * photo URI is ever logged.
  */
+import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import * as LegacyFileSystem from 'expo-file-system/legacy';
 import { billingApi } from './api/billing';
 import { productApi } from './api/products';
@@ -24,6 +25,23 @@ export interface SessionItem {
 const MAX_CONCURRENCY = 2;
 const MAX_POLL_ATTEMPTS = 60;
 const DISCARD_CHUNK = 10;
+
+const KEEP_AWAKE_TAG = 'enquiry-try-on';
+
+/** A screen timeout backgrounds the app, which runs cleanup and loses paid-for results. */
+export function shouldKeepAwake(step: string): boolean {
+  return step === 'running' || step === 'gallery';
+}
+
+/** Never throws: keep-awake is a convenience and must not block the session. */
+export async function setSessionKeepAwake(on: boolean): Promise<void> {
+  try {
+    if (on) await activateKeepAwakeAsync(KEEP_AWAKE_TAG);
+    else await deactivateKeepAwake(KEEP_AWAKE_TAG);
+  } catch {
+    // swallowed on purpose
+  }
+}
 
 /** True only for a URI inside the app cache dir — never a gallery original. */
 export function isAppCacheUri(uri: string, cacheDir: string | null | undefined): boolean {
