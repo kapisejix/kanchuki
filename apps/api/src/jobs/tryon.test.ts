@@ -9,6 +9,7 @@ const {
   mockProductFindFirst,
   mockJobUpdate,
   mockJobUpdateMany,
+  mockJobFindUnique,
   mockGenerateTryOn,
   mockSaveTryOnResultToR2,
   mockDeleteObject,
@@ -21,6 +22,7 @@ const {
   mockProductFindFirst: vi.fn(),
   mockJobUpdate: vi.fn(),
   mockJobUpdateMany: vi.fn(),
+  mockJobFindUnique: vi.fn(),
   mockGenerateTryOn: vi.fn(),
   mockSaveTryOnResultToR2: vi.fn(),
   mockDeleteObject: vi.fn(),
@@ -36,7 +38,11 @@ vi.mock('@kanchuki/db', () => ({
     product: { findFirst: mockProductFindFirst },
     // `update` is markFailed's unconditional write; `updateMany` is the guarded
     // completion, which is conditional on the consent still being live.
-    tryOnJob: { update: mockJobUpdate, updateMany: mockJobUpdateMany },
+    tryOnJob: {
+      update: mockJobUpdate,
+      updateMany: mockJobUpdateMany,
+      findUnique: mockJobFindUnique,
+    },
   },
 }));
 
@@ -79,9 +85,14 @@ beforeEach(() => {
   mockProductFindFirst.mockResolvedValue(PRODUCT);
   mockIsUnsupportedTryOnCategory.mockReturnValue(false);
   mockClothTypeForCategory.mockReturnValue('upper');
-  mockGenerateTryOn.mockResolvedValue({ outputUrl: 'https://worker/result.jpg', latencyMs: 900 });
+  mockGenerateTryOn.mockResolvedValue({
+    outputUrl: 'https://worker/result.jpg',
+    latencyMs: 900,
+    gpuMs: 1200,
+  });
   mockSaveTryOnResultToR2.mockResolvedValue('tryon-results/tryon_1/result.jpg');
   mockJobUpdate.mockResolvedValue({});
+  mockJobFindUnique.mockResolvedValue({ status: 'PENDING' });
   // The row matched — i.e. no withdrawal landed while the GPU was working.
   mockJobUpdateMany.mockResolvedValue({ count: 1 });
   mockDeleteObject.mockResolvedValue(undefined);
@@ -107,10 +118,11 @@ describe('handleTryOn', () => {
     // The completion is conditional on the consent still being live — the
     // WHERE is the check, and the write is its consequence.
     expect(mockJobUpdateMany).toHaveBeenCalledWith({
-      where: { id: 'tryon_1', consent_withdrawn_at: null },
+      where: { id: 'tryon_1', consent_withdrawn_at: null, status: { not: 'DISCARDED' } },
       data: expect.objectContaining({
         status: 'COMPLETED',
         result_url: 'tryon-results/tryon_1/result.jpg',
+        gpu_ms: 1200,
       }),
     });
     // Nothing was withdrawn, so the image it just wrote is kept.
@@ -152,8 +164,52 @@ describe('handleTryOn', () => {
     await expect(handleTryOn(DATA)).resolves.toBeUndefined();
 
     expect(mockDeleteObject).toHaveBeenCalled();
-    // Nothing cleared the key: it is the sweep's only way to find the object.
-    expect(mockJobUpdateMany).toHaveBeenCalledTimes(1);
+    // Nothing cleared the key: guarded completion + the (no-match) DISCARDED
+    // record attempt only.
+    expect(mockJobUpdateMany).toHaveBeenCalledTimes(2);
+  });
+
+  it('discarded mid-run: records the key durably, deletes it, clears the pointer, never flips status', async () => {
+    // 1st updateMany = guarded completion (matches nothing: row is DISCARDED),
+    // 2nd = durable record of the key, 3rd = pointer clear after the delete.
+    mockJobUpdateMany
+      .mockResolvedValueOnce({ count: 0 })
+      .mockResolvedValueOnce({ count: 1 })
+      .mockResolvedValueOnce({ count: 1 });
+
+    await handleTryOn(DATA);
+
+    const key = 'tryon-results/tryon_1/result.jpg';
+    expect(mockJobUpdateMany.mock.calls[1]?.[0]).toEqual({
+      where: { id: 'tryon_1', status: 'DISCARDED', result_url: null },
+      data: { result_url: key, completed_at: expect.any(Date), gpu_ms: 1200 },
+    });
+    expect(mockDeleteObject).toHaveBeenCalledWith(key);
+    expect(mockJobUpdateMany.mock.calls[2]?.[0]).toEqual({
+      where: { id: 'tryon_1', result_url: key },
+      data: { result_url: null },
+    });
+    // No status write other than the guarded ones.
+    expect(mockJobUpdate).not.toHaveBeenCalled();
+    for (const c of mockJobUpdateMany.mock.calls.slice(1)) {
+      expect(c[0].data.status).toBeUndefined();
+    }
+  });
+
+  it('discarded mid-run + failed delete: key stays recorded for the sweep', async () => {
+    mockJobUpdateMany.mockResolvedValueOnce({ count: 0 }).mockResolvedValueOnce({ count: 1 });
+    mockDeleteObject.mockRejectedValue(new Error('R2 unreachable'));
+
+    await expect(handleTryOn(DATA)).resolves.toBeUndefined();
+
+    // Record write happened, pointer was NOT cleared (still the only pointer).
+    expect(mockJobUpdateMany).toHaveBeenCalledTimes(2);
+  });
+
+  it('discarded mid-run still meters the generation (GPU ran)', async () => {
+    mockJobUpdateMany.mockResolvedValue({ count: 0 });
+    await handleTryOn(DATA);
+    expect(mockIncrementUsage).toHaveBeenCalledWith('retailer_1', 'TRY_ON_GENERATION');
   });
 
   it('still meters a generation that was withdrawn mid-run', async () => {
@@ -166,6 +222,18 @@ describe('handleTryOn', () => {
 
     expect(mockIncrementUsage).toHaveBeenCalledWith('retailer_1', 'TRY_ON_GENERATION');
     expect(mockIncrementCustomerUsage).toHaveBeenCalledWith('acct_1', 'TRY_ON_GENERATION');
+  });
+
+  it('discarded while still queued: skips the GPU, writes nothing, does not meter', async () => {
+    mockJobFindUnique.mockResolvedValue({ status: 'DISCARDED' });
+
+    await handleTryOn(DATA);
+
+    expect(mockGenerateTryOn).not.toHaveBeenCalled();
+    expect(mockSaveTryOnResultToR2).not.toHaveBeenCalled();
+    expect(mockJobUpdate).not.toHaveBeenCalled();
+    expect(mockJobUpdateMany).not.toHaveBeenCalled();
+    expect(mockIncrementUsage).not.toHaveBeenCalled();
   });
 
   it('fails without generating when the photo has expired', async () => {
@@ -213,6 +281,11 @@ describe('handleTryOn', () => {
     await expect(handleTryOn(DATA)).rejects.toThrow('RunPod timeout');
 
     expect(mockSaveTryOnResultToR2).not.toHaveBeenCalled();
+    expect(mockJobUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.not.objectContaining({ gpu_ms: expect.anything() }),
+      }),
+    );
     expect(mockJobUpdate).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({ status: 'FAILED', failure_reason: 'RunPod timeout' }),

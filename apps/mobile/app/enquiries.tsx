@@ -3,11 +3,11 @@
 // staff (server-side); replies happen in WhatsApp on the shared Business number (D1-A).
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { router } from 'expo-router'
-import { ChevronLeft, Shirt } from 'lucide-react-native'
+import { ChevronLeft, Shirt, Sparkles } from 'lucide-react-native'
 import { useRef, useState } from 'react'
 import { ActivityIndicator, Alert, FlatList, Image, RefreshControl, Text, View } from 'react-native'
 import { AnimatedPressable } from '../src/components/AnimatedPressable'
-import { ApiError, collectionApi, type Enquiry, type EnquiryStatus } from '../src/lib/api'
+import { ApiError, collectionApi, retailerApi, type Enquiry, type EnquiryStatus } from '../src/lib/api'
 import { useAuth } from '../src/lib/auth-context'
 import { showError } from '../src/lib/errors'
 import { useScreenInsets } from '../src/lib/safe-area'
@@ -24,6 +24,16 @@ export default function EnquiriesScreen() {
   const { staffRole } = useAuth()
   const canAssign = staffCan(staffRole, 'enquiries.assign')
   const queryClient = useQueryClient()
+  // F-044 R2 - same fail-closed flag read as product/[id].tsx; the API re-checks.
+  const { data: meData } = useQuery({
+    queryKey: ['retailer', 'me'],
+    queryFn: () => retailerApi.getMe(),
+  })
+  const features = (meData as { data?: { features?: string[] } } | undefined)?.data?.features
+  const canTryOn =
+    staffCan(staffRole, 'enquiries.tryon') &&
+    Array.isArray(features) &&
+    features.includes('VIRTUAL_TRY_ON_V2')
   const [reassigning, setReassigning] = useState<string | null>(null)
   // RC-015: a sync ref, not state — a double tap must send one request.
   const inFlight = useRef(false)
@@ -94,6 +104,27 @@ export default function EnquiriesScreen() {
             </AnimatedPressable>
           ))}
         </View>
+      )}
+
+      {canTryOn && e.products.length > 0 && (
+        <AnimatedPressable
+          // Ids + product names only - never the customer's phone or name.
+          onPress={() =>
+            router.push({
+              pathname: '/enquiry-try-on',
+              params: {
+                productIds: e.products.map((p) => p.id).join(','),
+                productNames: JSON.stringify(e.products.map((p) => p.name ?? 'Product')),
+              },
+            })
+          }
+          className="flex-row items-center justify-center gap-2 mt-3 py-2.5 rounded-full bg-spaceCadet-900"
+          accessibilityRole="button"
+          accessibilityLabel="Try on with customer"
+        >
+          <Sparkles size={14} color="#fff" />
+          <Text className="text-xs font-bold text-white">Try on with customer</Text>
+        </AnimatedPressable>
       )}
 
       <View className="flex-row items-center justify-between mt-3">

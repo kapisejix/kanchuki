@@ -305,14 +305,19 @@ export const productApi = {
     productId: string,
     consentVersion: string,
     photoUri: string,
+    /** `skipCompress`: the caller already compressed (session orchestrator
+     *  compresses once and reuses the copy for every product). */
+    opts?: { skipCompress?: boolean },
   ): Promise<{ data: { job_id: string; status: string } }> => {
     const token = await getToken();
     let uri = photoUri;
-    try {
-      uri = await compressImageForUpload(photoUri);
-    } catch (err) {
-      // Never block the generation on compression — the original still fits.
-      console.warn('Try-on photo compression failed — uploading original:', err);
+    if (!opts?.skipCompress) {
+      try {
+        uri = await compressImageForUpload(photoUri);
+      } catch (err) {
+        // Never block the generation on compression — the original still fits.
+        console.warn('Try-on photo compression failed — uploading original:', err);
+      }
     }
 
     const url = `${API_URL}/v1/products/${productId}/try-on?consent_version=${encodeURIComponent(
@@ -348,7 +353,7 @@ export const productApi = {
   getTryOnStatus: (productId: string, jobId: string) =>
     request<{
       data: {
-        status: 'processing' | 'ready' | 'failed' | 'withdrawn';
+        status: 'processing' | 'ready' | 'failed' | 'withdrawn' | 'discarded';
         url?: string | null;
         error?: string;
       };
@@ -356,6 +361,20 @@ export const productApi = {
       getCacheTtlMs: 0,
       timeoutMs: 15_000,
     }),
+
+  /** Remaining try-ons this month (owner/manager only server-side). */
+  getTryOnQuota: () =>
+    request<{
+      data: { used: number; limit: number; remaining: number; unlimited: boolean };
+    }>('/v1/products/try-on/quota', { getCacheTtlMs: 0, timeoutMs: 15_000 }),
+
+  /** Delete finished in-store results (max 10 ids per call). 502
+   *  TRY_ON_DISCARD_FAILED when nothing could be discarded. */
+  discardTryOnJobs: (jobIds: string[]) =>
+    request<{ data: { discarded: number; failed: number; skipped: number } }>(
+      '/v1/products/try-on/discard',
+      { method: 'POST', body: JSON.stringify({ job_ids: jobIds }), timeoutMs: 30_000 },
+    ),
 };
 
 /** Best-effort JSON parse of an uploadAsync body — it is a plain string, and a

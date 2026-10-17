@@ -142,7 +142,37 @@ describe('generateTryOn', () => {
     expect(result).toEqual({
       outputUrl: 'https://r2.example.com/out.jpg',
       latencyMs: 34_000,
+      gpuMs: 34_000,
     });
+  });
+
+  it('prefers the top-level RunPod executionTime for gpuMs, then latency_ms, else null', async () => {
+    secretState.keys.set('CATVTON_API_URL', ENDPOINT);
+    mockFetchOnce({
+      executionTime: 41_000,
+      output: { result_url: 'https://r2.example.com/out.jpg', latency_ms: 34_000 },
+    });
+    expect((await generateTryOn(request)).gpuMs).toBe(41_000);
+
+    mockFetchOnce({ output: { result_url: 'https://r2.example.com/out.jpg', latency_ms: 34_000 } });
+    expect((await generateTryOn(request)).gpuMs).toBe(34_000);
+
+    mockFetchOnce({ output: { result_url: 'https://r2.example.com/out.jpg' } });
+    expect((await generateTryOn(request)).gpuMs).toBeNull();
+  });
+
+  it('rounds a fractional gpuMs and ignores NaN/negative/non-finite values', async () => {
+    secretState.keys.set('CATVTON_API_URL', ENDPOINT);
+    const out = { result_url: 'https://r2.example.com/out.jpg' };
+    mockFetchOnce({ executionTime: 40_999.6, output: out });
+    expect((await generateTryOn(request)).gpuMs).toBe(41_000);
+
+    // bad executionTime falls through to latency_ms
+    mockFetchOnce({ executionTime: -5, output: { ...out, latency_ms: 700.4 } });
+    expect((await generateTryOn(request)).gpuMs).toBe(700);
+
+    mockFetchOnce({ executionTime: Number.NaN, output: { ...out, latency_ms: -1 } });
+    expect((await generateTryOn(request)).gpuMs).toBeNull();
   });
 
   it('tolerates a missing RUNPOD_API_KEY header-less call for a self-hosted URL', async () => {

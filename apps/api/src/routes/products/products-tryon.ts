@@ -35,6 +35,7 @@
 // call the API directly (same reasoning as the feature flag above).
 import multipart from '@fastify/multipart';
 import {
+  deleteObject,
   getDownloadPresignedUrl,
   isCatVtonConfigured,
   isUnsupportedTryOnCategory,
@@ -44,14 +45,16 @@ import { TRY_ON_CONSENT } from '@kanchuki/shared';
 import { createId } from '@paralleldrive/cuid2';
 import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
 import { z } from 'zod';
+import { Sentry } from '../../instrument.js';
 import { addTryOnJob } from '../../jobs/index.js';
 import { CUSTOMER_TRY_ON_ENABLED, hasFeature } from '../../lib/features.js';
 import { isCurrentTryOnConsent } from '../../lib/notice-versions.js';
-import { checkCustomerQuota, checkQuota } from '../../lib/quota.js';
+import { checkCustomerQuota, checkQuota, getQuotaStatus } from '../../lib/quota.js';
 import { hasLiveTryOnConsent, recordTryOnConsent } from '../../lib/tryon-consent.js';
 import { discardTryOnPhoto, putTryOnPhoto } from '../../lib/tryon-photo-store.js';
 import {
   AppError,
+  forbidden,
   notFound,
   serviceUnavailable,
   validationError,
@@ -61,6 +64,9 @@ import { getPassportSession } from '../public/passport/passport-helpers.js';
 /** Phone JPEGs run 2–8 MB; 10 MB is generous without making the parser a
  *  memory amplifier. Over this, Fastify answers 413. */
 const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
+
+/** PENDING jobs younger than this count as already-spent quota. */
+const PENDING_WINDOW_MS = 10 * 60 * 1000;
 
 const PRODUCT_SELECT = {
   id: true,
@@ -105,17 +111,20 @@ async function resolveTryOnContext(
   request: FastifyRequest,
   productId: string,
 ): Promise<TryOnContext> {
-  const session = await getPassportSession(request.headers.cookie ?? '');
-  const customerAccountId = session?.customer_account_id ?? null;
-
+  // Bearer (in-store) path first, and it never reads the cookie: a stray
+  // passport cookie on the staff phone must not turn an in-store job into a
+  // PASSPORT one or charge a customer's quota (F-044 R2 T1).
   if (request.retailerId) {
     const product = await prisma.product.findFirst({
       where: { id: productId, retailer_id: request.retailerId, deleted_at: null },
       select: PRODUCT_SELECT,
     });
     if (!product) throw notFound('Product');
-    return { retailerId: request.retailerId, customerAccountId, product };
+    return { retailerId: request.retailerId, customerAccountId: null, product };
   }
+
+  const session = await getPassportSession(request.headers.cookie ?? '');
+  const customerAccountId = session?.customer_account_id ?? null;
 
   // E6: customer try-on is off — the cookie-only path is invisible. 404 like
   // the plan gate, and before the 401 so an anonymous probe learns nothing.
@@ -145,11 +154,115 @@ function normalizeContentType(mimetype: string | undefined): string | null {
   return lower === 'image/jpg' ? 'image/jpeg' : lower;
 }
 
+/**
+ * The one "who may use Bearer try-on" rule (RC-068): owner + manager only.
+ * Order: no retailer -> 404, flag off -> 404 (route stays invisible), then
+ * salesperson / catalog delegate / support delegate -> 403. Delegates have
+ * staffRole = null like an owner, so the role alone cannot tell them apart.
+ * Returns the caller's retailer id.
+ */
+async function requireTryOnStaff(request: FastifyRequest): Promise<string> {
+  if (!request.retailerId) throw notFound('Product');
+  if (!(await hasFeature(request.retailerId, 'VIRTUAL_TRY_ON_V2'))) throw notFound('Product');
+  if (request.staffRole === 'salesperson' || request.catalogDelegate || request.supportDelegate) {
+    throw forbidden();
+  }
+  return request.retailerId;
+}
+
 export const productsTryOnRoutes: FastifyPluginAsync = async (server) => {
   // Scoped to this plugin — the multipart parser is only needed by the one
   // route below and is not registered against the whole API.
   await server.register(multipart, {
     limits: { fileSize: MAX_PHOTO_BYTES, files: 1 },
+  });
+
+  // ─── GET /products/try-on/quota ─────────────────────────────────
+  // Static segment, registered before the `/:id/...` routes. Bearer only.
+  server.get('/try-on/quota', async (request) => {
+    const retailerId = await requireTryOnStaff(request);
+    const { used, limit, remaining, unlimited } = await getQuotaStatus(
+      retailerId,
+      'TRY_ON_GENERATION',
+    );
+    return { data: { used, limit, remaining, unlimited } };
+  });
+
+  // ─── POST /products/try-on/discard ──────────────────────────────
+  // F-044 R2 (D5): delete in-store results right after the session. Static
+  // segment, registered before the `/:id/...` routes. Bearer only; same
+  // refusal order as the quota read (404 → 404 → 403).
+  server.post('/try-on/discard', async (request) => {
+    const retailerId = await requireTryOnStaff(request);
+    const body = z.object({ job_ids: z.array(z.string().min(1)).max(10) }).safeParse(request.body);
+    if (!body.success) throw validationError('job_ids must be up to 10 job ids.', 'job_ids');
+
+    // In-store only (`customer_account_id` null): passport results follow the
+    // withdrawal path. Foreign/unknown ids simply don't match.
+    const jobs = await prisma.tryOnJob.findMany({
+      where: {
+        id: { in: body.data.job_ids },
+        retailer_id: retailerId,
+        customer_account_id: null,
+        OR: [{ result_url: { not: null } }, { status: 'PENDING' }],
+      },
+      select: { id: true, result_url: true, status: true },
+    });
+    let discarded = 0;
+    let failed = 0;
+    for (const job of jobs) {
+      const key = job.result_url;
+      if (!key) {
+        // Still running: no result yet. Tombstone it (CAS on PENDING) so the
+        // worker's guarded completion write loses and deletes what it wrote
+        // (jobs/tryon.ts). A job that finished first no longer matches PENDING;
+        // the client's next discard pass or the age sweep covers it.
+        if (job.status !== 'PENDING') continue;
+        try {
+          const { count } = await prisma.tryOnJob.updateMany({
+            where: { id: job.id, status: 'PENDING' },
+            data: { status: 'DISCARDED', completed_at: new Date() },
+          });
+          if (count > 0) discarded += 1;
+        } catch (err) {
+          failed += 1;
+          console.error(`[try-on] discard could not mark running job ${job.id}:`, err);
+          Sentry.captureException(err);
+        }
+        continue;
+      }
+      // Only the pointer goes, and only after the delete: on failure the key
+      // stays (sole pointer, same rule as withdrawTryOnConsent) and the
+      // age sweep retries.
+      try {
+        await deleteObject(key);
+      } catch (err) {
+        failed += 1;
+        console.error(`[try-on] discard could not delete ${key} for job ${job.id}:`, err);
+        Sentry.captureException(err);
+        continue;
+      }
+      try {
+        const { count } = await prisma.tryOnJob.updateMany({
+          where: { id: job.id, result_url: key },
+          data: { result_url: null },
+        });
+        if (count > 0) discarded += 1;
+      } catch (err) {
+        failed += 1;
+        console.error(
+          `[try-on] discard deleted ${key} but could not clear it on job ${job.id} — the sweep will retry:`,
+          err,
+        );
+        Sentry.captureException(err);
+      }
+    }
+    if (failed > 0 && discarded === 0) {
+      throw new AppError('TRY_ON_DISCARD_FAILED', 'Could not discard the try-on results.', 502);
+    }
+    return {
+      data: { discarded, failed, skipped: body.data.job_ids.length - jobs.length },
+    };
   });
 
   // ─── POST /products/:id/try-on ──────────────────────────────────
@@ -166,6 +279,9 @@ export const productsTryOnRoutes: FastifyPluginAsync = async (server) => {
       .safeParse(request.query);
     if (!consent.success) throw validationError('Invalid consent version.', 'consent_version');
 
+    // Role gate before any product lookup, so a refused caller learns nothing
+    // about product existence (RC-068). Cookie path is unchanged.
+    if (request.retailerId) await requireTryOnStaff(request);
     const { retailerId, customerAccountId, product } = await resolveTryOnContext(request, id);
 
     // 1. Launch gate. 404 (not 403) so the route is invisible until the owner
@@ -218,7 +334,17 @@ export const productsTryOnRoutes: FastifyPluginAsync = async (server) => {
     //    logged-in shopper, their own. Distinct error codes: the retailer cap
     //    is 402 PLAN_LIMIT_EXCEEDED ("upgrade"), the shopper's is 402
     //    CUSTOMER_LIMIT_EXCEEDED (advice aimed at someone with no plan).
-    await checkQuota(retailerId, 'TRY_ON_GENERATION');
+    //    Usage is only incremented on job SUCCESS, so a multi-product session
+    //    firing several POSTs back-to-back would all pass; count recent PENDING
+    //    jobs as already spent. The 10-minute window bounds orphaned PENDING rows.
+    const pending = await prisma.tryOnJob.count({
+      where: {
+        retailer_id: retailerId,
+        status: 'PENDING',
+        created_at: { gte: new Date(Date.now() - PENDING_WINDOW_MS) },
+      },
+    });
+    await checkQuota(retailerId, 'TRY_ON_GENERATION', 1 + pending);
     if (customerAccountId) {
       await checkCustomerQuota(customerAccountId, 'TRY_ON_GENERATION');
     }
@@ -303,6 +429,8 @@ export const productsTryOnRoutes: FastifyPluginAsync = async (server) => {
     const q = z.object({ job_id: z.string().min(1) }).safeParse(request.query);
     if (!q.success) throw validationError('job_id is required', 'job_id');
 
+    // Bearer poll: same gate + role rule as the POST (RC-068).
+    if (request.retailerId) await requireTryOnStaff(request);
     // E6: same invisibility as the POST for the customer poll.
     if (!request.retailerId && !CUSTOMER_TRY_ON_ENABLED) throw notFound('Product');
 
@@ -335,6 +463,12 @@ export const productsTryOnRoutes: FastifyPluginAsync = async (server) => {
     // poller would wait forever for an image that was deleted on request.
     if (job.consent_withdrawn_at) {
       return { data: { status: 'withdrawn' } };
+    }
+
+    // Same fall-through trap as withdrawn: COMPLETED with the pointer cleared
+    // means the result was discarded (F-044 R2), not that it is still working.
+    if (job.status === 'DISCARDED' || (job.status === 'COMPLETED' && !job.result_url)) {
+      return { data: { status: 'discarded' } };
     }
 
     if (job.status === 'COMPLETED' && job.result_url) {

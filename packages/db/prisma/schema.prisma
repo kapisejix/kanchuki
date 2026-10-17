@@ -1383,7 +1383,8 @@ model TryOnJob {
   // web product page. Only the latter counts against a customer quota.
   customer_account_id String?
   product_id          String
-  // PENDING | COMPLETED | FAILED. A String rather than a new enum: the
+  // PENDING | COMPLETED | FAILED | DISCARDED (in-store session closed before the
+  // result was wanted; written by POST /try-on/discard). A String rather than a new enum: the
   // teardown dropped TryOnJobStatus, and reviving an enum name that close to
   // the deprecated TRY_ON values invites the wrong reader conclusion.
   status              String
@@ -1404,6 +1405,10 @@ model TryOnJob {
   // result. `result_url` is nulled at the same time, so a job with this set
   // reads as "there was an image, and it was deleted on request".
   consent_withdrawn_at   DateTime?
+
+  // F-044 R2 T7: GPU ms for a finished job (RunPod executionTime, else worker
+  // latency_ms). null on failed/unmetered jobs.
+  gpu_ms Int?
 
   created_at   DateTime  @default(now())
   completed_at DateTime?

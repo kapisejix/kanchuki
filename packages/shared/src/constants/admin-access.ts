@@ -94,6 +94,7 @@ export const SUPER_ADMIN_ONLY_ADMIN_SEGMENTS = [
   'storage-report',
   // ── Platform-wide audit + cost telemetry ──
   'ai-usage',
+  'try-on-usage', // F-044 R2 T7 GPU cost telemetry
   'audit-log',
   'audit-logs',
 ] as const;

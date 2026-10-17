@@ -1,6 +1,6 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { Readable } from 'node:stream';
-import { getSecret, prisma } from '@kanchuki/db';
+import { type QuotaResourceType, type SubscriptionPlan, getSecret, prisma } from '@kanchuki/db';
 import { PLAN_LIMITS } from '@kanchuki/shared';
 import type { FastifyRequest } from 'fastify';
 import { AppError } from '../../plugins/error-handler.js';
@@ -152,6 +152,36 @@ export function jsonLimits(plan: Plan) {
     max_customers: orNull(limits.max_customers),
     max_collection_links_per_month: orNull(limits.max_collection_links_per_month),
   };
+}
+
+/**
+ * The limit an add-on credit is measured against: per-retailer override first,
+ * then the plan limit. null = no limit row; limit -1 = unlimited. Used by BOTH
+ * the add-on callback (credit) and try-on checkout (refuse a pack that would
+ * credit nothing), so the two can never disagree.
+ */
+export async function getEffectiveLimit(
+  retailerId: string,
+  resourceType: QuotaResourceType,
+  knownPlan?: SubscriptionPlan,
+): Promise<{ limit: number; period: string } | null> {
+  const override = await prisma.retailerLimitOverride.findUnique({
+    where: { retailer_id_resource_type: { retailer_id: retailerId, resource_type: resourceType } },
+  });
+  if (override) return { limit: override.limit_per_period, period: override.period };
+
+  const plan =
+    knownPlan ??
+    (
+      await prisma.retailer.findUniqueOrThrow({
+        where: { id: retailerId },
+        select: { plan: true },
+      })
+    ).plan;
+  const planLimit = await prisma.planLimit.findUnique({
+    where: { plan_resource_type: { plan, resource_type: resourceType } },
+  });
+  return planLimit ? { limit: planLimit.limit_per_period, period: planLimit.period } : null;
 }
 
 export interface RazorpaySubscription {

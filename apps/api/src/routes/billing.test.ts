@@ -12,6 +12,7 @@ const {
   mockQuotaAddonPurchaseCreate,
   mockQuotaAddonPurchaseFindFirst,
   mockQuotaAddonPurchaseUpdate,
+  mockQuotaAddonPurchaseUpdateMany,
   mockRetailerLimitOverrideFindUnique,
   mockPlanLimitFindUnique,
   mockUsageCounterUpsert,
@@ -31,6 +32,7 @@ const {
     mockQuotaAddonPurchaseCreate: vi.fn(),
     mockQuotaAddonPurchaseFindFirst: vi.fn(),
     mockQuotaAddonPurchaseUpdate: vi.fn(),
+    mockQuotaAddonPurchaseUpdateMany: vi.fn(),
     mockRetailerLimitOverrideFindUnique: vi.fn(),
     mockPlanLimitFindUnique: vi.fn(),
     mockUsageCounterUpsert: vi.fn(),
@@ -54,6 +56,7 @@ const {
       create: m.mockQuotaAddonPurchaseCreate,
       findFirst: m.mockQuotaAddonPurchaseFindFirst,
       update: m.mockQuotaAddonPurchaseUpdate,
+      updateMany: m.mockQuotaAddonPurchaseUpdateMany,
     },
     retailerLimitOverride: { findUnique: m.mockRetailerLimitOverrideFindUnique },
     planLimit: { findUnique: m.mockPlanLimitFindUnique },
@@ -110,6 +113,7 @@ async function buildApp() {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockQuotaAddonPurchaseUpdateMany.mockResolvedValue({ count: 1 });
 });
 
 // ─── GET /v1/billing/addon-pricing ───────────────────────────────
@@ -186,7 +190,7 @@ describe('POST /v1/billing/addon-checkout', () => {
 
     expect(mockRetailerFindUnique).toHaveBeenCalledWith({
       where: { id: RETAILER_ID },
-      select: { phone: true, shop_name: true },
+      select: { phone: true, shop_name: true, plan: true },
     });
     expect(mockQuotaAddonPurchaseCreate).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -426,9 +430,9 @@ describe('GET /v1/billing/addon-callback', () => {
     );
     expect(upsertCall.create.count).toBe(-100);
     expect(upsertCall.update.count.decrement).toBe(100);
-    expect(mockQuotaAddonPurchaseUpdate).toHaveBeenCalledWith(
+    expect(mockQuotaAddonPurchaseUpdateMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: 'purchase_1' },
+        where: { id: 'purchase_1', status: 'PENDING' },
         data: expect.objectContaining({
           status: 'COMPLETED',
           razorpay_payment_id: VALID_PAYMENT_ID,
@@ -468,9 +472,9 @@ describe('GET /v1/billing/addon-callback', () => {
 
     expect(res.statusCode).toBe(302);
     expect(mockUsageCounterUpsert).not.toHaveBeenCalled();
-    expect(mockQuotaAddonPurchaseUpdate).toHaveBeenCalledWith(
+    expect(mockQuotaAddonPurchaseUpdateMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: 'purchase_2' },
+        where: { id: 'purchase_2', status: 'PENDING' },
         data: expect.objectContaining({ status: 'COMPLETED' }),
       }),
     );

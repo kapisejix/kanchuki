@@ -99,6 +99,9 @@ export interface TryOnResult {
   outputUrl: string;
   /** Worker-reported inference time, when it reported one. */
   latencyMs: number | null;
+  /** GPU time to record: RunPod's billed `executionTime` (ms) when present,
+   *  else the worker's own `latency_ms`, else null. */
+  gpuMs: number | null;
 }
 
 /** Raised when no CatVTON endpoint is configured — distinct from a failed
@@ -185,9 +188,14 @@ async function postTryOnJob(
   }
 
   const latencyMs = output?.['latency_ms'];
+  // gpu_ms is a Prisma Int?: a fraction would throw after the GPU is paid for,
+  // so round, and ignore NaN/negative/non-finite values.
+  const msOrNull = (v: unknown): number | null =>
+    typeof v === 'number' && Number.isFinite(v) && v >= 0 ? Math.round(v) : null;
   return {
     outputUrl: resultUrl,
     latencyMs: typeof latencyMs === 'number' ? latencyMs : null,
+    gpuMs: msOrNull(raw['executionTime']) ?? msOrNull(latencyMs),
   };
 }
 

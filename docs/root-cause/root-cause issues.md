@@ -12,6 +12,17 @@
 
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
+## RC-068 — Catalog-upload and support-session delegates could use (and burn quota on) the owner/manager-only try-on routes
+
+- **Component:** `apps/api/src/routes/products/products-tryon.ts` (all four Bearer routes: `POST /:id/try-on`, `GET /:id/try-on/status`, `GET /try-on/quota`, `POST /try-on/discard`). Fixed 2026-10-17 on `feat/enquiry-r2-delegate-try-on-fix` (F-044 R2).
+- **Symptom:** a delegated catalog-upload token (allowlist `* /v1/products`) or a support-session token (scope includes `/v1/products`) could start try-on generations, poll them and read the quota. Each generation spends the retailer's monthly `TRY_ON_GENERATION` allowance, and spec §5.4 says owner + manager only.
+- **Root cause:** an "owner-only" rule was inferred from `request.staffRole`, but delegates also carry `staffRole = null` — the same sentinel a real owner has (`isRealOwner()` in `plugins/auth.ts` exists for exactly this). `POST /:id/try-on` had no role check at all, relying on the staff allowlist (which only constrains real Staff rows), and the two routes that did check hand-copied their own three-way test. Same shape as RC-034: one access rule, several hand-written copies, the copy that mattered missing.
+- **Fix:** one helper `requireTryOnStaff(request)` (no retailer -> 404, `VIRTUAL_TRY_ON_V2` off -> 404, salesperson / catalog delegate / support delegate -> 403), called first on all four routes whenever the caller is a Bearer retailer (before any product lookup, so a refused caller learns nothing about products). The customer-cookie path is unchanged. Side effect, intended: the Bearer status poll now 404s when the flag is off, like the POST.
+- **Proof:** `apps/api/src/routes/products-tryon.test.ts` > `RC-068` — for each of the 4 routes, catalog and support delegates get 403 with no product/job/quota read, delegate + flag off is 404, owner and manager pass; salesperson 403 on all. Failed first: 8 failures (POST try-on and status let delegates through).
+- **Not verified:** no live delegate token exercised; no mobile flow calls these routes with a delegate token (grepped `apps/mobile`).
+
+---
+
 ## RC-067 — wa.me links dropped the +91 country code for any 10-digit mobile starting with 91
 
 - **Component:** `packages/shared/src/utils/index.ts` (`buildWhatsAppEnquiryLink`), plus two hand-copied builders: `apps/web/src/app/c/[slug]/components/DesignGallery.tsx` and `apps/api/src/routes/growth/growth-helpers.ts` (`buildWhatsAppDeepLink`). Fixed 2026-10-17 on `feat/enquiry-r1-t7-whatsapp-target` (F-044 E5).

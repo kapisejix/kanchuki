@@ -718,6 +718,9 @@ model SubscriptionPayment {
 // 118/119 carry it; see schema.prisma for the authoritative shape.
 // ⚠️ Migrations 118/119 are PROPOSED, not yet applied — as of 2026-09-26 this
 // section describes the schema after the owner runs them.
+// F-044 R2 T7: `try_on_jobs.gpu_ms INTEGER NULL` (migration 131, PROPOSED, not
+// applied) - GPU ms per finished job (RunPod executionTime, else worker
+// latency_ms); null on failed/unmetered jobs. Read by Admin -> Try-On GPU Usage.
 
 // ─────────────────────────────────────────────
 // PLAN FEATURE MATRIX (F-013, planned)

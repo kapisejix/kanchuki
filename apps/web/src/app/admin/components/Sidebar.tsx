@@ -169,6 +169,12 @@ const NAV_ITEMS: NavItem[] = [
       },
       { label: 'AI Providers', href: '/admin/ai-providers', icon: Bot, superAdminOnly: true },
       { label: 'AI Usage', href: '/admin/ai-usage', icon: BarChart3, superAdminOnly: true },
+      {
+        label: 'Try-On GPU Usage',
+        href: '/admin/try-on-usage',
+        icon: Cpu,
+        superAdminOnly: true,
+      },
       { label: 'General Settings', href: '/admin/settings', icon: Settings, superAdminOnly: true },
       { label: 'AI Config', href: '/admin/settings/ai-config', icon: Cpu, superAdminOnly: true },
       {

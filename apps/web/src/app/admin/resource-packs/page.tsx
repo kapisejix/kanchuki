@@ -15,6 +15,7 @@ type ResourceType =
   | 'BG_REMOVAL'
   | 'API_REQUEST'
   | 'STUDIO_SHOOT'
+  | 'TRY_ON_GENERATION'
   | 'AI_VIDEO'
 
 type ResourcePack = {
@@ -37,6 +38,7 @@ const RESOURCE_TYPES: { value: ResourceType; label: string }[] = [
   { value: 'BG_REMOVAL', label: 'Bg Removal' },
   { value: 'API_REQUEST', label: 'API Request' },
   { value: 'STUDIO_SHOOT', label: 'Studio Shoot' },
+  { value: 'TRY_ON_GENERATION', label: 'In-store Try-on (GST-inclusive price)' },
   { value: 'AI_VIDEO', label: 'AI Video (promo clips)' },
 ]
 const resourceLabel = (r: ResourceType) => RESOURCE_TYPES.find((x) => x.value === r)?.label ?? r

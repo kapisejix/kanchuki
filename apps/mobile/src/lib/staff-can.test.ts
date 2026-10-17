@@ -20,6 +20,11 @@ describe('staffCan mirrors the server allowlist', () => {
     expect(staffCan('manager', 'enquiries.assign')).toBe(true)
     expect(staffCan('salesperson', 'enquiries.assign')).toBe(false)
   })
+  it('enquiries.tryon: owner + manager only (F-044 R2)', () => {
+    expect(staffCan(null, 'enquiries.tryon')).toBe(true)
+    expect(staffCan('manager', 'enquiries.tryon')).toBe(true)
+    expect(staffCan('salesperson', 'enquiries.tryon')).toBe(false)
+  })
   it('salesperson gets view + add customer only', () => {
     expect(staffCan('salesperson', 'catalog.view')).toBe(true)
     expect(staffCan('salesperson', 'customers.add')).toBe(true)

@@ -35,3 +35,4 @@ export { adminInvoicesRoutes } from './admin-invoices.js';
 export { adminReferralRoutes } from './admin-referral.js';
 export { adminReferralMonitorRoutes } from './admin-referral-monitor.js';
 export { adminEngagementRoutes } from './admin-engagement.js';
+export { adminTryOnUsageRoutes } from './admin-try-on-usage.js';
