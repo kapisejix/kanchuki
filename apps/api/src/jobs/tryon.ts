@@ -205,7 +205,10 @@ export async function handleTryOn(data: TryOnJobData): Promise<void> {
         await prisma.tryOnJob
           .updateMany({ where: { id: job_id, result_url: resultKey }, data: { result_url: null } })
           .catch((err) =>
-            console.error(`[try-on] job ${job_id} deleted ${resultKey} but could not clear it:`, err),
+            console.error(
+              `[try-on] job ${job_id} deleted ${resultKey} but could not clear it:`,
+              err,
+            ),
           );
       }
     }

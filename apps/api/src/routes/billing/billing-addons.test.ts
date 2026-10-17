@@ -42,14 +42,14 @@ vi.mock('@kanchuki/db', () => ({
     planLimit: { findUnique: m.planLimitFindUnique },
     usageCounter: { upsert: m.usageUpsert },
     auditLog: { create: m.auditCreate },
-    $transaction: (ops: unknown) => (typeof ops === 'function' ? ops(txClient()) : Promise.all(ops as unknown[])),
+    $transaction: (ops: unknown) =>
+      typeof ops === 'function' ? ops(txClient()) : Promise.all(ops as unknown[]),
   },
 }));
 
 vi.mock('./billing-helpers.js', async () => {
-  const actual = await vi.importActual<typeof import('./billing-helpers.js')>(
-    './billing-helpers.js',
-  );
+  const actual =
+    await vi.importActual<typeof import('./billing-helpers.js')>('./billing-helpers.js');
   return { ...actual, razorpay: m.razorpay };
 });
 
@@ -141,8 +141,14 @@ describe('POST /addon-checkout - TRY_ON_GENERATION packs', () => {
     ['inactive / other-plan / missing pack', () => m.packFindFirst.mockResolvedValue(null)],
     ['plan lacks VIRTUAL_TRY_ON_V2', () => m.hasFeature.mockResolvedValue(false)],
     ['price_paise is 0', () => m.packFindFirst.mockResolvedValue({ ...PACK, price_paise: 0 })],
-    ['override is unlimited (-1)', () => m.overrideFindUnique.mockResolvedValue({ limit_per_period: -1, period: 'MONTH' })],
-    ['plan limit is unlimited (-1)', () => m.planLimitFindUnique.mockResolvedValue({ limit_per_period: -1, period: 'MONTH' })],
+    [
+      'override is unlimited (-1)',
+      () => m.overrideFindUnique.mockResolvedValue({ limit_per_period: -1, period: 'MONTH' }),
+    ],
+    [
+      'plan limit is unlimited (-1)',
+      () => m.planLimitFindUnique.mockResolvedValue({ limit_per_period: -1, period: 'MONTH' }),
+    ],
     ['no limit row at all', () => m.planLimitFindUnique.mockResolvedValue(null)],
     ['pack_size is 0', () => m.packFindFirst.mockResolvedValue({ ...PACK, pack_size: 0 })],
   ])('%s -> 404, no Razorpay call, no purchase row', async (_n, arrange) => {
@@ -208,8 +214,14 @@ describe('GET /try-on-packs', () => {
   });
 
   it.each([
-    ['override -1', () => m.overrideFindUnique.mockResolvedValue({ limit_per_period: -1, period: 'MONTH' })],
-    ['plan -1', () => m.planLimitFindUnique.mockResolvedValue({ limit_per_period: -1, period: 'MONTH' })],
+    [
+      'override -1',
+      () => m.overrideFindUnique.mockResolvedValue({ limit_per_period: -1, period: 'MONTH' }),
+    ],
+    [
+      'plan -1',
+      () => m.planLimitFindUnique.mockResolvedValue({ limit_per_period: -1, period: 'MONTH' }),
+    ],
     ['no limit row', () => m.planLimitFindUnique.mockResolvedValue(null)],
   ])('returns [] when a pack would credit nothing (%s)', async (_n, arrange) => {
     arrange();

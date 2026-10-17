@@ -20,7 +20,6 @@ import {
   adminDataRoutes,
   adminDesignReferenceRoutes,
   adminEngagementRoutes,
-  adminTryOnUsageRoutes,
   adminFestivalsRoutes,
   adminGstProfileRoutes,
   adminGstRoutes,
@@ -46,6 +45,7 @@ import {
   adminStorageRoutes,
   adminStudioStylesRoutes,
   adminSurveyRoutes,
+  adminTryOnUsageRoutes,
   adminWhatsAppCatalogRoutes,
 } from './admin/index.js';
 

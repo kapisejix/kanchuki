@@ -3,7 +3,7 @@
 // sweep's WHERE clause is what keeps it from ever touching an image whose owner
 // is still consented.
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { handleTryOnDeletionSweep, IN_STORE_RESULT_TTL_HOURS } from './tryon-deletion-sweep.js';
+import { IN_STORE_RESULT_TTL_HOURS, handleTryOnDeletionSweep } from './tryon-deletion-sweep.js';
 
 const { mockFindMany, mockUpdateMany, mockDeleteObject } = vi.hoisted(() => ({
   mockFindMany: vi.fn(),

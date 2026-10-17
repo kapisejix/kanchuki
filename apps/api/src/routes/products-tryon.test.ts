@@ -597,22 +597,28 @@ describe('RC-068 — try-on routes refuse delegates and salesperson', () => {
 
   for (const name of names) {
     describe(name, () => {
-      it.each(['catalog', 'support'] as const)('%s delegate is 403 and touches nothing', async (d) => {
-        const app = await buildApp({ retailerId: RETAILER_ID, delegate: d });
-        expect((await routes[name](app)).statusCode).toBe(403);
-        expect(mockProductFindFirst).not.toHaveBeenCalled();
-        expect(mockJobFindFirst).not.toHaveBeenCalled();
-        expect(mockJobCreate).not.toHaveBeenCalled();
-        expect(mockGetQuotaStatus).not.toHaveBeenCalled();
-        await app.close();
-      });
+      it.each(['catalog', 'support'] as const)(
+        '%s delegate is 403 and touches nothing',
+        async (d) => {
+          const app = await buildApp({ retailerId: RETAILER_ID, delegate: d });
+          expect((await routes[name](app)).statusCode).toBe(403);
+          expect(mockProductFindFirst).not.toHaveBeenCalled();
+          expect(mockJobFindFirst).not.toHaveBeenCalled();
+          expect(mockJobCreate).not.toHaveBeenCalled();
+          expect(mockGetQuotaStatus).not.toHaveBeenCalled();
+          await app.close();
+        },
+      );
 
-      it.each(['catalog', 'support'] as const)('%s delegate + flag off is 404 (before 403)', async (d) => {
-        mockHasFeature.mockResolvedValue(false);
-        const app = await buildApp({ retailerId: RETAILER_ID, delegate: d });
-        expect((await routes[name](app)).statusCode).toBe(404);
-        await app.close();
-      });
+      it.each(['catalog', 'support'] as const)(
+        '%s delegate + flag off is 404 (before 403)',
+        async (d) => {
+          mockHasFeature.mockResolvedValue(false);
+          const app = await buildApp({ retailerId: RETAILER_ID, delegate: d });
+          expect((await routes[name](app)).statusCode).toBe(404);
+          await app.close();
+        },
+      );
 
       it('owner and manager pass the role gate', async () => {
         for (const staffRole of [null, 'manager']) {
@@ -836,7 +842,6 @@ describe('POST /products/try-on/discard (F-044 R2 T2)', () => {
 });
 
 describe('POST /products/:id/try-on (request validity)', () => {
-
   it('401 when there is no bearer and no passport session', async () => {
     const app = await buildApp();
     const res = await post(app);

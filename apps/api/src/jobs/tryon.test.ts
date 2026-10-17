@@ -85,7 +85,11 @@ beforeEach(() => {
   mockProductFindFirst.mockResolvedValue(PRODUCT);
   mockIsUnsupportedTryOnCategory.mockReturnValue(false);
   mockClothTypeForCategory.mockReturnValue('upper');
-  mockGenerateTryOn.mockResolvedValue({ outputUrl: 'https://worker/result.jpg', latencyMs: 900, gpuMs: 1200 });
+  mockGenerateTryOn.mockResolvedValue({
+    outputUrl: 'https://worker/result.jpg',
+    latencyMs: 900,
+    gpuMs: 1200,
+  });
   mockSaveTryOnResultToR2.mockResolvedValue('tryon-results/tryon_1/result.jpg');
   mockJobUpdate.mockResolvedValue({});
   mockJobFindUnique.mockResolvedValue({ status: 'PENDING' });
@@ -193,9 +197,7 @@ describe('handleTryOn', () => {
   });
 
   it('discarded mid-run + failed delete: key stays recorded for the sweep', async () => {
-    mockJobUpdateMany
-      .mockResolvedValueOnce({ count: 0 })
-      .mockResolvedValueOnce({ count: 1 });
+    mockJobUpdateMany.mockResolvedValueOnce({ count: 0 }).mockResolvedValueOnce({ count: 1 });
     mockDeleteObject.mockRejectedValue(new Error('R2 unreachable'));
 
     await expect(handleTryOn(DATA)).resolves.toBeUndefined();

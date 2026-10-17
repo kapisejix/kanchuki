@@ -194,9 +194,7 @@ export const productsTryOnRoutes: FastifyPluginAsync = async (server) => {
   // refusal order as the quota read (404 → 404 → 403).
   server.post('/try-on/discard', async (request) => {
     const retailerId = await requireTryOnStaff(request);
-    const body = z
-      .object({ job_ids: z.array(z.string().min(1)).max(10) })
-      .safeParse(request.body);
+    const body = z.object({ job_ids: z.array(z.string().min(1)).max(10) }).safeParse(request.body);
     if (!body.success) throw validationError('job_ids must be up to 10 job ids.', 'job_ids');
 
     // In-store only (`customer_account_id` null): passport results follow the
