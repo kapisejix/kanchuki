@@ -445,3 +445,13 @@ no migration, no schema change, and **no new request on any surface**.
 | Change | `lib/features.ts` `CUSTOMER_TRY_ON_ENABLED = false` (constant, promote to a PlanFeatureKey later). `public-products.ts`: `try_on_enabled` short-circuits to false with no PlanFeature read. `products-tryon.ts`: cookie-only POST and status → 404 (before the 401, so anonymous probes also see 404); Bearer retailer/manager path unchanged. `passport-tryon.ts`: GET consent → 404; POST withdraw stays live (owner Q2). |
 | Tests | `products-tryon.test.ts` +5 (real constant is false; cookie-only POST 404 with no lookup/quota/enqueue; anonymous 404; cookie-only status 404 with no job read; Bearer POST 202 + status unchanged). `public-products-tryon-flag.test.ts` +1 (false, `hasFeatureForPlan` not called). `passport-tryon.test.ts` +2 (consent 404, withdraw 200). Existing customer-path tests kept with the flag mocked ON. 41/41 in the three files; security + staff-access 20/20; API tsc clean; full API suite 1769 passed, 1 timeout flake (`retired-tryon-guard`, 8/8 alone). |
 | Not verified | No deploy. Customer PWA already hides the button when `try_on_enabled` is false. |
+
+## 2026-10-17 - F-044 Enquiry Basket Release 1, E1 (all products per enquiry) + RC-066
+
+| Area | Detail |
+|---|---|
+| Spec | `docs/tasks/pending/enquiry-basket-team-inbox-and-instore-tryon.md` §11.7 step 3. Branch `feat/enquiry-r1-t3-enquiry-products`, stacked on E6. |
+| Schema | `CollectionEnquiry` + `product_ids String[] @default([])`, `assigned_staff_id String?`, `assigned_at DateTime?`. Migration `130_enquiry_inbox` **proposed, not applied** (additive, idempotent, backfills `product_ids` from `product_id`; rollback in the file). Must be applied before this code deploys. |
+| Change | `public-collections.ts` enquire: dedupe ids (`product_id` first), max 20, every id must be a live product of the collection's retailer (422 before any write), `product_id = ids[0]`, WhatsApp text uses product names + prices. `collections.ts`: `maskEnquiry()` on GET `/:id` embedded enquiries and the PATCH enquiry-status response (RC-066). |
+| Tests | `public-collections-enquire.test.ts` 7 (4 saved; foreign → 422 + no write; names not ids; 20 ok / 21 → 422; old `product_id`; dedupe; no-product enquiry). `collections-enquiries.test.ts` 8 (masked for manager / salesperson / support delegate on GET + PATCH; owner full; null stays null). 13 failed first. With `public.test.ts`, security, staff-access: 56/56; API tsc clean. |
+| Not verified | Migration not run against any DB. No device / browser check. |

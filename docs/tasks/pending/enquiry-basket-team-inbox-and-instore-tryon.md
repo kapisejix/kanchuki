@@ -447,6 +447,7 @@ Principle: ship only what has no GPU dependency first; try-on waits for the F-04
 **Release 1 progress:**
 - E7 ✅ built 2026-10-17 — `apps/api/src/plugins/staff-access.test.ts` pins manager `POST /v1/products/:id/try-on` (+ status GET) allowed, salesperson 403; mutation-checked (removing the manager `/v1/products` rule fails it). Branch `feat/enquiry-r1-t1-staff-test`.
 - E6 ✅ built 2026-10-17 — `CUSTOMER_TRY_ON_ENABLED = false` in `apps/api/src/lib/features.ts`. Customer (cookie-only) try-on POST + status → 404, `GET /passport/try-on/consent` → 404, public product `try_on_enabled` false with no PlanFeature read. In-store Bearer path unchanged; `POST /passport/try-on/withdraw` stays live (Q2). Branch `feat/enquiry-r1-t2-customer-tryon-off`.
+- E1 ✅ built 2026-10-17 — enquire route stores every product (`product_ids`, deduped, `product_id` first, max 20), all validated against the collection's retailer before any write (422 otherwise), WhatsApp text names products. Schema + **migration `130_enquiry_inbox` PROPOSED, not applied** (adds `product_ids`, `assigned_staff_id`, `assigned_at` + backfill). ⚠️ Apply 130 BEFORE deploying this code. RC-066 fixed (enquiry phone masked for non-owners on GET `/collections/:id` + PATCH status). Branch `feat/enquiry-r1-t3-enquiry-products`.
 
 Deferred columns (add when something reads them): `first_reply_at`, `last_reply_by_staff_id`, `source`, `try_on_done`.
 
