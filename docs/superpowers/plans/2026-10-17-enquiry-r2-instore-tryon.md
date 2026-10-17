@@ -24,20 +24,20 @@
 
 ## Spec check — what the spec got wrong or left out (verified in code 2026-10-17)
 
-1. **Spec §3.4 / §5.4: "withdrawal deletes it" is passport-only.** `withdrawTryOnConsent()` is keyed on `customer_account_id`; in-store jobs have it `null`, so today **in-store results sit in R2 forever** (no withdraw path, no retention job — `tryon-deletion-sweep.ts` only touches `consent_withdrawn_at != null` rows). D5 "discard after the session" is therefore new behaviour, not a default. It also changes the **existing single-product** flow (see decision 1).
+1. **Spec §3.4 / §5.4: "withdrawal deletes it" is passport-only.** `withdrawTryOnConsent()` is keyed on `customer_account_id`; in-store jobs have it `null`, so today **in-store results sit in R2 forever** (no withdraw path, no retention job — `tryon-deletion-sweep.ts` only touches `consent_withdrawn_at != null` rows). D5 "discard after the session" is therefore new behaviour, not a default. It also changes the **existing single-product** flow (owner confirmed 2026-10-17).
 2. **Spec §5.4: "customer_account_id null" for the Bearer path is not guaranteed.** `resolveTryOnContext` still reads the passport cookie on the Bearer path; if the staff request carries one, `customerAccountId` is set → `consent_method = PASSPORT` and the customer quota is charged. Staff phones normally have no cookie, but the guarantee is accidental. Fixed in T1.
 3. **Spec §5.4 item 4: quota math overshoots under a 3–4-job session.** `checkQuota` runs at POST; `incrementUsage` runs only on job **success**. Four POSTs fired back-to-back with 1 try-on left all pass the check. The comment in `quota.ts` already admits the race; a session makes it routine. Fixed in T1 (count PENDING jobs in the check).
 4. **No quota-read endpoint for try-on.** `getQuotaStatus` exists but only STUDIO_SHOOT routes use it; the spec's "show remaining quota" needs a new read route (T1).
-5. **Seeded quota ≠ decided quota.** Migration 119 seeds `TRY_ON_GENERATION` at Starter 20 / Growth 50 / Pro 100; spec §11.1 D6 says 40 / 100 / 200. Admin-tunable, no migration needed, but someone must set it (T5 checklist).
+5. **Seeded quota ≠ spec quota.** Migration 119 seeds Starter 20 / Growth 50 / Pro 100; spec §11.1 D6 says 40 / 100 / 200. **Owner 2026-10-17: keep 20 / 50 / 100** — the spec table is superseded.
 6. **Extra on-device copies of the wearer photo.** `productApi.startTryOn` calls `compressImageForUpload` on every call, writing a compressed JPEG to the app cache — 4 jobs = 4 extra copies, none deleted. Camera `takePictureAsync` also writes a cache file. "Discard the on-device photo on exit" must delete **all** of them (T3/T4).
 7. **Result image is cached on the staff phone.** `expo-image` caches remote images to disk by default; the presigned result URL (1 h) would persist on-device. Gallery must use `cachePolicy="none"` and call `Image.clearDiskCache()`/`clearMemoryCache()` on exit (T4).
 8. **The existing screen has a Share button** that shares the presigned URL. The session screen must not copy it.
 9. **Gallery import (owner: YES, 2026-10-17).** The existing screen's `launchImageLibraryAsync` is kept in the session. Consequence: the customer's photo may already live in the staff phone's gallery (outside our control), and cleanup must delete **only app-owned cache copies** — never the user's original gallery asset. Whether the picker hands back a cache copy or the original URI differs by OS/version: not verified.
-10. **Spec §6 lists E11 (cost logging) under Release 2 but gives it no task row.** `generateTryOn()` already returns `latencyMs` (worker-reported inference time) but `handleTryOn` drops it. See decision 5.
-11. **Spec §11.1 already records D5 and D6/D6b as DECIDED (2026-10-17).** D5 still has sub-questions (decision 1).
+10. **Spec §6 lists E11 (cost logging) under Release 2 but gives it no task row.** `generateTryOn()` already returns `latencyMs` (worker-reported inference time) but `handleTryOn` drops it. Owner: out of this release unless asked.
+11. **Spec §11.1 already records D5 and D6/D6b as DECIDED (2026-10-17).** D5 sub-questions answered 2026-10-17.
 12. **E12 premise is wrong:** adding `TRY_ON_GENERATION` to `admin-resource-packs.ts` does **not** make packs buyable. `POST /billing/addon-checkout` reads the hardcoded `ADDON_PRICING` const (`packages/shared/src/constants/index.ts:667`), never the admin `ResourcePack` table (only the admin page reads it). T6 makes checkout read `ResourcePack` for try-on packs.
 13. **Pack expiry is answered by code:** the callback credits by `decrement`-ing the **current month's** `UsageCounter` row, so a purchased pack **expires at month-end, no carry-over**. (Nothing is credited when the plan limit is `-1`.) `used` can go negative → UI must clamp.
-14. **GST gap:** checkout charges `pack.price_paise` as-is; `gst_amount` / `gst_invoice_number` on `QuotaAddonPurchase` exist but the callback never fills them. Spec says ₹8 **ex**-GST + 18 % on top; CLAUDE.md says GST invoicing is non-negotiable. See decision 2.
+14. **GST gap:** checkout charges `pack.price_paise` as-is; `gst_amount` / `gst_invoice_number` on `QuotaAddonPurchase` exist but the callback never fills them. Spec says ₹8 **ex**-GST + 18 % on top; CLAUDE.md says GST invoicing is non-negotiable. Owner chose option (a): admin enters the GST-inclusive price; no invoice is generated (see "Answered").
 15. **No mobile screen buys add-ons today** — `billing.ts` has `addonCheckout` but no screen calls it.
 
 ## Review Focus
@@ -93,7 +93,7 @@ Failure modes the spec implies but no spec task tests; each is pinned by a named
 
 ### Task T2: API — discard of in-store results (D5) + age backstop
 
-**Size:** M. **Depends on:** T1 (same file). **Blocked on:** owner decision 1 (D5 confirm + TTL).
+**Size:** M. **Depends on:** T1 (same file). **Unblocked:** owner confirmed D5 (single-product screen included, 2 h TTL, no audit column).
 
 **Files:**
 - Modify: `apps/api/src/routes/products/products-tryon.ts` (POST `/try-on/discard`; status route)
@@ -111,7 +111,7 @@ Failure modes the spec implies but no spec task tests; each is pinned by a named
 - [ ] **Step 4: Run** tests + `pnpm --filter @kanchuki/api typecheck` — PASS.
 - [ ] **Step 5: Commit** `feat(api): discard in-store try-on results + age sweep (F-044 R2 T2)`.
 
-**Not verified:** real R2 deletes; that the maintenance cron's concurrency-1 lane absorbs the extra pass; whether older in-store results already in prod should be purged on first run (it will purge them all — see decision 1).
+**Not verified:** real R2 deletes; that the maintenance cron's concurrency-1 lane absorbs the extra pass; whether older in-store results already in prod should be purged on first run (it will purge them all — owner confirmed).
 **Migration:** none proposed. Alternative if the owner wants an auditable "discarded" marker: `try_on_jobs.discarded_at TIMESTAMPTZ NULL` (mirrors `consent_withdrawn_at`) — PROPOSED only, would need SQL + rollback and DATABASE.md first.
 
 ---
@@ -177,7 +177,7 @@ Screen behaviour (one step per row, in order):
 
 - [ ] Update spec §11.7 Release 2 progress, `PRO-REQUIREMENTS.md` §41 status table, `docs/BUILD-LOG.md`, CLAUDE.md index row 101 (needs owner approval — CLAUDE.md edits are gated).
 - [ ] **Propose** (do not edit without approval) a `SECURITY.md` try-on row update: in-store results discarded on exit + swept after `IN_STORE_RESULT_TTL_HOURS`. SECURITY.md §12–18 is governance — human review required.
-- [ ] Owner checklist (not done by the agent): set `TRY_ON_GENERATION` plan limits to 40/100/200 in Admin → Plan Limits (seed is 20/50/100); enable `VIRTUAL_TRY_ON_V2` per plan; F-040 launch gates (needed for enabling only — owner 2026-10-17).
+- [ ] Owner checklist (not done by the agent): keep `TRY_ON_GENERATION` plan limits at the seeded 20/50/100 (owner decision); create the 3 top-up packs inactive at GST-inclusive 23600 / 47200 / 94400 paise; enable `VIRTUAL_TRY_ON_V2` per plan; F-040 launch gates (needed for enabling only — owner 2026-10-17).
 - [ ] Commit `docs: F-044 Release 2 status`.
 
 ---
@@ -205,7 +205,7 @@ Screen behaviour (one step per row, in order):
 - [ ] **Step 4: Run** tests + API typecheck + `security.test.ts` — PASS.
 - [ ] **Step 5: Commit** `feat(billing): try-on top-up packs behind admin switch (F-044 R2 T6)`.
 
-**Not verified:** a real Razorpay payment-link round trip (needs test keys; the agent has none); GST — decision 2; that `quota` UI clamps negative `used` after a credit.
+**Not verified:** a real Razorpay payment-link round trip (needs test keys; the agent has none); GST invoice generation (not built — see "Answered"); that `quota` UI clamps negative `used` after a credit.
 **Owner steps afterwards (not the agent):** in Admin → Resource Packs create 25 / 50 / 100 try-ons, set price, leave inactive until launch.
 
 ---
@@ -219,11 +219,13 @@ Screen behaviour (one step per row, in order):
 - **#6 Consent:** **per wearer photo** (one consent screen per photo; version sent on each of the N POSTs; retake ⇒ consent again). Matches T3/T4 as written.
 - **#7 Gallery import:** yes — see spec-check item 9 and T4 step 2.
 
-**Still open (most important first):**
-1. **D5 sub-questions.** Discard-on-exit + 2 h age backstop is planned (T2). Confirm: (a) it also applies to the existing single-product screen (its Share link would die after the TTL; today those images are kept forever); (b) 2 h backstop or other; (c) no `discarded_at` column (proposal) vs audit column (needs a migration).
-2. **GST on top-up packs.** Spec: ₹8 ex-GST + 18 %. Checkout charges `price_paise` with no GST and never fills the invoice fields. Do you want (a) admin enters the GST-inclusive price (₹9.44/try-on → 25 = ₹236, 50 = ₹472, 100 = ₹944), or (b) a separate GST-line + invoice task before the switch is turned on? Either way, do not enable packs before this is settled.
-3. **E11 cost logging — explained in the chat reply.** Include in this release (adds `try_on_jobs.latency_ms`, migration PROPOSED) or separate?
-4. **Quota numbers:** is 40/100/200 enough for 3–4-item sessions? (Seed is 20/50/100 until an admin edits Plan Limits.)
+**Answered (second round, 2026-10-17):**
+- **D5:** go ahead — discard-on-exit applies to the single-product screen too; 2 h age backstop; **no audit column** (no migration). T2 stands as written.
+- **GST on packs: option (a).** Admin enters the GST-inclusive price when creating the pack in Admin → Resource Packs: 25 = ₹236 (23600 paise), 50 = ₹472 (47200), 100 = ₹944 (94400) at ₹8 ex-GST + 18 %. Checkout charges that amount unchanged. **Still true and not fixed by (a):** the callback never fills `gst_amount` / `gst_invoice_number`, so no GST invoice is generated for a pack purchase. Packs stay switched off until an invoice path exists or the owner accepts that gap.
+- **Quota:** keep the migration-119 seed **20 / 50 / 100** — no admin change needed (removes the "set 40/100/200" step). Consequence: a 4-item session uses 20 % of a Starter month (≈5 sessions); the pre-flight screen (T4) and top-up packs (T6) are the mitigation.
+
+**Still open:**
+1. **E11 GPU-seconds cost logging** — explained to the owner; no answer yet. Default: **out of this release** (nothing in T1–T6 depends on it).
 
 ## Self-review
 
