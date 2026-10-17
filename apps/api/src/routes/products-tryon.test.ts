@@ -134,14 +134,34 @@ function multipartHeaders() {
   return { 'content-type': `multipart/form-data; boundary=${BOUNDARY}` };
 }
 
-async function buildApp(opts: { retailerId?: string; staffRole?: string | null } = {}) {
+async function buildApp(
+  opts: {
+    retailerId?: string;
+    staffRole?: string | null;
+    delegate?: 'catalog' | 'support';
+  } = {},
+) {
   const app = Fastify();
   app.setErrorHandler(errorHandler);
   app.decorateRequest('retailerId', '');
   app.decorateRequest('staffRole', null);
+  app.decorateRequest('catalogDelegate', null);
+  app.decorateRequest('supportDelegate', null);
   app.addHook('preHandler', async (request) => {
     request.retailerId = opts.retailerId ?? '';
     request.staffRole = opts.staffRole ?? null;
+    // Delegates keep staffRole = null (auth.ts), same as a real owner.
+    if (opts.delegate === 'catalog') {
+      request.catalogDelegate = { team_member_id: 'tm_1', ticket_id: 'tk_1' };
+    }
+    if (opts.delegate === 'support') {
+      request.supportDelegate = {
+        team_member_id: 'tm_1',
+        ticket_id: 'tk_1',
+        grant_id: 'g_1',
+        scope: 'READ',
+      } as never;
+    }
   });
   await app.register(productsTryOnRoutes, { prefix: '/v1/products' });
   await app.ready();
@@ -516,14 +536,23 @@ describe('GET /products/try-on/quota', () => {
     await app.close();
   });
 
-  it('route order: /try-on/quota is not swallowed by /:id/try-on/status', async () => {
-    const app = await buildApp({ retailerId: RETAILER_ID });
-    await get(app);
-    // The :id route would have hit the job lookup / 422 for a missing job_id.
-    expect(mockJobFindFirst).not.toHaveBeenCalled();
-    expect(mockGetQuotaStatus).toHaveBeenCalledTimes(1);
+  it.each(['catalog', 'support'] as const)('%s delegate is 403, quota never read', async (d) => {
+    const app = await buildApp({ retailerId: RETAILER_ID, delegate: d });
+    const res = await get(app);
+    expect(res.statusCode).toBe(403);
+    expect(mockGetQuotaStatus).not.toHaveBeenCalled();
     await app.close();
   });
+
+  it('salesperson + flag off is 404, not 403 (route stays invisible)', async () => {
+    mockHasFeature.mockResolvedValue(false);
+    const app = await buildApp({ retailerId: RETAILER_ID, staffRole: 'salesperson' });
+    expect((await get(app)).statusCode).toBe(404);
+    await app.close();
+  });
+
+  // Route-order test deleted (T1 fix 3): the static and :id routes have
+  // different literal segments, so it could not fail.
 });
 
 describe('POST /products/:id/try-on (request validity)', () => {

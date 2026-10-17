@@ -163,10 +163,19 @@ export const productsTryOnRoutes: FastifyPluginAsync = async (server) => {
   // Static segment, registered before the `/:id/...` routes. Bearer only.
   server.get('/try-on/quota', async (request) => {
     if (!request.retailerId) throw notFound('Product');
-    // Owner + manager only. The staff allowlist lets salesperson through any
-    // GET under /v1/products, so this route refuses them itself.
-    if (request.staffRole === 'salesperson') throw forbidden();
+    // Gate first so a refused role learns nothing while the flag is off.
     if (!(await hasFeature(request.retailerId, 'VIRTUAL_TRY_ON_V2'))) throw notFound('Product');
+    // Owner + manager only. The staff allowlist lets salesperson through any
+    // GET under /v1/products, and the catalog/support delegates (staffRole =
+    // null, like an owner) through via their own /v1/products rules, so this
+    // route refuses them itself.
+    if (
+      request.staffRole === 'salesperson' ||
+      request.catalogDelegate ||
+      request.supportDelegate
+    ) {
+      throw forbidden();
+    }
     const { used, limit, remaining, unlimited } = await getQuotaStatus(
       request.retailerId,
       'TRY_ON_GENERATION',
