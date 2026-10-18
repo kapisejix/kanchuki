@@ -13,6 +13,7 @@ import { RETURN_TO_PARAM } from '@/lib/return-to'
 import { formatPriceRange } from '@kanchuki/shared'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
+import { KidsForm } from './KidsForm'
 import { type FeedCard, type FeedMeta, type FeedSort, fetchFeed } from './lib'
 
 const SORTS: { value: FeedSort; label: string }[] = [
@@ -43,6 +44,8 @@ export default function MyStylePage() {
   const [radius, setRadius] = useState(25)
   const [geoDenied, setGeoDenied] = useState(false)
   const [showQuiz, setShowQuiz] = useState(false)
+  const [showKids, setShowKids] = useState(false)
+  const [kids, setKids] = useState<{ who: string; age: string } | null>(null)
   // Bumped to refetch with unchanged filters (retry, quiz saved).
   const [nonce, setNonce] = useState(0)
   const [view, setView] = useState<View>({ kind: 'loading' })
@@ -124,6 +127,33 @@ export default function MyStylePage() {
               }}
             />
           </div>
+        )}
+        <button
+          type="button"
+          onClick={() => setShowKids((v) => !v)}
+          className="mt-3 ml-4 text-sm font-medium text-amber-700"
+        >
+          {showKids ? 'Close' : 'For my child'}
+        </button>
+        {kids && (
+          <p className="mt-2 text-xs text-stone-600">
+            Shopping for: {kids.who}, {kids.age}{' '}
+            <button type="button" onClick={() => setKids(null)} className="underline">
+              Clear
+            </button>
+          </p>
+        )}
+        {showKids && (
+          <KidsForm
+            onApply={(need) => {
+              // Session state only; only occasion + budget reach the feed.
+              setKids({ who: need.who, age: need.age })
+              setOccasion(need.occasion)
+              setBudget(need.budget)
+              setPage(1)
+              setShowKids(false)
+            }}
+          />
         )}
       </section>
 
