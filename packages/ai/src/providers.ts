@@ -322,6 +322,15 @@ export async function reserveAiCredits(): Promise<number> {
   return Math.max(1, ...healthy.map((a) => a.creditsPerCall))
 }
 
+/**
+ * Is at least one active provider key-configured? Lets a caller refuse BEFORE it spends a
+ * customer's quota or accepts a photo, instead of failing later inside the job (RC-060).
+ * Ignores the health cooldown on purpose: a provider in cooldown is degraded, not absent.
+ */
+export async function hasConfiguredVisionProvider(): Promise<boolean> {
+  return (await configuredAdapters()).length > 0
+}
+
 /** Structured JSON extraction with automatic provider failover. */
 export function runVisionExtract(req: VisionExtractRequest): Promise<Record<string, unknown>> {
   return runWithFailover(

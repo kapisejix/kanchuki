@@ -46,6 +46,13 @@ export function getTryOnQueue(): Queue {
   return tryOnQueue;
 }
 
+let myStyleAnalyzeQueue: Queue | null = null;
+
+export function getMyStyleAnalyzeQueue(): Queue {
+  myStyleAnalyzeQueue ??= new Queue(QUEUES.MY_STYLE_ANALYZE, { connection: getRedis() });
+  return myStyleAnalyzeQueue;
+}
+
 export function getCatalogSyncQueue(): Queue {
   catalogSyncQueue ??= new Queue(QUEUES.CATALOG_SYNC, { connection: getRedis() });
   return catalogSyncQueue;

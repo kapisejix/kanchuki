@@ -19,11 +19,13 @@ import {
 import { handleGenerateKenBurnsVideo } from './generate-ken-burns-video.js';
 import type { KenBurnsVideoJobData } from './generate-ken-burns-video.js';
 import { handleMeasureR2Storage } from './measure-r2-storage.js';
+import { type MyStyleAnalyzeJobData, handleMyStyleAnalyze } from './my-style-analyze.js';
 import { handlePurgeSoftDeleted, pruneCustomerInteractions } from './purge-soft-deleted.js';
 import {
   getCatalogSyncQueue,
   getEmbeddingQueue,
   getMaintenanceQueue,
+  getMyStyleAnalyzeQueue,
   getRedis,
   getStudioShootQueue,
   getTaggingQueue,
@@ -127,6 +129,17 @@ export async function addTryOnJob(data: TryOnJobData): Promise<void> {
   });
 }
 
+/** F-045: enqueue one My Style selfie read. No image bytes in the payload — the photo is
+ *  handed over in-process (lib/tryon-photo-store.ts), never through Redis. attempts: 1
+ *  because a retry would find no photo and each attempt is a paid Vision call. */
+export async function addMyStyleAnalyzeJob(data: MyStyleAnalyzeJobData): Promise<void> {
+  await getMyStyleAnalyzeQueue().add('my-style-analyze', data, {
+    attempts: 1,
+    removeOnComplete: { count: 100 },
+    removeOnFail: { count: 50 },
+  });
+}
+
 export async function addCatalogSyncJob(data: CatalogSyncJobData): Promise<string> {
   const job = await getCatalogSyncQueue().add('catalog-sync', data, {
     attempts: 3,
@@ -180,6 +193,15 @@ export async function startWorkers(): Promise<void> {
     // Bounded: every job is one RunPod GPU inference, and the endpoint scales
     // per concurrent request — a burst here is a real bill, not just latency.
     { connection: redis, concurrency: 2 },
+  );
+
+  const myStyleAnalyzeWorker = new Worker(
+    QUEUES.MY_STYLE_ANALYZE,
+    async (job) => {
+      await handleMyStyleAnalyze(job.data as MyStyleAnalyzeJobData);
+    },
+    // Bounded: each job is a metered Vision call.
+    { connection: redis, concurrency: 3 },
   );
 
   const catalogSyncWorker = new Worker(
@@ -472,6 +494,10 @@ export async function startWorkers(): Promise<void> {
 
   tryOnWorker.on('failed', (job, err) => {
     console.error(`[jobs] try-on failed ${job?.id}:`, err.message);
+  });
+
+  myStyleAnalyzeWorker.on('failed', (job, err) => {
+    console.error(`[jobs] my-style-analyze failed ${job?.id}:`, err.message);
   });
 
   catalogSyncWorker.on('failed', (job, err) => {

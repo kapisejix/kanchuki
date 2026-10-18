@@ -238,6 +238,28 @@ render it from there; do not inline it in a screen.
 
 ---
 
+## 3e. My Style (F-045) — selfie analysis photo rules
+
+A shopper's selfie is a photo of a real person. Unlike try-on (§3d) **nothing is generated or
+stored**: the photo is read once and discarded, and only three derived words are kept.
+
+| What | Rule | Where it is enforced |
+|---|---|---|
+| The photo | **Never persisted.** Request memory → in-process stash (`lib/tryon-photo-store.ts`, one-shot take, 180 s TTL) → the job → gone. Not on R2, not in the DB, not in the BullMQ payload (Redis is storage), not in a log. Re-encoded and downscaled before the model sees it, which also drops EXIF/GPS. | `routes/public/public-my-style-analyze.ts`, `jobs/my-style-analyze.ts`, `packages/ai/src/my-style-vision.ts`; **pinned by** `lib/my-style-privacy-guard.test.ts` (no storage helper, no log of bytes, no photo field in the job payload). |
+| What is kept | `customer_accounts.skin_undertone / skin_depth / body_frame / style_profile_at` (enums, CHECK-constrained in migration 133). Shown to the shopper as "your palette", never as a skin-colour label. | `jobs/my-style-analyze.ts` is the only writer. |
+| Consent | Server-side gate before any spend: the current `consent_version` (`mystyle-1.0`) or a live remembered grant. Logged as `ConsentEvent` `MY_STYLE_PHOTO_CONSENTED`; withdrawal is `MY_STYLE_PHOTO_CONSENT_WITHDRAWN`. Copy lives in `@kanchuki/shared` (`MY_STYLE_CONSENT`) so a recorded version always names text a person saw. | `lib/my-style-consent.ts`, `lib/notice-versions.ts`. |
+| Clear my data | `POST /v1/public/my-style/profile/clear`: logs the withdrawal, `UPDATE … = NULL` (never DELETE, RC-049), cancels any analysis in flight. A job that loses that race re-nulls the columns, so a cleared profile is never resurrected. Stays live when the kill-switch is off. | `lib/my-style-consent.ts` `withdrawMyStyleConsent`, `jobs/my-style-analyze.ts`. |
+| Not for training | The photo is never used to train models (stated in the consent copy). A new AI provider needs the same no-training contract before it handles this photo. | Provider contracts, as §3d. |
+| Abuse and cost | Per-customer monthly `STYLE_ANALYSIS` limit (admin-editable, seeded 3), one analysis in flight per shopper, 5/min rate limit, `CUSTOMER_STYLE_ANALYSIS` kill-switch. The reply is enum-only and re-validated; text inside the image is told to be ignored and cannot widen the output. | `lib/quota.ts`, `lib/my-style-analysis.ts`, `lib/features.ts`. |
+| Job ids | Opaque; a poll for someone else's id answers the same 404 as an unknown one. | `GET /analyze/:jobId`. |
+
+**Known limits (be honest in the privacy notice):** the API cannot verify the person is an adult —
+there is no age field on `customer_accounts`; the only guards are the adults-only consent text and a
+kids flow that has no upload. The consent link `https://kanchuki.app/privacy#my-style` needs that
+anchor to exist on the privacy page (not built in PR-6).
+
+---
+
 ## 4. API Security
 
 ### Rate Limiting

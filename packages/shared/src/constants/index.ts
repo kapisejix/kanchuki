@@ -706,6 +706,10 @@ export const QUEUES = {
   // carries NO image bytes; the wearer's photo is handed over in-process and
   // never persisted (see apps/api/src/lib/tryon-photo-store.ts).
   TRY_ON: 'kanchuki-try-on',
+  // F-045 My Style: one Claude Vision read per selfie. Own queue so a burst of
+  // shoppers cannot starve tagging; the photo is handed over in-process (never in the
+  // payload) exactly like TRY_ON.
+  MY_STYLE_ANALYZE: 'kanchuki-my-style-analyze',
   // Cron-only, low-volume jobs share one queue — one Worker dispatches by job.name
   // instead of 4 separate Workers each holding their own duplicated Redis connection.
   MAINTENANCE: 'kanchuki-maintenance',
