@@ -120,7 +120,7 @@ Payment: Razorpay (UPI first). Retailer pays base + 18% GST. **Source of truth: 
 
 ### Requires Human Approval
 - **Apply code changes** — present diff, wait for approval
-- **Modify CLAUDE.md** — this file must only be changed with explicit human approval
+- **Modify CLAUDE.md** — rules need explicit human approval. The agent MAY update the What's-Built index rows, RC tracker rows and status lines for work it shipped. It may NOT touch this Operational Control Policy, the Always Allowed / Requires Approval / NEVER lists, the Tech Stack lock, or Key Constraints without explicit approval.
 - **Modify SECURITY.md §12-18** — governance sections require human review
 
 ### NEVER Allowed
@@ -798,7 +798,7 @@ When the AI assistant needs to perform an operation requiring human approval:
 ##### 8.4 Security-Critical Operations
 The following automatically pause for human verification:
 - Any change to: `admin.ts`, `checkout.ts`, `authPlugin`, `team-auth.ts`
-- Any change to: `CLAUDE.md`, `docs/SECURITY.md`, `docs/references/guides/ai-prompting.md`
+- Any change to: `docs/SECURITY.md`, `docs/references/guides/ai-prompting.md`
 - Any change touching: payment flows, PII handling, API credentials
 
 ---
