@@ -313,6 +313,13 @@ export default function PrivacyPolicyPage() {
               you, and it is shown to you as a palette of colours.
             </p>
             <p>
+              <strong>Find similar</strong> works the same way. If you pick a photo of a
+              garment you like, it is read once and thrown away &mdash; we do not keep it. We
+              turn it into a short description of the clothing (for example &ldquo;yellow
+              kurti, printed&rdquo;) that is held for a few minutes while we look for similar
+              pieces. It is not saved to your account.
+            </p>
+            <p>
               <strong>We never use your photo to train AI models.</strong>
             </p>
             <p>

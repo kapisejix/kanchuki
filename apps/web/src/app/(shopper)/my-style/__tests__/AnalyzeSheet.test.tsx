@@ -3,7 +3,7 @@
 // What matters: the file input does not exist until consent is accepted; one tap = one
 // upload (RC-015); polling is capped and stops on unmount (nothing leaks); every API
 // outcome becomes plain copy; the sheet adds no history entry (RC-065/RC-006).
-import { MY_STYLE_CONSENT } from '@kanchuki/shared'
+import { type GarmentDescriptor, MY_STYLE_CONSENT } from '@kanchuki/shared'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AnalyzeSheet } from '../AnalyzeSheet'
@@ -101,7 +101,7 @@ describe('happy path', () => {
     poll.mockResolvedValue({ kind: 'ready', profile })
     await tick(2500)
 
-    expect(poll).toHaveBeenCalledWith('mystyle_a', expect.anything())
+    expect(poll).toHaveBeenCalledWith('mystyle_a', expect.anything(), 'selfie')
     expect(onDone).toHaveBeenCalledTimes(1)
     expect(screen.getByText(/your palette is ready/i)).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: /see my picks/i }))
@@ -239,5 +239,65 @@ describe('history', () => {
     unmount()
     expect(push).not.toHaveBeenCalled()
     expect(back).not.toHaveBeenCalled()
+  })
+})
+
+describe('garment mode (find similar)', () => {
+  const garment: GarmentDescriptor = {
+    category: 'Kurti',
+    color_family: 'yellow',
+    embellishments: [],
+  }
+  const setupGarment = () =>
+    render(<AnalyzeSheet mode="garment" onClose={onClose} onDone={onDone} />)
+
+  it('still asks for consent first and renders no file input until accepted', () => {
+    const { container } = setupGarment()
+    expect(screen.getByText(MY_STYLE_CONSENT.title)).toBeTruthy()
+    expect(container.querySelector('input')).toBeNull()
+  })
+
+  it('offers a gallery picker, not the front camera, with garment copy', async () => {
+    setupGarment()
+    await accept()
+    const input = fileInput()!
+    expect(input.getAttribute('capture')).toBeNull()
+    expect(input.getAttribute('data-testid')).toBe('my-style-garment-input')
+    expect(screen.getByText('Pick a photo of a garment you like')).toBeTruthy()
+    expect(screen.getByText(/We keep nothing from it/)).toBeTruthy()
+  })
+
+  it('uploads and polls in garment mode, then hands the descriptor to onDone', async () => {
+    poll.mockResolvedValue({ kind: 'ready', garment })
+    setupGarment()
+    await accept()
+    await pick()
+    expect(start).toHaveBeenCalledWith(expect.any(Blob), expect.anything(), 'garment')
+    await tick(2500)
+    expect(poll).toHaveBeenCalledWith('mystyle_a', expect.anything(), 'garment')
+    expect(onDone).toHaveBeenCalledWith(garment)
+    expect(screen.getByText('Showing pieces like this')).toBeTruthy()
+  })
+
+  it('a selfie finish hands back no garment', async () => {
+    poll.mockResolvedValue({ kind: 'ready', profile })
+    setup()
+    await accept()
+    await pick()
+    await tick(2500)
+    expect(onDone).toHaveBeenCalledWith(undefined)
+  })
+
+  it('keeps the error path: a failed read shows plain copy and does not report done', async () => {
+    poll.mockResolvedValue({
+      kind: 'failed',
+      message: 'That photo is too blurry. Please try a sharper one.',
+    })
+    setupGarment()
+    await accept()
+    await pick()
+    await tick(2500)
+    expect(screen.getByRole('alert').textContent).toMatch(/blurry/)
+    expect(onDone).not.toHaveBeenCalled()
   })
 })

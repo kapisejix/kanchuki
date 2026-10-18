@@ -20,8 +20,9 @@
 //      guessed profile (RC-059).
 //
 // Like the other jobs it does not import from routes/ (jobs load in the whole boot graph).
-import { analyzeStyleImage } from '@kanchuki/ai';
+import { analyzeGarmentImage, analyzeStyleImage } from '@kanchuki/ai';
 import { prisma } from '@kanchuki/db';
+import { getActiveColorFamilies } from '../lib/color-families.js';
 import { completeAnalysis, getAnalysis } from '../lib/my-style-analysis.js';
 import { clearStyleProfile } from '../lib/my-style-consent.js';
 import { incrementCustomerUsage } from '../lib/quota.js';
@@ -30,6 +31,8 @@ import { takeTryOnPhoto } from '../lib/tryon-photo-store.js';
 export interface MyStyleAnalyzeJobData {
   job_id: string;
   customer_account_id: string;
+  /** Absent = selfie, so a job queued before PR-9 deploys still runs. */
+  mode?: 'selfie' | 'garment';
 }
 
 // Admin usage chart: one counter per UTC day, no customer id (migration 134). Best-effort -
@@ -43,6 +46,48 @@ async function recordDailyAnalysis(): Promise<void> {
       update: { count: { increment: 1 } },
     })
     .catch((err) => console.error('[my-style] failed to record daily count:', err));
+}
+
+// Marks the job failed and hands back the error to rethrow. Message only — never the
+// buffer, and provider errors carry none. No auto-retry: a retry would have no photo left
+// (it was taken at the top of the handler) and each attempt is a paid call.
+async function failRead(job_id: string, err: unknown): Promise<Error> {
+  console.error(
+    `[my-style] job ${job_id} failed:`,
+    err instanceof Error ? err.message : String(err),
+  );
+  await completeAnalysis(job_id, { status: 'failed', reason: 'read_failed' });
+  return err instanceof Error ? err : new Error(String(err));
+}
+
+// Find similar (PR-9). Same rules as the selfie path: quota only when a descriptor was
+// produced, no fallback on a bad reply. Unlike a selfie there is nothing to write to the
+// account and nothing to re-null after a withdrawal — a garment description is not
+// personal data, and it lives only in the 15-minute job state.
+async function handleGarment(
+  job_id: string,
+  customer_account_id: string,
+  photo: { buffer: Buffer; contentType: string },
+): Promise<void> {
+  let result: Awaited<ReturnType<typeof analyzeGarmentImage>>;
+  try {
+    const families = (await getActiveColorFamilies()).map((f) => f.name);
+    result = await analyzeGarmentImage(photo.buffer, photo.contentType, families);
+  } catch (err) {
+    throw await failRead(job_id, err);
+  }
+
+  if (!result.usable) {
+    await completeAnalysis(job_id, { status: 'failed', reason: result.reason });
+    return;
+  }
+
+  await incrementCustomerUsage(customer_account_id, 'STYLE_ANALYSIS').catch((err) => {
+    console.error(`[my-style] failed to record usage for ${customer_account_id}:`, err);
+  });
+  await recordDailyAnalysis();
+  // False = cleared or expired meanwhile; the cost still counts, the result is dropped.
+  await completeAnalysis(job_id, { status: 'ready', garment: result.garment });
 }
 
 export async function handleMyStyleAnalyze(data: MyStyleAnalyzeJobData): Promise<void> {
@@ -59,19 +104,16 @@ export async function handleMyStyleAnalyze(data: MyStyleAnalyzeJobData): Promise
     return;
   }
 
+  if (data.mode === 'garment') {
+    await handleGarment(job_id, customer_account_id, photo);
+    return;
+  }
+
   let result: Awaited<ReturnType<typeof analyzeStyleImage>>;
   try {
     result = await analyzeStyleImage(photo.buffer, photo.contentType);
   } catch (err) {
-    // Message only — never the buffer, and provider errors carry none.
-    console.error(
-      `[my-style] job ${job_id} failed:`,
-      err instanceof Error ? err.message : String(err),
-    );
-    await completeAnalysis(job_id, { status: 'failed', reason: 'read_failed' });
-    // No auto-retry: a retry would have no photo left (it was taken above) and each
-    // attempt is a paid call.
-    throw err instanceof Error ? err : new Error(String(err));
+    throw await failRead(job_id, err);
   }
 
   if (!result.usable) {

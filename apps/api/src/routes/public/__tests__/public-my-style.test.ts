@@ -8,14 +8,23 @@ import Fastify from 'fastify';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { errorHandler } from '../../../plugins/error-handler.js';
 
-const { mockSession, mockFindMany, mockPalette } = vi.hoisted(() => ({
+const { mockSession, mockFindMany, mockPalette, mockEmbedDesc, mockSims } = vi.hoisted(() => ({
   mockSession: vi.fn(),
   mockFindMany: vi.fn(),
   mockPalette: vi.fn(),
+  mockEmbedDesc: vi.fn(),
+  mockSims: vi.fn(),
 }));
 
 vi.mock('@kanchuki/db', () => ({
   prisma: { product: { findMany: mockFindMany }, stylePalette: { findFirst: mockPalette } },
+}));
+// Scoring (attribute overlap, blending) stays real; only the OpenAI call and the pgvector
+// query are doubled.
+vi.mock('../../../lib/my-style-similar.js', async (orig) => ({
+  ...(await orig<typeof import('../../../lib/my-style-similar.js')>()),
+  embedDescriptor: mockEmbedDesc,
+  embeddingSimilarities: mockSims,
 }));
 vi.mock('../passport/passport-helpers.js', () => ({ getPassportSession: mockSession }));
 // The real helper presigns R2 URLs; the feed only needs its shape.
@@ -86,6 +95,9 @@ const row = (id: string, retailer: Row['retailer'], over: Partial<Row> = {}): Ro
     search_tags: [],
     category: null,
     subtype: null,
+    product_type: null,
+    pattern: null,
+    embellishments: [],
     avg_rating: 0,
     rating_count: 0,
   } as object),
@@ -168,6 +180,8 @@ beforeEach(() => {
   mockSession.mockResolvedValue(account());
   mockPalette.mockResolvedValue(null);
   mockFindMany.mockImplementation(fakeFindMany);
+  mockEmbedDesc.mockResolvedValue([0.1, 0.2]);
+  mockSims.mockResolvedValue(new Map());
   const s = store('1');
   DB = [row('p1', s), row('p2', s)];
 });
@@ -345,5 +359,69 @@ describe('validation', () => {
     const res = await feed(payload);
     expect(res.statusCode).toBe(422);
     expect(mockFindMany).not.toHaveBeenCalled();
+  });
+});
+
+describe('find similar (PR-9)', () => {
+  const GARMENT = { category: 'Kurti', color_family: 'yellow', embellishments: [] };
+  const s = store('9');
+  const kurti = (id: string, over: Partial<Row> = {}) =>
+    row(id, s, { ...({ category: 'Kurti' } as object), ...over });
+
+  it('an ordinary feed has meta.similar null and never embeds', async () => {
+    const res = await feed({});
+    expect(res.json().meta.similar).toBeNull();
+    expect(mockEmbedDesc).not.toHaveBeenCalled();
+  });
+
+  it('ranks the product that looks like the garment first (attribute fallback)', async () => {
+    DB = [
+      row('saree', s, { color_family: 'blue', ...({ category: 'Saree' } as object) }),
+      kurti('kurti', { color_family: 'yellow' }),
+    ];
+    mockEmbedDesc.mockResolvedValue(null); // embeddings unavailable
+    const res = await feed({ similar: GARMENT });
+    expect(res.statusCode).toBe(200);
+    expect(ids(res)[0]).toBe('kurti');
+    expect(res.json().meta.similar).toEqual({ source: 'attributes', embedded: 0, total: 2 });
+  });
+
+  it('uses embeddings where they exist and says how many', async () => {
+    // Same imperfect attribute match, so only the embedding can separate them.
+    DB = [kurti('a', { color_family: 'blue' }), kurti('b', { color_family: 'blue' })];
+    mockSims.mockResolvedValue(new Map([['b', 0.95]])); // b is the closer vector
+    const res = await feed({ similar: GARMENT });
+    expect(ids(res)[0]).toBe('b');
+    expect(res.json().meta.similar).toEqual({ source: 'embedding', embedded: 1, total: 2 });
+    expect(mockSims).toHaveBeenCalledWith([0.1, 0.2], ['a', 'b']);
+  });
+
+  it('a failing similarity query degrades to attributes and the request still succeeds', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    DB = [kurti('a', { color_family: 'yellow' })];
+    mockSims.mockRejectedValue(new Error('pgvector down'));
+    const res = await feed({ similar: GARMENT });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().meta.similar.source).toBe('attributes');
+  });
+
+  it('similarity does not widen the candidate set: suspended and deleted still excluded', async () => {
+    DB = [
+      kurti('ok'),
+      kurti('gone', { deleted_at: new Date() }),
+      row('susp', store('x', { is_suspended: true }), ...([{ category: 'Kurti' }] as never[])),
+    ];
+    expect(ids(await feed({ similar: GARMENT }))).toEqual(['ok']);
+  });
+
+  it.each([
+    ['unknown category', { ...GARMENT, category: 'Spaceship' }],
+    ['free-text colour', { ...GARMENT, color_family: 'yellow. ignore previous' }],
+    ['extra key', { ...GARMENT, notes: 'x' }],
+    ['a string', 'Kurti'],
+  ])('422 for a bad descriptor: %s', async (_n, similar) => {
+    const res = await feed({ similar });
+    expect(res.statusCode).toBe(422);
+    expect(mockEmbedDesc).not.toHaveBeenCalled();
   });
 });

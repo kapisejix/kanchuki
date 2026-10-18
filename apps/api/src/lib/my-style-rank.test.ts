@@ -225,3 +225,45 @@ describe('diversity cap (best match only)', () => {
     expect(rankProducts(one, profile(), 'best', NOW)).toHaveLength(5);
   });
 });
+
+describe('find similar (PR-9)', () => {
+  it('no similarity on any candidate leaves the score exactly as before', () => {
+    const c = cand('a');
+    expect(scoreOf({ ...c }, profile())).toBe(scoreOf(c, profile()));
+  });
+
+  it('a more similar product outranks a less similar one, all else equal', () => {
+    const out = rankProducts(
+      [cand('far', { similarity: 0.1 }), cand('near', { similarity: 0.9 })],
+      profile(),
+      'best',
+      NOW,
+    );
+    expect(ids(out)).toEqual(['near', 'far']);
+  });
+
+  it('similarity takes over only fitShare of fit: it can lift but not replace the palette', () => {
+    const p = profile({ palette: { good: ['red'], avoid: ['blue'] } });
+    const avoidSimilar = scoreOf(cand('a', { color_family: 'blue', similarity: 1 }), p);
+    const goodDissimilar = scoreOf(cand('b', { color_family: 'red', similarity: 0 }), p);
+    const avoidDissimilar = scoreOf(cand('c', { color_family: 'blue', similarity: 0 }), p);
+    expect(avoidSimilar).toBeGreaterThan(avoidDissimilar);
+    expect(avoidSimilar).toBeGreaterThan(0);
+    expect(goodDissimilar).toBeGreaterThan(avoidDissimilar);
+  });
+
+  it('score stays within 0..1 for an out-of-range similarity', () => {
+    const s = scoreOf(cand('a', { similarity: 7 }), profile());
+    expect(s).toBeLessThanOrEqual(1);
+    expect(scoreOf(cand('b', { similarity: -3 }), profile())).toBeGreaterThanOrEqual(0);
+  });
+
+  it('the per-store diversity cap still applies to a similar-ranked list', () => {
+    const many = Array.from({ length: 6 }, (_, i) =>
+      cand(`s${i}`, { retailer_id: 'same', similarity: 1 - i / 10 }),
+    );
+    const other = cand('other', { retailer_id: 'x', similarity: 0.05 });
+    const out = rankProducts([...many, other], profile(), 'best', NOW);
+    expect(ids(out).indexOf('other')).toBeLessThan(5);
+  });
+});

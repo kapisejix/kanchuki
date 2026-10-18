@@ -47,7 +47,7 @@ const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
 
 const QuerySchema = z.object({
   consent_version: z.string().min(1).optional(),
-  // 'garment' (find-similar) is PR-9; named here so the API shape is stable.
+  // 'garment' = find-similar (PR-9): the photo is of a garment, not of the shopper.
   mode: z.enum(['selfie', 'garment']).default('selfie'),
 });
 
@@ -94,9 +94,6 @@ export const publicMyStyleAnalyzeRoutes: FastifyPluginAsync = async (server) => 
 
       const query = QuerySchema.safeParse(request.query);
       if (!query.success) throw validationError('Invalid request.', 'consent_version');
-      if (query.data.mode !== 'selfie') {
-        throw validationError('Only selfie analysis is available right now.', 'mode');
-      }
 
       // Refuse before spending anything if the AI cannot run at all (RC-060).
       if (!(await hasConfiguredVisionProvider())) {
@@ -155,7 +152,11 @@ export const publicMyStyleAnalyzeRoutes: FastifyPluginAsync = async (server) => 
       }
 
       try {
-        await addMyStyleAnalyzeJob({ job_id: jobId, customer_account_id: accountId });
+        await addMyStyleAnalyzeJob({
+          job_id: jobId,
+          customer_account_id: accountId,
+          mode: query.data.mode,
+        });
       } catch (err) {
         // Nothing will take the photo now — drop it rather than hold it for the TTL, and
         // free the shopper's lock so they can retry.
@@ -192,6 +193,7 @@ export const publicMyStyleAnalyzeRoutes: FastifyPluginAsync = async (server) => 
       data: {
         status: state.status,
         ...(state.profile ? { profile: state.profile } : {}),
+        ...(state.garment ? { garment: state.garment } : {}),
         ...(state.reason ? { reason: state.reason } : {}),
       },
     };

@@ -10,3 +10,4 @@ export * from './color-family.js';
 export * from './style-quiz.js';
 export * from './my-style-weights.js';
 export * from './my-style-consent.js';
+export * from './my-style-garment.js';

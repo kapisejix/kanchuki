@@ -3,14 +3,23 @@
 // profile), a bad/failed read never invents a profile, and the photo is taken exactly once.
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { mockAnalyze, mockUpdate, mockIncrement, mockDaily } = vi.hoisted(() => ({
-  mockAnalyze: vi.fn(),
-  mockUpdate: vi.fn(),
-  mockIncrement: vi.fn(),
-  mockDaily: vi.fn(),
-}));
+const { mockAnalyze, mockGarment, mockFamilies, mockUpdate, mockIncrement, mockDaily } = vi.hoisted(
+  () => ({
+    mockAnalyze: vi.fn(),
+    mockGarment: vi.fn(),
+    mockFamilies: vi.fn(),
+    mockUpdate: vi.fn(),
+    mockIncrement: vi.fn(),
+    mockDaily: vi.fn(),
+  }),
+);
 
-vi.mock('@kanchuki/ai', () => ({ analyzeStyleImage: mockAnalyze, deleteObject: vi.fn() }));
+vi.mock('@kanchuki/ai', () => ({
+  analyzeStyleImage: mockAnalyze,
+  analyzeGarmentImage: mockGarment,
+  deleteObject: vi.fn(),
+}));
+vi.mock('../lib/color-families.js', () => ({ getActiveColorFamilies: mockFamilies }));
 vi.mock('@kanchuki/db', () => ({
   prisma: {
     customerAccount: { update: mockUpdate },
@@ -42,6 +51,8 @@ const run = () => handleMyStyleAnalyze({ job_id: JOB, customer_account_id: ACCT 
 beforeEach(() => {
   __resetMyStyleState();
   mockAnalyze.mockReset();
+  mockGarment.mockReset();
+  mockFamilies.mockReset().mockResolvedValue([{ name: 'red' }, { name: 'yellow' }]);
   mockUpdate.mockReset().mockResolvedValue({});
   mockIncrement.mockReset().mockResolvedValue(undefined);
   mockDaily.mockReset().mockResolvedValue({});
@@ -157,5 +168,72 @@ describe('handleMyStyleAnalyze', () => {
       data: { skin_undertone: null, skin_depth: null, body_frame: null, style_profile_at: null },
     });
     expect((await getAnalysis(JOB))?.status).toBe('cancelled');
+  });
+});
+
+// ─── PR-9: find similar ──────────────────────────────────────────────────────────────
+describe('handleMyStyleAnalyze - garment mode', () => {
+  const GARMENT = { category: 'Kurti', color_family: 'yellow', embellishments: [] } as const;
+  const runGarment = () =>
+    handleMyStyleAnalyze({ job_id: JOB, customer_account_id: ACCT, mode: 'garment' });
+
+  it('stores the descriptor in job state only - never on the account - and spends quota once', async () => {
+    await queue();
+    mockGarment.mockResolvedValue({ usable: true, garment: GARMENT });
+    await runGarment();
+
+    expect(mockAnalyze).not.toHaveBeenCalled();
+    expect(mockGarment.mock.calls[0]?.[0]).toBeInstanceOf(Buffer);
+    expect(mockGarment.mock.calls[0]?.[2]).toEqual(['red', 'yellow']); // the admin family list
+    expect(mockUpdate).not.toHaveBeenCalled();
+    expect(mockIncrement).toHaveBeenCalledTimes(1);
+    expect(mockIncrement).toHaveBeenCalledWith(ACCT, 'STYLE_ANALYSIS');
+    expect(mockDaily).toHaveBeenCalledTimes(1);
+    expect(await getAnalysis(JOB)).toEqual({ account_id: ACCT, status: 'ready', garment: GARMENT });
+    expect(tryOnPhotoCount()).toBe(0);
+  });
+
+  it('an unusable garment photo is a result and costs nothing', async () => {
+    await queue();
+    mockGarment.mockResolvedValue({ usable: false, reason: 'no_garment' });
+    await runGarment();
+    expect(await getAnalysis(JOB)).toMatchObject({ status: 'failed', reason: 'no_garment' });
+    expect(mockIncrement).not.toHaveBeenCalled();
+    expect(mockDaily).not.toHaveBeenCalled();
+  });
+
+  it('a failed read fails the job and rethrows - no guessed descriptor (RC-059)', async () => {
+    await queue();
+    mockGarment.mockRejectedValue(new Error('unreadable model reply'));
+    await expect(runGarment()).rejects.toThrow('unreadable model reply');
+    expect(await getAnalysis(JOB)).toMatchObject({ status: 'failed', reason: 'read_failed' });
+    expect(mockIncrement).not.toHaveBeenCalled();
+  });
+
+  it('a colour-family lookup failure fails the read instead of guessing', async () => {
+    await queue();
+    mockFamilies.mockRejectedValue(new Error('db down'));
+    await expect(runGarment()).rejects.toThrow('db down');
+    expect(mockGarment).not.toHaveBeenCalled();
+    expect(await getAnalysis(JOB)).toMatchObject({ status: 'failed', reason: 'read_failed' });
+  });
+
+  it('cancelled mid-flight: the result is dropped, the model cost still counts', async () => {
+    await queue();
+    mockGarment.mockImplementation(async () => {
+      await cancelInflightAnalysis(ACCT);
+      return { usable: true, garment: GARMENT };
+    });
+    await runGarment();
+    expect(await getAnalysis(JOB)).toMatchObject({ status: 'cancelled' });
+    expect(mockIncrement).toHaveBeenCalledTimes(1);
+  });
+
+  it('a job queued without a mode (pre-PR-9) still runs as a selfie', async () => {
+    await queue();
+    mockAnalyze.mockResolvedValue({ usable: true, profile: PROFILE });
+    await run();
+    expect(mockGarment).not.toHaveBeenCalled();
+    expect(mockUpdate).toHaveBeenCalledTimes(1);
   });
 });

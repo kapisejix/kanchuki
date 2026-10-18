@@ -6,14 +6,22 @@
 // end to end (RC-055). Account-specific, so never cacheable (POST + no-store).
 import { prisma } from '@kanchuki/db';
 import {
+  type GarmentDescriptor,
   MY_STYLE_DEFAULT_RADIUS_KM,
   buildEnquiryMessage,
   buildWhatsAppEnquiryLink,
+  parseGarmentDescriptor,
 } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { getBoundingBox, haversineDistance } from '../../lib/geo.js';
 import { type RankCandidate, rankProducts } from '../../lib/my-style-rank.js';
+import {
+  attributeScore,
+  combineSimilarity,
+  embedDescriptor,
+  embeddingSimilarities,
+} from '../../lib/my-style-similar.js';
 import { notFound, validationError } from '../../plugins/error-handler.js';
 import { getPassportSession } from './passport/passport-helpers.js';
 import { enquiryPhone, toPublicProductSummary } from './public-helpers.js';
@@ -33,6 +41,11 @@ const BodySchema = z
     size: z.string().trim().min(1).max(10).optional(),
     page: z.number().int().min(1).max(50).default(1),
     limit: z.number().int().min(1).max(30).default(12),
+    // Find similar (PR-9): the garment descriptor the analyze poll returned. The client
+    // holds it and sends it back; it is checked against the enums, never stored.
+    similar: z
+      .custom<GarmentDescriptor>((v) => parseGarmentDescriptor(v) !== null, 'Invalid garment')
+      .optional(),
   })
   .strict()
   .refine((b) => (b.lat === undefined) === (b.lng === undefined), 'lat and lng go together');
@@ -138,6 +151,48 @@ export const publicMyStyleRoutes: FastifyPluginAsync = async (server) => {
           )
         : rows;
 
+      // Find similar: a 0..1 score per candidate. Embedding where a product has one, attribute
+      // overlap otherwise (and for everything if embeddings are unavailable). `similar` in the
+      // response says which, so a degraded result is not passed off as a semantic match.
+      const garment = b.similar ? parseGarmentDescriptor(b.similar) : null;
+      let similarity: Map<string, number> | null = null;
+      let similar: { source: 'embedding' | 'attributes'; embedded: number; total: number } | null =
+        null;
+      if (garment) {
+        let cosines = new Map<string, number>();
+        const vec = await embedDescriptor(garment);
+        if (vec) {
+          try {
+            cosines = await embeddingSimilarities(
+              vec,
+              inRange.map((p) => p.id),
+            );
+          } catch (err) {
+            console.error('[my-style] similarity query failed; using attribute match:', err);
+          }
+        }
+        similarity = new Map(
+          inRange.map((p) => [
+            p.id,
+            combineSimilarity(
+              attributeScore(garment, {
+                category: p.category,
+                product_type: p.product_type,
+                color_family: p.color_family,
+                pattern: p.pattern,
+                embellishments: p.embellishments,
+              }),
+              cosines.get(p.id) ?? null,
+            ),
+          ]),
+        );
+        similar = {
+          source: cosines.size > 0 ? 'embedding' : 'attributes',
+          embedded: cosines.size,
+          total: inRange.length,
+        };
+      }
+
       const candidates: RankCandidate[] = inRange.map((p) => ({
         id: p.id,
         retailer_id: p.retailer_id,
@@ -153,6 +208,7 @@ export const publicMyStyleRoutes: FastifyPluginAsync = async (server) => {
         created_at: p.created_at,
         lat: p.retailer.latitude,
         lng: p.retailer.longitude,
+        ...(similarity ? { similarity: similarity.get(p.id) ?? 0 } : {}),
       }));
 
       // `occasion` boosts rather than filters: AI tagging no longer sets occasions, so a
@@ -201,6 +257,8 @@ export const publicMyStyleRoutes: FastifyPluginAsync = async (server) => {
           location_scope: locationScope,
           rationale_source: 'none' as const,
           truncated: rows.length === CANDIDATE_CAP,
+          // Null for an ordinary feed.
+          similar,
           // What the palette card shows (PR-7). Null until a photo has been analysed.
           style_profile:
             account.skin_undertone && account.skin_depth

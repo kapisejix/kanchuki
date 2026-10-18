@@ -139,7 +139,7 @@ describe('POST /analyze', () => {
 
     expect(mockEnqueue).toHaveBeenCalledTimes(1);
     const payloadSent = mockEnqueue.mock.calls[0]?.[0];
-    expect(payloadSent).toEqual({ job_id, customer_account_id: ACCT });
+    expect(payloadSent).toEqual({ job_id, customer_account_id: ACCT, mode: 'selfie' });
     expect(JSON.stringify(payloadSent)).not.toContain('fake-jpeg');
     expect(photos()).toBe(1);
 
@@ -253,8 +253,29 @@ describe('POST /analyze', () => {
       expect(mockEnqueue).not.toHaveBeenCalled();
     });
 
-    it('mode=garment is not available yet (PR-9): 422', async () => {
+    it('mode=garment (find similar) is accepted and enqueued as a garment job', async () => {
       const res = await analyze(await build(), { query: 'mode=garment' });
+      expect(res.statusCode).toBe(202);
+      expect(mockEnqueue.mock.calls[0]?.[0]).toMatchObject({
+        customer_account_id: ACCT,
+        mode: 'garment',
+      });
+      expect(JSON.stringify(mockEnqueue.mock.calls[0]?.[0])).not.toContain('fake-jpeg');
+    });
+
+    it('garment mode passes the same gates: consent, quota (STYLE_ANALYSIS) and provider', async () => {
+      expect(
+        (await analyze(await build(), { query: 'mode=garment', consent: null })).statusCode,
+      ).toBe(422);
+      mockProvider.mockResolvedValue(false);
+      expect((await analyze(await build(), { query: 'mode=garment' })).statusCode).toBe(503);
+      mockProvider.mockResolvedValue(true);
+      await analyze(await build(), { query: 'mode=garment' });
+      expect(mockCheckQuota).toHaveBeenCalledWith(ACCT, 'STYLE_ANALYSIS');
+    });
+
+    it('an unknown mode is a 422', async () => {
+      const res = await analyze(await build(), { query: 'mode=banana' });
       expect(res.statusCode).toBe(422);
     });
   });
@@ -301,6 +322,17 @@ describe('GET /analyze/:jobId', () => {
     expect(
       (await app.inject({ method: 'GET', url: '/my-style/analyze/mystyle_b' })).json(),
     ).toEqual({ data: { status: 'failed', reason: 'face_not_clear' } });
+  });
+
+  it('a ready garment job carries the descriptor and no profile', async () => {
+    const garment = { category: 'Kurti', color_family: 'yellow', embellishments: [] } as const;
+    await startAnalysis('mystyle_g', ACCT);
+    await completeAnalysis('mystyle_g', {
+      status: 'ready',
+      garment: { ...garment, embellishments: [] },
+    });
+    const res = await (await build()).inject({ method: 'GET', url: '/my-style/analyze/mystyle_g' });
+    expect(res.json()).toEqual({ data: { status: 'ready', garment } });
   });
 
   it('404 for another shopper’s job (no IDOR) and for an unknown id', async () => {

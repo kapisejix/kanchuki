@@ -15,7 +15,7 @@
 // a photo analysis must not start (nothing could report its result), so these throw and
 // the route answers 503 — never a fake success (RC-060). Under VITEST an in-memory map
 // stands in (same convention as the sibling libs) and hands back copies (RC-037).
-import type { MyStyleProfile } from '@kanchuki/shared';
+import type { GarmentDescriptor, MyStyleProfile } from '@kanchuki/shared';
 import { Redis } from 'ioredis';
 
 export type AnalysisStatus = 'processing' | 'ready' | 'failed' | 'cancelled';
@@ -24,12 +24,15 @@ export interface AnalysisState {
   account_id: string;
   status: AnalysisStatus;
   profile?: MyStyleProfile;
+  /** Find-similar (PR-9): a description of a garment, not of the shopper. */
+  garment?: GarmentDescriptor;
   /** A code, not prose: an enum reason from the model or read_failed / expired. */
   reason?: string;
 }
 
 export type AnalysisOutcome =
   | { status: 'ready'; profile: MyStyleProfile }
+  | { status: 'ready'; garment: GarmentDescriptor }
   | { status: 'failed'; reason: string };
 
 const JOB_TTL_SEC = 15 * 60;
