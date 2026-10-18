@@ -650,3 +650,16 @@ no migration, no schema change, and **no new request on any surface**.
 | Tests | `occasions.test.ts` +alias case, `tagger.test.ts` pins the 4-value schema enum. Shared 13, ai 25, api 32 touched tests pass; api tsc and Biome clean. |
 | Owner action | Existing rows still hold `Casual` (the ~17 test uploads). The ranker compares lowercase exact strings, so run a one-off UPDATE mapping `Casual`/`Office Wear` to `Daily Wear` (SQL in the PR). The 216 NULL rows are untouched; backfill only ever writes the new enum. |
 | Not verified | Real-model labels after the change; re-test with a few uploads after deploy. |
+
+## 2026-10-18 - F-045 PR-10a: feed tabs (Festival / Occasion / Trending) + RC-070
+
+| Item | Detail |
+|---|---|
+| Branch | `feat/f-045-tabs`, no migration, not merged. |
+| Shared | `my-style-tabs.ts`: `MY_STYLE_TABS`, `STYLE_TREND_KINDS` (`trending`, `festival`), `FESTIVAL_LOOKAHEAD_DAYS` (30), `FESTIVAL_OCCASIONS`. `style-quiz.ts`: `occasionTargets(label)` (RC-070). |
+| API | `lib/my-style-tabs.ts` (pure): `activeTrends`, `pickFestival` (running or starting <=30 days; `PAN_INDIA` or the shopper's state), `matchesTab`, `promoteMatches`, `trendHit` (also used by the ranker). `/feed` takes `tab`, reads `style_trends` + `festivals` (fail-soft: on error the feed answers and extra tabs are hidden), returns `meta.tabs {festival:{name}|null, trending}` and `meta.occasion_matches`. |
+| Tab rules | Trending = products matching an active `trending` trend. Festival = Festive/Wedding tags or an active `festival` trend keyword, only while a festival is live. Both answer an empty list when nothing is behind them (never the general feed). Occasion = boost only: tagged matches first, untagged/NULL products follow; the card never shows an occasion. For you unchanged except `trending` trends now feed the existing `trend` score (was `[]`). |
+| Admin | Trend `kind` is now an enum (`trending`/`festival`) in the API and a select in Admin -> My Style -> Trends. Existing rows with another kind are ignored by the feed. |
+| Web | Tab bar + Occasion chips (canonical names) on `/my-style`; Festival tab is labelled with the festival name; tabs absent from `meta.tabs` are hidden; an open tab that loses its data falls back to For you. |
+| Tests | shared +11, api lib +13, route +14 (tabs, windows, region, fail-soft, RC-070), web +7 (`tabs.test.tsx`). shared/api/web tsc, Biome (api) and `next lint` clean. |
+| Not verified | No browser or device check. No real festival/trend rows exist in prod yet (tabs stay hidden until admin adds them). `occasions` label quality is only partly verified, so the Occasion tab is a ranking nudge, not an exact filter. |

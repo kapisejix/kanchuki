@@ -9,7 +9,7 @@
 'use client'
 
 import { StyleQuiz } from '@/app/c/[slug]/components/StyleQuiz'
-import { type GarmentDescriptor, formatPriceRange } from '@kanchuki/shared'
+import { type GarmentDescriptor, PRODUCT_OCCASIONS, formatPriceRange } from '@kanchuki/shared'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { AnalyzeSheet } from './AnalyzeSheet'
@@ -22,6 +22,7 @@ import {
   type FeedCard,
   type FeedMeta,
   type FeedSort,
+  type FeedTab,
   LOGIN_HREF,
   type StyleProfile,
   describeGarment,
@@ -59,6 +60,11 @@ export default function MyStylePage() {
   const [budget, setBudget] = useState('')
   const [size, setSize] = useState('')
   const [occasion, setOccasion] = useState('')
+  // Tabs: Festival / Trending exist only while the feed says something is behind them.
+  const [tab, setTab] = useState<FeedTab>('foryou')
+  const [tabs, setTabs] = useState<FeedMeta['tabs']>(undefined)
+  // The Occasion tab's chip (canonical name), separate from the filter dropdown above.
+  const [tabOccasion, setTabOccasion] = useState('')
   const [where, setWhere] = useState<{ lat: number; lng: number } | null>(null)
   const [radius, setRadius] = useState(25)
   const [geoDenied, setGeoDenied] = useState(false)
@@ -107,11 +113,12 @@ export default function MyStylePage() {
     fetchFeed(
       {
         sort,
+        tab,
         page,
         limit: 12,
         ...(budget ? { budget_max: Number(budget) } : {}),
         ...(size ? { size } : {}),
-        ...(occasion ? { occasion } : {}),
+        ...(tab === 'occasion' ? (tabOccasion ? { occasion: tabOccasion } : {}) : occasion ? { occasion } : {}),
         ...(where ? { ...where, radius_km: radius } : {}),
         ...(similar ? { similar } : {}),
       },
@@ -119,7 +126,15 @@ export default function MyStylePage() {
     )
       .then((r) => {
         setView(r)
-        if (r.kind === 'ok') setStyleProfile(r.meta.style_profile ?? null)
+        if (r.kind === 'ok') {
+          setStyleProfile(r.meta.style_profile ?? null)
+          setTabs(r.meta.tabs)
+          // The tab just lost its data (festival ended, trend retired): fall back to the feed.
+          const t = r.meta.tabs
+          if ((tab === 'festival' && !t?.festival) || (tab === 'trending' && !t?.trending)) {
+            setTab('foryou')
+          }
+        }
       })
       .catch((e: unknown) => {
         // A superseded request aborts; that is not a failure (RC-014).
@@ -127,7 +142,7 @@ export default function MyStylePage() {
         if (!ctrl.signal.aborted) setView({ kind: 'error' })
       })
     return () => ctrl.abort()
-  }, [sort, page, budget, size, occasion, where, radius, similar, nonce])
+  }, [sort, tab, tabOccasion, page, budget, size, occasion, where, radius, similar, nonce])
 
   // Any filter change restarts at page 1.
   const reset = <T,>(set: (v: T) => void) => (v: T) => {
@@ -258,6 +273,63 @@ export default function MyStylePage() {
         </p>
       )}
 
+      <nav className="flex gap-1 overflow-x-auto border-b border-stone-200" aria-label="Feed tabs">
+        {(
+          [
+            ['foryou', 'For you'],
+            ...(tabs?.festival ? [['festival', tabs.festival.name]] : []),
+            ['occasion', 'Occasion'],
+            ...(tabs?.trending ? [['trending', 'Trending']] : []),
+          ] as [FeedTab, string][]
+        ).map(([value, label]) => (
+          <button
+            key={value}
+            type="button"
+            aria-current={tab === value ? 'page' : undefined}
+            onClick={() => {
+              setTab(value)
+              setPage(1)
+            }}
+            className={`whitespace-nowrap px-3 py-2 text-sm ${
+              tab === value
+                ? 'border-b-2 border-stone-900 font-medium text-stone-900'
+                : 'text-stone-500'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </nav>
+
+      {tab === 'occasion' && (
+        <div className="space-y-2">
+          <div className="flex flex-wrap gap-2" role="group" aria-label="Occasion">
+            {PRODUCT_OCCASIONS.map((o) => (
+              <button
+                key={o}
+                type="button"
+                aria-pressed={tabOccasion === o}
+                onClick={() => {
+                  setTabOccasion(tabOccasion === o ? '' : o)
+                  setPage(1)
+                }}
+                className={`px-3 py-1.5 rounded-full text-sm ${
+                  tabOccasion === o ? 'bg-stone-900 text-white' : 'bg-white border border-stone-300 text-stone-700'
+                }`}
+              >
+                {o}
+              </button>
+            ))}
+          </div>
+          {!tabOccasion && <p className="text-xs text-stone-500">Pick an occasion to see pieces chosen for it first.</p>}
+          {tabOccasion && view.kind === 'ok' && view.meta.occasion_matches === 0 && (
+            <p className="text-xs text-stone-500">
+              Nothing near you is marked for {tabOccasion} yet, so this is your general feed.
+            </p>
+          )}
+        </div>
+      )}
+
       <section className="space-y-3">
         <div className="flex gap-2" role="group" aria-label="Sort">
           {SORTS.map((s) => (
@@ -308,6 +380,7 @@ export default function MyStylePage() {
 
       <Results
         view={view}
+        tab={tab}
         page={page}
         onPage={goToPage}
         onRetry={() => setNonce((n) => n + 1)}
@@ -341,6 +414,7 @@ export default function MyStylePage() {
 
 function Results({
   view,
+  tab,
   page,
   onPage,
   onRetry,
@@ -350,6 +424,7 @@ function Results({
   onEnquire,
 }: {
   view: View
+  tab: FeedTab
   page: number
   onPage: (p: number) => void
   onRetry: () => void
@@ -389,7 +464,11 @@ function Results({
   if (data.length === 0) {
     return (
       <p className="text-center py-10 text-stone-500 text-sm">
-        No matches yet. Try a wider budget or distance, or take the quick quiz.
+        {tab === 'festival'
+          ? 'No festival pieces near you yet. Try a wider distance.'
+          : tab === 'trending'
+            ? 'Nothing trending near you right now. Try a wider distance.'
+            : 'No matches yet. Try a wider budget or distance, or take the quick quiz.'}
       </p>
     )
   }

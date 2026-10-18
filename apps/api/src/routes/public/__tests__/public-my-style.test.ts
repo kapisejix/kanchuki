@@ -8,16 +8,24 @@ import Fastify from 'fastify';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { errorHandler } from '../../../plugins/error-handler.js';
 
-const { mockSession, mockFindMany, mockPalette, mockEmbedDesc, mockSims } = vi.hoisted(() => ({
-  mockSession: vi.fn(),
-  mockFindMany: vi.fn(),
-  mockPalette: vi.fn(),
-  mockEmbedDesc: vi.fn(),
-  mockSims: vi.fn(),
-}));
+const { mockSession, mockFindMany, mockPalette, mockEmbedDesc, mockSims, mockTrends, mockFests } =
+  vi.hoisted(() => ({
+    mockSession: vi.fn(),
+    mockFindMany: vi.fn(),
+    mockPalette: vi.fn(),
+    mockEmbedDesc: vi.fn(),
+    mockSims: vi.fn(),
+    mockTrends: vi.fn(),
+    mockFests: vi.fn(),
+  }));
 
 vi.mock('@kanchuki/db', () => ({
-  prisma: { product: { findMany: mockFindMany }, stylePalette: { findFirst: mockPalette } },
+  prisma: {
+    product: { findMany: mockFindMany },
+    stylePalette: { findFirst: mockPalette },
+    styleTrend: { findMany: mockTrends },
+    festival: { findMany: mockFests },
+  },
 }));
 // Scoring (attribute overlap, blending) stays real; only the OpenAI call and the pgvector
 // query are doubled.
@@ -182,6 +190,8 @@ beforeEach(() => {
   mockFindMany.mockImplementation(fakeFindMany);
   mockEmbedDesc.mockResolvedValue([0.1, 0.2]);
   mockSims.mockResolvedValue(new Map());
+  mockTrends.mockResolvedValue([]);
+  mockFests.mockResolvedValue([]);
   const s = store('1');
   DB = [row('p1', s), row('p2', s)];
 });
@@ -423,5 +433,159 @@ describe('find similar (PR-9)', () => {
     const res = await feed({ similar });
     expect(res.statusCode).toBe(422);
     expect(mockEmbedDesc).not.toHaveBeenCalled();
+  });
+});
+
+describe('tabs (PR-10a)', () => {
+  const day = 86_400_000;
+  const tagged = (id: string, extra: Record<string, unknown>) =>
+    ({ ...row(id, store('1')), ...extra }) as Row;
+  const trend = (over: Record<string, unknown> = {}) => ({
+    kind: 'trending',
+    match_keywords: ['bandhani'],
+    boost: 0.3,
+    starts_at: null,
+    ends_at: null,
+    is_active: true,
+    ...over,
+  });
+  const festival = (over: Record<string, unknown> = {}) => ({
+    name: 'Navratri',
+    region: 'PAN_INDIA',
+    starts_at: new Date(NOW - day),
+    ends_at: new Date(NOW + 5 * day),
+    deleted_at: null,
+    ...over,
+  });
+
+  it('rejects an unknown tab', async () => {
+    expect((await feed({ tab: 'bogus' })).statusCode).toBe(422);
+  });
+
+  it('with no trends and no festival: extra tabs are hidden and their lists are empty', async () => {
+    for (const tab of ['festival', 'trending']) {
+      const res = await feed({ tab });
+      expect(res.statusCode).toBe(200);
+      expect(res.json().data).toEqual([]);
+      expect(res.json().meta.tabs).toEqual({ festival: null, trending: false });
+    }
+  });
+
+  describe('Trending', () => {
+    it('lists only products matching an active trending trend', async () => {
+      DB = [
+        tagged('hit', { search_tags: ['Bandhani'] }),
+        tagged('miss', { search_tags: ['plain'] }),
+      ];
+      mockTrends.mockResolvedValue([trend()]);
+      const res = await feed({ tab: 'trending' });
+      expect(ids(res)).toEqual(['hit']);
+      expect(res.json().meta.tabs.trending).toBe(true);
+    });
+
+    it('ignores a trend outside its dates, an inactive one, and an unknown kind', async () => {
+      DB = [tagged('hit', { search_tags: ['bandhani'] })];
+      mockTrends.mockResolvedValue([
+        trend({ ends_at: new Date(NOW - day) }),
+        trend({ starts_at: new Date(NOW + day) }),
+        trend({ is_active: false }),
+        trend({ kind: 'weird' }),
+      ]);
+      const res = await feed({ tab: 'trending' });
+      expect(ids(res)).toEqual([]);
+      expect(res.json().meta.tabs.trending).toBe(false);
+    });
+
+    it('a trending trend nudges the For you feed without filtering it', async () => {
+      const s = store('1');
+      DB = [
+        row('a-plain', s),
+        { ...row('z-hit', s), ...({ search_tags: ['bandhani'] } as object) } as Row,
+      ];
+      mockTrends.mockResolvedValue([trend()]);
+      expect(ids(await feed())).toEqual(['z-hit', 'a-plain']);
+    });
+  });
+
+  describe('Festival', () => {
+    it('shows the running festival name and lists Festive/Wedding or keyword matches', async () => {
+      DB = [
+        tagged('fest', { occasions: ['Festive'] }),
+        tagged('wed', { occasions: ['Wedding'] }),
+        tagged('kw', { search_tags: ['phulkari'] }),
+        tagged('daily', { occasions: ['Daily Wear'] }),
+        tagged('none', { occasions: [] }),
+      ];
+      mockFests.mockResolvedValue([festival()]);
+      mockTrends.mockResolvedValue([trend({ kind: 'festival', match_keywords: ['phulkari'] })]);
+      const res = await feed({ tab: 'festival', limit: 30 });
+      expect(ids(res).sort()).toEqual(['fest', 'kw', 'wed']);
+      expect(res.json().meta.tabs.festival).toEqual({ name: 'Navratri' });
+    });
+
+    it('festival keywords do not leak into the For you feed', async () => {
+      const s = store('1');
+      DB = [
+        row('a-plain', s),
+        { ...row('z-kw', s), ...({ search_tags: ['phulkari'] } as object) } as Row,
+      ];
+      mockFests.mockResolvedValue([festival()]);
+      mockTrends.mockResolvedValue([trend({ kind: 'festival', match_keywords: ['phulkari'] })]);
+      expect(ids(await feed())).toEqual(['a-plain', 'z-kw']);
+    });
+
+    it('a festival of another state is hidden; the shopper state or PAN_INDIA is shown', async () => {
+      mockFests.mockResolvedValue([festival({ name: 'Onam', region: 'Kerala' })]);
+      mockSession.mockResolvedValue(account({ state: 'Rajasthan' }));
+      expect((await feed()).json().meta.tabs.festival).toBeNull();
+      mockSession.mockResolvedValue(account({ state: 'kerala' }));
+      expect((await feed()).json().meta.tabs.festival).toEqual({ name: 'Onam' });
+    });
+  });
+
+  describe('Occasion', () => {
+    it('puts tagged matches first; untagged products still follow (no hard filter)', async () => {
+      const s = store('1');
+      DB = [
+        { ...row('a-none', s), ...({ occasions: [] } as object) } as Row,
+        { ...row('b-daily', s), ...({ occasions: ['Daily Wear'] } as object) } as Row,
+        { ...row('z-wed', s), ...({ occasions: ['Wedding'] } as object) } as Row,
+      ];
+      const res = await feed({ tab: 'occasion', occasion: 'Wedding' });
+      expect(ids(res)).toEqual(['z-wed', 'a-none', 'b-daily']);
+      expect(res.json().meta.occasion_matches).toBe(1);
+    });
+
+    it('reports zero matches honestly when nothing is tagged, and still returns the feed', async () => {
+      const res = await feed({ tab: 'occasion', occasion: 'Wedding' });
+      expect(ids(res)).toEqual(['p1', 'p2']);
+      expect(res.json().meta.occasion_matches).toBe(0);
+    });
+
+    it('no occasion picked: plain feed, occasion_matches null', async () => {
+      const res = await feed({ tab: 'occasion' });
+      expect(ids(res)).toEqual(['p1', 'p2']);
+      expect(res.json().meta.occasion_matches).toBeNull();
+    });
+  });
+
+  // RC-070: the dropdown / Kids form send quiz labels, the ranker compares canonical spellings.
+  it('maps a quiz-style occasion label to the canonical tags before ranking (RC-070)', async () => {
+    const s = store('1');
+    DB = [
+      { ...row('a-plain', s), ...({ occasions: [] } as object) } as Row,
+      { ...row('z-party', s), ...({ occasions: ['Party Wear'] } as object) } as Row,
+    ];
+    expect(ids(await feed({ occasion: 'Party / Festive' }))).toEqual(['z-party', 'a-plain']);
+  });
+
+  it('still answers when the trend/festival read fails; extra tabs are hidden', async () => {
+    mockTrends.mockRejectedValue(new Error('db down'));
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const res = await feed();
+    expect(res.statusCode).toBe(200);
+    expect(res.json().meta.tabs).toEqual({ festival: null, trending: false });
+    expect(spy).toHaveBeenCalled();
+    spy.mockRestore();
   });
 });

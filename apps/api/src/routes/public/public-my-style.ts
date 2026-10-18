@@ -6,10 +6,13 @@
 // end to end (RC-055). Account-specific, so never cacheable (POST + no-store).
 import { prisma } from '@kanchuki/db';
 import {
+  FESTIVAL_LOOKAHEAD_DAYS,
   type GarmentDescriptor,
   MY_STYLE_DEFAULT_RADIUS_KM,
+  MY_STYLE_TABS,
   buildEnquiryMessage,
   buildWhatsAppEnquiryLink,
+  occasionTargets,
   parseGarmentDescriptor,
 } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
@@ -22,6 +25,14 @@ import {
   embedDescriptor,
   embeddingSimilarities,
 } from '../../lib/my-style-similar.js';
+import {
+  type FestivalRow,
+  type TrendRow,
+  activeTrends,
+  matchesTab,
+  pickFestival,
+  promoteMatches,
+} from '../../lib/my-style-tabs.js';
 import { notFound, validationError } from '../../plugins/error-handler.js';
 import { getPassportSession } from './passport/passport-helpers.js';
 import { enquiryPhone, toPublicProductSummary } from './public-helpers.js';
@@ -33,6 +44,7 @@ const CANDIDATE_CAP = 300;
 const BodySchema = z
   .object({
     sort: z.enum(['best', 'nearest', 'price']).default('best'),
+    tab: z.enum(MY_STYLE_TABS).default('foryou'),
     lat: z.number().min(-90).max(90).optional(),
     lng: z.number().min(-180).max(180).optional(),
     radius_km: z.number().positive().max(500).default(MY_STYLE_DEFAULT_RADIUS_KM),
@@ -211,23 +223,75 @@ export const publicMyStyleRoutes: FastifyPluginAsync = async (server) => {
         ...(similarity ? { similarity: similarity.get(p.id) ?? 0 } : {}),
       }));
 
-      // `occasion` boosts rather than filters: occasions are AI-tagged on new uploads only
-      // (older products are empty until the occasion backfill runs), so a hard filter
-      // would hide every untagged product.
-      const ranked = rankProducts(
-        candidates,
+      // Trends and the running festival (PR-10). Tabs are a convenience: if these reads
+      // fail the feed still answers, with the extra tabs hidden, and the failure is logged.
+      const now = new Date();
+      let trendRows: TrendRow[] = [];
+      let festival: (FestivalRow & { name: string }) | null = null;
+      try {
+        const horizon = new Date(now.getTime() + FESTIVAL_LOOKAHEAD_DAYS * 86_400_000);
+        const [trendsDb, festivalsDb] = await Promise.all([
+          prisma.styleTrend.findMany({
+            where: { is_active: true },
+            select: {
+              kind: true,
+              match_keywords: true,
+              boost: true,
+              starts_at: true,
+              ends_at: true,
+              is_active: true,
+            },
+          }),
+          prisma.festival.findMany({
+            where: { deleted_at: null, ends_at: { gte: now }, starts_at: { lte: horizon } },
+            select: { name: true, region: true, starts_at: true, ends_at: true, deleted_at: true },
+          }),
+        ]);
+        trendRows = activeTrends(trendsDb, now);
+        festival = pickFestival(festivalsDb, account.state ?? null, now);
+      } catch (err) {
+        console.error('[my-style] trends/festival read failed; tabs hidden:', err);
+      }
+      const tabs = {
+        festival: festival ? { name: festival.name } : null,
+        trending: trendRows.some((t) => t.kind === 'trending' && t.match_keywords.length > 0),
+      };
+
+      // Festival keywords only matter on the Festival tab; trending nudges every feed.
+      const rankTrends = trendRows.filter((t) => t.kind === 'trending' || b.tab === 'festival');
+      // A tab nobody can see (no festival / no trend) answers empty, not with the general feed.
+      const tabLive =
+        b.tab === 'festival' ? festival !== null : b.tab === 'trending' ? tabs.trending : true;
+      const onTab = tabLive ? candidates.filter((c) => matchesTab(c, b.tab, trendRows)) : [];
+
+      // `occasion` boosts rather than filters: occasions are AI-tagged (older/abstained
+      // products are empty), so a hard filter would hide every untagged product. The label is
+      // mapped to the ranker's spellings first (RC-070).
+      const wanted = b.occasion ? occasionTargets(b.occasion) : [];
+      let ranked = rankProducts(
+        onTab,
         {
           palette: palette ? { good: palette.good_families, avoid: palette.avoid_families } : null,
-          occasions: [...account.pref_occasions, ...(b.occasion ? [b.occasion] : [])],
+          occasions: [...account.pref_occasions, ...wanted],
           colorFamilies: account.pref_colors,
           fabrics: account.pref_fabrics,
           origin,
           radiusKm: b.radius_km,
-          trends: [], // style_trends feeds this in PR-10
+          trends: rankTrends,
         },
         b.sort,
-        new Date(),
+        now,
       );
+      // Occasion tab: tagged matches first, everything else after in ranked order. The count
+      // lets the page say so honestly when no product carries the tag.
+      let occasionMatches: number | null = null;
+      if (b.tab === 'occasion' && wanted.length > 0) {
+        const occById = new Map(onTab.map((c) => [c.id, c.occasions.map((o) => o.toLowerCase())]));
+        const isMatch = (i: { id: string }) =>
+          (occById.get(i.id) ?? []).some((o) => wanted.includes(o));
+        occasionMatches = ranked.filter(isMatch).length;
+        ranked = promoteMatches(ranked, isMatch);
+      }
 
       const byId = new Map(inRange.map((p) => [p.id, p]));
       const pageItems = ranked.slice((b.page - 1) * b.limit, b.page * b.limit);
@@ -255,6 +319,11 @@ export const publicMyStyleRoutes: FastifyPluginAsync = async (server) => {
           page: b.page,
           limit: b.limit,
           sort: b.sort,
+          tab: b.tab,
+          // Which extra tabs have something behind them; the page hides the rest.
+          tabs,
+          // Occasion tab only: how many products carry the requested tag (else null).
+          occasion_matches: occasionMatches,
           location_scope: locationScope,
           rationale_source: 'none' as const,
           truncated: rows.length === CANDIDATE_CAP,
