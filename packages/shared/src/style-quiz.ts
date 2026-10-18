@@ -45,7 +45,8 @@ const BUDGETS: Record<string, [number | null, number | null]> = {
 };
 
 const key = (s: string) => s.trim().toLowerCase();
-const uniq = (xs: string[]) => [...new Set(xs)];
+// Array.from, not a spread: apps/web typechecks this file at a target without Set iteration.
+const uniq = (xs: string[]) => Array.from(new Set(xs));
 const skipNoPreference = (s: string) => key(s) !== 'no preference';
 
 /**
