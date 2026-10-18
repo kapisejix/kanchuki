@@ -4393,7 +4393,7 @@ Owner / manager photographs the customer once from an enquiry card and gets a sw
 
 ---
 
-## 42. F-045 My Style — customer photo → cross-store suggestions — 🔴 SPEC WRITTEN 2026-10-17, NOT STARTED
+## 42. F-045 My Style — customer photo → cross-store suggestions — 🟨 PHASE 0 BUILT 2026-10-18 (PR-1..PR-5 merged); PHASE 1+ NOT STARTED
 
 **Spec:** `docs/tasks/pending/my-style.md` (decisions D1–D6 §0, PR map §6, test plan §7). Supersedes F-039 MID; independent of F-040 customer try-on (which is OFF, F-044 E6).
 
@@ -4401,7 +4401,7 @@ Signed-in customer opens `/my-style` (customer web only), gives a selfie / a gar
 
 | Phase | PRs | Status |
 |---|---|---|
-| 0 — no photo (schema, colour families, feed API, web shell, multi-store enquiry) | PR-1…PR-5 | 🔴 Not started |
+| 0 — no photo (schema, colour families, feed API, web shell, multi-store enquiry) | PR-1…PR-5 | 🟨 Built, merged 2026-10-18 (not browser-verified) |
 | 1 — selfie analysis + admin | PR-6…PR-8 | 🔴 Not started |
 | 2 — find-similar + complete-the-look | PR-9, PR-10 | 🔴 Not started |
 | 3 — try-on hand-off | PR-11 | ⛔ Gated on `CUSTOMER_TRY_ON_ENABLED` + F-040 launch |
