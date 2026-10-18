@@ -157,6 +157,28 @@ describe('My Style feed', () => {
     expect(await screen.findByText('Wine Silk Suit')).toBeTruthy();
   });
 
+  // D4: the parent describes the need; there is no photo path anywhere.
+  it('kids form applies occasion + budget to the feed and has no file input', async () => {
+    fetchMock.mockResolvedValue(feed());
+    const { container } = render(<MyStylePage />);
+    await screen.findByText('Wine Silk Suit');
+
+    fireEvent.click(screen.getByRole('button', { name: /For my child/ }));
+    expect(container.querySelector('input[type="file"]')).toBeNull();
+    fireEvent.change(screen.getByLabelText('Who is it for?'), { target: { value: 'Girl' } });
+    fireEvent.change(screen.getByLabelText('Age'), { target: { value: '6–8 yrs' } });
+    fireEvent.change(screen.getByLabelText('Kids occasion'), { target: { value: 'Party / Festive' } });
+    fireEvent.change(screen.getByLabelText('Kids budget'), { target: { value: '100000' } });
+    fireEvent.click(screen.getByRole('button', { name: /Show outfits/ }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    expect(bodyOf(1)).toMatchObject({ occasion: 'Party / Festive', budget_max: 100000, page: 1 });
+    // Age/gender are not sent: the feed cannot filter on them, and the page says so.
+    expect(bodyOf(1)).not.toHaveProperty('age');
+    expect(container.querySelector('input[type="file"]')).toBeNull();
+    expect(screen.getByText(/Shopping for: Girl, 6–8 yrs/)).toBeTruthy();
+  });
+
   it('an aborted request is not an error state (RC-014)', async () => {
     fetchMock.mockRejectedValueOnce(new DOMException('aborted', 'AbortError')).mockResolvedValue(feed());
     render(<MyStylePage />);

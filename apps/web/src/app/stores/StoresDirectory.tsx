@@ -93,6 +93,14 @@ export default function StoresDirectory({ initial }: { initial: StoresDirectoryD
         <ShopperEntry />
       </div>
 
+      <Link
+        href="/my-style"
+        className="mb-6 block rounded-2xl border border-carbon/10 bg-white px-5 py-4 text-center transition hover:border-cobalt-500"
+      >
+        <span className="block font-display text-base font-semibold text-carbon">Find what suits you</span>
+        <span className="block text-sm text-carbon/60">See pieces from stores near you, picked for your taste.</span>
+      </Link>
+
       <NearMeBar loc={loc} radiusKm={data?.nearby ? data.radius_km : null} empty={nearbyEmpty} />
 
       {/* Search + city chips */}

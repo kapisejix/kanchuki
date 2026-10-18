@@ -53,6 +53,20 @@ export default function ForCustomersPage() {
         </div>
       </Section>
 
+      <Section>
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <AnimatedSection>
+            <SectionHeader tag="My Style" title="Find what suits you" />
+          </AnimatedSection>
+          <p className="text-carbon/70 text-sm sm:text-base leading-relaxed mb-6">
+            Log in once and Kanchuki shows pieces from stores near you, picked for your colours, budget and occasions. Ask any store about a piece with one tap.
+          </p>
+          <Link href="/my-style" className="inline-block rounded-full bg-cobalt-600 px-6 py-3 text-sm font-semibold text-white hover:bg-cobalt-700 transition-colors">
+            Open My Style
+          </Link>
+        </div>
+      </Section>
+
       <Section className="bg-white">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
           <AnimatedSection>
