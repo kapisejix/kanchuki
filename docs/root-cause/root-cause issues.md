@@ -12,6 +12,17 @@
 
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
+## RC-069 — The occasion backfill skipped every NULL `occasions` row, so it reported "nothing to do" on a catalog that needed all of it
+
+- **Component:** `apps/api/src/jobs/occasion-backfill.ts` (shipped in #127). Fixed 2026-10-18 on `fix/occasion-backfill-null`.
+- **Symptom:** the owner's dry-run printed `scanned=0`, and `count(*) FILTER (WHERE cardinality(occasions)=0)` also returned 0 for 216 live AI-tagged products. Neither meant "already filled": `SELECT ... unnest(occasions)` returned no rows at all.
+- **Root cause:** `products.occasions` is a nullable `TEXT[]` with no default (`000_baseline`: `"occasions" TEXT[]`), and nothing has written it since occasion was removed on 2026-08-10, so those rows are `NULL`, not `'{}'`. Prisma's `isEmpty: true` compiles to `= '{}'` and `cardinality(NULL)` is `NULL`, so every NULL row falls out of both the filter and the write re-check. The tests mocked Prisma and only ever fed it `[]`, so the NULL case was never exercised (same mock-agrees-with-code shape as RC-037).
+- **Fix:** candidate ids come from raw SQL (`occasions IS NULL OR cardinality(occasions) = 0`), the row is then loaded by id, and the write is a raw `UPDATE ... WHERE id = ? AND (occasions IS NULL OR cardinality(occasions) = 0)` so a retailer edit or concurrent re-tag still wins. `tag-product` was never affected: it reads `current.occasions?.length ?? 0`.
+- **Proof:** `occasion-backfill.test.ts` asserts the select and the write both contain `occasions IS NULL OR cardinality(occasions) = 0`, plus cursor paging, limit, dry-run, race (0 rows changed) and failure cases.
+- **Not verified:** not run against the real DB after the fix. The owner re-runs the 30-product dry-run; it should now scan up to 30 of the 216 rows.
+
+---
+
 ## RC-068 — Catalog-upload and support-session delegates could use (and burn quota on) the owner/manager-only try-on routes
 
 - **Component:** `apps/api/src/routes/products/products-tryon.ts` (all four Bearer routes: `POST /:id/try-on`, `GET /:id/try-on/status`, `GET /try-on/quota`, `POST /try-on/discard`). Fixed 2026-10-17 on `feat/enquiry-r2-delegate-try-on-fix` (F-044 R2).
