@@ -14,7 +14,17 @@ import { formatPriceRange } from '@kanchuki/shared'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { KidsForm } from './KidsForm'
+import { ShortlistBar, useEnquiry } from './ShortlistBar'
+import { StyleCardActions } from './StyleCardActions'
 import { type FeedCard, type FeedMeta, type FeedSort, fetchFeed } from './lib'
+import {
+  MAX_PER_STORE,
+  type ShortItem,
+  groupByStore,
+  loadShortlist,
+  saveShortlist,
+  toShortItem,
+} from './shortlist'
 
 const SORTS: { value: FeedSort; label: string }[] = [
   { value: 'best', label: 'Best match' },
@@ -49,6 +59,31 @@ export default function MyStylePage() {
   // Bumped to refetch with unchanged filters (retry, quiz saved).
   const [nonce, setNonce] = useState(0)
   const [view, setView] = useState<View>({ kind: 'loading' })
+  const [shortlist, setShortlist] = useState<ShortItem[]>([])
+  const enquiry = useEnquiry()
+  const groups = groupByStore(shortlist)
+
+  // Read after mount so the server and first client render agree.
+  useEffect(() => setShortlist(loadShortlist()), [])
+
+  function updateShortlist(next: ShortItem[]) {
+    setShortlist(next)
+    saveShortlist(next)
+  }
+
+  function toggleShortlist(card: FeedCard) {
+    if (shortlist.some((i) => i.id === card.id)) {
+      updateShortlist(shortlist.filter((i) => i.id !== card.id))
+      return
+    }
+    const item = toShortItem(card)
+    if (item) updateShortlist([...shortlist, item])
+  }
+
+  function enquireOne(card: FeedCard) {
+    const item = toShortItem(card)
+    if (item) void enquiry.send([{ slug: item.slug, shop_name: item.shop_name, items: [item] }])
+  }
 
   useEffect(() => {
     const ctrl = new AbortController()
@@ -205,7 +240,23 @@ export default function MyStylePage() {
         )}
       </section>
 
-      <Results view={view} page={page} onPage={goToPage} onRetry={() => setNonce((n) => n + 1)} />
+      <Results
+        view={view}
+        page={page}
+        onPage={goToPage}
+        onRetry={() => setNonce((n) => n + 1)}
+        shortlist={shortlist}
+        busy={enquiry.busy}
+        onToggle={toggleShortlist}
+        onEnquire={enquireOne}
+      />
+      {/* Room so the sticky bar never covers the pager. */}
+      {groups.length > 0 && <div className="h-48" aria-hidden="true" />}
+      <ShortlistBar
+        groups={groups}
+        enquiry={enquiry}
+        onRemove={(id) => updateShortlist(shortlist.filter((i) => i.id !== id))}
+      />
     </div>
   )
 }
@@ -215,11 +266,19 @@ function Results({
   page,
   onPage,
   onRetry,
+  shortlist,
+  busy,
+  onToggle,
+  onEnquire,
 }: {
   view: View
   page: number
   onPage: (p: number) => void
   onRetry: () => void
+  shortlist: ShortItem[]
+  busy: boolean
+  onToggle: (c: FeedCard) => void
+  onEnquire: (c: FeedCard) => void
 }) {
   if (view.kind === 'loading') {
     return (
@@ -273,18 +332,30 @@ function Results({
               )}
             </div>
             <div className="p-3 flex-1 flex flex-col gap-1">
-              <p className="text-sm font-medium text-stone-900 truncate">{c.name}</p>
+              {c.retailer.slug ? (
+                <Link
+                  href={`/${c.retailer.slug}/all-${c.retailer.slug}/product/${c.id}`}
+                  className="text-sm font-medium text-stone-900 truncate"
+                >
+                  {c.name}
+                </Link>
+              ) : (
+                <p className="text-sm font-medium text-stone-900 truncate">{c.name}</p>
+              )}
               <p className="text-sm text-stone-700">{formatPriceRange(c.price_min, c.price_max)}</p>
               <p className="text-xs text-stone-500 truncate">
                 {[c.retailer.shop_name, c.retailer.city, c.distance_km != null ? `${c.distance_km} km` : null]
                   .filter(Boolean)
                   .join(' · ')}
               </p>
-              {c.retailer.slug && (
-                <Link href={`/${c.retailer.slug}`} className="mt-2 text-center rounded-lg bg-stone-900 text-white text-sm py-2">
-                  Enquire
-                </Link>
-              )}
+              <StyleCardActions
+                card={c}
+                saved={shortlist.some((i) => i.id === c.id)}
+                full={shortlist.filter((i) => i.slug === c.retailer.slug).length >= MAX_PER_STORE}
+                busy={busy}
+                onToggle={() => onToggle(c)}
+                onEnquire={() => onEnquire(c)}
+              />
             </div>
           </li>
         ))}

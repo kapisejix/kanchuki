@@ -70,8 +70,12 @@ describe('My Style feed', () => {
     expect(screen.getByText(/₹2,100/)).toBeTruthy();
     expect(screen.getByText(/Shree Sarees/)).toBeTruthy();
     expect(screen.getByText(/3\.2 km/)).toBeTruthy();
-    const enquire = screen.getByRole('link', { name: /Enquire/ });
-    expect(enquire.getAttribute('href')).toBe('/shree-sarees');
+    // PR-5b: the card has Shortlist + Enquire actions and its name opens the product page.
+    expect(screen.getByRole('button', { name: 'Enquire' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Shortlist' })).toBeTruthy();
+    expect(screen.getByText('Wine Silk Suit').closest('a')?.getAttribute('href')).toBe(
+      '/shree-sarees/all-shree-sarees/product/p1',
+    );
     expect(screen.queryByText(/buy/i)).toBeNull();
   });
 

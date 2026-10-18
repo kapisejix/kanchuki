@@ -38,6 +38,31 @@ export type FeedResult =
   | { kind: 'unauthorized' }
   | { kind: 'error' }
 
+export type EnquiryResult =
+  | { kind: 'ok'; url: string; recorded: boolean }
+  | { kind: 'unauthorized' }
+  | { kind: 'error' }
+
+/** One store's picks -> one F-044 enquiry. Never throws; a timeout counts as an error (RC-011). */
+export async function sendEnquiry(slug: string, productIds: string[]): Promise<EnquiryResult> {
+  try {
+    const res = await fetch('/api/my-style/enquire', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ retailer_slug: slug, product_ids: productIds }),
+      signal: AbortSignal.timeout(15_000),
+    })
+    if (res.status === 401) return { kind: 'unauthorized' }
+    if (!res.ok) return { kind: 'error' }
+    const json = (await res.json()) as { data?: { whatsapp_url?: string; recorded?: boolean } }
+    const url = json.data?.whatsapp_url
+    return url ? { kind: 'ok', url, recorded: json.data?.recorded === true } : { kind: 'error' }
+  } catch {
+    return { kind: 'error' }
+  }
+}
+
 /** Rejects on abort so the caller can ignore a superseded request (RC-014). */
 export async function fetchFeed(req: FeedRequest, signal: AbortSignal): Promise<FeedResult> {
   const res = await fetch('/api/my-style/feed', {

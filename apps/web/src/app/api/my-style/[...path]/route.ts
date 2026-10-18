@@ -8,7 +8,7 @@ import { API_URL as apiUrl } from '@/lib/apiUrl';
 // Every my-style subpath the browser may reach, POST only. A path missing here
 // answers 404 and a verb with no handler answers 405, so keep both in step with
 // the screens that call them (RC-026).
-const MY_STYLE_PATHS = ['feed'];
+const MY_STYLE_PATHS = ['feed', 'enquire'];
 
 // Null-body statuses may not be rebuilt with a body (RC-045).
 const NULL_BODY_STATUS = new Set([204, 205, 304]);
