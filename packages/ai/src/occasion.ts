@@ -44,10 +44,16 @@ export async function suggestOccasionsFromText(
     ...(opts?.onProviderUsed ? { onProviderUsed: opts.onProviderUsed } : {}),
   })
   const match = raw.match(/\[[\s\S]*?\]/)
-  if (!match) return []
+  if (!match) {
+    // Not a model "I don't know" ([]): a reply with no array at all, e.g. a thinking model
+    // spending the 64-token budget on reasoning. Say so instead of counting it as unlabelled.
+    console.warn(`[occasion] reply had no JSON array: ${JSON.stringify(raw.slice(0, 120))}`)
+    return []
+  }
   try {
     return normalizeOccasions(JSON.parse(match[0]))
   } catch {
+    console.warn(`[occasion] unparseable array: ${JSON.stringify(match[0].slice(0, 120))}`)
     return []
   }
 }

@@ -36,62 +36,70 @@ export async function handleOccasionBackfill(
   const result: OccasionBackfillResult = { scanned: 0, updated: 0, empty: 0, samples: [] };
   let cursor: string | undefined;
 
-  while (result.scanned < limit) {
-    // products.occasions is a nullable TEXT[] with no default, and nothing has written it
-    // since 2026-08-10, so those rows are NULL. Prisma's `isEmpty` is `= '{}'` and skips
-    // NULL, so candidate ids come from raw SQL.
-    const ids = (
-      await prisma.$queryRaw<{ id: string }[]>`
+  // The summary prints even when an AI call aborts the run, so a partial run is never silent.
+  try {
+    while (result.scanned < limit) {
+      // products.occasions is a nullable TEXT[] with no default, and nothing has written it
+      // since 2026-08-10, so those rows are NULL. Prisma's `isEmpty` is `= '{}'` and skips
+      // NULL, so candidate ids come from raw SQL.
+      const ids = (
+        await prisma.$queryRaw<{ id: string }[]>`
         SELECT id FROM products
         WHERE ai_tagged AND deleted_at IS NULL
           AND (occasions IS NULL OR cardinality(occasions) = 0)
           AND id > ${cursor ?? ''}
         ORDER BY id ASC
         LIMIT ${Math.min(BATCH_SIZE, limit - result.scanned)}`
-    ).map((r) => r.id);
-    if (ids.length === 0) break;
+      ).map((r) => r.id);
+      if (ids.length === 0) break;
 
-    const batch = await prisma.product.findMany({
-      where: { id: { in: ids } },
-      select: {
-        id: true,
-        retailer_id: true,
-        category: true,
-        subtype: true,
-        pattern: true,
-        styles: true,
-        fabrics: true,
-        embellishments: true,
-        search_tags: true,
-      },
-      orderBy: { id: 'asc' },
-      take: Math.min(BATCH_SIZE, limit - result.scanned),
-    });
-    if (batch.length === 0) break;
+      const batch = await prisma.product.findMany({
+        where: { id: { in: ids } },
+        select: {
+          id: true,
+          retailer_id: true,
+          category: true,
+          subtype: true,
+          pattern: true,
+          styles: true,
+          fabrics: true,
+          embellishments: true,
+          search_tags: true,
+        },
+        orderBy: { id: 'asc' },
+        take: Math.min(BATCH_SIZE, limit - result.scanned),
+      });
+      if (batch.length === 0) break;
 
-    for (const p of batch) {
-      const occasions = await suggestOccasionsFromText(p);
-      result.scanned++;
-      if (occasions.length === 0) {
-        result.empty++;
-      } else if (dryRun) {
-        result.samples.push({ id: p.id, category: p.category, subtype: p.subtype, occasions });
-      } else {
-        // Re-check NULL/empty in the write so a retailer edit or a concurrent re-tag wins.
-        const changed = await prisma.$executeRaw`
+      for (const p of batch) {
+        const occasions = await suggestOccasionsFromText(p);
+        result.scanned++;
+        if (result.scanned % 10 === 0) {
+          console.info(
+            `[occasion-backfill] progress scanned=${result.scanned} updated=${result.updated} empty=${result.empty}`,
+          );
+        }
+        if (occasions.length === 0) {
+          result.empty++;
+        } else if (dryRun) {
+          result.samples.push({ id: p.id, category: p.category, subtype: p.subtype, occasions });
+        } else {
+          // Re-check NULL/empty in the write so a retailer edit or a concurrent re-tag wins.
+          const changed = await prisma.$executeRaw`
           UPDATE products SET occasions = ${occasions}::text[]
           WHERE id = ${p.id} AND (occasions IS NULL OR cardinality(occasions) = 0)`;
-        if (changed > 0) {
-          result.updated++;
-          await addEmbeddingJob({ product_id: p.id, retailer_id: p.retailer_id });
+          if (changed > 0) {
+            result.updated++;
+            await addEmbeddingJob({ product_id: p.id, retailer_id: p.retailer_id });
+          }
         }
       }
+      cursor = ids[ids.length - 1];
     }
-    cursor = ids[ids.length - 1];
+  } finally {
+    console.info(
+      `[occasion-backfill] dryRun=${dryRun} scanned=${result.scanned} updated=${result.updated} empty=${result.empty}`,
+    );
   }
-
-  console.info(
-    `[occasion-backfill] dryRun=${dryRun} scanned=${result.scanned} updated=${result.updated} empty=${result.empty}`,
-  );
   return result;
 }
