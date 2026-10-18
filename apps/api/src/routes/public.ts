@@ -9,6 +9,7 @@ import {
   publicDesignRoutes,
   publicEngagementChipsRoutes,
   publicMiscRoutes,
+  publicMyStyleRoutes,
   publicNearMeRoutes,
   publicProductsRoutes,
   publicRecommendationsRoutes,
@@ -36,6 +37,8 @@ export const publicRoutes: FastifyPluginAsync = async (server) => {
   await server.register(publicCatalogPaymentRoutes);
   // public-near-me — geo-search for nearby retailers
   await server.register(publicNearMeRoutes);
+  // public-my-style — F-045 cross-store ranked feed (passport session required)
+  await server.register(publicMyStyleRoutes, { prefix: '/my-style' });
   // public-stores — store directory
   await server.register(publicStoresRoutes);
   // public-reviews — F-021 customer-facing review submission
