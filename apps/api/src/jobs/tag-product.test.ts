@@ -201,6 +201,33 @@ describe('handleTagProduct', () => {
     expect(mockCountProduct).not.toHaveBeenCalled();
   });
 
+  it('fills occasions from the tags while the product has none', async () => {
+    mockFindUniqueProduct.mockResolvedValue({ name: null, sku: null, occasions: [] });
+    mockTagProductImageUrls.mockResolvedValue({ ...fakeTags, occasions: ['Wedding', 'Festive'] });
+
+    await handleTagProduct(baseData);
+
+    expect(mockUpdateProduct.mock.calls[0]?.[0].data.occasions).toEqual(['Wedding', 'Festive']);
+  });
+
+  it('never overwrites existing occasions on re-tag', async () => {
+    mockFindUniqueProduct.mockResolvedValue({ name: null, sku: null, occasions: ['Casual'] });
+    mockTagProductImageUrls.mockResolvedValue({ ...fakeTags, occasions: ['Wedding'] });
+
+    await handleTagProduct(baseData);
+
+    expect(mockUpdateProduct.mock.calls[0]?.[0].data).not.toHaveProperty('occasions');
+  });
+
+  it('leaves occasions alone when the tagger returns none', async () => {
+    mockFindUniqueProduct.mockResolvedValue({ name: null, sku: null, occasions: [] });
+    mockTagProductImageUrls.mockResolvedValue({ ...fakeTags, occasions: [] });
+
+    await handleTagProduct(baseData);
+
+    expect(mockUpdateProduct.mock.calls[0]?.[0].data).not.toHaveProperty('occasions');
+  });
+
   it('never overwrites retailer-picked styles/fabrics on re-tag', async () => {
     mockFindUniqueProduct.mockResolvedValue({
       name: null,

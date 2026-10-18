@@ -330,7 +330,8 @@ export const publicStylistRoutes: FastifyPluginAsync = async (server) => {
         fabric: p.fabric_estimate ?? 'Unknown',
         // Prices are stored in paise — formatPriceRange divides by 100 (RC-055).
         price: formatPriceRange(p.price_min, p.price_max),
-        occasions: p.occasions.join(', ') || 'General',
+        // `occasions` is an AI guess used for ranking and the soft filter above only:
+        // it is deliberately not sent to the LLM, so no card rationale can state it as fact.
       }));
 
       // Non-AI fallback: candidates are already filtered by category/age/
@@ -492,7 +493,7 @@ RULES:
 
       const products = await prisma.product.findMany({
         where: { retailer_id: retailer.id, deleted_at: null, status: 'AVAILABLE' },
-        select: { category: true, occasions: true, primary_color: true },
+        select: { category: true, primary_color: true },
         take: 200,
         orderBy: { created_at: 'desc' },
       });
@@ -506,7 +507,6 @@ RULES:
       const topCategories = rankByFrequency(
         products.map((p) => p.category).filter((c): c is string => !!c),
       );
-      const topOccasions = rankByFrequency(products.flatMap((p) => p.occasions));
       const topColors = rankByFrequency(
         products.map((p) => p.primary_color).filter((c): c is string => !!c),
       );
@@ -514,12 +514,8 @@ RULES:
       const suggestions: string[] = [];
       for (let i = 0; i < Math.min(5, topCategories.length); i++) {
         const category = topCategories[i];
-        const occasion = topOccasions.length > 0 ? topOccasions[i % topOccasions.length] : null;
         const color = topColors.length > 0 ? topColors[i % topColors.length] : null;
-        const parts = [color, category, occasion ? `for ${occasion.toLowerCase()}` : null].filter(
-          Boolean,
-        );
-        suggestions.push(parts.join(' '));
+        suggestions.push([color, category].filter(Boolean).join(' '));
       }
 
       return reply.status(200).send({ data: { suggestions } });
