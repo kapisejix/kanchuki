@@ -16,6 +16,7 @@
 //   - Colour names are validated against the table, not a copy of it, so an alias edit in
 //     Admin -> colour families is immediately usable here.
 import { prisma } from '@kanchuki/db';
+import { STYLE_TREND_KINDS } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { AppError, notFound, validationError } from '../../plugins/error-handler.js';
@@ -46,7 +47,8 @@ const isoDate = z.string().datetime({ offset: true }).nullable();
 
 const TrendFields = {
   label: z.string().trim().min(2).max(60),
-  kind: z.string().trim().toLowerCase().min(2).max(30),
+  // The feed only reads these kinds (PR-10); anything else would sit in the table doing nothing.
+  kind: z.string().trim().toLowerCase().pipe(z.enum(STYLE_TREND_KINDS)),
   match_keywords: keywords,
   boost: z.number().min(0).max(1),
   starts_at: isoDate,

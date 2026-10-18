@@ -36,10 +36,17 @@ export interface FeedMeta {
   style_profile: StyleProfile | null
   /** Set only on a find-similar feed: which signal ranked it and how many had an embedding. */
   similar?: { source: 'embedding' | 'attributes'; embedded: number; total: number } | null
+  /** Which extra tabs have something behind them. Absent = hide Festival and Trending. */
+  tabs?: { festival: { name: string } | null; trending: boolean }
+  /** Occasion tab only: how many products carry the picked tag (null on other tabs). */
+  occasion_matches?: number | null
 }
+
+export type FeedTab = 'foryou' | 'festival' | 'occasion' | 'trending'
 
 export interface FeedRequest {
   sort: FeedSort
+  tab?: FeedTab
   page: number
   limit: number
   occasion?: string

@@ -6,6 +6,7 @@ import {
   DEFAULT_COLOR_FAMILIES,
   normalizeColorFamily,
 } from './color-family.js';
+import { PRODUCT_OCCASIONS } from './occasions.js';
 
 export interface StyleQuizAnswers {
   occasion?: string[];
@@ -33,6 +34,17 @@ const OCCASIONS: Record<string, string[]> = {
   'office / formal': ['daily wear'],
   'casual outings': ['daily wear'],
 };
+
+/**
+ * Any occasion the shopper can pick (quiz/dropdown label like "Party / Festive", or a
+ * canonical value like "Party Wear") -> the lowercase spellings the ranker compares. An
+ * unknown label gives [] (no boost), never a throw. RC-070: the feed used to pass the
+ * dropdown label straight to the ranker, where it matched nothing.
+ */
+export function occasionTargets(label: string): string[] {
+  const k = key(label);
+  return OCCASIONS[k] ?? (PRODUCT_OCCASIONS.some((o) => o.toLowerCase() === k) ? [k] : []);
+}
 
 // [min, max] in paise; null = open-ended.
 const BUDGETS: Record<string, [number | null, number | null]> = {

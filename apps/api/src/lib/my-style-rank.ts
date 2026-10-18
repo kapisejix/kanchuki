@@ -11,6 +11,7 @@ import {
   type MyStyleSort,
 } from '@kanchuki/shared';
 import { haversineDistance } from './geo.js';
+import { trendHit } from './my-style-tabs.js';
 
 export interface RankCandidate {
   id: string;
@@ -78,8 +79,7 @@ function fit(c: RankCandidate, p: RankProfile): number {
 function trend(c: RankCandidate, p: RankProfile): number {
   let best = 0;
   for (const t of p.trends) {
-    if (t.match_keywords.some((k) => c.keywords.includes(k.toLowerCase())))
-      best = Math.max(best, t.boost);
+    if (trendHit(c.keywords, t)) best = Math.max(best, t.boost);
   }
   return clamp01(best);
 }

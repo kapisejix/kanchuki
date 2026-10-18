@@ -259,7 +259,9 @@ function Trends() {
     <div className="space-y-4">
       <p className="text-sm text-gray-500">
         A trend lifts products whose tags match its keywords, between its dates. Boost is 0 to 1
-        (0.3 is a gentle nudge). Trends feed the Festival and Trending tabs when those ship.
+        (0.3 is a gentle nudge). Trending trends build the shopper Trending tab (hidden while there
+        are none) and nudge every feed. Festival trends add keywords to the Festival tab, which
+        appears only while a festival from the festival calendar is running or within 30 days.
       </p>
       <Status error={error ?? err} ready={!!data} />
       {data?.length === 0 && <p className="text-sm text-gray-400">No trends yet.</p>}
@@ -280,7 +282,12 @@ function Trends() {
       ))}
       <div className="grid gap-2 rounded-2xl border border-gray-200/80 bg-white/80 p-4 sm:grid-cols-3">
         <label className="text-xs text-gray-500">Label<input className={`${input} mt-1 w-full`} value={f.label} onChange={set('label')} /></label>
-        <label className="text-xs text-gray-500">Kind<input className={`${input} mt-1 w-full`} value={f.kind} onChange={set('kind')} /></label>
+        <label className="text-xs text-gray-500">Kind
+          <select className={`${input} mt-1 w-full`} value={f.kind} onChange={set('kind')}>
+            <option value="trending">Trending tab</option>
+            <option value="festival">Festival tab</option>
+          </select>
+        </label>
         <label className="text-xs text-gray-500">Boost (0-1)<input type="number" min="0" max="1" step="0.05" className={`${input} mt-1 w-full`} value={f.boost} onChange={set('boost')} /></label>
         <label className="text-xs text-gray-500 sm:col-span-3">Keywords (comma separated)<input className={`${input} mt-1 w-full`} value={f.keywords} onChange={set('keywords')} /></label>
         <label className="text-xs text-gray-500">Starts<input type="date" className={`${input} mt-1 w-full`} value={f.start} onChange={set('start')} /></label>

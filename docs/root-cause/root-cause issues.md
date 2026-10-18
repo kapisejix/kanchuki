@@ -12,6 +12,17 @@
 
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
+## RC-070 — The My Style occasion filter and Kids form sent quiz labels the ranker never matches
+
+- **Component:** `apps/api/src/routes/public/public-my-style.ts` (`/feed`), `packages/shared/src/style-quiz.ts`. Found and fixed 2026-10-18 on `feat/f-045-tabs` (PR-10a), while wiring the Occasion tab.
+- **Symptom:** picking "Party / Festive" or "Wedding / Bridal" in the page's occasion dropdown (or the Kids form's occasion) changed nothing: results were ordered as if no occasion was chosen.
+- **Root cause:** the feed passed the request's `occasion` string straight into the ranker's `occasions`, which compares lowercase canonical spellings (`party wear`, `festive`, `wedding`, `daily wear`). The dropdown and Kids form send the quiz's display labels ("Party / Festive", "Wedding / Bridal", "Office / Formal"). The label to canonical table already existed in `style-quiz.ts` for the quiz route, but only that route used it, so the filter path had a second, missing copy of the mapping. The route test passed `occasion` as a label and only asserted the call shape.
+- **Fix:** `occasionTargets(label)` in `style-quiz.ts` reads the same table (and accepts canonical names); the feed maps `occasion` through it before ranking. Unknown label -> no boost, no throw.
+- **Proof:** `my-style-tabs.test.ts` (shared) pins every label and every canonical value; `public-my-style.test.ts` > "maps a quiz-style occasion label ... (RC-070)" ranks a `Party Wear` product first for "Party / Festive" (id ordered so only the boost can put it first).
+- **Not verified:** not exercised against real tagged products or in a browser. Label quality of `occasions` itself is still only partly verified (see RC-069).
+
+---
+
 ## RC-069 — The occasion backfill skipped every NULL `occasions` row, so it reported "nothing to do" on a catalog that needed all of it
 
 - **Component:** `apps/api/src/jobs/occasion-backfill.ts` (shipped in #127). Fixed 2026-10-18 on `fix/occasion-backfill-null`.
