@@ -11,3 +11,4 @@ export * from './watermark.js';
 export * from './tryon.js';
 export * from './schedule-templates.js';
 export * from './my-style-vision.js';
+export * from './occasion.js';

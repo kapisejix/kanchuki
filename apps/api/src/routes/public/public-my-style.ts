@@ -211,8 +211,9 @@ export const publicMyStyleRoutes: FastifyPluginAsync = async (server) => {
         ...(similarity ? { similarity: similarity.get(p.id) ?? 0 } : {}),
       }));
 
-      // `occasion` boosts rather than filters: AI tagging no longer sets occasions, so a
-      // hard filter would hide every newer product.
+      // `occasion` boosts rather than filters: occasions are AI-tagged on new uploads only
+      // (older products are empty until the occasion backfill runs), so a hard filter
+      // would hide every untagged product.
       const ranked = rankProducts(
         candidates,
         {

@@ -56,6 +56,7 @@ export async function handleTagProduct(data: TaggingJobData): Promise<void> {
         category_id: true,
         styles: true,
         fabrics: true,
+        occasions: true,
         search_tags: true,
       },
     });
@@ -120,6 +121,11 @@ export async function handleTagProduct(data: TaggingJobData): Promise<void> {
           // the retailer's own attribute list.
           ...(matchedStyles === current?.styles ? {} : { styles: matchedStyles }),
           ...(matchedFabrics === current?.fabrics ? {} : { fabrics: matchedFabrics }),
+          // Ranking-only occasions (already enum-validated by the tagger). Same
+          // never-clobber rule: written only while the array is still empty.
+          ...((current?.occasions?.length ?? 0) === 0 && tags.occasions?.length
+            ? { occasions: tags.occasions }
+            : {}),
           pattern: tags.pattern,
           embellishments: tags.embellishments,
           neck_style: tags.neck_style,
