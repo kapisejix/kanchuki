@@ -2,7 +2,7 @@
 // re-added to the tagger. One-off and owner-run (apps/api/scripts/occasion-backfill.ts) —
 // deliberately NOT a repeating cron. Each product costs one text-only AI call.
 //
-// Only rows with an empty occasions array; the write re-checks that, so a retailer or a
+// Only rows with NULL or empty occasions; the write re-checks that, so a retailer or a
 // concurrent re-tag is never overwritten and a re-run touches nothing it already filled.
 // A failed AI call FAILS the job (RC-059/060): skipping would report a clean "success".
 // Calls are platform-paid: no onProviderUsed, so no retailer AI_TAGGING_CALL quota drain.
@@ -37,13 +37,22 @@ export async function handleOccasionBackfill(
   let cursor: string | undefined;
 
   while (result.scanned < limit) {
+    // products.occasions is a nullable TEXT[] with no default, and nothing has written it
+    // since 2026-08-10, so those rows are NULL. Prisma's `isEmpty` is `= '{}'` and skips
+    // NULL, so candidate ids come from raw SQL.
+    const ids = (
+      await prisma.$queryRaw<{ id: string }[]>`
+        SELECT id FROM products
+        WHERE ai_tagged AND deleted_at IS NULL
+          AND (occasions IS NULL OR cardinality(occasions) = 0)
+          AND id > ${cursor ?? ''}
+        ORDER BY id ASC
+        LIMIT ${Math.min(BATCH_SIZE, limit - result.scanned)}`
+    ).map((r) => r.id);
+    if (ids.length === 0) break;
+
     const batch = await prisma.product.findMany({
-      where: {
-        ai_tagged: true,
-        deleted_at: null,
-        occasions: { isEmpty: true },
-        ...(cursor ? { id: { gt: cursor } } : {}),
-      },
+      where: { id: { in: ids } },
       select: {
         id: true,
         retailer_id: true,
@@ -68,17 +77,17 @@ export async function handleOccasionBackfill(
       } else if (dryRun) {
         result.samples.push({ id: p.id, category: p.category, subtype: p.subtype, occasions });
       } else {
-        const res = await prisma.product.updateMany({
-          where: { id: p.id, occasions: { isEmpty: true } },
-          data: { occasions },
-        });
-        if (res.count > 0) {
+        // Re-check NULL/empty in the write so a retailer edit or a concurrent re-tag wins.
+        const changed = await prisma.$executeRaw`
+          UPDATE products SET occasions = ${occasions}::text[]
+          WHERE id = ${p.id} AND (occasions IS NULL OR cardinality(occasions) = 0)`;
+        if (changed > 0) {
           result.updated++;
           await addEmbeddingJob({ product_id: p.id, retailer_id: p.retailer_id });
         }
       }
     }
-    cursor = batch[batch.length - 1]?.id;
+    cursor = ids[ids.length - 1];
   }
 
   console.info(

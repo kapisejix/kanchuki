@@ -255,6 +255,7 @@ Payment: Razorpay (UPI first). Retailer pays base + 18% GST. **Source of truth: 
 
 | ID | Root cause (one line) | Fixed in |
 |----|----------------------|----------|
+| RC-069 | The occasion backfill filtered with Prisma `isEmpty` (`= '{}'`) on `products.occasions`, a nullable `TEXT[]` whose rows are all `NULL`, so it skipped every row and reported "nothing to do" on a 216-product catalog; the tests only fed it `[]`. Fixed with raw `IS NULL OR cardinality(...) = 0` on both the select and the write. | root-cause issues.md |
 | RC-068 | "Owner-only" was inferred from `staffRole === null`, a value catalog and support delegates share with owners, and each try-on route hand-copied its own check, so delegates could generate try-ons and burn the retailer's quota (RC-034 shape). Fixed with one `requireTryOnStaff` helper on all four try-on routes. | root-cause issues.md |
 | RC-067 | wa.me builders added +91 with a `startsWith('91')` prefix check, so any 10-digit mobile starting with 91 lost its country code — three hand-copied builders, never the length-based `normalizeIndianPhone` in the same file. | root-cause issues.md |
 | RC-066 | Collection enquiries (GET `/collections/:id` embed + PATCH enquiry status) returned the raw `customer_phone` to manager/salesperson/delegates — masking was per-route and these two routes never called `maskPhoneForRequest`. | root-cause issues.md |
