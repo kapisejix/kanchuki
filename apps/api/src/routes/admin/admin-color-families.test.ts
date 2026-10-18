@@ -47,9 +47,14 @@ const ALL = [
   row({ id: 'cf_teal', name: 'teal', aliases: ['peacock blue'], is_active: false }),
 ];
 
-async function buildApp() {
+async function buildApp(role = 'SUPER_ADMIN') {
   const app = Fastify();
   app.setErrorHandler(errorHandler);
+  // adminAuthPreHandler is mocked out; stand in for what it sets on a real request.
+  app.addHook('onRequest', async (request) => {
+    request.adminRole = role;
+    request.adminId = 'admin@test';
+  });
   await app.register(adminColorFamilyRoutes);
   await app.ready();
   return app;
@@ -106,7 +111,12 @@ describe('POST /color-families', () => {
     ['bad characters', { name: 'red<script>' }],
     ['too long', { name: 'x'.repeat(41) }],
     ['bad alias', { name: 'rust', aliases: ['ok', '!!'] }],
-    ['too many aliases', { name: 'rust', aliases: Array.from({ length: 41 }, (_, i) => `a${i}`) }],
+    [
+      'too many aliases',
+      { name: 'rust', aliases: Array.from({ length: 41 }, (_, i) => `rust${i}`) },
+    ],
+    ['alias under 3 chars', { name: 'rust', aliases: ['re'] }],
+    ['stoplisted alias', { name: 'rust', aliases: ['Dark'] }],
   ])('rejects %s with 422', async (_label, payload) => {
     const res = await post(payload);
     expect(res.statusCode).toBe(422);
@@ -141,8 +151,8 @@ describe('POST /color-families', () => {
 });
 
 describe('PATCH /color-families/:id', () => {
-  const patch = async (id: string, payload: unknown) => {
-    const app = await buildApp();
+  const patch = async (id: string, payload: unknown, role = 'SUPER_ADMIN') => {
+    const app = await buildApp(role);
     const res = await app.inject({
       method: 'PATCH',
       url: `/color-families/${id}`,
@@ -170,6 +180,37 @@ describe('PATCH /color-families/:id', () => {
     expect(mockUpdate).toHaveBeenCalledWith({
       where: { id: 'cf_yellow' },
       data: { is_active: false },
+    });
+  });
+
+  it('audit row records the actor and before/after values', async () => {
+    mockFindUnique.mockResolvedValue(row());
+    await patch('cf_yellow', { aliases: ['haldi'] });
+    expect(mockAudit.mock.calls[0]?.[0].data.metadata).toEqual({
+      name: 'yellow',
+      admin: 'admin@test',
+      before: { aliases: ['mustard', 'haldi'], is_active: true },
+      after: { aliases: ['haldi'], is_active: true },
+    });
+  });
+
+  describe('standard ADMIN role', () => {
+    it('may add aliases', async () => {
+      mockFindUnique.mockResolvedValue(row());
+      const res = await patch('cf_yellow', { aliases: ['mustard', 'haldi', 'canary'] }, 'ADMIN');
+      expect(res.statusCode).toBe(200);
+    });
+
+    it('403 when removing an alias', async () => {
+      mockFindUnique.mockResolvedValue(row());
+      expect((await patch('cf_yellow', { aliases: ['haldi'] }, 'ADMIN')).statusCode).toBe(403);
+      expect(mockUpdate).not.toHaveBeenCalled();
+    });
+
+    it('403 when toggling is_active', async () => {
+      mockFindUnique.mockResolvedValue(row());
+      expect((await patch('cf_yellow', { is_active: false }, 'ADMIN')).statusCode).toBe(403);
+      expect(mockUpdate).not.toHaveBeenCalled();
     });
   });
 

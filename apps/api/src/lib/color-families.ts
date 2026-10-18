@@ -3,6 +3,7 @@
 // edit is fine, and the admin routes call clearColorFamilyCache() for their own process).
 import { prisma } from '@kanchuki/db';
 import { type ColorFamilyDef, normalizeColorFamily } from '@kanchuki/shared';
+import * as Sentry from '@sentry/node';
 
 const TTL_MS = 60_000;
 let cache: { at: number; rows: ColorFamilyDef[] } | null = null;
@@ -40,6 +41,7 @@ export async function resolveColorFamily(
     return normalizeColorFamily(primaryColor, await getActiveColorFamilies());
   } catch (err) {
     console.error('[color-family] lookup failed; leaving color_family unchanged:', err);
+    Sentry.captureException(err, { tags: { area: 'color-family' } });
     return undefined;
   }
 }

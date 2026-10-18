@@ -16,11 +16,34 @@ import { clearColorFamilyCache } from '../../lib/color-families.js';
 import { AppError, notFound, validationError } from '../../plugins/error-handler.js';
 import { adminAuthPreHandler } from '../admin-auth.js';
 
-const TERM_RE = /^[a-z0-9][a-z0-9 -]{1,39}$/;
+// 3+ chars: a 1-2 letter alias would whole-word match inside many colour phrases.
+const TERM_RE = /^[a-z0-9][a-z0-9 -]{2,39}$/;
+// Descriptors, not colours: as an alias each would claim every "dark X" / "X print".
+const STOPLIST = new Set([
+  'dark',
+  'light',
+  'deep',
+  'bright',
+  'pastel',
+  'multi',
+  'print',
+  'printed',
+  'color',
+  'colour',
+  'shade',
+  'mix',
+  'and',
+  'with',
+]);
 const term = z
   .string()
   .transform(cleanColorTerm)
-  .pipe(z.string().regex(TERM_RE, 'Use lowercase letters, digits, spaces or hyphens (max 40)'));
+  .pipe(
+    z
+      .string()
+      .regex(TERM_RE, 'Use 3-40 lowercase letters, digits, spaces or hyphens')
+      .refine((t) => !STOPLIST.has(t), 'Too generic to be a colour name or alias'),
+  );
 const aliasList = z
   .array(term)
   .max(40)
@@ -85,7 +108,7 @@ export const adminColorFamilyRoutes: FastifyPluginAsync = async (server) => {
         action: 'CREATE',
         resource_type: 'ColorFamily',
         resource_id: row.id,
-        metadata: { name, aliases },
+        metadata: { name, aliases, admin: request.adminId ?? null },
         ip_address: request.ip,
       },
     });
@@ -100,6 +123,21 @@ export const adminColorFamilyRoutes: FastifyPluginAsync = async (server) => {
     const existing = await prisma.colorFamily.findUnique({ where: { id } });
     if (!existing) throw notFound('Colour family');
 
+    // Platform-wide matching: adding aliases is safe for any admin; deactivating a family
+    // or dropping an alias silently un-maps products for every customer, so Super Admin only.
+    const next = body.data.aliases;
+    const removesAlias = !!next && existing.aliases.some((a) => !next.includes(a));
+    if (
+      (body.data.is_active !== undefined || removesAlias) &&
+      request.adminRole !== 'SUPER_ADMIN'
+    ) {
+      throw new AppError(
+        'FORBIDDEN',
+        'Only a Super Admin can deactivate a family or remove an alias',
+        403,
+      );
+    }
+
     if (body.data.aliases) {
       const owners = ownersExcept(await prisma.colorFamily.findMany(), id);
       assertAliasesFree(existing.name, body.data.aliases, owners);
@@ -113,7 +151,12 @@ export const adminColorFamilyRoutes: FastifyPluginAsync = async (server) => {
         action: 'UPDATE',
         resource_type: 'ColorFamily',
         resource_id: id,
-        metadata: { name: existing.name, ...body.data },
+        metadata: {
+          name: existing.name,
+          admin: request.adminId ?? null,
+          before: { aliases: existing.aliases, is_active: existing.is_active },
+          after: { aliases: row.aliases, is_active: row.is_active },
+        },
         ip_address: request.ip,
       },
     });
