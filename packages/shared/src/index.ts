@@ -7,3 +7,4 @@ export * from './tryon-consent.js'
 export * from './studio-styles.js'
 export * from './studio-gating.js'
 export * from './color-family.js';
+export * from './my-style-weights.js';
