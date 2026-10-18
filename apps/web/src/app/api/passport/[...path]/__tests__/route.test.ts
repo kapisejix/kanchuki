@@ -1,6 +1,6 @@
 import { type NextRequest } from 'next/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { GET, POST, PUT } from '../route'
+import { GET, PATCH, POST, PUT } from '../route'
 
 // The proxy every passport-backed screen goes through. RC-026 was a verb
 // missing from here while /my-profile already called it, so these pin the verb
@@ -19,11 +19,11 @@ afterEach(() => {
 })
 
 function call(
-  method: 'GET' | 'POST' | 'PUT',
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH',
   segments: string[],
   init: { body?: string; cookie?: string } = {},
 ): Promise<Response> {
-  const handler = method === 'GET' ? GET : method === 'POST' ? POST : PUT
+  const handler = { GET, POST, PUT, PATCH }[method]
   const request = new Request(`http://localhost:3100/api/passport/${segments.join('/')}`, {
     method,
     headers: {
@@ -75,6 +75,47 @@ describe('PUT /api/passport/preferences', () => {
     const res = await call('PUT', ['not-a-passport-route'], { body: '{}' })
 
     expect(res.status).toBe(404)
+    expect(upstream).not.toHaveBeenCalled()
+  })
+})
+
+// F-045: StyleQuiz PATCHes the quiz answers; the API route is a PATCH, so a
+// proxy without the verb (or the path) would 405/404 it (RC-026 shape).
+describe('PATCH /api/passport/style-quiz', () => {
+  it('forwards the verb, body and cookie to the API', async () => {
+    upstream.mockResolvedValue(new Response(JSON.stringify({ ok: true, saved: 1 }), { status: 200 }))
+
+    const res = await call('PATCH', ['style-quiz'], {
+      body: JSON.stringify({ color: ['Black'] }),
+      cookie: 'kanchuki_passport=abc',
+    })
+
+    expect(res.status).toBe(200)
+    const [url, init] = upstream.mock.calls[0] as [string, RequestInit]
+    expect(url).toContain('/v1/public/passport/style-quiz')
+    expect(init.method).toBe('PATCH')
+    expect(JSON.parse(init.body as string)).toEqual({ color: ['Black'] })
+    expect((init.headers as Record<string, string>).cookie).toBe('kanchuki_passport=abc')
+  })
+
+  it('passes the API 401 through so the client can fall back', async () => {
+    upstream.mockResolvedValue(new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 }))
+    expect((await call('PATCH', ['style-quiz'], { body: '{}' })).status).toBe(401)
+  })
+
+  it('404s an unlisted path on PATCH', async () => {
+    expect((await call('PATCH', ['unknown'], { body: '{}' })).status).toBe(404)
+    expect(upstream).not.toHaveBeenCalled()
+  })
+
+  it('does not widen other verbs: style-quiz is the only PATCH path', async () => {
+    // GET/POST/PUT handlers share the allowlist, so a verb outside the module's
+    // exports (DELETE) must not exist at all.
+    const mod = await import('../route')
+    expect(Object.keys(mod).sort()).toEqual(['GET', 'PATCH', 'POST', 'PUT'])
+    for (const path of ['me', 'preferences', 'profile']) {
+      expect((await call('PATCH', [path], { body: '{}' })).status).toBe(404)
+    }
     expect(upstream).not.toHaveBeenCalled()
   })
 })

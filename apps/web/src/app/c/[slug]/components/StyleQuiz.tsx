@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { Sparkles, ChevronRight, ChevronLeft, Check } from 'lucide-react'
 
 const QUESTIONS = [
@@ -67,18 +67,35 @@ export function StyleQuiz({ storeSlug, onComplete }: Props) {
     })
   }, [q])
 
-  const handleNext = useCallback(() => {
-    if (step < QUESTIONS.length - 1) {
-      setStep(step + 1)
-    } else {
-      // Save to localStorage
-      try {
-        localStorage.setItem(`kanchuki_quiz_${storeSlug}`, JSON.stringify(answers))
-      } catch {}
-      setDone(true)
-      onComplete?.()
+  // Sync guard: keyboard-submit + tap can both fire before `done` commits (RC-015).
+  const finishing = useRef(false)
+
+  // localStorage is always written: it is the signed-out fallback and the
+  // "quiz done" marker CollectionView reads. A signed-in shopper also gets the
+  // raw answers PATCHed to their passport — the API owns the label mapping.
+  // 401 / network error / AbortError leave the localStorage copy standing (RC-014).
+  const finish = useCallback((saved: Record<string, string[]>) => {
+    if (finishing.current) return
+    finishing.current = true
+    try {
+      localStorage.setItem(`kanchuki_quiz_${storeSlug}`, JSON.stringify(saved))
+    } catch {}
+    if (Object.keys(saved).length > 0) {
+      fetch('/api/passport/style-quiz', {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(saved),
+      }).catch(() => {})
     }
-  }, [step, answers, storeSlug, onComplete])
+    setDone(true)
+    onComplete?.()
+  }, [storeSlug, onComplete])
+
+  const handleNext = useCallback(() => {
+    if (step < QUESTIONS.length - 1) setStep(step + 1)
+    else finish(answers)
+  }, [step, answers, finish])
 
   // Already completed
   if (done) {
@@ -170,7 +187,7 @@ export function StyleQuiz({ storeSlug, onComplete }: Props) {
 
       {/* Skip */}
       <button
-        onClick={() => { try { localStorage.setItem(`kanchuki_quiz_${storeSlug}`, '{}') } catch {}; setDone(true); onComplete?.() }}
+        onClick={() => finish({})}
         className="w-full text-center text-[10px] text-gray-400 hover:text-gray-600 mt-2 transition-colors"
       >
         Skip for now

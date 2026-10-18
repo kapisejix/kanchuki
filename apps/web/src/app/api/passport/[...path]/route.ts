@@ -12,7 +12,11 @@ import { API_URL as apiUrl } from '@/lib/apiUrl';
 // a 405, so the toggle looked saved and came back on reload (RC-026).
 const PASSPORT_PATHS = ['otp/send', 'otp/verify', 'me', 'logout', 'stores', 'events', 'preferences', 'profile', 'wishlist', 'recently-viewed', 'export', 'delete', 'try-on/consent', 'try-on/withdraw'];
 
-type ProxyMethod = 'GET' | 'POST' | 'PUT';
+type ProxyMethod = 'GET' | 'POST' | 'PUT' | 'PATCH';
+
+// PATCH is narrower than the other verbs: only the F-045 style-quiz save uses
+// it, so every other path stays unreachable by PATCH.
+const PATCH_PATHS = ['style-quiz'];
 
 // Statuses that carry no body, and therefore may not be built with one: `new
 // Response('', { status: 204 })` throws `TypeError: Invalid response status
@@ -28,7 +32,7 @@ const NULL_BODY_STATUS = new Set([204, 205, 304]);
 async function forward(request: NextRequest, path: string[], method: ProxyMethod) {
   const subpath = path.join('/');
 
-  if (!PASSPORT_PATHS.includes(subpath)) {
+  if (!(method === 'PATCH' ? PATCH_PATHS : PASSPORT_PATHS).includes(subpath)) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
 
@@ -91,4 +95,12 @@ export async function PUT(
 ) {
   const { path } = await params;
   return forward(request, path, 'PUT');
+}
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ path: string[] }> },
+) {
+  const { path } = await params;
+  return forward(request, path, 'PATCH');
 }
