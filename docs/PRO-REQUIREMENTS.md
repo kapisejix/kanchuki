@@ -4402,6 +4402,6 @@ Signed-in customer opens `/my-style` (customer web only), gives a selfie / a gar
 | Phase | PRs | Status |
 |---|---|---|
 | 0 — no photo (schema, colour families, feed API, web shell, multi-store enquiry) | PR-1…PR-5 | 🟨 Built, merged 2026-10-18 (not browser-verified) |
-| 1 — selfie analysis + admin | PR-6…PR-8 | 🟨 PR-6 (analyze API: job + poll + clear + kill-switch) built 2026-10-18, PR open; PR-7 (capture UI + web proxy) and PR-8 (admin) not started |
+| 1 — selfie analysis + admin | PR-6…PR-8 | 🟨 PR-6 (analyze API) merged #122; PR-7 (capture UI + web proxy + palette card + privacy anchor) built 2026-10-18, PR open; PR-8 (admin) not started |
 | 2 — find-similar + complete-the-look | PR-9, PR-10 | 🔴 Not started |
 | 3 — try-on hand-off | PR-11 | ⛔ Gated on `CUSTOMER_TRY_ON_ENABLED` + F-040 launch |

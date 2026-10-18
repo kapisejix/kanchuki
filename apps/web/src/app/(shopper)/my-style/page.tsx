@@ -9,14 +9,22 @@
 'use client'
 
 import { StyleQuiz } from '@/app/c/[slug]/components/StyleQuiz'
-import { RETURN_TO_PARAM } from '@/lib/return-to'
 import { formatPriceRange } from '@kanchuki/shared'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
+import { AnalyzeSheet } from './AnalyzeSheet'
 import { KidsForm } from './KidsForm'
+import { PaletteCard } from './PaletteCard'
 import { ShortlistBar, useEnquiry } from './ShortlistBar'
 import { StyleCardActions } from './StyleCardActions'
-import { type FeedCard, type FeedMeta, type FeedSort, fetchFeed } from './lib'
+import {
+  type FeedCard,
+  type FeedMeta,
+  type FeedSort,
+  LOGIN_HREF,
+  type StyleProfile,
+  fetchFeed,
+} from './lib'
 import {
   MAX_PER_STORE,
   type ShortItem,
@@ -36,7 +44,6 @@ const BUDGETS = [50000, 100000, 200000, 300000, 500000, 1000000]
 const SIZES = ['S', 'M', 'L', 'XL', 'XXL', 'XXXL']
 const OCCASIONS = ['Daily Wear', 'Party / Festive', 'Wedding / Bridal', 'Office / Formal']
 const RADII = [5, 10, 25, 50]
-const LOGIN_HREF = `/login?${RETURN_TO_PARAM}=${encodeURIComponent('/my-style')}`
 
 type View =
   | { kind: 'loading' }
@@ -55,6 +62,9 @@ export default function MyStylePage() {
   const [geoDenied, setGeoDenied] = useState(false)
   const [showQuiz, setShowQuiz] = useState(false)
   const [showKids, setShowKids] = useState(false)
+  const [showAnalyze, setShowAnalyze] = useState(false)
+  // Kept across refetches so the palette card does not flash away while the feed reloads.
+  const [styleProfile, setStyleProfile] = useState<StyleProfile | null>(null)
   const [kids, setKids] = useState<{ who: string; age: string } | null>(null)
   // Bumped to refetch with unchanged filters (retry, quiz saved).
   const [nonce, setNonce] = useState(0)
@@ -100,7 +110,10 @@ export default function MyStylePage() {
       },
       ctrl.signal,
     )
-      .then((r) => setView(r))
+      .then((r) => {
+        setView(r)
+        if (r.kind === 'ok') setStyleProfile(r.meta.style_profile ?? null)
+      })
       .catch((e: unknown) => {
         // A superseded request aborts; that is not a failure (RC-014).
         if (e instanceof DOMException && e.name === 'AbortError') return
@@ -147,6 +160,13 @@ export default function MyStylePage() {
         </p>
         <button
           type="button"
+          onClick={() => setShowAnalyze(true)}
+          className="mt-3 mr-4 rounded-lg border border-stone-300 px-3 py-2 text-sm font-medium text-stone-900"
+        >
+          Selfie / full body
+        </button>
+        <button
+          type="button"
           onClick={() => setShowQuiz((v) => !v)}
           className="mt-3 text-sm font-medium text-amber-700"
         >
@@ -191,6 +211,17 @@ export default function MyStylePage() {
           />
         )}
       </section>
+
+      {styleProfile && (
+        <PaletteCard
+          profile={styleProfile}
+          onRetake={() => setShowAnalyze(true)}
+          onCleared={() => {
+            setStyleProfile(null)
+            setNonce((n) => n + 1)
+          }}
+        />
+      )}
 
       <section className="space-y-3">
         <div className="flex gap-2" role="group" aria-label="Sort">
@@ -257,6 +288,12 @@ export default function MyStylePage() {
         enquiry={enquiry}
         onRemove={(id) => updateShortlist(shortlist.filter((i) => i.id !== id))}
       />
+      {showAnalyze && (
+        <AnalyzeSheet
+          onClose={() => setShowAnalyze(false)}
+          onDone={() => setNonce((n) => n + 1)}
+        />
+      )}
     </div>
   )
 }

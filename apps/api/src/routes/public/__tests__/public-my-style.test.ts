@@ -292,6 +292,33 @@ describe('ranking + paging', () => {
     expect(mockPalette).not.toHaveBeenCalled();
   });
 
+  it('meta.style_profile is null with no analysis (PR-7: the palette card reads it)', async () => {
+    expect((await feed()).json().meta.style_profile).toBeNull();
+  });
+
+  it('meta.style_profile returns the saved profile and its palette families', async () => {
+    mockSession.mockResolvedValue(
+      account({ skin_undertone: 'warm', skin_depth: 'medium', body_frame: 'tall' }),
+    );
+    mockPalette.mockResolvedValue({ good_families: ['maroon'], avoid_families: ['yellow'] });
+    expect((await feed()).json().meta.style_profile).toEqual({
+      undertone: 'warm',
+      depth: 'medium',
+      frame: 'tall',
+      palette: { good: ['maroon'], avoid: ['yellow'] },
+    });
+  });
+
+  it('meta.style_profile has palette null when no active palette row matches', async () => {
+    mockSession.mockResolvedValue(account({ skin_undertone: 'cool', skin_depth: 'deep' }));
+    expect((await feed()).json().meta.style_profile).toEqual({
+      undertone: 'cool',
+      depth: 'deep',
+      frame: null,
+      palette: null,
+    });
+  });
+
   it('price sort is ascending paise', async () => {
     DB = [row('b', store('1'), { price_min: 300000 }), row('a', store('2'), { price_min: 100000 })];
     expect(ids(await feed({ sort: 'price' }))).toEqual(['a', 'b']);

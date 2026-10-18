@@ -5,35 +5,39 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { API_URL as apiUrl } from '@/lib/apiUrl';
 
-// Every my-style subpath the browser may reach, POST only. A path missing here
+// Every my-style subpath the browser may reach, per verb. A path missing here
 // answers 404 and a verb with no handler answers 405, so keep both in step with
 // the screens that call them (RC-026).
-const MY_STYLE_PATHS = ['feed', 'enquire'];
+const POST_PATHS = ['feed', 'enquire', 'analyze', 'profile/clear'];
+// Poll: analyze/<jobId>. Job ids are `mystyle_<cuid2>`; the strict pattern keeps
+// `..`, slashes and spaces out of the upstream URL.
+const GET_PATH = /^analyze\/[A-Za-z0-9_-]{1,64}$/;
 
 // Null-body statuses may not be rebuilt with a body (RC-045).
 const NULL_BODY_STATUS = new Set([204, 205, 304]);
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ path: string[] }> },
-) {
-  const { path } = await params;
+async function forward(request: NextRequest, path: string[], method: 'GET' | 'POST') {
   const subpath = path.join('/');
-
-  if (!MY_STYLE_PATHS.includes(subpath)) {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 });
-  }
+  const allowed = method === 'GET' ? GET_PATH.test(subpath) : POST_PATHS.includes(subpath);
+  if (!allowed) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
   try {
-    const res = await fetch(`${apiUrl}/v1/public/my-style/${path.map(encodeURIComponent).join('/')}`, {
-      method: 'POST',
-      headers: {
-        'content-type': request.headers.get('content-type') || 'application/json',
-        cookie: request.headers.get('cookie') || '',
-        'user-agent': request.headers.get('user-agent') || '',
+    const search = new URL(request.url).search; // consent_version rides in the query
+    const res = await fetch(
+      `${apiUrl}/v1/public/my-style/${path.map(encodeURIComponent).join('/')}${search}`,
+      {
+        method,
+        headers: {
+          ...(method === 'POST'
+            ? { 'content-type': request.headers.get('content-type') || 'application/json' }
+            : {}),
+          cookie: request.headers.get('cookie') || '',
+          'user-agent': request.headers.get('user-agent') || '',
+        },
+        // Bytes, not text: request.text() would corrupt a multipart photo (PR-7 T12).
+        ...(method === 'POST' ? { body: await request.arrayBuffer() } : {}),
       },
-      body: await request.text(),
-    });
+    );
 
     const body = NULL_BODY_STATUS.has(res.status) ? null : await res.text();
     const response = new NextResponse(body, { status: res.status });
@@ -45,4 +49,14 @@ export async function POST(
   } catch {
     return NextResponse.json({ error: 'Service unavailable' }, { status: 503 });
   }
+}
+
+type Ctx = { params: Promise<{ path: string[] }> };
+
+export async function GET(request: NextRequest, { params }: Ctx) {
+  return forward(request, (await params).path, 'GET');
+}
+
+export async function POST(request: NextRequest, { params }: Ctx) {
+  return forward(request, (await params).path, 'POST');
 }
