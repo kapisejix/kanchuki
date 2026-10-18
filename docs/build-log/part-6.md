@@ -639,3 +639,14 @@ no migration, no schema change, and **no new request on any surface**.
 | Fix | `jobs/occasion-backfill.ts`: ids via raw SQL `occasions IS NULL OR cardinality(occasions) = 0`, rows loaded by id, raw `UPDATE` with the same re-check. `tag-product` unaffected. |
 | Tests | `occasion-backfill.test.ts` rewritten (8): NULL-aware select and write, cursor, limit, dry-run, race, failure. API tsc clean, Biome clean on `apps/api/src`. |
 | Not verified | Not re-run against the real DB; the owner re-runs the dry-run. Real-model label quality still unknown. |
+
+## 2026-10-18 - Occasion enum 6 -> 4 (Office Wear + Casual folded into Daily Wear)
+
+| Item | Detail |
+|---|---|
+| Found by | Owner uploaded 17 fresh products incl. an office-style kurti: none got Office Wear, plain kurtis all got Daily Wear + Casual. Prompts gave no definitions, and the three labels overlap. |
+| Decision | Owner: "office wear, daily wear, casual are same", one keyword. Enum is now Daily Wear, Party Wear, Festive, Wedding. |
+| Change | `packages/shared/src/occasions.ts`: enum trimmed; `normalizeOccasions` aliases legacy `office wear`/`casual` to `Daily Wear` (deduped, so old model replies stay valid). `style-quiz.ts`: `office / formal` and `casual outings` emit `daily wear`; quiz UI labels unchanged. No migration. |
+| Tests | `occasions.test.ts` +alias case, `tagger.test.ts` pins the 4-value schema enum. Shared 13, ai 25, api 32 touched tests pass; api tsc and Biome clean. |
+| Owner action | Existing rows still hold `Casual` (the ~17 test uploads). The ranker compares lowercase exact strings, so run a one-off UPDATE mapping `Casual`/`Office Wear` to `Daily Wear` (SQL in the PR). The 216 NULL rows are untouched; backfill only ever writes the new enum. |
+| Not verified | Real-model labels after the change; re-test with a few uploads after deploy. |

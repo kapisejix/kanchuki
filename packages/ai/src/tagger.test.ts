@@ -104,7 +104,7 @@ describe('tagProductImages', () => {
 
     expect(result.occasions).toEqual(['Wedding', 'Festive'])
     const schema = mockCreate.mock.calls[0]![0].tools[0].input_schema
-    expect(schema.properties.occasions.items.enum).toContain('Office Wear')
+    expect(schema.properties.occasions.items.enum).toEqual(['Daily Wear', 'Party Wear', 'Festive', 'Wedding'])
     expect(schema.required).not.toContain('occasions')
   })
 
