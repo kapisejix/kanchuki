@@ -2822,6 +2822,16 @@ model StyleTrend {
   @@map("style_trends")
 }
 
+// Selfie analyses completed per UTC day, for the admin usage chart. Deliberately
+// NO customer id: a per-person log would be a record of who sent a selfie.
+model StyleAnalysisDaily {
+  day        DateTime @id @db.Date
+  count      Int      @default(0)
+  updated_at DateTime @updatedAt
+
+  @@map("style_analysis_daily")
+}
+
 // One row per (shopper, retailer). Tracks scan + per-store consent state.
 model CustomerStoreVisit {
   id                  String   @id @default(cuid())

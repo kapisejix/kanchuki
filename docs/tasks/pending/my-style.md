@@ -1,6 +1,6 @@
 # F-045 — My Style: customer photo → cross-store suggestions (customer web only)
 
-**Status (2026-10-17):** 🔴 **Spec written — owner decisions D1–D6 answered, awaiting a final "go" before PR-1.** Nothing built.
+**Status (2026-10-18):** 🟨 **PR-1..PR-7 merged; PR-8 (admin + retailer ranking note) built on `feat/f-045-admin`, migration 134 owner-applies.** PR-9 find-similar, PR-10 complete-the-look, PR-11 try-on hand-off (gated) not started. Detail per PR: `docs/build-log/part-6.md`.
 **Filed:** 2026-10-17. **Surface:** customer web PWA (`apps/web`) only. **Not** the retailer mobile app, **not** the retailer dashboard.
 **Related:**
 - `docs/tasks/pending/style-match-lite.md` (F-039) — this spec **supersedes F-039 MID** and absorbs its quiz wiring (§3.1) and no-store selfie call (§3.2). F-039 stays as the research record.

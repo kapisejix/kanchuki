@@ -4393,7 +4393,7 @@ Owner / manager photographs the customer once from an enquiry card and gets a sw
 
 ---
 
-## 42. F-045 My Style — customer photo → cross-store suggestions — 🟨 PHASE 0 BUILT 2026-10-18 (PR-1..PR-5 merged); PHASE 1+ NOT STARTED
+## 42. F-045 My Style — customer photo → cross-store suggestions — 🟨 PHASE 0 BUILT 2026-10-18 (PR-1..PR-5 merged); PHASE 1 PR-6/PR-7 merged, PR-8 admin built (migration 134 not applied); PR-9+ NOT STARTED
 
 **Spec:** `docs/tasks/pending/my-style.md` (decisions D1–D6 §0, PR map §6, test plan §7). Supersedes F-039 MID; independent of F-040 customer try-on (which is OFF, F-044 E6).
 
