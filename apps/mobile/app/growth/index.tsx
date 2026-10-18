@@ -24,6 +24,7 @@ import { GradientButton } from '../../src/components/GradientButton'
 import { growthApi, retailerApi, type CampaignType } from '../../src/lib/api'
 import { ApiError } from '../../src/lib/api/client'
 import { SchedulerBanner } from '../../src/components/social/SchedulerBanner'
+import { MyStyleRankingNote } from '../../src/components/growth/MyStyleRankingNote'
 
 const TYPE_LABEL: Record<CampaignType, string> = {
   FESTIVAL: 'Festival',
@@ -401,6 +402,8 @@ export default function GrowthHubScreen({ isTab = false }: { isTab?: boolean }) 
             </AnimatedPressable>
           ))}
         </View>
+
+        <MyStyleRankingNote />
       </ScrollView>
     </View>
   )

@@ -3,15 +3,20 @@
 // profile), a bad/failed read never invents a profile, and the photo is taken exactly once.
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { mockAnalyze, mockUpdate, mockIncrement } = vi.hoisted(() => ({
+const { mockAnalyze, mockUpdate, mockIncrement, mockDaily } = vi.hoisted(() => ({
   mockAnalyze: vi.fn(),
   mockUpdate: vi.fn(),
   mockIncrement: vi.fn(),
+  mockDaily: vi.fn(),
 }));
 
 vi.mock('@kanchuki/ai', () => ({ analyzeStyleImage: mockAnalyze, deleteObject: vi.fn() }));
 vi.mock('@kanchuki/db', () => ({
-  prisma: { customerAccount: { update: mockUpdate }, consentEvent: {} },
+  prisma: {
+    customerAccount: { update: mockUpdate },
+    consentEvent: {},
+    styleAnalysisDaily: { upsert: mockDaily },
+  },
 }));
 vi.mock('../lib/quota.js', () => ({ incrementCustomerUsage: mockIncrement }));
 
@@ -39,6 +44,7 @@ beforeEach(() => {
   mockAnalyze.mockReset();
   mockUpdate.mockReset().mockResolvedValue({});
   mockIncrement.mockReset().mockResolvedValue(undefined);
+  mockDaily.mockReset().mockResolvedValue({});
 });
 
 describe('handleMyStyleAnalyze', () => {
@@ -58,6 +64,34 @@ describe('handleMyStyleAnalyze', () => {
     expect(mockIncrement).toHaveBeenCalledWith(ACCT, 'STYLE_ANALYSIS');
     expect(await getAnalysis(JOB)).toEqual({ account_id: ACCT, status: 'ready', profile: PROFILE });
     expect(tryOnPhotoCount()).toBe(0);
+  });
+
+  it('counts the analysis in the daily chart table - with no customer id', async () => {
+    await queue();
+    mockAnalyze.mockResolvedValue({ usable: true, profile: PROFILE });
+    await run();
+
+    expect(mockDaily).toHaveBeenCalledTimes(1);
+    const arg = mockDaily.mock.calls[0]?.[0];
+    expect(arg.where.day).toEqual(new Date(new Date().toISOString().slice(0, 10)));
+    expect(arg.create).toEqual({ day: arg.where.day, count: 1 });
+    expect(arg.update).toEqual({ count: { increment: 1 } });
+    expect(JSON.stringify(arg)).not.toContain(ACCT);
+  });
+
+  it('a failed daily-count write never fails the analysis', async () => {
+    await queue();
+    mockAnalyze.mockResolvedValue({ usable: true, profile: PROFILE });
+    mockDaily.mockRejectedValue(new Error('db down'));
+    await run();
+    expect(await getAnalysis(JOB)).toMatchObject({ status: 'ready' });
+  });
+
+  it('an unusable photo is not counted in the daily chart', async () => {
+    await queue();
+    mockAnalyze.mockResolvedValue({ usable: false, reason: 'no_face' });
+    await run();
+    expect(mockDaily).not.toHaveBeenCalled();
   });
 
   it('a photo that expired before the job ran fails without calling the model', async () => {

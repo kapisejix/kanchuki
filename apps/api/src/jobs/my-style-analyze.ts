@@ -32,6 +32,19 @@ export interface MyStyleAnalyzeJobData {
   customer_account_id: string;
 }
 
+// Admin usage chart: one counter per UTC day, no customer id (migration 134). Best-effort -
+// a chart gap must never fail a paid analysis that already ran.
+async function recordDailyAnalysis(): Promise<void> {
+  const day = new Date(new Date().toISOString().slice(0, 10));
+  await prisma.styleAnalysisDaily
+    .upsert({
+      where: { day },
+      create: { day, count: 1 },
+      update: { count: { increment: 1 } },
+    })
+    .catch((err) => console.error('[my-style] failed to record daily count:', err));
+}
+
 export async function handleMyStyleAnalyze(data: MyStyleAnalyzeJobData): Promise<void> {
   const { job_id, customer_account_id } = data;
 
@@ -71,6 +84,7 @@ export async function handleMyStyleAnalyze(data: MyStyleAnalyzeJobData): Promise
   await incrementCustomerUsage(customer_account_id, 'STYLE_ANALYSIS').catch((err) => {
     console.error(`[my-style] failed to record usage for ${customer_account_id}:`, err);
   });
+  await recordDailyAnalysis();
 
   if ((await getAnalysis(job_id))?.status !== 'processing') return; // cleared mid-call
 

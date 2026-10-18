@@ -24,8 +24,9 @@ import { planPriceMissing } from '../billing/billing-helpers.js';
  * The `customer_resource_limits` table is general (one row per resource, no
  * plan), but only resources some code path actually checks belong on the admin
  * screen: a number with no writer reads as "we cap this" and caps nothing. One
- * consumer today — `checkCustomerQuota(customerAccountId, 'TRY_ON_GENERATION')`
- * in `routes/products/products-tryon.ts` (F-040).
+ * consumers — `checkCustomerQuota(customerAccountId, 'TRY_ON_GENERATION')` in
+ * `routes/products/products-tryon.ts` (F-040) and `'STYLE_ANALYSIS'` in
+ * `routes/public/public-my-style-analyze.ts` (F-045).
  *
  * The list lives here and not in `@kanchuki/shared` because there is exactly one
  * consumer (this route pair); sharing a constant with nowhere else to import it
@@ -34,6 +35,7 @@ import { planPriceMissing } from '../billing/billing-helpers.js';
  */
 export const CUSTOMER_LIMIT_RESOURCE_TYPES = [
   'TRY_ON_GENERATION',
+  'STYLE_ANALYSIS',
 ] as const satisfies readonly QuotaResourceType[];
 
 export const adminPlansRoutes: FastifyPluginAsync = async (server) => {

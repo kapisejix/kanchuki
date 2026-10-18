@@ -581,3 +581,19 @@ no migration, no schema change, and **no new request on any surface**.
 | Tests | Proxy 30 (multipart bytes round-trip, query, GET poll, allowlist per verb, null-body, 503); analyze 34; sheet 16; palette 7; page 7; privacy +3; API feed +3. Playwright `customer-my-style-analyze.spec.ts` with stubbed API (RC-048): login redirect, consent gate, happy path (JPEG bytes at the stub), 402 copy, clear, kids form. |
 | Not verified | No device check (iPhone HEIC from the Files picker, front camera, slow 3G poll). Never run against a real Vision provider. Consent shows on every open (client cannot see a remembered grant). Android Back leaves the page instead of closing the sheet (same as TryOnSheet). |
 | Next | PR-8 admin (palettes, trends, colour aliases, quota row), PR-9 find-similar. |
+
+## 2026-10-18 - F-045 My Style PR-8 (admin + retailer ranking note)
+
+| Item | Detail |
+|---|---|
+| Spec | `docs/tasks/pending/my-style.md` s6 PR-8 (T18, T19), s9 cost. Branch `feat/f-045-admin`. **Migration `134_style_analysis_daily` - owner applies; not applied.** |
+| Spec correction | The spec said to log cost in `ai_usage_log` as `my_style_analyze`. Not possible: `ai_usage_logs.retailer_id` is NOT NULL and a selfie has no retailer. Per-day usage is a new table instead, deliberately with no customer id. |
+| Migration 134 | `style_analysis_daily(day DATE pk, count, updated_at)` + RLS (same two-part shape as 133). `jobs/my-style-analyze.ts` upserts count+1 for the UTC day right after the quota increment, best-effort (a failed write logs and never fails the analysis). An unusable photo is not counted. Until the migration is applied the job logs `failed to record daily count` and the chart is empty; nothing else breaks. |
+| API | `routes/admin/admin-my-style.ts`: `GET/PATCH /my-style/palettes` (fixed 3x3 grid, no create; edit bumps `version`; names must be ACTIVE `color_families`; a family cannot be good and avoid; unknown keys 422), `GET/POST/PATCH /my-style/trends` (boost 0-1, `ends_at >= starts_at` checked against the stored start on PATCH, `null` clears a date), `GET /my-style/usage?days=` (every day zero-filled, totals, estimated cost, current limit). No DELETE anywhere (RC-049); every write audit-logged. |
+| Access (RC-034) | `'my-style'` added to the standard-admin segments in `packages/shared/.../admin-access.ts` (content/taxonomy, same tier as `color-families`). The usage report is Super-Admin-only inside the handler because it is cost telemetry and the segment is shared. |
+| Quota row | `STYLE_ANALYSIS` added to `CUSTOMER_LIMIT_RESOURCE_TYPES` in `admin-plans.ts`, so the existing Plan Limits shopper-caps card lists and edits it (it was seeded at 3/MONTH by 133 but invisible to admin). The usage tab shows the current limit and links there. |
+| Web | `/admin/my-style` (4 tabs: Colours aliases, Palettes, Trends, Usage) + sidebar entry. Colours tab uses the PR-2 API, which had no UI until now. Usage tab: per-day bar chart (inline, role=img with a summary label, per-bar title), window 7/30/90/365, estimated cost at 33 paise per analysis labelled "not a bill". |
+| T19 | `MyStyleRankingNote` at the bottom of the retailer Growth hub: plain-language ranking rules, the no-pay-to-rank and 3-of-12 promises, no weights quoted. Pinned by a test. |
+| Tests | API admin-my-style 15, job +3, admin-plans unchanged (10), full `routes/admin` + `lib` + `jobs` 1069 passed; shared 138; web page 5 + Sidebar 10; mobile note 3. API/web/mobile tsc, Biome, next lint clean. |
+| Not verified | Migration not applied, so the chart has never shown real data. Admin UI not browser-checked. Growth hub note not device-checked. The 33 paise rate is the spec estimate, not measured. |
+| Next | PR-9 find-similar, PR-10 complete-the-look + Festival/Trending tabs. |
