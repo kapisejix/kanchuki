@@ -1,7 +1,20 @@
 // F-045 My Style: feed request/response shapes and the one fetch the page uses.
 // Prices are paise end to end; the page formats them with formatPriceRange.
 
+import { RETURN_TO_PARAM } from '@/lib/return-to'
+
 export type FeedSort = 'best' | 'nearest' | 'price'
+
+/** Where a signed-out shopper goes to log in and come straight back. */
+export const LOGIN_HREF = `/login?${RETURN_TO_PARAM}=${encodeURIComponent('/my-style')}`
+
+/** The saved selfie read + the colour families that suit it. Null until analysed. */
+export interface StyleProfile {
+  undertone: string
+  depth: string
+  frame: string | null
+  palette: { good: string[]; avoid: string[] } | null
+}
 
 export interface FeedCard {
   id: string
@@ -19,6 +32,7 @@ export interface FeedMeta {
   limit: number
   location_scope: 'radius' | 'city' | 'nationwide'
   rationale_source: 'none'
+  style_profile: StyleProfile | null
 }
 
 export interface FeedRequest {

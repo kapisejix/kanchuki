@@ -201,6 +201,18 @@ export const publicMyStyleRoutes: FastifyPluginAsync = async (server) => {
           location_scope: locationScope,
           rationale_source: 'none' as const,
           truncated: rows.length === CANDIDATE_CAP,
+          // What the palette card shows (PR-7). Null until a photo has been analysed.
+          style_profile:
+            account.skin_undertone && account.skin_depth
+              ? {
+                  undertone: account.skin_undertone,
+                  depth: account.skin_depth,
+                  frame: account.body_frame ?? null,
+                  palette: palette
+                    ? { good: palette.good_families, avoid: palette.avoid_families }
+                    : null,
+                }
+              : null,
         },
       };
     },

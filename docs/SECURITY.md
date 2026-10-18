@@ -256,7 +256,7 @@ stored**: the photo is read once and discarded, and only three derived words are
 **Known limits (be honest in the privacy notice):** the API cannot verify the person is an adult —
 there is no age field on `customer_accounts`; the only guards are the adults-only consent text and a
 kids flow that has no upload. The consent link `https://kanchuki.app/privacy#my-style` needs that
-anchor to exist on the privacy page (not built in PR-6).
+anchor to exist on the privacy page (built in PR-7: `privacy/page.tsx` `#my-style`, guarded by a test that derives the id from the constant).
 
 ---
 

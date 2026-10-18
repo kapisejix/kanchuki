@@ -5,7 +5,7 @@
 // train on your photos" sentence would leave every other check green. The page
 // is also the live source of the copy recorded for legal review in
 // docs/SECURITY.md (Photo Retention Notice section).
-import { TRY_ON_CONSENT } from '@kanchuki/shared'
+import { MY_STYLE_CONSENT, TRY_ON_CONSENT } from '@kanchuki/shared'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 import PrivacyPolicyPage from '../page'
@@ -77,5 +77,28 @@ describe('/privacy — virtual try-on notice (T6)', () => {
     // available to them — the notice has to say what they can do instead, or
     // the promise is only real for people who signed up.
     expect(html).toContain('you can ask that store to delete it')
+  })
+})
+
+// F-045 PR-7 — the My Style selfie notice. The consent sheet links to
+// MY_STYLE_CONSENT.full_notice_url; before this section the link landed on the top of
+// the page. The notice must say what the consent copy says: the photo is read once and
+// thrown away, only a short note is kept, it can be cleared, never used for training.
+describe('/privacy — My Style photo notice (F-045)', () => {
+  it('has the section the consent link points at', () => {
+    const anchor = MY_STYLE_CONSENT.full_notice_url.split('#')[1]
+    expect(anchor).toBeTruthy()
+    expect(html).toContain(`id="${anchor}"`)
+  })
+
+  it('states the photo is never saved, what is kept, and the clear route', () => {
+    expect(html).toContain('My Style: reading a photo of you')
+    expect(html).toContain('Your photo is never saved.')
+    expect(html).toContain('Clear my data')
+    expect(html).toContain('Adults only')
+  })
+
+  it('promises no training', () => {
+    expect(html).toContain('We never use your photo to train AI models.')
   })
 })
