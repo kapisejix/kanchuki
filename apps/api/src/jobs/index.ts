@@ -5,6 +5,7 @@ import { handleBackfillMissingAiFields } from './backfill-missing-ai-fields.js';
 import { handleBackupDatabase } from './backup-database.js';
 import { handleCatalogSync, handleDailyCatalogSync } from './catalog-sync.js';
 import type { CatalogSyncJobData } from './catalog-sync.js';
+import { handleColorFamilyBackfill } from './color-family-backfill.js';
 import { handleCompressR2Images } from './compress-r2-images.js';
 import { handleEmbeddingBackfill } from './embedding-backfill.js';
 import { handleEngagementAggregate } from './engagement-aggregate.js';
@@ -227,6 +228,8 @@ export async function startWorkers(): Promise<void> {
         }
         case 'embedding-backfill':
           return handleEmbeddingBackfill();
+        case 'color-family-backfill':
+          return handleColorFamilyBackfill();
         case 'generate-gst-invoice': {
           const data = job.data as GenerateGstInvoiceJobData;
           return handleGenerateGstInvoice(data);
@@ -384,6 +387,19 @@ export async function startWorkers(): Promise<void> {
     {},
     {
       repeat: { pattern: '0 7 * * 0' },
+      removeOnComplete: { count: 10 },
+      removeOnFail: { count: 10 },
+    },
+  );
+
+  // F-045 colour-family backfill — weekly Sunday at 7:30 AM UTC. Catches products
+  // created by import / manual add (no tagger run) and any tag-time lookup miss.
+  // No `limit` (RC-062: it is the TOTAL repeat count). Idempotent; fills NULL rows only.
+  await getMaintenanceQueue().add(
+    'color-family-backfill',
+    {},
+    {
+      repeat: { pattern: '30 7 * * 0' },
       removeOnComplete: { count: 10 },
       removeOnFail: { count: 10 },
     },

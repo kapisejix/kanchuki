@@ -8,6 +8,7 @@ import { type Prisma, prisma } from '@kanchuki/db';
 import { classifyColorTone } from '@kanchuki/shared';
 import { recordAiUsage } from '../lib/ai-usage.js';
 import { pickContrastBackground } from '../lib/backgrounds.js';
+import { resolveColorFamily } from '../lib/color-families.js';
 import { resolveAttributeNames } from '../lib/default-attributes.js';
 import { resolveCategoryId } from '../lib/default-categories.js';
 import { bumpPhotoUrlVersion, preserveOriginalPhoto } from '../lib/photo-cleanup.js';
@@ -85,6 +86,11 @@ export async function handleTagProduct(data: TaggingJobData): Promise<void> {
         ? await resolveAttributeNames(retailer_id, 'FABRIC', tags.fabrics)
         : current.fabrics;
 
+    // F-045: primary_color is overwritten by every (re)tag, so color_family is too —
+    // never left pointing at the previous colour. Null if unmapped; on lookup failure
+    // (undefined) the column is left alone. resolveColorFamily never throws.
+    const colorFamily = await resolveColorFamily(tags.primary_color);
+
     const mergedSearchTags = Array.from(
       new Set([
         'New Arrivals',
@@ -105,6 +111,7 @@ export async function handleTagProduct(data: TaggingJobData): Promise<void> {
           category_id: matchedCategoryId,
           product_type: tags.product_type,
           primary_color: tags.primary_color,
+          ...(colorFamily !== undefined ? { color_family: colorFamily } : {}),
           secondary_colors: tags.secondary_colors,
           fabric_estimate: tags.fabric_estimate,
           // Same never-clobber rule as the name fields — a retailer's manual

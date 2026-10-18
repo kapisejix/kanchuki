@@ -114,6 +114,7 @@ export const STANDARD_ADMIN_ADMIN_SEGMENTS = [
   'background-images', // studio backdrop library (content)
   'bug-reports', // triage inbox
   'catalog-upload-tiers', // staff upload service tiers — see note below
+  'color-families', // F-045 colour alias table (content/taxonomy; no pricing, credentials or delete)
   'contact-submissions', // contact-form inbox
   'csrf-token', // token mint for the admin UI itself, needed before any role is known
   'customers', // customer records (retailer-scoped support work)
