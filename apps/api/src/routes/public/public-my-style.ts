@@ -5,14 +5,18 @@
 // (`rationale_source: 'none'`) instead of carrying canned reasons (RC-059). Prices are paise
 // end to end (RC-055). Account-specific, so never cacheable (POST + no-store).
 import { prisma } from '@kanchuki/db';
-import { MY_STYLE_DEFAULT_RADIUS_KM } from '@kanchuki/shared';
+import {
+  MY_STYLE_DEFAULT_RADIUS_KM,
+  buildEnquiryMessage,
+  buildWhatsAppEnquiryLink,
+} from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { getBoundingBox, haversineDistance } from '../../lib/geo.js';
 import { type RankCandidate, rankProducts } from '../../lib/my-style-rank.js';
-import { validationError } from '../../plugins/error-handler.js';
+import { notFound, validationError } from '../../plugins/error-handler.js';
 import { getPassportSession } from './passport/passport-helpers.js';
-import { toPublicProductSummary } from './public-helpers.js';
+import { enquiryPhone, toPublicProductSummary } from './public-helpers.js';
 
 // Ranking runs in memory over the newest N matches. Past this a very large catalogue is
 // ranked best-effort; the response flags it (`truncated`) rather than hiding it.
@@ -32,6 +36,13 @@ const BodySchema = z
   })
   .strict()
   .refine((b) => (b.lat === undefined) === (b.lng === undefined), 'lat and lng go together');
+
+const EnquireSchema = z
+  .object({
+    retailer_slug: z.string().trim().min(1).max(100),
+    product_ids: z.array(z.string().min(1).max(64)).min(1).max(20),
+  })
+  .strict();
 
 export const publicMyStyleRoutes: FastifyPluginAsync = async (server) => {
   server.post(
@@ -192,6 +203,74 @@ export const publicMyStyleRoutes: FastifyPluginAsync = async (server) => {
           truncated: rows.length === CANDIDATE_CAP,
         },
       };
+    },
+  );
+
+  // POST /my-style/enquire — one shortlist group (one store's picks) -> ONE F-044 inbox row,
+  // then the store's WhatsApp link. The cross-store feed has no collection, and
+  // collection_enquiries.collection_id is NOT NULL, so the row hangs off the store's oldest live
+  // collection. A store with none still gets its link (recorded:false) — never a fake success.
+  server.post(
+    '/enquire',
+    { config: { rateLimit: { max: 20, timeWindow: 60 * 1000 } } },
+    async (request, reply) => {
+      reply.header('Cache-Control', 'private, no-store');
+      const session = await getPassportSession(request.headers.cookie || '');
+      if (!session) {
+        return reply
+          .status(401)
+          .send({ error: { code: 'UNAUTHORIZED', message: 'Passport session required' } });
+      }
+      const parsed = EnquireSchema.safeParse(request.body);
+      if (!parsed.success) throw validationError('Invalid enquiry');
+
+      const retailer = await prisma.retailer.findFirst({
+        where: { public_slug: parsed.data.retailer_slug, is_suspended: false, deleted_at: null },
+        select: { id: true, shop_name: true, phone: true, whatsapp_number: true },
+      });
+      if (!retailer) throw notFound('Store');
+
+      const ids = Array.from(new Set(parsed.data.product_ids));
+      // Every id must be a live product of THIS store, checked before any write.
+      const products = await prisma.product.findMany({
+        where: { id: { in: ids }, retailer_id: retailer.id, deleted_at: null },
+        select: { id: true, name: true, price_min: true },
+      });
+      if (products.length !== ids.length) {
+        throw validationError('One or more products are not in this store', 'product_ids');
+      }
+      const byId = new Map(products.map((p) => [p.id, p]));
+      const ordered = ids.flatMap((id) => byId.get(id) ?? []);
+
+      const collection = await prisma.collection.findFirst({
+        where: { retailer_id: retailer.id, status: 'ACTIVE', deleted_at: null },
+        orderBy: { created_at: 'asc' },
+        select: { id: true, title: true },
+      });
+      if (collection) {
+        await prisma.collectionEnquiry.create({
+          data: {
+            collection_id: collection.id,
+            retailer_id: retailer.id,
+            product_id: ids[0] ?? null,
+            product_ids: ids,
+          },
+        });
+        await prisma.collection.update({
+          where: { id: collection.id },
+          data: { enquiry_count: { increment: 1 } },
+        });
+      }
+
+      const whatsapp_url = buildWhatsAppEnquiryLink(
+        enquiryPhone(retailer),
+        buildEnquiryMessage({
+          shopName: retailer.shop_name,
+          collectionTitle: collection?.title ?? retailer.shop_name,
+          products: ordered.map((p) => ({ name: p.name, price_min: p.price_min })),
+        }),
+      );
+      return { data: { whatsapp_url, recorded: collection !== null } };
     },
   );
 };
