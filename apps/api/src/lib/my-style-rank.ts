@@ -6,6 +6,7 @@ import {
   MY_STYLE_DIVERSITY,
   MY_STYLE_FIT,
   MY_STYLE_FRESH_DAYS,
+  MY_STYLE_SIMILAR,
   MY_STYLE_WEIGHTS,
   type MyStyleSort,
 } from '@kanchuki/shared';
@@ -24,6 +25,8 @@ export interface RankCandidate {
   created_at: Date;
   lat: number | null; // the store's position
   lng: number | null;
+  /** 0..1 from lib/my-style-similar.ts; set on every candidate or on none. */
+  similarity?: number;
 }
 
 export interface RankProfile {
@@ -59,13 +62,17 @@ function fit(c: RankCandidate, p: RankProfile): number {
           : 0;
   const hit = (mine: readonly string[], wanted: Set<string>) =>
     mine.some((m) => wanted.has(m.trim().toLowerCase())) ? 1 : 0;
-  return clamp01(
+  const base = clamp01(
     MY_STYLE_FIT.base +
       MY_STYLE_FIT.palette * palette +
       MY_STYLE_FIT.occasion * hit(c.occasions, lower(p.occasions)) +
       MY_STYLE_FIT.prefColor * (family && lower(p.colorFamilies).has(family) ? 1 : 0) +
       MY_STYLE_FIT.prefFabric * hit(c.fabrics, lower(p.fabrics)),
   );
+  // Find similar: the garment the shopper showed us takes over part of `fit`. Absent =
+  // an ordinary feed, unchanged.
+  if (c.similarity === undefined) return base;
+  return (1 - MY_STYLE_SIMILAR.fitShare) * base + MY_STYLE_SIMILAR.fitShare * clamp01(c.similarity);
 }
 
 function trend(c: RankCandidate, p: RankProfile): number {

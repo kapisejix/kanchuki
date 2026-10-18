@@ -6,10 +6,25 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import MyStylePage from '../page'
 import { clearProfile } from '../analyze'
 
+const GARMENT = {
+  category: 'Kurti',
+  color_family: 'yellow',
+  pattern: 'Printed',
+  embellishments: ['Zari Work'],
+}
 vi.mock('../AnalyzeSheet', () => ({
-  AnalyzeSheet: ({ onClose, onDone }: { onClose: () => void; onDone: () => void }) => (
-    <div role="dialog" aria-label="Read my photo">
-      <button onClick={onDone}>stub-done</button>
+  AnalyzeSheet: ({
+    onClose,
+    onDone,
+    mode,
+  }: {
+    onClose: () => void
+    onDone: (g?: unknown) => void
+    mode?: string
+  }) => (
+    <div role="dialog" aria-label={mode === 'garment' ? 'Find similar' : 'Read my photo'}>
+      <button onClick={() => onDone()}>stub-done</button>
+      <button onClick={() => onDone(GARMENT)}>stub-done-garment</button>
       <button onClick={onClose}>stub-close</button>
     </div>
   ),
@@ -25,7 +40,7 @@ const profile = {
   palette: { good: ['maroon'], avoid: ['yellow'] },
 }
 
-function feed(style_profile: unknown = null) {
+function feed(style_profile: unknown = null, similar: unknown = null) {
   return new Response(
     JSON.stringify({
       data: [],
@@ -38,6 +53,7 @@ function feed(style_profile: unknown = null) {
         rationale_source: 'none',
         truncated: false,
         style_profile,
+        similar,
       },
     }),
     { status: 200, headers: { 'Content-Type': 'application/json' } },
@@ -106,6 +122,73 @@ describe('selfie entry', () => {
     fireEvent.click(await screen.findByRole('button', { name: /clear my data/i }))
     await waitFor(() => expect(screen.queryByText('Your palette')).toBeNull())
     expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+})
+
+const bodyOf = (call: number) => JSON.parse(fetchMock.mock.calls[call]![1].body as string)
+const lastBody = () => bodyOf(fetchMock.mock.calls.length - 1)
+const LABEL = 'yellow Kurti, Printed, Zari Work'
+
+describe('find similar entry', () => {
+  it('has a "Find similar" start card that opens the sheet in garment mode', async () => {
+    fetchMock.mockImplementation(async () => feed())
+    render(<MyStylePage />)
+    fireEvent.click(await screen.findByRole('button', { name: /find similar/i }))
+    expect(screen.getByRole('dialog', { name: 'Find similar' })).toBeTruthy()
+  })
+
+  it('a finished garment read refetches the feed with the descriptor and shows what is matched', async () => {
+    fetchMock.mockImplementation(async () => feed())
+    render(<MyStylePage />)
+    expect(bodyOf(0).similar).toBeUndefined()
+    fireEvent.click(await screen.findByRole('button', { name: /find similar/i }))
+    fireEvent.click(screen.getByText('stub-done-garment'))
+    expect(await screen.findByText(LABEL)).toBeTruthy()
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
+    expect(bodyOf(1).similar).toEqual(GARMENT)
+  })
+
+  it('the descriptor rides along on later sort changes', async () => {
+    fetchMock.mockImplementation(async () => feed())
+    render(<MyStylePage />)
+    fireEvent.click(await screen.findByRole('button', { name: /find similar/i }))
+    fireEvent.click(screen.getByText('stub-done-garment'))
+    await screen.findByText(LABEL)
+    fireEvent.click(screen.getByRole('button', { name: 'Price' }))
+    await waitFor(() => expect(lastBody().sort).toBe('price'))
+    expect(lastBody().similar).toEqual(GARMENT)
+  })
+
+  it('Clear drops the descriptor and refetches without it', async () => {
+    fetchMock.mockImplementation(async () => feed())
+    render(<MyStylePage />)
+    fireEvent.click(await screen.findByRole('button', { name: /find similar/i }))
+    fireEvent.click(screen.getByText('stub-done-garment'))
+    await screen.findByText(LABEL)
+    fireEvent.click(screen.getByText('stub-close'))
+    fireEvent.click(screen.getByRole('button', { name: 'Clear' }))
+    await waitFor(() => expect(screen.queryByText(/Looking for/)).toBeNull())
+    expect(lastBody().similar).toBeUndefined()
+  })
+
+  it('says so when only attributes could be matched (no embeddings)', async () => {
+    fetchMock.mockImplementation(async () =>
+      feed(null, { source: 'attributes', embedded: 0, total: 3 }),
+    )
+    render(<MyStylePage />)
+    fireEvent.click(await screen.findByRole('button', { name: /find similar/i }))
+    fireEvent.click(screen.getByText('stub-done-garment'))
+    expect(await screen.findByText(/Closer matching is not available/)).toBeTruthy()
+  })
+
+  it('a selfie read does not set a descriptor', async () => {
+    fetchMock.mockImplementation(async () => feed())
+    render(<MyStylePage />)
+    fireEvent.click(await screen.findByRole('button', { name: /selfie \/ full body/i }))
+    fireEvent.click(screen.getByText('stub-done'))
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
+    expect(bodyOf(1).similar).toBeUndefined()
+    expect(screen.queryByText(/Looking for/)).toBeNull()
   })
 })
 

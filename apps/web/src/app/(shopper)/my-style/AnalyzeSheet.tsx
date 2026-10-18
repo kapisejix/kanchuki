@@ -8,11 +8,11 @@
 // One close path (`onClose`) and no history entry, so there is nothing to pop twice
 // (RC-065/RC-006). The submit guard is a ref, not state, because two events can land
 // before React commits (RC-015). Polling is capped and stops on unmount.
-import { MY_STYLE_CONSENT } from '@kanchuki/shared'
+import { type GarmentDescriptor, MY_STYLE_CONSENT } from '@kanchuki/shared'
 import { Camera, Loader2, ShieldCheck, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Sheet } from '@/components/Sheet'
-import { pollAnalysis, prepareUpload, startAnalysis } from './analyze'
+import { type AnalyzeMode, pollAnalysis, prepareUpload, startAnalysis } from './analyze'
 import { LOGIN_HREF } from './lib'
 
 type Step = 'consent' | 'capture' | 'processing' | 'done' | 'error' | 'signin'
@@ -24,7 +24,18 @@ const btn =
   'w-full py-3 rounded-lg bg-stone-900 text-white text-sm font-semibold active:scale-[0.98] transition'
 const quiet = 'w-full py-2.5 mt-2 text-xs font-medium text-stone-600'
 
-export function AnalyzeSheet({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
+// `mode` 'garment' is find similar (PR-9): the photo is of a garment the shopper likes, not of
+// them. Same consent, same flow; only the words, the picker and what onDone hands back differ.
+export function AnalyzeSheet({
+  onClose,
+  onDone,
+  mode = 'selfie',
+}: {
+  onClose: () => void
+  onDone: (garment?: GarmentDescriptor) => void
+  mode?: AnalyzeMode
+}) {
+  const garment = mode === 'garment'
   const [step, setStep] = useState<Step>('consent')
   const [message, setMessage] = useState('')
   const busyRef = useRef(false)
@@ -52,12 +63,12 @@ export function AnalyzeSheet({ onClose, onDone }: { onClose: () => void; onDone:
 
   const pollLater = (jobId: string, n: number) => {
     timerRef.current = setTimeout(async () => {
-      const r = await pollAnalysis(jobId, ctrlRef.current?.signal)
+      const r = await pollAnalysis(jobId, ctrlRef.current?.signal, mode)
       if (stoppedRef.current) return
       if (r.kind === 'ready') {
         busyRef.current = false
         setStep('done')
-        onDone()
+        onDone(r.garment)
       } else if (r.kind === 'failed') fail(r.message)
       else if (r.kind === 'unauthorized') setStep('signin')
       else if (r.kind === 'gone') fail('This photo is no longer available. Please try again.')
@@ -82,7 +93,7 @@ export function AnalyzeSheet({ onClose, onDone }: { onClose: () => void; onDone:
       }
       return
     }
-    const r = await startAnalysis(photo, ctrlRef.current?.signal)
+    const r = await startAnalysis(photo, ctrlRef.current?.signal, mode)
     if (stoppedRef.current || r.kind === 'aborted') return
     if (r.kind === 'unauthorized') setStep('signin')
     else if (r.kind === 'error') fail(r.message)
@@ -96,7 +107,7 @@ export function AnalyzeSheet({ onClose, onDone }: { onClose: () => void; onDone:
       overlayClassName="z-[80] bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-4"
       panelClassName="relative w-full max-w-md bg-white rounded-t-2xl sm:rounded-2xl p-5 pb-8 shadow-2xl max-h-[95vh] overflow-y-auto"
       maxHeightVh={95}
-      ariaLabel="Read my photo"
+      ariaLabel={garment ? 'Find similar' : 'Read my photo'}
     >
       <div className="flex justify-between items-center mb-4">
         <span className="text-sm font-semibold text-stone-900">My Style</span>
@@ -148,21 +159,25 @@ export function AnalyzeSheet({ onClose, onDone }: { onClose: () => void; onDone:
 
       {step === 'capture' && (
         <div className="text-center py-2">
-          <p className="text-sm font-semibold text-stone-900 mb-1">Take a photo of yourself</p>
+          <p className="text-sm font-semibold text-stone-900 mb-1">
+            {garment ? 'Pick a photo of a garment you like' : 'Take a photo of yourself'}
+          </p>
           <p className="text-xs text-stone-600 mb-5">
-            Face the light, only you in the frame. A full-body photo works best.
+            {garment
+              ? 'A screenshot or a photo of one piece works. It is read once and thrown away. We keep nothing from it.'
+              : 'Face the light, only you in the frame. A full-body photo works best.'}
           </p>
           <label
             className={`${btn} inline-flex items-center justify-center gap-2 cursor-pointer`}
           >
             <Camera size={16} />
-            Open camera
+            {garment ? 'Choose a photo' : 'Open camera'}
             <input
               type="file"
               accept="image/*"
-              capture="user"
+              {...(garment ? {} : { capture: 'user' as const })}
               className="hidden"
-              data-testid="my-style-selfie-input"
+              data-testid={garment ? 'my-style-garment-input' : 'my-style-selfie-input'}
               onChange={(e) => {
                 const file = e.target.files?.[0]
                 if (file) void handleFile(file)
@@ -175,16 +190,22 @@ export function AnalyzeSheet({ onClose, onDone }: { onClose: () => void; onDone:
       {step === 'processing' && (
         <div className="text-center py-8" aria-live="polite">
           <Loader2 size={26} className="animate-spin mx-auto text-amber-700" />
-          <p className="text-sm font-semibold text-stone-900 mt-3">Reading your photo…</p>
+          <p className="text-sm font-semibold text-stone-900 mt-3">
+            {garment ? 'Looking at the garment…' : 'Reading your photo…'}
+          </p>
           <p className="text-xs text-stone-600 mt-1">This usually takes under a minute.</p>
         </div>
       )}
 
       {step === 'signin' && (
         <div className="text-center py-2">
-          <p className="text-sm font-semibold text-stone-900 mb-1">Sign in to read your photo</p>
+          <p className="text-sm font-semibold text-stone-900 mb-1">
+            {garment ? 'Sign in to find similar pieces' : 'Sign in to read your photo'}
+          </p>
           <p className="text-xs text-stone-600 leading-relaxed mb-5">
-            My Style saves your palette to your account, so you need to be signed in.
+            {garment
+              ? 'My Style searches stores for you, so you need to be signed in.'
+              : 'My Style saves your palette to your account, so you need to be signed in.'}
           </p>
           <a href={LOGIN_HREF} className={`${btn} block`}>
             Sign in
@@ -218,12 +239,16 @@ export function AnalyzeSheet({ onClose, onDone }: { onClose: () => void; onDone:
 
       {step === 'done' && (
         <div className="text-center py-4">
-          <p className="text-sm font-semibold text-stone-900">Your palette is ready</p>
+          <p className="text-sm font-semibold text-stone-900">
+            {garment ? 'Showing pieces like this' : 'Your palette is ready'}
+          </p>
           <p className="text-xs text-stone-600 mt-1 mb-5">
-            Your picks now lean toward colours that suit you.
+            {garment
+              ? 'Stores with similar pieces now come first.'
+              : 'Your picks now lean toward colours that suit you.'}
           </p>
           <button type="button" onClick={onClose} className={btn}>
-            See my picks
+            {garment ? 'See matches' : 'See my picks'}
           </button>
         </div>
       )}

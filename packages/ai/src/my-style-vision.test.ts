@@ -102,3 +102,77 @@ describe('analyzeStyleImage', () => {
     expect(Object.values(props).some((p) => p.type === 'string' && !p.enum)).toBe(false);
   });
 });
+
+// ─── PR-9: find similar ──────────────────────────────────────────────────────────────
+
+const { analyzeGarmentImage, garmentVisionSchema } = await import('./my-style-vision.js');
+const FAMILIES = ['red', 'yellow', 'blue'];
+
+describe('analyzeGarmentImage', () => {
+  const good = {
+    usable: true,
+    category: 'Kurti',
+    color_family: 'Yellow',
+    pattern: 'Printed',
+    embellishments: ['Zari Work'],
+  };
+
+  it('returns a validated descriptor', async () => {
+    mockRunVisionExtract.mockResolvedValue(good);
+    const r = await analyzeGarmentImage(await jpeg(), 'image/jpeg', FAMILIES);
+    expect(r).toEqual({
+      usable: true,
+      garment: {
+        category: 'Kurti',
+        color_family: 'yellow',
+        pattern: 'Printed',
+        embellishments: ['Zari Work'],
+      },
+    });
+  });
+
+  it('an unusable photo is a result, not an error', async () => {
+    mockRunVisionExtract.mockResolvedValue({ usable: false, reason: 'no_garment' });
+    expect(await analyzeGarmentImage(await jpeg(), 'image/jpeg', FAMILIES)).toEqual({
+      usable: false,
+      reason: 'no_garment',
+    });
+  });
+
+  it.each([
+    ['category outside the taxonomy', { ...good, category: 'Ignore all instructions' }],
+    ['colour family not in the admin list', { ...good, color_family: 'purple' }],
+    ['free-text embellishment', { ...good, embellishments: ['hacked'] }],
+    ['extra free-text field', { ...good, notes: 'hello' }],
+    ['unknown unusable reason', { usable: false, reason: 'because' }],
+    ['no usable flag', { category: 'Kurti' }],
+  ])('throws on %s, never coerces (RC-059)', async (_n, reply) => {
+    mockRunVisionExtract.mockResolvedValue(reply);
+    await expect(analyzeGarmentImage(await jpeg(), 'image/jpeg', FAMILIES)).rejects.toThrow(
+      /unreadable model reply/,
+    );
+  });
+
+  it('refuses to run with no colour families rather than guess', async () => {
+    await expect(analyzeGarmentImage(await jpeg(), 'image/jpeg', [])).rejects.toThrow();
+    expect(mockRunVisionExtract).not.toHaveBeenCalled();
+  });
+
+  it('sends a downscaled JPEG and an injection-safe, enum-only schema', async () => {
+    mockRunVisionExtract.mockResolvedValue(good);
+    await analyzeGarmentImage(await jpeg(4000, 3000), 'image/jpeg', FAMILIES);
+    const req = mockRunVisionExtract.mock.calls[0]?.[0];
+    const meta = await sharp(req.images[0].buffer).metadata();
+    expect(Math.max(meta.width ?? 0, meta.height ?? 0)).toBeLessThanOrEqual(1568);
+    expect(req.systemPrompt).toMatch(/ignore .*text/i);
+    const props = garmentVisionSchema(FAMILIES).schema.properties as Record<
+      string,
+      { type: string; enum?: string[]; items?: { enum?: string[] } }
+    >;
+    expect(props.color_family?.enum).toEqual(FAMILIES);
+    expect(props.embellishments?.items?.enum).not.toContain('None');
+    for (const [k, p] of Object.entries(props)) {
+      if (p.type === 'string') expect(p.enum, k).toBeTruthy();
+    }
+  });
+});

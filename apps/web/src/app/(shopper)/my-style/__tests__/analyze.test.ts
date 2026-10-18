@@ -237,3 +237,45 @@ describe('clearProfile', () => {
     expect(await clearProfile()).toBe('error')
   })
 })
+
+describe('garment mode (find similar)', () => {
+  const garment = { category: 'Kurti', color_family: 'yellow', embellishments: ['Zari Work'] }
+
+  it('startAnalysis adds mode=garment to the query; selfie stays unchanged', async () => {
+    fetchMock.mockResolvedValue(json({ data: { job_id: 'j1' } }, 202))
+    await startAnalysis(new Blob(['x']), undefined, 'garment')
+    expect(fetchMock.mock.calls[0]![0]).toMatch(/consent_version=mystyle-1\.0&mode=garment$/)
+    await startAnalysis(new Blob(['x']))
+    expect(fetchMock.mock.calls[1]![0]).not.toMatch(/mode=/)
+  })
+
+  it('a ready garment poll returns the validated descriptor', async () => {
+    fetchMock.mockResolvedValue(json({ data: { status: 'ready', garment } }))
+    expect(await pollAnalysis('j1', undefined, 'garment')).toEqual({ kind: 'ready', garment })
+  })
+
+  it('a ready garment poll without a valid descriptor is an error, not a success (RC-060)', async () => {
+    for (const bad of [undefined, { category: 'Spaceship', color_family: 'x' }, 'Kurti']) {
+      fetchMock.mockResolvedValueOnce(json({ data: { status: 'ready', garment: bad } }))
+      expect(await pollAnalysis('j1', undefined, 'garment')).toEqual({ kind: 'error' })
+    }
+  })
+
+  it('a ready poll that carries only a profile is an error in garment mode', async () => {
+    fetchMock.mockResolvedValue(
+      json({ data: { status: 'ready', profile: { undertone: 'warm', depth: 'fair', frame: 'tall' } } }),
+    )
+    expect(await pollAnalysis('j1', undefined, 'garment')).toEqual({ kind: 'error' })
+  })
+
+  it.each([
+    ['no_garment', /clothing item/],
+    ['blurry', /blurry/],
+    ['multiple_garments', /several pieces/],
+  ])('maps the %s reason to plain copy', async (reason, re) => {
+    fetchMock.mockResolvedValue(json({ data: { status: 'failed', reason } }))
+    const r = await pollAnalysis('j1', undefined, 'garment')
+    expect(r.kind).toBe('failed')
+    expect((r as { message: string }).message).toMatch(re)
+  })
+})

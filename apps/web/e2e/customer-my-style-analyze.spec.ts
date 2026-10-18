@@ -23,6 +23,8 @@ type StubState = {
   processingPolls: number
   profile: null | { undertone: string; depth: string; frame: string }
   analyzed: Analyze[]
+  /** Feed request bodies that reached the API, parsed. */
+  feeds: Record<string, unknown>[]
   polls: number
   cleared: number
 }
@@ -33,6 +35,7 @@ const state: StubState = {
   processingPolls: 1,
   profile: null,
   analyzed: [],
+  feeds: [],
   polls: 0,
   cleared: 0,
 }
@@ -76,7 +79,8 @@ test.beforeAll(async () => {
     }
 
     if (req.method === 'POST' && path === '/v1/public/my-style/feed') {
-      void readBody(req).then(() =>
+      void readBody(req).then((raw) => {
+        state.feeds.push(JSON.parse(raw.toString('utf8') || '{}'))
         json(res, 200, {
           data: [],
           meta: {
@@ -91,8 +95,8 @@ test.beforeAll(async () => {
               ? { ...state.profile, palette: { good: ['maroon', 'teal'], avoid: ['yellow'] } }
               : null,
           },
-        }),
-      )
+        })
+      })
       return
     }
 
@@ -116,6 +120,21 @@ test.beforeAll(async () => {
       state.polls += 1
       if (state.polls <= state.processingPolls) {
         json(res, 200, { data: { status: 'processing' } })
+        return
+      }
+      // Find similar: a garment descriptor, and nothing is written to the account.
+      if (state.analyzed.at(-1)?.query.includes('mode=garment')) {
+        json(res, 200, {
+          data: {
+            status: 'ready',
+            garment: {
+              category: 'Kurti',
+              color_family: 'yellow',
+              pattern: 'Printed',
+              embellishments: ['Zari Work'],
+            },
+          },
+        })
         return
       }
       state.profile = { undertone: 'warm', depth: 'medium', frame: 'tall' }
@@ -148,6 +167,7 @@ test.beforeEach(async ({ context }) => {
     processingPolls: 1,
     profile: null,
     analyzed: [],
+    feeds: [],
     polls: 0,
     cleared: 0,
   })
@@ -232,4 +252,41 @@ test('the kids form has no file input', async ({ page }) => {
   await page.goto('/my-style')
   await page.getByRole('button', { name: 'For my child' }).click()
   expect(await page.locator('input[type="file"]').count()).toBe(0)
+})
+
+test('find similar: the garment photo goes up as mode=garment, the descriptor rides with the feed, Clear drops it', async ({
+  page,
+}) => {
+  const client = watchClientErrors(page)
+  await page.goto('/my-style')
+  await page.getByRole('button', { name: 'Find similar' }).click()
+  await expect(page.getByText(MY_STYLE_CONSENT.title)).toBeVisible()
+  expect(await page.locator('input[type="file"]').count()).toBe(0)
+  await page.getByRole('button', { name: MY_STYLE_CONSENT.acceptLabel }).click()
+
+  // A garment is picked from the gallery: no `capture`, so no forced front camera.
+  const input = page.locator('input[type="file"]')
+  expect(await input.getAttribute('capture')).toBeNull()
+  await input.setInputFiles({ name: 'kurti.png', mimeType: 'image/png', buffer: PNG_1x1 })
+
+  await expect(page.getByText('Showing pieces like this')).toBeVisible({ timeout: 30_000 })
+  expect(state.analyzed).toHaveLength(1)
+  expect(state.analyzed[0]!.query).toBe(`?consent_version=${MY_STYLE_CONSENT.version}&mode=garment`)
+  expect(state.analyzed[0]!.body.includes(Buffer.from([0xff, 0xd8, 0xff]))).toBe(true)
+
+  await page.getByRole('button', { name: 'See matches' }).click()
+  await expect(page.getByText('yellow Kurti, Printed, Zari Work')).toBeVisible()
+  await expect.poll(() => state.feeds.at(-1)?.similar).toEqual({
+    category: 'Kurti',
+    color_family: 'yellow',
+    pattern: 'Printed',
+    embellishments: ['Zari Work'],
+  })
+  // Nothing about the garment becomes a palette on the account.
+  await expect(page.getByText('Your palette', { exact: true })).toHaveCount(0)
+
+  await page.getByRole('button', { name: 'Clear', exact: true }).click()
+  await expect(page.getByText(/Looking for/)).toHaveCount(0)
+  await expect.poll(() => state.feeds.at(-1)?.similar).toBeUndefined()
+  client.expectClean('the My Style find-similar flow')
 })

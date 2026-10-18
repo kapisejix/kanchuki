@@ -1,6 +1,7 @@
 // F-045 My Style: feed request/response shapes and the one fetch the page uses.
 // Prices are paise end to end; the page formats them with formatPriceRange.
 
+import type { GarmentDescriptor } from '@kanchuki/shared'
 import { RETURN_TO_PARAM } from '@/lib/return-to'
 
 export type FeedSort = 'best' | 'nearest' | 'price'
@@ -33,6 +34,8 @@ export interface FeedMeta {
   location_scope: 'radius' | 'city' | 'nationwide'
   rationale_source: 'none'
   style_profile: StyleProfile | null
+  /** Set only on a find-similar feed: which signal ranked it and how many had an embedding. */
+  similar?: { source: 'embedding' | 'attributes'; embedded: number; total: number } | null
 }
 
 export interface FeedRequest {
@@ -45,6 +48,15 @@ export interface FeedRequest {
   lat?: number
   lng?: number
   radius_km?: number
+  /** Find similar: the descriptor from the garment analysis, held in page state only. */
+  similar?: GarmentDescriptor
+}
+
+/** "yellow Kurti, Printed, Zari Work" - what the shopper sees as the thing being matched. */
+export function describeGarment(g: GarmentDescriptor): string {
+  return [`${g.color_family} ${g.category}`, g.pattern, ...g.embellishments]
+    .filter(Boolean)
+    .join(', ')
 }
 
 export type FeedResult =

@@ -39,7 +39,11 @@ describe('My Style photo path (privacy)', () => {
   });
 
   it('the route/job use only the vision entry points of @kanchuki/ai', () => {
-    const allowed = new Set(['analyzeStyleImage', 'hasConfiguredVisionProvider']);
+    const allowed = new Set([
+      'analyzeStyleImage',
+      'analyzeGarmentImage',
+      'hasConfiguredVisionProvider',
+    ]);
     for (const rel of PHOTO_PATH.slice(0, 2)) {
       for (const m of code(rel).matchAll(/import\s*\{([^}]*)\}\s*from\s*['"]@kanchuki\/ai['"]/g)) {
         for (const name of (m[1] ?? '')

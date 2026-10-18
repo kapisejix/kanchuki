@@ -9,10 +9,11 @@
 'use client'
 
 import { StyleQuiz } from '@/app/c/[slug]/components/StyleQuiz'
-import { formatPriceRange } from '@kanchuki/shared'
+import { type GarmentDescriptor, formatPriceRange } from '@kanchuki/shared'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { AnalyzeSheet } from './AnalyzeSheet'
+import type { AnalyzeMode } from './analyze'
 import { KidsForm } from './KidsForm'
 import { PaletteCard } from './PaletteCard'
 import { ShortlistBar, useEnquiry } from './ShortlistBar'
@@ -23,6 +24,7 @@ import {
   type FeedSort,
   LOGIN_HREF,
   type StyleProfile,
+  describeGarment,
   fetchFeed,
 } from './lib'
 import {
@@ -62,7 +64,11 @@ export default function MyStylePage() {
   const [geoDenied, setGeoDenied] = useState(false)
   const [showQuiz, setShowQuiz] = useState(false)
   const [showKids, setShowKids] = useState(false)
-  const [showAnalyze, setShowAnalyze] = useState(false)
+  // Which photo sheet is open: selfie (palette) or garment (find similar).
+  const [analyzeMode, setAnalyzeMode] = useState<AnalyzeMode | null>(null)
+  // Find similar: the garment description, kept in page state only and sent with each feed
+  // request. Nothing is stored; a reload clears it.
+  const [similar, setSimilar] = useState<GarmentDescriptor | null>(null)
   // Kept across refetches so the palette card does not flash away while the feed reloads.
   const [styleProfile, setStyleProfile] = useState<StyleProfile | null>(null)
   const [kids, setKids] = useState<{ who: string; age: string } | null>(null)
@@ -107,6 +113,7 @@ export default function MyStylePage() {
         ...(size ? { size } : {}),
         ...(occasion ? { occasion } : {}),
         ...(where ? { ...where, radius_km: radius } : {}),
+        ...(similar ? { similar } : {}),
       },
       ctrl.signal,
     )
@@ -120,7 +127,7 @@ export default function MyStylePage() {
         if (!ctrl.signal.aborted) setView({ kind: 'error' })
       })
     return () => ctrl.abort()
-  }, [sort, page, budget, size, occasion, where, radius, nonce])
+  }, [sort, page, budget, size, occasion, where, radius, similar, nonce])
 
   // Any filter change restarts at page 1.
   const reset = <T,>(set: (v: T) => void) => (v: T) => {
@@ -160,10 +167,17 @@ export default function MyStylePage() {
         </p>
         <button
           type="button"
-          onClick={() => setShowAnalyze(true)}
+          onClick={() => setAnalyzeMode('selfie')}
           className="mt-3 mr-4 rounded-lg border border-stone-300 px-3 py-2 text-sm font-medium text-stone-900"
         >
           Selfie / full body
+        </button>
+        <button
+          type="button"
+          onClick={() => setAnalyzeMode('garment')}
+          className="mt-3 mr-4 rounded-lg border border-stone-300 px-3 py-2 text-sm font-medium text-stone-900"
+        >
+          Find similar
         </button>
         <button
           type="button"
@@ -215,12 +229,33 @@ export default function MyStylePage() {
       {styleProfile && (
         <PaletteCard
           profile={styleProfile}
-          onRetake={() => setShowAnalyze(true)}
+          onRetake={() => setAnalyzeMode('selfie')}
           onCleared={() => {
             setStyleProfile(null)
             setNonce((n) => n + 1)
           }}
         />
+      )}
+
+      {similar && (
+        <p className="text-sm text-stone-700 bg-white rounded-lg border border-stone-200 px-4 py-3">
+          Looking for: <span className="font-medium">{describeGarment(similar)}</span>{' '}
+          <button
+            type="button"
+            onClick={() => {
+              setSimilar(null)
+              setPage(1)
+            }}
+            className="underline text-stone-600"
+          >
+            Clear
+          </button>
+          {view.kind === 'ok' && view.meta.similar?.source === 'attributes' && (
+            <span className="block text-xs text-stone-500 mt-1">
+              Matched on colour, style and work. Closer matching is not available right now.
+            </span>
+          )}
+        </p>
       )}
 
       <section className="space-y-3">
@@ -288,10 +323,16 @@ export default function MyStylePage() {
         enquiry={enquiry}
         onRemove={(id) => updateShortlist(shortlist.filter((i) => i.id !== id))}
       />
-      {showAnalyze && (
+      {analyzeMode && (
         <AnalyzeSheet
-          onClose={() => setShowAnalyze(false)}
-          onDone={() => setNonce((n) => n + 1)}
+          mode={analyzeMode}
+          onClose={() => setAnalyzeMode(null)}
+          onDone={(garment) => {
+            if (garment) {
+              setSimilar(garment)
+              setPage(1)
+            } else setNonce((n) => n + 1)
+          }}
         />
       )}
     </div>

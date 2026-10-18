@@ -3,7 +3,12 @@
 // Every call returns a value and never throws. Statuses become plain copy here, once:
 // the API's own sentences never reach the screen, and a reply that is not a clear
 // success is never shown as one (RC-059/060).
-import { MY_STYLE_CONSENT, type MyStyleProfile } from '@kanchuki/shared'
+import {
+  type GarmentDescriptor,
+  MY_STYLE_CONSENT,
+  type MyStyleProfile,
+  parseGarmentDescriptor,
+} from '@kanchuki/shared'
 
 const BASE = '/api/my-style'
 // Matches the server-side downscale, so the upload is never bigger than the model sees.
@@ -68,12 +73,21 @@ export type StartResult =
   | { kind: 'error'; message: string }
   | { kind: 'aborted' }
 
-export async function startAnalysis(photo: Blob, signal?: AbortSignal): Promise<StartResult> {
+/** 'garment' = find similar: the photo is of a garment, not of the shopper. */
+export type AnalyzeMode = 'selfie' | 'garment'
+
+export async function startAnalysis(
+  photo: Blob,
+  signal?: AbortSignal,
+  mode: AnalyzeMode = 'selfie',
+): Promise<StartResult> {
   const form = new FormData()
   form.append('photo', photo, 'photo.jpg')
   try {
     const res = await timedFetch(
-      `${BASE}/analyze?consent_version=${encodeURIComponent(MY_STYLE_CONSENT.version)}`,
+      `${BASE}/analyze?consent_version=${encodeURIComponent(MY_STYLE_CONSENT.version)}${
+        mode === 'garment' ? '&mode=garment' : ''
+      }`,
       { method: 'POST', body: form }, // no content-type: the browser adds the boundary
       START_TIMEOUT_MS,
       signal,
@@ -97,20 +111,27 @@ const FAILED: Record<string, string> = {
   face_not_clear: "We couldn't see your face clearly. Face the light and try again.",
   multiple_people: 'Please take a photo with only you in it and try again.',
   too_dark: 'That photo is too dark. Please use better light and try again.',
+  no_garment: "We couldn't see a clothing item in that photo. Try a clearer picture of one piece.",
+  blurry: 'That photo is too blurry. Please try a sharper one.',
+  multiple_garments: 'That photo has several pieces in it. Please pick one with a single piece.',
   read_failed: 'We could not read that photo. Please try again.',
   expired: 'That took too long and the photo was dropped. Please try again.',
 }
 
 export type PollResult =
   | { kind: 'processing' }
-  | { kind: 'ready'; profile: MyStyleProfile }
+  | { kind: 'ready'; profile?: MyStyleProfile; garment?: GarmentDescriptor }
   | { kind: 'failed'; message: string }
   | { kind: 'unauthorized' }
   | { kind: 'gone' }
   | { kind: 'error' }
   | { kind: 'aborted' }
 
-export async function pollAnalysis(jobId: string, signal?: AbortSignal): Promise<PollResult> {
+export async function pollAnalysis(
+  jobId: string,
+  signal?: AbortSignal,
+  mode: AnalyzeMode = 'selfie',
+): Promise<PollResult> {
   try {
     const res = await timedFetch(
       `${BASE}/analyze/${encodeURIComponent(jobId)}`,
@@ -122,11 +143,16 @@ export async function pollAnalysis(jobId: string, signal?: AbortSignal): Promise
     if (res.status === 404) return { kind: 'gone' }
     if (!res.ok) return { kind: 'error' }
     const json = (await res.json().catch(() => null)) as {
-      data?: { status?: string; profile?: MyStyleProfile; reason?: string }
+      data?: { status?: string; profile?: MyStyleProfile; garment?: unknown; reason?: string }
     } | null
     const d = json?.data
     if (d?.status === 'processing') return { kind: 'processing' }
     if (d?.status === 'ready') {
+      // A ready without what this mode needs is an error, never a success (RC-060).
+      if (mode === 'garment') {
+        const garment = parseGarmentDescriptor(d.garment)
+        return garment ? { kind: 'ready', garment } : { kind: 'error' }
+      }
       return d.profile ? { kind: 'ready', profile: d.profile } : { kind: 'error' }
     }
     if (d?.status === 'failed') {
