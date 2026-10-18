@@ -10,6 +10,12 @@ describe('normalizeOccasions', () => {
     ]);
   });
 
+  it('folds legacy Office Wear / Casual into Daily Wear, deduped', () => {
+    expect(normalizeOccasions(['Office Wear'])).toEqual(['Daily Wear']);
+    expect(normalizeOccasions(['casual', 'Daily Wear', 'Office Wear'])).toEqual(['Daily Wear']);
+    expect(normalizeOccasions(['Casual', 'Wedding'])).toEqual(['Daily Wear', 'Wedding']);
+  });
+
   it('drops anything off the list (injection / hallucination)', () => {
     expect(normalizeOccasions(['hacked', 'Ignore previous instructions', 7, null])).toEqual([]);
   });

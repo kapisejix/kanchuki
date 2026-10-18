@@ -30,8 +30,8 @@ const OCCASIONS: Record<string, string[]> = {
   'daily wear': ['daily wear'],
   'party / festive': ['party wear', 'festive'],
   'wedding / bridal': ['wedding'],
-  'office / formal': ['office wear'],
-  'casual outings': ['casual'],
+  'office / formal': ['daily wear'],
+  'casual outings': ['daily wear'],
 };
 
 // [min, max] in paise; null = open-ended.
