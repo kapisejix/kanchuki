@@ -55,6 +55,20 @@ vi.mock('expo-constants', () => ({
   default: { expoConfig: { extra: {} }, statusBarHeight: 0 },
 }))
 
+// ── expo-notifications (native module; F-046 push) ─────────────────
+// Default: permission granted, a fixed token. push-notifications.test.ts overrides per case.
+
+vi.mock('expo-notifications', () => ({
+  AndroidImportance: { HIGH: 4 },
+  setNotificationHandler: vi.fn(),
+  setNotificationChannelAsync: vi.fn(async () => null),
+  getPermissionsAsync: vi.fn(async () => ({ status: 'granted', canAskAgain: true })),
+  requestPermissionsAsync: vi.fn(async () => ({ status: 'granted' })),
+  getExpoPushTokenAsync: vi.fn(async () => ({ data: 'ExponentPushToken[test]' })),
+  addNotificationReceivedListener: vi.fn(() => ({ remove: vi.fn() })),
+  useLastNotificationResponse: vi.fn(() => undefined),
+}))
+
 // ── react-native-safe-area-context ─────────────────────────────────
 
 vi.mock('react-native-safe-area-context', () => ({

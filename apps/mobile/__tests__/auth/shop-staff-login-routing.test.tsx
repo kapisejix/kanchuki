@@ -54,6 +54,8 @@ vi.mock('../../src/lib/api', () => ({
   },
 }))
 
+vi.mock('../../src/lib/push-notifications', () => ({ unregisterPush: vi.fn(async () => {}) }))
+
 vi.mock('../../src/lib/msg91-otp', () => ({
   isMsg91OtpConfigured: () => false,
   extractMsg91AccessToken: vi.fn(),

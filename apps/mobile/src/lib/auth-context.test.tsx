@@ -28,6 +28,9 @@ vi.mock('./api', () => ({
   clearRequestCache: vi.fn(async () => {}),
 }))
 
+// F-046: signOut unregisters the push token first; that path has its own test.
+vi.mock('./push-notifications', () => ({ unregisterPush: vi.fn(async () => {}) }))
+
 vi.mock('./storage', () => ({
   getItem: vi.fn(async (key: string) => store.get(key) ?? null),
   setItem: vi.fn(async (key: string, value: string) => {

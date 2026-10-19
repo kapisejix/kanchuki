@@ -1,6 +1,7 @@
 import { useFocusEffect } from 'expo-router'
 import { useCallback, useState } from 'react'
 import { collectionApi } from './api/collections'
+import { onEnquiryPush } from './enquiry-push-events'
 
 export const UNREAD_POLL_MS = 30_000
 
@@ -21,9 +22,12 @@ export function useUnreadEnquiries(): number {
         )
       void load()
       const id = setInterval(load, UNREAD_POLL_MS)
+      // F-046: a push landed while this screen is focused — refetch now, not in <30 s.
+      const off = onEnquiryPush(() => void load())
       return () => {
         live = false
         clearInterval(id)
+        off()
       }
     }, []),
   )

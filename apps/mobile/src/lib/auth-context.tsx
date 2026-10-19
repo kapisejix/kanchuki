@@ -14,6 +14,7 @@ import {
   setAuthChangeListener,
 } from './auth-events'
 import { clearRequestCache, getToken } from './api'
+import { unregisterPush } from './push-notifications'
 import { deleteItem, getItem } from './storage'
 
 export type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated'
@@ -163,6 +164,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [status, pendingNav])
 
   const signOut = useCallback(async () => {
+    // F-046: stop pings to this device. Needs the token, so it runs before the keys go;
+    // capped at 2 s so a dead network never delays logout (best-effort — the server also
+    // stops pinging a removed staff member, and a stale owner token is disabled on its
+    // first DeviceNotRegistered).
+    await Promise.race([unregisterPush(), new Promise((r) => setTimeout(r, 2000))]).catch(
+      () => {},
+    )
     await Promise.all(AUTH_KEYS.map((key) => deleteItem(key)))
     clearRequestCache()
     emitAuthChange({ authed: false })
