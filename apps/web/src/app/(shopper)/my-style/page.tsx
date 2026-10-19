@@ -15,9 +15,10 @@ import { useEffect, useState } from 'react'
 import { AnalyzeSheet } from './AnalyzeSheet'
 import type { AnalyzeMode } from './analyze'
 import { KidsForm } from './KidsForm'
+import { LookPanel, type LookView } from './LookPanel'
 import { PaletteCard } from './PaletteCard'
 import { ShortlistBar, useEnquiry } from './ShortlistBar'
-import { StyleCardActions } from './StyleCardActions'
+import { StyleCard } from './StyleCard'
 import {
   type FeedCard,
   type FeedMeta,
@@ -27,6 +28,7 @@ import {
   type StyleProfile,
   describeGarment,
   fetchFeed,
+  fetchLook,
 } from './lib'
 import {
   MAX_PER_STORE,
@@ -47,6 +49,7 @@ const BUDGETS = [50000, 100000, 200000, 300000, 500000, 1000000]
 const SIZES = ['S', 'M', 'L', 'XL', 'XXL', 'XXXL']
 const OCCASIONS = ['Daily Wear', 'Party / Festive', 'Wedding / Bridal', 'Office / Formal']
 const RADII = [5, 10, 25, 50]
+const LOOK_KEY = 'my-style:look-anchor'
 
 type View =
   | { kind: 'loading' }
@@ -61,7 +64,11 @@ export default function MyStylePage() {
   const [size, setSize] = useState('')
   const [occasion, setOccasion] = useState('')
   // Tabs: Festival / Trending exist only while the feed says something is behind them.
-  const [tab, setTab] = useState<FeedTab>('foryou')
+  const [tab, setTab] = useState<FeedTab | 'look'>('foryou')
+  // Complete the look (PR-10b): the last anchor, kept for the session so the tab survives a
+  // reload. It is a product id only; the tab hides until one is picked.
+  const [lookAnchor, setLookAnchor] = useState<string | null>(null)
+  const [lookView, setLookView] = useState<LookView>({ kind: 'loading' })
   const [tabs, setTabs] = useState<FeedMeta['tabs']>(undefined)
   // The Occasion tab's chip (canonical name), separate from the filter dropdown above.
   const [tabOccasion, setTabOccasion] = useState('')
@@ -88,6 +95,32 @@ export default function MyStylePage() {
   // Read after mount so the server and first client render agree.
   useEffect(() => setShortlist(loadShortlist()), [])
 
+  // ?look=<id> (from a store's product sheet) wins over the remembered anchor.
+  useEffect(() => {
+    const fromUrl = new URLSearchParams(window.location.search).get('look')
+    if (fromUrl) {
+      openLook(fromUrl)
+      return
+    }
+    try {
+      setLookAnchor(window.sessionStorage.getItem(LOOK_KEY))
+    } catch {
+      // storage blocked: no remembered anchor, the tab simply stays hidden
+    }
+  }, [])
+
+  function openLook(id: string) {
+    setLookAnchor(id)
+    setTab('look')
+    setPage(1)
+    window.scrollTo(0, 0)
+    try {
+      window.sessionStorage.setItem(LOOK_KEY, id)
+    } catch {
+      // not remembered across a reload; this visit still works
+    }
+  }
+
   function updateShortlist(next: ShortItem[]) {
     setShortlist(next)
     saveShortlist(next)
@@ -108,6 +141,7 @@ export default function MyStylePage() {
   }
 
   useEffect(() => {
+    if (tab === 'look') return // the look tab has its own request below
     const ctrl = new AbortController()
     setView({ kind: 'loading' })
     fetchFeed(
@@ -143,6 +177,20 @@ export default function MyStylePage() {
       })
     return () => ctrl.abort()
   }, [sort, tab, tabOccasion, page, budget, size, occasion, where, radius, similar, nonce])
+
+  useEffect(() => {
+    if (tab !== 'look' || !lookAnchor) return
+    const ctrl = new AbortController()
+    setLookView({ kind: 'loading' })
+    fetchLook(lookAnchor, where ? { ...where, radius_km: radius } : null, ctrl.signal)
+      .then(setLookView)
+      .catch((e: unknown) => {
+        // A superseded request aborts; that is not a failure (RC-014).
+        if (e instanceof DOMException && e.name === 'AbortError') return
+        if (!ctrl.signal.aborted) setLookView({ kind: 'error' })
+      })
+    return () => ctrl.abort()
+  }, [tab, lookAnchor, where, radius, nonce])
 
   // Any filter change restarts at page 1.
   const reset = <T,>(set: (v: T) => void) => (v: T) => {
@@ -280,7 +328,8 @@ export default function MyStylePage() {
             ...(tabs?.festival ? [['festival', tabs.festival.name]] : []),
             ['occasion', 'Occasion'],
             ...(tabs?.trending ? [['trending', 'Trending']] : []),
-          ] as [FeedTab, string][]
+            ...(lookAnchor ? [['look', 'Complete the look']] : []),
+          ] as [FeedTab | 'look', string][]
         ).map(([value, label]) => (
           <button
             key={value}
@@ -330,7 +379,7 @@ export default function MyStylePage() {
         </div>
       )}
 
-      <section className="space-y-3">
+      <section className="space-y-3" hidden={tab === 'look'}>
         <div className="flex gap-2" role="group" aria-label="Sort">
           {SORTS.map((s) => (
             <button
@@ -378,23 +427,37 @@ export default function MyStylePage() {
         )}
       </section>
 
-      <Results
-        view={view}
-        tab={tab}
-        page={page}
-        onPage={goToPage}
-        onRetry={() => setNonce((n) => n + 1)}
-        shortlist={shortlist}
-        busy={enquiry.busy}
-        onToggle={toggleShortlist}
-        onEnquire={enquireOne}
-      />
+      {tab === 'look' ? (
+        <LookPanel
+          view={lookView}
+          shortlist={shortlist}
+          busy={enquiry.busy}
+          onToggle={toggleShortlist}
+          onEnquire={enquireOne}
+          onRetry={() => setNonce((n) => n + 1)}
+          onBack={() => setTab('foryou')}
+        />
+      ) : (
+        <Results
+          view={view}
+          tab={tab}
+          page={page}
+          onPage={goToPage}
+          onRetry={() => setNonce((n) => n + 1)}
+          shortlist={shortlist}
+          busy={enquiry.busy}
+          onToggle={toggleShortlist}
+          onEnquire={enquireOne}
+          onLook={openLook}
+        />
+      )}
       {/* Room so the sticky bar never covers the pager. */}
       {groups.length > 0 && <div className="h-48" aria-hidden="true" />}
       <ShortlistBar
         groups={groups}
         enquiry={enquiry}
         onRemove={(id) => updateShortlist(shortlist.filter((i) => i.id !== id))}
+        onLook={openLook}
       />
       {analyzeMode && (
         <AnalyzeSheet
@@ -422,6 +485,7 @@ function Results({
   busy,
   onToggle,
   onEnquire,
+  onLook,
 }: {
   view: View
   tab: FeedTab
@@ -432,6 +496,7 @@ function Results({
   busy: boolean
   onToggle: (c: FeedCard) => void
   onEnquire: (c: FeedCard) => void
+  onLook: (id: string) => void
 }) {
   if (view.kind === 'loading') {
     return (
@@ -481,40 +546,16 @@ function Results({
       )}
       <ul className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         {data.map((c) => (
-          <li key={c.id} className="bg-white rounded-lg border border-stone-200 overflow-hidden flex flex-col">
-            <div className="aspect-[3/4] bg-stone-100">
-              {c.primary_photo_url && (
-                // eslint-disable-next-line @next/next/no-img-element -- remote store photo, sized by the grid
-                <img src={c.primary_photo_url} alt={c.name ?? 'Product'} className="w-full h-full object-cover" loading="lazy" />
-              )}
-            </div>
-            <div className="p-3 flex-1 flex flex-col gap-1">
-              {c.retailer.slug ? (
-                <Link
-                  href={`/${c.retailer.slug}/all-${c.retailer.slug}/product/${c.id}`}
-                  className="text-sm font-medium text-stone-900 truncate"
-                >
-                  {c.name}
-                </Link>
-              ) : (
-                <p className="text-sm font-medium text-stone-900 truncate">{c.name}</p>
-              )}
-              <p className="text-sm text-stone-700">{formatPriceRange(c.price_min, c.price_max)}</p>
-              <p className="text-xs text-stone-500 truncate">
-                {[c.retailer.shop_name, c.retailer.city, c.distance_km != null ? `${c.distance_km} km` : null]
-                  .filter(Boolean)
-                  .join(' · ')}
-              </p>
-              <StyleCardActions
-                card={c}
-                saved={shortlist.some((i) => i.id === c.id)}
-                full={shortlist.filter((i) => i.slug === c.retailer.slug).length >= MAX_PER_STORE}
-                busy={busy}
-                onToggle={() => onToggle(c)}
-                onEnquire={() => onEnquire(c)}
-              />
-            </div>
-          </li>
+          <StyleCard
+            key={c.id}
+            card={c}
+            saved={shortlist.some((i) => i.id === c.id)}
+            full={shortlist.filter((i) => i.slug === c.retailer.slug).length >= MAX_PER_STORE}
+            busy={busy}
+            onToggle={() => onToggle(c)}
+            onEnquire={() => onEnquire(c)}
+            onLook={() => onLook(c.id)}
+          />
         ))}
       </ul>
       {pages > 1 && (

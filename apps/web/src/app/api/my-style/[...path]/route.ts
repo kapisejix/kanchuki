@@ -11,7 +11,8 @@ import { API_URL as apiUrl } from '@/lib/apiUrl';
 const POST_PATHS = ['feed', 'enquire', 'analyze', 'profile/clear'];
 // Poll: analyze/<jobId>. Job ids are `mystyle_<cuid2>`; the strict pattern keeps
 // `..`, slashes and spaces out of the upstream URL.
-const GET_PATH = /^analyze\/[A-Za-z0-9_-]{1,64}$/;
+// complete-look?anchor=<id>: the anchor rides in the query, validated by the API.
+const GET_PATH = /^(analyze\/[A-Za-z0-9_-]{1,64}|complete-look)$/;
 
 // Null-body statuses may not be rebuilt with a body (RC-045).
 const NULL_BODY_STATUS = new Set([204, 205, 304]);
@@ -22,7 +23,7 @@ async function forward(request: NextRequest, path: string[], method: 'GET' | 'PO
   if (!allowed) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
   try {
-    const search = new URL(request.url).search; // consent_version rides in the query
+    const search = new URL(request.url).search; // consent_version / anchor ride in the query
     const res = await fetch(
       `${apiUrl}/v1/public/my-style/${path.map(encodeURIComponent).join('/')}${search}`,
       {

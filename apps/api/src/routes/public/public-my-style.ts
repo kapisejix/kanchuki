@@ -6,18 +6,29 @@
 // end to end (RC-055). Account-specific, so never cacheable (POST + no-store).
 import { prisma } from '@kanchuki/db';
 import {
+  COMPLEMENT_MAP,
   FESTIVAL_LOOKAHEAD_DAYS,
   type GarmentDescriptor,
+  LOOK_SLOT_LIMIT,
+  type LookSlot,
   MY_STYLE_DEFAULT_RADIUS_KM,
   MY_STYLE_TABS,
   buildEnquiryMessage,
   buildWhatsAppEnquiryLink,
+  classifyAnchor,
+  complementFamilies,
+  matchesSlot,
   occasionTargets,
   parseGarmentDescriptor,
 } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
-import { getBoundingBox, haversineDistance } from '../../lib/geo.js';
+import {
+  CANDIDATE_CAP,
+  type CandidateRow,
+  loadMyStyleCandidates,
+  toRankCandidate,
+} from '../../lib/my-style-candidates.js';
 import { type RankCandidate, rankProducts } from '../../lib/my-style-rank.js';
 import {
   attributeScore,
@@ -33,13 +44,9 @@ import {
   pickFestival,
   promoteMatches,
 } from '../../lib/my-style-tabs.js';
-import { notFound, validationError } from '../../plugins/error-handler.js';
+import { AppError, notFound, validationError } from '../../plugins/error-handler.js';
 import { getPassportSession } from './passport/passport-helpers.js';
 import { enquiryPhone, toPublicProductSummary } from './public-helpers.js';
-
-// Ranking runs in memory over the newest N matches. Past this a very large catalogue is
-// ranked best-effort; the response flags it (`truncated`) rather than hiding it.
-const CANDIDATE_CAP = 300;
 
 const BodySchema = z
   .object({
@@ -61,6 +68,38 @@ const BodySchema = z
   })
   .strict()
   .refine((b) => (b.lat === undefined) === (b.lng === undefined), 'lat and lng go together');
+
+// One feed/complete-look card. Prices stay paise (RC-055).
+async function toCard(p: CandidateRow, distanceKm: number | null) {
+  return {
+    ...(await toPublicProductSummary(p)),
+    color_family: p.color_family,
+    distance_km: distanceKm,
+    retailer: {
+      shop_name: p.retailer.shop_name,
+      slug: p.retailer.public_slug,
+      city: p.retailer.city,
+    },
+  };
+}
+
+const LookQuerySchema = z
+  .object({
+    anchor: z.string().trim().min(1).max(64),
+    lat: z.coerce.number().min(-90).max(90).optional(),
+    lng: z.coerce.number().min(-180).max(180).optional(),
+    radius_km: z.coerce.number().positive().max(500).default(MY_STYLE_DEFAULT_RADIUS_KM),
+  })
+  .strict()
+  .refine((q) => (q.lat === undefined) === (q.lng === undefined), 'lat and lng go together');
+
+// DB-side narrowing for a complement slot; matchesSlot re-checks in memory.
+const slotWhere = (slot: LookSlot) => ({
+  OR: slot.keywords.flatMap((k) => [
+    { category: { contains: k, mode: 'insensitive' as const } },
+    ...(slot.withSubtype ? [{ subtype: { contains: k, mode: 'insensitive' as const } }] : []),
+  ]),
+});
 
 const EnquireSchema = z
   .object({
@@ -88,80 +127,15 @@ export const publicMyStyleRoutes: FastifyPluginAsync = async (server) => {
 
       // Location: device position, else the account's city, else everywhere (and say so).
       const origin = b.lat !== undefined && b.lng !== undefined ? { lat: b.lat, lng: b.lng } : null;
-      const city = account.city?.trim() || null;
-      const locationScope = origin ? 'radius' : city ? 'city' : 'nationwide';
-      const box = origin ? getBoundingBox(origin.lat, origin.lng, b.radius_km) : null;
-
-      const budgetMax = b.budget_max ?? account.budget_max ?? undefined;
-      const size = (b.size ?? account.usual_size)?.toUpperCase();
-
-      const palette =
-        account.skin_undertone && account.skin_depth
-          ? await prisma.stylePalette.findFirst({
-              where: {
-                undertone: account.skin_undertone,
-                depth: account.skin_depth,
-                is_active: true,
-              },
-              orderBy: { version: 'desc' },
-              select: { good_families: true, avoid_families: true },
-            })
-          : null;
-
-      const rows = await prisma.product.findMany({
-        where: {
-          deleted_at: null,
-          status: 'AVAILABLE',
-          retailer: {
-            is_suspended: false,
-            deleted_at: null,
-            public_slug: { not: null },
-            ...(box
-              ? {
-                  latitude: { gte: box.minLat, lte: box.maxLat },
-                  longitude: { gte: box.minLng, lte: box.maxLng },
-                }
-              : city
-                ? { city: { equals: city, mode: 'insensitive' as const } }
-                : {}),
-          },
-          ...(budgetMax ? { price_min: { lte: budgetMax } } : {}),
-          // Unsized garments (sarees, unstitched) have no sizes and must not vanish.
-          ...(size ? { OR: [{ sizes: { has: size } }, { sizes: { isEmpty: true } }] } : {}),
-        },
-        orderBy: { created_at: 'desc' },
-        take: CANDIDATE_CAP,
-        include: {
-          photos: { orderBy: [{ is_primary: 'desc' }, { sort_order: 'asc' }], take: 1 },
-          section: { select: { name: true } },
-          _count: { select: { photos: true } },
-          retailer: {
-            select: {
-              id: true,
-              shop_name: true,
-              public_slug: true,
-              city: true,
-              latitude: true,
-              longitude: true,
-            },
-          },
-        },
+      const { rows, inRange, palette, locationScope } = await loadMyStyleCandidates({
+        origin,
+        city: account.city?.trim() || null,
+        radiusKm: b.radius_km,
+        budgetMax: b.budget_max ?? account.budget_max ?? undefined,
+        size: (b.size ?? account.usual_size)?.toUpperCase(),
+        undertone: account.skin_undertone,
+        depth: account.skin_depth,
       });
-
-      // The bounding box is a square; the radius is a circle.
-      const inRange = origin
-        ? rows.filter(
-            (p) =>
-              p.retailer.latitude !== null &&
-              p.retailer.longitude !== null &&
-              haversineDistance(
-                origin.lat,
-                origin.lng,
-                p.retailer.latitude,
-                p.retailer.longitude,
-              ) <= b.radius_km,
-          )
-        : rows;
 
       // Find similar: a 0..1 score per candidate. Embedding where a product has one, attribute
       // overlap otherwise (and for everything if embeddings are unavailable). `similar` in the
@@ -206,20 +180,7 @@ export const publicMyStyleRoutes: FastifyPluginAsync = async (server) => {
       }
 
       const candidates: RankCandidate[] = inRange.map((p) => ({
-        id: p.id,
-        retailer_id: p.retailer_id,
-        price_min: p.price_min,
-        color_family: p.color_family,
-        occasions: p.occasions,
-        fabrics: p.fabrics,
-        keywords: [p.category, p.subtype, ...p.styles, ...p.search_tags]
-          .filter((k): k is string => !!k)
-          .map((k) => k.toLowerCase()),
-        avg_rating: p.avg_rating,
-        rating_count: p.rating_count,
-        created_at: p.created_at,
-        lat: p.retailer.latitude,
-        lng: p.retailer.longitude,
+        ...toRankCandidate(p),
         ...(similarity ? { similarity: similarity.get(p.id) ?? 0 } : {}),
       }));
 
@@ -296,19 +257,10 @@ export const publicMyStyleRoutes: FastifyPluginAsync = async (server) => {
       const byId = new Map(inRange.map((p) => [p.id, p]));
       const pageItems = ranked.slice((b.page - 1) * b.limit, b.page * b.limit);
       const data = await Promise.all(
-        pageItems.map(async (item) => {
+        pageItems.map((item) => {
           const p = byId.get(item.id);
           if (!p) throw new Error(`my-style: ranked id ${item.id} not in candidates`);
-          return {
-            ...(await toPublicProductSummary(p)),
-            color_family: p.color_family,
-            distance_km: item.distance_km,
-            retailer: {
-              shop_name: p.retailer.shop_name,
-              slug: p.retailer.public_slug,
-              city: p.retailer.city,
-            },
-          };
+          return toCard(p, item.distance_km);
         }),
       );
 
@@ -341,6 +293,108 @@ export const publicMyStyleRoutes: FastifyPluginAsync = async (server) => {
                     : null,
                 }
               : null,
+        },
+      };
+    },
+  );
+
+  // GET /my-style/complete-look?anchor=<id> — F-045 PR-10b (T22). Pieces from nearby stores
+  // that go with one product: complement categories (COMPLEMENT_MAP) ranked by the feed's
+  // ranker with a colour boost for the anchor's pairing families. Nothing mapped / nothing
+  // nearby answers `slots: []` + reason, never filler (RC-059). The anchor must be live.
+  server.get(
+    '/complete-look',
+    { config: { rateLimit: { max: 30, timeWindow: 60 * 1000 } } },
+    async (request, reply) => {
+      reply.header('Cache-Control', 'private, no-store');
+      const session = await getPassportSession(request.headers.cookie || '');
+      if (!session) {
+        return reply
+          .status(401)
+          .send({ error: { code: 'UNAUTHORIZED', message: 'Passport session required' } });
+      }
+      const parsed = LookQuerySchema.safeParse(request.query ?? {});
+      if (!parsed.success) throw validationError('Invalid complete-the-look request');
+      const q = parsed.data;
+      const account = session.customer_account;
+
+      const anchor = await prisma.product.findFirst({
+        where: {
+          id: q.anchor,
+          deleted_at: null,
+          status: 'AVAILABLE',
+          retailer: { is_suspended: false, deleted_at: null, public_slug: { not: null } },
+        },
+        select: {
+          id: true,
+          name: true,
+          category: true,
+          subtype: true,
+          color_family: true,
+          occasions: true,
+        },
+      });
+      if (!anchor)
+        throw new AppError('ANCHOR_UNAVAILABLE', 'That piece is no longer available', 404);
+
+      const kind = classifyAnchor(anchor);
+      const wanted = kind ? COMPLEMENT_MAP[kind] : [];
+      const origin = q.lat !== undefined && q.lng !== undefined ? { lat: q.lat, lng: q.lng } : null;
+      const now = new Date();
+
+      let locationScope: 'radius' | 'city' | 'nationwide' = 'nationwide';
+      let truncated = false;
+      const slots = await Promise.all(
+        wanted.map(async (slot) => {
+          const found = await loadMyStyleCandidates({
+            origin,
+            city: account.city?.trim() || null,
+            radiusKm: q.radius_km,
+            budgetMax: account.budget_max ?? undefined,
+            size: account.usual_size?.toUpperCase(),
+            undertone: account.skin_undertone,
+            depth: account.skin_depth,
+            extraWhere: { id: { not: anchor.id }, ...slotWhere(slot) },
+          });
+          locationScope = found.locationScope;
+          truncated ||= found.rows.length === CANDIDATE_CAP;
+          const fits = found.inRange.filter((p) => matchesSlot(p, slot));
+          const ranked = rankProducts(
+            fits.map(toRankCandidate),
+            {
+              palette: found.palette
+                ? { good: found.palette.good_families, avoid: found.palette.avoid_families }
+                : null,
+              // The anchor's occasion steers ranking only; it is never shown (spec §7).
+              occasions: [...account.pref_occasions, ...anchor.occasions],
+              colorFamilies: complementFamilies(anchor.color_family),
+              fabrics: account.pref_fabrics,
+              origin,
+              radiusKm: q.radius_km,
+              trends: [],
+            },
+            'best',
+            now,
+          ).slice(0, LOOK_SLOT_LIMIT);
+          const byId = new Map(fits.map((p) => [p.id, p]));
+          const items = await Promise.all(
+            ranked.map((r) => {
+              const p = byId.get(r.id);
+              if (!p) throw new Error(`my-style: ranked id ${r.id} not in candidates`);
+              return toCard(p, r.distance_km);
+            }),
+          );
+          return { key: slot.key, label: slot.label, items };
+        }),
+      );
+      const filled = slots.filter((s) => s.items.length > 0);
+
+      return {
+        data: { anchor: { id: anchor.id, name: anchor.name }, slots: filled },
+        meta: {
+          reason: filled.length === 0 ? ('none_nearby' as const) : null,
+          location_scope: locationScope,
+          truncated,
         },
       };
     },

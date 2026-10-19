@@ -663,3 +663,14 @@ no migration, no schema change, and **no new request on any surface**.
 | Web | Tab bar + Occasion chips (canonical names) on `/my-style`; Festival tab is labelled with the festival name; tabs absent from `meta.tabs` are hidden; an open tab that loses its data falls back to For you. |
 | Tests | shared +11, api lib +13, route +14 (tabs, windows, region, fail-soft, RC-070), web +7 (`tabs.test.tsx`). shared/api/web tsc, Biome (api) and `next lint` clean. |
 | Not verified | No browser or device check. No real festival/trend rows exist in prod yet (tabs stay hidden until admin adds them). `occasions` label quality is only partly verified, so the Occasion tab is a ranking nudge, not an exact filter. |
+
+## 2026-10-19 - F-045 PR-10b: complete-the-look (T22)
+
+| Item | Detail |
+|---|---|
+| Branch | `feat/f-045-complete-look`, no migration, not merged. |
+| Shared | `my-style-look.ts`: `COMPLEMENT_MAP` (anchor kind -> slots), `classifyAnchor` (category first, subtype only if the category says nothing; men's/kids' wear unmapped), `matchesSlot`, `COMPLEMENTARY_COLORS` + `complementFamilies` (hand-written pairings over the `color_families` names; neutrals pair with all; a test fails if a name drifts from the seed), `LOOK_SLOT_LIMIT` (6). |
+| API | `lib/my-style-candidates.ts`: the `/feed` candidate query extracted unchanged (+ an AND-ed `extraWhere`), `toRankCandidate`. `GET /v1/public/my-style/complete-look?anchor=<id>` (passport session, no-store, 30/min): anchor must be AVAILABLE, not deleted, store live with a slug, else 404 `ANCHOR_UNAVAILABLE`; one candidate query per slot (category match, anchor excluded), ranked by the feed's `rankProducts` with the anchor's pairing colours as the colour preference; the anchor's occasions steer ranking only and are never returned. Empty slots are dropped; none left -> `slots: []`, `meta.reason: "none_nearby"`. |
+| Web | `Complete the look` on feed cards, shortlist chips, and the store `ProductDetailSheet` (links to `/my-style?look=<id>`). Tab appears only once an anchor exists; last anchor in `sessionStorage`; `LookPanel` shows slots, "Nothing near you goes with this piece yet", "That piece is no longer available", retry. Card markup extracted to `StyleCard`. Proxy allows `GET complete-look` (query forwarded). |
+| Tests | shared +21, API route +13 (liveness of the anchor, no-self, unmapped, empty, colour order, per-slot cap), web look +7, proxy +2, sheet +1. Existing feed tests (46) pass untouched. shared/api/web tsc, Biome, `next lint` clean. |
+| Not verified | No browser/device check. No real data: category/subtype free text means slot matching is keyword containment (a `bottom` slot reads subtype keywords only, palazzo/sharara/pant/churidar/legging/bottom, so it only fills if retailers' subtypes say so). Colour pairings and the neutrals rule are unreviewed. No e2e spec (the new fetch only fires on a click). Jewellery has no category, so it is not offered. |

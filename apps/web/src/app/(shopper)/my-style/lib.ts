@@ -96,6 +96,47 @@ export async function sendEnquiry(slug: string, productIds: string[]): Promise<E
   }
 }
 
+export interface LookSlotResult {
+  key: string
+  label: string
+  items: FeedCard[]
+}
+
+export type LookResult =
+  | {
+      kind: 'ok'
+      anchor: { id: string; name: string | null }
+      slots: LookSlotResult[]
+      /** 'none_nearby' = nothing mapped or nothing in range; the page says so, no filler. */
+      reason: 'none_nearby' | null
+    }
+  | { kind: 'unavailable' } // the anchor was sold, deleted or its store went away
+  | { kind: 'unauthorized' }
+  | { kind: 'error' }
+
+/** Complete the look (PR-10b). Rejects on abort so a superseded request can be ignored (RC-014). */
+export async function fetchLook(
+  anchor: string,
+  where: { lat: number; lng: number; radius_km: number } | null,
+  signal: AbortSignal,
+): Promise<LookResult> {
+  const qs = new URLSearchParams({ anchor })
+  if (where) {
+    qs.set('lat', String(where.lat))
+    qs.set('lng', String(where.lng))
+    qs.set('radius_km', String(where.radius_km))
+  }
+  const res = await fetch(`/api/my-style/complete-look?${qs}`, { credentials: 'include', signal })
+  if (res.status === 401) return { kind: 'unauthorized' }
+  if (res.status === 404) return { kind: 'unavailable' }
+  if (!res.ok) return { kind: 'error' }
+  const json = (await res.json()) as {
+    data: { anchor: { id: string; name: string | null }; slots: LookSlotResult[] }
+    meta: { reason: 'none_nearby' | null }
+  }
+  return { kind: 'ok', anchor: json.data.anchor, slots: json.data.slots, reason: json.meta.reason }
+}
+
 /** Rejects on abort so the caller can ignore a superseded request (RC-014). */
 export async function fetchFeed(req: FeedRequest, signal: AbortSignal): Promise<FeedResult> {
   const res = await fetch('/api/my-style/feed', {
