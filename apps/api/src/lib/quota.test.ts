@@ -34,7 +34,9 @@ vi.mock('@kanchuki/db', () => ({
   },
 }));
 
-const { checkCustomerQuota, checkQuota, incrementCustomerUsage } = await import('./quota.js');
+const { checkCustomerQuota, checkQuota, getEnforcedQuota, incrementCustomerUsage } = await import(
+  './quota.js'
+);
 
 const CUSTOMER = 'customer_account_1';
 
@@ -184,5 +186,52 @@ describe('the two caps are distinguishable', () => {
       code: 'CUSTOMER_LIMIT_EXCEEDED',
       status: 402,
     });
+  });
+});
+
+// RC-073: the screen must report what checkQuota enforces, not a plan default.
+describe('getEnforcedQuota', () => {
+  it.each([
+    ['no limit row (fail-open)', null],
+    ['an explicit unlimited (-1) row', { limit_per_period: -1, period: 'MONTH' }],
+  ])('%s -> unlimited, and checkQuota agrees', async (_n, row) => {
+    mockPlanLimitFindUnique.mockResolvedValue(row);
+    for (const plan of ['STARTER', 'GROWTH', 'PRO']) {
+      mockRetailerFindUniqueOrThrow.mockResolvedValue({ plan });
+      expect(await getEnforcedQuota('r1', 'TRY_ON_GENERATION')).toEqual({
+        used: 0,
+        limit: -1,
+        remaining: -1,
+        unlimited: true,
+      });
+      await expect(checkQuota('r1', 'TRY_ON_GENERATION', 99)).resolves.toBeUndefined();
+    }
+  });
+
+  it('limited: remaining = limit - used - reserved, never negative, and checkQuota agrees', async () => {
+    mockPlanLimitFindUnique.mockResolvedValue({ limit_per_period: 20, period: 'MONTH' });
+    mockUsageCounterFindUnique.mockResolvedValue({ count: 17 });
+    expect(await getEnforcedQuota('r1', 'TRY_ON_GENERATION')).toEqual({
+      used: 17,
+      limit: 20,
+      remaining: 3,
+      unlimited: false,
+    });
+    // two jobs already in flight: the POST counts them, so the screen must too
+    expect((await getEnforcedQuota('r1', 'TRY_ON_GENERATION', 2)).remaining).toBe(1);
+    expect((await getEnforcedQuota('r1', 'TRY_ON_GENERATION', 9)).remaining).toBe(0);
+    await expect(checkQuota('r1', 'TRY_ON_GENERATION', 4)).rejects.toMatchObject({
+      code: 'PLAN_LIMIT_EXCEEDED',
+    });
+  });
+
+  it('reads the current period counter', async () => {
+    mockPlanLimitFindUnique.mockResolvedValue({ limit_per_period: 20, period: 'MONTH' });
+    mockUsageCounterFindUnique.mockResolvedValue(null);
+    await getEnforcedQuota('r1', 'TRY_ON_GENERATION');
+    expect(
+      mockUsageCounterFindUnique.mock.calls[0]?.[0].where.retailer_id_resource_type_period_start
+        .period_start,
+    ).toEqual(monthStart());
   });
 });

@@ -49,7 +49,7 @@ import { Sentry } from '../../instrument.js';
 import { addTryOnJob } from '../../jobs/index.js';
 import { CUSTOMER_TRY_ON_ENABLED, hasFeature } from '../../lib/features.js';
 import { isCurrentTryOnConsent } from '../../lib/notice-versions.js';
-import { checkCustomerQuota, checkQuota, getQuotaStatus } from '../../lib/quota.js';
+import { checkCustomerQuota, checkQuota, getEnforcedQuota } from '../../lib/quota.js';
 import { hasLiveTryOnConsent, recordTryOnConsent } from '../../lib/tryon-consent.js';
 import { discardTryOnPhoto, putTryOnPhoto } from '../../lib/tryon-photo-store.js';
 import {
@@ -170,6 +170,18 @@ async function requireTryOnStaff(request: FastifyRequest): Promise<string> {
   return request.retailerId;
 }
 
+/** Recent PENDING jobs: already-spent quota, since usage is only counted on success. The
+ *  window bounds orphaned PENDING rows. Shared by the POST's check and the quota read so the
+ *  screen and the server cannot disagree. */
+const pendingTryOns = (retailerId: string) =>
+  prisma.tryOnJob.count({
+    where: {
+      retailer_id: retailerId,
+      status: 'PENDING',
+      created_at: { gte: new Date(Date.now() - PENDING_WINDOW_MS) },
+    },
+  });
+
 export const productsTryOnRoutes: FastifyPluginAsync = async (server) => {
   // Scoped to this plugin — the multipart parser is only needed by the one
   // route below and is not registered against the whole API.
@@ -181,9 +193,10 @@ export const productsTryOnRoutes: FastifyPluginAsync = async (server) => {
   // Static segment, registered before the `/:id/...` routes. Bearer only.
   server.get('/try-on/quota', async (request) => {
     const retailerId = await requireTryOnStaff(request);
-    const { used, limit, remaining, unlimited } = await getQuotaStatus(
+    const { used, limit, remaining, unlimited } = await getEnforcedQuota(
       retailerId,
       'TRY_ON_GENERATION',
+      await pendingTryOns(retailerId),
     );
     return { data: { used, limit, remaining, unlimited } };
   });
@@ -196,12 +209,14 @@ export const productsTryOnRoutes: FastifyPluginAsync = async (server) => {
     const retailerId = await requireTryOnStaff(request);
     const body = z.object({ job_ids: z.array(z.string().min(1)).max(10) }).safeParse(request.body);
     if (!body.success) throw validationError('job_ids must be up to 10 job ids.', 'job_ids');
+    // A repeated id would count as "skipped" for every extra copy.
+    const jobIds = Array.from(new Set(body.data.job_ids));
 
     // In-store only (`customer_account_id` null): passport results follow the
     // withdrawal path. Foreign/unknown ids simply don't match.
     const jobs = await prisma.tryOnJob.findMany({
       where: {
-        id: { in: body.data.job_ids },
+        id: { in: jobIds },
         retailer_id: retailerId,
         customer_account_id: null,
         OR: [{ result_url: { not: null } }, { status: 'PENDING' }],
@@ -261,7 +276,7 @@ export const productsTryOnRoutes: FastifyPluginAsync = async (server) => {
       throw new AppError('TRY_ON_DISCARD_FAILED', 'Could not discard the try-on results.', 502);
     }
     return {
-      data: { discarded, failed, skipped: body.data.job_ids.length - jobs.length },
+      data: { discarded, failed, skipped: jobIds.length - jobs.length },
     };
   });
 
@@ -337,13 +352,7 @@ export const productsTryOnRoutes: FastifyPluginAsync = async (server) => {
     //    Usage is only incremented on job SUCCESS, so a multi-product session
     //    firing several POSTs back-to-back would all pass; count recent PENDING
     //    jobs as already spent. The 10-minute window bounds orphaned PENDING rows.
-    const pending = await prisma.tryOnJob.count({
-      where: {
-        retailer_id: retailerId,
-        status: 'PENDING',
-        created_at: { gte: new Date(Date.now() - PENDING_WINDOW_MS) },
-      },
-    });
+    const pending = await pendingTryOns(retailerId);
     await checkQuota(retailerId, 'TRY_ON_GENERATION', 1 + pending);
     if (customerAccountId) {
       await checkCustomerQuota(customerAccountId, 'TRY_ON_GENERATION');

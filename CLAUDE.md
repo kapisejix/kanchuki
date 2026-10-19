@@ -261,6 +261,9 @@ Payment: Razorpay (UPI first). Retailer pays base + 18% GST. **Source of truth: 
 
 | ID | Root cause (one line) | Fixed in |
 |---|---|---|
+| RC-074 | `POST /try-on/discard` computed `skipped` as the raw request length minus distinct rows found, so every repeated job id counted as skipped. | root-cause issues.md |
+| RC-073 | The try-on quota screen used `getQuotaStatus` (plan defaults, no PENDING jobs) while `checkQuota` enforces the real limit (no row / -1 = unlimited, plus PENDING) — two functions answering one question, so the screen could block a retailer the server would allow. | root-cause issues.md |
+| RC-072 | The in-job "record the key before deleting" write matched DISCARDED rows only, so a try-on that finished after a consent withdrawal and whose R2 delete failed left an image with no pointer for the sweep to find (RC-044 shape). | root-cause issues.md |
 | RC-071 | The add-on callback wrote a terminal `FAILED` on a transient Razorpay lookup error (and via an unguarded update), so a retailer who had paid could never be credited — the callback only finds `PENDING` rows; the credit-failure path was a log line, not an alert. | root-cause issues.md |
 | RC-070 | The My Style occasion dropdown / Kids form sent quiz labels ("Party / Festive") straight into a ranker that compares canonical spellings (`party wear`, `festive`), so the occasion filter never matched; the label table existed but only the quiz route used it. | root-cause issues.md |
 | RC-069 | The occasion backfill filtered with Prisma `isEmpty` (`= '{}'`) on `products.occasions`, a nullable `TEXT[]` whose rows are all `NULL`, so it skipped every row and reported "nothing to do" on a 216-product catalog; the tests only fed it `[]`. Fixed with raw `IS NULL OR cardinality(...) = 0` on both the select and the write. | root-cause issues.md |

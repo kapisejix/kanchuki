@@ -683,3 +683,15 @@ no migration, no schema change, and **no new request on any surface**.
 | API | `GET /billing/addon-callback`: a failed `/payments/:id` lookup or a non-captured status (e.g. `authorized`) leaves the purchase `PENDING` and redirects `status=error`; only a wrong amount or `failed` becomes `FAILED`, via `updateMany ... WHERE status='PENDING'`; lookup-error and credit-failure paths call `Sentry.captureException`. |
 | Tests | `billing-addons.test.ts` +5 (lookup error, authorized, wrong amount, failed, Sentry on credit failure). Mutation-checked: 5 fail on the old handler. API tsc and Biome clean. |
 | Not verified | No real Razorpay round trip. A payment stuck at `authorized` would stay PENDING until replayed or credited by support. |
+
+## 2026-10-19 - F-044 R2 gaps (b), (c), (e): try-on cleanups (RC-072, RC-073, RC-074)
+
+| Item | Detail |
+|---|---|
+| Branch | `fix/f-044-tryon-cleanups`, stacked on `fix/f-044-addon-callback` (#135), no migration, not merged. |
+| (b) RC-072 | `jobs/tryon.ts`: the record-the-key write matches `DISCARDED` or `consent_withdrawn_at != null`, so a withdrawn-mid-run job whose R2 delete fails stays findable by the deletion sweep. |
+| (c) RC-073 | `lib/quota.ts` `getEnforcedQuota` (mirrors `checkQuota`: no row / -1 = unlimited; remaining = limit - used - reserved). `GET /products/try-on/quota` uses it with the same `pendingTryOns()` count as the POST. `getQuotaStatus` unchanged (Studio Shoot, scheduler). |
+| (e) RC-074 | `/try-on/discard` dedupes `job_ids` before the lookup and the `skipped` maths. |
+| Tests | quota +3 (unlimited cases asserted against `checkQuota` for all plans), route +3, job +1 and one pinned `where` updated. (b) mutation-checked against the old handler. API tsc and Biome clean. |
+| Not verified | No device run of the in-store screen; no real R2 outage. |
+

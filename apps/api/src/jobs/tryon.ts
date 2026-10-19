@@ -171,14 +171,18 @@ export async function handleTryOn(data: TryOnJobData): Promise<void> {
     });
 
     if (claimed.count === 0) {
-      // Discarded while the GPU was working (staff closed the in-store
-      // session): the row is DISCARDED and has no pointer, so a failed delete
-      // below would orphan the object (RC-044 shape). Record the key on the
-      // row FIRST, keeping status DISCARDED, so the age sweep can retry it.
-      // No-match for withdrawn rows (not DISCARDED) - that path is unchanged.
+      // Discarded (staff closed the in-store session) or withdrawn (consent) while
+      // the GPU was working: the row has no pointer, so a failed delete below would
+      // orphan the object (RC-044 shape). Record the key on the row FIRST, leaving
+      // status alone, so a sweep can retry it: the age sweep finds DISCARDED rows,
+      // the deletion sweep finds `consent_withdrawn_at` rows with a key (RC-072).
       const recorded = await prisma.tryOnJob
         .updateMany({
-          where: { id: job_id, status: 'DISCARDED', result_url: null },
+          where: {
+            id: job_id,
+            result_url: null,
+            OR: [{ status: 'DISCARDED' }, { consent_withdrawn_at: { not: null } }],
+          },
           data: { result_url: resultKey, completed_at: new Date(), gpu_ms: result.gpuMs },
         })
         .catch((err) => {
