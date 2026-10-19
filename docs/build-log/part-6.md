@@ -674,3 +674,12 @@ no migration, no schema change, and **no new request on any surface**.
 | Web | `Complete the look` on feed cards, shortlist chips, and the store `ProductDetailSheet` (links to `/my-style?look=<id>`). Tab appears only once an anchor exists; last anchor in `sessionStorage`; `LookPanel` shows slots, "Nothing near you goes with this piece yet", "That piece is no longer available", retry. Card markup extracted to `StyleCard`. Proxy allows `GET complete-look` (query forwarded). |
 | Tests | shared +21, API route +13 (liveness of the anchor, no-self, unmapped, empty, colour order, per-slot cap), web look +7, proxy +2, sheet +1. Existing feed tests (46) pass untouched. shared/api/web tsc, Biome, `next lint` clean. |
 | Not verified | No browser/device check. No real data: category/subtype free text means slot matching is keyword containment (a `bottom` slot reads subtype keywords only, palazzo/sharara/pant/churidar/legging/bottom, so it only fills if retailers' subtypes say so). Colour pairings and the neutrals rule are unreviewed. No e2e spec (the new fetch only fires on a click). Jewellery has no category, so it is not offered. |
+
+## 2026-10-19 - F-044 R2 gap (a): the add-on callback no longer loses a paid purchase (RC-071)
+
+| Item | Detail |
+|---|---|
+| Branch | `fix/f-044-addon-callback`, no migration, not merged. |
+| API | `GET /billing/addon-callback`: a failed `/payments/:id` lookup or a non-captured status (e.g. `authorized`) leaves the purchase `PENDING` and redirects `status=error`; only a wrong amount or `failed` becomes `FAILED`, via `updateMany ... WHERE status='PENDING'`; lookup-error and credit-failure paths call `Sentry.captureException`. |
+| Tests | `billing-addons.test.ts` +5 (lookup error, authorized, wrong amount, failed, Sentry on credit failure). Mutation-checked: 5 fail on the old handler. API tsc and Biome clean. |
+| Not verified | No real Razorpay round trip. A payment stuck at `authorized` would stay PENDING until replayed or credited by support. |

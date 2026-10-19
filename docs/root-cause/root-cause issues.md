@@ -12,6 +12,17 @@
 
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
+## RC-071 — The add-on callback turned a failed Razorpay lookup into a terminal FAILED, so a customer who paid could never be credited
+
+- **Component:** `apps/api/src/routes/billing/billing-addons.ts` (`GET /billing/addon-callback`). Found while closing the F-044 Release 2 known gaps; fixed 2026-10-19 on `fix/f-044-addon-callback`.
+- **Symptom:** a retailer completes a try-on top-up payment, Razorpay's payment lookup times out or 5xxs at that moment, and the pack is never credited. Replaying the callback does nothing.
+- **Root cause:** the callback verifies the HMAC signature (proof the link was paid through Razorpay), then fetches `/payments/:id`. The `catch` around that fetch wrote `FAILED`, and the callback only ever looks up `PENDING` rows, so a transient lookup error made the purchase permanently uncreditable. The same unguarded `update` (by id, no status check) was used for the amount-mismatch path, so a late duplicate callback could also overwrite a `COMPLETED` purchase with `FAILED`. And the separate "paid but the credit transaction failed" path stayed `PENDING` correctly but only wrote a log line, so nobody was told.
+- **Fix:** a failed lookup, or a payment Razorpay has not captured yet (`authorized`), leaves the purchase `PENDING` and redirects to `status=error` so a replay can credit it. Only a definitive negative (wrong amount, or payment status `failed`) becomes `FAILED`, and that write is `updateMany ... WHERE status = 'PENDING'`. The lookup-error and credit-failure paths call `Sentry.captureException` (tags `addon-callback` / `addon-credit`).
+- **Proof:** `billing-addons.test.ts` > "a paid purchase is never terminally lost (RC-071)" (lookup error, `authorized`, wrong amount, `failed`) and the credit-failure test now asserts the Sentry call. Mutation-checked: against the old handler 5 of these fail.
+- **Not verified:** no real Razorpay round trip. Whether Razorpay Payment Links can reach `authorized` without auto-capture in this account is unknown; if one stays there forever the purchase stays `PENDING` until someone replays it or support credits it manually.
+
+---
+
 ## RC-070 — The My Style occasion filter and Kids form sent quiz labels the ranker never matches
 
 - **Component:** `apps/api/src/routes/public/public-my-style.ts` (`/feed`), `packages/shared/src/style-quiz.ts`. Found and fixed 2026-10-18 on `feat/f-045-tabs` (PR-10a), while wiring the Occasion tab.
