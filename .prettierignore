@@ -1,0 +1,3 @@
+# Prettier pads every Markdown table cell to its column width, which inflates this file
+# from ~85k to ~410k chars and breaks the 150k-char limit Claude Code loads it under.
+CLAUDE.md
