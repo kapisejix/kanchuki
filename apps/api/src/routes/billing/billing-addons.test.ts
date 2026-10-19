@@ -20,7 +20,10 @@ const m = vi.hoisted(() => ({
   auditCreate: vi.fn(),
   razorpay: vi.fn(),
   hasFeature: vi.fn(),
+  sentry: vi.fn(),
 }));
+
+vi.mock('@sentry/node', () => ({ init: vi.fn(), captureException: m.sentry }));
 
 const txClient = () => ({
   quotaAddonPurchase: { updateMany: m.purchaseUpdateMany },
@@ -325,5 +328,63 @@ describe('GET /addon-callback - credits exactly once', () => {
     // the claim lives in the same transaction as the credit, so nothing is
     // marked COMPLETED outside it
     expect(m.purchaseUpdate).not.toHaveBeenCalled();
+    // money was taken and nothing credited: that must alert, not just log
+    expect(m.sentry).toHaveBeenCalledOnce();
+    expect(m.sentry.mock.calls[0]?.[1].tags).toEqual({ area: 'addon-credit' });
+  });
+});
+
+describe('GET /addon-callback - a paid purchase is never terminally lost (RC-071)', () => {
+  const link = 'plink_1';
+  const pay = 'pay_1';
+  const sig = createHmac('sha256', 'rzp_test_key_secret').update(`${link}|${pay}`).digest('hex');
+  const url = `/v1/billing/addon-callback?razorpay_payment_id=${pay}&razorpay_payment_link_id=${link}&razorpay_signature=${sig}`;
+
+  beforeEach(() => {
+    m.purchaseFindFirst.mockResolvedValue({
+      id: 'purchase_1',
+      retailer_id: RETAILER_ID,
+      resource_type: 'TRY_ON_GENERATION',
+      quantity: 25,
+      amount_inr: 23600,
+    });
+    m.purchaseUpdateMany.mockResolvedValue({ count: 1 });
+  });
+
+  const writes = () => [...m.purchaseUpdate.mock.calls, ...m.purchaseUpdateMany.mock.calls];
+
+  it('a Razorpay lookup error leaves the purchase PENDING (replayable) and alerts', async () => {
+    m.razorpay.mockRejectedValue(new Error('rzp 503'));
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url });
+    expect(res.statusCode).toBe(302);
+    expect(res.headers.location).toContain('status=error');
+    expect(writes()).toHaveLength(0);
+    expect(m.sentry.mock.calls[0]?.[1].tags).toEqual({ area: 'addon-callback' });
+  });
+
+  it('a payment that is not captured yet (authorized) stays PENDING, no write', async () => {
+    m.razorpay.mockResolvedValue({ amount: 23600, status: 'authorized' });
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url });
+    expect(res.headers.location).toContain('status=error');
+    expect(writes()).toHaveLength(0);
+    expect(m.usageUpsert).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['wrong amount', { amount: 100, status: 'captured' }],
+    ['payment failed', { amount: 23600, status: 'failed' }],
+  ])('%s -> FAILED, written only while still PENDING, nothing credited', async (_n, payment) => {
+    m.razorpay.mockResolvedValue(payment);
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url });
+    expect(res.headers.location).toContain('status=failed');
+    expect(m.purchaseUpdate).not.toHaveBeenCalled(); // never an unguarded update by id
+    expect(m.purchaseUpdateMany).toHaveBeenCalledOnce();
+    const arg = m.purchaseUpdateMany.mock.calls[0]?.[0];
+    expect(arg.where).toEqual({ id: 'purchase_1', status: 'PENDING' });
+    expect(arg.data.status).toBe('FAILED');
+    expect(m.usageUpsert).not.toHaveBeenCalled();
   });
 });

@@ -2,6 +2,7 @@
 import { createHmac } from 'node:crypto';
 import { type QuotaResourceType, type SubscriptionPlan, getSecret, prisma } from '@kanchuki/db';
 import { ADDON_PRICING } from '@kanchuki/shared';
+import * as Sentry from '@sentry/node';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { hasFeatureForPlan } from '../../lib/features.js';
@@ -246,36 +247,49 @@ export const billingAddonRoutes: FastifyPluginAsync = async (server) => {
     // Fetch payment details from Razorpay to verify amount + capture status
     // before crediting anything — a mismatch or uncaptured payment must not
     // fall through to the credit step below.
+    const webUrl = process.env.WEB_URL ?? 'http://localhost:3000';
+    let payment: { amount: number; status: string };
     try {
-      const payment = await razorpay<{ amount: number; status: string }>(
+      payment = await razorpay<{ amount: number; status: string }>(
         `/payments/${razorpay_payment_id}`,
       );
-      if (payment.amount !== purchase.amount_inr || payment.status !== 'captured') {
-        request.log.error(
-          {
-            razorpay_payment_id,
-            expected: purchase.amount_inr,
-            actual: payment.amount,
-            status: payment.status,
-          },
-          'Payment amount/status mismatch on addon callback — not crediting',
-        );
-        await prisma.quotaAddonPurchase.update({
-          where: { id: purchase.id },
+    } catch (err) {
+      // The signature above already proved this link went through Razorpay, so a failed
+      // LOOKUP says nothing about the payment. It must not become a terminal FAILED: this
+      // callback only finds PENDING rows, so a replay could never credit it (RC-071).
+      request.log.error(
+        { razorpay_payment_id, err },
+        'Failed to fetch payment details - left PENDING, replay the callback',
+      );
+      Sentry.captureException(err, {
+        tags: { area: 'addon-callback' },
+        extra: { purchase_id: purchase.id, razorpay_payment_id },
+      });
+      return reply.redirect(`${webUrl}/billing/addon-success?status=error`);
+    }
+    if (payment.amount !== purchase.amount_inr || payment.status !== 'captured') {
+      // Definitive: the wrong amount, or Razorpay says the payment failed. Anything else
+      // (authorized, created...) can still capture, so the purchase stays PENDING.
+      const definitive = payment.amount !== purchase.amount_inr || payment.status === 'failed';
+      request.log.error(
+        {
+          razorpay_payment_id,
+          expected: purchase.amount_inr,
+          actual: payment.amount,
+          status: payment.status,
+        },
+        'Payment amount/status mismatch on addon callback — not crediting',
+      );
+      if (definitive) {
+        // CAS on PENDING: a concurrent callback that already completed it must not be
+        // overwritten with FAILED.
+        await prisma.quotaAddonPurchase.updateMany({
+          where: { id: purchase.id, status: 'PENDING' },
           data: { status: 'FAILED', razorpay_payment_id },
         });
-        return reply.redirect(
-          `${process.env.WEB_URL ?? 'http://localhost:3000'}/billing/addon-success?status=failed`,
-        );
       }
-    } catch (err) {
-      request.log.error({ razorpay_payment_id, err }, 'Failed to fetch payment details');
-      await prisma.quotaAddonPurchase.update({
-        where: { id: purchase.id },
-        data: { status: 'FAILED', razorpay_payment_id },
-      });
       return reply.redirect(
-        `${process.env.WEB_URL ?? 'http://localhost:3000'}/billing/addon-success?status=failed`,
+        `${webUrl}/billing/addon-success?status=${definitive ? 'failed' : 'error'}`,
       );
     }
 
@@ -328,6 +342,11 @@ export const billingAddonRoutes: FastifyPluginAsync = async (server) => {
         { err, purchase_id: purchase.id, razorpay_payment_id },
         'PAID addon purchase NOT credited - left PENDING, needs replay or manual credit',
       );
+      // A log line is not an alert: money was taken and nothing was credited.
+      Sentry.captureException(err, {
+        tags: { area: 'addon-credit' },
+        extra: { purchase_id: purchase.id, razorpay_payment_id },
+      });
       return reply.redirect(
         `${process.env.WEB_URL ?? 'http://localhost:3000'}/billing/addon-success?status=error`,
       );
