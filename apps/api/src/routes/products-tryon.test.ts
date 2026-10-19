@@ -23,7 +23,7 @@ const {
   mockJobFindMany,
   mockJobUpdateMany,
   mockDeleteObject,
-  mockGetQuotaStatus,
+  mockGetEnforcedQuota,
   mockAddTryOnJob,
   mockHasFeature,
   mockCheckQuota,
@@ -49,7 +49,7 @@ const {
   mockJobFindMany: vi.fn(),
   mockJobUpdateMany: vi.fn(),
   mockDeleteObject: vi.fn(),
-  mockGetQuotaStatus: vi.fn(),
+  mockGetEnforcedQuota: vi.fn(),
   mockAddTryOnJob: vi.fn(),
   mockHasFeature: vi.fn(),
   mockCheckQuota: vi.fn(),
@@ -90,7 +90,7 @@ vi.mock('../lib/features.js', () => ({
 vi.mock('../lib/quota.js', () => ({
   checkQuota: mockCheckQuota,
   checkCustomerQuota: mockCheckCustomerQuota,
-  getQuotaStatus: mockGetQuotaStatus,
+  getEnforcedQuota: mockGetEnforcedQuota,
 }));
 
 vi.mock('../lib/tryon-photo-store.js', () => ({
@@ -214,7 +214,7 @@ beforeEach(() => {
   mockJobFindMany.mockResolvedValue([]);
   mockJobUpdateMany.mockResolvedValue({ count: 1 });
   mockDeleteObject.mockResolvedValue(undefined);
-  mockGetQuotaStatus.mockResolvedValue({
+  mockGetEnforcedQuota.mockResolvedValue({
     used: 1,
     limit: 3,
     remaining: 2,
@@ -509,7 +509,29 @@ describe('GET /products/try-on/quota', () => {
     const res = await get(app);
     expect(res.statusCode).toBe(200);
     expect(res.json().data).toEqual({ used: 1, limit: 3, remaining: 2, unlimited: false });
-    expect(mockGetQuotaStatus).toHaveBeenCalledWith(RETAILER_ID, 'TRY_ON_GENERATION');
+    expect(mockGetEnforcedQuota).toHaveBeenCalledWith(RETAILER_ID, 'TRY_ON_GENERATION', 0);
+    await app.close();
+  });
+
+  it('passes in-flight PENDING jobs as reserved, the same count the POST adds (RC-073)', async () => {
+    mockJobCount.mockResolvedValue(2);
+    const app = await buildApp({ retailerId: RETAILER_ID });
+    await get(app);
+    expect(mockGetEnforcedQuota).toHaveBeenCalledWith(RETAILER_ID, 'TRY_ON_GENERATION', 2);
+    const where = mockJobCount.mock.calls[0]?.[0].where;
+    expect(where).toMatchObject({ retailer_id: RETAILER_ID, status: 'PENDING' });
+    await app.close();
+  });
+
+  it('unlimited is passed through so the screen does not block', async () => {
+    mockGetEnforcedQuota.mockResolvedValue({ used: 0, limit: -1, remaining: -1, unlimited: true });
+    const app = await buildApp({ retailerId: RETAILER_ID });
+    expect((await get(app)).json().data).toEqual({
+      used: 0,
+      limit: -1,
+      remaining: -1,
+      unlimited: true,
+    });
     await app.close();
   });
 
@@ -523,7 +545,7 @@ describe('GET /products/try-on/quota', () => {
     const app = await buildApp({ retailerId: RETAILER_ID, staffRole: 'salesperson' });
     const res = await get(app);
     expect(res.statusCode).toBe(403);
-    expect(mockGetQuotaStatus).not.toHaveBeenCalled();
+    expect(mockGetEnforcedQuota).not.toHaveBeenCalled();
     await app.close();
   });
 
@@ -536,7 +558,7 @@ describe('GET /products/try-on/quota', () => {
       headers: { cookie: 'kanchuki_passport=sess_1' },
     });
     expect(res.statusCode).toBe(404);
-    expect(mockGetQuotaStatus).not.toHaveBeenCalled();
+    expect(mockGetEnforcedQuota).not.toHaveBeenCalled();
     await app.close();
   });
 
@@ -544,7 +566,7 @@ describe('GET /products/try-on/quota', () => {
     mockHasFeature.mockResolvedValue(false);
     const app = await buildApp({ retailerId: RETAILER_ID });
     expect((await get(app)).statusCode).toBe(404);
-    expect(mockGetQuotaStatus).not.toHaveBeenCalled();
+    expect(mockGetEnforcedQuota).not.toHaveBeenCalled();
     await app.close();
   });
 
@@ -552,7 +574,7 @@ describe('GET /products/try-on/quota', () => {
     const app = await buildApp({ retailerId: RETAILER_ID, delegate: d });
     const res = await get(app);
     expect(res.statusCode).toBe(403);
-    expect(mockGetQuotaStatus).not.toHaveBeenCalled();
+    expect(mockGetEnforcedQuota).not.toHaveBeenCalled();
     await app.close();
   });
 
@@ -605,7 +627,7 @@ describe('RC-068 — try-on routes refuse delegates and salesperson', () => {
           expect(mockProductFindFirst).not.toHaveBeenCalled();
           expect(mockJobFindFirst).not.toHaveBeenCalled();
           expect(mockJobCreate).not.toHaveBeenCalled();
-          expect(mockGetQuotaStatus).not.toHaveBeenCalled();
+          expect(mockGetEnforcedQuota).not.toHaveBeenCalled();
           await app.close();
         },
       );
@@ -674,6 +696,15 @@ describe('POST /products/try-on/discard (F-044 R2 T2)', () => {
       where: { id: 'j1', result_url: 'k/j1.jpg' },
       data: { result_url: null },
     });
+    await app.close();
+  });
+
+  it('a repeated id is looked up once and does not inflate skipped (gap e)', async () => {
+    mockJobFindMany.mockResolvedValue([{ id: 'j1', result_url: 'k/j1.jpg' }]);
+    const app = await buildApp({ retailerId: RETAILER_ID });
+    const res = await discard(app, { job_ids: ['j1', 'j1', 'j1'] });
+    expect(res.json().data).toEqual({ discarded: 1, failed: 0, skipped: 0 });
+    expect(mockJobFindMany.mock.calls[0]?.[0].where.id).toEqual({ in: ['j1'] });
     await app.close();
   });
 

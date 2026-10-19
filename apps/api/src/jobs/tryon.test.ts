@@ -181,7 +181,11 @@ describe('handleTryOn', () => {
 
     const key = 'tryon-results/tryon_1/result.jpg';
     expect(mockJobUpdateMany.mock.calls[1]?.[0]).toEqual({
-      where: { id: 'tryon_1', status: 'DISCARDED', result_url: null },
+      where: {
+        id: 'tryon_1',
+        result_url: null,
+        OR: [{ status: 'DISCARDED' }, { consent_withdrawn_at: { not: null } }],
+      },
       data: { result_url: key, completed_at: expect.any(Date), gpu_ms: 1200 },
     });
     expect(mockDeleteObject).toHaveBeenCalledWith(key);
@@ -203,6 +207,21 @@ describe('handleTryOn', () => {
     await expect(handleTryOn(DATA)).resolves.toBeUndefined();
 
     // Record write happened, pointer was NOT cleared (still the only pointer).
+    expect(mockJobUpdateMany).toHaveBeenCalledTimes(2);
+  });
+
+  it('withdrawn mid-run + failed delete: the key is recorded for the deletion sweep (RC-072)', async () => {
+    // Guarded completion loses (consent withdrawn), the record write lands on the
+    // withdrawn row, the delete fails -> the key must stay on the row.
+    mockJobUpdateMany.mockResolvedValueOnce({ count: 0 }).mockResolvedValueOnce({ count: 1 });
+    mockDeleteObject.mockRejectedValue(new Error('R2 unreachable'));
+
+    await expect(handleTryOn({ ...DATA, customer_account_id: 'acct_1' })).resolves.toBeUndefined();
+
+    const record = mockJobUpdateMany.mock.calls[1]?.[0];
+    expect(record.where.OR).toContainEqual({ consent_withdrawn_at: { not: null } });
+    expect(record.data.result_url).toBe('tryon-results/tryon_1/result.jpg');
+    // pointer NOT cleared: still the only pointer to an object we owe a delete for
     expect(mockJobUpdateMany).toHaveBeenCalledTimes(2);
   });
 

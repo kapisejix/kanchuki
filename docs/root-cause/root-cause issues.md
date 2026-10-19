@@ -12,6 +12,39 @@
 
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
+## RC-074 — `POST /try-on/discard` counted every repeated job id as "skipped"
+
+- **Component:** `apps/api/src/routes/products/products-tryon.ts`. Fixed 2026-10-19 on `fix/f-044-tryon-cleanups`.
+- **Symptom:** a discard request listing one id three times answered `skipped: 2` for a job that was found and discarded.
+- **Root cause:** `skipped` was `job_ids.length - jobs.length`, comparing the raw request length with the number of distinct rows the `IN (...)` lookup returned.
+- **Fix:** the ids are deduplicated once and that list is used for both the lookup and the subtraction.
+- **Proof:** `products-tryon.test.ts` > "a repeated id is looked up once and does not inflate skipped".
+- **Not verified:** the mobile client never sends duplicates today, so this was only reachable by a hand-built request.
+
+---
+
+## RC-073 — The try-on quota screen reported plan defaults and ignored in-flight jobs, so it disagreed with the server that enforces the limit
+
+- **Component:** `apps/api/src/lib/quota.ts` (`getQuotaStatus`), `GET /v1/products/try-on/quota`. Fixed 2026-10-19 on `fix/f-044-tryon-cleanups`.
+- **Symptom:** a retailer with no `TRY_ON_GENERATION` limit row, or an explicit unlimited (-1) row, saw a 0 / 30 / 100 allowance on the in-store try-on pre-flight (Starter: 0 left, blocked), while `POST /try-on` would have let every request through. A retailer with jobs already running saw a larger "remaining" than the POST would accept.
+- **Root cause:** two functions answered the same question independently. `checkQuota` returns (allows) on no row or -1 and adds recent PENDING jobs to the request; `getQuotaStatus` instead substituted Growth 30 / Pro 100 plan defaults, invented `unlimited` from them, and never counted PENDING jobs. The defaults were written for Studio Shoot, not try-on (whose limits are 20 / 50 / 100).
+- **Fix:** `getEnforcedQuota(retailerId, type, reserved)` mirrors `checkQuota` (no row / -1 = unlimited; remaining = limit - used - reserved), and the try-on route uses it with the same `pendingTryOns()` count the POST uses. `getQuotaStatus` is untouched: Studio Shoot and the scheduler still use it.
+- **Proof:** `quota.test.ts` > `getEnforcedQuota` (unlimited cases asserted against `checkQuota` itself for all three plans; limited remaining with reserved), `products-tryon.test.ts` (reserved passed through, unlimited passed through).
+- **Not verified:** the in-store screen was not re-run on a device. Studio Shoot still shows plan defaults when its limit is -1; left alone on purpose (the scheduler works around it).
+
+---
+
+## RC-072 — A try-on that finished after its consent was withdrawn lost the pointer to its image when the R2 delete failed
+
+- **Component:** `apps/api/src/jobs/tryon.ts` (`handleTryOn`). Same shape as RC-044. Fixed 2026-10-19 on `fix/f-044-tryon-cleanups`.
+- **Symptom:** after a shopper withdrew consent while the GPU was still working, the generated image was deleted in the job; if that delete failed the image stayed in R2 with no row pointing at it, so the hourly deletion sweep could never find it.
+- **Root cause:** the in-job "record the key before deleting" write was added for DISCARDED in-store jobs only (`WHERE status = 'DISCARDED'`). For a withdrawn job it matched nothing, so on a failed delete the key was nowhere. The sweep keys on `consent_withdrawn_at` plus a `result_url`, which that row never got.
+- **Fix:** the record write matches `status = 'DISCARDED' OR consent_withdrawn_at IS NOT NULL`, still only while `result_url` is null and never changing status. On success the pointer is cleared as before; on failure the sweep now owns it.
+- **Proof:** `tryon.test.ts` > "withdrawn mid-run + failed delete: the key is recorded for the deletion sweep (RC-072)" (fails against the old handler), and the discard test pins the new `where`.
+- **Not verified:** not run against a real R2 outage. A withdrawn job's `status` stays `PENDING` with a key on it; nothing serves that, but it is odd to see in the table.
+
+---
+
 ## RC-071 — The add-on callback turned a failed Razorpay lookup into a terminal FAILED, so a customer who paid could never be credited
 
 - **Component:** `apps/api/src/routes/billing/billing-addons.ts` (`GET /billing/addon-callback`). Found while closing the F-044 Release 2 known gaps; fixed 2026-10-19 on `fix/f-044-addon-callback`.

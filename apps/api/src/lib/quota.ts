@@ -237,3 +237,36 @@ export async function getQuotaStatus(
     unlimited: false,
   };
 }
+
+/**
+ * The numbers `checkQuota` will actually enforce, for a screen to show. No limit row, or -1,
+ * means nothing is enforced (checkQuota returns), so this says unlimited instead of inventing
+ * a plan default the way getQuotaStatus does (RC-073). `reserved` is work already in flight
+ * that the enforcing route adds to its own request (e.g. PENDING try-on jobs).
+ */
+export async function getEnforcedQuota(
+  retailerId: string,
+  resourceType: QuotaResourceType,
+  reserved = 0,
+): Promise<{ used: number; limit: number; remaining: number; unlimited: boolean }> {
+  const effective = await effectiveLimit(retailerId, resourceType);
+  if (!effective || effective.limit === -1) {
+    return { used: 0, limit: -1, remaining: -1, unlimited: true };
+  }
+  const counter = await prisma.usageCounter.findUnique({
+    where: {
+      retailer_id_resource_type_period_start: {
+        retailer_id: retailerId,
+        resource_type: resourceType,
+        period_start: periodStart(effective.period),
+      },
+    },
+  });
+  const used = counter?.count ?? 0;
+  return {
+    used,
+    limit: effective.limit,
+    remaining: Math.max(0, effective.limit - used - reserved),
+    unlimited: false,
+  };
+}
