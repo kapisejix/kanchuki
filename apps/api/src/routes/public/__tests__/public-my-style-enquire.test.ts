@@ -6,15 +6,25 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { errorHandler } from '../../../plugins/error-handler.js';
 import { publicMyStyleRoutes } from '../public-my-style.js';
 
-const { mockSession, mockRetailer, mockCollection, mockProducts, mockCreate, mockUpdate } =
-  vi.hoisted(() => ({
-    mockSession: vi.fn(),
-    mockRetailer: vi.fn(),
-    mockCollection: vi.fn(),
-    mockProducts: vi.fn(),
-    mockCreate: vi.fn(),
-    mockUpdate: vi.fn(),
-  }));
+const {
+  mockSession,
+  mockRetailer,
+  mockCollection,
+  mockProducts,
+  mockCreate,
+  mockUpdate,
+  mockPush,
+} = vi.hoisted(() => ({
+  mockSession: vi.fn(),
+  mockRetailer: vi.fn(),
+  mockCollection: vi.fn(),
+  mockProducts: vi.fn(),
+  mockCreate: vi.fn(),
+  mockUpdate: vi.fn(),
+  mockPush: vi.fn(),
+}));
+
+vi.mock('../../../jobs/enquiry-push.js', () => ({ addEnquiryPushJob: mockPush }));
 
 vi.mock('@kanchuki/db', () => ({
   prisma: {
@@ -63,9 +73,35 @@ beforeEach(() => {
   mockSession.mockResolvedValue({ customer_account_id: 'acc_1', customer_account: {} });
   mockRetailer.mockResolvedValue(RETAILER);
   mockCollection.mockResolvedValue({ id: 'col_1', title: 'Festive' });
-  mockCreate.mockResolvedValue({});
+  mockCreate.mockResolvedValue({ id: 'enq_1' });
   mockUpdate.mockResolvedValue({});
+  mockPush.mockResolvedValue(undefined);
   storeProducts('a', 'b');
+});
+
+describe('POST /v1/public/my-style/enquire — team push (F-046)', () => {
+  it('enqueues one push with the enquiry id and item count only', async () => {
+    const res = await post({ retailer_slug: 's', product_ids: ['a', 'b'] });
+    expect(res.statusCode).toBe(200);
+    expect(mockPush).toHaveBeenCalledWith({
+      retailer_id: 'ret_1',
+      enquiry_id: 'enq_1',
+      item_count: 2,
+    });
+  });
+
+  it('a failed enqueue never fails the saved enquiry', async () => {
+    mockPush.mockRejectedValue(new Error('redis down'));
+    const res = await post({ retailer_slug: 's', product_ids: ['a'] });
+    expect(res.statusCode).toBe(200);
+  });
+
+  it('no collection to attach the row to → nothing recorded, nothing pushed', async () => {
+    mockCollection.mockResolvedValue(null);
+    const res = await post({ retailer_slug: 's', product_ids: ['a'] });
+    expect(res.statusCode).toBe(200);
+    expect(mockPush).not.toHaveBeenCalled();
+  });
 });
 
 describe('POST /v1/public/my-style/enquire', () => {

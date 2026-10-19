@@ -1109,10 +1109,11 @@ login; deliberately **no FK** — recipients are resolved from `Staff.role`/`is_
 
 - **No DELETE from the app** (RC-049): unregister and Expo `DeviceNotRegistered` set `disabled_at`; a
   re-register upserts the same token back to active and moves it to the new retailer/staff. `kanchuki_app` gets
-  SELECT/INSERT/UPDATE by default privileges; `kanchuki_purge` has DELETE for `hardDeleteRetailer()`, which lists
-  the table explicitly (RC-050 convention) before `staff`.
+  SELECT/INSERT/UPDATE by default privileges. `hardDeleteRetailer()` does NOT list the table (RC-050 is satisfied
+  by the `retailer_id` FK being `ON DELETE CASCADE`; naming it there would trip the RC-030 `purge-rls-policy`
+  guard, which ties purge-touched tables to migration 111's list). `kanchuki_purge` still gets DELETE as belt-and-braces.
 - RLS on, one `backend_roles_full_access` policy for `kanchuki_app`/`kanchuki_purge` (policy first, then ENABLE — RC-030).
-- Writer map: `routes/push-devices.ts` (`/v1/push-devices/register`, `/unregister`). Send path lands in F-046 slice 2.
+- Writer map: `routes/push-devices.ts` (`/v1/push-devices/register`, `/unregister`); `jobs/enquiry-push.ts` (`disableTokens`, soft-disable on Expo `DeviceNotRegistered`, queue `kanchuki-push`).
 - No customer data is stored or sent: push payloads carry an enquiry id and item count only.
 
 ## Social post scheduler — `post_schedule_plans`, `scheduled_posts`, `scheduled_post_items` (migrations 128/129, F-043, written 2026-10-15, NOT yet applied)

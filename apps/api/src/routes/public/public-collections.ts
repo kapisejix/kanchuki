@@ -4,6 +4,7 @@ import { prisma, withRetry } from '@kanchuki/db';
 import { buildEnquiryMessage, buildWhatsAppEnquiryLink } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
+import { addEnquiryPushJob } from '../../jobs/enquiry-push.js';
 import { withPublicCache } from '../../lib/public-cache.js';
 import { notFound, validationError } from '../../plugins/error-handler.js';
 // recordInteraction removed — customerInteractions model dropped
@@ -272,7 +273,7 @@ export const publicCollectionsRoutes: FastifyPluginAsync = async (server) => {
     const ordered = ids.flatMap((id) => byId.get(id) ?? []);
 
     // Record enquiry for analytics
-    await prisma.collectionEnquiry.create({
+    const enquiry = await prisma.collectionEnquiry.create({
       data: {
         collection_id: collection.id,
         retailer_id: collection.retailer_id,
@@ -290,6 +291,18 @@ export const publicCollectionsRoutes: FastifyPluginAsync = async (server) => {
       where: { id: collection.id },
       data: { enquiry_count: { increment: 1 } },
     });
+
+    // F-046: ping the team. Best-effort and logged (not silent) — a Redis blip must not
+    // turn a saved enquiry into a customer-facing error.
+    try {
+      await addEnquiryPushJob({
+        retailer_id: collection.retailer_id,
+        enquiry_id: enquiry.id,
+        item_count: ids.length,
+      });
+    } catch (err) {
+      request.log.error({ err, enquiry_id: enquiry.id }, 'enquiry push enqueue failed');
+    }
 
     // Build WhatsApp redirect URL
     const whatsappMessage =

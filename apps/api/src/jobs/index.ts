@@ -9,6 +9,12 @@ import { handleColorFamilyBackfill } from './color-family-backfill.js';
 import { handleCompressR2Images } from './compress-r2-images.js';
 import { handleEmbeddingBackfill } from './embedding-backfill.js';
 import { handleEngagementAggregate } from './engagement-aggregate.js';
+import {
+  type EnquiryPushJobData,
+  type EnquiryPushReceiptsJobData,
+  handleEnquiryPush,
+  handleEnquiryPushReceipts,
+} from './enquiry-push.js';
 import { handleGenerateEmbedding } from './generate-embedding.js';
 import {
   type GenerateGstInvoiceJobData,
@@ -202,6 +208,17 @@ export async function startWorkers(): Promise<void> {
     },
     // Bounded: each job is a metered Vision call.
     { connection: redis, concurrency: 3 },
+  );
+
+  const pushWorker = new Worker(
+    QUEUES.PUSH,
+    async (job) => {
+      if (job.name === 'enquiry-push-receipts') {
+        return handleEnquiryPushReceipts(job.data as EnquiryPushReceiptsJobData);
+      }
+      return handleEnquiryPush(job.data as EnquiryPushJobData);
+    },
+    { connection: redis, concurrency: 5 },
   );
 
   const catalogSyncWorker = new Worker(
@@ -498,6 +515,10 @@ export async function startWorkers(): Promise<void> {
 
   myStyleAnalyzeWorker.on('failed', (job, err) => {
     console.error(`[jobs] my-style-analyze failed ${job?.id}:`, err.message);
+  });
+
+  pushWorker.on('failed', (job, err) => {
+    console.error(`[jobs] push (${job?.name}) failed ${job?.id}:`, err.message);
   });
 
   catalogSyncWorker.on('failed', (job, err) => {

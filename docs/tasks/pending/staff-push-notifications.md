@@ -1,6 +1,6 @@
 # F-046 — Retailer staff push notifications (F-044 Release 3, E4 real push)
 
-**Status:** 🟨 Slice 1 built 2026-10-19 on `feat/f-046-staff-push` (unmerged, migration 135 not applied). Slices 2–4 planned.
+**Status:** 🟨 Slices 1–2 built 2026-10-19 on `feat/f-046-staff-push` (PR #137, unmerged, migration 135 not applied, nothing sent to a real device). Slices 3–4 planned.
 **Parent:** `docs/tasks/pending/enquiry-basket-team-inbox-and-instore-tryon.md` §11.7 (Release 3). Separate from F-036 (customer web push).
 
 ## Decisions (owner, 2026-10-19: "go" on the recommended set)
@@ -18,7 +18,7 @@
 | # | Slice | Needs owner |
 |---|---|---|
 | 1 | ✅ Migration 135 `staff_push_devices` (+ RLS, purge delete) · `POST /v1/push-devices/register` + `/unregister` · staff allowlists · tests | Apply migration 135 |
-| 2 | Send helper + BullMQ job hooked into both enquiry creators (`public-collections.ts`, `public-my-style.ts`); collapse by enquiry id; disable token on `DeviceNotRegistered`; receipt check job (no `repeat.limit`, RC-062) | none |
+| 2 | ✅ Built 2026-10-19 (same branch, unmerged): `jobs/enquiry-push.ts` (recipients from `Staff.is_active` at send time, Expo send, `DeviceNotRegistered` soft-disable, delayed receipts job, no `repeat.limit`), own queue `kanchuki-push` + worker, hooked into both enquiry creators (`public-collections.ts`, `public-my-style.ts`), `jobId` dedupes per enquiry, enqueue failure logged and never fails the enquiry | none (optional env `EXPO_ACCESS_TOKEN` if Expo "Enhanced Security" is turned on) |
 | 3 | Mobile: `expo-notifications`, permission after login, register / unregister token, tap opens the Enquiries inbox, foreground refetch of the unread badge. 30 s poll stays as fallback | FCM setup, EAS rebuild, device test |
 | 4 | Docs: PRO-REQUIREMENTS, BUILD-LOG part-6, CLAUDE.md index row, RC rows only if bugs appear | approval for the index row |
 
@@ -28,6 +28,13 @@
 - Unregister is scoped to the caller's `retailer_id`, so a leaked token can't mute another shop.
 - Register upserts by token: a device that signs in as someone else moves with its token, so the previous person stops getting pings.
 - Stale `disabled_at` rows are not pruned yet (the app role has no DELETE). Add a purge-role sweep if the table grows; only retailer hard-delete removes rows today.
+
+## Slice 2 notes
+
+- The producer `addEnquiryPushJob` lives in `jobs/enquiry-push.ts`, not `jobs/index.ts`: the public enquiry routes import it, and `jobs/index.ts` drags the purge job and `getPurgePrisma` into every route test that loads them (3 existing suites broke on exactly that).
+- `purge-retailer-now.ts` deliberately does **not** name `staff_push_devices`: the FK cascades (RC-050 holds), and naming a table there trips the RC-030 `purge-rls-policy` guard, which is tied to migration 111's already-applied list. Pinned by `lib/staff-push-migration.test.ts`.
+- Delivery is at-least-once. If a later 100-device chunk fails, the BullMQ retry re-sends earlier chunks; a shop has a handful of devices, so one chunk is the norm.
+- Receipts run as a 15-minute delayed job per send (not a cron), so there is no `repeat.limit` to get wrong (RC-062).
 
 ## Not verified / open
 

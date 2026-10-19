@@ -11,9 +11,12 @@
 -- No hard deletes from the app (RC-049): unregister and Expo's DeviceNotRegistered
 -- both set disabled_at, and a re-register of the same token upserts it back to
 -- active. kanchuki_app gets SELECT/INSERT/UPDATE from ALTER DEFAULT PRIVILEGES
--- (scripts/setup-role-separation.sql §19.1), which is all that needs. kanchuki_purge
--- gets DELETE for the retailer hard-delete path only (FK also cascades; the explicit
--- delete in purge-retailer-now.ts is belt-and-braces, per 084/127).
+-- (scripts/setup-role-separation.sql §19.1), which is all that needs. The retailer
+-- hard-delete path needs no list entry (RC-050): the retailer_id FK is ON DELETE
+-- CASCADE, so purge-retailer-now.ts is untouched — naming the table there would
+-- also trip the RC-030 purge-rls-policy guard, which ties any table the purge job
+-- names to migration 111's policy list. kanchuki_purge still gets DELETE below as
+-- belt-and-braces, per 127.
 --
 -- RLS follows 126/127/133: policy for the two backend roles first, then ENABLE, so
 -- there is never a window where RLS is on and the API sees 0 rows (RC-030).

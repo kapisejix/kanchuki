@@ -53,6 +53,13 @@ export function getMyStyleAnalyzeQueue(): Queue {
   return myStyleAnalyzeQueue;
 }
 
+let pushQueue: Queue | null = null;
+
+export function getPushQueue(): Queue {
+  pushQueue ??= new Queue(QUEUES.PUSH, { connection: getRedis() });
+  return pushQueue;
+}
+
 export function getCatalogSyncQueue(): Queue {
   catalogSyncQueue ??= new Queue(QUEUES.CATALOG_SYNC, { connection: getRedis() });
   return catalogSyncQueue;

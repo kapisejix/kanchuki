@@ -6,13 +6,21 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { errorHandler } from '../../../plugins/error-handler.js';
 import { publicCollectionsRoutes } from '../public-collections.js';
 
-const { mockCollectionFindFirst, mockCollectionUpdate, mockProductFindMany, mockEnquiryCreate } =
-  vi.hoisted(() => ({
-    mockCollectionFindFirst: vi.fn(),
-    mockCollectionUpdate: vi.fn(),
-    mockProductFindMany: vi.fn(),
-    mockEnquiryCreate: vi.fn(),
-  }));
+const {
+  mockCollectionFindFirst,
+  mockCollectionUpdate,
+  mockProductFindMany,
+  mockEnquiryCreate,
+  mockPush,
+} = vi.hoisted(() => ({
+  mockCollectionFindFirst: vi.fn(),
+  mockCollectionUpdate: vi.fn(),
+  mockProductFindMany: vi.fn(),
+  mockEnquiryCreate: vi.fn(),
+  mockPush: vi.fn(),
+}));
+
+vi.mock('../../../jobs/enquiry-push.js', () => ({ addEnquiryPushJob: mockPush }));
 
 vi.mock('@kanchuki/db', () => ({
   prisma: {
@@ -63,7 +71,37 @@ beforeEach(() => {
     retailer: { shop_name: 'Shop', phone: '9876543210' },
   });
   mockCollectionUpdate.mockResolvedValue({});
-  mockEnquiryCreate.mockResolvedValue({});
+  mockEnquiryCreate.mockResolvedValue({ id: 'enq_1' });
+  mockPush.mockResolvedValue(undefined);
+});
+
+describe('POST /v1/public/collections/:slug/enquire — team push (F-046)', () => {
+  it('enqueues one push with the enquiry id and item count only', async () => {
+    storeProducts('a', 'b');
+    const res = await enquire(await buildApp(), { product_ids: ['a', 'b'] });
+    expect(res.statusCode).toBe(200);
+    expect(mockPush).toHaveBeenCalledTimes(1);
+    expect(mockPush).toHaveBeenCalledWith({
+      retailer_id: RETAILER_ID,
+      enquiry_id: 'enq_1',
+      item_count: 2,
+    });
+  });
+
+  it('a failed enqueue never fails the saved enquiry', async () => {
+    storeProducts('a');
+    mockPush.mockRejectedValue(new Error('redis down'));
+    const res = await enquire(await buildApp(), { product_ids: ['a'] });
+    expect(res.statusCode).toBe(200);
+    expect(mockEnquiryCreate).toHaveBeenCalledTimes(1);
+  });
+
+  it('a rejected request (foreign product) enqueues nothing', async () => {
+    storeProducts('a');
+    const res = await enquire(await buildApp(), { product_ids: ['zzz'] });
+    expect(res.statusCode).toBe(422);
+    expect(mockPush).not.toHaveBeenCalled();
+  });
 });
 
 describe('POST /v1/public/collections/:slug/enquire — basket (E1)', () => {
