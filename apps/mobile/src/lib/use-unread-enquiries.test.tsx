@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react'
 import renderer, { act } from 'react-test-renderer'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { emitEnquiryPush } from './enquiry-push-events'
 import { UNREAD_POLL_MS, useUnreadEnquiries } from './use-unread-enquiries'
 
 const api = vi.hoisted(() => ({ unreadEnquiries: vi.fn() }))
@@ -72,6 +73,22 @@ describe('useUnreadEnquiries', () => {
     expect(api.unreadEnquiries).toHaveBeenCalledTimes(1)
     expect(vi.getTimerCount()).toBe(0)
     act(() => tree.unmount())
+  })
+
+  it('F-046: a push while focused refetches at once; unmount unsubscribes', async () => {
+    await mount()
+    expect(api.unreadEnquiries).toHaveBeenCalledTimes(1)
+    api.unreadEnquiries.mockResolvedValue({ data: { count: 5 } })
+    await act(async () => {
+      emitEnquiryPush()
+    })
+    expect(api.unreadEnquiries).toHaveBeenCalledTimes(2)
+    expect(seen).toBe(5)
+    act(() => tree.unmount())
+    await act(async () => {
+      emitEnquiryPush()
+    })
+    expect(api.unreadEnquiries).toHaveBeenCalledTimes(2)
   })
 
   it('keeps the last count when a poll fails', async () => {

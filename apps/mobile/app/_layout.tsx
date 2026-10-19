@@ -31,6 +31,7 @@ import {
 } from "../src/lib/catalog-delegate";
 import { useSyncQueue } from "../src/hooks/useSyncQueue";
 import { AuthProvider, useAuth } from "../src/lib/auth-context";
+import { usePushRegistration } from "../src/lib/use-push-registration";
 import {
   persistQueryCache,
   restoreQueryCache,
@@ -135,6 +136,10 @@ function AppShell() {
     sync();
     return onDelegateChange(sync);
   }, []);
+
+  // F-046: new-enquiry push for the shop's owner and staff. Not for Kanchuki's own
+  // TeamMembers (they have no shop inbox). Must sit above the early return below.
+  usePushRegistration(status === "authenticated" && !isTeamMember);
 
   // Never mount the Stack before the session is hydrated: with every
   // Stack.Protected guard still false the navigator has zero routeNames and

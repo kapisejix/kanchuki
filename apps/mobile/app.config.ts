@@ -102,7 +102,17 @@ module.exports = ({ config }: ConfigContext): ConfigContext['config'] => {
     // keys `app.json` still owns (versionCode, permissions, blockedPermissions,
     // infoPlist, supportsTablet, …) survive untouched.
     scheme: APP_SCHEME,
-    android: { ...config.android, package: ANDROID_PACKAGE },
+    android: {
+      ...config.android,
+      package: ANDROID_PACKAGE,
+      // F-046: FCM config for Expo push on Android. The file is a secret and is NOT in git:
+      // upload it as an EAS "file" env var named GOOGLE_SERVICES_JSON (its value at build
+      // time is a path). Unset = builds as before, and Android push registration then fails
+      // with a logged warning rather than a crash.
+      ...(process.env.GOOGLE_SERVICES_JSON
+        ? { googleServicesFile: process.env.GOOGLE_SERVICES_JSON }
+        : {}),
+    },
     ios: { ...config.ios, bundleIdentifier: IOS_BUNDLE_ID },
     extra: {
       ...config.extra,
