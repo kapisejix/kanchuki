@@ -4359,3 +4359,49 @@ text rendered blank on `node:22-slim`), status card keeps platforms whose accoun
 manager/styling route pins; launch checklist `docs/runbooks/f-043-scheduler-launch-checklist.md`. Not built: Meta
 code-map widening, ended-plan R2 cleanup, scheduled-row retention purge (triggers in the checklist). Not verified on
 device / live Meta / live R2. Built-vs-spec deviations: `docs/tasks/pending/post-scheduler.md` §10a–§10e.
+
+## 41. F-044 Enquiry Basket → Team Inbox (Release 1) + In-Store Try-On (Release 2) — 🟨 APPROVED 2026-10-17, IN BUILD
+
+**Spec:** `docs/tasks/pending/enquiry-basket-team-inbox-and-instore-tryon.md` (§3, §8, decisions §11.1, release plan §11.7).
+
+Customer sends all their picks to the store in one enquiry; the store team sees them in an Enquiries inbox, one person takes each one (owner, manager, salesperson), owner + manager can reassign. Phone masked server-side for non-owners. No try-on, no push in Release 1.
+
+| Task | Status |
+|---|---|
+| E7 — pin try-on POST to owner + manager (`staff-access.test.ts`) | ✅ Built 2026-10-17 |
+| E6 — customer try-on off (`CUSTOMER_TRY_ON_ENABLED = false`, customer routes 404, `try_on_enabled` false with no plan read; in-store try-on unchanged; withdraw stays live) | ✅ Built 2026-10-17 |
+| E1 — persist all `product_ids` + assignment columns (migration 130 applied 2026-10-17), RC-066 phone-mask fix | ✅ Built 2026-10-17 — migration 130 applied 2026-10-17 |
+| E2 — customer web "Send my picks to the store" (web enquire proxies + one POST from the wishlist, wa.me fallback) | ✅ Built 2026-10-17 — needs E1 deployed (migration 130 live 2026-10-17) |
+| E3 — Enquiries inbox + Take / reassign | ✅ Built 2026-10-17 — every role sees + takes (D2), reassign owner + manager, phone masked for non-owners; migration 130 live 2026-10-17 |
+| E4-lite — unread badge (poll) | ✅ Built 2026-10-17 — home "Enquiries" tile shows the NEW count, polled every 30 s only while Home is focused, refetched on return from the inbox |
+| E5 — route to `whatsapp_number ?? phone` + shared-number copy | ✅ Built 2026-10-17 — enquire route + every public payload resolve the number once (`enquiryPhone`), same `phone` key; settings copy + "Not set" warning; RC-067 (+91 dropped for 91-prefixed numbers) fixed |
+
+### Release 2 — in-store try-on ("Try on with customer", E8) — 🟨 MERGED to `main` 2026-10-17 (PR #103, `2343e492`), flag OFF, device-unverified
+
+Owner / manager photographs the customer once from an enquiry card and gets a swipeable gallery of one try-on per enquiry product, on the staff phone only. The wearer photo is never stored; results are discarded on exit (and swept after `IN_STORE_RESULT_TTL_HOURS` = 2). Customer-facing try-on stays OFF. Plan: `docs/superpowers/plans/2026-10-17-enquiry-r2-instore-tryon.md`; owner checklist + known gaps: spec §11.7.
+
+| Task | Status |
+|---|---|
+| T1 — pending-aware quota, in-store-pure Bearer path, `GET /v1/products/try-on/quota` | ✅ Built 2026-10-17 |
+| T2 — `POST /v1/products/try-on/discard` + 2 h in-store age sweep | ✅ Built 2026-10-17 |
+| RC-068 — delegates refused on all try-on routes (`requireTryOnStaff`) | ✅ Fixed 2026-10-17 |
+| T3 — mobile session orchestrator | ✅ Built 2026-10-17 |
+| T4 — `enquiry-try-on` screen + keep-awake (EAS rebuild) + server-side discard of running jobs | ✅ Built 2026-10-17 — device-unverified |
+| T6 — try-on top-up packs (admin `ResourcePack`, Razorpay web checkout, inactive until launch) | ✅ Built 2026-10-17 — no real Razorpay round trip |
+| T7 (E11) — GPU-seconds logging + super-admin usage report | ✅ Built 2026-10-17 — migration 131 **applied in prod 2026-10-17 (owner)** |
+| T5 — docs + owner checklist | ✅ 2026-10-17 |
+
+---
+
+## 42. F-045 My Style — customer photo → cross-store suggestions — 🟨 PHASE 0 BUILT 2026-10-18 (PR-1..PR-5 merged); PHASE 1 PR-6/PR-7 merged, PR-8 admin built (migration 134 not applied); PR-9 find-similar built, unmerged (no migration); PR-10a feed tabs merged (#132, no migration); PR-10b complete-the-look built 2026-10-19, unmerged (no migration); PR-11 NOT STARTED
+
+**Spec:** `docs/tasks/pending/my-style.md` (decisions D1–D6 §0, PR map §6, test plan §7). Supersedes F-039 MID; independent of F-040 customer try-on (which is OFF, F-044 E6).
+
+Signed-in customer opens `/my-style` (customer web only), gives a selfie / a garment screenshot / a short form (kids: form or AI Stylist text only, never a photo), and gets in-stock articles ranked **best-match first** across stores (sort: Best match · Nearest · Price), then enquires per store. **Enquire only — no online purchase for the next 3–5 months (owner decision D6); online purchase is a later phase and nothing for it is built.** Photos are never stored. Kanchuki pays AI cost; per-customer monthly limit is admin-editable.
+
+| Phase | PRs | Status |
+|---|---|---|
+| 0 — no photo (schema, colour families, feed API, web shell, multi-store enquiry) | PR-1…PR-5 | 🟨 Built, merged 2026-10-18 (not browser-verified) |
+| 1 — selfie analysis + admin | PR-6…PR-8 | 🟨 PR-6 (analyze API) merged #122; PR-7 (capture UI + web proxy + palette card + privacy anchor) built 2026-10-18, PR open; PR-8 (admin) not started |
+| 2 — find-similar + complete-the-look | PR-9, PR-10 | 🔴 Not started |
+| 3 — try-on hand-off | PR-11 | ⛔ Gated on `CUSTOMER_TRY_ON_ENABLED` + F-040 launch |

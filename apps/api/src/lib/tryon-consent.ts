@@ -43,7 +43,7 @@ export interface ConsentRequestContext {
   userAgent?: string | null | undefined;
 }
 
-function consentContext(ctx: ConsentRequestContext) {
+export function consentContext(ctx: ConsentRequestContext) {
   return {
     ip_hash: createHash('sha256')
       .update(ctx.ip || 'unknown')

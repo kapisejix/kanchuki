@@ -12,6 +12,61 @@
 
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
+## RC-070 — The My Style occasion filter and Kids form sent quiz labels the ranker never matches
+
+- **Component:** `apps/api/src/routes/public/public-my-style.ts` (`/feed`), `packages/shared/src/style-quiz.ts`. Found and fixed 2026-10-18 on `feat/f-045-tabs` (PR-10a), while wiring the Occasion tab.
+- **Symptom:** picking "Party / Festive" or "Wedding / Bridal" in the page's occasion dropdown (or the Kids form's occasion) changed nothing: results were ordered as if no occasion was chosen.
+- **Root cause:** the feed passed the request's `occasion` string straight into the ranker's `occasions`, which compares lowercase canonical spellings (`party wear`, `festive`, `wedding`, `daily wear`). The dropdown and Kids form send the quiz's display labels ("Party / Festive", "Wedding / Bridal", "Office / Formal"). The label to canonical table already existed in `style-quiz.ts` for the quiz route, but only that route used it, so the filter path had a second, missing copy of the mapping. The route test passed `occasion` as a label and only asserted the call shape.
+- **Fix:** `occasionTargets(label)` in `style-quiz.ts` reads the same table (and accepts canonical names); the feed maps `occasion` through it before ranking. Unknown label -> no boost, no throw.
+- **Proof:** `my-style-tabs.test.ts` (shared) pins every label and every canonical value; `public-my-style.test.ts` > "maps a quiz-style occasion label ... (RC-070)" ranks a `Party Wear` product first for "Party / Festive" (id ordered so only the boost can put it first).
+- **Not verified:** not exercised against real tagged products or in a browser. Label quality of `occasions` itself is still only partly verified (see RC-069).
+
+---
+
+## RC-069 — The occasion backfill skipped every NULL `occasions` row, so it reported "nothing to do" on a catalog that needed all of it
+
+- **Component:** `apps/api/src/jobs/occasion-backfill.ts` (shipped in #127). Fixed 2026-10-18 on `fix/occasion-backfill-null`.
+- **Symptom:** the owner's dry-run printed `scanned=0`, and `count(*) FILTER (WHERE cardinality(occasions)=0)` also returned 0 for 216 live AI-tagged products. Neither meant "already filled": `SELECT ... unnest(occasions)` returned no rows at all.
+- **Root cause:** `products.occasions` is a nullable `TEXT[]` with no default (`000_baseline`: `"occasions" TEXT[]`), and nothing has written it since occasion was removed on 2026-08-10, so those rows are `NULL`, not `'{}'`. Prisma's `isEmpty: true` compiles to `= '{}'` and `cardinality(NULL)` is `NULL`, so every NULL row falls out of both the filter and the write re-check. The tests mocked Prisma and only ever fed it `[]`, so the NULL case was never exercised (same mock-agrees-with-code shape as RC-037).
+- **Fix:** candidate ids come from raw SQL (`occasions IS NULL OR cardinality(occasions) = 0`), the row is then loaded by id, and the write is a raw `UPDATE ... WHERE id = ? AND (occasions IS NULL OR cardinality(occasions) = 0)` so a retailer edit or concurrent re-tag still wins. `tag-product` was never affected: it reads `current.occasions?.length ?? 0`.
+- **Proof:** `occasion-backfill.test.ts` asserts the select and the write both contain `occasions IS NULL OR cardinality(occasions) = 0`, plus cursor paging, limit, dry-run, race (0 rows changed) and failure cases.
+- **Not verified:** not run against the real DB after the fix. The owner re-runs the 30-product dry-run; it should now scan up to 30 of the 216 rows.
+
+---
+
+## RC-068 — Catalog-upload and support-session delegates could use (and burn quota on) the owner/manager-only try-on routes
+
+- **Component:** `apps/api/src/routes/products/products-tryon.ts` (all four Bearer routes: `POST /:id/try-on`, `GET /:id/try-on/status`, `GET /try-on/quota`, `POST /try-on/discard`). Fixed 2026-10-17 on `feat/enquiry-r2-delegate-try-on-fix` (F-044 R2).
+- **Symptom:** a delegated catalog-upload token (allowlist `* /v1/products`) or a support-session token (scope includes `/v1/products`) could start try-on generations, poll them and read the quota. Each generation spends the retailer's monthly `TRY_ON_GENERATION` allowance, and spec §5.4 says owner + manager only.
+- **Root cause:** an "owner-only" rule was inferred from `request.staffRole`, but delegates also carry `staffRole = null` — the same sentinel a real owner has (`isRealOwner()` in `plugins/auth.ts` exists for exactly this). `POST /:id/try-on` had no role check at all, relying on the staff allowlist (which only constrains real Staff rows), and the two routes that did check hand-copied their own three-way test. Same shape as RC-034: one access rule, several hand-written copies, the copy that mattered missing.
+- **Fix:** one helper `requireTryOnStaff(request)` (no retailer -> 404, `VIRTUAL_TRY_ON_V2` off -> 404, salesperson / catalog delegate / support delegate -> 403), called first on all four routes whenever the caller is a Bearer retailer (before any product lookup, so a refused caller learns nothing about products). The customer-cookie path is unchanged. Side effect, intended: the Bearer status poll now 404s when the flag is off, like the POST.
+- **Proof:** `apps/api/src/routes/products-tryon.test.ts` > `RC-068` — for each of the 4 routes, catalog and support delegates get 403 with no product/job/quota read, delegate + flag off is 404, owner and manager pass; salesperson 403 on all. Failed first: 8 failures (POST try-on and status let delegates through).
+- **Not verified:** no live delegate token exercised; no mobile flow calls these routes with a delegate token (grepped `apps/mobile`).
+
+---
+
+## RC-067 — wa.me links dropped the +91 country code for any 10-digit mobile starting with 91
+
+- **Component:** `packages/shared/src/utils/index.ts` (`buildWhatsAppEnquiryLink`), plus two hand-copied builders: `apps/web/src/app/c/[slug]/components/DesignGallery.tsx` and `apps/api/src/routes/growth/growth-helpers.ts` (`buildWhatsAppDeepLink`). Fixed 2026-10-17 on `feat/enquiry-r1-t7-whatsapp-target` (F-044 E5).
+- **Symptom:** a store or customer number like `9123456789` (valid Indian mobile) produced `wa.me/9123456789`, which WhatsApp reads as country code 91 + an 8-digit number. The customer enquiry or campaign message opened a wrong or invalid chat. Found by the E5 test: once enquiries route to `whatsapp_number` (always stored as 10 bare digits), every store whose number starts with 91 hit it.
+- **Root cause:** the country code was added by a prefix check (`startsWith('91') ? digits : '91' + digits`) instead of by length. `91` is both the country code and a valid first two digits of a mobile, so a prefix cannot tell them apart. The correct normaliser (`normalizeIndianPhone`, length-based) already lived in the same file and the mobile builders already used it; the three copies above never did.
+- **Fix:** `buildWhatsAppEnquiryLink` = `91${normalizeIndianPhone(phone)}`; `DesignGallery` and `buildWhatsAppDeepLink` now call it, so there is one builder.
+- **Proof:** `apps/api/src/routes/public/__tests__/public-whatsapp-target.test.ts` — `9123456789`, `+919123456789`, `919123456789`, `09123456789`, `91234 56789` all → `wa.me/919123456789`; enquire route with a 91-prefixed `whatsapp_number` → `wa.me/919123456789` (failed first: `expected 'https://wa.me/9123456789?text=hi'`). Growth suite unchanged green.
+- **Not verified:** no device check.
+
+---
+
+## RC-066 — Collection enquiries returned the customer's full phone to staff and delegates
+
+- **Component:** `apps/api/src/routes/collections.ts` (GET `/collections/:id` embedded `enquiries`, PATCH `/collections/:id/enquiries/:enquiryId`). Fixed 2026-10-17 on `feat/enquiry-r1-t3-enquiry-products` (F-044 E1).
+- **Symptom:** manager (`*` on `/v1/collections`), salesperson (GET) and support/catalog delegates received `customer_phone` unmasked in the collection detail and the enquiry-status response — found while designing the F-044 inbox.
+- **Root cause:** masking is per-route (`maskPhoneForRequest` is called in `customers.ts` and campaign send), not per-field. The enquiry rows were returned via `...collection` / the raw Prisma row, so the column shipped as stored. A new route returning a phone column is unmasked unless its author remembers.
+- **Fix:** local `maskEnquiry()` applied to both responses (owner still sees the full number). The T5 inbox routes reuse it.
+- **Proof:** `apps/api/src/routes/collections-enquiries.test.ts` — masked for manager, salesperson, support delegate on GET + PATCH; full for owner.
+- **Not verified:** no device check of the mobile collection screen (it shows the masked value as-is).
+
+---
+
 ## RC-065 — AI Stylist's close handler popped browser history twice, so hiding the stylist also closed an open product sheet
 
 - **Component:** `apps/web/src/app/c/[slug]/components/AIStylist.tsx`, `ProductDetailSheet.tsx`. Fixed 2026-10-16 on `fix/studio-variant-invite-stylist-catalog`.

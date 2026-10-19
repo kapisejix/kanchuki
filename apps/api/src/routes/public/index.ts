@@ -6,6 +6,8 @@ export { publicRecommendationsRoutes } from './public-recommendations.js';
 export { publicRetailersRoutes } from './public-retailers.js';
 export { publicCatalogPaymentRoutes } from './public-catalog-payment.js';
 export { publicNearMeRoutes } from './near-me.js';
+export { publicMyStyleRoutes } from './public-my-style.js';
+export { publicMyStyleAnalyzeRoutes } from './public-my-style-analyze.js';
 export { publicStoresRoutes } from './public-stores.js';
 export { publicReviewsRoutes } from './public-reviews.js';
 export { publicStylistRoutes } from './public-stylist.js';

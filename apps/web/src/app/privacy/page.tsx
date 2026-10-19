@@ -289,6 +289,53 @@ export default function PrivacyPolicyPage() {
             </p>
           </section>
 
+          {/* The anchor here is load-bearing: MY_STYLE_CONSENT.full_notice_url
+              (@kanchuki/shared) points at #my-style and the My Style consent sheet
+              links to it. The guard test derives the id from the constant. The
+              wording must track MY_STYLE_CONSENT (bump its version on any change). */}
+          <section id="my-style">
+            <h2 className="font-display text-xl font-semibold text-carbon">
+              My Style: reading a photo of you
+            </h2>
+            <p>
+              My Style can look at one photo of you to suggest colours and fits that suit
+              you. It is always your choice: nothing happens until you read a short notice
+              and agree to it. Adults only &mdash; please do not upload a photo of a child.
+            </p>
+            <p>
+              <strong>Your photo is never saved.</strong> It is read once by AI and then
+              thrown away &mdash; not kept on our servers, not in our database, not in file
+              storage, and not shared with any store.
+            </p>
+            <p>
+              <strong>What we keep</strong> is a short note about your colouring and frame,
+              so your suggestions are ready next time. It is used only to rank clothes for
+              you, and it is shown to you as a palette of colours.
+            </p>
+            <p>
+              <strong>Find similar</strong> works the same way. If you pick a photo of a
+              garment you like, it is read once and thrown away &mdash; we do not keep it. We
+              turn it into a short description of the clothing (for example &ldquo;yellow
+              kurti, printed&rdquo;) that is held for a few minutes while we look for similar
+              pieces. It is not saved to your account.
+            </p>
+            <p>
+              <strong>We never use your photo to train AI models.</strong>
+            </p>
+            <p>
+              <strong>You can clear it any time.</strong> Open{' '}
+              <Link href="/my-style" className="text-cobalt-600 hover:underline">
+                My Style
+              </Link>{' '}
+              and choose Clear my data. The note is deleted and we stop using your photo
+              consent. You can also email us at{' '}
+              <a href="mailto:privacy@kanchuki.app" className="text-cobalt-600 hover:underline">
+                privacy@kanchuki.app
+              </a>
+              .
+            </p>
+          </section>
+
           <section>
             <h2 className="font-display text-xl font-semibold text-carbon">Security</h2>
             <p>

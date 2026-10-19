@@ -94,6 +94,7 @@ export const SUPER_ADMIN_ONLY_ADMIN_SEGMENTS = [
   'storage-report',
   // ── Platform-wide audit + cost telemetry ──
   'ai-usage',
+  'try-on-usage', // F-044 R2 T7 GPU cost telemetry
   'audit-log',
   'audit-logs',
 ] as const;
@@ -113,6 +114,8 @@ export const STANDARD_ADMIN_ADMIN_SEGMENTS = [
   'background-images', // studio backdrop library (content)
   'bug-reports', // triage inbox
   'catalog-upload-tiers', // staff upload service tiers — see note below
+  'color-families', // F-045 colour alias table (content/taxonomy; no pricing, credentials or delete)
+  'my-style', // F-045 palettes + trends (content/taxonomy). Its usage/cost report is Super-Admin-gated in the handler
   'contact-submissions', // contact-form inbox
   'csrf-token', // token mint for the admin UI itself, needed before any role is known
   'customers', // customer records (retailer-scoped support work)

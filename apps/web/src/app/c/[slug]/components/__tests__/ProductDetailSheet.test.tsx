@@ -224,6 +224,25 @@ describe('ProductDetailSheet Related Products strip', () => {
     expect(screen.queryByText('Related suits')).not.toBeInTheDocument();
   });
 
+  it('links to My Style "Complete the look" for the open product (F-045 PR-10b)', () => {
+    render(
+      <ProductDetailSheet
+        product={PRODUCT}
+        retailer={RETAILER}
+        collectionTitle="Festive Edit"
+        isFavorited={false}
+        slug="festive-edit"
+        store="meera-sarees"
+        onFavorite={() => undefined}
+        onClose={() => undefined}
+      />,
+    );
+    expect(screen.getByRole('link', { name: 'Complete the look' })).toHaveAttribute(
+      'href',
+      `/my-style?look=${PRODUCT.id}`,
+    );
+  });
+
   it('shows the Try-On button only when the product payload says try_on_enabled', async () => {
     // The flag comes from the STORE's plan (derived server-side), so with it
     // off there is no button — the same fail-closed default every plan gets

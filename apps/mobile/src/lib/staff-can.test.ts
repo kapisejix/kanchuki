@@ -12,6 +12,19 @@ describe('staffCan mirrors the server allowlist', () => {
     expect(staffCan('manager', 'analytics')).toBe(true)
     expect(staffCan('manager', 'social')).toBe(true)
   })
+  it('enquiries inbox: every role; reassign: owner + manager (F-044 D2)', () => {
+    for (const role of [null, 'manager', 'salesperson']) {
+      expect(staffCan(role, 'enquiries')).toBe(true)
+    }
+    expect(staffCan(null, 'enquiries.assign')).toBe(true)
+    expect(staffCan('manager', 'enquiries.assign')).toBe(true)
+    expect(staffCan('salesperson', 'enquiries.assign')).toBe(false)
+  })
+  it('enquiries.tryon: owner + manager only (F-044 R2)', () => {
+    expect(staffCan(null, 'enquiries.tryon')).toBe(true)
+    expect(staffCan('manager', 'enquiries.tryon')).toBe(true)
+    expect(staffCan('salesperson', 'enquiries.tryon')).toBe(false)
+  })
   it('salesperson gets view + add customer only', () => {
     expect(staffCan('salesperson', 'catalog.view')).toBe(true)
     expect(staffCan('salesperson', 'customers.add')).toBe(true)

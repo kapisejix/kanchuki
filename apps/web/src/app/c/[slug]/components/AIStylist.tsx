@@ -306,6 +306,13 @@ export function AIStylist({ storeSlug, storeName, onProductTap }: Props) {
               <Send size={16} />
             </button>
           </div>
+          {/* F-045: a plain anchor, not <Link>. A client-side navigation would
+              unmount this sheet, and its cleanup then calls history.back(),
+              undoing the navigation (RC-065/RC-006). */}
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+          <a href="/my-style" className="block text-center text-xs text-cyan-600 font-medium mt-2">
+            Search all stores in My Style
+          </a>
         </div>
       </Sheet>
     </>

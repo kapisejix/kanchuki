@@ -1,4 +1,5 @@
 import { createHash } from 'crypto'
+import { normalizeOccasions, PRODUCT_OCCASIONS } from '@kanchuki/shared'
 import type { AiTagResult } from '@kanchuki/shared'
 import { runVisionAsk, runVisionExtract } from './providers.js'
 import type { AiJsonSchema, ProviderUsedInfo } from './providers.js'
@@ -97,6 +98,13 @@ const EXTRACT_SCHEMA: AiJsonSchema = {
         description:
           'Fabric(s) used, one entry per distinct fabric/blend component (e.g. ["Cotton"], or ' +
           '["Georgette", "Net"] for a layered dupatta). Prefer specific names over "Mixed".',
+      },
+      occasions: {
+        type: 'array',
+        items: { type: 'string', enum: [...PRODUCT_OCCASIONS] },
+        description:
+          'Up to 2 occasions this garment is most suited to, judged from the design and ' +
+          'embellishment. Omit if unclear.',
       },
       price_range_estimate: {
         type: 'string',
@@ -203,6 +211,8 @@ export async function tagProductImages(
     sleeve_type: nullable(raw['sleeve_type']),
     style: (raw['style'] as string[]) ?? [],
     fabrics: (raw['fabrics'] as string[]) ?? [],
+    // Not every provider honours the schema enum, so re-validate here.
+    occasions: normalizeOccasions(raw['occasions']),
     price_range_estimate: nullable(raw['price_range_estimate']),
     design_number_visible: nullable(raw['design_number_visible']),
     is_catalog_image: (raw['is_catalog_image'] as boolean) ?? false,

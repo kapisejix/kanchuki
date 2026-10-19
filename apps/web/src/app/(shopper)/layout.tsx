@@ -86,6 +86,14 @@ export default function ShopperLayout({
           </Link>
           <nav className="flex items-center gap-4 text-sm">
             <Link
+              href="/my-style"
+              className={`text-stone-600 hover:text-stone-900 transition-colors ${
+                pathname === '/my-style' ? 'text-amber-600 font-medium' : ''
+              }`}
+            >
+              My Style
+            </Link>
+            <Link
               href="/my-profile"
               className={`text-stone-600 hover:text-stone-900 transition-colors ${
                 pathname === '/my-profile' ? 'text-amber-600 font-medium' : ''

@@ -94,6 +94,16 @@ export async function handleTryOn(data: TryOnJobData): Promise<void> {
     return;
   }
 
+  // Discarded while still queued (staff closed the in-store session before the
+  // worker picked this up): no GPU call, no result, and no charge - the GPU
+  // never ran. The photo is already out of the store (taken above). The row is
+  // left DISCARDED; markFailed would overwrite that status.
+  const current = await prisma.tryOnJob.findUnique({
+    where: { id: job_id },
+    select: { status: true },
+  });
+  if (current?.status === 'DISCARDED') return;
+
   try {
     // Re-verify ownership at execution time (queue = trust boundary): the
     // route checked, but a stale job must not be trusted, and for a customer
@@ -151,22 +161,56 @@ export async function handleTryOn(data: TryOnJobData): Promise<void> {
     // one statement, so there is no gap between them for a withdrawal to land
     // in. `count === 0` means it landed.
     const claimed = await prisma.tryOnJob.updateMany({
-      where: { id: job_id, consent_withdrawn_at: null },
-      data: { status: 'COMPLETED', result_url: resultKey, completed_at: new Date() },
+      where: { id: job_id, consent_withdrawn_at: null, status: { not: 'DISCARDED' } },
+      data: {
+        status: 'COMPLETED',
+        result_url: resultKey,
+        completed_at: new Date(),
+        gpu_ms: result.gpuMs,
+      },
     });
 
     if (claimed.count === 0) {
+      // Discarded while the GPU was working (staff closed the in-store
+      // session): the row is DISCARDED and has no pointer, so a failed delete
+      // below would orphan the object (RC-044 shape). Record the key on the
+      // row FIRST, keeping status DISCARDED, so the age sweep can retry it.
+      // No-match for withdrawn rows (not DISCARDED) - that path is unchanged.
+      const recorded = await prisma.tryOnJob
+        .updateMany({
+          where: { id: job_id, status: 'DISCARDED', result_url: null },
+          data: { result_url: resultKey, completed_at: new Date(), gpu_ms: result.gpuMs },
+        })
+        .catch((err) => {
+          console.error(`[try-on] job ${job_id} could not record its discarded result key:`, err);
+          return { count: 0 };
+        });
       // Withdrawn while the GPU was working, so this image must not outlive the
       // withdrawal. Best effort: the hourly `tryon-deletion-sweep` retries
       // anything this delete misses — the same path a failed withdrawal delete
       // takes, which is why the row is left for it (the sweep finds withdrawn
       // rows that still carry a key, whichever way they got one).
-      await deleteObject(resultKey).catch((err) => {
-        console.error(
-          `[try-on] job ${job_id} finished after its consent was withdrawn and could not delete the result it had already written:`,
-          err,
-        );
-      });
+      const deleted = await deleteObject(resultKey).then(
+        () => true,
+        (err) => {
+          console.error(
+            `[try-on] job ${job_id} finished after its consent was withdrawn or it was discarded and could not delete the result it had already written:`,
+            err,
+          );
+          return false;
+        },
+      );
+      if (deleted && recorded.count > 0) {
+        // Only the pointer goes, only after the delete succeeded.
+        await prisma.tryOnJob
+          .updateMany({ where: { id: job_id, result_url: resultKey }, data: { result_url: null } })
+          .catch((err) =>
+            console.error(
+              `[try-on] job ${job_id} deleted ${resultKey} but could not clear it:`,
+              err,
+            ),
+          );
+      }
     }
 
     // Quota is spent only on success — both caps, because a customer job spends

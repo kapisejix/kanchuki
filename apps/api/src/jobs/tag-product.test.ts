@@ -9,6 +9,7 @@ const mockAddEmbeddingJob = vi.fn();
 const mockFetchImageBuffer = vi.fn();
 const mockFindFirstBg = vi.fn();
 const mockFindFirstPhoto = vi.fn();
+const mockFindManyColorFamily = vi.fn();
 
 // F-010 quota gate (checkQuota/incrementUsage) — no plan_limits/override row
 // in these fixtures, so effectiveLimit() resolves null and every call is a
@@ -22,6 +23,7 @@ vi.mock('@kanchuki/db', () => ({
   prisma: {
     productPhoto: { updateMany: mockUpdateManyPhoto, findFirst: mockFindFirstPhoto },
     backgroundImage: { findFirst: mockFindFirstBg },
+    colorFamily: { findMany: mockFindManyColorFamily },
     product: {
       update: mockUpdateProduct,
       findUnique: mockFindUniqueProduct,
@@ -52,6 +54,7 @@ vi.mock('./index.js', () => ({
 }));
 
 const { handleTagProduct } = await import('./tag-product.js');
+const { clearColorFamilyCache } = await import('../lib/color-families.js');
 
 const baseData = {
   product_id: 'prod_1',
@@ -83,6 +86,8 @@ const fakeTags = {
 };
 
 beforeEach(() => {
+  clearColorFamilyCache();
+  mockFindManyColorFamily.mockReset().mockResolvedValue([{ name: 'pink', aliases: ['gulabi'] }]);
   mockUpdateManyPhoto.mockReset().mockResolvedValue({ count: 1 });
   mockUpdateProduct.mockReset().mockResolvedValue({});
   mockFindUniqueProduct.mockReset().mockResolvedValue({
@@ -196,6 +201,33 @@ describe('handleTagProduct', () => {
     expect(mockCountProduct).not.toHaveBeenCalled();
   });
 
+  it('fills occasions from the tags while the product has none', async () => {
+    mockFindUniqueProduct.mockResolvedValue({ name: null, sku: null, occasions: [] });
+    mockTagProductImageUrls.mockResolvedValue({ ...fakeTags, occasions: ['Wedding', 'Festive'] });
+
+    await handleTagProduct(baseData);
+
+    expect(mockUpdateProduct.mock.calls[0]?.[0].data.occasions).toEqual(['Wedding', 'Festive']);
+  });
+
+  it('never overwrites existing occasions on re-tag', async () => {
+    mockFindUniqueProduct.mockResolvedValue({ name: null, sku: null, occasions: ['Casual'] });
+    mockTagProductImageUrls.mockResolvedValue({ ...fakeTags, occasions: ['Wedding'] });
+
+    await handleTagProduct(baseData);
+
+    expect(mockUpdateProduct.mock.calls[0]?.[0].data).not.toHaveProperty('occasions');
+  });
+
+  it('leaves occasions alone when the tagger returns none', async () => {
+    mockFindUniqueProduct.mockResolvedValue({ name: null, sku: null, occasions: [] });
+    mockTagProductImageUrls.mockResolvedValue({ ...fakeTags, occasions: [] });
+
+    await handleTagProduct(baseData);
+
+    expect(mockUpdateProduct.mock.calls[0]?.[0].data).not.toHaveProperty('occasions');
+  });
+
   it('never overwrites retailer-picked styles/fabrics on re-tag', async () => {
     mockFindUniqueProduct.mockResolvedValue({
       name: null,
@@ -233,6 +265,37 @@ describe('handleTagProduct', () => {
     // styles were retailer-picked → untouched; fabrics still fill (empty)
     expect(call.data).not.toHaveProperty('styles');
     expect(call.data).toHaveProperty('fabrics');
+  });
+
+  it('F-045: writes color_family derived from primary_color', async () => {
+    mockTagProductImageUrls.mockResolvedValue({ ...fakeTags, primary_color: 'Gulabi' });
+
+    await handleTagProduct(baseData);
+
+    expect(mockUpdateProduct.mock.calls[0]?.[0].data.color_family).toBe('pink');
+  });
+
+  it('F-045: unmapped colour writes color_family null (a re-tag never keeps the old family)', async () => {
+    mockTagProductImageUrls.mockResolvedValue({ ...fakeTags, primary_color: 'Chartreuse' });
+
+    await handleTagProduct(baseData);
+
+    expect(mockUpdateProduct.mock.calls[0]?.[0].data.color_family).toBeNull();
+  });
+
+  it('F-045: a family lookup failure never fails tagging — color_family left untouched, tags still saved', async () => {
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    mockFindManyColorFamily.mockRejectedValue(new Error('db down'));
+    mockTagProductImageUrls.mockResolvedValue(fakeTags);
+
+    await expect(handleTagProduct(baseData)).resolves.toBeUndefined();
+
+    const data = mockUpdateProduct.mock.calls[0]?.[0].data;
+    expect(data).not.toHaveProperty('color_family'); // not wiped to null
+    expect(data).toMatchObject({ ai_tagged: true, primary_color: 'Pink' });
+    expect(mockAddEmbeddingJob).toHaveBeenCalled();
+    expect(errSpy).toHaveBeenCalled(); // loud, not silent (RC-059)
+    errSpy.mockRestore();
   });
 
   it('marks product failed and rethrows when tagging fails', async () => {

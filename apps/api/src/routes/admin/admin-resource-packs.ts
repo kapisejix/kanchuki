@@ -19,6 +19,7 @@ const RESOURCE_TYPES = [
   'BG_REMOVAL',
   'API_REQUEST',
   'STUDIO_SHOOT',
+  'TRY_ON_GENERATION', // F-044 R2 T6 - buyable via billing /try-on-packs
   'AI_VIDEO', // F-034 — buyable once the enum + billing rail ship (migration 090)
 ] as const;
 const PLANS = ['STARTER', 'GROWTH', 'PRO'] as const;

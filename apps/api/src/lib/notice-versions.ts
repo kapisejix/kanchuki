@@ -1,6 +1,6 @@
 // DPDP notice version registry (Task 27).
 
-import { TRY_ON_CONSENT } from '@kanchuki/shared';
+import { MY_STYLE_CONSENT, TRY_ON_CONSENT } from '@kanchuki/shared';
 //
 // Every ConsentEvent write MUST reference a notice_version from this
 // registry. The version tracks which privacy notice text was shown to
@@ -50,6 +50,12 @@ export const PURPOSE_CONSENTS = {
     /** Recorded on ConsentEvent + the job; equals TRY_ON_CONSENT.version. */
     version: TRY_ON_CONSENT.version,
   },
+  // F-045 My Style photo analysis. Same separation rule as above.
+  MY_STYLE: {
+    granted_kind: 'MY_STYLE_PHOTO_CONSENTED',
+    withdrawn_kind: 'MY_STYLE_PHOTO_CONSENT_WITHDRAWN',
+    version: MY_STYLE_CONSENT.version,
+  },
 } as const;
 
 /** The text for a purpose consent, for a server-rendered notice or an email. */
@@ -64,6 +70,11 @@ export function getPurposeConsentCopy() {
  */
 export function isCurrentTryOnConsent(version: string | undefined): boolean {
   return version !== undefined && version === PURPOSE_CONSENTS.TRY_ON.version;
+}
+
+/** Is this the CURRENT My Style photo consent text? Same reasoning as the try-on check. */
+export function isCurrentMyStyleConsent(version: string | undefined): boolean {
+  return version !== undefined && version === PURPOSE_CONSENTS.MY_STYLE.version;
 }
 
 /**

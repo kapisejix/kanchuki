@@ -501,7 +501,10 @@ model CollectionEnquiry {
   collection_id String
   retailer_id   String
   
-  product_id    String?  // which product(s) interested in
+  product_id    String?  // first product (= product_ids[0]), kept for old readers
+  product_ids   String[] @default([]) // F-044 (migration 130): every product sent, deduped, all same retailer
+  assigned_staff_id String? // F-044 inbox Take: Staff.id, or retailer.id for owner — no FK
+  assigned_at   DateTime?
   message       String?  // pre-filled message content
   customer_name String?  // if customer shared name
   customer_phone String? // if customer shared phone
@@ -715,6 +718,9 @@ model SubscriptionPayment {
 // 118/119 carry it; see schema.prisma for the authoritative shape.
 // ⚠️ Migrations 118/119 are PROPOSED, not yet applied — as of 2026-09-26 this
 // section describes the schema after the owner runs them.
+// F-044 R2 T7: `try_on_jobs.gpu_ms INTEGER NULL` (migration 131, APPLIED in prod
+// 2026-10-17) - GPU ms per finished job (RunPod executionTime, else worker
+// latency_ms); null on failed/unmetered jobs. Read by Admin -> Try-On GPU Usage.
 
 // ─────────────────────────────────────────────
 // PLAN FEATURE MATRIX (F-013, planned)
@@ -1105,6 +1111,24 @@ decided_at + 24 h, never extended), `revoked_at`, `revoked_by` (`RETAILER|STAFF|
 - **Enums (128, separate file — 55P04):** `PlanFeatureKey.SOCIAL_SCHEDULER` (fails closed), `QuotaResourceType.SCHEDULED_POST`, `QuotaResourceType.ACTIVE_SCHEDULE_PLAN`. Tables use new enums `SchedulePlanStatus`, `ScheduledPostStatus`, `ScheduleImageLevel`.
 - **Seeds (129):** `plan_features` SOCIAL_SCHEDULER=true ×3 plans; `plan_limits` SCHEDULED_POST=-1/MONTH ×3, ACTIVE_SCHEDULE_PLAN=1/LIFETIME ×3.
 - **Purge (RC-050):** every FK into `retailers`/`products` is `ON DELETE CASCADE`, so `hardDeleteRetailer()`'s list needs no new entries. Pinned by `apps/api/src/lib/post-scheduler-migration.test.ts`.
+
+## My Style — `color_families`, `style_palettes`, `style_trends` + new columns (migrations 132/133, F-045 PR-1, written 2026-10-17, applied 2026-10-17 by the owner via the Supabase SQL editor — 132 and 133 as two separate runs, 55P04; verified: 22 families, 9 palettes, `STYLE_ANALYSIS` limit 3/MONTH, RLS on all three tables)
+
+| Table | Purpose | Notes |
+|---|---|---|
+| `color_families` | Canonical colour family (`name`, lowercase) + `aliases[]` ("Mustard", "Haldi" → `yellow`). 22 seeded | UNIQUE `name`, CHECK `name = lower(name)`. `is_active`; never hard-deleted. |
+| `style_palettes` | `good_families[]` / `avoid_families[]` per `(undertone, depth, version)`. 9 seeded (3 × 3) | UNIQUE `(undertone, depth, version)`; CHECKs on undertone `warm/cool/neutral`, depth `fair/medium/deep`. Array elements are `color_families.name` — not FK-able; validated in `apps/api` and the seed is pinned by test. |
+| `style_trends` | Admin trend boosts (`label`, `kind`, `match_keywords[]`, `boost` 0–1, `starts_at`/`ends_at`). Empty at launch | Read by PR-10. `kind` is free text until PR-10 defines it. |
+| `style_analysis_daily` | **Migration 134 (PR-8, written 2026-10-18, NOT yet applied).** One row per UTC day: `day` DATE (PK), `count`, `updated_at`. Admin usage chart. **No customer id on purpose** (a per-person log would record who sent a selfie). | CHECK `count >= 0`. RLS: backend-roles policy, same shape as 133. No DELETE granted or needed. |
+
+- **New columns (all nullable, no default → no table rewrite):** `products.color_family` (+ index `products_color_family_idx`; set by PR-2, NULL = unmapped); `customer_accounts.skin_undertone`, `skin_depth`, `body_frame` (CHECK-constrained values), `style_profile_at`. **Derived profile only — the photo is never stored.** "Clear my data" = `UPDATE … SET … = NULL`.
+- **Enum (132, separate file — 55P04):** `QuotaResourceType.STYLE_ANALYSIS`. 133 seeds `customer_resource_limits` `STYLE_ANALYSIS` = 3 / `MONTH` (`ON CONFLICT DO NOTHING`, so an admin edit survives a re-run; `checkCustomerQuota` fails open without it).
+- **RLS:** all three tables enabled with a `backend_roles_full_access` policy for `kanchuki_app` + `kanchuki_purge` (policy first, then ENABLE — RC-030). Global config: no `retailer_id`, no customer link.
+- **No DELETE granted** on any of them (RC-049): admin "remove" = `is_active = false`. Default privileges give `kanchuki_app` SELECT/INSERT/UPDATE.
+- **Purge (RC-050):** no FK into `retailers` / `products` / `customer_accounts`, so `hardDeleteRetailer()`'s list needs no entry.
+- **Writer map:** `products.color_family` (PR-2, built 2026-10-17) ← three writers, all via `normalizeColorFamily()` (`packages/shared/src/color-family.ts`: exact name/alias, else whole-word keywords with longest-match-wins; two families found or none → NULL, never guessed) over the **active** `color_families` rows (`lib/color-families.ts`, 60 s in-process cache): `jobs/tag-product.ts` (every tag/re-tag overwrites it, so it never trails `primary_color`), `PUT /v1/products/:id` (only when `primary_color` is in the edit), and `jobs/color-family-backfill.ts` (weekly cron `30 7 * * 0`, no `repeat.limit`; fills only `color_family IS NULL AND primary_color IS NOT NULL`, with `AND color_family IS NULL` re-checked in the write; throws if the family lookup fails or none are active). Tag/PUT lookup failures leave it NULL and log `[color-family] lookup failed` — the backfill is the repair. `color_families` ← `routes/admin/admin-color-families.ts` (`/v1/admin/color-families`; list/create/edit aliases/`is_active`; name immutable; no DELETE; a term may belong to one family only; classified standard-admin in `admin-access.ts`). `skin_undertone` / `skin_depth` / `body_frame` / `style_profile_at` (PR-6, built 2026-10-18) ← one writer, `jobs/my-style-analyze.ts` (Claude Vision, enum-validated; UPDATE only when a profile was produced), and nulled by `clearStyleProfile()` (`lib/my-style-consent.ts`) from two callers: `POST /v1/public/my-style/profile/clear` and the job itself when it loses a race to that route. Job state lives in Redis (`mystyle:job:{id}` 15 min, `mystyle:inflight:{account}` 3 min), not in a table. `style_palettes` / `style_trends` ← `routes/admin/admin-my-style.ts` (PR-8, built 2026-10-18; palettes edit-only with `version` bump, trends create/edit, no DELETE; standard-admin segment `my-style`). `style_analysis_daily` ← one writer, `jobs/my-style-analyze.ts` (upsert count+1 per UTC day, best-effort, only when a profile was produced); read by `GET /v1/admin/my-style/usage` (Super Admin only).
+- **Writer map (PR-3b):** `customer_accounts.pref_occasions / pref_styles / pref_fabrics / pref_colors / budget_min / budget_max` also have a second writer, `PATCH /v1/public/passport/style-quiz` (`routes/public/passport/passport-style-quiz.ts`), alongside `PUT /passport/preferences`. It maps the quiz labels in `packages/shared/src/style-quiz.ts` (`mapStyleQuizAnswers`), writes only the keys sent, and the budget is paise. Region is stored in `pref_styles`; a colour with no family (e.g. "Pastels") is kept as its own lowercase term in `pref_colors`. Reads only (no writes): `POST /v1/public/my-style/feed` (`routes/public/public-my-style.ts`) reads `products`, `retailers`, `style_palettes` and the `customer_accounts` pref/skin columns.
+- **Pinned by** `apps/api/src/lib/my-style-migration.test.ts`: enum-only 132, additive-only 133, RLS order, no GRANT/DELETE, seeds load, every palette references only known families, good ∩ avoid = ∅.
 
 ## Migrations Strategy
 

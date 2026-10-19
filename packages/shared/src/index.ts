@@ -6,3 +6,11 @@ export * from './theme.js'
 export * from './tryon-consent.js'
 export * from './studio-styles.js'
 export * from './studio-gating.js'
+export * from './color-family.js';
+export * from './style-quiz.js';
+export * from './my-style-weights.js';
+export * from './my-style-consent.js';
+export * from './my-style-garment.js';
+export * from './my-style-tabs.js';
+export * from './occasions.js';
+export * from './my-style-look.js';

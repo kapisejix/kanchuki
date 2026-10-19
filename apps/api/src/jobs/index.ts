@@ -5,6 +5,7 @@ import { handleBackfillMissingAiFields } from './backfill-missing-ai-fields.js';
 import { handleBackupDatabase } from './backup-database.js';
 import { handleCatalogSync, handleDailyCatalogSync } from './catalog-sync.js';
 import type { CatalogSyncJobData } from './catalog-sync.js';
+import { handleColorFamilyBackfill } from './color-family-backfill.js';
 import { handleCompressR2Images } from './compress-r2-images.js';
 import { handleEmbeddingBackfill } from './embedding-backfill.js';
 import { handleEngagementAggregate } from './engagement-aggregate.js';
@@ -18,11 +19,13 @@ import {
 import { handleGenerateKenBurnsVideo } from './generate-ken-burns-video.js';
 import type { KenBurnsVideoJobData } from './generate-ken-burns-video.js';
 import { handleMeasureR2Storage } from './measure-r2-storage.js';
+import { type MyStyleAnalyzeJobData, handleMyStyleAnalyze } from './my-style-analyze.js';
 import { handlePurgeSoftDeleted, pruneCustomerInteractions } from './purge-soft-deleted.js';
 import {
   getCatalogSyncQueue,
   getEmbeddingQueue,
   getMaintenanceQueue,
+  getMyStyleAnalyzeQueue,
   getRedis,
   getStudioShootQueue,
   getTaggingQueue,
@@ -126,6 +129,17 @@ export async function addTryOnJob(data: TryOnJobData): Promise<void> {
   });
 }
 
+/** F-045: enqueue one My Style selfie read. No image bytes in the payload — the photo is
+ *  handed over in-process (lib/tryon-photo-store.ts), never through Redis. attempts: 1
+ *  because a retry would find no photo and each attempt is a paid Vision call. */
+export async function addMyStyleAnalyzeJob(data: MyStyleAnalyzeJobData): Promise<void> {
+  await getMyStyleAnalyzeQueue().add('my-style-analyze', data, {
+    attempts: 1,
+    removeOnComplete: { count: 100 },
+    removeOnFail: { count: 50 },
+  });
+}
+
 export async function addCatalogSyncJob(data: CatalogSyncJobData): Promise<string> {
   const job = await getCatalogSyncQueue().add('catalog-sync', data, {
     attempts: 3,
@@ -181,6 +195,15 @@ export async function startWorkers(): Promise<void> {
     { connection: redis, concurrency: 2 },
   );
 
+  const myStyleAnalyzeWorker = new Worker(
+    QUEUES.MY_STYLE_ANALYZE,
+    async (job) => {
+      await handleMyStyleAnalyze(job.data as MyStyleAnalyzeJobData);
+    },
+    // Bounded: each job is a metered Vision call.
+    { connection: redis, concurrency: 3 },
+  );
+
   const catalogSyncWorker = new Worker(
     QUEUES.CATALOG_SYNC,
     async (job) => {
@@ -227,6 +250,8 @@ export async function startWorkers(): Promise<void> {
         }
         case 'embedding-backfill':
           return handleEmbeddingBackfill();
+        case 'color-family-backfill':
+          return handleColorFamilyBackfill();
         case 'generate-gst-invoice': {
           const data = job.data as GenerateGstInvoiceJobData;
           return handleGenerateGstInvoice(data);
@@ -389,6 +414,19 @@ export async function startWorkers(): Promise<void> {
     },
   );
 
+  // F-045 colour-family backfill — weekly Sunday at 7:30 AM UTC. Catches products
+  // created by import / manual add (no tagger run) and any tag-time lookup miss.
+  // No `limit` (RC-062: it is the TOTAL repeat count). Idempotent; fills NULL rows only.
+  await getMaintenanceQueue().add(
+    'color-family-backfill',
+    {},
+    {
+      repeat: { pattern: '30 7 * * 0' },
+      removeOnComplete: { count: 10 },
+      removeOnFail: { count: 10 },
+    },
+  );
+
   // GST invoice reconciliation — daily at 6:00 AM UTC. Re-enqueues any
   // successful payment still missing its PDF (charged before the platform
   // GST profile was set, or retries exhausted).
@@ -456,6 +494,10 @@ export async function startWorkers(): Promise<void> {
 
   tryOnWorker.on('failed', (job, err) => {
     console.error(`[jobs] try-on failed ${job?.id}:`, err.message);
+  });
+
+  myStyleAnalyzeWorker.on('failed', (job, err) => {
+    console.error(`[jobs] my-style-analyze failed ${job?.id}:`, err.message);
   });
 
   catalogSyncWorker.on('failed', (job, err) => {

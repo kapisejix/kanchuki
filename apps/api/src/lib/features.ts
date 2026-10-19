@@ -2,6 +2,24 @@ import { prisma } from '@kanchuki/db';
 import type { PlanFeatureKey, SubscriptionPlan } from '@kanchuki/db';
 
 /**
+ * F-044 / E6: customer-side virtual try-on (the PWA shopper path, cookie-only)
+ * is OFF for Release 1. In-store try-on (Bearer retailer/manager) is unaffected
+ * and still gated by VIRTUAL_TRY_ON_V2. Off means the customer routes answer
+ * 404 and `try_on_enabled` is false without reading PlanFeature.
+ */
+// ponytail: compile-time constant; promote to a PlanFeatureKey when the owner wants it per plan.
+export const CUSTOMER_TRY_ON_ENABLED = false;
+
+/**
+ * F-045 T16: kill-switch for My Style photo analysis (a paid Claude Vision call per
+ * request). Default ON. Flip to false and redeploy to stop new analyses: analyze and
+ * poll answer 404. `profile/clear` stays live regardless, so people can always delete
+ * what we derived from their photo.
+ */
+// ponytail: compile-time constant like the one above; promote to a PlanFeatureKey/admin flag if the owner wants runtime control.
+export const CUSTOMER_STYLE_ANALYSIS = true;
+
+/**
  * F-013: Check if a feature is enabled for a retailer's current plan.
  *
  * **Fails CLOSED** — the opposite of checkQuota()'s fail-open behavior:

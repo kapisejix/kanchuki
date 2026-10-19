@@ -19,6 +19,14 @@ export async function displayUrl(url: string, r2Key: string | null): Promise<str
   return url;
 }
 
+// F-044 E5: customer WhatsApp enquiries go to the store's OTP-verified
+// whatsapp_number (the shared Business number staff use via Linked devices),
+// else the login phone. Public payloads carry ONLY this resolved number, under
+// the existing `phone` key, so every web wa.me builder follows it unchanged.
+export function enquiryPhone(r: { phone: string; whatsapp_number: string | null }): string {
+  return r.whatsapp_number || r.phone;
+}
+
 export const publicProductQuerySchema = z.object({
   page: z.coerce.number().int().min(1).optional(),
   pageSize: z.coerce.number().int().min(1).max(50).optional(),

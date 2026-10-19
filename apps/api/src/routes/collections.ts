@@ -1,11 +1,74 @@
 import { prisma, vaultDelete } from '@kanchuki/db';
 import type { Prisma } from '@kanchuki/db';
 import { addDays, generateCollectionSlug, normalizeIndianPhone } from '@kanchuki/shared';
-import type { FastifyPluginAsync } from 'fastify';
+import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { hasFeature } from '../lib/features.js';
 import { buildCollectionUrl } from '../lib/store-urls.js';
-import { featureUnavailable, notFound, validationError } from '../plugins/error-handler.js';
+import { isRealOwner, maskPhoneForRequest } from '../plugins/auth.js';
+import {
+  AppError,
+  featureUnavailable,
+  forbidden,
+  notFound,
+  validationError,
+} from '../plugins/error-handler.js';
+
+// RC-066: manager / salesperson / delegates reach these routes through the
+// /v1/collections allowlist; the customer's number must be masked server-side.
+function maskEnquiry<T extends { customer_phone: string | null }>(
+  request: FastifyRequest,
+  e: T,
+): T {
+  return {
+    ...e,
+    customer_phone: e.customer_phone ? maskPhoneForRequest(request, e.customer_phone) : null,
+  };
+}
+
+// F-044 E3: an enquiry's assignee is a Staff.id, or the retailer id when the
+// owner took it (Q1 — no FK, two target tables).
+async function assigneeNames(
+  retailerId: string,
+  ids: (string | null)[],
+): Promise<Map<string, string>> {
+  const names = new Map<string, string>();
+  const staffIds = [...new Set(ids.filter((id): id is string => !!id && id !== retailerId))];
+  const ownerIncluded = ids.includes(retailerId);
+  const [staff, owner] = await Promise.all([
+    staffIds.length
+      ? prisma.staff.findMany({
+          where: { id: { in: staffIds }, retailer_id: retailerId },
+          select: { id: true, name: true },
+        })
+      : [],
+    ownerIncluded
+      ? prisma.retailer.findUnique({ where: { id: retailerId }, select: { owner_name: true } })
+      : null,
+  ]);
+  for (const s of staff) names.set(s.id, s.name);
+  if (ownerIncluded) names.set(retailerId, owner?.owner_name ?? 'Owner');
+  return names;
+}
+
+function assignedTo(names: Map<string, string>, id: string | null) {
+  return id ? { id, name: names.get(id) ?? 'Former team member' } : null;
+}
+
+// Catalog/support delegates have no identity that can own an enquiry.
+function enquiryActorId(request: FastifyRequest): string | null {
+  if (request.staffId) return request.staffId;
+  return isRealOwner(request) ? request.retailerId : null;
+}
+
+function canReassign(request: FastifyRequest): boolean {
+  return isRealOwner(request) || (!!request.staffId && request.staffRole !== 'salesperson');
+}
+
+function enquiryProductIds(e: { product_id: string | null; product_ids: string[] }): string[] {
+  if (e.product_ids.length) return e.product_ids;
+  return e.product_id ? [e.product_id] : [];
+}
 
 // The retailer's public_slug (store URL segment). Null when the retailer has
 // never generated a store QR — buildCollectionUrl falls back to /c/{slug}.
@@ -145,6 +208,126 @@ export const collectionRoutes: FastifyPluginAsync = async (server) => {
     };
   });
 
+  // ─── GET /collections/enquiries (F-044 E3 inbox) ───────────────
+  // Static routes registered before /:id.
+  server.get('/enquiries', async (request) => {
+    const retailerId = request.retailerId;
+    const enquiries = await prisma.collectionEnquiry.findMany({
+      where: { retailer_id: retailerId },
+      orderBy: [{ created_at: 'desc' }, { id: 'desc' }],
+      take: 100, // ponytail: newest 100; add cursor paging when a store outgrows it
+      include: { collection: { select: { id: true, title: true } } },
+    });
+    const productIds = [...new Set(enquiries.flatMap(enquiryProductIds))];
+    const [products, names, team] = await Promise.all([
+      productIds.length
+        ? prisma.product.findMany({
+            where: { id: { in: productIds }, retailer_id: retailerId },
+            select: {
+              id: true,
+              name: true,
+              photos: { where: { is_primary: true }, take: 1, select: { url: true } },
+            },
+          })
+        : [],
+      assigneeNames(
+        retailerId,
+        enquiries.map((e) => e.assigned_staff_id),
+      ),
+      // Reassign picker: /v1/staff is owner-only, so managers get names (no phones) here.
+      canReassign(request)
+        ? prisma.staff.findMany({
+            where: { retailer_id: retailerId, is_active: true },
+            select: { id: true, name: true },
+            orderBy: { name: 'asc' },
+          })
+        : null,
+    ]);
+    const byId = new Map(
+      products.map((p) => [p.id, { id: p.id, name: p.name, photo_url: p.photos[0]?.url ?? null }]),
+    );
+    return {
+      data: enquiries.map(({ product_ids, assigned_staff_id, ...e }) => ({
+        ...maskEnquiry(request, e),
+        products: enquiryProductIds({ product_id: e.product_id, product_ids }).flatMap(
+          (id) => byId.get(id) ?? [],
+        ),
+        assigned_to: assignedTo(names, assigned_staff_id),
+      })),
+      ...(team ? { assignees: team } : {}),
+    };
+  });
+
+  // ─── GET /collections/enquiries/unread-count ───────────────────
+  server.get('/enquiries/unread-count', async (request) => ({
+    data: {
+      count: await prisma.collectionEnquiry.count({
+        where: { retailer_id: request.retailerId, status: 'NEW' },
+      }),
+    },
+  }));
+
+  // ─── POST /collections/enquiries/:id/take — first tap wins (D3) ─
+  server.post('/enquiries/:id/take', async (request) => {
+    const { id } = request.params as { id: string };
+    const actor = enquiryActorId(request);
+    if (!actor) throw forbidden('Only the shop team can take an enquiry');
+
+    // CAS: only a still-unassigned row is claimed; the loser falls through to 409.
+    const { count } = await prisma.collectionEnquiry.updateMany({
+      where: { id, retailer_id: request.retailerId, assigned_staff_id: null },
+      data: { assigned_staff_id: actor, assigned_at: new Date() },
+    });
+    const enquiry = await prisma.collectionEnquiry.findFirst({
+      where: { id, retailer_id: request.retailerId },
+      select: { assigned_staff_id: true },
+    });
+    if (!enquiry) throw notFound('Enquiry');
+
+    const holder = assignedTo(
+      await assigneeNames(request.retailerId, [enquiry.assigned_staff_id]),
+      enquiry.assigned_staff_id,
+    );
+    if (count === 0 && enquiry.assigned_staff_id !== actor) {
+      throw new AppError(
+        'ENQUIRY_TAKEN',
+        `Being handled by ${holder?.name ?? 'someone else'}`,
+        409,
+      );
+    }
+    return { data: { id, assigned_to: holder } };
+  });
+
+  // ─── PATCH /collections/enquiries/:id/assign — owner + manager ─
+  server.patch('/enquiries/:id/assign', async (request) => {
+    if (!canReassign(request)) throw forbidden('Only the owner or a manager can reassign');
+    const { id } = request.params as { id: string };
+    const body = z.object({ staff_id: z.string().min(1) }).safeParse(request.body);
+    if (!body.success) throw validationError('staff_id is required', 'staff_id');
+
+    const target = body.data.staff_id;
+    if (target !== request.retailerId) {
+      const staff = await prisma.staff.findFirst({
+        where: { id: target, retailer_id: request.retailerId, is_active: true },
+        select: { id: true },
+      });
+      if (!staff) throw validationError('Team member not found', 'staff_id');
+    }
+
+    const { count } = await prisma.collectionEnquiry.updateMany({
+      where: { id, retailer_id: request.retailerId },
+      data: { assigned_staff_id: target, assigned_at: new Date() },
+    });
+    if (count === 0) throw notFound('Enquiry');
+
+    return {
+      data: {
+        id,
+        assigned_to: assignedTo(await assigneeNames(request.retailerId, [target]), target),
+      },
+    };
+  });
+
   // ─── GET /collections/:id ───────────────────────────────────────
   server.get('/:id', async (request) => {
     const { id } = request.params as { id: string };
@@ -172,6 +355,7 @@ export const collectionRoutes: FastifyPluginAsync = async (server) => {
     return {
       data: {
         ...collection,
+        enquiries: collection.enquiries.map((e) => maskEnquiry(request, e)),
         url: buildCollectionUrl(await retailerPublicSlug(request.retailerId), collection.slug),
       },
     };
@@ -229,7 +413,7 @@ export const collectionRoutes: FastifyPluginAsync = async (server) => {
     if (count === 0) throw notFound('Enquiry');
 
     const updated = await prisma.collectionEnquiry.findUnique({ where: { id: enquiryId } });
-    return { data: updated };
+    return { data: updated && maskEnquiry(request, updated) };
   });
 
   // ─── POST /collections/auto-suggest ─────────────────────────────

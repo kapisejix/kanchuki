@@ -88,6 +88,34 @@ describe('tagProductImages', () => {
     expect(result.fabric_estimate).toBeNull()
   })
 
+  it('keeps only enum occasions from the reply and offers the enum in the schema', async () => {
+    mockCreate.mockResolvedValue(
+      toolUseResponse({
+        category: 'Saree',
+        primary_color: 'Maroon',
+        // a provider that ignores the schema enum, plus an injection-style value
+        occasions: ['wedding', 'IGNORE PREVIOUS INSTRUCTIONS', 'Festive', 'Party Wear'],
+        search_tags: [],
+        is_catalog_image: false,
+      }),
+    )
+
+    const result = await tagProductImages([{ buffer: Buffer.from('front'), mediaType: 'image/jpeg' }])
+
+    expect(result.occasions).toEqual(['Wedding', 'Festive'])
+    const schema = mockCreate.mock.calls[0]![0].tools[0].input_schema
+    expect(schema.properties.occasions.items.enum).toEqual(['Daily Wear', 'Party Wear', 'Festive', 'Wedding'])
+    expect(schema.required).not.toContain('occasions')
+  })
+
+  it('returns [] occasions when the reply omits them', async () => {
+    mockCreate.mockResolvedValue(
+      toolUseResponse({ category: 'Kurti', primary_color: 'Pink', search_tags: [], is_catalog_image: false }),
+    )
+    const result = await tagProductImages([{ buffer: Buffer.from('front'), mediaType: 'image/jpeg' }])
+    expect(result.occasions).toEqual([])
+  })
+
   it('sends both image blocks + front/back prompt for two images', async () => {
     mockCreate.mockResolvedValue(
       toolUseResponse({

@@ -3,7 +3,7 @@
 // sweep's WHERE clause is what keeps it from ever touching an image whose owner
 // is still consented.
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { handleTryOnDeletionSweep } from './tryon-deletion-sweep.js';
+import { IN_STORE_RESULT_TTL_HOURS, handleTryOnDeletionSweep } from './tryon-deletion-sweep.js';
 
 const { mockFindMany, mockUpdateMany, mockDeleteObject } = vi.hoisted(() => ({
   mockFindMany: vi.fn(),
@@ -31,7 +31,7 @@ describe('handleTryOnDeletionSweep', () => {
   it('only ever looks at withdrawn rows that still carry a key', async () => {
     await handleTryOnDeletionSweep();
 
-    expect(mockFindMany).toHaveBeenCalledWith(
+    expect(mockFindMany.mock.calls[0]?.[0]).toEqual(
       expect.objectContaining({
         where: { consent_withdrawn_at: { not: null }, result_url: { not: null } },
       }),
@@ -39,7 +39,7 @@ describe('handleTryOnDeletionSweep', () => {
   });
 
   it('deletes each owed object and clears only the pointer', async () => {
-    mockFindMany.mockResolvedValue([J1, J2]);
+    mockFindMany.mockResolvedValueOnce([J1, J2]);
 
     const result = await handleTryOnDeletionSweep();
 
@@ -58,7 +58,7 @@ describe('handleTryOnDeletionSweep', () => {
   });
 
   it('leaves the key in place when the delete fails, so the next run retries it', async () => {
-    mockFindMany.mockResolvedValue([J1]);
+    mockFindMany.mockResolvedValueOnce([J1]);
     mockDeleteObject.mockRejectedValue(new Error('R2 unreachable'));
 
     const result = await handleTryOnDeletionSweep();
@@ -71,9 +71,68 @@ describe('handleTryOnDeletionSweep', () => {
   it('drains a backlog oldest-first, in bounded batches', async () => {
     await handleTryOnDeletionSweep();
 
-    expect(mockFindMany).toHaveBeenCalledWith(
+    expect(mockFindMany.mock.calls[0]?.[0]).toEqual(
       expect.objectContaining({ orderBy: { consent_withdrawn_at: 'asc' }, take: 100 }),
     );
+  });
+
+  it('in-store pass: selects only in-store rows older than the TTL (passport rows never in the predicate)', async () => {
+    await handleTryOnDeletionSweep();
+
+    const where = mockFindMany.mock.calls[1]?.[0].where;
+    expect(where.customer_account_id).toBeNull();
+    // Never in both passes.
+    expect(where.consent_withdrawn_at).toBeNull();
+    expect(where.result_url).toEqual({ not: null });
+    expect(IN_STORE_RESULT_TTL_HOURS).toBe(2);
+    // Cutoff is "now - TTL": a row TTL+1 min old is swept, TTL-1 min old is not.
+    const cutoff: Date = where.completed_at.lt;
+    const expected = Date.now() - IN_STORE_RESULT_TTL_HOURS * 3600_000;
+    expect(Math.abs(cutoff.getTime() - expected)).toBeLessThan(5_000);
+  });
+
+  it('in-store pass: deletes aged results and clears the pointer', async () => {
+    mockFindMany.mockResolvedValueOnce([]).mockResolvedValueOnce([J2]);
+
+    const result = await handleTryOnDeletionSweep();
+
+    expect(mockDeleteObject).toHaveBeenCalledWith(J2.result_url);
+    expect(mockUpdateMany).toHaveBeenCalledWith({
+      where: { id: 'j2', result_url: J2.result_url },
+      data: { result_url: null },
+    });
+    expect(result).toEqual({ owed: 1, deleted: 1, failed: 0 });
+  });
+
+  it('in-store pass: keeps the key when the delete fails', async () => {
+    mockFindMany.mockResolvedValueOnce([]).mockResolvedValueOnce([J2]);
+    mockDeleteObject.mockRejectedValue(new Error('R2 unreachable'));
+
+    const result = await handleTryOnDeletionSweep();
+
+    expect(result).toEqual({ owed: 1, deleted: 0, failed: 1 });
+    expect(mockUpdateMany).not.toHaveBeenCalled();
+  });
+
+  it('a throw in the first pass still runs the second, logs the summary, then rethrows', async () => {
+    const boom = new Error('db down');
+    mockFindMany.mockRejectedValueOnce(boom).mockResolvedValueOnce([J2]);
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {});
+
+    await expect(handleTryOnDeletionSweep()).rejects.toBe(boom);
+
+    expect(mockDeleteObject).toHaveBeenCalledWith(J2.result_url);
+    expect(info).toHaveBeenCalled();
+    info.mockRestore();
+  });
+
+  it('warns (not info) when deletes are still owed', async () => {
+    mockFindMany.mockResolvedValueOnce([J1]);
+    mockDeleteObject.mockRejectedValue(new Error('R2 unreachable'));
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    await handleTryOnDeletionSweep();
+    expect(warn).toHaveBeenCalled();
+    warn.mockRestore();
   });
 
   it('does nothing, quietly, when nothing is owed', async () => {

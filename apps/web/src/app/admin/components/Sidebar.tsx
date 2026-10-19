@@ -95,6 +95,7 @@ const NAV_ITEMS: NavItem[] = [
       { label: 'Suits Designs', href: '/admin/suits-designs', icon: Sparkles },
       { label: 'Design Categories', href: '/admin/suits-design-categories', icon: Tags },
       { label: 'Festivals', href: '/admin/festivals', icon: CalendarDays },
+      { label: 'My Style', href: '/admin/my-style', icon: Palette },
       { label: 'Social Templates', href: '/admin/social-templates', icon: Share2 },
       { label: 'Social Publishing', href: '/admin/social', icon: Megaphone },
       { label: 'Catalog Upload Tiers', href: '/admin/catalog-upload-tiers', icon: Package },
@@ -169,6 +170,12 @@ const NAV_ITEMS: NavItem[] = [
       },
       { label: 'AI Providers', href: '/admin/ai-providers', icon: Bot, superAdminOnly: true },
       { label: 'AI Usage', href: '/admin/ai-usage', icon: BarChart3, superAdminOnly: true },
+      {
+        label: 'Try-On GPU Usage',
+        href: '/admin/try-on-usage',
+        icon: Cpu,
+        superAdminOnly: true,
+      },
       { label: 'General Settings', href: '/admin/settings', icon: Settings, superAdminOnly: true },
       { label: 'AI Config', href: '/admin/settings/ai-config', icon: Cpu, superAdminOnly: true },
       {

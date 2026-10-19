@@ -15,6 +15,7 @@ import {
   adminAiRoutes,
   adminBackupsRoutes,
   adminBugReportRoutes,
+  adminColorFamilyRoutes,
   adminCommissionRoutes,
   adminContactRoutes,
   adminDataRoutes,
@@ -29,6 +30,7 @@ import {
   adminMediaRoutes,
   adminMiscRoutes,
   adminModerationRoutes,
+  adminMyStyleRoutes,
   adminPhotoCleanupRoutes,
   adminPlansRoutes,
   adminPostTemplatesRoutes,
@@ -45,6 +47,7 @@ import {
   adminStorageRoutes,
   adminStudioStylesRoutes,
   adminSurveyRoutes,
+  adminTryOnUsageRoutes,
   adminWhatsAppCatalogRoutes,
 } from './admin/index.js';
 
@@ -203,6 +206,8 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
   await server.register(adminReferralMonitorRoutes);
   // admin-engagement — F-037 Phase 3 behavior analytics (store view + audited per-customer drill-down)
   await server.register(adminEngagementRoutes);
+  // admin-try-on-usage - F-044 R2 T7 GPU usage report (super-admin segment)
+  await server.register(adminTryOnUsageRoutes);
   // admin-data — auto-split module
   await server.register(adminDataRoutes);
   // admin-integrations — auto-split module
@@ -245,6 +250,8 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
   // admin-showcase-designs + categories — Suits Designs library
   await server.register(adminShowcaseDesignRoutes);
   await server.register(adminShowcaseDesignCategoryRoutes);
+  await server.register(adminColorFamilyRoutes);
+  await server.register(adminMyStyleRoutes);
   // admin-bug-reports — retailer-submitted bug reports
   await server.register(adminBugReportRoutes);
 };

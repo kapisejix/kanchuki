@@ -192,6 +192,7 @@ function AppShell() {
           <Stack.Screen name="analytics" />
           <Stack.Screen name="billing" />
           <Stack.Screen name="store-profile" />
+          <Stack.Screen name="enquiries" />
           <Stack.Screen name="social/create" />
           <Stack.Screen name="social/schedule/index" />
           <Stack.Screen name="social/schedule/new" />
@@ -265,6 +266,7 @@ function AppShell() {
               camera. Its entry point is gated on the VIRTUAL_TRY_ON_V2 plan
               feature, but the route 404s without that flag regardless. */}
           <Stack.Screen name="product/try-on" options={{ presentation: "fullScreenModal" }} />
+          <Stack.Screen name="enquiry-try-on" options={{ presentation: "fullScreenModal" }} />
           <Stack.Screen name="collection/new" />
           <Stack.Screen name="collection/[id]" />
           <Stack.Screen name="category/new" />

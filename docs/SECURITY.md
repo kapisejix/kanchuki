@@ -152,7 +152,7 @@ story for the output. The two must not be conflated:
 | Photo | Rule | Where enforced |
 |---|---|---|
 | **Input** — the wearer's photo, whoever is being tried on | **Never persisted.** Held in API-process memory for one job, discarded after. Not in the DB, not on R2, and deliberately **not in the BullMQ payload** (Redis is persistent storage). | `apps/api/src/lib/tryon-photo-store.ts` (one-shot take, 180 s TTL, 256 MB ceiling), `apps/api/src/jobs/tryon.ts` (`takeTryOnPhoto`), test: `jobs/tryon.test.ts` asserts `saveTryOnResultToR2` is the only storage write and is called once with the result |
-| **Output** — the generated garment-on-person image | **Is stored**, as an R2 key on `try_on_jobs.result_url`, served only through a per-read presigned URL (1 h). Consent is required before it is created, and withdrawal deletes it. | `apps/api/src/routes/products/products-tryon.ts`, `apps/api/src/lib/tryon-consent.ts` |
+| **Output** — the generated garment-on-person image | **Is stored**, as an R2 key on `try_on_jobs.result_url`, served only through a per-read presigned URL (1 h). Consent is required before it is created, and withdrawal deletes it. **In-store results (no customer account) are discarded when the staff session exits (`POST /v1/products/try-on/discard`; a job still running is tombstoned `DISCARDED` and its late result is deleted on completion) and swept after `IN_STORE_RESULT_TTL_HOURS` (2 h) if the app never called discard.** Only owner/manager can call the try-on routes (RC-068 closed delegates). GPU time per job is logged (`try_on_jobs.gpu_ms`, super-admin report only); no image or wearer data is in it. Known limits: a failed R2 delete is retried only by the 2 h sweep (100 rows per hour, cron registration unverified); a withdrawn-mid-run job whose delete fails records no key. | `apps/api/src/routes/products/products-tryon.ts`, `apps/api/src/lib/tryon-consent.ts`, `apps/api/src/jobs/tryon-deletion-sweep.ts`, `apps/api/src/jobs/tryon.ts` |
 
 #### Consent is a server-side gate, not a UI checkbox
 
@@ -235,6 +235,28 @@ render it from there; do not inline it in a screen.
       "expires within an hour" sufficient?
 - [ ] Confirm the **withdrawal-with-failed-delete** gap needs no separate
       notice, or is the response's `images_failed` count sufficient disclosure.
+
+---
+
+## 3e. My Style (F-045) — selfie analysis photo rules
+
+A shopper's selfie is a photo of a real person. Unlike try-on (§3d) **nothing is generated or
+stored**: the photo is read once and discarded, and only three derived words are kept.
+
+| What | Rule | Where it is enforced |
+|---|---|---|
+| The photo | **Never persisted.** Request memory → in-process stash (`lib/tryon-photo-store.ts`, one-shot take, 180 s TTL) → the job → gone. Not on R2, not in the DB, not in the BullMQ payload (Redis is storage), not in a log. Re-encoded and downscaled before the model sees it, which also drops EXIF/GPS. | `routes/public/public-my-style-analyze.ts`, `jobs/my-style-analyze.ts`, `packages/ai/src/my-style-vision.ts`; **pinned by** `lib/my-style-privacy-guard.test.ts` (no storage helper, no log of bytes, no photo field in the job payload). |
+| What is kept | `customer_accounts.skin_undertone / skin_depth / body_frame / style_profile_at` (enums, CHECK-constrained in migration 133). Shown to the shopper as "your palette", never as a skin-colour label. | `jobs/my-style-analyze.ts` is the only writer. |
+| Consent | Server-side gate before any spend: the current `consent_version` (`mystyle-1.0`) or a live remembered grant. Logged as `ConsentEvent` `MY_STYLE_PHOTO_CONSENTED`; withdrawal is `MY_STYLE_PHOTO_CONSENT_WITHDRAWN`. Copy lives in `@kanchuki/shared` (`MY_STYLE_CONSENT`) so a recorded version always names text a person saw. | `lib/my-style-consent.ts`, `lib/notice-versions.ts`. |
+| Clear my data | `POST /v1/public/my-style/profile/clear`: logs the withdrawal, `UPDATE … = NULL` (never DELETE, RC-049), cancels any analysis in flight. A job that loses that race re-nulls the columns, so a cleared profile is never resurrected. Stays live when the kill-switch is off. | `lib/my-style-consent.ts` `withdrawMyStyleConsent`, `jobs/my-style-analyze.ts`. |
+| Not for training | The photo is never used to train models (stated in the consent copy). A new AI provider needs the same no-training contract before it handles this photo. | Provider contracts, as §3d. |
+| Abuse and cost | Per-customer monthly `STYLE_ANALYSIS` limit (admin-editable, seeded 3), one analysis in flight per shopper, 5/min rate limit, `CUSTOMER_STYLE_ANALYSIS` kill-switch. The reply is enum-only and re-validated; text inside the image is told to be ignored and cannot widen the output. | `lib/quota.ts`, `lib/my-style-analysis.ts`, `lib/features.ts`. |
+| Job ids | Opaque; a poll for someone else's id answers the same 404 as an unknown one. | `GET /analyze/:jobId`. |
+
+**Known limits (be honest in the privacy notice):** the API cannot verify the person is an adult —
+there is no age field on `customer_accounts`; the only guards are the adults-only consent text and a
+kids flow that has no upload. The consent link `https://kanchuki.app/privacy#my-style` needs that
+anchor to exist on the privacy page (built in PR-7: `privacy/page.tsx` `#my-style`, guarded by a test that derives the id from the constant).
 
 ---
 

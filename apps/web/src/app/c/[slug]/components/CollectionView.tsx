@@ -553,7 +553,7 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
 
       {/* ── Fixed Bottom Overlay Nav: Catalog, Saved, Enquire ── */}
       <nav className="fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-t border-[#E0E1F6] shadow-[0_-8px_24px_-12px_rgba(35,31,72,0.1)]">
-        <div className="max-w-md mx-auto grid grid-cols-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+        <div className="max-w-md mx-auto grid grid-cols-4 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
           <Link
             href={catalogPath}
             prefetch
@@ -561,6 +561,14 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
           >
             <LayoutGrid size={20} />
             <span className="text-[10px] font-semibold">Catalog</span>
+          </Link>
+          {/* F-045: cross-store My Style feed. */}
+          <Link
+            href="/my-style"
+            className="flex flex-col items-center justify-center gap-0.5 py-1 text-[#6B4773] hover:text-[#BB3F95] transition-colors"
+          >
+            <Sparkles size={20} />
+            <span className="text-[10px] font-semibold">My Style</span>
           </Link>
           <Link
             href={`${basePath}/wishlist`}

@@ -12,6 +12,8 @@ declare module 'fastify' {
     retailerId: string;
     retailerAuthUserId: string;
     staffRole: string | null;
+    // F-044: Staff.id for a shop-staff login; null for the owner and delegates.
+    staffId: string | null;
     // F-020: set only when this request is authenticated via a delegated
     // catalog-upload session token, not a real retailer/staff login.
     catalogDelegate: { team_member_id: string; ticket_id: string } | null;
@@ -225,6 +227,10 @@ const SALESPERSON_ALLOWED_ROUTES: StaffRule[] = [
   { method: 'POST', path: '/v1/customers', exact: true }, // add new customers only
   { method: 'GET', path: '/v1/retailers/me', exact: true }, // shop name shown in app header
   { method: 'GET', path: '/v1/collections' }, // share a collection link on WhatsApp
+  // F-044 inbox (D2): read via the GET above, take, mark replied/closed.
+  // Reassign stays owner + manager (not listed → default-deny).
+  { method: 'POST', path: '/v1/collections/enquiries/:id/take', exact: true },
+  { method: 'PATCH', path: '/v1/collections/:id/enquiries/:enquiryId', exact: true },
 ];
 
 function matchesRules(method: string, routeUrl: string, rules: StaffRule[]): boolean {
@@ -395,6 +401,7 @@ export const authPlugin: FastifyPluginAsync = fp(async (server) => {
   server.decorateRequest('retailerId', '');
   server.decorateRequest('retailerAuthUserId', '');
   server.decorateRequest('staffRole', null);
+  server.decorateRequest('staffId', null);
   server.decorateRequest('catalogDelegate', null);
   server.decorateRequest('supportDelegate', null);
 
@@ -647,6 +654,7 @@ export const authPlugin: FastifyPluginAsync = fp(async (server) => {
       request.retailerId = staff.retailer_id;
       request.retailerAuthUserId = claims.sub;
       request.staffRole = staff.role;
+      request.staffId = staff.id;
 
       const routeUrl = request.routeOptions.url ?? request.url;
       if (!staffCanAccess(request.method, routeUrl, staff.role)) {

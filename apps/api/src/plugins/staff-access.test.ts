@@ -121,6 +121,52 @@ describe('salesperson allowlist', () => {
   });
 });
 
+describe('enquiry inbox (F-044 E3, D2)', () => {
+  const s = (method: string, url: string) => staffCanAccess(method, url, 'salesperson');
+  const m = (method: string, url: string) => staffCanAccess(method, url, 'manager');
+  it('salesperson reads, takes, sets status', () => {
+    expect(s('GET', '/v1/collections/enquiries')).toBe(true);
+    expect(s('GET', '/v1/collections/enquiries/unread-count')).toBe(true);
+    expect(s('POST', '/v1/collections/enquiries/:id/take')).toBe(true);
+    expect(s('PATCH', '/v1/collections/:id/enquiries/:enquiryId')).toBe(true);
+  });
+  it('salesperson: reassign + every other collection write stays denied', () => {
+    expect(s('PATCH', '/v1/collections/enquiries/:id/assign')).toBe(false);
+    expect(s('POST', '/v1/collections')).toBe(false);
+    expect(s('PATCH', '/v1/collections/:id')).toBe(false);
+    expect(s('DELETE', '/v1/collections/:id')).toBe(false);
+    expect(s('POST', '/v1/collections/:id/bulk-send')).toBe(false);
+    expect(s('POST', '/v1/collections/enquiries/:id/untake')).toBe(false); // default-deny
+  });
+  it('manager gets read, take and reassign', () => {
+    expect(m('GET', '/v1/collections/enquiries')).toBe(true);
+    expect(m('POST', '/v1/collections/enquiries/:id/take')).toBe(true);
+    expect(m('PATCH', '/v1/collections/enquiries/:id/assign')).toBe(true);
+  });
+});
+
+describe('try-on (F-040) — owner + manager only', () => {
+  // The in-store try-on runs on the staff phone. Manager reaches it through the
+  // `*` /v1/products wildcard; salesperson is GET-only on /v1/products, so the
+  // POST is default-denied. Pinned so a widened salesperson rule can't leak it.
+  it('manager can start a try-on and poll its status', () => {
+    expect(staffCanAccess('POST', '/v1/products/:id/try-on', 'manager')).toBe(true);
+    expect(staffCanAccess('GET', '/v1/products/:id/try-on/status', 'manager')).toBe(true);
+  });
+  it('salesperson cannot start a try-on', () => {
+    expect(staffCanAccess('POST', '/v1/products/:id/try-on', 'salesperson')).toBe(false);
+  });
+  it('discard: manager passes the allowlist; salesperson is default-denied (POST on /v1/products)', () => {
+    expect(staffCanAccess('POST', '/v1/products/try-on/discard', 'manager')).toBe(true);
+    expect(staffCanAccess('POST', '/v1/products/try-on/discard', 'salesperson')).toBe(false);
+  });
+  it('quota read: manager passes the allowlist; salesperson passes it too (GET-only rule) so the handler 403s them', () => {
+    expect(staffCanAccess('GET', '/v1/products/try-on/quota', 'manager')).toBe(true);
+    // Not a leak: the route handler itself refuses salesperson (products-tryon.test.ts).
+    expect(staffCanAccess('GET', '/v1/products/try-on/quota', 'salesperson')).toBe(true);
+  });
+});
+
 describe('maskPhoneForRequest', () => {
   const req = (staffRole: string | null) => ({ staffRole }) as unknown as FastifyRequest;
   it('owner sees the full number', () => {
