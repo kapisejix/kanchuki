@@ -13,11 +13,13 @@
 --
 -- Idempotent: safe to re-run against an existing setup (the roles were
 -- first created 2026-07-26; re-running applies the sequence grants and
--- default-privileges fixes below without failing on CREATE ROLE). Each role
--- block also re-asserts its password via ALTER ROLE, so a re-run ALIGNS the
--- password to the tokens below even when the role already exists (the
--- original 2026-07-26 run set different passwords — that mismatch caused
--- "password authentication failed" on the pooled DATABASE_URL).
+-- default-privileges fixes below without failing on CREATE ROLE).
+-- Passwords are set ONLY when a role is first created. A re-run never touches
+-- an existing role's password (RC-075: re-asserting it on every run silently
+-- rotated all three passwords on 2026-10-19 and took production down).
+-- To rotate a password, do it on purpose, one role at a time, and update the
+-- matching Railway URL in the same sitting:
+--   ALTER ROLE kanchuki_app WITH PASSWORD '<new>';
 --
 -- Step 1: Open https://supabase.com/dashboard/projects
 -- Step 2: Select your project (project ref = the `<PROJECT_REF>`
@@ -37,10 +39,6 @@ DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'kanchuki_app') THEN
     CREATE ROLE kanchuki_app WITH LOGIN PASSWORD '<APP_PASSWORD_CHANGE_ME>';
-  ELSE
-    -- Role exists (first created 2026-07-26 with a different password) —
-    -- re-align to the documented credential so the pooled DATABASE_URL works.
-    ALTER ROLE kanchuki_app WITH LOGIN PASSWORD '<APP_PASSWORD_CHANGE_ME>';
   END IF;
 END
 $$;
@@ -82,8 +80,6 @@ DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'kanchuki_migrator') THEN
     CREATE ROLE kanchuki_migrator WITH LOGIN PASSWORD '<MIGRATOR_PASSWORD_CHANGE_ME>' INHERIT;
-  ELSE
-    ALTER ROLE kanchuki_migrator WITH LOGIN PASSWORD '<MIGRATOR_PASSWORD_CHANGE_ME>' INHERIT;
   END IF;
 END
 $$;
@@ -109,8 +105,6 @@ DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'kanchuki_purge') THEN
     CREATE ROLE kanchuki_purge WITH LOGIN PASSWORD '<PURGE_PASSWORD_CHANGE_ME>' INHERIT;
-  ELSE
-    ALTER ROLE kanchuki_purge WITH LOGIN PASSWORD '<PURGE_PASSWORD_CHANGE_ME>' INHERIT;
   END IF;
 END
 $$;
