@@ -4393,7 +4393,7 @@ Owner / manager photographs the customer once from an enquiry card and gets a sw
 
 ---
 
-## 42. F-045 My Style — customer photo → cross-store suggestions — 🟨 PHASE 0 BUILT 2026-10-18 (PR-1..PR-5 merged); PHASE 1 PR-6/PR-7 merged, PR-8 admin built (migration 134 not applied); PR-9 find-similar built, unmerged (no migration); PR-10a feed tabs merged (#132, no migration); PR-10b complete-the-look built 2026-10-19, unmerged (no migration); PR-11 NOT STARTED
+## 42. F-045 My Style — customer photo → cross-store suggestions — 🟨 PHASES 0-2 BUILT AND MERGED 2026-10-19 (PR-1..PR-10b), NOT BROWSER/DEVICE-VERIFIED; PR-11 GATED, NOT STARTED
 
 **Spec:** `docs/tasks/pending/my-style.md` (decisions D1–D6 §0, PR map §6, test plan §7). Supersedes F-039 MID; independent of F-040 customer try-on (which is OFF, F-044 E6).
 
@@ -4402,8 +4402,8 @@ Signed-in customer opens `/my-style` (customer web only), gives a selfie / a gar
 | Phase | PRs | Status |
 |---|---|---|
 | 0 — no photo (schema, colour families, feed API, web shell, multi-store enquiry) | PR-1…PR-5 | 🟨 Built, merged 2026-10-18 (not browser-verified) |
-| 1 — selfie analysis + admin | PR-6…PR-8 | 🟨 PR-6 (analyze API) merged #122; PR-7 (capture UI + web proxy + palette card + privacy anchor) built 2026-10-18, PR open; PR-8 (admin) not started |
-| 2 — find-similar + complete-the-look | PR-9, PR-10 | 🔴 Not started |
+| 1 — selfie analysis + admin | PR-6…PR-8 | 🟨 Merged (#122, #123, #124); migrations 133/134 applied in prod; never run against a real Vision provider |
+| 2 — find-similar + feed tabs + complete-the-look | PR-9, PR-10a, PR-10b | 🟨 Merged (#125, #132, #133, no migrations); AI occasion tagging #127 (backfill built, not run); not browser/device-verified |
 | 3 — try-on hand-off | PR-11 | ⛔ Gated on `CUSTOMER_TRY_ON_ENABLED` + F-040 launch |
 
 ---
