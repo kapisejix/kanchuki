@@ -155,6 +155,34 @@ describe('POST /api/my-style/analyze (photo upload)', () => {
   })
 })
 
+describe('GET /api/my-style/complete-look', () => {
+  it('forwards the anchor query and the cookie', async () => {
+    upstream.mockResolvedValue(
+      new Response('{"data":{"slots":[]}}', {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+    )
+    const request = new Request('http://localhost:3100/api/my-style/complete-look?anchor=p1', {
+      method: 'GET',
+      headers: { cookie: 'kanchuki_passport=abc' },
+    })
+    const res = await route.GET(request as unknown as NextRequest, {
+      params: Promise.resolve({ path: ['complete-look'] }),
+    })
+    expect(res.status).toBe(200)
+    expect(res.headers.get('cache-control')).toBe('private, no-store')
+    const [url, init] = upstream.mock.calls[0] as [string, RequestInit]
+    expect(url).toContain('/v1/public/my-style/complete-look?anchor=p1')
+    expect((init.headers as Record<string, string>).cookie).toBe('kanchuki_passport=abc')
+  })
+
+  it('has no sub-paths', async () => {
+    expect((await get(['complete-look', 'x'])).status).toBe(404)
+    expect(upstream).not.toHaveBeenCalled()
+  })
+})
+
 describe('GET /api/my-style/analyze/:jobId (poll)', () => {
   it('forwards the poll with the cookie and no body', async () => {
     upstream.mockResolvedValue(

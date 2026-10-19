@@ -44,9 +44,11 @@ interface Props {
   groups: StoreGroup[]
   enquiry: ReturnType<typeof useEnquiry>
   onRemove: (id: string) => void
+  /** Complete the look from a shortlisted piece (PR-10b). */
+  onLook?: (id: string) => void
 }
 
-export function ShortlistBar({ groups, enquiry, onRemove }: Props) {
+export function ShortlistBar({ groups, enquiry, onRemove, onLook }: Props) {
   const { busy, results, send } = enquiry
   if (groups.length === 0) return null
   const n = groups.length
@@ -66,6 +68,16 @@ export function ShortlistBar({ groups, enquiry, onRemove }: Props) {
                   {g.items.map((i) => (
                     <li key={i.id} className="rounded-full bg-stone-100 px-2 py-0.5">
                       {i.name ?? 'Piece'}{' '}
+                      {onLook && (
+                        <button
+                          type="button"
+                          className="text-amber-700 underline"
+                          aria-label={`Complete the look for ${i.name ?? 'piece'}`}
+                          onClick={() => onLook(i.id)}
+                        >
+                          Complete the look
+                        </button>
+                      )}{' '}
                       <button
                         type="button"
                         aria-label={`Remove ${i.name ?? 'piece'}`}

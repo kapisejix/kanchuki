@@ -873,6 +873,13 @@ export function ProductDetailSheet({
                   <span className="uppercase tracking-wider">Share Product</span>
                 </button>
               </div>
+              {/* F-045 PR-10b: pieces from nearby stores that go with this one. */}
+              <a
+                href={`/my-style?look=${encodeURIComponent(product.id)}`}
+                className="block w-full py-3 rounded-2xl border border-[#E0E1F6] bg-white text-center text-xs font-bold uppercase tracking-wider text-[#231F48] hover:border-[#BB3F95]"
+              >
+                Complete the look
+              </a>
             </div>
           )}
 

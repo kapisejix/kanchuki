@@ -1,6 +1,6 @@
 # F-045 — My Style: customer photo → cross-store suggestions (customer web only)
 
-**Status (2026-10-18):** 🟨 **PR-1..PR-7 merged; PR-8 (admin + retailer ranking note) built on `feat/f-045-admin`, migration 134 owner-applies.** **PR-9 find-similar built on `feat/f-045-find-similar` (no migration), not merged.** **PR-10a (Festival / Occasion / Trending tabs, RC-070) built on `feat/f-045-tabs`, not merged, no migration.** PR-10b complete-the-look, PR-11 try-on hand-off (gated) not started. **AI occasion tagging re-added** on `feat/ai-occasion-tagging` (ranking input for `occasions`; new uploads tagged, backfill built but not run, no migration), a prerequisite for the PR-10 Occasion tab. Detail per PR: `docs/build-log/part-6.md`.
+**Status (2026-10-18):** 🟨 **PR-1..PR-7 merged; PR-8 (admin + retailer ranking note) built on `feat/f-045-admin`, migration 134 owner-applies.** **PR-9 find-similar built on `feat/f-045-find-similar` (no migration), not merged.** **PR-10a (Festival / Occasion / Trending tabs, RC-070) merged (#132), no migration.** **PR-10b complete-the-look (T22) built on `feat/f-045-complete-look` 2026-10-19, not merged, no migration.** PR-11 try-on hand-off (gated) not started. **AI occasion tagging re-added** on `feat/ai-occasion-tagging` (ranking input for `occasions`; new uploads tagged, backfill built but not run, no migration), a prerequisite for the PR-10 Occasion tab. Detail per PR: `docs/build-log/part-6.md`.
 **Filed:** 2026-10-17. **Surface:** customer web PWA (`apps/web`) only. **Not** the retailer mobile app, **not** the retailer dashboard.
 **Related:**
 - `docs/tasks/pending/style-match-lite.md` (F-039) — this spec **supersedes F-039 MID** and absorbs its quiz wiring (§3.1) and no-store selfie call (§3.2). F-039 stays as the research record.
@@ -218,7 +218,7 @@ Branching: stacked PRs off `main`, branch prefix `feat/f-045-*`, each PR ≤ ~40
 | PR | Branch | Tasks | Effort |
 |---|---|---|---|
 | **PR-9** | `feat/f-045-find-similar` | **T20** garment-descriptor mode in the analyze job; **T21** embed descriptor → pgvector top-K → feed; fall back to attribute match when embeddings are missing. | M |
-| **PR-10** | `feat/f-045-complete-look` | **T22** anchor product → complementary categories (dupatta/bottom/jewellery) from nearby stores; **T23** Festival + Trending tabs on `Festival` / `style_trends`. | M |
+| **PR-10** | `feat/f-045-complete-look` | **T22** anchor product → complementary categories (dupatta/bottom/jewellery) from nearby stores (T22 built in 10b; no jewellery category exists, so jewellery is out of v1); **T23** Festival + Trending tabs on `Festival` / `style_trends` (built in 10a). | M |
 
 ### Phase 3 — gated (do not start)
 

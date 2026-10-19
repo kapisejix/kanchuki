@@ -13,12 +13,14 @@ interface Props {
   busy: boolean
   onToggle: () => void
   onEnquire: () => void
+  /** Complete the look (PR-10b). Absent = no button (e.g. already inside that tab). */
+  onLook?: () => void
 }
 
-export function StyleCardActions({ card, saved, full, busy, onToggle, onEnquire }: Props) {
+export function StyleCardActions({ card, saved, full, busy, onToggle, onEnquire, onLook }: Props) {
   if (!card.retailer.slug) return null
   return (
-    <div className="mt-2 flex gap-2">
+    <div className="mt-2 flex flex-wrap gap-2">
       <button
         type="button"
         aria-pressed={saved}
@@ -38,6 +40,11 @@ export function StyleCardActions({ card, saved, full, busy, onToggle, onEnquire 
       >
         Enquire
       </button>
+      {onLook && (
+        <button type="button" onClick={onLook} className="w-full text-xs font-medium text-amber-700">
+          Complete the look
+        </button>
+      )}
     </div>
   )
 }
