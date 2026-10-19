@@ -262,6 +262,7 @@ Payment: Razorpay (UPI first). Retailer pays base + 18% GST. **Source of truth: 
 
 | ID | Root cause (one line) | Fixed in |
 |---|---|---|
+| RC-075 | `scripts/setup-role-separation.sql` re-asserts every role's password via `ALTER ROLE` on each run, so re-running it (2026-10-19 06:56Z) for grants silently rotated `kanchuki_app`/`migrator`/`purge` passwords; Railway URLs went stale (`P1000`), public routes 500'd and crons failed while `/theme` failed open and looked healthy. | root-cause issues.md |
 | RC-074 | `POST /try-on/discard` computed `skipped` as the raw request length minus distinct rows found, so every repeated job id counted as skipped. | root-cause issues.md |
 | RC-073 | The try-on quota screen used `getQuotaStatus` (plan defaults, no PENDING jobs) while `checkQuota` enforces the real limit (no row / -1 = unlimited, plus PENDING) — two functions answering one question, so the screen could block a retailer the server would allow. | root-cause issues.md |
 | RC-072 | The in-job "record the key before deleting" write matched DISCARDED rows only, so a try-on that finished after a consent withdrawal and whose R2 delete failed left an image with no pointer for the sweep to find (RC-044 shape). | root-cause issues.md |
