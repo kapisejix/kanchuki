@@ -106,6 +106,8 @@ export async function hardDeleteRetailer(retailerId: string): Promise<void> {
     // belt-and-suspenders, but the purge job is explicit about every table
     // by convention. Must precede the staff delete (FK order).
     'DELETE FROM staff_invites WHERE retailer_id = $1;',
+    // F-046 push tokens (135) — FK cascades; explicit by convention.
+    'DELETE FROM staff_push_devices WHERE retailer_id = $1;',
     'DELETE FROM staff WHERE retailer_id = $1;',
     'DELETE FROM store_sections WHERE retailer_id = $1;',
     'DELETE FROM product_categories WHERE retailer_id = $1;',

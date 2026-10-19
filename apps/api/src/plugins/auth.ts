@@ -219,6 +219,9 @@ const MANAGER_ALLOWED_ROUTES: StaffRule[] = [
   { method: 'GET', path: '/v1/retailers/me/analytics', exact: true },
   // Customer list/detail — read-only, phone masked server-side (maskPhoneForRequest).
   { method: 'GET', path: '/v1/customers' },
+  // F-046: register/unregister this device for new-enquiry pushes.
+  { method: 'POST', path: '/v1/push-devices/register', exact: true },
+  { method: 'POST', path: '/v1/push-devices/unregister', exact: true },
 ];
 
 const SALESPERSON_ALLOWED_ROUTES: StaffRule[] = [
@@ -231,6 +234,9 @@ const SALESPERSON_ALLOWED_ROUTES: StaffRule[] = [
   // Reassign stays owner + manager (not listed → default-deny).
   { method: 'POST', path: '/v1/collections/enquiries/:id/take', exact: true },
   { method: 'PATCH', path: '/v1/collections/:id/enquiries/:enquiryId', exact: true },
+  // F-046: salespeople take enquiries, so their device gets the ping too.
+  { method: 'POST', path: '/v1/push-devices/register', exact: true },
+  { method: 'POST', path: '/v1/push-devices/unregister', exact: true },
 ];
 
 function matchesRules(method: string, routeUrl: string, rules: StaffRule[]): boolean {

@@ -375,6 +375,7 @@ model Retailer {
   suspended_by          TeamMember?             @relation("SuspendedRetailers", fields: [suspended_by_id], references: [id])
   support_tickets       SupportTicket[]
   support_session_grants SupportSessionGrant[]
+  staff_push_devices    StaffPushDevice[]
   social_accounts       SocialAccount[]
   social_posts          SocialPost[]
   schedule_plans        PostSchedulePlan[]
@@ -1046,6 +1047,28 @@ model SupportSessionGrant {
   @@index([ticket_id])
   @@index([team_member_id])
   @@map("support_session_grants")
+}
+
+// F-046: retailer-app devices that receive Expo push (new-enquiry pings). One row
+// per device token. Unregister/DeviceNotRegistered sets disabled_at — kanchuki_app
+// has no DELETE (RC-049); kanchuki_purge deletes on retailer hard-delete.
+model StaffPushDevice {
+  id          String @id @default(cuid())
+  retailer_id String
+  // Staff.id, or null when the owner's own login registered the device. Recipients
+  // are resolved from Staff role/is_active at send time, never stored here.
+  staff_id    String?
+  expo_token  String @unique
+  platform    String // android | ios
+
+  last_seen_at DateTime  @default(now())
+  disabled_at  DateTime?
+  created_at   DateTime  @default(now())
+
+  retailer Retailer @relation(fields: [retailer_id], references: [id], onDelete: Cascade)
+
+  @@index([retailer_id, disabled_at])
+  @@map("staff_push_devices")
 }
 
 // F-019: admin-editable price tiers for the paid catalog upload service,
