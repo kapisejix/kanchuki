@@ -668,7 +668,7 @@ no migration, no schema change, and **no new request on any surface**.
 
 | Item | Detail |
 |---|---|
-| Branch | `feat/f-045-complete-look`, no migration, not merged. |
+| Branch | `feat/f-045-complete-look`, no migration, merged as #133 (2026-10-19). |
 | Shared | `my-style-look.ts`: `COMPLEMENT_MAP` (anchor kind -> slots), `classifyAnchor` (category first, subtype only if the category says nothing; men's/kids' wear unmapped), `matchesSlot`, `COMPLEMENTARY_COLORS` + `complementFamilies` (hand-written pairings over the `color_families` names; neutrals pair with all; a test fails if a name drifts from the seed), `LOOK_SLOT_LIMIT` (6). |
 | API | `lib/my-style-candidates.ts`: the `/feed` candidate query extracted unchanged (+ an AND-ed `extraWhere`), `toRankCandidate`. `GET /v1/public/my-style/complete-look?anchor=<id>` (passport session, no-store, 30/min): anchor must be AVAILABLE, not deleted, store live with a slug, else 404 `ANCHOR_UNAVAILABLE`; one candidate query per slot (category match, anchor excluded), ranked by the feed's `rankProducts` with the anchor's pairing colours as the colour preference; the anchor's occasions steer ranking only and are never returned. Empty slots are dropped; none left -> `slots: []`, `meta.reason: "none_nearby"`. |
 | Web | `Complete the look` on feed cards, shortlist chips, and the store `ProductDetailSheet` (links to `/my-style?look=<id>`). Tab appears only once an anchor exists; last anchor in `sessionStorage`; `LookPanel` shows slots, "Nothing near you goes with this piece yet", "That piece is no longer available", retry. Card markup extracted to `StyleCard`. Proxy allows `GET complete-look` (query forwarded). |
