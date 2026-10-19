@@ -23,6 +23,7 @@ import {
 } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
+import { addEnquiryPushJob } from '../../jobs/enquiry-push.js';
 import {
   CANDIDATE_CAP,
   type CandidateRow,
@@ -442,7 +443,7 @@ export const publicMyStyleRoutes: FastifyPluginAsync = async (server) => {
         select: { id: true, title: true },
       });
       if (collection) {
-        await prisma.collectionEnquiry.create({
+        const enquiry = await prisma.collectionEnquiry.create({
           data: {
             collection_id: collection.id,
             retailer_id: retailer.id,
@@ -454,6 +455,16 @@ export const publicMyStyleRoutes: FastifyPluginAsync = async (server) => {
           where: { id: collection.id },
           data: { enquiry_count: { increment: 1 } },
         });
+        // F-046: ping the team; best-effort and logged, never fails the enquiry.
+        try {
+          await addEnquiryPushJob({
+            retailer_id: retailer.id,
+            enquiry_id: enquiry.id,
+            item_count: ids.length,
+          });
+        } catch (err) {
+          request.log.error({ err, enquiry_id: enquiry.id }, 'enquiry push enqueue failed');
+        }
       }
 
       const whatsapp_url = buildWhatsAppEnquiryLink(

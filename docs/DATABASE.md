@@ -1099,6 +1099,23 @@ decided_at + 24 h, never extended), `revoked_at`, `revoked_by` (`RETAILER|STAFF|
   All status changes go through `transitionGrant` (status-guarded `updateMany`). Global switch =
   `support_sessions_enabled` in the admin settings KV (audit-log store), default OFF, fails closed.
 
+## Staff push devices — `staff_push_devices` (migration 135, F-046, written 2026-10-19, NOT yet applied)
+
+Expo push tokens registered by the retailer app so new enquiries can ping the team.
+Columns: `id`, `retailer_id` (FK `retailers`, `ON DELETE CASCADE`), `staff_id` (nullable; null = the owner's own
+login; deliberately **no FK** — recipients are resolved from `Staff.role`/`is_active` at send time),
+`expo_token` (UNIQUE, `ExponentPushToken[...]`), `platform` (`android|ios`, CHECK), `last_seen_at`, `disabled_at`,
+`created_at`. Index `(retailer_id, disabled_at)`.
+
+- **No DELETE from the app** (RC-049): unregister and Expo `DeviceNotRegistered` set `disabled_at`; a
+  re-register upserts the same token back to active and moves it to the new retailer/staff. `kanchuki_app` gets
+  SELECT/INSERT/UPDATE by default privileges. `hardDeleteRetailer()` does NOT list the table (RC-050 is satisfied
+  by the `retailer_id` FK being `ON DELETE CASCADE`; naming it there would trip the RC-030 `purge-rls-policy`
+  guard, which ties purge-touched tables to migration 111's list). `kanchuki_purge` still gets DELETE as belt-and-braces.
+- RLS on, one `backend_roles_full_access` policy for `kanchuki_app`/`kanchuki_purge` (policy first, then ENABLE — RC-030).
+- Writer map: `routes/push-devices.ts` (`/v1/push-devices/register`, `/unregister`); `jobs/enquiry-push.ts` (`disableTokens`, soft-disable on Expo `DeviceNotRegistered`, queue `kanchuki-push`).
+- No customer data is stored or sent: push payloads carry an enquiry id and item count only.
+
 ## Social post scheduler — `post_schedule_plans`, `scheduled_posts`, `scheduled_post_items` (migrations 128/129, F-043, written 2026-10-15, NOT yet applied)
 
 | Table | Purpose | Notes |

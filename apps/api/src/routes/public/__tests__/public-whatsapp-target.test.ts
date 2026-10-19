@@ -37,6 +37,8 @@ vi.mock('@kanchuki/db', () => ({
 vi.mock('../../../lib/public-cache.js', () => ({
   withPublicCache: async (_key: string, fn: () => Promise<unknown>) => fn(),
 }));
+// F-046: the enquire route enqueues a team push; this file is about the WhatsApp target.
+vi.mock('../../../jobs/enquiry-push.js', () => ({ addEnquiryPushJob: vi.fn() }));
 
 const LOGIN = '9876543210';
 const BUSINESS = '9123456789';
@@ -90,7 +92,7 @@ async function buildApp() {
 beforeEach(() => {
   vi.clearAllMocks();
   db.collectionUpdate.mockResolvedValue({});
-  db.enquiryCreate.mockResolvedValue({});
+  db.enquiryCreate.mockResolvedValue({ id: 'enq_1' });
   db.productFindMany.mockResolvedValue([]);
   db.productCount.mockResolvedValue(0);
   db.cpFindMany.mockResolvedValue([]);
