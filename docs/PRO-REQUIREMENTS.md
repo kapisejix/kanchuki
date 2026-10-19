@@ -4405,3 +4405,22 @@ Signed-in customer opens `/my-style` (customer web only), gives a selfie / a gar
 | 1 — selfie analysis + admin | PR-6…PR-8 | 🟨 PR-6 (analyze API) merged #122; PR-7 (capture UI + web proxy + palette card + privacy anchor) built 2026-10-18, PR open; PR-8 (admin) not started |
 | 2 — find-similar + complete-the-look | PR-9, PR-10 | 🔴 Not started |
 | 3 — try-on hand-off | PR-11 | ⛔ Gated on `CUSTOMER_TRY_ON_ENABLED` + F-040 launch |
+
+---
+
+## 43. F-046 Retailer staff push notifications (F-044 Release 3) — 🟨 SLICES 1–3 MERGED 2026-10-19, BUILT, NOT DEVICE-TESTED
+
+**Spec:** `docs/tasks/pending/staff-push-notifications.md` (decisions, slice notes, owner steps). Parent: F-044 §41. Separate from F-036 (customer web push).
+
+The owner, managers and salespeople get a push on their phone when a customer sends a new enquiry (new enquiry only; no taken or reassigned pushes). Delivery is the Expo push service, which relays to FCM and APNs. The payload carries "New enquiry" plus the item count and the enquiry id only, never the customer phone, name or product names (F-037, RC-066). Catalog and support delegates never receive it. The 30 s badge poll stays as the fallback.
+
+| Slice | Status |
+|---|---|
+| 1 — migration 135 `staff_push_devices` (RLS, no app DELETE), `POST /v1/push-devices/register` and `/unregister`, staff allowlists | ✅ Merged 2026-10-19 (PR #137) |
+| 2 — `jobs/enquiry-push.ts`, queue `kanchuki-push`, hooked into both enquiry creators, `DeviceNotRegistered` soft-disable, delayed receipts job (no `repeat.limit`) | ✅ Merged 2026-10-19 (PR #137) |
+| 3 — mobile: `expo-notifications`, registration after sign-in (owner and shop staff only), tap opens `/enquiries`, Home badge refetch on push | ✅ Merged 2026-10-19 (PR #138), not device-tested |
+| 4 — docs (this section, BUILD-LOG, PLAN, CLAUDE.md index) | ✅ 2026-10-19 |
+
+**Owner steps before any push can be tested:** confirm migration 135 is applied (combined SQL check in the spec, expected true, 1, true, false); Firebase project + `google-services.json`; FCM V1 key via `eas credentials`; EAS file env var `GOOGLE_SERVICES_JSON`; EAS rebuild (native module, not in Expo Go); AD_ID guard (`scripts/check-aab-ad-id.mjs`) on that build; device test as owner with a customer enquiry.
+
+**Not verified / known gaps (unfixed on purpose, owner decides):** no push has reached a real device; a cold-start notification tap is held until the session is authenticated and is the likeliest thing to need a fix; a session ending by token expiry skips push unregister; stale `disabled_at` rows are not pruned (the app role has no DELETE).

@@ -1,6 +1,6 @@
 # F-046 — Retailer staff push notifications (F-044 Release 3, E4 real push)
 
-**Status:** 🟨 Slices 1–2 merged to `main` 2026-10-19 (PR #137). Slice 3 (mobile) built 2026-10-19 on `feat/f-046-mobile-push`: **not device-tested, needs FCM setup + an EAS rebuild**. Slice 4 (docs index) planned. Migration 135: confirm it is applied with the check under "Owner steps".
+**Status:** 🟨 Slices 1–3 merged to `main` 2026-10-19 (PRs #137, #138). **Built, not device-tested; needs FCM setup + an EAS rebuild.** Slice 4 (docs index) done 2026-10-19. Migration 135: confirm it is applied with the check under "Owner steps".
 **Parent:** `docs/tasks/pending/enquiry-basket-team-inbox-and-instore-tryon.md` §11.7 (Release 3). Separate from F-036 (customer web push).
 
 ## Decisions (owner, 2026-10-19: "go" on the recommended set)
@@ -20,7 +20,7 @@
 | 1 | ✅ Migration 135 `staff_push_devices` (+ RLS, purge delete) · `POST /v1/push-devices/register` + `/unregister` · staff allowlists · tests | Apply migration 135 |
 | 2 | ✅ Built 2026-10-19 (same branch, unmerged): `jobs/enquiry-push.ts` (recipients from `Staff.is_active` at send time, Expo send, `DeviceNotRegistered` soft-disable, delayed receipts job, no `repeat.limit`), own queue `kanchuki-push` + worker, hooked into both enquiry creators (`public-collections.ts`, `public-my-style.ts`), `jobId` dedupes per enquiry, enqueue failure logged and never fails the enquiry | none (optional env `EXPO_ACCESS_TOKEN` if Expo "Enhanced Security" is turned on) |
 | 3 | ✅ Built 2026-10-19 (**not device-tested**): `expo-notifications ~0.32.17`; `lib/push-notifications.ts` (channel `enquiries`, permission asked once per install, token register, best-effort unregister on sign-out), `lib/use-push-registration.ts` (wired in `AppShell`: owner + shop staff only, skipped for TeamMembers and catalog delegates; a tap or cold start opens `/enquiries`), `lib/enquiry-push-events.ts` (focused Home refetches the badge on a push), `app.json` plugin, `app.config.ts` `googleServicesFile` from env `GOOGLE_SERVICES_JSON`. The 30 s poll stays as fallback | FCM setup, EAS rebuild, device test |
-| 4 | Docs: PRO-REQUIREMENTS, BUILD-LOG part-6, CLAUDE.md index row, RC rows only if bugs appear | approval for the index row |
+| 4 | ✅ Done 2026-10-19: PRO-REQUIREMENTS §43, BUILD-LOG part-6, PLAN.md, CLAUDE.md index row 103 (owner approved the text); RC rows only if bugs appear | none |
 
 ## Slice 1 notes
 
