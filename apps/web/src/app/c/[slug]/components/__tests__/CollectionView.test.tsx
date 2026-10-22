@@ -364,3 +364,63 @@ describe('CollectionView social-proof chips', () => {
     expect(screen.queryByText(/viewed|saved this week|saved recently/)).toBeNull()
   })
 })
+
+// Bottom-bar Enquire: saved picks go through the enquire API (server adds SKU +
+// inbox row); nothing saved, or a failed POST, falls back to the client link.
+describe('CollectionView bottom-bar Enquire', () => {
+  let fetchMock: ReturnType<typeof vi.fn>
+  let openMock: ReturnType<typeof vi.fn>
+  const enquireCalls = () => fetchMock.mock.calls.filter(([u]) => String(u).endsWith('/enquire'))
+
+  const setup = (enquireOk: boolean) => {
+    localStorage.clear()
+    fetchMock = vi.fn(async (input: unknown) =>
+      String(input).endsWith('/enquire')
+        ? {
+            ok: enquireOk,
+            status: enquireOk ? 200 : 500,
+            json: async () => ({ data: { whatsapp_url: 'https://wa.me/server' } }),
+          }
+        : { ok: true, status: 200, json: async () => ({ data: {} }) },
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    openMock = vi.fn()
+    vi.stubGlobal('open', openMock)
+    render(
+      <CollectionView collection={COLLECTION} slug="festive-edit" productsApiPath="/api/c/festive-edit/products" />,
+    )
+  }
+  const enquire = () => fireEvent.click(screen.getByText('Enquire'))
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
+  it('POSTs saved picks and opens the server WhatsApp link', async () => {
+    setup(true)
+    fireEvent.click(screen.getAllByRole('button', { name: /^Add to favorites$/ })[0])
+    enquire()
+    await waitFor(() => expect(openMock).toHaveBeenCalledWith('https://wa.me/server', '_self'))
+    expect(enquireCalls()).toHaveLength(1)
+    expect(enquireCalls()[0]![0]).toBe('/api/c/festive-edit/enquire')
+    expect(JSON.parse(enquireCalls()[0]![1].body)).toEqual({ product_ids: ['prod-1'] })
+  })
+
+  it('falls back to the client link when the POST fails', async () => {
+    setup(false)
+    fireEvent.click(screen.getAllByRole('button', { name: /^Add to favorites$/ })[0])
+    enquire()
+    await waitFor(() => expect(openMock).toHaveBeenCalledTimes(1))
+    const [url, target] = openMock.mock.calls[0]!
+    expect(target).toBe('_self')
+    expect(decodeURIComponent(url)).toContain('/c/festive-edit/product/prod-1')
+  })
+
+  it('records no enquiry when nothing is saved', async () => {
+    setup(true)
+    enquire()
+    await waitFor(() => expect(openMock).toHaveBeenCalledTimes(1))
+    expect(enquireCalls()).toHaveLength(0)
+  })
+})
