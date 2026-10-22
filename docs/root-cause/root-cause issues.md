@@ -12,6 +12,17 @@
 
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
+## RC-078 — A trial ending or a subscription lapsing never changed `retailer.plan`, so paid features stayed on forever
+
+- **Component:** `apps/api/src/jobs/plan-lapse.ts` (new), `apps/api/src/jobs/index.ts`. Every paid gate: `lib/features.ts` `hasFeature`, `lib/quota.ts` `effectiveLimit`, and ~12 direct `retailer.plan` readers.
+- **Symptom:** a store whose 14-day TRIAL ended, or whose subscription was CANCELLED / COMPLETED / PAST_DUE, kept PRO features and limits indefinitely. Onboarding `demo_plan` (PRO + TRIAL) was effectively a free PRO plan.
+- **Root cause:** every gate trusts `retailer.plan` and nothing ever wrote it back down. `plan_status`, `trial_ends_at` and `plan_expires_at` were stored but no gate and no job read them.
+- **Fix:** hourly `plan-lapse` job. Retailers with `plan != STARTER` whose TRIAL ended, or whose status is PAST_DUE / CANCELLED / COMPLETED with `plan_expires_at` null or past, are set to STARTER with STARTER `max_products` / `max_customers`, plus one `system` audit row each. The lapse predicate is repeated in the `updateMany` so a re-subscribe webhook between read and write is not downgraded. Cancel keeps access until `plan_expires_at` (owner decision 2026-10-22). TRIAL rows with no end date are counted in the log and left alone. Fixing the stored plan closes all readers at once, so no gate was patched. Registered with no `limit` (RC-062).
+- **Proof:** `apps/api/src/jobs/plan-lapse.test.ts` (10): expired trial downgraded, future trial / ACTIVE / STARTER / deleted untouched, CANCELLED in the future kept, race with re-subscribe not downgraded, audit row written.
+- **Not verified:** not run against a real DB. Watch the first run's log line `[plan-lapse] downgraded=…` after deploy. `checkQuota` still fails open when no `plan_limits` row exists (separate owner decision).
+
+---
+
 ## RC-077 — Stored user text was placed into HTML (hrefs, JSON-LD, email bodies) with no escaping step
 
 - **Component:** `apps/web/src/app/admin/{aggregators,retailers/[id],social}/page.tsx`, `apps/web/src/app/stores/page.tsx`, `apps/api/src/routes/retailers/retailers-aggregators.ts`, `apps/api/src/lib/email.ts`. Fixed 2026-10-22 (`dbb389bb`, PR #142, plus `fix/security-hardening-2`).

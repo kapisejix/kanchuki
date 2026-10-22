@@ -262,6 +262,7 @@ Payment: Razorpay (UPI first). Retailer pays base + 18% GST. **Source of truth: 
 
 | ID | Root cause (one line) | Fixed in |
 |---|---|---|
+| RC-078 | Nothing ever lowered `retailer.plan` when a trial ended or a subscription lapsed, and every paid gate reads `plan`, so PRO was free forever. Fixed with an hourly `plan-lapse` job that drops lapsed plans to STARTER (cancel keeps access until `plan_expires_at`). | root-cause issues.md |
 | RC-077 | Stored user text went into HTML with no escaping step: `javascript:` hrefs on admin pages, `</script>` breakout in `/stores` JSON-LD, raw name/phone in email HTML (and the no-key email fallback logged temp passwords). Fixed with `safeHttpUrl`, JSON-LD `<` escape, `escapeHtml` in `email.ts`. | root-cause issues.md |
 | RC-076 | Payment callbacks credited on client-reported ids with no Razorpay HMAC check (an empty secret would also have made HMAC forgeable), and the subscription webhook activated on authorized-only / non-INR / underpaid payments. | root-cause issues.md |
 | RC-075 | Upload confirm endpoints stored the client's `r2_key`/URL without checking ownership or the stored bytes (presigned PUT fixes key + declared type, not the body); one shared `verifyUpload()` now gates every retailer and admin confirm path (admin: platform prefix, client URLs dropped, background-image SSRF closed), try-on sniffs bytes, catalog upload-url types are an allow-list. | root-cause issues.md |
