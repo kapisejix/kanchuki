@@ -33,22 +33,36 @@ describe('verifyPaymentLinkSignature', () => {
     ).resolves.toBe(false);
   });
 
-  it('accepts the legacy 2-part form, rejects tampering', async () => {
-    const signature = sign('plink_1|pay_1');
-    await expect(verifyPaymentLinkSignature({ ...base, signature })).resolves.toBe(true);
+  it('rejects tampering with any signed field', async () => {
+    const signature = sign('plink_1|ref_1|paid|pay_1');
     await expect(
-      verifyPaymentLinkSignature({ ...base, paymentId: 'pay_2', signature }),
+      verifyPaymentLinkSignature({ ...base, status: 'paid', paymentId: 'pay_2', signature }),
     ).resolves.toBe(false);
+    await expect(
+      verifyPaymentLinkSignature({ ...base, status: 'paid', referenceId: 'ref_2', signature }),
+    ).resolves.toBe(false);
+  });
+
+  it('rejects the 2-part link_id|payment_id form (an order-signature shape), with or without status', async () => {
+    const signature = sign('plink_1|pay_1');
+    await expect(verifyPaymentLinkSignature({ ...base, signature })).resolves.toBe(false);
+    await expect(verifyPaymentLinkSignature({ ...base, status: 'paid', signature })).resolves.toBe(
+      false,
+    );
   });
 
   it('rejects a forged signature made with an EMPTY key when no secret is configured', async () => {
     secret = null;
-    const forged = sign('plink_1|pay_1', '');
-    await expect(verifyPaymentLinkSignature({ ...base, signature: forged })).resolves.toBe(false);
+    const forged = sign('plink_1|ref_1|paid|pay_1', '');
+    await expect(
+      verifyPaymentLinkSignature({ ...base, status: 'paid', signature: forged }),
+    ).resolves.toBe(false);
   });
 
   it('rejects wrong-length / garbage signatures without throwing', async () => {
-    await expect(verifyPaymentLinkSignature({ ...base, signature: 'abc' })).resolves.toBe(false);
+    await expect(
+      verifyPaymentLinkSignature({ ...base, status: 'paid', signature: 'abc' }),
+    ).resolves.toBe(false);
   });
 });
 

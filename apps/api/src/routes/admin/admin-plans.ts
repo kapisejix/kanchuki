@@ -14,6 +14,7 @@ import {
 } from '@kanchuki/db';
 import { INTEGRATION_KEYS, PLAN_LIMIT_RESOURCE_TYPES, R2_PATHS } from '@kanchuki/shared';
 import { z } from 'zod';
+import { computeSubscriptionGst } from '../../lib/gst.js';
 import { forbidden, notFound, validationError } from '../../plugins/error-handler.js';
 import { adminAuthPreHandler } from '../admin-auth.js';
 import { planPriceMissing } from '../billing/billing-helpers.js';
@@ -55,8 +56,9 @@ export const adminPlansRoutes: FastifyPluginAsync = async (server) => {
       // Base price in paise (ex-GST). Never guess: this creates a real Razorpay plan.
       if (!pricingRow) throw planPriceMissing(planKey);
       const basePaise = pricingRow.monthly_paise;
-      // Razorpay charges a fixed amount — must include 18% GST (gross)
-      const grossPaise = Math.round(basePaise * 1.18);
+      // Razorpay charges a fixed amount — must include 18% GST (gross). Same helper
+      // the subscribe guard and the webhook compare against, so the three agree.
+      const grossPaise = computeSubscriptionGst({ basePaise }).gross;
 
       const res = await fetch('https://api.razorpay.com/v1/plans', {
         method: 'POST',
@@ -277,6 +279,8 @@ export const adminPlansRoutes: FastifyPluginAsync = async (server) => {
 
   // ─── PUT /admin/plan-pricing ─────────────────────────────────────
   // Monthly only — base price is ex-GST, Razorpay charges gross (base * 1.18).
+  // Razorpay plan amounts are fixed: after a price change, run setup-plans and
+  // set the new plan ids, or POST /billing/subscription refuses that plan (503).
   server.put('/plan-pricing', async (request) => {
     const body = z
       .object({

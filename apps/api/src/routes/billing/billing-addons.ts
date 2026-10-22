@@ -218,22 +218,13 @@ export const billingAddonRoutes: FastifyPluginAsync = async (server) => {
     }
 
     // Verify the Payment Link signature (server-side, key secret; empty secret = fail).
-    const linkStatus = query.razorpay_payment_link_status;
-    const sigOk =
-      (linkStatus === undefined || linkStatus === 'paid') &&
-      ((linkStatus !== undefined &&
-        (await verifyPaymentLinkSignature({
-          linkId: razorpay_payment_link_id,
-          paymentId: razorpay_payment_id,
-          signature: razorpay_signature,
-          referenceId: query.razorpay_payment_link_reference_id,
-          status: linkStatus,
-        }))) ||
-        (await verifyPaymentLinkSignature({
-          linkId: razorpay_payment_link_id,
-          paymentId: razorpay_payment_id,
-          signature: razorpay_signature,
-        })));
+    const sigOk = await verifyPaymentLinkSignature({
+      linkId: razorpay_payment_link_id,
+      paymentId: razorpay_payment_id,
+      signature: razorpay_signature,
+      referenceId: query.razorpay_payment_link_reference_id,
+      status: query.razorpay_payment_link_status,
+    });
 
     if (!sigOk) {
       request.log.warn({ razorpay_payment_link_id }, 'Payment link callback signature mismatch');

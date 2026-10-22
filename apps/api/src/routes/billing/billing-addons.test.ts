@@ -253,7 +253,9 @@ describe('GET /addon-callback - try-on credit (regression pin)', () => {
   it('decrements the CURRENT-MONTH UsageCounter by quantity (month-end expiry, no carry-over)', async () => {
     const link = 'plink_1';
     const pay = 'pay_1';
-    const sig = createHmac('sha256', 'rzp_test_key_secret').update(`${link}|${pay}`).digest('hex');
+    const sig = createHmac('sha256', 'rzp_test_key_secret')
+      .update(`${link}||paid|${pay}`)
+      .digest('hex');
     m.purchaseFindFirst.mockResolvedValue({
       id: 'purchase_1',
       retailer_id: RETAILER_ID,
@@ -271,7 +273,7 @@ describe('GET /addon-callback - try-on credit (regression pin)', () => {
     const app = await buildApp();
     const res = await app.inject({
       method: 'GET',
-      url: `/v1/billing/addon-callback?razorpay_payment_id=${pay}&razorpay_payment_link_id=${link}&razorpay_signature=${sig}`,
+      url: `/v1/billing/addon-callback?razorpay_payment_id=${pay}&razorpay_payment_link_id=${link}&razorpay_signature=${sig}&razorpay_payment_link_status=paid`,
     });
     expect(res.statusCode).toBe(302);
 
@@ -287,8 +289,10 @@ describe('GET /addon-callback - try-on credit (regression pin)', () => {
 describe('GET /addon-callback - credits exactly once', () => {
   const link = 'plink_1';
   const pay = 'pay_1';
-  const sig = createHmac('sha256', 'rzp_test_key_secret').update(`${link}|${pay}`).digest('hex');
-  const url = `/v1/billing/addon-callback?razorpay_payment_id=${pay}&razorpay_payment_link_id=${link}&razorpay_signature=${sig}`;
+  const sig = createHmac('sha256', 'rzp_test_key_secret')
+    .update(`${link}||paid|${pay}`)
+    .digest('hex');
+  const url = `/v1/billing/addon-callback?razorpay_payment_id=${pay}&razorpay_payment_link_id=${link}&razorpay_signature=${sig}&razorpay_payment_link_status=paid`;
   const purchase = {
     id: 'purchase_1',
     retailer_id: RETAILER_ID,
@@ -337,8 +341,10 @@ describe('GET /addon-callback - credits exactly once', () => {
 describe('GET /addon-callback - a paid purchase is never terminally lost (RC-071)', () => {
   const link = 'plink_1';
   const pay = 'pay_1';
-  const sig = createHmac('sha256', 'rzp_test_key_secret').update(`${link}|${pay}`).digest('hex');
-  const url = `/v1/billing/addon-callback?razorpay_payment_id=${pay}&razorpay_payment_link_id=${link}&razorpay_signature=${sig}`;
+  const sig = createHmac('sha256', 'rzp_test_key_secret')
+    .update(`${link}||paid|${pay}`)
+    .digest('hex');
+  const url = `/v1/billing/addon-callback?razorpay_payment_id=${pay}&razorpay_payment_link_id=${link}&razorpay_signature=${sig}&razorpay_payment_link_status=paid`;
 
   beforeEach(() => {
     m.purchaseFindFirst.mockResolvedValue({
