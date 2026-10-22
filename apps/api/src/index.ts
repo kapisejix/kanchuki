@@ -13,6 +13,7 @@ import { getRedis, startWorkers } from './jobs/index.js';
 import { authPlugin } from './plugins/auth.js';
 import { parseJsonAllowEmpty } from './plugins/empty-json-body.js';
 import { errorHandler } from './plugins/error-handler.js';
+import { requireContentLengthHook } from './lib/upload-guard.js';
 import { adminSettingsRoutes } from './routes/admin-settings.js';
 import { adminRoutes } from './routes/admin.js';
 import { authRoutes } from './routes/auth.js';
@@ -150,6 +151,7 @@ await server.register(authPlugin);
 // ─── Error Handler ────────────────────────────────────────────────
 
 server.setErrorHandler(errorHandler);
+server.addHook('preValidation', requireContentLengthHook);
 
 // ─── Routes ──────────────────────────────────────────────────────
 

@@ -40,7 +40,7 @@
 | Dead code | `POST /products/:id/spin-video/upload-url` and `/spin-video` deleted (SPIN_360 torn down 2026-08-31; no client calls them), plus `R2_PATHS.spinVideo`, `ALLOWED_SPIN_VIDEO_MIME_TYPES`, `MAX_SPIN_VIDEO_BYTES`. |
 | Client check | Mobile and admin web only use presign `public_url` for preview or echo it back; servers rebuild the URL from the verified key. A client that still holds the staged key after saving re-sends it on the next save and hits the retry path. No app release needed. |
 | Tests | New: upload-guard +9 (promote, retry after promote, both missing, staged ownership/traversal, reject deletes staged only, final key never deleted on reject, `currentKey`), profile +2 (staged banner promoted and FINAL key/url stored; staged url without key refused). Updated: 4 presign-shape asserts and 4 reject-deletes asserts to staged keys. API `tsc` clean; biome clean on `apps/api`. Full API suite, run in folder chunks for memory: **2317 passed, 5 skipped, 0 failed (164 files)**: jobs + plugins 414 (+5 skipped), lib 506, `routes/admin*` 346, `routes/public*` 309, `routes/billing*` 70, `routes/retailers*` 203, `routes/products` 158, `routes/growth` + `team` + `webhooks` 93, root `routes/*.test.ts` 218 (incl. `auth-team`). `lib/my-style-analysis.test.ts` passed this run (known ioredis `AggregateError` flake). |
-| Owner action | Add R2 lifecycle rules in Cloudflare (not applied here): `uploads/pending/` delete after 1 day; `catalog-pdf/` and `catalog-source/` delete after 7 days. Deploy this branch BEFORE the `uploads/pending/` rule matters (the rule is harmless earlier, nothing lives there). |
+| Owner action | Add R2 lifecycle rules in Cloudflare (not applied here): `uploads/pending/` delete after 1 day; `catalog-pdf/` and `catalog-source/` delete after 1 day (owner decision 2026-10-22; first written as 7). Deploy this branch BEFORE the `uploads/pending/` rule matters (the rule is harmless earlier, nothing lives there). |
 | Not verified | Nothing run against live R2 (`CopyObject` CopySource encoding, public-bucket serving of `uploads/pending/`) or on a device. Pro cleanup end to end with a staged key not run. Old app builds keep working: they echo whatever key the presign returned. |
 
 ---
@@ -58,3 +58,18 @@
 | T4 RLS (no code) | Live check via Supabase Security Advisor + read-only queries: 86/86 public tables have RLS on; 52 are INFO "enabled, no policies" (deny-all for anon/authenticated); `kanchuki_app` and `kanchuki_purge` have `BYPASSRLS`. No migration written. Open WARN: Auth leaked-password protection off (dashboard toggle). |
 | Open | Client `content_length` task is blocked on the owner running `packages/ai/scripts/check-r2-content-length.mjs`. No platform-wide daily AI spend cap (needs an owner rupee/day figure). R2 lifecycle rule for `uploads/pending/` is an owner step. |
 | Not verified | Nothing against live R2 or a device. `plan-lapse` first production run not watched. |
+
+---
+
+## 2026-10-22 - RC-080 clients: mobile + admin web send `content_length`, enforcement flag, background upload removed
+
+**Branch:** `fix/security-audit-5pts`. Commits `9b2ec714` (mobile), `2909ec4f` (admin web). No migration.
+
+| Piece | Detail |
+|---|---|
+| Mobile | `prepareImageForUpload(uri, type, {compress?})` in `apps/mobile/src/lib/api/client.ts` compresses once and returns the file that is PUT plus its real size. Every presign call site now does prepare -> presign with that size -> `uploadImageToR2(prep.uri, ..., { compress: false })`. Presign helpers send `content_length` next to `size_bytes`. Settings logo/banner and the bulk / bulk-onboard / catalog-import flows were compressing twice (manipulator, then `uploadImageToR2`); the second pass could change the size after it was signed. Unit test `client.upload.test.ts` (3). Mobile suite 202 pass; `app-config.test.ts` fails on the missing `expo-notifications` module (F-046, pre-existing). |
+| Admin web | Six pages send `content_length: file.size`: background-images (removed below), suits-designs, studio-styles, post-templates, watermark logo, photo-cleanup-test. Assertions added to the suits-designs and watermark page tests. 84/84 admin tests. |
+| Enforcement flag | `requireContentLengthHook` (`lib/upload-guard.ts`, registered once in `index.ts`) rejects a presign without `content_length` with 422 when `REQUIRE_UPLOAD_CONTENT_LENGTH=true`. It keys off `config.uploadUrl`, which `UPLOAD_URL_RATE_LIMIT` now carries, so it covers all 13 routes with no per-route edit. **Default off**: deploying the code changes nothing for old app builds. Owner sets the env var on Railway after the new mobile build is live. Test `lib/upload-length-required.test.ts` (4). |
+| Admin background upload removed | The "Upload background image" control and handler are gone from `/admin/background-images`; list, active toggle, tone override and delete stay. The API route `POST /v1/admin/background-images/upload-url` is untouched and `photo-cleanup-test` still uses it for its test inputs. |
+| Owner steps | (1) R2 lifecycle: `uploads/pending/`, `catalog-pdf/`, `catalog-source/` all expire after **1 day**. (2) After the new mobile build is live: set `REQUIRE_UPLOAD_CONTENT_LENGTH=true` on the API. (3) Device test: product photo, logo, banner, KYC, catalog PDF, video; a mismatch shows as R2 403 `SignatureDoesNotMatch`. |
+| Not verified | No device or live R2 run of the client change. |

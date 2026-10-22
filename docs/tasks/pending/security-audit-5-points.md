@@ -90,7 +90,7 @@ Order: **T1 → T2 → T3 → T4** (impact first). One commit per task. Each com
 2. All 11 `upload-url` routes (`products-media.ts:22`, `growth-videos.ts:25`, `categories.ts:56`, `catalog-import.ts:112`, `retailers-uploads.ts:14,42,72`, `retailers-showcase-designs.ts:166`, `admin-media.ts:76`, `admin-showcase-designs.ts:215`, `showcase-watermark.ts:145`, plus `admin-studio-styles` / `admin-post-templates` if they presign): accept `size: z.number().int().positive().max(<same max verifyUpload uses>)` and pass it through. Reuse one shared max per kind; do not copy numbers.
 3. Same routes: add `config: { rateLimit: { max: 30, timeWindow: 60_000 } }`. Key by IP, because rate limiting runs before auth.
 4. Clients send `size`: mobile (`apps/mobile/src/lib/api*` upload helpers) and web admin upload helpers. The PUT must send exactly that many bytes, which `fetch(blob)` does by default.
-5. Owner: add the R2 lifecycle rule (`uploads/pending/` expires after 1 day; `catalog-pdf/` and `catalog-source/` after 7 days).
+5. Owner: add the R2 lifecycle rule (`uploads/pending/` expires after 1 day; `catalog-pdf/` and `catalog-source/` after 1 day).
 
 **Tests:** route test: missing or oversized `size` → 400; the presign mock receives `contentLength`; the 31st call → 429. Manual: the curl check from step 1, then a real product-photo upload on device (Expo Go) and in admin.
 **Risk:** an old mobile build without `size` breaks uploads. Make `size` optional for one release (no bound when it is absent and a warning is logged), or ship after the EAS update. Ask the owner.
