@@ -19,6 +19,7 @@ import {
   getShowcaseWatermarkConfig,
   mergeShowcaseWatermark,
 } from '../../lib/showcase-watermark.js';
+import { IMAGE_KINDS, verifyUpload } from '../../lib/upload-guard.js';
 import { adminAuthPreHandler } from '../admin.js';
 import { saveSetting } from './settings-store.js';
 
@@ -87,6 +88,16 @@ export const adminShowcaseWatermarkRoutes: FastifyPluginAsync = async (server) =
     const body = WM_BODY_SCHEMA.parse(request.body) as WatermarkBody;
 
     const current = await getShowcaseWatermarkConfig();
+    // A new logo key must be a real image minted by logo-upload-url below; it is
+    // composited onto every design, so it is never taken on trust.
+    if (body.logo_r2_key && body.logo_r2_key !== current.logo_r2_key) {
+      await verifyUpload({
+        r2Key: body.logo_r2_key,
+        allowed: IMAGE_KINDS,
+        maxBytes: 5_000_000,
+        prefix: R2_PATHS.showcaseWatermarkLogo(''),
+      });
+    }
     // mergeShowcaseWatermark validates + clamps and coerces logo_r2_key, so a
     // hand-crafted body can never break the compositor.
     const merged = mergeShowcaseWatermark({ ...current, ...body });

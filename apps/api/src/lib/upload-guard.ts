@@ -80,8 +80,13 @@ export function isOwnedKey(
   key: string,
   prefix = `retailers/${retailerId}/`,
 ): boolean {
+  // An empty prefix would match every key, so it never counts as ownership.
   return (
-    key.startsWith(prefix) && !key.includes('..') && !key.includes('//') && !key.includes('\\')
+    prefix.length > 0 &&
+    key.startsWith(prefix) &&
+    !key.includes('..') &&
+    !key.includes('//') &&
+    !key.includes('\\')
   );
 }
 
@@ -91,16 +96,19 @@ export function isOwnedKey(
  * deleted so a rejected upload does not linger in the bucket. Returns the
  * server-built public URL — callers store THAT, never a client-supplied url.
  */
-export async function verifyUpload(opts: {
-  retailerId: string;
-  r2Key: string;
-  allowed: readonly UploadKind[];
-  maxBytes: number;
-  /** Key prefix the retailer owns; default `retailers/<id>/`. Must end in the retailer id + '/'. */
-  prefix?: string;
-}): Promise<{ url: string; kind: UploadKind }> {
+export async function verifyUpload(
+  opts: { r2Key: string; allowed: readonly UploadKind[]; maxBytes: number } & (
+    | {
+        retailerId: string;
+        /** Key prefix the retailer owns; default `retailers/<id>/`. Must end in the retailer id + '/'. */
+        prefix?: string;
+      }
+    // Admin uploads: no retailer; the caller names the platform prefix (e.g. `admin/studio-styles/`).
+    | { retailerId?: never; prefix: string }
+  ),
+): Promise<{ url: string; kind: UploadKind }> {
   const { retailerId, r2Key, allowed, maxBytes, prefix } = opts;
-  if (!isOwnedKey(retailerId, r2Key, prefix))
+  if (!isOwnedKey(retailerId ?? '', r2Key, prefix))
     throw validationError('Invalid upload reference', 'r2_key');
 
   const obj = await inspectObject(r2Key);

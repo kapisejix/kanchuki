@@ -22,6 +22,7 @@ import { createId } from '@paralleldrive/cuid2';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { watermarkShowcaseDesign } from '../../lib/showcase-watermark.js';
+import { IMAGE_KINDS, isOwnedKey, verifyUpload } from '../../lib/upload-guard.js';
 import { notFound, validationError } from '../../plugins/error-handler.js';
 import { adminAuthPreHandler } from '../admin-auth.js';
 
@@ -46,14 +47,26 @@ const UpdateSchema = z.object({
   raw_r2_key: z.string().min(1).optional(),
 });
 
-// `raw_r2_key` is client-supplied — keep it inside the Suits Designs namespace
-// (and no path traversal) so a create/replace can't be pointed at an arbitrary
-// bucket object to watermark + republish, or at a victim key that a later row
-// delete would then free.
+// `raw_r2_key` is client-supplied — keep it inside the admin raw-upload prefix
+// (the only one /showcase-designs/upload-url mints; no path traversal) so a
+// create/replace can't be pointed at an arbitrary bucket object to watermark +
+// republish, or at a victim key that a later row delete would then free.
+const adminRawPrefix = (): string => R2_PATHS.showcaseDesignRaw('global', '');
+
 function assertShowcaseRawKey(rawKey: string): void {
-  if (!rawKey.startsWith('showcase-designs/') || rawKey.includes('..')) {
+  if (!isOwnedKey('', rawKey, adminRawPrefix())) {
     throw validationError('Invalid upload reference');
   }
+}
+
+/** Ownership + real image bytes, for the routes that keep the raw upload. */
+async function verifyRawUpload(rawKey: string): Promise<void> {
+  await verifyUpload({
+    r2Key: rawKey,
+    allowed: IMAGE_KINDS,
+    maxBytes: 15_000_000,
+    prefix: adminRawPrefix(),
+  });
 }
 
 async function categoryForWrite(categoryId: string): Promise<{ id: string; slug: string }> {
@@ -234,7 +247,7 @@ export const adminShowcaseDesignRoutes: FastifyPluginAsync = async (server) => {
     const body = CreateSchema.safeParse(request.body);
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
 
-    assertShowcaseRawKey(body.data.raw_r2_key);
+    await verifyRawUpload(body.data.raw_r2_key);
     const category = await categoryForWrite(body.data.category_id);
     let name = body.data.name ?? null;
     if (!name) {
@@ -316,7 +329,7 @@ export const adminShowcaseDesignRoutes: FastifyPluginAsync = async (server) => {
     }
 
     if (body.data.raw_r2_key) {
-      assertShowcaseRawKey(body.data.raw_r2_key);
+      await verifyRawUpload(body.data.raw_r2_key);
       const ownerKey = (data.retailer_id as string | null) ?? existing.retailer_id ?? 'global';
       const finalR2Key = R2_PATHS.showcaseDesign(ownerKey, `${createId()}.jpg`);
       await watermarkShowcaseDesign({
