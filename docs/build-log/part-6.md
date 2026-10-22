@@ -730,4 +730,14 @@ no migration, no schema change, and **no new request on any surface**.
 | Passport logo | `(shopper)/layout.tsx` header and `/login` (`LoginForm.tsx`) show `/kanchuki-logo.png` (same asset as the site Chrome) instead of the text wordmark. |
 | Gallery upload | `AnalyzeSheet` (selfie mode) adds "Choose from gallery": a second `accept="image/*"` input with no `capture` (`data-testid="my-style-gallery-input"`). `prepareUpload` rejects `unsupported` before decoding: types outside JPEG/PNG/WebP/HEIC/HEIF, or over 25 MB (an empty type passes; the decode is the gate). JPEG re-encode (drops EXIF/GPS) and the server `sniffImageType` (JPEG/PNG/WebP) are unchanged. Try-on (`TryOnSheet`) is still camera-only (F-040 flag OFF). |
 | Tests | shared 20/20, API enquire + whatsapp-target + product 41/41, web `(shopper)` + login 177/177, storefront 93/93, e2e `customer-my-style-analyze.spec.ts` updated for two inputs; tsc clean (shared, api, web); CI green. |
-| Not verified | No real WhatsApp send, no device run (logo, Android/iOS gallery, HEIC decode on Android Chrome). Bottom-bar "Enquire" still sends no SKU (see RC-078). |
+| Not verified | No real WhatsApp send, no device run (logo, Android/iOS gallery, HEIC decode on Android Chrome). Bottom-bar "Enquire" sent no SKU (see RC-078); fixed in the next entry. |
+
+## 2026-10-22 - Storefront bottom-bar Enquire through the API + pseudo-slug enquiries (RC-078 follow-up)
+
+| Item | Detail |
+|---|---|
+| PR | #149 (`e3b1ce64`), branch `fix/storefront-enquire-sku`, not merged. No migration. |
+| Bottom-bar Enquire | `CollectionView.handleEnquireAll` now POSTs saved picks to `{apiBase}/enquire` like `WishlistView`: the server adds each SKU and records the enquiry in the inbox. Nothing saved, or a failed POST, keeps the client-built link (link, no SKU, no inbox row). Opens with `_self` (a `_blank` after an await is popup-blocked); RC-015 sync guard. |
+| Pseudo-slug pages | Category (`cat-{id}`) and All-products (`all-{store}`) pages have no collection row, so `POST /public/collections/:slug/enquire` 404'd them (WishlistView too). The `/api/{store}/{collection}/enquire` proxy adds `store` to the body; for a `cat-`/`all-` slug with no collection the API resolves the store by `public_slug` and records against its oldest ACTIVE collection (same rule as My Style `/enquire`). A store with no live collection still gets the SKU'd link, no inbox row. Real slugs ignore `store`. |
+| Tests | API `public-collections-enquire` + `public-whatsapp-target` 31/31 (3 new), web enquire proxy + CollectionView + wishlist 16/16 (4 new); tsc clean (web, api). |
+| Not verified | No browser/device run, no real WhatsApp send. More than 20 saved picks → API 400 (deliberate cap) → client fallback without SKU or inbox row. |

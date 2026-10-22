@@ -19,7 +19,8 @@
 - **Root cause:** one shared builder, but each caller chose its own inputs. The client paths passed `product_url`; the two API routes passed only name + price. My Style has no collection, so it passed the shop name as `collectionTitle`, and the builder always printed both.
 - **Fix:** both API routes pass `sku` and `product_url` (`buildProductUrl`; My Style uses the `all-{store}` pseudo-slug the product page already resolves). The builder prints `(SKU: …)` after the price and drops the quoted title when it is missing or equals the shop name. `GET /public/products/:id` returns `sku`, so the single-product consent-modal path carries it too.
 - **Proof:** `packages/shared/src/utils.test.ts` (SKU + link line, store named once for null/empty/same-as-shop titles), `public-collections-enquire.test.ts` (the route's wa.me text has the SKU and the `/shop/abc/product/a` link).
-- **Not verified / known gap:** no real WhatsApp send. The storefront bottom-bar "Enquire" (`CollectionView.handleEnquireAll`) builds the text client-side from product summaries, which have no `sku`, so it sends the link but no SKU.
+- **Follow-up (PR #149, `e3b1ce64`):** the storefront bottom-bar "Enquire" (`CollectionView.handleEnquireAll`) still built its text client-side from summaries with no `sku`. It now POSTs saved picks to the enquire route like WishlistView. Category / All-products pseudo-slugs (`cat-{id}`, `all-{store}`), which the route 404'd, now resolve through the `store` the proxy adds and record against the store's oldest live collection.
+- **Not verified / known gap:** no real WhatsApp send or device run. With nothing saved, or more than 20 picks (API cap), the bottom bar still falls back to the client-built link without SKU.
 
 ---
 
