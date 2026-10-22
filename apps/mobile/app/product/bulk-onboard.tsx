@@ -18,7 +18,7 @@ import {
   catalogImportApi,
   retailerApi,
   uploadImageToR2,
-  readLocalImage,
+  prepareImageForUpload,
   type CatalogDetectedItem,
 } from '../../src/lib/api'
 import { showError, logError } from '../../src/lib/errors'
@@ -107,10 +107,10 @@ export default function BulkOnboardScreen() {
         [{ resize: { width: 1400 } }],
         { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG },
       )
-      const blob = await readLocalImage(compressed.uri)
-      const uploadResult = await catalogImportApi.getUploadUrl('rack-photo.jpg', 'image/jpeg', blob.size)
+      const prep = await prepareImageForUpload(compressed.uri, 'image/jpeg')
+      const uploadResult = await catalogImportApi.getUploadUrl('rack-photo.jpg', 'image/jpeg', prep.size)
       const info = uploadResult.data
-      await uploadImageToR2(compressed.uri, info.upload_url, 'image/jpeg')
+      await uploadImageToR2(prep.uri, info.upload_url, 'image/jpeg', undefined, undefined, { compress: false })
       setSourceUrl(info.public_url)
 
       setStep('detecting')

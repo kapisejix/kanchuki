@@ -52,6 +52,7 @@ import {
   readLocalImage,
   retailerApi,
   uploadImageToR2,
+  prepareImageForUpload,
 } from "../../src/lib/api";
 import { showError } from "../../src/lib/errors";
 import { clearPersistedCache } from "../../src/lib/offline-persister";
@@ -136,13 +137,13 @@ function ProfileEditModal({
         { compress: 0.85, format: ImageManipulator.SaveFormat.JPEG },
       );
       const uri = manipulated.uri;
-      const blob = await readLocalImage(uri);
+      const prep = await prepareImageForUpload(uri, "image/jpeg");
       const uploadResult = await retailerApi.getLogoUploadUrl(
         "image/jpeg",
-        blob.size,
+        prep.size,
       );
       const info = uploadResult.data;
-      await uploadImageToR2(uri, info.upload_url, "image/jpeg");
+      await uploadImageToR2(prep.uri, info.upload_url, "image/jpeg", undefined, undefined, { compress: false });
       setLogoUrl(info.public_url);
       setLogoR2Key(info.r2_key);
     } catch (err) {
@@ -171,13 +172,13 @@ function ProfileEditModal({
         { compress: 0.85, format: ImageManipulator.SaveFormat.JPEG },
       );
       const uri = manipulated.uri;
-      const blob = await readLocalImage(uri);
+      const prep = await prepareImageForUpload(uri, "image/jpeg");
       const uploadResult = await retailerApi.getBannerUploadUrl(
         "image/jpeg",
-        blob.size,
+        prep.size,
       );
       const info = uploadResult.data;
-      await uploadImageToR2(uri, info.upload_url, "image/jpeg");
+      await uploadImageToR2(prep.uri, info.upload_url, "image/jpeg", undefined, undefined, { compress: false });
       setBannerUrl(info.public_url);
       setBannerR2Key(info.r2_key);
     } catch (err) {

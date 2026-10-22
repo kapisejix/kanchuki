@@ -7,6 +7,7 @@ import { ImagePlus, Check, Droplet, Sparkles } from 'lucide-react-native'
 import {
   showcaseDesignsApi,
   uploadImageToR2,
+  prepareImageForUpload,
   type ShowcaseDesignCategory,
 } from '../../src/lib/api'
 import { showError } from '../../src/lib/errors'
@@ -46,9 +47,10 @@ export default function NewShowcaseDesignScreen() {
     setUploading(true)
     try {
       // Compress + upload the RAW image (server watermarks it on create).
-      const uploadResult = await showcaseDesignsApi.getUploadUrl('image/jpeg')
+      const prep = await prepareImageForUpload(uri, 'image/jpeg')
+      const uploadResult = await showcaseDesignsApi.getUploadUrl('image/jpeg', prep.size)
       const info = uploadResult.data
-      await uploadImageToR2(uri, info.upload_url, 'image/jpeg')
+      await uploadImageToR2(prep.uri, info.upload_url, 'image/jpeg', undefined, undefined, { compress: false })
       setPhotoUri(info.public_url)
       setRawR2Key(info.r2_key)
       // Auto-suggest a retail-ready name + color from the photo (AI, fail-open).

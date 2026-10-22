@@ -35,7 +35,7 @@ export const categoryApi = {
       data: { upload_url: string; r2_key: string; public_url: string; expires_in: number }
     }>('/v1/categories/upload-url', {
       method: 'POST',
-      body: JSON.stringify({ filename: 'category.jpg', content_type: contentType, size_bytes: sizeBytes }),
+      body: JSON.stringify({ filename: 'category.jpg', content_type: contentType, size_bytes: sizeBytes, content_length: sizeBytes }),
       timeoutMs: 30_000,
     }),
 

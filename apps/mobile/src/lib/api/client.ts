@@ -184,6 +184,26 @@ export async function readLocalImage(uri: string, _timeoutMs = 15_000): Promise<
   }
 }
 
+// Compresses (image/jpeg only, unless opted out) and returns the file that will
+// actually be PUT plus its real byte size. The presign must be asked for THIS
+// size (`content_length` is signed into the URL; R2 rejects any other length),
+// so the order is: prepare -> presign(size) -> uploadImageToR2(uri, ..., {compress:false}).
+export async function prepareImageForUpload(
+  localUri: string,
+  contentType: string,
+  options?: { compress?: boolean },
+): Promise<{ uri: string; size: number }> {
+  let uri = localUri
+  if (contentType === 'image/jpeg' && (options?.compress ?? true)) {
+    try {
+      uri = await compressImageForUpload(localUri)
+    } catch (err) {
+      console.warn('Image compression failed — uploading original:', err)
+    }
+  }
+  return { uri, size: new File(uri).size }
+}
+
 // PUTs the local file straight through native upload machinery (NSURLSession /
 // OkHttp), not RN's fetch(). expo-file-system's `File` only *implements* the
 // Blob interface — it isn't a real `instanceof Blob` wired into RN's native
