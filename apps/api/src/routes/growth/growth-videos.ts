@@ -45,7 +45,7 @@ export const growthVideoRoutes: FastifyPluginAsync = async (server) => {
         content_type: z.enum(VIDEO_MIME_TYPES),
         size_bytes: z.number().int().min(1).max(MAX_VIDEO_BYTES),
         // Exact byte length of the PUT (post-compression), bound into the signature (RC-080).
-        content_length: z.number().int().min(1).max(MAX_VIDEO_BYTES).optional(),
+        content_length: z.number().int().min(1).max(MAX_VIDEO_BYTES),
       })
       .safeParse(request.body);
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');

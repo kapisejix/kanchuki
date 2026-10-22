@@ -218,7 +218,7 @@ describe('admin post-templates', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/post-templates/thumbnail-url',
-      payload: { content_type: 'image/jpeg', filename: 'thumb.jpg' },
+      payload: { content_type: 'image/jpeg', filename: 'thumb.jpg', content_length: 1_000 },
     });
     expect(res.statusCode).toBe(200);
     const body = res.json();

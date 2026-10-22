@@ -96,7 +96,7 @@ const UploadUrlSchema = z.object({
   size_bytes: z.number().int().positive(),
   // Exact byte length of the PUT (post-compression), bound into the signature (RC-080).
   // Bounded by the per-type maximum in the route.
-  content_length: z.number().int().positive().optional(),
+  content_length: z.number().int().positive(),
 });
 
 // ─── Helpers ──────────────────────────────────────────────────────
@@ -122,7 +122,7 @@ export const catalogImportRoutes: FastifyPluginAsync = async (server) => {
 
     const isPdf = content_type === 'application/pdf';
     const maxSize = isPdf ? 50 * 1024 * 1024 : 15 * 1024 * 1024;
-    if (size_bytes > maxSize || (content_length ?? 0) > maxSize) {
+    if (size_bytes > maxSize || content_length > maxSize) {
       return reply.status(413).send({
         error: 'FILE_TOO_LARGE',
         message: `Maximum file size is ${isPdf ? '50MB' : '15MB'}`,

@@ -151,7 +151,6 @@ await server.register(authPlugin);
 // ─── Error Handler ────────────────────────────────────────────────
 
 server.setErrorHandler(errorHandler);
-server.addHook('preValidation', requireContentLengthHook);
 
 // ─── Routes ──────────────────────────────────────────────────────
 

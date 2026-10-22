@@ -84,7 +84,7 @@ export const adminMediaRoutes: FastifyPluginAsync = async (server) => {
         content_type: z.enum(['image/jpeg', 'image/png', 'image/webp']),
         filename: z.string().min(1).max(200),
         // Exact byte length of the PUT, bound into the signature (RC-080). Same max as verifyUpload.
-        content_length: z.number().int().min(1).max(15_000_000).optional(),
+        content_length: z.number().int().min(1).max(15_000_000),
       })
       .parse(request.body);
 

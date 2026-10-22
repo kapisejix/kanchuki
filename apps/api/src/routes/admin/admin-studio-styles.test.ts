@@ -134,7 +134,7 @@ describe('admin studio-styles', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/studio-styles/thumbnail-url',
-      payload: { content_type: 'image/jpeg', filename: 'shot.jpg' },
+      payload: { content_type: 'image/jpeg', filename: 'shot.jpg', content_length: 1_000 },
     });
     expect(res.statusCode).toBe(200);
     const body = res.json();

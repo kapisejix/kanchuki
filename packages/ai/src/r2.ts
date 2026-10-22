@@ -36,20 +36,19 @@ export async function getUploadPresignedUrl(
   contentType: string,
   expiresIn = 300, // 5 minutes
   /**
-   * Exact byte length of the PUT body. When set it is part of the signature, so a PUT of any
-   * other size is rejected and one URL cannot be used to store a huge object (RC-080).
-   * Absent only for old clients that cannot report the post-compression size: logged, unbound.
+   * Exact byte length of the PUT body. It is part of the signature, so a PUT of any other size
+   * is rejected and one URL cannot be used to store a huge object (RC-080).
    */
-  contentLength?: number,
+  contentLength: number,
 ): Promise<string> {
   if (contentLength === undefined) {
-    console.warn(`[r2] presigned PUT without content_length (unbound size): ${key}`);
+    throw new Error(`presigned PUT requires content_length: ${key}`);
   }
   const command = new PutObjectCommand({
     Bucket: await getBucket(),
     Key: key,
     ContentType: contentType,
-    ...(contentLength === undefined ? {} : { ContentLength: contentLength }),
+    ContentLength: contentLength,
   });
   return getSignedUrl(r2, command, { expiresIn });
 }

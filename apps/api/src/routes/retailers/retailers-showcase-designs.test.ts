@@ -219,7 +219,7 @@ describe('POST /me/showcase-designs/upload-url', () => {
       method: 'POST',
       url: '/me/showcase-designs/upload-url',
       headers: { 'content-type': 'application/json' },
-      payload: { content_type: 'image/jpeg', filename: 'design.jpg' },
+      payload: { content_type: 'image/jpeg', filename: 'design.jpg', content_length: 1_000 },
     });
     expect(res.statusCode).toBe(200);
     const data = res.json().data;
