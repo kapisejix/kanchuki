@@ -309,6 +309,8 @@ export interface PublicProduct {
 }
 
 export interface PublicProductDetail extends PublicProduct {
+  // Optional: cached payloads predating the field have no key.
+  sku?: string | null
   secondary_colors: string[]
   fabric_estimate: string | null
   description: string | null

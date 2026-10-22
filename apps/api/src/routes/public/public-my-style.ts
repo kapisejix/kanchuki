@@ -31,6 +31,7 @@ import {
   toRankCandidate,
 } from '../../lib/my-style-candidates.js';
 import { type RankCandidate, rankProducts } from '../../lib/my-style-rank.js';
+import { buildProductUrl } from '../../lib/store-urls.js';
 import {
   attributeScore,
   combineSimilarity,
@@ -421,7 +422,7 @@ export const publicMyStyleRoutes: FastifyPluginAsync = async (server) => {
 
       const retailer = await prisma.retailer.findFirst({
         where: { public_slug: parsed.data.retailer_slug, is_suspended: false, deleted_at: null },
-        select: { id: true, shop_name: true, phone: true, whatsapp_number: true },
+        select: { id: true, shop_name: true, phone: true, whatsapp_number: true, public_slug: true },
       });
       if (!retailer) throw notFound('Store');
 
@@ -429,7 +430,7 @@ export const publicMyStyleRoutes: FastifyPluginAsync = async (server) => {
       // Every id must be a live product of THIS store, checked before any write.
       const products = await prisma.product.findMany({
         where: { id: { in: ids }, retailer_id: retailer.id, deleted_at: null },
-        select: { id: true, name: true, price_min: true },
+        select: { id: true, name: true, price_min: true, sku: true },
       });
       if (products.length !== ids.length) {
         throw validationError('One or more products are not in this store', 'product_ids');
@@ -471,8 +472,19 @@ export const publicMyStyleRoutes: FastifyPluginAsync = async (server) => {
         enquiryPhone(retailer),
         buildEnquiryMessage({
           shopName: retailer.shop_name,
-          collectionTitle: collection?.title ?? retailer.shop_name,
-          products: ordered.map((p) => ({ name: p.name, price_min: p.price_min })),
+          // The shopper picked from the cross-store feed, not this (oldest) collection.
+          collectionTitle: null,
+          products: ordered.map((p) => ({
+            name: p.name,
+            price_min: p.price_min,
+            sku: p.sku,
+            // `all-{store}` is the full-catalog pseudo-slug the product page resolves.
+            product_url: buildProductUrl(
+              retailer.public_slug,
+              `all-${parsed.data.retailer_slug}`,
+              p.id,
+            ),
+          })),
         }),
       );
       return { data: { whatsapp_url, recorded: collection !== null } };
