@@ -15,15 +15,15 @@ const DESIGN_CATEGORIES = ['NECKLINE', 'BLOUSE_BACK', 'SLEEVE', 'SALWAR', 'SILHO
 // prefix when the gallery UI is built.
 const DESIGN_REF_PREFIX = 'admin/design-references/';
 
-/** Real image under the design-reference prefix → server-built public URL. */
-async function verifyDesignImage(r2Key: string): Promise<string> {
-  const { url } = await verifyUpload({
+/** Real image under the design-reference prefix → server-built public URL + final key. */
+async function verifyDesignImage(r2Key: string): Promise<{ image_url: string; r2_key: string }> {
+  const v = await verifyUpload({
     r2Key,
     allowed: IMAGE_KINDS,
     maxBytes: 10_000_000,
     prefix: DESIGN_REF_PREFIX,
   });
-  return url;
+  return { image_url: v.url, r2_key: v.r2Key };
 }
 
 const CreateSchema = z.object({
@@ -99,8 +99,8 @@ export const adminDesignReferenceRoutes: FastifyPluginAsync = async (server) => 
     const body = CreateSchema.safeParse(request.body);
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
 
-    const image_url = await verifyDesignImage(body.data.r2_key);
-    const design = await prisma.designReference.create({ data: { ...body.data, image_url } });
+    const image = await verifyDesignImage(body.data.r2_key);
+    const design = await prisma.designReference.create({ data: { ...body.data, ...image } });
     return reply.status(201).send({ data: design });
   });
 
@@ -114,7 +114,7 @@ export const adminDesignReferenceRoutes: FastifyPluginAsync = async (server) => 
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
 
     const data = body.data.r2_key
-      ? { ...body.data, image_url: await verifyDesignImage(body.data.r2_key) }
+      ? { ...body.data, ...(await verifyDesignImage(body.data.r2_key)) }
       : body.data;
     const updated = await prisma.designReference.update({ where: { id }, data });
     return { data: updated };

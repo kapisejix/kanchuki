@@ -47,12 +47,12 @@ export const productsCrudRoutes: FastifyPluginAsync = async (server) => {
     const body = CreateProductSchema.safeParse(request.body);
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
 
-    const { photo_r2_key, metadata, auto_cleanup, ...rest } = body.data;
+    const { photo_r2_key: uploadKey, metadata, auto_cleanup, ...rest } = body.data;
     // Client-supplied photo_url is ignored: key must be the retailer's own real
     // image, and the url is rebuilt from it.
-    const { url: photo_url } = await verifyUpload({
+    const { url: photo_url, r2Key: photo_r2_key } = await verifyUpload({
       retailerId,
-      r2Key: photo_r2_key,
+      r2Key: uploadKey,
       allowed: IMAGE_KINDS,
       maxBytes: 10_000_000,
     });

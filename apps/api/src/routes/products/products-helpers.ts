@@ -59,9 +59,6 @@ export async function revalidateCollectionsForProduct(productId: string): Promis
 export const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
 export type AllowedMime = (typeof ALLOWED_MIME_TYPES)[number];
 
-export const ALLOWED_SPIN_VIDEO_MIME_TYPES = ['video/mp4', 'video/quicktime'] as const;
-export const MAX_SPIN_VIDEO_BYTES = 50_000_000; // ~50MB, a few seconds of 1080p
-
 export const CreateProductSchema = z.object({
   photo_r2_key: z.string().min(1),
   photo_url: z.string().url(),

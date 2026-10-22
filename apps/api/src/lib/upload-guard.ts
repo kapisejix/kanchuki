@@ -3,7 +3,11 @@
 // (the one that records an uploaded r2_key) must call verifyUpload() before it
 // stores anything. It also stops a client from recording another retailer's key
 // or an arbitrary external URL as its own upload.
-import { deleteObject, inspectObject, publicUrl } from '@kanchuki/ai';
+//
+// Presign routes hand out a STAGED key (`uploads/pending/<final key>`), so an
+// upload that is never confirmed stays under one prefix an R2 lifecycle rule can
+// expire. verifyUpload promotes a passing staged object to its final key.
+import { copyObject, deleteObject, inspectObject, publicUrl } from '@kanchuki/ai';
 import { validationError } from '../plugins/error-handler.js';
 
 export type UploadKind =
@@ -74,6 +78,28 @@ export function sniffImageType(b: Buffer): 'image/jpeg' | 'image/png' | 'image/w
     : null;
 }
 
+export const STAGING_PREFIX = 'uploads/pending/';
+
+/** Key a presign route hands the client; verifyUpload moves it to `finalKey`. */
+export function stagingKey(finalKey: string): string {
+  return `${STAGING_PREFIX}${finalKey}`;
+}
+
+/** The final key a staged key promotes to; a final key is returned as-is. */
+export function unstagedKey(key: string): string {
+  return key.startsWith(STAGING_PREFIX) ? key.slice(STAGING_PREFIX.length) : key;
+}
+
+/**
+ * Where an upload's bytes are right now: the staged key until a confirm promotes
+ * it, the final key after. For pre-confirm readers (AI suggest) that may be
+ * called with a staged key the client still holds after the confirm.
+ */
+export async function currentKey(key: string): Promise<string> {
+  const finalKey = unstagedKey(key);
+  return finalKey !== key && !(await inspectObject(key, 1)) ? finalKey : key;
+}
+
 /** True when `key` lives under this retailer's own R2 prefix (no traversal). */
 export function isOwnedKey(
   retailerId: string,
@@ -92,9 +118,12 @@ export function isOwnedKey(
 
 /**
  * Confirm an upload: key is the caller's own, object exists, is within
- * `maxBytes`, and its magic bytes are one of `allowed`. A failing object is
- * deleted so a rejected upload does not linger in the bucket. Returns the
- * server-built public URL — callers store THAT, never a client-supplied url.
+ * `maxBytes`, and its magic bytes are one of `allowed`. Accepts the staged key a
+ * presign route returned or the final key. A passing staged object is copied to
+ * the final key and the staged copy deleted; a failing staged object is deleted.
+ * A retry after a promote (staged gone, final present) verifies the final key.
+ * Returns the server-built public URL and the FINAL key — callers store those,
+ * never the client-supplied key or url.
  */
 export async function verifyUpload(
   opts: { r2Key: string; allowed: readonly UploadKind[]; maxBytes: number } & (
@@ -106,21 +135,35 @@ export async function verifyUpload(
     // Admin uploads: no retailer; the caller names the platform prefix (e.g. `admin/studio-styles/`).
     | { retailerId?: never; prefix: string }
   ),
-): Promise<{ url: string; kind: UploadKind }> {
+): Promise<{ url: string; kind: UploadKind; r2Key: string }> {
   const { retailerId, r2Key, allowed, maxBytes, prefix } = opts;
-  if (!isOwnedKey(retailerId ?? '', r2Key, prefix))
+  const finalKey = unstagedKey(r2Key);
+  const staged = finalKey !== r2Key;
+  if (!isOwnedKey(retailerId ?? '', finalKey, prefix))
     throw validationError('Invalid upload reference', 'r2_key');
 
-  const obj = await inspectObject(r2Key);
+  let key = r2Key;
+  let obj = await inspectObject(r2Key);
+  if (!obj && staged) {
+    key = finalKey;
+    obj = await inspectObject(finalKey);
+  }
   if (!obj) throw validationError('Upload not found — please upload the file again', 'r2_key');
 
   const kind = sniffUploadType(obj.head);
   if (obj.size > maxBytes || !kind || !allowed.includes(kind)) {
-    await deleteObject(r2Key).catch(() => {});
+    // ponytail: only a staged object is deleted on reject — a final key may be a
+    // live object another row points at (e.g. confirmed at the wrong endpoint).
+    if (key !== finalKey) await deleteObject(key).catch(() => {});
     throw validationError(
       obj.size > maxBytes ? 'File too large' : 'File is not an allowed image or document type',
       'r2_key',
     );
   }
-  return { url: publicUrl(r2Key), kind };
+  if (key !== finalKey) {
+    await copyObject(key, finalKey);
+    // A failed delete leaves a staged copy for the lifecycle rule; not fatal.
+    await deleteObject(key).catch(() => {});
+  }
+  return { url: publicUrl(finalKey), kind, r2Key: finalKey };
 }

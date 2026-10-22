@@ -1,4 +1,5 @@
 import {
+  CopyObjectCommand,
   DeleteObjectCommand,
   GetObjectCommand,
   ListObjectsV2Command,
@@ -86,6 +87,19 @@ export async function getDownloadPresignedUrl(
 /** Delete an object from R2 */
 export async function deleteObject(key: string): Promise<void> {
   await r2.send(new DeleteObjectCommand({ Bucket: await getBucket(), Key: key }));
+}
+
+/** Server-side copy within the bucket (no download). Content-Type is carried over. */
+export async function copyObject(fromKey: string, toKey: string): Promise<void> {
+  const bucket = await getBucket();
+  await r2.send(
+    new CopyObjectCommand({
+      Bucket: bucket,
+      Key: toKey,
+      // CopySource is "bucket/key", URL-encoded per path segment.
+      CopySource: `${bucket}/${fromKey.split('/').map(encodeURIComponent).join('/')}`,
+    }),
+  );
 }
 
 /** Download an object's bytes directly (for server-side processing, e.g. CV jobs) */

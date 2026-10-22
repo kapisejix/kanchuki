@@ -5,7 +5,7 @@ import { createId } from '@paralleldrive/cuid2';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { seedDefaultCategories } from '../lib/default-categories.js';
-import { IMAGE_KINDS, verifyUpload } from '../lib/upload-guard.js';
+import { IMAGE_KINDS, stagingKey, verifyUpload } from '../lib/upload-guard.js';
 import { notFound, validationError } from '../plugins/error-handler.js';
 
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
@@ -35,19 +35,15 @@ async function resolveCategoryImage(
   storedKey?: string | null,
 ): Promise<{ image_r2_key?: string; image_url?: string }> {
   if (key) {
-    const image_url =
-      key === storedKey
-        ? publicUrl(key)
-        : (
-            await verifyUpload({
-              retailerId,
-              r2Key: key,
-              allowed: IMAGE_KINDS,
-              maxBytes: 5_000_000,
-              prefix: R2_PATHS.categoryImage(retailerId, ''),
-            })
-          ).url;
-    return { image_r2_key: key, image_url };
+    if (key === storedKey) return { image_r2_key: key, image_url: publicUrl(key) };
+    const v = await verifyUpload({
+      retailerId,
+      r2Key: key,
+      allowed: IMAGE_KINDS,
+      maxBytes: 5_000_000,
+      prefix: R2_PATHS.categoryImage(retailerId, ''),
+    });
+    return { image_r2_key: v.r2Key, image_url: v.url };
   }
   if (url && !url.startsWith(publicUrl(''))) {
     throw validationError('Image URL must be an uploaded image', 'image_url');
@@ -70,7 +66,7 @@ export const categoryRoutes: FastifyPluginAsync = async (server) => {
     const { content_type } = body.data;
     const ext =
       content_type === 'image/png' ? 'png' : content_type === 'image/webp' ? 'webp' : 'jpg';
-    const r2Key = R2_PATHS.categoryImage(request.retailerId, `${createId()}.${ext}`);
+    const r2Key = stagingKey(R2_PATHS.categoryImage(request.retailerId, `${createId()}.${ext}`));
 
     let uploadUrl: string;
     try {

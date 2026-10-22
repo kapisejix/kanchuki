@@ -36,6 +36,7 @@ export const productsVariantsRoutes: FastifyPluginAsync = async (server) => {
       maxBytes: 10_000_000,
     });
     body.data.url = verified.url;
+    body.data.r2_key = verified.r2Key;
 
     const variant = await prisma.productVariant.create({
       data: {

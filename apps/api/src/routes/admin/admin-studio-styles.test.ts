@@ -139,7 +139,7 @@ describe('admin studio-styles', () => {
     expect(res.statusCode).toBe(200);
     const body = res.json();
     expect(body.data.upload_url).toBe('https://r2.example/put');
-    expect(body.data.r2_key).toMatch(/^admin\/studio-styles\//);
+    expect(body.data.r2_key).toMatch(/^uploads\/pending\/admin\/studio-styles\//);
   });
 
   it('DELETE removes the row + best-effort thumb cleanup', async () => {

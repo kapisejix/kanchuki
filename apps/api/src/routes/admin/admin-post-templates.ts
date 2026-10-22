@@ -9,7 +9,7 @@ import { type Prisma, prisma } from '@kanchuki/db';
 import { R2_PATHS } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
-import { IMAGE_KINDS, verifyUpload } from '../../lib/upload-guard.js';
+import { IMAGE_KINDS, stagingKey, verifyUpload } from '../../lib/upload-guard.js';
 import { notFound, validationError } from '../../plugins/error-handler.js';
 import { adminAuthPreHandler } from '../admin-auth.js';
 
@@ -80,11 +80,13 @@ export const adminPostTemplatesRoutes: FastifyPluginAsync = async (server) => {
       })
       .parse(request.body);
     const ext = body.content_type.split('/')[1];
-    const r2Key = R2_PATHS.postTemplateThumb(
-      `${createHash('sha256')
-        .update(body.filename + Date.now())
-        .digest('hex')
-        .slice(0, 16)}.${ext}`,
+    const r2Key = stagingKey(
+      R2_PATHS.postTemplateThumb(
+        `${createHash('sha256')
+          .update(body.filename + Date.now())
+          .digest('hex')
+          .slice(0, 16)}.${ext}`,
+      ),
     );
     const uploadUrl = await getUploadPresignedUrl(r2Key, body.content_type, 300);
     return {

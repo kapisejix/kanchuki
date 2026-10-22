@@ -10,7 +10,7 @@ import {
   type ReferralCaptureResult,
   applyReferralCapture,
 } from '../../lib/referral-conversions.js';
-import { IMAGE_KINDS, verifyUpload } from '../../lib/upload-guard.js';
+import { IMAGE_KINDS, STAGING_PREFIX, verifyUpload } from '../../lib/upload-guard.js';
 import { notFound, validationError } from '../../plugins/error-handler.js';
 
 const WhatsAppNumberSchema = z
@@ -195,6 +195,8 @@ export const retailersProfileRoutes: FastifyPluginAsync = async (server) => {
     // and the url is rebuilt from it; a bare url may only point at our own CDN
     // (or be cleared) — never an arbitrary external/javascript: URL.
     const ownCdn = publicUrl('');
+    // A staged url is deleted on confirm, so it is never a storable image url.
+    const stagedCdn = publicUrl(STAGING_PREFIX);
     const checkImage = async (
       key: string | null | undefined,
       urlVal: string | null | undefined,
@@ -215,7 +217,8 @@ export const retailersProfileRoutes: FastifyPluginAsync = async (server) => {
           maxBytes: 10_000_000,
         });
         profileFields[field] = v.url;
-      } else if (urlVal && !urlVal.startsWith(ownCdn)) {
+        profileFields[field === 'logo_url' ? 'logo_r2_key' : 'banner_r2_key'] = v.r2Key;
+      } else if (urlVal && (!urlVal.startsWith(ownCdn) || urlVal.startsWith(stagedCdn))) {
         throw validationError('Image URL must be an uploaded image', field);
       }
     };

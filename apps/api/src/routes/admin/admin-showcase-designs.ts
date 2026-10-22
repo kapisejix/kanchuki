@@ -22,7 +22,14 @@ import { createId } from '@paralleldrive/cuid2';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { watermarkShowcaseDesign } from '../../lib/showcase-watermark.js';
-import { IMAGE_KINDS, isOwnedKey, verifyUpload } from '../../lib/upload-guard.js';
+import {
+  IMAGE_KINDS,
+  currentKey,
+  isOwnedKey,
+  stagingKey,
+  unstagedKey,
+  verifyUpload,
+} from '../../lib/upload-guard.js';
 import { notFound, validationError } from '../../plugins/error-handler.js';
 import { adminAuthPreHandler } from '../admin-auth.js';
 
@@ -54,19 +61,21 @@ const UpdateSchema = z.object({
 const adminRawPrefix = (): string => R2_PATHS.showcaseDesignRaw('global', '');
 
 function assertShowcaseRawKey(rawKey: string): void {
-  if (!isOwnedKey('', rawKey, adminRawPrefix())) {
+  // /suggest runs before the confirm step, so the key may still be the staged one.
+  if (!isOwnedKey('', unstagedKey(rawKey), adminRawPrefix())) {
     throw validationError('Invalid upload reference');
   }
 }
 
-/** Ownership + real image bytes, for the routes that keep the raw upload. */
-async function verifyRawUpload(rawKey: string): Promise<void> {
-  await verifyUpload({
+/** Ownership + real image bytes, for the routes that keep the raw upload. Returns the final key. */
+async function verifyRawUpload(rawKey: string): Promise<string> {
+  const { r2Key } = await verifyUpload({
     r2Key: rawKey,
     allowed: IMAGE_KINDS,
     maxBytes: 15_000_000,
     prefix: adminRawPrefix(),
   });
+  return r2Key;
 }
 
 async function categoryForWrite(categoryId: string): Promise<{ id: string; slug: string }> {
@@ -213,12 +222,14 @@ export const adminShowcaseDesignRoutes: FastifyPluginAsync = async (server) => {
         : body.content_type === 'image/webp'
           ? 'webp'
           : 'jpg';
-    const r2Key = R2_PATHS.showcaseDesignRaw(
-      'global',
-      `${createHash('sha256')
-        .update(body.filename + Date.now())
-        .digest('hex')
-        .slice(0, 16)}.${ext}`,
+    const r2Key = stagingKey(
+      R2_PATHS.showcaseDesignRaw(
+        'global',
+        `${createHash('sha256')
+          .update(body.filename + Date.now())
+          .digest('hex')
+          .slice(0, 16)}.${ext}`,
+      ),
     );
     const uploadUrl = await getUploadPresignedUrl(r2Key, body.content_type, 300);
     return {
@@ -235,7 +246,9 @@ export const adminShowcaseDesignRoutes: FastifyPluginAsync = async (server) => {
     const body = z.object({ raw_r2_key: z.string().min(1) }).safeParse(request.body);
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
     assertShowcaseRawKey(body.data.raw_r2_key);
-    const suggestion = await suggestDesignNameAndColor(publicUrl(body.data.raw_r2_key));
+    const suggestion = await suggestDesignNameAndColor(
+      publicUrl(await currentKey(body.data.raw_r2_key)),
+    );
     return reply.status(200).send({ data: suggestion });
   });
 
@@ -247,7 +260,7 @@ export const adminShowcaseDesignRoutes: FastifyPluginAsync = async (server) => {
     const body = CreateSchema.safeParse(request.body);
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
 
-    await verifyRawUpload(body.data.raw_r2_key);
+    body.data.raw_r2_key = await verifyRawUpload(body.data.raw_r2_key);
     const category = await categoryForWrite(body.data.category_id);
     let name = body.data.name ?? null;
     if (!name) {
@@ -329,7 +342,7 @@ export const adminShowcaseDesignRoutes: FastifyPluginAsync = async (server) => {
     }
 
     if (body.data.raw_r2_key) {
-      await verifyRawUpload(body.data.raw_r2_key);
+      body.data.raw_r2_key = await verifyRawUpload(body.data.raw_r2_key);
       const ownerKey = (data.retailer_id as string | null) ?? existing.retailer_id ?? 'global';
       const finalR2Key = R2_PATHS.showcaseDesign(ownerKey, `${createId()}.jpg`);
       await watermarkShowcaseDesign({

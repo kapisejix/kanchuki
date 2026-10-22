@@ -236,10 +236,12 @@ describe('Admin showcase watermark config API', () => {
       method: 'PUT',
       url: '/v1/admin/settings/showcase-watermark',
       headers: csrfHeaders(),
-      payload: { logo_r2_key: 'showcase-watermark/logo/evil.png' },
+      payload: { logo_r2_key: 'uploads/pending/showcase-watermark/logo/evil.png' },
     });
     expect(svg.statusCode).toBe(422);
-    expect(mockDeleteObject).toHaveBeenCalledWith('showcase-watermark/logo/evil.png');
+    expect(mockDeleteObject).toHaveBeenCalledWith(
+      'uploads/pending/showcase-watermark/logo/evil.png',
+    );
     expect(wmStore).toBeNull(); // nothing saved
     await app.close();
   });
@@ -276,7 +278,7 @@ describe('Admin showcase watermark config API', () => {
     expect(res.statusCode).toBe(200);
     const data = res.json().data;
     expect(data.upload_url).toBe('https://r2.example.com/presigned');
-    expect(data.r2_key).toMatch(/^showcase-watermark\/logo\/[a-f0-9]{16}\.png$/);
+    expect(data.r2_key).toMatch(/^uploads\/pending\/showcase-watermark\/logo\/[a-f0-9]{16}\.png$/);
     expect(data.public_url).toBe(`https://cdn.example.com/${data.r2_key}`);
     expect(data.expires_in).toBe(300);
 

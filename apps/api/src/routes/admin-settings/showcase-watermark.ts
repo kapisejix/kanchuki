@@ -19,7 +19,7 @@ import {
   getShowcaseWatermarkConfig,
   mergeShowcaseWatermark,
 } from '../../lib/showcase-watermark.js';
-import { IMAGE_KINDS, verifyUpload } from '../../lib/upload-guard.js';
+import { IMAGE_KINDS, stagingKey, verifyUpload } from '../../lib/upload-guard.js';
 import { adminAuthPreHandler } from '../admin.js';
 import { saveSetting } from './settings-store.js';
 
@@ -91,12 +91,14 @@ export const adminShowcaseWatermarkRoutes: FastifyPluginAsync = async (server) =
     // A new logo key must be a real image minted by logo-upload-url below; it is
     // composited onto every design, so it is never taken on trust.
     if (body.logo_r2_key && body.logo_r2_key !== current.logo_r2_key) {
-      await verifyUpload({
-        r2Key: body.logo_r2_key,
-        allowed: IMAGE_KINDS,
-        maxBytes: 5_000_000,
-        prefix: R2_PATHS.showcaseWatermarkLogo(''),
-      });
+      body.logo_r2_key = (
+        await verifyUpload({
+          r2Key: body.logo_r2_key,
+          allowed: IMAGE_KINDS,
+          maxBytes: 5_000_000,
+          prefix: R2_PATHS.showcaseWatermarkLogo(''),
+        })
+      ).r2Key;
     }
     // mergeShowcaseWatermark validates + clamps and coerces logo_r2_key, so a
     // hand-crafted body can never break the compositor.
@@ -149,11 +151,13 @@ export const adminShowcaseWatermarkRoutes: FastifyPluginAsync = async (server) =
       .parse(request.body);
 
     const ext = body.content_type.split('/')[1];
-    const r2Key = R2_PATHS.showcaseWatermarkLogo(
-      `${createHash('sha256')
-        .update(body.filename + Date.now())
-        .digest('hex')
-        .slice(0, 16)}.${ext}`,
+    const r2Key = stagingKey(
+      R2_PATHS.showcaseWatermarkLogo(
+        `${createHash('sha256')
+          .update(body.filename + Date.now())
+          .digest('hex')
+          .slice(0, 16)}.${ext}`,
+      ),
     );
     const uploadUrl = await getUploadPresignedUrl(r2Key, body.content_type, 300);
 

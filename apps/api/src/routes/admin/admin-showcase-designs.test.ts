@@ -426,10 +426,12 @@ describe('PATCH /showcase-designs/:id', () => {
     const res = await app.inject({
       method: 'PATCH',
       url: '/showcase-designs/design_1',
-      payload: { raw_r2_key: 'showcase-designs/global/raw/evil.jpg' },
+      payload: { raw_r2_key: 'uploads/pending/showcase-designs/global/raw/evil.jpg' },
     });
     expect(res.statusCode).toBe(422);
-    expect(mockDeleteObject).toHaveBeenCalledWith('showcase-designs/global/raw/evil.jpg');
+    expect(mockDeleteObject).toHaveBeenCalledWith(
+      'uploads/pending/showcase-designs/global/raw/evil.jpg',
+    );
     expect(mockWatermarkShowcaseDesign).not.toHaveBeenCalled();
     expect(mockUpdate).not.toHaveBeenCalled();
     await app.close();

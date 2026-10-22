@@ -42,6 +42,7 @@ import { getSecret, prisma } from '@kanchuki/db';
 import { pickContrastBackground } from '../../lib/backgrounds.js';
 import { runPhotoCleanup, serializePhotoCleanup } from '../../lib/photo-cleanup-runner.js';
 import { checkQuota, incrementUsage } from '../../lib/quota.js';
+import { isOwnedKey, unstagedKey } from '../../lib/upload-guard.js';
 import { serviceUnavailable, validationError } from '../../plugins/error-handler.js';
 
 const CropRectSchema = z.object({
@@ -134,11 +135,13 @@ export const productsProCleanupRoutes: FastifyPluginAsync = async (server) => {
       const { photos, remove_hardware, tight_crop, background_image_id } = body.data;
 
       // Ownership guard: every r2_key must sit under this retailer's own path
-      // prefix (upload-url mints keys there) — stops a retailer from pointing
-      // the pipeline at another store's raw photo.
-      const prefix = `retailers/${retailerId}/`;
+      // prefix (upload-url mints keys there, staged under uploads/pending/ until
+      // product create confirms them) — stops a retailer from pointing the
+      // pipeline at another store's raw photo. A staged raw gives a staged
+      // cleaned key, which product create then verifies and promotes.
       for (const p of photos) {
-        if (!p.r2_key.startsWith(prefix)) throw validationError('Invalid photo key');
+        if (!isOwnedKey(retailerId, unstagedKey(p.r2_key)))
+          throw validationError('Invalid photo key');
       }
 
       // F-010 quota gates — BG_REMOVAL for every cleaned photo, IMAGE_CROP

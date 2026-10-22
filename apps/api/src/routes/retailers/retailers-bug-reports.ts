@@ -38,16 +38,13 @@ export const retailersBugReportRoutes: FastifyPluginAsync = async (server) => {
     }
 
     // The screenshot url is built from a verified own upload, never taken from the client.
-    const screenshotKey = body.data.screenshot_r2_key;
-    const screenshotUrl = screenshotKey
-      ? (
-          await verifyUpload({
-            retailerId: request.retailerId,
-            r2Key: screenshotKey,
-            allowed: IMAGE_KINDS,
-            maxBytes: 10_000_000,
-          })
-        ).url
+    const screenshot = body.data.screenshot_r2_key
+      ? await verifyUpload({
+          retailerId: request.retailerId,
+          r2Key: body.data.screenshot_r2_key,
+          allowed: IMAGE_KINDS,
+          maxBytes: 10_000_000,
+        })
       : undefined;
 
     const report = await prisma.bugReport.create({
@@ -62,8 +59,8 @@ export const retailersBugReportRoutes: FastifyPluginAsync = async (server) => {
         last_screen: body.data.last_screen,
         error_message: body.data.error_message,
         error_stack: body.data.error_stack,
-        screenshot_url: screenshotUrl,
-        screenshot_r2_key: screenshotKey,
+        screenshot_url: screenshot?.url,
+        screenshot_r2_key: screenshot?.r2Key,
         notes: body.data.notes,
       },
       select: {

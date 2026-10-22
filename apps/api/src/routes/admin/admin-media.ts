@@ -22,7 +22,7 @@ import {
 } from '@kanchuki/db';
 import { INTEGRATION_KEYS, R2_PATHS } from '@kanchuki/shared';
 import { z } from 'zod';
-import { IMAGE_KINDS, verifyUpload } from '../../lib/upload-guard.js';
+import { IMAGE_KINDS, stagingKey, verifyUpload } from '../../lib/upload-guard.js';
 import { forbidden, notFound, validationError } from '../../plugins/error-handler.js';
 import { adminAuthPreHandler } from '../admin-auth.js';
 
@@ -72,7 +72,7 @@ export const adminMediaRoutes: FastifyPluginAsync = async (server) => {
 
   // ─── POST /admin/background-images/upload-url ───────────────────
   // Presigned PUT so the admin panel uploads image bytes straight to R2,
-  // same pattern as the retailer spin-video upload (products.ts).
+  // same presign + confirm pattern as the retailer product-photo upload.
   server.post('/background-images/upload-url', async (request) => {
     const body = z
       .object({
@@ -82,11 +82,13 @@ export const adminMediaRoutes: FastifyPluginAsync = async (server) => {
       .parse(request.body);
 
     const ext = body.content_type.split('/')[1];
-    const r2Key = R2_PATHS.backgroundImage(
-      `${createHash('sha256')
-        .update(body.filename + Date.now())
-        .digest('hex')
-        .slice(0, 16)}.${ext}`,
+    const r2Key = stagingKey(
+      R2_PATHS.backgroundImage(
+        `${createHash('sha256')
+          .update(body.filename + Date.now())
+          .digest('hex')
+          .slice(0, 16)}.${ext}`,
+      ),
     );
     const uploadUrl = await getUploadPresignedUrl(r2Key, body.content_type, 300);
 

@@ -223,7 +223,7 @@ describe('admin post-templates', () => {
     expect(res.statusCode).toBe(200);
     const body = res.json();
     expect(body.data.upload_url).toBe('https://r2.example/put');
-    expect(body.data.r2_key).toMatch(/^admin\/post-templates\//);
+    expect(body.data.r2_key).toMatch(/^uploads\/pending\/admin\/post-templates\//);
   });
 
   it('DELETE removes the row', async () => {
