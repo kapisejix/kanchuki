@@ -12,6 +12,17 @@
 
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
+## RC-079 — Anonymous and AI-backed endpoints had no per-route cap, and the AI SDK clients inherited a 10-minute timeout
+
+- **Component:** `apps/api/src/routes/public/public-stylist.ts`, `apps/api/src/routes/public/public-collections.ts` (`/enquire`), `packages/ai/src/providers.ts`, `packages/ai/src/embedder.ts`.
+- **Symptom:** anyone, logged out, could make `POST /v1/public/stylist` call Claude with up to 60 products of catalog JSON at the global 200 req/min per IP, with no timeout on the fetch. A hung provider held a request (and a BullMQ worker, for the SDK clients) for minutes. `/collections/:slug/enquire` could be spammed the same way, writing a row and a push each time.
+- **Root cause:** the only limit was the global per-IP one, and the cost of a call was not part of it. Each AI call site relied on the SDK or `fetch` defaults (10 min, 2 retries; no timeout), and nobody owned a per-route budget for unauthenticated routes.
+- **Fix:** `/stylist` 10/min per IP and `AbortSignal.timeout(20_000)` (a timeout lands in the existing `fallback`, which logs to Sentry per RC-059). Anthropic and OpenAI clients built with `timeout: 60_000, maxRetries: 1` (provider failover already retries). `/collections/:slug/enquire` 10/min per IP. `/my-style/enquire` already had 20/min behind a login and was left alone.
+- **Proof:** `public-stylist.test.ts` (11th request is 429; a hanging fetch is aborted and answered from the fallback), `public-collections-enquire.test.ts` (11th is 429), `packages/ai/src/providers.test.ts` and `embedder.test.ts` (clients built with the bounds).
+- **Not verified:** no live Anthropic call. The platform-wide daily AI spend cap described in CLAUDE.md §5 is still not built (deferred; needs an owner ₹/day figure). Rate limits are per IP, so shoppers behind one carrier NAT share the 10/min.
+
+---
+
 ## RC-078 — A trial ending or a subscription lapsing never changed `retailer.plan`, so paid features stayed on forever
 
 - **Component:** `apps/api/src/jobs/plan-lapse.ts` (new), `apps/api/src/jobs/index.ts`. Every paid gate: `lib/features.ts` `hasFeature`, `lib/quota.ts` `effectiveLimit`, and ~12 direct `retailer.plan` readers.

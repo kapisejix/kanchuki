@@ -1,6 +1,7 @@
 // F-044 / E1 — POST /v1/public/collections/:slug/enquire stores EVERY product
 // the customer sent (not just the first), only ever products of THIS store, and
 // names them (not ids) in the WhatsApp text.
+import rateLimit from '@fastify/rate-limit';
 import Fastify from 'fastify';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { errorHandler } from '../../../plugins/error-handler.js';
@@ -192,5 +193,26 @@ describe('POST /v1/public/collections/:slug/enquire — basket (E1)', () => {
       data: expect.objectContaining({ product_id: null, product_ids: [] }),
     });
     await app.close();
+  });
+});
+
+// RC-079 — the enquiry endpoint is anonymous and writes a row + sends a push per call.
+describe('POST /v1/public/collections/:slug/enquire — rate limit (RC-079)', () => {
+  it('the 11th request inside a minute is rejected with 429', async () => {
+    storeProducts('a');
+    const app = Fastify();
+    app.setErrorHandler(errorHandler);
+    await app.register(rateLimit, { max: 1000, timeWindow: 60_000 });
+    await app.register(publicCollectionsRoutes, { prefix: '/v1/public' });
+    await app.ready();
+
+    const codes: number[] = [];
+    for (let i = 0; i < 11; i++) {
+      codes.push((await enquire(app, { product_ids: ['a'] })).statusCode);
+    }
+    await app.close();
+
+    expect(codes.slice(0, 10).every((c) => c === 200)).toBe(true);
+    expect(codes[10]).toBe(429);
   });
 });

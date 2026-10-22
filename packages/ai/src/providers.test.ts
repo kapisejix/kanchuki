@@ -7,18 +7,25 @@ const { secretState } = vi.hoisted(() => ({
 }))
 
 const mockClaudeCreate = vi.fn()
+const clientOptions: Record<string, unknown>[] = []
 const mockOpenAICreate = vi.fn()
 const mockGeminiFetch = vi.fn()
 
 vi.mock('@anthropic-ai/sdk', () => ({
   default: class {
     messages = { create: mockClaudeCreate }
+    constructor(opts: Record<string, unknown>) {
+      clientOptions.push(opts)
+    }
   },
 }))
 
 vi.mock('openai', () => ({
   default: class {
     chat = { completions: { create: mockOpenAICreate } }
+    constructor(opts: Record<string, unknown>) {
+      clientOptions.push(opts)
+    }
   },
 }))
 
@@ -370,5 +377,23 @@ describe('Gemini adapter', () => {
     const [, init] = mockGeminiFetch.mock.calls[0]!
     const body = JSON.parse(init.body as string)
     expect(body.generationConfig.responseSchema.properties.pattern.enum).toEqual(['Plain', 'Printed'])
+  })
+})
+
+// RC-079 — SDK defaults are a 10 min timeout and 2 retries per call, multiplied by up to
+// 3 BullMQ attempts. A hung provider must give up in about a minute.
+describe('provider SDK clients are bounded (RC-079)', () => {
+  it('Claude and OpenAI clients are built with a 60 s timeout and 1 retry', async () => {
+    // Clients are cached per key at module level, so this sees every construction so far.
+    mockClaudeCreate.mockRejectedValue(apiError(429, 'rate limit'))
+    mockOpenAICreate.mockResolvedValue({
+      choices: [{ message: { content: '{"category":"Kurti"}' } }],
+    })
+    await runVisionExtract(extractReq)
+
+    expect(clientOptions.length).toBeGreaterThanOrEqual(2)
+    for (const opts of clientOptions) {
+      expect(opts).toMatchObject({ timeout: 60_000, maxRetries: 1 })
+    }
   })
 })
