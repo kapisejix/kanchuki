@@ -22,7 +22,12 @@ import {
 } from '@kanchuki/db';
 import { INTEGRATION_KEYS, R2_PATHS } from '@kanchuki/shared';
 import { z } from 'zod';
-import { IMAGE_KINDS, stagingKey, verifyUpload } from '../../lib/upload-guard.js';
+import {
+  IMAGE_KINDS,
+  stagingKey,
+  verifyUpload,
+  UPLOAD_URL_RATE_LIMIT,
+} from '../../lib/upload-guard.js';
 import { forbidden, notFound, validationError } from '../../plugins/error-handler.js';
 import { adminAuthPreHandler } from '../admin-auth.js';
 
@@ -73,11 +78,13 @@ export const adminMediaRoutes: FastifyPluginAsync = async (server) => {
   // ─── POST /admin/background-images/upload-url ───────────────────
   // Presigned PUT so the admin panel uploads image bytes straight to R2,
   // same presign + confirm pattern as the retailer product-photo upload.
-  server.post('/background-images/upload-url', async (request) => {
+  server.post('/background-images/upload-url', UPLOAD_URL_RATE_LIMIT, async (request) => {
     const body = z
       .object({
         content_type: z.enum(['image/jpeg', 'image/png', 'image/webp']),
         filename: z.string().min(1).max(200),
+        // Exact byte length of the PUT, bound into the signature (RC-080). Same max as verifyUpload.
+        content_length: z.number().int().min(1).max(15_000_000).optional(),
       })
       .parse(request.body);
 
@@ -90,7 +97,12 @@ export const adminMediaRoutes: FastifyPluginAsync = async (server) => {
           .slice(0, 16)}.${ext}`,
       ),
     );
-    const uploadUrl = await getUploadPresignedUrl(r2Key, body.content_type, 300);
+    const uploadUrl = await getUploadPresignedUrl(
+      r2Key,
+      body.content_type,
+      300,
+      body.content_length,
+    );
 
     return {
       data: { upload_url: uploadUrl, r2_key: r2Key, public_url: publicUrl(r2Key), expires_in: 300 },

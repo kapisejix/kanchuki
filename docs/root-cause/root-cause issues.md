@@ -12,6 +12,18 @@
 
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
+## RC-080 — A presigned PUT URL did not bind the body size, and the presign routes had only the global rate limit
+
+- **Component:** `packages/ai/src/r2.ts` `getUploadPresignedUrl`, `apps/api/src/lib/upload-guard.ts` (`UPLOAD_URL_RATE_LIMIT`), the 13 presign routes in 11 files (products, categories, growth videos, catalog import, retailer banner/logo/KYC, retailer + admin showcase designs, admin media / post templates / studio styles / watermark).
+- **Symptom:** one 5-minute URL accepted a PUT of any size (up to 5 GB) into `uploads/pending/`; `verifyUpload` only rejected it after the bytes had landed. Seven routes already validated a `size_bytes` field and then ignored it when signing.
+- **Root cause:** the signature carried only key and Content-Type. Size was checked in the request body (client-reported) and again after the upload, never bound into the URL. Rate limiting for these routes was the global 200/min per IP.
+- **Fix:** `getUploadPresignedUrl(key, type, expiresIn, contentLength?)` signs `content-length` when given. Every presign route accepts an optional `content_length` (max = that route's existing `verifyUpload` limit) and passes it through; absent means unbound and logged (old clients). All 13 routes use the shared `UPLOAD_URL_RATE_LIMIT` (30/min per IP).
+- **Why a new field, not `size_bytes`:** the mobile `uploadImageToR2` recompresses JPEGs to <=80 KB before the PUT, but callers send `blob.size` of the uncompressed file as `size_bytes`. Binding that value would 403 almost every current mobile upload.
+- **Proof:** `packages/ai/src/r2-presign.test.ts` (content-length is in `X-Amz-SignedHeaders` only when given), `categories.test.ts` (length passed through, oversize 422, 31st request 429, old client unbound), `upload-url-guard.test.ts` (derived from source: every file calling `getUploadPresignedUrl` passes a 4th argument and uses `UPLOAD_URL_RATE_LIMIT`).
+- **Not verified / still open:** (1) real R2 enforcement of the signed length: run `packages/ai/scripts/check-r2-content-length.mjs` (owner). (2) No client sends `content_length` yet, so nothing is bound in production until mobile compresses first, then presigns with the real size. (3) The R2 lifecycle rule for `uploads/pending/` is still an owner step.
+
+---
+
 ## RC-079 — Anonymous and AI-backed endpoints had no per-route cap, and the AI SDK clients inherited a 10-minute timeout
 
 - **Component:** `apps/api/src/routes/public/public-stylist.ts`, `apps/api/src/routes/public/public-collections.ts` (`/enquire`), `packages/ai/src/providers.ts`, `packages/ai/src/embedder.ts`.

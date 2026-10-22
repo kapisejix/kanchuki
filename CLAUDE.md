@@ -262,6 +262,7 @@ Payment: Razorpay (UPI first). Retailer pays base + 18% GST. **Source of truth: 
 
 | ID | Root cause (one line) | Fixed in |
 |---|---|---|
+| RC-080 | A presigned PUT URL signed only key + Content-Type, so one URL accepted a body of any size, and the 13 presign routes had only the global rate limit. Fixed with an optional signed `content_length` on every route plus a shared 30/min `UPLOAD_URL_RATE_LIMIT`; clients do not send the length yet (mobile recompresses before PUT). | root-cause issues.md |
 | RC-079 | The anonymous `/stylist` Claude call and `/collections/:slug/enquire` had only the global per-IP limit, and the Anthropic/OpenAI SDK clients inherited a 10-minute timeout. Fixed with per-route 10/min limits, a 20 s fetch abort, and `timeout: 60_000, maxRetries: 1` on the clients. | root-cause issues.md |
 | RC-078 | Nothing ever lowered `retailer.plan` when a trial ended or a subscription lapsed, and every paid gate reads `plan`, so PRO was free forever. Fixed with an hourly `plan-lapse` job that drops lapsed plans to STARTER (cancel keeps access until `plan_expires_at`). | root-cause issues.md |
 | RC-077 | Stored user text went into HTML with no escaping step: `javascript:` hrefs on admin pages, `</script>` breakout in `/stores` JSON-LD, raw name/phone in email HTML (and the no-key email fallback logged temp passwords). Fixed with `safeHttpUrl`, JSON-LD `<` escape, `escapeHtml` in `email.ts`. | root-cause issues.md |

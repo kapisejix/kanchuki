@@ -13,18 +13,25 @@ import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { bumpPhotoUrlVersion, preserveOriginalPhoto } from '../../lib/photo-cleanup.js';
 import { checkQuota, incrementUsage } from '../../lib/quota.js';
-import { IMAGE_KINDS, stagingKey, verifyUpload } from '../../lib/upload-guard.js';
+import {
+  IMAGE_KINDS,
+  stagingKey,
+  verifyUpload,
+  UPLOAD_URL_RATE_LIMIT,
+} from '../../lib/upload-guard.js';
 import { notFound, validationError } from '../../plugins/error-handler.js';
 import { ALLOWED_MIME_TYPES, type AllowedMime, photoUrlToDisplay } from './products-helpers.js';
 
 export const productsMediaRoutes: FastifyPluginAsync = async (server) => {
   // ─── POST /products/upload-url ──────────────────────────────────
-  server.post('/upload-url', async (request, reply) => {
+  server.post('/upload-url', UPLOAD_URL_RATE_LIMIT, async (request, reply) => {
     const body = z
       .object({
         filename: z.string().min(1).max(255),
         content_type: z.enum(ALLOWED_MIME_TYPES),
         size_bytes: z.number().int().min(1).max(10_000_000),
+        // Exact byte length of the PUT (post-compression), bound into the signature (RC-080).
+        content_length: z.number().int().min(1).max(10_000_000).optional(),
       })
       .safeParse(request.body);
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
@@ -40,7 +47,7 @@ export const productsMediaRoutes: FastifyPluginAsync = async (server) => {
 
     let uploadUrl: string;
     try {
-      uploadUrl = await getUploadPresignedUrl(r2Key, content_type, 300);
+      uploadUrl = await getUploadPresignedUrl(r2Key, content_type, 300, body.data.content_length);
     } catch (err) {
       console.error('R2 presigned URL generation failed:', err);
       throw validationError(

@@ -78,6 +78,12 @@ export function sniffImageType(b: Buffer): 'image/jpeg' | 'image/png' | 'image/w
     : null;
 }
 
+/**
+ * Rate limit for every presign route (RC-080). Keyed by IP: rate limiting runs before
+ * auth, and the global 200/min is far too loose for a route that hands out a write URL.
+ */
+export const UPLOAD_URL_RATE_LIMIT = { config: { rateLimit: { max: 30, timeWindow: 60 * 1000 } } };
+
 export const STAGING_PREFIX = 'uploads/pending/';
 
 /** Key a presign route hands the client; verifyUpload moves it to `finalKey`. */

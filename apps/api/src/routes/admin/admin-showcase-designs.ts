@@ -29,6 +29,7 @@ import {
   stagingKey,
   unstagedKey,
   verifyUpload,
+  UPLOAD_URL_RATE_LIMIT,
 } from '../../lib/upload-guard.js';
 import { notFound, validationError } from '../../plugins/error-handler.js';
 import { adminAuthPreHandler } from '../admin-auth.js';
@@ -212,9 +213,14 @@ export const adminShowcaseDesignRoutes: FastifyPluginAsync = async (server) => {
   // ─── POST /admin/showcase-designs/upload-url ─────────────────────
   // Presigned PUT so the admin panel uploads the raw image straight to R2
   // (global path — retailer-scoped uploads happen in the retailer flow).
-  server.post('/showcase-designs/upload-url', async (request) => {
+  server.post('/showcase-designs/upload-url', UPLOAD_URL_RATE_LIMIT, async (request) => {
     const body = z
-      .object({ content_type: z.enum(ALLOWED_MIME_TYPES), filename: z.string().min(1).max(200) })
+      .object({
+        content_type: z.enum(ALLOWED_MIME_TYPES),
+        filename: z.string().min(1).max(200),
+        // Exact byte length of the PUT, bound into the signature (RC-080). Same max as verifyUpload.
+        content_length: z.number().int().min(1).max(15_000_000).optional(),
+      })
       .parse(request.body);
     const ext =
       body.content_type === 'image/png'
@@ -231,7 +237,12 @@ export const adminShowcaseDesignRoutes: FastifyPluginAsync = async (server) => {
           .slice(0, 16)}.${ext}`,
       ),
     );
-    const uploadUrl = await getUploadPresignedUrl(r2Key, body.content_type, 300);
+    const uploadUrl = await getUploadPresignedUrl(
+      r2Key,
+      body.content_type,
+      300,
+      body.content_length,
+    );
     return {
       data: { upload_url: uploadUrl, r2_key: r2Key, public_url: publicUrl(r2Key), expires_in: 300 },
     };

@@ -1,3 +1,5 @@
+import { getUploadPresignedUrl } from '@kanchuki/ai';
+import rateLimit from '@fastify/rate-limit';
 import Fastify from 'fastify';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { errorHandler } from '../plugins/error-handler.js';
@@ -273,5 +275,65 @@ describe('POST /v1/categories — image must be a verified own upload', () => {
     expect(res.statusCode).toBe(422);
     expect(mockInspectObject).not.toHaveBeenCalled();
     await app.close();
+  });
+});
+
+// RC-080 — the presign route must bind the PUT body length and be rate limited.
+describe('POST /v1/categories/upload-url — bounded presign (RC-080)', () => {
+  async function build(withRateLimit = false) {
+    const app = Fastify();
+    app.setErrorHandler(errorHandler);
+    app.addHook('onRequest', async (req) => {
+      req.retailerId = 'ret_1';
+    });
+    if (withRateLimit) await app.register(rateLimit, { max: 1000, timeWindow: 60_000 });
+    await app.register(categoryRoutes, { prefix: '/v1/categories' });
+    return app;
+  }
+  const post = (app: Awaited<ReturnType<typeof build>>, extra: Record<string, unknown> = {}) =>
+    app.inject({
+      method: 'POST',
+      url: '/v1/categories/upload-url',
+      payload: { filename: 'c.jpg', content_type: 'image/jpeg', size_bytes: 4000, ...extra },
+    });
+
+  beforeEach(() => vi.clearAllMocks());
+
+  it('passes content_length to the presigner so it is part of the signature', async () => {
+    const app = await build();
+    const res = await post(app, { content_length: 2048 });
+    expect(res.statusCode).toBe(200);
+    expect(getUploadPresignedUrl).toHaveBeenCalledWith(
+      expect.stringContaining('uploads/pending/'),
+      'image/jpeg',
+      300,
+      2048,
+    );
+    await app.close();
+  });
+
+  it('rejects a content_length above the route maximum', async () => {
+    const app = await build();
+    const res = await post(app, { content_length: 5_000_001 });
+    expect(res.statusCode).toBe(422);
+    expect(getUploadPresignedUrl).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('still presigns without content_length (old mobile builds), unbound', async () => {
+    const app = await build();
+    const res = await post(app);
+    expect(res.statusCode).toBe(200);
+    expect(vi.mocked(getUploadPresignedUrl).mock.calls[0]?.[3]).toBeUndefined();
+    await app.close();
+  });
+
+  it('the 31st request inside a minute is rejected with 429', async () => {
+    const app = await build(true);
+    const codes: number[] = [];
+    for (let i = 0; i < 31; i++) codes.push((await post(app, { content_length: 100 })).statusCode);
+    await app.close();
+    expect(codes.slice(0, 30).every((c) => c === 200)).toBe(true);
+    expect(codes[30]).toBe(429);
   });
 });
