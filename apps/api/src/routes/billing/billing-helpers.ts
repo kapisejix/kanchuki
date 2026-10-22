@@ -67,9 +67,11 @@ export function hexEquals(expected: string, actual: string): boolean {
  * Razorpay Payment Link callback signature. Official format (Razorpay docs,
  * "Payment Links › Verify signature"): HMAC-SHA256 over
  * `payment_link_id|payment_link_reference_id|payment_link_status|razorpay_payment_id`,
- * and the link must be `paid`. The older `link_id|payment_id` form is still
- * accepted so already-working flows keep working. An empty key secret is a hard
- * fail — HMAC with an empty key is forgeable by anyone.
+ * and the link must be `paid`. That is the only form accepted: Razorpay never
+ * signed a 2-part `link_id|payment_id`, and that shape (same key secret, same
+ * `a|b` layout) is exactly a Standard Checkout order signature, so accepting it
+ * would let an order signature pass as a payment-link one. An empty key secret
+ * is a hard fail — HMAC with an empty key is forgeable by anyone.
  */
 export async function verifyPaymentLinkSignature(p: {
   linkId: string;
@@ -79,15 +81,11 @@ export async function verifyPaymentLinkSignature(p: {
   status?: string;
 }): Promise<boolean> {
   const secret = await getSecret('RAZORPAY_KEY_SECRET');
-  if (!secret || !p.signature) return false;
-  const hmac = (msg: string) => createHmac('sha256', secret).update(msg).digest('hex');
-  if (p.status !== undefined) {
-    return (
-      p.status === 'paid' &&
-      hexEquals(hmac(`${p.linkId}|${p.referenceId ?? ''}|${p.status}|${p.paymentId}`), p.signature)
-    );
-  }
-  return hexEquals(hmac(`${p.linkId}|${p.paymentId}`), p.signature);
+  if (!secret || !p.signature || p.status !== 'paid') return false;
+  const expected = createHmac('sha256', secret)
+    .update(`${p.linkId}|${p.referenceId ?? ''}|${p.status}|${p.paymentId}`)
+    .digest('hex');
+  return hexEquals(expected, p.signature);
 }
 
 /** Standard Checkout order signature: HMAC-SHA256(`order_id|payment_id`). Empty secret = fail. */
