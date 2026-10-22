@@ -262,6 +262,7 @@ Payment: Razorpay (UPI first). Retailer pays base + 18% GST. **Source of truth: 
 
 | ID | Root cause (one line) | Fixed in |
 |---|---|---|
+| RC-081 | The platform-wide daily AI spend cap in CLAUDE.md §5 was a documented control with no job behind it, and `ai_usage_logs` has no ₹ column. Fixed with an hourly `ai-spend-alert` job: 24 h credits above 45,000 (~₹15,000/day) sends a Sentry warning; alert only, retailer-attributed calls only. | root-cause issues.md |
 | RC-080 | A presigned PUT URL signed only key + Content-Type, so one URL accepted a body of any size, and the 13 presign routes had only the global rate limit. Fixed with an optional signed `content_length` on every route plus a shared 30/min `UPLOAD_URL_RATE_LIMIT`; mobile (compress -> size -> presign -> PUT) and admin web now send it; a global hook rejects a missing one once the owner sets `REQUIRE_UPLOAD_CONTENT_LENGTH=true` after the new build is live. | root-cause issues.md |
 | RC-079 | The anonymous `/stylist` Claude call and `/collections/:slug/enquire` had only the global per-IP limit, and the Anthropic/OpenAI SDK clients inherited a 10-minute timeout. Fixed with per-route 10/min limits, a 20 s fetch abort, and `timeout: 60_000, maxRetries: 1` on the clients. | root-cause issues.md |
 | RC-078 | Nothing ever lowered `retailer.plan` when a trial ended or a subscription lapsed, and every paid gate reads `plan`, so PRO was free forever. Fixed with an hourly `plan-lapse` job that drops lapsed plans to STARTER (cancel keeps access until `plan_expires_at`). | root-cause issues.md |

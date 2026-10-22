@@ -12,6 +12,17 @@
 
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
+## RC-081 — The platform-wide daily AI spend cap in CLAUDE.md §5 was documented but never built
+
+- **Component:** `apps/api/src/jobs/ai-spend-alert.ts`, `apps/api/src/jobs/index.ts` (maintenance queue), `ai_usage_logs`.
+- **Symptom:** no alert fired however much AI was used. A runaway loop or abused route would show up only on the provider invoice.
+- **Root cause:** the cap was a paragraph in a doc ("platform-wide AI spend > ₹15,000/day -> alert") with no job behind it, and `ai_usage_logs` has no ₹ column, so nothing could compute it. The doc claimed a control the code did not have (RC-051 shape).
+- **Fix:** hourly `ai-spend-alert` job sums `credits_used` over a rolling 24 h and sends a Sentry warning above `AI_DAILY_CREDIT_ALERT` = 45,000 (₹15,000 at ~₹0.33 per call). Alert only, no blocking (owner decision 2026-10-22).
+- **Proof:** `jobs/ai-spend-alert.test.ts` (window, at-threshold quiet, over-threshold alert, null sum).
+- **Not verified / limits:** the threshold is a credit count, not real ₹; per-call cost differs by provider. It counts only retailer-attributed calls: anonymous `/stylist` and My Style calls write no `ai_usage_logs` row (they rely on their per-route rate limits, RC-079). Hourly repeat alerts while over the line. A true ₹ figure needs a cost column.
+
+---
+
 ## RC-080 — A presigned PUT URL did not bind the body size, and the presign routes had only the global rate limit
 
 - **Component:** `packages/ai/src/r2.ts` `getUploadPresignedUrl`, `apps/api/src/lib/upload-guard.ts` (`UPLOAD_URL_RATE_LIMIT`), the 13 presign routes in 11 files (products, categories, growth videos, catalog import, retailer banner/logo/KYC, retailer + admin showcase designs, admin media / post templates / studio styles / watermark).

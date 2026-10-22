@@ -26,6 +26,7 @@ import { handleGenerateKenBurnsVideo } from './generate-ken-burns-video.js';
 import type { KenBurnsVideoJobData } from './generate-ken-burns-video.js';
 import { handleMeasureR2Storage } from './measure-r2-storage.js';
 import { type MyStyleAnalyzeJobData, handleMyStyleAnalyze } from './my-style-analyze.js';
+import { handleAiSpendAlert } from './ai-spend-alert.js';
 import { handlePlanLapse } from './plan-lapse.js';
 import { handlePurgeSoftDeleted, pruneCustomerInteractions } from './purge-soft-deleted.js';
 import {
@@ -288,6 +289,8 @@ export async function startWorkers(): Promise<void> {
           return handleScheduleTokenHealth();
         case 'plan-lapse':
           return handlePlanLapse();
+        case 'ai-spend-alert':
+          return handleAiSpendAlert();
         default:
           throw new Error(`[jobs] unknown maintenance job: ${job.name}`);
       }
@@ -496,6 +499,18 @@ export async function startWorkers(): Promise<void> {
     {},
     {
       repeat: { pattern: '0 * * * *' },
+      removeOnComplete: { count: 10 },
+      removeOnFail: { count: 10 },
+    },
+  );
+
+  // AI spend alert — hourly at :30. Sentry warning when 24 h credits pass the
+  // ₹15,000/day-equivalent threshold. No `limit` (RC-062); alert only.
+  await getMaintenanceQueue().add(
+    'ai-spend-alert',
+    {},
+    {
+      repeat: { pattern: '30 * * * *' },
       removeOnComplete: { count: 10 },
       removeOnFail: { count: 10 },
     },
