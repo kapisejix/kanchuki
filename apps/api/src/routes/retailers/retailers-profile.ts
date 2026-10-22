@@ -1,3 +1,4 @@
+import { publicUrl } from '@kanchuki/ai';
 import { type Prisma, prisma } from '@kanchuki/db';
 import { generateCollectionSlug } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
@@ -9,6 +10,7 @@ import {
   type ReferralCaptureResult,
   applyReferralCapture,
 } from '../../lib/referral-conversions.js';
+import { IMAGE_KINDS, verifyUpload } from '../../lib/upload-guard.js';
 import { notFound, validationError } from '../../plugins/error-handler.js';
 
 const WhatsAppNumberSchema = z
@@ -119,7 +121,14 @@ export const retailersProfileRoutes: FastifyPluginAsync = async (server) => {
     // public_slug auto-regeneration below.
     const current = await prisma.retailer.findUnique({
       where: { id: request.retailerId },
-      select: { onboarded_by_id: true, shop_name: true, public_slug: true, whatsapp_number: true },
+      select: {
+        onboarded_by_id: true,
+        shop_name: true,
+        public_slug: true,
+        whatsapp_number: true,
+        logo_r2_key: true,
+        banner_r2_key: true,
+      },
     });
     if (!current) throw notFound('Retailer');
 
@@ -181,6 +190,47 @@ export const retailersProfileRoutes: FastifyPluginAsync = async (server) => {
       }
       regeneratedSlug = slug;
     }
+
+    // Logo/banner: when a key arrives it must be this retailer's own real image
+    // and the url is rebuilt from it; a bare url may only point at our own CDN
+    // (or be cleared) — never an arbitrary external/javascript: URL.
+    const ownCdn = publicUrl('');
+    const checkImage = async (
+      key: string | null | undefined,
+      urlVal: string | null | undefined,
+      field: 'logo_url' | 'banner_url',
+      stored: string | null,
+    ) => {
+      // Edit Profile re-sends the stored values on every save; only a NEW key is an upload.
+      // The URL is still rebuilt from the key, so a client cannot pair a trusted key with its own url.
+      if (key && key === stored) {
+        profileFields[field] = publicUrl(key);
+        return;
+      }
+      if (key) {
+        const v = await verifyUpload({
+          retailerId: request.retailerId,
+          r2Key: key,
+          allowed: IMAGE_KINDS,
+          maxBytes: 10_000_000,
+        });
+        profileFields[field] = v.url;
+      } else if (urlVal && !urlVal.startsWith(ownCdn)) {
+        throw validationError('Image URL must be an uploaded image', field);
+      }
+    };
+    await checkImage(
+      profileFields.logo_r2_key,
+      profileFields.logo_url,
+      'logo_url',
+      current.logo_r2_key,
+    );
+    await checkImage(
+      profileFields.banner_r2_key,
+      profileFields.banner_url,
+      'banner_url',
+      current.banner_r2_key,
+    );
 
     const updateData: Prisma.RetailerUncheckedUpdateInput = {
       ...(profileFields.shop_name !== undefined ? { shop_name: profileFields.shop_name } : {}),

@@ -653,6 +653,51 @@ describe('POST /v1/billing/webhook', () => {
     await app.close();
   });
 
+  it.each([
+    ['not captured', { status: 'failed' }],
+    ['authorized only', { status: 'authorized' }],
+    ['underpaid (below the plan base price)', { amount: 100 }],
+    ['non-INR currency', { currency: 'USD' }],
+  ])(
+    'subscription.charged with a payment that is %s: nothing granted, no invoice',
+    async (_n, override) => {
+      primeHappyPath();
+      mockSubscriptionPaymentFindUnique.mockResolvedValue(null);
+
+      const app = await buildApp();
+      const evt = chargedEvent();
+      Object.assign(evt.payload.payment.entity, override);
+      const { raw, signature } = signedRequest(evt);
+      const res = await app.inject({
+        method: 'POST',
+        url: '/v1/billing/webhook',
+        headers: { 'x-razorpay-signature': signature, 'content-type': 'application/json' },
+        payload: raw,
+      });
+
+      expect(res.statusCode).toBe(200); // acknowledged so Razorpay stops retrying
+      expect(mockSubscriptionUpdate).not.toHaveBeenCalled();
+      expect(mockRetailerUpdate).not.toHaveBeenCalled();
+      expect(mockQueryRaw).not.toHaveBeenCalled();
+      expect(mockSubscriptionPaymentCreate).not.toHaveBeenCalled();
+      await app.close();
+    },
+  );
+
+  it('rejects a webhook with a bad signature before touching the database', async () => {
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/billing/webhook',
+      headers: { 'x-razorpay-signature': 'deadbeef', 'content-type': 'application/json' },
+      payload: JSON.stringify(chargedEvent()),
+    });
+    expect(res.statusCode).toBe(401);
+    expect(mockSubscriptionFindUnique).not.toHaveBeenCalled();
+    expect(mockSubscriptionPaymentCreate).not.toHaveBeenCalled();
+    await app.close();
+  });
+
   it('subscription.activated: flips status but never allocates an invoice number', async () => {
     primeHappyPath();
     mockSubscriptionPaymentFindUnique.mockResolvedValue(null);

@@ -31,7 +31,13 @@ export const billingWebhookRoutes: FastifyPluginAsync = async (server) => {
       payload: {
         subscription?: { entity: RazorpaySubscription & { plan_id: string } };
         payment?: {
-          entity: { id: string; order_id?: string; amount: number; status: string };
+          entity: {
+            id: string;
+            order_id?: string;
+            amount: number;
+            status: string;
+            currency?: string;
+          };
         };
         refund?: {
           entity: { id: string; payment_id: string; amount: number; status?: string };
@@ -158,6 +164,31 @@ export const billingWebhookRoutes: FastifyPluginAsync = async (server) => {
         // an invoice number.
         const payment =
           event.event === 'subscription.charged' ? (event.payload.payment?.entity ?? null) : null;
+
+        // Never grant access on a payment that is not a real, full charge: it
+        // must be captured, in INR, and cover at least the plan's base price
+        // (the stored `subscription.amount_inr`; gross = base + GST, so a
+        // correct charge is >= base). A failed/authorized-only/underpaid or
+        // foreign-currency payment is logged and ignored — HTTP 200 so Razorpay
+        // does not retry a decision we have already made.
+        if (
+          payment &&
+          (payment.status !== 'captured' ||
+            (payment.currency !== undefined && payment.currency !== 'INR') ||
+            payment.amount < subscription.amount_inr)
+        ) {
+          request.log.error(
+            {
+              razorpay_payment_id: payment.id,
+              status: payment.status,
+              currency: payment.currency,
+              amount: payment.amount,
+              expected_min: subscription.amount_inr,
+            },
+            'subscription.charged payment failed verification — not activating',
+          );
+          return reply.send({ received: true });
+        }
 
         // Look up retailer state + platform GST profile for the invoice split.
         const [retailer, gstProfile] = await Promise.all([

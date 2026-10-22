@@ -2,6 +2,7 @@
 
 import { UNLIMITED } from '@kanchuki/shared'
 import { Sheet } from '@/components/Sheet'
+import { safeHttpUrl } from '@/lib/safe-url'
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
@@ -962,9 +963,9 @@ function KycDocLink({ label, url }: { label: string; url: string | null }) {
       <span className="flex items-center gap-1.5 text-gray-600 text-xs">
         <FileText size={13} className="text-gray-400" /> {label}
       </span>
-      {url ? (
+      {safeHttpUrl(url) ? (
         <a
-          href={url}
+          href={safeHttpUrl(url)}
           target="_blank"
           rel="noopener noreferrer"
           className="flex items-center gap-1 text-cyan-600 hover:text-cyan-700 text-xs font-medium"

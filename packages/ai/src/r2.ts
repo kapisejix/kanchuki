@@ -43,6 +43,37 @@ export async function getUploadPresignedUrl(
   return getSignedUrl(r2, command, { expiresIn });
 }
 
+/**
+ * Size + first bytes of an uploaded object, without downloading it. Used to
+ * verify a presigned-PUT upload AFTER the fact: the presigned URL cannot bind
+ * the body's size or magic bytes, so the confirm step inspects what landed.
+ * Returns null when the object does not exist.
+ */
+export async function inspectObject(
+  key: string,
+  headBytes = 16,
+): Promise<{ size: number; head: Buffer } | null> {
+  try {
+    const res = await r2.send(
+      new GetObjectCommand({
+        Bucket: await getBucket(),
+        Key: key,
+        Range: `bytes=0-${headBytes - 1}`,
+      }),
+    );
+    // ContentRange is "bytes 0-15/12345"; absent for a whole-object (tiny) read.
+    const total = res.ContentRange?.split('/')[1];
+    const chunks: Buffer[] = [];
+    for await (const chunk of res.Body as AsyncIterable<Buffer>) chunks.push(chunk);
+    const head = Buffer.concat(chunks);
+    return { size: total ? Number(total) : (res.ContentLength ?? head.length), head };
+  } catch (err) {
+    const name = (err as { name?: string } | null)?.name;
+    if (name === 'NoSuchKey' || name === 'NotFound') return null;
+    throw err;
+  }
+}
+
 /** Generate presigned GET URL for private objects */
 export async function getDownloadPresignedUrl(
   key: string,

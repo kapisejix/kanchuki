@@ -5,6 +5,7 @@ import { R2_PATHS } from '@kanchuki/shared';
 import { createId } from '@paralleldrive/cuid2';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
+import { IMAGE_KINDS, verifyUpload } from '../../lib/upload-guard.js';
 import { validationError } from '../../plugins/error-handler.js';
 
 export const retailersUploadsRoutes: FastifyPluginAsync = async (server) => {
@@ -112,7 +113,7 @@ export const retailersUploadsRoutes: FastifyPluginAsync = async (server) => {
       })
       .safeParse(request.body);
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
-    const { doc_type, r2_key, url } = body.data;
+    const { doc_type, r2_key } = body.data;
 
     const fieldMap = {
       gst: { urlField: 'kyc_gst_url', keyField: 'kyc_gst_r2_key' },
@@ -121,9 +122,18 @@ export const retailersUploadsRoutes: FastifyPluginAsync = async (server) => {
     } as const;
     const { urlField, keyField } = fieldMap[doc_type];
 
+    // KYC is the most sensitive upload: own key only, real image/PDF bytes
+    // (PDF for the GST certificate alone), and the url is rebuilt server-side.
+    const verified = await verifyUpload({
+      retailerId: request.retailerId,
+      r2Key: r2_key,
+      allowed: doc_type === 'gst' ? [...IMAGE_KINDS, 'application/pdf'] : IMAGE_KINDS,
+      maxBytes: 10_000_000,
+    });
+
     const updated = await prisma.retailer.update({
       where: { id: request.retailerId },
-      data: { [urlField]: url, [keyField]: r2_key },
+      data: { [urlField]: verified.url, [keyField]: r2_key },
     });
 
     let kyc_status = updated.kyc_status;

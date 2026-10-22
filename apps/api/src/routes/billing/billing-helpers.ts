@@ -63,6 +63,45 @@ export function hexEquals(expected: string, actual: string): boolean {
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
+/**
+ * Razorpay Payment Link callback signature. Official format (Razorpay docs,
+ * "Payment Links › Verify signature"): HMAC-SHA256 over
+ * `payment_link_id|payment_link_reference_id|payment_link_status|razorpay_payment_id`,
+ * and the link must be `paid`. The older `link_id|payment_id` form is still
+ * accepted so already-working flows keep working. An empty key secret is a hard
+ * fail — HMAC with an empty key is forgeable by anyone.
+ */
+export async function verifyPaymentLinkSignature(p: {
+  linkId: string;
+  paymentId: string;
+  signature: string;
+  referenceId?: string;
+  status?: string;
+}): Promise<boolean> {
+  const secret = await getSecret('RAZORPAY_KEY_SECRET');
+  if (!secret || !p.signature) return false;
+  const hmac = (msg: string) => createHmac('sha256', secret).update(msg).digest('hex');
+  if (p.status !== undefined) {
+    return (
+      p.status === 'paid' &&
+      hexEquals(hmac(`${p.linkId}|${p.referenceId ?? ''}|${p.status}|${p.paymentId}`), p.signature)
+    );
+  }
+  return hexEquals(hmac(`${p.linkId}|${p.paymentId}`), p.signature);
+}
+
+/** Standard Checkout order signature: HMAC-SHA256(`order_id|payment_id`). Empty secret = fail. */
+export async function verifyOrderSignature(
+  orderId: string,
+  paymentId: string,
+  signature: string,
+): Promise<boolean> {
+  const secret = await getSecret('RAZORPAY_KEY_SECRET');
+  if (!secret || !signature) return false;
+  const expected = createHmac('sha256', secret).update(`${orderId}|${paymentId}`).digest('hex');
+  return hexEquals(expected, signature);
+}
+
 export async function verifyWebhookSignature(rawBody: string, signature: string): Promise<boolean> {
   const secret = (await getSecret('RAZORPAY_WEBHOOK_SECRET')) ?? '';
   if (!secret || !signature) return false;
