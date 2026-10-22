@@ -131,7 +131,8 @@ const PRODUCT = {
   photos: [{ url: 'https://r2.example/garment.jpg', r2_key: 'garments/p1.jpg' }],
 };
 
-function photoPayload(bytes = Buffer.from('fake-jpeg-bytes'), contentType = 'image/jpeg') {
+const FAKE_JPEG = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff]), Buffer.from('fake-jpeg-bytes')]);
+function photoPayload(bytes = FAKE_JPEG, contentType = 'image/jpeg') {
   const head = Buffer.from(
     `--${BOUNDARY}\r\nContent-Disposition: form-data; name="photo"; filename="c.jpg"\r\nContent-Type: ${contentType}\r\n\r\n`,
   );
@@ -288,9 +289,7 @@ describe('POST /products/:id/try-on', () => {
       'product_id',
       'retailer_id',
     ]);
-    expect(JSON.stringify(payload)).not.toContain(
-      Buffer.from('fake-jpeg-bytes').toString('base64'),
-    );
+    expect(JSON.stringify(payload)).not.toContain(FAKE_JPEG.toString('base64'));
     await app.close();
   });
 
@@ -879,6 +878,24 @@ describe('POST /products/:id/try-on (request validity)', () => {
 
     expect(res.statusCode).toBe(401);
     expect(res.json().error.code).toBe('UNAUTHORIZED');
+    expect(mockAddTryOnJob).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('422 when the bytes are not JPEG/PNG/WebP, whatever the declared mimetype', async () => {
+    const app = await buildApp({ retailerId: RETAILER_ID });
+    // HEIC ftyp box sent as image/jpeg — the client label must not be trusted.
+    const heic = Buffer.concat([Buffer.from([0, 0, 0, 0x18]), Buffer.from('ftypheic')]);
+    const res = await app.inject({
+      method: 'POST',
+      url: `/v1/products/p1/try-on?consent_version=${encodeURIComponent(TRY_ON_CONSENT.version)}`,
+      headers: multipartHeaders(),
+      payload: photoPayload(heic, 'image/jpeg'),
+    });
+
+    expect(res.statusCode).toBe(422);
+    expect(res.json().error.field).toBe('photo');
+    expect(mockPutTryOnPhoto).not.toHaveBeenCalled();
     expect(mockAddTryOnJob).not.toHaveBeenCalled();
     await app.close();
   });

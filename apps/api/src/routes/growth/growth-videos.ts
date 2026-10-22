@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { handleGenerateKenBurnsVideo } from '../../jobs/generate-ken-burns-video.js';
 import { addKenBurnsVideoJob } from '../../jobs/index.js';
 import { hasFeature } from '../../lib/features.js';
+import { VIDEO_KINDS, verifyUpload } from '../../lib/upload-guard.js';
 import { featureUnavailable, notFound, validationError } from '../../plugins/error-handler.js';
 import { photoUrlToDisplay } from '../products/products-helpers.js';
 
@@ -78,16 +79,24 @@ export const growthVideoRoutes: FastifyPluginAsync = async (server) => {
     const body = z
       .object({
         r2_key: z.string().min(1),
-        public_url: z.string().min(1),
+        public_url: z.string().min(1).optional(), // ignored — rebuilt from the verified key
         duration_sec: z.number().int().min(1).max(120).optional(),
         is_main: z.boolean().optional(),
       })
       .safeParse(request.body);
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
 
-    const { r2_key, public_url, duration_sec, is_main } = body.data;
+    const { r2_key, duration_sec, is_main } = body.data;
     const existing = await prisma.productVideo.findFirst({ where: { r2_key } });
     if (existing) throw validationError('This video was already saved');
+
+    const { url: public_url } = await verifyUpload({
+      retailerId,
+      r2Key: r2_key,
+      allowed: VIDEO_KINDS,
+      maxBytes: MAX_VIDEO_BYTES,
+      prefix: R2_PATHS.productVideo(retailerId, id, ''),
+    });
 
     const video = await prisma.$transaction(async (tx) => {
       if (is_main) {

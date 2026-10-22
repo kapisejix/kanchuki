@@ -8,7 +8,13 @@ vi.mock('@kanchuki/ai', () => ({
   publicUrl: (k: string) => `https://cdn.test/${k}`,
 }));
 
-import { IMAGE_KINDS, isOwnedKey, sniffUploadType, verifyUpload } from './upload-guard.js';
+import {
+  IMAGE_KINDS,
+  isOwnedKey,
+  sniffImageType,
+  sniffUploadType,
+  verifyUpload,
+} from './upload-guard.js';
 
 const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0, 0, 0, 0, 0, 0, 0, 0]);
 const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0]);
@@ -34,6 +40,38 @@ describe('sniffUploadType', () => {
     ['empty', Buffer.alloc(0)],
   ])('rejects %s', (_n, buf) => {
     expect(sniffUploadType(buf)).toBeNull();
+  });
+});
+
+describe('video + HEIC sniffing', () => {
+  const ftyp = (brand: string) =>
+    Buffer.concat([Buffer.from([0, 0, 0, 0x18]), Buffer.from(`ftyp${brand}`)]);
+  it('mp4 / mov / webm by magic bytes', () => {
+    expect(sniffUploadType(ftyp('isom'))).toBe('video/mp4');
+    expect(sniffUploadType(ftyp('qt  '))).toBe('video/quicktime');
+    expect(sniffUploadType(Buffer.from([0x1a, 0x45, 0xdf, 0xa3, 0, 0, 0, 0]))).toBe('video/webm');
+  });
+  it('HEIC/AVIF are neither video nor an accepted image', () => {
+    expect(sniffUploadType(ftyp('heic'))).toBeNull();
+    expect(sniffUploadType(ftyp('avif'))).toBeNull();
+    expect(sniffImageType(ftyp('heic'))).toBeNull();
+  });
+  it('sniffImageType refuses pdf and video', () => {
+    expect(sniffImageType(JPEG)).toBe('image/jpeg');
+    expect(sniffImageType(PDF)).toBeNull();
+    expect(sniffImageType(ftyp('isom'))).toBeNull();
+  });
+});
+
+describe('custom prefix', () => {
+  it('owns keys under the given prefix only', () => {
+    expect(isOwnedKey('r1', 'showcase-designs/r1/raw/a.jpg', 'showcase-designs/r1/raw/')).toBe(
+      true,
+    );
+    expect(isOwnedKey('r1', 'showcase-designs/r2/raw/a.jpg', 'showcase-designs/r1/raw/')).toBe(
+      false,
+    );
+    expect(isOwnedKey('r1', 'retailers/r1/a.jpg', 'showcase-designs/r1/raw/')).toBe(false);
   });
 });
 

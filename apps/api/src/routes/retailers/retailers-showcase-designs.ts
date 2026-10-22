@@ -25,6 +25,7 @@ import { recordAiUsage } from '../../lib/ai-usage.js';
 import { hasFeature } from '../../lib/features.js';
 import { assertShowcaseQuota, getShowcaseUsage } from '../../lib/showcase-quota.js';
 import { watermarkShowcaseDesign } from '../../lib/showcase-watermark.js';
+import { IMAGE_KINDS, verifyUpload } from '../../lib/upload-guard.js';
 import { featureUnavailable, notFound, validationError } from '../../plugins/error-handler.js';
 
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
@@ -57,6 +58,17 @@ function assertOwnRawKey(rawKey: string, retailerId: string): void {
   if (!rawKey.startsWith(prefix) || rawKey.includes('..')) {
     throw validationError('Invalid upload reference');
   }
+}
+
+/** Ownership + real image bytes, for the routes that keep the raw upload. */
+async function verifyRawUpload(rawKey: string, retailerId: string): Promise<void> {
+  await verifyUpload({
+    retailerId,
+    r2Key: rawKey,
+    allowed: IMAGE_KINDS,
+    maxBytes: 15_000_000,
+    prefix: R2_PATHS.showcaseDesignRaw(retailerId, ''),
+  });
 }
 
 /** Resolve a design's category and keep the denormalised slug in sync. */
@@ -194,7 +206,7 @@ export const retailersShowcaseDesignRoutes: FastifyPluginAsync = async (server) 
     const body = CreateSchema.safeParse(request.body);
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
 
-    assertOwnRawKey(body.data.raw_r2_key, request.retailerId);
+    await verifyRawUpload(body.data.raw_r2_key, request.retailerId);
     await assertShowcaseQuota(request.retailerId);
     const category = await categoryForUpdate(body.data.category_id);
 
@@ -267,7 +279,7 @@ export const retailersShowcaseDesignRoutes: FastifyPluginAsync = async (server) 
     // Photo replace: watermark the new raw → swap r2_key/image_url, then
     // best-effort delete the OLD final + OLD raw (new raw is the caller's).
     if (body.data.raw_r2_key) {
-      assertOwnRawKey(body.data.raw_r2_key, request.retailerId);
+      await verifyRawUpload(body.data.raw_r2_key, request.retailerId);
       const finalR2Key = R2_PATHS.showcaseDesign(request.retailerId, `${createId()}.jpg`);
       await watermarkShowcaseDesign({
         rawR2Key: body.data.raw_r2_key,

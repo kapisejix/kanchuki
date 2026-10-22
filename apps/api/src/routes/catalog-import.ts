@@ -14,6 +14,7 @@ import { addTaggingJob } from '../jobs/index.js';
 import { recordAiUsage } from '../lib/ai-usage.js';
 import { checkQuota, incrementUsage } from '../lib/quota.js';
 import { createSkuSequencer } from '../lib/sku.js';
+import { IMAGE_KINDS, verifyUpload } from '../lib/upload-guard.js';
 import { notFound, planLimitExceeded, validationError } from '../plugins/error-handler.js';
 
 // ─── Types ────────────────────────────────────────────────────────
@@ -64,7 +65,7 @@ const BulkCreateProductsSchema = z.object({
     .array(
       z.object({
         cropped_r2_key: z.string().min(1),
-        cropped_url: z.string().url(),
+        cropped_url: z.string().url().optional(), // ignored — rebuilt from the verified key
         category: z.string().nullable().optional(),
         subtype: z.string().nullable().optional(),
         product_name: z.string().nullable().optional(),
@@ -85,9 +86,13 @@ const BulkCreateProductsSchema = z.object({
     .max(100),
 });
 
+const UPLOAD_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'] as const;
+
 const UploadUrlSchema = z.object({
   filename: z.string().min(1),
-  content_type: z.string().min(1),
+  // Allow-list: the presigned PUT signs this Content-Type onto a public CDN object,
+  // so a free string let a client store text/html there (stored XSS).
+  content_type: z.enum(UPLOAD_TYPES),
   size_bytes: z.number().int().positive(),
 });
 
@@ -379,6 +384,22 @@ export const catalogImportRoutes: FastifyPluginAsync = async (server) => {
     // per-retailer number; this is what RetailerLimitOverride/addons hook into.
     await checkQuota(retailerId, 'PRODUCT_UPLOAD', items.length);
 
+    // Every photo must be this retailer's own detect-items output (catalog-import/<id>/),
+    // and its url is rebuilt from the key — never the client-sent cropped_url.
+    const cropUrls = new Map<string, string>();
+    await Promise.all(
+      [...new Set(items.map((i) => i.cropped_r2_key))].map(async (key) => {
+        const { url } = await verifyUpload({
+          retailerId,
+          r2Key: key,
+          allowed: IMAGE_KINDS,
+          maxBytes: 15 * 1024 * 1024,
+          prefix: `catalog-import/${retailerId}/`,
+        });
+        cropUrls.set(key, url);
+      }),
+    );
+
     // Create products in parallel, 10 at a time
     const created: Array<{ id: string; cropped_url: string }> = [];
 
@@ -411,7 +432,7 @@ export const catalogImportRoutes: FastifyPluginAsync = async (server) => {
             retailer_id: retailerId,
             is_primary: true,
             r2_key: item.cropped_r2_key,
-            url: item.cropped_url,
+            url: cropUrls.get(item.cropped_r2_key) as string,
           },
         },
       })),

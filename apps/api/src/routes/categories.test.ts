@@ -16,6 +16,7 @@ const {
   mockPurgeExecuteRaw,
   mockPurgeTransaction,
   mockPurgeCategoryDelete,
+  mockProductCategoryFindUnique,
 } = vi.hoisted(() => {
   return {
     mockProductCategoryFindMany: vi.fn(),
@@ -30,6 +31,7 @@ const {
     mockPurgeExecuteRaw: vi.fn(),
     mockPurgeTransaction: vi.fn(),
     mockPurgeCategoryDelete: vi.fn(),
+    mockProductCategoryFindUnique: vi.fn(),
   };
 });
 
@@ -41,6 +43,7 @@ vi.mock('@kanchuki/db', () => ({
     productCategory: {
       findMany: mockProductCategoryFindMany,
       findFirst: mockProductCategoryFindFirst,
+      findUnique: mockProductCategoryFindUnique,
       create: mockProductCategoryCreate,
       update: mockProductCategoryUpdate,
       delete: mockProductCategoryDelete,
@@ -64,9 +67,12 @@ vi.mock('@kanchuki/db', () => ({
   }),
 }));
 
+const { mockInspectObject } = vi.hoisted(() => ({ mockInspectObject: vi.fn() }));
 vi.mock('@kanchuki/ai', () => ({
   getUploadPresignedUrl: vi.fn().mockResolvedValue('https://upload.url'),
   publicUrl: vi.fn((key: string) => `https://r2.cdn/${key}`),
+  inspectObject: mockInspectObject,
+  deleteObject: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('../lib/default-categories.js', () => ({
@@ -210,6 +216,62 @@ describe('DELETE /v1/categories/:id — purge-role guardrail', () => {
     expect(res.statusCode).toBe(404);
     expect(mockPurgeTransaction).not.toHaveBeenCalled();
     expect(mockPurgeCategoryDelete).not.toHaveBeenCalled();
+    await app.close();
+  });
+});
+
+describe('POST /v1/categories — image must be a verified own upload', () => {
+  async function buildApp() {
+    const app = Fastify();
+    app.setErrorHandler(errorHandler);
+    app.addHook('onRequest', async (req) => {
+      req.retailerId = 'ret_1';
+    });
+    await app.register(categoryRoutes, { prefix: '/v1/categories' });
+    return app;
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockProductCategoryFindUnique.mockResolvedValue(null);
+    mockProductCategoryCreate.mockImplementation(async ({ data }: { data: unknown }) => data);
+  });
+
+  it('rejects an external image_url', async () => {
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/categories',
+      payload: { name: 'Saree', image_url: 'https://evil.example/x.svg' },
+    });
+    expect(res.statusCode).toBe(422);
+    expect(mockProductCategoryCreate).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('stores the url rebuilt from a verified key, not the client url', async () => {
+    mockInspectObject.mockResolvedValue({ size: 100, head: Buffer.from([0xff, 0xd8, 0xff, 0xe0]) });
+    const app = await buildApp();
+    const key = 'retailers/ret_1/categories/a.jpg';
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/categories',
+      payload: { name: 'Saree', image_r2_key: key, image_url: 'https://r2.cdn/other.jpg' },
+    });
+    expect(res.statusCode).toBe(201);
+    expect(res.json().data.image_url).toBe(`https://r2.cdn/${key}`);
+    await app.close();
+  });
+
+  it("rejects another retailer's key", async () => {
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/categories',
+      payload: { name: 'Saree', image_r2_key: 'retailers/ret_2/categories/a.jpg' },
+    });
+    expect(res.statusCode).toBe(422);
+    expect(mockInspectObject).not.toHaveBeenCalled();
     await app.close();
   });
 });

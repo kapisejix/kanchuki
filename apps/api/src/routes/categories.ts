@@ -5,6 +5,7 @@ import { createId } from '@paralleldrive/cuid2';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { seedDefaultCategories } from '../lib/default-categories.js';
+import { IMAGE_KINDS, verifyUpload } from '../lib/upload-guard.js';
 import { notFound, validationError } from '../plugins/error-handler.js';
 
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
@@ -21,6 +22,38 @@ const UpdateCategorySchema = z.object({
   image_r2_key: z.string().nullable().optional(),
   sort_order: z.number().int().optional(),
 });
+
+/**
+ * A key must be this retailer's own real category image and the url is rebuilt
+ * from it; a bare url may only point at our CDN — never external/javascript:.
+ * The stored key is re-sent on every edit, so only a NEW key is re-verified.
+ */
+async function resolveCategoryImage(
+  retailerId: string,
+  key: string | null | undefined,
+  url: string | null | undefined,
+  storedKey?: string | null,
+): Promise<{ image_r2_key?: string; image_url?: string }> {
+  if (key) {
+    const image_url =
+      key === storedKey
+        ? publicUrl(key)
+        : (
+            await verifyUpload({
+              retailerId,
+              r2Key: key,
+              allowed: IMAGE_KINDS,
+              maxBytes: 5_000_000,
+              prefix: R2_PATHS.categoryImage(retailerId, ''),
+            })
+          ).url;
+    return { image_r2_key: key, image_url };
+  }
+  if (url && !url.startsWith(publicUrl(''))) {
+    throw validationError('Image URL must be an uploaded image', 'image_url');
+  }
+  return {};
+}
 
 export const categoryRoutes: FastifyPluginAsync = async (server) => {
   // ─── POST /categories/upload-url ─────────────────────────────────
@@ -68,6 +101,11 @@ export const categoryRoutes: FastifyPluginAsync = async (server) => {
         name: body.data.name,
         image_url: body.data.image_url,
         image_r2_key: body.data.image_r2_key,
+        ...(await resolveCategoryImage(
+          request.retailerId,
+          body.data.image_r2_key,
+          body.data.image_url,
+        )),
       },
     });
 
@@ -236,7 +274,16 @@ export const categoryRoutes: FastifyPluginAsync = async (server) => {
       if (clash) throw validationError('A category with this name already exists', 'name');
     }
 
-    const updated = await prisma.productCategory.update({ where: { id }, data: body.data });
+    const image = await resolveCategoryImage(
+      request.retailerId,
+      body.data.image_r2_key,
+      body.data.image_url,
+      existing.image_r2_key,
+    );
+    const updated = await prisma.productCategory.update({
+      where: { id },
+      data: { ...body.data, ...image },
+    });
     return { data: updated };
   });
 

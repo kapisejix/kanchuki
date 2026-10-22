@@ -12,6 +12,39 @@
 
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
+## RC-077 — Stored user text was placed into HTML (hrefs, JSON-LD, email bodies) with no escaping step
+
+- **Component:** `apps/web/src/app/admin/{aggregators,retailers/[id],social}/page.tsx`, `apps/web/src/app/stores/page.tsx`, `apps/api/src/routes/retailers/retailers-aggregators.ts`, `apps/api/src/lib/email.ts`. Fixed 2026-10-22 (`dbb389bb`, PR #142, plus `fix/security-hardening-2`).
+- **Symptom:** a retailer-controlled URL (e.g. `channel_shop_url`) could be `javascript:…` and rendered as an admin `href`; `/stores` JSON-LD could be closed early with `</script>`; team-member name/phone went raw into the welcome-email HTML. The no-API-key email fallback also logged the plain-text body (temp password / reset code) in every environment.
+- **Root cause:** each surface interpolated stored strings straight into markup. There was no shared escaper and no scheme check, so safety depended on every author remembering it (same shape as RC-040).
+- **Fix:** `safeHttpUrl()` (web) for every stored href, http(s) only; API rejects non-http(s) `channel_shop_url`; JSON-LD escapes `<`; `escapeHtml()` in `email.ts` applied to every interpolated value; the fallback logs the body only outside production.
+- **Proof:** `apps/web/src/lib/safe-url.test.ts` (12), `apps/api/src/lib/email.test.ts` (hostile name/phone never reach the HTML raw).
+- **Not verified:** no CSP yet (proposed, not applied), so a missed interpolation elsewhere would still execute.
+
+---
+
+## RC-076 — Payment callbacks granted access without verifying Razorpay's signature or the charge itself
+
+- **Component:** `apps/api/src/routes/billing/billing-{helpers,addons,webhook}.ts`, `apps/api/src/routes/public/public-catalog-payment.ts`. Fixed 2026-10-22 (`dbb389bb`, PR #142).
+- **Symptom:** a caller could post a payment-link / checkout callback with made-up ids and be credited; a `subscription.charged` webhook activated a plan for an authorized-only, non-INR or underpaid payment.
+- **Root cause:** the callbacks trusted what the client (or the webhook body) said about the payment. No HMAC check existed on the callback paths, and an empty `RAZORPAY_KEY_SECRET` would have made any HMAC forgeable.
+- **Fix:** `verifyPaymentLinkSignature` / `verifyOrderSignature` (fail closed on an empty secret or signature, constant-time compare); webhook requires `captured`, INR and amount >= base price; catalog payment re-fetches the payment from Razorpay and checks the exact amount.
+- **Proof:** `billing-signatures.test.ts`, additions in `billing.test.ts`.
+- **Not verified / known gaps:** no live Razorpay round trip. The legacy 2-part `link_id|payment_id` signature is still accepted. The webhook amount check is >= base, not exact base + GST.
+
+---
+
+## RC-075 — Upload "confirm" endpoints recorded whatever key, URL and bytes the client reported
+
+- **Component:** `apps/api/src/lib/upload-guard.ts` (`verifyUpload`, `sniffUploadType`, `sniffImageType`), `packages/ai/src/r2.ts` (`inspectObject`). Fixed 2026-10-22 in `dbb389bb` (PR #142: product photos, variants, KYC, logo/banner) and `fix/security-hardening-2` (categories, bug-report screenshots, growth videos, retailer showcase designs, catalog-import bulk create, try-on photo, catalog upload-url).
+- **Symptom:** a retailer could save another retailer's R2 key or any external/`javascript:` URL as their own image; a PUT of HTML/SVG/EXE bytes to a presigned "image" URL was accepted; `/catalog-import/upload-url` signed any `content_type` (e.g. `text/html`) onto the public CDN; the try-on route accepted any `image/*` the client declared (HEIC, SVG).
+- **Root cause:** a presigned PUT fixes the key and the declared Content-Type but not the body, and every confirm route was hand-written to trust the client's `r2_key` / `*_url` instead of checking ownership and the stored bytes. Nothing shared enforced it, so each new upload flow repeated the gap.
+- **Fix:** one `verifyUpload()` on every retailer confirm path: key under the caller's own prefix (no traversal), object exists, size cap, magic bytes in an allow-list (JPEG/PNG/WebP, PDF, MP4/MOV/WebM; HEIC/AVIF refused); a failing object is deleted; the stored URL is rebuilt server-side from the key. Bare URLs must point at our CDN. Multipart photo routes (try-on, My Style) sniff bytes via the shared `sniffImageType`. Catalog upload-url content types are an allow-list. Mobile `compressImageForUpload` now re-encodes a small non-JPEG/PNG/WebP pick (HEIC) instead of passing it through.
+- **Proof:** `upload-guard.test.ts` (18), `products-tryon.test.ts` (HEIC labelled image/jpeg → 422, nothing stored), `categories.test.ts` +3, `growth-videos.test.ts` +3, `retailers-showcase-designs.test.ts` +1, mobile `compress-image.test.ts` +1.
+- **Not verified / known gaps:** nothing run against live R2 or a real device. Presigned PUTs cannot cap size (confirm deletes oversize objects after the fact). Uploads that are never confirmed stay in the bucket until an R2 lifecycle rule exists. Admin upload routes (studio styles, post templates, background images, admin showcase) are not covered (admin-trusted). Web photo sheets (`accept="image/*"`) do not convert HEIC; Android Chrome may send one and gets a 422.
+
+---
+
 ## RC-074 — `POST /try-on/discard` counted every repeated job id as "skipped"
 
 - **Component:** `apps/api/src/routes/products/products-tryon.ts`. Fixed 2026-10-19 on `fix/f-044-tryon-cleanups`.

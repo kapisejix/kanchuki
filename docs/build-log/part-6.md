@@ -706,3 +706,16 @@ no migration, no schema change, and **no new request on any surface**.
 | Known gaps (unfixed) | A session ending by token expiry skips push unregister (removed staff are filtered server-side regardless). Stale `disabled_at` rows are not pruned. Delivery is at-least-once (a retry re-sends earlier 100-device chunks; a shop has a handful of devices). |
 | Not verified | No push has reached a real device. Migration 135 not confirmed applied (the spec's combined SQL check should return true, 1, true, false). Needs Firebase project + `google-services.json`, FCM V1 key via `eas credentials`, EAS file env var `GOOGLE_SERVICES_JSON`, an EAS rebuild, and the AD_ID guard (`scripts/check-aab-ad-id.mjs`) on that build (the plugin adds `POST_NOTIFICATIONS`). The cold-start notification tap is the likeliest thing to need a fix. |
 
+
+## 2026-10-22 - Security hardening: uploads, payment callbacks, HTML escaping (RC-075, RC-076, RC-077)
+
+| Item | Detail |
+|---|---|
+| Part 1 | `dbb389bb`, merged in PR #142: `upload-guard.ts` + `inspectObject`, wired into product photos/variants, KYC, logo/banner; Razorpay signature checks (`verifyPaymentLinkSignature`, `verifyOrderSignature`) in add-ons + catalog payment; webhook requires captured / INR / >= base; `safeHttpUrl` on admin hrefs, JSON-LD `<` escape, http(s)-only `channel_shop_url`. |
+| Part 2 | Branch `fix/security-hardening-2`, not committed at time of writing, no migration. |
+| Uploads (RC-075) | `verifyUpload` gains a `prefix` option and video kinds (MP4/MOV/WebM; HEIC/AVIF ftyp brands refused). Applied to: categories create/update (url rebuilt from key, bare url must be our CDN), bug-report screenshot (client `screenshot_url` ignored), growth video confirm (key must be under that product's `videos/`, client `public_url` ignored), retailer showcase create/update (raw bytes checked), catalog-import bulk create (key under `catalog-import/<retailer>/`, client `cropped_url` ignored). `/catalog-import/upload-url` content_type is an allow-list (was any string). |
+| Photos | `products-tryon.ts` sniffs the bytes (was trusting the client mimetype; HEIC/SVG now 422). My Style analyze uses the same shared `sniffImageType` (private copy removed). Mobile `compressImageForUpload` skips the "already small" shortcut for non-JPEG/PNG/WebP files so a small HEIC is re-encoded to JPEG. |
+| Email (RC-077) | `escapeHtml` on every interpolated value in the welcome and reset emails; no-key fallback logs the body only outside production. |
+| Security headers | Not changed. `next.config.mjs` already sends `nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy`. CSP / HSTS / Permissions-Policy proposed for owner review, not applied. |
+| Tests | API full suite + API/web tsc, web `safe-url.test.ts` 12, mobile `compress-image.test.ts` 6. |
+| Not verified | No live R2, Razorpay or device run. Known gaps listed under RC-075 / RC-076. |
