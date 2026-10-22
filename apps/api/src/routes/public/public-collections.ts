@@ -279,7 +279,12 @@ export const publicCollectionsRoutes: FastifyPluginAsync = async (server) => {
           orderBy: { created_at: 'asc' },
           select: { id: true },
         });
-        target = { collectionId: oldest?.id ?? null, retailerId: retailer.id, title: null, retailer };
+        target = {
+          collectionId: oldest?.id ?? null,
+          retailerId: retailer.id,
+          title: null,
+          retailer,
+        };
       }
     }
     if (!target) throw notFound('Collection');

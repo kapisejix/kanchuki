@@ -237,7 +237,9 @@ describe('POST /v1/public/collections/:slug/enquire — pseudo-slug pages', () =
   });
 
   it('records against the store oldest collection and names the SKU', async () => {
-    mockProductFindMany.mockResolvedValue([{ id: 'a', name: 'Kurti', price_min: 150000, sku: 'KUR-1' }]);
+    mockProductFindMany.mockResolvedValue([
+      { id: 'a', name: 'Kurti', price_min: 150000, sku: 'KUR-1' },
+    ]);
     const res = await post(await buildApp(), 'cat-xyz', { product_ids: ['a'], store: 'meera' });
     expect(res.statusCode).toBe(200);
     expect(mockRetailerFindFirst.mock.calls[0]![0].where.public_slug).toBe('meera');
@@ -260,7 +262,9 @@ describe('POST /v1/public/collections/:slug/enquire — pseudo-slug pages', () =
   it('404s a pseudo-slug without a store, and never resolves a store for a real slug', async () => {
     const app = await buildApp();
     expect((await post(app, 'cat-xyz', { product_ids: ['a'] })).statusCode).toBe(404);
-    expect((await post(app, 'festive', { product_ids: ['a'], store: 'meera' })).statusCode).toBe(404);
+    expect((await post(app, 'festive', { product_ids: ['a'], store: 'meera' })).statusCode).toBe(
+      404,
+    );
     expect(mockRetailerFindFirst).not.toHaveBeenCalled();
   });
 });
