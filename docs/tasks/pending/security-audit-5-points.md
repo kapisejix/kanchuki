@@ -1,6 +1,6 @@
 # Security audit — 5 points (secrets, data access, uploads, paid gates, AI caps)
 
-**Status:** 🟨 T1 ✅ `b9616811` (RC-078), T2 ✅ `e59d78ff` (RC-079), T3 server side ✅ `48e84013` (RC-080; client side split to `mobile-presign-content-length.md`), T4 part 1 ✅ `10fa64ec` (`admin-route-guard.test.ts`). **T4 RLS migration open** (needs the real no-RLS table list from the Supabase Security Advisor). Committed on the branch, nothing pushed. Owner approved T1–T4 and the expired-plan rule (**drop to STARTER**) on 2026-10-22.
+**Status:** 🟨 T1 ✅ `b9616811` (RC-078), T2 ✅ `e59d78ff` (RC-079), T3 server side ✅ `48e84013` (RC-080; client side split to `mobile-presign-content-length.md`), T4 part 1 ✅ `10fa64ec` (`admin-route-guard.test.ts`). **T4 RLS closed 2026-10-22, no migration** (live check, see §2 T4: all 86 public tables have RLS on). Committed on the branch, nothing pushed. Owner approved T1–T4 and the expired-plan rule (**drop to STARTER**) on 2026-10-22.
 **Branch:** `fix/security-audit-5pts` (created from `fix/upload-staging`). T3 builds on the upload-staging code, so `fix/upload-staging` must merge first or this branch merges after it.
 **Surfaces audited:** `apps/api`, `apps/web` (customer PWA + admin), `apps/mobile`.
 
@@ -97,8 +97,8 @@ Order: **T1 → T2 → T3 → T4** (impact first). One commit per task. Each com
 
 ### T4 — Admin route-guard test + RLS gap · (RC only if a hole is found)
 1. New `apps/api/src/routes/admin-route-guard.test.ts`: build the server the way `admin-access.test.ts` does, collect every route under `/v1/admin` via `server.addHook('onRoute')`, and `inject` each one without `x-admin-key`. Expect 403 for all except `/v1/admin/login`. This catches the next module that forgets `adminAuthPreHandler`.
-2. RLS:
-   - Get the real list of tables without RLS: Supabase dashboard → Advisors → Security (project `thpqcylmcxokajxoerjx`), or the Supabase MCP `get_advisors` after the owner authenticates.
+2. **RLS — CLOSED 2026-10-22, no migration.** Live check (Supabase Security Advisor + read-only catalog queries, project `thpqcylmcxokajxoerjx`): 86 of 86 `public` tables have RLS on, none off. The 52 advisor findings are INFO `rls_enabled_no_policy` (deny-all for `anon`/`authenticated`, so a leaked anon key reads nothing). `kanchuki_app` and `kanchuki_purge` have `BYPASSRLS = true`, so the backend is unaffected. The static-scan premise in §1.2 was wrong. Owner decision: drop the migration; backend-role `FOR ALL` policies on the 52 tables are only a guard against someone removing `BYPASSRLS` and are not being added. Remaining advisor WARN: Supabase Auth leaked-password protection is off (dashboard toggle; login is phone OTP).
+   - Original plan (not executed): get the real list of tables without RLS: Supabase dashboard → Advisors → Security (project `thpqcylmcxokajxoerjx`), or the Supabase MCP `get_advisors` after the owner authenticates.
    - Write migration `NNN_enable_rls_remaining/migration.sql`: `ENABLE ROW LEVEL SECURITY` on each listed table **plus** the backend-role `FOR ALL` policy pattern from migration `111_backend_role_rls_policies`.
    - **⚠️ Warning:** enabling RLS without that policy makes every backend query on a table the backend role does not own return zero rows, silently (see SECURITY.md §19 notes around line 875). The policy is not optional.
    - **Owner applies the migration** (the agent never runs migrations). Re-run the advisor afterwards, then smoke-test retailer login, product list and customer list.
