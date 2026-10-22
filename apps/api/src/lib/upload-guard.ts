@@ -161,7 +161,19 @@ export async function verifyUpload(
     );
   }
   if (key !== finalKey) {
-    await copyObject(key, finalKey);
+    // The presigned PUT stays valid until it expires, so the staged object can be
+    // overwritten after the check above. Bind the copy to the inspected ETag.
+    try {
+      await copyObject(key, finalKey, obj.etag);
+    } catch (err) {
+      const e = err as { name?: string; $metadata?: { httpStatusCode?: number } } | null;
+      if (e?.name !== 'PreconditionFailed' && e?.$metadata?.httpStatusCode !== 412) throw err;
+      await deleteObject(key).catch(() => {});
+      throw validationError(
+        'Upload changed while it was being checked — please upload again',
+        'r2_key',
+      );
+    }
     // A failed delete leaves a staged copy for the lifecycle rule; not fatal.
     await deleteObject(key).catch(() => {});
   }

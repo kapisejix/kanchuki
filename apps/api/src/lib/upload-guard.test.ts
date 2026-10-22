@@ -164,15 +164,29 @@ describe('verifyUpload', () => {
   });
 
   it('promotes a passing staged upload to its final key', async () => {
-    inspectObject.mockResolvedValue({ size: 500, head: JPEG });
+    inspectObject.mockResolvedValue({ size: 500, head: JPEG, etag: '"abc"' });
     await expect(run(STAGED)).resolves.toEqual({
       url: `https://cdn.test/${KEY}`,
       kind: 'image/jpeg',
       r2Key: KEY,
     });
     expect(inspectObject).toHaveBeenCalledWith(STAGED);
-    expect(copyObject).toHaveBeenCalledWith(STAGED, KEY);
+    // The copy is bound to the ETag that was inspected.
+    expect(copyObject).toHaveBeenCalledWith(STAGED, KEY, '"abc"');
     expect(deleteObject).toHaveBeenCalledWith(STAGED);
+  });
+
+  it('staged object overwritten after the check (ETag mismatch) → rejected, staged deleted', async () => {
+    inspectObject.mockResolvedValue({ size: 500, head: JPEG, etag: '"abc"' });
+    copyObject.mockRejectedValueOnce(
+      Object.assign(new Error('precondition'), {
+        name: 'PreconditionFailed',
+        $metadata: { httpStatusCode: 412 },
+      }),
+    );
+    await expect(run(STAGED)).rejects.toThrow(/upload again/);
+    expect(deleteObject).toHaveBeenCalledWith(STAGED);
+    expect(deleteObject).not.toHaveBeenCalledWith(KEY);
   });
 
   it('retry after a promote: staged gone, final present → verifies final, no copy', async () => {

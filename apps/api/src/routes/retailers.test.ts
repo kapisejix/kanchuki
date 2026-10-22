@@ -408,7 +408,11 @@ describe('PUT /retailers/me', () => {
         banner_url: `https://cdn.example.com/${staged}`,
       });
       expect(res.statusCode).toBe(200);
-      expect(mockCopyObject).toHaveBeenCalledWith(staged, 'retailers/retailer_1/banner/x.jpg');
+      expect(mockCopyObject).toHaveBeenCalledWith(
+        staged,
+        'retailers/retailer_1/banner/x.jpg',
+        undefined, // mock inspect has no ETag
+      );
       expect(mockRetailerUpdate).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({

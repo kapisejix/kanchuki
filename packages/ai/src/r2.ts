@@ -48,12 +48,14 @@ export async function getUploadPresignedUrl(
  * Size + first bytes of an uploaded object, without downloading it. Used to
  * verify a presigned-PUT upload AFTER the fact: the presigned URL cannot bind
  * the body's size or magic bytes, so the confirm step inspects what landed.
- * Returns null when the object does not exist.
+ * Returns null when the object does not exist. `etag` is the whole object's
+ * ETag (a ranged GET still reports it), so a later copy can be bound to the
+ * exact bytes that were inspected.
  */
 export async function inspectObject(
   key: string,
   headBytes = 16,
-): Promise<{ size: number; head: Buffer } | null> {
+): Promise<{ size: number; head: Buffer; etag?: string | undefined } | null> {
   try {
     const res = await r2.send(
       new GetObjectCommand({
@@ -67,7 +69,11 @@ export async function inspectObject(
     const chunks: Buffer[] = [];
     for await (const chunk of res.Body as AsyncIterable<Buffer>) chunks.push(chunk);
     const head = Buffer.concat(chunks);
-    return { size: total ? Number(total) : (res.ContentLength ?? head.length), head };
+    return {
+      size: total ? Number(total) : (res.ContentLength ?? head.length),
+      head,
+      etag: res.ETag,
+    };
   } catch (err) {
     const name = (err as { name?: string } | null)?.name;
     if (name === 'NoSuchKey' || name === 'NotFound') return null;
@@ -89,8 +95,12 @@ export async function deleteObject(key: string): Promise<void> {
   await r2.send(new DeleteObjectCommand({ Bucket: await getBucket(), Key: key }));
 }
 
-/** Server-side copy within the bucket (no download). Content-Type is carried over. */
-export async function copyObject(fromKey: string, toKey: string): Promise<void> {
+/**
+ * Server-side copy within the bucket (no download). Content-Type is carried over.
+ * With `ifMatch`, the copy only happens if the source still has that ETag;
+ * otherwise R2 answers 412 PreconditionFailed.
+ */
+export async function copyObject(fromKey: string, toKey: string, ifMatch?: string): Promise<void> {
   const bucket = await getBucket();
   await r2.send(
     new CopyObjectCommand({
@@ -98,6 +108,7 @@ export async function copyObject(fromKey: string, toKey: string): Promise<void> 
       Key: toKey,
       // CopySource is "bucket/key", URL-encoded per path segment.
       CopySource: `${bucket}/${fromKey.split('/').map(encodeURIComponent).join('/')}`,
+      CopySourceIfMatch: ifMatch,
     }),
   );
 }
