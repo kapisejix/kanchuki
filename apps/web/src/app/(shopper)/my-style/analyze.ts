@@ -16,8 +16,21 @@ const MAX_EDGE = 1568
 const START_TIMEOUT_MS = 30_000
 const POLL_TIMEOUT_MS = 10_000
 
-/** Re-encode any photo the browser can decode as a <=1568px JPEG (the API refuses HEIC). */
+// What Android and iOS cameras/galleries produce. HEIC/HEIF is only accepted here because
+// it is decoded and re-encoded below; the API itself sniffs bytes and takes JPEG/PNG/WebP.
+// An empty type is let through (some Android pickers omit it): the decode is the real gate.
+const PHOTO_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'])
+const MAX_PICK_BYTES = 25 * 1024 * 1024
+
+/**
+ * Re-encode any photo the browser can decode as a <=1568px JPEG (the API refuses HEIC).
+ * Rejects 'unsupported' (not a phone photo format, or over 25 MB) before decoding anything.
+ * The JPEG re-encode also drops EXIF (GPS) and anything appended to the original bytes.
+ */
 export async function prepareUpload(file: Blob): Promise<Blob> {
+  if ((file.type && !PHOTO_TYPES.has(file.type.toLowerCase())) || file.size > MAX_PICK_BYTES) {
+    throw new Error('unsupported')
+  }
   const unreadable = () => new Error('unreadable')
   if (typeof createImageBitmap !== 'function') throw unreadable()
   let bitmap: ImageBitmap

@@ -146,6 +146,24 @@ describe('POST /v1/public/collections/:slug/enquire — basket (E1)', () => {
     await app.close();
   });
 
+  it('each line carries the SKU after the price and the product link under it', async () => {
+    mockProductFindMany.mockResolvedValue([
+      { id: 'a', name: 'Kurti', price_min: 80000, sku: 'KUR-1' },
+    ]);
+    mockCollectionFindFirst.mockResolvedValue({
+      id: 'col_1',
+      retailer_id: RETAILER_ID,
+      title: 'Festive',
+      retailer: { shop_name: 'Shop', phone: '9876543210', public_slug: 'shop-x1' },
+    });
+    const app = await buildApp();
+    const res = await enquire(app, { product_ids: ['a'] });
+
+    const text = decodeURIComponent(res.json().data.whatsapp_url.split('?text=')[1]);
+    expect(text).toMatch(/• Kurti - ₹800\/- \(SKU: KUR-1\)\n {2}\S*\/shop-x1\/abc\/product\/a\n/);
+    await app.close();
+  });
+
   it('20 products ok; 21 (product_id + 20 others) → 422', async () => {
     const twenty = Array.from({ length: 20 }, (_, i) => `p${i}`);
     storeProducts('extra', ...twenty);

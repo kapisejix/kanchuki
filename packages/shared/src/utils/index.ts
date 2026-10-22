@@ -117,25 +117,39 @@ export function buildWhatsAppEnquiryLink(
  * Each product can carry an optional `product_url` (a deep link to the product's
  * own shared page) so the retailer can open the product in one tap instead of
  * hunting for it by name. When present it is appended on its own line right
- * under the bullet, so WhatsApp auto-linkifies it.
+ * under the bullet, so WhatsApp auto-linkifies it. The SKU, when set, follows
+ * the price so the retailer can find the piece on the rack.
+ *
+ * A missing collection title, or one that is just the shop name (My Style
+ * enquiries have no collection), drops the quoted title so the store is named once.
  */
 export function buildEnquiryMessage(params: {
   shopName: string
-  collectionTitle: string
+  collectionTitle?: string | null
   products: Array<{
     name: string | null
     price_min: number | null
+    sku?: string | null
     product_url?: string | null
   }>
 }): string {
   const productList = params.products
     .map((p) => {
-      const line = `• ${p.name ?? 'Product'} ${p.price_min ? `- ${formatPrice(p.price_min)}` : ''}`
+      const parts = [
+        `• ${p.name ?? 'Product'}`,
+        p.price_min ? `- ${formatPrice(p.price_min)}` : null,
+        p.sku ? `(SKU: ${p.sku})` : null,
+      ]
+      const line = parts.filter(Boolean).join(' ')
       return p.product_url ? `${line}\n  ${p.product_url}` : line
     })
     .join('\n')
 
-  return `Namaste! I saw your collection "${params.collectionTitle}" from ${params.shopName}.
+  const title = params.collectionTitle?.trim()
+  const sameAsShop = !title || title.toLowerCase() === params.shopName.trim().toLowerCase()
+  const seen = sameAsShop ? 'your collection' : `your collection "${title}"`
+
+  return `Namaste! I saw ${seen} from ${params.shopName}.
 
 I'm interested in:
 ${productList}

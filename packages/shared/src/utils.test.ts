@@ -149,6 +149,28 @@ Please share availability and details. 🙏`);
       ],
     });
     expect(message).toContain('• Kurti A - ₹1,000/-\n  https://k.app/a');
-    expect(message).toContain('• Kurti B \n  https://k.app/b');
+    expect(message).toContain('• Kurti B\n  https://k.app/b');
+  });
+
+  it('puts the SKU after the price and the link under the line', () => {
+    const message = buildEnquiryMessage({
+      ...base,
+      products: [
+        { name: 'Off-White Kurti', price_min: 80000, sku: 'KUR-101', product_url: 'https://k.app/p' },
+      ],
+    });
+    expect(message).toContain('• Off-White Kurti - ₹800/- (SKU: KUR-101)\n  https://k.app/p');
+  });
+
+  it('names the store once when the title is missing or equals the shop name', () => {
+    for (const collectionTitle of [null, '', ' radha clothing store ']) {
+      const message = buildEnquiryMessage({
+        shopName: 'Radha Clothing Store',
+        collectionTitle,
+        products: [{ name: 'Kurti', price_min: 80000 }],
+      });
+      expect(message.startsWith('Namaste! I saw your collection from Radha Clothing Store.')).toBe(true);
+      expect(message.match(/Radha Clothing Store/gi)).toHaveLength(1);
+    }
   });
 });

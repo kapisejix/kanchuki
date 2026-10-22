@@ -240,6 +240,8 @@ export const publicProductsRoutes: FastifyPluginAsync = async (server) => {
               data: {
                 id: p.id,
                 name: p.name,
+                // Shown in the WhatsApp enquiry so the retailer can find the piece.
+                sku: p.sku,
                 price_min: p.price_min,
                 price_max: p.price_max,
                 // F-024 (Option A): virtual query-time flags, same as the grid summary

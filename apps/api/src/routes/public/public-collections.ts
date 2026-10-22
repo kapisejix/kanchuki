@@ -6,6 +6,7 @@ import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { addEnquiryPushJob } from '../../jobs/enquiry-push.js';
 import { withPublicCache } from '../../lib/public-cache.js';
+import { buildProductUrl } from '../../lib/store-urls.js';
 import { notFound, validationError } from '../../plugins/error-handler.js';
 // recordInteraction removed — customerInteractions model dropped
 import {
@@ -247,7 +248,9 @@ export const publicCollectionsRoutes: FastifyPluginAsync = async (server) => {
         id: true,
         retailer_id: true,
         title: true,
-        retailer: { select: { shop_name: true, phone: true, whatsapp_number: true } },
+        retailer: {
+          select: { shop_name: true, phone: true, whatsapp_number: true, public_slug: true },
+        },
       },
     });
     if (!collection) throw notFound('Collection');
@@ -263,7 +266,7 @@ export const publicCollectionsRoutes: FastifyPluginAsync = async (server) => {
     const products = ids.length
       ? await prisma.product.findMany({
           where: { id: { in: ids }, retailer_id: collection.retailer_id, deleted_at: null },
-          select: { id: true, name: true, price_min: true },
+          select: { id: true, name: true, price_min: true, sku: true },
         })
       : [];
     if (products.length !== ids.length) {
@@ -310,7 +313,12 @@ export const publicCollectionsRoutes: FastifyPluginAsync = async (server) => {
       buildEnquiryMessage({
         shopName: collection.retailer.shop_name,
         collectionTitle: collection.title,
-        products: ordered.map((p) => ({ name: p.name, price_min: p.price_min })),
+        products: ordered.map((p) => ({
+          name: p.name,
+          price_min: p.price_min,
+          sku: p.sku,
+          product_url: buildProductUrl(collection.retailer.public_slug, slug, p.id),
+        })),
       });
 
     const waUrl = buildWhatsAppEnquiryLink(enquiryPhone(collection.retailer), whatsappMessage);
