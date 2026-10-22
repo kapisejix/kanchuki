@@ -191,7 +191,10 @@ test('the camera input does not exist until the consent is accepted', async ({ p
   expect(await page.locator('input[type="file"]').count()).toBe(0)
 
   await page.getByRole('button', { name: MY_STYLE_CONSENT.acceptLabel }).click()
-  expect(await page.locator('input[type="file"]').count()).toBe(1)
+  // Camera + gallery pickers; the camera one keeps the front-facing capture.
+  expect(await page.locator('input[type="file"]').count()).toBe(2)
+  expect(await page.getByTestId('my-style-selfie-input').getAttribute('capture')).toBe('user')
+  expect(await page.getByTestId('my-style-gallery-input').getAttribute('capture')).toBeNull()
 })
 
 test('happy path: the photo crosses the proxy as a JPEG, the palette appears', async ({ page }) => {
@@ -200,7 +203,7 @@ test('happy path: the photo crosses the proxy as a JPEG, the palette appears', a
   await page.getByRole('button', { name: MY_STYLE_CONSENT.acceptLabel }).click()
 
   await page
-    .locator('input[type="file"]')
+    .getByTestId('my-style-selfie-input')
     .setInputFiles({ name: 'me.png', mimeType: 'image/png', buffer: PNG_1x1 })
 
   await expect(page.getByText('Your palette is ready')).toBeVisible({ timeout: 30_000 })
@@ -228,7 +231,7 @@ test('over the monthly limit: plain copy, no polling, never the API sentence', a
   await openSheet(page)
   await page.getByRole('button', { name: MY_STYLE_CONSENT.acceptLabel }).click()
   await page
-    .locator('input[type="file"]')
+    .getByTestId('my-style-selfie-input')
     .setInputFiles({ name: 'me.png', mimeType: 'image/png', buffer: PNG_1x1 })
 
   await expect(page.getByText(/reached this month's limit/i)).toBeVisible()
