@@ -233,27 +233,62 @@ export const publicCollectionsRoutes: FastifyPluginAsync = async (server) => {
         customer_name: z.string().max(200).optional(),
         customer_phone: z.string().max(20).optional(),
         message: z.string().max(2000).optional(),
+        // Store public_slug, sent by the /{store}/… proxy; only read for pseudo-slugs.
+        store: z.string().max(100).optional(),
       })
       .safeParse(request.body);
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
 
-    const collection = await prisma.collection.findFirst({
+    const retailerSelect = {
+      shop_name: true,
+      phone: true,
+      whatsapp_number: true,
+      public_slug: true,
+    } as const;
+    const found = await prisma.collection.findFirst({
       where: {
         slug,
         status: { in: ['ACTIVE', 'HIDDEN'] },
         deleted_at: null,
         retailer: { is_suspended: false },
       },
-      select: {
-        id: true,
-        retailer_id: true,
-        title: true,
-        retailer: {
-          select: { shop_name: true, phone: true, whatsapp_number: true, public_slug: true },
-        },
-      },
+      select: { id: true, retailer_id: true, title: true, retailer: { select: retailerSelect } },
     });
-    if (!collection) throw notFound('Collection');
+    let target: {
+      collectionId: string | null;
+      retailerId: string;
+      title: string | null;
+      retailer: NonNullable<typeof found>['retailer'];
+    } | null = found && {
+      collectionId: found.id,
+      retailerId: found.retailer_id,
+      title: found.title,
+      retailer: found.retailer,
+    };
+    // Category / full-catalog pages use pseudo-slugs (`cat-{id}`, `all-{store}`) with no
+    // collection row. Like My Style, the inbox row hangs off the store's oldest live
+    // collection; a store with none still gets its SKU'd link, just no inbox row.
+    if (!target && body.data.store && /^(cat|all)-/.test(slug)) {
+      const retailer = await prisma.retailer.findFirst({
+        where: { public_slug: body.data.store, is_suspended: false, deleted_at: null },
+        select: { id: true, ...retailerSelect },
+      });
+      if (retailer) {
+        const oldest = await prisma.collection.findFirst({
+          where: { retailer_id: retailer.id, status: 'ACTIVE', deleted_at: null },
+          orderBy: { created_at: 'asc' },
+          select: { id: true },
+        });
+        target = {
+          collectionId: oldest?.id ?? null,
+          retailerId: retailer.id,
+          title: null,
+          retailer,
+        };
+      }
+    }
+    if (!target) throw notFound('Collection');
+    const { collectionId, retailerId, retailer, title } = target;
 
     const { product_id, product_ids, customer_name, customer_phone, message } = body.data;
 
@@ -265,7 +300,7 @@ export const publicCollectionsRoutes: FastifyPluginAsync = async (server) => {
     // so a forged id can neither be stored nor named in the WhatsApp text.
     const products = ids.length
       ? await prisma.product.findMany({
-          where: { id: { in: ids }, retailer_id: collection.retailer_id, deleted_at: null },
+          where: { id: { in: ids }, retailer_id: retailerId, deleted_at: null },
           select: { id: true, name: true, price_min: true, sku: true },
         })
       : [];
@@ -275,53 +310,53 @@ export const publicCollectionsRoutes: FastifyPluginAsync = async (server) => {
     const byId = new Map(products.map((p) => [p.id, p]));
     const ordered = ids.flatMap((id) => byId.get(id) ?? []);
 
-    // Record enquiry for analytics
-    const enquiry = await prisma.collectionEnquiry.create({
-      data: {
-        collection_id: collection.id,
-        retailer_id: collection.retailer_id,
-        product_id: ids[0] ?? null,
-        product_ids: ids,
-        customer_name: customer_name ?? null,
-        customer_phone: customer_phone ?? null,
-        message: message ?? null,
-      },
-    });
-
-    // Interactions recording removed — customerInteractions model dropped
-
-    await prisma.collection.update({
-      where: { id: collection.id },
-      data: { enquiry_count: { increment: 1 } },
-    });
-
-    // F-046: ping the team. Best-effort and logged (not silent) — a Redis blip must not
-    // turn a saved enquiry into a customer-facing error.
-    try {
-      await addEnquiryPushJob({
-        retailer_id: collection.retailer_id,
-        enquiry_id: enquiry.id,
-        item_count: ids.length,
+    // Record enquiry for the inbox (collection_enquiries.collection_id is NOT NULL).
+    if (collectionId) {
+      const enquiry = await prisma.collectionEnquiry.create({
+        data: {
+          collection_id: collectionId,
+          retailer_id: retailerId,
+          product_id: ids[0] ?? null,
+          product_ids: ids,
+          customer_name: customer_name ?? null,
+          customer_phone: customer_phone ?? null,
+          message: message ?? null,
+        },
       });
-    } catch (err) {
-      request.log.error({ err, enquiry_id: enquiry.id }, 'enquiry push enqueue failed');
+
+      await prisma.collection.update({
+        where: { id: collectionId },
+        data: { enquiry_count: { increment: 1 } },
+      });
+
+      // F-046: ping the team. Best-effort and logged (not silent) — a Redis blip must not
+      // turn a saved enquiry into a customer-facing error.
+      try {
+        await addEnquiryPushJob({
+          retailer_id: retailerId,
+          enquiry_id: enquiry.id,
+          item_count: ids.length,
+        });
+      } catch (err) {
+        request.log.error({ err, enquiry_id: enquiry.id }, 'enquiry push enqueue failed');
+      }
     }
 
     // Build WhatsApp redirect URL
     const whatsappMessage =
       message ??
       buildEnquiryMessage({
-        shopName: collection.retailer.shop_name,
-        collectionTitle: collection.title,
+        shopName: retailer.shop_name,
+        collectionTitle: title,
         products: ordered.map((p) => ({
           name: p.name,
           price_min: p.price_min,
           sku: p.sku,
-          product_url: buildProductUrl(collection.retailer.public_slug, slug, p.id),
+          product_url: buildProductUrl(retailer.public_slug, slug, p.id),
         })),
       });
 
-    const waUrl = buildWhatsAppEnquiryLink(enquiryPhone(collection.retailer), whatsappMessage);
+    const waUrl = buildWhatsAppEnquiryLink(enquiryPhone(retailer), whatsappMessage);
 
     return reply.status(200).send({ data: { whatsapp_url: waUrl } });
   });
