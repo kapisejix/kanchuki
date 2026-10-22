@@ -719,3 +719,15 @@ no migration, no schema change, and **no new request on any surface**.
 | Security headers | Not changed. `next.config.mjs` already sends `nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy`. CSP / HSTS / Permissions-Policy proposed for owner review, not applied. |
 | Tests | API full suite + API/web tsc, web `safe-url.test.ts` 12, mobile `compress-image.test.ts` 6. |
 | Not verified | No live R2, Razorpay or device run. Known gaps listed under RC-075 / RC-076. |
+
+
+## 2026-10-22 - WhatsApp enquiry link + SKU, passport logo, My Style gallery upload (RC-078)
+
+| Item | Detail |
+|---|---|
+| PR | #147 (`446a0ec0`, `efa9f835` Biome fix, `14d8c918` e2e update), merge `707fa3a6` into `main` 2026-10-22. No migration. |
+| Enquiry text (RC-078) | `buildEnquiryMessage` prints `• Name - ₹800/- (SKU: X)` with the product link on the next line, and drops the quoted collection title when it is missing or equals the shop name. `public-collections.ts` and `public-my-style.ts` now select `sku` + `public_slug` and pass `product_url` via `buildProductUrl` (My Style: `all-{store}` pseudo-slug, `collectionTitle: null`). `GET /public/products/:id` returns `sku` (`PublicProductDetail.sku?`), used by `CustomerConsentModal`. |
+| Passport logo | `(shopper)/layout.tsx` header and `/login` (`LoginForm.tsx`) show `/kanchuki-logo.png` (same asset as the site Chrome) instead of the text wordmark. |
+| Gallery upload | `AnalyzeSheet` (selfie mode) adds "Choose from gallery": a second `accept="image/*"` input with no `capture` (`data-testid="my-style-gallery-input"`). `prepareUpload` rejects `unsupported` before decoding: types outside JPEG/PNG/WebP/HEIC/HEIF, or over 25 MB (an empty type passes; the decode is the gate). JPEG re-encode (drops EXIF/GPS) and the server `sniffImageType` (JPEG/PNG/WebP) are unchanged. Try-on (`TryOnSheet`) is still camera-only (F-040 flag OFF). |
+| Tests | shared 20/20, API enquire + whatsapp-target + product 41/41, web `(shopper)` + login 177/177, storefront 93/93, e2e `customer-my-style-analyze.spec.ts` updated for two inputs; tsc clean (shared, api, web); CI green. |
+| Not verified | No real WhatsApp send, no device run (logo, Android/iOS gallery, HEIC decode on Android Chrome). Bottom-bar "Enquire" still sends no SKU (see RC-078). |
