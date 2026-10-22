@@ -262,6 +262,9 @@ Payment: Razorpay (UPI first). Retailer pays base + 18% GST. **Source of truth: 
 
 | ID | Root cause (one line) | Fixed in |
 |---|---|---|
+| RC-077 | Stored user text went into HTML with no escaping step: `javascript:` hrefs on admin pages, `</script>` breakout in `/stores` JSON-LD, raw name/phone in email HTML (and the no-key email fallback logged temp passwords). Fixed with `safeHttpUrl`, JSON-LD `<` escape, `escapeHtml` in `email.ts`. | root-cause issues.md |
+| RC-076 | Payment callbacks credited on client-reported ids with no Razorpay HMAC check (an empty secret would also have made HMAC forgeable), and the subscription webhook activated on authorized-only / non-INR / underpaid payments. | root-cause issues.md |
+| RC-075 | Upload confirm endpoints stored the client's `r2_key`/URL without checking ownership or the stored bytes (presigned PUT fixes key + declared type, not the body); one shared `verifyUpload()` now gates every retailer confirm path, try-on sniffs bytes, catalog upload-url types are an allow-list. | root-cause issues.md |
 | RC-074 | `POST /try-on/discard` computed `skipped` as the raw request length minus distinct rows found, so every repeated job id counted as skipped. | root-cause issues.md |
 | RC-073 | The try-on quota screen used `getQuotaStatus` (plan defaults, no PENDING jobs) while `checkQuota` enforces the real limit (no row / -1 = unlimited, plus PENDING) — two functions answering one question, so the screen could block a retailer the server would allow. | root-cause issues.md |
 | RC-072 | The in-job "record the key before deleting" write matched DISCARDED rows only, so a try-on that finished after a consent withdrawal and whose R2 delete failed left an image with no pointer for the sweep to find (RC-044 shape). | root-cause issues.md |

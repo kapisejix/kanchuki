@@ -52,6 +52,7 @@ import { isCurrentTryOnConsent } from '../../lib/notice-versions.js';
 import { checkCustomerQuota, checkQuota, getEnforcedQuota } from '../../lib/quota.js';
 import { hasLiveTryOnConsent, recordTryOnConsent } from '../../lib/tryon-consent.js';
 import { discardTryOnPhoto, putTryOnPhoto } from '../../lib/tryon-photo-store.js';
+import { sniffImageType } from '../../lib/upload-guard.js';
 import {
   AppError,
   forbidden,
@@ -143,15 +144,6 @@ async function resolveTryOnContext(
   });
   if (!product) throw notFound('Product');
   return { retailerId: product.retailer_id, customerAccountId, product };
-}
-
-/** Normalise a client-declared MIME type for the inline data URI the worker
- *  decodes. `image/jpg` is a real (if nonstandard) thing phones send. */
-function normalizeContentType(mimetype: string | undefined): string | null {
-  if (!mimetype) return null;
-  const lower = mimetype.toLowerCase();
-  if (!lower.startsWith('image/')) return null;
-  return lower === 'image/jpg' ? 'image/jpeg' : lower;
 }
 
 /**
@@ -365,12 +357,12 @@ export const productsTryOnRoutes: FastifyPluginAsync = async (server) => {
     const file = await request.file();
     if (!file) throw validationError('A photo is required.', 'photo');
 
-    const contentType = normalizeContentType(file.mimetype);
+    const buffer = await file.toBuffer(); // throws 413 past MAX_PHOTO_BYTES
+    if (buffer.length === 0) throw validationError('The submitted photo was empty.', 'photo');
+    // The bytes decide the type, not the client's mimetype (HEIC/SVG/text → 422).
+    const contentType = sniffImageType(buffer);
     if (!contentType)
       throw validationError('Only JPEG, PNG or WebP photos are supported.', 'photo');
-
-    const buffer = await file.toBuffer();
-    if (buffer.length === 0) throw validationError('The submitted photo was empty.', 'photo');
 
     // 7. Job row first, so the poll endpoint has something to read even if the
     //    worker is slow to pick the job up. The consent record is written in the

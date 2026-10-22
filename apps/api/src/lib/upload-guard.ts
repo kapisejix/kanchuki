@@ -6,9 +6,33 @@
 import { deleteObject, inspectObject, publicUrl } from '@kanchuki/ai';
 import { validationError } from '../plugins/error-handler.js';
 
-export type UploadKind = 'image/jpeg' | 'image/png' | 'image/webp' | 'application/pdf';
+export type UploadKind =
+  | 'image/jpeg'
+  | 'image/png'
+  | 'image/webp'
+  | 'application/pdf'
+  | 'video/mp4'
+  | 'video/quicktime'
+  | 'video/webm';
 
 export const IMAGE_KINDS: readonly UploadKind[] = ['image/jpeg', 'image/png', 'image/webp'];
+export const VIDEO_KINDS: readonly UploadKind[] = ['video/mp4', 'video/quicktime', 'video/webm'];
+
+// ISO-BMFF brands that are still images, not video (HEIC/HEIF/AVIF share the ftyp box).
+const IMAGE_FTYP_BRANDS = new Set([
+  'heic',
+  'heix',
+  'hevc',
+  'hevx',
+  'heim',
+  'heis',
+  'hevm',
+  'hevs',
+  'mif1',
+  'msf1',
+  'avif',
+  'avis',
+]);
 
 /** What the BYTES are, not what the client declared. */
 export function sniffUploadType(b: Buffer): UploadKind | null {
@@ -27,16 +51,37 @@ export function sniffUploadType(b: Buffer): UploadKind | null {
     return 'image/webp';
   }
   if (b.length >= 5 && b.toString('latin1', 0, 5) === '%PDF-') return 'application/pdf';
+  if (b.length >= 4 && b[0] === 0x1a && b[1] === 0x45 && b[2] === 0xdf && b[3] === 0xa3) {
+    return 'video/webm';
+  }
+  if (b.length >= 12 && b.toString('latin1', 4, 8) === 'ftyp') {
+    const brand = b.toString('latin1', 8, 12);
+    if (IMAGE_FTYP_BRANDS.has(brand)) return null;
+    return brand === 'qt  ' ? 'video/quicktime' : 'video/mp4';
+  }
+  // Older QuickTime files open with a moov/mdat/wide atom instead of ftyp.
+  if (b.length >= 8 && ['moov', 'mdat', 'wide'].includes(b.toString('latin1', 4, 8))) {
+    return 'video/quicktime';
+  }
   return null;
 }
 
+/** Image-only sniff for multipart photo bodies (try-on, My Style). HEIC/SVG/anything else → null. */
+export function sniffImageType(b: Buffer): 'image/jpeg' | 'image/png' | 'image/webp' | null {
+  const kind = sniffUploadType(b);
+  return kind && IMAGE_KINDS.includes(kind)
+    ? (kind as 'image/jpeg' | 'image/png' | 'image/webp')
+    : null;
+}
+
 /** True when `key` lives under this retailer's own R2 prefix (no traversal). */
-export function isOwnedKey(retailerId: string, key: string): boolean {
+export function isOwnedKey(
+  retailerId: string,
+  key: string,
+  prefix = `retailers/${retailerId}/`,
+): boolean {
   return (
-    key.startsWith(`retailers/${retailerId}/`) &&
-    !key.includes('..') &&
-    !key.includes('//') &&
-    !key.includes('\\')
+    key.startsWith(prefix) && !key.includes('..') && !key.includes('//') && !key.includes('\\')
   );
 }
 
@@ -51,9 +96,12 @@ export async function verifyUpload(opts: {
   r2Key: string;
   allowed: readonly UploadKind[];
   maxBytes: number;
+  /** Key prefix the retailer owns; default `retailers/<id>/`. Must end in the retailer id + '/'. */
+  prefix?: string;
 }): Promise<{ url: string; kind: UploadKind }> {
-  const { retailerId, r2Key, allowed, maxBytes } = opts;
-  if (!isOwnedKey(retailerId, r2Key)) throw validationError('Invalid upload reference', 'r2_key');
+  const { retailerId, r2Key, allowed, maxBytes, prefix } = opts;
+  if (!isOwnedKey(retailerId, r2Key, prefix))
+    throw validationError('Invalid upload reference', 'r2_key');
 
   const obj = await inspectObject(r2Key);
   if (!obj) throw validationError('Upload not found — please upload the file again', 'r2_key');

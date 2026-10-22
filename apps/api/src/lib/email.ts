@@ -5,6 +5,16 @@ export interface SendEmailOptions {
   text?: string;
 }
 
+/** Escape text for an HTML body/attribute. Every caller-supplied value in a template goes through this. */
+export function escapeHtml(v: string): string {
+  return v
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 export interface SendEmailResult {
   success: boolean;
   id?: string;
@@ -23,7 +33,8 @@ export async function sendEmail(options: SendEmailOptions): Promise<SendEmailRes
     // Development / fallback: log email contents safely for testing & diagnostics
     // biome-ignore lint/suspicious/noConsoleLog: operator-facing email diagnostics
     console.log(`[email] (mock/fallback) To: ${to} | Subject: ${subject}`);
-    if (text) {
+    // The body can hold a temp password / reset code — never into production logs.
+    if (text && process.env.NODE_ENV !== 'production') {
       // biome-ignore lint/suspicious/noConsoleLog: operator-facing email diagnostics
       console.log(`[email] Text: ${text}`);
     }
@@ -73,6 +84,13 @@ export async function sendTeamMemberWelcomeEmail(params: {
   phone?: string | null;
 }): Promise<SendEmailResult> {
   const { name, email, tempPassword, role, phone } = params;
+  // Raw values feed the plain-text part and the recipient; the HTML gets escaped copies.
+  const h = {
+    name: escapeHtml(name),
+    email: escapeHtml(email),
+    phone: phone ? escapeHtml(phone) : '',
+    tempPassword: tempPassword ? escapeHtml(tempPassword) : '',
+  };
   const webUrl = process.env.WEB_URL || 'https://kanchuki.app';
   const loginUrl = `${webUrl}/admin`;
 
@@ -111,20 +129,20 @@ export async function sendTeamMemberWelcomeEmail(params: {
   <div class="container">
     <div class="header">
       <div class="logo">KANCHUKI</div>
-      <h1>Welcome to the Team, ${name}!</h1>
-      <p>Your team member account has been created with role <span class="badge">${roleName}</span>.</p>
+      <h1>Welcome to the Team, ${h.name}!</h1>
+      <p>Your team member account has been created with role <span class="badge">${escapeHtml(roleName)}</span>.</p>
     </div>
 
     <div class="card">
       <div class="credential-row">
         <span class="credential-label">Email:</span>
-        <span class="credential-value">${email}</span>
+        <span class="credential-value">${h.email}</span>
       </div>
       ${
         phone
           ? `<div class="credential-row">
         <span class="credential-label">Mobile (for OTP):</span>
-        <span class="credential-value">${phone}</span>
+        <span class="credential-value">${h.phone}</span>
       </div>`
           : ''
       }
@@ -132,7 +150,7 @@ export async function sendTeamMemberWelcomeEmail(params: {
         tempPassword
           ? `<div class="credential-row">
         <span class="credential-label">Temporary Password:</span>
-        <span class="credential-value">${tempPassword}</span>
+        <span class="credential-value">${h.tempPassword}</span>
       </div>`
           : ''
       }
@@ -142,7 +160,7 @@ export async function sendTeamMemberWelcomeEmail(params: {
     <ul style="font-size: 14px; color: #9ca3af; padding-left: 20px; line-height: 1.6;">
       ${
         phone
-          ? `<li><strong>Fast OTP Login (Recommended):</strong> Enter your mobile number (<code>${phone}</code>) and log in directly using the 6-digit SMS/WhatsApp code — no password needed!</li>`
+          ? `<li><strong>Fast OTP Login (Recommended):</strong> Enter your mobile number (<code>${h.phone}</code>) and log in directly using the 6-digit SMS/WhatsApp code — no password needed!</li>`
           : ''
       }
       ${
@@ -153,7 +171,7 @@ export async function sendTeamMemberWelcomeEmail(params: {
     </ul>
 
     <div style="text-align: center;">
-      <a href="${loginUrl}" class="btn">Sign In to Kanchuki</a>
+      <a href="${escapeHtml(loginUrl)}" class="btn">Sign In to Kanchuki</a>
     </div>
 
     <div class="footer">
@@ -208,12 +226,12 @@ export async function sendTeamPasswordResetEmail(params: {
     <div class="header">
       <div class="logo">KANCHUKI</div>
       <h1>Password Reset Request</h1>
-      <p>Hello ${name}, we received a request to reset your team account password.</p>
+      <p>Hello ${escapeHtml(name)}, we received a request to reset your team account password.</p>
     </div>
 
     <div class="code-box">
       <div style="font-size: 12px; text-transform: uppercase; color: #9ca3af; margin-bottom: 6px; letter-spacing: 1px;">Your Verification Code</div>
-      <div class="code">${resetCode}</div>
+      <div class="code">${escapeHtml(resetCode)}</div>
       <div style="font-size: 12px; color: #9ca3af; margin-top: 6px;">Valid for 15 minutes</div>
     </div>
 

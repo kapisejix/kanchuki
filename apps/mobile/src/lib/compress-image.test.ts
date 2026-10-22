@@ -61,6 +61,12 @@ describe('compressImageForUpload', () => {
     expect(manipMock).not.toHaveBeenCalled()
   })
 
+  it('re-encodes a within-budget HEIC to JPEG (server only accepts JPEG/PNG/WebP)', async () => {
+    sizes.set('file:///small.heic', 40 * 1024)
+    const result = await compressImageForUpload('file:///small.heic')
+    expect(result).toMatch(/.jpg$/)
+  })
+
   it('walks the quality ladder and returns the first encode under 80KB', async () => {
     const result = await compressImageForUpload(ORIGINAL)
     // q0.9 (95KB) and q0.8 (85KB) exceed budget; q0.7 (75KB) is the first fit.

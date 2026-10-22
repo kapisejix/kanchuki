@@ -25,9 +25,12 @@ const { mockAddKenBurnsVideoJob } = vi.hoisted(() => ({
 }));
 vi.mock('../../jobs/index.js', () => ({ addKenBurnsVideoJob: mockAddKenBurnsVideoJob }));
 
+const { mockInspectObject } = vi.hoisted(() => ({ mockInspectObject: vi.fn() }));
 vi.mock('@kanchuki/ai', () => ({
   getUploadPresignedUrl: vi.fn().mockResolvedValue('https://r2.example.com/upload-signed'),
   publicUrl: vi.fn((key: string) => `https://cdn.example.com/${key}`),
+  inspectObject: mockInspectObject,
+  deleteObject: vi.fn().mockResolvedValue(undefined),
 }));
 
 const { growthVideoRoutes } = await import('./growth-videos.js');
@@ -113,6 +116,44 @@ describe('growthVideoRoutes', () => {
       await expect(handlers['POST /products/:id/video/generate']!(req, reply)).rejects.toThrow(
         'Maximum 3 videos per product',
       );
+    });
+  });
+
+  describe('POST /products/:id/videos (confirm)', () => {
+    const KEY = 'retailers/ret-1/products/prod-123/videos/clip.mp4';
+    const MP4 = Buffer.concat([Buffer.from([0, 0, 0, 0x18]), Buffer.from('ftypisom')]);
+    beforeEach(() => {
+      mockPrisma.product.findFirst.mockResolvedValue({ id: 'prod-123', _count: { videos: 0 } });
+      mockPrisma.productVideo.findFirst.mockResolvedValue(null);
+      mockPrisma.$transaction.mockImplementation(async (fn: any) =>
+        fn({ productVideo: { create: async ({ data }: any) => data, updateMany: vi.fn() } }),
+      );
+    });
+    const call = (body: object) => {
+      const reply = { status: vi.fn().mockReturnThis(), send: vi.fn((x) => x) };
+      return handlers['POST /products/:id/videos']!(
+        { retailerId: 'ret-1', params: { id: 'prod-123' }, body },
+        reply,
+      );
+    };
+
+    it('stores the server-built url for a real mp4, ignoring the client public_url', async () => {
+      mockInspectObject.mockResolvedValue({ size: 1000, head: MP4 });
+      const res = await call({ r2_key: KEY, public_url: 'javascript:alert(1)' });
+      expect(res.data.public_url).toBe(`https://cdn.example.com/${KEY}`);
+    });
+
+    it('rejects a key under another product', async () => {
+      await expect(
+        call({ r2_key: 'retailers/ret-1/products/prod-999/videos/clip.mp4' }),
+      ).rejects.toThrow();
+      expect(mockInspectObject).not.toHaveBeenCalled();
+    });
+
+    it('rejects bytes that are not video', async () => {
+      mockInspectObject.mockResolvedValue({ size: 20, head: Buffer.from('<html>') });
+      await expect(call({ r2_key: KEY })).rejects.toThrow();
+      expect(mockPrisma.$transaction).not.toHaveBeenCalled();
     });
   });
 

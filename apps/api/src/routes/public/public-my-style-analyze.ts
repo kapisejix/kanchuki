@@ -34,6 +34,7 @@ import {
 import { isCurrentMyStyleConsent } from '../../lib/notice-versions.js';
 import { checkCustomerQuota } from '../../lib/quota.js';
 import { discardTryOnPhoto, putTryOnPhoto } from '../../lib/tryon-photo-store.js';
+import { sniffImageType } from '../../lib/upload-guard.js';
 import {
   AppError,
   notFound,
@@ -50,25 +51,6 @@ const QuerySchema = z.object({
   // 'garment' = find-similar (PR-9): the photo is of a garment, not of the shopper.
   mode: z.enum(['selfie', 'garment']).default('selfie'),
 });
-
-/** What the BYTES are, not what the client says — a text file labelled image/jpeg is refused. */
-function sniffImageType(b: Buffer): 'image/jpeg' | 'image/png' | 'image/webp' | null {
-  if (b.length >= 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return 'image/jpeg';
-  if (
-    b.length >= 8 &&
-    b.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))
-  ) {
-    return 'image/png';
-  }
-  if (
-    b.length >= 12 &&
-    b.toString('latin1', 0, 4) === 'RIFF' &&
-    b.toString('latin1', 8, 12) === 'WEBP'
-  ) {
-    return 'image/webp';
-  }
-  return null;
-}
 
 function unauthorized(reply: FastifyReply) {
   return reply
