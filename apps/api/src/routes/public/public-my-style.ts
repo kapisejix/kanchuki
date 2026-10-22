@@ -31,7 +31,6 @@ import {
   toRankCandidate,
 } from '../../lib/my-style-candidates.js';
 import { type RankCandidate, rankProducts } from '../../lib/my-style-rank.js';
-import { buildProductUrl } from '../../lib/store-urls.js';
 import {
   attributeScore,
   combineSimilarity,
@@ -46,6 +45,7 @@ import {
   pickFestival,
   promoteMatches,
 } from '../../lib/my-style-tabs.js';
+import { buildProductUrl } from '../../lib/store-urls.js';
 import { AppError, notFound, validationError } from '../../plugins/error-handler.js';
 import { getPassportSession } from './passport/passport-helpers.js';
 import { enquiryPhone, toPublicProductSummary } from './public-helpers.js';
@@ -422,7 +422,13 @@ export const publicMyStyleRoutes: FastifyPluginAsync = async (server) => {
 
       const retailer = await prisma.retailer.findFirst({
         where: { public_slug: parsed.data.retailer_slug, is_suspended: false, deleted_at: null },
-        select: { id: true, shop_name: true, phone: true, whatsapp_number: true, public_slug: true },
+        select: {
+          id: true,
+          shop_name: true,
+          phone: true,
+          whatsapp_number: true,
+          public_slug: true,
+        },
       });
       if (!retailer) throw notFound('Store');
 
