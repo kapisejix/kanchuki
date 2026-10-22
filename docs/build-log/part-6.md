@@ -736,7 +736,7 @@ no migration, no schema change, and **no new request on any surface**.
 
 | Item | Detail |
 |---|---|
-| PR | #149 (`e3b1ce64`), branch `fix/storefront-enquire-sku`, not merged. No migration. |
+| PR | #149 (`e3b1ce64`, `a50648d0` docs, `d9a443f8` Biome format), merge `97cad538` into `main` 2026-10-22. No migration. |
 | Bottom-bar Enquire | `CollectionView.handleEnquireAll` now POSTs saved picks to `{apiBase}/enquire` like `WishlistView`: the server adds each SKU and records the enquiry in the inbox. Nothing saved, or a failed POST, keeps the client-built link (link, no SKU, no inbox row). Opens with `_self` (a `_blank` after an await is popup-blocked); RC-015 sync guard. |
 | Pseudo-slug pages | Category (`cat-{id}`) and All-products (`all-{store}`) pages have no collection row, so `POST /public/collections/:slug/enquire` 404'd them (WishlistView too). The `/api/{store}/{collection}/enquire` proxy adds `store` to the body; for a `cat-`/`all-` slug with no collection the API resolves the store by `public_slug` and records against its oldest ACTIVE collection (same rule as My Style `/enquire`). A store with no live collection still gets the SKU'd link, no inbox row. Real slugs ignore `store`. |
 | Tests | API `public-collections-enquire` + `public-whatsapp-target` 31/31 (3 new), web enquire proxy + CollectionView + wishlist 16/16 (4 new); tsc clean (web, api). |
