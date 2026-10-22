@@ -1,7 +1,7 @@
 # Security audit — 5 points (secrets, data access, uploads, paid gates, AI caps)
 
-**Status:** 📋 Audit done 2026-10-22 — nothing built. Owner approved T1–T4 and the expired-plan rule (**drop to STARTER**) on 2026-10-22.
-**Branch:** `fix/security-audit-5pts` (created from `fix/upload-staging`, no commits yet). T3 builds on the upload-staging code, so `fix/upload-staging` must merge first or this branch merges after it.
+**Status:** 🟨 T1 ✅ `b9616811` (RC-078), T2 ✅ `e59d78ff` (RC-079), T3 server side ✅ `48e84013` (RC-080; client side split to `mobile-presign-content-length.md`), T4 part 1 ✅ `10fa64ec` (`admin-route-guard.test.ts`). **T4 RLS migration open** (needs the real no-RLS table list from the Supabase Security Advisor). Committed on the branch, nothing pushed. Owner approved T1–T4 and the expired-plan rule (**drop to STARTER**) on 2026-10-22.
+**Branch:** `fix/security-audit-5pts` (created from `fix/upload-staging`). T3 builds on the upload-staging code, so `fix/upload-staging` must merge first or this branch merges after it.
 **Surfaces audited:** `apps/api`, `apps/web` (customer PWA + admin), `apps/mobile`.
 
 ---

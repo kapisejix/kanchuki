@@ -42,3 +42,18 @@
 | Tests | New: upload-guard +9 (promote, retry after promote, both missing, staged ownership/traversal, reject deletes staged only, final key never deleted on reject, `currentKey`), profile +2 (staged banner promoted and FINAL key/url stored; staged url without key refused). Updated: 4 presign-shape asserts and 4 reject-deletes asserts to staged keys. API `tsc` clean; biome clean on `apps/api`. Full API suite, run in folder chunks for memory: **2317 passed, 5 skipped, 0 failed (164 files)**: jobs + plugins 414 (+5 skipped), lib 506, `routes/admin*` 346, `routes/public*` 309, `routes/billing*` 70, `routes/retailers*` 203, `routes/products` 158, `routes/growth` + `team` + `webhooks` 93, root `routes/*.test.ts` 218 (incl. `auth-team`). `lib/my-style-analysis.test.ts` passed this run (known ioredis `AggregateError` flake). |
 | Owner action | Add R2 lifecycle rules in Cloudflare (not applied here): `uploads/pending/` delete after 1 day; `catalog-pdf/` and `catalog-source/` delete after 7 days. Deploy this branch BEFORE the `uploads/pending/` rule matters (the rule is harmless earlier, nothing lives there). |
 | Not verified | Nothing run against live R2 (`CopyObject` CopySource encoding, public-bucket serving of `uploads/pending/`) or on a device. Pro cleanup end to end with a staged key not run. Old app builds keep working: they echo whatever key the presign returned. |
+
+---
+
+## 2026-10-22 - Security audit, 5 points: paid-gate lapse, AI/enquiry caps, presign size bound, admin route-guard test (RC-078, RC-079, RC-080)
+
+**Branch:** `fix/security-audit-5pts` (stacked on `fix/upload-staging`; 4 commits, nothing pushed). Spec: [`docs/tasks/pending/security-audit-5-points.md`](../tasks/pending/security-audit-5-points.md). No migration.
+
+| Piece | Detail |
+|---|---|
+| T1 `b9616811` RC-078 | New hourly `plan-lapse` job (`jobs/plan-lapse.ts`, registered in `jobs/index.ts` with no `repeat.limit`, RC-062). Retailers whose TRIAL ended, or whose PAST_DUE / CANCELLED / COMPLETED period has passed (`plan_expires_at` null or past), drop to STARTER with STARTER `max_products` / `max_customers`; one `auditLog` row each. TRIAL with null `trial_ends_at` is counted and left alone (admin-granted). Cancel keeps access until `plan_expires_at`. |
+| T2 `e59d78ff` RC-079 | `/stylist` and `/collections/:slug/enquire` limited to 10/min per IP; 20 s abort on the Claude fetch (lands in the existing fallback); Anthropic/OpenAI SDK clients get `timeout: 60_000, maxRetries: 1`. |
+| T3 server `48e84013` RC-080 | `getUploadPresignedUrl` signs an optional `ContentLength`; all 13 presign routes accept optional `content_length` and share `UPLOAD_URL_RATE_LIMIT` (30/min). Optional so old app builds keep working; **nothing is size-bound in production until a client sends it** (`mobile-presign-content-length.md`). |
+| T4 part 1 `10fa64ec` | `routes/admin-route-guard.test.ts` enumerates every `/v1/admin` route via `onRoute` and expects 403 without an admin key (login excepted). |
+| Open | T4 RLS migration (needs the live no-RLS table list; owner applies). Client `content_length` task is blocked on the owner running `packages/ai/scripts/check-r2-content-length.mjs`. No platform-wide daily AI spend cap (needs an owner rupee/day figure). R2 lifecycle rule for `uploads/pending/` is an owner step. |
+| Not verified | Nothing against live R2 or a device. `plan-lapse` first production run not watched. |
