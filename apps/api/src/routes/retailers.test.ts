@@ -9,10 +9,13 @@ const { mockRetailerFindUnique, mockRetailerUpdate, mockCollectionFindFirst } = 
   mockCollectionFindFirst: vi.fn(),
 }));
 
-const { mockGetUploadPresignedUrl, mockPublicUrl } = vi.hoisted(() => ({
-  mockGetUploadPresignedUrl: vi.fn(),
-  mockPublicUrl: vi.fn(),
-}));
+const { mockGetUploadPresignedUrl, mockPublicUrl, mockInspectObject, mockDeleteObject } =
+  vi.hoisted(() => ({
+    mockGetUploadPresignedUrl: vi.fn(),
+    mockPublicUrl: vi.fn(),
+    mockInspectObject: vi.fn(),
+    mockDeleteObject: vi.fn(async () => {}),
+  }));
 
 const {
   mockTeamMemberFindUnique,
@@ -113,6 +116,8 @@ vi.mock('@kanchuki/db', () => ({
 vi.mock('@kanchuki/ai', () => ({
   getUploadPresignedUrl: mockGetUploadPresignedUrl,
   publicUrl: mockPublicUrl,
+  inspectObject: mockInspectObject,
+  deleteObject: mockDeleteObject,
 }));
 
 // F-031 social publishing — Meta Graph API + Redis are mocked; the suite only
@@ -326,6 +331,11 @@ describe('PUT /retailers/me', () => {
       shop_name: 'Test Shop',
       logo_url: 'https://cdn.example.com/logo.jpg',
     });
+    mockPublicUrl.mockImplementation((k: string) => `https://cdn.example.com/${k}`);
+    mockInspectObject.mockResolvedValue({
+      size: 1000,
+      head: Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0, 0, 0, 0, 0, 0, 0, 0]),
+    });
 
     const app = await buildApp();
     const res = await app.inject({
@@ -334,15 +344,62 @@ describe('PUT /retailers/me', () => {
       payload: {
         shop_name: 'Test Shop',
         logo_url: 'https://cdn.example.com/logo.jpg',
-        logo_r2_key: 'retailer_1/logo/x1.jpg',
+        logo_r2_key: 'retailers/retailer_1/logo/x1.jpg',
       },
     });
 
     expect(res.statusCode).toBe(200);
     const callArg = mockRetailerUpdate.mock.calls[0]?.[0];
     expect(callArg.data).toHaveProperty('logo_url');
+    // url is rebuilt from the verified key, never taken from the client
+    expect(callArg.data.logo_url).toBe('https://cdn.example.com/retailers/retailer_1/logo/x1.jpg');
     expect(callArg.data).not.toHaveProperty('gstin');
     await app.close();
+  });
+
+  describe('PUT /retailers/me — image reference hardening', () => {
+    beforeEach(() => {
+      mockRetailerFindUnique.mockResolvedValue({
+        onboarded_by_id: null,
+        shop_name: 'Test Shop',
+        public_slug: null,
+        logo_r2_key: null,
+        banner_r2_key: null,
+      });
+      mockPublicUrl.mockImplementation((k: string) => `https://cdn.example.com/${k}`);
+      mockInspectObject.mockReset();
+      mockDeleteObject.mockClear();
+    });
+
+    const put = async (payload: Record<string, unknown>) => {
+      const app = await buildApp();
+      const res = await app.inject({ method: 'PUT', url: '/v1/retailers/me', payload });
+      await app.close();
+      return res;
+    };
+
+    it('rejects another retailer’s r2 key', async () => {
+      const res = await put({ logo_r2_key: 'retailers/someone_else/logo/x.jpg' });
+      expect(res.statusCode).toBe(422);
+      expect(mockInspectObject).not.toHaveBeenCalled();
+      expect(mockRetailerUpdate).not.toHaveBeenCalled();
+    });
+
+    it('rejects a javascript: / external logo url with no key', async () => {
+      for (const logo_url of ['javascript:alert(1)', 'https://evil.example/x.png']) {
+        const res = await put({ logo_url });
+        expect(res.statusCode).toBe(422);
+      }
+      expect(mockRetailerUpdate).not.toHaveBeenCalled();
+    });
+
+    it('rejects an uploaded file that is not an image and deletes it', async () => {
+      mockInspectObject.mockResolvedValue({ size: 50, head: Buffer.from('<script>alert(1)') });
+      const res = await put({ banner_r2_key: 'retailers/retailer_1/banner/x.jpg' });
+      expect(res.statusCode).toBe(422);
+      expect(mockDeleteObject).toHaveBeenCalledWith('retailers/retailer_1/banner/x.jpg');
+      expect(mockRetailerUpdate).not.toHaveBeenCalled();
+    });
   });
 
   it('rejects a malformed GSTIN (the round-trip failure that broke logo saves)', async () => {

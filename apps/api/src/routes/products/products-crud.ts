@@ -7,6 +7,7 @@ import { addEmbeddingJob, addTaggingJob } from '../../jobs/index.js';
 import { resolveColorFamily } from '../../lib/color-families.js';
 import { NEW_ARRIVAL_DAYS, isNewArrival } from '../../lib/product-flags.js';
 import { checkQuota, incrementUsage } from '../../lib/quota.js';
+import { IMAGE_KINDS, verifyUpload } from '../../lib/upload-guard.js';
 import {
   forbidden,
   notFound,
@@ -46,7 +47,15 @@ export const productsCrudRoutes: FastifyPluginAsync = async (server) => {
     const body = CreateProductSchema.safeParse(request.body);
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
 
-    const { photo_r2_key, photo_url, metadata, auto_cleanup, ...rest } = body.data;
+    const { photo_r2_key, metadata, auto_cleanup, ...rest } = body.data;
+    // Client-supplied photo_url is ignored: key must be the retailer's own real
+    // image, and the url is rebuilt from it.
+    const { url: photo_url } = await verifyUpload({
+      retailerId,
+      r2Key: photo_r2_key,
+      allowed: IMAGE_KINDS,
+      maxBytes: 10_000_000,
+    });
 
     if (rest.section_id) {
       const section = await prisma.storeSection.findFirst({

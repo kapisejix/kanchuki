@@ -1,12 +1,16 @@
 // billing-addons.ts — one-time addon packs (payment link + order + verification) (split from apps/api/src/routes/billing.ts — body byte-identical)
-import { createHmac } from 'node:crypto';
 import { type QuotaResourceType, type SubscriptionPlan, getSecret, prisma } from '@kanchuki/db';
 import { ADDON_PRICING } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { hasFeatureForPlan } from '../../lib/features.js';
 import { notFound, validationError } from '../../plugins/error-handler.js';
-import { getEffectiveLimit, hexEquals, razorpay } from './billing-helpers.js';
+import {
+  getEffectiveLimit,
+  razorpay,
+  verifyOrderSignature,
+  verifyPaymentLinkSignature,
+} from './billing-helpers.js';
 // The callback credits only a limited resource (limit !== -1, row exists); a pack
 // bought otherwise would take payment and credit nothing.
 async function canCredit(retailerId: string, plan: SubscriptionPlan): Promise<boolean> {
@@ -199,6 +203,7 @@ export const billingAddonRoutes: FastifyPluginAsync = async (server) => {
         razorpay_payment_id: z.string().optional(),
         razorpay_payment_link_id: z.string().optional(),
         razorpay_payment_link_reference_id: z.string().optional(),
+        razorpay_payment_link_status: z.string().optional(),
         razorpay_signature: z.string().optional(),
       })
       .parse(request.query);
@@ -211,13 +216,25 @@ export const billingAddonRoutes: FastifyPluginAsync = async (server) => {
       });
     }
 
-    // Verify the Payment Link signature
-    const secret = (await getSecret('RAZORPAY_KEY_SECRET')) ?? '';
-    const expected = createHmac('sha256', secret)
-      .update(`${razorpay_payment_link_id}|${razorpay_payment_id}`)
-      .digest('hex');
+    // Verify the Payment Link signature (server-side, key secret; empty secret = fail).
+    const linkStatus = query.razorpay_payment_link_status;
+    const sigOk =
+      (linkStatus === undefined || linkStatus === 'paid') &&
+      ((linkStatus !== undefined &&
+        (await verifyPaymentLinkSignature({
+          linkId: razorpay_payment_link_id,
+          paymentId: razorpay_payment_id,
+          signature: razorpay_signature,
+          referenceId: query.razorpay_payment_link_reference_id,
+          status: linkStatus,
+        }))) ||
+        (await verifyPaymentLinkSignature({
+          linkId: razorpay_payment_link_id,
+          paymentId: razorpay_payment_id,
+          signature: razorpay_signature,
+        })));
 
-    if (!hexEquals(expected, razorpay_signature)) {
+    if (!sigOk) {
       request.log.warn({ razorpay_payment_link_id }, 'Payment link callback signature mismatch');
       return reply.status(401).send({
         error: {
@@ -395,12 +412,8 @@ export const billingAddonRoutes: FastifyPluginAsync = async (server) => {
 
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = body;
 
-    // HMAC-SHA256(order_id + "|" + payment_id, key_secret)
-    const expected = createHmac('sha256', (await getSecret('RAZORPAY_KEY_SECRET')) ?? '')
-      .update(`${razorpay_order_id}|${razorpay_payment_id}`)
-      .digest('hex');
-
-    if (!hexEquals(expected, razorpay_signature)) {
+    // HMAC-SHA256(order_id + "|" + payment_id, key_secret); empty secret = fail
+    if (!(await verifyOrderSignature(razorpay_order_id, razorpay_payment_id, razorpay_signature))) {
       throw validationError('Payment signature verification failed');
     }
 

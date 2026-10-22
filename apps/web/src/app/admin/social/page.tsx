@@ -15,6 +15,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { adminGetOptions } from '@/lib/admin-fetch'
+import { safeHttpUrl } from '@/lib/safe-url'
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
 
@@ -328,9 +329,9 @@ export default function SocialPage() {
                       </td>
                       <td className="px-4 py-3 text-gray-500 text-xs">{fmtDate(post.created_at)}</td>
                       <td className="px-4 py-3 text-center">
-                        {post.external_post_url ? (
+                        {safeHttpUrl(post.external_post_url) ? (
                           <a
-                            href={post.external_post_url}
+                            href={safeHttpUrl(post.external_post_url)}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-indigo-500 hover:text-indigo-700"

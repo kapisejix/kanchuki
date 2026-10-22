@@ -2,6 +2,7 @@
 import { getPurgePrisma, prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
+import { IMAGE_KINDS, verifyUpload } from '../../lib/upload-guard.js';
 import { notFound, validationError } from '../../plugins/error-handler.js';
 import { photoUrlToDisplay } from './products-helpers.js';
 
@@ -27,6 +28,14 @@ export const productsVariantsRoutes: FastifyPluginAsync = async (server) => {
       })
       .safeParse(request.body);
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
+
+    const verified = await verifyUpload({
+      retailerId: request.retailerId,
+      r2Key: body.data.r2_key,
+      allowed: IMAGE_KINDS,
+      maxBytes: 10_000_000,
+    });
+    body.data.url = verified.url;
 
     const variant = await prisma.productVariant.create({
       data: {

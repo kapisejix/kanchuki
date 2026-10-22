@@ -14,6 +14,7 @@ import { z } from 'zod';
 import { hasFeature } from '../../lib/features.js';
 import { bumpPhotoUrlVersion, preserveOriginalPhoto } from '../../lib/photo-cleanup.js';
 import { checkQuota, incrementUsage } from '../../lib/quota.js';
+import { IMAGE_KINDS, verifyUpload } from '../../lib/upload-guard.js';
 import { featureUnavailable, notFound, validationError } from '../../plugins/error-handler.js';
 import {
   ALLOWED_MIME_TYPES,
@@ -87,12 +88,21 @@ export const productsMediaRoutes: FastifyPluginAsync = async (server) => {
       .safeParse(request.body);
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
 
+    // Never trust the client's key/url: key must be this retailer's own, bytes
+    // must be a real image, and the stored url is rebuilt server-side.
+    const verified = await verifyUpload({
+      retailerId: request.retailerId,
+      r2Key: body.data.r2_key,
+      allowed: IMAGE_KINDS,
+      maxBytes: 10_000_000,
+    });
+
     const photo = await prisma.productPhoto.create({
       data: {
         product_id: id,
         retailer_id: request.retailerId,
         r2_key: body.data.r2_key,
-        url: body.data.url,
+        url: verified.url,
         is_primary: body.data.is_primary ?? false,
         piece_type: body.data.piece_type,
       },
