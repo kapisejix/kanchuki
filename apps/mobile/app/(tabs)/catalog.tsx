@@ -44,6 +44,7 @@ type Product = {
   section: { name: string } | null
   location_notes: string | null
   ai_tagged: boolean
+  total_quantity?: number | null
 }
 
 // ── Price buckets (paise, matches formatPriceRange units) ──────────
@@ -136,6 +137,15 @@ const CatalogCard = memo(function CatalogCard({
           <Text className="text-sm font-bold text-spaceCadet-900 font-marcellus">
             {formatPriceRange(product.price_min, product.price_max)}
           </Text>
+          {product.total_quantity != null && (
+            <Text
+              className={`text-[11px] font-semibold ${
+                product.total_quantity <= 2 ? 'text-red-600' : 'text-heliotrope-400'
+              }`}
+            >
+              {product.total_quantity <= 2 ? `Low stock: ${product.total_quantity}` : `Stock: ${product.total_quantity}`}
+            </Text>
+          )}
           {product.section && (
             <View className="flex-row items-center gap-1">
               <MapPin size={10} color="#6B4773" />

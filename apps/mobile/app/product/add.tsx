@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { SIZE_OPTIONS } from '@kanchuki/shared'
+import { StockEditor, toStockPayload } from '../../src/components/product-detail/StockEditor'
 import {
   View,
   Text,
@@ -135,6 +136,7 @@ export default function AddProductScreen() {
   const [selectedStyles, setSelectedStyles] = useState<string[]>([])
   const [selectedFabrics, setSelectedFabrics] = useState<string[]>([])
   const [selectedSizes, setSelectedSizes] = useState<string[]>([])
+  const [stockQty, setStockQty] = useState<Record<string, number>>({})
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([])
   const checkProAvailability = useCallback((refresh = false) => {
     setProAvailability('checking')
@@ -462,6 +464,7 @@ export default function AddProductScreen() {
         fabrics: selectedFabrics,
         search_tags: tagsToSave,
         sizes: selectedSizes,
+        stock: toStockPayload(selectedSizes, stockQty),
         category_id: primaryCategoryId,
         location_notes: location || undefined,
         notes: notes || undefined,
@@ -1166,6 +1169,18 @@ export default function AddProductScreen() {
               )
             })}
           </View>
+        </View>
+
+        {/* Stock per size (defaults to 1; edit later) */}
+        <View className="bg-white rounded-2xl p-4 border border-sand-100">
+          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-3">
+            Stock
+          </Text>
+          <StockEditor
+            selectedSizes={selectedSizes}
+            qty={stockQty}
+            onChange={(size, quantity) => setStockQty((prev) => ({ ...prev, [size]: quantity }))}
+          />
         </View>
 
         {/* Style tags (dynamic, DB-backed — multi-select) */}

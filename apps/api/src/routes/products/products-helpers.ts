@@ -4,6 +4,7 @@ import { getDownloadPresignedUrl } from '@kanchuki/ai';
 import { prisma } from '@kanchuki/db';
 import { SIZE_OPTIONS } from '@kanchuki/shared';
 import { z } from 'zod';
+import { StockInputSchema } from '../../lib/product-stock.js';
 
 // ─── On-Demand ISR Revalidation ───────────────────────────────────
 // After a product status change, purge the ISR cache for every collection
@@ -82,6 +83,8 @@ export const CreateProductSchema = z.object({
   fabrics: z.array(z.string().max(100)).max(10).optional(),
   search_tags: z.array(z.string().max(100)).max(20).optional(),
   sizes: z.array(z.enum(SIZE_OPTIONS)).max(SIZE_OPTIONS.length).optional(),
+  // Per-size stock. Omitted on create -> 1 unit per selected size (FREE if unsized).
+  stock: StockInputSchema.optional(),
   section_id: z.string().optional(),
   category_id: z.string().nullable().optional(),
   location_notes: z.string().max(200).optional(),

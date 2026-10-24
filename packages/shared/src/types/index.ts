@@ -66,9 +66,17 @@ export interface ProductSummary {
   section: { name: string } | null
   location_notes: string | null
   created_at: string
+  /** Sum over tracked sizes; null/undefined = stock not tracked for this product. */
+  total_quantity?: number | null
+}
+
+export interface ProductStockRow {
+  size: string // a SIZE_OPTIONS value, or 'FREE' for unsized items
+  quantity: number
 }
 
 export interface ProductDetail extends ProductSummary {
+  stock?: ProductStockRow[]
   sku?: string | null
   description?: string | null
   subtype?: string | null
@@ -148,6 +156,7 @@ export interface CreateProductInput {
   neck_style?: string
   sleeve_type?: string
   sizes?: string[]
+  stock?: ProductStockRow[]
   price_min?: number
   price_max?: number
   mrp?: number

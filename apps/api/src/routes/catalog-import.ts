@@ -12,6 +12,7 @@ import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { addTaggingJob } from '../jobs/index.js';
 import { recordAiUsage } from '../lib/ai-usage.js';
+import { defaultStock } from '../lib/product-stock.js';
 import { checkQuota, incrementUsage } from '../lib/quota.js';
 import { createSkuSequencer } from '../lib/sku.js';
 import { IMAGE_KINDS, UPLOAD_URL_RATE_LIMIT, verifyUpload } from '../lib/upload-guard.js';
@@ -437,6 +438,10 @@ export const catalogImportRoutes: FastifyPluginAsync = async (server) => {
             r2_key: item.cropped_r2_key,
             url: cropUrls.get(item.cropped_r2_key) as string,
           },
+        },
+        // Stock starts at 1 per size; the retailer edits it later.
+        stock: {
+          create: defaultStock(item.sizes).map((row) => ({ ...row, retailer_id: retailerId })),
         },
       })),
     );
