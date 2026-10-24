@@ -186,7 +186,7 @@ export default function BackgroundImagesPage() {
         ))}
         {rows.length === 0 && (
           <p className="col-span-full text-sm text-gray-400 py-8 text-center">
-            No background images yet — upload one above.
+            No background images.
           </p>
         )}
       </div>
