@@ -5,7 +5,7 @@ import { R2_PATHS } from '@kanchuki/shared';
 import { createId } from '@paralleldrive/cuid2';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
-import { IMAGE_KINDS, verifyUpload } from '../../lib/upload-guard.js';
+import { IMAGE_KINDS, stagingKey, verifyUpload } from '../../lib/upload-guard.js';
 import { validationError } from '../../plugins/error-handler.js';
 
 export const retailersUploadsRoutes: FastifyPluginAsync = async (server) => {
@@ -24,7 +24,7 @@ export const retailersUploadsRoutes: FastifyPluginAsync = async (server) => {
     const { content_type } = body.data;
     const ext =
       content_type === 'image/png' ? 'png' : content_type === 'image/webp' ? 'webp' : 'jpg';
-    const r2Key = R2_PATHS.retailerBanner(request.retailerId, `${createId()}.${ext}`);
+    const r2Key = stagingKey(R2_PATHS.retailerBanner(request.retailerId, `${createId()}.${ext}`));
 
     let uploadUrl: string;
     try {
@@ -52,7 +52,7 @@ export const retailersUploadsRoutes: FastifyPluginAsync = async (server) => {
     const { content_type } = body.data;
     const ext =
       content_type === 'image/png' ? 'png' : content_type === 'image/webp' ? 'webp' : 'jpg';
-    const r2Key = R2_PATHS.retailerLogo(request.retailerId, `${createId()}.${ext}`);
+    const r2Key = stagingKey(R2_PATHS.retailerLogo(request.retailerId, `${createId()}.${ext}`));
 
     let uploadUrl: string;
     try {
@@ -87,7 +87,9 @@ export const retailersUploadsRoutes: FastifyPluginAsync = async (server) => {
 
     const ext =
       content_type === 'application/pdf' ? 'pdf' : content_type === 'image/png' ? 'png' : 'jpg';
-    const r2Key = R2_PATHS.retailerKyc(request.retailerId, doc_type, `${createId()}.${ext}`);
+    const r2Key = stagingKey(
+      R2_PATHS.retailerKyc(request.retailerId, doc_type, `${createId()}.${ext}`),
+    );
 
     let uploadUrl: string;
     try {
@@ -133,7 +135,7 @@ export const retailersUploadsRoutes: FastifyPluginAsync = async (server) => {
 
     const updated = await prisma.retailer.update({
       where: { id: request.retailerId },
-      data: { [urlField]: verified.url, [keyField]: r2_key },
+      data: { [urlField]: verified.url, [keyField]: verified.r2Key },
     });
 
     let kyc_status = updated.kyc_status;

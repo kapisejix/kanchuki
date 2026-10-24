@@ -208,7 +208,7 @@ function StyleRow({ row, setRows, setStatus, setLightbox }: {
       if (!put.ok) throw new Error('Upload to storage failed')
       const patchRes = await fetch(`${API_URL}/v1/admin/studio-styles/${row.id}`, {
         ...(await adminMutateOptions()), method: 'PATCH',
-        body: JSON.stringify({ thumbnail_url: data.public_url, thumbnail_r2_key: data.r2_key }),
+        body: JSON.stringify({ thumbnail_r2_key: data.r2_key }),
       })
       if (!patchRes.ok) throw new Error('Failed to save thumbnail')
       const { data: updated } = await patchRes.json()

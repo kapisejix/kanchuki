@@ -347,8 +347,6 @@ export const R2_PATHS = {
     docType: 'gst' | 'aadhar_front' | 'aadhar_back',
     filename: string,
   ) => `retailers/${retailerId}/kyc/${docType}/${filename}`,
-  spinVideo: (retailerId: string, productId: string) =>
-    `retailers/${retailerId}/products/${productId}/spin/video.mp4`,
   productVideo: (retailerId: string, productId: string, filename: string) =>
     `retailers/${retailerId}/products/${productId}/videos/${filename}`,
   spinFrame: (retailerId: string, productId: string, frameIndex: number) =>

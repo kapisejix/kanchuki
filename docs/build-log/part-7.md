@@ -1,0 +1,44 @@
+# Kanchuki — Build Log (part 7)
+
+> Continuation of [`../BUILD-LOG.md`](../BUILD-LOG.md) — started 2026-10-22 because part 6 passed the 150k-char doc limit. Same format: newest entries appended at the bottom.
+
+---
+
+## 2026-10-22 - Admin upload confirm paths verified server-side (RC-075, admin half)
+
+**Branch:** `fix/admin-upload-verify` (stacked on `fix/security-hardening-2` / PR #143, which adds `verifyUpload`'s `prefix` option). No migration, no mobile change.
+
+| Piece | Detail |
+|---|---|
+| `lib/upload-guard.ts` | `verifyUpload()` gains a prefix-only mode for admin uploads (`{ prefix }`, no `retailerId`; typed as a union so a retailer call still defaults to `retailers/<id>/`). `isOwnedKey()` returns false for an empty prefix, which would otherwise own every key. |
+| Studio styles | Create/PATCH verify `thumbnail_r2_key` under `admin/studio-styles/` (10 MB, JPEG/PNG/WebP) and store the server-built `thumbnail_url`; client `thumbnail_url` input removed; `thumbnail_r2_key: null` clears both. |
+| Post templates | No key column (no migration), so `thumbnail_r2_key` is an input only: verified under `admin/post-templates/`, the derived URL is stored; `null` clears; client `thumbnail_url` input removed. |
+| Background images | `POST /admin/background-images` takes `r2_key` instead of `image_url` (unused `thumbnail_url` dropped), verified under `admin/background-images/` (15 MB). The tone/naming step used to `fetchImageBuffer()` the client URL server-side (SSRF); it now fetches only the server-built R2 URL. |
+| Admin showcase designs | Create and photo-replace run `verifyUpload` under `showcase-designs/global/raw/` (the only prefix the admin upload-url mints; 15 MB). `/suggest` keeps a key-only check on the same prefix. Previously any `showcase-designs/*` key passed, including other retailers' raw and final objects. |
+| Design references | `image_url` input removed; `r2_key` verified under `admin/design-references/` and the URL derived. No upload-url route or UI exists, so nothing mints those keys yet (`ponytail:` comment in the route). |
+| Watermark logo | `PUT /settings/showcase-watermark` verifies a new `logo_r2_key` under `showcase-watermark/logo/` (5 MB) before it is saved and composited onto every design; an unchanged or `null` key skips the check. |
+| Admin web | `background-images`, `post-templates`, `studio-styles` pages now send the key (`r2_key` / `thumbnail_r2_key`) instead of `public_url`. Suits-designs and watermark pages already sent keys. |
+| Tests | API **2309 passed, 5 skipped** (164 files), web **688/688**, API + web `tsc` clean. New: upload-guard +2, admin-showcase-designs +2 (non-image replace deleted + not watermarked; retailer raw key refused), watermark +1 (foreign key, SVG bytes), studio-styles +2, post-templates +2. The `security.test.ts` / `admin.login.test.ts` suites mock `R2_PATHS` partially, so the admin raw prefix is computed lazily, not at import. |
+| Not verified | No live R2, no browser run of the three changed admin pages. Background-images and design-references have no route-level test. |
+
+---
+
+## 2026-10-22 - Upload staging prefix + dead spin-video routes removed (hardening, no RC)
+
+**Branch:** `fix/upload-staging` (stacked on `fix/admin-upload-verify`). No migration, no mobile release. Steps 2 and 3 of [`docs/tasks/pending/r2-orphan-lifecycle.md`](../tasks/pending/r2-orphan-lifecycle.md).
+
+| Piece | Detail |
+|---|---|
+| Problem | A presigned PUT whose confirm never ran (app killed, 422, abuse) left an object under the same prefix as live photos/logos/KYC, so no R2 lifecycle rule could expire it without deleting live data. |
+| `packages/ai` `r2.ts` | New `copyObject(from, to)` (server-side `CopyObjectCommand`, Content-Type carried over). |
+| `lib/upload-guard.ts` | `stagingKey(final)` = `uploads/pending/<final>`, `unstagedKey()`, `currentKey()`. `verifyUpload` takes a staged or final key, checks ownership on the FINAL key, inspects the staged object, and on pass copies it to the final key and deletes the staged copy. Returns `{ url, kind, r2Key: final }`. Retry is idempotent: staged gone + final present verifies the final key without a copy. On reject only a staged object is deleted; a final key may be a live object, so it is left alone (behaviour change from RC-075, which deleted any rejected key). |
+| Presign routes (12) | Product photo, product video, category image, banner, logo (also bug-report screenshots), KYC, retailer + admin showcase raw, background image, studio-style thumb, post-template thumb, watermark logo now mint `uploads/pending/...` keys; `public_url` points at the staged object so client previews keep working before confirm. `catalog-import` is excluded (its two prefixes get their own 7-day rule). |
+| Confirm callers | Every caller stores the RETURNED final key, never the body key: products create/photos/variants, growth videos (dedupe runs after verify, on the final key), categories, profile logo/banner, KYC, bug-report screenshot, retailer + admin showcase designs, studio styles, design references, watermark logo. Admin media and post templates store only the URL, already final. Profile refuses a staged URL sent without a key (it would be stored and then deleted). |
+| Pre-confirm readers | `/products/pro-cleanup` accepts staged keys (ownership via `isOwnedKey(unstagedKey(..))`, which also adds the traversal check). A staged raw gives a staged `-pro` output, which product create then verifies and promotes. Retailer + admin showcase `/suggest` read the bytes at `currentKey()`, so a suggest after the confirm (mobile edit screen order) still finds the image. |
+| Compression cron | `jobs/compress-r2-images.ts` skips `uploads/pending/`. |
+| Promote race (follow-up) | The presigned PUT stays valid until expiry, so a client could overwrite the staged object between the check and the copy and get unchecked bytes promoted. `inspectObject` now returns the object ETag and `copyObject(from, to, ifMatch)` sends `CopySourceIfMatch`; a 412 `PreconditionFailed` rejects the upload and deletes the staged key. Tests: upload-guard +1 (ETag mismatch rejected, staged deleted, final untouched), promote test asserts the ETag is passed. Re-run after: `lib/upload-guard` + `routes/retailers*` 74, `routes/retailers` 203, `routes/admin` 346, `routes/products` 158, `routes/growth` 33, all green; API + `packages/ai` `tsc` clean. R2 support for `x-amz-copy-source-if-match` not checked live. |
+| Dead code | `POST /products/:id/spin-video/upload-url` and `/spin-video` deleted (SPIN_360 torn down 2026-08-31; no client calls them), plus `R2_PATHS.spinVideo`, `ALLOWED_SPIN_VIDEO_MIME_TYPES`, `MAX_SPIN_VIDEO_BYTES`. |
+| Client check | Mobile and admin web only use presign `public_url` for preview or echo it back; servers rebuild the URL from the verified key. A client that still holds the staged key after saving re-sends it on the next save and hits the retry path. No app release needed. |
+| Tests | New: upload-guard +9 (promote, retry after promote, both missing, staged ownership/traversal, reject deletes staged only, final key never deleted on reject, `currentKey`), profile +2 (staged banner promoted and FINAL key/url stored; staged url without key refused). Updated: 4 presign-shape asserts and 4 reject-deletes asserts to staged keys. API `tsc` clean; biome clean on `apps/api`. Full API suite, run in folder chunks for memory: **2317 passed, 5 skipped, 0 failed (164 files)**: jobs + plugins 414 (+5 skipped), lib 506, `routes/admin*` 346, `routes/public*` 309, `routes/billing*` 70, `routes/retailers*` 203, `routes/products` 158, `routes/growth` + `team` + `webhooks` 93, root `routes/*.test.ts` 218 (incl. `auth-team`). `lib/my-style-analysis.test.ts` passed this run (known ioredis `AggregateError` flake). |
+| Owner action | Add R2 lifecycle rules in Cloudflare (not applied here): `uploads/pending/` delete after 1 day; `catalog-pdf/` and `catalog-source/` delete after 7 days. Deploy this branch BEFORE the `uploads/pending/` rule matters (the rule is harmless earlier, nothing lives there). |
+| Not verified | Nothing run against live R2 (`CopyObject` CopySource encoding, public-bucket serving of `uploads/pending/`) or on a device. Pro cleanup end to end with a staged key not run. Old app builds keep working: they echo whatever key the presign returned. |

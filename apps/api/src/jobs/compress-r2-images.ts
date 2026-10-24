@@ -36,7 +36,14 @@ import { prisma } from '@kanchuki/db';
 // breaks strict decoders — the same rule the mobile client-side compressor
 // follows. PNG/WebP sources are treated as skipped (counted, not compressed).
 const IMAGE_EXTS = ['.jpg', '.jpeg'];
-const EXCLUDE_SUBSTRINGS = ['measurements/', '/kyc/', 'backups/', 'catalog-pdf'];
+// uploads/pending/: unverified staged uploads, promoted or expired by lifecycle.
+const EXCLUDE_SUBSTRINGS = [
+  'measurements/',
+  '/kyc/',
+  'backups/',
+  'catalog-pdf',
+  'uploads/pending/',
+];
 const CONCURRENCY = 2; // sharp decode buffers — bounded RSS on the 2GB container
 const MAX_BYTES = 80 * 1024; // must match compressImageToTarget's default budget
 

@@ -7,7 +7,7 @@ import { z } from 'zod';
 import { handleGenerateKenBurnsVideo } from '../../jobs/generate-ken-burns-video.js';
 import { addKenBurnsVideoJob } from '../../jobs/index.js';
 import { hasFeature } from '../../lib/features.js';
-import { VIDEO_KINDS, verifyUpload } from '../../lib/upload-guard.js';
+import { VIDEO_KINDS, stagingKey, verifyUpload } from '../../lib/upload-guard.js';
 import { featureUnavailable, notFound, validationError } from '../../plugins/error-handler.js';
 import { photoUrlToDisplay } from '../products/products-helpers.js';
 
@@ -47,7 +47,7 @@ export const growthVideoRoutes: FastifyPluginAsync = async (server) => {
     const ext =
       content_type === 'video/webm' ? 'webm' : content_type === 'video/quicktime' ? 'mov' : 'mp4';
     const filename = `${createId()}.${ext}`;
-    const r2Key = R2_PATHS.productVideo(retailerId, id, filename);
+    const r2Key = stagingKey(R2_PATHS.productVideo(retailerId, id, filename));
 
     let uploadUrl: string;
     try {
@@ -86,17 +86,17 @@ export const growthVideoRoutes: FastifyPluginAsync = async (server) => {
       .safeParse(request.body);
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
 
-    const { r2_key, duration_sec, is_main } = body.data;
-    const existing = await prisma.productVideo.findFirst({ where: { r2_key } });
-    if (existing) throw validationError('This video was already saved');
-
-    const { url: public_url } = await verifyUpload({
+    const { duration_sec, is_main } = body.data;
+    // Verify first: it returns the FINAL key, which is what rows store and dedupe on.
+    const { url: public_url, r2Key: r2_key } = await verifyUpload({
       retailerId,
-      r2Key: r2_key,
+      r2Key: body.data.r2_key,
       allowed: VIDEO_KINDS,
       maxBytes: MAX_VIDEO_BYTES,
       prefix: R2_PATHS.productVideo(retailerId, id, ''),
     });
+    const existing = await prisma.productVideo.findFirst({ where: { r2_key } });
+    if (existing) throw validationError('This video was already saved');
 
     const video = await prisma.$transaction(async (tx) => {
       if (is_main) {

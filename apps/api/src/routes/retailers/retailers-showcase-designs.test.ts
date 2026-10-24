@@ -224,7 +224,7 @@ describe('POST /me/showcase-designs/upload-url', () => {
     expect(res.statusCode).toBe(200);
     const data = res.json().data;
     expect(data.upload_url).toBe('https://r2/presigned');
-    expect(data.r2_key).toMatch(/^showcase-designs\/retailer_1\/raw\/.+\.jpg$/);
+    expect(data.r2_key).toMatch(/^uploads\/pending\/showcase-designs\/retailer_1\/raw\/.+\.jpg$/);
     await app.close();
   });
 });
@@ -387,10 +387,15 @@ describe('POST /me/showcase-designs', () => {
       method: 'POST',
       url: '/me/showcase-designs',
       headers: { 'content-type': 'application/json' },
-      payload: { category_id: 'cat_suits', raw_r2_key: 'showcase-designs/retailer_1/raw/raw.jpg' },
+      payload: {
+        category_id: 'cat_suits',
+        raw_r2_key: 'uploads/pending/showcase-designs/retailer_1/raw/raw.jpg',
+      },
     });
     expect(res.statusCode).toBe(422);
-    expect(mockDeleteObject).toHaveBeenCalledWith('showcase-designs/retailer_1/raw/raw.jpg');
+    expect(mockDeleteObject).toHaveBeenCalledWith(
+      'uploads/pending/showcase-designs/retailer_1/raw/raw.jpg',
+    );
     expect(mockWatermarkShowcaseDesign).not.toHaveBeenCalled();
     await app.close();
   });

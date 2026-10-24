@@ -34,11 +34,14 @@ vi.mock('@kanchuki/db', () => ({
   },
 }));
 
+const { mockInspect } = vi.hoisted(() => ({ mockInspect: vi.fn() }));
 vi.mock('@kanchuki/ai', () => ({
   getUploadPresignedUrl: vi.fn(async () => 'https://r2.example/put'),
   publicUrl: (k: string) => `https://cdn.example/${k}`,
   deleteObject: vi.fn(async () => undefined),
+  inspectObject: mockInspect,
 }));
+const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0]);
 
 vi.mock('../admin-auth.js', () => ({ adminAuthPreHandler: async () => undefined }));
 
@@ -220,7 +223,7 @@ describe('admin post-templates', () => {
     expect(res.statusCode).toBe(200);
     const body = res.json();
     expect(body.data.upload_url).toBe('https://r2.example/put');
-    expect(body.data.r2_key).toMatch(/^admin\/post-templates\//);
+    expect(body.data.r2_key).toMatch(/^uploads\/pending\/admin\/post-templates\//);
   });
 
   it('DELETE removes the row', async () => {
@@ -240,5 +243,41 @@ describe('admin post-templates', () => {
     const app = await buildApp();
     const res = await app.inject({ method: 'DELETE', url: '/post-templates/nope' });
     expect(res.statusCode).toBe(404);
+  });
+
+  it('PATCH thumbnail: URL is built from the verified key, a client URL is ignored', async () => {
+    mockFindUnique.mockResolvedValueOnce({ id: 't1', status: 'DRAFT', plans: [], context: 'POST' });
+    mockUpdate.mockResolvedValueOnce({ id: 't1' });
+    mockInspect.mockResolvedValueOnce({ size: 1000, head: JPEG });
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'PATCH',
+      url: '/post-templates/t1',
+      payload: {
+        thumbnail_r2_key: 'admin/post-templates/a.jpg',
+        thumbnail_url: 'https://evil.example/x.svg',
+      },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(mockUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          thumbnail_url: 'https://cdn.example/admin/post-templates/a.jpg',
+        }),
+      }),
+    );
+  });
+
+  it('PATCH thumbnail: rejects a key outside admin/post-templates/ without touching storage', async () => {
+    mockFindUnique.mockResolvedValueOnce({ id: 't1', status: 'DRAFT', plans: [], context: 'POST' });
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'PATCH',
+      url: '/post-templates/t1',
+      payload: { thumbnail_r2_key: 'retailers/r1/products/p/a.jpg' },
+    });
+    expect(res.statusCode).toBe(422);
+    expect(mockInspect).not.toHaveBeenCalled();
+    expect(mockUpdate).not.toHaveBeenCalled();
   });
 });

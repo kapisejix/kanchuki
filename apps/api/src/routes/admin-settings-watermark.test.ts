@@ -15,10 +15,11 @@ const { mockAuditLogFindFirst, mockAuditLogCreate } = vi.hoisted(() => ({
   mockAuditLogFindFirst: vi.fn(),
   mockAuditLogCreate: vi.fn(),
 }));
-const { mockPublicUrl, mockPresignedUrl, mockDeleteObject } = vi.hoisted(() => ({
+const { mockPublicUrl, mockPresignedUrl, mockDeleteObject, mockInspectObject } = vi.hoisted(() => ({
   mockPublicUrl: vi.fn((key: string) => `https://cdn.example.com/${key}`),
   mockPresignedUrl: vi.fn(async () => 'https://r2.example.com/presigned'),
   mockDeleteObject: vi.fn(async () => undefined),
+  mockInspectObject: vi.fn(),
 }));
 
 // The re-watermark background job producer (jobs/rewatermark-showcase-designs.ts)
@@ -47,6 +48,7 @@ vi.mock('@kanchuki/ai', () => ({
   publicUrl: mockPublicUrl,
   getUploadPresignedUrl: mockPresignedUrl,
   deleteObject: mockDeleteObject,
+  inspectObject: mockInspectObject,
 }));
 
 const ADMIN_KEY = 'test-admin-key-12345';
@@ -86,6 +88,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   process.env.ADMIN_API_KEY = ADMIN_KEY;
   wmStore = null;
+  mockInspectObject.mockResolvedValue({ size: 1000, head: Buffer.from([0xff, 0xd8, 0xff, 0xe0]) });
 
   mockAuditLogFindFirst.mockImplementation(async (args: AuditLogFindFirstArgs) => {
     if (args?.where?.action !== WM_SETTING_ACTION) return null;
@@ -217,6 +220,32 @@ describe('Admin showcase watermark config API', () => {
     await app.close();
   });
 
+  it('rejects a new logo key outside showcase-watermark/logo/ or with non-image bytes', async () => {
+    const app = await buildApp();
+    const foreign = await app.inject({
+      method: 'PUT',
+      url: '/v1/admin/settings/showcase-watermark',
+      headers: csrfHeaders(),
+      payload: { logo_r2_key: 'retailers/r1/products/p/a.jpg' },
+    });
+    expect(foreign.statusCode).toBe(422);
+    expect(mockInspectObject).not.toHaveBeenCalled();
+
+    mockInspectObject.mockResolvedValue({ size: 30, head: Buffer.from('<svg onload=1>') });
+    const svg = await app.inject({
+      method: 'PUT',
+      url: '/v1/admin/settings/showcase-watermark',
+      headers: csrfHeaders(),
+      payload: { logo_r2_key: 'uploads/pending/showcase-watermark/logo/evil.png' },
+    });
+    expect(svg.statusCode).toBe(422);
+    expect(mockDeleteObject).toHaveBeenCalledWith(
+      'uploads/pending/showcase-watermark/logo/evil.png',
+    );
+    expect(wmStore).toBeNull(); // nothing saved
+    await app.close();
+  });
+
   it('rejects unknown gravity / out-of-range values / an empty body with 422', async () => {
     const app = await buildApp();
     for (const payload of [
@@ -249,7 +278,7 @@ describe('Admin showcase watermark config API', () => {
     expect(res.statusCode).toBe(200);
     const data = res.json().data;
     expect(data.upload_url).toBe('https://r2.example.com/presigned');
-    expect(data.r2_key).toMatch(/^showcase-watermark\/logo\/[a-f0-9]{16}\.png$/);
+    expect(data.r2_key).toMatch(/^uploads\/pending\/showcase-watermark\/logo\/[a-f0-9]{16}\.png$/);
     expect(data.public_url).toBe(`https://cdn.example.com/${data.r2_key}`);
     expect(data.expires_in).toBe(300);
 

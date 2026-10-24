@@ -5,15 +5,32 @@
 import { prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
+import { IMAGE_KINDS, verifyUpload } from '../../lib/upload-guard.js';
 import { notFound, validationError } from '../../plugins/error-handler.js';
 
 const DESIGN_CATEGORIES = ['NECKLINE', 'BLOUSE_BACK', 'SLEEVE', 'SALWAR', 'SILHOUETTE'] as const;
+
+// ponytail: no upload-url route or admin UI exists for design references yet,
+// so nothing mints keys here today; add a presign route that writes under this
+// prefix when the gallery UI is built.
+const DESIGN_REF_PREFIX = 'admin/design-references/';
+
+/** Real image under the design-reference prefix → server-built public URL + final key. */
+async function verifyDesignImage(r2Key: string): Promise<{ image_url: string; r2_key: string }> {
+  const v = await verifyUpload({
+    r2Key,
+    allowed: IMAGE_KINDS,
+    maxBytes: 10_000_000,
+    prefix: DESIGN_REF_PREFIX,
+  });
+  return { image_url: v.url, r2_key: v.r2Key };
+}
 
 const CreateSchema = z.object({
   category: z.enum(DESIGN_CATEGORIES),
   option: z.string().min(1).max(100),
   name: z.string().min(1).max(150),
-  image_url: z.string().url(),
+  // image_url is built from the verified key, never client-sent.
   r2_key: z.string().min(1),
   description: z.string().max(500).optional(),
   sort_order: z.number().int().optional(),
@@ -23,7 +40,6 @@ const UpdateSchema = z.object({
   category: z.enum(DESIGN_CATEGORIES).optional(),
   option: z.string().min(1).max(100).optional(),
   name: z.string().min(1).max(150).optional(),
-  image_url: z.string().url().optional(),
   r2_key: z.string().min(1).optional(),
   description: z.string().max(500).optional().nullable(),
   sort_order: z.number().int().optional(),
@@ -83,7 +99,8 @@ export const adminDesignReferenceRoutes: FastifyPluginAsync = async (server) => 
     const body = CreateSchema.safeParse(request.body);
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
 
-    const design = await prisma.designReference.create({ data: body.data });
+    const image = await verifyDesignImage(body.data.r2_key);
+    const design = await prisma.designReference.create({ data: { ...body.data, ...image } });
     return reply.status(201).send({ data: design });
   });
 
@@ -96,7 +113,10 @@ export const adminDesignReferenceRoutes: FastifyPluginAsync = async (server) => 
     const body = UpdateSchema.safeParse(request.body);
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
 
-    const updated = await prisma.designReference.update({ where: { id }, data: body.data });
+    const data = body.data.r2_key
+      ? { ...body.data, ...(await verifyDesignImage(body.data.r2_key)) }
+      : body.data;
+    const updated = await prisma.designReference.update({ where: { id }, data });
     return { data: updated };
   });
 

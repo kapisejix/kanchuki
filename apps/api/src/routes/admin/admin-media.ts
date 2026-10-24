@@ -22,6 +22,7 @@ import {
 } from '@kanchuki/db';
 import { INTEGRATION_KEYS, R2_PATHS } from '@kanchuki/shared';
 import { z } from 'zod';
+import { IMAGE_KINDS, stagingKey, verifyUpload } from '../../lib/upload-guard.js';
 import { forbidden, notFound, validationError } from '../../plugins/error-handler.js';
 import { adminAuthPreHandler } from '../admin-auth.js';
 
@@ -71,7 +72,7 @@ export const adminMediaRoutes: FastifyPluginAsync = async (server) => {
 
   // ─── POST /admin/background-images/upload-url ───────────────────
   // Presigned PUT so the admin panel uploads image bytes straight to R2,
-  // same pattern as the retailer spin-video upload (products.ts).
+  // same presign + confirm pattern as the retailer product-photo upload.
   server.post('/background-images/upload-url', async (request) => {
     const body = z
       .object({
@@ -81,11 +82,13 @@ export const adminMediaRoutes: FastifyPluginAsync = async (server) => {
       .parse(request.body);
 
     const ext = body.content_type.split('/')[1];
-    const r2Key = R2_PATHS.backgroundImage(
-      `${createHash('sha256')
-        .update(body.filename + Date.now())
-        .digest('hex')
-        .slice(0, 16)}.${ext}`,
+    const r2Key = stagingKey(
+      R2_PATHS.backgroundImage(
+        `${createHash('sha256')
+          .update(body.filename + Date.now())
+          .digest('hex')
+          .slice(0, 16)}.${ext}`,
+      ),
     );
     const uploadUrl = await getUploadPresignedUrl(r2Key, body.content_type, 300);
 
@@ -105,25 +108,32 @@ export const adminMediaRoutes: FastifyPluginAsync = async (server) => {
       .object({
         // Optional — omit it and the scene is auto-named from the image.
         name: z.string().min(1).max(100).optional(),
-        image_url: z.string().url(),
-        thumbnail_url: z.string().url().optional(),
+        // Key from /background-images/upload-url. image_url is built from the
+        // verified key, never client-sent (it was also fetched server-side below).
+        r2_key: z.string().min(1),
         tone: z.enum(['LIGHT', 'DARK']).optional(),
       })
       .parse(request.body);
+    const { url: imageUrl } = await verifyUpload({
+      r2Key: body.r2_key,
+      allowed: IMAGE_KINDS,
+      maxBytes: 15_000_000,
+      prefix: R2_PATHS.backgroundImage(''),
+    });
 
     let tone: 'LIGHT' | 'DARK' | null = body.tone ?? null;
     let name: string | null = body.name ?? null;
     if (!tone || !name) {
       try {
-        const buf = await fetchImageBuffer(body.image_url);
+        const buf = await fetchImageBuffer(imageUrl);
         if (!tone) {
           const isDark = await isDarkImage(buf);
           tone = isDark === true ? 'DARK' : isDark === false ? 'LIGHT' : null;
         }
-        if (!name) name = await nameBackgroundScene(buf, body.image_url, request.log);
+        if (!name) name = await nameBackgroundScene(buf, imageUrl, request.log);
       } catch (err) {
         request.log.warn(
-          { err, image_url: body.image_url },
+          { err, image_url: imageUrl },
           'Tone/name classification failed for background image',
         );
       }
@@ -133,8 +143,7 @@ export const adminMediaRoutes: FastifyPluginAsync = async (server) => {
     const row = await prisma.backgroundImage.create({
       data: {
         name,
-        image_url: body.image_url,
-        ...(body.thumbnail_url ? { thumbnail_url: body.thumbnail_url } : {}),
+        image_url: imageUrl,
         ...(tone ? { tone } : {}),
       },
     });

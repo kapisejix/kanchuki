@@ -64,7 +64,7 @@ export default function BackgroundImagesPage() {
       const create = await fetch(`${API_URL}/v1/admin/background-images`, {
         ...(await adminMutateOptions()),
         method: 'POST',
-        body: JSON.stringify({ image_url: data.public_url }),
+        body: JSON.stringify({ r2_key: data.r2_key }),
       })
       if (!create.ok) throw new Error('Failed to register background image')
       const { data: created } = await create.json()

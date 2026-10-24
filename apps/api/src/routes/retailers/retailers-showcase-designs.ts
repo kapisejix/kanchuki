@@ -25,7 +25,14 @@ import { recordAiUsage } from '../../lib/ai-usage.js';
 import { hasFeature } from '../../lib/features.js';
 import { assertShowcaseQuota, getShowcaseUsage } from '../../lib/showcase-quota.js';
 import { watermarkShowcaseDesign } from '../../lib/showcase-watermark.js';
-import { IMAGE_KINDS, verifyUpload } from '../../lib/upload-guard.js';
+import {
+  IMAGE_KINDS,
+  currentKey,
+  isOwnedKey,
+  stagingKey,
+  unstagedKey,
+  verifyUpload,
+} from '../../lib/upload-guard.js';
 import { featureUnavailable, notFound, validationError } from '../../plugins/error-handler.js';
 
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
@@ -54,21 +61,22 @@ const UpdateSchema = z.object({
  * delete via `original_r2_key`). Scope it to `showcase-designs/<self>/raw/`.
  */
 function assertOwnRawKey(rawKey: string, retailerId: string): void {
-  const prefix = R2_PATHS.showcaseDesignRaw(retailerId, '');
-  if (!rawKey.startsWith(prefix) || rawKey.includes('..')) {
+  // /suggest runs before the confirm step, so the key may still be the staged one.
+  if (!isOwnedKey(retailerId, unstagedKey(rawKey), R2_PATHS.showcaseDesignRaw(retailerId, ''))) {
     throw validationError('Invalid upload reference');
   }
 }
 
-/** Ownership + real image bytes, for the routes that keep the raw upload. */
-async function verifyRawUpload(rawKey: string, retailerId: string): Promise<void> {
-  await verifyUpload({
+/** Ownership + real image bytes, for the routes that keep the raw upload. Returns the final key. */
+async function verifyRawUpload(rawKey: string, retailerId: string): Promise<string> {
+  const { r2Key } = await verifyUpload({
     retailerId,
     r2Key: rawKey,
     allowed: IMAGE_KINDS,
     maxBytes: 15_000_000,
     prefix: R2_PATHS.showcaseDesignRaw(retailerId, ''),
   });
+  return r2Key;
 }
 
 /** Resolve a design's category and keep the denormalised slug in sync. */
@@ -169,7 +177,9 @@ export const retailersShowcaseDesignRoutes: FastifyPluginAsync = async (server) 
         : body.content_type === 'image/webp'
           ? 'webp'
           : 'jpg';
-    const r2Key = R2_PATHS.showcaseDesignRaw(request.retailerId, `${createId()}.${ext}`);
+    const r2Key = stagingKey(
+      R2_PATHS.showcaseDesignRaw(request.retailerId, `${createId()}.${ext}`),
+    );
 
     let uploadUrl: string;
     try {
@@ -194,7 +204,8 @@ export const retailersShowcaseDesignRoutes: FastifyPluginAsync = async (server) 
 
     assertOwnRawKey(body.data.raw_r2_key, request.retailerId);
 
-    const suggestion = await suggestDesignNameAndColor(publicUrl(body.data.raw_r2_key), {
+    const key = await currentKey(body.data.raw_r2_key);
+    const suggestion = await suggestDesignNameAndColor(publicUrl(key), {
       onProviderUsed: recordAiUsage(request.retailerId),
     });
     return reply.status(200).send({ data: suggestion });
@@ -206,7 +217,7 @@ export const retailersShowcaseDesignRoutes: FastifyPluginAsync = async (server) 
     const body = CreateSchema.safeParse(request.body);
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
 
-    await verifyRawUpload(body.data.raw_r2_key, request.retailerId);
+    body.data.raw_r2_key = await verifyRawUpload(body.data.raw_r2_key, request.retailerId);
     await assertShowcaseQuota(request.retailerId);
     const category = await categoryForUpdate(body.data.category_id);
 
@@ -279,7 +290,7 @@ export const retailersShowcaseDesignRoutes: FastifyPluginAsync = async (server) 
     // Photo replace: watermark the new raw → swap r2_key/image_url, then
     // best-effort delete the OLD final + OLD raw (new raw is the caller's).
     if (body.data.raw_r2_key) {
-      await verifyRawUpload(body.data.raw_r2_key, request.retailerId);
+      body.data.raw_r2_key = await verifyRawUpload(body.data.raw_r2_key, request.retailerId);
       const finalR2Key = R2_PATHS.showcaseDesign(request.retailerId, `${createId()}.jpg`);
       await watermarkShowcaseDesign({
         rawR2Key: body.data.raw_r2_key,

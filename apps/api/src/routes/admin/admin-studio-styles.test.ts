@@ -34,11 +34,14 @@ vi.mock('@kanchuki/db', () => ({
   },
 }));
 
+const { mockInspect } = vi.hoisted(() => ({ mockInspect: vi.fn() }));
 vi.mock('@kanchuki/ai', () => ({
   getUploadPresignedUrl: vi.fn(async () => 'https://r2.example/put'),
   publicUrl: (k: string) => `https://cdn.example/${k}`,
   deleteObject: vi.fn(async () => undefined),
+  inspectObject: mockInspect,
 }));
+const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0]);
 
 vi.mock('../admin-auth.js', () => ({ adminAuthPreHandler: async () => undefined }));
 
@@ -136,7 +139,7 @@ describe('admin studio-styles', () => {
     expect(res.statusCode).toBe(200);
     const body = res.json();
     expect(body.data.upload_url).toBe('https://r2.example/put');
-    expect(body.data.r2_key).toMatch(/^admin\/studio-styles\//);
+    expect(body.data.r2_key).toMatch(/^uploads\/pending\/admin\/studio-styles\//);
   });
 
   it('DELETE removes the row + best-effort thumb cleanup', async () => {
@@ -150,5 +153,42 @@ describe('admin studio-styles', () => {
     const res = await app.inject({ method: 'DELETE', url: '/studio-styles/s1' });
     expect(res.statusCode).toBe(200);
     expect(mockDelete).toHaveBeenCalled();
+  });
+
+  it('PATCH thumbnail: URL is built from the verified key, a client URL is ignored', async () => {
+    mockFindUnique.mockResolvedValueOnce({ id: 't1', slug: 's', status: 'DRAFT', plans: [] });
+    mockUpdate.mockResolvedValueOnce({ id: 't1' });
+    mockInspect.mockResolvedValueOnce({ size: 1000, head: JPEG });
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'PATCH',
+      url: '/studio-styles/t1',
+      payload: {
+        thumbnail_r2_key: 'admin/studio-styles/a.jpg',
+        thumbnail_url: 'https://evil.example/x.svg',
+      },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(mockUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          thumbnail_url: 'https://cdn.example/admin/studio-styles/a.jpg',
+          thumbnail_r2_key: 'admin/studio-styles/a.jpg',
+        }),
+      }),
+    );
+  });
+
+  it('PATCH thumbnail: rejects a key outside admin/studio-styles/ without touching storage', async () => {
+    mockFindUnique.mockResolvedValueOnce({ id: 't1', slug: 's', status: 'DRAFT', plans: [] });
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'PATCH',
+      url: '/studio-styles/t1',
+      payload: { thumbnail_r2_key: 'retailers/r1/products/p/a.jpg' },
+    });
+    expect(res.statusCode).toBe(422);
+    expect(mockInspect).not.toHaveBeenCalled();
+    expect(mockUpdate).not.toHaveBeenCalled();
   });
 });
