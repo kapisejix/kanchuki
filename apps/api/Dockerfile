@@ -37,6 +37,11 @@ WORKDIR /app
 
 COPY . .
 
+# Marcellus (mobile heading font) for the F-043 scheduler image templates, which
+# sharp/librsvg renders from system fonts (packages/ai/src/schedule-templates.ts).
+RUN mkdir -p /usr/share/fonts/truetype/marcellus \
+    && cp apps/api/fonts/Marcellus-Regular.ttf apps/api/fonts/Marcellus-OFL.txt /usr/share/fonts/truetype/marcellus/
+
 # Retry once on failure: pnpm install has historically failed on
 # onnxruntime-node's postinstall downloading CUDA EP binaries (~330MB) from
 # GitHub releases — Railway's Southeast-Asia build egress to github.com
