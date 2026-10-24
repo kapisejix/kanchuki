@@ -273,7 +273,7 @@ describe('Admin showcase watermark config API', () => {
       method: 'POST',
       url: '/v1/admin/settings/showcase-watermark/logo-upload-url',
       headers: csrfHeaders(),
-      payload: { content_type: 'image/png', filename: 'brand-logo.png' },
+      payload: { content_type: 'image/png', filename: 'brand-logo.png', content_length: 1_000 },
     });
     expect(res.statusCode).toBe(200);
     const data = res.json().data;

@@ -23,6 +23,16 @@ describe('presigned upload routes', () => {
     expect(withCalls.length).toBeGreaterThanOrEqual(11);
   });
 
+  it('declares content_length as required in every presign route schema', () => {
+    const optional = files.flatMap(({ p, src }) =>
+      src
+        .split('\n')
+        .filter((l) => /content_length:\s*z\./.test(l) && l.includes('.optional()'))
+        .map((l) => `${p.replace(__dirname, '')}: ${l.trim()}`),
+    );
+    expect(optional).toEqual([]);
+  });
+
   it.each(withCalls.map(({ p, src }) => [p.replace(__dirname, ''), src] as const))(
     '%s binds a content length and is rate limited',
     (_name, src) => {

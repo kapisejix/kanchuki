@@ -1,7 +1,7 @@
 # Security audit — 5 points (secrets, data access, uploads, paid gates, AI caps)
 
-**Status:** 🟨 T1 ✅ `b9616811` (RC-082), T2 ✅ `e59d78ff` (RC-079), T3 server side ✅ `48e84013` (RC-080; client side split to `mobile-presign-content-length.md`), T4 part 1 ✅ `10fa64ec` (`admin-route-guard.test.ts`). **T4 RLS closed 2026-10-22, no migration** (live check, see §2 T4: all 86 public tables have RLS on). Committed on the branch, nothing pushed. Owner approved T1–T4 and the expired-plan rule (**drop to STARTER**) on 2026-10-22.
-**Branch:** `fix/security-audit-5pts` (created from `fix/upload-staging`). T3 builds on the upload-staging code, so `fix/upload-staging` must merge first or this branch merges after it.
+**Status:** 🟨 T1 ✅ `b9616811` (RC-082), T2 ✅ `e59d78ff` (RC-079), T3 server side ✅ `48e84013` (RC-080; client side split to `mobile-presign-content-length.md`), T4 part 1 ✅ `10fa64ec` (`admin-route-guard.test.ts`). **T4 RLS closed 2026-10-22, no migration** (live check, see §2 T4: all 86 public tables have RLS on). Pushed: PR #151 (open). T3 client side built (`9b2ec714`, `2909ec4f`) and made required on the server in draft PR #152 (`c4e38e25`), pending owner R2 check, device test and build rollout. Owner approved T1–T4 and the expired-plan rule (**drop to STARTER**) on 2026-10-22.
+**Branch:** `fix/security-audit-5pts` (created from `fix/upload-staging`). T3 builds on the upload-staging code. This branch already contains `fix/upload-staging` (PR #145), so merging #151 covers #145.
 **Surfaces audited:** `apps/api`, `apps/web` (customer PWA + admin), `apps/mobile`.
 
 ---

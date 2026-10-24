@@ -31,7 +31,7 @@ export const productsMediaRoutes: FastifyPluginAsync = async (server) => {
         content_type: z.enum(ALLOWED_MIME_TYPES),
         size_bytes: z.number().int().min(1).max(10_000_000),
         // Exact byte length of the PUT (post-compression), bound into the signature (RC-080).
-        content_length: z.number().int().min(1).max(10_000_000).optional(),
+        content_length: z.number().int().min(1).max(10_000_000),
       })
       .safeParse(request.body);
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');

@@ -320,11 +320,11 @@ describe('POST /v1/categories/upload-url — bounded presign (RC-080)', () => {
     await app.close();
   });
 
-  it('still presigns without content_length (old mobile builds), unbound', async () => {
+  it('rejects a presign without content_length (no unbound URLs)', async () => {
     const app = await build();
     const res = await post(app);
-    expect(res.statusCode).toBe(200);
-    expect(vi.mocked(getUploadPresignedUrl).mock.calls[0]?.[3]).toBeUndefined();
+    expect(res.statusCode).toBe(422);
+    expect(getUploadPresignedUrl).not.toHaveBeenCalled();
     await app.close();
   });
 

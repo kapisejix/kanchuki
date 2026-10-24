@@ -10,7 +10,6 @@ import { createClient } from '@supabase/supabase-js';
 import Fastify from 'fastify';
 
 import { getRedis, startWorkers } from './jobs/index.js';
-import { requireContentLengthHook } from './lib/upload-guard.js';
 import { authPlugin } from './plugins/auth.js';
 import { parseJsonAllowEmpty } from './plugins/empty-json-body.js';
 import { errorHandler } from './plugins/error-handler.js';
@@ -151,7 +150,6 @@ await server.register(authPlugin);
 // ─── Error Handler ────────────────────────────────────────────────
 
 server.setErrorHandler(errorHandler);
-server.addHook('preValidation', requireContentLengthHook);
 
 // ─── Routes ──────────────────────────────────────────────────────
 

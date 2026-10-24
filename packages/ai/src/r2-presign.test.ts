@@ -14,8 +14,10 @@ describe('getUploadPresignedUrl', () => {
     expect(signedHeaders(url)?.split(';')).toContain('content-length')
   })
 
-  it('does not bind a length when none is given (old clients)', async () => {
-    const url = await getUploadPresignedUrl('uploads/pending/a.jpg', 'image/jpeg', 300)
-    expect(signedHeaders(url)?.split(';')).not.toContain('content-length')
+  it('refuses to presign without a length (no unbound URLs)', async () => {
+    // @ts-expect-error contentLength is required
+    await expect(getUploadPresignedUrl('uploads/pending/a.jpg', 'image/jpeg', 300)).rejects.toThrow(
+      /content_length/,
+    )
   })
 })
