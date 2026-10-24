@@ -73,3 +73,17 @@
 | Admin background upload removed | The "Upload background image" control and handler are gone from `/admin/background-images`; list, active toggle, tone override and delete stay. The API route `POST /v1/admin/background-images/upload-url` is untouched and `photo-cleanup-test` still uses it for its test inputs. |
 | Owner steps | (1) R2 lifecycle: `uploads/pending/`, `catalog-pdf/`, `catalog-source/` all expire after **1 day**. (2) After the new mobile build is live: set `REQUIRE_UPLOAD_CONTENT_LENGTH=true` on the API. (3) Device test: product photo, logo, banner, KYC, catalog PDF, video; a mismatch shows as R2 403 `SignatureDoesNotMatch`. |
 | Not verified | No device or live R2 run of the client change. |
+
+---
+
+## 2026-10-24 - Ghost-mannequin removed (#155) + per-size product stock (#154) + RC-080 content_length required (#152)
+
+**Merged to `main`:** #152 `0e85aea7`, #153 `77f77256`, #155 `05fe4a90`, #154 `642a11ae`. Migration 137 applied in prod (owner; `product_stock` seen read-only 2026-10-24, 0 rows, RLS on).
+
+| Piece | Detail |
+|---|---|
+| #152 RC-080 | `content_length` is now required on every presign route; the `REQUIRE_UPLOAD_CONTENT_LENGTH` flag and hook are deleted. Old app builds that omit it get 422. |
+| #155 ghost-mannequin removal | F-001e Snappyit plan docs, `GHOST_MANNEQUIN_AI` plan key in code, the local LaMa `--ghost-mannequin` mode (`scripts/batch-clean-photos.py`, `services/photo-cleanup`, admin test page control) and marketing copy removed. Kept: LaMa model (`--remove-hardware` uses it), `P_GHOST` preset in `studio-effects.ts`, `docs/ai-studio` research, Prisma enum value `GHOST_MANNEQUIN_AI` (marked deprecated; dropping it needs an owner-applied migration). |
+| #154 product stock | Migration `137_product_stock` (see DATABASE.md). API `lib/product-stock.ts` + `products-crud.ts` + `catalog-import.ts`: POST defaults 1 per selected size, PUT replaces, GET list/detail return `stock` + `total_quantity`, PATCH status SOLD zeroes stock. Mobile `StockEditor.tsx` on add/edit product; catalog card shows `Stock: N` / `Low stock: N` (<= 2). The edit form sends `stock` only after the retailer touches it, so saving an old untracked or SOLD product never re-lists it. Spec: `docs/tasks/pending/product-stock-quantity.md`. |
+| Owner steps | New EAS build for the stock UI; device-test add (default 1 per size), edit counts, mark sold, edit an old SOLD product's price. Run the admin photo-cleanup test page once to confirm blur/composite/hardware modes after #155 deploys. |
+| Not verified | No device run of the stock UI. A prompt-based ghost style may exist only as a live-admin `studio_styles` row; not found in the seed migrations. |
