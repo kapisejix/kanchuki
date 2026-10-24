@@ -179,25 +179,8 @@ Both F-001b and F-001c share the same underlying `detector.ts` with the same `de
 
 ---
 
-#### F-001e: Ghost-Mannequin AI Generation (Packed/Flat-Lay → Full Catalog Image)
-**Status:** Planned (not built) — job + Snappyit client scaffolded (`apps/api/src/jobs/ghost-mannequin.ts`, `packages/ai/src/snappyit.ts`) but the worker is paused as of 2026-08-02 (consolidated-cron change, `8b7a5be`) — not functional. Snappyit itself later confirmed to have no public API at all — see `docs/photo-feature/ghost-mannequin-research.md`. A local LaMa-inpainting version of the hollow-gap-fill step now exists and works (`scripts/batch-clean-photos.py --ghost-mannequin`, commit `0c66a7f`), reachable today only from the admin photo-cleanup **test tool** (`apps/web/src/app/admin/photo-cleanup-test`) — it is NOT wired into this retailer-facing flow (steps 1–4 below), which stays not-built.
-**Priority:** P2 (nice-to-have, not MVP-blocking)
-**Vendor:** Snappyit API (evaluated 2026-07-25 vs WearView/bitStudio/Scenario — Snappyit chosen for confirmed public API + lowest cost; WearView/Scenario had no confirmed public developer API at eval time)
-
-**Problem:** Many retailers stock packed/plastic-wrapped suits and don't want to unpack per unit just to catalog. Ghost-mannequin AI can't work off a packed/wrapped photo directly — garment shape, print, and collar must be visible in source image. Needs a one-time unpack per SKU/design, not per unit.
-
-**Flow:**
-1. Retailer unpacks once per new design, lays flat or hangs it, takes one photo (reuses existing F-001 capture UI).
-2. Photo sent to Snappyit ghost-mannequin API → returns hollow-body catalog image (full worn look, no visible mannequin/hanger).
-3. Catalog image reused for every restocked unit of the same design — no reshoot on restock.
-4. API key stored via existing F-012 encrypted-integration-settings mechanism (`/admin/integrations`), not hardcoded.
-
-**Cost (researched 2026-07-25):** Snappyit pay-per-image, ~$0.10/image, plans from $6.90–8.20/mo. At MVP scale (≥50 img/retailer/mo × 50 retailers) roughly $250/mo total — cheap vs manual ghost-mannequin editing ($3–5/img). No confirmed INR billing — factor forex into F-010 quota/plan-limit math, same treatment as WhatsApp/VTO pass-through costs.
-
-**Acceptance Criteria (draft, refine at build time):**
-- Retailer can flag a product "packed, unpack later" on capture
-- Ghost-mannequin generation runs as async job (reuse existing AI-tagging job queue pattern); retailer notified when catalog image ready
-- Falls back to plain photo if API fails/quota exceeded — never blocks product save
+#### F-001e: Ghost-Mannequin AI Generation — ❌ Removed 2026-10-24
+Snappyit has no public API, so the planned vendor integration was never built and the scaffolding is gone. The local LaMa `--ghost-mannequin` photo-cleanup mode (admin test page, `batch-clean-photos.py`, photo-cleanup service) was removed too; the LaMa model stays for `--remove-hardware`. Worn / invisible-mannequin looks now come from prompt-based AI Studio styles. The `GHOST_MANNEQUIN_AI` plan-feature key is removed from code (the Prisma enum value stays until an owner-applied migration). Research history stays in `docs/ai-studio/ghost-mannequin-research.md`.
 
 ---
 
@@ -1254,7 +1237,6 @@ Reuses the F-010 admin-grid pattern (`plan_limits` table + `/admin/plan-limits` 
 | Shopping cart / online checkout (F-302) | ❌ | ✅ | ✅ |
 | Data export (CSV) | ❌ | ✅ | ✅ |
 | Custom branding on collection page | ❌ | ✅ | ✅ |
-| Ghost-mannequin AI catalog generation (F-001e) | ❌ | ❌ | ✅ |
 | Razorpay Route split-payments (F-307) | ❌ | ❌ | ✅ |
 | API access (external integrations) | ❌ | ❌ | ✅ |
 | Priority AI tagging queue | ❌ | ❌ | ✅ |
@@ -1593,7 +1575,7 @@ Both take `--crop x1,y1,x2,y2` (isolates the subject before segmentation — tes
 
 ### 23.1 Problem
 
-Retailers already produce catalog-quality assets inside Kanchuki (ghost-mannequin-cleaned product photos, AI-generated name/subtype/description, priced products, a shareable collection page at `/c/[slug]`) — but those assets currently reach customers through exactly one outbound channel: WhatsApp. The same assets are exactly what a good Instagram/Facebook post needs, and the retailer has to redo all of it manually outside the app (download photos, open Instagram, write a caption, upload). No reuse of data Kanchuki already has.
+Retailers already produce catalog-quality assets inside Kanchuki (cleaned product photos, AI-generated name/subtype/description, priced products, a shareable collection page at `/c/[slug]`) — but those assets currently reach customers through exactly one outbound channel: WhatsApp. The same assets are exactly what a good Instagram/Facebook post needs, and the retailer has to redo all of it manually outside the app (download photos, open Instagram, write a caption, upload). No reuse of data Kanchuki already has.
 
 ### 23.2 What this builds on (verified existing pieces, not assumptions)
 
@@ -1603,7 +1585,7 @@ Retailers already produce catalog-quality assets inside Kanchuki (ghost-mannequi
 | WhatsApp collection-link share (F-006, built) | Proves the "share an existing asset" pattern; social posts reuse the same link with `?utm_source=` attribution |
 | F-012 encrypted per-retailer secrets (Razorpay keys, AI provider keys) | The credential-vault mechanism that stores Meta OAuth tokens encrypted per retailer |
 | F-022 Auto-Post to Google Business Profile (planned, `docs/PRO-REQUIREMENTS.md` §10.13) | The same "OAuth-connect an external account → push products" pattern — F-031 should share one generic connected-account/publishing engine, not a third parallel integration |
-| Product photo pipeline (ghost-mannequin, ≤80KB compression, primary-image ordering) | The image assets for posts, already fit for social-media specs |
+| Product photo pipeline (background cleanup, ≤80KB compression, primary-image ordering) | The image assets for posts, already fit for social-media specs |
 
 ### 23.3 Platform realities (facts that shape the design — verified 2026-08-13)
 
@@ -1829,7 +1811,7 @@ Spec: `docs/tasks/done/studio-shoot-option-matrix.md` (companion: `docs/tasks/pe
 
 Retailers photograph products on a rack or in a plain room — the photo is
 real but looks unprofessional. Today Kanchuki's pipeline (rembg cutout +
-ghost-mannequin + F-028 auto-contrast background) already produces a clean
+F-028 auto-contrast background) already produces a clean
 cutout, but the *background* is still a flat color and there is no video at
 all. PhotoRoom built a business on exactly this gap: "photo → studio shot →
 video ad." Retailers get a storefront that looks like a brand instead of a
@@ -1839,7 +1821,7 @@ stall, and shareable video content for WhatsApp/social.
 
 | Layer | PhotoRoom's approach | Why it matters for us |
 |---|---|---|
-| Segmentation | Proprietary on-device background-removal model | We already have this: rembg + LaMa ghost-mannequin (`scripts/batch-clean-photos.py`) |
+| Segmentation | Proprietary on-device background-removal model | We already have this: rembg + SAM2/LaMa hardware removal (`scripts/batch-clean-photos.py`) |
 | Studio backgrounds | Custom diffusion foundation model (~1B params, trained on ~90M images) doing **outpainting** — preserves the product's pixels exactly, invents matching lighting/shadow | Subject preservation is the #1 lesson: keep user pixels, generate only the scene |
 | Speed | Sub-second inference (distillation + TensorRT) | Interactive UX expectation; we can accept seconds, not realtime |
 | Video | Product-focused image-to-video + **300+ motion templates**; Multi-Image Video API (up to 7 refs → 360° spins) | Template-first (not prompt-first) is the right UX for SMB retailers |
@@ -1900,7 +1882,7 @@ latency is part of the product.
 
 ### 24.5 Reuses existing infra (verified)
 
-- `scripts/batch-clean-photos.py` (rembg cutout, LaMa ghost-mannequin)
+- `scripts/batch-clean-photos.py` (rembg cutout, SAM2/LaMa hardware removal)
 - R2 image pipeline + ≤80KB compressor + `bumpPhotoUrlVersion()` cache bust
 - F-028 background tone auto-selection
 - V-Tone try-on engine (future AI Fashion Model seed)

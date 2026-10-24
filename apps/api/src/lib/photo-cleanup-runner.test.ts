@@ -93,16 +93,6 @@ describe('buildCleanupScriptArgs', () => {
     ).toEqual(['i', 'o', '--blur', '25']);
   });
 
-  it('ghost-mannequin forces composite (blur ignored)', () => {
-    expect(
-      buildCleanupScriptArgs('i', 'o', {
-        ...base,
-        blur: 25,
-        ghostMannequin: true,
-      }),
-    ).toEqual(['i', 'o', '--ghost-mannequin']);
-  });
-
   it('tap-to-fix points serialize as normalized x,y;x,y', () => {
     expect(
       buildCleanupScriptArgs('i', 'o', {

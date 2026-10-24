@@ -147,6 +147,7 @@ enum PlanFeatureKey {
   CHECKOUT_CART
   DATA_EXPORT_CSV
   CUSTOM_BRANDING
+  // @deprecated - F-001e (Snappyit ghost-mannequin) removed 2026-10; value stays until a migration drops it
   GHOST_MANNEQUIN_AI
   // @deprecated - removed in migration 082
   RAZORPAY_ROUTE
@@ -655,9 +656,8 @@ model ProductPhoto {
   // See packages/ai/src/phash.ts.
   phash String?
 
-  // F-001e: ghost-mannequin generation provenance and other photo-level
-  // metadata. JSON for flexible expansion — stores provider name,
-  // generated_at, error messages, original photo URL on failure, etc.
+  // Photo-level metadata. JSON for flexible expansion — stores provenance
+  // (provider name, generated_at), original_r2_key, error messages, etc.
   metadata Json?
 
   sort_order Int      @default(0)

@@ -349,7 +349,6 @@ export const adminPlansRoutes: FastifyPluginAsync = async (server) => {
           'CHECKOUT_CART',
           'DATA_EXPORT_CSV',
           'CUSTOM_BRANDING',
-          'GHOST_MANNEQUIN_AI',
           'RAZORPAY_ROUTE',
           'API_ACCESS',
           'PRIORITY_AI_QUEUE',
