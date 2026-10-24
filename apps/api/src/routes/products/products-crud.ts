@@ -150,16 +150,14 @@ export const productsCrudRoutes: FastifyPluginAsync = async (server) => {
 
     // New-arrival notification removed — notification system dropped
 
-    return reply
-      .status(201)
-      .send({
-        data: {
-          ...product,
-          total_quantity: totalQuantity(
-            (product as { stock?: { size: string; quantity: number }[] }).stock,
-          ),
-        },
-      });
+    return reply.status(201).send({
+      data: {
+        ...product,
+        total_quantity: totalQuantity(
+          (product as { stock?: { size: string; quantity: number }[] }).stock,
+        ),
+      },
+    });
   });
 
   // ─── GET /products ──────────────────────────────────────────────
