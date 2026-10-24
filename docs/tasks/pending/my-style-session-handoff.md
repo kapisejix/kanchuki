@@ -2,7 +2,7 @@
 
 **Purpose:** one task per session. Each session reads this file first, does its task, then **updates this file** (status, what shipped, gotchas, the next prompt) before it ends.
 **Spec:** `docs/tasks/pending/my-style.md` (decisions D1-D6 in §0, PR map in §6, tests §7, RC rules §8, skills §9).
-**Last updated:** 2026-10-17 (after PR-1 merged).
+**Last updated:** 2026-10-24. **Superseded:** PR-1 to PR-10b are all merged (see `my-style.md` status and `docs/build-log/part-6.md`). Only PR-11 (gated) is open. The board and "Next prompt" below are the 2026-10-17 snapshot, kept for history; do not paste the prompt.
 
 ## How to run a session
 
@@ -27,17 +27,17 @@
 |---|---|---|---|
 | PR-0 | docs/f-045-my-style-spec | Spec, PRO-REQUIREMENTS section 42, tasks index | MERGED (#106, bd87a52c) |
 | PR-1 | feat/f-045-schema | Migrations 132/133, Prisma, seeds, guard test, DATABASE.md | MERGED (#107). Migrations APPLIED in prod 2026-10-17 |
-| PR-2 | feat/f-045-color-family | normalizeColorFamily, tag-product wiring, backfill job, admin alias CRUD | NEXT |
-| PR-3 | feat/f-045-feed-api | Ranking engine, POST /my-style/feed, style-quiz PATCH, StyleQuiz.tsx | not started |
-| PR-4 | feat/f-045-web-shell | /my-style page, nav entries, web proxies and allowlist | not started |
-| PR-5 | feat/f-045-multistore-enquiry | Grouped shortlist to N per-store enquiries | not started |
-| PR-6 | feat/f-045-analyze-api | Analyze job (Claude Vision), POST /analyze, poll, profile/clear, kill-switch | not started |
-| PR-7 | feat/f-045-analyze-ui | Capture sheet, palette card, clear my data | not started |
-| PR-8 | feat/f-045-admin | Admin palettes, trends, aliases, quota row, usage cost | not started |
-| PR-9 | feat/f-045-find-similar | Garment-descriptor mode, embeddings | not started |
-| PR-10 | feat/f-045-complete-look | Complete the look, Festival and Trending tabs | not started |
+| PR-2 | feat/f-045-color-family | normalizeColorFamily, tag-product wiring, backfill job, admin alias CRUD | MERGED (2026-10-17..19) |
+| PR-3 | feat/f-045-feed-api | Ranking engine, POST /my-style/feed, style-quiz PATCH, StyleQuiz.tsx | MERGED (2026-10-17..19) |
+| PR-4 | feat/f-045-web-shell | /my-style page, nav entries, web proxies and allowlist | MERGED (2026-10-17..19) |
+| PR-5 | feat/f-045-multistore-enquiry | Grouped shortlist to N per-store enquiries | MERGED (2026-10-17..19) |
+| PR-6 | feat/f-045-analyze-api | Analyze job (Claude Vision), POST /analyze, poll, profile/clear, kill-switch | MERGED (2026-10-17..19) |
+| PR-7 | feat/f-045-analyze-ui | Capture sheet, palette card, clear my data | MERGED (2026-10-17..19) |
+| PR-8 | feat/f-045-admin | Admin palettes, trends, aliases, quota row, usage cost | MERGED (2026-10-17..19) |
+| PR-9 | feat/f-045-find-similar | Garment-descriptor mode, embeddings | MERGED (2026-10-17..19) |
+| PR-10 | feat/f-045-complete-look | Complete the look, Festival and Trending tabs | MERGED (2026-10-17..19) |
 | PR-11 | feat/f-045-tryon-handoff | GATED: needs CUSTOMER_TRY_ON_ENABLED on and F-040 launched | do not start |
-| PR-12 | docs/f-045-closeout | BUILD-LOG, status, CLAUDE.md row (owner approval) | after each phase |
+| PR-12 | docs/f-045-closeout | BUILD-LOG, status, CLAUDE.md row (owner approval) | done 2026-10-19 (CLAUDE.md row 102 added) |
 
 ## What exists now (verified)
 
@@ -63,7 +63,7 @@
 - Add the F-045 row to CLAUDE.md (needs owner approval).
 - Review seed palettes later in Admin once PR-8 lands.
 
-## Next prompt (PR-2)
+## Next prompt (PR-2) — OBSOLETE, PR-2 shipped long ago
 
 Paste into a new session:
 

@@ -1,6 +1,6 @@
 # R2 orphan uploads — lifecycle rule proposal
 
-**Status:** Steps 2 and 3 built on branch `fix/upload-staging` (2026-10-22, PR #145 open, also contained in #151; not merged or deployed; see `docs/build-log/part-7.md`). Step 1 and the `uploads/pending/` rule are owner actions, **not applied**. Written 2026-10-22.
+**Status (2026-10-24):** Steps 2 and 3 are merged (#145; also contained in #151) and deployed. Remaining are owner actions, **not applied**: lifecycle rules on `uploads/pending/`, `catalog-pdf/` and `catalog-source/`, delete after 1 day (see `docs/build-log/part-7.md`). Written 2026-10-22.
 **Source of truth for keys:** `R2_PATHS` in `packages/shared/src/constants/index.ts` and the presign routes listed below (read on branch `fix/admin-upload-verify`, which holds the latest confirm-step code).
 
 ## Problem
