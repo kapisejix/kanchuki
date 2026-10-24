@@ -1,6 +1,6 @@
 # Button Style Spec — web reference → mobile (Expo Go pilot first)
 
-**Status: 🧪 Pilot built (2026-10-16), Expo Go test in progress — PR #87.** Pilot screens only (list in
+**Status: ✅ Pilot merged (PR #87); only the pilot screens use the new look, rollout to other screens not started.** Pilot screens only (list in
 "Pilot screens so far" below). All other screens are unchanged — `GradientButton` default look is exactly
 as before; the new look is opt-in via `variant="web"`; `WhiteButton`, `DangerButton`, `BrandIcon` are new.
 Web: only "Share Product" text + navy like-heart changed. v7 build skipped; all testing in Expo Go.

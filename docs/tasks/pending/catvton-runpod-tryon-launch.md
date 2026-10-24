@@ -10,7 +10,7 @@
 > are historical and are **not** rewritten (editing an applied migration changes
 > its Prisma checksum); read "F-039 Phase 2" in them as **F-040**.
 
-**Status:** 🔴 Planned — owner go-ahead given 2026-09-26 to **build now, launch later**.
+**Status (2026-10-24):** 🟨 Built, flag OFF. T0–T7 are done and migrations 118–120 are applied. Launch is owner-side only: follow `docs/runbooks/tryon-launch-owner-steps.md` (re-point the RunPod template tag, `workers.max > 0`, Admin → Integrations secrets, real quota numbers, then flip `VIRTUAL_TRY_ON_V2` for one plan). The live privacy page carries the try-on notice (checked 2026-10-24). Original status: 🔴 Planned — owner go-ahead given 2026-09-26 to **build now, launch later**.
 **T0 ✅ RESOLVED 2026-09-26 — endpoint alive, GHCR image pullable; worker readiness (`workersMax`) still needs the owner's RunPod API key (see T0 result below).**
 **T1 ✅ + T2 ✅ 2026-09-26 — schema + customer quota built (migrations 118/119 PROPOSED, not applied), `quota.test.ts` 10/10.**
 **T3 ✅ code-complete 2026-09-26 — client (`packages/ai/src/tryon.ts` + inline-photo worker input) AND the `POST /v1/products/:id/try-on` route + job. Migrations 118/119 must be applied at runtime — see the T3 results below.**
