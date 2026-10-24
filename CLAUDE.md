@@ -46,7 +46,6 @@ Kanchuki digitizes India's 1 million+ offline clothing stores with:
 - Product sizes (S/M/L/XL/XXL/XXXL checkboxes on add/edit product, same list shown on customer product detail page) — built 2026-07-26, see `docs/references/history/sessions/PROGRESS.md`
 - Guided bulk onboarding for large stores (500–3000+ SKUs, F-001d, built): rack/shelf batch-photo capture reusing F-001c multi-item detection + supplier PDF/catalog reuse reusing F-001b import — `apps/mobile/app/product/bulk-onboard.tsx` — see `docs/PRO-REQUIREMENTS.md`
 - Retailer account settings (profile edit/delete, subscription, team, WhatsApp config, F-009) + generalized quota/limits system (F-010) — see `docs/PRO-REQUIREMENTS.md`
-- Ghost-mannequin AI catalog image generation for packed/unopened stock, via Snappyit API (F-001e, planned) — retailer unpacks once per design, AI generates full worn catalog image reused across all restocked units — see `docs/PRO-REQUIREMENTS.md`
 
 **Removed (chore/remove-unwanted-features):** Virtual Try-On (VTO), Fashion DNA AI matching, checkout/orders, size recommendation, showroom bookings, referrals, customer interactions tracking, lookbooks, spin-frame 360°, partner referrals, store affinities.  
 **NOT in MVP:** WhatsApp API automation, Manufacturer/Wholesaler layer, UPI payment tracking
@@ -166,7 +165,7 @@ Payment: Razorpay (UPI first). Retailer pays base + 18% GST. **Source of truth: 
 | 17 | F-024 DB-Backed Default Shop-By Categories + AI auto-category assignment | ✅ Built | 2026-08-04 | BUILD-LOG §17 |
 | 18 | F-025 Scan-to-Sell + F-026 Recently-Deleted purge bug fix | ✅ Built | 2026-08-04 | BUILD-LOG §18 |
 | 19 | Standalone Product-Photo Cleanup Script (rembg, blur, shine, crop) | ✅ Built | 2026-08-05 | BUILD-LOG §19 |
-| 20 | Admin Photo Cleanup Test Page + `--ghost-mannequin` LaMa inpainting mode | ✅ Built | 2026-08-06 | BUILD-LOG §20 |
+| 20 | Admin Photo Cleanup Test Page + `--ghost-mannequin` LaMa inpainting mode | ✅ Built — ⚠️ ghost-mannequin mode (and F-001e Snappyit plan) removed 2026-10-24; test page and LaMa hardware fill kept | 2026-08-06 | BUILD-LOG §20 |
 | 21 | Admin panel refresh→login + CSRF 403 fix (DB-free session check) | ✅ Built | 2026-08-06 | BUILD-LOG §21 |
 | 22 | Quality-First Image Compressor (≤80KB) + R2 storage measurement + batch compression + daily cron + Storage Report page | ✅ Built | 2026-08-06 | BUILD-LOG §22 |
 | 23 | Fashion V-Tone LIVE on Railway + "Generate on model" admin tool | ✅ Built | 2026-08-06 | BUILD-LOG §23 |

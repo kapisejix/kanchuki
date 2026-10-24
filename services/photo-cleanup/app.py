@@ -2,7 +2,7 @@
 Kanchuki Photo-Cleanup Service
 ================================
 FastAPI service wrapping scripts/batch-clean-photos.py (rembg background
-removal + SAM2 hanger/mannequin removal + LaMa ghost-mannequin fill + tight
+removal + SAM2 hanger/mannequin removal + LaMa hardware fill + tight
 crop + composite). Deployed as a sidecar on the same Hetzner CX43 box as
 Fashion V-Tone so the heavy Python stack (torch + SAM2 + onnxruntime peaks
 ~2.2 GB RSS — see scripts/demo/2026-08-08-sam2/memtest.py) never shares the
@@ -36,7 +36,6 @@ API:
         prompt_points:            "x,y;x,y"        (optional normalized 0..1 taps)
         prompt_excludes:          "x,y;x,y"        (optional normalized 0..1 garment protect)
         blur:                     int              (optional — portrait mode)
-        ghost_mannequin:          "true"|"false"
         shine:                    "true"|"false"
         -> 200 { "output": "<script stdout>", "image_b64": "<base64 jpeg>" }
         -> 401 { "detail": "..." }  (bad/missing X-Cleanup-Key)
@@ -156,11 +155,10 @@ def build_args(opts: dict) -> list[str]:
     """
     args: list[str] = []
     blur = opts.get("blur")
-    ghost_mannequin = _to_bool(opts.get("ghost_mannequin"))
     quality = opts.get("quality")
-    # Blur (portrait) mode wins over composite unless ghost-mannequin forces
-    # composite — same branching as the script's main().
-    if blur is not None and not ghost_mannequin:
+    # Blur (portrait) mode replaces composite mode entirely — same branching
+    # as the script's main().
+    if blur is not None:
         args += ["--blur", str(blur)]
         if _to_bool(opts.get("shine")):
             args.append("--shine")
@@ -175,8 +173,6 @@ def build_args(opts: dict) -> list[str]:
         args += ["--bg-image", str(opts["bg_image"])]
     if _to_bool(opts.get("shine")):
         args.append("--shine")
-    if ghost_mannequin:
-        args.append("--ghost-mannequin")
     if _to_bool(opts.get("remove_hardware")):
         args.append("--remove-hardware")
     if opts.get("prompt_points"):
@@ -219,7 +215,6 @@ def clean(
     prompt_points: str | None = Form(default=None),
     prompt_excludes: str | None = Form(default=None),
     blur: str | None = Form(default=None),
-    ghost_mannequin: str | None = Form(default=None),
     shine: str | None = Form(default=None),
     quality: str | None = Form(default=None),
     x_cleanup_key: str | None = Header(default=None),
@@ -252,7 +247,6 @@ def clean(
         "prompt_points": prompt_points,
         "prompt_excludes": prompt_excludes,
         "blur": blur_int,
-        "ghost_mannequin": ghost_mannequin,
         "shine": shine,
         "quality": quality,
     }

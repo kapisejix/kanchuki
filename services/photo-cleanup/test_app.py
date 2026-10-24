@@ -52,14 +52,7 @@ check(
     ["--crop", "10,20,300,400"],
 )
 
-# Ghost mannequin forces composite (blur ignored when both present)
-check(
-    "ghost-mannequin + blur -> composite wins",
-    {"bg_image": "/tmp/bg.jpg", "blur": 25, "ghost_mannequin": "true"},
-    ["--bg-image", "/tmp/bg.jpg", "--ghost-mannequin"],
-)
-
-# Blur (portrait) mode wins over bg-image unless ghost-mannequin
+# Blur (portrait) mode wins over bg-image
 check(
     "blur mode",
     {"bg_image": "/tmp/bg.jpg", "blur": 25},

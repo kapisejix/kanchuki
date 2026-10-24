@@ -17,8 +17,8 @@ Pillow>=10.0.0
 numpy>=1.26.0
 
 # Cleanup pipeline (same stack as the Railway container used to run):
-# rembg (bg removal, onnxruntime CPU), simple-lama-inpainting (ghost
-# mannequin + hardware fill, pulls torch as a transitive dep).
+# rembg (bg removal, onnxruntime CPU), simple-lama-inpainting (hardware
+# fill, pulls torch as a transitive dep).
 rembg[cpu]>=2.0.57
 simple-lama-inpainting>=1.0.0
 

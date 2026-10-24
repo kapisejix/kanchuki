@@ -57,7 +57,6 @@ type RunResult = {
   resultUrl: string;
   shine: boolean;
   blur: number | null;
-  ghostMannequin: boolean;
   ranAt: string;
 };
 
@@ -269,7 +268,6 @@ export default function PhotoCleanupTestPage() {
   const [shine, setShine] = useState(true);
   const [blurMode, setBlurMode] = useState(false);
   const [blurRadius, setBlurRadius] = useState(25);
-  const [ghostMannequin, setGhostMannequin] = useState(false);
   const [crop, setCrop] = useState<{ x1: number; y1: number; x2: number; y2: number } | null>(null);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState('');
@@ -755,7 +753,6 @@ export default function PhotoCleanupTestPage() {
           background_url: backgroundUrl || productUrl, // dummy, ignored by API when blur is set
           shine,
           blur: blurMode ? blurRadius : undefined,
-          ghost_mannequin: ghostMannequin,
           crop: crop ?? undefined,
         }),
       });
@@ -771,7 +768,6 @@ export default function PhotoCleanupTestPage() {
           resultUrl: json.data.result_url,
           shine,
           blur: blurMode ? blurRadius : null,
-          ghostMannequin,
           ranAt: new Date().toLocaleTimeString(),
         },
         ...prev,
@@ -1750,25 +1746,10 @@ export default function PhotoCleanupTestPage() {
           <input type="checkbox" checked={shine} onChange={(e) => setShine(e.target.checked)} />
           Shine (contrast/highlight boost)
         </label>
-        <label
-          className="flex items-center gap-2 text-sm text-gray-700"
-          title="Ghost mannequin fills neckline/sleeve gaps that show the plain backdrop through them, using local LaMa inpainting (no API key needed). Does NOT remove a visible mannequin neck/stand or hanger of a different color — use Crop for that. First run downloads the LaMa model, can take a few minutes"
-        >
-          <input
-            type="checkbox"
-            checked={ghostMannequin}
-            onChange={(e) => {
-              setGhostMannequin(e.target.checked);
-              if (e.target.checked) setBlurMode(false);
-            }}
-          />
-          Ghost mannequin
-        </label>
         <label className="flex items-center gap-2 text-sm text-gray-700">
           <input
             type="checkbox"
             checked={blurMode}
-            disabled={ghostMannequin}
             onChange={(e) => setBlurMode(e.target.checked)}
           />
           Blur mode (keep own background, ignore backdrop above)
@@ -1861,7 +1842,6 @@ export default function PhotoCleanupTestPage() {
                 </div>
                 <div className="px-3 py-2 flex items-center justify-between gap-2 text-xs text-gray-500">
                   <span>
-                    {r.ghostMannequin ? 'ghost mannequin + ' : ''}
                     {r.blur !== null ? `blur ${r.blur}` : 'bg composite'}
                     {r.shine ? ' + shine' : ''}
                   </span>

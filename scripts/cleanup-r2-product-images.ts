@@ -3,7 +3,7 @@
  * shop's brand assets and admin infrastructure. (The globs below use `…` so
  * no literal star-slash sequence appears inside this doc comment.)
  *
- *   DELETE   retailers/<id>/products/…   (product photos, spin frames, ghost-mannequin)
+ *   DELETE   retailers/<id>/products/…   (product photos, spin frames)
  *            tryon/…                     (VTO inputs/results)
  *            measurements/…              (customer body-measurement photos)
  *            retailers/<id>/kyc/…        (retailer KYC docs)

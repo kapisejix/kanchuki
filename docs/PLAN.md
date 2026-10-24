@@ -39,7 +39,7 @@
 | 6 | AI credit packs (retailer purchase side) | `tasks/pending/ai-credit-billing-model.md` | F-034 retailer phase |
 | 7 | Prorated plan upgrades (Model B) | `tasks/pending/plan-switch-prorated.md` | — |
 | 8 | Multi-language UI (Hindi first) | `tasks/pending/multi-language-i18n.md` | Year-1 target |
-| 9 | Coupon codes · social publishing phase 3 · ghost-mannequin (F-001e) | `tasks/pending/coupon-codes.md`, `tasks/pending/social-publishing-phase-3.md`, `tasks/pending/ghost-mannequin.md` | — |
+| 9 | Coupon codes · social publishing phase 3 | `tasks/pending/coupon-codes.md`, `tasks/pending/social-publishing-phase-3.md` | — |
 | 10 | F-041 Pre-Loved — shoppers sell / rent / family-gift used clothes; fit badge + tailor; handover at partner store (idea, not approved) | `tasks/pending/how-customer-earn-from-this-platform.md` | Owner D-1…D-7 + legal/CA review; no-code P0 WhatsApp pilot first (Diwali 2026) |
 | 11 | F-044 follow-ups — launch Release 2 try-on (create packs, EAS rebuild, device pass, F-040 gates); Release 3 real push notifications (F-046, built and merged 2026-10-19, not device-tested: needs Firebase + FCM key + EAS rebuild + device pass); E9 in-app WhatsApp reply once F-035 lands | `tasks/pending/enquiry-basket-team-inbox-and-instore-tryon.md` §11.7 | F-040 launch gates + accuracy bake-off; F-035 for E9 |
 | — | F-022 Google Business Profile auto-post | `tasks/pending/google-business-profile-autopost.md` | ⏸ blocked on Google API access |
@@ -192,7 +192,7 @@ Motion rule (from emil-design.md §3.3 — **restraint by surface**): marketing 
 | R4 | **Fashion DNA CRM** — customer preference capture (color, style, budget, occasion) + in-store AI search ("pink cotton suit under ₹2000") | ✅ Built (CRM + search); DNA matching Phase 1 🔶 | Feature grid card |
 | R5 | **Virtual Try-On** — customer uploads photo, tries outfit; self-hosted V-Tone engine live on Hetzner (CPU ~30 min/run) | 🔶 Engine live; customer-facing rollout pending | "Coming soon" honesty on site; demo button when shipped |
 | R6 | **Bulk onboarding** — rack/shelf batch-photo capture, supplier PDF/catalog import, 500–3000+ SKUs; 500-item free catalog-upload promo for all retailers (limited time) | ✅ Built | "Digitize 3,000 SKUs without typing" section |
-| R7 | **Ghost-mannequin photo cleanup** — local AI fills backdrop gaps, background removal, portrait blur, product photo quality pipeline | ✅ Built | Image-enhancement section (before/after slider) |
+| R7 | **Photo cleanup** — background removal (ghost-mannequin fill removed 2026-10-24), portrait blur, product photo quality pipeline | ✅ Built | Image-enhancement section (before/after slider) |
 | R8 | **Photo tools** — rotate (pre-save + post-save), background library + post-save background picker, auto-contrast background by garment tone | ✅ Built (F-029, F-028) | Product-detail UX screenshots |
 | R9 | **Scan-to-sell** — barcode/QR scan of SKU tag → mark SOLD offline, mutation queue replays on reconnect | ✅ Built | Retailer workflow section |
 | R10 | **Store QR + store link** — auto store URL from shop name, QR generate/delete, share storefront | ✅ Built | Store-directory tie-in |
@@ -706,7 +706,7 @@ Close: A catalog isn't a website. It's simply your shop, online, where your cust
 | **WhatsApp Collections** | Select products → share one link. Customers browse on their phone, no app. | ✅ Live |
 | **Fashion DNA CRM** | Know each customer's colour, style, budget and occasions — and search your racks with plain language ("pink cotton suit under ₹2000"). | ✅ Live (matching: Phase 1) |
 | **Virtual Try-On** | Customer uploads a photo, tries an outfit on themselves. | 🔶 Coming soon |
-| **Photo cleanup** | Remove backgrounds, fix lighting, ghost-mannequin fill — catalog photos that look like a big brand's. | ✅ Live |
+| **Photo cleanup** | Remove backgrounds, fix lighting — catalog photos that look like a big brand's. | ✅ Live |
 | **Scan-to-sell** | Scan the rack tag, mark it SOLD, even offline. | ✅ Live |
 | **Bulk onboarding** | Got 3,000 SKUs from a supplier? Import the PDF or shoot racks shelf-by-shelf. No typing. | ✅ Live |
 
@@ -884,7 +884,6 @@ CTA per plan: **Start 14-day free trial →**
 ###### H3: AI photo cleanup (before → after)
 - **Background removal** — that busy shop floor or wall disappears; the dress stays.
 - **Auto-contrast background** — dark clothes get a light background, light clothes get a dark one. The product pops.
-- **Ghost-mannequin fill** — hollow necklines and sleeves get filled so the garment looks worn, not flat.
 - **Rotate and retouch** — fix a crooked photo, pick a backdrop from the library.
 
 ###### H3: Why photos matter
@@ -1391,7 +1390,7 @@ Each card shows:
 ##### H2: What's inside (feature snapshot)
 
 - AI Catalog Builder · WhatsApp Collections · Store page + QR · Fashion DNA CRM · AI search
-- Photo cleanup & auto-contrast backgrounds · Ghost-mannequin fill · Bulk onboarding (PDF/racks)
+- Photo cleanup & auto-contrast backgrounds · Bulk onboarding (PDF/racks)
 - Offline mode · Scan-to-sell · Multi-staff · Try-On (coming soon)
 
 ---
@@ -1450,7 +1449,7 @@ It's the right name for what we build: **technology that fits the garment trade*
 - **The catalogue is the shop.** Stock on a rack is invisible at 9 PM. A photo, tagged and shareable, is a shop that never closes.
 - **AI should remove typing, not judgement.** The shopkeeper knows fabric and fit. We give them back the hours they used to spend writing "Teal embroidered kurta set with silver gota work".
 - **WhatsApp is the Indian storefront.** Your customers are already there. Meet them where they are.
-- **A small shop deserves big-brand photos.** Clean backgrounds, consistent lighting, ghost-mannequin fills — without a photo shoot.
+- **A small shop deserves big-brand photos.** Clean backgrounds and consistent lighting — without a photo shoot.
 - **Trust is earned with honesty.** Real numbers, real stores, real pricing — and we tell you plainly what's coming soon instead of pretending.
 
 ---
@@ -1459,7 +1458,7 @@ It's the right name for what we build: **technology that fits the garment trade*
 
 - A **photo-to-catalog AI** that tags category, colour, fabric, occasion, description and SKU from a single photo.
 - **WhatsApp collection links** and store pages that need no website.
-- **Photo cleanup** — background removal, auto-contrast backdrops, ghost-mannequin fill.
+- **Photo cleanup** — background removal and auto-contrast backdrops.
 - **Offline-first mobile app** built for budget Android phones and patchy networks.
 - **Admin control center** — the platform protects store data, supports deletion, and follows India's data norms.
 

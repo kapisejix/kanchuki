@@ -41,7 +41,7 @@ RUN pip install --no-cache-dir git+https://github.com/facebookresearch/sam2.git
 # Bake the model checkpoints at build time — the pipeline otherwise
 # downloads them on first request (fails on slow egress / rate limits).
 #   rembg isnet-general-use (~170 MB, the default session) -> ~/.u2net/
-#   LaMa big-lama.pt (~196 MB, ghost-mannequin + hardware fill) -> torch hub cache
+#   LaMa big-lama.pt (~196 MB, hardware fill) -> torch hub cache
 #   SAM2 sam2.1_hiera_tiny.pt (~156 MB, hardware removal) -> /opt/sam2/
 RUN mkdir -p /root/.u2net /root/.cache/torch/hub/checkpoints /opt/sam2 && \
     python -c "import urllib.request; urllib.request.urlretrieve('https://github.com/danielgatis/rembg/releases/download/v0.0.0/isnet-general-use.onnx', '/root/.u2net/isnet-general-use.onnx')" && \

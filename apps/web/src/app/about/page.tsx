@@ -11,14 +11,14 @@ const BELIEFS = [
   { title: 'The catalogue is the shop.', desc: 'Stock on a rack is invisible at 9 PM. A photo, tagged and shareable, is a shop that never closes.' },
   { title: 'AI should remove typing, not judgement.', desc: 'The shopkeeper knows fabric and fit. We give them back the hours they used to spend writing "Teal embroidered kurta set with silver gota work".' },
   { title: 'WhatsApp is the Indian storefront.', desc: 'Your customers are already there. Meet them where they are.' },
-  { title: 'A small shop deserves big-brand photos.', desc: 'Clean backgrounds, consistent lighting, ghost-mannequin fills — without a photo shoot.' },
+  { title: 'A small shop deserves big-brand photos.', desc: 'Clean backgrounds and consistent lighting — without a photo shoot.' },
   { title: 'Trust is earned with honesty.', desc: 'Real numbers, real stores, real pricing — and we tell you plainly what\'s coming soon instead of pretending.' },
 ]
 
 const BUILT = [
   'A photo-to-catalog AI that tags category, colour, fabric, occasion, description and SKU from a single photo.',
   'WhatsApp collection links and store pages that need no website.',
-  'Photo cleanup — background removal, auto-contrast backdrops, ghost-mannequin fill.',
+  'Photo cleanup — background removal and auto-contrast backdrops.',
   'Offline-first mobile app built for budget Android phones and patchy networks.',
   'Admin control center — the platform protects store data, supports deletion, and follows India\'s data norms.',
 ]
