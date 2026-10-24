@@ -1,6 +1,6 @@
 # Security audit — 5 points (secrets, data access, uploads, paid gates, AI caps)
 
-**Status:** 🟨 T1 ✅ `b9616811` (RC-078), T2 ✅ `e59d78ff` (RC-079), T3 server side ✅ `48e84013` (RC-080; client side split to `mobile-presign-content-length.md`), T4 part 1 ✅ `10fa64ec` (`admin-route-guard.test.ts`). **T4 RLS closed 2026-10-22, no migration** (live check, see §2 T4: all 86 public tables have RLS on). Committed on the branch, nothing pushed. Owner approved T1–T4 and the expired-plan rule (**drop to STARTER**) on 2026-10-22.
+**Status:** 🟨 T1 ✅ `b9616811` (RC-082), T2 ✅ `e59d78ff` (RC-079), T3 server side ✅ `48e84013` (RC-080; client side split to `mobile-presign-content-length.md`), T4 part 1 ✅ `10fa64ec` (`admin-route-guard.test.ts`). **T4 RLS closed 2026-10-22, no migration** (live check, see §2 T4: all 86 public tables have RLS on). Committed on the branch, nothing pushed. Owner approved T1–T4 and the expired-plan rule (**drop to STARTER**) on 2026-10-22.
 **Branch:** `fix/security-audit-5pts` (created from `fix/upload-staging`). T3 builds on the upload-staging code, so `fix/upload-staging` must merge first or this branch merges after it.
 **Surfaces audited:** `apps/api`, `apps/web` (customer PWA + admin), `apps/mobile`.
 
@@ -56,9 +56,9 @@ Server gates exist: `hasFeature` (27 call sites, fails closed) and `checkQuota` 
 
 ## 2. Task breakdown
 
-Order: **T1 → T2 → T3 → T4** (impact first). One commit per task. Each commit that fixes a shipped bug mints an RC entry (`docs/root-cause/root-cause issues.md` + CLAUDE.md RC row). The next free id is RC-078; check the tracker first.
+Order: **T1 → T2 → T3 → T4** (impact first). One commit per task. Each commit that fixes a shipped bug mints an RC entry (`docs/root-cause/root-cause issues.md` + CLAUDE.md RC row). The next free id is RC-083; check the tracker first.
 
-### T1 — Lapsed plans drop to STARTER (paid-gate fix) · RC-078
+### T1 — Lapsed plans drop to STARTER (paid-gate fix) · RC-082
 **Root cause:** `plan` is never downgraded when a trial ends or a subscription lapses, and every gate reads `plan`.
 **Fix the data, not the ~14 readers:**
 1. New `apps/api/src/jobs/plan-lapse.ts` → `handlePlanLapse(now = new Date())`:

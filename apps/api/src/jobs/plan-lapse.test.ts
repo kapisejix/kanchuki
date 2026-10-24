@@ -1,4 +1,4 @@
-// RC-078 — lapsed plans drop to STARTER. Every paid gate reads `retailer.plan`,
+// RC-082 — lapsed plans drop to STARTER. Every paid gate reads `retailer.plan`,
 // so the job's WHERE clause is the whole security boundary: it must catch
 // expired trials and lapsed subscriptions, and nothing else.
 import { beforeEach, describe, expect, it, vi } from 'vitest';

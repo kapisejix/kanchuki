@@ -45,13 +45,13 @@
 
 ---
 
-## 2026-10-22 - Security audit, 5 points: paid-gate lapse, AI/enquiry caps, presign size bound, admin route-guard test (RC-078, RC-079, RC-080)
+## 2026-10-22 - Security audit, 5 points: paid-gate lapse, AI/enquiry caps, presign size bound, admin route-guard test (RC-082, RC-079, RC-080)
 
 **Branch:** `fix/security-audit-5pts` (stacked on `fix/upload-staging`; 4 commits, nothing pushed). Spec: [`docs/tasks/pending/security-audit-5-points.md`](../tasks/pending/security-audit-5-points.md). No migration.
 
 | Piece | Detail |
 |---|---|
-| T1 `b9616811` RC-078 | New hourly `plan-lapse` job (`jobs/plan-lapse.ts`, registered in `jobs/index.ts` with no `repeat.limit`, RC-062). Retailers whose TRIAL ended, or whose PAST_DUE / CANCELLED / COMPLETED period has passed (`plan_expires_at` null or past), drop to STARTER with STARTER `max_products` / `max_customers`; one `auditLog` row each. TRIAL with null `trial_ends_at` is counted and left alone (admin-granted). Cancel keeps access until `plan_expires_at`. |
+| T1 `b9616811` RC-082 | New hourly `plan-lapse` job (`jobs/plan-lapse.ts`, registered in `jobs/index.ts` with no `repeat.limit`, RC-062). Retailers whose TRIAL ended, or whose PAST_DUE / CANCELLED / COMPLETED period has passed (`plan_expires_at` null or past), drop to STARTER with STARTER `max_products` / `max_customers`; one `auditLog` row each. TRIAL with null `trial_ends_at` is counted and left alone (admin-granted). Cancel keeps access until `plan_expires_at`. |
 | T2 `e59d78ff` RC-079 | `/stylist` and `/collections/:slug/enquire` limited to 10/min per IP; 20 s abort on the Claude fetch (lands in the existing fallback); Anthropic/OpenAI SDK clients get `timeout: 60_000, maxRetries: 1`. |
 | T3 server `48e84013` RC-080 | `getUploadPresignedUrl` signs an optional `ContentLength`; all 13 presign routes accept optional `content_length` and share `UPLOAD_URL_RATE_LIMIT` (30/min). Optional so old app builds keep working; **nothing is size-bound in production until a client sends it** (`mobile-presign-content-length.md`). |
 | T4 part 1 `10fa64ec` | `routes/admin-route-guard.test.ts` enumerates every `/v1/admin` route via `onRoute` and expects 403 without an admin key (login excepted). |

@@ -14,9 +14,8 @@ const MIGRATION = readFileSync(
 );
 const SCHEMA = readFileSync(join(REPO_ROOT, 'packages/db/prisma/schema.prisma'), 'utf8');
 
-const listed = [...MIGRATION.match(/tables constant text\[\] := ARRAY\[([\s\S]*?)\];/)![1].matchAll(/'([^']+)'/g)].map(
-  (m) => m[1],
-);
+const arrayBody = MIGRATION.match(/tables constant text\[\] := ARRAY\[([\s\S]*?)\];/)?.[1] ?? '';
+const listed = [...arrayBody.matchAll(/'([^']+)'/g)].map((m) => m[1] as string);
 const mapped = new Set([...SCHEMA.matchAll(/@@map\("([^"]+)"\)/g)].map((m) => m[1]));
 // Prisma implicit many-to-many join table: has no @@map.
 const IMPLICIT = new Set(['_RelatedShowcaseCategories']);

@@ -13,6 +13,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
+import Image from 'next/image'
 import Link from 'next/link'
 import { getPassportSession } from '@/lib/passport-client'
 import { RETURN_TO_PARAM, sanitizeReturnTo } from '@/lib/return-to'
@@ -81,8 +82,16 @@ export default function ShopperLayout({
       {/* Shopper nav bar */}
       <header className="bg-white border-b border-stone-200 sticky top-0 z-40 pt-safe">
         <div className="max-w-4xl mx-auto px-4 h-14 flex items-center justify-between">
-          <Link href="/" className="font-semibold text-stone-900 text-lg">
-            Kanchuki
+          <Link href="/" className="flex items-center" aria-label="Kanchuki — home">
+            {/* Official wordmark (same asset as the site Chrome), 884×176 source, 5:1. */}
+            <Image
+              src="/kanchuki-logo.png"
+              alt="Kanchuki"
+              width={884}
+              height={176}
+              priority
+              className="h-7 w-auto rounded-md"
+            />
           </Link>
           <nav className="flex items-center gap-4 text-sm">
             <Link

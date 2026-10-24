@@ -1,4 +1,4 @@
-// RC-078 — hourly: retailers whose trial ended or whose subscription lapsed drop
+// RC-082 — hourly: retailers whose trial ended or whose subscription lapsed drop
 // to STARTER. Every paid gate (`hasFeature`, `checkQuota`, ~12 direct readers)
 // trusts `retailer.plan`, and nothing used to change it when a trial ended or a
 // subscription was cancelled, so PRO stayed free forever. Fixing the stored

@@ -9,7 +9,7 @@
 // (RC-065/RC-006). The submit guard is a ref, not state, because two events can land
 // before React commits (RC-015). Polling is capped and stops on unmount.
 import { type GarmentDescriptor, MY_STYLE_CONSENT } from '@kanchuki/shared'
-import { Camera, Loader2, ShieldCheck, X } from 'lucide-react'
+import { Camera, ImageIcon, Loader2, ShieldCheck, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Sheet } from '@/components/Sheet'
 import { type AnalyzeMode, pollAnalysis, prepareUpload, startAnalysis } from './analyze'
@@ -87,9 +87,13 @@ export function AnalyzeSheet({
     let photo: Blob
     try {
       photo = await prepareUpload(file)
-    } catch {
+    } catch (e) {
       if (!stoppedRef.current) {
-        fail("We can't open that photo. Please take a new one, or choose a JPEG.")
+        fail(
+          e instanceof Error && e.message === 'unsupported'
+            ? 'Please choose a JPEG, PNG, WebP or HEIC photo under 25 MB.'
+            : "We can't open that photo. Please take a new one, or choose a JPEG.",
+        )
       }
       return
     }
@@ -160,7 +164,7 @@ export function AnalyzeSheet({
       {step === 'capture' && (
         <div className="text-center py-2">
           <p className="text-sm font-semibold text-stone-900 mb-1">
-            {garment ? 'Pick a photo of a garment you like' : 'Take a photo of yourself'}
+            {garment ? 'Pick a photo of a garment you like' : 'Take or choose a photo of yourself'}
           </p>
           <p className="text-xs text-stone-600 mb-5">
             {garment
@@ -184,6 +188,25 @@ export function AnalyzeSheet({
               }}
             />
           </label>
+          {/* Selfie mode: same pipeline, no `capture`, so the phone opens its gallery. */}
+          {!garment && (
+            <label
+              className="w-full mt-2 py-3 rounded-lg border border-stone-200 text-sm font-semibold text-stone-900 inline-flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98] transition"
+            >
+              <ImageIcon size={16} />
+              Choose from gallery
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                data-testid="my-style-gallery-input"
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (file) void handleFile(file)
+                }}
+              />
+            </label>
+          )}
         </div>
       )}
 

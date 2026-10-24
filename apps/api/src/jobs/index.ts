@@ -492,7 +492,7 @@ export async function startWorkers(): Promise<void> {
     },
   );
 
-  // RC-078 plan lapse — hourly at :00. Expired trials and lapsed subscriptions
+  // RC-082 plan lapse — hourly at :00. Expired trials and lapsed subscriptions
   // drop to STARTER. No `limit` (RC-062); idempotent, re-checks in the write.
   await getMaintenanceQueue().add(
     'plan-lapse',

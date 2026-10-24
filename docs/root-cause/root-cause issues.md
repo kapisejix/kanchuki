@@ -12,6 +12,17 @@
 
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
+
+## RC-082 — A trial ending or a subscription lapsing never changed `retailer.plan`, so paid features stayed on forever
+
+- **Component:** `apps/api/src/jobs/plan-lapse.ts` (new), `apps/api/src/jobs/index.ts`. Every paid gate: `lib/features.ts` `hasFeature`, `lib/quota.ts` `effectiveLimit`, and ~12 direct `retailer.plan` readers.
+- **Symptom:** a store whose 14-day TRIAL ended, or whose subscription was CANCELLED / COMPLETED / PAST_DUE, kept PRO features and limits indefinitely. Onboarding `demo_plan` (PRO + TRIAL) was effectively a free PRO plan.
+- **Root cause:** every gate trusts `retailer.plan` and nothing ever wrote it back down. `plan_status`, `trial_ends_at` and `plan_expires_at` were stored but no gate and no job read them.
+- **Fix:** hourly `plan-lapse` job. Retailers with `plan != STARTER` whose TRIAL ended, or whose status is PAST_DUE / CANCELLED / COMPLETED with `plan_expires_at` null or past, are set to STARTER with STARTER `max_products` / `max_customers`, plus one `system` audit row each. The lapse predicate is repeated in the `updateMany` so a re-subscribe webhook between read and write is not downgraded. Cancel keeps access until `plan_expires_at` (owner decision 2026-10-22). TRIAL rows with no end date are counted in the log and left alone. Fixing the stored plan closes all readers at once, so no gate was patched. Registered with no `limit` (RC-062).
+- **Proof:** `apps/api/src/jobs/plan-lapse.test.ts` (10): expired trial downgraded, future trial / ACTIVE / STARTER / deleted untouched, CANCELLED in the future kept, race with re-subscribe not downgraded, audit row written.
+- **Not verified:** not run against a real DB. Watch the first run's log line `[plan-lapse] downgraded=…` after deploy. `checkQuota` still fails open when no `plan_limits` row exists (separate owner decision).
+
+---
 ## RC-081 — The platform-wide daily AI spend cap in CLAUDE.md §5 was documented but never built
 
 - **Component:** `apps/api/src/jobs/ai-spend-alert.ts`, `apps/api/src/jobs/index.ts` (maintenance queue), `ai_usage_logs`.
@@ -46,14 +57,15 @@
 
 ---
 
-## RC-078 — A trial ending or a subscription lapsing never changed `retailer.plan`, so paid features stayed on forever
+## RC-078 — The WhatsApp enquiry text was built from different inputs on the server and client paths
 
-- **Component:** `apps/api/src/jobs/plan-lapse.ts` (new), `apps/api/src/jobs/index.ts`. Every paid gate: `lib/features.ts` `hasFeature`, `lib/quota.ts` `effectiveLimit`, and ~12 direct `retailer.plan` readers.
-- **Symptom:** a store whose 14-day TRIAL ended, or whose subscription was CANCELLED / COMPLETED / PAST_DUE, kept PRO features and limits indefinitely. Onboarding `demo_plan` (PRO + TRIAL) was effectively a free PRO plan.
-- **Root cause:** every gate trusts `retailer.plan` and nothing ever wrote it back down. `plan_status`, `trial_ends_at` and `plan_expires_at` were stored but no gate and no job read them.
-- **Fix:** hourly `plan-lapse` job. Retailers with `plan != STARTER` whose TRIAL ended, or whose status is PAST_DUE / CANCELLED / COMPLETED with `plan_expires_at` null or past, are set to STARTER with STARTER `max_products` / `max_customers`, plus one `system` audit row each. The lapse predicate is repeated in the `updateMany` so a re-subscribe webhook between read and write is not downgraded. Cancel keeps access until `plan_expires_at` (owner decision 2026-10-22). TRIAL rows with no end date are counted in the log and left alone. Fixing the stored plan closes all readers at once, so no gate was patched. Registered with no `limit` (RC-062).
-- **Proof:** `apps/api/src/jobs/plan-lapse.test.ts` (10): expired trial downgraded, future trial / ACTIVE / STARTER / deleted untouched, CANCELLED in the future kept, race with re-subscribe not downgraded, audit row written.
-- **Not verified:** not run against a real DB. Watch the first run's log line `[plan-lapse] downgraded=…` after deploy. `checkQuota` still fails open when no `plan_limits` row exists (separate owner decision).
+- **Component:** `packages/shared/src/utils/index.ts` (`buildEnquiryMessage`), `apps/api/src/routes/public/public-collections.ts`, `apps/api/src/routes/public/public-my-style.ts`. Fixed 2026-10-22 (`446a0ec0`, PR #147, merge `707fa3a6`).
+- **Symptom:** an enquiry sent through the API (wishlist basket, My Style) reached the retailer with no product link and no SKU, and My Style named the store twice: `I saw your collection "Radha Clothing Store" from Radha Clothing Store.`
+- **Root cause:** one shared builder, but each caller chose its own inputs. The client paths passed `product_url`; the two API routes passed only name + price. My Style has no collection, so it passed the shop name as `collectionTitle`, and the builder always printed both.
+- **Fix:** both API routes pass `sku` and `product_url` (`buildProductUrl`; My Style uses the `all-{store}` pseudo-slug the product page already resolves). The builder prints `(SKU: …)` after the price and drops the quoted title when it is missing or equals the shop name. `GET /public/products/:id` returns `sku`, so the single-product consent-modal path carries it too.
+- **Proof:** `packages/shared/src/utils.test.ts` (SKU + link line, store named once for null/empty/same-as-shop titles), `public-collections-enquire.test.ts` (the route's wa.me text has the SKU and the `/shop/abc/product/a` link).
+- **Follow-up (`e3b1ce64`, PR #149, merge `97cad538`):** the storefront bottom-bar "Enquire" (`CollectionView.handleEnquireAll`) still built its text client-side from summaries with no `sku`. It now POSTs saved picks to the enquire route like WishlistView. Category / All-products pseudo-slugs (`cat-{id}`, `all-{store}`), which the route 404'd, now resolve through the `store` the proxy adds and record against the store's oldest live collection.
+- **Not verified / known gap:** no real WhatsApp send or device run. With nothing saved, or more than 20 picks (API cap), the bottom bar still falls back to the client-built link without SKU.
 
 ---
 
