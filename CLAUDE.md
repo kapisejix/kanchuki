@@ -177,11 +177,11 @@ Payment: Razorpay (UPI first). Retailer pays base + 18% GST. **Source of truth: 
 | 28 | F-033 Ken Burns Auto-Video (photos → ffmpeg slideshow) + Video Social Posting (F-031 posts video over photo when present) | ✅ Built | 2026-08-19 | BUILD-LOG §28 |
 | 29 | F-027 DB-backed Category/Style/Occasion/Fabric taxonomy — migrated + live-verified | ✅ Built | 2026-08-07 | BUILD-LOG §29 |
 | 30 | Store QR Self-Service + Store-URL Rename Sync + Onboarding QR Nudge | ✅ Built | 2026-08-08 | BUILD-LOG §30 |
-| 31 | Add-Product Flow Rework — AI-in-background + F-028 Auto-Contrast Background | ✅ Built | 2026-08-08 | BUILD-LOG §31 |
+| 31 | Add-Product Flow Rework — AI-in-background + F-028 Auto-Contrast Background | ✅ Built — ⚠️ mobile Auto-clean / Auto-Contrast controls removed 2026-10-09 (Railway memory fix, `docs/tasks/pending/improvments-railway.md` §6b); server auto-contrast kept for Pro cleanup | 2026-08-08 | BUILD-LOG §31 |
 | 32 | Redis Public-Response Cache for customer storefronts | ✅ Built | 2026-08-08 | BUILD-LOG §32 |
-| 33 | F-029 Photo Rotate (pre/post-save) + post-save Background Picker + Set-as-Main | ✅ Built | 2026-08-09 | BUILD-LOG §33 |
+| 33 | F-029 Photo Rotate (pre/post-save) + post-save Background Picker + Set-as-Main | ✅ Built — ⚠️ server rotate route + post-save Background Picker removed 2026-10-09 (`improvments-railway.md` §6b); pre-save rotate (client-side) and Set-as-Main kept | 2026-08-09 | BUILD-LOG §33 |
 | 34 | Photo edits (crop/rotate/background) not visible after save — cache-busting fix | ✅ Fixed | 2026-08-10 | BUILD-LOG §34 |
-| 35 | F-030 shadow toggle for cropped photos | ✅ Built | 2026-08-10 | BUILD-LOG §35 |
+| 35 | F-030 shadow toggle for cropped photos | ✅ Built — ⚠️ mobile shadow control removed 2026-10-09 (`improvments-railway.md` §6b); `add_shadow` column left in place | 2026-08-10 | BUILD-LOG §35 |
 | 36 | Occasion removed everywhere + AI auto-selects Category Group & Style | ✅ Built | 2026-08-10 | BUILD-LOG §36 |
 | 37 | Play Store Launch Batch — web billing, privacy disclosures, location handling (removed 2026-08-10, optional store-pin re-added in... | ✅ Built | 2026-08-10 | BUILD-LOG §37 |
 | 38 | Real OTP — MSG91 widget (mobile) + server-side MSG91 everywhere + events webhook | ✅ Built | 2026-08-12 | BUILD-LOG §38 |
@@ -199,7 +199,7 @@ Payment: Razorpay (UPI first). Retailer pays base + 18% GST. **Source of truth: 
 | 50 | ~~Customer Profile P0-P1~~ (VTO self-serve, showroom booking, lookbooks — removed) | ❌ Partially removed | 2026-08-31 | `chore/remove-unwanted-features` |
 | 51 | Customer Profile P2 — fabric glossary (+25 fabrics), recently viewed row, restock notify, saved size capture, 5-question style qui... | ✅ Built | 2026-08-21 | `docs/customers/customer-profile.md` §12 |
 | 52 | ~~Customer Profile P3~~ (referral rewards — removed) | ❌ Partially removed | 2026-08-31 | `chore/remove-unwanted-features` |
-| 53 | Add-Product raw-photo default (auto-clean OFF — raw saved as-is) + restored per-photo Background/Shadow controls on product detail... | ✅ Built + live | 2026-08-29 | BUILD-LOG §2026-08-29 |
+| 53 | Add-Product raw-photo default (auto-clean OFF — raw saved as-is) + restored per-photo Background/Shadow controls on product detail... | ✅ Built + live — ⚠️ the restored per-photo Background/Shadow controls were removed again 2026-10-09 (`improvments-railway.md` §6b); raw-as-is default stands | 2026-08-29 | BUILD-LOG §2026-08-29 |
 | 54 | AI Studio Shoot — demographic person-swap + scene expansion: product category → `Demographic` (`womens`/`mens`/`teen_girl`/`teen_b... | ✅ Built — steps 1–6 done (step 6 via the DB-backed style catalog `stud... | 2026-08-30 | BUILD-LOG §2026-08-30 (demographic) |
 | 55 | Feature Teardown — removed 24+ tables (checkout/orders, VTO, Fashion DNA, customer_interactions, store_affinities, bookings, refer... | ✅ Built | 2026-08-31 | `chore/remove-unwanted-features`, `docs/references/history/reports/2026-08-31-feature-teardown-spec.md` |
 | 56 | Onboarding Plan Selection — mandatory step 4 after GST, before "Done"; | ✅ Built | 2026-08-31 | BUILD-LOG §55 |
