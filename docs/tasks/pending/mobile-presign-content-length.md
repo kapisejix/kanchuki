@@ -1,6 +1,6 @@
 # Mobile + web-admin clients send `content_length` on presign (RC-080 follow-up)
 
-**Status:** 📋 Not started (split from `security-audit-5-points.md` T3 on 2026-10-22). Server side is built and committed (`48e84013`); until a client sends the field, nothing is size-bound in production.
+**Status:** 🟨 Code built 2026-10-22 (split from `security-audit-5-points.md` T3). Server `48e84013`; mobile compress -> size -> presign -> PUT `9b2ec714`; admin web `2909ec4f`; field required on the server `c4e38e25`, flag deleted (draft PR #152, `feat/require-upload-content-length`, stacked on #151). Unit tests pass (`client.upload.test.ts`, `upload-url-guard.test.ts`). **Not done:** owner R2 check below, device test on an EAS build, build rolled out to users. Do not merge #152 before that rollout: old builds send no `content_length` and would fail.
 **Blocked on (owner):** run `packages/ai/scripts/check-r2-content-length.mjs` against R2 and confirm a matching PUT gives 200 and an oversized PUT gives 403. If R2 does not enforce it, stop: the post-upload `verifyUpload` stays the only guard and this task is not worth doing.
 
 ## Why it is not a one-line change
