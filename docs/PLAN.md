@@ -192,7 +192,7 @@ Motion rule (from emil-design.md §3.3 — **restraint by surface**): marketing 
 | R4 | **Fashion DNA CRM** — customer preference capture (color, style, budget, occasion) + in-store AI search ("pink cotton suit under ₹2000") | ✅ Built (CRM + search); DNA matching Phase 1 🔶 | Feature grid card |
 | R5 | **Virtual Try-On** — customer uploads photo, tries outfit; self-hosted V-Tone engine live on Hetzner (CPU ~30 min/run) | 🔶 Engine live; customer-facing rollout pending | "Coming soon" honesty on site; demo button when shipped |
 | R6 | **Bulk onboarding** — rack/shelf batch-photo capture, supplier PDF/catalog import, 500–3000+ SKUs; 500-item free catalog-upload promo for all retailers (limited time) | ✅ Built | "Digitize 3,000 SKUs without typing" section |
-| R7 | **Photo cleanup** — background removal (ghost-mannequin fill removed 2026-10-24), portrait blur, product photo quality pipeline | ✅ Built | Image-enhancement section (before/after slider) |
+| R7 | **Photo cleanup** — Pro cleanup via the photo-cleanup sidecar (the in-process auto background removal was removed 2026-10-10 for memory; ghost-mannequin fill removed 2026-10-24), portrait blur, product photo quality pipeline | ✅ Built | Image-enhancement section (before/after slider) |
 | R8 | **Photo tools** — rotate (pre-save + post-save), background library + post-save background picker, auto-contrast background by garment tone | ✅ Built (F-029, F-028) | Product-detail UX screenshots |
 | R9 | **Scan-to-sell** — barcode/QR scan of SKU tag → mark SOLD offline, mutation queue replays on reconnect | ✅ Built | Retailer workflow section |
 | R10 | **Store QR + store link** — auto store URL from shop name, QR generate/delete, share storefront | ✅ Built | Store-directory tie-in |

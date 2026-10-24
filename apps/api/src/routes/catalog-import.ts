@@ -162,11 +162,9 @@ export const catalogImportRoutes: FastifyPluginAsync = async (server) => {
 
     const { image_url } = parsed.data;
 
-    // F-010: gate before spending Vision API + crop cost; detectCropAndTag can
-    // return several items from one photo, so the exact count isn't known
-    // until after it runs — per-call weighted credits are recorded by the
-    // onProviderUsed callback below.
-    await checkQuota(retailerId, 'IMAGE_CROP');
+    // F-010: gate before spending Vision API cost; per-call weighted credits are
+    // recorded by the onProviderUsed callback below. No IMAGE_CROP gate: nothing
+    // is cropped any more (detectCropAndTag uploads the photo as-is).
     await checkQuota(retailerId, 'AI_TAGGING_CALL', await reserveAiCredits());
 
     try {
@@ -174,10 +172,6 @@ export const catalogImportRoutes: FastifyPluginAsync = async (server) => {
         onProviderUsed: recordAiUsage(retailerId),
         beforeCall: async () => checkQuota(retailerId, 'AI_TAGGING_CALL', await reserveAiCredits()),
       });
-      incrementUsage(retailerId, 'IMAGE_CROP', items.length).catch((err) => {
-        request.log.error({ err, retailer_id: retailerId }, 'Failed to record crop usage');
-      });
-
       const response: DetectedItemResponse[] = items.map((item) => ({
         description: item.description,
         cropped_url: item.croppedUrl,
@@ -213,10 +207,8 @@ export const catalogImportRoutes: FastifyPluginAsync = async (server) => {
     const { pdf_url, max_pages, page_images } = parsed.data;
 
     // F-010: gate once for the whole page batch (not per-page — one DB round
-    // trip, not N). Exact item count is only known after detection finishes,
-    // so increment by the real total below.
+    // trip, not N). No IMAGE_CROP gate: nothing is cropped any more.
     if (page_images && page_images.length > 0) {
-      await checkQuota(retailerId, 'IMAGE_CROP');
       await checkQuota(retailerId, 'AI_TAGGING_CALL', await reserveAiCredits());
     }
 
@@ -248,10 +240,6 @@ export const catalogImportRoutes: FastifyPluginAsync = async (server) => {
             request.log.warn({ err, pageNum: i + 1 }, 'Detection failed for PDF page');
           }
         }
-
-        incrementUsage(retailerId, 'IMAGE_CROP', allItems.length).catch((err) => {
-          request.log.error({ err, retailer_id: retailerId }, 'Failed to record crop usage');
-        });
 
         return reply.status(200).send({
           data: {

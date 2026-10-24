@@ -87,3 +87,16 @@
 | #154 product stock | Migration `137_product_stock` (see DATABASE.md). API `lib/product-stock.ts` + `products-crud.ts` + `catalog-import.ts`: POST defaults 1 per selected size, PUT replaces, GET list/detail return `stock` + `total_quantity`, PATCH status SOLD zeroes stock. Mobile `StockEditor.tsx` on add/edit product; catalog card shows `Stock: N` / `Low stock: N` (<= 2). The edit form sends `stock` only after the retailer touches it, so saving an old untracked or SOLD product never re-lists it. Spec: `docs/tasks/pending/product-stock-quantity.md`. |
 | Owner steps | New EAS build for the stock UI; device-test add (default 1 per size), edit counts, mark sold, edit an old SOLD product's price. Run the admin photo-cleanup test page once to confirm blur/composite/hardware modes after #155 deploys. |
 | Not verified | No device run of the stock UI. A prompt-based ghost style may exist only as a live-admin `studio_styles` row; not found in the seed migrations. |
+
+---
+
+## 2026-10-24 - Background-removal removal documented + `IMAGE_CROP` quota dropped from catalog import
+
+**Branch:** `chore/catalog-import-drop-image-crop-quota`. No migration. The removal itself shipped 2026-10-09/10 (#49 `f1148360`, #50 `59f9fa59`); this entry is the missing BUILD-LOG record.
+
+| Piece | Detail |
+|---|---|
+| What was removed (#49/#50) | `@imgly/background-removal-node` and its ONNX runtime from `packages/ai`; `cleanupProductPhoto`, shadow/contrast backdrop, `detectItems` crop, `phash` duplicate detection, colour auto-fill, photo rotate route; mobile Auto-clean/Background/Shadow/colour-detect controls. API RSS 1.34 → 0.14 GB. Kept: `sharp` for compress, watermark and image-quality; the Pro cleanup route and sidecar. Detail: `docs/tasks/pending/improvments-railway.md` §0, §4, §7. |
+| Quota change | `POST /catalog-import/detect-items` and `/import-pdf` no longer check or increment `IMAGE_CROP`: `detectCropAndTag` uploads the photo as-is, so nothing is cropped. `AI_TAGGING_CALL` (the real cost gate) and `PRODUCT_UPLOAD` are unchanged. Pro cleanup (`products-pro-cleanup.ts`) still checks and increments `IMAGE_CROP`, since it does crop. |
+| Effect | `IMAGE_CROP` is not seeded in `plan_limits`, so it was unlimited by default and the old check never blocked anyone. A retailer with an admin per-retailer `IMAGE_CROP` override is no longer limited by imports. Usage counters for imports stop growing. Existing rows untouched. |
+| Not verified | No live import run. No test covered the removed quota calls. |
