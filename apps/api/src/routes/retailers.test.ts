@@ -670,7 +670,8 @@ describe('POST /retailers/me/banner-upload-url', () => {
       payload: {
         filename: 'summer-collection.jpg',
         content_type: 'image/jpeg',
-        content_length: 1_000, size_bytes: 2_500_000,
+        content_length: 1_000,
+        size_bytes: 2_500_000,
       },
     });
 
@@ -699,7 +700,12 @@ describe('POST /retailers/me/banner-upload-url', () => {
       const res = await app.inject({
         method: 'POST',
         url: '/v1/retailers/me/banner-upload-url',
-        payload: { filename: 'banner', content_type: ct, content_length: 1_000, size_bytes: 1_000_000 },
+        payload: {
+          filename: 'banner',
+          content_type: ct,
+          content_length: 1_000,
+          size_bytes: 1_000_000,
+        },
       });
       expect(res.statusCode).toBe(200);
 
@@ -715,7 +721,12 @@ describe('POST /retailers/me/banner-upload-url', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/v1/retailers/me/banner-upload-url',
-      payload: { filename: 'banner.gif', content_type: 'image/gif', content_length: 1_000, size_bytes: 1_000 },
+      payload: {
+        filename: 'banner.gif',
+        content_type: 'image/gif',
+        content_length: 1_000,
+        size_bytes: 1_000,
+      },
     });
 
     expect(res.statusCode).toBe(422);
@@ -728,7 +739,12 @@ describe('POST /retailers/me/banner-upload-url', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/v1/retailers/me/banner-upload-url',
-      payload: { filename: '', content_type: 'image/jpeg', content_length: 1_000, size_bytes: 1_000 },
+      payload: {
+        filename: '',
+        content_type: 'image/jpeg',
+        content_length: 1_000,
+        size_bytes: 1_000,
+      },
     });
 
     expect(res.statusCode).toBe(422);
@@ -740,7 +756,12 @@ describe('POST /retailers/me/banner-upload-url', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/v1/retailers/me/banner-upload-url',
-      payload: { filename: 'banner.jpg', content_type: 'image/jpeg', content_length: 1_000, size_bytes: 0 },
+      payload: {
+        filename: 'banner.jpg',
+        content_type: 'image/jpeg',
+        content_length: 1_000,
+        size_bytes: 0,
+      },
     });
 
     expect(res.statusCode).toBe(422);
@@ -752,7 +773,12 @@ describe('POST /retailers/me/banner-upload-url', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/v1/retailers/me/banner-upload-url',
-      payload: { filename: 'banner.jpg', content_type: 'image/jpeg', content_length: 1_000, size_bytes: 11_000_001 },
+      payload: {
+        filename: 'banner.jpg',
+        content_type: 'image/jpeg',
+        content_length: 1_000,
+        size_bytes: 11_000_001,
+      },
     });
 
     expect(res.statusCode).toBe(422);
@@ -766,7 +792,12 @@ describe('POST /retailers/me/banner-upload-url', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/v1/retailers/me/banner-upload-url',
-      payload: { filename: 'banner.jpg', content_type: 'image/jpeg', content_length: 1_000, size_bytes: 1_000_000 },
+      payload: {
+        filename: 'banner.jpg',
+        content_type: 'image/jpeg',
+        content_length: 1_000,
+        size_bytes: 1_000_000,
+      },
     });
 
     expect(res.statusCode).toBe(422);
@@ -782,12 +813,22 @@ describe('POST /retailers/me/banner-upload-url', () => {
     const res1 = await app.inject({
       method: 'POST',
       url: '/v1/retailers/me/banner-upload-url',
-      payload: { filename: 'a.jpg', content_type: 'image/jpeg', content_length: 1_000, size_bytes: 500_000 },
+      payload: {
+        filename: 'a.jpg',
+        content_type: 'image/jpeg',
+        content_length: 1_000,
+        size_bytes: 500_000,
+      },
     });
     const res2 = await app.inject({
       method: 'POST',
       url: '/v1/retailers/me/banner-upload-url',
-      payload: { filename: 'b.jpg', content_type: 'image/jpeg', content_length: 1_000, size_bytes: 500_000 },
+      payload: {
+        filename: 'b.jpg',
+        content_type: 'image/jpeg',
+        content_length: 1_000,
+        size_bytes: 500_000,
+      },
     });
 
     expect(res1.statusCode).toBe(200);
