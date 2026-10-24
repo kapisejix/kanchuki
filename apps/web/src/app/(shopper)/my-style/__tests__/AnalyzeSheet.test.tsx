@@ -84,6 +84,20 @@ describe('consent first', () => {
     expect(input.accept).toBe('image/*')
     expect(input.getAttribute('capture')).toBe('user')
   })
+
+  it('also offers a gallery picker (no capture) that runs the same upload', async () => {
+    setup()
+    await accept()
+    const gallery = screen.getByTestId('my-style-gallery-input') as HTMLInputElement
+    expect(gallery.accept).toBe('image/*')
+    expect(gallery.getAttribute('capture')).toBeNull()
+    const file = new File(['x'], 'g.png', { type: 'image/png' })
+    await act(async () => {
+      fireEvent.change(gallery, { target: { files: [file] } })
+    })
+    expect(prepare).toHaveBeenCalledWith(file)
+    expect(start).toHaveBeenCalledTimes(1)
+  })
 })
 
 describe('happy path', () => {
@@ -140,6 +154,15 @@ describe('start failures', () => {
     expect(screen.getByText("You've reached this month's limit.")).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: /try again/i }))
     expect(fileInput()).toBeTruthy()
+  })
+
+  it('a wrong format or oversize photo names the accepted formats and never uploads', async () => {
+    prepare.mockRejectedValue(new Error('unsupported'))
+    setup()
+    await accept()
+    await pick()
+    expect(screen.getByText(/JPEG, PNG, WebP or HEIC photo under 25 MB/)).toBeTruthy()
+    expect(start).not.toHaveBeenCalled()
   })
 
   it('an undecodable photo (HEIC on Chrome) says so and never uploads', async () => {

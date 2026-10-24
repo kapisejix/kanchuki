@@ -12,12 +12,14 @@ const {
   mockProductFindMany,
   mockEnquiryCreate,
   mockPush,
+  mockRetailerFindFirst,
 } = vi.hoisted(() => ({
   mockCollectionFindFirst: vi.fn(),
   mockCollectionUpdate: vi.fn(),
   mockProductFindMany: vi.fn(),
   mockEnquiryCreate: vi.fn(),
   mockPush: vi.fn(),
+  mockRetailerFindFirst: vi.fn(),
 }));
 
 vi.mock('../../../jobs/enquiry-push.js', () => ({ addEnquiryPushJob: mockPush }));
@@ -27,6 +29,7 @@ vi.mock('@kanchuki/db', () => ({
     collection: { findFirst: mockCollectionFindFirst, update: mockCollectionUpdate },
     product: { findMany: mockProductFindMany },
     collectionEnquiry: { create: mockEnquiryCreate },
+    retailer: { findFirst: mockRetailerFindFirst },
   },
   Prisma: {},
   withRetry: async (fn: () => Promise<unknown>) => fn(),
@@ -146,6 +149,24 @@ describe('POST /v1/public/collections/:slug/enquire — basket (E1)', () => {
     await app.close();
   });
 
+  it('each line carries the SKU after the price and the product link under it', async () => {
+    mockProductFindMany.mockResolvedValue([
+      { id: 'a', name: 'Kurti', price_min: 80000, sku: 'KUR-1' },
+    ]);
+    mockCollectionFindFirst.mockResolvedValue({
+      id: 'col_1',
+      retailer_id: RETAILER_ID,
+      title: 'Festive',
+      retailer: { shop_name: 'Shop', phone: '9876543210', public_slug: 'shop-x1' },
+    });
+    const app = await buildApp();
+    const res = await enquire(app, { product_ids: ['a'] });
+
+    const text = decodeURIComponent(res.json().data.whatsapp_url.split('?text=')[1]);
+    expect(text).toMatch(/• Kurti - ₹800\/- \(SKU: KUR-1\)\n {2}\S*\/shop-x1\/abc\/product\/a\n/);
+    await app.close();
+  });
+
   it('20 products ok; 21 (product_id + 20 others) → 422', async () => {
     const twenty = Array.from({ length: 20 }, (_, i) => `p${i}`);
     storeProducts('extra', ...twenty);
@@ -192,5 +213,58 @@ describe('POST /v1/public/collections/:slug/enquire — basket (E1)', () => {
       data: expect.objectContaining({ product_id: null, product_ids: [] }),
     });
     await app.close();
+  });
+});
+
+// Category / full-catalog pages post a pseudo-slug (`cat-{id}`, `all-{store}`) that has no
+// collection row; the store proxy adds `store` so the enquiry still lands in the inbox.
+describe('POST /v1/public/collections/:slug/enquire — pseudo-slug pages', () => {
+  const post = (app: Awaited<ReturnType<typeof buildApp>>, slug: string, payload: object) =>
+    app.inject({ method: 'POST', url: `/v1/public/collections/${slug}/enquire`, payload });
+
+  beforeEach(() => {
+    storeProducts('a');
+    mockRetailerFindFirst.mockResolvedValue({
+      id: RETAILER_ID,
+      shop_name: 'Shop',
+      phone: '9876543210',
+      public_slug: 'meera',
+    });
+    // No collection matches the pseudo-slug; the store's oldest live one is col_old.
+    mockCollectionFindFirst.mockImplementation(async ({ where }: { where: { slug?: string } }) =>
+      where.slug ? null : { id: 'col_old' },
+    );
+  });
+
+  it('records against the store oldest collection and names the SKU', async () => {
+    mockProductFindMany.mockResolvedValue([
+      { id: 'a', name: 'Kurti', price_min: 150000, sku: 'KUR-1' },
+    ]);
+    const res = await post(await buildApp(), 'cat-xyz', { product_ids: ['a'], store: 'meera' });
+    expect(res.statusCode).toBe(200);
+    expect(mockRetailerFindFirst.mock.calls[0]![0].where.public_slug).toBe('meera');
+    expect(mockEnquiryCreate.mock.calls[0]![0].data).toMatchObject({
+      collection_id: 'col_old',
+      retailer_id: RETAILER_ID,
+      product_ids: ['a'],
+    });
+    expect(decodeURIComponent(res.json().data.whatsapp_url)).toContain('SKU: KUR-1');
+  });
+
+  it('still returns the link, with no inbox row, when the store has no collection', async () => {
+    mockCollectionFindFirst.mockResolvedValue(null);
+    const res = await post(await buildApp(), 'all-meera', { product_ids: ['a'], store: 'meera' });
+    expect(res.statusCode).toBe(200);
+    expect(mockEnquiryCreate).not.toHaveBeenCalled();
+    expect(mockPush).not.toHaveBeenCalled();
+  });
+
+  it('404s a pseudo-slug without a store, and never resolves a store for a real slug', async () => {
+    const app = await buildApp();
+    expect((await post(app, 'cat-xyz', { product_ids: ['a'] })).statusCode).toBe(404);
+    expect((await post(app, 'festive', { product_ids: ['a'], store: 'meera' })).statusCode).toBe(
+      404,
+    );
+    expect(mockRetailerFindFirst).not.toHaveBeenCalled();
   });
 });

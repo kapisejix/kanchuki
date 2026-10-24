@@ -12,6 +12,18 @@
 
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
+## RC-078 — The WhatsApp enquiry text was built from different inputs on the server and client paths
+
+- **Component:** `packages/shared/src/utils/index.ts` (`buildEnquiryMessage`), `apps/api/src/routes/public/public-collections.ts`, `apps/api/src/routes/public/public-my-style.ts`. Fixed 2026-10-22 (`446a0ec0`, PR #147, merge `707fa3a6`).
+- **Symptom:** an enquiry sent through the API (wishlist basket, My Style) reached the retailer with no product link and no SKU, and My Style named the store twice: `I saw your collection "Radha Clothing Store" from Radha Clothing Store.`
+- **Root cause:** one shared builder, but each caller chose its own inputs. The client paths passed `product_url`; the two API routes passed only name + price. My Style has no collection, so it passed the shop name as `collectionTitle`, and the builder always printed both.
+- **Fix:** both API routes pass `sku` and `product_url` (`buildProductUrl`; My Style uses the `all-{store}` pseudo-slug the product page already resolves). The builder prints `(SKU: …)` after the price and drops the quoted title when it is missing or equals the shop name. `GET /public/products/:id` returns `sku`, so the single-product consent-modal path carries it too.
+- **Proof:** `packages/shared/src/utils.test.ts` (SKU + link line, store named once for null/empty/same-as-shop titles), `public-collections-enquire.test.ts` (the route's wa.me text has the SKU and the `/shop/abc/product/a` link).
+- **Follow-up (`e3b1ce64`, PR #149, merge `97cad538`):** the storefront bottom-bar "Enquire" (`CollectionView.handleEnquireAll`) still built its text client-side from summaries with no `sku`. It now POSTs saved picks to the enquire route like WishlistView. Category / All-products pseudo-slugs (`cat-{id}`, `all-{store}`), which the route 404'd, now resolve through the `store` the proxy adds and record against the store's oldest live collection.
+- **Not verified / known gap:** no real WhatsApp send or device run. With nothing saved, or more than 20 picks (API cap), the bottom bar still falls back to the client-built link without SKU.
+
+---
+
 ## RC-077 — Stored user text was placed into HTML (hrefs, JSON-LD, email bodies) with no escaping step
 
 - **Component:** `apps/web/src/app/admin/{aggregators,retailers/[id],social}/page.tsx`, `apps/web/src/app/stores/page.tsx`, `apps/api/src/routes/retailers/retailers-aggregators.ts`, `apps/api/src/lib/email.ts`. Fixed 2026-10-22 (`dbb389bb`, PR #142, plus `fix/security-hardening-2`).
