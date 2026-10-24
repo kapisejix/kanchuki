@@ -8,6 +8,7 @@
 // upload that is never confirmed stays under one prefix an R2 lifecycle rule can
 // expire. verifyUpload promotes a passing staged object to its final key.
 import { copyObject, deleteObject, inspectObject, publicUrl } from '@kanchuki/ai';
+import type { FastifyRequest } from 'fastify';
 import { validationError } from '../plugins/error-handler.js';
 
 export type UploadKind =
@@ -76,6 +77,30 @@ export function sniffImageType(b: Buffer): 'image/jpeg' | 'image/png' | 'image/w
   return kind && IMAGE_KINDS.includes(kind)
     ? (kind as 'image/jpeg' | 'image/png' | 'image/webp')
     : null;
+}
+
+/**
+ * Rate limit for every presign route (RC-080). Keyed by IP: rate limiting runs before
+ * auth, and the global 200/min is far too loose for a route that hands out a write URL.
+ */
+export const UPLOAD_URL_RATE_LIMIT = {
+  // `uploadUrl` marks the route for requireContentLengthHook below.
+  config: { uploadUrl: true, rateLimit: { max: 30, timeWindow: 60 * 1000 } },
+};
+
+/**
+ * Global preValidation hook (registered once in index.ts). While `content_length` is optional,
+ * an old or modified client can omit it and get an unbound presigned URL. Once the app build
+ * that sends it is live, set REQUIRE_UPLOAD_CONTENT_LENGTH=true on the API to reject that
+ * (RC-080). Off by default so deploying the code cannot break old app builds.
+ */
+export async function requireContentLengthHook(request: FastifyRequest): Promise<void> {
+  if (process.env.REQUIRE_UPLOAD_CONTENT_LENGTH !== 'true') return;
+  if (!(request.routeOptions.config as { uploadUrl?: boolean }).uploadUrl) return;
+  const body = request.body as { content_length?: unknown } | null | undefined;
+  if (body?.content_length === undefined) {
+    throw validationError('Please update the app to upload files.', 'content_length');
+  }
 }
 
 export const STAGING_PREFIX = 'uploads/pending/';

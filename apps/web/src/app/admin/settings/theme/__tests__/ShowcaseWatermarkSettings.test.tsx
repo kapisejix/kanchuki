@@ -25,6 +25,7 @@ function makeStore() {
     cfg: { ...DEFAULTS },
     putBodies: [] as Record<string, unknown>[],
     uploadedKey: null as string | null,
+    presignBody: null as Record<string, unknown> | null,
   }
 }
 
@@ -55,6 +56,7 @@ describe('Admin Suits Designs watermark settings', () => {
       if (method === 'POST' && url.endsWith('/settings/showcase-watermark/logo-upload-url')) {
         const key = 'showcase-watermark/logo/abc123.png'
         store.uploadedKey = key
+        store.presignBody = JSON.parse(String(init!.body))
         return {
           ok: true,
           status: 200,
@@ -137,6 +139,8 @@ describe('Admin Suits Designs watermark settings', () => {
     fireEvent.change(input, { target: { files: [file] } })
 
     await waitFor(() => expect(store.uploadedKey).toBe('showcase-watermark/logo/abc123.png'))
+    // RC-080: the presign signs the exact byte length that is PUT.
+    expect(store.presignBody?.content_length).toBe(file.size)
     expect(await screen.findByText(/Logo uploaded — press Save/)).toBeInTheDocument()
     expect(await screen.findByText(/Custom logo/)).toBeInTheDocument()
 

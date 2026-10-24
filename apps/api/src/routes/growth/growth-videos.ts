@@ -7,7 +7,12 @@ import { z } from 'zod';
 import { handleGenerateKenBurnsVideo } from '../../jobs/generate-ken-burns-video.js';
 import { addKenBurnsVideoJob } from '../../jobs/index.js';
 import { hasFeature } from '../../lib/features.js';
-import { VIDEO_KINDS, stagingKey, verifyUpload } from '../../lib/upload-guard.js';
+import {
+  UPLOAD_URL_RATE_LIMIT,
+  VIDEO_KINDS,
+  stagingKey,
+  verifyUpload,
+} from '../../lib/upload-guard.js';
 import { featureUnavailable, notFound, validationError } from '../../plugins/error-handler.js';
 import { photoUrlToDisplay } from '../products/products-helpers.js';
 
@@ -22,7 +27,7 @@ export const growthVideoRoutes: FastifyPluginAsync = async (server) => {
   // ─── POST /growth/products/:id/videos/upload-url ────────────────
   // Presigned R2 upload for a short product clip. Mirrors the photo
   // upload-url pattern (products-media.ts).
-  server.post('/products/:id/videos/upload-url', async (request, reply) => {
+  server.post('/products/:id/videos/upload-url', UPLOAD_URL_RATE_LIMIT, async (request, reply) => {
     const retailerId = request.retailerId;
     await guard(retailerId);
     const { id } = request.params as { id: string };
@@ -39,6 +44,8 @@ export const growthVideoRoutes: FastifyPluginAsync = async (server) => {
         filename: z.string().min(1).max(255),
         content_type: z.enum(VIDEO_MIME_TYPES),
         size_bytes: z.number().int().min(1).max(MAX_VIDEO_BYTES),
+        // Exact byte length of the PUT (post-compression), bound into the signature (RC-080).
+        content_length: z.number().int().min(1).max(MAX_VIDEO_BYTES).optional(),
       })
       .safeParse(request.body);
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
@@ -51,7 +58,7 @@ export const growthVideoRoutes: FastifyPluginAsync = async (server) => {
 
     let uploadUrl: string;
     try {
-      uploadUrl = await getUploadPresignedUrl(r2Key, content_type, 300);
+      uploadUrl = await getUploadPresignedUrl(r2Key, content_type, 300, body.data.content_length);
     } catch (err) {
       console.error('R2 presigned URL generation failed (video):', err);
       throw validationError('Video storage is not configured. Please contact support.');

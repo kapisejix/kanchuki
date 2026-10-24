@@ -27,6 +27,7 @@ import { assertShowcaseQuota, getShowcaseUsage } from '../../lib/showcase-quota.
 import { watermarkShowcaseDesign } from '../../lib/showcase-watermark.js';
 import {
   IMAGE_KINDS,
+  UPLOAD_URL_RATE_LIMIT,
   currentKey,
   isOwnedKey,
   stagingKey,
@@ -163,12 +164,14 @@ export const retailersShowcaseDesignRoutes: FastifyPluginAsync = async (server) 
   });
 
   // ─── POST /me/showcase-designs/upload-url — presigned raw PUT ──────
-  server.post('/me/showcase-designs/upload-url', async (request, reply) => {
+  server.post('/me/showcase-designs/upload-url', UPLOAD_URL_RATE_LIMIT, async (request, reply) => {
     await gate(request.retailerId);
     const body = z
       .object({
         content_type: z.enum(ALLOWED_MIME_TYPES),
         filename: z.string().min(1).max(200),
+        // Exact byte length of the PUT, bound into the signature (RC-080). Same max as verifyUpload.
+        content_length: z.number().int().min(1).max(15_000_000).optional(),
       })
       .parse(request.body);
     const ext =
@@ -183,7 +186,7 @@ export const retailersShowcaseDesignRoutes: FastifyPluginAsync = async (server) 
 
     let uploadUrl: string;
     try {
-      uploadUrl = await getUploadPresignedUrl(r2Key, body.content_type, 300);
+      uploadUrl = await getUploadPresignedUrl(r2Key, body.content_type, 300, body.content_length);
     } catch {
       throw validationError('Photo storage is not configured. Please contact support.');
     }

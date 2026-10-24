@@ -225,7 +225,7 @@ async function uploadToR2(file: File): Promise<string> {
   const presign = await fetch(`${API_URL}/v1/admin/background-images/upload-url`, {
     ...(await adminMutateOptions()),
     method: 'POST',
-    body: JSON.stringify({ content_type: file.type, filename: file.name }),
+    body: JSON.stringify({ content_type: file.type, filename: file.name, content_length: file.size }),
   });
   if (!presign.ok) throw new Error('Failed to get upload URL');
   const { data } = await presign.json();

@@ -19,7 +19,12 @@ import {
   getShowcaseWatermarkConfig,
   mergeShowcaseWatermark,
 } from '../../lib/showcase-watermark.js';
-import { IMAGE_KINDS, stagingKey, verifyUpload } from '../../lib/upload-guard.js';
+import {
+  IMAGE_KINDS,
+  UPLOAD_URL_RATE_LIMIT,
+  stagingKey,
+  verifyUpload,
+} from '../../lib/upload-guard.js';
 import { adminAuthPreHandler } from '../admin.js';
 import { saveSetting } from './settings-store.js';
 
@@ -142,27 +147,43 @@ export const adminShowcaseWatermarkRoutes: FastifyPluginAsync = async (server) =
   // Presigned PUT so the admin panel uploads the logo image bytes straight
   // to R2 (same pattern as background-images/upload-url) and only the R2 key
   // is saved to the settings blob.
-  server.post('/settings/showcase-watermark/logo-upload-url', async (request) => {
-    const body = z
-      .object({
-        content_type: z.enum(['image/jpeg', 'image/png', 'image/webp']),
-        filename: z.string().min(1).max(200),
-      })
-      .parse(request.body);
+  server.post(
+    '/settings/showcase-watermark/logo-upload-url',
+    UPLOAD_URL_RATE_LIMIT,
+    async (request) => {
+      const body = z
+        .object({
+          content_type: z.enum(['image/jpeg', 'image/png', 'image/webp']),
+          filename: z.string().min(1).max(200),
+          // Exact byte length of the PUT, bound into the signature (RC-080). Same max as verifyUpload.
+          content_length: z.number().int().min(1).max(5_000_000).optional(),
+        })
+        .parse(request.body);
 
-    const ext = body.content_type.split('/')[1];
-    const r2Key = stagingKey(
-      R2_PATHS.showcaseWatermarkLogo(
-        `${createHash('sha256')
-          .update(body.filename + Date.now())
-          .digest('hex')
-          .slice(0, 16)}.${ext}`,
-      ),
-    );
-    const uploadUrl = await getUploadPresignedUrl(r2Key, body.content_type, 300);
+      const ext = body.content_type.split('/')[1];
+      const r2Key = stagingKey(
+        R2_PATHS.showcaseWatermarkLogo(
+          `${createHash('sha256')
+            .update(body.filename + Date.now())
+            .digest('hex')
+            .slice(0, 16)}.${ext}`,
+        ),
+      );
+      const uploadUrl = await getUploadPresignedUrl(
+        r2Key,
+        body.content_type,
+        300,
+        body.content_length,
+      );
 
-    return {
-      data: { upload_url: uploadUrl, r2_key: r2Key, public_url: publicUrl(r2Key), expires_in: 300 },
-    };
-  });
+      return {
+        data: {
+          upload_url: uploadUrl,
+          r2_key: r2Key,
+          public_url: publicUrl(r2Key),
+          expires_in: 300,
+        },
+      };
+    },
+  );
 };

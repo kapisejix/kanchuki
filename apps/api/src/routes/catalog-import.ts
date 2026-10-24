@@ -14,7 +14,7 @@ import { addTaggingJob } from '../jobs/index.js';
 import { recordAiUsage } from '../lib/ai-usage.js';
 import { checkQuota, incrementUsage } from '../lib/quota.js';
 import { createSkuSequencer } from '../lib/sku.js';
-import { IMAGE_KINDS, verifyUpload } from '../lib/upload-guard.js';
+import { IMAGE_KINDS, UPLOAD_URL_RATE_LIMIT, verifyUpload } from '../lib/upload-guard.js';
 import { notFound, planLimitExceeded, validationError } from '../plugins/error-handler.js';
 
 // ─── Types ────────────────────────────────────────────────────────
@@ -94,6 +94,9 @@ const UploadUrlSchema = z.object({
   // so a free string let a client store text/html there (stored XSS).
   content_type: z.enum(UPLOAD_TYPES),
   size_bytes: z.number().int().positive(),
+  // Exact byte length of the PUT (post-compression), bound into the signature (RC-080).
+  // Bounded by the per-type maximum in the route.
+  content_length: z.number().int().positive().optional(),
 });
 
 // ─── Helpers ──────────────────────────────────────────────────────
@@ -109,17 +112,17 @@ export const catalogImportRoutes: FastifyPluginAsync = async (server) => {
   //  POST /catalog-import/upload-url
   // ═══════════════════════════════════════════════════════════════
 
-  server.post('/catalog-import/upload-url', async (request, reply) => {
+  server.post('/catalog-import/upload-url', UPLOAD_URL_RATE_LIMIT, async (request, reply) => {
     const retailerId = request.retailerId;
 
     const parsed = UploadUrlSchema.safeParse(request.body);
     if (!parsed.success) throw validationError(parsed.error.issues[0]?.message ?? 'Invalid');
 
-    const { content_type, size_bytes } = parsed.data;
+    const { content_type, size_bytes, content_length } = parsed.data;
 
     const isPdf = content_type === 'application/pdf';
     const maxSize = isPdf ? 50 * 1024 * 1024 : 15 * 1024 * 1024;
-    if (size_bytes > maxSize) {
+    if (size_bytes > maxSize || (content_length ?? 0) > maxSize) {
       return reply.status(413).send({
         error: 'FILE_TOO_LARGE',
         message: `Maximum file size is ${isPdf ? '50MB' : '15MB'}`,
@@ -131,7 +134,7 @@ export const catalogImportRoutes: FastifyPluginAsync = async (server) => {
     const r2Key = `${prefix}/${retailerId}/${randHex(16)}${ext}`;
     let upload_url: string;
     try {
-      upload_url = await getUploadPresignedUrl(r2Key, content_type);
+      upload_url = await getUploadPresignedUrl(r2Key, content_type, 300, content_length);
     } catch (err) {
       console.error('R2 presigned URL generation failed:', err);
       throw validationError(

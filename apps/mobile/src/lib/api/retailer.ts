@@ -45,7 +45,7 @@ export const retailerApi = {
       data: { upload_url: string; r2_key: string; public_url: string; expires_in: number }
     }>('/v1/retailers/me/banner-upload-url', {
       method: 'POST',
-      body: JSON.stringify({ filename: 'banner.jpg', content_type: contentType, size_bytes: sizeBytes }),
+      body: JSON.stringify({ filename: 'banner.jpg', content_type: contentType, size_bytes: sizeBytes, content_length: sizeBytes }),
       timeoutMs: 30_000,
     }),
 
@@ -55,7 +55,7 @@ export const retailerApi = {
       data: { upload_url: string; r2_key: string; public_url: string; expires_in: number }
     }>('/v1/retailers/me/logo-upload-url', {
       method: 'POST',
-      body: JSON.stringify({ filename: 'logo.jpg', content_type: contentType, size_bytes: sizeBytes }),
+      body: JSON.stringify({ filename: 'logo.jpg', content_type: contentType, size_bytes: sizeBytes, content_length: sizeBytes }),
       timeoutMs: 30_000,
     }),
 
@@ -70,6 +70,7 @@ export const retailerApi = {
         filename: `${docType}.jpg`,
         content_type: contentType,
         size_bytes: sizeBytes,
+        content_length: sizeBytes,
       }),
       timeoutMs: 30_000,
     }),

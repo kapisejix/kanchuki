@@ -1,6 +1,7 @@
 import { QUEUES } from '@kanchuki/shared';
 import { Worker } from 'bullmq';
 import { STUDIO_SHOOT_CONCURRENCY } from '../lib/studio-shoot.js';
+import { handleAiSpendAlert } from './ai-spend-alert.js';
 import { handleBackfillMissingAiFields } from './backfill-missing-ai-fields.js';
 import { handleBackupDatabase } from './backup-database.js';
 import { handleCatalogSync, handleDailyCatalogSync } from './catalog-sync.js';
@@ -26,6 +27,7 @@ import { handleGenerateKenBurnsVideo } from './generate-ken-burns-video.js';
 import type { KenBurnsVideoJobData } from './generate-ken-burns-video.js';
 import { handleMeasureR2Storage } from './measure-r2-storage.js';
 import { type MyStyleAnalyzeJobData, handleMyStyleAnalyze } from './my-style-analyze.js';
+import { handlePlanLapse } from './plan-lapse.js';
 import { handlePurgeSoftDeleted, pruneCustomerInteractions } from './purge-soft-deleted.js';
 import {
   getCatalogSyncQueue,
@@ -285,6 +287,10 @@ export async function startWorkers(): Promise<void> {
           return handleSchedulePublishTick();
         case 'schedule-token-health':
           return handleScheduleTokenHealth();
+        case 'plan-lapse':
+          return handlePlanLapse();
+        case 'ai-spend-alert':
+          return handleAiSpendAlert();
         default:
           throw new Error(`[jobs] unknown maintenance job: ${job.name}`);
       }
@@ -481,6 +487,30 @@ export async function startWorkers(): Promise<void> {
     {},
     {
       repeat: { pattern: '*/5 * * * *' },
+      removeOnComplete: { count: 10 },
+      removeOnFail: { count: 10 },
+    },
+  );
+
+  // RC-082 plan lapse — hourly at :00. Expired trials and lapsed subscriptions
+  // drop to STARTER. No `limit` (RC-062); idempotent, re-checks in the write.
+  await getMaintenanceQueue().add(
+    'plan-lapse',
+    {},
+    {
+      repeat: { pattern: '0 * * * *' },
+      removeOnComplete: { count: 10 },
+      removeOnFail: { count: 10 },
+    },
+  );
+
+  // AI spend alert — hourly at :30. Sentry warning when 24 h credits pass the
+  // ₹15,000/day-equivalent threshold. No `limit` (RC-062); alert only.
+  await getMaintenanceQueue().add(
+    'ai-spend-alert',
+    {},
+    {
+      repeat: { pattern: '30 * * * *' },
       removeOnComplete: { count: 10 },
       removeOnFail: { count: 10 },
     },

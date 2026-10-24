@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Image as ImageIcon, Upload, Loader2, Eye, EyeOff, Trash2 } from 'lucide-react'
+import { Image as ImageIcon, Loader2, Eye, EyeOff, Trash2 } from 'lucide-react'
 import Image from 'next/image'
 import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
 
@@ -21,10 +21,8 @@ type BackgroundImage = {
 export default function BackgroundImagesPage() {
   const [rows, setRows] = useState<BackgroundImage[]>([])
   const [loading, setLoading] = useState(true)
-  const [uploading, setUploading] = useState(false)
   const [status, setStatus] = useState('')
   const [preview, setPreview] = useState<string | null>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const load = async () => {
     const res = await fetch(`${API_URL}/v1/admin/background-images`, adminGetOptions())
@@ -36,47 +34,6 @@ export default function BackgroundImagesPage() {
   useEffect(() => {
     load()
   }, [])
-
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    e.target.value = ''
-
-    setUploading(true)
-    setStatus('')
-    try {
-      const presign = await fetch(`${API_URL}/v1/admin/background-images/upload-url`, {
-        ...(await adminMutateOptions()),
-        method: 'POST',
-        body: JSON.stringify({ content_type: file.type, filename: file.name }),
-      })
-      if (!presign.ok) throw new Error('Failed to get upload URL')
-      const { data } = await presign.json()
-
-      const put = await fetch(data.upload_url, {
-        method: 'PUT',
-        headers: { 'Content-Type': file.type },
-        body: file,
-      })
-      if (!put.ok) throw new Error('Upload to storage failed')
-
-      // No name sent — the API auto-names the scene from the image (AI).
-      const create = await fetch(`${API_URL}/v1/admin/background-images`, {
-        ...(await adminMutateOptions()),
-        method: 'POST',
-        body: JSON.stringify({ r2_key: data.r2_key }),
-      })
-      if (!create.ok) throw new Error('Failed to register background image')
-      const { data: created } = await create.json()
-
-      setStatus(`✅ "${created?.name ?? 'Background'}" added`)
-      await load()
-    } catch (err) {
-      setStatus(`❌ ${err instanceof Error ? err.message : 'Upload failed'}`)
-    } finally {
-      setUploading(false)
-    }
-  }
 
   const deleteRow = async (row: BackgroundImage) => {
     if (!confirm(`Delete "${row.name}"? Products using it fall back to Auto backdrop.`)) return
@@ -154,24 +111,6 @@ export default function BackgroundImagesPage() {
           {status}
         </div>
       )}
-
-      <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-6">
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          className="hidden"
-          onChange={handleFileSelect}
-        />
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          disabled={uploading}
-          className="flex items-center gap-2 px-4 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-medium rounded-xl disabled:opacity-60 transition-colors"
-        >
-          {uploading ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
-          Upload background image
-        </button>
-      </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
         {rows.map((row) => (

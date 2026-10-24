@@ -22,9 +22,9 @@ import {
 } from "lucide-react-native";
 import {
   bugReportApi,
-  readLocalImage,
   retailerApi,
   uploadImageToR2,
+  prepareImageForUpload,
   type BugReportSeverity,
 } from "../lib/api";
 import { showError } from "../lib/errors";
@@ -111,10 +111,10 @@ export function ReportProblem({
     // Upload to R2 in background
     setUploadingScreenshot(true);
     try {
-      const blob = await readLocalImage(uri);
+      const prep = await prepareImageForUpload(uri, "image/jpeg");
       const uploadResult = await retailerApi.getLogoUploadUrl(
         "image/jpeg",
-        blob.size,
+        prep.size,
       );
       const info = uploadResult.data as {
         upload_url: string;
@@ -122,13 +122,13 @@ export function ReportProblem({
         public_url: string;
       };
       await uploadImageToR2(
-        uri,
+        prep.uri,
         info.upload_url,
         "image/jpeg",
         undefined,
         undefined,
         {
-          compress: true,
+          compress: false,
         },
       );
       setScreenshotR2Key(info.r2_key);

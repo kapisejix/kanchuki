@@ -22,7 +22,7 @@ export const productApi = {
       };
     }>('/v1/products/upload-url', {
       method: 'POST',
-      body: JSON.stringify({ filename, content_type: contentType, size_bytes: sizeBytes }),
+      body: JSON.stringify({ filename, content_type: contentType, size_bytes: sizeBytes, content_length: sizeBytes }),
       timeoutMs: 30_000,
     }),
 

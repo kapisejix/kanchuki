@@ -44,8 +44,8 @@ Not presigned (server-written, out of scope): `catalog-import/` crops, `studio/`
 
 | Rule name | Prefix | Action | Age |
 | --- | --- | --- | --- |
-| `catalog-pdf-expire` | `catalog-pdf/` | Delete objects | 7 days |
-| `catalog-source-expire` | `catalog-source/` | Delete objects | 7 days |
+| `catalog-pdf-expire` | `catalog-pdf/` | Delete objects | 1 day (owner decision 2026-10-22; was 7) |
+| `catalog-source-expire` | `catalog-source/` | Delete objects | 1 day (owner decision 2026-10-22; was 7) |
 
 Both are read during the request right after the upload, so 1 day would be safe; 7 days leaves room to re-run a failed import. Shorten later if storage matters.
 

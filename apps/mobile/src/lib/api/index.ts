@@ -10,6 +10,7 @@ export {
   request,
   readLocalImage,
   uploadImageToR2,
+  prepareImageForUpload,
 } from "./client";
 export * from "./analytics";
 export * from "./auth";

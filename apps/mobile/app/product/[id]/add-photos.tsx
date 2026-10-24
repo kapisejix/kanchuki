@@ -7,7 +7,7 @@ import * as ImageManipulator from 'expo-image-manipulator'
 import { Image } from 'expo-image'
 import { useScreenInsets } from '../../../src/lib/safe-area'
 import { X, ImagePlus, Check } from 'lucide-react-native'
-import { productApi, uploadImageToR2, readLocalImage } from '../../../src/lib/api'
+import { productApi, uploadImageToR2, prepareImageForUpload } from '../../../src/lib/api'
 import { showError } from '../../../src/lib/errors'
 import { AnimatedPressable } from '../../../src/components/AnimatedPressable'
 import { WhiteButton } from '../../../src/components/WhiteButton'
@@ -67,10 +67,10 @@ export default function AddPhotosScreen() {
     setUploading(true)
     try {
       for (const uri of shots) {
-        const blob = await readLocalImage(uri)
-        const uploadResult = await productApi.getUploadUrl('product.jpg', 'image/jpeg', blob.size)
+        const prep = await prepareImageForUpload(uri, 'image/jpeg')
+        const uploadResult = await productApi.getUploadUrl('product.jpg', 'image/jpeg', prep.size)
         const { upload_url, r2_key, public_url } = uploadResult.data
-        await uploadImageToR2(uri, upload_url, 'image/jpeg')
+        await uploadImageToR2(prep.uri, upload_url, 'image/jpeg', undefined, undefined, { compress: false })
         await productApi.addPhoto(id, { r2_key, url: public_url, content_type: 'image/jpeg' })
       }
       router.back()

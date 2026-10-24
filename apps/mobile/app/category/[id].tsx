@@ -10,7 +10,7 @@ import { Plus, Trash2, Pencil, X, ImagePlus, ChevronLeft, FolderOpen } from 'luc
 import ProductCard from '../../src/components/ProductCard'
 import { DetailScreenSkeleton, ProductGridSkeleton } from '../../src/components/Skeleton'
 import { useGridColumns } from '../../src/hooks/useIsTablet'
-import { productApi, categoryApi, readLocalImage, uploadImageToR2, type ProductCategory } from '../../src/lib/api'
+import { productApi, categoryApi, prepareImageForUpload, uploadImageToR2, type ProductCategory } from '../../src/lib/api'
 import { showError } from '../../src/lib/errors'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { GradientButton } from '../../src/components/GradientButton'
@@ -62,10 +62,10 @@ function EditCategoryModal({
     setUploading(true)
     try {
       const uri = result.assets[0].uri
-      const blob = await readLocalImage(uri)
-      const uploadResult = await categoryApi.getUploadUrl('image/jpeg', blob.size)
+      const prep = await prepareImageForUpload(uri, 'image/jpeg')
+      const uploadResult = await categoryApi.getUploadUrl('image/jpeg', prep.size)
       const info = uploadResult.data
-      await uploadImageToR2(uri, info.upload_url, 'image/jpeg')
+      await uploadImageToR2(prep.uri, info.upload_url, 'image/jpeg', undefined, undefined, { compress: false })
       setImageUrl(info.public_url)
       setImageR2Key(info.r2_key)
     } catch (err) {

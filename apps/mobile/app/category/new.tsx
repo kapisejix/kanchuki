@@ -5,7 +5,7 @@ import { Stack, router } from 'expo-router'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as ImagePicker from 'expo-image-picker'
 import { ImagePlus, Check, X, Package } from 'lucide-react-native'
-import { categoryApi, productApi, readLocalImage, uploadImageToR2 } from '../../src/lib/api'
+import { categoryApi, productApi, prepareImageForUpload, uploadImageToR2 } from '../../src/lib/api'
 import { showError } from '../../src/lib/errors'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { GradientButton } from '../../src/components/GradientButton'
@@ -53,10 +53,10 @@ export default function NewCategoryScreen() {
     setUploading(true)
     try {
       const uri = result.assets[0].uri
-      const blob = await readLocalImage(uri)
-      const uploadResult = await categoryApi.getUploadUrl('image/jpeg', blob.size)
+      const prep = await prepareImageForUpload(uri, 'image/jpeg')
+      const uploadResult = await categoryApi.getUploadUrl('image/jpeg', prep.size)
       const info = uploadResult.data
-      await uploadImageToR2(uri, info.upload_url, 'image/jpeg')
+      await uploadImageToR2(prep.uri, info.upload_url, 'image/jpeg', undefined, undefined, { compress: false })
       setImageUrl(info.public_url)
       setImageR2Key(info.r2_key)
     } catch (err) {

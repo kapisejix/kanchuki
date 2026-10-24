@@ -9,7 +9,7 @@ import { Image } from 'expo-image'
 import { useScreenInsets } from '../../../src/lib/safe-area'
 import { useQueryClient } from '@tanstack/react-query'
 import { X, ImagePlus } from 'lucide-react-native'
-import { productApi, uploadImageToR2, readLocalImage } from '../../../src/lib/api'
+import { productApi, uploadImageToR2, prepareImageForUpload } from '../../../src/lib/api'
 import { showError } from '../../../src/lib/errors'
 import { useTheme } from '../../../src/lib/theme'
 import { AnimatedPressable } from '../../../src/components/AnimatedPressable'
@@ -61,10 +61,10 @@ export default function AddColorVariantScreen() {
   // Upload, save and return immediately without manual friction.
   const uploadAndAutoSave = async (uri: string) => {
     try {
-      const blob = await readLocalImage(uri)
-      const uploadResult = await productApi.getUploadUrl('variant.jpg', 'image/jpeg', blob.size)
+      const prep = await prepareImageForUpload(uri, 'image/jpeg')
+      const uploadResult = await productApi.getUploadUrl('variant.jpg', 'image/jpeg', prep.size)
       const info = uploadResult.data
-      await uploadImageToR2(uri, info.upload_url, 'image/jpeg')
+      await uploadImageToR2(prep.uri, info.upload_url, 'image/jpeg', undefined, undefined, { compress: false })
       uploadInfoRef.current = { r2_key: info.r2_key, public_url: info.public_url }
 
       const detected = 'New Color'
@@ -89,10 +89,10 @@ export default function AddColorVariantScreen() {
           url: uploadInfoRef.current.public_url,
         })
       } else if (photoUri) {
-        const blob = await readLocalImage(photoUri)
-        const uploadResult = await productApi.getUploadUrl('variant.jpg', 'image/jpeg', blob.size)
+        const prep = await prepareImageForUpload(photoUri, 'image/jpeg')
+        const uploadResult = await productApi.getUploadUrl('variant.jpg', 'image/jpeg', prep.size)
         const info = uploadResult.data
-        await uploadImageToR2(photoUri, info.upload_url, 'image/jpeg')
+        await uploadImageToR2(prep.uri, info.upload_url, 'image/jpeg', undefined, undefined, { compress: false })
 
         await productApi.addVariant(id, {
           color: finalColor,

@@ -23,6 +23,7 @@ import {
   categoryApi,
   productAttributeApi,
   uploadImageToR2,
+  prepareImageForUpload,
   readLocalImage,
 } from '../../src/lib/api'
 import { showError, logError } from '../../src/lib/errors'
@@ -395,12 +396,12 @@ export default function AddProductScreen() {
     onProgress?: (pct: number, msg: string) => void,
   ): Promise<UploadInfo> => {
     onProgress?.(20, 'Reading photo...')
-    const blob = await readLocalImage(uri)
+    const prep = await prepareImageForUpload(uri, 'image/jpeg')
     onProgress?.(35, 'Getting upload link...')
-    const uploadResult = await productApi.getUploadUrl('product.jpg', 'image/jpeg', blob.size)
+    const uploadResult = await productApi.getUploadUrl('product.jpg', 'image/jpeg', prep.size)
     const info = uploadResult.data
     onProgress?.(55, 'Uploading to cloud...')
-    await uploadImageToR2(uri, info.upload_url, 'image/jpeg')
+    await uploadImageToR2(prep.uri, info.upload_url, 'image/jpeg', undefined, undefined, { compress: false })
     return info
   }
 

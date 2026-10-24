@@ -380,11 +380,20 @@ export abstract class BaseVisionProviderAdapter implements ProviderAdapter {
 
 // ─── Anthropic (Claude) ────────────────────────────────────────────────────
 
+// RC-079: SDK defaults (10 min, 2 retries) x up to 3 BullMQ attempts let one hung
+// provider hold a worker for an hour. Provider failover already handles retries.
+export const SDK_TIMEOUT_MS = 60_000
+export const SDK_MAX_RETRIES = 1
+
 const claudeClients = new Map<string, Anthropic>()
 async function getClaudeClient(apiKeyName: string): Promise<Anthropic> {
   let client = claudeClients.get(apiKeyName)
   if (!client) {
-    client = new Anthropic({ apiKey: (await getSecret(apiKeyName)) ?? '' })
+    client = new Anthropic({
+      apiKey: (await getSecret(apiKeyName)) ?? '',
+      timeout: SDK_TIMEOUT_MS,
+      maxRetries: SDK_MAX_RETRIES,
+    })
     claudeClients.set(apiKeyName, client)
   }
   return client
@@ -465,6 +474,8 @@ async function getOpenAIClient(apiKeyName: string, baseUrl: string | null): Prom
   if (!client) {
     client = new OpenAI({
       apiKey: (await getSecret(apiKeyName)) ?? '',
+      timeout: SDK_TIMEOUT_MS,
+      maxRetries: SDK_MAX_RETRIES,
       ...(baseUrl ? { baseURL: baseUrl } : {}),
     })
     openaiClients.set(cacheKey, client)

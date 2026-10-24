@@ -5,7 +5,12 @@ import { normalizeSearchQuery } from '@kanchuki/shared'
 
 let _openai: OpenAI | null = null
 async function getOpenAI(): Promise<OpenAI> {
-  _openai ??= new OpenAI({ apiKey: await getSecret('OPENAI_API_KEY') })
+  _openai ??= new OpenAI({
+    apiKey: await getSecret('OPENAI_API_KEY'),
+    // RC-079: same bounds as the providers.ts clients (SDK default is 10 min x 2 retries).
+    timeout: 60_000,
+    maxRetries: 1,
+  })
   return _openai
 }
 

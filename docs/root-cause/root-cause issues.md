@@ -12,6 +12,51 @@
 
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
+
+## RC-082 — A trial ending or a subscription lapsing never changed `retailer.plan`, so paid features stayed on forever
+
+- **Component:** `apps/api/src/jobs/plan-lapse.ts` (new), `apps/api/src/jobs/index.ts`. Every paid gate: `lib/features.ts` `hasFeature`, `lib/quota.ts` `effectiveLimit`, and ~12 direct `retailer.plan` readers.
+- **Symptom:** a store whose 14-day TRIAL ended, or whose subscription was CANCELLED / COMPLETED / PAST_DUE, kept PRO features and limits indefinitely. Onboarding `demo_plan` (PRO + TRIAL) was effectively a free PRO plan.
+- **Root cause:** every gate trusts `retailer.plan` and nothing ever wrote it back down. `plan_status`, `trial_ends_at` and `plan_expires_at` were stored but no gate and no job read them.
+- **Fix:** hourly `plan-lapse` job. Retailers with `plan != STARTER` whose TRIAL ended, or whose status is PAST_DUE / CANCELLED / COMPLETED with `plan_expires_at` null or past, are set to STARTER with STARTER `max_products` / `max_customers`, plus one `system` audit row each. The lapse predicate is repeated in the `updateMany` so a re-subscribe webhook between read and write is not downgraded. Cancel keeps access until `plan_expires_at` (owner decision 2026-10-22). TRIAL rows with no end date are counted in the log and left alone. Fixing the stored plan closes all readers at once, so no gate was patched. Registered with no `limit` (RC-062).
+- **Proof:** `apps/api/src/jobs/plan-lapse.test.ts` (10): expired trial downgraded, future trial / ACTIVE / STARTER / deleted untouched, CANCELLED in the future kept, race with re-subscribe not downgraded, audit row written.
+- **Not verified:** not run against a real DB. Watch the first run's log line `[plan-lapse] downgraded=…` after deploy. `checkQuota` still fails open when no `plan_limits` row exists (separate owner decision).
+
+---
+## RC-081 — The platform-wide daily AI spend cap in CLAUDE.md §5 was documented but never built
+
+- **Component:** `apps/api/src/jobs/ai-spend-alert.ts`, `apps/api/src/jobs/index.ts` (maintenance queue), `ai_usage_logs`.
+- **Symptom:** no alert fired however much AI was used. A runaway loop or abused route would show up only on the provider invoice.
+- **Root cause:** the cap was a paragraph in a doc ("platform-wide AI spend > ₹15,000/day -> alert") with no job behind it, and `ai_usage_logs` has no ₹ column, so nothing could compute it. The doc claimed a control the code did not have (RC-051 shape).
+- **Fix:** hourly `ai-spend-alert` job sums `credits_used` over a rolling 24 h and sends a Sentry warning above `AI_DAILY_CREDIT_ALERT` = 45,000 (₹15,000 at ~₹0.33 per call). Alert only, no blocking (owner decision 2026-10-22).
+- **Proof:** `jobs/ai-spend-alert.test.ts` (window, at-threshold quiet, over-threshold alert, null sum).
+- **Not verified / limits:** the threshold is a credit count, not real ₹; per-call cost differs by provider. It counts only retailer-attributed calls: anonymous `/stylist` and My Style calls write no `ai_usage_logs` row (they rely on their per-route rate limits, RC-079). Hourly repeat alerts while over the line. A true ₹ figure needs a cost column.
+
+---
+
+## RC-080 — A presigned PUT URL did not bind the body size, and the presign routes had only the global rate limit
+
+- **Component:** `packages/ai/src/r2.ts` `getUploadPresignedUrl`, `apps/api/src/lib/upload-guard.ts` (`UPLOAD_URL_RATE_LIMIT`), the 13 presign routes in 11 files (products, categories, growth videos, catalog import, retailer banner/logo/KYC, retailer + admin showcase designs, admin media / post templates / studio styles / watermark).
+- **Symptom:** one 5-minute URL accepted a PUT of any size (up to 5 GB) into `uploads/pending/`; `verifyUpload` only rejected it after the bytes had landed. Seven routes already validated a `size_bytes` field and then ignored it when signing.
+- **Root cause:** the signature carried only key and Content-Type. Size was checked in the request body (client-reported) and again after the upload, never bound into the URL. Rate limiting for these routes was the global 200/min per IP.
+- **Fix:** `getUploadPresignedUrl(key, type, expiresIn, contentLength?)` signs `content-length` when given. Every presign route accepts an optional `content_length` (max = that route's existing `verifyUpload` limit) and passes it through; absent means unbound and logged (old clients). All 13 routes use the shared `UPLOAD_URL_RATE_LIMIT` (30/min per IP).
+- **Why a new field, not `size_bytes`:** the mobile `uploadImageToR2` recompresses JPEGs to <=80 KB before the PUT, but callers send `blob.size` of the uncompressed file as `size_bytes`. Binding that value would 403 almost every current mobile upload.
+- **Proof:** `packages/ai/src/r2-presign.test.ts` (content-length is in `X-Amz-SignedHeaders` only when given), `categories.test.ts` (length passed through, oversize 422, 31st request 429, old client unbound), `upload-url-guard.test.ts` (derived from source: every file calling `getUploadPresignedUrl` passes a 4th argument and uses `UPLOAD_URL_RATE_LIMIT`).
+- **Not verified / still open:** (1) real R2 enforcement of the signed length: run `packages/ai/scripts/check-r2-content-length.mjs` (owner). (2) Mobile and admin web send `content_length` (`9b2ec714`, `2909ec4f`), but it is bound only once the new mobile build is live AND the owner sets `REQUIRE_UPLOAD_CONTENT_LENGTH=true` on the API (global `requireContentLengthHook`, default off, so old builds keep working). (3) The R2 lifecycle rule for `uploads/pending/` is still an owner step.
+
+---
+
+## RC-079 — Anonymous and AI-backed endpoints had no per-route cap, and the AI SDK clients inherited a 10-minute timeout
+
+- **Component:** `apps/api/src/routes/public/public-stylist.ts`, `apps/api/src/routes/public/public-collections.ts` (`/enquire`), `packages/ai/src/providers.ts`, `packages/ai/src/embedder.ts`.
+- **Symptom:** anyone, logged out, could make `POST /v1/public/stylist` call Claude with up to 60 products of catalog JSON at the global 200 req/min per IP, with no timeout on the fetch. A hung provider held a request (and a BullMQ worker, for the SDK clients) for minutes. `/collections/:slug/enquire` could be spammed the same way, writing a row and a push each time.
+- **Root cause:** the only limit was the global per-IP one, and the cost of a call was not part of it. Each AI call site relied on the SDK or `fetch` defaults (10 min, 2 retries; no timeout), and nobody owned a per-route budget for unauthenticated routes.
+- **Fix:** `/stylist` 10/min per IP and `AbortSignal.timeout(20_000)` (a timeout lands in the existing `fallback`, which logs to Sentry per RC-059). Anthropic and OpenAI clients built with `timeout: 60_000, maxRetries: 1` (provider failover already retries). `/collections/:slug/enquire` 10/min per IP. `/my-style/enquire` already had 20/min behind a login and was left alone.
+- **Proof:** `public-stylist.test.ts` (11th request is 429; a hanging fetch is aborted and answered from the fallback), `public-collections-enquire.test.ts` (11th is 429), `packages/ai/src/providers.test.ts` and `embedder.test.ts` (clients built with the bounds).
+- **Not verified:** no live Anthropic call. The platform-wide daily AI spend cap described in CLAUDE.md §5 is still not built (deferred; needs an owner ₹/day figure). Rate limits are per IP, so shoppers behind one carrier NAT share the 10/min.
+
+---
+
 ## RC-078 — The WhatsApp enquiry text was built from different inputs on the server and client paths
 
 - **Component:** `packages/shared/src/utils/index.ts` (`buildEnquiryMessage`), `apps/api/src/routes/public/public-collections.ts`, `apps/api/src/routes/public/public-my-style.ts`. Fixed 2026-10-22 (`446a0ec0`, PR #147, merge `707fa3a6`).

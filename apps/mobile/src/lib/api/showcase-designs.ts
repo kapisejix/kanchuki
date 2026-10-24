@@ -66,12 +66,12 @@ export const showcaseDesignsApi = {
       getCacheTtlMs: 30_000,
     }),
 
-  getUploadUrl: (contentType: string) =>
+  getUploadUrl: (contentType: string, sizeBytes: number) =>
     request<{
       data: { upload_url: string; r2_key: string; public_url: string; expires_in: number }
     }>('/v1/retailers/me/showcase-designs/upload-url', {
       method: 'POST',
-      body: JSON.stringify({ filename: 'design.jpg', content_type: contentType }),
+      body: JSON.stringify({ filename: 'design.jpg', content_type: contentType, content_length: sizeBytes }),
       timeoutMs: 30_000,
     }),
 

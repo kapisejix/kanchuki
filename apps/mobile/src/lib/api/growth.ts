@@ -896,7 +896,7 @@ export const growthApi = {
   // ─── Product videos (roadmap Q) ─────────────────────────────────
   videoUploadUrl: (
     productId: string,
-    payload: { filename: string; content_type: 'video/mp4' | 'video/webm' | 'video/quicktime'; size_bytes: number },
+    payload: { filename: string; content_type: 'video/mp4' | 'video/webm' | 'video/quicktime'; size_bytes: number; content_length?: number },
   ) =>
     request<{ data: VideoUploadUrl }>(`/v1/growth/products/${productId}/videos/upload-url`, {
       method: 'POST',

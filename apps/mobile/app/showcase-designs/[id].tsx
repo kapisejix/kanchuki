@@ -7,6 +7,7 @@ import { Camera, Trash2, Share2, Sparkles } from 'lucide-react-native'
 import {
   showcaseDesignsApi,
   uploadImageToR2,
+  prepareImageForUpload,
   type ShowcaseDesignCategory,
 } from '../../src/lib/api'
 import { showError } from '../../src/lib/errors'
@@ -63,9 +64,10 @@ export default function ShowcaseDesignDetailScreen() {
     const uri = result.assets[0].uri
     setReplacingPhoto(true)
     try {
-      const uploadResult = await showcaseDesignsApi.getUploadUrl('image/jpeg')
+      const prep = await prepareImageForUpload(uri, 'image/jpeg')
+      const uploadResult = await showcaseDesignsApi.getUploadUrl('image/jpeg', prep.size)
       const info = uploadResult.data
-      await uploadImageToR2(uri, info.upload_url, 'image/jpeg')
+      await uploadImageToR2(prep.uri, info.upload_url, 'image/jpeg', undefined, undefined, { compress: false })
       await showcaseDesignsApi.update(design.id, { raw_r2_key: info.r2_key })
       void queryClient.invalidateQueries({ queryKey: ['showcase-designs'] })
       // Re-suggest a fresh name + color for the new photo (AI, fail-open).
