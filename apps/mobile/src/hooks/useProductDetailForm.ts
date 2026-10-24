@@ -5,6 +5,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import type { ProductDetail, ProductStatus } from '@kanchuki/shared'
 import { productApi } from '../lib/api'
 import { showError } from '../lib/errors'
+import { toStockPayload } from '../components/product-detail/StockEditor'
 
 interface UseProductDetailFormProps {
   product: ProductDetail | undefined
@@ -25,6 +26,10 @@ export function useProductDetailForm({
   const [selectedStyles, setSelectedStyles] = useState<string[]>([])
   const [selectedFabrics, setSelectedFabrics] = useState<string[]>([])
   const [selectedSizes, setSelectedSizes] = useState<string[]>([])
+  // Per-size stock. Only sent on save once the retailer edits it: re-sending untouched
+  // (or legacy untracked) counts would flip a SOLD product back to AVAILABLE.
+  const [stockQty, setStockQty] = useState<Record<string, number>>({})
+  const [stockTouched, setStockTouched] = useState(false)
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([])
   const [editedCategory, setEditedCategory] = useState<string | null>(null)
   const [editedColor, setEditedColor] = useState<string>('')
@@ -69,6 +74,8 @@ export function useProductDetailForm({
     setSelectedStyles(product.styles ?? [])
     setSelectedFabrics(product.fabrics ?? [])
     setSelectedSizes(product.sizes ?? [])
+    setStockQty(Object.fromEntries((product.stock ?? []).map((r) => [r.size, r.quantity])))
+    setStockTouched(false)
     setSelectedCategoryIds(product.category_id ? [product.category_id] : [])
     setEditedCategory(product.category ?? null)
     setEditedColor(product.primary_color ?? '')
@@ -126,10 +133,12 @@ export function useProductDetailForm({
         styles: selectedStyles,
         fabrics: selectedFabrics,
         sizes: selectedSizes,
+        ...(stockTouched ? { stock: toStockPayload(selectedSizes, stockQty) } : {}),
         search_tags: tagsToSave,
       })
       invalidate()
       setIsDirty(false)
+      setStockTouched(false)
       Alert.alert('Saved', 'Product updated.')
     } catch (err) {
       showError(err, 'Failed to save')
@@ -200,6 +209,12 @@ export function useProductDetailForm({
     setSelectedFabrics,
     selectedSizes,
     setSelectedSizes,
+    stockQty,
+    setStock: (size: string, quantity: number) => {
+      setIsDirty(true)
+      setStockTouched(true)
+      setStockQty((prev) => ({ ...prev, [size]: quantity }))
+    },
     selectedCategoryIds,
     setSelectedCategoryIds,
     editedCategory,

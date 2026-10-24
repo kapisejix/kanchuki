@@ -368,6 +368,8 @@ export default function ProductDetailScreen() {
           setSelectedFabrics={form.setSelectedFabrics}
           selectedSizes={form.selectedSizes}
           setSelectedSizes={form.setSelectedSizes}
+          stockQty={form.stockQty}
+          setStock={form.setStock}
           selectedCategoryIds={form.selectedCategoryIds}
           setSelectedCategoryIds={form.setSelectedCategoryIds}
           editedCategory={form.editedCategory}

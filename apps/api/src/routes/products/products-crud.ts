@@ -6,6 +6,7 @@ import { maybeEnqueueFullSync, maybeEnqueueProductSync } from '../../jobs/catalo
 import { addEmbeddingJob, addTaggingJob } from '../../jobs/index.js';
 import { resolveColorFamily } from '../../lib/color-families.js';
 import { NEW_ARRIVAL_DAYS, isNewArrival } from '../../lib/product-flags.js';
+import { defaultStock, totalQuantity, writeStock, zeroStock } from '../../lib/product-stock.js';
 import { checkQuota, incrementUsage } from '../../lib/quota.js';
 import { IMAGE_KINDS, verifyUpload } from '../../lib/upload-guard.js';
 import {
@@ -47,7 +48,7 @@ export const productsCrudRoutes: FastifyPluginAsync = async (server) => {
     const body = CreateProductSchema.safeParse(request.body);
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
 
-    const { photo_r2_key: uploadKey, metadata, auto_cleanup, ...rest } = body.data;
+    const { photo_r2_key: uploadKey, metadata, auto_cleanup, stock, ...rest } = body.data;
     // Client-supplied photo_url is ignored: key must be the retailer's own real
     // image, and the url is rebuilt from it.
     const { url: photo_url, r2Key: photo_r2_key } = await verifyUpload({
@@ -90,6 +91,18 @@ export const productsCrudRoutes: FastifyPluginAsync = async (server) => {
         throw validationError('This SKU is already in use', 'sku');
       }
       throw err;
+    }
+
+    // Stock rows follow the product (default 1 per size). A failure here must not
+    // lose the product the retailer just created, so the product stays untracked.
+    try {
+      await writeStock(product.id, retailerId, stock ?? defaultStock(rest.sizes));
+      product = await prisma.product.findUniqueOrThrow({
+        where: { id: product.id },
+        include: { photos: true, section: { select: { name: true } }, stock: true },
+      });
+    } catch (err) {
+      request.log.error({ err, product_id: product.id }, 'Failed to write product stock');
     }
 
     // Best-effort — a failed usage-counter write shouldn't fail an upload
@@ -137,7 +150,16 @@ export const productsCrudRoutes: FastifyPluginAsync = async (server) => {
 
     // New-arrival notification removed — notification system dropped
 
-    return reply.status(201).send({ data: product });
+    return reply
+      .status(201)
+      .send({
+        data: {
+          ...product,
+          total_quantity: totalQuantity(
+            (product as { stock?: { size: string; quantity: number }[] }).stock,
+          ),
+        },
+      });
   });
 
   // ─── GET /products ──────────────────────────────────────────────
@@ -173,6 +195,7 @@ export const productsCrudRoutes: FastifyPluginAsync = async (server) => {
       include: {
         photos: { where: { is_primary: true }, take: 1 },
         section: { select: { name: true } },
+        stock: { select: { size: true, quantity: true } },
       },
       orderBy: [{ created_at: 'desc' }, { id: 'desc' }],
       take: limit + 1,
@@ -191,6 +214,7 @@ export const productsCrudRoutes: FastifyPluginAsync = async (server) => {
             : null,
         ),
         is_new_arrival: isNewArrival(p.created_at),
+        total_quantity: totalQuantity(p.stock),
         photos: undefined,
       })),
     );
@@ -215,6 +239,7 @@ export const productsCrudRoutes: FastifyPluginAsync = async (server) => {
         videos: { orderBy: [{ is_main: 'desc' }, { created_at: 'desc' }] },
         variants: true,
         section: { select: { name: true } },
+        stock: { select: { size: true, quantity: true } },
       },
     });
     if (!product) throw notFound('Product');
@@ -261,6 +286,7 @@ export const productsCrudRoutes: FastifyPluginAsync = async (server) => {
     return {
       data: {
         ...product,
+        total_quantity: totalQuantity(product.stock),
         photos: photosWithUrls,
         videos: videosWithUrls,
         variants: variantsWithUrls,
@@ -280,12 +306,14 @@ export const productsCrudRoutes: FastifyPluginAsync = async (server) => {
     const body = UpdateProductSchema.safeParse(request.body);
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
 
-    const { metadata, ...rest } = body.data;
+    const { metadata, stock, ...rest } = body.data;
     // F-045: a manual colour edit re-derives color_family (null if unmapped) so it never
     // keeps pointing at the old colour; the backfill only fills NULLs, not stale values.
     const colorFamily =
       rest.primary_color !== undefined ? await resolveColorFamily(rest.primary_color) : undefined;
-    let updated: Awaited<ReturnType<typeof prisma.product.update>>;
+    let updated: Awaited<ReturnType<typeof prisma.product.update>> & {
+      stock?: { size: string; quantity: number }[];
+    };
     try {
       updated = await prisma.product.update({
         where: { id },
@@ -294,13 +322,22 @@ export const productsCrudRoutes: FastifyPluginAsync = async (server) => {
           ...rest,
           ...(colorFamily !== undefined ? { color_family: colorFamily } : {}),
         },
-        include: { photos: true, section: { select: { name: true } } },
+        include: { photos: true, section: { select: { name: true } }, stock: true },
       });
     } catch (err) {
       if ((err as { code?: string } | null)?.code === 'P2002') {
         throw validationError('This SKU is already in use', 'sku');
       }
       throw err;
+    }
+
+    // Stock wins over an explicit status in the same request (0 -> SOLD, >0 -> AVAILABLE).
+    if (stock) {
+      await writeStock(id, request.retailerId, stock);
+      updated = await prisma.product.findUniqueOrThrow({
+        where: { id },
+        include: { photos: true, section: { select: { name: true } }, stock: true },
+      });
     }
 
     const embeddingFields = [
@@ -336,7 +373,7 @@ export const productsCrudRoutes: FastifyPluginAsync = async (server) => {
       },
     });
 
-    return { data: updated };
+    return { data: { ...updated, total_quantity: totalQuantity(updated.stock) } };
   });
 
   // ─── PATCH /products/:id/status ─────────────────────────────────
@@ -357,6 +394,8 @@ export const productsCrudRoutes: FastifyPluginAsync = async (server) => {
       data: { status: body.data.status },
       select: { id: true, status: true },
     });
+    // "Mark sold" zeroes tracked stock so the count never contradicts the badge.
+    if (body.data.status === 'SOLD') await zeroStock(id);
 
     void revalidateCollectionsForProduct(id);
 

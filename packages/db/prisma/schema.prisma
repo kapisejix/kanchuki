@@ -376,6 +376,7 @@ model Retailer {
   support_tickets       SupportTicket[]
   support_session_grants SupportSessionGrant[]
   staff_push_devices    StaffPushDevice[]
+  product_stock         ProductStock[]
   social_accounts       SocialAccount[]
   social_posts          SocialPost[]
   schedule_plans        PostSchedulePlan[]
@@ -609,6 +610,7 @@ model Product {
   videos           ProductVideo[]
   reviews          ProductReview[]
   variants         ProductVariant[]
+  stock            ProductStock[]
   embedding        ProductEmbedding?
   collection_items CollectionProduct[]
   recently_viewed  CustomerRecentlyViewed[]
@@ -1070,6 +1072,28 @@ model StaffPushDevice {
   @@index([retailer_id, disabled_at])
   @@map("staff_push_devices")
 }
+
+// Per-size stock for a product (docs/tasks/pending/product-stock-quantity.md).
+// One row per (product, size); size 'FREE' = unsized item. No row = stock is not
+// tracked for that product. Rows are never deleted by the app (RC-049): removing a
+// size writes quantity 0. quantity has a DB CHECK >= 0 (migration 137), so a future
+// checkout can decrement atomically with `... WHERE quantity >= n`.
+model ProductStock {
+  id          String   @id @default(cuid())
+  product_id  String
+  retailer_id String
+  size        String
+  quantity    Int      @default(0)
+  updated_at  DateTime @updatedAt
+
+  product  Product  @relation(fields: [product_id], references: [id], onDelete: Cascade)
+  retailer Retailer @relation(fields: [retailer_id], references: [id], onDelete: Cascade)
+
+  @@unique([product_id, size])
+  @@index([retailer_id])
+  @@map("product_stock")
+}
+
 
 // F-019: admin-editable price tiers for the paid catalog upload service,
 // same pattern as plan_limits/plan_features (admin edits rows live, no deploy)
