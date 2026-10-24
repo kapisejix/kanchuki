@@ -1116,6 +1116,15 @@ login; deliberately **no FK** — recipients are resolved from `Staff.role`/`is_
 - Writer map: `routes/push-devices.ts` (`/v1/push-devices/register`, `/unregister`); `jobs/enquiry-push.ts` (`disableTokens`, soft-disable on Expo `DeviceNotRegistered`, queue `kanchuki-push`).
 - No customer data is stored or sent: push payloads carry an enquiry id and item count only.
 
+## Product stock — `product_stock` (migration 137, written + applied 2026-10-24)
+
+Per-size stock. One row per `(product_id, size)`; `size` is a `SIZE_OPTIONS` value or `FREE` for unsized items. Columns: `id`, `product_id` (FK `products`, `ON DELETE CASCADE`), `retailer_id` (FK `retailers`, `ON DELETE CASCADE`), `size`, `quantity` (CHECK `>= 0`), `updated_at`. UNIQUE `(product_id, size)`, index `retailer_id`.
+
+- A product with no rows is "not tracked" and behaves as before; no backfill.
+- **No DELETE from the app** (RC-049): removing a size writes quantity 0. `kanchuki_purge` gets DELETE as belt-and-braces. Both FKs cascade, so `hardDeleteRetailer()` needs no list entry (RC-050).
+- RLS on, one `backend_roles_full_access` policy for `kanchuki_app`/`kanchuki_purge` (policy first, then ENABLE — RC-030).
+- Writer map: `lib/product-stock.ts` (`writeStock`, `zeroStock`) called from `routes/products/products-crud.ts` and `lib/catalog-import.ts`.
+
 ## Social post scheduler — `post_schedule_plans`, `scheduled_posts`, `scheduled_post_items` (migrations 128/129, F-043, written 2026-10-15, NOT yet applied)
 
 | Table | Purpose | Notes |

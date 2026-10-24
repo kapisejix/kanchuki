@@ -1,6 +1,6 @@
 # Product stock quantity (per size)
 
-**Opened:** 2026-10-24 · **Status:** 🟨 Spec approved 2026-10-24 — code built on branch `feat/product-stock-quantity` (API + mobile), not committed/merged; migration 137 NOT applied; no device test · **Priority:** foundation for future online selling
+**Opened:** 2026-10-24 · **Status:** 🟨 Built + MERGED 2026-10-24 (PR #154, `642a11ae`); migration 137 applied in prod (verified read-only 2026-10-24); needs new EAS mobile build + device test · **Priority:** foundation for future online selling
 
 Owner decisions (2026-10-24): per-product, **per-size** stock; no per-colour counts; all plans; **no online selling now**, but the model must allow automatic decrement on sale later; bulk/PDF import defaults quantity to **1** (retailer edits later).
 
@@ -58,4 +58,5 @@ Cart/checkout/orders (removed 2026-08-31), reservation holds, GST invoice on sal
 - API: `lib/product-stock.ts` (schema, `defaultStock`, `writeStock` in one transaction, `zeroStock`), wired into `products-crud.ts` (POST default 1/size, PUT replace-semantics, GET list/detail return `stock` + `total_quantity`, PATCH status SOLD zeroes stock) and `catalog-import.ts` (default 1 per size, covers bulk onboarding).
 - Mobile: `StockEditor` on add-product and product detail; catalog card shows `Stock: N` / `Low stock: N` (<= 2). Edit form sends `stock` only after the retailer touches it, so saving an old untracked or SOLD product never silently re-lists it.
 - Not covered: PDF/CSV import paths other than `catalog-import.ts` (none found creating products); customer pages show no stock; WhatsApp catalog `inventory` not fed yet.
-- Owner steps: apply migration 137, then device-test add/edit/mark-sold.
+- Owner steps: new EAS build, then device-test add product (default 1 per size), edit counts, mark sold, edit an old SOLD product's price without relisting it.
+- Possible follow-ups: feed `total_quantity` to WhatsApp catalog `inventory`; customer-side "only N left"; decrement on sale once online selling exists.
