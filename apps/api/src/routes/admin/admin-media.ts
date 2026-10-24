@@ -24,9 +24,9 @@ import { INTEGRATION_KEYS, R2_PATHS } from '@kanchuki/shared';
 import { z } from 'zod';
 import {
   IMAGE_KINDS,
+  UPLOAD_URL_RATE_LIMIT,
   stagingKey,
   verifyUpload,
-  UPLOAD_URL_RATE_LIMIT,
 } from '../../lib/upload-guard.js';
 import { forbidden, notFound, validationError } from '../../plugins/error-handler.js';
 import { adminAuthPreHandler } from '../admin-auth.js';

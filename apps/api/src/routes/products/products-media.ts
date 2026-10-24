@@ -15,9 +15,9 @@ import { bumpPhotoUrlVersion, preserveOriginalPhoto } from '../../lib/photo-clea
 import { checkQuota, incrementUsage } from '../../lib/quota.js';
 import {
   IMAGE_KINDS,
+  UPLOAD_URL_RATE_LIMIT,
   stagingKey,
   verifyUpload,
-  UPLOAD_URL_RATE_LIMIT,
 } from '../../lib/upload-guard.js';
 import { notFound, validationError } from '../../plugins/error-handler.js';
 import { ALLOWED_MIME_TYPES, type AllowedMime, photoUrlToDisplay } from './products-helpers.js';

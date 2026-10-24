@@ -7,9 +7,9 @@ import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import {
   IMAGE_KINDS,
+  UPLOAD_URL_RATE_LIMIT,
   stagingKey,
   verifyUpload,
-  UPLOAD_URL_RATE_LIMIT,
 } from '../../lib/upload-guard.js';
 import { validationError } from '../../plugins/error-handler.js';
 

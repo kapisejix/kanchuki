@@ -7,9 +7,9 @@ import { z } from 'zod';
 import { seedDefaultCategories } from '../lib/default-categories.js';
 import {
   IMAGE_KINDS,
+  UPLOAD_URL_RATE_LIMIT,
   stagingKey,
   verifyUpload,
-  UPLOAD_URL_RATE_LIMIT,
 } from '../lib/upload-guard.js';
 import { notFound, validationError } from '../plugins/error-handler.js';
 

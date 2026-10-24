@@ -1,6 +1,7 @@
 import { QUEUES } from '@kanchuki/shared';
 import { Worker } from 'bullmq';
 import { STUDIO_SHOOT_CONCURRENCY } from '../lib/studio-shoot.js';
+import { handleAiSpendAlert } from './ai-spend-alert.js';
 import { handleBackfillMissingAiFields } from './backfill-missing-ai-fields.js';
 import { handleBackupDatabase } from './backup-database.js';
 import { handleCatalogSync, handleDailyCatalogSync } from './catalog-sync.js';
@@ -26,7 +27,6 @@ import { handleGenerateKenBurnsVideo } from './generate-ken-burns-video.js';
 import type { KenBurnsVideoJobData } from './generate-ken-burns-video.js';
 import { handleMeasureR2Storage } from './measure-r2-storage.js';
 import { type MyStyleAnalyzeJobData, handleMyStyleAnalyze } from './my-style-analyze.js';
-import { handleAiSpendAlert } from './ai-spend-alert.js';
 import { handlePlanLapse } from './plan-lapse.js';
 import { handlePurgeSoftDeleted, pruneCustomerInteractions } from './purge-soft-deleted.js';
 import {

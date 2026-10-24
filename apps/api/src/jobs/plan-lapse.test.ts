@@ -107,9 +107,9 @@ describe('handlePlanLapse', () => {
   });
 
   it('keeps a CANCELLED store paid until plan_expires_at', async () => {
-    expect(
-      await lapsedIds([row({ plan_status: 'CANCELLED', plan_expires_at: FUTURE })]),
-    ).toEqual([]);
+    expect(await lapsedIds([row({ plan_status: 'CANCELLED', plan_expires_at: FUTURE })])).toEqual(
+      [],
+    );
   });
 
   it.each(['CANCELLED', 'PAST_DUE', 'COMPLETED'] as const)(

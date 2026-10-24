@@ -21,9 +21,9 @@ import {
 } from '../../lib/showcase-watermark.js';
 import {
   IMAGE_KINDS,
+  UPLOAD_URL_RATE_LIMIT,
   stagingKey,
   verifyUpload,
-  UPLOAD_URL_RATE_LIMIT,
 } from '../../lib/upload-guard.js';
 import { adminAuthPreHandler } from '../admin.js';
 import { saveSetting } from './settings-store.js';

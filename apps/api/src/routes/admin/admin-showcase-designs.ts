@@ -24,12 +24,12 @@ import { z } from 'zod';
 import { watermarkShowcaseDesign } from '../../lib/showcase-watermark.js';
 import {
   IMAGE_KINDS,
+  UPLOAD_URL_RATE_LIMIT,
   currentKey,
   isOwnedKey,
   stagingKey,
   unstagedKey,
   verifyUpload,
-  UPLOAD_URL_RATE_LIMIT,
 } from '../../lib/upload-guard.js';
 import { notFound, validationError } from '../../plugins/error-handler.js';
 import { adminAuthPreHandler } from '../admin-auth.js';

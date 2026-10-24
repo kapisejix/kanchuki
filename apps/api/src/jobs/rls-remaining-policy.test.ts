@@ -9,7 +9,10 @@ import { describe, expect, it } from 'vitest';
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '../../../..');
 const MIGRATION = readFileSync(
-  join(REPO_ROOT, 'packages/db/prisma/migrations/136_backend_role_rls_policies_remaining/migration.sql'),
+  join(
+    REPO_ROOT,
+    'packages/db/prisma/migrations/136_backend_role_rls_policies_remaining/migration.sql',
+  ),
   'utf8',
 );
 const SCHEMA = readFileSync(join(REPO_ROOT, 'packages/db/prisma/schema.prisma'), 'utf8');

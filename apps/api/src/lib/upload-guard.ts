@@ -95,7 +95,7 @@ export const UPLOAD_URL_RATE_LIMIT = {
  * (RC-080). Off by default so deploying the code cannot break old app builds.
  */
 export async function requireContentLengthHook(request: FastifyRequest): Promise<void> {
-  if (process.env['REQUIRE_UPLOAD_CONTENT_LENGTH'] !== 'true') return;
+  if (process.env.REQUIRE_UPLOAD_CONTENT_LENGTH !== 'true') return;
   if (!(request.routeOptions.config as { uploadUrl?: boolean }).uploadUrl) return;
   const body = request.body as { content_length?: unknown } | null | undefined;
   if (body?.content_length === undefined) {

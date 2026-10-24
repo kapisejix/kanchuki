@@ -61,7 +61,12 @@ export async function handlePlanLapse(now = new Date()): Promise<PlanLapseResult
   }
 
   const trialWithoutEnd = await prisma.retailer.count({
-    where: { plan: { not: 'STARTER' }, deleted_at: null, plan_status: 'TRIAL', trial_ends_at: null },
+    where: {
+      plan: { not: 'STARTER' },
+      deleted_at: null,
+      plan_status: 'TRIAL',
+      trial_ends_at: null,
+    },
   });
 
   console.info(

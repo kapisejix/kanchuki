@@ -8,10 +8,10 @@ import { handleGenerateKenBurnsVideo } from '../../jobs/generate-ken-burns-video
 import { addKenBurnsVideoJob } from '../../jobs/index.js';
 import { hasFeature } from '../../lib/features.js';
 import {
+  UPLOAD_URL_RATE_LIMIT,
   VIDEO_KINDS,
   stagingKey,
   verifyUpload,
-  UPLOAD_URL_RATE_LIMIT,
 } from '../../lib/upload-guard.js';
 import { featureUnavailable, notFound, validationError } from '../../plugins/error-handler.js';
 import { photoUrlToDisplay } from '../products/products-helpers.js';

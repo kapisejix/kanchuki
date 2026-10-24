@@ -17,10 +17,10 @@ async function build() {
 
 describe('requireContentLengthHook', () => {
   beforeEach(() => {
-    delete process.env['REQUIRE_UPLOAD_CONTENT_LENGTH'];
+    delete process.env.REQUIRE_UPLOAD_CONTENT_LENGTH;
   });
   afterEach(() => {
-    delete process.env['REQUIRE_UPLOAD_CONTENT_LENGTH'];
+    delete process.env.REQUIRE_UPLOAD_CONTENT_LENGTH;
   });
 
   it('flag off: a presign without content_length still passes (old app builds)', async () => {
@@ -30,7 +30,7 @@ describe('requireContentLengthHook', () => {
   });
 
   it('flag on: a presign without content_length is rejected with 422', async () => {
-    process.env['REQUIRE_UPLOAD_CONTENT_LENGTH'] = 'true';
+    process.env.REQUIRE_UPLOAD_CONTENT_LENGTH = 'true';
     const server = await build();
     const res = await server.inject({ method: 'POST', url: '/upload-url', payload: { a: 1 } });
     expect(res.statusCode).toBe(422);
@@ -38,7 +38,7 @@ describe('requireContentLengthHook', () => {
   });
 
   it('flag on: a presign with content_length passes', async () => {
-    process.env['REQUIRE_UPLOAD_CONTENT_LENGTH'] = 'true';
+    process.env.REQUIRE_UPLOAD_CONTENT_LENGTH = 'true';
     const server = await build();
     const res = await server.inject({
       method: 'POST',
@@ -49,7 +49,7 @@ describe('requireContentLengthHook', () => {
   });
 
   it('flag on: routes that are not presign routes are untouched', async () => {
-    process.env['REQUIRE_UPLOAD_CONTENT_LENGTH'] = 'true';
+    process.env.REQUIRE_UPLOAD_CONTENT_LENGTH = 'true';
     const server = await build();
     const res = await server.inject({ method: 'POST', url: '/other', payload: { a: 1 } });
     expect(res.statusCode).toBe(200);
