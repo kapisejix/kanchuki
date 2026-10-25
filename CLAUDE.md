@@ -5,7 +5,7 @@
 **Project Name:** Kanchuki  
 **Domain:** AI-powered fashion retail SaaS for Indian SMB clothing stores  
 **Status:** Active development (July 2026)  
-**Research Source:** `docs/references/research/final-research.md`, `docs/references/research/ai-fashion-sales-assistant-phase-1.md`
+**Research Source:** `docs/PRO-REQUIREMENTS.md` §37 Market Research Foundation (merged from the former `docs/references/research/final-research.md` + `ai-fashion-sales-assistant-phase-1.md`)
 
 ---
 
@@ -43,7 +43,7 @@ Kanchuki digitizes India's 1 million+ offline clothing stores with:
 - WhatsApp collection link generator
 - Customer mobile web page (view, favorite, enquire)
 - Basic in-store AI search ("cotton pink suits under ₹2000")
-- Product sizes (S/M/L/XL/XXL/XXXL checkboxes on add/edit product, same list shown on customer product detail page) — built 2026-07-26, see `docs/references/history/sessions/PROGRESS.md`
+- Product sizes (S/M/L/XL/XXL/XXXL checkboxes on add/edit product, same list shown on customer product detail page) — built 2026-07-26, see `docs/BUILD-LOG.md` (frozen original: `git show 93c07efc^:docs/references/history/sessions/PROGRESS.md`)
 - Guided bulk onboarding for large stores (500–3000+ SKUs, F-001d, built): rack/shelf batch-photo capture reusing F-001c multi-item detection + supplier PDF/catalog reuse reusing F-001b import — `apps/mobile/app/product/bulk-onboard.tsx` — see `docs/PRO-REQUIREMENTS.md`
 - Retailer account settings (profile edit/delete, subscription, team, WhatsApp config, F-009) + generalized quota/limits system (F-010) — see `docs/PRO-REQUIREMENTS.md`
 
@@ -191,23 +191,23 @@ Payment: Razorpay (UPI first). Retailer pays base + 18% GST. **Source of truth: 
 | 43 | Retailer Auth — Login / Create Account segmented toggle on the single OTP phone screen (decision: keep one screen, two flows would... | ✅ Built | 2026-08-17 | BUILD-LOG §43, PRO-REQUIREMENTS §26 |
 | 44 | India Retailer Growth Engine — backend: campaigns/festivals (D/G/R/S), promotions (F), referrals (C), suppliers (K), bookings (L),... | ✅ Built (backend + full mobile UI: growth hub, campaigns, referrals, p... | 2026-08-17 | BUILD-LOG §44–47 |
 | 45 | Phase II — WhatsApp Native Catalog Sync (F-307 / roadmap P): migration 060–062 (CatalogItem + CatalogSyncLog + Retailer sync field... | ✅ Built + live (all 63/63 breakdown tasks; | 2026-08-18 | BUILD-LOG §49 |
-| 46 | Marketing & Sales Enablement — Smart Incentive Engine, Local Discovery Engine, AI Social Media Templates, Festival Backgrounds, Lo... | ⚠️ Partly removed — Local Discovery Engine and others (see `docs/marketing/marketing-sales-enablement.md`). **AI Social Media Templates were NOT removed:** `SocialTemplate` (migration 069, `growth-social-templates.ts`, mobile `growth/templates.tsx`, admin `/admin/social-templates`, plan key `SOCIAL_TEMPLATES`) is still live; only the orphan `services/social-template/` stub was deleted (`48f3de06`). Verified 2026-10-15. | 2026-08-20 | BUILD-LOG, `docs/marketing/marketing-sales-enablement.md` |
-| 47 | Partner Network Manager (Marketing & Sales Enablement) — full stack (retailer CRUD + admin API + admin UI + mobile UI + schema + m... | ❌ Removed — built 2026-08-20 (schema + mobile screen complete), then d... | 2026-08-20 | BUILD-LOG, `docs/marketing/marketing-sales-enablement.md` |
-| 48 | Remaining Work Audit — 31 prioritized coding items + 5 devOps tasks across PRO-REQUIREMENTS, INDIA-RETAILER-GROWTH, photo-feature-... | 📋 Task list | 2026-08-20 | `docs/references/history/reports/2026-08-20-remaining-work.md` |
+| 46 | Marketing & Sales Enablement — Smart Incentive Engine, Local Discovery Engine, AI Social Media Templates, Festival Backgrounds, Lo... | ⚠️ Partly removed — Local Discovery Engine and others (see `docs/MARKETING.md`). **AI Social Media Templates were NOT removed:** `SocialTemplate` (migration 069, `growth-social-templates.ts`, mobile `growth/templates.tsx`, admin `/admin/social-templates`, plan key `SOCIAL_TEMPLATES`) is still live; only the orphan `services/social-template/` stub was deleted (`48f3de06`). Verified 2026-10-15. | 2026-08-20 | BUILD-LOG, `docs/MARKETING.md` |
+| 47 | Partner Network Manager (Marketing & Sales Enablement) — full stack (retailer CRUD + admin API + admin UI + mobile UI + schema + m... | ❌ Removed — built 2026-08-20 (schema + mobile screen complete), then d... | 2026-08-20 | BUILD-LOG, `docs/MARKETING.md` |
+| 48 | Remaining Work Audit — 31 prioritized coding items + 5 devOps tasks across PRO-REQUIREMENTS, INDIA-RETAILER-GROWTH, photo-feature-... | 📋 Task list | 2026-08-20 | `git show 93c07efc^:docs/references/history/reports/2026-08-20-remaining-work.md` |
 | 49 | DB-driven Plan Pricing (admin-editable ₹, replaces hardcoded `PLAN_PRICING`) + FLUX Kontext (F-032 Studio Shoot) per-plan-tier quo... | ✅ Built | 2026-08-21 | BUILD-LOG §51 |
 | 50 | ~~Customer Profile P0-P1~~ (VTO self-serve, showroom booking, lookbooks — removed) | ❌ Partially removed | 2026-08-31 | `chore/remove-unwanted-features` |
-| 51 | Customer Profile P2 — fabric glossary (+25 fabrics), recently viewed row, restock notify, saved size capture, 5-question style qui... | ✅ Built | 2026-08-21 | `docs/customers/customer-profile.md` §12 |
+| 51 | Customer Profile P2 — fabric glossary (+25 fabrics), recently viewed row, restock notify, saved size capture, 5-question style qui... | ✅ Built | 2026-08-21 | `docs/PRO-REQUIREMENTS.md` §36 (former `docs/customers/customer-profile.md` §12) |
 | 52 | ~~Customer Profile P3~~ (referral rewards — removed) | ❌ Partially removed | 2026-08-31 | `chore/remove-unwanted-features` |
 | 53 | Add-Product raw-photo default (auto-clean OFF — raw saved as-is) + restored per-photo Background/Shadow controls on product detail... | ✅ Built + live — ⚠️ the restored per-photo Background/Shadow controls were removed again 2026-10-09 (`improvments-railway.md` §6b); raw-as-is default stands | 2026-08-29 | BUILD-LOG §2026-08-29 |
 | 54 | AI Studio Shoot — demographic person-swap + scene expansion: product category → `Demographic` (`womens`/`mens`/`teen_girl`/`teen_b... | ✅ Built — steps 1–6 done (step 6 via the DB-backed style catalog `stud... | 2026-08-30 | BUILD-LOG §2026-08-30 (demographic) |
-| 55 | Feature Teardown — removed 24+ tables (checkout/orders, VTO, Fashion DNA, customer_interactions, store_affinities, bookings, refer... | ✅ Built | 2026-08-31 | `chore/remove-unwanted-features`, `docs/references/history/reports/2026-08-31-feature-teardown-spec.md` |
+| 55 | Feature Teardown — removed 24+ tables (checkout/orders, VTO, Fashion DNA, customer_interactions, store_affinities, bookings, refer... | ✅ Built | 2026-08-31 | `chore/remove-unwanted-features`, `git show 93c07efc^:docs/references/history/reports/2026-08-31-feature-teardown-spec.md` |
 | 56 | Onboarding Plan Selection — mandatory step 4 after GST, before "Done"; | ✅ Built | 2026-08-31 | BUILD-LOG §55 |
 | 57 | Admin bodyless-POST 400 fix — unsuspend/feature/unfeature 400'd on Fastify v5 empty JSON body (`adminMutateOptions()` always sends... | ✅ Fixed | 2026-08-31 | BUILD-LOG §56 |
 | 58 | Post-Teardown Recovery (PR #16) — 12 commits: avg_rating crash fix (`undefined.toFixed` on catalog pages), QR export deprecation f... | ✅ Merged | 2026-09-01 | BUILD-LOG §56, PR #16 |
 | 59 | Monthly-Only Pricing + GST Engine — removed annual plans (PLAN_PRICING monthly-only, billing_period dropped, RAZORPAY_PLAN_IDS to... | ✅ Built + live | 2026-09-01 | BUILD-LOG §59, docs/tasks/done/subscription-gst-and-monthly-pricing.md |
 | 60 | F-034 AI Image→Video for Social Promo (Reels/Shorts/Feed) — Fal.ai image-to-video (Seedance / WAN 2.x / Kling std / Kling Pro / Lu... | 🧪 Phase 1 ✅ built (admin only); | 2026-09-03 | BUILD-LOG §2026-09-03, `docs/tasks/pending/ai-photo-generation.md` §7, PRO-REQUIREMENTS §30 |
 | 61 | Launch-readiness cleanup (4 audit points) — (1) P0 secrets verified live in Railway: `COOKIE_SECRET`, `VAULT_DATABASE_URL` (B-005)... | ✅ Built | 2026-09-03 | BUILD-LOG §2026-09-03, LAUNCH-READINESS-AUDIT §0b/§0c |
-| 62 | 03-Sep-2026 review batch (11 items, commit `1843805`) — #1 store QR/slug auto-gen at onboarding; | ✅ Built | 2026-09-03 | BUILD-LOG §2026-09-03 (03-Sep review batch), `docs/references/history/sessions/2026-09-03-review-batch.md` |
+| 62 | 03-Sep-2026 review batch (11 items, commit `1843805`) — #1 store QR/slug auto-gen at onboarding; | ✅ Built | 2026-09-03 | BUILD-LOG §2026-09-03 (03-Sep review batch), `git show 93c07efc^:docs/references/history/sessions/2026-09-03-review-batch.md` |
 | 63 | Pre-production pass — (1) Sentry error monitoring wired into `apps/api` (`@sentry/node`, `instrument.ts` + `captureException` on 5... | ✅ Built | 2026-09-04 | BUILD-LOG, LAUNCH-READINESS-AUDIT §0a/§0c, PRs #24–#26 |
 | 64 | Social Create-Post Composer (full stack) — multi-target fan-out publish to every connected FB/IG account from one screen: `POST /v... | ✅ Built + live | 2026-09-04 → 2026-09-05 | BUILD-LOG §2026-09-04 + §2026-09-05, docs/tasks/done/social-create-post-composer.md §12 |
 | 65 | Safe-area spacing standardization (`apps/mobile` + customer web PWA) — new `apps/mobile/src/lib/safe-area.ts` `useScreenInsets()`... | ✅ Built | 2026-09-06 | BUILD-LOG §2026-09-06 |
@@ -352,7 +352,7 @@ Payment: Razorpay (UPI first). Retailer pays base + 18% GST. **Source of truth: 
 
 ## India Retailer Growth Roadmap
 
-**Detail:** `docs/marketing/india-retailer-growth.md`  
+**Detail:** `docs/MARKETING.md` → India Retailer Growth & Profitability Roadmap  
 **Scope:** India-only small retailers  
 **Prerequisite:** Phase 0 live + F-031 social publishing shipped  
 **Status:** ✅ Built 2026-08-17 — backend (BUILD-LOG §44, migrations `055_growth_engine` + `056`/`057`) + **full mobile UI**: growth hub, campaigns, promotions, suppliers, inventory alerts, product videos, AI translate, AI search, campaign analytics, **AI Campaign Assistant** (BUILD-LOG §45–48) + admin festival calendar. **Referrals, showroom bookings, size recommendation removed** in `chore/remove-unwanted-features` (2026-08-31). **Phase I — GST-Ready Invoicing (I):** PDF generation + HSN mapping designed and ready for implementation. **Phase II — WhatsApp Native Catalog Sync (P):** Meta catalog API integration designed and ready for implementation.
@@ -461,7 +461,7 @@ Payment: Razorpay (UPI first). Retailer pays base + 18% GST. **Source of truth: 
 When working in this repo:
 
 1. **Always check `docs/PRO-REQUIREMENTS.md`** before adding any feature
-2. **Always check `docs/database/DATABASE.md`** before writing schema migrations
+2. **Always check `docs/DATABASE.md`** before writing schema migrations
 3. **Always check `docs/SECURITY.md`** before handling user data or photos, especially §12-18 (governance)
 4. **Photo data is sensitive** — follow consent/deletion rules in SECURITY.md
 5. **GST compliance is non-negotiable** — every sale needs GST invoice support
@@ -904,7 +904,7 @@ When the AI assistant needs to perform an operation requiring human approval:
 The following automatically pause for human verification:
 
 - Any change to: `admin.ts`, `checkout.ts`, `authPlugin`, `team-auth.ts`
-- Any change to: `docs/SECURITY.md`, `docs/references/guides/ai-prompting.md`
+- Any change to: `docs/SECURITY.md`, the "AI Memory & Context System" section of `CLAUDE.md` (former `docs/references/guides/ai-prompting.md`)
 - Any change touching: payment flows, PII handling, API credentials
 
 ---
