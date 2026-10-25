@@ -27,8 +27,67 @@ Result against `aws-1-ap-south-1.pooler.supabase.com` (prod):
 **063, 104, 105, 106, 108, 109, 110, 111, 112, 113, 114, 115 → all APPLIED.**
 `_prisma_migrations` has **zero rows** for any of them (applied via Supabase SQL Editor).
 
-- [ ] **1.1 (owner)** Reconcile `_prisma_migrations` — insert runner rows for 063, 104–115 (the admin migration runner otherwise thinks they are pending). Same fix as 083–089 on 2026-09-04.
-- [ ] **1.2** Update docs that still say "not applied": `launch-readiness.md` (063, 104/105 lines), CLAUDE.md row 75, referral spec §12 "OWNER ACTIONS" #1 and #4.
+- [ ] **1.1 (owner)** Reconcile `_prisma_migrations`. **Re-checked 2026-10-25 (read-only): the gap is wider than first written.** The table's last row is `089_resource_packs`; **49 migrations have no row: 063 and every one from 090 to 137.** Checked against the live schema: **127 `support_session_grants` is NOT applied** (no table; matches the support-session spec, switch still owner-side), so it is left out below. 19 others create a table or column and all are present (063, 091, 093, 099, 100, 109, 112, 113, 117, 119–122, 129, 131, 133–135, 137); 104/105 confirmed by data (no `imagen_3` engine left). The other 27 only change enums, grants, RLS or seed rows and were **not** checked one by one; the docs say applied. Applied by hand in the SQL Editor, which never writes this table. No deploy step runs `prisma migrate`, so nothing re-runs today; the risk is a manual `prisma migrate deploy`, which would try to re-apply all of them. Run once in the Supabase SQL Editor (idempotent), then check the count:
+
+  ```sql
+  INSERT INTO _prisma_migrations (id, checksum, migration_name, logs, started_at, finished_at, applied_steps_count)
+  SELECT gen_random_uuid()::text, '', m.migration_name, 'reconciled 2026-10-25: applied by hand in SQL Editor',
+         now(), now(), 1
+  FROM (VALUES ('063_retailer_preferred_locale'),
+             ('090_social_post_carousel'),
+             ('091_post_templates'),
+             ('092_social_post_client_dedupe'),
+             ('093_showcase_designs'),
+             ('094_showcase_designs_enums'),
+             ('095_showcase_designs_plan_rows'),
+             ('096_social_post_type_image'),
+             ('097_grant_delete_showcase_designs'),
+             ('098_staff_unique_retailer_phone'),
+             ('099_staff_invites'),
+             ('100_customer_interaction'),
+             ('101_studio_styles_finalized_v2'),
+             ('102_studio_styles_model_engine_gemini'),
+             ('103_studio_styles_product_hook_removal_fix'),
+             ('104_studio_styles_model_engine_revert_kontext'),
+             ('105_studio_styles_engine_rename'),
+             ('106_studio_styles_drop_text_to_image_engines'),
+             ('107_studio_styles_drop_seedream'),
+             ('108_customer_nominee'),
+             ('109_referral_program'),
+             ('110_promotions_purge_grant'),
+             ('111_backend_role_rls_policies'),
+             ('112_referral_accrual_columns'),
+             ('113_referral_payout_accounts'),
+             ('114_referral_tax_columns'),
+             ('115_referral_payout_account_fix'),
+             ('116_subscription_status_completed'),
+             ('117_hsn_rules'),
+             ('118_try_on_v2_enum_values'),
+             ('119_try_on_v2_tables'),
+             ('120_try_on_consent'),
+             ('121_engagement_aggregates'),
+             ('122_engagement_top_favorited'),
+             ('123_studio_styles_option_matrix'),
+             ('124_campaigns_purge_grant'),
+             ('125_app_role_delete_grants'),
+             ('126_design_references_rls'),
+             ('128_scheduler_enums'),
+             ('129_post_scheduler'),
+             ('130_enquiry_inbox'),
+             ('131_try_on_gpu_ms'),
+             ('132_my_style_enum_values'),
+             ('133_my_style_tables'),
+             ('134_style_analysis_daily'),
+             ('135_staff_push_devices'),
+             ('136_backend_role_rls_policies_remaining'),
+             ('137_product_stock')) AS m(migration_name)
+  WHERE NOT EXISTS (SELECT 1 FROM _prisma_migrations p WHERE p.migration_name = m.migration_name);
+
+  SELECT count(*) FROM _prisma_migrations;  -- expect the previous count + 48 (127 stays out until it is applied)
+  ```
+
+  An empty `checksum` matches the 2026-09-04 / 2026-09-23 reconciliations; `prisma migrate status` may then flag them as modified, which is cosmetic.
+- [ ] **1.2** Update docs that still say "not applied": ~~`launch-readiness.md` (063, 104/105 lines)~~ fixed 2026-10-25; still open: CLAUDE.md row 75, referral spec §12 "OWNER ACTIONS" #1 and #4.
 - [ ] **1.3 (owner)** Pick the engine for the 8 MODEL `studio_styles` rows in `/admin/studio-styles` (all currently NULL → Kontext).
 - Next free migration number: **116**.
 - **Migration allocation — decided 2026-09-24:** `116` stays reserved for §4.3's `ALTER TYPE ... ADD VALUE 'COMPLETED'` (it must be its own migration — a PG `55P04` enum add cannot share a transaction with its use, the same split as 060/061). **§6.11's HSN table therefore takes `117`.** Order does not matter between them: §4.3 must precede §4.4, and 6.11 is independent — the only rule is that neither claims the other's number.

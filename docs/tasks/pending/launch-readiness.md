@@ -11,7 +11,7 @@
 - [x] Reviewer bypass for phone-OTP login — built 2026-09-24 (`REVIEW_PHONE` / `REVIEW_OTP` in `apps/api/src/routes/auth.ts`, BUILD-LOG part-5 §7A.3). Same bypass serves Play's App access form. Owner: set both vars in Railway and paste them into Play Console → App content → App access
 - [ ] Set `SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN` in Railway
 - [ ] Rotate every credential that lived in the local `.env` during dev (Anthropic, OpenAI, Supabase, R2, Redis)
-- [ ] Migrations 104/105 + engine choice for the 8 MODEL studio rows (AI Studio row 75)
+- [ ] ~~Migrations 104/105~~ applied (verified 2026-10-25: no `imagen_3` engine value left) + engine choice for the MODEL studio rows (AI Studio row 75): 27 of 43 `studio_styles` rows have an engine, 16 are NULL (→ Kontext) — owner
 - [x] **Verify migration 063 applied** — ✅ verified 2026-09-29 by the owner in Supabase SQL Editor (query returned 1 row; column present). Original note: docs conflict: `BUILD-LOG.md` §50 says "NOT applied", `marketing/india-retailer-growth.md` says applied. No ground-truth check exists for it. 30-second check: `SELECT 1 FROM information_schema.columns WHERE table_name='retailers' AND column_name='preferred_locale';`. Same failure class as the 058 scare — if the column is missing and any retailer query selects all fields, the endpoint 500s. (`058` itself was ground-truth-checked present in the 2026-09-03 audit — no action needed there.)
 
 ## Real-device checklist (EAS build)
