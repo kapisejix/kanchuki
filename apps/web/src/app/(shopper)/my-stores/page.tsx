@@ -173,8 +173,8 @@ function StoreRow({ store }: { store: StoreVisitRow }) {
   if (!store.href) {
     return (
       <motion.li variants={ITEM}>
-        <div className="opacity-70">
-          {card}
+        <div>
+          <div className="opacity-70">{card}</div>
           <p className="text-xs text-heliotrope-500 mt-1.5 ml-4">
             This store hasn&apos;t published a catalog page yet.
           </p>
