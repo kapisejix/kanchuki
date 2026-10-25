@@ -87,7 +87,7 @@ Result against `aws-1-ap-south-1.pooler.supabase.com` (prod):
   ```
 
   An empty `checksum` matches the 2026-09-04 / 2026-09-23 reconciliations; `prisma migrate status` may then flag them as modified, which is cosmetic.
-- [ ] **1.2** Update docs that still say "not applied": ~~`launch-readiness.md` (063, 104/105 lines)~~ fixed 2026-10-25; still open: CLAUDE.md row 75, referral spec §12 "OWNER ACTIONS" #1 and #4.
+- [x] **1.2** Update docs that still say "not applied": `launch-readiness.md` (063, 104/105 lines), CLAUDE.md row 75 (stale "unmerged" duplicate row deleted), referral spec §12 "OWNER ACTIONS" #1 and #4 — all fixed 2026-10-25.
 - [ ] **1.3 (owner)** Pick the engine for the 8 MODEL `studio_styles` rows in `/admin/studio-styles` (all currently NULL → Kontext).
 - Next free migration number: **116**.
 - **Migration allocation — decided 2026-09-24:** `116` stays reserved for §4.3's `ALTER TYPE ... ADD VALUE 'COMPLETED'` (it must be its own migration — a PG `55P04` enum add cannot share a transaction with its use, the same split as 060/061). **§6.11's HSN table therefore takes `117`.** Order does not matter between them: §4.3 must precede §4.4, and 6.11 is independent — the only rule is that neither claims the other's number.
