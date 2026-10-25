@@ -100,3 +100,16 @@
 | Quota change | `POST /catalog-import/detect-items` and `/import-pdf` no longer check or increment `IMAGE_CROP`: `detectCropAndTag` uploads the photo as-is, so nothing is cropped. `AI_TAGGING_CALL` (the real cost gate) and `PRODUCT_UPLOAD` are unchanged. Pro cleanup (`products-pro-cleanup.ts`) still checks and increments `IMAGE_CROP`, since it does crop. |
 | Effect | `IMAGE_CROP` is not seeded in `plan_limits`, so it was unlimited by default and the old check never blocked anyone. A retailer with an admin per-retailer `IMAGE_CROP` override is no longer limited by imports. Usage counters for imports stop growing. Existing rows untouched. |
 | Not verified | No live import run. No test covered the removed quota calls. |
+
+---
+
+## 2026-10-25 - Billing decision sheets answered + Admin AI Usage per-retailer grid
+
+**Branch:** `feat/admin-ai-usage-per-retailer`. No migration, no API change.
+
+| Piece | Detail |
+|---|---|
+| Owner answers (`docs/tasks/pending/decision-sheets-2026-10-24.md`) | Sheet 1 prorated switch: **A** (keep Model A, revisit after ~10 paying retailers). Sheet 2 coupons: **A** (none at launch, use the trial). Sheet 3 AI credits: **B** (visibility only; full build when a retailer asks to buy more). |
+| Sheet 3 B build | `apps/web/src/app/admin/ai-usage/page.tsx`: client-side rollup of the existing `/v1/admin/ai-usage` rows into a "Per retailer" table (tagging calls, tagging % of the plan's LIFETIME `AI_TAGGING_CALL` limit from `/v1/admin/plan-limits`, Studio shoots, estimated ₹ cost) sorted by cost, plus an "Estimated cost (all time)" card. Unit costs are the spec's (₹0.33/tagging call, ₹3.5/Studio shoot), hard-coded and labelled as estimates. Both endpoints are Super-Admin-only. |
+| Limits of the numbers | Tagging calls include colour/item detect; the real quota counter may differ. Studio has no % (its limit is monthly, the page reads all-time). Tagging cost uses the Claude figure, so it over-estimates gpt-4o-mini. |
+| Not verified | web `tsc` + eslint clean; no browser check. |

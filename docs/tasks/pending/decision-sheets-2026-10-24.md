@@ -1,6 +1,6 @@
 # Decision sheets — billing (prorated switch, coupons, AI credits)
 
-**Written:** 2026-10-24 · **For:** owner · **Status:** 📋 Waiting for your answers. Nothing here is built or changed.
+**Written:** 2026-10-24 · **For:** owner · **Status:** ✅ Answered 2026-10-25 — Sheet 1 **A**, Sheet 2 **A**, Sheet 3 **B** (built on `feat/admin-ai-usage-per-retailer`, see BUILD-LOG part-7 §2026-10-25).
 **Specs behind each sheet:** `plan-switch-prorated.md`, `coupon-codes.md`, `ai-credit-billing-model.md` (all in this folder).
 
 ## Facts that apply to all three (read-only checks, 2026-10-24)
@@ -36,7 +36,7 @@
 
 **Recommendation: A for now, revisit after the first 10 paying retailers.** There is no revenue at risk today, the UPI question could make Model B card-only, and the webhook change is the kind of edit that has already produced two payment bugs (RC-071, RC-076). If upgrades turn out to be common, do B, and start with the test-mode spike.
 
-**Your answer:** ☐ A  ☐ B (start the spike)  ☐ C   Notes: ______
+**Your answer (2026-10-25):** ☑ A — keep Model A; revisit after ~10 paying retailers.
 
 ---
 
@@ -63,7 +63,7 @@
 
 **Recommendation: A.** With 0 paying retailers and a trial in place, a coupon has nothing to discount yet. When you do want one, build B and start with the webhook guard change, because that is the part that silently takes money without activating the plan.
 
-**Your answer:** ☐ A  ☐ B  ☐ C   If B: discount type (percent / flat) ______, how many cycles ______, who gets codes (sales reps / festival) ______
+**Your answer (2026-10-25):** ☑ A — no coupons at launch; use the trial. Any later build starts with the RC-076 guard change.
 
 ---
 
@@ -111,7 +111,7 @@ The existing limits already cap the worst case. Studio is the main cost driver. 
 
 **Recommendation: B now, C when a retailer hits a limit and asks to buy more.** B shows you who is spending what with half a day of work and no payment code. C only earns its cost once someone wants to pay for more than the plan includes. Create one or two real packs in Admin → Resource Packs first; that half is already built.
 
-**Your answer:** ☐ A  ☐ B  ☐ C   Overrides to the defaults above: ______
+**Your answer (2026-10-25):** ☑ B — visibility only, no overrides. C when a retailer hits a limit and asks to buy more.
 
 ---
 
