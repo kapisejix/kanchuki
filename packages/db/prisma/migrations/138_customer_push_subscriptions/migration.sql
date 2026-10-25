@@ -37,6 +37,11 @@ CREATE TABLE IF NOT EXISTS "customer_push_subscriptions" (
     CONSTRAINT "customer_push_subscriptions_pkey" PRIMARY KEY ("id")
 );
 
+-- The first draft of 138 (0a875950) had no passport_session_id and was hand-
+-- applied in prod on 2026-10-25, so CREATE TABLE IF NOT EXISTS above skips it
+-- there. Add the column explicitly so the FK below can be created.
+ALTER TABLE "customer_push_subscriptions" ADD COLUMN IF NOT EXISTS "passport_session_id" TEXT;
+
 CREATE UNIQUE INDEX IF NOT EXISTS "customer_push_subscriptions_endpoint_key"
   ON "customer_push_subscriptions"("endpoint");
 CREATE INDEX IF NOT EXISTS "customer_push_subscriptions_customer_account_id_disabled_at_idx"
