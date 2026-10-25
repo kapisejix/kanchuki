@@ -123,7 +123,7 @@
 | Piece | Detail |
 |---|---|
 | Schema | `CustomerPushSubscription` / `customer_push_subscriptions` (see DATABASE.md). Store eligibility comes from `CustomerStoreVisit` at send time, not a per-store row. |
-| API routes | `routes/public/passport/passport-push.ts`: `GET /push/key` (404 without VAPID), `POST /push/subscribe` (session, push-host allowlist against SSRF, upsert by endpoint, `PUSH_SUBSCRIBED` consent event, 10/min), `POST /push/unsubscribe` (own account only, `PUSH_UNSUBSCRIBED`). `passport-data.ts` delete disables all of the account's subscriptions. |
+| API routes | `routes/public/passport/passport-push.ts`: `GET /push/key` (`public_key: null` without VAPID), `POST /push/subscribe` (session, push-host allowlist against SSRF, upsert by endpoint, `PUSH_SUBSCRIBED` consent event, 10/min), `POST /push/unsubscribe` (own account only, `PUSH_UNSUBSCRIBED`). `passport-data.ts` delete disables all of the account's subscriptions. |
 | Send job | `jobs/customer-push.ts` `handleNewArrivalsPush`, maintenance job `customer-new-arrivals-push`, cron `0 13 * * *` UTC. One push per store per day with new `AVAILABLE` products, 2/store/week cap (Redis `cpush:cap:<retailer>`, 7-day TTL), 404/410 soft-disables. No-op without VAPID keys. |
 | Web | `sw.ts` `push` + `notificationclick` (same-origin paths only); `lib/web-push.ts`; `components/PushOptIn.tsx` on `/my-stores`; passport proxy allowlist gains `push/key`, `push/subscribe`, `push/unsubscribe`. |
 | Deviations from spec §7 | Daily digest, not one push per upload; new collections not pushed (no public flag); subscription per browser, not per store. |

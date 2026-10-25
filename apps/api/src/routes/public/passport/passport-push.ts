@@ -24,15 +24,11 @@ const LIMIT = { config: { rateLimit: { max: 10, timeWindow: 60 * 1000 } } };
 
 export const passportPushRoutes: FastifyPluginAsync = async (server) => {
   // ─── GET /passport/push/key ────────────────────────────────────
-  // VAPID public key. 404 when push is not configured, so the UI hides the offer.
+  // VAPID public key, or null when push is not configured so the UI hides the
+  // offer. 200 either way: a 404 here is logged as a console error on every
+  // /my-stores visit while the keys are unset.
   server.get('/push/key', async (_request, reply) => {
-    const key = getVapidPublicKey();
-    if (!key) {
-      return reply
-        .status(404)
-        .send({ error: { code: 'PUSH_DISABLED', message: 'Push is not configured' } });
-    }
-    return reply.status(200).send({ public_key: key });
+    return reply.status(200).send({ public_key: getVapidPublicKey() ?? null });
   });
 
   // ─── POST /passport/push/subscribe ─────────────────────────────

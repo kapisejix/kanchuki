@@ -76,10 +76,11 @@ describe('GET /push/key', () => {
     expect(res.json()).toEqual({ public_key: 'pub-key' });
   });
 
-  it('404s when VAPID is not configured, so the UI hides the offer', async () => {
+  it('returns a null key (200, not 404) when VAPID is not configured', async () => {
     delete process.env.VAPID_PRIVATE_KEY;
     const res = await buildApp().inject({ method: 'GET', url: '/v1/public/passport/push/key' });
-    expect(res.statusCode).toBe(404);
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ public_key: null });
   });
 });
 
