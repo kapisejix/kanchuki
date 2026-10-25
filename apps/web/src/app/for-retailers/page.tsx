@@ -33,7 +33,7 @@ const COMING_SOON = [
   { feature: 'Play Store / iOS app listings', status: 'Coming soon — Android APK available now' },
 ]
 
-// §5B.1 — affiliate referral capture (docs/tasks/pending/post-referral-cleanup-and-launch.md §5B).
+// §5B.1 — affiliate referral capture (docs/tasks/done/post-referral-cleanup-and-launch.md §5B).
 // The shareable link T3 already mints (buildReferralLink) points HERE with
 // ?ref=<CODE> — reused rather than a new /r/<CODE> route, so there is one
 // referral-link shape, not two. Cosmetic shape check only (display gating,

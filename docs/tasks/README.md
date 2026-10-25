@@ -11,14 +11,13 @@ Where work lives: **`pending/` = open**, **`done/` = built**, **`archived/` = re
 | Task | File | Status | Blocker / decision needed |
 |---|---|---|---|
 | AI photo & video generation — F-032 phase B (video), F-034 retailer phase, engine rebuild | `pending/ai-photo-generation.md` | 🟡 Mixed — F-032 phase A ✅ built; bench run 1 ✅ 2026-09-20; runs 2–3 not run (checklist §8.1e); retailer-path wiring not built | Bench runs 2–3 (owner), engine per MODEL row, compression ceiling, R6 disclosure. |
-| Post-referral cleanup + launch batch | `pending/post-referral-cleanup-and-launch.md` | 🟡 Mostly done — branch/migration sections stale (superseded 2026-09-28) | Re-read open `[ ]` items; fold remainder into `launch-readiness.md` |
 | AI credit / limit / billing model | `pending/ai-credit-billing-model.md` | 🟡 Design; admin addon-pack half built (migration `089`, `/admin/resource-packs`) | §8 decisions; retailer-side credit consumption/limits unbuilt |
 | Billing decision sheets — prorated plan switch, coupon codes, AI credit model (one page each, with recommendations) | `pending/decision-sheets-2026-10-24.md` | ✅ Answered 2026-10-25: 1=A, 2=A, 3=B (AI Usage per-retailer grid built) | None — revisit 1/2 after ~10 paying retailers |
 | Coupon codes on subscription checkout | `pending/coupon-codes.md` | ⏸️ Deferred 2026-10-25 (decision sheet 2 = A, no coupons at launch) | Revisit for a promo; build must change the RC-076 guard first, migration 138 |
 | Customer engagement + admin behavior analytics (F-037) | `pending/customer-engagement-analytics.md` | 🟡 Phases 1–3 ✅ built; Phase 4 partly built (retailer aggregate view + engagement items 1, 2, 4, 5, 6, 8 built; item 7 at product-card level; item 9 infinite scroll reverted to Prev/Next pager 2026-09-29; 24-month raw-event prune built 2026-09-29) | Store-level rating on `/stores` (owner decision); PR #41 merged 2026-09-29 |
 | Customer PWA push notifications + home-screen icon (F-036) | `pending/customer-pwa-push-notifications.md` | 🟡 Phase A ✅ built (2026-09-17); B–D not started | VAPID/web-push + service-worker handler; iOS requires install-before-push |
 | Google Business Profile auto-post (F-022) | `pending/google-business-profile-autopost.md` | ⏸ **On hold** | Blocked on Google API access. **Do not start without an explicit go-ahead.** |
-| Launch readiness | `pending/launch-readiness.md` | 🟡 Open items | Mostly owner/account actions + 3 pre-launch verifications |
+| Launch readiness (the only launch board; absorbed the post-referral board 2026-10-25) | `pending/launch-readiness.md` | 🟡 Open items | Mostly owner/account actions, device passes, and the referral/refund leftovers |
 | i18n + dynamic-content audit (no-hardcoded-values program) | `pending/i18n-and-dynamic-content-audit.md` | 📋 Audit — awaiting owner approval (2026-09-29) | §5 open questions; Phase B starts only after approval |
 | Multi-language i18n (roadmap M) | `pending/multi-language-i18n.md` | 🟡 Partial — AI translate ✅; UI i18n not started | Migration `063` applied (verified 2026-09-29 + 2026-10-25); there is no i18n infrastructure to build on |
 | Pre-Loved — customer resale / rental / family gifting of used clothes (F-041) | `pending/how-customer-earn-from-this-platform.md` (spec + research merged) | 🔴 Idea — not approved (2026-09-29) | Owner decisions §13 D-1…D-7; legal review (intermediary, GST, DPDP) before P1; recommend no-code P0 pilot first |
@@ -56,6 +55,7 @@ Where work lives: **`pending/` = open**, **`done/` = built**, **`archived/` = re
 | WhatsApp native catalog sync, Phase II (migrations `060`–`062`) | `done/whatsapp-catalog-sync.md` | 2026-08-18 |
 | Storefront soft-404 — unknown store → real 404 (+ scanner-probe middleware) | `done/storefront-soft-404.md` | 2026-10-10 |
 | Docs reorganization (phases 1–8; phase 9 KEEP/DELETE list moved here with the file) | `done/reorganize-files-folders-structure.md` | 2026-09-25 |
+| Post-referral cleanup + launch batch — referral follow-ups, admin access, RC-033, refunds, `?ref=` capture, lists → DB, launch §7A (open items moved to `pending/launch-readiness.md`) | `done/post-referral-cleanup-and-launch.md` | 2026-10-25 |
 | Studio Shoot option matrix (F-032) — shared styles + product-aware gating + mobile picker, migration `123` (27 rows `DRAFT`). Admin-only remainder: publish rows, engine per row, retire legacy rows, thumbnails | `done/studio-shoot-option-matrix.md` (+ `done/studio-shoot-retailer-rollout.md`, `done/studio-shoot-session-handoff.md`) | 2026-10-10 |
 
 ## Archived
