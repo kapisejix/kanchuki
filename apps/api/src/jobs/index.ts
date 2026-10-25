@@ -8,6 +8,7 @@ import { handleCatalogSync, handleDailyCatalogSync } from './catalog-sync.js';
 import type { CatalogSyncJobData } from './catalog-sync.js';
 import { handleColorFamilyBackfill } from './color-family-backfill.js';
 import { handleCompressR2Images } from './compress-r2-images.js';
+import { handleNewArrivalsPush } from './customer-push.js';
 import { handleEmbeddingBackfill } from './embedding-backfill.js';
 import { handleEngagementAggregate } from './engagement-aggregate.js';
 import {
@@ -291,6 +292,8 @@ export async function startWorkers(): Promise<void> {
           return handlePlanLapse();
         case 'ai-spend-alert':
           return handleAiSpendAlert();
+        case 'customer-new-arrivals-push':
+          return handleNewArrivalsPush();
         default:
           throw new Error(`[jobs] unknown maintenance job: ${job.name}`);
       }
@@ -511,6 +514,19 @@ export async function startWorkers(): Promise<void> {
     {},
     {
       repeat: { pattern: '30 * * * *' },
+      removeOnComplete: { count: 10 },
+      removeOnFail: { count: 10 },
+    },
+  );
+
+  // F-036 Phase B new-arrivals push — daily 13:00 UTC (18:30 IST, evening browse).
+  // Counts the last 24 h, so one run per day covers every product once. No
+  // `limit` (RC-062). A no-op until VAPID keys are set.
+  await getMaintenanceQueue().add(
+    'customer-new-arrivals-push',
+    {},
+    {
+      repeat: { pattern: '0 13 * * *' },
       removeOnComplete: { count: 10 },
       removeOnFail: { count: 10 },
     },

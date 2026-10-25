@@ -116,6 +116,24 @@
 
 ---
 
+## 2026-10-25 - F-036 Phase B: customer Web Push for new arrivals
+
+**Branch:** `feat/f-036-web-push`. Migration `138_customer_push_subscriptions` (applied in prod 2026-10-25: owner ran the first draft, then the `passport_session_id` column + FK; `_prisma_migrations` row inserted by hand). New API dependency `web-push@3.6.7`.
+
+| Piece | Detail |
+|---|---|
+| Schema | `CustomerPushSubscription` / `customer_push_subscriptions` (see DATABASE.md). Store eligibility comes from `CustomerStoreVisit` at send time, not a per-store row. |
+| API routes | `routes/public/passport/passport-push.ts`: `GET /push/key` (`public_key: null` without VAPID), `POST /push/subscribe` (session, push-host allowlist against SSRF, upsert by endpoint, `PUSH_SUBSCRIBED` consent event, 10/min), `POST /push/unsubscribe` (own account only, `PUSH_UNSUBSCRIBED`). `passport-data.ts` delete disables all of the account's subscriptions. |
+| Send job | `jobs/customer-push.ts` `handleNewArrivalsPush`, maintenance job `customer-new-arrivals-push`, cron `0 13 * * *` UTC. One push per store per day with new `AVAILABLE` products, 2/store/week cap (Redis `cpush:cap:<retailer>`, 7-day TTL), 404/410 soft-disables. No-op without VAPID keys. |
+| Web | `sw.ts` `push` + `notificationclick` (same-origin paths only); `lib/web-push.ts`; `components/PushOptIn.tsx` on `/my-stores`; passport proxy allowlist gains `push/key`, `push/subscribe`, `push/unsubscribe`. |
+| Deviations from spec §7 | Daily digest, not one push per upload; new collections not pushed (no public flag); subscription per browser, not per store. |
+| Tests | API: `customer-push.test.ts` (allowlist, recipient filter, cap, 410 prune; mute-filter test falsified), `passport-push.test.ts`, delete test extended, migration 138 guard. Web: `PushOptIn.test.tsx`. API 2397 passed, web 702 passed, both `tsc` clean. |
+| Owner steps | ~~Apply migration 138~~ (done 2026-10-25). `npx web-push generate-vapid-keys`; set `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` on the API service. Android phone: open `/my-stores`, tap the button, add a product, wait for the 18:30 IST run. |
+| Security review fixes | Row stores `passport_session_id` (FK, `ON DELETE SET NULL`); the job requires that session unrevoked and unexpired, so logout on the device stops its pushes. Rebinding another account's endpoint needs matching keys, else 409 `ENDPOINT_TAKEN`. |
+| Not verified | No real push sent; no browser or device run; no real VAPID keys. Export omits subscriptions; no web mute toggle (Phase D). |
+
+---
+
 ## 2026-10-25 - Referral-link prefill in the retailer app (launch 5B.2/5B.3)
 
 **Branch:** `feat/referral-link-prefill`. No migration, no API change.

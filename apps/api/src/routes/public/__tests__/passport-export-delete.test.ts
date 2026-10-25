@@ -23,6 +23,7 @@ const mockStoreVisitFindMany = vi.hoisted(() => vi.fn());
 const mockInteractionFindMany = vi.hoisted(() => vi.fn());
 const mockWishlistFindMany = vi.hoisted(() => vi.fn());
 const mockRecentlyViewedFindMany = vi.hoisted(() => vi.fn());
+const mockPushSubUpdateMany = vi.hoisted(() => vi.fn().mockResolvedValue({ count: 0 }));
 
 vi.mock('@kanchuki/db', () => ({
   prisma: {
@@ -50,6 +51,9 @@ vi.mock('@kanchuki/db', () => ({
     },
     customerRecentlyViewed: {
       findMany: mockRecentlyViewedFindMany,
+    },
+    customerPushSubscription: {
+      updateMany: mockPushSubUpdateMany,
     },
   },
   Prisma: {},
@@ -209,6 +213,12 @@ describe('POST /v1/public/passport/delete', () => {
     expect(mockPassportSessionUpdateMany).toHaveBeenCalledWith({
       where: { customer_account_id: 'ca_123', revoked_at: null },
       data: { revoked_at: expect.any(Date) },
+    });
+
+    // F-036: every browser of this account stops receiving push
+    expect(mockPushSubUpdateMany).toHaveBeenCalledWith({
+      where: { customer_account_id: 'ca_123', disabled_at: null },
+      data: { disabled_at: expect.any(Date) },
     });
   });
 

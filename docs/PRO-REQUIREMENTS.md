@@ -2681,10 +2681,12 @@ only).
 
 ---
 
-## 32. F-036 Customer PWA — Home-Screen Icon, Visited-Store List & Push Notifications — 🟨 PHASE A ✅ BUILT; PHASES B–D 🔴 PLANNED
+## 32. F-036 Customer PWA — Home-Screen Icon, Visited-Store List & Push Notifications — 🟨 PHASE A ✅ BUILT; PHASE B 🟨 BUILT (NOT LIVE); PHASES C–D 🔴 PLANNED
 
-**Phase A built 2026-09-17** — see §32.7. Phases B (push), C (iOS parity), and
-D (consent/mute + retailer visibility) are not started.
+**Phase A built 2026-09-17** — see §32.7. **Phase B (Android-first web push) built
+2026-10-25** on branch `feat/f-036-web-push` — migration `138`, not live until the owner
+applies it and sets VAPID keys; detail in the spec's Phase B build note. Phases C (iOS
+parity) and D (consent/mute UI + retailer visibility) are not started.
 
 **Written 2026-09-17 on owner request.** Full research, technical mechanics,
 platform limitations, and precedent analysis:

@@ -13,6 +13,7 @@
 'use client'
 
 import { InstallPrompt } from '@/components/InstallPrompt'
+import { PushOptIn } from '@/components/PushOptIn'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { formatLastVisit, mapStoreVisits, type StoreVisitRow } from './lib'
@@ -88,6 +89,8 @@ export default function MyStoresPage() {
       {/* F-036 Phase A: a non-empty list is proof of at least one verified
           store visit, which is the eligibility bar for the install ask. */}
       {stores.length > 0 && <InstallPrompt />}
+      {/* F-036 Phase B: same eligibility bar — only a shopper with a store visit is asked. */}
+      {stores.length > 0 && <PushOptIn />}
 
       {stores.length === 0 ? (
         <section className="bg-white rounded-lg border border-stone-200 p-8 text-center">

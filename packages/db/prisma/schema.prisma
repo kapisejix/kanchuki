@@ -2814,6 +2814,7 @@ model CustomerAccount {
   try_on_jobs         TryOnJob[]
   resource_usage      CustomerUsageCounter[]
   engagement_summaries CustomerEngagementSummary[]
+  push_subscriptions  CustomerPushSubscription[]
 
   @@map("customer_accounts")
 }
@@ -2901,12 +2902,37 @@ model CustomerStoreVisit {
   @@map("customer_store_visits")
 }
 
+// F-036 Phase B — one Web Push subscription per browser (migration 138). Which
+// stores may notify it is decided at send time from CustomerStoreVisit
+// (visited + !is_muted), not stored here. No hard deletes (RC-049): unsubscribe,
+// passport delete and a 404/410 from the push service all set disabled_at.
+// passport_session_id = the session that subscribed: a push needs it unrevoked and
+// unexpired, so logging out on that device stops its pushes.
+model CustomerPushSubscription {
+  id                  String  @id @default(cuid())
+  customer_account_id String
+  passport_session_id String?
+  endpoint            String @unique
+  p256dh              String
+  auth                String
+
+  last_seen_at DateTime  @default(now())
+  disabled_at  DateTime?
+  created_at   DateTime  @default(now())
+
+  customer_account CustomerAccount  @relation(fields: [customer_account_id], references: [id], onDelete: Cascade)
+  passport_session PassportSession? @relation(fields: [passport_session_id], references: [id], onDelete: SetNull)
+
+  @@index([customer_account_id, disabled_at])
+  @@map("customer_push_subscriptions")
+}
+
 // Append-only consent/withdrawal audit (DPDP record-keeping)
 model ConsentEvent {
   id                  String   @id @default(cuid())
   customer_account_id String
   retailer_id         String?
-  kind                String   // PASSPORT_CREATED | STORE_CONSENT_GRANTED | STORE_MUTED | STORE_CONSENT_WITHDRAWN | PASSPORT_DELETED | PROFILING_ENABLED | PROFILING_DISABLED | DATA_EXPORTED
+  kind                String   // PASSPORT_CREATED | STORE_CONSENT_GRANTED | STORE_MUTED | STORE_CONSENT_WITHDRAWN | PASSPORT_DELETED | PROFILING_ENABLED | PROFILING_DISABLED | DATA_EXPORTED | PUSH_SUBSCRIBED | PUSH_UNSUBSCRIBED
   notice_version      String   // which notice text was shown
   ip_hash             String?
   user_agent          String?
@@ -2929,7 +2955,8 @@ model PassportSession {
   user_agent          String?
   ip_hash             String?
 
-  customer_account CustomerAccount @relation(fields: [customer_account_id], references: [id], onDelete: Cascade)
+  customer_account   CustomerAccount            @relation(fields: [customer_account_id], references: [id], onDelete: Cascade)
+  push_subscriptions CustomerPushSubscription[]
 
   @@index([customer_account_id])
   @@map("passport_sessions")

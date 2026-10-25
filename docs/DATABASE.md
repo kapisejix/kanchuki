@@ -1116,6 +1116,23 @@ login; deliberately **no FK** — recipients are resolved from `Staff.role`/`is_
 - Writer map: `routes/push-devices.ts` (`/v1/push-devices/register`, `/unregister`); `jobs/enquiry-push.ts` (`disableTokens`, soft-disable on Expo `DeviceNotRegistered`, queue `kanchuki-push`).
 - No customer data is stored or sent: push payloads carry an enquiry id and item count only.
 
+## Customer push subscriptions — `customer_push_subscriptions` (migration 138, F-036 Phase B, written 2026-10-25, NOT yet applied)
+
+One Web Push subscription per browser, owned by a verified passport account. Columns: `id`, `customer_account_id`
+(FK `customer_accounts`, `ON DELETE CASCADE`), `passport_session_id` (FK `passport_sessions`, `ON DELETE SET NULL`; the
+session that subscribed — a push needs it unrevoked and unexpired, so logout stops that device), `endpoint` (UNIQUE, push-service URL), `p256dh`, `auth`,
+`last_seen_at`, `disabled_at`, `created_at`. Index `(customer_account_id, disabled_at)`.
+
+- Which stores may notify a subscription is not stored: resolved at send time from `customer_store_visits`
+  (visited and `is_muted = false`).
+- **No DELETE from the app** (RC-049): unsubscribe, passport delete and a 404/410 from the push service set
+  `disabled_at`; a re-subscribe of the same endpoint upserts it back to active and to the account signed in now.
+  `kanchuki_purge` gets DELETE as belt-and-braces.
+- RLS on, one `backend_roles_full_access` policy for `kanchuki_app`/`kanchuki_purge` (policy first, then ENABLE — RC-030).
+- Writer map: `routes/public/passport/passport-push.ts` (subscribe/unsubscribe), `passport-data.ts` (delete disables
+  all), `jobs/customer-push.ts` (soft-disable on 404/410).
+- Push payload: shop name, product count, storefront path. No shopper data.
+
 ## Product stock — `product_stock` (migration 137, written + applied 2026-10-24)
 
 Per-size stock. One row per `(product_id, size)`; `size` is a `SIZE_OPTIONS` value or `FREE` for unsized items. Columns: `id`, `product_id` (FK `products`, `ON DELETE CASCADE`), `retailer_id` (FK `retailers`, `ON DELETE CASCADE`), `size`, `quantity` (CHECK `>= 0`), `updated_at`. UNIQUE `(product_id, size)`, index `retailer_id`.

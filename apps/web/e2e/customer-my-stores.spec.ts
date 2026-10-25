@@ -260,6 +260,13 @@ test.beforeAll(async () => {
       return
     }
 
+    // F-036 PushOptIn on /my-stores asks for the VAPID key. CI has none, and the
+    // real API answers 200 with a null key then (passport-push.ts), which hides the offer.
+    if (path === '/v1/public/passport/push/key') {
+      json(res, 200, { public_key: null })
+      return
+    }
+
     // Login round trip. The real API mints the passport cookie here; the stub
     // stands in for that by flipping the flag every other handler reads, so the
     // guard's next session check succeeds exactly as it would with the cookie.
