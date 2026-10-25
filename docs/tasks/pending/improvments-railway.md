@@ -1,6 +1,6 @@
 # Railway cost & memory improvements
 
-**Opened:** 2026-10-09 · **Status:** ✅ culprit found + fixed + deployed 2026-10-10; 24 h confirmation and a few owner decisions still open (§8) · **Trigger:** Railway memory bill after 24 Sep 2026
+**Opened:** 2026-10-09 · **Status:** ✅ culprit found + fixed + deployed 2026-10-10; 24 h recheck done 2026-10-25 (holds); a few owner decisions still open (§8) · **Trigger:** Railway memory bill after 24 Sep 2026
 
 ---
 
@@ -16,7 +16,7 @@
 
 - **Shipped:** #49 `f1148360` (removal pass, squash-merged 2026-10-10 05:22 UTC; API build `438e26b4` SUCCESS) and #50 `59f9fa59` (admin Server Memory card, merged 05:37 UTC).
 - **Estimated bill:** API ≈ $19/mo → ≈ $1–2/mo. Not yet confirmed on an invoice.
-- **Not yet proven:** that RSS stays ~150–250 MB over 24 h (the card's history resets on every deploy; compare Railway's own graph). If it creeps, §10's reading guide applies.
+- **24 h recheck (2026-10-25, Railway metrics, 24 h window, hourly points):** API now 0.22 GB, avg 0.29, min 0.15, max 0.95 GB; web now 0.54 GB, avg 0.30, min 0.17, max 0.80 GB. CPU near zero on both. API holds far below the old 1.34 GB flat line, so the fix stands. The maxima most likely come from deploy overlap (API #159 deploy 2026-10-24 15:45 UTC; two web builds 2026-10-25 05:07/05:08 UTC); Railway's points do not prove that. Web at 0.54 GB is above its own average, so look once more. If either climbs, §10's reading guide applies.
 - **Web healthcheck** is what hits `/v1/public/theme` every minute (§2, item 9).
 
 ## 1. The bill — what it actually says
@@ -138,7 +138,7 @@ Removing `@imgly/...` from `packages/ai/package.json` while `pnpm-lock.yaml` sti
 | 9 | Find who calls `/v1/public/theme` every 2 min | **DONE 2026-10-10** — Railway's web healthcheck, `GET /` every 60 s (§2). Optional: lightweight `/api/health` that skips the theme fetch |
 | 10 | Exact memory culprit | **DONE 2026-10-10** — background-removal stack; API 1.34 → 0.14 GB (§0). Re-check after 24 h |
 | 11 | Stop idle workers/crons (owner ask: "only run on request") | **superseded** — at ~0.14 GB always-on is ≈ $1–2/mo, so API sleep was turned off (§4.1) and workers/crons run on schedule. A separate worker service is no longer worth building for cost |
-| 12 | 24 h recheck of API RSS (expect 150–250 MB) + Railway graph | open — owner/next session |
+| 12 | 24 h recheck of API RSS (expect 150–250 MB) + Railway graph | **DONE 2026-10-25** — API avg 0.29 GB, peak 0.95 likely deploy overlap (see §0); web avg 0.30, now 0.54, recheck once |
 | 13 | Web `/.git/config` returns 200 (soft-404, not a leak) | queued: `storefront-soft-404.md` |
 
 ## 9. Safety notes
