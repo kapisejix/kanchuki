@@ -3021,7 +3021,7 @@ Full spec, research and the T1–T10 breakdown: `docs/tasks/referral-program-ret
 ## 38. F-039 Style Match Lite (AI Fit/Style Recommendation) — 🔴 PLANNED, NOT APPROVED
 
 **Written 2026-09-26 on owner request** (scoping the research in §37's sibling doc
-`docs/tasks/pending/ai-fit-recommendation-research.md`, dated 2026-09-25). Full
+`docs/tasks/archived/ai-fit-recommendation-research.md`, dated 2026-09-25). Full
 dev spec: **`docs/tasks/pending/style-match-lite.md`**.
 
 ### 38.1 Problem

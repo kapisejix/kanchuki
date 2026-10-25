@@ -1,6 +1,6 @@
 # AI Fit/Style Recommendation — Research Notes (not a spec yet)
 
-**Status:** 🔬 Research only, nothing built, nothing decided
+**Status:** 🗄️ Archived 2026-10-25 — superseded by `docs/tasks/pending/style-match-lite.md` (F-039). Research only, nothing built.
 **Started:** 2026-09-25
 **Owner question:** Can AI reduce customer indecision (browses 3-5 items, buys 0-2) and nudge toward the item(s) already selected/shown? Should we let customers upload a photo and get AI-matched recommendations (height, body shape, skin tone, size)?
 
