@@ -113,3 +113,20 @@
 | Sheet 3 B build | `apps/web/src/app/admin/ai-usage/page.tsx`: client-side rollup of the existing `/v1/admin/ai-usage` rows into a "Per retailer" table (tagging calls, tagging % of the plan's LIFETIME `AI_TAGGING_CALL` limit from `/v1/admin/plan-limits`, Studio shoots, estimated ₹ cost) sorted by cost, plus an "Estimated cost (all time)" card. Unit costs are the spec's (₹0.33/tagging call, ₹3.5/Studio shoot), hard-coded and labelled as estimates. Both endpoints are Super-Admin-only. |
 | Limits of the numbers | Tagging calls include colour/item detect; the real quota counter may differ. Studio has no % (its limit is monthly, the page reads all-time). Tagging cost uses the Claude figure, so it over-estimates gpt-4o-mini. |
 | Not verified | web `tsc` + eslint clean; no browser check. |
+
+---
+
+## 2026-10-25 - F-036 Phase B: customer Web Push for new arrivals
+
+**Branch:** `feat/f-036-web-push`. Migration `138_customer_push_subscriptions` (not applied). New API dependency `web-push@3.6.7`.
+
+| Piece | Detail |
+|---|---|
+| Schema | `CustomerPushSubscription` / `customer_push_subscriptions` (see DATABASE.md). Store eligibility comes from `CustomerStoreVisit` at send time, not a per-store row. |
+| API routes | `routes/public/passport/passport-push.ts`: `GET /push/key` (404 without VAPID), `POST /push/subscribe` (session, push-host allowlist against SSRF, upsert by endpoint, `PUSH_SUBSCRIBED` consent event, 10/min), `POST /push/unsubscribe` (own account only, `PUSH_UNSUBSCRIBED`). `passport-data.ts` delete disables all of the account's subscriptions. |
+| Send job | `jobs/customer-push.ts` `handleNewArrivalsPush`, maintenance job `customer-new-arrivals-push`, cron `0 13 * * *` UTC. One push per store per day with new `AVAILABLE` products, 2/store/week cap (Redis `cpush:cap:<retailer>`, 7-day TTL), 404/410 soft-disables. No-op without VAPID keys. |
+| Web | `sw.ts` `push` + `notificationclick` (same-origin paths only); `lib/web-push.ts`; `components/PushOptIn.tsx` on `/my-stores`; passport proxy allowlist gains `push/key`, `push/subscribe`, `push/unsubscribe`. |
+| Deviations from spec §7 | Daily digest, not one push per upload; new collections not pushed (no public flag); subscription per browser, not per store. |
+| Tests | API: `customer-push.test.ts` (allowlist, recipient filter, cap, 410 prune; mute-filter test falsified), `passport-push.test.ts`, delete test extended, migration 138 guard. Web: `PushOptIn.test.tsx`. API 2397 passed, web 702 passed, both `tsc` clean. |
+| Owner steps | Apply migration 138. `npx web-push generate-vapid-keys`; set `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` on the API service. Android phone: open `/my-stores`, tap the button, add a product, wait for the 18:30 IST run. |
+| Not verified | No real push sent; no browser or device run; no real VAPID keys. Logout does not unsubscribe; export omits subscriptions; no web mute toggle (Phase D). |

@@ -159,6 +159,12 @@ export const passportDataRoutes: FastifyPluginAsync = async (server) => {
       },
     });
 
+    // Stop push to every browser of this account (F-036). Soft-disable, RC-049.
+    await prisma.customerPushSubscription.updateMany({
+      where: { customer_account_id: accountId, disabled_at: null },
+      data: { disabled_at: new Date() },
+    });
+
     // Revoke all sessions for this account
     await prisma.passportSession.updateMany({
       where: { customer_account_id: accountId, revoked_at: null },

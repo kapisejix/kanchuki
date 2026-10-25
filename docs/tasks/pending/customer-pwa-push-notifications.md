@@ -2,7 +2,7 @@
 
 **Document:** `docs/tasks/pending/customer-pwa-push-notifications.md`
 **Date:** 2026-09-17
-**Status:** 🟡 **Phase A ✅ Built (2026-09-17)** — see `docs/BUILD-LOG.md` §2026-09-17 and `CLAUDE.md` row 73: `/my-stores` visited-store list, `manifest.json` `start_url` → `/my-stores`, install CTA (module-scope `beforeinstallprompt` capture), plus the follow-on `/login` + `return_to` work (`docs/tasks/done/return-to-post-login-redirect.md`) and the `/stores` `ShopperEntry` state-aware entry point. **Phases B–D 🔴 Planned, no code yet** — push subscription model + VAPID/web-push send job, `push` service-worker handler, enforced iOS Add-to-Home-Screen, consent/mute UI, retailer subscriber counts. (This header previously read "research & roadmap only — no code started"; that was true when written and is now stale.)
+**Status:** 🟡 **Phase A ✅ Built (2026-09-17)** — see `docs/BUILD-LOG.md` §2026-09-17 and `CLAUDE.md` row 73: `/my-stores` visited-store list, `manifest.json` `start_url` → `/my-stores`, install CTA (module-scope `beforeinstallprompt` capture), plus the follow-on `/login` + `return_to` work (`docs/tasks/done/return-to-post-login-redirect.md`) and the `/stores` `ShopperEntry` state-aware entry point. **Phase B 🟨 built 2026-10-25, not live** (see the build note under §8 Phase B). **Phases C–D 🔴 Planned** — push subscription model + VAPID/web-push send job, `push` service-worker handler, enforced iOS Add-to-Home-Screen, consent/mute UI, retailer subscriber counts. (This header previously read "research & roadmap only — no code started"; that was true when written and is now stale.)
 **Answers:** owner question about giving customers a phone-icon entry point into "all stores they've visited," plus browser push notifications for new products/collections, without replacing WhatsApp share.
 **Related:** `docs/PRO-REQUIREMENTS.md §36 (Shopper Passport)` (Shopper Passport — identity/cookie/consent architecture this feature sits on top of), `docs/PRO-REQUIREMENTS.md §36 (Customer Profile)` §12.
 
@@ -140,6 +140,15 @@ This slots in as the missing delivery channel for Phase 8 of the existing passpo
 - `PushSubscription` model + subscribe/unsubscribe endpoints.
 - VAPID keys, `web-push` server library, service-worker `push` handler.
 - Wire to the existing new-product and new-collection publish events, respecting per-store consent + the 2/week frequency cap already specified.
+
+> **Phase B build note (2026-10-25, branch `feat/f-036-web-push`).** Built, tested with mocks, **not live**.
+> - **Table** `customer_push_subscriptions` (migration `138`, RLS, no app DELETE): one row per browser, owned by a passport account. **Not per store** (deviation from §7): which stores may notify a browser is decided at send time from `CustomerStoreVisit` (visited and `is_muted = false`), so the existing store mute works for push with no new write.
+> - **API** `GET /v1/public/passport/push/key` (404 when VAPID is unset), `POST …/push/subscribe` (passport session required, endpoint must be a known push service host, which blocks SSRF), `POST …/push/unsubscribe` (scoped to the signed-in account). Each change writes a `ConsentEvent` (`PUSH_SUBSCRIBED` / `PUSH_UNSUBSCRIBED`). Passport delete disables every subscription of the account.
+> - **Send** `jobs/customer-push.ts`: daily cron 13:00 UTC (18:30 IST). For each store with new `AVAILABLE` products in the last 24 h, one push: shop name, product count, storefront link. Cap 2 per store per week (Redis counter, 7-day TTL). 404/410 from the push service soft-disables the row. **Deviation:** a daily digest, not one push per upload (a bulk upload would otherwise use the weekly cap in one go).
+> - **Not pushed: new collections** (deviation). Most collections are 1:1 WhatsApp picks with no public flag, so a push would show one customer's pick to every visitor. Add when collections get a public flag.
+> - **Web**: service worker `push` and `notificationclick` handlers (same-origin paths only); "Notify me about new arrivals" button on `/my-stores`, shown only when the server has keys and the browser has `PushManager` (an iOS Safari tab has none, so it sees nothing — Phase C).
+> - **Known gaps**: logging out does not unsubscribe the browser (the device keeps the account's pushes until it taps Turn off); data export does not list subscriptions; no web mute toggle yet (`stores/:id/mute` is not in the web proxy allowlist — Phase D).
+> - **Owner steps**: apply migration `138`, generate VAPID keys (`npx web-push generate-vapid-keys`) and set `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` on the API service, then test on an Android phone.
 
 **Phase C — iOS parity**
 - "Add to Home Screen" enforcement banner before offering notification permission (Apple's hard requirement).

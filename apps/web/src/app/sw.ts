@@ -128,3 +128,54 @@ const serwist = new Serwist({
 });
 
 serwist.addEventListeners();
+
+// ─── F-036 Phase B: Web Push ─────────────────────────────────────
+// Payload from apps/api/src/jobs/customer-push.ts: { title, body, url, tag }.
+// `tag` collapses a store's earlier arrivals notice instead of stacking them.
+// ponytail: minimal local types — this tsconfig has the dom lib, not webworker,
+// and adding webworker project-wide clashes with dom. Widen if more SW code lands.
+type WaitUntil = { waitUntil(p: Promise<unknown>): void };
+type PushEvt = WaitUntil & { data: { json(): unknown } | null };
+type ClickEvt = WaitUntil & { notification: Notification };
+type WindowClient = { url: string; focus(): Promise<unknown> };
+const sw = self as unknown as {
+  registration: ServiceWorkerRegistration;
+  clients: {
+    matchAll(o: { type: 'window'; includeUncontrolled: boolean }): Promise<WindowClient[]>;
+    openWindow(url: string): Promise<unknown>;
+  };
+  addEventListener(type: 'push', l: (e: PushEvt) => void): void;
+  addEventListener(type: 'notificationclick', l: (e: ClickEvt) => void): void;
+};
+
+sw.addEventListener('push', (event) => {
+  let data: { title?: string; body?: string; url?: string; tag?: string } = {};
+  try {
+    data = (event.data?.json() as typeof data | undefined) ?? {};
+  } catch {
+    // Not JSON — still show something rather than a silent push (Chrome
+    // shows its own generic notice and can revoke permission for that).
+  }
+  event.waitUntil(
+    sw.registration.showNotification(data.title || 'Kanchuki', {
+      body: data.body,
+      tag: data.tag,
+      icon: '/icons/icon-192.png',
+      badge: '/icons/icon-192.png',
+      data: { url: data.url },
+    }),
+  );
+});
+
+sw.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const raw = (event.notification.data as { url?: unknown } | null)?.url;
+  // Same-origin paths only: a push must never open an arbitrary site.
+  const url = typeof raw === 'string' && raw.startsWith('/') && !raw.startsWith('//') ? raw : '/my-stores';
+  event.waitUntil(
+    sw.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((wins) => {
+      const open = wins.find((w) => new URL(w.url).pathname === url);
+      return open ? open.focus() : sw.clients.openWindow(url);
+    }),
+  );
+});
