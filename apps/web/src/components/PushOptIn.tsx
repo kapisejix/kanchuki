@@ -8,6 +8,8 @@
 // as unsupported and sees nothing here — the install CTA above covers that path.
 
 import { useEffect, useState } from 'react';
+import { BellOff, BellRing, Loader2 } from 'lucide-react';
+import { BTN_PRIMARY, BTN_SECONDARY, CARD } from '@/app/(shopper)/ui';
 import {
   disablePush,
   enablePush,
@@ -50,22 +52,38 @@ export function PushOptIn() {
     }
   }
 
+  const on = state === 'on';
+  const Icon = state === 'denied' ? BellOff : BellRing;
+
+  // Royal Orchid card (passport pages). Off = primary ask; on = quiet secondary to turn off.
   return (
-    <section className="bg-white rounded-lg border border-stone-200 p-4">
-      <p className="font-medium text-stone-900">New arrivals</p>
-      <p className="text-sm text-stone-500 mt-1">
-        {state === 'denied'
-          ? 'Notifications are blocked for this site. Allow them in your browser settings to get new-arrival alerts.'
-          : 'Get a notification when stores you have visited add new items. At most 2 a week per store.'}
-      </p>
+    <section className={`${CARD} p-5`}>
+      <div className="flex items-start gap-3">
+        <span
+          className={`h-9 w-9 shrink-0 rounded-xl flex items-center justify-center ${
+            on ? 'bg-fuchsia-500/15 text-fuchsia-600' : 'bg-lavender-100 text-heliotrope-600'
+          }`}
+        >
+          <Icon aria-hidden className="h-[18px] w-[18px]" />
+        </span>
+        <div className="min-w-0 pt-1.5">
+          <p className="text-base font-bold text-spaceCadet-900">New arrivals</p>
+          <p className="text-sm text-heliotrope-500 mt-0.5">
+            {state === 'denied'
+              ? 'Notifications are blocked for this site. Allow them in your browser settings to get new-arrival alerts.'
+              : 'Get a notification when stores you have visited add new items. At most 2 a week per store.'}
+          </p>
+        </div>
+      </div>
       {state !== 'denied' && (
         <button
           type="button"
           onClick={() => void toggle()}
           disabled={busy}
-          className="mt-3 min-h-[44px] px-4 rounded-lg text-sm font-medium border border-amber-300 text-amber-800 disabled:opacity-60"
+          className={`${on ? BTN_SECONDARY : BTN_PRIMARY} mt-4 w-full sm:w-auto`}
         >
-          {busy ? 'Please wait…' : state === 'on' ? 'Turn off notifications' : 'Notify me about new arrivals'}
+          {busy && <Loader2 aria-hidden className="h-4 w-4 animate-spin motion-reduce:animate-none" />}
+          {busy ? 'Please wait…' : on ? 'Turn off notifications' : 'Notify me about new arrivals'}
         </button>
       )}
       {failed && (

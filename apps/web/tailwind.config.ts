@@ -94,6 +94,8 @@ const config: Config = {
         heliotrope: {
           50: '#F7F2F8',
           100: '#EBDDEE',
+          // Web-only: icons/placeholders on the passport pages. 5.4:1 on white, 4.8:1 on lavender-100.
+          400: '#7F5F87',
           500: '#6B4773',
           600: '#5A3962',
           700: '#492D50',
