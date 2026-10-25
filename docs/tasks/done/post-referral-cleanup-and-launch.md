@@ -1,4 +1,6 @@
-# Post-Referral Cleanup + Launch Batch — PENDING
+# Post-Referral Cleanup + Launch Batch — DONE (closed 2026-10-25)
+
+> **Closed 2026-10-25.** Every code task here is built. The items still open (1.3, 2.2–2.4, 5A.3, 5A.4, 5B.2/5B.3, 7B.1–7B.9) moved to `../pending/launch-readiness.md`, which is now the only launch board. The `[ ]` boxes below are kept as the record; tick them there, not here. The 7B.9 keyboard-pass procedure stays in this file.
 
 > Created 2026-09-24. One work board for: referral follow-ups, admin-access classification,
 > RC-033, refunds, `?ref=` capture, hardcoded lists → DB, and `launch-readiness.md`.
