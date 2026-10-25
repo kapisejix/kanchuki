@@ -176,3 +176,7 @@
 | Where it shows | /my-stores and the storefront `PassportSheet` (under "Enter catalog"). Secondary, not the gradient primary, so it does not compete with entering the catalog. |
 | Tests | web `tsc` clean; InstallPrompt + install-prompt + (shopper) + PushOptIn vitest 192/192, no test edited; eslint clean. |
 | Not verified | No screenshot taken and customer e2e not re-run locally (CI e2e-web only). No device run of the real install prompt. |
+
+## 2026-10-25 - /my-profile nominee placeholder shortened
+
+Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's mobile number" (`(shopper)/my-profile/page.tsx`). Copy only; the input still strips to 10 digits and the aria-label is unchanged. Closes the follow-up in the passport redesign "Not verified" row.

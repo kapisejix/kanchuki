@@ -431,7 +431,7 @@ export default function MyProfilePage() {
             inputMode="numeric"
             value={nomineePhone}
             onChange={(e) => setNomineePhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
-            placeholder="Nominee's 10-digit mobile number"
+            placeholder="Nominee's mobile number"
             aria-label="Nominee's mobile number"
             className={INPUT}
           />
