@@ -9,7 +9,7 @@ import { motion } from 'framer-motion'
 import type { LucideIcon } from 'lucide-react'
 import type { ReactNode } from 'react'
 
-const FOCUS = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-500/50'
+export const FOCUS ='focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-500/50'
 
 export const CARD = 'bg-white rounded-3xl border border-lavender-200 shadow-sm shadow-spaceCadet-900/5'
 export const BTN_PRIMARY = `min-h-11 px-5 inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-spaceCadet-900 to-tyrian-800 text-white text-sm font-semibold shadow-lg shadow-spaceCadet-900/25 transition-opacity hover:opacity-95 disabled:opacity-50 disabled:shadow-none ${FOCUS} focus-visible:ring-offset-2`
