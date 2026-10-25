@@ -1,7 +1,7 @@
 // Task 18: /my-profile — Shopper profile page.
 //
 // Shows: name, phone (masked), city, usual size, style chips (editable),
-// saved items, recently viewed, enquiries/orders, notification toggles,
+// saved items, recently viewed, enquiries/orders,
 // data controls (export, delete, personalization toggle).
 
 'use client'
@@ -43,7 +43,6 @@ export default function MyProfilePage() {
   const [styleOptions, setStyleOptions] = useState<string[]>([])
   const [stylesStatus, setStylesStatus] = useState<'loading' | 'ready'>('loading')
   const [stylesNotice, setStylesNotice] = useState<string | null>(null)
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true)
   const [personalizationEnabled, setPersonalizationEnabled] = useState(true)
   const [saving, setSaving] = useState(false)
   const [exporting, setExporting] = useState(false)
@@ -107,10 +106,13 @@ export default function MyProfilePage() {
       })
       // Initialize style chips from account preferences
       setSelectedStyles((account as any).pref_styles ?? [])
-      // Nominee lives on the preferences endpoint (not in /me).
+      // Nominee and the profiling opt-out live on the preferences endpoint
+      // (not in /me). Without loading profiling_enabled an opted-out shopper
+      // saw the box ticked again on every visit (RC-083).
       const prefRes = await fetch('/api/passport/preferences', { credentials: 'include' })
       if (prefRes.ok) {
         const prefs = await prefRes.json()
+        setPersonalizationEnabled(prefs.profiling_enabled !== false)
         setNomineeName(prefs.nominee_name ?? '')
         setNomineePhone(prefs.nominee_phone ?? '')
         setNomineeSaved(Boolean(prefs.nominee_name))
@@ -286,19 +288,12 @@ export default function MyProfilePage() {
         </section>
       )}
 
-      {/* Notification toggles */}
+      {/* Personalization. The "WhatsApp messages from stores" box was removed
+          (RC-083): it was never loaded or saved and nothing sends store
+          WhatsApp to shoppers. Re-add it with a real setting alongside F-035. */}
       <section className="bg-white rounded-lg border border-stone-200 p-6">
-        <h2 className="text-lg font-medium text-stone-900 mb-3">Notifications</h2>
+        <h2 className="text-lg font-medium text-stone-900 mb-3">Personalization</h2>
         <div className="space-y-3">
-          <label className="flex items-center justify-between">
-            <span className="text-sm text-stone-700">WhatsApp messages from stores</span>
-            <input
-              type="checkbox"
-              checked={notificationsEnabled}
-              onChange={(e) => setNotificationsEnabled(e.target.checked)}
-              className="h-4 w-4 text-amber-600 rounded"
-            />
-          </label>
           <label className="flex items-center justify-between">
             <span className="text-sm text-stone-700">Personalized recommendations</span>
             <input
