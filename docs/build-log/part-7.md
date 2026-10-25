@@ -145,3 +145,21 @@
 | Not built | Play Install Referrer: no Play listing yet. |
 | Tests | `referral-capture.test.ts` 14/14; mobile `tsc` shows only the 3 pre-existing typed-route errors; eslint clean on changed files. |
 | Not verified | No device run. Needs an EAS build, then `kanchuki://onboarding?ref=CODE` on a logged-out phone. |
+
+---
+
+## 2026-10-25 - Passport redesign: Royal Orchid /my-profile, /my-stores, /my-style
+
+**Branch:** `feat/passport-redesign-pilot` (PR #174). No migration, no API change, no new dependency.
+
+| Piece | Detail |
+|---|---|
+| Palette | Customer passport pages move to the retailer app's Royal Orchid palette (lavender surfaces, spaceCadet text, heliotrope secondary, fuchsia accent). `apps/web/tailwind.config.ts` gains `heliotrope-400` (`#7F5F87`, 5.4:1 on white); the pilot used the class before the shade existed, so it produced no CSS. |
+| Shell | `(shopper)/layout.tsx`: frosted sticky header, segmented My Style / My Profile / My Stores control with 44px targets, `MotionConfig reducedMotion="user"`. |
+| Shared blocks | `(shopper)/ui.tsx`: card, buttons, input, select, `chip()`, `segment()`, skeleton, motion variants, `Section`, `IconTile`, `Notice`. One copy for all three pages. |
+| /my-profile | Card layout. Personalization is a switch painted over the same native checkbox; RC-083 loading, RC-026 `res.ok` check and the e2e `uncheck()` unchanged. |
+| /my-stores + `PushOptIn` | Store rows as cards; selectors, "hasn't published a catalog page yet" copy and all four F-036 push states unchanged. Only the card of an unpublished store is faded, not its explanation (contrast fix found in the 360px screenshots). |
+| /my-style | Tabs as a segmented control; Sort + Near me in one scrolling chip bar. Below 640px budget / size / occasion / distance move into a `Sheet`; exactly one labelled `<select>` per filter exists. Card skeletons, `Notice` empty/error states, 44px Shortlist heart (accessible name "Shortlist"). F-045 ranking, filters and RC-070 mapping untouched. |
+| Tests | web `tsc` clean; (shopper) vitest + `PushOptIn.test.tsx` 163/163, no test edited; `next lint` warnings only. Customer e2e (customer-my-stores, customer-stores-directory, customer-my-style-analyze) 30/30 against a local prod build. 360px screenshots of all three pages: no horizontal page scroll, segment tabs and store rows at least 44px. CI green: quality, unit-web, build, e2e-web. |
+| Left out | `components/InstallPrompt.tsx` keeps amber/stone: it is shared with the storefront and only renders after `beforeinstallprompt`. Separate follow-up PR. |
+| Not verified | No real phone or real browser session; screenshots come from Playwright Chrome with stub API data. The nominee phone placeholder ("Nominee's 10-digit mobile number") is cut off at 360px; left as is, small copy follow-up. The /my-style chip bar scrolls sideways by design, so "Near me" is partly hidden until scrolled. |

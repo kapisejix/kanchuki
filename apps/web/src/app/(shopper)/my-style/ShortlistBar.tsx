@@ -9,8 +9,10 @@
 'use client'
 
 import { RETURN_TO_PARAM } from '@/lib/return-to'
+import { Loader2, MessageCircle, Sparkles, Store, X } from 'lucide-react'
 import Link from 'next/link'
 import { useRef, useState } from 'react'
+import { BTN_PRIMARY } from '../ui'
 import { type EnquiryResult, sendEnquiry } from './lib'
 import type { StoreGroup } from './shortlist'
 
@@ -53,37 +55,47 @@ export function ShortlistBar({ groups, enquiry, onRemove, onLook }: Props) {
   if (groups.length === 0) return null
   const n = groups.length
 
+  // Chip icon buttons are 28px painted; the ::before pad grows the hit area to 44px.
+  const chipBtn =
+    'relative h-7 w-7 shrink-0 rounded-full flex items-center justify-center before:absolute before:-inset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-500/50'
+
   return (
-    <div className="fixed inset-x-0 bottom-0 z-30 border-t border-stone-200 bg-white p-3 shadow-lg">
-      <div className="mx-auto max-w-3xl space-y-2">
-        <ul className="max-h-40 space-y-2 overflow-y-auto">
+    <div className="fixed inset-x-0 bottom-0 z-30 pb-safe rounded-t-3xl border-t border-lavender-200 bg-white/95 backdrop-blur-xl shadow-[0_-8px_30px_-12px_rgba(35,31,72,0.25)]">
+      <div className="mx-auto max-w-4xl px-4 pt-3 space-y-3">
+        <ul className="max-h-40 space-y-3 overflow-y-auto">
           {groups.map((g) => {
             const r = results[g.slug]
             return (
               <li key={g.slug} className="text-sm">
-                <p className="font-medium text-stone-900">
+                <p className="flex items-center gap-1.5 font-bold text-spaceCadet-900">
+                  <Store aria-hidden className="h-4 w-4 text-heliotrope-500" />
                   {g.shop_name} · {g.items.length} {g.items.length === 1 ? 'piece' : 'pieces'}
                 </p>
-                <ul className="flex flex-wrap gap-1 text-xs text-stone-600">
+                <ul className="mt-1.5 flex flex-wrap gap-2 text-xs">
                   {g.items.map((i) => (
-                    <li key={i.id} className="rounded-full bg-stone-100 px-2 py-0.5">
-                      {i.name ?? 'Piece'}{' '}
+                    <li
+                      key={i.id}
+                      className="max-w-full inline-flex items-center gap-1 rounded-full bg-lavender-100 pl-3 pr-1 py-0.5 font-semibold text-spaceCadet-900"
+                    >
+                      <span className="truncate">{i.name ?? 'Piece'}</span>
                       {onLook && (
                         <button
                           type="button"
-                          className="text-amber-700 underline"
+                          className={`${chipBtn} text-fuchsia-600 hover:bg-fuchsia-500/15`}
                           aria-label={`Complete the look for ${i.name ?? 'piece'}`}
+                          title="Complete the look"
                           onClick={() => onLook(i.id)}
                         >
-                          Complete the look
+                          <Sparkles aria-hidden className="h-3.5 w-3.5" />
                         </button>
-                      )}{' '}
+                      )}
                       <button
                         type="button"
+                        className={`${chipBtn} text-heliotrope-500 hover:bg-white`}
                         aria-label={`Remove ${i.name ?? 'piece'}`}
                         onClick={() => onRemove(i.id)}
                       >
-                        ×
+                        <X aria-hidden className="h-3.5 w-3.5" />
                       </button>
                     </li>
                   ))}
@@ -93,20 +105,21 @@ export function ShortlistBar({ groups, enquiry, onRemove, onLook }: Props) {
                     href={r.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="mt-1 inline-block font-medium text-green-700"
+                    className="mt-1.5 min-h-11 inline-flex items-center gap-1.5 font-semibold text-green-700 focus-visible:outline-none focus-visible:underline"
                   >
+                    <MessageCircle aria-hidden className="h-4 w-4" />
                     Open WhatsApp — {g.shop_name}
                   </a>
                 )}
                 {r?.kind === 'unauthorized' && (
-                  <Link href={LOGIN_HREF} className="mt-1 inline-block font-medium text-amber-700">
+                  <Link href={LOGIN_HREF} className="mt-1.5 min-h-11 inline-flex items-center font-semibold text-fuchsia-600">
                     Your session ended. Please log in
                   </Link>
                 )}
                 {r?.kind === 'error' && (
-                  <p className="mt-1 text-red-700">
+                  <p className="mt-1.5 text-red-700">
                     Could not reach {g.shop_name}.{' '}
-                    <button type="button" className="underline" disabled={busy} onClick={() => void send([g])}>
+                    <button type="button" className="min-h-11 font-semibold underline" disabled={busy} onClick={() => void send([g])}>
                       Try again
                     </button>
                   </p>
@@ -119,11 +132,12 @@ export function ShortlistBar({ groups, enquiry, onRemove, onLook }: Props) {
           type="button"
           disabled={busy}
           onClick={() => void send(groups)}
-          className="w-full rounded-lg bg-stone-900 py-2.5 text-sm font-medium text-white disabled:opacity-60"
+          className={`${BTN_PRIMARY} w-full`}
         >
+          {busy && <Loader2 aria-hidden className="h-4 w-4 animate-spin motion-reduce:animate-none" />}
           {busy ? 'Sending…' : `Enquire at ${n} ${n === 1 ? 'store' : 'stores'}`}
         </button>
-        <p className="text-center text-xs text-stone-500">
+        <p className="text-center text-xs text-heliotrope-500 pb-1">
           Ask the store if these pieces are available.
         </p>
       </div>

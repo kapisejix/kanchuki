@@ -3,6 +3,8 @@
 // for it now.
 'use client'
 
+import { Heart, MessageCircle, Sparkles } from 'lucide-react'
+import { BTN_TEXT } from '../ui'
 import type { FeedCard } from './lib'
 
 interface Props {
@@ -17,31 +19,44 @@ interface Props {
   onLook?: () => void
 }
 
+const FOCUS = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-500/50'
+
 export function StyleCardActions({ card, saved, full, busy, onToggle, onEnquire, onLook }: Props) {
   if (!card.retailer.slug) return null
   return (
-    <div className="mt-2 flex flex-wrap gap-2">
-      <button
-        type="button"
-        aria-pressed={saved}
-        disabled={!saved && full}
-        onClick={onToggle}
-        className={`flex-1 rounded-lg border py-2 text-sm disabled:opacity-40 ${
-          saved ? 'border-amber-700 text-amber-700' : 'border-stone-300 text-stone-700'
-        }`}
-      >
-        {saved ? 'Shortlisted' : 'Shortlist'}
-      </button>
-      <button
-        type="button"
-        disabled={busy}
-        onClick={onEnquire}
-        className="enquire flex-1 rounded-lg bg-stone-900 py-2 text-sm text-white disabled:opacity-60"
-      >
-        Enquire
-      </button>
+    <div className="mt-3">
+      {/* A two-column grid card is ~158px wide at 360px, so Shortlist is a
+          44px heart (its name stays the visible-text "Shortlist" for AT) and
+          Enquire takes the rest. */}
+      <div className="flex gap-2">
+        <button
+          type="button"
+          aria-pressed={saved}
+          disabled={!saved && full}
+          onClick={onToggle}
+          title={!saved && full ? 'This store already has the most shortlisted pieces' : undefined}
+          className={`h-11 w-11 shrink-0 rounded-2xl border flex items-center justify-center transition-colors disabled:opacity-40 ${FOCUS} ${
+            saved
+              ? 'bg-fuchsia-500/15 border-fuchsia-500/30 text-fuchsia-600'
+              : 'bg-white border-lavender-200 text-heliotrope-500 hover:border-heliotrope-400'
+          }`}
+        >
+          <Heart aria-hidden className={`h-[18px] w-[18px] ${saved ? 'fill-current' : ''}`} />
+          <span className="sr-only">{saved ? 'Shortlisted' : 'Shortlist'}</span>
+        </button>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={onEnquire}
+          className={`enquire flex-1 min-w-0 h-11 inline-flex items-center justify-center gap-1.5 rounded-2xl bg-gradient-to-r from-spaceCadet-900 to-tyrian-800 text-white text-sm font-semibold shadow-md shadow-spaceCadet-900/20 transition-opacity hover:opacity-95 disabled:opacity-50 ${FOCUS} focus-visible:ring-offset-2`}
+        >
+          <MessageCircle aria-hidden className="h-4 w-4 shrink-0" />
+          Enquire
+        </button>
+      </div>
       {onLook && (
-        <button type="button" onClick={onLook} className="w-full text-xs font-medium text-amber-700">
+        <button type="button" onClick={onLook} className={`${BTN_TEXT.replace('text-sm', 'text-xs')} w-full mt-1`}>
+          <Sparkles aria-hidden className="h-3.5 w-3.5" />
           Complete the look
         </button>
       )}
