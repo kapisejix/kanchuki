@@ -118,7 +118,7 @@
 
 ## 2026-10-25 - F-036 Phase B: customer Web Push for new arrivals
 
-**Branch:** `feat/f-036-web-push`. Migration `138_customer_push_subscriptions` (not applied). New API dependency `web-push@3.6.7`.
+**Branch:** `feat/f-036-web-push`. Migration `138_customer_push_subscriptions` (applied in prod 2026-10-25: owner ran the first draft, then the `passport_session_id` column + FK; `_prisma_migrations` row inserted by hand). New API dependency `web-push@3.6.7`.
 
 | Piece | Detail |
 |---|---|
@@ -128,6 +128,20 @@
 | Web | `sw.ts` `push` + `notificationclick` (same-origin paths only); `lib/web-push.ts`; `components/PushOptIn.tsx` on `/my-stores`; passport proxy allowlist gains `push/key`, `push/subscribe`, `push/unsubscribe`. |
 | Deviations from spec §7 | Daily digest, not one push per upload; new collections not pushed (no public flag); subscription per browser, not per store. |
 | Tests | API: `customer-push.test.ts` (allowlist, recipient filter, cap, 410 prune; mute-filter test falsified), `passport-push.test.ts`, delete test extended, migration 138 guard. Web: `PushOptIn.test.tsx`. API 2397 passed, web 702 passed, both `tsc` clean. |
-| Owner steps | Apply migration 138. `npx web-push generate-vapid-keys`; set `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` on the API service. Android phone: open `/my-stores`, tap the button, add a product, wait for the 18:30 IST run. |
+| Owner steps | ~~Apply migration 138~~ (done 2026-10-25). `npx web-push generate-vapid-keys`; set `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` on the API service. Android phone: open `/my-stores`, tap the button, add a product, wait for the 18:30 IST run. |
 | Security review fixes | Row stores `passport_session_id` (FK, `ON DELETE SET NULL`); the job requires that session unrevoked and unexpired, so logout on the device stops its pushes. Rebinding another account's endpoint needs matching keys, else 409 `ENDPOINT_TAKEN`. |
 | Not verified | No real push sent; no browser or device run; no real VAPID keys. Export omits subscriptions; no web mute toggle (Phase D). |
+
+---
+
+## 2026-10-25 - Referral-link prefill in the retailer app (launch 5B.2/5B.3)
+
+**Branch:** `feat/referral-link-prefill`. No migration, no API change.
+
+| Piece | Detail |
+|---|---|
+| Capture | `apps/mobile/src/lib/referral-capture.ts`: `parseReferralCode` pulls `ref` from the raw URL by regex (RN's URL polyfill has no `searchParams`), uppercases it, accepts `[A-Z0-9-]{3,20}`; stored as `{code, at}` under SecureStore key `pending_referral_code`, ignored after 30 days. `app/_layout.tsx` `AppContent` runs `Linking.useURL()` and captures on cold and warm starts, before login (onboarding is auth-protected, so expo-router can't hand it the param). |
+| Prefill | `app/onboarding.tsx` fills the referral field on mount only when it is empty, never submits, and clears the stored code after a successful step-1 save. Server validation unchanged (`retailers-profile.test.ts`, `referral-codes.test.ts`). |
+| Not built | Play Install Referrer: no Play listing yet. |
+| Tests | `referral-capture.test.ts` 14/14; mobile `tsc` shows only the 3 pre-existing typed-route errors; eslint clean on changed files. |
+| Not verified | No device run. Needs an EAS build, then `kanchuki://onboarding?ref=CODE` on a logged-out phone. |

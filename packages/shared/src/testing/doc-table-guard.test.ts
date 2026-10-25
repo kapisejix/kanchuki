@@ -22,7 +22,7 @@ function markdownFiles(dir: string, out: string[] = []): string[] {
 }
 
 // Rows this guard finds but that need a content decision, not a mechanical
-// fix — see docs/tasks/pending/post-referral-cleanup-and-launch.md §8.4.
+// fix — see docs/tasks/done/post-referral-cleanup-and-launch.md §8.4.
 // Each entry is checked BOTH ways below: it must still be a real violation
 // (a fixed row with a stale entry here would silently stop being checked at
 // all), and no violation may go unexplained by hiding behind an entry for a

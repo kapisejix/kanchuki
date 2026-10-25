@@ -33,6 +33,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AnimatedPressable } from '../src/components/AnimatedPressable';
 import { GradientButton } from '../src/components/GradientButton';
 import { billingApi, retailerApi } from '../src/lib/api';
+import {
+  clearCapturedReferralCode,
+  getCapturedReferralCode,
+} from '../src/lib/referral-capture';
 import { WEB_URL } from '../src/lib/web-url';
 
 type Step = 1 | 2 | 3 | 4 | 5;
@@ -203,6 +207,14 @@ export default function OnboardingScreen() {
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [consentGiven, setConsentGiven] = useState(false);
 
+  // 5B.2: prefill (never submit) a code captured from a ?ref= app link. Only
+  // fills an empty field, so a code the retailer typed is never overwritten.
+  useEffect(() => {
+    void getCapturedReferralCode().then((code) => {
+      if (code) setReferralCode((current) => current || code);
+    });
+  }, []);
+
   // Admin-editable plan pricing + limits (feature #49). Same query key/shape
   // as plan-select.tsx so the two screens share one cache entry.
   const { data: plansData, isLoading: plansLoading } = useQuery({
@@ -252,6 +264,8 @@ export default function OnboardingScreen() {
           owner_name: ownerName.trim() || undefined,
           referral_code: referralCode.trim() || undefined,
         });
+        // Saved (the server validated it): the captured code has done its job.
+        void clearCapturedReferralCode().catch(() => {});
         await retailerApi.updateOnboarding(1);
         goToStep(nextStep);
         return;
