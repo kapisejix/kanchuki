@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
-import { BarChart3, Loader2 } from 'lucide-react'
+import { BarChart3, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'
 import { adminGetOptions } from '@/lib/admin-fetch'
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
@@ -61,6 +61,40 @@ function rollupByRetailer(rows: UsageRow[]): RetailerRollup[] {
   return Array.from(map.values()).sort((a, b) => b.est_cost_inr - a.est_cost_inr)
 }
 
+const PAGE_SIZE = 20
+
+function Pager({ page, total, label, onPage }: { page: number; total: number; label: string; onPage: (p: number) => void }) {
+  const pages = Math.ceil(total / PAGE_SIZE)
+  if (pages <= 1) return null
+  return (
+    <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
+      <span className="text-xs text-gray-500">
+        Page {page} of {pages} · {total} {label}
+      </span>
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => onPage(Math.max(1, page - 1))}
+          disabled={page === 1}
+          aria-label="Previous page"
+          className="p-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          <ChevronLeft size={16} />
+        </button>
+        <button
+          onClick={() => onPage(Math.min(pages, page + 1))}
+          disabled={page === pages}
+          aria-label="Next page"
+          className="p-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          <ChevronRight size={16} />
+        </button>
+      </div>
+    </div>
+  )
+}
+
+const pageSlice = <T,>(items: T[], page: number) => items.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+
 const inr = (n: number) => `₹${Math.round(n).toLocaleString('en-IN')}`
 
 export default function AiUsagePage() {
@@ -68,6 +102,8 @@ export default function AiUsagePage() {
   const [limits, setLimits] = useState<PlanLimitRow[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [retailerPage, setRetailerPage] = useState(1)
+  const [detailPage, setDetailPage] = useState(1)
 
   const load = useCallback(async () => {
     const [res, limitsRes] = await Promise.all([
@@ -165,7 +201,7 @@ export default function AiUsagePage() {
                 </tr>
               </thead>
               <tbody>
-                {rollups.map((r) => {
+                {pageSlice(rollups, retailerPage).map((r) => {
                   const limit = taggingLimit(r.plan)
                   const pct = limit && limit > 0 ? Math.round((r.tagging_calls / limit) * 100) : null
                   return (
@@ -186,6 +222,7 @@ export default function AiUsagePage() {
               </tbody>
             </table>
           </div>
+          <Pager page={retailerPage} total={rollups.length} label="retailers" onPage={setRetailerPage} />
         </div>
       )}
 
@@ -193,7 +230,10 @@ export default function AiUsagePage() {
         <div className="p-4 border-b border-gray-100">
           <input
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value)
+              setDetailPage(1)
+            }}
             placeholder="Filter by retailer, city, model…"
             className="w-full sm:w-80 px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
           />
@@ -217,7 +257,7 @@ export default function AiUsagePage() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((r, i) => (
+                {pageSlice(filtered, detailPage).map((r, i) => (
                   <tr key={`${r.retailer_id}-${r.provider_type}-${r.model_name}-${r.resource_type}-${i}`} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/60">
                     <td className="px-4 py-3">
                       <p className="font-medium text-gray-800">{r.retailer_name ?? r.retailer_id}</p>
@@ -242,6 +282,7 @@ export default function AiUsagePage() {
             </table>
           </div>
         )}
+        <Pager page={detailPage} total={filtered.length} label="rows" onPage={setDetailPage} />
       </div>
     </motion.div>
   )
