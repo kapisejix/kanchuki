@@ -9,6 +9,7 @@ const m = vi.hoisted(() => ({
   sessionFind: vi.fn(),
   sessionUpdate: vi.fn(),
   upsert: vi.fn(),
+  findUnique: vi.fn(),
   updateMany: vi.fn(),
   consentCreate: vi.fn(),
 }));
@@ -16,7 +17,11 @@ const m = vi.hoisted(() => ({
 vi.mock('@kanchuki/db', () => ({
   prisma: {
     passportSession: { findUnique: m.sessionFind, update: m.sessionUpdate },
-    customerPushSubscription: { upsert: m.upsert, updateMany: m.updateMany },
+    customerPushSubscription: {
+      upsert: m.upsert,
+      findUnique: m.findUnique,
+      updateMany: m.updateMany,
+    },
     consentEvent: { create: m.consentCreate },
   },
   Prisma: {},
@@ -52,6 +57,7 @@ beforeEach(() => {
   );
   m.sessionUpdate.mockResolvedValue({});
   m.upsert.mockResolvedValue({});
+  m.findUnique.mockResolvedValue(null);
   m.updateMany.mockResolvedValue({ count: 1 });
   m.consentCreate.mockResolvedValue({});
 });
@@ -95,12 +101,39 @@ describe('POST /push/subscribe', () => {
     expect(res.statusCode).toBe(200);
     const arg = m.upsert.mock.calls[0]?.[0];
     expect(arg.where).toEqual({ endpoint: SUB.endpoint });
-    expect(arg.create.customer_account_id).toBe('acct_a');
-    expect(arg.update).toMatchObject({ customer_account_id: 'acct_a', disabled_at: null });
+    expect(arg.create).toMatchObject({
+      customer_account_id: 'acct_a',
+      passport_session_id: 'sess_a',
+    });
+    expect(arg.update).toMatchObject({
+      customer_account_id: 'acct_a',
+      passport_session_id: 'sess_a',
+      disabled_at: null,
+    });
     expect(m.consentCreate.mock.calls[0]?.[0].data).toMatchObject({
       customer_account_id: 'acct_a',
       kind: 'PUSH_SUBSCRIBED',
     });
+  });
+});
+
+describe('POST /push/subscribe — rebinding an endpoint', () => {
+  it("refuses to take over another account's endpoint without that browser's keys", async () => {
+    m.findUnique.mockResolvedValue({
+      customer_account_id: 'acct_b',
+      p256dh: 'other',
+      auth: 'other',
+    });
+    const res = await post('subscribe', SUB, COOKIE);
+    expect(res.statusCode).toBe(409);
+    expect(m.upsert).not.toHaveBeenCalled();
+  });
+
+  it('moves the endpoint when the same browser signs into another account (keys match)', async () => {
+    m.findUnique.mockResolvedValue({ customer_account_id: 'acct_b', ...SUB.keys });
+    const res = await post('subscribe', SUB, COOKIE);
+    expect(res.statusCode).toBe(200);
+    expect(m.upsert).toHaveBeenCalled();
   });
 });
 

@@ -6,8 +6,10 @@
 // worst case is one extra push, never a missed consent check.
 //
 // Who receives is resolved HERE, at send time: an active subscription whose account
-// is not deleted and has a CustomerStoreVisit for the store with is_muted = false.
-// Muting a store therefore takes effect on the next run with no extra write.
+// is not deleted and has a CustomerStoreVisit for the store with is_muted = false,
+// and whose subscribing passport session is still live (logout on that device, or a
+// 180-day idle expiry, stops its pushes). Muting a store therefore takes effect on
+// the next run with no extra write.
 //
 // Payload: shop name, a product COUNT and the storefront path. Public catalog data
 // only — never the shopper's phone or name (a push is shown on a lock screen).
@@ -103,6 +105,7 @@ export async function handleNewArrivalsPush(now = new Date()): Promise<NewArriva
     const subs = await prisma.customerPushSubscription.findMany({
       where: {
         disabled_at: null,
+        passport_session: { revoked_at: null, expires_at: { gt: now } },
         customer_account: {
           deleted_at: null,
           store_visits: { some: { retailer_id: group.retailer_id, is_muted: false } },

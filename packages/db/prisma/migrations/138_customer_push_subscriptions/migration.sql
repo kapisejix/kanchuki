@@ -16,12 +16,17 @@
 -- ON DELETE CASCADE, so no purge list needs this table (RC-050); kanchuki_purge
 -- still gets DELETE as belt-and-braces, per 135.
 --
+-- passport_session_id is the session that subscribed (FK ON DELETE SET NULL). The
+-- send job requires that session unrevoked and unexpired, so logging out on the
+-- device stops its pushes; an expired/deleted session nulls it and pushes stop.
+--
 -- RLS follows 126/127/133/135: policy for the two backend roles first, then
 -- ENABLE (RC-030). Idempotent: table, indexes and FK are guarded.
 
 CREATE TABLE IF NOT EXISTS "customer_push_subscriptions" (
     "id" TEXT NOT NULL,
     "customer_account_id" TEXT NOT NULL,
+    "passport_session_id" TEXT,
     "endpoint" TEXT NOT NULL,
     "p256dh" TEXT NOT NULL,
     "auth" TEXT NOT NULL,
@@ -42,6 +47,10 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'customer_push_subscriptions_customer_account_id_fkey') THEN
     ALTER TABLE "customer_push_subscriptions" ADD CONSTRAINT "customer_push_subscriptions_customer_account_id_fkey"
       FOREIGN KEY ("customer_account_id") REFERENCES "customer_accounts"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'customer_push_subscriptions_passport_session_id_fkey') THEN
+    ALTER TABLE "customer_push_subscriptions" ADD CONSTRAINT "customer_push_subscriptions_passport_session_id_fkey"
+      FOREIGN KEY ("passport_session_id") REFERENCES "passport_sessions"("id") ON DELETE SET NULL ON UPDATE CASCADE;
   END IF;
 END $$;
 

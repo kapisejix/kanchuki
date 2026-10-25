@@ -2906,9 +2906,12 @@ model CustomerStoreVisit {
 // stores may notify it is decided at send time from CustomerStoreVisit
 // (visited + !is_muted), not stored here. No hard deletes (RC-049): unsubscribe,
 // passport delete and a 404/410 from the push service all set disabled_at.
+// passport_session_id = the session that subscribed: a push needs it unrevoked and
+// unexpired, so logging out on that device stops its pushes.
 model CustomerPushSubscription {
-  id                  String @id @default(cuid())
+  id                  String  @id @default(cuid())
   customer_account_id String
+  passport_session_id String?
   endpoint            String @unique
   p256dh              String
   auth                String
@@ -2917,7 +2920,8 @@ model CustomerPushSubscription {
   disabled_at  DateTime?
   created_at   DateTime  @default(now())
 
-  customer_account CustomerAccount @relation(fields: [customer_account_id], references: [id], onDelete: Cascade)
+  customer_account CustomerAccount  @relation(fields: [customer_account_id], references: [id], onDelete: Cascade)
+  passport_session PassportSession? @relation(fields: [passport_session_id], references: [id], onDelete: SetNull)
 
   @@index([customer_account_id, disabled_at])
   @@map("customer_push_subscriptions")
@@ -2951,7 +2955,8 @@ model PassportSession {
   user_agent          String?
   ip_hash             String?
 
-  customer_account CustomerAccount @relation(fields: [customer_account_id], references: [id], onDelete: Cascade)
+  customer_account   CustomerAccount            @relation(fields: [customer_account_id], references: [id], onDelete: Cascade)
+  push_subscriptions CustomerPushSubscription[]
 
   @@index([customer_account_id])
   @@map("passport_sessions")

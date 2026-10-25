@@ -75,9 +75,11 @@ describe('handleNewArrivalsPush', () => {
   it('sends a count-only payload to unmuted visitors of the store', async () => {
     const r = await handleNewArrivalsPush();
     expect(r).toMatchObject({ stores: 1, sent: 1 });
-    // Recipient filter: active sub, live account, visited THIS store and not muted.
+    // Recipient filter: active sub, its subscribing session still live (logout stops
+    // that device), live account, visited THIS store and not muted.
     expect(mocks.subsFind.mock.calls[0]?.[0].where).toEqual({
       disabled_at: null,
+      passport_session: { revoked_at: null, expires_at: { gt: expect.any(Date) } },
       customer_account: {
         deleted_at: null,
         store_visits: { some: { retailer_id: 'r1', is_muted: false } },

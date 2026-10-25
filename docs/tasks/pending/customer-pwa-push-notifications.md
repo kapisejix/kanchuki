@@ -147,7 +147,8 @@ This slots in as the missing delivery channel for Phase 8 of the existing passpo
 > - **Send** `jobs/customer-push.ts`: daily cron 13:00 UTC (18:30 IST). For each store with new `AVAILABLE` products in the last 24 h, one push: shop name, product count, storefront link. Cap 2 per store per week (Redis counter, 7-day TTL). 404/410 from the push service soft-disables the row. **Deviation:** a daily digest, not one push per upload (a bulk upload would otherwise use the weekly cap in one go).
 > - **Not pushed: new collections** (deviation). Most collections are 1:1 WhatsApp picks with no public flag, so a push would show one customer's pick to every visitor. Add when collections get a public flag.
 > - **Web**: service worker `push` and `notificationclick` handlers (same-origin paths only); "Notify me about new arrivals" button on `/my-stores`, shown only when the server has keys and the browser has `PushManager` (an iOS Safari tab has none, so it sees nothing — Phase C).
-> - **Known gaps**: logging out does not unsubscribe the browser (the device keeps the account's pushes until it taps Turn off); data export does not list subscriptions; no web mute toggle yet (`stores/:id/mute` is not in the web proxy allowlist — Phase D).
+> - **Session binding**: each row keeps the passport session that subscribed; a push needs that session unrevoked and unexpired, so logging out on the device (or 180 days idle) stops its pushes. Rebinding an endpoint that belongs to another account needs that browser's own keys (409 otherwise).
+> - **Known gaps**: data export does not list subscriptions; no web mute toggle yet (`stores/:id/mute` is not in the web proxy allowlist — Phase D).
 > - **Owner steps**: apply migration `138`, generate VAPID keys (`npx web-push generate-vapid-keys`) and set `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` on the API service, then test on an Android phone.
 
 **Phase C — iOS parity**

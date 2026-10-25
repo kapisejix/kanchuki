@@ -1119,7 +1119,8 @@ login; deliberately **no FK** — recipients are resolved from `Staff.role`/`is_
 ## Customer push subscriptions — `customer_push_subscriptions` (migration 138, F-036 Phase B, written 2026-10-25, NOT yet applied)
 
 One Web Push subscription per browser, owned by a verified passport account. Columns: `id`, `customer_account_id`
-(FK `customer_accounts`, `ON DELETE CASCADE`), `endpoint` (UNIQUE, push-service URL), `p256dh`, `auth`,
+(FK `customer_accounts`, `ON DELETE CASCADE`), `passport_session_id` (FK `passport_sessions`, `ON DELETE SET NULL`; the
+session that subscribed — a push needs it unrevoked and unexpired, so logout stops that device), `endpoint` (UNIQUE, push-service URL), `p256dh`, `auth`,
 `last_seen_at`, `disabled_at`, `created_at`. Index `(customer_account_id, disabled_at)`.
 
 - Which stores may notify a subscription is not stored: resolved at send time from `customer_store_visits`

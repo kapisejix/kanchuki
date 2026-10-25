@@ -129,4 +129,5 @@
 | Deviations from spec §7 | Daily digest, not one push per upload; new collections not pushed (no public flag); subscription per browser, not per store. |
 | Tests | API: `customer-push.test.ts` (allowlist, recipient filter, cap, 410 prune; mute-filter test falsified), `passport-push.test.ts`, delete test extended, migration 138 guard. Web: `PushOptIn.test.tsx`. API 2397 passed, web 702 passed, both `tsc` clean. |
 | Owner steps | Apply migration 138. `npx web-push generate-vapid-keys`; set `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` on the API service. Android phone: open `/my-stores`, tap the button, add a product, wait for the 18:30 IST run. |
-| Not verified | No real push sent; no browser or device run; no real VAPID keys. Logout does not unsubscribe; export omits subscriptions; no web mute toggle (Phase D). |
+| Security review fixes | Row stores `passport_session_id` (FK, `ON DELETE SET NULL`); the job requires that session unrevoked and unexpired, so logout on the device stops its pushes. Rebinding another account's endpoint needs matching keys, else 409 `ENDPOINT_TAKEN`. |
+| Not verified | No real push sent; no browser or device run; no real VAPID keys. Export omits subscriptions; no web mute toggle (Phase D). |

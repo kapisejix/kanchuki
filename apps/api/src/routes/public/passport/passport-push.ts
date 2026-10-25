@@ -57,12 +57,36 @@ export const passportPushRoutes: FastifyPluginAsync = async (server) => {
 
     const { endpoint, keys } = body.data;
     const accountId = session.customer_account_id;
-    // Same browser, new sign-in: the endpoint moves to the account signed in now.
+    // Same browser, new sign-in: the endpoint moves to the account signed in now —
+    // but only with that browser's own keys. A caller who merely knows another
+    // account's endpoint cannot rebind it (and so cannot blind its pushes).
+    const existing = await prisma.customerPushSubscription.findUnique({
+      where: { endpoint },
+      select: { customer_account_id: true, p256dh: true, auth: true },
+    });
+    if (
+      existing &&
+      existing.customer_account_id !== accountId &&
+      (existing.p256dh !== keys.p256dh || existing.auth !== keys.auth)
+    ) {
+      return reply
+        .status(409)
+        .send({
+          error: { code: 'ENDPOINT_TAKEN', message: 'Subscription belongs to another device' },
+        });
+    }
     await prisma.customerPushSubscription.upsert({
       where: { endpoint },
-      create: { customer_account_id: accountId, endpoint, p256dh: keys.p256dh, auth: keys.auth },
+      create: {
+        customer_account_id: accountId,
+        passport_session_id: session.id,
+        endpoint,
+        p256dh: keys.p256dh,
+        auth: keys.auth,
+      },
       update: {
         customer_account_id: accountId,
+        passport_session_id: session.id,
         p256dh: keys.p256dh,
         auth: keys.auth,
         last_seen_at: new Date(),
