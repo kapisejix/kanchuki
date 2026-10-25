@@ -163,3 +163,16 @@
 | Tests | web `tsc` clean; (shopper) vitest + `PushOptIn.test.tsx` 163/163, no test edited; `next lint` warnings only. Customer e2e (customer-my-stores, customer-stores-directory, customer-my-style-analyze) 30/30 against a local prod build. 360px screenshots of all three pages: no horizontal page scroll, segment tabs and store rows at least 44px. CI green: quality, unit-web, build, e2e-web. |
 | Left out | `components/InstallPrompt.tsx` keeps amber/stone: it is shared with the storefront and only renders after `beforeinstallprompt`. Separate follow-up PR. |
 | Not verified | No real phone or real browser session; screenshots come from Playwright Chrome with stub API data. The nominee phone placeholder ("Nominee's 10-digit mobile number") is cut off at 360px; left as is, small copy follow-up. The /my-style chip bar scrolls sideways by design, so "Near me" is partly hidden until scrolled. |
+
+---
+
+## 2026-10-25 - InstallPrompt moved to Royal Orchid
+
+**Branch:** `feat/installprompt-royal-orchid`. No migration, no API change. Follow-up to the passport redesign (PR #174).
+
+| Piece | Detail |
+|---|---|
+| Change | `components/InstallPrompt.tsx`: amber/stone panel becomes a lavender-50 panel with spaceCadet/heliotrope text; install button uses `BTN_SECONDARY`, "Not now" is a quiet heliotrope text button; both 44px targets. Copy, `beforeinstallprompt` capture, dismiss and `appinstalled` logic unchanged. `(shopper)/ui.tsx` now exports `FOCUS`. |
+| Where it shows | /my-stores and the storefront `PassportSheet` (under "Enter catalog"). Secondary, not the gradient primary, so it does not compete with entering the catalog. |
+| Tests | web `tsc` clean; InstallPrompt + install-prompt + (shopper) + PushOptIn vitest 192/192, no test edited; eslint clean. |
+| Not verified | No screenshot taken and customer e2e not re-run locally (CI e2e-web only). No device run of the real install prompt. |
