@@ -760,7 +760,7 @@ end** — their status lines, headings and checklists were. Treat their detail a
 | `whatsapp-managed-sending.md` | **F-035** | 🔴 planned, post-launch | 7 open | Meta Tech Provider + Embedded Signup |
 | `how-customer-earn-from-this-platform.md` | **F-041 Pre-Loved** | 🔴 idea, not approved | D-1…D-7 | Legal review; no-code P0 pilot |
 | `style-match-lite.md` | **F-039** | 🔴 planned, not approved | D-1/D-2 | Owner sign-off |
-| `ai-fit-recommendation-research.md` | Fit research | 🔬 research only | — | Feeds F-039 |
+| `archived/ai-fit-recommendation-research.md` | Fit research | 🗄️ archived 2026-10-25 | — | Feeds F-039 |
 | `google-business-profile-autopost.md` | **F-022** | 🔴 on hold, "do not start" | — | Google API access. **UI screen exists anyway (S-04)** |
 | `ghost-mannequin.md` | **F-001e** | Planned; Snappyit worker paused 2026-08-02 | — | Owner go-ahead |
 | `coupon-codes.md` | Subscription coupons | 📋 spec, not built | — | Owner approval |

@@ -1,6 +1,6 @@
 # Tasks — Work Board
 
-Where work lives: **`pending/` = open**, **`done/` = built** (kept as the design record + how it actually works).
+Where work lives: **`pending/` = open**, **`done/` = built**, **`archived/` = retired, not built, kept for reference** (kept as the design record + how it actually works).
 
 **How to use this board:** a task file is the spec. The status here is a *pointer*, not proof — when a doc and the code disagree, the code wins. See `../root-cause/README.md` before starting work in a feature area.
 
@@ -11,7 +11,6 @@ Where work lives: **`pending/` = open**, **`done/` = built** (kept as the design
 | Task | File | Status | Blocker / decision needed |
 |---|---|---|---|
 | AI photo & video generation — F-032 phase B (video), F-034 retailer phase, engine rebuild | `pending/ai-photo-generation.md` | 🟡 Mixed — F-032 phase A ✅ built; bench run 1 ✅ 2026-09-20; runs 2–3 not run (checklist §8.1e); retailer-path wiring not built | Bench runs 2–3 (owner), engine per MODEL row, compression ceiling, R6 disclosure. |
-| AI fit/style recommendation — research notes (feeds F-039) | `pending/ai-fit-recommendation-research.md` | 🔬 Research only (2026-09-25) — nothing built, nothing decided | Superseded in practice by `style-match-lite.md`; fold in or archive |
 | Post-referral cleanup + launch batch | `pending/post-referral-cleanup-and-launch.md` | 🟡 Mostly done — branch/migration sections stale (superseded 2026-09-28) | Re-read open `[ ]` items; fold remainder into `launch-readiness.md` |
 | AI credit / limit / billing model | `pending/ai-credit-billing-model.md` | 🟡 Design; admin addon-pack half built (migration `089`, `/admin/resource-packs`) | §8 decisions; retailer-side credit consumption/limits unbuilt |
 | Billing decision sheets — prorated plan switch, coupon codes, AI credit model (one page each, with recommendations) | `pending/decision-sheets-2026-10-24.md` | ✅ Answered 2026-10-25: 1=A, 2=A, 3=B (AI Usage per-retailer grid built) | None — revisit 1/2 after ~10 paying retailers |
@@ -58,3 +57,9 @@ Where work lives: **`pending/` = open**, **`done/` = built** (kept as the design
 | Storefront soft-404 — unknown store → real 404 (+ scanner-probe middleware) | `done/storefront-soft-404.md` | 2026-10-10 |
 | Docs reorganization (phases 1–8; phase 9 KEEP/DELETE list moved here with the file) | `done/reorganize-files-folders-structure.md` | 2026-09-25 |
 | Studio Shoot option matrix (F-032) — shared styles + product-aware gating + mobile picker, migration `123` (27 rows `DRAFT`). Admin-only remainder: publish rows, engine per row, retire legacy rows, thumbnails | `done/studio-shoot-option-matrix.md` (+ `done/studio-shoot-retailer-rollout.md`, `done/studio-shoot-session-handoff.md`) | 2026-10-10 |
+
+## Archived
+
+| Doc | File | Archived | Why |
+|---|---|---|---|
+| AI fit/style recommendation — research notes (2026-09-25) | `archived/ai-fit-recommendation-research.md` | 2026-10-25 | Superseded by `pending/style-match-lite.md` (F-039), which carries its decisions |
