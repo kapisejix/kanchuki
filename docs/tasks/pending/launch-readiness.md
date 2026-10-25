@@ -48,5 +48,6 @@
 - [ ] T8 mobile "Refer & Earn" — blocked on Play Console review; leave until the owner says go
 - [ ] Razorpay dashboard: subscribe the webhook to `refund.processed` (5A.4). Until then the refund handler is deployed but never fires, so the T5/T6 refund paths are unreachable in production — owner
 - [ ] GST credit note for a refunded invoice (5A.3) — **deferred by owner 2026-09-24**: a refunded invoice stands as-is; needs the CA's credit-note format before any code
-- [ ] Install Referrer / deep-link `ref` param read once at first launch → prefill the onboarding referral code field; server still validates, prefill never auto-submits (5B.2/5B.3). `apps/mobile` → EAS build
+- [x] Deep-link `ref` param → prefill the onboarding referral code field (5B.2/5B.3) — built 2026-10-25 (`apps/mobile/src/lib/referral-capture.ts`): the root layout captures `?ref=` from any app link into SecureStore (30-day expiry), onboarding prefills an empty field only, never auto-submits, and clears it after a successful step-1 save; the server still validates. **Not device-tested** — needs an EAS build and `kanchuki://onboarding?ref=CODE` on a logged-out phone.
+- [ ] Play Install Referrer read — not built: there is no Play listing yet (5B.1). Add it once the listing exists
 - [ ] Keyboard-overlap pass on a real iOS device (Safari + app): AI Stylist sheet, customer-web consent modal, the 9 admin dialogs on `<Sheet>`, the 36 mobile screens on `KeyboardScreen`. Procedure: `../done/post-referral-cleanup-and-launch.md` → "7B.9 procedure"

@@ -113,3 +113,17 @@
 | Sheet 3 B build | `apps/web/src/app/admin/ai-usage/page.tsx`: client-side rollup of the existing `/v1/admin/ai-usage` rows into a "Per retailer" table (tagging calls, tagging % of the plan's LIFETIME `AI_TAGGING_CALL` limit from `/v1/admin/plan-limits`, Studio shoots, estimated ₹ cost) sorted by cost, plus an "Estimated cost (all time)" card. Unit costs are the spec's (₹0.33/tagging call, ₹3.5/Studio shoot), hard-coded and labelled as estimates. Both endpoints are Super-Admin-only. |
 | Limits of the numbers | Tagging calls include colour/item detect; the real quota counter may differ. Studio has no % (its limit is monthly, the page reads all-time). Tagging cost uses the Claude figure, so it over-estimates gpt-4o-mini. |
 | Not verified | web `tsc` + eslint clean; no browser check. |
+
+---
+
+## 2026-10-25 - Referral-link prefill in the retailer app (launch 5B.2/5B.3)
+
+**Branch:** `feat/referral-link-prefill`. No migration, no API change.
+
+| Piece | Detail |
+|---|---|
+| Capture | `apps/mobile/src/lib/referral-capture.ts`: `parseReferralCode` pulls `ref` from the raw URL by regex (RN's URL polyfill has no `searchParams`), uppercases it, accepts `[A-Z0-9-]{3,20}`; stored as `{code, at}` under SecureStore key `pending_referral_code`, ignored after 30 days. `app/_layout.tsx` `AppContent` runs `Linking.useURL()` and captures on cold and warm starts, before login (onboarding is auth-protected, so expo-router can't hand it the param). |
+| Prefill | `app/onboarding.tsx` fills the referral field on mount only when it is empty, never submits, and clears the stored code after a successful step-1 save. Server validation unchanged (`retailers-profile.test.ts`, `referral-codes.test.ts`). |
+| Not built | Play Install Referrer: no Play listing yet. |
+| Tests | `referral-capture.test.ts` 14/14; mobile `tsc` shows only the 3 pre-existing typed-route errors; eslint clean on changed files. |
+| Not verified | No device run. Needs an EAS build, then `kanchuki://onboarding?ref=CODE` on a logged-out phone. |

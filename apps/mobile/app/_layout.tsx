@@ -13,6 +13,7 @@ import {
   QueryClientProvider,
   focusManager,
 } from "@tanstack/react-query";
+import * as Linking from "expo-linking";
 import { Stack } from "expo-router";
 import * as ExpoSplashScreen from "expo-splash-screen";
 import { vars } from "nativewind";
@@ -37,6 +38,7 @@ import {
   restoreQueryCache,
 } from "../src/lib/offline-persister";
 import { Sentry, initSentry } from "../src/lib/sentry";
+import { captureReferralFromUrl } from "../src/lib/referral-capture";
 import { getItem } from "../src/lib/storage";
 import {
   loadPersistedPalette,
@@ -411,6 +413,13 @@ function AppContent({
   initialPalette: PlatformTheme | null
 }) {
   const { status } = useAuth();
+
+  // 5B.2: an app link carrying ?ref=<CODE> (cold start or warm) is captured here,
+  // before login, so onboarding can prefill it. See src/lib/referral-capture.ts.
+  const incomingUrl = Linking.useURL();
+  useEffect(() => {
+    void captureReferralFromUrl(incomingUrl).catch(() => {});
+  }, [incomingUrl]);
 
   useEffect(() => {
     if (appReady && status !== "loading") {
