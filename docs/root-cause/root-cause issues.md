@@ -13,6 +13,17 @@
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
 
+## RC-084 — Web proxy routes rebuilt the upstream request/response from partial inputs
+
+- **Component:** `apps/web/src/app/api/reviews/product/[productId]/route.ts`, `apps/web/src/app/api/passport/[...path]/route.ts`.
+- **Symptom:** (1) the reviews proxy put the decoded `productId` straight into the upstream URL, so `..` segments are normalised away by `fetch`/`new URL` and the GET can be steered to any API path (`.../reviews/product/../../../admin/retailers` → `/v1/admin/retailers`). (2) the passport proxy joined several `Set-Cookie` headers into one invalid header. (3) passport responses carried no `cache-control` and lost the upstream `content-type`.
+- **Root cause:** ~25 hand-copied proxies, each deciding for itself which parts of the upstream request and response to carry over. 24 of 25 encoded the path param and `my-style` set `private, no-store`; the others did not, and nothing compared them.
+- **Fix:** `encodeURIComponent(productId)`; `getSetCookie()` loop with `append`; passport now copies `content-type` and sets `cache-control: private, no-store`.
+- **Proof:** `passport/[...path]/__tests__/route.test.ts` (+1 test: two cookies stay separate, no-store, content-type); 14/14 pass. The reviews fix is a one-token change with no test.
+- **Not verified:** no runtime check that Next decodes `%2F` in the dynamic segment (so exploitability of (1) is code-level only). T2.5 F1 (no proxy forwards the client IP, so API rate limits and `ip_hash` see the web container) is **not fixed**, pending the `trustProxy` owner decision. Report: `docs/tasks/testing/reports/T2.5-web-passport-proxy.md`.
+
+---
+
 ## RC-083 — Two /my-profile toggles were local state the server never filled
 
 - **Component:** `apps/web/src/app/(shopper)/my-profile/page.tsx`.
