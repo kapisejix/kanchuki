@@ -13,6 +13,17 @@
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
 
+## RC-083 — Two /my-profile toggles were local state the server never filled
+
+- **Component:** `apps/web/src/app/(shopper)/my-profile/page.tsx`.
+- **Symptom:** (1) "Personalized recommendations" always rendered ticked. A shopper who turned it off (PUT saved `profiling_enabled: false`) saw it on again on the next visit. (2) "WhatsApp messages from stores" was `useState(true)`, never loaded and never saved, so switching it changed nothing.
+- **Root cause:** both boxes started from a hard-coded `useState(true)`. The page already called GET `/passport/preferences`, which returns `profiling_enabled`, but it read only the nominee fields from the response. The WhatsApp box had no column, no API field and no reader at all, so it was a control with nothing behind it (RC-058 shape).
+- **Fix:** `loadProfile` sets the personalization box from `profiling_enabled`. The WhatsApp box is removed (owner decision 2026-10-25): nothing sends store WhatsApp to shoppers, so a stored flag would have no reader (RC-038). Re-add it with a real setting alongside F-035. The section heading changed from "Notifications" to "Personalization".
+- **Proof:** `my-profile/__tests__/page.test.tsx` (3). Opted-out shopper sees the box unticked, enabled shopper sees it ticked, no WhatsApp toggle. 2 of 3 fail on the unfixed page.
+- **Not verified:** no browser check.
+
+---
+
 ## RC-082 — A trial ending or a subscription lapsing never changed `retailer.plan`, so paid features stayed on forever
 
 - **Component:** `apps/api/src/jobs/plan-lapse.ts` (new), `apps/api/src/jobs/index.ts`. Every paid gate: `lib/features.ts` `hasFeature`, `lib/quota.ts` `effectiveLimit`, and ~12 direct `retailer.plan` readers.
