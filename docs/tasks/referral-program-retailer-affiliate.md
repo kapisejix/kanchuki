@@ -550,15 +550,14 @@ KNOWN TRAPS — already paid for, do not re-discover
     the committed blobs are LF (verify with git show :file | tr -cd '\\r' | wc -c == 0).
 
 OWNER ACTIONS STILL OUTSTANDING (nobody but the owner can close these)
-  1. Apply migrations 109, 110, 111 from the admin dashboard. Until then the referral tables
-     and the RLS policies do not exist in prod and T2's screen 404s its own data.
+  1. ✅ DONE 2026-09-23 — migrations 109–114 applied in prod by the owner (CLAUDE.md row 76).
   2. ✅ DONE 2026-09-28 — ran the opt-in purge-rls-live.test.ts against a real local Postgres.
      5/5 pass, all three RLS phases behaved as claimed. See §2.1 below for detail.
   3. Two RC-034 classifications were flagged rather than decided: `team-members` (staff
      account management — credential-adjacent) and `reports` (/admin/reports/gst is tax data
      but its fetches are the gated /v1/admin/gst/*). Both carry an in-file note with the
      one-line change to lock them down.
-  4. Migrations 104/105 (AI Studio engine rows) are still unapplied from an earlier session.
+  4. ✅ DONE — migrations 104/105 applied in prod (verified 2026-10-25, launch-readiness.md).
 
 START BY: re-reading §7 T6 and the §11 checklist, then planning T6 as its own commit. Before
 writing code, confirm with the owner whether T6's ledger should snapshot the plan tier at
