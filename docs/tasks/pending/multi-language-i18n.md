@@ -1,6 +1,6 @@
 # Task M: Multi-Language AI — Future Work (Gaps)
 
-**Status:** 🟡 **Partial — pending.** Core built (descriptions + campaign/WhatsApp messages in 7 languages, AI search with Hindi/Hinglish voice via keyboard dictation). **Data groundwork landed** (migration 063 + shared `SUPPORTED_LOCALES` + API `preferred_locale` field) — but ⚠️ **migration 063's applied state is unverified**: `docs/BUILD-LOG.md` §50 says "migration 063 NOT applied", while `docs/MARKETING.md` claims 063 applied. No ground-truth check exists for 063 (unlike 058, which the 2026-09-03 launch audit confirmed present). **Owner check:** `SELECT 1 FROM information_schema.columns WHERE table_name='retailers' AND column_name='preferred_locale';` — see `docs/tasks/pending/launch-readiness.md`. Full sub-tasks (native mic, PWA toggle, retailer UI toggle) deferred post-launch — no i18n infra exists to build on.
+**Status:** 🟡 **Partial — pending.** Core built (descriptions + campaign/WhatsApp messages in 7 languages, AI search with Hindi/Hinglish voice via keyboard dictation). **Data groundwork landed** (migration 063 + shared `SUPPORTED_LOCALES` + API `preferred_locale` field) — migration 063 is applied in prod (owner check 2026-09-29; re-checked read-only 2026-10-25: `retailers.preferred_locale TEXT DEFAULT 'en-IN'` present, `_prisma_migrations` row reconciled). BUILD-LOG §50's "NOT applied" is stale. Full sub-tasks (native mic, PWA toggle, retailer UI toggle) deferred post-launch — no i18n infra exists to build on.
 
 **⚠️ Correction:** The original assumption that "i18n infrastructure already in place (uses i18next / expo-localization)" is **FALSE** — verified 2026-08-18: zero i18n code exists in either app. The "Retailer app UI language toggle" and "PWA language toggle" sub-tasks require building i18n from scratch, making them significantly larger than the original "Low/Low-Medium" estimates.
 
@@ -8,7 +8,7 @@
 
 | What | Status | Detail |
 |---|---|---|
-| `retailers.preferred_locale` column | ✅ Built | Migration `063` (not yet applied). `TEXT DEFAULT 'en-IN'`. |
+| `retailers.preferred_locale` column | ✅ Built | Migration `063` (applied, verified 2026-10-25). `TEXT DEFAULT 'en-IN'`. |
 | `SUPPORTED_LOCALES` shared constant | ✅ Built | `packages/shared/src/constants/index.ts` — 8 locales with BCP-47 codes, native names, script types. |
 | `preferred_locale` in retailer API | ✅ Built | `PUT /me` accepts it (zod validated). `GET /me` returns it. |
 | i18n infrastructure | ❌ Not built | No i18next/expo-localization anywhere. Required by both PWA and retailer toggle sub-tasks. |
