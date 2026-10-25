@@ -69,11 +69,9 @@ export const passportPushRoutes: FastifyPluginAsync = async (server) => {
       existing.customer_account_id !== accountId &&
       (existing.p256dh !== keys.p256dh || existing.auth !== keys.auth)
     ) {
-      return reply
-        .status(409)
-        .send({
-          error: { code: 'ENDPOINT_TAKEN', message: 'Subscription belongs to another device' },
-        });
+      return reply.status(409).send({
+        error: { code: 'ENDPOINT_TAKEN', message: 'Subscription belongs to another device' },
+      });
     }
     await prisma.customerPushSubscription.upsert({
       where: { endpoint },
