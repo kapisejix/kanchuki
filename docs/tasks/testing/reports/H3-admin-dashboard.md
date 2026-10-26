@@ -178,3 +178,20 @@ Status: Plausible (code-only, no DB)
 ## Cross-references (not re-reported)
 
 RC-034 (the list H3-1 bypasses), RC-077, RC-087, RC-089, RC-021, RC-052, T2.4, T2.6, T2.5 F1, SC-1, H1-4…H1-9 (H1-8 = env admin session revocation), H2-1…H2-6.
+
+
+---
+
+## Fixes applied 2026-10-26 (Batch 2) — before / after
+
+Branch `fix/team-otp-fail-closed-rc085`, not committed, not deployed. Owner decisions: `SUPPORT_MANAGER` = support pages only; `change-plan` / `overrides` / `extend-trial` = Super Admin only.
+
+| Finding | RC | Before | After |
+| --- | --- | --- | --- |
+| H3-1 | RC-090 | `PUT /v1/admin/%70lan-pricing` as `MARKETING_MANAGER`: 200 (also `%71uery`, `%61udit-log`) | 403 on all three; SUPER_ADMIN still 200; malformed escape fails closed |
+| H3-2 | RC-091 | `SUPPORT_MANAGER`, unknown roles and `role: "authenticated"` tokens reached every standard-admin route; change-plan / overrides / extend-trial open to plain ADMIN | allow-list of 4 panel roles; `SUPPORT_MANAGER` limited to 13 support segments; the four money routes 403 for non-SUPER_ADMIN |
+| H3-3 | RC-092 | deactivated, deleted or demoted member kept access up to 12 h from the JWT role | DB re-read on every team-token request: inactive or missing = 403, DB role wins |
+
+Tests: new `admin-gate.test.ts` (17) and `admin-money-routes.test.ts` (8); `admin-access.test.ts` +2. Red first (14 of 25 new tests failed on the unfixed code), green after. Full API suite 2434 passed / 5 skipped; `tsc` clean.
+
+Follow-ups, not done: hide Change plan / Overrides / Extend trial in the admin UI for non-super admins; `team-helpers.ts:76` (`verifyAdminSession`) still trusts the JWT role for `/v1/team/*` admin access (same RC-092 shape, outside Batch 2); whether Railway's edge normalises `%XX`.

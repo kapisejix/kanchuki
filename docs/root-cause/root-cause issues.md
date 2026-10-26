@@ -13,6 +13,39 @@
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
 
+## RC-092 — The admin gate trusted the team token's role claim for 12 hours
+
+- **Component:** `apps/api/src/routes/admin-auth.ts` `adminSessionInfo` (team-token branch), used by `adminAuthPreHandler` and `GET /v1/admin/session`.
+- **Symptom:** a team member who was deactivated, deleted or demoted kept their old access to `/v1/admin/*` (a SUPER_ADMIN kept Super Admin) until the JWT expired, up to 12 h. The only early revoke was rotating `TEAM_JWT_SECRET`, which logs out all staff.
+- **Root cause:** the JWT role was treated as the current role. `/v1/team/*` re-reads `{ role, is_active }` from the DB on every request; the more powerful admin gate did not (two answers to one question, RC-073 shape).
+- **Fix:** `adminSessionInfo` re-reads the `TeamMember` row after `verifyTeamToken`; a missing or inactive row returns null (403 "Invalid admin key") and the DB role replaces the JWT role. The env admin key and the admin-session JWT stay DB-free.
+- **Proof:** `admin-gate.test.ts` H3-3 group (5 tests): deactivated, deleted, demoted-to-agent, demoted-super-admin (loses super-admin routes, keeps standard), and env key / session JWT never call the DB. 4 of the 5 failed before the fix.
+- **Not verified:** no live run. `GET /v1/admin/session` for a team token now touches the DB (it already passes through the preHandler); a DB outage 500s it for team sessions only. Found by H3-3, `docs/tasks/testing/reports/H3-admin-dashboard.md`.
+
+---
+
+## RC-091 — Admin panel access was a role deny-list, and money routes sat in a standard segment
+
+- **Component:** `adminAuthPreHandler` (`admin-auth.ts`), `packages/shared/src/constants/admin-access.ts`, `admin-retailers-detail.ts` (`extend-trial`, `change-plan`), `admin-retailers-management.ts` (`POST` and `DELETE` overrides).
+- **Symptom:** only `MARKETING_AGENT` and `SUPPORT_AGENT` were refused; every other role, including `SUPPORT_MANAGER`, a missing role, a future `TeamRole`, or any token that verified with a `role` claim, had full standard-admin power: give any retailer a free PRO plan, set unlimited AI quota overrides, extend trials, suspend stores.
+- **Root cause:** the gate listed who is denied instead of who is allowed, so unknown roles failed open (RC-034 shape, applied to roles). The money routes were deliberately left in `retailers` (suspend must stay standard) with no handler-level check.
+- **Fix:** `ADMIN_PANEL_ROLES` allow-list (`SUPER_ADMIN`, `ADMIN`, `MARKETING_MANAGER`, `SUPPORT_MANAGER`); `SUPPORT_MANAGER` is further limited to `SUPPORT_MANAGER_ADMIN_SEGMENTS` (a subset of the standard list, test-enforced). New `requireSuperAdmin(request)` guards extend-trial, change-plan and both overrides routes. Owner decisions 2026-10-26: support pages only; money routes Super Admin only.
+- **Proof:** `admin-gate.test.ts` H3-2 group (6 tests incl. unknown role and `authenticated` claim) and `admin-money-routes.test.ts` (4 routes x plain ADMIN refused / SUPER_ADMIN passes); `admin-access.test.ts` +1 subset check. The refusal cases failed before the fix.
+- **Owner action:** the admin UI shows Change plan / Overrides / Extend trial buttons to plain ADMIN accounts; they now 403. Hide them for non-super admins in a UI follow-up. Found by H3-2.
+
+---
+
+## RC-090 — The Super-Admin gate classified the raw URL, not the route the router matched
+
+- **Component:** `adminAuthPreHandler` and `adminPathSegment` / `isSuperAdminOnlyAdminPath` (`packages/shared/src/constants/admin-access.ts`).
+- **Symptom:** `PUT /v1/admin/%70lan-pricing` ran the `plan-pricing` handler, but the gate saw the segment `%70lan-pricing`, found it on no list, and let a non-Super-Admin through. Same for `%71uery` (replica SQL console), `%61udit-log`, `deletion-vault`, `settings`, `integrations`, `referral` and every other Super-Admin-only segment. RC-034's boundary was defeated by encoding one character.
+- **Root cause:** the classifier compared bytes that the router later decodes, so the check and the dispatch disagreed about which route this was. A security decision must be made on the same value the dispatcher used.
+- **Fix:** the preHandler classifies `request.routeOptions.url` (the matched pattern), falling back to the raw URL; `adminPathSegment` also percent-decodes, and a malformed escape returns a sentinel that `isSuperAdminOnlyAdminPath` treats as Super-Admin-only (fail closed).
+- **Proof:** `admin-gate.test.ts` H3-1 group (encoded PUT plan-pricing, POST query, GET audit-log all 403; SUPER_ADMIN still passes; standard route still passes); `admin-access.test.ts` +1 (decode, malformed escape). The encoded cases returned 200 before the fix.
+- **Not verified:** whether Railway's edge normalises `%XX` before Fastify (so prod may not have been reachable this way). `packages/shared` `dist/` must be rebuilt (`pnpm --filter @kanchuki/shared build`) for the API to see the new exports; CI does this. Found by H3-1.
+
+---
+
 ## RC-089 — The admin session HMAC secret had no empty-key check
 
 - **Component:** `apps/api/src/routes/admin-auth.ts` `sessionSecret()` (used by `signAdminSession`, `verifyAdminSession`, `adminSessionInfo`).

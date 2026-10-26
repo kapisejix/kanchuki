@@ -2,7 +2,13 @@
 // Kept here so domain modules can share them without a circular import back
 // into the aggregator. admin.ts re-exports these for back-compat.
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import { adminPathSegment, isSuperAdminOnlyAdminPath } from '@kanchuki/shared';
+import { prisma } from '@kanchuki/db';
+import {
+  ADMIN_PANEL_ROLES,
+  adminPathSegment,
+  isSuperAdminOnlyAdminPath,
+  isSupportManagerAdminPath,
+} from '@kanchuki/shared';
 import { SignJWT, jwtVerify } from 'jose';
 import { forbidden } from '../plugins/error-handler.js';
 import { verifyTeamToken } from '../plugins/team-auth.js';
@@ -77,13 +83,22 @@ export async function adminSessionInfo(
     };
   } catch {
     const teamClaims = await verifyTeamToken(token);
-    if (teamClaims) {
-      return {
-        email: teamClaims.sub,
-        role: teamClaims.role ?? 'ADMIN',
-      };
-    }
-    return null;
+    if (!teamClaims) return null;
+    // H3-3 (RC-092): the JWT role is a 12 h snapshot. Re-read the member so
+    // deactivation and demotion apply immediately, like the /v1/team routes do.
+    const member = await prisma.teamMember.findUnique({
+      where: { id: teamClaims.sub },
+      select: { role: true, is_active: true },
+    });
+    if (!member?.is_active) return null;
+    return { email: teamClaims.sub, role: member.role };
+  }
+}
+
+/** Handler-level gate for routes that live in a standard segment but are Super Admin only. */
+export function requireSuperAdmin(request: import('fastify').FastifyRequest): void {
+  if (request.adminRole !== 'SUPER_ADMIN') {
+    throw forbidden('Access denied — Super Admin privileges required');
   }
 }
 
@@ -148,7 +163,10 @@ export async function adminAuthPreHandler(
   // Skip auth for login endpoint — use request.url (raw URL) for reliability.
   // Query strings are stripped so `/v1/admin/login?x=1` can't fall through to
   // the key check (and 403) by accident.
-  if (adminPathSegment(request.url) === 'login') return;
+  // H3-1 (RC-090): classify on the matched route pattern (the router has already
+  // percent-decoded it), raw URL only as fallback.
+  const routePath = request.routeOptions?.url ?? request.url;
+  if (adminPathSegment(routePath) === 'login') return;
 
   const key = request.headers['x-admin-key'] as string | undefined;
   if (!key) throw forbidden('Invalid admin key');
@@ -158,9 +176,12 @@ export async function adminAuthPreHandler(
     throw forbidden('Invalid admin key');
   }
 
-  // Field staff / surveyors have NO admin dashboard access
-  if (info.role === 'MARKETING_AGENT' || info.role === 'SUPPORT_AGENT') {
+  // H3-2 (RC-091): allow-list, so a new or unexpected role is denied by default.
+  if (!(ADMIN_PANEL_ROLES as readonly string[]).includes(info.role)) {
     throw forbidden('Access denied — staff accounts cannot access the admin panel');
+  }
+  if (info.role === 'SUPPORT_MANAGER' && !isSupportManagerAdminPath(routePath)) {
+    throw forbidden('Access denied — support managers cannot access this admin area');
   }
 
   // Standard Admin accounts (not Super Admin) are restricted from sensitive endpoints.
@@ -170,7 +191,7 @@ export async function adminAuthPreHandler(
   // It now reads the shared, exhaustively-classified list (see
   // packages/shared/src/constants/admin-access.ts) and matches on the whole first
   // path segment, so `/v1/admin/commission-x` is not mistaken for `commission`.
-  if (info.role !== 'SUPER_ADMIN' && isSuperAdminOnlyAdminPath(request.url)) {
+  if (info.role !== 'SUPER_ADMIN' && isSuperAdminOnlyAdminPath(routePath)) {
     throw forbidden('Access denied — Super Admin privileges required');
   }
 

@@ -150,10 +150,43 @@ export const STANDARD_ADMIN_ADMIN_SEGMENTS = [
   'whatsapp-catalog', // catalog-sync monitor
 ] as const;
 
+/**
+ * Standard-admin surfaces a SUPPORT_MANAGER may also reach (H3-2). Every entry must be
+ * in {@link STANDARD_ADMIN_ADMIN_SEGMENTS}; anything else is denied by default, so a
+ * support manager can work tickets and retailer/customer records but not content,
+ * taxonomy or ops tooling. Money routes under `retailers` are gated in the handlers.
+ */
+export const SUPPORT_MANAGER_ADMIN_SEGMENTS = [
+  'alerts',
+  'bug-reports',
+  'contact-submissions',
+  'csrf-token',
+  'customers',
+  'reporting',
+  'retailers',
+  'session',
+  'stats', // dashboard renders it unconditionally
+  'support-tickets',
+  'survey',
+  'survey-submissions',
+  'usage', // dashboard renders it unconditionally
+] as const;
+
+/** Team roles that may use the admin panel at all. Anything else (incl. new roles) is denied. */
+export const ADMIN_PANEL_ROLES = [
+  'SUPER_ADMIN',
+  'ADMIN', // plain admin session JWT from signAdminSession(email, 'ADMIN')
+  'MARKETING_MANAGER',
+  'SUPPORT_MANAGER',
+] as const;
+
 /** `/v1/admin/<segment>` routes exempt from auth entirely — must stay excluded by construction. */
 export const ADMIN_AUTH_EXEMPT_SEGMENTS = ['login'] as const;
 
 export type SuperAdminOnlyAdminSegment = (typeof SUPER_ADMIN_ONLY_ADMIN_SEGMENTS)[number];
+
+/** Returned by {@link adminPathSegment} for a malformed escape; never a real segment. */
+export const INVALID_ADMIN_SEGMENT = '\u0000invalid';
 
 /**
  * First path segment after `/admin/`, or null when the path is not an admin path.
@@ -171,7 +204,15 @@ export function adminPathSegment(pathWithQuery: string | null | undefined): stri
   // a naive split on '/' would make '/v1/admin/commission?x=1' still work but
   // '/v1/admin/commission?a/b' produce a bogus segment.
   const withoutQuery = pathWithQuery.split('#')[0]?.split('?')[0] ?? '';
-  const lower = withoutQuery.toLowerCase();
+  // H3-1: the router percent-decodes before matching, so `/admin/%70lan-pricing` runs the
+  // plan-pricing handler. Decode here too. A malformed escape fails closed (see below).
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(withoutQuery);
+  } catch {
+    return INVALID_ADMIN_SEGMENT;
+  }
+  const lower = decoded.toLowerCase();
   // The API mounts the admin tree at /v1/admin; the web app serves /admin.
   const adminPath = lower.startsWith('/v1/admin/') ? lower.slice(3) : lower;
   if (!adminPath.startsWith('/admin/')) return null;
@@ -183,5 +224,13 @@ export function adminPathSegment(pathWithQuery: string | null | undefined): stri
 export function isSuperAdminOnlyAdminPath(pathWithQuery: string | null | undefined): boolean {
   const segment = adminPathSegment(pathWithQuery);
   if (!segment) return false;
+  if (segment === INVALID_ADMIN_SEGMENT) return true; // fail closed
   return (SUPER_ADMIN_ONLY_ADMIN_SEGMENTS as readonly string[]).includes(segment);
+}
+
+/** True when a SUPPORT_MANAGER may reach this admin path (allow-list; unknown/invalid = no). */
+export function isSupportManagerAdminPath(pathWithQuery: string | null | undefined): boolean {
+  const segment = adminPathSegment(pathWithQuery);
+  if (!segment) return false;
+  return (SUPPORT_MANAGER_ADMIN_SEGMENTS as readonly string[]).includes(segment);
 }
