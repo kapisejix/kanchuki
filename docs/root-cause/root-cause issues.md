@@ -13,6 +13,28 @@
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
 
+## RC-094 — The unverified QR lead form could rewrite an existing customer and forge their consent
+
+- **Component:** `apps/api/src/routes/public/public-retailers/public-retailers-leads.ts` (legacy path, `prisma.customer.upsert`).
+- **Symptom:** any anonymous caller who knew a phone number could `POST /v1/public/retailers/:slug/leads` with `{name, phone, gender, consent: true}` and overwrite that customer's name and gender in the retailer's CRM and set `consent_given = true` with a fresh `consent_at`, without owning the phone. That is forged marketing consent (DPDP) on a number that may have opted out.
+- **Root cause:** the form is unverified (no OTP), but its `upsert` `update` branch had the same write power as `create`. An unauthenticated input was allowed to change a row it did not create (RC-093 shape: the caller's claim treated as identity).
+- **Fix:** the `update` branch is `{}`. The form is create-only; an existing phone is returned as-is, so there is no "already exists" signal for probing either.
+- **Proof:** `public-retailers-leads.test.ts` "H4-4 existing phone is left untouched (empty update)" failed before the fix (the old `update` carried name, gender and consent); "new phone is still created with consent and QR_SCAN source" guards the create path.
+- **Behaviour change:** a customer re-submitting the form can no longer correct their name or refresh consent through it. A retailer fixes a wrong name in the CRM. Found by H4-4, `docs/tasks/testing/reports/H4-passport-storefront.md`.
+
+---
+
+## RC-093 — The QR passport lead path took the shopper's identity from the request body
+
+- **Component:** `public-retailers-leads.ts` (passport path) and the two web proxies `apps/web/src/app/api/[store]/leads/route.ts`, `api/store/[slug]/leads/route.ts`.
+- **Symptom:** `POST /v1/public/retailers/:slug/leads` with `{customer_account_id, share_contact: true}` and no cookie copied that shopper's real phone, name and gender into the caller's own store CRM with `consent_given = true` and `whatsapp_consent = true`, wrote a `ConsentEvent` under the victim's id, and logged a forged store visit. The "Invalid passport session" reply also confirmed which account ids exist.
+- **Root cause:** the route never called `getPassportSession`; a client-supplied id was the identity, and the only check was that the account existed. The account id leaks to staff through `/v1/customers` (H4-2), so it is not a secret.
+- **Fix:** identity now comes from the passport session cookie via `getPassportSession`; a body `customer_account_id` is ignored and a missing or deleted session is 401 `NO_SESSION` (also when only `share_contact` is sent). Both web proxies forward the `cookie` header, which they previously dropped.
+- **Proof:** four tests in `public-retailers-leads.test.ts` (no-session body id → 401 and no `customer`, `customerStoreVisit` or `consentEvent` write; `share_contact` alone → 401; a differing body id is ignored and only the session account is written) failed before the fix. The two older tests now authenticate through a mocked session.
+- **Deploy note:** API and web must ship together, or share-contact returns 401 for real shoppers. Not verified against a real browser cookie. Found by H4-1, `docs/tasks/testing/reports/H4-passport-storefront.md`.
+
+---
+
 ## RC-092 — The admin gate trusted the team token's role claim for 12 hours
 
 - **Component:** `apps/api/src/routes/admin-auth.ts` `adminSessionInfo` (team-token branch), used by `adminAuthPreHandler` and `GET /v1/admin/session`.

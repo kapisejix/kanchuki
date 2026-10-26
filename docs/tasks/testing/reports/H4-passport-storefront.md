@@ -221,4 +221,17 @@ Anonymous AI cost routes: `/stylist` 10/min (`public-stylist.ts:83`), my-style a
 
 ## Fix diffs status
 
-All diffs above are **proposed, not applied**. Waiting for "apply". Each shipped fix needs an RC-### entry (next free: RC-090).
+H4-1 and H4-4 are **applied** (Batch 3, part 1, see below). The other diffs above are still proposed, not applied. Each shipped fix needs an RC-### entry (next free: RC-095).
+
+## Fixes applied 2026-10-26 (Batch 3, part 1: H4-1, H4-4) — before / after
+
+Branch `fix/team-otp-fail-closed-rc085`, not committed, not deployed.
+
+| Finding | RC | Before | After |
+| --- | --- | --- | --- |
+| H4-1 | RC-093 | `POST …/leads` with a body `customer_account_id` and no cookie: 201, victim's phone and name written to the caller's CRM with consent, `ConsentEvent` under the victim's id | 401 `NO_SESSION`; identity only from `getPassportSession`; a differing body id is ignored; both web proxies forward the cookie |
+| H4-4 | RC-094 | legacy form for an existing phone overwrote name and gender and set `consent_given = true` | `update: {}`: existing row untouched, create path unchanged |
+
+Tests: `public-retailers-leads.test.ts` now 7 (was 2). Red first: 6 of 7 failed on the unfixed route (the two older tests only because they no longer send a body id; the four H4-1 tests and the H4-4 test are the real proof). Green after. `security.test.ts` + `admin.login.test.ts` pass; full API suite 2439 passed / 5 skipped; `tsc` clean; biome clean on the three touched files.
+
+Not verified: no browser run with a real `kanchuki_passport` cookie through the Next proxies. API and web must deploy together. `PassportSheet.tsx` still sends `customer_account_id`; the API ignores it.

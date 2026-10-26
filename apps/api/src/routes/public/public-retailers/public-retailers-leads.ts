@@ -5,6 +5,7 @@ import { isValidIndianPhone, normalizeIndianPhone } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { notFound, validationError } from '../../../plugins/error-handler.js';
+import { getPassportSession } from '../passport/passport-helpers.js';
 export const publicRetailersLeadsRoutes: FastifyPluginAsync = async (server) => {
   // ─── POST /public/retailers/:slug/leads ──────────────────────────
   // QR profile contact gate. Two paths:
@@ -28,18 +29,17 @@ export const publicRetailersLeadsRoutes: FastifyPluginAsync = async (server) => 
 
     const body = request.body as Record<string, unknown>;
 
-    // ── Passport path: verified identity ──
-    if (body.customer_account_id && typeof body.customer_account_id === 'string') {
-      const shareContact = body.share_contact === true;
-      const customerId = body.customer_account_id;
-
-      // Verify the account exists
-      const account = await prisma.customerAccount.findUnique({
-        where: { id: customerId, deleted_at: null },
-      });
-      if (!account) {
-        throw validationError('Invalid passport session');
+    // ── Passport path: identity comes from the session cookie, never the body (H4-1, RC-093) ──
+    if ('customer_account_id' in body || 'share_contact' in body) {
+      const session = await getPassportSession(request.headers.cookie || '');
+      if (!session || session.customer_account.deleted_at) {
+        return reply
+          .status(401)
+          .send({ error: { code: 'NO_SESSION', message: 'Not authenticated' } });
       }
+      const shareContact = body.share_contact === true;
+      const customerId = session.customer_account_id;
+      const account = session.customer_account;
 
       // Upsert the CustomerStoreVisit
       const existingVisit = await prisma.customerStoreVisit.findUnique({
@@ -181,13 +181,9 @@ export const publicRetailersLeadsRoutes: FastifyPluginAsync = async (server) => 
         consent_at: new Date(),
         source: 'QR_SCAN',
       },
-      update: {
-        name: legacyBody.data.name,
-        gender: legacyBody.data.gender,
-        consent_given: true,
-        consent_at: new Date(),
-        source: 'QR_SCAN',
-      },
+      // H4-4, RC-094: unverified form is create-only; never rewrite an existing
+      // customer's name, gender or consent for a phone the caller does not own.
+      update: {},
       select: { id: true, name: true },
     });
 

@@ -13,7 +13,10 @@ export async function POST(
   try {
     const res = await fetch(`${API_URL}/v1/public/retailers/${encodeURIComponent(store)}/leads`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        cookie: request.headers.get('cookie') || '',
+      },
       body: JSON.stringify(body),
     });
     const data = await res.json();
