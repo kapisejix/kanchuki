@@ -3,11 +3,13 @@
 // never supplies an identity, and a review never reads or writes the retailer CRM
 // (Customer). The review carries its own display_name.
 
+import { createHash } from 'node:crypto';
 import { prisma } from '@kanchuki/db';
+import { buildGoogleReviewUrl, normalizeIndianPhone } from '@kanchuki/shared';
 import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { notFound } from '../../plugins/error-handler.js';
-import { getPassportSession } from './passport/passport-helpers.js';
+import { COOKIE_NAME, getPassportSession } from './passport/passport-helpers.js';
 
 // ─── Schemas ─────────────────────────────────────────────────────
 
@@ -34,10 +36,34 @@ const REVIEW_SELECT = {
   created_at: true,
 } as const;
 
-// Public write with a rating recompute behind it: cap it per IP (H4-3).
-const REVIEW_RATE_LIMIT = { rateLimit: { max: 10, timeWindow: 60 * 1000 } };
+// RC-099: key the limit on the passport session, not request.ip. The web proxy forwards
+// no client IP (RC-084 / T2.5 F1), so an IP key is one bucket for every shopper.
+// No cookie -> falls back to the IP.
+function reviewLimitKey(request: FastifyRequest): string {
+  const sid = new RegExp(`(?:^|;\\s*)${COOKIE_NAME}=([^;]+)`).exec(
+    request.headers.cookie ?? '',
+  )?.[1];
+  return sid ? `sess:${createHash('sha256').update(sid).digest('hex')}` : `ip:${request.ip}`;
+}
+
+// Public write with a rating recompute behind it: cap it per session (H4-3).
+const REVIEW_RATE_LIMIT = {
+  rateLimit: { max: 10, timeWindow: 60 * 1000, keyGenerator: reviewLimitKey },
+};
+
+// RC-099: max NEW reviews per account per rolling 24 h (product + store combined).
+const MAX_NEW_REVIEWS_PER_DAY = 20;
 
 const NO_SESSION = { error: { code: 'NO_SESSION', message: 'Sign in to leave a review' } };
+const OWN_STORE = {
+  error: { code: 'OWN_STORE_REVIEW', message: "You can't review your own store" },
+};
+const DAILY_LIMIT = {
+  error: {
+    code: 'DAILY_REVIEW_LIMIT',
+    message: 'Too many new reviews today. Try again tomorrow.',
+  },
+};
 
 // ─── Helpers ─────────────────────────────────────────────────────
 
@@ -45,6 +71,30 @@ async function reviewerAccount(request: FastifyRequest) {
   const session = await getPassportSession(request.headers.cookie || '');
   if (!session || session.customer_account.deleted_at) return null;
   return session.customer_account;
+}
+
+// Stops the owner rating their own store; a friend or relative is not caught (RC-099).
+function isOwnStore(
+  accountPhone: string | null,
+  retailer: { phone: string | null; whatsapp_number: string | null },
+) {
+  const mine = normalizeIndianPhone(accountPhone ?? '');
+  return (
+    mine !== '' &&
+    [retailer.phone, retailer.whatsapp_number].some((p) => p && normalizeIndianPhone(p) === mine)
+  );
+}
+
+async function overDailyCap(accountId: string) {
+  const where = {
+    customer_account_id: accountId,
+    created_at: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+  };
+  const [p, s] = await Promise.all([
+    prisma.productReview.count({ where }),
+    prisma.storeReview.count({ where }),
+  ]);
+  return p + s >= MAX_NEW_REVIEWS_PER_DAY;
 }
 
 async function recomputeProductRating(productId: string) {
@@ -75,10 +125,6 @@ async function recomputeStoreRating(retailerId: string) {
       rating_count: agg._count.rating,
     },
   });
-}
-
-function buildGoogleReviewUrl(placeId: string): string {
-  return `https://search.google.com/local/writereview?placeid=${encodeURIComponent(placeId)}`;
 }
 
 // Google only lets the customer write their own review, signed in to Google, so we
@@ -132,6 +178,28 @@ export const publicReviewsRoutes: FastifyPluginAsync = async (server) => {
       });
       if (!product) throw notFound('Product');
 
+      const retailer = await prisma.retailer.findUnique({
+        where: { id: product.retailer_id },
+        select: { phone: true, whatsapp_number: true, google_place_id: true },
+      });
+      if (retailer && isOwnStore(account.phone, retailer)) {
+        return reply.status(403).send(OWN_STORE);
+      }
+
+      // Edits never count against the daily cap, so check "is this an edit" first.
+      const existing = await prisma.productReview.findUnique({
+        where: {
+          product_id_customer_account_id: {
+            product_id: product.id,
+            customer_account_id: account.id,
+          },
+        },
+        select: { id: true },
+      });
+      if (!existing && (await overDailyCap(account.id))) {
+        return reply.status(429).send(DAILY_LIMIT);
+      }
+
       // One review per account per product; a shopper only ever edits their own.
       const review = await prisma.productReview.upsert({
         where: {
@@ -158,12 +226,6 @@ export const publicReviewsRoutes: FastifyPluginAsync = async (server) => {
 
       // Recompute denormalized rating
       await recomputeProductRating(product.id);
-
-      // Get retailer's google_place_id for routing
-      const retailer = await prisma.retailer.findUnique({
-        where: { id: product.retailer_id },
-        select: { google_place_id: true },
-      });
 
       const routing = getReviewRouting(body.rating, retailer?.google_place_id);
 
@@ -199,9 +261,23 @@ export const publicReviewsRoutes: FastifyPluginAsync = async (server) => {
       // Verify retailer exists
       const retailer = await prisma.retailer.findUnique({
         where: { id: body.retailer_id, deleted_at: null },
-        select: { id: true, google_place_id: true },
+        select: { id: true, phone: true, whatsapp_number: true, google_place_id: true },
       });
       if (!retailer) throw notFound('Retailer');
+      if (isOwnStore(account.phone, retailer)) return reply.status(403).send(OWN_STORE);
+
+      const existing = await prisma.storeReview.findUnique({
+        where: {
+          retailer_id_customer_account_id: {
+            retailer_id: retailer.id,
+            customer_account_id: account.id,
+          },
+        },
+        select: { id: true },
+      });
+      if (!existing && (await overDailyCap(account.id))) {
+        return reply.status(429).send(DAILY_LIMIT);
+      }
 
       const review = await prisma.storeReview.upsert({
         where: {

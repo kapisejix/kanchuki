@@ -265,4 +265,15 @@ Tests: new `public-reviews.test.ts` 17 cases, 15 red before the fix, 17/17 after
 
 Other changes: web proxy `/api/reviews/product` forwards the cookie; `ReviewForm` loses the phone field and the "consent to being contacted" checkbox (nothing is shared with the retailer any more) and shows a sign-in prompt on 401; moderation screens (mobile `growth/ratings.tsx`, admin `ratings/page.tsx`) show `display_name ?? customer.name`.
 
+### Follow-up 2026-10-26 (RC-099, separate commit from 9104c495) — before / after
+
+| Gap | Before | After |
+| --- | --- | --- |
+| Rate-limit key | `request.ip`; the web proxy forwards no client IP (RC-084), so 11 reviews/min site-wide gave every shopper a 429 | sha256 of the `kanchuki_passport` cookie, `ip:` fallback when no cookie; two cookies get separate buckets, the 11th on one cookie is 429 |
+| Erasure (DPDP) | `POST /passport/delete` soft-deleted the account; reviews kept `display_name`, `comment`, `customer_account_id` | `updateMany` on both review tables nulls the three fields for that account only; stars stay as anonymous ratings |
+| Volume | unlimited distinct products/stores per account | 20 NEW reviews per account per rolling 24 h (product + store combined, from `created_at`); edits exempt; 429 `DAILY_REVIEW_LIMIT` |
+| Own store | owner could rate their own store | 403 `OWN_STORE_REVIEW` when the account phone matches the retailer `phone` or `whatsapp_number` (normalised). Does not stop a friend or relative |
+
+Tests: `public-reviews.test.ts` 17 → 29 (8 new cases red before the fix), new `passport-data.test.ts` 2 (1 red before). `security.test.ts` + `admin.login.test.ts` 16/16; full API suite 2487 passed / 5 skipped (was 2473 / 5; the one failure on the first full run was the existing `passport-export-delete.test.ts` mock lacking the review `updateMany`, fixed); API tsc clean; biome clean on the touched files. Not committed, not deployed. No migration (139 already covers the columns).
+
 Not done / unverified: no browser or device run. Old phone-keyed rows are not attributed to any account, so a shopper who reviewed before can leave a second review. There is no store-review UI in the web app, so `POST /reviews/store` is fixed at the API only. `/my-profile` as the sign-in target is assumed, not clicked through. Mobile `tsc` shows 3 pre-existing typed-route errors (`/enquiries`, `/enquiry-try-on`) outside these files.

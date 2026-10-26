@@ -34,6 +34,17 @@
 
 ---
 
+## RC-099 — Review hardening: IP-keyed limit was one shared bucket, erasure left the reviewer's name, no per-account cap, owner could rate own store
+
+- **Component:** `apps/api/src/routes/public/public-reviews.ts`, `apps/api/src/routes/public/passport/passport-data.ts` (`POST /passport/delete`).
+- **Symptom:** four gaps left by RC-098's review (automated security review of `9104c495`). (1) The 10/min review limit keyed on `request.ip`; the web proxy forwards no client IP (RC-084 / T2.5 F1), so in production it was ONE bucket for every shopper: 11 reviews a minute site-wide gave everyone a 429, and one signed-in attacker could starve it. (2) After "delete my passport" the review rows kept `display_name` (a copy of the account name or a typed name), the free-text `comment` and `customer_account_id`. (3) No ceiling on how many different products/stores one account could rate. (4) A retailer could rate their own store from a shopper account.
+- **Root cause:** (1) a rate-limit key chosen for a world where the client IP is real, while the proxy hides it (RC-079 / RC-084 family). (2) The erasure was written for the columns that existed on `CustomerAccount`; reviews copy PII into their own table, and the FK `ON DELETE SET NULL` only fires on a hard delete, but `/passport/delete` is a soft delete (RC-044 shape: a promise made in one place, no code on the other side). (3)/(4) RC-098 made identity a verified account but put no limit on what one account may do.
+- **Fix:** (1) per-route `keyGenerator`: sha256 of the `kanchuki_passport` cookie value, `ip:<ip>` when there is no cookie; still 10 per 60 s. (2) `/passport/delete` runs `updateMany` on `product_reviews` and `store_reviews` for the account with `{ display_name: null, comment: null, customer_account_id: null }`; stars stay as anonymous ratings, so no ratings recompute. (3) `MAX_NEW_REVIEWS_PER_DAY = 20` per account per rolling 24 h, product + store combined, counted from `created_at` in the DB (no Redis); edits of an existing review do not count and still work at the cap; over it: 429 `DAILY_REVIEW_LIMIT`. (4) 403 `OWN_STORE_REVIEW` when the session account's phone equals the retailer's `phone` or `whatsapp_number` (both sides through `normalizeIndianPhone`).
+- **Proof:** `public-reviews.test.ts` 17 → 29 cases; 8 of the 12 new cases (separate buckets per cookie, the 429 daily cap, own-store 403 on `phone` and on `whatsapp_number`, on both routes) were red before the fix, and the cases that passed before (19 allowed, edit at the cap) pin behaviour the fix must keep. New `passport/__tests__/passport-data.test.ts` (delete clears the three fields on BOTH tables for the right account only; 401 touches nothing), 1 red before. `passport-export-delete.test.ts` mock gained the review `updateMany`.
+- **Limits, stated plainly:** the own-store guard catches only a shared number; it does not stop a friend, relative or staff member from rating the store. The session-keyed limit is per browser session, so a determined person with many OTP-verified accounts still gets 10/min each; the 20/day cap is per account. The IP-forwarding decision (RC-084) stays open. Found by the automated security review of RC-098.
+
+---
+
 ## RC-098 — Reviews were keyed on an unverified phone and wrote to the retailer CRM
 
 - **Component:** `apps/api/src/routes/public/public-reviews.ts`, `ProductReview` / `StoreReview` (migration 139), `apps/web` `ReviewForm` + `/api/reviews/product` proxy.

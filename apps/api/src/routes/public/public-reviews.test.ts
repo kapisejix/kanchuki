@@ -19,6 +19,10 @@ const m = vi.hoisted(() => ({
   prAgg: vi.fn(),
   srAgg: vi.fn(),
   prFindMany: vi.fn(),
+  prFindUnique: vi.fn(),
+  srFindUnique: vi.fn(),
+  prCount: vi.fn(),
+  srCount: vi.fn(),
   customerAny: vi.fn(),
 }));
 
@@ -26,16 +30,36 @@ vi.mock('@kanchuki/db', () => ({
   prisma: {
     product: { findUnique: m.productFind, update: m.productUpdate },
     retailer: { findUnique: m.retailerFind, update: m.retailerUpdate },
-    productReview: { upsert: m.prUpsert, aggregate: m.prAgg, findMany: m.prFindMany },
-    storeReview: { upsert: m.srUpsert, aggregate: m.srAgg },
+    productReview: {
+      upsert: m.prUpsert,
+      aggregate: m.prAgg,
+      findMany: m.prFindMany,
+      findUnique: m.prFindUnique,
+      count: m.prCount,
+    },
+    storeReview: {
+      upsert: m.srUpsert,
+      aggregate: m.srAgg,
+      findUnique: m.srFindUnique,
+      count: m.srCount,
+    },
     customer: { upsert: m.customerAny, update: m.customerAny, create: m.customerAny },
   },
 }));
-vi.mock('./passport/passport-helpers.js', () => ({ getPassportSession: m.session }));
+vi.mock('./passport/passport-helpers.js', () => ({
+  getPassportSession: m.session,
+  COOKIE_NAME: 'kanchuki_passport',
+}));
 
 const SESSION = {
   customer_account_id: 'ca_1',
-  customer_account: { id: 'ca_1', name: 'Asha', deleted_at: null },
+  customer_account: { id: 'ca_1', name: 'Asha', phone: '+919000000000', deleted_at: null },
+};
+const RETAILER = {
+  id: 'ret1',
+  google_place_id: 'PLACE',
+  phone: '9111111111',
+  whatsapp_number: null,
 };
 const REVIEW_ROW = {
   id: 'r1',
@@ -54,26 +78,37 @@ async function buildApp(withLimit = false) {
   return app;
 }
 
-async function post(url: string, payload: object, app?: Awaited<ReturnType<typeof buildApp>>) {
+async function post(
+  url: string,
+  payload: object,
+  app?: Awaited<ReturnType<typeof buildApp>>,
+  cookie = 'x=1',
+) {
   const a = app ?? (await buildApp());
-  return a.inject({ method: 'POST', url: `/v1/public${url}`, payload, headers: { cookie: 'x=1' } });
+  return a.inject({ method: 'POST', url: `/v1/public${url}`, payload, headers: { cookie } });
 }
 
 beforeEach(() => {
   vi.resetAllMocks();
   m.session.mockResolvedValue(SESSION);
   m.productFind.mockResolvedValue({ id: 'p1', retailer_id: 'ret1' });
-  m.retailerFind.mockResolvedValue({ id: 'ret1', google_place_id: 'PLACE' });
+  m.retailerFind.mockResolvedValue(RETAILER);
+  m.prFindUnique.mockResolvedValue(null);
+  m.srFindUnique.mockResolvedValue(null);
+  m.prCount.mockResolvedValue(0);
+  m.srCount.mockResolvedValue(0);
   m.prUpsert.mockResolvedValue(REVIEW_ROW);
   m.srUpsert.mockResolvedValue(REVIEW_ROW);
   m.prAgg.mockResolvedValue({ _avg: { rating: 5 }, _count: { rating: 1 } });
   m.srAgg.mockResolvedValue({ _avg: { rating: 5 }, _count: { rating: 1 } });
 });
 
-describe.each([
-  ['/reviews/product', { product_id: 'p1', rating: 5 }, 'prUpsert'],
-  ['/reviews/store', { retailer_id: 'ret1', rating: 5 }, 'srUpsert'],
-] as const)('POST %s', (url, base, upsertKey) => {
+const ROUTES = [
+  ['/reviews/product', { product_id: 'p1', rating: 5 }, 'prUpsert', 'prFindUnique'],
+  ['/reviews/store', { retailer_id: 'ret1', rating: 5 }, 'srUpsert', 'srFindUnique'],
+] as const;
+
+describe.each(ROUTES)('POST %s', (url, base, upsertKey, findKey) => {
   it('401 NO_SESSION without a passport session, writes nothing', async () => {
     m.session.mockResolvedValue(null);
     const res = await post(url, { ...base, phone: '9000000001' });
@@ -122,6 +157,55 @@ describe.each([
     expect(codes[10]).toBe(429);
   });
 
+  it('rate limit is per session: another cookie has its own bucket', async () => {
+    const app = await buildApp(true);
+    const a: number[] = [];
+    for (let i = 0; i < 10; i++) {
+      a.push((await post(url, base, app, 'kanchuki_passport=A')).statusCode);
+    }
+    const b = (await post(url, base, app, 'kanchuki_passport=B')).statusCode;
+    const a11 = (await post(url, base, app, 'kanchuki_passport=A')).statusCode;
+    await app.close();
+    expect(a.every((c) => c === 201)).toBe(true);
+    expect(b).toBe(201);
+    expect(a11).toBe(429);
+  });
+
+  it('429 DAILY_REVIEW_LIMIT at 20 new reviews in 24 h (product + store combined)', async () => {
+    m.prCount.mockResolvedValue(12);
+    m.srCount.mockResolvedValue(8);
+    const res = await post(url, base);
+    expect(res.statusCode).toBe(429);
+    expect(res.json().error.code).toBe('DAILY_REVIEW_LIMIT');
+    expect(m[upsertKey]).not.toHaveBeenCalled();
+  });
+
+  it('19 in 24 h is still allowed', async () => {
+    m.prCount.mockResolvedValue(11);
+    m.srCount.mockResolvedValue(8);
+    expect((await post(url, base)).statusCode).toBe(201);
+  });
+
+  it('editing an existing review works at the cap', async () => {
+    m.prCount.mockResolvedValue(20);
+    m[findKey].mockResolvedValue({ id: 'r1' });
+    expect((await post(url, base)).statusCode).toBe(201);
+  });
+
+  it('403 OWN_STORE_REVIEW when the account phone is the retailer phone', async () => {
+    m.retailerFind.mockResolvedValue({ ...RETAILER, phone: '9000000000' });
+    const res = await post(url, base);
+    expect(res.statusCode).toBe(403);
+    expect(res.json().error.code).toBe('OWN_STORE_REVIEW');
+    expect(m[upsertKey]).not.toHaveBeenCalled();
+  });
+
+  it('403 OWN_STORE_REVIEW when it matches whatsapp_number', async () => {
+    m.retailerFind.mockResolvedValue({ ...RETAILER, whatsapp_number: '+91 90000 00000' });
+    expect((await post(url, base)).statusCode).toBe(403);
+    expect(m[upsertKey]).not.toHaveBeenCalled();
+  });
+
   it('offers the Google link for ANY rating when the store has a place id', async () => {
     const res5 = await post(url, { ...base, rating: 5 });
     const res2 = await post(url, { ...base, rating: 2 });
@@ -134,7 +218,7 @@ describe.each([
   });
 
   it('no Google link without a place id', async () => {
-    m.retailerFind.mockResolvedValue({ id: 'ret1', google_place_id: null });
+    m.retailerFind.mockResolvedValue({ ...RETAILER, google_place_id: null });
     const res = await post(url, base);
     expect(res.json().routing.url).toBeUndefined();
   });
