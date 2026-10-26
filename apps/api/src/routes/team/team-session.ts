@@ -12,6 +12,7 @@ import {
   verifyStoredOtp,
 } from '../../lib/msg91-otp.js';
 import {
+  AppError,
   forbidden,
   notFound,
   serviceUnavailable,
@@ -86,21 +87,58 @@ async function consumeTeamCode(key: string): Promise<string | null> {
   }
 }
 
+// A SUPER_ADMIN/ADMIN team token is an admin session, so these routes get the
+// same per-IP limit as /admin/login (S-003). The per-IP key is spoofable while
+// trustProxy is `true` (T2.5 F1), so password login also has a per-email lock.
+const TEAM_AUTH_RATE_LIMIT = { config: { rateLimit: { max: 5, timeWindow: 15 * 60 * 1000 } } };
+const TEAM_CODE_RATE_LIMIT = { config: { rateLimit: { max: 10, timeWindow: 15 * 60 * 1000 } } };
+const LOGIN_MAX_FAILURES = 5;
+const LOGIN_LOCK_SEC = 15 * 60;
+const loginFailKey = (email: string) => `team:login-fail:${email}`;
+
+// ponytail: counter errors fail open — the per-route limit still applies, and
+// failing closed would lock every team member out during a Redis outage.
+async function loginFailures(email: string): Promise<number> {
+  try {
+    const redis = getSessionRedis();
+    await awaitRedisReady(redis);
+    return Number(await redis.get(loginFailKey(email))) || 0;
+  } catch {
+    return 0;
+  }
+}
+
+async function recordLoginFailure(email: string): Promise<void> {
+  try {
+    const redis = getSessionRedis();
+    await awaitRedisReady(redis);
+    const count = await redis.incr(loginFailKey(email));
+    if (count === 1) await redis.expire(loginFailKey(email), LOGIN_LOCK_SEC);
+  } catch {
+    // see loginFailures
+  }
+}
+
 export const teamSessionRoutes: FastifyPluginAsync = async (server) => {
   server.addHook('preHandler', teamAuthPreHandler);
 
   // ─── POST /team/login (Password Login) ───────────────────────────
-  server.post('/login', async (request) => {
+  server.post('/login', TEAM_AUTH_RATE_LIMIT, async (request) => {
     const body = LoginSchema.safeParse(request.body);
     if (!body.success)
       throw validationError(body.error.issues[0]?.message ?? 'Invalid credentials');
 
-    const member = await prisma.teamMember.findUnique({
-      where: { email: body.data.email.toLowerCase() },
-    });
+    const email = body.data.email.toLowerCase();
+    if ((await loginFailures(email)) >= LOGIN_MAX_FAILURES) {
+      throw new AppError('RATE_LIMITED', 'Too many failed attempts. Try again in 15 minutes.', 429);
+    }
+
+    const member = await prisma.teamMember.findUnique({ where: { email } });
     if (!member || !member.is_active || !verifyPassword(body.data.password, member.password_hash)) {
+      await recordLoginFailure(email);
       throw forbidden('Invalid credentials');
     }
+    await consumeTeamCode(loginFailKey(email)); // reset the counter on success
 
     const token = await signTeamToken({ sub: member.id, role: member.role });
     return {
@@ -118,7 +156,7 @@ export const teamSessionRoutes: FastifyPluginAsync = async (server) => {
   });
 
   // ─── POST /team/otp/send (Send OTP via Phone or Email) ───────────
-  server.post('/otp/send', async (request) => {
+  server.post('/otp/send', TEAM_AUTH_RATE_LIMIT, async (request) => {
     const body = SendOtpSchema.safeParse(request.body);
     if (!body.success) throw validationError('Invalid phone or email', 'identifier');
 
@@ -216,7 +254,7 @@ export const teamSessionRoutes: FastifyPluginAsync = async (server) => {
   });
 
   // ─── POST /team/otp/verify (Verify OTP & Mint Team JWT) ──────────
-  server.post('/otp/verify', async (request) => {
+  server.post('/otp/verify', TEAM_CODE_RATE_LIMIT, async (request) => {
     const body = VerifyOtpSchema.safeParse(request.body);
     if (!body.success) throw validationError('Invalid OTP code or identifier');
 
@@ -280,7 +318,7 @@ export const teamSessionRoutes: FastifyPluginAsync = async (server) => {
   });
 
   // ─── POST /team/forgot-password ──────────────────────────────────
-  server.post('/forgot-password', async (request) => {
+  server.post('/forgot-password', TEAM_AUTH_RATE_LIMIT, async (request) => {
     const body = ForgotPasswordSchema.safeParse(request.body);
     if (!body.success) throw validationError('Invalid email address', 'email');
 
@@ -317,7 +355,7 @@ export const teamSessionRoutes: FastifyPluginAsync = async (server) => {
   });
 
   // ─── POST /team/reset-password ───────────────────────────────────
-  server.post('/reset-password', async (request) => {
+  server.post('/reset-password', TEAM_CODE_RATE_LIMIT, async (request) => {
     const body = ResetPasswordSchema.safeParse(request.body);
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid input');
 

@@ -123,6 +123,19 @@ vi.mock('ioredis', () => {
       redisStore.set(key, value);
       return 'OK';
     }
+    async get(key: string) {
+      if (redisFail.on) throw new Error("Stream isn't writeable");
+      return redisStore.get(key) ?? null;
+    }
+    async incr(key: string) {
+      if (redisFail.on) throw new Error("Stream isn't writeable");
+      const next = Number(redisStore.get(key) ?? 0) + 1;
+      redisStore.set(key, String(next));
+      return next;
+    }
+    async expire() {
+      return 1;
+    }
     async getdel(key: string) {
       if (redisFail.on) throw new Error("Stream isn't writeable");
       const value = redisStore.get(key) ?? null;
@@ -164,6 +177,28 @@ describe('POST /team/login', () => {
       payload: { email: 'a@kanchuki.app', password: 'wrong' },
     });
     expect(res.statusCode).toBe(403);
+    await app.close();
+  });
+
+  // H1-2: per-email lock, so rotating IPs can't brute-force an admin password.
+  it('locks the email after 5 failures, even with the right password', async () => {
+    mockTeamMemberFindUnique.mockResolvedValue({
+      id: 'x',
+      name: 'Admin One',
+      email: 'a@kanchuki.app',
+      password_hash: hashPassword('correct-horse'),
+      role: 'SUPER_ADMIN',
+      is_active: true,
+    });
+    const app = await buildApp();
+    const login = (password: string) =>
+      app.inject({
+        method: 'POST',
+        url: '/v1/team/login',
+        payload: { email: 'A@kanchuki.app', password },
+      });
+    for (let i = 0; i < 5; i += 1) expect((await login('wrong')).statusCode).toBe(403);
+    expect((await login('correct-horse')).statusCode).toBe(429);
     await app.close();
   });
 

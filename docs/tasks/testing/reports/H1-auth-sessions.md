@@ -291,3 +291,11 @@ Re-run:
 - `npx biome check` on the 3 changed files: clean
 
 Not done: no live run against a local API + Redis; nothing committed or pushed. Owner action for RC-086: limit or purge Railway log retention. H1-2 and H1-4 through H1-9 are still open.
+
+## Applied 2026-10-26: H1-2 (RC-087)
+
+| Before | After |
+| --- | --- |
+| `/v1/team/login`, `/otp/send`, `/otp/verify`, `/forgot-password`, `/reset-password` had only the global 200/min/IP limit | Per-route limits: 5/15 min (login, otp/send, forgot), 10/15 min (otp/verify, reset). Password login also has a per-email lock: 5 failures → 429 for 15 min, cleared on success. Counter errors fail open (the route limit still applies) |
+
+Re-run: `team.test.ts` + `admin.login.test.ts` + `security.test.ts`: 48/48 (+1 lock test). `tsc` and `biome` clean. The route `config.rateLimit` is not covered by tests (the test app does not register the plugin). The per-IP part stays weak until T2.5 F1 (`trustProxy`) is decided.

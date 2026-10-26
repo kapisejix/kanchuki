@@ -13,6 +13,17 @@
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
 
+## RC-087 — Team login had no route limit, so it sidestepped the admin login limit
+
+- **Component:** `apps/api/src/routes/team/team-session.ts` (`/v1/team/login`, `/otp/send`, `/otp/verify`, `/forgot-password`, `/reset-password`).
+- **Symptom:** `/admin/login` allows 5 tries per 15 min per IP (S-003), but `/v1/team/login` had only the global 200/min/IP. A SUPER_ADMIN/ADMIN team token is an admin session, so admin passwords could be brute-forced through the team route.
+- **Root cause:** the limit was written on one login route by hand, not on the identity it protects. Two routes mint admin sessions and only one had the limit. The per-IP key is also spoofable while `trustProxy` is `true` (T2.5 F1).
+- **Fix:** per-route limits (`TEAM_AUTH_RATE_LIMIT` 5/15 min on login, otp/send, forgot; `TEAM_CODE_RATE_LIMIT` 10/15 min on otp/verify, reset), plus a per-email lock on password login: 5 failures → 429 for 15 min, counter cleared on success. Counter errors fail open (`ponytail:` comment): the route limit still applies, and failing closed would lock the team out during a Redis outage.
+- **Proof:** `routes/team.test.ts` +1: 5 wrong passwords, then the right one is 429 (mixed-case email). team + admin.login + security: 48/48; tsc and biome clean.
+- **Not verified:** the route `config.rateLimit` is not exercised in tests (`buildApp` does not register `@fastify/rate-limit`); no live run. T2.5 F1 (`trustProxy`) still open. Found by H1-2, `docs/tasks/testing/reports/H1-auth-sessions.md`.
+
+---
+
 ## RC-086 — The MSG91 send path logged every OTP in plaintext
 
 - **Component:** `apps/api/src/lib/msg91-otp.ts` `sendOtpViaMsg91` (used by retailer `/v1/auth/otp/send`, team `/v1/team/otp/send`, staff invite, passport, WhatsApp-number OTP).

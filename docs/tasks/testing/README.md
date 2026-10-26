@@ -33,7 +33,7 @@ T1.1 → T2.1 → T3.1 first (typecheck/lint baselines, so later tasks start fro
 - Never attack production. Local dev or staging only.
 - No prod env vars, no migrations, no `railway up`, no destructive SQL.
 - Findings that include real secrets: redact the value, record only the file/line.
-- Every bug fix gets an `RC-###` entry (`docs/root-cause/root-cause issues.md`) + row in CLAUDE.md tracker. Next free ID: RC-087.
+- Every bug fix gets an `RC-###` entry (`docs/root-cause/root-cause issues.md`) + row in CLAUDE.md tracker. Next free ID: RC-088.
 
 ## Tools per task type
 
