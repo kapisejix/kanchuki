@@ -299,3 +299,14 @@ Not done: no live run against a local API + Redis; nothing committed or pushed. 
 | `/v1/team/login`, `/otp/send`, `/otp/verify`, `/forgot-password`, `/reset-password` had only the global 200/min/IP limit | Per-route limits: 5/15 min (login, otp/send, forgot), 10/15 min (otp/verify, reset). Password login also has a per-email lock: 5 failures → 429 for 15 min, cleared on success. Counter errors fail open (the route limit still applies) |
 
 Re-run: `team.test.ts` + `admin.login.test.ts` + `security.test.ts`: 48/48 (+1 lock test). `tsc` and `biome` clean. The route `config.rateLimit` is not covered by tests (the test app does not register the plugin). The per-IP part stays weak until T2.5 F1 (`trustProxy`) is decided.
+
+## Applied 2026-10-26: H1-5 (RC-088), H1-6 (RC-089)
+
+| ID | Before | After |
+| --- | --- | --- |
+| H1-5 | `OTP_TEST_PHONES=*` let any phone in. An unset list used 7 hard-coded numbers. No production guard. The team route had a second copy | One `otpTestBypassActive` in `lib/msg91-otp.ts`, used by `/v1/auth` and `/v1/team`. Env list only, no wildcard, and ignored in production unless `OTP_TEST_BYPASS_ALLOW_PROD=1` |
+| H1-6 | Empty `ADMIN_API_KEY` made the session secret `admin-session:`, so tokens could be forged | `sessionSecret()` throws on a blank key, and callers fail closed. No length minimum (the prod key length is unknown) |
+
+Re-run: 10 files (auth-otp-bypass, auth-msg91, auth-review-bypass, auth-staff-invite, auth-team, admin.login, team, security, msg91-otp, public/staff-invite): all pass after the H1-6 test was added (138/138 before it). `tsc` and `biome` clean. The H1-6 test was also run with the fix stashed: it **fails** (the forged token is accepted), which confirms the bug at test level.
+
+Owner action (H1-5): if prod uses the bypass for demos, set `OTP_TEST_BYPASS_ALLOW_PROD=1` and an explicit phone list before this deploys.

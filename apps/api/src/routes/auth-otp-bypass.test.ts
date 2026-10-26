@@ -56,7 +56,8 @@ vi.mock('../index.js', () => ({
   },
 }));
 
-vi.mock('../lib/msg91-otp.js', () => ({
+vi.mock('../lib/msg91-otp.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../lib/msg91-otp.js')>()),
   isMsg91OtpConfigured: mockIsMsg91Configured,
   sendOtpViaMsg91: mockSendOtpViaMsg91,
   verifyMsg91WidgetToken: mockVerifyWidgetToken,
@@ -126,6 +127,48 @@ describe('POST /auth/otp/send — test bypass', () => {
     expect(res.json().data.message).toBe('OTP sent');
     expect(mockSendOtpViaMsg91).not.toHaveBeenCalled();
     await app.close();
+  });
+
+  // RC-088: no prod bypass without an explicit second flag, no wildcard, no default list.
+  it.each([
+    ['NODE_ENV=production without the allow flag', { NODE_ENV: 'production' }, TEST_PHONE],
+    ['a "*" wildcard list', { OTP_TEST_PHONES: '*' }, '9876543210'],
+    ['an unset list (no default phones)', { OTP_TEST_PHONES: '' }, '9876543210'],
+  ])('does not bypass with %s', async (_label, env, phone) => {
+    const saved = process.env.NODE_ENV;
+    Object.assign(process.env, env);
+    try {
+      const app = await buildApp();
+      const res = await app.inject({
+        method: 'POST',
+        url: '/v1/auth/otp/send',
+        payload: { phone },
+      });
+      expect(res.json().data.bypass).toBeUndefined();
+      expect(mockSendOtpViaMsg91).toHaveBeenCalled();
+      await app.close();
+    } finally {
+      process.env.NODE_ENV = saved;
+    }
+  });
+
+  it('bypasses in production only with OTP_TEST_BYPASS_ALLOW_PROD=1', async () => {
+    const saved = process.env.NODE_ENV;
+    process.env.NODE_ENV = 'production';
+    process.env.OTP_TEST_BYPASS_ALLOW_PROD = '1';
+    try {
+      const app = await buildApp();
+      const res = await app.inject({
+        method: 'POST',
+        url: '/v1/auth/otp/send',
+        payload: { phone: TEST_PHONE },
+      });
+      expect(res.json().data.bypass).toBe(true);
+      await app.close();
+    } finally {
+      process.env.NODE_ENV = saved;
+      delete process.env.OTP_TEST_BYPASS_ALLOW_PROD;
+    }
   });
 
   it('falls through to the real MSG91 path for a phone NOT on the whitelist', async () => {

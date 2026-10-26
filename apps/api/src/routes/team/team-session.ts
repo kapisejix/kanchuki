@@ -8,6 +8,7 @@ import { sendEmail, sendTeamPasswordResetEmail } from '../../lib/email.js';
 import {
   awaitRedisReady,
   isMsg91OtpConfigured,
+  otpTestBypassActive,
   sendOtpViaMsg91,
   verifyStoredOtp,
 } from '../../lib/msg91-otp.js';
@@ -20,19 +21,6 @@ import {
 } from '../../plugins/error-handler.js';
 import { hashPassword, signTeamToken, verifyPassword } from '../../plugins/team-auth.js';
 import { teamAuthPreHandler } from './team-helpers.js';
-
-function teamOtpTestBypassActive(phone: string): boolean {
-  if (process.env.OTP_TEST_BYPASS !== '1') return false;
-  const raw = process.env.OTP_TEST_PHONES ?? '';
-  const allowed = new Set(
-    raw
-      .split(',')
-      .map((p) => p.trim())
-      .filter(Boolean)
-      .map((p) => normalizeIndianPhone(p)),
-  );
-  return allowed.has(phone);
-}
 
 const LoginSchema = z.object({
   email: z.string().email(),
@@ -193,7 +181,7 @@ export const teamSessionRoutes: FastifyPluginAsync = async (server) => {
 
     // If member has a phone number matching or configured, send SMS/WhatsApp OTP
     if (normalizedPhone && member.phone) {
-      if (teamOtpTestBypassActive(member.phone)) {
+      if (otpTestBypassActive(member.phone)) {
         return {
           data: {
             message: 'OTP sent (test bypass)',
@@ -283,7 +271,7 @@ export const teamSessionRoutes: FastifyPluginAsync = async (server) => {
     let verified = false;
 
     // Test bypass check
-    if (member.phone && teamOtpTestBypassActive(member.phone)) {
+    if (member.phone && otpTestBypassActive(member.phone)) {
       verified = true;
     } else if (normalizedPhone && member.phone) {
       if (isMsg91OtpConfigured()) {

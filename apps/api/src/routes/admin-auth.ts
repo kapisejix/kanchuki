@@ -30,6 +30,10 @@ export function validAdminKey(provided: string | undefined): boolean {
 // the raw static key too — scripts/tests/direct API callers are unaffected.
 function sessionSecret(): Uint8Array {
   const key = process.env.ADMIN_API_KEY ?? '';
+  // RC-089: an empty key would make the HMAC secret the public string
+  // "admin-session:", so anyone could forge a SUPER_ADMIN session. Every
+  // verify caller catches this throw and falls through to the team token check.
+  if (!key.trim()) throw new Error('ADMIN_API_KEY not configured');
   return new TextEncoder().encode(`admin-session:${key}`);
 }
 

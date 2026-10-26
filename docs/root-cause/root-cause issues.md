@@ -13,6 +13,28 @@
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
 
+## RC-089 — The admin session HMAC secret had no empty-key check
+
+- **Component:** `apps/api/src/routes/admin-auth.ts` `sessionSecret()` (used by `signAdminSession`, `verifyAdminSession`, `adminSessionInfo`).
+- **Symptom:** with `ADMIN_API_KEY` unset or empty, the session secret was the public string `admin-session:`, so anyone could sign `{role:"SUPER_ADMIN"}` and use it as `x-admin-key` to reach the full admin API.
+- **Root cause:** `validAdminKey` checked for an empty key, but the session path derived from the same env var did not. Two consumers of one secret, and only one guarded it (RC-076 shape).
+- **Fix:** `sessionSecret()` throws when the key is blank. All three callers already catch, so verify falls through to the team-token check and fails closed. A login with an empty key now 500s instead of minting a forgeable token. No minimum length was added because the length of the prod key is unknown and a minimum could lock the admin out.
+- **Proof:** `admin.login.test.ts` +1: a self-signed token with the empty-key secret gets 403 on `/v1/admin/stats`. The same test **fails** with the fix stashed (the forged token is accepted).
+- **Not verified:** whether any deployed environment has an empty key (no env access). Found by H1-6, `docs/tasks/testing/reports/H1-auth-sessions.md`.
+
+---
+
+## RC-088 — `OTP_TEST_BYPASS` accepted a `*` wildcard and a built-in phone list, with no production guard
+
+- **Component:** `apps/api/src/lib/msg91-otp.ts` `otpTestBypassActive` (moved from `routes/auth.ts`); `routes/team/team-session.ts` (its own copy removed).
+- **Symptom:** with `OTP_TEST_BYPASS=1`, `OTP_TEST_PHONES=*` let any phone log in with any code. An unset list fell back to 7 built-in numbers, including `9876543210` and `9999999999`, which may belong to real people. Nothing stopped this in `NODE_ENV=production`.
+- **Root cause:** a demo convenience grew powers (wildcard, defaults) without a guard, and the retailer and team routes each carried their own copy of the check.
+- **Fix:** one shared `otpTestBypassActive`: env list only (unset = no phones), no wildcard, and in production it is ignored unless `OTP_TEST_BYPASS_ALLOW_PROD=1` is also set. Four auth test files now spread the real module into their `msg91-otp.js` mock.
+- **Proof:** `auth-otp-bypass.test.ts` +4: production without the allow flag, `*`, and an unset list all go through MSG91; production with the allow flag still bypasses. 10 auth/team/admin files: 138/138; tsc and biome clean.
+- **Owner action:** if prod depends on the bypass for demo logins today, set `OTP_TEST_BYPASS_ALLOW_PROD=1` and an explicit `OTP_TEST_PHONES` list before deploying, or demos switch to real SMS. Found by H1-5.
+
+---
+
 ## RC-087 — Team login had no route limit, so it sidestepped the admin login limit
 
 - **Component:** `apps/api/src/routes/team/team-session.ts` (`/v1/team/login`, `/otp/send`, `/otp/verify`, `/forgot-password`, `/reset-password`).
