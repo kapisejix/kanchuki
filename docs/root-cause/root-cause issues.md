@@ -13,6 +13,28 @@
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
 
+## RC-086 — The MSG91 send path logged every OTP in plaintext
+
+- **Component:** `apps/api/src/lib/msg91-otp.ts` `sendOtpViaMsg91` (used by retailer `/v1/auth/otp/send`, team `/v1/team/otp/send`, staff invite, passport, WhatsApp-number OTP).
+- **Symptom:** every live OTP was written to Railway logs as `[otp] Generated OTP for +91<phone>: <code>`. Anyone with log access (insider, log drain, leaked Railway token) could log in as any retailer within the 10-minute TTL.
+- **Root cause:** a developer debugging line (`biome-ignore … visible in Railway logs only`) on the production path. The ignore comment treated "only in logs" as private, but logs are a wider audience than the SIM holder.
+- **Fix:** line deleted. No other log line prints the code.
+- **Proof:** `grep -rn "Generated OTP" apps/api/src` returns nothing; `msg91-otp.test.ts` passes.
+- **Not verified / owner action:** historic Railway logs still contain codes (expired, but they link phones to login times). Limit or purge log retention. Found by H1-3, `docs/tasks/testing/reports/H1-auth-sessions.md`.
+
+---
+
+## RC-085 — Team OTP login and password reset accepted `123456` whenever Redis threw
+
+- **Component:** `apps/api/src/routes/team/team-session.ts` (`/v1/team/otp/send`, `/otp/verify`, `/forgot-password`, `/reset-password`).
+- **Symptom:** on any Redis error, `/v1/team/otp/verify` (email path, and phone path without MSG91) accepted `123456`, and so did `/v1/team/reset-password`. Anyone who knew a team member's email could reset a SUPER_ADMIN password and get admin access (team tokens with SUPER_ADMIN/ADMIN pass `verifyAdminSession`).
+- **Root cause:** a "dev mock" fallback in the `catch` around each Redis call made a failure grant access instead of denying it. The client is built lazily with `enableOfflineQueue: false` and no wait for `'ready'`, so the first command after every boot threw by design (the 2026-08-13 handshake race, fixed in `msg91-otp.ts` but not here), and Redis outages hit it too. The tests relied on that fallback, so the suite treated the bypass as normal behaviour.
+- **Fix:** `storeTeamCode` / `consumeTeamCode` await `'ready'` (`awaitRedisReady`, now exported) and fail closed: a read error means "no code", and a store error on `/otp/send` returns 503. `/forgot-password` skips the email when the store fails and keeps the same response (no enumeration). All `123456` fallbacks removed.
+- **Proof:** `routes/team.test.ts` now uses an in-memory Redis fake. Happy paths read the stored code. 2 new tests: `123456` with Redis throwing is 403 on both OTP paths and 422 on reset, and no password is written. team + msg91 + auth-team + auth-msg91 + admin.login: 85/85; security.test: 6/6; tsc clean.
+- **Not verified:** no live run against a local API + Redis. Found by H1-1, `docs/tasks/testing/reports/H1-auth-sessions.md`.
+
+---
+
 ## RC-084 — Web proxy routes rebuilt the upstream request/response from partial inputs
 
 - **Component:** `apps/web/src/app/api/reviews/product/[productId]/route.ts`, `apps/web/src/app/api/passport/[...path]/route.ts`.

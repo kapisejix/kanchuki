@@ -87,7 +87,7 @@ function getOtpRedis(): Redis {
  * regardless of connectTimeout (the handshake was still in flight). This
  * await turns that race into a wait, bounded by connectTimeout + the retry.
  */
-function awaitRedisReady(redis: Redis): Promise<void> {
+export function awaitRedisReady(redis: Redis): Promise<void> {
   if (redis.status === 'ready') return Promise.resolve();
   return new Promise((resolve, reject) => {
     const onReady = () => {
@@ -168,8 +168,6 @@ export async function sendOtpViaMsg91(
         'EX',
         OTP_TTL_SEC,
       );
-      // biome-ignore lint/suspicious/noConsoleLog: developer debugging — visible in Railway logs only
-      console.log(`[otp] Generated OTP for +91${phone}: ${otp}`);
     } catch {
       // Store failed — release the cooldown guard so a retry isn't blocked by
       // a send that never happened.

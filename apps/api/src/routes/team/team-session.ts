@@ -5,8 +5,18 @@ import type { FastifyPluginAsync } from 'fastify';
 import { Redis } from 'ioredis';
 import { z } from 'zod';
 import { sendEmail, sendTeamPasswordResetEmail } from '../../lib/email.js';
-import { isMsg91OtpConfigured, sendOtpViaMsg91, verifyStoredOtp } from '../../lib/msg91-otp.js';
-import { forbidden, notFound, validationError } from '../../plugins/error-handler.js';
+import {
+  awaitRedisReady,
+  isMsg91OtpConfigured,
+  sendOtpViaMsg91,
+  verifyStoredOtp,
+} from '../../lib/msg91-otp.js';
+import {
+  forbidden,
+  notFound,
+  serviceUnavailable,
+  validationError,
+} from '../../plugins/error-handler.js';
 import { hashPassword, signTeamToken, verifyPassword } from '../../plugins/team-auth.js';
 import { teamAuthPreHandler } from './team-helpers.js';
 
@@ -55,6 +65,25 @@ function getSessionRedis(): Redis {
     connectTimeout: 10_000,
   });
   return sessionRedis;
+}
+
+// RC-085: codes fail closed. A Redis error (including the first command on the
+// lazily built client, which runs before 'ready' with the offline queue off)
+// means the code cannot be checked — never a dev default like '123456'.
+async function storeTeamCode(key: string, code: string, ttlSec: number): Promise<void> {
+  const redis = getSessionRedis();
+  await awaitRedisReady(redis);
+  await redis.set(key, code, 'EX', ttlSec);
+}
+
+async function consumeTeamCode(key: string): Promise<string | null> {
+  try {
+    const redis = getSessionRedis();
+    await awaitRedisReady(redis);
+    return await redis.getdel(key);
+  } catch {
+    return null;
+  }
 }
 
 export const teamSessionRoutes: FastifyPluginAsync = async (server) => {
@@ -141,12 +170,9 @@ export const teamSessionRoutes: FastifyPluginAsync = async (server) => {
       } else {
         // Fallback for dev / environments without MSG91 keys
         const code = randomInt(100_000, 1_000_000).toString();
-        try {
-          const redis = getSessionRedis();
-          await redis.set(`team:otp:${member.phone}`, code, 'EX', 600);
-        } catch {
-          // Redis down in local test
-        }
+        await storeTeamCode(`team:otp:${member.phone}`, code, 600).catch(() => {
+          throw serviceUnavailable('Could not start a secure OTP session. Try again.');
+        });
       }
 
       return {
@@ -160,12 +186,9 @@ export const teamSessionRoutes: FastifyPluginAsync = async (server) => {
 
     // Email OTP flow
     const code = randomInt(100_000, 1_000_000).toString();
-    try {
-      const redis = getSessionRedis();
-      await redis.set(`team:email-otp:${member.email}`, code, 'EX', 600);
-    } catch {
-      // Redis fallback
-    }
+    await storeTeamCode(`team:email-otp:${member.email}`, code, 600).catch(() => {
+      throw serviceUnavailable('Could not start a secure OTP session. Try again.');
+    });
 
     await sendEmail({
       to: member.email,
@@ -229,23 +252,12 @@ export const teamSessionRoutes: FastifyPluginAsync = async (server) => {
         const res = await verifyStoredOtp(member.phone, otp, 'login');
         if (res === 'verified') verified = true;
       } else {
-        try {
-          const redis = getSessionRedis();
-          const stored = await redis.getdel(`team:otp:${member.phone}`);
-          if (stored === otp) verified = true;
-        } catch {
-          // Dev mock
-          if (otp === '123456') verified = true;
-        }
+        const stored = await consumeTeamCode(`team:otp:${member.phone}`);
+        if (stored !== null && stored === otp) verified = true;
       }
     } else if (normalizedEmail || member.email) {
-      try {
-        const redis = getSessionRedis();
-        const stored = await redis.getdel(`team:email-otp:${member.email}`);
-        if (stored === otp) verified = true;
-      } catch {
-        if (otp === '123456') verified = true;
-      }
+      const stored = await consumeTeamCode(`team:email-otp:${member.email}`);
+      if (stored !== null && stored === otp) verified = true;
     }
 
     if (!verified) {
@@ -278,18 +290,22 @@ export const teamSessionRoutes: FastifyPluginAsync = async (server) => {
 
     if (member?.is_active) {
       const resetCode = randomInt(100_000, 1_000_000).toString();
-      try {
-        const redis = getSessionRedis();
-        await redis.set(`team:pwd-reset:${member.email}`, resetCode, 'EX', 900); // 15 min
-      } catch {
-        // Redis fallback
-      }
+      // Same response whether or not the store worked (no account
+      // enumeration), but never email a code that can't be verified.
+      const stored = await storeTeamCode(`team:pwd-reset:${member.email}`, resetCode, 900) // 15 min
+        .then(() => true)
+        .catch((err) => {
+          request.log.error({ err }, 'team forgot-password: reset code store failed');
+          return false;
+        });
 
-      await sendTeamPasswordResetEmail({
-        name: member.name,
-        email: member.email,
-        resetCode,
-      });
+      if (stored) {
+        await sendTeamPasswordResetEmail({
+          name: member.name,
+          email: member.email,
+          resetCode,
+        });
+      }
     }
 
     return {
@@ -314,19 +330,8 @@ export const teamSessionRoutes: FastifyPluginAsync = async (server) => {
       throw validationError('Invalid or expired reset code', 'reset_code');
     }
 
-    let codeValid = false;
-    try {
-      const redis = getSessionRedis();
-      const stored = await redis.getdel(`team:pwd-reset:${member.email}`);
-      if (stored && stored === body.data.reset_code) {
-        codeValid = true;
-      }
-    } catch {
-      // Redis fallback for dev
-      if (body.data.reset_code === '123456') codeValid = true;
-    }
-
-    if (!codeValid) {
+    const stored = await consumeTeamCode(`team:pwd-reset:${member.email}`);
+    if (stored === null || stored !== body.data.reset_code) {
       throw validationError(
         'Invalid or expired reset code. Please request a new code.',
         'reset_code',
