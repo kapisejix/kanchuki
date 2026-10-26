@@ -13,6 +13,15 @@ type LinkRef = { id: string; retailer_id: string; gbp_account_id: string; gbp_lo
 export type SyncResult = { ok: true; synced: number } | { ok: false; code: GbpError['code'] };
 
 export async function syncLink(link: LinkRef): Promise<SyncResult> {
+  // The link can be unlinked or re-pointed at another location while Google answers (seconds).
+  // Every write below is conditioned on the link still being this exact one, so a stale sync
+  // can neither revive an unlinked row nor file the old location's reviews under a new one.
+  const stillThisLink = {
+    id: link.id,
+    status: { in: ['LINKED', 'NEEDS_ACCESS'] as ('LINKED' | 'NEEDS_ACCESS')[] },
+    gbp_account_id: link.gbp_account_id,
+    gbp_location_id: link.gbp_location_id,
+  };
   try {
     let synced = 0;
     let pageToken: string | undefined;
@@ -20,6 +29,9 @@ export async function syncLink(link: LinkRef): Promise<SyncResult> {
     let total: number | null = null;
     for (let page = 0; page < MAX_PAGES; page++) {
       const res = await listReviews(link.gbp_account_id, link.gbp_location_id, pageToken);
+      if ((await prisma.gbpLink.count({ where: stillThisLink })) === 0) {
+        return { ok: true, synced }; // link changed under us: nothing of this run is ours to write
+      }
       avg = res.averageRating ?? avg;
       total = res.totalReviewCount ?? total;
       for (const r of res.reviews) {
@@ -48,8 +60,8 @@ export async function syncLink(link: LinkRef): Promise<SyncResult> {
       if (!res.nextPageToken) break;
       pageToken = res.nextPageToken;
     }
-    await prisma.gbpLink.update({
-      where: { id: link.id },
+    await prisma.gbpLink.updateMany({
+      where: stillThisLink,
       data: {
         status: 'LINKED',
         last_synced_at: new Date(),
@@ -61,8 +73,8 @@ export async function syncLink(link: LinkRef): Promise<SyncResult> {
     return { ok: true, synced };
   } catch (err) {
     if (!(err instanceof GbpError)) throw err;
-    await prisma.gbpLink.update({
-      where: { id: link.id },
+    await prisma.gbpLink.updateMany({
+      where: stillThisLink,
       data: {
         last_error_code: err.code,
         // Only a per-location refusal changes the retailer's state; platform-level
