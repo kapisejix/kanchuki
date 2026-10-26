@@ -12,7 +12,9 @@ import { stripComments } from '@kanchuki/shared/testing'
  */
 const HIDDEN: Record<string, string> = {
   '/growth/aggregators': 'RC-056 — no marketplace adapter or sync job exists',
-  '/growth/integrations/gmb': 'RC-057 — F-022 Google Business Profile not built (needs Google API access + OAuth)',
+  // RC-057: the token-paste /growth/integrations/gmb screen is deleted. Its replacement,
+  // /growth/integrations/google-business, ships dark and renders "Coming soon" with no action
+  // until the server reports a real state (see google-listing.test.ts).
 }
 
 /**

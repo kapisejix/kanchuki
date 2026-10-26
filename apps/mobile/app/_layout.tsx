@@ -226,7 +226,7 @@ function AppShell() {
           <Stack.Screen name="growth/integrations" />
           <Stack.Screen name="growth/integrations/facebook" />
           <Stack.Screen name="growth/integrations/fb-ads" />
-          <Stack.Screen name="growth/integrations/gmb" />
+          <Stack.Screen name="growth/integrations/google-business" />
           <Stack.Screen name="growth/integrations/google-ads" />
           <Stack.Screen name="growth/integrations/instagram" />
           <Stack.Screen name="growth/integrations/whatsapp" />

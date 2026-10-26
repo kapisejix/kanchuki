@@ -17,6 +17,7 @@ import {
   handleEnquiryPush,
   handleEnquiryPushReceipts,
 } from './enquiry-push.js';
+import { handleGbpReviewSync } from './gbp-review-sync.js';
 import { handleGenerateEmbedding } from './generate-embedding.js';
 import {
   type GenerateGstInvoiceJobData,
@@ -288,6 +289,8 @@ export async function startWorkers(): Promise<void> {
           return handleSchedulePublishTick();
         case 'schedule-token-health':
           return handleScheduleTokenHealth();
+        case 'gbp-review-sync':
+          return handleGbpReviewSync();
         case 'plan-lapse':
           return handlePlanLapse();
         case 'ai-spend-alert':
@@ -538,6 +541,18 @@ export async function startWorkers(): Promise<void> {
     {},
     {
       repeat: { pattern: '45 1 * * *' },
+      removeOnComplete: { count: 10 },
+      removeOnFail: { count: 10 },
+    },
+  );
+
+  // Google Business Profile review sync — every 6 h at :20. No `limit` (RC-062).
+  // A no-op until the shared Google identity is connected and API access approved.
+  await getMaintenanceQueue().add(
+    'gbp-review-sync',
+    {},
+    {
+      repeat: { pattern: '20 */6 * * *' },
       removeOnComplete: { count: 10 },
       removeOnFail: { count: 10 },
     },

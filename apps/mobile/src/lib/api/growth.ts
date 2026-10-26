@@ -710,12 +710,6 @@ export type Pagination = {
 // ─── Integrations (retailer settings) ────────────────────────────
 
 export type IntegrationsStatus = {
-  gmb: {
-    configured: boolean
-    account_id: string | null
-    location_id: string | null
-    configured_at: string | null
-  }
   facebook_ads: {
     configured: boolean
     ad_account_id: string | null
@@ -761,13 +755,6 @@ export type IntegrationsStatus = {
     board_id: string | null
     configured_at: string | null
   }
-}
-
-export type GmbConfig = {
-  account_id: string
-  location_id: string
-  access_token: string
-  refresh_token?: string
 }
 
 export type FbAdsConfig = {
@@ -1225,27 +1212,6 @@ export const growthApi = {
       getCacheTtlMs: 15_000,
     }),
 
-  configureGmb: (payload: GmbConfig) =>
-    request<{ data: { configured: boolean } }>('/v1/retailers/me/integrations/gmb', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }),
-
-  disconnectGmb: () =>
-    request<void>('/v1/retailers/me/integrations/gmb', { method: 'DELETE' }),
-
-  testGmb: () =>
-    request<{ data: { connected: boolean; error?: string } }>(
-      '/v1/retailers/me/integrations/gmb/test',
-      { method: 'POST' },
-    ),
-
-  postToGmb: (payload: { summary: string; call_to_action?: string; url?: string }) =>
-    request<{ data: { post_id: string; status: string } }>(
-      '/v1/retailers/me/integrations/gmb/post',
-      { method: 'POST', body: JSON.stringify(payload) },
-    ),
-
   configureFbAds: (payload: FbAdsConfig) =>
     request<{ data: { configured: boolean } }>('/v1/retailers/me/integrations/fb-ads', {
       method: 'POST',
@@ -1291,7 +1257,7 @@ export const growthApi = {
 
   // ─── F-021 Ratings & Reviews ─────────────────────────────────────
   reviewSummary: () =>
-    request<{ data: ReviewSummary }>('/v1/retailers/me/reviews/summary'),
+    request<{ data: ReviewSummary }>('/v1/retailers/reviews/summary'),
 
   productReviews: (params?: { product_id?: string; page?: number; limit?: number }) => {
     const qs = new URLSearchParams()
@@ -1300,7 +1266,7 @@ export const growthApi = {
     if (params?.limit) qs.set('limit', String(params.limit))
     const q = qs.toString()
     return request<{ data: ProductReview[]; pagination: Pagination }>(
-      `/v1/retailers/me/reviews/products${q ? `?${q}` : ''}`,
+      `/v1/retailers/reviews/products${q ? `?${q}` : ''}`,
     )
   },
 
@@ -1310,13 +1276,7 @@ export const growthApi = {
     if (params?.limit) qs.set('limit', String(params.limit))
     const q = qs.toString()
     return request<{ data: StoreReview[]; pagination: Pagination }>(
-      `/v1/retailers/me/reviews/store${q ? `?${q}` : ''}`,
+      `/v1/retailers/reviews/store${q ? `?${q}` : ''}`,
     )
   },
-
-  updateGooglePlaceId: (google_place_id: string | null) =>
-    request<{ success: boolean }>('/v1/retailers/me/reviews/google-place', {
-      method: 'PATCH',
-      body: JSON.stringify({ google_place_id }),
-    }),
 }

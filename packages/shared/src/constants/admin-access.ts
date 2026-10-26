@@ -125,6 +125,7 @@ export const STANDARD_ADMIN_ADMIN_SEGMENTS = [
   'discovery', // retailer discovery listing (content + ops)
   'engagement', // F-037 Phase 3 behavior analytics — support/investigation data, same tier as 'customers'
   'festivals', // festival calendar used by campaigns
+  'gbp', // Google Business Profile link tool (marketing). connect/callback/approval are Super-Admin-gated in the handler
   'login', // must stay reachable — the guard skips it explicitly
   'notify', // POST /notify/test — sends a test notification (diagnostic)
   'photo-cleanup', // photo tools incl. the admin-only generation bench

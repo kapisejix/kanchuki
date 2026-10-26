@@ -13,6 +13,27 @@
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
 
+## RC-101 — Legacy token-paste Google Business integration called the wrong Google API and reported `configured: true` without calling Google
+
+- **Component:** `apps/api/src/routes/retailers/retailers-integrations.ts` (`POST/DELETE /me/integrations/gmb`, `/gmb/test`, `/gmb/post`, the `gmb` block of `GET /me/integrations`), `apps/mobile/app/growth/integrations/gmb.tsx`, `growthApi.configureGmb/testGmb/disconnectGmb`.
+- **Symptom:** a Google Business "integration" that could never have worked. `/test` and `/post` could not succeed, yet `POST /gmb` stored whatever ids it was given and `GET /me/integrations` then answered `gmb.configured = !!gmb_account_id`.
+- **Root cause:** same shape as RC-056/057/060: a success state decided from our own column, not from the provider. The code also called `mybusinessbusinessinformation.googleapis.com/v1/locations/{id}/localPosts`, an endpoint that does not exist (Posts and Reviews live in the legacy `mybusiness.googleapis.com/v4/accounts/{accountId}/locations/{locationId}/…` API, and the account id is part of the path, which the code dropped). Nothing ever called Google to prove the pasted ids.
+- **Fix:** the four routes and the `gmb` block are removed; the dead mobile screen, its `_layout.tsx` registration and the three client methods are deleted. Replaced by Part B of `docs/tasks/pending/google-business-profile-and-setup-checklist.md`: a shared Kanchuki Google identity, a retailer consent, a team-picked location, and every state read from the server (`UNAVAILABLE` shows "Coming soon" with no action). The `retailers.gmb_*` columns are left in place (not dropped).
+- **Proof:** `apps/mobile/__tests__/google-listing.test.ts` (the screen has no success path of its own; `gmb.tsx` is gone and nothing references `configureGmb` or `integrations/gmb`), `unbuilt-integrations-hidden.test.ts`, `apps/api/src/lib/google-business.test.ts`.
+- **Limits:** the removed code may already have stored ids or encrypted tokens in `retailers.gmb_*`; the owner can check with the SQL in §E of the spec. Part B ships dark (no `plan_features` row, API not marked approved), so nothing user-visible replaces it yet.
+
+---
+
+## RC-100 — Mobile review routes were `/v1/retailers/me/reviews/*`; the API serves `/v1/retailers/reviews/*`
+
+- **Component:** `apps/mobile/src/lib/api/growth.ts`, `apps/mobile/src/lib/api/retailer.ts` (ratings/reviews client), `apps/api/src/routes/retailers/retailers-ratings.ts`.
+- **Symptom:** the ratings screen's review calls 404'd against the real API while the route's own tests passed.
+- **Root cause:** one path written in two places with no shared definition. The ratings plugin is mounted at `/v1/retailers` and registers `/reviews/...`; the mobile client had an extra `/me` segment. The new route test was first mounted under a different prefix, which made the wrong path resolve, so the test agreed with the client instead of with the server (RC-037 shape: the double agreed with the code, not with the platform).
+- **Fix:** mobile paths corrected to `/v1/retailers/reviews/*`; the route test registers the plugin with the same prefix as `src/index.ts` and says why.
+- **Proof:** `apps/mobile/__tests__/google-listing.test.ts` pins that neither client file contains `/v1/retailers/me/reviews`; `retailers-ratings.google-place.test.ts`.
+
+---
+
 ## RC-098 — Reviews were keyed on an unverified phone and wrote to the retailer CRM
 
 - **Component:** `apps/api/src/routes/public/public-reviews.ts`, `ProductReview` / `StoreReview` (migration 139), `apps/web` `ReviewForm` + `/api/reviews/product` proxy.

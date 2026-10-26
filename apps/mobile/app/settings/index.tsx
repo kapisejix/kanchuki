@@ -43,6 +43,7 @@ import {
 import { useScreenInsets } from "../../src/lib/safe-area";
 import { AnimatedPressable } from "../../src/components/AnimatedPressable";
 import { BuildInfoFooter } from "../../src/components/BuildInfoFooter";
+import { GooglePlaceField } from "../../src/components/GooglePlaceField";
 import { GradientButton } from "../../src/components/GradientButton";
 import { UsageCard } from "../../src/components/UsageCard";
 import { WhiteButton } from "../../src/components/WhiteButton";
@@ -883,6 +884,43 @@ function KycModal({
 
 // ─── WhatsApp Business API Modal (bring-your-own Meta credentials) ──
 
+function GoogleListingModal({
+  visible,
+  placeId,
+  defaultQuery,
+  onClose,
+  onSaved,
+}: {
+  visible: boolean;
+  placeId: string | null;
+  defaultQuery: string;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+    >
+      <View className="flex-1 bg-black/50 justify-center px-6">
+        <View className="bg-white rounded-3xl w-full p-6 gap-4 max-h-[85%]">
+          <Text className="text-lg font-bold text-sand-900">Google Listing</Text>
+          <ScrollView keyboardShouldPersistTaps="handled">
+            <GooglePlaceField
+              defaultQuery={defaultQuery}
+              placeId={placeId}
+              onChange={onSaved}
+            />
+          </ScrollView>
+          <WhiteButton label="Close" onPress={onClose} />
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 function WhatsAppApiModal({
   visible,
   onClose,
@@ -1213,6 +1251,7 @@ export default function SettingsScreen() {
   // Dismissed for the session via "Not now"; reappears next launch until added.
   const [gstReminderDismissed, setGstReminderDismissed] = useState(false);
   const [showWhatsApp, setShowWhatsApp] = useState(false);
+  const [showGoogleListing, setShowGoogleListing] = useState(false);
   const [showKyc, setShowKyc] = useState(false);
   const [showWhatsAppApi, setShowWhatsAppApi] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
@@ -1478,6 +1517,17 @@ export default function SettingsScreen() {
               />
 
               <SettingsRow
+                icon={<MapPin size={18} color={colors.danger} />}
+                label="Google Listing"
+                subtitle={
+                  retailer?.google_place_id
+                    ? "Linked — customers can review you on Google"
+                    : "Not linked — add it to collect Google reviews"
+                }
+                onPress={() => setShowGoogleListing(true)}
+              />
+
+              <SettingsRow
                 icon={<ShieldCheck size={18} color={primaryColor} />}
                 label="Identity Verification (KYC)"
                 subtitle={
@@ -1660,6 +1710,14 @@ export default function SettingsScreen() {
         onClose={() => setShowProfileEdit(false)}
         onSaved={handleProfileSaved}
         onStoreUrlChanged={(slug) => setStoreUrlNotice(slug)}
+      />
+
+      <GoogleListingModal
+        visible={showGoogleListing}
+        placeId={retailer?.google_place_id ?? null}
+        defaultQuery={[retailer?.shop_name, retailer?.city].filter(Boolean).join(" ")}
+        onClose={() => setShowGoogleListing(false)}
+        onSaved={handleProfileSaved}
       />
 
       <WhatsAppModal

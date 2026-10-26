@@ -31,6 +31,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AnimatedPressable } from '../src/components/AnimatedPressable';
+import { GooglePlaceField } from '../src/components/GooglePlaceField';
 import { GradientButton } from '../src/components/GradientButton';
 import { billingApi, retailerApi } from '../src/lib/api';
 import {
@@ -711,6 +712,11 @@ export default function OnboardingScreen() {
                 <Text className="text-heliotrope-400 text-lg">→</Text>
               )}
             </AnimatedPressable>
+
+            {/* Optional: link the shop's Google listing (saved immediately on pick) */}
+            <View className="mt-3">
+              <GooglePlaceField defaultQuery={[shopName.trim(), city.trim()].filter(Boolean).join(' ')} />
+            </View>
 
             {/* Store Tip Box */}
             <View className="bg-lavender-50 border border-lavender-200 rounded-2xl p-3.5 mt-2 flex-row items-start gap-2.5">

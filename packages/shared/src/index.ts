@@ -14,3 +14,4 @@ export * from './my-style-garment.js';
 export * from './my-style-tabs.js';
 export * from './occasions.js';
 export * from './my-style-look.js';
+export * from './google-place.js';

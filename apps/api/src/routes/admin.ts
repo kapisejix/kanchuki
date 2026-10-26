@@ -22,6 +22,7 @@ import {
   adminDesignReferenceRoutes,
   adminEngagementRoutes,
   adminFestivalsRoutes,
+  adminGbpRoutes,
   adminGstProfileRoutes,
   adminGstRoutes,
   adminHsnRulesRoutes,
@@ -230,6 +231,8 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
   await server.register(adminHsnRulesRoutes);
   // admin-whatsapp-catalog — Phase II WhatsApp catalog sync monitor
   await server.register(adminWhatsAppCatalogRoutes);
+  // admin-gbp — Google Business Profile shared identity + marketing link tool
+  await server.register(adminGbpRoutes);
   // admin-post-templates — Create Post Composer v2 post-template library (§11)
   await server.register(adminPostTemplatesRoutes);
   // admin-social-templates — AI Social Media Templates management
