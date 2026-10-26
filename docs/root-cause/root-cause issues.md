@@ -13,13 +13,46 @@
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
 
+## RC-097 — near-me published the retailer's login phone
+
+- **Component:** `apps/api/src/routes/public/near-me.ts`.
+- **Symptom:** `GET /v1/public/near-me?latitude=…&longitude=…` returned the retailer's OTP-login `phone` next to `whatsapp_number`, so sweeping a grid of points harvested personal numbers of retailers who keep a separate business number.
+- **Root cause:** every other public route goes through `enquiryPhone()` (`public-helpers.ts`) to pick the one public number; this route selected both columns and returned them raw, so the rule "public surfaces expose the business number only" lived in each caller, not in one place (RC-078 shape).
+- **Fix:** `phone: enquiryPhone(r)` and no `whatsapp_number` key. `enquiryPhone` falls back to `phone` only when no WhatsApp number is set.
+- **Proof:** new `routes/public/__tests__/near-me.test.ts`: "returns the business WhatsApp number, never the login phone" failed before the fix (got the login phone); the fallback test guards the no-WhatsApp case.
+- **Behaviour change:** the response loses the `whatsapp_number` key. No caller in `apps/` reads `/near-me`. Found by H4-6.
+
+---
+
+## RC-096 — Customer routes returned the whole row, including phone_hash and customer_account_id
+
+- **Component:** `apps/api/src/routes/customers.ts` (`GET /`, `GET /:id`, `PUT /:id`, `POST /`).
+- **Symptom:** a masked salesperson/manager got `phone_hash` (unsalted SHA-256 of a 10-digit number, brute-forceable offline) and `customer_account_id` (the RC-093 input) on every row, defeating RC-066 phone masking. `PUT` also returned the raw, unmasked `phone`.
+- **Root cause:** each handler built its own response by spreading the Prisma row and patching `phone`; masking was applied per handler and nothing named the fields that must never leave the API.
+- **Fix:** one `toCustomerDto(request, row)` drops `phone_hash` and `customer_account_id` and masks `phone`; all four handlers use it. Stripped for every role, since no client reads either field.
+- **Proof:** new `routes/customers-dto.test.ts`: the GET list and GET `:id` tests failed before the fix for owner and salesperson. The `PUT` test was added together with the fix, so it was not seen failing. `collections.ts` customer reads only check existence or use a narrow `select`, so they needed no change.
+- **Behaviour change:** none for the mobile app (no reference to either field). Found by H4-2.
+
+---
+
+## RC-095 — Wishlist, recently-viewed and events trusted a client-supplied retailer_id
+
+- **Component:** `apps/api/src/routes/public/passport/passport-wishlist.ts`, `passport-activity.ts`, helper `passport-helpers.ts` `productRetailerMap`.
+- **Symptom:** any signed-in shopper could write up to 50 events per request attributed to any retailer, poisoning that retailer's engagement analytics (F-037) and wishlist counts.
+- **Root cause:** `retailer_id` was accepted from the body and stored; nothing tied it to the `product_id` it was sent with, though the product row already names its owner.
+- **Fix:** `productRetailerMap` looks the owner up from the product row. Wishlist uses it (unknown product → 404). Recently-viewed uses it (unknown product → silent 204). `/events` keeps a row only when a product event's `retailer_id` equals the product's owner, or a store-level event names a retailer that exists. `/events` also gets a 30/min route limit. The body `retailer_id` stays optional for wishlist and recently-viewed so older web clients do not get a 422; the value is ignored.
+- **Proof:** new `passport-retailer-ownership.test.ts` (4) and four ownership tests in `passport-events.test.ts` failed before the fix (8 red). The two older tests in `passport-otp.test.ts` now mock `prisma.product`.
+- **Known gap:** a store-level event (no `product_id`) can still be attributed to any real retailer; only made-up ids are blocked. Closing that needs a different rule. Found by H4-5.
+
+---
+
 ## RC-094 — The unverified QR lead form could rewrite an existing customer and forge their consent
 
 - **Component:** `apps/api/src/routes/public/public-retailers/public-retailers-leads.ts` (legacy path, `prisma.customer.upsert`).
 - **Symptom:** any anonymous caller who knew a phone number could `POST /v1/public/retailers/:slug/leads` with `{name, phone, gender, consent: true}` and overwrite that customer's name and gender in the retailer's CRM and set `consent_given = true` with a fresh `consent_at`, without owning the phone. That is forged marketing consent (DPDP) on a number that may have opted out.
 - **Root cause:** the form is unverified (no OTP), but its `upsert` `update` branch had the same write power as `create`. An unauthenticated input was allowed to change a row it did not create (RC-093 shape: the caller's claim treated as identity).
-- **Fix:** the `update` branch is `{}`. The form is create-only; an existing phone is returned as-is, so there is no "already exists" signal for probing either.
-- **Proof:** `public-retailers-leads.test.ts` "H4-4 existing phone is left untouched (empty update)" failed before the fix (the old `update` carried name, gender and consent); "new phone is still created with consent and QR_SCAN source" guards the create path.
+- **Fix:** the `update` branch is `{}`. The form is create-only; the response is a fixed `{ id: null, name: <submitted name> }` whether or not the phone existed. An earlier cut of this fix still returned the stored `id`/`name` of an existing customer, which made the form a phone→name lookup (found by the automated security review on this change); `select` was removed from the upsert.
+- **Proof:** `public-retailers-leads.test.ts` "H4-4 existing phone is left untouched (empty update)" failed before the fix (the old `update` carried name, gender and consent); "new phone is still created with consent and QR_SCAN source" guards the create path. "RC-094 response never echoes a stored customer" failed before the response change (got the stored name).
 - **Behaviour change:** a customer re-submitting the form can no longer correct their name or refresh consent through it. A retailer fixes a wrong name in the CRM. Found by H4-4, `docs/tasks/testing/reports/H4-passport-storefront.md`.
 
 ---

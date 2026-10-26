@@ -151,6 +151,14 @@ describe('POST /v1/public/retailers/:slug/leads (legacy form)', () => {
     expect(mockCustomerUpsert.mock.calls[0]?.[0].update).toEqual({});
   });
 
+  it('RC-094: response never echoes a stored customer (no phone->name oracle)', async () => {
+    mockCustomerUpsert.mockResolvedValue({ id: 'c_real', name: 'Real Name' });
+    const res = await post(form);
+
+    expect(res.json().data).toEqual({ id: null, name: 'Attacker' });
+    expect(mockCustomerUpsert.mock.calls[0]?.[0].select).toBeUndefined();
+  });
+
   it('a new phone is still created with consent and QR_SCAN source', async () => {
     await post(form);
 

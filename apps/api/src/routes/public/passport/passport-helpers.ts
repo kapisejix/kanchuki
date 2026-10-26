@@ -63,6 +63,16 @@ export async function getPassportSession(cookieHeader: string) {
 
 // ─── Helpers ──────────────────────────────────────────────────────
 
+/** product id → owning retailer id. H4-5/RC-095: never trust a client retailer_id. */
+export async function productRetailerMap(ids: string[]): Promise<Map<string, string>> {
+  if (ids.length === 0) return new Map();
+  const rows = await prisma.product.findMany({
+    where: { id: { in: ids }, deleted_at: null },
+    select: { id: true, retailer_id: true },
+  });
+  return new Map(rows.map((p) => [p.id, p.retailer_id]));
+}
+
 export function phoneHash(phone: string): string {
   return createHash('sha256').update(normalizeIndianPhone(phone)).digest('hex');
 }

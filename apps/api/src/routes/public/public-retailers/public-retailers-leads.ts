@@ -169,7 +169,7 @@ export const publicRetailersLeadsRoutes: FastifyPluginAsync = async (server) => 
     const normalizedPhone = normalizeIndianPhone(legacyBody.data.phone);
     const phone_hash = createHash('sha256').update(normalizedPhone).digest('hex');
 
-    const customer = await prisma.customer.upsert({
+    await prisma.customer.upsert({
       where: { retailer_id_phone: { retailer_id: retailer.id, phone: normalizedPhone } },
       create: {
         retailer_id: retailer.id,
@@ -184,9 +184,9 @@ export const publicRetailersLeadsRoutes: FastifyPluginAsync = async (server) => 
       // H4-4, RC-094: unverified form is create-only; never rewrite an existing
       // customer's name, gender or consent for a phone the caller does not own.
       update: {},
-      select: { id: true, name: true },
     });
 
-    return reply.status(201).send({ data: customer });
+    // Same body whether or not the phone already existed (no phone->name oracle).
+    return reply.status(201).send({ data: { id: null, name: legacyBody.data.name } });
   });
 };

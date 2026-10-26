@@ -221,11 +221,11 @@ Anonymous AI cost routes: `/stylist` 10/min (`public-stylist.ts:83`), my-style a
 
 ## Fix diffs status
 
-H4-1 and H4-4 are **applied** (Batch 3, part 1, see below). The other diffs above are still proposed, not applied. Each shipped fix needs an RC-### entry (next free: RC-095).
+H4-1, H4-4 (Batch 3, part 1) and H4-2, H4-5, H4-6 (Batch 3, part 2) are **applied**; see below. H4-3, H4-7 and H4-8 are still proposed, not applied. Each shipped fix needs an RC-### entry (next free: RC-098).
 
 ## Fixes applied 2026-10-26 (Batch 3, part 1: H4-1, H4-4) — before / after
 
-Branch `fix/team-otp-fail-closed-rc085`, not committed, not deployed.
+Branch `fix/team-otp-fail-closed-rc085`, committed as `f1d50246`, not deployed.
 
 | Finding | RC | Before | After |
 | --- | --- | --- | --- |
@@ -235,3 +235,18 @@ Branch `fix/team-otp-fail-closed-rc085`, not committed, not deployed.
 Tests: `public-retailers-leads.test.ts` now 7 (was 2). Red first: 6 of 7 failed on the unfixed route (the two older tests only because they no longer send a body id; the four H4-1 tests and the H4-4 test are the real proof). Green after. `security.test.ts` + `admin.login.test.ts` pass; full API suite 2439 passed / 5 skipped; `tsc` clean; biome clean on the three touched files.
 
 Not verified: no browser run with a real `kanchuki_passport` cookie through the Next proxies. API and web must deploy together. `PassportSheet.tsx` still sends `customer_account_id`; the API ignores it.
+
+## Fixes applied 2026-10-26 (Batch 3, part 2: H4-5, H4-2, H4-6, RC-094 follow-up) — before / after
+
+Branch `fix/team-otp-fail-closed-rc085`, not committed, not deployed.
+
+| Finding | RC | Before | After |
+| --- | --- | --- | --- |
+| RC-094 follow-up (automated security review) | RC-094 | legacy form answered `{id, name}` of the stored customer for an existing phone: a phone→name lookup | fixed `{ id: null, name: <submitted> }`; `select` removed from the upsert |
+| H4-5 | RC-095 | wishlist / recently-viewed / `/events` stored the body `retailer_id`; any shopper could write 50 events per request into any retailer's analytics | owner from the product row (`productRetailerMap`); wishlist unknown product 404, recently-viewed 204; `/events` drops product events whose retailer is not the owner and store events for non-existent retailers; `/events` 30/min |
+| H4-2 | RC-096 | `/v1/customers` GET/PUT/POST returned `phone_hash` and `customer_account_id`; `PUT` also an unmasked phone | `toCustomerDto` strips both and masks the phone on all four handlers |
+| H4-6 | RC-097 | near-me returned `phone` (login) plus `whatsapp_number` | `phone: enquiryPhone(r)`, no `whatsapp_number` key |
+
+Tests, red first: leads +1 (1 red); passport-events +4 and new passport-retailer-ownership 4 (8 red); new customers-dto 5 (4 red, the `PUT` test was written with the fix and never seen red); new near-me 2 (1 red). Then green. The two older wishlist / recently-viewed tests in `passport-otp.test.ts` needed a `prisma.product` mock after the fix (2 red until updated). `security.test.ts` + `admin.login.test.ts` 16/16; full API suite 2456 passed / 5 skipped (was 2439 / 5); `tsc` clean; biome write run on the touched API files.
+
+Not done / unverified: H4-3 (anonymous reviews) is deliberately NOT implemented, it changes what shoppers see and waits for owner approval. Store-level events can still be attributed to any real retailer (RC-095 known gap). No real-device or browser run. `apps/web/src/app/api/store/[slug]/leads/route.ts` biome import-order / format warnings are pre-existing and left alone.

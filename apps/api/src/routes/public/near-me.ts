@@ -10,6 +10,7 @@ import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { getBoundingBox, haversineDistance } from '../../lib/geo.js';
 import { validationError } from '../../plugins/error-handler.js';
+import { enquiryPhone } from './public-helpers.js';
 
 export const publicNearMeRoutes: FastifyPluginAsync = async (server) => {
   // ─── GET /near-me ───────────────────────────────────────────────
@@ -88,8 +89,8 @@ export const publicNearMeRoutes: FastifyPluginAsync = async (server) => {
           city: r.city,
           state: r.state,
           address: [r.address_line1, r.address_line2, r.pincode].filter(Boolean).join(', '),
-          phone: r.phone,
-          whatsapp_number: r.whatsapp_number,
+          // H4-6/RC-097: public surface exposes the business number only.
+          phone: enquiryPhone(r),
           public_slug: r.public_slug,
           product_count: r._count.products,
           distance_km: Math.round(haversineDistance(lat, lng, shopLat, shopLng) * 10) / 10,
