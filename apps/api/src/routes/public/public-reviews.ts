@@ -9,7 +9,7 @@ import { buildGoogleReviewUrl, normalizeIndianPhone } from '@kanchuki/shared';
 import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { notFound } from '../../plugins/error-handler.js';
-import { COOKIE_NAME, getPassportSession } from './passport/passport-helpers.js';
+import { getPassportSession, passportCookieId } from './passport/passport-helpers.js';
 
 // ─── Schemas ─────────────────────────────────────────────────────
 
@@ -40,9 +40,7 @@ const REVIEW_SELECT = {
 // no client IP (RC-084 / T2.5 F1), so an IP key is one bucket for every shopper.
 // No cookie -> falls back to the IP.
 function reviewLimitKey(request: FastifyRequest): string {
-  const sid = new RegExp(`(?:^|;\\s*)${COOKIE_NAME}=([^;]+)`).exec(
-    request.headers.cookie ?? '',
-  )?.[1];
+  const sid = passportCookieId(request.headers.cookie ?? '');
   return sid ? `sess:${createHash('sha256').update(sid).digest('hex')}` : `ip:${request.ip}`;
 }
 

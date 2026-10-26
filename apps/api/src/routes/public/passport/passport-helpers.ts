@@ -29,6 +29,16 @@ function parseCookies(cookieHeader: string): Record<string, string> {
 }
 
 /**
+ * The raw passport session id in a Cookie header, parsed exactly as getPassportSession
+ * parses it (last duplicate wins). Anything that keys on "the session" without
+ * authenticating it — e.g. a rate limit — must use this, never its own regex, or a request
+ * carrying two cookies can be keyed on one value and authenticated as the other.
+ */
+export function passportCookieId(cookieHeader: string): string | undefined {
+  return parseCookies(cookieHeader)[COOKIE_NAME] || undefined;
+}
+
+/**
  * Extract and validate the passport session from the request cookie.
  * Returns the session + account, or null if unauthenticated/expired.
  * Slides the session expiry on each valid access.

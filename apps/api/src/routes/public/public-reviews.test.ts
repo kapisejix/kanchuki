@@ -46,9 +46,10 @@ vi.mock('@kanchuki/db', () => ({
     customer: { upsert: m.customerAny, update: m.customerAny, create: m.customerAny },
   },
 }));
-vi.mock('./passport/passport-helpers.js', () => ({
+// Real cookie parsing (passportCookieId) so the limiter key is the one production uses.
+vi.mock('./passport/passport-helpers.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./passport/passport-helpers.js')>()),
   getPassportSession: m.session,
-  COOKIE_NAME: 'kanchuki_passport',
 }));
 
 const SESSION = {
@@ -169,6 +170,19 @@ describe.each(ROUTES)('POST %s', (url, base, upsertKey, findKey) => {
     expect(a.every((c) => c === 201)).toBe(true);
     expect(b).toBe(201);
     expect(a11).toBe(429);
+  });
+
+  it('duplicate session cookies are keyed on the one getPassportSession authenticates (last wins)', async () => {
+    const app = await buildApp(true);
+    const codes: number[] = [];
+    // A fresh throwaway FIRST cookie every request must not buy a fresh bucket.
+    for (let i = 0; i < 11; i++) {
+      const cookie = `kanchuki_passport=junk${i}; kanchuki_passport=A`;
+      codes.push((await post(url, base, app, cookie)).statusCode);
+    }
+    await app.close();
+    expect(codes.slice(0, 10).every((c) => c === 201)).toBe(true);
+    expect(codes[10]).toBe(429);
   });
 
   it('429 DAILY_REVIEW_LIMIT at 20 new reviews in 24 h (product + store combined)', async () => {
