@@ -221,7 +221,7 @@ Anonymous AI cost routes: `/stylist` 10/min (`public-stylist.ts:83`), my-style a
 
 ## Fix diffs status
 
-H4-1, H4-4 (Batch 3, part 1) and H4-2, H4-5, H4-6 (Batch 3, part 2) are **applied**; see below. H4-3, H4-7 and H4-8 are still proposed, not applied. Each shipped fix needs an RC-### entry (next free: RC-098).
+H4-1, H4-4 (Batch 3, part 1) and H4-2, H4-5, H4-6 (Batch 3, part 2) are **applied**; see below. H4-3 is **applied** (Batch 3, part 3, RC-098, needs migration 139). H4-7 and H4-8 are still proposed, not applied. Each shipped fix needs an RC-### entry (next free: RC-098).
 
 ## Fixes applied 2026-10-26 (Batch 3, part 1: H4-1, H4-4) — before / after
 
@@ -249,4 +249,20 @@ Branch `fix/team-otp-fail-closed-rc085`, not committed, not deployed.
 
 Tests, red first: leads +1 (1 red); passport-events +4 and new passport-retailer-ownership 4 (8 red); new customers-dto 5 (4 red, the `PUT` test was written with the fix and never seen red); new near-me 2 (1 red). Then green. The two older wishlist / recently-viewed tests in `passport-otp.test.ts` needed a `prisma.product` mock after the fix (2 red until updated). `security.test.ts` + `admin.login.test.ts` 16/16; full API suite 2456 passed / 5 skipped (was 2439 / 5); `tsc` clean; biome write run on the touched API files.
 
-Not done / unverified: H4-3 (anonymous reviews) is deliberately NOT implemented, it changes what shoppers see and waits for owner approval. Store-level events can still be attributed to any real retailer (RC-095 known gap). No real-device or browser run. `apps/web/src/app/api/store/[slug]/leads/route.ts` biome import-order / format warnings are pre-existing and left alone.
+Not done / unverified: H4-3 (anonymous reviews) was implemented afterwards, see the section below. Store-level events can still be attributed to any real retailer (RC-095 known gap). No real-device or browser run. `apps/web/src/app/api/store/[slug]/leads/route.ts` biome import-order / format warnings are pre-existing and left alone.
+
+
+## Fixes applied 2026-10-26 (Batch 3, part 3: H4-3) — before / after
+
+Branch `fix/team-otp-fail-closed-rc085`, not committed, not deployed. **Migration 139 (`139_review_account_identity`) is written, not applied: the owner applies it before the API deploys, or every review POST 500s.**
+
+| Finding | RC | Before | After |
+| --- | --- | --- | --- |
+| H4-3 | RC-098 | `POST /v1/public/reviews/product\|store` with a body `phone` and no cookie: 201. Fake ratings from any number (global 200/min/IP only), a real customer's review replaced by typing their phone, and their `Customer.name` rewritten in the retailer CRM | 401 `NO_SESSION` without a passport session; identity only from `getPassportSession`; body `phone` / `customer_account_id` ignored; `upsert` on the session account (one review per account per product/store); `Customer` never read or written; 10/min per route; response is an explicit `select` with no account id. Reviewer name is `display_name` on the review row (form value, else account name), shown in the app and on the storefront |
+| Google | RC-098 | Google link only for ratings ≥ 4 | "Also post on Google" link (store write-review URL from `google_place_id`) for any rating when a place id exists; ≤ 3 also keeps the private-feedback note. No Google API write; F-022 stays Planned |
+
+Tests: new `public-reviews.test.ts` 17 cases, 15 red before the fix, 17/17 after. New web `ReviewForm.test.tsx` (3 cases; written together with the fix, not seen red). `security.test.ts` + `admin.login.test.ts` + `routes/public` 374/374; full API suite 2473 passed / 5 skipped (was 2456 / 5); API tsc clean; web tsc clean; biome clean on the new and rewritten files.
+
+Other changes: web proxy `/api/reviews/product` forwards the cookie; `ReviewForm` loses the phone field and the "consent to being contacted" checkbox (nothing is shared with the retailer any more) and shows a sign-in prompt on 401; moderation screens (mobile `growth/ratings.tsx`, admin `ratings/page.tsx`) show `display_name ?? customer.name`.
+
+Not done / unverified: no browser or device run. Old phone-keyed rows are not attributed to any account, so a shopper who reviewed before can leave a second review. There is no store-review UI in the web app, so `POST /reviews/store` is fixed at the API only. `/my-profile` as the sign-in target is assumed, not clicked through. Mobile `tsc` shows 3 pre-existing typed-route errors (`/enquiries`, `/enquiry-try-on`) outside these files.

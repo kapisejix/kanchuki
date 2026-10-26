@@ -665,7 +665,8 @@ export type ProductReview = {
   created_at: string
   updated_at: string
   product?: { id: string; name: string | null; primary_color: string | null }
-  customer?: { id: string; name: string }
+  display_name?: string | null
+  customer?: { id: string; name: string } | null
 }
 
 export type StoreReview = {
@@ -678,7 +679,8 @@ export type StoreReview = {
   is_hidden: boolean
   created_at: string
   updated_at: string
-  customer?: { id: string; name: string }
+  display_name?: string | null
+  customer?: { id: string; name: string } | null
 }
 
 export type ReviewSummary = {

@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { Star } from 'lucide-react'
-import { ConsentCheckbox } from '@/components/ConsentCheckbox'
 
 interface StarPickerProps {
   value: number
@@ -103,43 +102,42 @@ export function ReviewForm({
       return slug ? localStorage.getItem(`kanchuki_lead_name_${slug}`) ?? '' : ''
     } catch { return '' }
   })
-  const [phone, setPhone] = useState(() => {
-    if (typeof window === 'undefined') return ''
-    try {
-      const parts = window.location.pathname.split('/').filter(Boolean)
-      const slug = parts[0] === 'c' ? parts[1] : parts[0]
-      return slug ? localStorage.getItem(`kanchuki_lead_phone_${slug}`) ?? '' : ''
-    } catch { return '' }
-  })
   const [submitted, setSubmitted] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [consent, setConsent] = useState(false)
+  const [needsSignIn, setNeedsSignIn] = useState(false)
   const [routing, setRouting] = useState<{
     action: string
     message?: string
     url?: string
+    feedback_message?: string
   } | null>(null)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (rating === 0 || !phone || !consent) return
+    if (rating === 0) return
 
     setLoading(true)
     setError(null)
+    setNeedsSignIn(false)
 
     try {
+      // Identity is the signed-in passport session (cookie), never a typed phone (RC-098).
       const res = await fetch('/api/reviews/product', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           product_id: productId,
-          phone,
-          name: name || undefined,
+          display_name: name || undefined,
           rating,
           comment: comment || undefined,
         }),
       })
+
+      if (res.status === 401) {
+        setNeedsSignIn(true)
+        return
+      }
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
@@ -182,9 +180,9 @@ export function ReviewForm({
             ⭐ {routing.message}
           </a>
         )}
-        {routing?.action === 'private_feedback' && (
+        {routing?.feedback_message && (
           <p className="mt-3 text-sm text-amber-600 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">
-            {routing.message}
+            {routing.feedback_message}
           </p>
         )}
       </div>
@@ -258,41 +256,35 @@ export function ReviewForm({
         <p className="text-[10px] text-gray-400 mt-1 text-right">{comment.length}/1000</p>
       </div>
 
-      {/* Name + Phone */}
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label htmlFor="review-name" className="block text-xs font-medium text-gray-500 mb-1">
-            Name (optional)
-          </label>
-          <input
-            id="review-name"
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Your name"
-            maxLength={200}
-            className="w-full text-sm text-gray-700 border border-gray-200 rounded-xl px-3 py-2.5
-                       placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-transparent
-                       transition-shadow"
-          />
-        </div>
-        <div>
-          <label htmlFor="review-phone" className="block text-xs font-medium text-gray-500 mb-1">
-            Phone *
-          </label>
-          <input
-            id="review-phone"
-            type="tel"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            placeholder="10-digit mobile"
-            required
-            className="w-full text-sm text-gray-700 border border-gray-200 rounded-xl px-3 py-2.5
-                       placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-transparent
-                       transition-shadow"
-          />
-        </div>
+      {/* Display name — shown next to the review; defaults to your Kanchuki profile name */}
+      <div>
+        <label htmlFor="review-name" className="block text-xs font-medium text-gray-500 mb-1">
+          Name shown on your review (optional)
+        </label>
+        <input
+          id="review-name"
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Your name"
+          maxLength={80}
+          className="w-full text-sm text-gray-700 border border-gray-200 rounded-xl px-3 py-2.5
+                     placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-transparent
+                     transition-shadow"
+        />
       </div>
+
+      {needsSignIn && (
+        <p
+          role="alert"
+          className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2"
+        >
+          Sign in to leave a review.{' '}
+          <a href="/my-profile" className="font-semibold underline">
+            Sign in
+          </a>
+        </p>
+      )}
 
       {error && (
         <p className="text-xs text-red-500 bg-red-50 border border-red-100 rounded-xl px-3 py-2">
@@ -300,15 +292,13 @@ export function ReviewForm({
         </p>
       )}
 
-      <ConsentCheckbox checked={consent} onChange={setConsent} />
-
       {/* Submit */}
       <button
         type="submit"
-        disabled={rating === 0 || !phone || !consent || loading}
+        disabled={rating === 0 || loading}
         className={`w-full font-semibold py-3 rounded-xl text-sm transition-all active:scale-[0.98]
           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-2
-          ${rating > 0 && phone && consent
+          ${rating > 0
             ? 'bg-cyan-600 hover:bg-cyan-700 text-white shadow-soft'
             : 'bg-gray-100 text-gray-400 cursor-not-allowed'
           }`}

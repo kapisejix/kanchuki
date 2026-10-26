@@ -325,7 +325,7 @@ function SummaryTab({
                   </View>
                 </View>
                 <Text className="text-xs font-bold text-spaceCadet-900">
-                  {r.customer?.name ?? 'Anonymous'}
+                  {r.display_name ?? r.customer?.name ?? 'Anonymous'}
                   {r.type === 'product' && r.product ? ` on ${r.product.name}` : ''}
                 </Text>
                 {r.comment && (
@@ -389,7 +389,7 @@ function ProductReviewsTab({
             {r.product?.name ?? 'Collection Item'}
           </Text>
           <Text className="text-xs text-heliotrope-500 font-medium mt-0.5">
-            by {r.customer?.name ?? 'Anonymous'}
+            by {r.display_name ?? r.customer?.name ?? 'Anonymous'}
           </Text>
           {r.comment && (
             <Text className="text-xs text-spaceCadet-900 mt-2 leading-relaxed font-medium">{r.comment}</Text>
@@ -442,7 +442,7 @@ function StoreReviewsTab({
             )}
           </View>
           <Text className="text-xs font-bold text-spaceCadet-900">
-            by {r.customer?.name ?? 'Anonymous'}
+            by {r.display_name ?? r.customer?.name ?? 'Anonymous'}
           </Text>
           {r.comment && (
             <Text className="text-xs text-spaceCadet-900 mt-2 leading-relaxed font-medium">{r.comment}</Text>

@@ -13,6 +13,17 @@
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
 
+## RC-098 — Reviews were keyed on an unverified phone and wrote to the retailer CRM
+
+- **Component:** `apps/api/src/routes/public/public-reviews.ts`, `ProductReview` / `StoreReview` (migration 139), `apps/web` `ReviewForm` + `/api/reviews/product` proxy.
+- **Symptom:** `POST /v1/public/reviews/product|store` took `{phone, name}` from the body with no OTP. Anyone could post unlimited fake ratings (a fresh phone per call, only the global per-IP limit), replace a real customer's review by typing their phone, and rename that customer in the retailer CRM (`customer.upsert … update: { name }`).
+- **Root cause:** the review's identity was the retailer-scoped CRM `Customer` row, and the only way to get one in a public route was to create it from a typed phone. "Who is reviewing" was a claim in the body, not a verified session, and the review table had nowhere to keep a display name except the CRM row it also edited (RC-093/RC-094 shape).
+- **Fix:** a review needs a passport session (`getPassportSession`, 401 `NO_SESSION` otherwise); identity is the session account, never the body. New nullable `customer_account_id` + `display_name` on both review tables (migration 139), one review per account per product/store via `upsert`, and reviews never touch `Customer`. Both POSTs are limited to 10/min. The response is an explicit `select` (no account id). Web: no phone field, cookie forwarded by the proxy, 401 shows a sign-in prompt, consent-to-be-contacted checkbox removed (nothing is shared with the retailer now). Google: the "Also post on Google" link (store write-review URL) shows for any rating when the store has a place id; no Google API write (F-022 stays Planned).
+- **Proof:** new `routes/public/public-reviews.test.ts` (17 cases, 15 failed before the fix): 401 without a session on both routes, body phone/account id ignored, `Customer` never touched, `upsert` on the session account, no account id echoed, 11th request in a minute → 429, Google link for any rating, GET shows `display_name` with the legacy customer-name fallback. New `ReviewForm.test.tsx` (no phone sent, 401 prompt, Google link for a 2-star).
+- **Behaviour change:** shoppers must sign in to review. Old phone-keyed rows are kept (`customer_id`, unverified) and not attributed to any account, so a shopper who reviewed before can leave a second review. Moderation screens show `display_name ?? customer.name`. **Migration 139 must be applied (owner) before the API is deployed**, otherwise every review POST 500s. Found by H4-3.
+
+---
+
 ## RC-097 — near-me published the retailer's login phone
 
 - **Component:** `apps/api/src/routes/public/near-me.ts`.

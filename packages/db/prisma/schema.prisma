@@ -2574,7 +2574,9 @@ enum ChannelSyncStatus {
 model ProductReview {
   id          String @id @default(cuid())
   product_id  String
-  customer_id String
+  customer_id String? // legacy phone-keyed rows only (migration 139); new rows use customer_account_id
+  customer_account_id String? // RC-098: passport session account, never a body phone
+  display_name        String? // shown on the review; never written to Customer
   retailer_id String // denormalized for retailer-facing queries + moderation
   rating      Int    // 1–5 stars
   comment     String?
@@ -2584,10 +2586,13 @@ model ProductReview {
   updated_at  DateTime @updatedAt
 
   product  Product  @relation(fields: [product_id], references: [id])
-  customer Customer @relation(fields: [customer_id], references: [id])
+  customer Customer? @relation(fields: [customer_id], references: [id])
+  customer_account CustomerAccount? @relation(fields: [customer_account_id], references: [id], onDelete: SetNull)
   retailer Retailer @relation(fields: [retailer_id], references: [id])
 
-  @@unique([product_id, customer_id]) // one review per customer per product
+  @@unique([product_id, customer_id]) // legacy: one review per customer per product
+  @@unique([product_id, customer_account_id]) // one review per shopper account per product
+  @@index([customer_account_id])
   @@index([product_id])
   @@index([retailer_id])
   @@index([customer_id])
@@ -2598,7 +2603,9 @@ model ProductReview {
 model StoreReview {
   id          String @id @default(cuid())
   retailer_id String
-  customer_id String
+  customer_id String? // legacy phone-keyed rows only (migration 139)
+  customer_account_id String? // RC-098: passport session account
+  display_name        String?
   rating      Int    // 1–5 stars
   comment     String?
   is_flagged  Boolean @default(false) // admin moderation flag
@@ -2606,10 +2613,13 @@ model StoreReview {
   created_at  DateTime @default(now())
   updated_at  DateTime @updatedAt
 
-  customer Customer @relation(fields: [customer_id], references: [id])
+  customer Customer? @relation(fields: [customer_id], references: [id])
+  customer_account CustomerAccount? @relation(fields: [customer_account_id], references: [id], onDelete: SetNull)
   retailer Retailer @relation(fields: [retailer_id], references: [id])
 
-  @@unique([retailer_id, customer_id]) // one store review per customer per retailer
+  @@unique([retailer_id, customer_id]) // legacy: one store review per customer per retailer
+  @@unique([retailer_id, customer_account_id]) // one per shopper account per retailer
+  @@index([customer_account_id])
   @@index([retailer_id])
   @@index([customer_id])
   @@index([rating])
@@ -2815,6 +2825,8 @@ model CustomerAccount {
   resource_usage      CustomerUsageCounter[]
   engagement_summaries CustomerEngagementSummary[]
   push_subscriptions  CustomerPushSubscription[]
+  product_reviews     ProductReview[]
+  store_reviews       StoreReview[]
 
   @@map("customer_accounts")
 }

@@ -1,33 +1,51 @@
 // F-021: Public review submission — customer-facing endpoints
-// Customers identify by phone (same pattern as QR contact gate / enquiry).
-// No retailer auth required — phone + product_id is the identity.
+// RC-098 (H4-3): the reviewer is the signed-in shopper (passport session). The body
+// never supplies an identity, and a review never reads or writes the retailer CRM
+// (Customer). The review carries its own display_name.
 
-import { createHash } from 'node:crypto';
 import { prisma } from '@kanchuki/db';
-import { normalizeIndianPhone } from '@kanchuki/shared';
-import type { FastifyPluginAsync } from 'fastify';
+import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { notFound } from '../../plugins/error-handler.js';
+import { getPassportSession } from './passport/passport-helpers.js';
 
 // ─── Schemas ─────────────────────────────────────────────────────
 
 const SubmitProductReviewSchema = z.object({
   product_id: z.string().min(1),
-  phone: z.string().min(10).max(15),
-  name: z.string().min(1).max(200).optional(),
+  display_name: z.string().trim().min(1).max(80).optional(),
   rating: z.number().int().min(1).max(5),
   comment: z.string().max(1000).optional(),
 });
 
 const SubmitStoreReviewSchema = z.object({
   retailer_id: z.string().min(1),
-  phone: z.string().min(10).max(15),
-  name: z.string().min(1).max(200).optional(),
+  display_name: z.string().trim().min(1).max(80).optional(),
   rating: z.number().int().min(1).max(5),
   comment: z.string().max(1000).optional(),
 });
 
+// What the shopper gets back about their own review. Explicit so no account id leaks.
+const REVIEW_SELECT = {
+  id: true,
+  rating: true,
+  comment: true,
+  display_name: true,
+  created_at: true,
+} as const;
+
+// Public write with a rating recompute behind it: cap it per IP (H4-3).
+const REVIEW_RATE_LIMIT = { rateLimit: { max: 10, timeWindow: 60 * 1000 } };
+
+const NO_SESSION = { error: { code: 'NO_SESSION', message: 'Sign in to leave a review' } };
+
 // ─── Helpers ─────────────────────────────────────────────────────
+
+async function reviewerAccount(request: FastifyRequest) {
+  const session = await getPassportSession(request.headers.cookie || '');
+  if (!session || session.customer_account.deleted_at) return null;
+  return session.customer_account;
+}
 
 async function recomputeProductRating(productId: string) {
   const agg = await prisma.productReview.aggregate({
@@ -63,77 +81,38 @@ function buildGoogleReviewUrl(placeId: string): string {
   return `https://search.google.com/local/writereview?placeid=${encodeURIComponent(placeId)}`;
 }
 
+// Google only lets the customer write their own review, signed in to Google, so we
+// just hand them the store's write-review page — for any rating, once we have a place id.
+// Low ratings also get the private-feedback note.
 function getReviewRouting(rating: number, googlePlaceId?: string | null) {
-  if (rating >= 4 && googlePlaceId) {
-    return {
-      action: 'google_review' as const,
-      message: 'Loved it? Leave us a Google review!',
+  return {
+    action: googlePlaceId ? ('google_review' as const) : ('none' as const),
+    ...(googlePlaceId && {
+      message: 'Also post on Google',
       url: buildGoogleReviewUrl(googlePlaceId),
-    };
-  }
-  if (rating <= 3) {
-    return {
-      action: 'private_feedback' as const,
-      message: 'Tell us what went wrong — your feedback helps us improve.',
-    };
-  }
-  return { action: 'none' as const };
-}
-
-/**
- * Find or create a customer by phone for a given retailer.
- * Same upsert pattern as the QR contact gate (public-retailers.ts).
- */
-async function findOrCreateCustomer(retailerId: string, phone: string, name?: string) {
-  const normalized = normalizeIndianPhone(phone);
-  const phone_hash = createHash('sha256').update(normalized).digest('hex');
-
-  return prisma.customer.upsert({
-    where: {
-      retailer_id_phone: { retailer_id: retailerId, phone: normalized },
-    },
-    create: {
-      retailer_id: retailerId,
-      name: name ?? 'Customer',
-      phone: normalized,
-      phone_hash,
-      source: 'MANUAL',
-    },
-    update: name ? { name } : {},
-    select: { id: true },
-  });
-}
-
-/**
- * Check if a customer is eligible to review a product.
- * Eligibility: customer must have a prior interaction or order with this retailer.
- */
-async function checkProductReviewEligibility(): Promise<{ eligible: boolean; reason?: string }> {
-  // Eligibility checks simplified — customerInteraction and Order models dropped
-  return { eligible: true };
-}
-
-async function checkStoreReviewEligibility(): Promise<{ eligible: boolean; reason?: string }> {
-  // Eligibility checks simplified — customerInteraction and Order models dropped
-  return { eligible: true };
+    }),
+    ...(rating <= 3 && {
+      feedback_message: 'Tell us what went wrong. Your feedback helps us improve.',
+    }),
+  };
 }
 
 // ─── Routes ──────────────────────────────────────────────────────
 
 export const publicReviewsRoutes: FastifyPluginAsync = async (server) => {
   // ─── POST /public/reviews/product ──────────────────────────────
-  // Customer submits a product review. Identified by phone + product_id.
+  // Signed-in shopper submits (or edits) their review of a product.
   server.post(
     '/reviews/product',
     {
+      config: REVIEW_RATE_LIMIT,
       schema: {
         body: {
           type: 'object',
-          required: ['product_id', 'phone', 'rating'],
+          required: ['product_id', 'rating'],
           properties: {
             product_id: { type: 'string' },
-            phone: { type: 'string' },
-            name: { type: 'string' },
+            display_name: { type: 'string' },
             rating: { type: 'number', minimum: 1, maximum: 5 },
             comment: { type: 'string' },
           },
@@ -141,6 +120,9 @@ export const publicReviewsRoutes: FastifyPluginAsync = async (server) => {
       },
     },
     async (request, reply) => {
+      const account = await reviewerAccount(request);
+      if (!account) return reply.status(401).send(NO_SESSION);
+
       const body = SubmitProductReviewSchema.parse(request.body);
 
       // Look up the product to get retailer_id
@@ -150,42 +132,32 @@ export const publicReviewsRoutes: FastifyPluginAsync = async (server) => {
       });
       if (!product) throw notFound('Product');
 
-      // Find or create the customer
-      const customer = await findOrCreateCustomer(product.retailer_id, body.phone, body.name);
-
-      // Check eligibility
-      const eligibility = await checkProductReviewEligibility();
-      if (!eligibility.eligible) {
-        return reply.status(403).send({ error: eligibility.reason });
-      }
-
-      // Upsert review (one per customer per product)
-      const existing = await prisma.productReview.findUnique({
+      // One review per account per product; a shopper only ever edits their own.
+      const review = await prisma.productReview.upsert({
         where: {
-          product_id_customer_id: {
-            product_id: body.product_id,
-            customer_id: customer.id,
+          product_id_customer_account_id: {
+            product_id: product.id,
+            customer_account_id: account.id,
           },
         },
+        create: {
+          product_id: product.id,
+          retailer_id: product.retailer_id,
+          customer_account_id: account.id,
+          rating: body.rating,
+          comment: body.comment,
+          display_name: body.display_name ?? account.name ?? null,
+        },
+        update: {
+          rating: body.rating,
+          comment: body.comment,
+          ...(body.display_name ? { display_name: body.display_name } : {}),
+        },
+        select: REVIEW_SELECT,
       });
 
-      const review = existing
-        ? await prisma.productReview.update({
-            where: { id: existing.id },
-            data: { rating: body.rating, comment: body.comment },
-          })
-        : await prisma.productReview.create({
-            data: {
-              product_id: body.product_id,
-              customer_id: customer.id,
-              retailer_id: product.retailer_id,
-              rating: body.rating,
-              comment: body.comment,
-            },
-          });
-
       // Recompute denormalized rating
-      await recomputeProductRating(body.product_id);
+      await recomputeProductRating(product.id);
 
       // Get retailer's google_place_id for routing
       const retailer = await prisma.retailer.findUnique({
@@ -200,18 +172,18 @@ export const publicReviewsRoutes: FastifyPluginAsync = async (server) => {
   );
 
   // ─── POST /public/reviews/store ────────────────────────────────
-  // Customer submits a store review. Identified by phone + retailer_id.
+  // Signed-in shopper submits (or edits) their review of a store.
   server.post(
     '/reviews/store',
     {
+      config: REVIEW_RATE_LIMIT,
       schema: {
         body: {
           type: 'object',
-          required: ['retailer_id', 'phone', 'rating'],
+          required: ['retailer_id', 'rating'],
           properties: {
             retailer_id: { type: 'string' },
-            phone: { type: 'string' },
-            name: { type: 'string' },
+            display_name: { type: 'string' },
             rating: { type: 'number', minimum: 1, maximum: 5 },
             comment: { type: 'string' },
           },
@@ -219,6 +191,9 @@ export const publicReviewsRoutes: FastifyPluginAsync = async (server) => {
       },
     },
     async (request, reply) => {
+      const account = await reviewerAccount(request);
+      if (!account) return reply.status(401).send(NO_SESSION);
+
       const body = SubmitStoreReviewSchema.parse(request.body);
 
       // Verify retailer exists
@@ -228,41 +203,30 @@ export const publicReviewsRoutes: FastifyPluginAsync = async (server) => {
       });
       if (!retailer) throw notFound('Retailer');
 
-      // Find or create the customer
-      const customer = await findOrCreateCustomer(body.retailer_id, body.phone, body.name);
-
-      // Check eligibility
-      const eligibility = await checkStoreReviewEligibility();
-      if (!eligibility.eligible) {
-        return reply.status(403).send({ error: eligibility.reason });
-      }
-
-      // Upsert review (one per customer per retailer)
-      const existing = await prisma.storeReview.findUnique({
+      const review = await prisma.storeReview.upsert({
         where: {
-          retailer_id_customer_id: {
-            retailer_id: body.retailer_id,
-            customer_id: customer.id,
+          retailer_id_customer_account_id: {
+            retailer_id: retailer.id,
+            customer_account_id: account.id,
           },
         },
+        create: {
+          retailer_id: retailer.id,
+          customer_account_id: account.id,
+          rating: body.rating,
+          comment: body.comment,
+          display_name: body.display_name ?? account.name ?? null,
+        },
+        update: {
+          rating: body.rating,
+          comment: body.comment,
+          ...(body.display_name ? { display_name: body.display_name } : {}),
+        },
+        select: REVIEW_SELECT,
       });
 
-      const review = existing
-        ? await prisma.storeReview.update({
-            where: { id: existing.id },
-            data: { rating: body.rating, comment: body.comment },
-          })
-        : await prisma.storeReview.create({
-            data: {
-              retailer_id: body.retailer_id,
-              customer_id: customer.id,
-              rating: body.rating,
-              comment: body.comment,
-            },
-          });
-
       // Recompute denormalized rating
-      await recomputeStoreRating(body.retailer_id);
+      await recomputeStoreRating(retailer.id);
 
       const routing = getReviewRouting(body.rating, retailer.google_place_id);
 
@@ -301,6 +265,8 @@ export const publicReviewsRoutes: FastifyPluginAsync = async (server) => {
           rating: true,
           comment: true,
           created_at: true,
+          display_name: true,
+          // legacy phone-keyed rows (pre-139) still carry the CRM name
           customer: { select: { name: true } },
         },
         orderBy: { created_at: 'desc' },
@@ -313,7 +279,7 @@ export const publicReviewsRoutes: FastifyPluginAsync = async (server) => {
           rating: r.rating,
           comment: r.comment,
           created_at: r.created_at,
-          customer_name: r.customer.name,
+          customer_name: r.display_name ?? r.customer?.name ?? '',
         })),
       };
     },
