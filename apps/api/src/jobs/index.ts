@@ -42,6 +42,7 @@ import {
   getTaggingQueue,
   getTryOnQueue,
 } from './queue.js';
+import { handleQuotaReservationSweep } from './quota-reservation-sweep.js';
 import { handleReferralAccrue } from './referral-accrue.js';
 import { handleReferralPayout } from './referral-payout.js';
 import { handleReferralQualify } from './referral-qualify.js';
@@ -296,6 +297,8 @@ export async function startWorkers(): Promise<void> {
           return handlePlanLapse();
         case 'ai-spend-alert':
           return handleAiSpendAlert();
+        case 'quota-reservation-sweep':
+          return handleQuotaReservationSweep();
         case 'customer-new-arrivals-push':
           return handleNewArrivalsPush();
         default:
@@ -506,6 +509,18 @@ export async function startWorkers(): Promise<void> {
     {},
     {
       repeat: { pattern: '0 * * * *' },
+      removeOnComplete: { count: 10 },
+      removeOnFail: { count: 10 },
+    },
+  );
+
+  // RC-102 quota reservation sweep — hourly at :40. Settles RESERVED slots whose job never
+  // finished (spent if it left a paid result, else refunded). No `limit` (RC-062); idempotent.
+  await getMaintenanceQueue().add(
+    'quota-reservation-sweep',
+    {},
+    {
+      repeat: { pattern: '40 * * * *' },
       removeOnComplete: { count: 10 },
       removeOnFail: { count: 10 },
     },
