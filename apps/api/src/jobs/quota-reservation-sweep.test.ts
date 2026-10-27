@@ -6,7 +6,7 @@ import { RESERVATION_MIN_AGE_MS, handleQuotaReservationSweep } from './quota-res
 
 const m = vi.hoisted(() => ({
   findMany: vi.fn(),
-  photoFind: vi.fn(),
+  photoRaw: vi.fn(),
   tryOnFind: vi.fn(),
   refund: vi.fn(),
   refundCustomer: vi.fn(),
@@ -17,7 +17,7 @@ const m = vi.hoisted(() => ({
 vi.mock('@kanchuki/db', () => ({
   prisma: {
     quotaReservation: { findMany: m.findMany },
-    productPhoto: { findFirst: m.photoFind },
+    $queryRaw: m.photoRaw,
     tryOnJob: { findUnique: m.tryOnFind },
   },
 }));
@@ -47,7 +47,7 @@ beforeEach(() => {
   for (const f of [m.refund, m.refundCustomer, m.spent, m.spentCustomer]) {
     f.mockResolvedValue(undefined);
   }
-  m.photoFind.mockResolvedValue(null);
+  m.photoRaw.mockResolvedValue([]);
   m.tryOnFind.mockResolvedValue(null);
 });
 
@@ -65,8 +65,9 @@ describe('handleQuotaReservationSweep', () => {
       retailerRow('lost', 'STUDIO_SHOOT'),
       retailerRow('paid', 'STUDIO_SHOOT'),
     ]);
-    m.photoFind.mockImplementation(({ where }) =>
-      Promise.resolve(where.metadata.equals === 'paid' ? { id: 'p1' } : null),
+    // $queryRaw is a tagged template: (strings, ...values), the job id is the only value.
+    m.photoRaw.mockImplementation((_strings: unknown, jobId: string) =>
+      Promise.resolve(jobId === 'paid' ? [{ one: 1 }] : []),
     );
     const res = await handleQuotaReservationSweep(NOW);
     expect(m.refund).toHaveBeenCalledExactlyOnceWith('lost', 'STUDIO_SHOOT');
@@ -106,15 +107,15 @@ describe('handleQuotaReservationSweep', () => {
     expect(m.spent).not.toHaveBeenCalled();
   });
 
-  // Review finding 1 (RC-102): pins a KNOWN GAP. A try-on whose GPU ran but whose R2 save threw is
-  // FAILED with gpu_ms null; if its mark-spent write had also failed, the row is still RESERVED
-  // and the sweep refunds a paid run. Update this test if the failure path starts writing gpu_ms.
-  it('KNOWN GAP: a still-RESERVED try-on row on a FAILED job with no gpu_ms is refunded', async () => {
+  // Review finding 1 (RC-102): a try-on whose GPU ran but whose R2 save threw is FAILED but now
+  // carries gpu_ms (jobs/tryon.ts), so a still-RESERVED row is settled SPENT, not refunded.
+  it('a FAILED try-on that carries gpu_ms (paid run, failed save) is marked spent, not refunded', async () => {
     m.findMany.mockResolvedValue([retailerRow('paid_but_failed_save', 'TRY_ON_GENERATION')]);
-    m.tryOnFind.mockResolvedValue({ gpu_ms: null, status: 'FAILED' });
+    m.tryOnFind.mockResolvedValue({ gpu_ms: 3100, status: 'FAILED' });
     const res = await handleQuotaReservationSweep(NOW);
-    expect(m.refund).toHaveBeenCalledExactlyOnceWith('paid_but_failed_save', 'TRY_ON_GENERATION');
-    expect(res).toEqual({ spent: 0, refunded: 1, failed: 0 });
+    expect(m.spent).toHaveBeenCalledExactlyOnceWith('paid_but_failed_save', 'TRY_ON_GENERATION');
+    expect(m.refund).not.toHaveBeenCalled();
+    expect(res).toEqual({ spent: 1, refunded: 0, failed: 0 });
   });
 
   it('one failing row is counted and the rest still settle', async () => {

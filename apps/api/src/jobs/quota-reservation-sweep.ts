@@ -8,7 +8,7 @@
 // `finally` cannot hand back a paid generation. Truth per resource:
 //   STUDIO_SHOOT         a product_photos row carrying metadata.studio.job_id
 //   TRY_ON_GENERATION    try_on_jobs.gpu_ms set (written on every path after the GPU ran,
-//                        including discarded / withdrawn) or status COMPLETED
+//                        including discarded / withdrawn / a failed result save) or status COMPLETED
 //   anything else        no durable trace (My Style state lives in Redis for 15 min) -> refund
 // Both settle calls are idempotent (UPDATE .. WHERE state = 'RESERVED'), so a job that finishes
 // between the read and the write is not double-counted.
@@ -29,11 +29,14 @@ const BATCH = 500;
 
 async function producedResult(resource: QuotaResourceType, jobId: string): Promise<boolean> {
   if (resource === 'STUDIO_SHOOT') {
-    const photo = await prisma.productPhoto.findFirst({
-      where: { metadata: { path: ['studio', 'job_id'], equals: jobId } },
-      select: { id: true },
-    });
-    return photo !== null;
+    // Raw so the predicate is exactly the expression indexed by migration 145
+    // (`metadata #> '{studio,job_id}'`); Prisma's JSON-path filter builds its own expression and
+    // measured as a sequential scan of product_photos per stuck row (52 ms at 100k rows).
+    const rows = await prisma.$queryRaw<{ one: number }[]>`
+      SELECT 1 AS one FROM product_photos
+      WHERE metadata #> '{studio,job_id}' = to_jsonb(${jobId}::text)
+      LIMIT 1`;
+    return rows.length > 0;
   }
   if (resource === 'TRY_ON_GENERATION') {
     const job = await prisma.tryOnJob.findUnique({

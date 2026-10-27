@@ -582,12 +582,18 @@ export async function startWorkers(): Promise<void> {
     console.error(`[jobs] generate-embedding failed ${job?.id}:`, err.message);
   });
 
+  // Quota refund backups below run ONLY for a stalled-out job (BullMQ: "job stalled more than
+  // allowable limit"), i.e. one whose handler `finally` never ran. A job the handler itself threw
+  // for has already refunded or deliberately kept its slot; refunding here too would hand back a
+  // paid run whose mark-spent write failed.
+  const stalledOut = (err: Error) => /stalled/i.test(err.message);
+
   studioShootWorker.on('failed', (job, err) => {
     console.error(`[jobs] studio-shoot failed ${job?.id}:`, err.message);
     // Backup for a job that died without its handler's `finally` running (stalled out):
     // idempotent, so a refund the handler already made is a no-op.
     const jobId = (job?.data as StudioShootJobData | undefined)?.job_id;
-    if (jobId) {
+    if (jobId && stalledOut(err)) {
       refundJobQuota(jobId, 'STUDIO_SHOOT').catch((e) =>
         console.error(`[jobs] studio-shoot quota refund failed ${jobId}:`, e),
       );
@@ -598,7 +604,7 @@ export async function startWorkers(): Promise<void> {
     console.error(`[jobs] try-on failed ${job?.id}:`, err.message);
     // Stalled-out backup, same as studio-shoot: idempotent, and a SPENT slot is left alone.
     const d = job?.data as TryOnJobData | undefined;
-    if (d?.job_id) {
+    if (d?.job_id && stalledOut(err)) {
       refundJobQuota(d.job_id, 'TRY_ON_GENERATION').catch((e) =>
         console.error(`[jobs] try-on quota refund failed ${d.job_id}:`, e),
       );
@@ -613,7 +619,7 @@ export async function startWorkers(): Promise<void> {
   myStyleAnalyzeWorker.on('failed', (job, err) => {
     console.error(`[jobs] my-style-analyze failed ${job?.id}:`, err.message);
     const jobId = (job?.data as MyStyleAnalyzeJobData | undefined)?.job_id;
-    if (jobId) {
+    if (jobId && stalledOut(err)) {
       refundCustomerJobQuota(jobId, 'STYLE_ANALYSIS').catch((e) =>
         console.error(`[jobs] my-style-analyze quota refund failed ${jobId}:`, e),
       );

@@ -71,11 +71,18 @@ async function garmentUrl(photo: { url: string; r2_key: string | null }): Promis
   return photo.url || null;
 }
 
-async function markFailed(jobId: string, reason: string): Promise<void> {
+// `gpuMs` is passed only once the GPU has run: it is the durable trace the quota sweep reads to
+// tell a paid-but-failed run (slot stays spent) from one that never reached the GPU (refund).
+async function markFailed(jobId: string, reason: string, gpuMs?: number): Promise<void> {
   await prisma.tryOnJob
     .update({
       where: { id: jobId },
-      data: { status: 'FAILED', failure_reason: reason.slice(0, 500), completed_at: new Date() },
+      data: {
+        status: 'FAILED',
+        failure_reason: reason.slice(0, 500),
+        completed_at: new Date(),
+        ...(gpuMs !== undefined && { gpu_ms: gpuMs }),
+      },
     })
     .catch((err) => console.error(`[try-on] failed to mark ${jobId} FAILED:`, err));
 }
@@ -131,6 +138,7 @@ async function run(data: TryOnJobData, held: { spent: boolean }): Promise<void> 
   });
   if (current?.status === 'DISCARDED') return;
 
+  let gpuMs: number | undefined;
   try {
     // Re-verify ownership at execution time (queue = trust boundary): the
     // route checked, but a stale job must not be trusted, and for a customer
@@ -177,6 +185,7 @@ async function run(data: TryOnJobData, held: { spent: boolean }): Promise<void> 
     // UI). Both caps, because a customer job spends the retailer's allowance AND the shopper's.
     // The flag is set before the writes so a later throw cannot refund a paid generation.
     held.spent = true;
+    gpuMs = result.gpuMs ?? 0; // non-null even when unmetered: the sweep reads "gpu_ms set" as "GPU ran"
     await markJobQuotaSpent(job_id, 'TRY_ON_GENERATION').catch((err) => {
       console.error(`[try-on] failed to mark retailer quota spent for ${retailer_id}:`, err);
     });
@@ -265,7 +274,11 @@ async function run(data: TryOnJobData, held: { spent: boolean }): Promise<void> 
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error(`[try-on] job ${job_id} failed:`, err);
-    await markFailed(job_id, message || 'The try-on could not be generated. Please try again.');
+    await markFailed(
+      job_id,
+      message || 'The try-on could not be generated. Please try again.',
+      gpuMs,
+    );
     // Mark the job failed for BullMQ visibility. No auto-retry: each attempt is
     // a real GPU call, and a retry would have no wearer photo left (it was
     // taken above), so it could only fail again.
