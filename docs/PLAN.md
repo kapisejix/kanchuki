@@ -42,6 +42,7 @@
 | 9 | Coupon codes · social publishing phase 3 | `tasks/pending/coupon-codes.md`, `tasks/pending/social-publishing-phase-3.md` | — |
 | 10 | F-041 Pre-Loved — shoppers sell / rent / family-gift used clothes; fit badge + tailor; handover at partner store (idea, not approved) | `tasks/pending/how-customer-earn-from-this-platform.md` | Owner D-1…D-7 + legal/CA review; no-code P0 WhatsApp pilot first (Diwali 2026) |
 | 11 | F-044 follow-ups — launch Release 2 try-on (create packs, EAS rebuild, device pass, F-040 gates); Release 3 real push notifications (F-046, built and merged 2026-10-19, not device-tested: needs Firebase + FCM key + EAS rebuild + device pass); E9 in-app WhatsApp reply once F-035 lands | `tasks/pending/enquiry-basket-team-inbox-and-instore-tryon.md` §11.7 | F-040 launch gates + accuracy bake-off; F-035 for E9 |
+| 12 | Google place-id capture, setup checklist, Google Business reviews (built 2026-10-26, reviews DARK) | `tasks/pending/google-business-profile-and-setup-checklist.md` | Owner: apply migrations 139→143 one run each; set `GOOGLE_PLACES_API_KEY`; Google Cloud OAuth client + Business Profile API access request; env `GOOGLE_GBP_CLIENT_ID`/`_CLIENT_SECRET`/`_REDIRECT_URI`, `GBP_MANAGER_EMAIL`; enable `GOOGLE_BUSINESS_PROFILE` per plan only after Google approves; device + `/admin/gbp` browser test |
 | — | F-022 Google Business Profile auto-post | `tasks/pending/google-business-profile-autopost.md` | ⏸ blocked on Google API access |
 
 ---
