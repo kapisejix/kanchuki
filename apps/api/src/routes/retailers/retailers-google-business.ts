@@ -14,7 +14,7 @@ import { hasFeature } from '../../lib/features.js';
 import { gbpAvailable } from '../../lib/gbp-availability.js';
 import { syncIfStale } from '../../lib/gbp-sync.js';
 import { GbpError, gbpManagerEmail, replyToReview } from '../../lib/google-business.js';
-import { checkQuota, incrementUsage } from '../../lib/quota.js';
+import { reserveQuota } from '../../lib/quota.js';
 import { isRealOwner } from '../../plugins/auth.js';
 import {
   AppError,
@@ -242,7 +242,7 @@ export const retailersGoogleBusinessRoutes: FastifyPluginAsync = async (server) 
       });
       if (!review) throw notFound('Review');
 
-      await checkQuota(request.retailerId, 'GBP_REVIEW_REPLY');
+      const refund = await reserveQuota(request.retailerId, 'GBP_REVIEW_REPLY');
 
       let confirmed: { comment: string; updatedAt: Date };
       try {
@@ -253,6 +253,7 @@ export const retailersGoogleBusinessRoutes: FastifyPluginAsync = async (server) 
           body.data.comment,
         );
       } catch (err) {
+        await refund().catch(() => {}); // Google did not post a reply, so the slot is not spent
         if (!(err instanceof GbpError)) throw err;
         if (err.code === 'NEEDS_ACCESS') {
           await prisma.gbpLink.update({
@@ -267,7 +268,6 @@ export const retailersGoogleBusinessRoutes: FastifyPluginAsync = async (server) 
         where: { id: review.id },
         data: { reply_comment: confirmed.comment, reply_updated_at: confirmed.updatedAt },
       });
-      await incrementUsage(request.retailerId, 'GBP_REVIEW_REPLY');
       await prisma.auditLog.create({
         data: {
           actor_type: 'retailer',

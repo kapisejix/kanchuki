@@ -4,7 +4,7 @@ import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { recordAiUsage } from '../../lib/ai-usage.js';
 import { hasFeature } from '../../lib/features.js';
-import { checkQuota, incrementUsage } from '../../lib/quota.js';
+import { reserveQuota } from '../../lib/quota.js';
 import { featureUnavailable, notFound, validationError } from '../../plugins/error-handler.js';
 
 // Roadmap M Phase 1 priorities: Hindi + Hinglish first, then the big regional
@@ -65,8 +65,7 @@ export const growthTranslateRoutes: FastifyPluginAsync = async (server) => {
       return reply.send({ data: { product_id: id, language, description: cached, cached: true } });
 
     // Metered like tagging: AI_TAGGING_CALL quota + per-call usage log.
-    await checkQuota(retailerId, 'AI_TAGGING_CALL');
-    await incrementUsage(retailerId, 'AI_TAGGING_CALL');
+    await reserveQuota(retailerId, 'AI_TAGGING_CALL');
 
     const attrs = [
       product.name,
@@ -131,8 +130,7 @@ export const growthTranslateRoutes: FastifyPluginAsync = async (server) => {
 
     const { message, language, context } = body.data;
 
-    await checkQuota(retailerId, 'AI_TAGGING_CALL');
-    await incrementUsage(retailerId, 'AI_TAGGING_CALL');
+    await reserveQuota(retailerId, 'AI_TAGGING_CALL');
 
     const req: VisionAskRequest = {
       resourceType: 'AI_TAGGING_CALL',

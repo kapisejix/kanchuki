@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { prisma } from '@kanchuki/db';
 import type { QuotaPeriod, QuotaResourceType } from '@kanchuki/db';
 import { AppError, planLimitExceeded } from '../plugins/error-handler.js';
@@ -157,12 +158,10 @@ export async function checkQuota(
 
 // ponytail: checkQuota + incrementUsage are two separate calls (not one
 // transaction), so two concurrent requests can both pass the check before
-// either increments. Fine for a billing quota; revisit with a DB-level
-// constraint if overshoot ever matters financially. The customer-side pair
-// below has the identical shape and the identical race. (This comment used to
-// cite the deleted routes/tryon.ts as precedent for accepting it — that
-// precedent is gone, so the trade-off is now stated plainly rather than
-// inherited.)
+// either increments. Callers whose work runs in the same request use
+// reserveQuota (RC-102) instead. Callers that check at enqueue and increment
+// in a later job (tryon, studio-shoot, tagging) still have this race, as does
+// the customer-side pair below.
 export async function incrementUsage(
   retailerId: string,
   resourceType: QuotaResourceType,
@@ -187,6 +186,44 @@ export async function incrementUsage(
     },
     update: { count: { increment: amount } },
   });
+}
+
+/**
+ * Atomic check-and-take (RC-102). One statement both tests `count + amount <= limit` and bumps
+ * the counter, so concurrent callers cannot both pass a check that only one has room for — the
+ * gap `checkQuota` + `incrementUsage` leave. Returns a refund to call if the work then fails.
+ * Same limit rules as `checkQuota`: no row or -1 means unlimited, nothing is written, refund is a no-op.
+ * Only for callers whose work runs inside the same request; a check at enqueue with the
+ * increment in a later job still uses the two-call pair.
+ */
+export async function reserveQuota(
+  retailerId: string,
+  resourceType: QuotaResourceType,
+  amount = 1,
+): Promise<() => Promise<void>> {
+  const effective = await effectiveLimit(retailerId, resourceType);
+  if (!effective || effective.limit === -1) return async () => {};
+  const limit = effective.limit;
+  const label = resourceType.toLowerCase().replace(/_/g, ' ');
+  // The ON CONFLICT guard only covers an existing row; a first insert must be bounded here.
+  if (amount > limit) throw planLimitExceeded(label);
+
+  const start = periodStart(effective.period);
+  const taken = await prisma.$executeRaw`
+    INSERT INTO usage_counters (id, retailer_id, resource_type, period_start, count, updated_at)
+    VALUES (${randomUUID()}, ${retailerId}, ${resourceType}::"QuotaResourceType", ${start}, ${amount}, now())
+    ON CONFLICT (retailer_id, resource_type, period_start)
+    DO UPDATE SET count = usage_counters.count + ${amount}, updated_at = now()
+    WHERE usage_counters.count + ${amount} <= ${limit}`;
+  if (taken === 0) throw planLimitExceeded(label);
+
+  return async () => {
+    await prisma.$executeRaw`
+      UPDATE usage_counters SET count = GREATEST(count - ${amount}, 0), updated_at = now()
+      WHERE retailer_id = ${retailerId}
+        AND resource_type = ${resourceType}::"QuotaResourceType"
+        AND period_start = ${start}`;
+  };
 }
 
 export interface QuotaStatusResult {

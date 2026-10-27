@@ -24,10 +24,15 @@ const m = vi.hoisted(() => ({
   prCount: vi.fn(),
   srCount: vi.fn(),
   customerAny: vi.fn(),
+  tx: vi.fn(),
+  lock: vi.fn(),
+  db: null as unknown,
 }));
 
-vi.mock('@kanchuki/db', () => ({
-  prisma: {
+vi.mock('@kanchuki/db', () => {
+  const prisma = {
+    $transaction: m.tx,
+    $executeRaw: m.lock,
     product: { findUnique: m.productFind, update: m.productUpdate },
     retailer: { findUnique: m.retailerFind, update: m.retailerUpdate },
     productReview: {
@@ -44,8 +49,10 @@ vi.mock('@kanchuki/db', () => ({
       count: m.srCount,
     },
     customer: { upsert: m.customerAny, update: m.customerAny, create: m.customerAny },
-  },
-}));
+  };
+  m.db = prisma;
+  return { prisma };
+});
 // Real cookie parsing (passportCookieId) so the limiter key is the one production uses.
 vi.mock('./passport/passport-helpers.js', async (importOriginal) => ({
   ...(await importOriginal<typeof import('./passport/passport-helpers.js')>()),
@@ -92,6 +99,8 @@ async function post(
 beforeEach(() => {
   vi.resetAllMocks();
   m.session.mockResolvedValue(SESSION);
+  m.lock.mockResolvedValue(1);
+  m.tx.mockImplementation(async (fn: (db: unknown) => unknown) => fn(m.db));
   m.productFind.mockResolvedValue({ id: 'p1', retailer_id: 'ret1' });
   m.retailerFind.mockResolvedValue(RETAILER);
   m.prFindUnique.mockResolvedValue(null);
@@ -198,6 +207,24 @@ describe.each(ROUTES)('POST %s', (url, base, upsertKey, findKey) => {
     m.prCount.mockResolvedValue(11);
     m.srCount.mockResolvedValue(8);
     expect((await post(url, base)).statusCode).toBe(201);
+  });
+
+  it('RC-102: takes the per-account advisory lock before the count and the write, in one transaction', async () => {
+    expect((await post(url, base)).statusCode).toBe(201);
+    expect(m.tx).toHaveBeenCalledTimes(1);
+    expect(m.lock).toHaveBeenCalledTimes(1);
+    // hashtextextended(<key>, 0): the key is account-scoped, so one shopper cannot block another.
+    expect(m.lock.mock.calls[0]?.[1]).toBe('review-cap:ca_1');
+    const lockAt = m.lock.mock.invocationCallOrder[0] ?? Number.POSITIVE_INFINITY;
+    expect(lockAt).toBeLessThan(m.prCount.mock.invocationCallOrder[0] ?? 0);
+    expect(lockAt).toBeLessThan(m[upsertKey].mock.invocationCallOrder[0] ?? 0);
+  });
+
+  it('RC-102: a capped request writes nothing, and the lock was still taken first', async () => {
+    m.prCount.mockResolvedValue(20);
+    expect((await post(url, base)).statusCode).toBe(429);
+    expect(m.lock).toHaveBeenCalledTimes(1);
+    expect(m[upsertKey]).not.toHaveBeenCalled();
   });
 
   it('editing an existing review works at the cap', async () => {

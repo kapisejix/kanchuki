@@ -4,7 +4,7 @@
 // (Customer). The review carries its own display_name.
 
 import { createHash } from 'node:crypto';
-import { prisma } from '@kanchuki/db';
+import { type Prisma, prisma } from '@kanchuki/db';
 import { buildGoogleReviewUrl, normalizeIndianPhone } from '@kanchuki/shared';
 import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
 import { z } from 'zod';
@@ -83,16 +83,30 @@ function isOwnStore(
   );
 }
 
-async function overDailyCap(accountId: string) {
+async function overDailyCap(db: Prisma.TransactionClient, accountId: string) {
   const where = {
     customer_account_id: accountId,
     created_at: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
   };
   const [p, s] = await Promise.all([
-    prisma.productReview.count({ where }),
-    prisma.storeReview.count({ where }),
+    db.productReview.count({ where }),
+    db.storeReview.count({ where }),
   ]);
   return p + s >= MAX_NEW_REVIEWS_PER_DAY;
+}
+
+// RC-102: count and write under one per-account advisory lock, so two parallel first-time
+// reviews cannot both read 19 and both insert. Returns null when over the cap; edits skip it.
+async function saveUnderDailyCap<T>(
+  accountId: string,
+  isEdit: (db: Prisma.TransactionClient) => Promise<boolean>,
+  save: (db: Prisma.TransactionClient) => Promise<T>,
+): Promise<T | null> {
+  return prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`review-cap:${accountId}`}, 0))`;
+    if (!(await isEdit(tx)) && (await overDailyCap(tx, accountId))) return null;
+    return save(tx);
+  });
 }
 
 async function recomputeProductRating(productId: string) {
@@ -184,43 +198,37 @@ export const publicReviewsRoutes: FastifyPluginAsync = async (server) => {
         return reply.status(403).send(OWN_STORE);
       }
 
-      // Edits never count against the daily cap, so check "is this an edit" first.
-      const existing = await prisma.productReview.findUnique({
-        where: {
-          product_id_customer_account_id: {
-            product_id: product.id,
-            customer_account_id: account.id,
-          },
-        },
-        select: { id: true },
-      });
-      if (!existing && (await overDailyCap(account.id))) {
-        return reply.status(429).send(DAILY_LIMIT);
-      }
-
-      // One review per account per product; a shopper only ever edits their own.
-      const review = await prisma.productReview.upsert({
-        where: {
-          product_id_customer_account_id: {
-            product_id: product.id,
-            customer_account_id: account.id,
-          },
-        },
-        create: {
+      const key = {
+        product_id_customer_account_id: {
           product_id: product.id,
-          retailer_id: product.retailer_id,
           customer_account_id: account.id,
-          rating: body.rating,
-          comment: body.comment,
-          display_name: body.display_name ?? account.name ?? null,
         },
-        update: {
-          rating: body.rating,
-          comment: body.comment,
-          ...(body.display_name ? { display_name: body.display_name } : {}),
-        },
-        select: REVIEW_SELECT,
-      });
+      };
+      // Edits never count against the daily cap, so check "is this an edit" first.
+      // One review per account per product; a shopper only ever edits their own.
+      const review = await saveUnderDailyCap(
+        account.id,
+        async (db) => !!(await db.productReview.findUnique({ where: key, select: { id: true } })),
+        (db) =>
+          db.productReview.upsert({
+            where: key,
+            create: {
+              product_id: product.id,
+              retailer_id: product.retailer_id,
+              customer_account_id: account.id,
+              rating: body.rating,
+              comment: body.comment,
+              display_name: body.display_name ?? account.name ?? null,
+            },
+            update: {
+              rating: body.rating,
+              comment: body.comment,
+              ...(body.display_name ? { display_name: body.display_name } : {}),
+            },
+            select: REVIEW_SELECT,
+          }),
+      );
+      if (!review) return reply.status(429).send(DAILY_LIMIT);
 
       // Recompute denormalized rating
       await recomputeProductRating(product.id);
@@ -264,40 +272,34 @@ export const publicReviewsRoutes: FastifyPluginAsync = async (server) => {
       if (!retailer) throw notFound('Retailer');
       if (isOwnStore(account.phone, retailer)) return reply.status(403).send(OWN_STORE);
 
-      const existing = await prisma.storeReview.findUnique({
-        where: {
-          retailer_id_customer_account_id: {
-            retailer_id: retailer.id,
-            customer_account_id: account.id,
-          },
-        },
-        select: { id: true },
-      });
-      if (!existing && (await overDailyCap(account.id))) {
-        return reply.status(429).send(DAILY_LIMIT);
-      }
-
-      const review = await prisma.storeReview.upsert({
-        where: {
-          retailer_id_customer_account_id: {
-            retailer_id: retailer.id,
-            customer_account_id: account.id,
-          },
-        },
-        create: {
+      const key = {
+        retailer_id_customer_account_id: {
           retailer_id: retailer.id,
           customer_account_id: account.id,
-          rating: body.rating,
-          comment: body.comment,
-          display_name: body.display_name ?? account.name ?? null,
         },
-        update: {
-          rating: body.rating,
-          comment: body.comment,
-          ...(body.display_name ? { display_name: body.display_name } : {}),
-        },
-        select: REVIEW_SELECT,
-      });
+      };
+      const review = await saveUnderDailyCap(
+        account.id,
+        async (db) => !!(await db.storeReview.findUnique({ where: key, select: { id: true } })),
+        (db) =>
+          db.storeReview.upsert({
+            where: key,
+            create: {
+              retailer_id: retailer.id,
+              customer_account_id: account.id,
+              rating: body.rating,
+              comment: body.comment,
+              display_name: body.display_name ?? account.name ?? null,
+            },
+            update: {
+              rating: body.rating,
+              comment: body.comment,
+              ...(body.display_name ? { display_name: body.display_name } : {}),
+            },
+            select: REVIEW_SELECT,
+          }),
+      );
+      if (!review) return reply.status(429).send(DAILY_LIMIT);
 
       // Recompute denormalized rating
       await recomputeStoreRating(retailer.id);

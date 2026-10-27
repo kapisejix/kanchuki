@@ -23,8 +23,8 @@ const m = vi.hoisted(() => ({
   reply: vi.fn(),
   managerEmail: vi.fn(),
   sync: vi.fn(),
-  checkQuota: vi.fn(),
-  incrementUsage: vi.fn(),
+  reserve: vi.fn(),
+  refund: vi.fn(),
   routeTicket: vi.fn(),
 }));
 
@@ -46,10 +46,7 @@ vi.mock('@kanchuki/db', () => ({
 vi.mock('../../lib/features.js', () => ({ hasFeature: m.hasFeature }));
 vi.mock('../../lib/gbp-availability.js', () => ({ gbpAvailable: m.available }));
 vi.mock('../../lib/gbp-sync.js', () => ({ syncIfStale: m.sync }));
-vi.mock('../../lib/quota.js', () => ({
-  checkQuota: m.checkQuota,
-  incrementUsage: m.incrementUsage,
-}));
+vi.mock('../../lib/quota.js', () => ({ reserveQuota: m.reserve }));
 vi.mock('../team.js', () => ({ routeTicket: m.routeTicket }));
 vi.mock('../../lib/google-business.js', async (orig) => ({
   ...(await orig<typeof import('../../lib/google-business.js')>()),
@@ -96,8 +93,8 @@ beforeEach(() => {
   m.available.mockResolvedValue(true);
   m.managerEmail.mockResolvedValue('kanchuki.reviews@example.com');
   m.sync.mockResolvedValue(false);
-  m.checkQuota.mockResolvedValue(undefined);
-  m.incrementUsage.mockResolvedValue(undefined);
+  m.refund.mockResolvedValue(undefined);
+  m.reserve.mockResolvedValue(m.refund);
   m.linkFind.mockResolvedValue(LINKED);
   m.linkUpsert.mockResolvedValue({});
   m.linkUpdate.mockResolvedValue({});
@@ -172,7 +169,7 @@ describe('flag OFF / not approved — nothing fake-succeeds', () => {
     expect(m.linkUpsert).not.toHaveBeenCalled();
     expect(m.ticketCreate).not.toHaveBeenCalled();
     expect(m.reply).not.toHaveBeenCalled();
-    expect(m.incrementUsage).not.toHaveBeenCalled();
+    expect(m.reserve).not.toHaveBeenCalled();
   });
 });
 
@@ -303,7 +300,8 @@ describe('POST /reviews/:id/reply', () => {
     expect(res.statusCode).toBe(200);
     expect(m.reply).toHaveBeenCalledWith('acc1', 'loc1', 'g1', 'Thank you!');
     expect(m.reviewUpdate.mock.calls[0]?.[0].data).toMatchObject({ reply_comment: 'Thank you!' });
-    expect(m.incrementUsage).toHaveBeenCalledTimes(1);
+    expect(m.reserve).toHaveBeenCalledTimes(1);
+    expect(m.refund).not.toHaveBeenCalled();
     expect(m.auditCreate.mock.calls[0]?.[0].data).toMatchObject({
       action: 'reply',
       resource_type: 'GbpReview',
@@ -322,7 +320,7 @@ describe('POST /reviews/:id/reply', () => {
   });
 
   it('over quota → refused BEFORE Google is called', async () => {
-    m.checkQuota.mockRejectedValue(new Error('limit'));
+    m.reserve.mockRejectedValue(new Error('limit'));
     const res = await reply(await buildApp());
     expect(res.statusCode).toBeGreaterThanOrEqual(400);
     expect(m.reply).not.toHaveBeenCalled();
@@ -336,7 +334,7 @@ describe('POST /reviews/:id/reply', () => {
     expect(res.json().error.code).toBe('GOOGLE_ACCESS');
     expect(m.linkUpdate.mock.calls[0]?.[0].data).toMatchObject({ status: 'NEEDS_ACCESS' });
     expect(m.reviewUpdate).not.toHaveBeenCalled();
-    expect(m.incrementUsage).not.toHaveBeenCalled();
+    expect(m.refund).toHaveBeenCalledTimes(1);
   });
 
   it('Google down → 502 and nothing recorded', async () => {
@@ -344,7 +342,7 @@ describe('POST /reviews/:id/reply', () => {
     const res = await reply(await buildApp());
     expect(res.statusCode).toBe(502);
     expect(m.reviewUpdate).not.toHaveBeenCalled();
-    expect(m.incrementUsage).not.toHaveBeenCalled();
+    expect(m.refund).toHaveBeenCalledTimes(1);
   });
 
   it('rejects an empty or oversize reply', async () => {
