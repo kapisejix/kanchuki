@@ -265,6 +265,32 @@ describe('POST /products/pro-cleanup', () => {
     await app.close();
   });
 
+  it('a failing BG_REMOVAL refund does not skip the IMAGE_CROP refund', async () => {
+    mockRunCleanup
+      .mockRejectedValueOnce(new Error('fetch failed (500)'))
+      .mockResolvedValueOnce({ jpeg: Buffer.from('x'), output: '' });
+    mockScoreSharpness.mockResolvedValueOnce(7);
+    mockPickSharpest.mockReturnValue(0);
+    mockRefundBg.mockRejectedValue(new Error('db down'));
+    const crop = { x1: 0, y1: 0, x2: 10, y2: 10 };
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/products/pro-cleanup',
+      payload: {
+        ...validBody,
+        photos: [
+          { ...validBody.photos[0], crop }, // fails, bg refund rejects
+          { ...validBody.photos[1], crop },
+        ],
+      },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(mockRefundBg).toHaveBeenCalledExactlyOnceWith(1);
+    expect(mockRefundCrop).toHaveBeenCalledExactlyOnceWith(1);
+    await app.close();
+  });
+
   it('IMAGE_CROP over quota gives the BG_REMOVAL reservation back and runs nothing', async () => {
     const { AppError } = await import('../../plugins/error-handler.js');
     mockReserveQuota.mockImplementation(async (_id: string, resource: string) => {

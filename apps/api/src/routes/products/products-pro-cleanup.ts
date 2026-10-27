@@ -151,12 +151,17 @@ export const productsProCleanupRoutes: FastifyPluginAsync = async (server) => {
       const cropCount = photos.filter((p) => p.crop).length;
       const refundBg = await reserveQuota(retailerId, 'BG_REMOVAL', photos.length);
       let refundCrop: ((give?: number) => Promise<void>) | null = null;
+      // Separate tries: a failed BG_REMOVAL refund must not skip the IMAGE_CROP one.
       const giveBack = async (bg: number, crop: number) => {
         try {
           if (bg > 0) await refundBg(bg);
+        } catch (err) {
+          request.log.error({ err }, 'Failed to refund pro-cleanup BG_REMOVAL quota');
+        }
+        try {
           if (crop > 0 && refundCrop) await refundCrop(crop);
         } catch (err) {
-          request.log.error({ err }, 'Failed to refund pro-cleanup quota');
+          request.log.error({ err }, 'Failed to refund pro-cleanup IMAGE_CROP quota');
         }
       };
       if (cropCount > 0) {
