@@ -124,8 +124,7 @@ vi.mock('../jobs/index.js', () => ({
 import { addEmbeddingJob, addTaggingJob } from '../jobs/index.js';
 
 vi.mock('../lib/quota.js', () => ({
-  checkQuota: vi.fn(),
-  incrementUsage: vi.fn(),
+  reserveQuota: vi.fn(async () => vi.fn(async () => {})),
 }));
 
 vi.mock('../lib/features.js', () => ({

@@ -200,7 +200,7 @@ export async function reserveQuota(
   retailerId: string,
   resourceType: QuotaResourceType,
   amount = 1,
-): Promise<() => Promise<void>> {
+): Promise<(give?: number) => Promise<void>> {
   const effective = await effectiveLimit(retailerId, resourceType);
   if (!effective || effective.limit === -1) return async () => {};
   const limit = effective.limit;
@@ -217,9 +217,10 @@ export async function reserveQuota(
     WHERE usage_counters.count + ${amount} <= ${limit}`;
   if (taken === 0) throw planLimitExceeded(label);
 
-  return async () => {
+  // `give` lets a batch hand back part of what it took (pro-cleanup: one slot per failed photo).
+  return async (give = amount) => {
     await prisma.$executeRaw`
-      UPDATE usage_counters SET count = GREATEST(count - ${amount}, 0), updated_at = now()
+      UPDATE usage_counters SET count = GREATEST(count - ${give}, 0), updated_at = now()
       WHERE retailer_id = ${retailerId}
         AND resource_type = ${resourceType}::"QuotaResourceType"
         AND period_start = ${start}`;

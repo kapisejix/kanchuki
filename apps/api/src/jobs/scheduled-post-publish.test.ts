@@ -17,8 +17,8 @@ const db = vi.hoisted(() => ({
 }));
 const mocks = vi.hoisted(() => ({
   hasFeature: vi.fn(),
-  checkQuota: vi.fn(),
-  incrementUsage: vi.fn(),
+  reserveQuota: vi.fn(),
+  refund: vi.fn(),
   publishPhotoPost: vi.fn(),
   publishFacebookCarousel: vi.fn(),
   publishInstagramCarousel: vi.fn(),
@@ -101,10 +101,7 @@ vi.mock('@kanchuki/db', () => ({
 }));
 vi.mock('../lib/schedule-render.js', () => ({ resolvePostImages: mocks.resolvePostImages }));
 vi.mock('../lib/features.js', () => ({ hasFeature: mocks.hasFeature }));
-vi.mock('../lib/quota.js', () => ({
-  checkQuota: mocks.checkQuota,
-  incrementUsage: mocks.incrementUsage,
-}));
+vi.mock('../lib/quota.js', () => ({ reserveQuota: mocks.reserveQuota }));
 vi.mock('../lib/meta-graph.js', async (orig) => ({
   ...(await orig<typeof import('../lib/meta-graph.js')>()),
   publishPhotoPost: mocks.publishPhotoPost,
@@ -172,7 +169,8 @@ beforeEach(() => {
   db.photos = [{ id: 'ph1', product_id: 'p1', url: 'https://r2/p1.jpg', is_primary: true }];
   mocks.hasFeature.mockResolvedValue(true);
   mocks.resolvePostImages.mockResolvedValue(['https://r2/p1.jpg']);
-  mocks.checkQuota.mockResolvedValue(undefined);
+  mocks.reserveQuota.mockResolvedValue(mocks.refund);
+  mocks.refund.mockResolvedValue(undefined);
   mocks.publishPhotoPost.mockResolvedValue({ postId: 'fb1' });
   mocks.createPostedRowWithRetry.mockResolvedValue({ post: { id: 'soc1' }, deduplicated: false });
 });
@@ -193,7 +191,9 @@ describe('publish tick', () => {
       'https://r2/p1.jpg',
       'New in',
     );
-    expect(mocks.incrementUsage).toHaveBeenCalledTimes(1);
+    expect(mocks.reserveQuota).toHaveBeenCalledTimes(1);
+    expect(mocks.reserveQuota).toHaveBeenCalledWith('r1', 'SCHEDULED_POST');
+    expect(mocks.refund).not.toHaveBeenCalled(); // a posted slot stays spent
   });
 
   it('double claim: two overlapping ticks publish exactly once', async () => {
@@ -211,12 +211,17 @@ describe('publish tick', () => {
     const first = await handleSchedulePublishTick(NOW);
     expect(first.retry).toBe(1);
     expect(db.posts[0]).toMatchObject({ status: 'READY', attempts: 1, error: REASON.UNKNOWN });
+    expect(mocks.refund).toHaveBeenCalledTimes(1); // failed attempt hands its slot back
     // inside the 5 min backoff → untouched
     await handleSchedulePublishTick(new Date(NOW.getTime() + 60_000));
     expect(mocks.publishPhotoPost).toHaveBeenCalledTimes(1);
+    expect(mocks.reserveQuota).toHaveBeenCalledTimes(1);
     // after backoff → publishes
     await handleSchedulePublishTick(new Date(NOW.getTime() + 6 * 60_000));
     expect(db.posts[0]).toMatchObject({ status: 'POSTED', attempts: 2 });
+    // The retry reserved afresh and kept it: 2 reserves, still exactly 1 refund (net 1 slot spent).
+    expect(mocks.reserveQuota).toHaveBeenCalledTimes(2);
+    expect(mocks.refund).toHaveBeenCalledTimes(1);
   });
 
   it('gives up after 3 attempts → FAILED, no raw error stored', async () => {
@@ -225,6 +230,15 @@ describe('publish tick', () => {
     await handleSchedulePublishTick(NOW);
     expect(db.posts[0]).toMatchObject({ status: 'FAILED', attempts: 3, error: REASON.UNKNOWN });
     expect(JSON.stringify(db.posts[0])).not.toContain('SECRET');
+    expect(mocks.refund).toHaveBeenCalledTimes(1); // final failure: reserved once, refunded once
+  });
+
+  it('a refund that itself fails does not change the outcome or throw', async () => {
+    mocks.publishPhotoPost.mockRejectedValue(new Error('boom'));
+    mocks.refund.mockRejectedValue(new Error('db down'));
+    const s = await handleSchedulePublishTick(NOW);
+    expect(s.retry).toBe(1);
+    expect(db.posts[0]).toMatchObject({ status: 'READY', error: REASON.UNKNOWN });
   });
 
   it('grace: >2h late → MISSED, never published', async () => {
@@ -236,11 +250,11 @@ describe('publish tick', () => {
   });
 
   it('limit hit: FAILED with plan reason, nothing published or counted', async () => {
-    mocks.checkQuota.mockRejectedValue(new AppError('PLAN_LIMIT_EXCEEDED', 'limit', 402));
+    mocks.reserveQuota.mockRejectedValue(new AppError('PLAN_LIMIT_EXCEEDED', 'limit', 402));
     await handleSchedulePublishTick(NOW);
     expect(db.posts[0]).toMatchObject({ status: 'FAILED', error: REASON.PLAN });
     expect(mocks.publishPhotoPost).not.toHaveBeenCalled();
-    expect(mocks.incrementUsage).not.toHaveBeenCalled();
+    expect(mocks.refund).not.toHaveBeenCalled(); // nothing was reserved
   });
 
   it('feature off at publish time: FAILED with plan reason', async () => {
@@ -273,6 +287,7 @@ describe('publish tick', () => {
     await handleSchedulePublishTick(NOW);
     expect(db.posts[0]).toMatchObject({ status: 'FAILED', attempts: 0 });
     expect(db.plans[0]?.status).toBe('PAUSED');
+    expect(mocks.refund).toHaveBeenCalledTimes(1); // reserved before the account check, handed back
   });
 
   it('partial platform failure: FB posts, IG fails independently and retries', async () => {

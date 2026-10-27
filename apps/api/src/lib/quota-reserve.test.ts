@@ -100,6 +100,15 @@ describe('reserveQuota', () => {
     expect(count()).toBe(0);
   });
 
+  it('refund(n) hands back part of a batch (one slot per failed item)', async () => {
+    const refund = await reserveQuota('ret1', 'PRODUCT_UPLOAD', 3);
+    expect(count()).toBe(3);
+    await refund(1);
+    expect(count()).toBe(2);
+    await refund(); // no argument still means the whole batch
+    expect(count()).toBe(0);
+  });
+
   it('a batch bigger than the whole limit is refused before anything is written', async () => {
     await expect(reserveQuota('ret1', 'PRODUCT_UPLOAD', 4)).rejects.toMatchObject({ status: 402 });
     expect(m.exec).not.toHaveBeenCalled();

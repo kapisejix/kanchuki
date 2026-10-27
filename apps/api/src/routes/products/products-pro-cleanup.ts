@@ -41,7 +41,7 @@ import {
 import { getSecret, prisma } from '@kanchuki/db';
 import { pickContrastBackground } from '../../lib/backgrounds.js';
 import { runPhotoCleanup, serializePhotoCleanup } from '../../lib/photo-cleanup-runner.js';
-import { checkQuota, incrementUsage } from '../../lib/quota.js';
+import { reserveQuota } from '../../lib/quota.js';
 import { isOwnedKey, unstagedKey } from '../../lib/upload-guard.js';
 import { serviceUnavailable, validationError } from '../../plugins/error-handler.js';
 
@@ -146,16 +146,40 @@ export const productsProCleanupRoutes: FastifyPluginAsync = async (server) => {
 
       // F-010 quota gates — BG_REMOVAL for every cleaned photo, IMAGE_CROP
       // for photos with a manual crop rect.
+      // RC-102: reserved up front for the whole batch (still all-or-nothing, as the old preflight
+      // was), then one slot handed back per photo that fails; a photo that succeeds keeps its slot.
       const cropCount = photos.filter((p) => p.crop).length;
-      await checkQuota(retailerId, 'BG_REMOVAL', photos.length);
-      if (cropCount > 0) await checkQuota(retailerId, 'IMAGE_CROP', cropCount);
+      const refundBg = await reserveQuota(retailerId, 'BG_REMOVAL', photos.length);
+      let refundCrop: ((give?: number) => Promise<void>) | null = null;
+      const giveBack = async (bg: number, crop: number) => {
+        try {
+          if (bg > 0) await refundBg(bg);
+          if (crop > 0 && refundCrop) await refundCrop(crop);
+        } catch (err) {
+          request.log.error({ err }, 'Failed to refund pro-cleanup quota');
+        }
+      };
+      if (cropCount > 0) {
+        try {
+          refundCrop = await reserveQuota(retailerId, 'IMAGE_CROP', cropCount);
+        } catch (err) {
+          await giveBack(photos.length, 0);
+          throw err;
+        }
+      }
 
       let bgUrl: string | null = null;
       if (background_image_id) {
-        const bg = await prisma.backgroundImage.findFirst({
-          where: { id: background_image_id, is_active: true },
-        });
-        if (!bg) throw validationError('Background image not found or inactive');
+        const bg = await prisma.backgroundImage
+          .findFirst({ where: { id: background_image_id, is_active: true } })
+          .catch(async (err) => {
+            await giveBack(photos.length, cropCount);
+            throw err;
+          });
+        if (!bg) {
+          await giveBack(photos.length, cropCount);
+          throw validationError('Background image not found or inactive');
+        }
         bgUrl = bg.image_url;
       } else {
         // F-028 auto-contrast: no explicit pick → classify the FIRST raw shot
@@ -205,11 +229,10 @@ export const productsProCleanupRoutes: FastifyPluginAsync = async (server) => {
             tap_removed: output.includes('point-prompt inpainted'),
             error: null,
           });
-          await incrementUsage(retailerId, 'BG_REMOVAL');
-          if (photo.crop) await incrementUsage(retailerId, 'IMAGE_CROP');
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err);
           request.log.error({ err, photo_index: i }, 'pro-cleanup photo failed');
+          await giveBack(1, photo.crop ? 1 : 0);
           rows.push({
             r2_key: photo.r2_key,
             url: photo.url,
