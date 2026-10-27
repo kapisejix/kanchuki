@@ -227,6 +227,82 @@ export async function reserveQuota(
   };
 }
 
+/**
+ * Job-scoped twin of `reserveQuota` for work that runs in a queued job after the request
+ * returns (docs/tasks/pending/quota-reserve-at-enqueue.md). Same limit rules and the same
+ * atomic counter bump, but the same statement also records WHO holds the slot in
+ * `quota_reservations` (keyed by the payload `jobId`), so a refund by job id is idempotent
+ * across the handler, the BullMQ `failed` hook and a sweep. Retailer scope only.
+ * No row / -1 = unlimited: nothing is written, and refund/mark-spent find no row and no-op.
+ * A repeated (jobId, resource) hits the unique index and throws, never double-reserves.
+ */
+export async function reserveJobQuota(
+  retailerId: string,
+  resourceType: QuotaResourceType,
+  jobId: string,
+  amount = 1,
+): Promise<void> {
+  const effective = await effectiveLimit(retailerId, resourceType);
+  if (!effective || effective.limit === -1) return;
+  const limit = effective.limit;
+  const label = resourceType.toLowerCase().replace(/_/g, ' ');
+  if (amount > limit) throw planLimitExceeded(label);
+
+  const start = periodStart(effective.period);
+  // The final INSERT only runs when `bump` returned a row, i.e. the guarded upsert took the slot.
+  const taken = await prisma.$executeRaw`
+    WITH bump AS (
+      INSERT INTO usage_counters (id, retailer_id, resource_type, period_start, count, updated_at)
+      VALUES (${randomUUID()}, ${retailerId}, ${resourceType}::"QuotaResourceType", ${start}, ${amount}, now())
+      ON CONFLICT (retailer_id, resource_type, period_start)
+      DO UPDATE SET count = usage_counters.count + ${amount}, updated_at = now()
+      WHERE usage_counters.count + ${amount} <= ${limit}
+      RETURNING 1
+    )
+    INSERT INTO quota_reservations (id, job_id, retailer_id, resource_type, period_start, amount)
+    SELECT ${randomUUID()}, ${jobId}, ${retailerId}, ${resourceType}::"QuotaResourceType", ${start}, ${amount}
+    FROM bump`;
+  if (taken === 0) throw planLimitExceeded(label);
+}
+
+/**
+ * Hand a job's reserved slot back, once. The UPDATE flips RESERVED -> REFUNDED and the counter
+ * drops only for the row that flip touched, so calling this again (handler `finally`, `failed`
+ * hook, sweep) is a no-op. A SPENT or missing reservation is left alone.
+ */
+export async function refundJobQuota(
+  jobId: string,
+  resourceType: QuotaResourceType,
+): Promise<void> {
+  await prisma.$executeRaw`
+    WITH r AS (
+      UPDATE quota_reservations SET state = 'REFUNDED', refunded_at = now()
+      WHERE job_id = ${jobId}
+        AND resource_type = ${resourceType}::"QuotaResourceType"
+        AND retailer_id IS NOT NULL
+        AND state = 'RESERVED'
+      RETURNING retailer_id, resource_type, period_start, amount
+    )
+    UPDATE usage_counters u SET count = GREATEST(u.count - r.amount, 0), updated_at = now()
+    FROM r
+    WHERE u.retailer_id = r.retailer_id
+      AND u.resource_type = r.resource_type
+      AND u.period_start = r.period_start`;
+}
+
+/** Mark a job's slot as used for good, so a later refund call (or the sweep) leaves it alone. */
+export async function markJobQuotaSpent(
+  jobId: string,
+  resourceType: QuotaResourceType,
+): Promise<void> {
+  await prisma.$executeRaw`
+    UPDATE quota_reservations SET state = 'SPENT'
+    WHERE job_id = ${jobId}
+      AND resource_type = ${resourceType}::"QuotaResourceType"
+      AND retailer_id IS NOT NULL
+      AND state = 'RESERVED'`;
+}
+
 export interface QuotaStatusResult {
   used: number;
   limit: number;

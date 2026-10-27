@@ -12,16 +12,17 @@
 //
 // Plan gate: Growth/Pro only (spec §24.7 — studio shoots are included in
 // those plans' AI cost budget). STARTER → 402 FEATURE_UNAVAILABLE.
-// Quota: STUDIO_SHOOT is a metered QuotaResourceType (F-010) — checkQuota
-// gates the enqueue here, incrementUsage fires in the job on success
-// (jobs/studio-shoot.ts). Admin sets the per-plan cap at /admin/plan-limits.
+// Quota: STUDIO_SHOOT is a metered QuotaResourceType (F-010) — the slot is
+// reserved atomically at enqueue (reserveJobQuota, keyed by job_id) and the job
+// hands it back unless it produced a photo (jobs/studio-shoot.ts). Admin sets
+// the per-plan cap at /admin/plan-limits.
 import { prisma } from '@kanchuki/db';
 import { productProfile, studioStyleBlock } from '@kanchuki/shared';
 import { createId } from '@paralleldrive/cuid2';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { addStudioShootJob } from '../../jobs/index.js';
-import { checkQuota, getQuotaStatus } from '../../lib/quota.js';
+import { checkQuota, getQuotaStatus, refundJobQuota, reserveJobQuota } from '../../lib/quota.js';
 import {
   type StudioEngine,
   getStudioJobStatus,
@@ -107,6 +108,8 @@ export const productsStudioRoutes: FastifyPluginAsync = async (server) => {
       );
     }
 
+    // Fail-fast read so an over-quota retailer still gets the 402 before any validation work.
+    // The real gate is the atomic reserveJobQuota just before the enqueue below (RC-102).
     await checkQuota(request.retailerId, 'STUDIO_SHOOT');
 
     const body = StudioShootBodySchema.safeParse(request.body ?? {});
@@ -204,18 +207,28 @@ export const productsStudioRoutes: FastifyPluginAsync = async (server) => {
     if (blocked) throw validationError(blocked, 'template');
 
     const jobId = createId();
-    await addStudioShootJob({
-      job_id: jobId,
-      retailer_id: request.retailerId,
-      product_id: id,
-      photo_id: photo.id,
-      slug: style.slug,
-      prompt: style.prompt,
-      tab: style.tab,
-      engine: (style.engine as StudioEngine | null) ?? undefined,
-      audience: style.audience,
-      style_id: style.id,
-    });
+    // The slot is taken here and handed back by the job on any non-result outcome
+    // (jobs/studio-shoot.ts); if the enqueue itself fails no job will ever run, so give it back now.
+    await reserveJobQuota(request.retailerId, 'STUDIO_SHOOT', jobId);
+    try {
+      await addStudioShootJob({
+        job_id: jobId,
+        retailer_id: request.retailerId,
+        product_id: id,
+        photo_id: photo.id,
+        slug: style.slug,
+        prompt: style.prompt,
+        tab: style.tab,
+        engine: (style.engine as StudioEngine | null) ?? undefined,
+        audience: style.audience,
+        style_id: style.id,
+      });
+    } catch (err) {
+      await refundJobQuota(jobId, 'STUDIO_SHOOT').catch((refundErr) => {
+        request.log.error({ err: refundErr, job_id: jobId }, 'Failed to refund studio-shoot quota');
+      });
+      throw err;
+    }
 
     return reply.status(202).send({ data: { job_id: jobId, status: 'processing' } });
   });

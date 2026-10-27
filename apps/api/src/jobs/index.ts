@@ -1,5 +1,6 @@
 import { QUEUES } from '@kanchuki/shared';
 import { Worker } from 'bullmq';
+import { refundJobQuota } from '../lib/quota.js';
 import { STUDIO_SHOOT_CONCURRENCY } from '../lib/studio-shoot.js';
 import { handleAiSpendAlert } from './ai-spend-alert.js';
 import { handleBackfillMissingAiFields } from './backfill-missing-ai-fields.js';
@@ -568,6 +569,14 @@ export async function startWorkers(): Promise<void> {
 
   studioShootWorker.on('failed', (job, err) => {
     console.error(`[jobs] studio-shoot failed ${job?.id}:`, err.message);
+    // Backup for a job that died without its handler's `finally` running (stalled out):
+    // idempotent, so a refund the handler already made is a no-op.
+    const jobId = (job?.data as StudioShootJobData | undefined)?.job_id;
+    if (jobId) {
+      refundJobQuota(jobId, 'STUDIO_SHOOT').catch((e) =>
+        console.error(`[jobs] studio-shoot quota refund failed ${jobId}:`, e),
+      );
+    }
   });
 
   tryOnWorker.on('failed', (job, err) => {

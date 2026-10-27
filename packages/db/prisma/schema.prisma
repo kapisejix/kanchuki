@@ -373,6 +373,7 @@ model Retailer {
   subscriptions         Subscription[]
   limit_overrides       RetailerLimitOverride[]
   usage_counters        UsageCounter[]
+  quota_reservations    QuotaReservation[]
   quota_addon_purchases QuotaAddonPurchase[]
   ai_usage_logs         AiUsageLog[]
   catalog_items         CatalogItem[]
@@ -1489,6 +1490,27 @@ model UsageCounter {
   @@unique([retailer_id, resource_type, period_start])
   @@index([retailer_id])
   @@map("usage_counters")
+}
+
+// Which queued job holds which quota slot (migration 144, docs/tasks/pending/quota-reserve-at-enqueue.md).
+// Written only by raw SQL in lib/quota.ts (reserve is one CTE with the counter bump). The partial
+// unique indexes (per scope on job_id + resource_type), the CHECKs and the FKs live in the migration.
+model QuotaReservation {
+  id                  String            @id @default(cuid())
+  job_id              String
+  retailer_id         String?
+  customer_account_id String?
+  resource_type       QuotaResourceType
+  period_start        DateTime
+  amount              Int
+  state               String            @default("RESERVED") // RESERVED | SPENT | REFUNDED
+  created_at          DateTime          @default(now())
+  refunded_at         DateTime?
+
+  retailer         Retailer?        @relation(fields: [retailer_id], references: [id], onDelete: Cascade)
+  customer_account CustomerAccount? @relation(fields: [customer_account_id], references: [id], onDelete: Cascade)
+
+  @@map("quota_reservations")
 }
 
 // ─── F-040 — VIRTUAL TRY-ON (CatVTON on RunPod) ───────────
@@ -2899,6 +2921,7 @@ model CustomerAccount {
   interactions        CustomerInteraction[]
   try_on_jobs         TryOnJob[]
   resource_usage      CustomerUsageCounter[]
+  quota_reservations  QuotaReservation[]
   engagement_summaries CustomerEngagementSummary[]
   push_subscriptions  CustomerPushSubscription[]
   product_reviews     ProductReview[]
