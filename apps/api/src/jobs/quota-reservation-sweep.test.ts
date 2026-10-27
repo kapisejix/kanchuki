@@ -106,6 +106,17 @@ describe('handleQuotaReservationSweep', () => {
     expect(m.spent).not.toHaveBeenCalled();
   });
 
+  // Review finding 1 (RC-102): pins a KNOWN GAP. A try-on whose GPU ran but whose R2 save threw is
+  // FAILED with gpu_ms null; if its mark-spent write had also failed, the row is still RESERVED
+  // and the sweep refunds a paid run. Update this test if the failure path starts writing gpu_ms.
+  it('KNOWN GAP: a still-RESERVED try-on row on a FAILED job with no gpu_ms is refunded', async () => {
+    m.findMany.mockResolvedValue([retailerRow('paid_but_failed_save', 'TRY_ON_GENERATION')]);
+    m.tryOnFind.mockResolvedValue({ gpu_ms: null, status: 'FAILED' });
+    const res = await handleQuotaReservationSweep(NOW);
+    expect(m.refund).toHaveBeenCalledExactlyOnceWith('paid_but_failed_save', 'TRY_ON_GENERATION');
+    expect(res).toEqual({ spent: 0, refunded: 1, failed: 0 });
+  });
+
   it('one failing row is counted and the rest still settle', async () => {
     m.findMany.mockResolvedValue([
       retailerRow('bad', 'STUDIO_SHOOT'),

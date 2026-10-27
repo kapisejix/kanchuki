@@ -142,6 +142,23 @@ describe('handleTryOn', () => {
     expect(mockRefundCustomer).not.toHaveBeenCalled();
   });
 
+  // Review finding 1 (RC-102): pins a KNOWN GAP, not desired behaviour. If this test starts failing
+  // because the gap was closed (e.g. gpu_ms written on the failure path), update it.
+  it('KNOWN GAP: paid run + failed mark-spent + failed R2 save leaves the slot RESERVED on a FAILED row with no gpu_ms', async () => {
+    mockMarkSpent.mockRejectedValue(new Error('db blip'));
+    mockSaveTryOnResultToR2.mockRejectedValue(new Error('r2 down'));
+
+    await expect(handleTryOn(DATA)).rejects.toThrow('r2 down');
+
+    // `finally` does not refund: held.spent was set right after the GPU call.
+    expect(mockRefund).not.toHaveBeenCalled();
+    // But the row is FAILED with no gpu_ms, so the sweep (and the `failed` hook) see no trace of
+    // the paid run and will refund the still-RESERVED slot.
+    const data = mockJobUpdate.mock.calls[0]?.[0].data;
+    expect(data.status).toBe('FAILED');
+    expect(data).not.toHaveProperty('gpu_ms');
+  });
+
   it('marks both reservations spent for a customer job', async () => {
     await handleTryOn({ ...DATA, customer_account_id: 'acct_1' });
 
