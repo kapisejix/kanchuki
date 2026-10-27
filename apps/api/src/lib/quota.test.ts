@@ -13,6 +13,7 @@ const mockUsageCounterUpsert = vi.fn();
 const mockCustomerLimitFindUnique = vi.fn();
 const mockCustomerCounterFindUnique = vi.fn();
 const mockCustomerCounterUpsert = vi.fn();
+const mockExecuteRaw = vi.fn();
 
 vi.mock('@kanchuki/db', () => ({
   prisma: {
@@ -31,12 +32,19 @@ vi.mock('@kanchuki/db', () => ({
       findUnique: mockCustomerCounterFindUnique,
       upsert: mockCustomerCounterUpsert,
     },
+    $executeRaw: mockExecuteRaw,
   },
 }));
 
-const { checkCustomerQuota, checkQuota, getEnforcedQuota, incrementCustomerUsage } = await import(
-  './quota.js'
-);
+const {
+  checkCustomerQuota,
+  checkQuota,
+  getEnforcedQuota,
+  incrementCustomerUsage,
+  markCustomerJobQuotaSpent,
+  refundCustomerJobQuota,
+  reserveCustomerJobQuota,
+} = await import('./quota.js');
 
 const CUSTOMER = 'customer_account_1';
 
@@ -189,6 +197,72 @@ describe('the two caps are distinguishable', () => {
   });
 });
 
+// RC-102: shopper-scope job reservations. The SQL is only a fake here (no Postgres), so these pin
+// the control flow around it: what is skipped, what is refused, and which statement is sent.
+const sqlOf = (call: unknown[]) => (call[0] as string[]).join('?');
+
+describe('reserveCustomerJobQuota', () => {
+  it('no limit row or -1: nothing is written', async () => {
+    mockCustomerLimitFindUnique.mockResolvedValue(null);
+    await reserveCustomerJobQuota(CUSTOMER, 'TRY_ON_GENERATION', 'job1');
+    mockCustomerLimitFindUnique.mockResolvedValue({ limit_per_period: -1, period: 'MONTH' });
+    await reserveCustomerJobQuota(CUSTOMER, 'TRY_ON_GENERATION', 'job1');
+    expect(mockExecuteRaw).not.toHaveBeenCalled();
+  });
+
+  it('takes the slot in ONE statement that bumps the shopper counter and records the holder', async () => {
+    mockCustomerLimitFindUnique.mockResolvedValue({ limit_per_period: 3, period: 'MONTH' });
+    mockExecuteRaw.mockResolvedValue(1);
+    await reserveCustomerJobQuota(CUSTOMER, 'TRY_ON_GENERATION', 'job1');
+    expect(mockExecuteRaw).toHaveBeenCalledTimes(1);
+    const call = mockExecuteRaw.mock.calls[0] as unknown[];
+    const sql = sqlOf(call);
+    expect(sql).toContain('customer_usage_counters');
+    expect(sql).toContain('quota_reservations');
+    expect(sql).toContain('<=');
+    expect(call).toContain('job1');
+    expect(call).toContain(CUSTOMER);
+  });
+
+  it('zero rows = over the limit: CUSTOMER_LIMIT_EXCEEDED, not the plan error', async () => {
+    mockCustomerLimitFindUnique.mockResolvedValue({ limit_per_period: 3, period: 'MONTH' });
+    mockExecuteRaw.mockResolvedValue(0);
+    await expect(
+      reserveCustomerJobQuota(CUSTOMER, 'TRY_ON_GENERATION', 'job1'),
+    ).rejects.toMatchObject({ code: 'CUSTOMER_LIMIT_EXCEEDED' });
+  });
+
+  it('an amount above the limit is refused without touching the DB', async () => {
+    mockCustomerLimitFindUnique.mockResolvedValue({ limit_per_period: 1, period: 'MONTH' });
+    await expect(
+      reserveCustomerJobQuota(CUSTOMER, 'TRY_ON_GENERATION', 'job1', 2),
+    ).rejects.toMatchObject({ code: 'CUSTOMER_LIMIT_EXCEEDED' });
+    expect(mockExecuteRaw).not.toHaveBeenCalled();
+  });
+});
+
+describe('refundCustomerJobQuota / markCustomerJobQuotaSpent', () => {
+  it('refund is one RESERVED -> REFUNDED statement scoped to the shopper rows', async () => {
+    mockExecuteRaw.mockResolvedValue(1);
+    await refundCustomerJobQuota('job1', 'TRY_ON_GENERATION');
+    const call = mockExecuteRaw.mock.calls[0] as unknown[];
+    const sql = sqlOf(call);
+    expect(sql).toContain("state = 'RESERVED'");
+    expect(sql).toContain('customer_account_id IS NOT NULL');
+    expect(sql).toContain('customer_usage_counters');
+    expect(call).toContain('job1');
+  });
+
+  it('mark-spent only moves a RESERVED shopper row', async () => {
+    mockExecuteRaw.mockResolvedValue(1);
+    await markCustomerJobQuotaSpent('job1', 'TRY_ON_GENERATION');
+    const sql = sqlOf(mockExecuteRaw.mock.calls[0] as unknown[]);
+    expect(sql).toContain("state = 'SPENT'");
+    expect(sql).toContain("state = 'RESERVED'");
+    expect(sql).toContain('customer_account_id IS NOT NULL');
+  });
+});
+
 // RC-073: the screen must report what checkQuota enforces, not a plan default.
 describe('getEnforcedQuota', () => {
   it.each([
@@ -208,18 +282,19 @@ describe('getEnforcedQuota', () => {
     }
   });
 
-  it('limited: remaining = limit - used - reserved, never negative, and checkQuota agrees', async () => {
+  it('limited: remaining = limit - used, never negative, and checkQuota agrees', async () => {
     mockPlanLimitFindUnique.mockResolvedValue({ limit_per_period: 20, period: 'MONTH' });
     mockUsageCounterFindUnique.mockResolvedValue({ count: 17 });
+    // in-flight jobs hold a reservation, so they are already inside `used` (RC-102)
     expect(await getEnforcedQuota('r1', 'TRY_ON_GENERATION')).toEqual({
       used: 17,
       limit: 20,
       remaining: 3,
       unlimited: false,
     });
-    // two jobs already in flight: the POST counts them, so the screen must too
-    expect((await getEnforcedQuota('r1', 'TRY_ON_GENERATION', 2)).remaining).toBe(1);
-    expect((await getEnforcedQuota('r1', 'TRY_ON_GENERATION', 9)).remaining).toBe(0);
+    mockUsageCounterFindUnique.mockResolvedValue({ count: 25 });
+    expect((await getEnforcedQuota('r1', 'TRY_ON_GENERATION')).remaining).toBe(0);
+    mockUsageCounterFindUnique.mockResolvedValue({ count: 17 });
     await expect(checkQuota('r1', 'TRY_ON_GENERATION', 4)).rejects.toMatchObject({
       code: 'PLAN_LIMIT_EXCEEDED',
     });

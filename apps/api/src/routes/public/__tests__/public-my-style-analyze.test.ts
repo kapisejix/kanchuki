@@ -16,6 +16,8 @@ const {
   mockConsentCreate,
   mockAccountUpdate,
   mockCheckQuota,
+  mockReserve,
+  mockRefund,
   mockProvider,
   mockEnqueue,
 } = vi.hoisted(() => ({
@@ -25,6 +27,8 @@ const {
   mockConsentCreate: vi.fn(),
   mockAccountUpdate: vi.fn(),
   mockCheckQuota: vi.fn(),
+  mockReserve: vi.fn(),
+  mockRefund: vi.fn(),
   mockProvider: vi.fn(),
   mockEnqueue: vi.fn(),
 }));
@@ -40,7 +44,11 @@ vi.mock('@kanchuki/ai', () => ({
   deleteObject: vi.fn(),
 }));
 vi.mock('../passport/passport-helpers.js', () => ({ getPassportSession: mockSession }));
-vi.mock('../../../lib/quota.js', () => ({ checkCustomerQuota: mockCheckQuota }));
+vi.mock('../../../lib/quota.js', () => ({
+  checkCustomerQuota: mockCheckQuota,
+  reserveCustomerJobQuota: mockReserve,
+  refundCustomerJobQuota: mockRefund,
+}));
 vi.mock('../../../jobs/index.js', () => ({ addMyStyleAnalyzeJob: mockEnqueue }));
 vi.mock('../../../lib/features.js', () => ({
   get CUSTOMER_STYLE_ANALYSIS() {
@@ -123,6 +131,8 @@ beforeEach(() => {
   mockConsentCreate.mockReset().mockResolvedValue({});
   mockAccountUpdate.mockReset().mockResolvedValue({});
   mockCheckQuota.mockReset().mockResolvedValue(undefined);
+  mockReserve.mockReset().mockResolvedValue(undefined);
+  mockRefund.mockReset().mockResolvedValue(undefined);
   mockProvider.mockReset().mockResolvedValue(true);
   mockEnqueue.mockReset().mockResolvedValue(undefined);
 });
@@ -280,21 +290,47 @@ describe('POST /analyze', () => {
     });
   });
 
-  it('409 while the shopper already has an analysis running', async () => {
+  it('202 reserves the slot for the job id that is enqueued, once', async () => {
+    const res = await analyze(await build());
+    expect(res.statusCode).toBe(202);
+    const jobId = res.json().data.job_id;
+    expect(mockReserve).toHaveBeenCalledTimes(1);
+    expect(mockReserve).toHaveBeenCalledWith(ACCT, 'STYLE_ANALYSIS', jobId);
+    expect(mockEnqueue.mock.calls[0]?.[0].job_id).toBe(jobId);
+    expect(mockRefund).not.toHaveBeenCalled();
+  });
+
+  it('402 when the atomic reserve loses the race: lock freed, nothing stashed or enqueued', async () => {
+    mockReserve.mockRejectedValue(
+      new AppError('CUSTOMER_LIMIT_EXCEEDED', 'You have reached your limit', 402),
+    );
+    const app = await build();
+    const res = await analyze(app);
+    expect(res.statusCode).toBe(402);
+    expect(mockEnqueue).not.toHaveBeenCalled();
+    expect(photos()).toBe(0);
+    mockReserve.mockResolvedValue(undefined);
+    expect((await analyze(app)).statusCode).toBe(202); // lock was released
+  });
+
+  it('409 while the shopper already has an analysis running - and no second reservation', async () => {
     const app = await build();
     expect((await analyze(app)).statusCode).toBe(202);
     const second = await analyze(app);
     expect(second.statusCode).toBe(409);
     expect(mockEnqueue).toHaveBeenCalledTimes(1);
+    expect(mockReserve).toHaveBeenCalledTimes(1);
     expect(photos()).toBe(1);
   });
 
-  it('a failed enqueue drops the photo, frees the lock and fails loudly', async () => {
+  it('a failed enqueue drops the photo, refunds the slot, frees the lock and fails loudly', async () => {
     mockEnqueue.mockRejectedValue(new Error('redis down'));
     const app = await build();
     const res = await analyze(app);
     expect(res.statusCode).toBeGreaterThanOrEqual(500);
     expect(photos()).toBe(0);
+    expect(mockRefund).toHaveBeenCalledTimes(1);
+    expect(mockRefund).toHaveBeenCalledWith(mockReserve.mock.calls[0]?.[2], 'STYLE_ANALYSIS');
     mockEnqueue.mockResolvedValue(undefined);
     expect((await analyze(app)).statusCode).toBe(202); // lock was released
   });

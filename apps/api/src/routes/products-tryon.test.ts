@@ -28,6 +28,10 @@ const {
   mockHasFeature,
   mockCheckQuota,
   mockCheckCustomerQuota,
+  mockReserve,
+  mockRefund,
+  mockReserveCustomer,
+  mockRefundCustomer,
   mockPutTryOnPhoto,
   mockDiscardTryOnPhoto,
   mockGetPassportSession,
@@ -54,6 +58,10 @@ const {
   mockHasFeature: vi.fn(),
   mockCheckQuota: vi.fn(),
   mockCheckCustomerQuota: vi.fn(),
+  mockReserve: vi.fn(),
+  mockRefund: vi.fn(),
+  mockReserveCustomer: vi.fn(),
+  mockRefundCustomer: vi.fn(),
   mockPutTryOnPhoto: vi.fn(),
   mockDiscardTryOnPhoto: vi.fn(),
   mockGetPassportSession: vi.fn(),
@@ -91,6 +99,10 @@ vi.mock('../lib/quota.js', () => ({
   checkQuota: mockCheckQuota,
   checkCustomerQuota: mockCheckCustomerQuota,
   getEnforcedQuota: mockGetEnforcedQuota,
+  reserveJobQuota: mockReserve,
+  refundJobQuota: mockRefund,
+  reserveCustomerJobQuota: mockReserveCustomer,
+  refundCustomerJobQuota: mockRefundCustomer,
 }));
 
 vi.mock('../lib/tryon-photo-store.js', () => ({
@@ -211,6 +223,10 @@ beforeEach(() => {
   mockProductFindFirst.mockResolvedValue(PRODUCT);
   mockCheckQuota.mockResolvedValue(undefined);
   mockCheckCustomerQuota.mockResolvedValue(undefined);
+  mockReserve.mockResolvedValue(undefined);
+  mockRefund.mockResolvedValue(undefined);
+  mockReserveCustomer.mockResolvedValue(undefined);
+  mockRefundCustomer.mockResolvedValue(undefined);
   mockJobCount.mockResolvedValue(0);
   mockJobFindMany.mockResolvedValue([]);
   mockJobUpdateMany.mockResolvedValue({ count: 1 });
@@ -434,8 +450,9 @@ describe('POST /products/:id/try-on', () => {
 
     expect(res.statusCode).toBe(402);
     expect(res.json().error.code).toBe('CUSTOMER_LIMIT_EXCEEDED');
-    expect(mockCheckQuota).toHaveBeenCalledWith(RETAILER_ID, 'TRY_ON_GENERATION', 1);
+    expect(mockCheckQuota).toHaveBeenCalledWith(RETAILER_ID, 'TRY_ON_GENERATION');
     expect(mockCheckCustomerQuota).toHaveBeenCalledWith(CUSTOMER_ID, 'TRY_ON_GENERATION');
+    expect(mockReserve).not.toHaveBeenCalled();
     expect(mockAddTryOnJob).not.toHaveBeenCalled();
     await app.close();
   });
@@ -446,10 +463,99 @@ describe('POST /products/:id/try-on', () => {
     const res = await post(app, 'kanchuki_passport=sess_1');
 
     expect(res.statusCode).toBe(202);
-    expect(mockCheckQuota).toHaveBeenCalledWith(RETAILER_ID, 'TRY_ON_GENERATION', 1);
+    expect(mockCheckQuota).toHaveBeenCalledWith(RETAILER_ID, 'TRY_ON_GENERATION');
     expect(mockAddTryOnJob).toHaveBeenCalledWith(
       expect.objectContaining({ retailer_id: RETAILER_ID, customer_account_id: CUSTOMER_ID }),
     );
+    // Both slots are reserved under the one job id that is enqueued, shopper first.
+    const jobId = res.json().data.job_id;
+    expect(mockReserveCustomer).toHaveBeenCalledWith(CUSTOMER_ID, 'TRY_ON_GENERATION', jobId);
+    expect(mockReserve).toHaveBeenCalledWith(RETAILER_ID, 'TRY_ON_GENERATION', jobId);
+    expect(mockReserveCustomer.mock.invocationCallOrder[0]).toBeLessThan(
+      mockReserve.mock.invocationCallOrder[0] as number,
+    );
+    expect(mockRefund).not.toHaveBeenCalled();
+    expect(mockRefundCustomer).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  // ─── RC-102: reserve at enqueue, hand back on every pre-job failure ─────
+
+  it('in-store: reserves only the retailer slot, under the enqueued job id', async () => {
+    const app = await buildApp({ retailerId: RETAILER_ID });
+    const res = await post(app);
+
+    expect(res.statusCode).toBe(202);
+    const jobId = res.json().data.job_id;
+    expect(mockReserve).toHaveBeenCalledWith(RETAILER_ID, 'TRY_ON_GENERATION', jobId);
+    expect(mockReserveCustomer).not.toHaveBeenCalled();
+    expect(mockJobCreate.mock.calls[0]?.[0].data.id).toBe(jobId);
+    await app.close();
+  });
+
+  it('retailer cap lost at the atomic reserve: shopper slot handed back, no job row', async () => {
+    mockGetPassportSession.mockResolvedValue({ customer_account_id: CUSTOMER_ID });
+    mockReserve.mockRejectedValue(planLimitExceeded('try on generation'));
+    const app = await buildApp();
+    const res = await post(app, 'kanchuki_passport=sess_1');
+
+    expect(res.statusCode).toBe(402);
+    expect(res.json().error.code).toBe('PLAN_LIMIT_EXCEEDED');
+    const jobId = mockReserveCustomer.mock.calls[0]?.[2];
+    expect(mockRefundCustomer).toHaveBeenCalledWith(jobId, 'TRY_ON_GENERATION');
+    expect(mockJobCreate).not.toHaveBeenCalled();
+    expect(mockAddTryOnJob).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('shopper cap lost at the atomic reserve: nothing else reserved', async () => {
+    mockGetPassportSession.mockResolvedValue({ customer_account_id: CUSTOMER_ID });
+    mockReserveCustomer.mockRejectedValue(
+      new AppError('CUSTOMER_LIMIT_EXCEEDED', 'limit reached', 402),
+    );
+    const app = await buildApp();
+    const res = await post(app, 'kanchuki_passport=sess_1');
+
+    expect(res.statusCode).toBe(402);
+    expect(res.json().error.code).toBe('CUSTOMER_LIMIT_EXCEEDED');
+    expect(mockReserve).not.toHaveBeenCalled();
+    expect(mockJobCreate).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('job-row insert failure hands both slots back', async () => {
+    mockGetPassportSession.mockResolvedValue({ customer_account_id: CUSTOMER_ID });
+    mockJobCreate.mockRejectedValue(new Error('db down'));
+    const app = await buildApp();
+    const res = await post(app, 'kanchuki_passport=sess_1');
+
+    expect(res.statusCode).toBeGreaterThanOrEqual(500);
+    const jobId = mockReserve.mock.calls[0]?.[2];
+    expect(mockRefund).toHaveBeenCalledWith(jobId, 'TRY_ON_GENERATION');
+    expect(mockRefundCustomer).toHaveBeenCalledWith(jobId, 'TRY_ON_GENERATION');
+    expect(mockAddTryOnJob).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('a full photo store (503) hands the slot back', async () => {
+    mockPutTryOnPhoto.mockReturnValue(false);
+    const app = await buildApp({ retailerId: RETAILER_ID });
+    const res = await post(app);
+
+    expect(res.statusCode).toBe(503);
+    expect(mockRefund).toHaveBeenCalledWith(mockReserve.mock.calls[0]?.[2], 'TRY_ON_GENERATION');
+    expect(mockAddTryOnJob).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('a failed enqueue hands the slot back and rethrows', async () => {
+    mockAddTryOnJob.mockRejectedValue(new Error('redis down'));
+    const app = await buildApp({ retailerId: RETAILER_ID });
+    const res = await post(app);
+
+    expect(res.statusCode).toBeGreaterThanOrEqual(500);
+    expect(mockRefund).toHaveBeenCalledTimes(1);
+    expect(mockRefund).toHaveBeenCalledWith(mockReserve.mock.calls[0]?.[2], 'TRY_ON_GENERATION');
     await app.close();
   });
 
@@ -474,27 +580,14 @@ describe('POST /products/:id/try-on', () => {
     await app.close();
   });
 
-  it('quota check counts recent PENDING jobs (10 min window): limit 3, used 1', async () => {
-    // Mirror checkQuota's real arithmetic: used(1) + amount > limit(3) → 402.
-    mockCheckQuota.mockImplementation(async (_r: string, _t: string, amount = 1) => {
-      if (1 + amount > 3) throw planLimitExceeded('try on generation');
-    });
+  it('does not add PENDING rows to the check: in-flight jobs already sit in the counter (RC-102)', async () => {
+    mockJobCount.mockResolvedValue(5); // would have made the old check ask for 1 + 5
     const app = await buildApp({ retailerId: RETAILER_ID });
+    const res = await post(app);
 
-    mockJobCount.mockResolvedValue(1);
-    const ok = await post(app);
-    expect(ok.statusCode).toBe(202);
-    expect(mockCheckQuota).toHaveBeenLastCalledWith(RETAILER_ID, 'TRY_ON_GENERATION', 2);
-    const where = mockJobCount.mock.calls[0]?.[0].where;
-    expect(where).toMatchObject({ retailer_id: RETAILER_ID, status: 'PENDING' });
-    const age = Date.now() - (where.created_at.gte as Date).getTime();
-    expect(age).toBeGreaterThan(9 * 60_000);
-    expect(age).toBeLessThan(11 * 60_000);
-
-    mockJobCount.mockResolvedValue(2);
-    const over = await post(app);
-    expect(over.statusCode).toBe(402);
-    expect(over.json().error.code).toBe('PLAN_LIMIT_EXCEEDED');
+    expect(res.statusCode).toBe(202);
+    expect(mockJobCount).not.toHaveBeenCalled();
+    expect(mockCheckQuota).toHaveBeenLastCalledWith(RETAILER_ID, 'TRY_ON_GENERATION');
     await app.close();
   });
 });
@@ -508,17 +601,16 @@ describe('GET /products/try-on/quota', () => {
     const res = await get(app);
     expect(res.statusCode).toBe(200);
     expect(res.json().data).toEqual({ used: 1, limit: 3, remaining: 2, unlimited: false });
-    expect(mockGetEnforcedQuota).toHaveBeenCalledWith(RETAILER_ID, 'TRY_ON_GENERATION', 0);
+    expect(mockGetEnforcedQuota).toHaveBeenCalledWith(RETAILER_ID, 'TRY_ON_GENERATION');
     await app.close();
   });
 
-  it('passes in-flight PENDING jobs as reserved, the same count the POST adds (RC-073)', async () => {
+  it('does not add in-flight PENDING jobs on top: reservations are already in the counter (RC-073)', async () => {
     mockJobCount.mockResolvedValue(2);
     const app = await buildApp({ retailerId: RETAILER_ID });
     await get(app);
-    expect(mockGetEnforcedQuota).toHaveBeenCalledWith(RETAILER_ID, 'TRY_ON_GENERATION', 2);
-    const where = mockJobCount.mock.calls[0]?.[0].where;
-    expect(where).toMatchObject({ retailer_id: RETAILER_ID, status: 'PENDING' });
+    expect(mockGetEnforcedQuota).toHaveBeenCalledWith(RETAILER_ID, 'TRY_ON_GENERATION');
+    expect(mockJobCount).not.toHaveBeenCalled();
     await app.close();
   });
 

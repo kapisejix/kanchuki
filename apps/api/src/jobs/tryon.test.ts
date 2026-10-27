@@ -15,8 +15,10 @@ const {
   mockDeleteObject,
   mockClothTypeForCategory,
   mockIsUnsupportedTryOnCategory,
-  mockIncrementUsage,
-  mockIncrementCustomerUsage,
+  mockMarkSpent,
+  mockMarkCustomerSpent,
+  mockRefund,
+  mockRefundCustomer,
   mockTakeTryOnPhoto,
 } = vi.hoisted(() => ({
   mockProductFindFirst: vi.fn(),
@@ -28,8 +30,10 @@ const {
   mockDeleteObject: vi.fn(),
   mockClothTypeForCategory: vi.fn(),
   mockIsUnsupportedTryOnCategory: vi.fn(),
-  mockIncrementUsage: vi.fn(),
-  mockIncrementCustomerUsage: vi.fn(),
+  mockMarkSpent: vi.fn(),
+  mockMarkCustomerSpent: vi.fn(),
+  mockRefund: vi.fn(),
+  mockRefundCustomer: vi.fn(),
   mockTakeTryOnPhoto: vi.fn(),
 }));
 
@@ -56,8 +60,10 @@ vi.mock('@kanchuki/ai', () => ({
 }));
 
 vi.mock('../lib/quota.js', () => ({
-  incrementUsage: mockIncrementUsage,
-  incrementCustomerUsage: mockIncrementCustomerUsage,
+  markJobQuotaSpent: mockMarkSpent,
+  markCustomerJobQuotaSpent: mockMarkCustomerSpent,
+  refundJobQuota: mockRefund,
+  refundCustomerJobQuota: mockRefundCustomer,
 }));
 
 vi.mock('../lib/tryon-photo-store.js', () => ({
@@ -96,8 +102,10 @@ beforeEach(() => {
   // The row matched — i.e. no withdrawal landed while the GPU was working.
   mockJobUpdateMany.mockResolvedValue({ count: 1 });
   mockDeleteObject.mockResolvedValue(undefined);
-  mockIncrementUsage.mockResolvedValue(undefined);
-  mockIncrementCustomerUsage.mockResolvedValue(undefined);
+  mockMarkSpent.mockResolvedValue(undefined);
+  mockMarkCustomerSpent.mockResolvedValue(undefined);
+  mockRefund.mockResolvedValue(undefined);
+  mockRefundCustomer.mockResolvedValue(undefined);
 });
 
 describe('handleTryOn', () => {
@@ -127,16 +135,20 @@ describe('handleTryOn', () => {
     });
     // Nothing was withdrawn, so the image it just wrote is kept.
     expect(mockDeleteObject).not.toHaveBeenCalled();
-    expect(mockIncrementUsage).toHaveBeenCalledWith('retailer_1', 'TRY_ON_GENERATION');
-    // A retailer job does not touch a shopper's counter.
-    expect(mockIncrementCustomerUsage).not.toHaveBeenCalled();
+    expect(mockMarkSpent).toHaveBeenCalledWith('tryon_1', 'TRY_ON_GENERATION');
+    // A retailer job does not touch a shopper's counter, and a spent slot is never refunded.
+    expect(mockMarkCustomerSpent).not.toHaveBeenCalled();
+    expect(mockRefund).not.toHaveBeenCalled();
+    expect(mockRefundCustomer).not.toHaveBeenCalled();
   });
 
-  it('increments both counters for a customer job', async () => {
+  it('marks both reservations spent for a customer job', async () => {
     await handleTryOn({ ...DATA, customer_account_id: 'acct_1' });
 
-    expect(mockIncrementUsage).toHaveBeenCalledWith('retailer_1', 'TRY_ON_GENERATION');
-    expect(mockIncrementCustomerUsage).toHaveBeenCalledWith('acct_1', 'TRY_ON_GENERATION');
+    expect(mockMarkSpent).toHaveBeenCalledWith('tryon_1', 'TRY_ON_GENERATION');
+    expect(mockMarkCustomerSpent).toHaveBeenCalledWith('tryon_1', 'TRY_ON_GENERATION');
+    expect(mockRefund).not.toHaveBeenCalled();
+    expect(mockRefundCustomer).not.toHaveBeenCalled();
   });
 
   it('deletes the image it wrote when consent was withdrawn mid-run', async () => {
@@ -228,7 +240,8 @@ describe('handleTryOn', () => {
   it('discarded mid-run still meters the generation (GPU ran)', async () => {
     mockJobUpdateMany.mockResolvedValue({ count: 0 });
     await handleTryOn(DATA);
-    expect(mockIncrementUsage).toHaveBeenCalledWith('retailer_1', 'TRY_ON_GENERATION');
+    expect(mockMarkSpent).toHaveBeenCalledWith('tryon_1', 'TRY_ON_GENERATION');
+    expect(mockRefund).not.toHaveBeenCalled();
   });
 
   it('still meters a generation that was withdrawn mid-run', async () => {
@@ -239,23 +252,28 @@ describe('handleTryOn', () => {
 
     await handleTryOn({ ...DATA, customer_account_id: 'acct_1' });
 
-    expect(mockIncrementUsage).toHaveBeenCalledWith('retailer_1', 'TRY_ON_GENERATION');
-    expect(mockIncrementCustomerUsage).toHaveBeenCalledWith('acct_1', 'TRY_ON_GENERATION');
+    expect(mockMarkSpent).toHaveBeenCalledWith('tryon_1', 'TRY_ON_GENERATION');
+    expect(mockMarkCustomerSpent).toHaveBeenCalledWith('tryon_1', 'TRY_ON_GENERATION');
+    expect(mockRefund).not.toHaveBeenCalled();
+    expect(mockRefundCustomer).not.toHaveBeenCalled();
   });
 
-  it('discarded while still queued: skips the GPU, writes nothing, does not meter', async () => {
+  it('discarded while still queued: skips the GPU, writes nothing, refunds the slot', async () => {
     mockJobFindUnique.mockResolvedValue({ status: 'DISCARDED' });
 
-    await handleTryOn(DATA);
+    await handleTryOn({ ...DATA, customer_account_id: 'acct_1' });
 
     expect(mockGenerateTryOn).not.toHaveBeenCalled();
     expect(mockSaveTryOnResultToR2).not.toHaveBeenCalled();
     expect(mockJobUpdate).not.toHaveBeenCalled();
     expect(mockJobUpdateMany).not.toHaveBeenCalled();
-    expect(mockIncrementUsage).not.toHaveBeenCalled();
+    expect(mockMarkSpent).not.toHaveBeenCalled();
+    expect(mockRefund).toHaveBeenCalledTimes(1);
+    expect(mockRefund).toHaveBeenCalledWith('tryon_1', 'TRY_ON_GENERATION');
+    expect(mockRefundCustomer).toHaveBeenCalledWith('tryon_1', 'TRY_ON_GENERATION');
   });
 
-  it('fails without generating when the photo has expired', async () => {
+  it('fails without generating when the photo has expired, and refunds', async () => {
     mockTakeTryOnPhoto.mockReturnValue(null);
 
     await handleTryOn(DATA);
@@ -265,9 +283,11 @@ describe('handleTryOn', () => {
     expect(mockJobUpdate).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ status: 'FAILED' }) }),
     );
+    expect(mockRefund).toHaveBeenCalledTimes(1);
+    expect(mockMarkSpent).not.toHaveBeenCalled();
   });
 
-  it('fails without generating when the product is gone', async () => {
+  it('fails without generating when the product is gone, and refunds', async () => {
     mockProductFindFirst.mockResolvedValue(null);
 
     await handleTryOn(DATA);
@@ -276,22 +296,25 @@ describe('handleTryOn', () => {
     expect(mockJobUpdate).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ status: 'FAILED' }) }),
     );
+    expect(mockRefund).toHaveBeenCalledTimes(1);
   });
 
-  it('fails without generating when the product has no photo', async () => {
+  it('fails without generating when the product has no photo, and refunds', async () => {
     mockProductFindFirst.mockResolvedValue({ ...PRODUCT, photos: [] });
 
     await handleTryOn(DATA);
 
     expect(mockGenerateTryOn).not.toHaveBeenCalled();
+    expect(mockRefund).toHaveBeenCalledTimes(1);
   });
 
-  it('refuses an unsupported garment category', async () => {
+  it('refuses an unsupported garment category, and refunds', async () => {
     mockIsUnsupportedTryOnCategory.mockReturnValue(true);
 
     await handleTryOn(DATA);
 
     expect(mockGenerateTryOn).not.toHaveBeenCalled();
+    expect(mockRefund).toHaveBeenCalledTimes(1);
   });
 
   it('marks FAILED and rethrows when the GPU call fails, saving nothing', async () => {
@@ -310,7 +333,26 @@ describe('handleTryOn', () => {
         data: expect.objectContaining({ status: 'FAILED', failure_reason: 'RunPod timeout' }),
       }),
     );
-    // No quota is spent on a failed generation.
-    expect(mockIncrementUsage).not.toHaveBeenCalled();
+    // No quota is spent on a failed generation: the slot goes back, once per scope.
+    expect(mockMarkSpent).not.toHaveBeenCalled();
+    expect(mockRefund).toHaveBeenCalledTimes(1);
+    expect(mockRefund).toHaveBeenCalledWith('tryon_1', 'TRY_ON_GENERATION');
+  });
+
+  it('a throw AFTER the GPU returned (R2 save) keeps the slot spent', async () => {
+    mockSaveTryOnResultToR2.mockRejectedValue(new Error('R2 down'));
+
+    await expect(handleTryOn(DATA)).rejects.toThrow('R2 down');
+
+    expect(mockMarkSpent).toHaveBeenCalledWith('tryon_1', 'TRY_ON_GENERATION');
+    expect(mockRefund).not.toHaveBeenCalled();
+  });
+
+  it('a failed mark-spent write is logged and does not refund a paid generation', async () => {
+    mockMarkSpent.mockRejectedValue(new Error('db down'));
+
+    await handleTryOn(DATA);
+
+    expect(mockRefund).not.toHaveBeenCalled();
   });
 });

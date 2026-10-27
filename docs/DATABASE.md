@@ -1192,7 +1192,8 @@ Columns: `id`, `job_id` (the payload id, not BullMQ's), `retailer_id` XOR `custo
 
 - RLS on, one `backend_roles_full_access` policy (policy first, then ENABLE, RC-030). No DELETE grant and none needed: a refund is an UPDATE (RC-049).
 - **Writer map:** `lib/quota.ts` only. `reserveJobQuota` (one CTE: guarded counter upsert + reservation INSERT), `refundJobQuota` (flip RESERVED to REFUNDED and decrement the counter for that row only), `markJobQuotaSpent`. Callers: `routes/products/products-studio.ts` (reserve, refund if the enqueue throws), `jobs/studio-shoot.ts` (mark spent when a photo exists, refund in `finally` otherwise), the studio worker's `failed` hook in `jobs/index.ts` (stalled backup). Unlimited plans (no limit row or `-1`) write no row.
-- **Not built:** the sweep for `RESERVED` rows whose job never finished (process died), the customer scope, and every flow other than studio-shoot.
+- **Writers (2026-10-27):** retailer scope = studio-shoot (`products-studio`, `growth-social-templates` generate) and try-on; customer scope (`customer_account_id`, counter `customer_usage_counters`) = try-on shopper cap and My Style analyze. A shopper try-on holds two rows for one `job_id` (one per scope).
+- **Not built:** the sweep for `RESERVED` rows whose job never finished (process died), and tagging (left on check-then-increment).
 
 ## Migrations Strategy
 

@@ -49,7 +49,15 @@ import { Sentry } from '../../instrument.js';
 import { addTryOnJob } from '../../jobs/index.js';
 import { CUSTOMER_TRY_ON_ENABLED, hasFeature } from '../../lib/features.js';
 import { isCurrentTryOnConsent } from '../../lib/notice-versions.js';
-import { checkCustomerQuota, checkQuota, getEnforcedQuota } from '../../lib/quota.js';
+import {
+  checkCustomerQuota,
+  checkQuota,
+  getEnforcedQuota,
+  refundCustomerJobQuota,
+  refundJobQuota,
+  reserveCustomerJobQuota,
+  reserveJobQuota,
+} from '../../lib/quota.js';
 import { hasLiveTryOnConsent, recordTryOnConsent } from '../../lib/tryon-consent.js';
 import { discardTryOnPhoto, putTryOnPhoto } from '../../lib/tryon-photo-store.js';
 import { sniffImageType } from '../../lib/upload-guard.js';
@@ -65,9 +73,6 @@ import { getPassportSession } from '../public/passport/passport-helpers.js';
 /** Phone JPEGs run 2–8 MB; 10 MB is generous without making the parser a
  *  memory amplifier. Over this, Fastify answers 413. */
 const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
-
-/** PENDING jobs younger than this count as already-spent quota. */
-const PENDING_WINDOW_MS = 10 * 60 * 1000;
 
 const PRODUCT_SELECT = {
   id: true,
@@ -162,18 +167,6 @@ async function requireTryOnStaff(request: FastifyRequest): Promise<string> {
   return request.retailerId;
 }
 
-/** Recent PENDING jobs: already-spent quota, since usage is only counted on success. The
- *  window bounds orphaned PENDING rows. Shared by the POST's check and the quota read so the
- *  screen and the server cannot disagree. */
-const pendingTryOns = (retailerId: string) =>
-  prisma.tryOnJob.count({
-    where: {
-      retailer_id: retailerId,
-      status: 'PENDING',
-      created_at: { gte: new Date(Date.now() - PENDING_WINDOW_MS) },
-    },
-  });
-
 export const productsTryOnRoutes: FastifyPluginAsync = async (server) => {
   // Scoped to this plugin — the multipart parser is only needed by the one
   // route below and is not registered against the whole API.
@@ -185,10 +178,10 @@ export const productsTryOnRoutes: FastifyPluginAsync = async (server) => {
   // Static segment, registered before the `/:id/...` routes. Bearer only.
   server.get('/try-on/quota', async (request) => {
     const retailerId = await requireTryOnStaff(request);
+    // In-flight try-ons already sit in the counter (reserved at enqueue), so nothing is added.
     const { used, limit, remaining, unlimited } = await getEnforcedQuota(
       retailerId,
       'TRY_ON_GENERATION',
-      await pendingTryOns(retailerId),
     );
     return { data: { used, limit, remaining, unlimited } };
   });
@@ -341,11 +334,9 @@ export const productsTryOnRoutes: FastifyPluginAsync = async (server) => {
     //    logged-in shopper, their own. Distinct error codes: the retailer cap
     //    is 402 PLAN_LIMIT_EXCEEDED ("upgrade"), the shopper's is 402
     //    CUSTOMER_LIMIT_EXCEEDED (advice aimed at someone with no plan).
-    //    Usage is only incremented on job SUCCESS, so a multi-product session
-    //    firing several POSTs back-to-back would all pass; count recent PENDING
-    //    jobs as already spent. The 10-minute window bounds orphaned PENDING rows.
-    const pending = await pendingTryOns(retailerId);
-    await checkQuota(retailerId, 'TRY_ON_GENERATION', 1 + pending);
+    //    These are fail-fast reads so a refused caller uploads nothing; the real
+    //    gate is the atomic reserve at step 7, which counts in-flight jobs too.
+    await checkQuota(retailerId, 'TRY_ON_GENERATION');
     if (customerAccountId) {
       await checkCustomerQuota(customerAccountId, 'TRY_ON_GENERATION');
     }
@@ -364,27 +355,58 @@ export const productsTryOnRoutes: FastifyPluginAsync = async (server) => {
     if (!contentType)
       throw validationError('Only JPEG, PNG or WebP photos are supported.', 'photo');
 
-    // 7. Job row first, so the poll endpoint has something to read even if the
-    //    worker is slow to pick the job up. The consent record is written in the
-    //    same insert as the job it authorises — not after generation — so a job
-    //    can never exist holding a stored image with no consent beside it.
+    // 7. Take the quota slots (RC-102), shopper first (cheapest to refuse), then the
+    //    retailer. The job hands them back on any outcome without a GPU result
+    //    (jobs/tryon.ts); every failure before the job runs hands them back here.
+    //    A refund with no matching reservation is a no-op, so giveBack is safe to
+    //    call whichever slots were actually taken.
     const jobId = `tryon_${createId()}`;
-    await prisma.tryOnJob.create({
-      data: {
-        id: jobId,
-        retailer_id: retailerId,
-        customer_account_id: customerAccountId,
-        product_id: id,
-        status: 'PENDING',
-        consent_at: new Date(),
-        consent_notice_version: TRY_ON_CONSENT.version,
-        consent_method: consentMethod,
-      },
-    });
+    const giveBack = async () => {
+      await refundJobQuota(jobId, 'TRY_ON_GENERATION').catch((err) => {
+        request.log.error({ err, job_id: jobId }, 'Failed to refund try-on retailer quota');
+      });
+      if (customerAccountId) {
+        await refundCustomerJobQuota(jobId, 'TRY_ON_GENERATION').catch((err) => {
+          request.log.error({ err, job_id: jobId }, 'Failed to refund try-on customer quota');
+        });
+      }
+    };
+    if (customerAccountId) {
+      await reserveCustomerJobQuota(customerAccountId, 'TRY_ON_GENERATION', jobId);
+    }
+    try {
+      await reserveJobQuota(retailerId, 'TRY_ON_GENERATION', jobId);
+    } catch (err) {
+      await giveBack();
+      throw err;
+    }
+
+    // Job row first, so the poll endpoint has something to read even if the
+    // worker is slow to pick the job up. The consent record is written in the
+    // same insert as the job it authorises — not after generation — so a job
+    // can never exist holding a stored image with no consent beside it.
+    try {
+      await prisma.tryOnJob.create({
+        data: {
+          id: jobId,
+          retailer_id: retailerId,
+          customer_account_id: customerAccountId,
+          product_id: id,
+          status: 'PENDING',
+          consent_at: new Date(),
+          consent_notice_version: TRY_ON_CONSENT.version,
+          consent_method: consentMethod,
+        },
+      });
+    } catch (err) {
+      await giveBack();
+      throw err;
+    }
 
     // 8. Hand the photo to the job in-process — it must not cross Redis. A full
     //    store means the server is saturated; fail this one job cleanly.
     if (!putTryOnPhoto(jobId, buffer, contentType)) {
+      await giveBack();
       await prisma.tryOnJob
         .update({
           where: { id: jobId },
@@ -407,6 +429,7 @@ export const productsTryOnRoutes: FastifyPluginAsync = async (server) => {
       });
     } catch (err) {
       // Nothing will take the photo now — drop it rather than hold it for TTL.
+      await giveBack();
       discardTryOnPhoto(jobId);
       await prisma.tryOnJob
         .update({

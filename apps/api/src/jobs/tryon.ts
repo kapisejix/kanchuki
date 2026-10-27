@@ -34,7 +34,12 @@ import {
   saveTryOnResultToR2,
 } from '@kanchuki/ai';
 import { prisma } from '@kanchuki/db';
-import { incrementCustomerUsage, incrementUsage } from '../lib/quota.js';
+import {
+  markCustomerJobQuotaSpent,
+  markJobQuotaSpent,
+  refundCustomerJobQuota,
+  refundJobQuota,
+} from '../lib/quota.js';
 import { takeTryOnPhoto } from '../lib/tryon-photo-store.js';
 
 export interface TryOnJobData {
@@ -75,7 +80,29 @@ async function markFailed(jobId: string, reason: string): Promise<void> {
     .catch((err) => console.error(`[try-on] failed to mark ${jobId} FAILED:`, err));
 }
 
+// The route reserved a TRY_ON_GENERATION slot for this job_id (retailer, plus the shopper's own
+// for a passport job). It is spent once the GPU call returns; every earlier exit (photo gone,
+// queued job already DISCARDED, product/category/photo problems, GPU throw) hands it back here.
+// BullMQ counts a `return` as completed, so its `failed` hook would miss those (RC-102).
 export async function handleTryOn(data: TryOnJobData): Promise<void> {
+  const held = { spent: false };
+  try {
+    await run(data, held);
+  } finally {
+    if (!held.spent) {
+      await refundJobQuota(data.job_id, 'TRY_ON_GENERATION').catch((err) => {
+        console.error(`[try-on] failed to refund retailer quota for job ${data.job_id}:`, err);
+      });
+      if (data.customer_account_id) {
+        await refundCustomerJobQuota(data.job_id, 'TRY_ON_GENERATION').catch((err) => {
+          console.error(`[try-on] failed to refund customer quota for job ${data.job_id}:`, err);
+        });
+      }
+    }
+  }
+}
+
+async function run(data: TryOnJobData, held: { spent: boolean }): Promise<void> {
   const { job_id, retailer_id, customer_account_id, product_id } = data;
 
   // The one-shot take: after this line the only copy of the wearer's photo is
@@ -143,6 +170,24 @@ export async function handleTryOn(data: TryOnJobData): Promise<void> {
       garmentImageUrl: sourceUrl,
       clothType: clothTypeForCategory(product.category),
     });
+
+    // The GPU ran, so the slot(s) are spent whatever happens next: a withdrawal or discard that
+    // lands mid-run still counts (otherwise withdraw-and-regenerate spends the store's allowance
+    // for free - `hasLiveTryOnConsent` lets a shopper re-grant, so that loop is reachable from the
+    // UI). Both caps, because a customer job spends the retailer's allowance AND the shopper's.
+    // The flag is set before the writes so a later throw cannot refund a paid generation.
+    held.spent = true;
+    await markJobQuotaSpent(job_id, 'TRY_ON_GENERATION').catch((err) => {
+      console.error(`[try-on] failed to mark retailer quota spent for ${retailer_id}:`, err);
+    });
+    if (customer_account_id) {
+      await markCustomerJobQuotaSpent(job_id, 'TRY_ON_GENERATION').catch((err) => {
+        console.error(
+          `[try-on] failed to mark customer quota spent for ${customer_account_id}:`,
+          err,
+        );
+      });
+    }
 
     // Persist ONLY the generated image. The wearer's buffer above is never
     // written anywhere — not to R2, not to the DB, and (see the store module)
@@ -217,23 +262,6 @@ export async function handleTryOn(data: TryOnJobData): Promise<void> {
       }
     }
 
-    // Quota is spent only on success — both caps, because a customer job spends
-    // the retailer's monthly allowance AND that shopper's own. A withdrawal that
-    // landed mid-run still counts: the GPU ran regardless, and NOT counting it
-    // would make withdraw-and-regenerate a way to spend the store's allowance
-    // for free (`hasLiveTryOnConsent` lets a shopper re-grant, so that loop is
-    // reachable from the UI rather than theoretical).
-    incrementUsage(retailer_id, 'TRY_ON_GENERATION').catch((err) => {
-      console.error(`[try-on] failed to record retailer quota usage for ${retailer_id}:`, err);
-    });
-    if (customer_account_id) {
-      incrementCustomerUsage(customer_account_id, 'TRY_ON_GENERATION').catch((err) => {
-        console.error(
-          `[try-on] failed to record customer quota usage for ${customer_account_id}:`,
-          err,
-        );
-      });
-    }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error(`[try-on] job ${job_id} failed:`, err);

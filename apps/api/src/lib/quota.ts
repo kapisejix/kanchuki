@@ -159,9 +159,8 @@ export async function checkQuota(
 // ponytail: checkQuota + incrementUsage are two separate calls (not one
 // transaction), so two concurrent requests can both pass the check before
 // either increments. Callers whose work runs in the same request use
-// reserveQuota (RC-102) instead. Callers that check at enqueue and increment
-// in a later job (tryon, studio-shoot, tagging) still have this race, as does
-// the customer-side pair below.
+// reserveQuota (RC-102) instead; queued jobs (studio-shoot, try-on, My Style) use
+// reserve*JobQuota. Only AI tagging (provider-weighted, retried) still has this race.
 export async function incrementUsage(
   retailerId: string,
   resourceType: QuotaResourceType,
@@ -303,6 +302,73 @@ export async function markJobQuotaSpent(
       AND state = 'RESERVED'`;
 }
 
+/**
+ * Shopper-side twin of `reserveJobQuota`: same one-statement counter bump + reservation row, on
+ * `customer_usage_counters` and the `customer_account_id` scope. Same unlimited rules as
+ * `checkCustomerQuota` (no configured limit or -1 = nothing written; refund/spent then no-op).
+ * Throws CUSTOMER_LIMIT_EXCEEDED, never the plan error.
+ */
+export async function reserveCustomerJobQuota(
+  customerAccountId: string,
+  resourceType: QuotaResourceType,
+  jobId: string,
+  amount = 1,
+): Promise<void> {
+  const effective = await effectiveCustomerLimit(resourceType);
+  if (!effective || effective.limit === -1) return;
+  const limit = effective.limit;
+  if (amount > limit) throw customerLimitExceeded(resourceType, limit, effective.period);
+
+  const start = periodStart(effective.period);
+  const taken = await prisma.$executeRaw`
+    WITH bump AS (
+      INSERT INTO customer_usage_counters (id, customer_account_id, resource_type, period_start, count, updated_at)
+      VALUES (${randomUUID()}, ${customerAccountId}, ${resourceType}::"QuotaResourceType", ${start}, ${amount}, now())
+      ON CONFLICT (customer_account_id, resource_type, period_start)
+      DO UPDATE SET count = customer_usage_counters.count + ${amount}, updated_at = now()
+      WHERE customer_usage_counters.count + ${amount} <= ${limit}
+      RETURNING 1
+    )
+    INSERT INTO quota_reservations (id, job_id, customer_account_id, resource_type, period_start, amount)
+    SELECT ${randomUUID()}, ${jobId}, ${customerAccountId}, ${resourceType}::"QuotaResourceType", ${start}, ${amount}
+    FROM bump`;
+  if (taken === 0) throw customerLimitExceeded(resourceType, limit, effective.period);
+}
+
+/** `refundJobQuota` for the shopper scope: idempotent by job id, SPENT/missing rows untouched. */
+export async function refundCustomerJobQuota(
+  jobId: string,
+  resourceType: QuotaResourceType,
+): Promise<void> {
+  await prisma.$executeRaw`
+    WITH r AS (
+      UPDATE quota_reservations SET state = 'REFUNDED', refunded_at = now()
+      WHERE job_id = ${jobId}
+        AND resource_type = ${resourceType}::"QuotaResourceType"
+        AND customer_account_id IS NOT NULL
+        AND state = 'RESERVED'
+      RETURNING customer_account_id, resource_type, period_start, amount
+    )
+    UPDATE customer_usage_counters u SET count = GREATEST(u.count - r.amount, 0), updated_at = now()
+    FROM r
+    WHERE u.customer_account_id = r.customer_account_id
+      AND u.resource_type = r.resource_type
+      AND u.period_start = r.period_start`;
+}
+
+/** `markJobQuotaSpent` for the shopper scope. */
+export async function markCustomerJobQuotaSpent(
+  jobId: string,
+  resourceType: QuotaResourceType,
+): Promise<void> {
+  await prisma.$executeRaw`
+    UPDATE quota_reservations SET state = 'SPENT'
+    WHERE job_id = ${jobId}
+      AND resource_type = ${resourceType}::"QuotaResourceType"
+      AND customer_account_id IS NOT NULL
+      AND state = 'RESERVED'`;
+}
+
 export interface QuotaStatusResult {
   used: number;
   limit: number;
@@ -355,13 +421,12 @@ export async function getQuotaStatus(
 /**
  * The numbers `checkQuota` will actually enforce, for a screen to show. No limit row, or -1,
  * means nothing is enforced (checkQuota returns), so this says unlimited instead of inventing
- * a plan default the way getQuotaStatus does (RC-073). `reserved` is work already in flight
- * that the enforcing route adds to its own request (e.g. PENDING try-on jobs).
+ * a plan default the way getQuotaStatus does (RC-073). In-flight queued work is already in the
+ * counter (reserveJobQuota), so there is nothing to add on top.
  */
 export async function getEnforcedQuota(
   retailerId: string,
   resourceType: QuotaResourceType,
-  reserved = 0,
 ): Promise<{ used: number; limit: number; remaining: number; unlimited: boolean }> {
   const effective = await effectiveLimit(retailerId, resourceType);
   if (!effective || effective.limit === -1) {
@@ -380,7 +445,7 @@ export async function getEnforcedQuota(
   return {
     used,
     limit: effective.limit,
-    remaining: Math.max(0, effective.limit - used - reserved),
+    remaining: Math.max(0, effective.limit - used),
     unlimited: false,
   };
 }

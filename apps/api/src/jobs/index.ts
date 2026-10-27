@@ -1,6 +1,6 @@
 import { QUEUES } from '@kanchuki/shared';
 import { Worker } from 'bullmq';
-import { refundJobQuota } from '../lib/quota.js';
+import { refundCustomerJobQuota, refundJobQuota } from '../lib/quota.js';
 import { STUDIO_SHOOT_CONCURRENCY } from '../lib/studio-shoot.js';
 import { handleAiSpendAlert } from './ai-spend-alert.js';
 import { handleBackfillMissingAiFields } from './backfill-missing-ai-fields.js';
@@ -581,10 +581,28 @@ export async function startWorkers(): Promise<void> {
 
   tryOnWorker.on('failed', (job, err) => {
     console.error(`[jobs] try-on failed ${job?.id}:`, err.message);
+    // Stalled-out backup, same as studio-shoot: idempotent, and a SPENT slot is left alone.
+    const d = job?.data as TryOnJobData | undefined;
+    if (d?.job_id) {
+      refundJobQuota(d.job_id, 'TRY_ON_GENERATION').catch((e) =>
+        console.error(`[jobs] try-on quota refund failed ${d.job_id}:`, e),
+      );
+      if (d.customer_account_id) {
+        refundCustomerJobQuota(d.job_id, 'TRY_ON_GENERATION').catch((e) =>
+          console.error(`[jobs] try-on customer quota refund failed ${d.job_id}:`, e),
+        );
+      }
+    }
   });
 
   myStyleAnalyzeWorker.on('failed', (job, err) => {
     console.error(`[jobs] my-style-analyze failed ${job?.id}:`, err.message);
+    const jobId = (job?.data as MyStyleAnalyzeJobData | undefined)?.job_id;
+    if (jobId) {
+      refundCustomerJobQuota(jobId, 'STYLE_ANALYSIS').catch((e) =>
+        console.error(`[jobs] my-style-analyze quota refund failed ${jobId}:`, e),
+      );
+    }
   });
 
   pushWorker.on('failed', (job, err) => {

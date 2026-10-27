@@ -32,7 +32,11 @@ import {
   withdrawMyStyleConsent,
 } from '../../lib/my-style-consent.js';
 import { isCurrentMyStyleConsent } from '../../lib/notice-versions.js';
-import { checkCustomerQuota } from '../../lib/quota.js';
+import {
+  checkCustomerQuota,
+  refundCustomerJobQuota,
+  reserveCustomerJobQuota,
+} from '../../lib/quota.js';
 import { discardTryOnPhoto, putTryOnPhoto } from '../../lib/tryon-photo-store.js';
 import { sniffImageType } from '../../lib/upload-guard.js';
 import {
@@ -97,7 +101,8 @@ export const publicMyStyleAnalyzeRoutes: FastifyPluginAsync = async (server) => 
         });
       }
 
-      // Quota is spent by the job on success; the lock below stops parallel spend.
+      // Fail-fast read so an over-quota shopper is refused before uploading anything. The real
+      // gate is the atomic reserveCustomerJobQuota below, once the per-account lock is held.
       await checkCustomerQuota(accountId, 'STYLE_ANALYSIS');
 
       if (!request.isMultipart()) {
@@ -127,8 +132,22 @@ export const publicMyStyleAnalyzeRoutes: FastifyPluginAsync = async (server) => 
         );
       }
 
+      // The slot is taken here and handed back by the job on any non-result outcome
+      // (jobs/my-style-analyze.ts). Every failure below frees the lock AND gives the slot back.
+      const giveBack = () =>
+        refundCustomerJobQuota(jobId, 'STYLE_ANALYSIS').catch((err) => {
+          request.log.error({ err, job_id: jobId }, 'Failed to refund style-analysis quota');
+        });
+      try {
+        await reserveCustomerJobQuota(accountId, 'STYLE_ANALYSIS', jobId);
+      } catch (err) {
+        await completeAnalysis(jobId, { status: 'failed', reason: 'quota' }).catch(() => {});
+        throw err;
+      }
+
       // In-process handoff; a full store means the server is saturated — fail this one.
       if (!putTryOnPhoto(jobId, buffer, contentType)) {
+        await giveBack();
         await completeAnalysis(jobId, { status: 'failed', reason: 'busy' }).catch(() => {});
         throw serviceUnavailable('Busy right now. Please try again in a moment.');
       }
@@ -142,6 +161,7 @@ export const publicMyStyleAnalyzeRoutes: FastifyPluginAsync = async (server) => 
       } catch (err) {
         // Nothing will take the photo now — drop it rather than hold it for the TTL, and
         // free the shopper's lock so they can retry.
+        await giveBack();
         discardTryOnPhoto(jobId);
         await completeAnalysis(jobId, { status: 'failed', reason: 'enqueue_failed' }).catch(
           () => {},
