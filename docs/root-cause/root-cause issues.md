@@ -13,6 +13,16 @@
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
 
+## RC-135 — two taps in one tick on the onboarding buttons saved twice, and Dashboard + QR redirected twice (T3.2-a #4b)
+
+- **Component:** `apps/mobile/app/onboarding.tsx` (`handleNext`, `handleGetCatalogHelp`, `handleCreateStoreQr`).
+- **Symptom:** a double tap on "Save & Proceed" / "Go to Dashboard →" / "Create your store QR code" / "Catalog Upload Help" ran the profile save twice; Dashboard + QR (or Catalog) in one tick also started two 1.5 s timers, so `router.replace` fired twice to two different screens. On steps 1-4 a double tap sent the step's update twice.
+- **Root cause:** the only guard was `saving || showConfetti`, both React state, which the handler reads one render late, so a second tap in the same tick still saw `false` (RC-015/RC-132/RC-134 shape). Three handlers, one copy of the guard each.
+- **Fix:** a `busyRef` checked first in all three handlers, set before `setSaving(true)` and released in the shared `finally` (success is still held shut by `showConfetti`, which commits in the same batch as the release; a failure frees the button for a retry). Not changed: the redirect timers are not cleared on unmount (harmless); other screens that guard a start on state alone were not swept.
+- **Proof:** `__tests__/smoke/rc-screens.test.tsx` ("onboarding steps 1-4" > "step 5", fake timers). The same-tick double tap and the Dashboard + QR tap were `it.fails` first, flipped once and confirmed to fail for the right reason ("called 1 times, but got 2 times"), then flipped to `it` with the fix; added double tap on QR and Catalog, double tap on step 1 (saves once, step 2 still usable), and retry after a failed save. 19 onboarding tests in all. Falsified (each failed a test, restored, `cmp` clean): the check in each of the three handlers, the set in each, the release (all and `handleNext` only). Mobile `tsc` clean, vitest 48 files / 530 tests. Not device-tested.
+
+---
+
 ## RC-134 — the support-session request screen created two grants on a double tap, and entered a session whose request had just been cancelled (T3.2-a #10)
 
 - **Component:** `apps/mobile/app/staff/support-session.tsx` (`handleStart`, the polling effect).
