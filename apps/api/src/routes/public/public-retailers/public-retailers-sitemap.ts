@@ -81,7 +81,14 @@ export const publicRetailersSitemapRoutes: FastifyPluginAsync = async (server) =
             take: MAX_PHOTOS_PER_PAGE,
           },
           collections: {
-            where: { status: 'ACTIVE', deleted_at: null },
+            // RC-105: a collection made for one shopper (customer_id set, title "AI Picks for <name>")
+            // is not a public page; an expired one 404s until a view flips its status.
+            where: {
+              status: 'ACTIVE',
+              deleted_at: null,
+              customer_id: null,
+              OR: [{ expires_at: null }, { expires_at: { gt: new Date() } }],
+            },
             select: {
               slug: true,
               // Product URLs per collection for the sitemap — each

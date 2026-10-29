@@ -61,7 +61,8 @@ export function poolsForSlug(slug: string): StyleDef['pools'] {
   return all.find((s) => s.id === id)?.pools;
 }
 
-const PROTECT = 'STRICT GARMENT PROTECTION: Preserve the uploaded garment exactly as shown, including its original color, fabric, print, embroidery, motifs, neckline, sleeves, borders, length, texture, stitching, proportions, construction, dupatta and every visible design detail. Do not redesign, recolor, simplify, stretch, shorten, reshape, distort, replace, add, remove, duplicate or invent any garment detail.';
+const PROTECT =
+  'STRICT GARMENT PROTECTION: Preserve the uploaded garment exactly as shown, including its original color, fabric, print, embroidery, motifs, neckline, sleeves, borders, length, texture, stitching, proportions, construction, dupatta and every visible design detail. Do not redesign, recolor, simplify, stretch, shorten, reshape, distort, replace, add, remove, duplicate or invent any garment detail.';
 
 /** Shared Model Only wrapper (§14.3 MX-0). */
 const MX0 = `Create ONE premium commercial fashion photograph featuring one model wearing the uploaded garment. The uploaded garment is the single source of truth and must remain the primary visual focus. Keep the garment completely visible and unobstructed. Realistic anatomy, natural posture, realistic skin and hair, minimal elegant styling. Walking poses are toward the camera, never away.

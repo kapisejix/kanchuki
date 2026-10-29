@@ -122,7 +122,12 @@ export default function NewCategoryScreen() {
         )}
 
         {/* ── Product Picker Modal ── */}
-        <Modal visible={showProductPicker} animationType="slide" presentationStyle="pageSheet">
+        <Modal
+          visible={showProductPicker}
+          animationType="slide"
+          presentationStyle="pageSheet"
+          onRequestClose={() => { setShowProductPicker(false); setSelectedProductId(null) }}
+        >
           <View className="flex-1 bg-[#F8F7FC]">
             <View className="flex-row items-center justify-between px-4 py-3.5 border-b border-lavender-200 bg-white">
               <Text
@@ -173,7 +178,12 @@ export default function NewCategoryScreen() {
         </Modal>
 
         {/* ── Photo Picker Modal ── */}
-        <Modal visible={showPhotoPicker} animationType="slide" presentationStyle="pageSheet">
+        <Modal
+          visible={showPhotoPicker}
+          animationType="slide"
+          presentationStyle="pageSheet"
+          onRequestClose={() => { setShowPhotoPicker(false); setSelectedProductId(null) }}
+        >
           <View className="flex-1 bg-[#F8F7FC]">
             <View className="flex-row items-center justify-between px-4 py-3.5 border-b border-lavender-200 bg-white">
               <Text

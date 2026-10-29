@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { ChevronLeft, Images, RefreshCw, Sparkles, Wand2, X } from 'lucide-react-native';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -15,6 +15,7 @@ import {
 import { AnimatedPressable } from '../../../src/components/AnimatedPressable';
 import { DangerButton } from '../../../src/components/DangerButton';
 import { GradientButton } from '../../../src/components/GradientButton';
+import { KeyboardScreen } from '../../../src/components/KeyboardScreen';
 import { WHITE_BUTTON_INK, WhiteButton } from '../../../src/components/WhiteButton';
 import { ProductGridPicker } from '../../../src/components/social';
 import type { ComposeProduct } from '../../../src/components/social/types';
@@ -49,15 +50,22 @@ function PostCard({
   onChanged,
   onSwap,
   onStyle,
+  onDraft,
 }: {
   post: SchedulePost;
   canEditSlides: boolean;
+  onDraft: (postId: string, caption: string) => void;
   onChanged: () => void;
   onSwap: (itemId: string) => void;
   onStyle: (scope: 'item' | 'post', id: string) => void;
 }) {
   const editable = EDITABLE_POST_STATUSES.includes(post.status);
-  const [caption, setCaption] = useState(post.caption);
+  const [caption, setCaptionState] = useState(post.caption);
+  // The screen needs the live text so Confirm can save unsaved edits first.
+  const setCaption = (c: string) => {
+    setCaptionState(c);
+    onDraft(post.id, c);
+  };
   const dirty = caption.trim() !== post.caption;
 
   const act = useMutation({
@@ -279,8 +287,23 @@ export default function ScheduleCalendarScreen() {
     return [...map.entries()].sort(([a], [b]) => a.localeCompare(b));
   }, [plan]);
 
+  // Live caption text per post (PostCard owns the state; see onDraft).
+  const drafts = useRef(new Map<string, string>());
+
   const confirm = useMutation({
-    mutationFn: () => scheduleApi.confirm(id),
+    // Confirm sends only the plan id, so caption edits not yet saved with "Save
+    // caption" would be lost when the plan goes live: save them first. A blank
+    // caption is skipped (Save caption refuses it too). If a save fails the
+    // plan is not confirmed.
+    mutationFn: async () => {
+      for (const p of plan?.posts ?? []) {
+        const draft = drafts.current.get(p.id)?.trim();
+        if (draft && draft !== p.caption && EDITABLE_POST_STATUSES.includes(p.status)) {
+          await scheduleApi.patchPost(p.id, { caption: draft });
+        }
+      }
+      return scheduleApi.confirm(id);
+    },
     onSuccess: (res) => {
       changed();
       Alert.alert(
@@ -343,7 +366,7 @@ export default function ScheduleCalendarScreen() {
   const pool = plan?.rotation_pool ?? [];
 
   return (
-    <View className="flex-1 bg-[#F8F7FC]">
+    <KeyboardScreen className="flex-1 bg-[#F8F7FC]">
       <View
         className="bg-white border-b border-lavender-200 px-5 pb-4"
         style={{ paddingTop: headerPaddingTop }}
@@ -477,6 +500,7 @@ export default function ScheduleCalendarScreen() {
                     post={p}
                     canEditSlides={canPlan}
                     onChanged={changed}
+                    onDraft={(postId, c) => drafts.current.set(postId, c)}
                     onSwap={setSwapItemId}
                     onStyle={(scope, targetId) => setStyleTarget({ scope, id: targetId })}
                   />
@@ -624,6 +648,6 @@ export default function ScheduleCalendarScreen() {
           />
         </View>
       </Modal>
-    </View>
+    </KeyboardScreen>
   );
 }

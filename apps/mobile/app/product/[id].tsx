@@ -23,6 +23,7 @@ import { DetailScreenSkeleton } from '../../src/components/Skeleton'
 import { useTheme } from '../../src/lib/theme'
 import { useSafeVideoPlayer } from '../../src/lib/safe-video-player'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
+import { KeyboardScreen } from '../../src/components/KeyboardScreen'
 import { WHITE_BUTTON_INK, WhiteButton } from '../../src/components/WhiteButton'
 import { SkuTagModal } from '../../src/components/product-detail/SkuTagModal'
 import { ProductMediaCarousel } from '../../src/components/product-detail/ProductMediaCarousel'
@@ -245,7 +246,7 @@ export default function ProductDetailScreen() {
   }
 
   return (
-    <View className="flex-1 bg-[#F8F7FC]">
+    <KeyboardScreen className="flex-1 bg-[#F8F7FC]">
       {/* Top App Header (Point 10 PDP Spec) */}
       <View
         className="flex-row items-center justify-between px-5 pb-3 bg-white border-b border-lavender-200"
@@ -522,6 +523,6 @@ export default function ProductDetailScreen() {
         productName={product.name ?? undefined}
         productId={product.id}
       />
-    </View>
+    </KeyboardScreen>
   )
 }

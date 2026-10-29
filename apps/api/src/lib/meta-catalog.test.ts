@@ -33,6 +33,24 @@ describe('meta-catalog', () => {
     vi.mocked(getSecret).mockResolvedValue('test_waba_id');
   });
 
+  // RC-118: a caller that omits `signal` must still get a timeout.
+  describe('default timeout', () => {
+    const ok = { ok: true, json: () => Promise.resolve({ data: [] }) };
+
+    it('adds a signal when the caller passes none', async () => {
+      mockFetch.mockResolvedValueOnce(ok);
+      await listCatalogItems(mockCatalogId, mockAccessToken);
+      expect(mockFetch.mock.calls[0]?.[1].signal).toBeInstanceOf(AbortSignal);
+    });
+
+    it('keeps a caller-supplied signal', async () => {
+      const own = new AbortController().signal;
+      mockFetch.mockResolvedValueOnce(ok);
+      await listCatalogItems(mockCatalogId, mockAccessToken, 100, undefined, own);
+      expect(mockFetch.mock.calls[0]?.[1].signal).toBe(own);
+    });
+  });
+
   describe('getOrCreateCatalog', () => {
     it('returns existing catalog ID when one exists', async () => {
       mockFetch.mockResolvedValueOnce({

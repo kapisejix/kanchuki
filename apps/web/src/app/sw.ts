@@ -111,8 +111,13 @@ const serwist = new Serwist({
     // 403 (e.g. from a since-expired session) and replayed it forever on
     // every retry/re-login. Host-agnostic pathname match catches it
     // regardless of which origin NEXT_PUBLIC_API_URL points at.
+    // RC-106: personal responses must never enter Cache Storage. Same-origin /api/* (passport,
+    // my-style) and every /v1/* call (retailer Bearer calls, admin) go straight to the network.
+    // The cached public proxies keep their explicit rule above; /v1/public is shared data.
     {
-      matcher: ({ url }) => url.pathname.startsWith('/v1/admin'),
+      matcher: ({ url }) =>
+        url.pathname.startsWith('/api/') ||
+        (url.pathname.startsWith('/v1/') && !url.pathname.startsWith('/v1/public/')),
       handler: new NetworkOnly(),
     },
     ...defaultCache,
@@ -145,8 +150,15 @@ const sw = self as unknown as {
     openWindow(url: string): Promise<unknown>;
   };
   addEventListener(type: 'push', l: (e: PushEvt) => void): void;
+  addEventListener(type: 'activate', l: (e: WaitUntil) => void): void;
   addEventListener(type: 'notificationclick', l: (e: ClickEvt) => void): void;
 };
+
+// RC-106: the old rules wrote authenticated GETs into these caches; delete them once on every
+// SW update.
+sw.addEventListener('activate', (event) => {
+  event.waitUntil(Promise.all(['apis', 'cross-origin'].map((name) => caches.delete(name))));
+});
 
 sw.addEventListener('push', (event) => {
   let data: { title?: string; body?: string; url?: string; tag?: string } = {};

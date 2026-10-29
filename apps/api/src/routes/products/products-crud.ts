@@ -7,7 +7,7 @@ import { addEmbeddingJob, addTaggingJob } from '../../jobs/index.js';
 import { resolveColorFamily } from '../../lib/color-families.js';
 import { NEW_ARRIVAL_DAYS, isNewArrival } from '../../lib/product-flags.js';
 import { defaultStock, totalQuantity, writeStock, zeroStock } from '../../lib/product-stock.js';
-import { checkQuota, incrementUsage } from '../../lib/quota.js';
+import { reserveQuota } from '../../lib/quota.js';
 import { IMAGE_KINDS, verifyUpload } from '../../lib/upload-guard.js';
 import {
   forbidden,
@@ -43,7 +43,8 @@ export const productsCrudRoutes: FastifyPluginAsync = async (server) => {
     // this is live enforcement, not a no-op. Kept alongside the max_products
     // check above (which stays authoritative for the exact number) since
     // this is also what RetailerLimitOverride/addon purchases hook into.
-    await checkQuota(retailerId, 'PRODUCT_UPLOAD');
+    // Reserved (RC-102) just before the create below, after validation, so an invalid body spends
+    // nothing; the create's failure path hands the slot back.
 
     const body = CreateProductSchema.safeParse(request.body);
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
@@ -71,6 +72,8 @@ export const productsCrudRoutes: FastifyPluginAsync = async (server) => {
       if (!cat) throw forbidden('Category does not belong to your store');
     }
 
+    const refund = await reserveQuota(retailerId, 'PRODUCT_UPLOAD');
+
     let product: Awaited<ReturnType<typeof prisma.product.create>>;
     try {
       product = await prisma.product.create({
@@ -87,6 +90,9 @@ export const productsCrudRoutes: FastifyPluginAsync = async (server) => {
         include: { photos: true, section: { select: { name: true } } },
       });
     } catch (err) {
+      await refund().catch((refundErr) => {
+        request.log.error({ err: refundErr }, 'Failed to refund product-upload quota');
+      });
       if ((err as { code?: string } | null)?.code === 'P2002') {
         throw validationError('This SKU is already in use', 'sku');
       }
@@ -104,12 +110,6 @@ export const productsCrudRoutes: FastifyPluginAsync = async (server) => {
     } catch (err) {
       request.log.error({ err, product_id: product.id }, 'Failed to write product stock');
     }
-
-    // Best-effort — a failed usage-counter write shouldn't fail an upload
-    // that already succeeded.
-    incrementUsage(retailerId, 'PRODUCT_UPLOAD').catch((err) => {
-      request.log.error({ err, product_id: product.id }, 'Failed to record product-upload usage');
-    });
 
     await prisma.auditLog.create({
       data: {

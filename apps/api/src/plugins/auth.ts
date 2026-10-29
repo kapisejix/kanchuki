@@ -472,6 +472,9 @@ export const authPlugin: FastifyPluginAsync = fp(async (server) => {
     // Razorpay webhooks authenticate via HMAC signature, not JWT
     if (request.routeOptions.url === '/v1/billing/webhook') return;
     if (request.routeOptions.url === '/v1/public/webhooks/razorpay') return;
+    // Razorpay Payment Link redirect: a browser GET with no Bearer; the handler
+    // verifies the payment-link HMAC itself (RC-108).
+    if (request.routeOptions.url === '/v1/billing/addon-callback') return;
     // Admin routes authenticate via x-admin-key header (checked in admin.ts)
     if (request.routeOptions.url?.startsWith('/v1/admin')) return;
     // Team routes authenticate via their own Bearer JWT or x-admin-key (checked in team.ts)

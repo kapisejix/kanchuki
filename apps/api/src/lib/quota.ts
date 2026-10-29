@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { prisma } from '@kanchuki/db';
 import type { QuotaPeriod, QuotaResourceType } from '@kanchuki/db';
 import { AppError, planLimitExceeded } from '../plugins/error-handler.js';
@@ -20,6 +21,16 @@ export function periodStart(period: QuotaPeriod, now = new Date()): Date {
   return new Date(0); // LIFETIME — one counter row forever
 }
 
+// Resources that cost real money per call: no limit row means "none", not "unlimited" (H6-1).
+// An explicit -1 row is still unlimited. ponytail: hand list; move to a plan_limits column if it grows.
+const METERED: ReadonlySet<QuotaResourceType> = new Set([
+  'STUDIO_SHOOT',
+  'TRY_ON_GENERATION',
+  'BG_REMOVAL',
+  'IMAGE_CROP',
+]);
+const NO_ROW_METERED: { limit: number; period: QuotaPeriod } = { limit: 0, period: 'MONTH' };
+
 export async function effectiveLimit(
   retailerId: string,
   resourceType: QuotaResourceType,
@@ -36,20 +47,19 @@ export async function effectiveLimit(
   const planLimit = await prisma.planLimit.findUnique({
     where: { plan_resource_type: { plan: retailer.plan, resource_type: resourceType } },
   });
-  // ponytail: plan_limits has no seed rows yet (business numbers not decided
-  // for AI_TAGGING_CALL/IMAGE_CROP/BG_REMOVAL/API_REQUEST) — fail-open until
-  // an admin adds a row, instead of blocking every retailer on every call.
-  if (!planLimit) return null;
+  // ponytail: plan_limits has no seed rows yet for the non-metered types
+  // (AI_TAGGING_CALL/API_REQUEST) — fail-open until an admin adds a row, instead
+  // of blocking every retailer on every call. METERED types fail CLOSED (H6-1).
+  if (!planLimit) return METERED.has(resourceType) ? NO_ROW_METERED : null;
   return { limit: planLimit.limit_per_period, period: planLimit.period };
 }
 
 /**
  * Customer-side twin of `effectiveLimit`: one global admin-editable number per
- * resource (shoppers have no plan), or null when unconfigured. Like the retailer
- * side this fails OPEN — an unseeded resource is "no limit" rather than an
- * outage. Migration 119 seeds TRY_ON_GENERATION so that default is not reachable
- * in practice for a metered GPU call, which is the case where fail-open would
- * cost real money.
+ * resource (shoppers have no plan), or null when unconfigured. An unseeded
+ * non-metered resource fails OPEN ("no limit" rather than an outage); a METERED
+ * one (real GPU/AI cost per call) fails CLOSED with limit 0 (H6-1). Migration 119
+ * seeds TRY_ON_GENERATION, so that path is not reachable in practice.
  */
 async function effectiveCustomerLimit(
   resourceType: QuotaResourceType,
@@ -57,7 +67,7 @@ async function effectiveCustomerLimit(
   const row = await prisma.customerResourceLimit.findUnique({
     where: { resource_type: resourceType },
   });
-  if (!row) return null;
+  if (!row) return METERED.has(resourceType) ? NO_ROW_METERED : null;
   return { limit: row.limit_per_period, period: row.period };
 }
 
@@ -157,12 +167,9 @@ export async function checkQuota(
 
 // ponytail: checkQuota + incrementUsage are two separate calls (not one
 // transaction), so two concurrent requests can both pass the check before
-// either increments. Fine for a billing quota; revisit with a DB-level
-// constraint if overshoot ever matters financially. The customer-side pair
-// below has the identical shape and the identical race. (This comment used to
-// cite the deleted routes/tryon.ts as precedent for accepting it — that
-// precedent is gone, so the trade-off is now stated plainly rather than
-// inherited.)
+// either increments. Callers whose work runs in the same request use
+// reserveQuota (RC-102) instead; queued jobs (studio-shoot, try-on, My Style) use
+// reserve*JobQuota. Only AI tagging (provider-weighted, retried) still has this race.
 export async function incrementUsage(
   retailerId: string,
   resourceType: QuotaResourceType,
@@ -187,6 +194,190 @@ export async function incrementUsage(
     },
     update: { count: { increment: amount } },
   });
+}
+
+/**
+ * Atomic check-and-take (RC-102). One statement both tests `count + amount <= limit` and bumps
+ * the counter, so concurrent callers cannot both pass a check that only one has room for — the
+ * gap `checkQuota` + `incrementUsage` leave. Returns a refund to call if the work then fails.
+ * Same limit rules as `checkQuota`: -1 (or no row on a non-metered type) means unlimited, nothing is
+ * written, refund is a no-op. No row on a METERED type means limit 0 (H6-1).
+ * Only for callers whose work runs inside the same request; a check at enqueue with the
+ * increment in a later job still uses the two-call pair.
+ */
+export async function reserveQuota(
+  retailerId: string,
+  resourceType: QuotaResourceType,
+  amount = 1,
+): Promise<(give?: number) => Promise<void>> {
+  const effective = await effectiveLimit(retailerId, resourceType);
+  if (!effective || effective.limit === -1) return async () => {};
+  const limit = effective.limit;
+  const label = resourceType.toLowerCase().replace(/_/g, ' ');
+  // The ON CONFLICT guard only covers an existing row; a first insert must be bounded here.
+  if (amount > limit) throw planLimitExceeded(label);
+
+  const start = periodStart(effective.period);
+  const taken = await prisma.$executeRaw`
+    INSERT INTO usage_counters (id, retailer_id, resource_type, period_start, count, updated_at)
+    VALUES (${randomUUID()}, ${retailerId}, ${resourceType}::"QuotaResourceType", ${start}, ${amount}, now())
+    ON CONFLICT (retailer_id, resource_type, period_start)
+    DO UPDATE SET count = usage_counters.count + ${amount}, updated_at = now()
+    WHERE usage_counters.count + ${amount} <= ${limit}`;
+  if (taken === 0) throw planLimitExceeded(label);
+
+  // `give` lets a batch hand back part of what it took (pro-cleanup: one slot per failed photo).
+  return async (give = amount) => {
+    await prisma.$executeRaw`
+      UPDATE usage_counters SET count = GREATEST(count - ${give}, 0), updated_at = now()
+      WHERE retailer_id = ${retailerId}
+        AND resource_type = ${resourceType}::"QuotaResourceType"
+        AND period_start = ${start}`;
+  };
+}
+
+/**
+ * Job-scoped twin of `reserveQuota` for work that runs in a queued job after the request
+ * returns (docs/tasks/pending/quota-reserve-at-enqueue.md). Same limit rules and the same
+ * atomic counter bump, but the same statement also records WHO holds the slot in
+ * `quota_reservations` (keyed by the payload `jobId`), so a refund by job id is idempotent
+ * across the handler, the BullMQ `failed` hook and a sweep. Retailer scope only.
+ * -1 (or no row on a non-metered type) = unlimited: nothing is written, and refund/mark-spent find
+ * no row and no-op. No row on a METERED type is limit 0 (H6-1).
+ * A repeated (jobId, resource) hits the unique index and throws, never double-reserves.
+ */
+export async function reserveJobQuota(
+  retailerId: string,
+  resourceType: QuotaResourceType,
+  jobId: string,
+  amount = 1,
+): Promise<void> {
+  const effective = await effectiveLimit(retailerId, resourceType);
+  if (!effective || effective.limit === -1) return;
+  const limit = effective.limit;
+  const label = resourceType.toLowerCase().replace(/_/g, ' ');
+  if (amount > limit) throw planLimitExceeded(label);
+
+  const start = periodStart(effective.period);
+  // The final INSERT only runs when `bump` returned a row, i.e. the guarded upsert took the slot.
+  const taken = await prisma.$executeRaw`
+    WITH bump AS (
+      INSERT INTO usage_counters (id, retailer_id, resource_type, period_start, count, updated_at)
+      VALUES (${randomUUID()}, ${retailerId}, ${resourceType}::"QuotaResourceType", ${start}, ${amount}, now())
+      ON CONFLICT (retailer_id, resource_type, period_start)
+      DO UPDATE SET count = usage_counters.count + ${amount}, updated_at = now()
+      WHERE usage_counters.count + ${amount} <= ${limit}
+      RETURNING 1
+    )
+    INSERT INTO quota_reservations (id, job_id, retailer_id, resource_type, period_start, amount)
+    SELECT ${randomUUID()}, ${jobId}, ${retailerId}, ${resourceType}::"QuotaResourceType", ${start}, ${amount}
+    FROM bump`;
+  if (taken === 0) throw planLimitExceeded(label);
+}
+
+/**
+ * Hand a job's reserved slot back, once. The UPDATE flips RESERVED -> REFUNDED and the counter
+ * drops only for the row that flip touched, so calling this again (handler `finally`, `failed`
+ * hook, sweep) is a no-op. A SPENT or missing reservation is left alone.
+ */
+export async function refundJobQuota(
+  jobId: string,
+  resourceType: QuotaResourceType,
+): Promise<void> {
+  await prisma.$executeRaw`
+    WITH r AS (
+      UPDATE quota_reservations SET state = 'REFUNDED', refunded_at = now()
+      WHERE job_id = ${jobId}
+        AND resource_type = ${resourceType}::"QuotaResourceType"
+        AND retailer_id IS NOT NULL
+        AND state = 'RESERVED'
+      RETURNING retailer_id, resource_type, period_start, amount
+    )
+    UPDATE usage_counters u SET count = GREATEST(u.count - r.amount, 0), updated_at = now()
+    FROM r
+    WHERE u.retailer_id = r.retailer_id
+      AND u.resource_type = r.resource_type
+      AND u.period_start = r.period_start`;
+}
+
+/** Mark a job's slot as used for good, so a later refund call (or the sweep) leaves it alone. */
+export async function markJobQuotaSpent(
+  jobId: string,
+  resourceType: QuotaResourceType,
+): Promise<void> {
+  await prisma.$executeRaw`
+    UPDATE quota_reservations SET state = 'SPENT'
+    WHERE job_id = ${jobId}
+      AND resource_type = ${resourceType}::"QuotaResourceType"
+      AND retailer_id IS NOT NULL
+      AND state = 'RESERVED'`;
+}
+
+/**
+ * Shopper-side twin of `reserveJobQuota`: same one-statement counter bump + reservation row, on
+ * `customer_usage_counters` and the `customer_account_id` scope. Same unlimited rules as
+ * `checkCustomerQuota` (no configured limit or -1 = nothing written; refund/spent then no-op).
+ * Throws CUSTOMER_LIMIT_EXCEEDED, never the plan error.
+ */
+export async function reserveCustomerJobQuota(
+  customerAccountId: string,
+  resourceType: QuotaResourceType,
+  jobId: string,
+  amount = 1,
+): Promise<void> {
+  const effective = await effectiveCustomerLimit(resourceType);
+  if (!effective || effective.limit === -1) return;
+  const limit = effective.limit;
+  if (amount > limit) throw customerLimitExceeded(resourceType, limit, effective.period);
+
+  const start = periodStart(effective.period);
+  const taken = await prisma.$executeRaw`
+    WITH bump AS (
+      INSERT INTO customer_usage_counters (id, customer_account_id, resource_type, period_start, count, updated_at)
+      VALUES (${randomUUID()}, ${customerAccountId}, ${resourceType}::"QuotaResourceType", ${start}, ${amount}, now())
+      ON CONFLICT (customer_account_id, resource_type, period_start)
+      DO UPDATE SET count = customer_usage_counters.count + ${amount}, updated_at = now()
+      WHERE customer_usage_counters.count + ${amount} <= ${limit}
+      RETURNING 1
+    )
+    INSERT INTO quota_reservations (id, job_id, customer_account_id, resource_type, period_start, amount)
+    SELECT ${randomUUID()}, ${jobId}, ${customerAccountId}, ${resourceType}::"QuotaResourceType", ${start}, ${amount}
+    FROM bump`;
+  if (taken === 0) throw customerLimitExceeded(resourceType, limit, effective.period);
+}
+
+/** `refundJobQuota` for the shopper scope: idempotent by job id, SPENT/missing rows untouched. */
+export async function refundCustomerJobQuota(
+  jobId: string,
+  resourceType: QuotaResourceType,
+): Promise<void> {
+  await prisma.$executeRaw`
+    WITH r AS (
+      UPDATE quota_reservations SET state = 'REFUNDED', refunded_at = now()
+      WHERE job_id = ${jobId}
+        AND resource_type = ${resourceType}::"QuotaResourceType"
+        AND customer_account_id IS NOT NULL
+        AND state = 'RESERVED'
+      RETURNING customer_account_id, resource_type, period_start, amount
+    )
+    UPDATE customer_usage_counters u SET count = GREATEST(u.count - r.amount, 0), updated_at = now()
+    FROM r
+    WHERE u.customer_account_id = r.customer_account_id
+      AND u.resource_type = r.resource_type
+      AND u.period_start = r.period_start`;
+}
+
+/** `markJobQuotaSpent` for the shopper scope. */
+export async function markCustomerJobQuotaSpent(
+  jobId: string,
+  resourceType: QuotaResourceType,
+): Promise<void> {
+  await prisma.$executeRaw`
+    UPDATE quota_reservations SET state = 'SPENT'
+    WHERE job_id = ${jobId}
+      AND resource_type = ${resourceType}::"QuotaResourceType"
+      AND customer_account_id IS NOT NULL
+      AND state = 'RESERVED'`;
 }
 
 export interface QuotaStatusResult {
@@ -241,13 +432,12 @@ export async function getQuotaStatus(
 /**
  * The numbers `checkQuota` will actually enforce, for a screen to show. No limit row, or -1,
  * means nothing is enforced (checkQuota returns), so this says unlimited instead of inventing
- * a plan default the way getQuotaStatus does (RC-073). `reserved` is work already in flight
- * that the enforcing route adds to its own request (e.g. PENDING try-on jobs).
+ * a plan default the way getQuotaStatus does (RC-073). In-flight queued work is already in the
+ * counter (reserveJobQuota), so there is nothing to add on top.
  */
 export async function getEnforcedQuota(
   retailerId: string,
   resourceType: QuotaResourceType,
-  reserved = 0,
 ): Promise<{ used: number; limit: number; remaining: number; unlimited: boolean }> {
   const effective = await effectiveLimit(retailerId, resourceType);
   if (!effective || effective.limit === -1) {
@@ -266,7 +456,7 @@ export async function getEnforcedQuota(
   return {
     used,
     limit: effective.limit,
-    remaining: Math.max(0, effective.limit - used - reserved),
+    remaining: Math.max(0, effective.limit - used),
     unlimited: false,
   };
 }

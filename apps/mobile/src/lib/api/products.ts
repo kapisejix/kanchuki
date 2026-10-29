@@ -98,12 +98,6 @@ export const productApi = {
       timeoutMs: 15_000, // AI search may take longer
     }),
 
-  setPhotoPieceType: (productId: string, photoId: string, pieceType: 'upper' | 'lower' | null) =>
-    request<{ data: unknown }>(`/v1/products/${productId}/photos/${photoId}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ piece_type: pieceType }),
-    }),
-
   /** F-029: promote this photo to the product's main image — the catalog and
    * customer surfaces all order by is_primary desc, so this is what makes the
    * edited photo the image shown on the catalog and storefront. */
@@ -160,9 +154,6 @@ export const productApi = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
-
-  deleteVariant: (productId: string, variantId: string) =>
-    request<void>(`/v1/products/${productId}/variants/${variantId}`, { method: 'DELETE' }),
 
   /** Retailer-triggered re-run of AI tagging — fills blank name/subtype/
    * SKU/description and refreshes category/color/fabric/pattern. */

@@ -29,6 +29,7 @@ export * from "./social";
 export * from "./schedule";
 export * from "./theme";
 export * from "./growth";
+export * from "./google-business";
 export * from "./whatsapp-catalog";
 export * from "./bug-reports";
 export * from "./tickets";

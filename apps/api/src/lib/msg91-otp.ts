@@ -26,6 +26,7 @@
 // Env: MSG91_AUTHKEY + MSG91_TEMPLATE_ID on the API service (same values the
 // Supabase send-sms-hook uses — copy them into the API Railway env).
 import { randomInt, timingSafeEqual } from 'node:crypto';
+import { normalizeIndianPhone } from '@kanchuki/shared';
 import { Redis } from 'ioredis';
 import { AppError } from '../plugins/error-handler.js';
 
@@ -87,7 +88,7 @@ function getOtpRedis(): Redis {
  * regardless of connectTimeout (the handshake was still in flight). This
  * await turns that race into a wait, bounded by connectTimeout + the retry.
  */
-function awaitRedisReady(redis: Redis): Promise<void> {
+export function awaitRedisReady(redis: Redis): Promise<void> {
   if (redis.status === 'ready') return Promise.resolve();
   return new Promise((resolve, reject) => {
     const onReady = () => {
@@ -168,8 +169,6 @@ export async function sendOtpViaMsg91(
         'EX',
         OTP_TTL_SEC,
       );
-      // biome-ignore lint/suspicious/noConsoleLog: developer debugging — visible in Railway logs only
-      console.log(`[otp] Generated OTP for +91${phone}: ${otp}`);
     } catch {
       // Store failed — release the cooldown guard so a retry isn't blocked by
       // a send that never happened.
@@ -358,4 +357,40 @@ export async function verifyMsg91WidgetToken(token: string, expectedPhone: strin
   if (verifiedDigits !== expectedPhone) {
     throw new AppError('INVALID_OTP', 'Phone number does not match the verified number.', 401);
   }
+}
+
+// ─── TEST BYPASS (pre-production only) ─────────────────────────────
+// With OTP_TEST_BYPASS=1, phones listed in OTP_TEST_PHONES skip the real
+// MSG91 OTP send + verify entirely — any code the tester types is accepted.
+// Lets a solo dev demo the app on dummy numbers without real SIMs or
+// DLT-registered SMS delivery.
+//
+// OTP_TEST_PHONES is a comma-separated list of bare 10-digit numbers, e.g.
+// "9000000001,9000000002". RC-088: there is no wildcard and no default list
+// (an unset list bypasses nothing), and with NODE_ENV=production the flag is
+// ignored unless OTP_TEST_BYPASS_ALLOW_PROD=1 is also set. Shared by the
+// retailer (/v1/auth) and team (/v1/team) OTP routes.
+function otpTestPhones(): Set<string> {
+  const phones = (process.env.OTP_TEST_PHONES ?? '')
+    .replace(/[\[\]"']/g, '')
+    .split(',')
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .map((p) => {
+      try {
+        return normalizeIndianPhone(p);
+      } catch {
+        return p.replace(/\D/g, '').slice(-10);
+      }
+    })
+    .filter((p) => p.length === 10);
+  return new Set(phones);
+}
+
+export function otpTestBypassActive(phone: string): boolean {
+  if (process.env.OTP_TEST_BYPASS !== '1') return false;
+  if (process.env.NODE_ENV === 'production' && process.env.OTP_TEST_BYPASS_ALLOW_PROD !== '1') {
+    return false;
+  }
+  return otpTestPhones().has(phone.replace(/\D/g, '').slice(-10));
 }

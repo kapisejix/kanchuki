@@ -44,6 +44,7 @@ type Ticket = {
   assigned_to: { id: string; name: string } | null
   retailer: { id: string; shop_name: string; city: string; phone: string }
   ticket_type: TicketType
+  setup_item: string | null
   item_count_requested: number | null
   quoted_price_inr: number | null
   proposed_slots: string[] | null
@@ -588,6 +589,11 @@ export default function SupportTicketsPage() {
                             {t.ticket_type === 'CATALOG_UPLOAD' && (
                               <span className="shrink-0 text-[10px] font-medium text-purple-700 bg-purple-50 border border-purple-200 px-1.5 py-0.5 rounded-full">
                                 Catalog
+                              </span>
+                            )}
+                            {t.setup_item && (
+                              <span className="shrink-0 text-[10px] font-medium text-cyan-700 bg-cyan-50 border border-cyan-200 px-1.5 py-0.5 rounded-full">
+                                Setup: {t.setup_item.replace(/_/g, ' ')}
                               </span>
                             )}
                           </div>

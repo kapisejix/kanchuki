@@ -1,5 +1,7 @@
 import { QUEUES } from '@kanchuki/shared';
 import { Worker } from 'bullmq';
+import { reportJobFailure } from '../lib/job-failure.js';
+import { refundCustomerJobQuota, refundJobQuota } from '../lib/quota.js';
 import { STUDIO_SHOOT_CONCURRENCY } from '../lib/studio-shoot.js';
 import { handleAiSpendAlert } from './ai-spend-alert.js';
 import { handleBackfillMissingAiFields } from './backfill-missing-ai-fields.js';
@@ -17,6 +19,7 @@ import {
   handleEnquiryPush,
   handleEnquiryPushReceipts,
 } from './enquiry-push.js';
+import { handleGbpReviewSync } from './gbp-review-sync.js';
 import { handleGenerateEmbedding } from './generate-embedding.js';
 import {
   type GenerateGstInvoiceJobData,
@@ -40,6 +43,7 @@ import {
   getTaggingQueue,
   getTryOnQueue,
 } from './queue.js';
+import { handleQuotaReservationSweep } from './quota-reservation-sweep.js';
 import { handleReferralAccrue } from './referral-accrue.js';
 import { handleReferralPayout } from './referral-payout.js';
 import { handleReferralQualify } from './referral-qualify.js';
@@ -288,10 +292,14 @@ export async function startWorkers(): Promise<void> {
           return handleSchedulePublishTick();
         case 'schedule-token-health':
           return handleScheduleTokenHealth();
+        case 'gbp-review-sync':
+          return handleGbpReviewSync();
         case 'plan-lapse':
           return handlePlanLapse();
         case 'ai-spend-alert':
           return handleAiSpendAlert();
+        case 'quota-reservation-sweep':
+          return handleQuotaReservationSweep();
         case 'customer-new-arrivals-push':
           return handleNewArrivalsPush();
         default:
@@ -507,6 +515,18 @@ export async function startWorkers(): Promise<void> {
     },
   );
 
+  // RC-102 quota reservation sweep — hourly at :40. Settles RESERVED slots whose job never
+  // finished (spent if it left a paid result, else refunded). No `limit` (RC-062); idempotent.
+  await getMaintenanceQueue().add(
+    'quota-reservation-sweep',
+    {},
+    {
+      repeat: { pattern: '40 * * * *' },
+      removeOnComplete: { count: 10 },
+      removeOnFail: { count: 10 },
+    },
+  );
+
   // AI spend alert — hourly at :30. Sentry warning when 24 h credits pass the
   // ₹15,000/day-equivalent threshold. No `limit` (RC-062); alert only.
   await getMaintenanceQueue().add(
@@ -543,35 +563,87 @@ export async function startWorkers(): Promise<void> {
     },
   );
 
+  // Google Business Profile review sync — every 6 h at :20. No `limit` (RC-062).
+  // A no-op until the shared Google identity is connected and API access approved.
+  await getMaintenanceQueue().add(
+    'gbp-review-sync',
+    {},
+    {
+      repeat: { pattern: '20 */6 * * *' },
+      removeOnComplete: { count: 10 },
+      removeOnFail: { count: 10 },
+    },
+  );
+
   taggingWorker.on('failed', (job, err) => {
     console.error(`[jobs] tag-product failed ${job?.id}:`, err.message);
+    reportJobFailure('tag-product', job, err);
   });
 
   embeddingWorker.on('failed', (job, err) => {
     console.error(`[jobs] generate-embedding failed ${job?.id}:`, err.message);
+    reportJobFailure('generate-embedding', job, err);
   });
+
+  // Quota refund backups below run ONLY for a stalled-out job (BullMQ: "job stalled more than
+  // allowable limit"), i.e. one whose handler `finally` never ran. A job the handler itself threw
+  // for has already refunded or deliberately kept its slot; refunding here too would hand back a
+  // paid run whose mark-spent write failed.
+  const stalledOut = (err: Error) => /stalled/i.test(err.message);
 
   studioShootWorker.on('failed', (job, err) => {
     console.error(`[jobs] studio-shoot failed ${job?.id}:`, err.message);
+    reportJobFailure('studio-shoot', job, err);
+    // Backup for a job that died without its handler's `finally` running (stalled out):
+    // idempotent, so a refund the handler already made is a no-op.
+    const jobId = (job?.data as StudioShootJobData | undefined)?.job_id;
+    if (jobId && stalledOut(err)) {
+      refundJobQuota(jobId, 'STUDIO_SHOOT').catch((e) =>
+        console.error(`[jobs] studio-shoot quota refund failed ${jobId}:`, e),
+      );
+    }
   });
 
   tryOnWorker.on('failed', (job, err) => {
     console.error(`[jobs] try-on failed ${job?.id}:`, err.message);
+    reportJobFailure('try-on', job, err);
+    // Stalled-out backup, same as studio-shoot: idempotent, and a SPENT slot is left alone.
+    const d = job?.data as TryOnJobData | undefined;
+    if (d?.job_id && stalledOut(err)) {
+      refundJobQuota(d.job_id, 'TRY_ON_GENERATION').catch((e) =>
+        console.error(`[jobs] try-on quota refund failed ${d.job_id}:`, e),
+      );
+      if (d.customer_account_id) {
+        refundCustomerJobQuota(d.job_id, 'TRY_ON_GENERATION').catch((e) =>
+          console.error(`[jobs] try-on customer quota refund failed ${d.job_id}:`, e),
+        );
+      }
+    }
   });
 
   myStyleAnalyzeWorker.on('failed', (job, err) => {
     console.error(`[jobs] my-style-analyze failed ${job?.id}:`, err.message);
+    reportJobFailure('my-style-analyze', job, err);
+    const jobId = (job?.data as MyStyleAnalyzeJobData | undefined)?.job_id;
+    if (jobId && stalledOut(err)) {
+      refundCustomerJobQuota(jobId, 'STYLE_ANALYSIS').catch((e) =>
+        console.error(`[jobs] my-style-analyze quota refund failed ${jobId}:`, e),
+      );
+    }
   });
 
   pushWorker.on('failed', (job, err) => {
     console.error(`[jobs] push (${job?.name}) failed ${job?.id}:`, err.message);
+    reportJobFailure('push', job, err);
   });
 
   catalogSyncWorker.on('failed', (job, err) => {
     console.error(`[jobs] catalog-sync failed ${job?.id}:`, err.message);
+    reportJobFailure('catalog-sync', job, err);
   });
 
   maintenanceWorker.on('failed', (job, err) => {
     console.error(`[jobs] maintenance (${job?.name}) failed ${job?.id}:`, err.message);
+    reportJobFailure('maintenance', job, err);
   });
 }

@@ -12,16 +12,17 @@
 //
 // Plan gate: Growth/Pro only (spec §24.7 — studio shoots are included in
 // those plans' AI cost budget). STARTER → 402 FEATURE_UNAVAILABLE.
-// Quota: STUDIO_SHOOT is a metered QuotaResourceType (F-010) — checkQuota
-// gates the enqueue here, incrementUsage fires in the job on success
-// (jobs/studio-shoot.ts). Admin sets the per-plan cap at /admin/plan-limits.
+// Quota: STUDIO_SHOOT is a metered QuotaResourceType (F-010) — the slot is
+// reserved atomically at enqueue (reserveJobQuota, keyed by job_id) and the job
+// hands it back unless it produced a photo (jobs/studio-shoot.ts). Admin sets
+// the per-plan cap at /admin/plan-limits.
 import { prisma } from '@kanchuki/db';
 import { productProfile, studioStyleBlock } from '@kanchuki/shared';
 import { createId } from '@paralleldrive/cuid2';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { addStudioShootJob } from '../../jobs/index.js';
-import { checkQuota, getQuotaStatus } from '../../lib/quota.js';
+import { checkQuota, getQuotaStatus, refundJobQuota, reserveJobQuota } from '../../lib/quota.js';
 import {
   type StudioEngine,
   getStudioJobStatus,
@@ -96,129 +97,148 @@ export const productsStudioRoutes: FastifyPluginAsync = async (server) => {
   // ─── POST /products/:id/photos/:photoId/studio-shoot ─────────────
   // Enqueue a studio-shoot generation job. Returns 202 immediately; the
   // mobile app polls GET .../studio-shoot/status?job_id= for the result.
-  server.post('/:id/photos/:photoId/studio-shoot', async (request, reply) => {
-    const { id, photoId } = request.params as { id: string; photoId: string };
+  server.post(
+    '/:id/photos/:photoId/studio-shoot',
+    { config: { rateLimit: { max: 10, timeWindow: 60 * 1000 } } },
+    async (request, reply) => {
+      const { id, photoId } = request.params as { id: string; photoId: string };
 
-    // All plans get AI Studio Shoots — the STUDIO_SHOOT quota (admin-set
-    // per-plan image cap at /admin/plan-limits) is the only limiter.
-    if (!(await isStudioShootConfigured())) {
-      throw serviceUnavailable(
-        'AI Studio Shoots are not configured yet. Please configure an API key in Admin → Integrations.',
-      );
-    }
+      // All plans get AI Studio Shoots — the STUDIO_SHOOT quota (admin-set
+      // per-plan image cap at /admin/plan-limits) is the only limiter.
+      if (!(await isStudioShootConfigured())) {
+        throw serviceUnavailable(
+          'AI Studio Shoots are not configured yet. Please configure an API key in Admin → Integrations.',
+        );
+      }
 
-    await checkQuota(request.retailerId, 'STUDIO_SHOOT');
+      // Fail-fast read so an over-quota retailer still gets the 402 before any validation work.
+      // The real gate is the atomic reserveJobQuota just before the enqueue below (RC-102).
+      await checkQuota(request.retailerId, 'STUDIO_SHOOT');
 
-    const body = StudioShootBodySchema.safeParse(request.body ?? {});
-    if (!body.success) {
-      throw validationError(body.error.issues[0]?.message ?? 'Invalid studio style', 'template');
-    }
+      const body = StudioShootBodySchema.safeParse(request.body ?? {});
+      if (!body.success) {
+        throw validationError(body.error.issues[0]?.message ?? 'Invalid studio style', 'template');
+      }
 
-    // Resolve the style from the DB catalog (studio_styles). Only PUBLISHED
-    // rows are usable; the retailer's plan must be in the row's `plans` array.
-    const style = await prisma.studioStyle.findFirst({
-      where: { slug: body.data.template, status: 'PUBLISHED' },
-    });
-    if (!style) throw validationError('Unknown or unavailable studio style.', 'template');
-
-    const retailer = await prisma.retailer.findUniqueOrThrow({
-      where: { id: request.retailerId },
-      select: { plan: true },
-    });
-    if (!style.plans.includes(retailer.plan)) {
-      throw new AppError(
-        'FEATURE_UNAVAILABLE',
-        'This studio style is not included in your plan.',
-        403,
-      );
-    }
-
-    // Photo must belong to this retailer's product.
-    const isVariant = photoId.startsWith('variant-');
-    const realPhotoId = isVariant ? photoId.replace('variant-', '') : photoId;
-
-    let photo = await prisma.productPhoto.findFirst({
-      where: { id: realPhotoId, product_id: id, retailer_id: request.retailerId },
-      select: { id: true, width: true, height: true, size_bytes: true },
-    });
-
-    if (!photo && isVariant) {
-      const variant = await prisma.productVariant.findFirst({
-        where: { id: realPhotoId, product_id: id, retailer_id: request.retailerId },
+      // Resolve the style from the DB catalog (studio_styles). Only PUBLISHED
+      // rows are usable; the retailer's plan must be in the row's `plans` array.
+      const style = await prisma.studioStyle.findFirst({
+        where: { slug: body.data.template, status: 'PUBLISHED' },
       });
-      if (variant?.photo_url && variant.r2_key) {
-        let variantPhoto = await prisma.productPhoto.findFirst({
-          where: { product_id: id, r2_key: variant.r2_key },
-          select: { id: true, width: true, height: true, size_bytes: true },
+      if (!style) throw validationError('Unknown or unavailable studio style.', 'template');
+
+      const retailer = await prisma.retailer.findUniqueOrThrow({
+        where: { id: request.retailerId },
+        select: { plan: true },
+      });
+      if (!style.plans.includes(retailer.plan)) {
+        throw new AppError(
+          'FEATURE_UNAVAILABLE',
+          'This studio style is not included in your plan.',
+          403,
+        );
+      }
+
+      // Photo must belong to this retailer's product.
+      const isVariant = photoId.startsWith('variant-');
+      const realPhotoId = isVariant ? photoId.replace('variant-', '') : photoId;
+
+      let photo = await prisma.productPhoto.findFirst({
+        where: { id: realPhotoId, product_id: id, retailer_id: request.retailerId },
+        select: { id: true, width: true, height: true, size_bytes: true },
+      });
+
+      if (!photo && isVariant) {
+        const variant = await prisma.productVariant.findFirst({
+          where: { id: realPhotoId, product_id: id, retailer_id: request.retailerId },
         });
-        if (!variantPhoto) {
-          variantPhoto = await prisma.productPhoto.create({
-            data: {
-              product_id: id,
-              retailer_id: request.retailerId,
-              url: variant.photo_url,
-              r2_key: variant.r2_key,
-              is_primary: false,
-            },
+        if (variant?.photo_url && variant.r2_key) {
+          let variantPhoto = await prisma.productPhoto.findFirst({
+            where: { product_id: id, r2_key: variant.r2_key },
             select: { id: true, width: true, height: true, size_bytes: true },
           });
+          if (!variantPhoto) {
+            variantPhoto = await prisma.productPhoto.create({
+              data: {
+                product_id: id,
+                retailer_id: request.retailerId,
+                url: variant.photo_url,
+                r2_key: variant.r2_key,
+                is_primary: false,
+              },
+              select: { id: true, width: true, height: true, size_bytes: true },
+            });
+          }
+          photo = variantPhoto;
         }
-        photo = variantPhoto;
       }
-    }
-    if (!photo) throw notFound('Product photo');
+      if (!photo) throw notFound('Product photo');
 
-    // BFL/Fal accepts ≤20MP (megapixels) and ≤20MB.
-    const MAX_MP = 20_000_000; // 20 megapixels
-    const MAX_BYTES = 20 * 1024 * 1024; // 20 MB
-    if (photo.width && photo.height) {
-      const megapixels = photo.width * photo.height;
-      if (megapixels > MAX_MP) {
+      // BFL/Fal accepts ≤20MP (megapixels) and ≤20MB.
+      const MAX_MP = 20_000_000; // 20 megapixels
+      const MAX_BYTES = 20 * 1024 * 1024; // 20 MB
+      if (photo.width && photo.height) {
+        const megapixels = photo.width * photo.height;
+        if (megapixels > MAX_MP) {
+          throw validationError(
+            `Image is too large (${(megapixels / 1_000_000).toFixed(1)}MP). Maximum is 20MP. Please use a smaller image.`,
+            'photo',
+          );
+        }
+      }
+      if (photo.size_bytes && photo.size_bytes > MAX_BYTES) {
         throw validationError(
-          `Image is too large (${(megapixels / 1_000_000).toFixed(1)}MP). Maximum is 20MP. Please use a smaller image.`,
+          `Image file is too large (${(photo.size_bytes / 1024 / 1024).toFixed(1)}MB). Maximum is 20MB. Please compress the image first.`,
           'photo',
         );
       }
-    }
-    if (photo.size_bytes && photo.size_bytes > MAX_BYTES) {
-      throw validationError(
-        `Image file is too large (${(photo.size_bytes / 1024 / 1024).toFixed(1)}MB). Maximum is 20MB. Please compress the image first.`,
-        'photo',
-      );
-    }
 
-    // Hard gating (option matrix §4–§6): the same rule the app uses to filter the
-    // picker, enforced here so a stale client cannot reach e.g. a kids + model shoot.
-    const product = await prisma.product.findFirst({
-      where: { id, retailer_id: request.retailerId },
-      select: {
-        name: true,
-        category: true,
-        subtype: true,
-        product_type: true,
-        is_unstitched: true,
-      },
-    });
-    if (!product) throw notFound('Product');
-    const blocked = studioStyleBlock(style.slug, productProfile(product), style.tab);
-    if (blocked) throw validationError(blocked, 'template');
+      // Hard gating (option matrix §4–§6): the same rule the app uses to filter the
+      // picker, enforced here so a stale client cannot reach e.g. a kids + model shoot.
+      const product = await prisma.product.findFirst({
+        where: { id, retailer_id: request.retailerId },
+        select: {
+          name: true,
+          category: true,
+          subtype: true,
+          product_type: true,
+          is_unstitched: true,
+        },
+      });
+      if (!product) throw notFound('Product');
+      const blocked = studioStyleBlock(style.slug, productProfile(product), style.tab);
+      if (blocked) throw validationError(blocked, 'template');
 
-    const jobId = createId();
-    await addStudioShootJob({
-      job_id: jobId,
-      retailer_id: request.retailerId,
-      product_id: id,
-      photo_id: photo.id,
-      slug: style.slug,
-      prompt: style.prompt,
-      tab: style.tab,
-      engine: (style.engine as StudioEngine | null) ?? undefined,
-      audience: style.audience,
-      style_id: style.id,
-    });
+      const jobId = createId();
+      // The slot is taken here and handed back by the job on any non-result outcome
+      // (jobs/studio-shoot.ts); if the enqueue itself fails no job will ever run, so give it back now.
+      await reserveJobQuota(request.retailerId, 'STUDIO_SHOOT', jobId);
+      try {
+        await addStudioShootJob({
+          job_id: jobId,
+          retailer_id: request.retailerId,
+          product_id: id,
+          photo_id: photo.id,
+          slug: style.slug,
+          prompt: style.prompt,
+          tab: style.tab,
+          engine: (style.engine as StudioEngine | null) ?? undefined,
+          audience: style.audience,
+          style_id: style.id,
+        });
+      } catch (err) {
+        await refundJobQuota(jobId, 'STUDIO_SHOOT').catch((refundErr) => {
+          request.log.error(
+            { err: refundErr, job_id: jobId },
+            'Failed to refund studio-shoot quota',
+          );
+        });
+        throw err;
+      }
 
-    return reply.status(202).send({ data: { job_id: jobId, status: 'processing' } });
-  });
+      return reply.status(202).send({ data: { job_id: jobId, status: 'processing' } });
+    },
+  );
 
   // ─── GET /products/:id/photos/:photoId/studio-shoot/status ────────
   // Poll endpoint: returns 'processing' until the job finishes, then

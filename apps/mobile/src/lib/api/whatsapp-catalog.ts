@@ -71,13 +71,6 @@ export const whatsappCatalogApi = {
       { method: 'POST', timeoutMs: 20_000 },
     ),
 
-  /** D4 — single-product sync (used by the F7 badge tap). */
-  syncProduct: (productId: string) =>
-    request<{ data: { job_id: string; product_id: string; status: string } }>(
-      `/v1/retailers/me/whatsapp-catalog/sync/${productId}`,
-      { method: 'POST', timeoutMs: 20_000 },
-    ),
-
   /** D5 — sync history, newest first. */
   getLogs: () =>
     request<{ data: WhatsAppCatalogLog[] }>('/v1/retailers/me/whatsapp-catalog/logs', {

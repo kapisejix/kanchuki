@@ -9,6 +9,7 @@
 import { prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
+import { queryBool } from '../../lib/query-bool.js';
 import { notFound, validationError } from '../../plugins/error-handler.js';
 import { adminAuthPreHandler } from '../admin-auth.js';
 
@@ -47,7 +48,7 @@ export const adminSocialTemplateRoutes: FastifyPluginAsync = async (server) => {
         retailer_id: z.string().optional(),
         template_type: z.string().optional(),
         occasion: z.string().optional(),
-        is_active: z.coerce.boolean().optional(),
+        is_active: queryBool(),
       })
       .safeParse(request.query);
 

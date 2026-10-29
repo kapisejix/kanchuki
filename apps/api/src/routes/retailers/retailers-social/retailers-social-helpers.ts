@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { Redis } from 'ioredis';
+import { fetchWithTimeout as fetch } from '../../../lib/fetch-timeout.js';
 import {
   MetaApiError,
   clampIgCaption,

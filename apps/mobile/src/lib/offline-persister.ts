@@ -14,6 +14,7 @@
  */
 
 import { Paths, File, Directory } from 'expo-file-system'
+import { clearQueue } from './mutation-queue'
 
 // ─── Paths ────────────────────────────────────────────────────
 // URIs are computed lazily (not at module load) so importing this module
@@ -184,6 +185,8 @@ export async function restoreQueryCache(queryClient: any): Promise<boolean> {
  * Delete the persisted cache file.
  */
 export async function clearPersistedCache(): Promise<void> {
+  // RC-107: the offline mutation queue lives in the same folder and must not outlive the account.
+  await clearQueue()
   try {
     const file = cacheFile()
     if (file.exists) {

@@ -18,6 +18,7 @@
 // WhatsApp Business API bulk-send).
 
 import { getSecret } from '@kanchuki/db';
+import { fetchWithTimeout as fetch } from './fetch-timeout.js';
 import { MetaApiError } from './meta-graph.js';
 
 const GRAPH_BASE = 'https://graph.facebook.com/v21.0';

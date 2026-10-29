@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { router } from 'expo-router'
 import {
   ChevronLeft,
@@ -12,6 +12,7 @@ import {
 } from 'lucide-react-native'
 import {
   ActivityIndicator,
+  Linking,
   RefreshControl,
   ScrollView,
   Text,
@@ -19,6 +20,10 @@ import {
 } from 'react-native'
 import { useScreenInsets } from '../../src/lib/safe-area'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
+import { GooglePlaceField } from '../../src/components/GooglePlaceField'
+import { KeyboardScreen } from '../../src/components/KeyboardScreen'
+import { GoogleReviewsTab } from '../../src/components/GoogleReviewsTab'
+import { type GbpState, googleBusinessApi } from '../../src/lib/api/google-business'
 import { growthApi } from '../../src/lib/api/growth'
 
 // ─── Helpers ─────────────────────────────────────────────────────
@@ -63,7 +68,16 @@ const timeAgo = (date: string) => {
 
 export default function RatingsScreen() {
   const { headerPaddingTop, screenPaddingBottom } = useScreenInsets()
-  const [tab, setTab] = useState<'summary' | 'product' | 'store'>('summary')
+  const [tab, setTab] = useState<'summary' | 'product' | 'store' | 'google'>('summary')
+
+  // The Google tab exists only when the server says the profile is LINKED; the entry card
+  // on the Summary tab shows for the in-between states. UNAVAILABLE shows neither.
+  const { data: gbp } = useQuery({
+    queryKey: ['google-business', 'status'],
+    queryFn: () => googleBusinessApi.status(),
+    retry: false,
+  })
+  const gbpState = gbp?.data.state
 
   const { data, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ['growth', 'reviews', 'summary'],
@@ -84,7 +98,7 @@ export default function RatingsScreen() {
   })
 
   return (
-    <View className="flex-1 bg-[#F8F7FC]">
+    <KeyboardScreen className="flex-1 bg-[#F8F7FC]">
       {/* Header */}
       <View
         className="bg-white border-b border-lavender-200 px-5 pb-4"
@@ -119,6 +133,9 @@ export default function RatingsScreen() {
             { key: 'summary' as const, label: 'Summary', icon: Star },
             { key: 'product' as const, label: 'Designs', icon: ShoppingBag },
             { key: 'store' as const, label: 'Boutique', icon: Store },
+            ...(gbpState === 'LINKED'
+              ? [{ key: 'google' as const, label: 'Google', icon: ExternalLink }]
+              : []),
           ].map(({ key, label, icon: Icon }) => {
             const active = tab === key
             return (
@@ -157,8 +174,9 @@ export default function RatingsScreen() {
           }
         >
           {tab === 'summary' && summary && (
-            <SummaryTab summary={summary} />
+            <SummaryTab summary={summary} gbpState={gbpState} />
           )}
+          {tab === 'google' && gbpState === 'LINKED' && <GoogleReviewsTab />}
           {tab === 'product' && (
             <ProductReviewsTab
               reviews={productData?.data ?? []}
@@ -171,7 +189,7 @@ export default function RatingsScreen() {
           )}
         </ScrollView>
       )}
-    </View>
+    </KeyboardScreen>
   )
 }
 
@@ -179,11 +197,32 @@ export default function RatingsScreen() {
 
 function SummaryTab({
   summary,
+  gbpState,
 }: {
   summary: any
+  gbpState?: GbpState
 }) {
+  const queryClient = useQueryClient()
   return (
     <View className="gap-4">
+      {/* Entry to the Google reviews flow — hidden when unavailable or already linked */}
+      {(gbpState === 'NOT_REQUESTED' || gbpState === 'REQUESTED' || gbpState === 'NEEDS_ACCESS') && (
+        <AnimatedPressable
+          onPress={() => router.push('/growth/integrations/google-business' as never)}
+          accessibilityRole="button"
+          accessibilityLabel="Bring your Google reviews into Kanchuki"
+          className="bg-white rounded-3xl p-4 border border-lavender-200 shadow-sm"
+        >
+          <Text className="text-sm font-bold text-spaceCadet-900">
+            {gbpState === 'REQUESTED'
+              ? 'Google reviews: one step left'
+              : gbpState === 'NEEDS_ACCESS'
+                ? 'Google reviews: access needed'
+                : 'See and reply to your Google reviews here'}
+          </Text>
+          <Text className="text-xs text-heliotrope-500 mt-0.5">Tap to set up</Text>
+        </AnimatedPressable>
+      )}
       {/* Store rating overview */}
       <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
         <Text
@@ -239,8 +278,10 @@ function SummaryTab({
       {summary.google_review_url && (
         <AnimatedPressable
           onPress={() => {
-            /* Linking.openURL(summary.google_review_url) */
+            void Linking.openURL(summary.google_review_url)
           }}
+          accessibilityRole="button"
+          accessibilityLabel="Open your Google review link"
           className="bg-white rounded-3xl p-4 border border-lavender-200 shadow-sm flex-row items-center gap-3.5"
         >
           <View
@@ -259,6 +300,15 @@ function SummaryTab({
           </View>
           <ChevronLeft size={16} color="#928EB2" style={{ transform: [{ rotate: '180deg' }] }} />
         </AnimatedPressable>
+      )}
+
+      {/* No Google listing yet — the review link needs the shop's place id */}
+      {!summary.google_review_url && (
+        <GooglePlaceField
+          onChange={() =>
+            void queryClient.invalidateQueries({ queryKey: ['growth', 'reviews', 'summary'] })
+          }
+        />
       )}
 
       {/* Top reviewed products */}
@@ -325,7 +375,7 @@ function SummaryTab({
                   </View>
                 </View>
                 <Text className="text-xs font-bold text-spaceCadet-900">
-                  {r.customer?.name ?? 'Anonymous'}
+                  {r.display_name ?? r.customer?.name ?? 'Anonymous'}
                   {r.type === 'product' && r.product ? ` on ${r.product.name}` : ''}
                 </Text>
                 {r.comment && (
@@ -389,7 +439,7 @@ function ProductReviewsTab({
             {r.product?.name ?? 'Collection Item'}
           </Text>
           <Text className="text-xs text-heliotrope-500 font-medium mt-0.5">
-            by {r.customer?.name ?? 'Anonymous'}
+            by {r.display_name ?? r.customer?.name ?? 'Anonymous'}
           </Text>
           {r.comment && (
             <Text className="text-xs text-spaceCadet-900 mt-2 leading-relaxed font-medium">{r.comment}</Text>
@@ -442,7 +492,7 @@ function StoreReviewsTab({
             )}
           </View>
           <Text className="text-xs font-bold text-spaceCadet-900">
-            by {r.customer?.name ?? 'Anonymous'}
+            by {r.display_name ?? r.customer?.name ?? 'Anonymous'}
           </Text>
           {r.comment && (
             <Text className="text-xs text-spaceCadet-900 mt-2 leading-relaxed font-medium">{r.comment}</Text>

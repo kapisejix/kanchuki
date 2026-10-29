@@ -28,7 +28,7 @@ import { ProductGridSkeleton } from '../../src/components/Skeleton'
 import { productApi, retailerApi, whatsappCatalogApi } from '../../src/lib/api'
 import { showError } from '../../src/lib/errors'
 import { prefetchProductImages } from '../../src/lib/image-prefetch'
-import { enqueueStatusMutation } from '../../src/lib/mutation-queue'
+import { enqueueStatusMutation, isRetryable } from '../../src/lib/mutation-queue'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { GradientButton } from '../../src/components/GradientButton'
 import { DangerButton } from '../../src/components/DangerButton'
@@ -287,7 +287,13 @@ export default function CatalogScreen() {
     try {
       await productApi.updateStatus(productId, 'SOLD')
       void queryClient.invalidateQueries({ queryKey: ['products'] })
-    } catch {
+    } catch (err) {
+      // A 4xx will never succeed on replay: surface it instead of queueing it forever.
+      if (!isRetryable(err)) {
+        showError(err, 'Could not mark this product as sold. Please try again.')
+        void queryClient.invalidateQueries({ queryKey: ['products'] })
+        return
+      }
       // A-5: offline (or a transient failure) — queue for replay on reconnect
       // and patch the cached list so the retailer sees the change now instead
       // of a silent no-op.

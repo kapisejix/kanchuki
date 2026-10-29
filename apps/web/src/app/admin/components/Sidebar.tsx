@@ -100,6 +100,7 @@ const NAV_ITEMS: NavItem[] = [
       { label: 'Social Publishing', href: '/admin/social', icon: Megaphone },
       { label: 'Catalog Upload Tiers', href: '/admin/catalog-upload-tiers', icon: Package },
       { label: 'Ratings & Reviews', href: '/admin/ratings', icon: Star },
+      { label: 'Google Business', href: '/admin/gbp', icon: MapPin },
       { label: 'Photo Cleanup Test', href: '/admin/photo-cleanup-test', icon: Wand2 },
       { label: 'Studio Styles', href: '/admin/studio-styles', icon: Clapperboard },
     ],

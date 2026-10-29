@@ -152,6 +152,19 @@ describe('the shared forwarder did not change GET or POST', () => {
     expect(res.headers.get('set-cookie')).toContain('kanchuki_passport=fresh')
   })
 
+  it('keeps each Set-Cookie separate and marks the response private (T2.5)', async () => {
+    const headers = new Headers({ 'content-type': 'application/json' })
+    headers.append('set-cookie', 'a=1; Path=/; HttpOnly')
+    headers.append('set-cookie', 'b=2; Path=/; HttpOnly')
+    upstream.mockResolvedValue(new Response('{}', { status: 200, headers }))
+
+    const res = await call('GET', ['me'])
+
+    expect(res.headers.getSetCookie()).toEqual(['a=1; Path=/; HttpOnly', 'b=2; Path=/; HttpOnly'])
+    expect(res.headers.get('cache-control')).toBe('private, no-store')
+    expect(res.headers.get('content-type')).toBe('application/json')
+  })
+
   it('404s an unlisted path on every verb', async () => {
     for (const method of ['GET', 'POST', 'PUT'] as const) {
       // `Request` rejects a body on GET, so only the write verbs send one.

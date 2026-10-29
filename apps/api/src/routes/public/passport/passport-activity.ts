@@ -3,7 +3,7 @@ import { prisma } from '@kanchuki/db';
 import type { CustomerInteractionType } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
-import { getPassportSession } from './passport-helpers.js';
+import { getPassportSession, productRetailerMap } from './passport-helpers.js';
 
 // Client sends lowercase event names (trackPassportEvent); the DB enum is
 // uppercase. Anything not in this map is dropped, same posture as an
@@ -77,9 +77,13 @@ export const passportActivityRoutes: FastifyPluginAsync = async (server) => {
     }
 
     const body = z
-      .object({ product_id: z.string(), retailer_id: z.string() })
+      // retailer_id ignored (H4-5/RC-095): the owner comes from the product row.
+      .object({ product_id: z.string(), retailer_id: z.string().optional() })
       .safeParse(request.body);
     if (!body.success) return reply.status(204).send();
+
+    const retailerId = (await productRetailerMap([body.data.product_id])).get(body.data.product_id);
+    if (!retailerId) return reply.status(204).send();
 
     await prisma.customerRecentlyViewed.upsert({
       where: {
@@ -91,7 +95,7 @@ export const passportActivityRoutes: FastifyPluginAsync = async (server) => {
       create: {
         customer_account_id: session.customer_account_id,
         product_id: body.data.product_id,
-        retailer_id: body.data.retailer_id,
+        retailer_id: retailerId,
       },
       update: { viewed_at: new Date() },
     });
@@ -101,59 +105,85 @@ export const passportActivityRoutes: FastifyPluginAsync = async (server) => {
   // ─── POST /passport/events ─────────────────────────────────────
   // Client event beacon — batched behavioral events from the frontend.
   // Fire-and-forget: returns 204 immediately, swallows DB errors.
-  server.post('/events', async (request, reply) => {
-    const session = await getPassportSession(request.headers.cookie || '');
-    if (!session) {
-      return reply.status(204).send(); // silently drop if unauthenticated
-    }
+  server.post(
+    '/events',
+    { config: { rateLimit: { max: 30, timeWindow: 60_000 } } },
+    async (request, reply) => {
+      const session = await getPassportSession(request.headers.cookie || '');
+      if (!session) {
+        return reply.status(204).send(); // silently drop if unauthenticated
+      }
 
-    const EventsSchema = z.object({
-      events: z
-        .array(
-          z.object({
-            type: z.string(),
-            product_id: z.string().optional(),
-            collection_id: z.string().optional(),
-            retailer_id: z.string(),
-            metadata: z.record(z.unknown()).optional(),
-          }),
-        )
-        .max(50),
-    });
-
-    const body = EventsSchema.safeParse(request.body);
-    if (!body.success) {
-      return reply.status(204).send(); // silently drop invalid payloads
-    }
-
-    // profiling_enabled false ⇒ behavioral writes suppressed (DPDP opt-out,
-    // same gate passport-preferences.ts uses for the preference vector).
-    if (!session.customer_account.profiling_enabled) {
-      return reply.status(204).send();
-    }
-
-    const rows = body.data.events.flatMap((event) => {
-      const type = EVENT_TYPE_MAP[event.type];
-      if (!type) return []; // unknown event name — drop, don't 500 the beacon
-      return [
-        {
-          customer_account_id: session.customer_account_id,
-          retailer_id: event.retailer_id,
-          type,
-          product_id: event.product_id ?? null,
-          metadata: (event.collection_id
-            ? { ...event.metadata, collection_id: event.collection_id }
-            : event.metadata) as never,
-        },
-      ];
-    });
-
-    if (rows.length > 0) {
-      await prisma.customerInteraction.createMany({ data: rows }).catch(() => {
-        // Fire-and-forget beacon — never surface a DB error to the client.
+      const EventsSchema = z.object({
+        events: z
+          .array(
+            z.object({
+              type: z.string(),
+              product_id: z.string().optional(),
+              collection_id: z.string().optional(),
+              retailer_id: z.string(),
+              metadata: z.record(z.unknown()).optional(),
+            }),
+          )
+          .max(50),
       });
-    }
 
-    return reply.status(204).send();
-  });
+      const body = EventsSchema.safeParse(request.body);
+      if (!body.success) {
+        return reply.status(204).send(); // silently drop invalid payloads
+      }
+
+      // profiling_enabled false ⇒ behavioral writes suppressed (DPDP opt-out,
+      // same gate passport-preferences.ts uses for the preference vector).
+      if (!session.customer_account.profiling_enabled) {
+        return reply.status(204).send();
+      }
+
+      // H4-5/RC-095: retailer_id is client-supplied. Product events must match the
+      // product's owner; store-level events must name a real retailer.
+      const { events } = body.data;
+      const owners = await productRetailerMap([
+        ...new Set(events.flatMap((e) => e.product_id ?? [])),
+      ]);
+      const storeIds = [...new Set(events.filter((e) => !e.product_id).map((e) => e.retailer_id))];
+      const realStores = new Set(
+        storeIds.length
+          ? (
+              await prisma.retailer.findMany({
+                where: { id: { in: storeIds } },
+                select: { id: true },
+              })
+            ).map((r) => r.id)
+          : [],
+      );
+
+      const rows = events.flatMap((event) => {
+        const type = EVENT_TYPE_MAP[event.type];
+        if (!type) return []; // unknown event name — drop, don't 500 the beacon
+        const valid = event.product_id
+          ? owners.get(event.product_id) === event.retailer_id
+          : realStores.has(event.retailer_id);
+        if (!valid) return [];
+        return [
+          {
+            customer_account_id: session.customer_account_id,
+            retailer_id: event.retailer_id,
+            type,
+            product_id: event.product_id ?? null,
+            metadata: (event.collection_id
+              ? { ...event.metadata, collection_id: event.collection_id }
+              : event.metadata) as never,
+          },
+        ];
+      });
+
+      if (rows.length > 0) {
+        await prisma.customerInteraction.createMany({ data: rows }).catch(() => {
+          // Fire-and-forget beacon — never surface a DB error to the client.
+        });
+      }
+
+      return reply.status(204).send();
+    },
+  );
 };

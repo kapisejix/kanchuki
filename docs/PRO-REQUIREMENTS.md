@@ -1167,6 +1167,12 @@ Requires a `SupportTicket` entity: retailer, `requires_visit` flag, assigned sta
 
 **Why not built yet:** not in MVP scope; also blocked on external Google API access approval, which should be requested well before development starts.
 
+**Related, built 2026-10-26 (separate from F-022, which stays Planned):** spec `docs/tasks/pending/google-business-profile-and-setup-checklist.md`, detail `docs/build-log/part-7.md` §2026-10-26, `CLAUDE.md` rows 108–109.
+- **Part A, place-id capture — 🟨 built, not live.** One shared `parseGooglePlaceId` (pasted review link or `ChIJ…` → id), hardened `PATCH /v1/retailers/reviews/google-place`, owner-only Places search (needs `GOOGLE_PLACES_API_KEY`, unset). Migration 143 NOT applied.
+- **Part C, dashboard "Complete your profile" checklist + "Ask Kanchuki team" tickets — 🟨 built, not live.** Owner-only `GET /me/setup-checklist`; `support_tickets.setup_item`. Migration 143 NOT applied.
+- **Part B, Google Business reviews (read + reply) — 🟨 built, DARK.** Shared Kanchuki Google identity at admin `/admin/gbp`, `gbp_links` + `gbp_reviews` (migrations 140–142, NOT applied; 140 adds enum values 142 uses, so each runs alone), 6-hourly sync + 30-day purge, plan key `GOOGLE_BUSINESS_PROFILE` (no `plan_features` row = OFF) and quota `GBP_REVIEW_REPLY`. Not requested from Google: OAuth client and `business.manage` API access. Nothing run against real Google, no device test, `/admin/gbp` not browser-checked.
+- Known, left: quota check-then-increment is non-atomic (all quotas, small concurrent overshoot); `syncLink` has a small window between its "still this link" check and the review upserts (worst case one batch of old-location reviews, purged in 30 days).
+
 ---
 
 ### 10.14 F-023: AI Provider Registry — Admin-Configurable Tagging Models + Per-Provider Usage

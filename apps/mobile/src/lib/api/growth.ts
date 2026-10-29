@@ -137,33 +137,6 @@ export type CampaignPayload = {
   ab_variants?: AbVariant[]
 }
 
-// ─── Referrals (roadmap C) ────────────────────────────────────────
-
-export type ReferralSettings = {
-  referral_enabled: boolean
-  referral_reward_paise: number
-}
-
-export type ReferralCredit = {
-  id: string
-  customer_id: string
-  amount_paise: number
-  status: 'PENDING' | 'CREDITED'
-  created_at: string
-}
-
-export type Referral = {
-  id: string
-  customer_id: string
-  code: string
-  reward_paise: number
-  clicks: number
-  signups: number
-  created_at: string
-  customer: { id: string; name: string | null; phone: string } | null
-  credits: ReferralCredit[]
-}
-
 // ─── Promotions (roadmap F) ───────────────────────────────────────
 
 export type Promotion = {
@@ -189,195 +162,6 @@ export type PromotionPayload = {
   starts_at?: string
   ends_at?: string
   is_active?: boolean
-}
-
-// ─── Partner Network Manager (Phase 2) ─────────────────────────────
-
-export type PartnerType = 'SALON' | 'TAILOR' | 'STYLIST' | 'MAKEUP_ARTIST' | 'OTHER'
-export type CommissionType = 'FIXED_AMOUNT' | 'PERCENTAGE_OF_SALE'
-export type PartnerReferralStatus = 'PENDING' | 'PAID' | 'CANCELLED'
-
-export type Partner = {
-  id: string
-  name: string
-  type: PartnerType
-  contact_person: string | null
-  phone: string | null
-  email: string | null
-  referral_code: string
-  commission_rate: number
-  commission_type: CommissionType
-  fixed_commission_paise: number | null
-  is_active: boolean
-  created_at: string
-  pending_referrals?: number
-}
-
-export type PartnerPayload = {
-  name: string
-  type: PartnerType
-  contact_person?: string
-  phone?: string
-  email?: string
-  address?: string
-  commission_rate: number
-  commission_type?: CommissionType
-  fixed_commission_paise?: number
-}
-
-export type PartnerReferral = {
-  id: string
-  customer_id: string
-  order_id: string | null
-  commission_paise: number
-  status: PartnerReferralStatus
-  created_at: string
-  customer: { id: string; name: string | null; phone: string }
-  order: { id: string; total_amount: number; status: string } | null
-  commission_formatted: string
-}
-
-export type PartnerEvent = {
-  id: string
-  name: string
-  description: string | null
-  starts_at: string
-  ends_at: string | null
-  location: string | null
-  is_virtual: boolean
-  discount_code: string | null
-  discount_paise: number | null
-  is_active: boolean
-  partner: { id: string; name: string; type: PartnerType }
-}
-
-export type PartnerEventPayload = {
-  partner_id: string
-  name: string
-  description?: string
-  starts_at: string
-  ends_at?: string
-  location?: string
-  is_virtual?: boolean
-  discount_code?: string
-  discount_paise?: number
-}
-
-// ─── Smart Incentive Engine (Phase 1) ─────────────────────────────
-
-export type IncentiveTriggerType = 'FIRST_VISIT' | 'BIRTHDAY' | 'ANNIVERSARY' | 'LOYALTY_TIER'
-export type IncentiveDiscountType = 'PERCENT' | 'FIXED_AMOUNT'
-
-export type IncentiveRule = {
-  id: string
-  retailer_id: string
-  name: string
-  description: string | null
-  trigger_type: IncentiveTriggerType
-  discount_type: IncentiveDiscountType
-  discount_value: number
-  conditions: Record<string, number> | null
-  active: boolean
-  starts_at: string | null
-  ends_at: string | null
-  created_at: string
-  updated_at: string
-}
-
-export type IncentiveRulePayload = {
-  name: string
-  description?: string
-  trigger_type: IncentiveTriggerType
-  discount_type: IncentiveDiscountType
-  discount_value: number
-  conditions?: { min_spent?: number; min_visits?: number }
-  starts_at?: string
-  ends_at?: string
-  active?: boolean
-}
-
-export type IncentiveApplicable = {
-  rule_id: string
-  name: string
-  description: string | null
-  trigger_type: IncentiveTriggerType
-  discount_type: IncentiveDiscountType
-  discount_value: number
-}
-
-export type IncentiveStats = {
-  total_rules: number
-  active_rules: number
-  total_visits: number
-  visits_last_30d: number
-}
-
-// ─── Suppliers (roadmap K) ────────────────────────────────────────
-
-export type Supplier = {
-  id: string
-  name: string
-  phone: string | null
-  city: string | null
-  notes: string | null
-  pending_amount_paise: number
-  created_at: string
-}
-
-export type SupplierTransaction = {
-  id: string
-  supplier_id: string
-  kind: 'ORDER' | 'PAYMENT'
-  amount_paise: number
-  note: string | null
-  transaction_date: string
-}
-
-export type SupplierDetail = Supplier & {
-  transactions: SupplierTransaction[]
-}
-
-export type SupplierPayload = {
-  name: string
-  phone?: string | null
-  city?: string | null
-  notes?: string | null
-}
-
-export type SupplierTransactionPayload = {
-  kind: 'ORDER' | 'PAYMENT'
-  amount_paise: number
-  note?: string | null
-  transaction_date?: string
-}
-
-// ─── Bookings (roadmap L) ─────────────────────────────────────────
-
-export type BookingStatus = 'REQUESTED' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED'
-
-export type Booking = {
-  id: string
-  customer_id: string | null
-  name: string
-  phone: string
-  starts_at: string
-  ends_at: string
-  status: BookingStatus
-  note: string | null
-  created_at: string
-}
-
-export type BookingPayload = {
-  customer_id?: string | null
-  name: string
-  phone: string
-  starts_at: string
-  ends_at: string
-  note?: string | null
-}
-
-export type BookingUpdatePayload = Partial<BookingPayload> & {
-  status?: BookingStatus
 }
 
 // ─── Inventory alerts (roadmap J) ─────────────────────────────────
@@ -637,7 +421,6 @@ export type GstMonthly = {
 
 export type GstTransaction = {
   id: string
-  customer: string | null
   taxable: number
   gst: number
   total: number
@@ -665,7 +448,8 @@ export type ProductReview = {
   created_at: string
   updated_at: string
   product?: { id: string; name: string | null; primary_color: string | null }
-  customer?: { id: string; name: string }
+  display_name?: string | null
+  customer?: { id: string; name: string } | null
 }
 
 export type StoreReview = {
@@ -678,7 +462,8 @@ export type StoreReview = {
   is_hidden: boolean
   created_at: string
   updated_at: string
-  customer?: { id: string; name: string }
+  display_name?: string | null
+  customer?: { id: string; name: string } | null
 }
 
 export type ReviewSummary = {
@@ -708,12 +493,6 @@ export type Pagination = {
 // ─── Integrations (retailer settings) ────────────────────────────
 
 export type IntegrationsStatus = {
-  gmb: {
-    configured: boolean
-    account_id: string | null
-    location_id: string | null
-    configured_at: string | null
-  }
   facebook_ads: {
     configured: boolean
     ad_account_id: string | null
@@ -761,27 +540,10 @@ export type IntegrationsStatus = {
   }
 }
 
-export type GmbConfig = {
-  account_id: string
-  location_id: string
-  access_token: string
-  refresh_token?: string
-}
-
 export type FbAdsConfig = {
   access_token: string
   ad_account_id: string
   page_id: string
-}
-
-export type FbAdCampaign = {
-  name: string
-  daily_budget: number
-  ad_text: string
-  image_url?: string
-  link_url?: string
-  target_radius_km?: number
-  target_cities?: string[]
 }
 
 export type GoogleAdsConfig = {
@@ -791,34 +553,6 @@ export type GoogleAdsConfig = {
 }
 
 export const growthApi = {
-  // ─── Referrals (roadmap C) ──────────────────────────────────────
-  referralSettings: () =>
-    request<{ data: ReferralSettings }>('/v1/growth/referrals/settings', {
-      getCacheTtlMs: 15_000,
-    }),
-
-  updateReferralSettings: (payload: ReferralSettings) =>
-    request<{ data: ReferralSettings }>('/v1/growth/referrals/settings', {
-      method: 'PUT',
-      body: JSON.stringify(payload),
-    }),
-
-  referrals: () =>
-    request<{ data: Referral[] }>('/v1/growth/referrals', { getCacheTtlMs: 15_000 }),
-
-  createReferralCode: (customer_id: string) =>
-    request<{ data: Referral }>('/v1/growth/referrals/codes', {
-      method: 'POST',
-      body: JSON.stringify({ customer_id }),
-    }),
-
-  /** Mark a referral as converted and create the PENDING reward credits for both parties. */
-  creditReferral: (id: string, friendCustomerId: string) =>
-    request<{ data: { count: number; message: string } }>(`/v1/growth/referrals/${id}/credit`, {
-      method: 'POST',
-      body: JSON.stringify({ friend_customer_id: friendCustomerId }),
-    }),
-
   // ─── Promotions (roadmap F) ─────────────────────────────────────
   promotions: () =>
     request<{ data: Promotion[] }>('/v1/growth/promotions', { getCacheTtlMs: 15_000 }),
@@ -837,55 +571,6 @@ export const growthApi = {
 
   deletePromotion: (id: string) =>
     request<void>(`/v1/growth/promotions/${id}`, { method: 'DELETE' }),
-
-  // ─── Suppliers (roadmap K) ──────────────────────────────────────
-  suppliers: () =>
-    request<{ data: Supplier[] }>('/v1/growth/suppliers', { getCacheTtlMs: 15_000 }),
-
-  supplier: (id: string) =>
-    request<{ data: SupplierDetail }>(`/v1/growth/suppliers/${id}`, { getCacheTtlMs: 15_000 }),
-
-  createSupplier: (payload: SupplierPayload) =>
-    request<{ data: Supplier }>('/v1/growth/suppliers', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }),
-
-  updateSupplier: (id: string, payload: Partial<SupplierPayload>) =>
-    request<{ data: Supplier }>(`/v1/growth/suppliers/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(payload),
-    }),
-
-  deleteSupplier: (id: string) =>
-    request<void>(`/v1/growth/suppliers/${id}`, { method: 'DELETE' }),
-
-  addSupplierTransaction: (id: string, payload: SupplierTransactionPayload) =>
-    request<{ data: SupplierTransaction }>(`/v1/growth/suppliers/${id}/transactions`, {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }),
-
-  // ─── Bookings (roadmap L) ───────────────────────────────────────
-  bookings: (params?: { status?: BookingStatus }) => {
-    const qs = params?.status ? `?status=${params.status}` : ''
-    return request<{ data: Booking[] }>(`/v1/growth/bookings${qs}`, { getCacheTtlMs: 15_000 })
-  },
-
-  createBooking: (payload: BookingPayload) =>
-    request<{ data: Booking }>('/v1/growth/bookings', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }),
-
-  updateBooking: (id: string, payload: BookingUpdatePayload) =>
-    request<{ data: Booking }>(`/v1/growth/bookings/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(payload),
-    }),
-
-  deleteBooking: (id: string) =>
-    request<void>(`/v1/growth/bookings/${id}`, { method: 'DELETE' }),
 
   // ─── Inventory alerts (roadmap J) ───────────────────────────────
   inventoryAlerts: () =>
@@ -989,6 +674,7 @@ export const growthApi = {
   sendCampaign: (id: string) =>
     request<{ data: CampaignSendResult }>(`/v1/growth/campaigns/${id}/send`, {
       method: 'POST',
+      timeoutMs: 120_000, // synchronous one-message-per-customer fan-out (RC-121)
     }),
 
   // ─── Campaign analytics (roadmap R) ─────────────────────────────
@@ -1023,78 +709,6 @@ export const growthApi = {
       getCacheTtlMs: 60_000,
     }),
 
-  // ─── Partner Network Manager (Phase 2) ─────────────────────────
-  partners: () =>
-    request<{ data: Partner[] }>('/v1/retailers/me/partners', { getCacheTtlMs: 15_000 }),
-
-  createPartner: (payload: PartnerPayload) =>
-    request<{ data: Partner }>('/v1/retailers/me/partners', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }),
-
-  updatePartner: (id: string, payload: Partial<PartnerPayload>) =>
-    request<{ data: Partner }>(`/v1/retailers/me/partners/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(payload),
-    }),
-
-  deletePartner: (id: string) =>
-    request<void>(`/v1/retailers/me/partners/${id}`, { method: 'DELETE' }),
-
-  partnerReferrals: (partnerId: string) =>
-    request<{ data: PartnerReferral[] }>(`/v1/retailers/me/partners/${partnerId}/referrals`, {
-      getCacheTtlMs: 15_000,
-    }),
-
-  payReferral: (referralId: string) =>
-    request<{ data: { message: string } }>(`/v1/retailers/me/partners/referrals/${referralId}/pay`, {
-      method: 'POST',
-    }),
-
-  partnerEvents: () =>
-    request<{ data: PartnerEvent[] }>('/v1/retailers/me/partners/events', { getCacheTtlMs: 15_000 }),
-
-  createPartnerEvent: (payload: PartnerEventPayload) =>
-    request<{ data: PartnerEvent }>('/v1/retailers/me/partners/events', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }),
-
-  // ─── Smart Incentive Engine (Phase 1) ──────────────────────────
-  incentiveRules: () =>
-    request<{ data: IncentiveRule[] }>('/v1/growth/incentives/rules', { getCacheTtlMs: 15_000 }),
-
-  createIncentiveRule: (payload: IncentiveRulePayload) =>
-    request<{ data: IncentiveRule }>('/v1/growth/incentives/rules', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }),
-
-  updateIncentiveRule: (id: string, payload: Partial<IncentiveRulePayload>) =>
-    request<{ data: IncentiveRule }>(`/v1/growth/incentives/rules/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(payload),
-    }),
-
-  deleteIncentiveRule: (id: string) =>
-    request<void>(`/v1/growth/incentives/rules/${id}`, { method: 'DELETE' }),
-
-  recordVisit: (customerId: string) =>
-    request<{ data: { id: string } }>('/v1/growth/incentives/visits', {
-      method: 'POST',
-      body: JSON.stringify({ customer_id: customerId }),
-    }),
-
-  checkIncentives: (customerId: string) =>
-    request<{ data: { applicable: IncentiveApplicable[] } }>('/v1/growth/incentives/check', {
-      method: 'POST',
-      body: JSON.stringify({ customer_id: customerId }),
-    }),
-
-  incentiveStats: () =>
-    request<{ data: IncentiveStats }>('/v1/growth/incentives/stats', { getCacheTtlMs: 30_000 }),
-
   // ─── Aggregator / Marketplace Sync (Phase 7) ──────────────────
   aggregators: () =>
     request<{ data: ChannelSync[] }>('/v1/retailers/me/aggregators', { getCacheTtlMs: 15_000 }),
@@ -1105,12 +719,6 @@ export const growthApi = {
   connectChannel: (payload: ChannelConnectPayload) =>
     request<{ data: ChannelSync }>('/v1/retailers/me/aggregators', {
       method: 'POST',
-      body: JSON.stringify(payload),
-    }),
-
-  updateChannel: (id: string, payload: Partial<ChannelConnectPayload>) =>
-    request<{ data: ChannelSync }>(`/v1/retailers/me/aggregators/${id}`, {
-      method: 'PUT',
       body: JSON.stringify(payload),
     }),
 
@@ -1134,11 +742,6 @@ export const growthApi = {
       { getCacheTtlMs: 15_000 },
     )
   },
-
-  socialTemplate: (id: string) =>
-    request<{ data: SocialTemplate }>(`/v1/growth/social-templates/${id}`, {
-      getCacheTtlMs: 15_000,
-    }),
 
   socialTemplateStats: () =>
     request<{ data: SocialTemplateStats }>('/v1/growth/social-templates/stats', {
@@ -1223,27 +826,6 @@ export const growthApi = {
       getCacheTtlMs: 15_000,
     }),
 
-  configureGmb: (payload: GmbConfig) =>
-    request<{ data: { configured: boolean } }>('/v1/retailers/me/integrations/gmb', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }),
-
-  disconnectGmb: () =>
-    request<void>('/v1/retailers/me/integrations/gmb', { method: 'DELETE' }),
-
-  testGmb: () =>
-    request<{ data: { connected: boolean; error?: string } }>(
-      '/v1/retailers/me/integrations/gmb/test',
-      { method: 'POST' },
-    ),
-
-  postToGmb: (payload: { summary: string; call_to_action?: string; url?: string }) =>
-    request<{ data: { post_id: string; status: string } }>(
-      '/v1/retailers/me/integrations/gmb/post',
-      { method: 'POST', body: JSON.stringify(payload) },
-    ),
-
   configureFbAds: (payload: FbAdsConfig) =>
     request<{ data: { configured: boolean } }>('/v1/retailers/me/integrations/fb-ads', {
       method: 'POST',
@@ -1257,12 +839,6 @@ export const growthApi = {
     request<{ data: { connected: boolean; error?: string; account_name?: string } }>(
       '/v1/retailers/me/integrations/fb-ads/test',
       { method: 'POST' },
-    ),
-
-  createFbAdCampaign: (payload: FbAdCampaign) =>
-    request<{ data: { campaign_id: string; status: string; message: string } }>(
-      '/v1/retailers/me/integrations/fb-ads/create-campaign',
-      { method: 'POST', body: JSON.stringify(payload) },
     ),
 
   configureGoogleAds: (payload: GoogleAdsConfig) =>
@@ -1289,7 +865,7 @@ export const growthApi = {
 
   // ─── F-021 Ratings & Reviews ─────────────────────────────────────
   reviewSummary: () =>
-    request<{ data: ReviewSummary }>('/v1/retailers/me/reviews/summary'),
+    request<{ data: ReviewSummary }>('/v1/retailers/reviews/summary'),
 
   productReviews: (params?: { product_id?: string; page?: number; limit?: number }) => {
     const qs = new URLSearchParams()
@@ -1298,7 +874,7 @@ export const growthApi = {
     if (params?.limit) qs.set('limit', String(params.limit))
     const q = qs.toString()
     return request<{ data: ProductReview[]; pagination: Pagination }>(
-      `/v1/retailers/me/reviews/products${q ? `?${q}` : ''}`,
+      `/v1/retailers/reviews/products${q ? `?${q}` : ''}`,
     )
   },
 
@@ -1308,13 +884,7 @@ export const growthApi = {
     if (params?.limit) qs.set('limit', String(params.limit))
     const q = qs.toString()
     return request<{ data: StoreReview[]; pagination: Pagination }>(
-      `/v1/retailers/me/reviews/store${q ? `?${q}` : ''}`,
+      `/v1/retailers/reviews/store${q ? `?${q}` : ''}`,
     )
   },
-
-  updateGooglePlaceId: (google_place_id: string | null) =>
-    request<{ success: boolean }>('/v1/retailers/me/reviews/google-place', {
-      method: 'PATCH',
-      body: JSON.stringify({ google_place_id }),
-    }),
 }

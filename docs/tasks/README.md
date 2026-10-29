@@ -4,6 +4,8 @@ Where work lives: **`pending/` = open**, **`done/` = built**, **`archived/` = re
 
 **How to use this board:** a task file is the spec. The status here is a *pointer*, not proof — when a doc and the code disagree, the code wins. See `../root-cause/README.md` before starting work in a feature area.
 
+**Audit program:** `testing/README.md` — bug / type-error / dead-code audit of API, Web, Mobile in ≤10-minute sessions, plus hacker-mode attack sessions and playbook.
+
 ---
 
 ## Pending

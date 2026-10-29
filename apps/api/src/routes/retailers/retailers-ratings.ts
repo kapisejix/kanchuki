@@ -7,17 +7,20 @@
 // attributed to any customer. Do not re-add POST /reviews/product|store here.
 
 import { type Prisma, prisma } from '@kanchuki/db';
+import { buildGoogleReviewUrl, extractPlaceId } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
+import { z } from 'zod';
+import {
+  placeExists,
+  placesConfigured,
+  searchPlaces,
+  takeDailySearch,
+} from '../../lib/google-places.js';
+import { AppError, notFound, validationError } from '../../plugins/error-handler.js';
 
-// ─── Helpers ─────────────────────────────────────────────────────
-
-/**
- * Build Google Business Profile "Write a Review" URL.
- * Format: https://search.google.com/local/writereview?placeid={place_id}
- */
-function buildGoogleReviewUrl(placeId: string): string {
-  return `https://search.google.com/local/writereview?placeid=${encodeURIComponent(placeId)}`;
-}
+// Accepts a raw place id or a pasted Google Maps link; null/'' clears it.
+const GooglePlaceBody = z.object({ google_place_id: z.string().trim().max(2000).nullable() });
+const SearchQuery = z.object({ q: z.string().trim().min(2).max(120) });
 
 // ─── Routes ──────────────────────────────────────────────────────
 
@@ -217,28 +220,79 @@ export const retailersRatingsRoutes: FastifyPluginAsync = async (server) => {
   });
 
   // ─── RETAILER: Update Google Place ID ───
-  server.patch<{ Body: { google_place_id: string | null } }>(
-    '/reviews/google-place',
+  // Owner-only by default-deny (not in any staff/support allowlist). Takes an id or a
+  // pasted Maps link, stores only the extracted id, and — when the Places key is set —
+  // refuses an id Google doesn't know (a dead link would reach every happy customer).
+  server.patch('/reviews/google-place', async (request, reply) => {
+    const retailerId = request.retailerId;
+    const body = GooglePlaceBody.safeParse(request.body);
+    if (!body.success) throw validationError('Send a Place ID or a Google Maps link');
+
+    const raw = body.data.google_place_id;
+    let placeId: string | null = null;
+    if (raw) {
+      placeId = extractPlaceId(raw);
+      if (!placeId) {
+        throw validationError(
+          "Couldn't find a Place ID in that. Search for your shop by name, or paste the full Google Maps link.",
+        );
+      }
+      if (placesConfigured() && !(await placeExists(placeId))) {
+        throw validationError('Google does not know that Place ID. Search for your shop by name.');
+      }
+    }
+
+    await prisma.retailer.update({
+      where: { id: retailerId },
+      data: { google_place_id: placeId },
+    });
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'retailer',
+        actor_id: retailerId,
+        action: 'update',
+        resource_type: 'Retailer',
+        resource_id: retailerId,
+        metadata: { google_place_id: placeId ? 'set' : 'cleared' },
+        ip_address: request.ip,
+      },
+    });
+
+    return reply.send({ success: true, google_place_id: placeId });
+  });
+
+  // ─── RETAILER: Find the shop on Google (Places Text Search) ───
+  // Keyed on retailerId, not request.ip (RC-099: the web proxy collapses IPs).
+  server.get(
+    '/me/google-place/search',
     {
-      schema: {
-        body: {
-          type: 'object',
-          properties: {
-            google_place_id: { type: ['string', 'null'] },
-          },
+      config: {
+        rateLimit: {
+          max: 10,
+          timeWindow: 60 * 1000,
+          keyGenerator: (req: { retailerId?: string; ip: string }) => req.retailerId ?? req.ip,
         },
       },
     },
-    async (request, reply) => {
-      const retailerId = request.retailerId;
-      const { google_place_id } = request.body;
+    async (request) => {
+      if (!placesConfigured()) {
+        throw new AppError('NOT_CONFIGURED', 'Google search is not available yet', 501);
+      }
+      const q = SearchQuery.safeParse(request.query);
+      if (!q.success) throw validationError('Type at least 2 letters of your shop name');
 
-      await prisma.retailer.update({
-        where: { id: retailerId },
-        data: { google_place_id: google_place_id || null },
+      const retailer = await prisma.retailer.findUnique({
+        where: { id: request.retailerId },
+        select: { latitude: true, longitude: true },
       });
+      if (!retailer) throw notFound('Retailer');
 
-      return reply.send({ success: true });
+      await takeDailySearch(request.retailerId);
+      const near =
+        retailer.latitude != null && retailer.longitude != null
+          ? { latitude: retailer.latitude, longitude: retailer.longitude }
+          : null;
+      return { data: await searchPlaces(q.data.q, near) };
     },
   );
 };

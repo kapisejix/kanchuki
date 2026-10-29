@@ -2,8 +2,8 @@
 import { prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
-import { validationError } from '../../../plugins/error-handler.js';
-import { getPassportSession } from './passport-helpers.js';
+import { notFound, validationError } from '../../../plugins/error-handler.js';
+import { getPassportSession, productRetailerMap } from './passport-helpers.js';
 export const passportWishlistRoutes: FastifyPluginAsync = async (server) => {
   // ─── GET /passport/wishlist ────────────────────────────────────
   // List saved/wishlisted products across all stores.
@@ -63,9 +63,14 @@ export const passportWishlistRoutes: FastifyPluginAsync = async (server) => {
     }
 
     const body = z
-      .object({ product_id: z.string(), retailer_id: z.string() })
+      // retailer_id still accepted so older web clients don't 422; the value is
+      // ignored — H4-5/RC-095: the owner comes from the product row.
+      .object({ product_id: z.string(), retailer_id: z.string().optional() })
       .safeParse(request.body);
     if (!body.success) throw validationError('Invalid body');
+
+    const retailerId = (await productRetailerMap([body.data.product_id])).get(body.data.product_id);
+    if (!retailerId) throw notFound('Product');
 
     await prisma.customerWishlistItem.upsert({
       where: {
@@ -77,7 +82,7 @@ export const passportWishlistRoutes: FastifyPluginAsync = async (server) => {
       create: {
         customer_account_id: session.customer_account_id,
         product_id: body.data.product_id,
-        retailer_id: body.data.retailer_id,
+        retailer_id: retailerId,
       },
       update: {}, // already exists, no-op
     });

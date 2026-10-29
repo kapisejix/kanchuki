@@ -11,8 +11,9 @@
 // (lib/my-style-privacy-guard.test.ts) holds that line.
 //
 // Three rules the tests pin:
-//   1. Quota is spent only when a profile was actually produced. An unusable photo or a
-//      failed read costs the shopper nothing (rate limit + the per-account lock bound abuse).
+//   1. Quota is spent only when a profile was actually produced. The route reserved the slot at
+//      enqueue (reserveCustomerJobQuota); this job marks it spent on a usable result and hands it
+//      back on every other exit, so an unusable photo or a failed read costs the shopper nothing.
 //   2. A withdrawal wins. `profile/clear` cancels the in-flight job; this job checks before
 //      its DB write and again after it, and re-nulls the columns if it lost the race, so a
 //      cleared profile is never resurrected.
@@ -25,7 +26,7 @@ import { prisma } from '@kanchuki/db';
 import { getActiveColorFamilies } from '../lib/color-families.js';
 import { completeAnalysis, getAnalysis } from '../lib/my-style-analysis.js';
 import { clearStyleProfile } from '../lib/my-style-consent.js';
-import { incrementCustomerUsage } from '../lib/quota.js';
+import { markCustomerJobQuotaSpent, refundCustomerJobQuota } from '../lib/quota.js';
 import { takeTryOnPhoto } from '../lib/tryon-photo-store.js';
 
 export interface MyStyleAnalyzeJobData {
@@ -64,10 +65,23 @@ async function failRead(job_id: string, err: unknown): Promise<Error> {
 // produced, no fallback on a bad reply. Unlike a selfie there is nothing to write to the
 // account and nothing to re-null after a withdrawal — a garment description is not
 // personal data, and it lives only in the 15-minute job state.
+// Slot spent for good: mark the reservation. A failed mark is logged, not fatal (the model ran).
+async function spend(
+  job_id: string,
+  customer_account_id: string,
+  held: { spent: boolean },
+): Promise<void> {
+  held.spent = true; // before the write: a throw later in the job must not refund a paid read
+  await markCustomerJobQuotaSpent(job_id, 'STYLE_ANALYSIS').catch((err) => {
+    console.error(`[my-style] failed to record usage for ${customer_account_id}:`, err);
+  });
+}
+
 async function handleGarment(
   job_id: string,
   customer_account_id: string,
   photo: { buffer: Buffer; contentType: string },
+  held: { spent: boolean },
 ): Promise<void> {
   let result: Awaited<ReturnType<typeof analyzeGarmentImage>>;
   try {
@@ -82,15 +96,30 @@ async function handleGarment(
     return;
   }
 
-  await incrementCustomerUsage(customer_account_id, 'STYLE_ANALYSIS').catch((err) => {
-    console.error(`[my-style] failed to record usage for ${customer_account_id}:`, err);
-  });
+  await spend(job_id, customer_account_id, held);
   await recordDailyAnalysis();
   // False = cleared or expired meanwhile; the cost still counts, the result is dropped.
   await completeAnalysis(job_id, { status: 'ready', garment: result.garment });
 }
 
+// The route reserved a STYLE_ANALYSIS slot for this job_id. It stays spent only once the model
+// produced a usable result; every other exit (cleared/expired while queued, no photo, unusable
+// photo, failed read) hands it back in `finally`. BullMQ counts a `return` as completed, so its
+// `failed` hook would miss those.
 export async function handleMyStyleAnalyze(data: MyStyleAnalyzeJobData): Promise<void> {
+  const held = { spent: false };
+  try {
+    await run(data, held);
+  } finally {
+    if (!held.spent) {
+      await refundCustomerJobQuota(data.job_id, 'STYLE_ANALYSIS').catch((err) => {
+        console.error(`[my-style] failed to refund quota for job ${data.job_id}:`, err);
+      });
+    }
+  }
+}
+
+async function run(data: MyStyleAnalyzeJobData, held: { spent: boolean }): Promise<void> {
   const { job_id, customer_account_id } = data;
 
   // One-shot take: after this line the only copy is the local buffer.
@@ -104,10 +133,7 @@ export async function handleMyStyleAnalyze(data: MyStyleAnalyzeJobData): Promise
     return;
   }
 
-  if (data.mode === 'garment') {
-    await handleGarment(job_id, customer_account_id, photo);
-    return;
-  }
+  if (data.mode === 'garment') return handleGarment(job_id, customer_account_id, photo, held);
 
   let result: Awaited<ReturnType<typeof analyzeStyleImage>>;
   try {
@@ -123,9 +149,7 @@ export async function handleMyStyleAnalyze(data: MyStyleAnalyzeJobData): Promise
 
   // The model ran, so the cost is real whatever happens next. Counting it even when the
   // shopper cleared mid-flight stops clear-and-retry from being free analyses.
-  await incrementCustomerUsage(customer_account_id, 'STYLE_ANALYSIS').catch((err) => {
-    console.error(`[my-style] failed to record usage for ${customer_account_id}:`, err);
-  });
+  await spend(job_id, customer_account_id, held);
   await recordDailyAnalysis();
 
   if ((await getAnalysis(job_id))?.status !== 'processing') return; // cleared mid-call

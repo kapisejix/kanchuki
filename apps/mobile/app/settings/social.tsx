@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import {
@@ -110,7 +110,12 @@ export default function SocialSettingsScreen() {
     await Linking.openURL(authUrl);
   };
 
+  // RC-132: sync guard — `connecting` state reaches the button a render late, so two
+  // taps in one tick would both start a login.
+  const connectingRef = useRef(false);
   const openConnect = async () => {
+    if (connectingRef.current) return;
+    connectingRef.current = true;
     setConnecting(true);
     setConnectError(null);
     try {
@@ -138,6 +143,7 @@ export default function SocialSettingsScreen() {
       // Surface the real reason — from our API or the Facebook SDK, both safe.
       setConnectError(err instanceof Error ? err.message : 'Could not connect your Facebook Page');
     } finally {
+      connectingRef.current = false;
       setConnecting(false);
     }
   };

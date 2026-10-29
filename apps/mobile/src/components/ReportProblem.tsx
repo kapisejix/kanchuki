@@ -31,6 +31,7 @@ import { showError } from "../lib/errors";
 import { COLORS } from "@kanchuki/shared";
 import { AnimatedPressable } from "./AnimatedPressable";
 import { GradientButton } from "./GradientButton";
+import { KeyboardScreen } from "./KeyboardScreen";
 
 type Props = {
   visible: boolean;
@@ -224,6 +225,7 @@ export function ReportProblem({
       animationType="fade"
       onRequestClose={onClose}
     >
+      <KeyboardScreen>
       <View
         className="flex-1 bg-black/50 justify-end"
         style={{ paddingBottom: insets.bottom }}
@@ -399,6 +401,7 @@ export function ReportProblem({
           </ScrollView>
         </View>
       </View>
+      </KeyboardScreen>
     </Modal>
   );
 }

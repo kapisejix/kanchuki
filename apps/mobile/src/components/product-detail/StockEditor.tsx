@@ -1,10 +1,8 @@
 import React from 'react'
 import { View, Text, TextInput } from 'react-native'
 import { Minus, Plus } from 'lucide-react-native'
+import { FREE_SIZE, MAX_STOCK_QUANTITY } from '@kanchuki/shared'
 import { AnimatedPressable } from '../AnimatedPressable'
-
-export const FREE_SIZE = 'FREE'
-const MAX_QTY = 99999
 
 /** Sizes that get a stepper: the selected sizes, or one FREE row when unsized. */
 export const stockSizes = (selectedSizes: string[]) =>
@@ -21,7 +19,7 @@ interface Props {
 }
 
 export function StockEditor({ selectedSizes, qty, onChange }: Props) {
-  const clamp = (n: number) => Math.min(MAX_QTY, Math.max(0, Math.floor(n) || 0))
+  const clamp = (n: number) => Math.min(MAX_STOCK_QUANTITY, Math.max(0, Math.floor(n) || 0))
   return (
     <View className="gap-2">
       {stockSizes(selectedSizes).map((size) => {

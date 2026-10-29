@@ -17,7 +17,7 @@ import {
   User,
   Zap,
 } from 'lucide-react-native';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { KeyboardScreen } from '../src/components/KeyboardScreen';
 import {
   ActivityIndicator,
@@ -31,8 +31,10 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AnimatedPressable } from '../src/components/AnimatedPressable';
+import { GooglePlaceField } from '../src/components/GooglePlaceField';
 import { GradientButton } from '../src/components/GradientButton';
 import { billingApi, retailerApi } from '../src/lib/api';
+import { showError } from '../src/lib/errors';
 import {
   clearCapturedReferralCode,
   getCapturedReferralCode,
@@ -189,6 +191,9 @@ export default function OnboardingScreen() {
   const [step, setStep] = useState<Step>(1);
   const [saving, setSaving] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
+  // Sync guard: `saving` state reaches the handlers a render late, so two taps in
+  // one tick (or Dashboard + QR) would both pass it and save/redirect twice.
+  const busyRef = useRef(false);
 
   // ── Form state ──
   const [shopName, setShopName] = useState('');
@@ -253,7 +258,8 @@ export default function OnboardingScreen() {
   }, [step, saving, goToStep]);
 
   const handleNext = async () => {
-    if (saving || showConfetti) return;
+    if (busyRef.current || saving || showConfetti) return;
+    busyRef.current = true;
     setSaving(true);
     try {
       const nextStep = (step + 1) as Step;
@@ -319,9 +325,10 @@ export default function OnboardingScreen() {
       setTimeout(() => {
         router.replace('/(tabs)');
       }, 1500);
-    } catch {
-      Alert.alert('Error', 'Could not save details. Please check your connection and try again.');
+    } catch (err) {
+      showError(err, 'Could not save details. Please check your connection and try again.');
     } finally {
+      busyRef.current = false;
       setSaving(false);
     }
   };
@@ -361,7 +368,8 @@ export default function OnboardingScreen() {
   };
 
   const handleGetCatalogHelp = async () => {
-    if (saving || showConfetti) return;
+    if (busyRef.current || saving || showConfetti) return;
+    busyRef.current = true;
     setSaving(true);
     try {
       await saveFinalStep();
@@ -369,15 +377,17 @@ export default function OnboardingScreen() {
       setTimeout(() => {
         router.replace('/settings/catalog-upload');
       }, 1500);
-    } catch {
-      Alert.alert('Error', 'Could not save details. Please try again.');
+    } catch (err) {
+      showError(err, 'Could not save details. Please try again.');
     } finally {
+      busyRef.current = false;
       setSaving(false);
     }
   };
 
   const handleCreateStoreQr = async () => {
-    if (saving || showConfetti) return;
+    if (busyRef.current || saving || showConfetti) return;
+    busyRef.current = true;
     setSaving(true);
     try {
       await saveFinalStep();
@@ -385,9 +395,10 @@ export default function OnboardingScreen() {
       setTimeout(() => {
         router.replace('/store-profile');
       }, 1500);
-    } catch {
-      Alert.alert('Error', 'Could not save details. Please try again.');
+    } catch (err) {
+      showError(err, 'Could not save details. Please try again.');
     } finally {
+      busyRef.current = false;
       setSaving(false);
     }
   };
@@ -711,6 +722,11 @@ export default function OnboardingScreen() {
                 <Text className="text-heliotrope-400 text-lg">→</Text>
               )}
             </AnimatedPressable>
+
+            {/* Optional: link the shop's Google listing (saved immediately on pick) */}
+            <View className="mt-3">
+              <GooglePlaceField defaultQuery={[shopName.trim(), city.trim()].filter(Boolean).join(' ')} />
+            </View>
 
             {/* Store Tip Box */}
             <View className="bg-lavender-50 border border-lavender-200 rounded-2xl p-3.5 mt-2 flex-row items-start gap-2.5">

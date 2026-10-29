@@ -5,6 +5,7 @@ import { prisma } from '@kanchuki/db';
 import { SIZE_OPTIONS } from '@kanchuki/shared';
 import { z } from 'zod';
 import { StockInputSchema } from '../../lib/product-stock.js';
+import { queryBool } from '../../lib/query-bool.js';
 
 // ─── On-Demand ISR Revalidation ───────────────────────────────────
 // After a product status change, purge the ISR cache for every collection
@@ -108,7 +109,7 @@ export const ListProductsQuerySchema = z.object({
   status: z.enum(['AVAILABLE', 'SOLD', 'RESERVED', 'NOT_SURE']).optional(),
   category: z.string().optional(),
   category_id: z.string().optional(),
-  is_new_arrival: z.coerce.boolean().optional(),
+  is_new_arrival: queryBool(),
   // F-025 scan-to-sell: exact-match SKU lookup (SKUs are auto-generated per
   // retailer, e.g. LS0001, @@unique([retailer_id, sku])). Same no-owner-gate
   // behavior as the rest of this list endpoint — shop staff (Staff model)

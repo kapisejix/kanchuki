@@ -95,6 +95,29 @@ beforeEach(() => {
   process.env.ADMIN_PASSWORD_HASH = ADMIN_SCRYPT_HASH;
 });
 
+// RC-089: with ADMIN_API_KEY empty the session HMAC secret used to be the
+// public string "admin-session:", so a self-signed token was accepted.
+describe('Admin session — empty ADMIN_API_KEY', () => {
+  it('rejects a token signed with the empty-key secret', async () => {
+    const { SignJWT } = await import('jose');
+    process.env.ADMIN_API_KEY = '';
+    const forged = await new SignJWT({ email: 'x@evil.test', role: 'SUPER_ADMIN' })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setSubject('admin')
+      .setIssuedAt()
+      .setExpirationTime('1h')
+      .sign(new TextEncoder().encode('admin-session:'));
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'GET',
+      url: '/v1/admin/stats',
+      headers: { 'x-admin-key': forged },
+    });
+    expect(res.statusCode).toBe(403);
+    await app.close();
+  });
+});
+
 // ─── Login Tests ──────────────────────────────────────────────────
 // Admin login is email + password (scrypt) only — no TOTP / 2FA.
 

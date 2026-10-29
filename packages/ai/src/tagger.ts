@@ -1,9 +1,9 @@
-import { createHash } from 'crypto'
-import { normalizeOccasions, PRODUCT_OCCASIONS } from '@kanchuki/shared'
-import type { AiTagResult } from '@kanchuki/shared'
-import { runVisionAsk, runVisionExtract } from './providers.js'
-import type { AiJsonSchema, ProviderUsedInfo } from './providers.js'
-import { ssrfSafeFetch, readCappedBuffer } from './safe-fetch.js'
+import { createHash } from 'node:crypto';
+import { PRODUCT_OCCASIONS, normalizeOccasions } from '@kanchuki/shared';
+import type { AiTagResult } from '@kanchuki/shared';
+import { runVisionAsk, runVisionExtract } from './providers.js';
+import type { AiJsonSchema, ProviderUsedInfo } from './providers.js';
+import { readCappedBuffer, ssrfSafeFetch } from './safe-fetch.js';
 
 const SYSTEM_PROMPT = `You are an expert in Indian ethnic fashion with deep knowledge of:
 - Indian apparel categories (unstitched suits, kurtis, sarees, lehengas, sherwanis, etc.)
@@ -19,7 +19,7 @@ Always be specific — "Cotton Silk Blend" is better than "Mixed Fabric".
 If unsure about a field, return null rather than guessing.
 Include both English and common Hindi transliterations in search_tags.
 Also generate a retail-ready product_name and short_description — concise and
-factual, no marketing fluff ("stunning", "must-have", etc.).`
+factual, no marketing fluff ("stunning", "must-have", etc.).`;
 
 const EXTRACT_SCHEMA: AiJsonSchema = {
   name: 'extract_product_attributes',
@@ -30,9 +30,18 @@ const EXTRACT_SCHEMA: AiJsonSchema = {
       category: {
         type: 'string',
         enum: [
-          'Ladies Suit', 'Kurti', 'Saree', 'Lehenga', 'Gown', 'Dupatta',
-          'Blouse', "Men's Kurta Pajama", 'Sherwani', 'Kids Ethnic Wear',
-          'Readymade Suit', 'Other',
+          'Ladies Suit',
+          'Kurti',
+          'Saree',
+          'Lehenga',
+          'Gown',
+          'Dupatta',
+          'Blouse',
+          "Men's Kurta Pajama",
+          'Sherwani',
+          'Kids Ethnic Wear',
+          'Readymade Suit',
+          'Other',
         ],
       },
       subtype: {
@@ -62,8 +71,17 @@ const EXTRACT_SCHEMA: AiJsonSchema = {
       pattern: {
         type: 'string',
         enum: [
-          'Plain', 'Printed', 'Embroidered', 'Block Print', 'Bandhani',
-          'Chikankari', 'Phulkari', 'Woven', 'Checked', 'Striped', 'Other',
+          'Plain',
+          'Printed',
+          'Embroidered',
+          'Block Print',
+          'Bandhani',
+          'Chikankari',
+          'Phulkari',
+          'Woven',
+          'Checked',
+          'Striped',
+          'Other',
         ],
       },
       embellishments: {
@@ -71,8 +89,15 @@ const EXTRACT_SCHEMA: AiJsonSchema = {
         items: {
           type: 'string',
           enum: [
-            'Zari Work', 'Zardozi', 'Gota Patti', 'Mirror Work', 'Sequin',
-            'Stone Work', 'Resham Embroidery', 'Thread Work', 'None',
+            'Zari Work',
+            'Zardozi',
+            'Gota Patti',
+            'Mirror Work',
+            'Sequin',
+            'Stone Work',
+            'Resham Embroidery',
+            'Thread Work',
+            'None',
           ],
         },
       },
@@ -109,8 +134,13 @@ const EXTRACT_SCHEMA: AiJsonSchema = {
       price_range_estimate: {
         type: 'string',
         enum: [
-          'Under ₹500', '₹500-₹1000', '₹1000-₹2000', '₹2000-₹5000',
-          '₹5000-₹10000', 'Above ₹10000', 'Cannot determine',
+          'Under ₹500',
+          '₹500-₹1000',
+          '₹1000-₹2000',
+          '₹2000-₹5000',
+          '₹5000-₹10000',
+          'Above ₹10000',
+          'Cannot determine',
         ],
       },
       design_number_visible: {
@@ -124,7 +154,8 @@ const EXTRACT_SCHEMA: AiJsonSchema = {
       search_tags: {
         type: 'array',
         items: { type: 'string' },
-        description: '6-8 searchable keywords: colors, fabrics, style in English + Hindi transliterations',
+        description:
+          '6-8 searchable keywords: colors, fabrics, style in English + Hindi transliterations',
       },
       product_name: {
         type: 'string',
@@ -151,24 +182,24 @@ const EXTRACT_SCHEMA: AiJsonSchema = {
       'short_description',
     ],
   },
-}
+};
 
 /** SHA-256 hash of image buffer for cache key */
 export function imageHash(imageBuffer: Buffer): string {
-  return createHash('sha256').update(imageBuffer).digest('hex')
+  return createHash('sha256').update(imageBuffer).digest('hex');
 }
 
 export type TaggableImage = {
-  buffer: Buffer
-  mediaType: 'image/jpeg' | 'image/png' | 'image/webp'
-}
+  buffer: Buffer;
+  mediaType: 'image/jpeg' | 'image/png' | 'image/webp';
+};
 
 export interface TaggingCallOpts {
   /** Called with the winning provider (for per-call usage attribution). */
-  onProviderUsed?: (info: ProviderUsedInfo) => void
+  onProviderUsed?: (info: ProviderUsedInfo) => void;
   /** Called before each AI call this request will make — throw to abort
    *  remaining calls (e.g. quota exhausted mid multi-item/multi-page batch). */
-  beforeCall?: () => Promise<void>
+  beforeCall?: () => Promise<void>;
 }
 
 /** Tag a product from one or more images (e.g. front + back) using the configured AI providers. */
@@ -176,13 +207,13 @@ export async function tagProductImages(
   images: TaggableImage[],
   opts?: TaggingCallOpts,
 ): Promise<AiTagResult> {
-  if (images.length === 0) throw new Error('At least one image required for tagging')
-  if (images.length > 2) throw new Error('Max 2 images per tagging request (front + back)')
+  if (images.length === 0) throw new Error('At least one image required for tagging');
+  if (images.length > 2) throw new Error('Max 2 images per tagging request (front + back)');
 
   const label =
     images.length === 2
       ? 'Analyze these front and back photos of the same Indian ethnic fashion product and extract all product attributes. Use the back photo for fabric texture, embellishment, and design-number details not visible from the front.'
-      : 'Analyze this Indian ethnic fashion product image and extract all product attributes.'
+      : 'Analyze this Indian ethnic fashion product image and extract all product attributes.';
 
   // Multi-provider failover (Claude → OpenAI → Gemini); contract errors from
   // a responding provider rethrow without burning another provider's quota.
@@ -193,34 +224,35 @@ export async function tagProductImages(
     maxTokens: 1024,
     schema: EXTRACT_SCHEMA,
     ...(opts?.onProviderUsed ? { onProviderUsed: opts.onProviderUsed } : {}),
-  })
+  });
 
   // Claude sometimes fills optional string fields with the literal word "null" instead of omitting them
-  const nullable = (v: unknown): string | null => (v == null || v === 'null' ? null : (v as string))
+  const nullable = (v: unknown): string | null =>
+    v == null || v === 'null' ? null : (v as string);
 
   const result: AiTagResult = {
-    category: nullable(raw['category']),
-    subtype: nullable(raw['subtype']),
-    product_type: nullable(raw['product_type']),
-    primary_color: nullable(raw['primary_color']),
-    secondary_colors: (raw['secondary_colors'] as string[]) ?? [],
-    fabric_estimate: nullable(raw['fabric_estimate']),
-    pattern: nullable(raw['pattern']),
-    embellishments: (raw['embellishments'] as string[]) ?? [],
-    neck_style: nullable(raw['neck_style']),
-    sleeve_type: nullable(raw['sleeve_type']),
-    style: (raw['style'] as string[]) ?? [],
-    fabrics: (raw['fabrics'] as string[]) ?? [],
+    category: nullable(raw.category),
+    subtype: nullable(raw.subtype),
+    product_type: nullable(raw.product_type),
+    primary_color: nullable(raw.primary_color),
+    secondary_colors: (raw.secondary_colors as string[]) ?? [],
+    fabric_estimate: nullable(raw.fabric_estimate),
+    pattern: nullable(raw.pattern),
+    embellishments: (raw.embellishments as string[]) ?? [],
+    neck_style: nullable(raw.neck_style),
+    sleeve_type: nullable(raw.sleeve_type),
+    style: (raw.style as string[]) ?? [],
+    fabrics: (raw.fabrics as string[]) ?? [],
     // Not every provider honours the schema enum, so re-validate here.
-    occasions: normalizeOccasions(raw['occasions']),
-    price_range_estimate: nullable(raw['price_range_estimate']),
-    design_number_visible: nullable(raw['design_number_visible']),
-    is_catalog_image: (raw['is_catalog_image'] as boolean) ?? false,
-    search_tags: (raw['search_tags'] as string[]) ?? [],
+    occasions: normalizeOccasions(raw.occasions),
+    price_range_estimate: nullable(raw.price_range_estimate),
+    design_number_visible: nullable(raw.design_number_visible),
+    is_catalog_image: (raw.is_catalog_image as boolean) ?? false,
+    search_tags: (raw.search_tags as string[]) ?? [],
     confidence_notes: null,
-    product_name: nullable(raw['product_name']),
-    short_description: nullable(raw['short_description']),
-  }
+    product_name: nullable(raw.product_name),
+    short_description: nullable(raw.short_description),
+  };
 
   // product_name/short_description are required in the schema above, but some
   // providers still skip string fields with null/empty. Deterministic fallbacks
@@ -231,31 +263,33 @@ export async function tagProductImages(
   if (!result.product_name) {
     const fallback = [result.primary_color, result.subtype ?? result.category]
       .filter(Boolean)
-      .join(' ')
-    result.product_name = fallback || null
+      .join(' ');
+    result.product_name = fallback || null;
   }
   if (!result.short_description) {
     const detail = [result.fabric_estimate, result.pattern, result.primary_color]
       .filter(Boolean)
-      .join(' · ')
-    result.short_description = detail ? `${detail}.` : null
+      .join(' · ');
+    result.short_description = detail ? `${detail}.` : null;
   }
 
-  return result
+  return result;
 }
 
 async function fetchTaggableImage(imageUrl: string): Promise<TaggableImage> {
-  const res = await ssrfSafeFetch(imageUrl)
-  if (!res.ok) throw new Error(`Failed to fetch image for tagging: ${res.status}`)
+  const res = await ssrfSafeFetch(imageUrl);
+  if (!res.ok) throw new Error(`Failed to fetch image for tagging: ${res.status}`);
 
-  const contentType = res.headers.get('content-type') ?? 'image/jpeg'
+  const contentType = res.headers.get('content-type') ?? 'image/jpeg';
   const mediaType = (
-    contentType.startsWith('image/png') ? 'image/png'
-    : contentType.startsWith('image/webp') ? 'image/webp'
-    : 'image/jpeg'
-  ) as 'image/jpeg' | 'image/png' | 'image/webp'
+    contentType.startsWith('image/png')
+      ? 'image/png'
+      : contentType.startsWith('image/webp')
+        ? 'image/webp'
+        : 'image/jpeg'
+  ) as 'image/jpeg' | 'image/png' | 'image/webp';
 
-  return { buffer: await readCappedBuffer(res), mediaType }
+  return { buffer: await readCappedBuffer(res), mediaType };
 }
 
 /** Tag via URL(s) — fetches image(s) and uses base64 (SDK v0.30 lacks url source type) */
@@ -263,7 +297,7 @@ export async function tagProductImageUrl(
   imageUrl: string,
   opts?: TaggingCallOpts,
 ): Promise<AiTagResult> {
-  return tagProductImages([await fetchTaggableImage(imageUrl)], opts)
+  return tagProductImages([await fetchTaggableImage(imageUrl)], opts);
 }
 
 /** Tag via front + back photo URLs for higher-accuracy extraction */
@@ -271,8 +305,8 @@ export async function tagProductImageUrls(
   imageUrls: string[],
   opts?: TaggingCallOpts,
 ): Promise<AiTagResult> {
-  const images = await Promise.all(imageUrls.map(fetchTaggableImage))
-  return tagProductImages(images, opts)
+  const images = await Promise.all(imageUrls.map(fetchTaggableImage));
+  return tagProductImages(images, opts);
 }
 
 // ─── Showcase design name + color suggestion ────────────────────────────
@@ -303,17 +337,17 @@ const DESIGN_SUGGEST_SCHEMA: AiJsonSchema = {
     },
     required: ['name', 'color'],
   },
-}
+};
 
 const DESIGN_SUGGEST_SYSTEM_PROMPT = `You are an expert in Indian ethnic fashion design with deep knowledge of garments, colors, and design details.
 Look at this design photo and suggest:
 - name: a concise retail-ready title that combines the dominant color, the garment/design type, and one notable design detail (neck style, embroidery, pattern, silhouette). Example: "Pink Blouse - Deep Neck".
 - color: the dominant color of the design (e.g. "Bottle Green", "Rani Pink", "Mustard Yellow").
-Keep the name factual and specific. Never use marketing fluff like "stunning" or "must-have".`
+Keep the name factual and specific. Never use marketing fluff like "stunning" or "must-have".`;
 
 export interface ShowcaseDesignSuggestion {
-  name: string | null
-  color: string | null
+  name: string | null;
+  color: string | null;
 }
 
 /**
@@ -328,7 +362,7 @@ export async function suggestDesignNameAndColor(
   opts?: TaggingCallOpts,
 ): Promise<ShowcaseDesignSuggestion> {
   try {
-    const image = await fetchTaggableImage(imageUrl)
+    const image = await fetchTaggableImage(imageUrl);
     const raw = await runVisionExtract({
       images: [image],
       systemPrompt: DESIGN_SUGGEST_SYSTEM_PROMPT,
@@ -337,15 +371,14 @@ export async function suggestDesignNameAndColor(
       maxTokens: 200,
       schema: DESIGN_SUGGEST_SCHEMA,
       ...(opts?.onProviderUsed ? { onProviderUsed: opts.onProviderUsed } : {}),
-    })
+    });
     const nullable = (v: unknown): string | null =>
-      v == null || v === 'null' ? null : (v as string)
-    const name = nullable(raw['name'])?.trim() || null
-    const color = nullable(raw['color'])?.trim() || null
-    if (!name && !color) return { name: null, color: null }
-    return { name, color }
+      v == null || v === 'null' ? null : (v as string);
+    const name = nullable(raw.name)?.trim() || null;
+    const color = nullable(raw.color)?.trim() || null;
+    if (!name && !color) return { name: null, color: null };
+    return { name, color };
   } catch {
-    return { name: null, color: null }
+    return { name: null, color: null };
   }
 }
-

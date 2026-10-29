@@ -32,7 +32,7 @@ import { prisma } from '@kanchuki/db';
 import { R2_PATHS, poolsForSlug, resolveStyleTokens } from '@kanchuki/shared';
 import { createId } from '@paralleldrive/cuid2';
 import { recordBflStudioUsage } from '../lib/ai-usage.js';
-import { incrementUsage } from '../lib/quota.js';
+import { markJobQuotaSpent, refundJobQuota } from '../lib/quota.js';
 import {
   type StudioEngine,
   downloadCompressAndUpload,
@@ -89,6 +89,11 @@ export async function handleStudioShoot(data: StudioShootJobData): Promise<void>
     etaMs: ESTIMATED_TOTAL_TIME_MS,
   }).catch(() => {});
 
+  // The route reserved a STUDIO_SHOOT slot for this job_id at enqueue. It stays spent only once a
+  // photo row exists; every other exit (the early `return`s that write a failed status, and the
+  // throw below) hands it back in `finally`. Both are needed: BullMQ counts a `return` as
+  // completed, so its `failed` hook never sees those (RC-102 follow-up).
+  let spent = false;
   try {
     // Re-verify ownership at execution time (queue = trust boundary).
     const photo = await prisma.productPhoto.findFirst({
@@ -206,6 +211,14 @@ export async function handleStudioShoot(data: StudioShootJobData): Promise<void>
       },
     });
 
+    // The photo is live from here, so the slot is spent whatever happens next. Marked BEFORE the
+    // ready status so a sweep never refunds a job whose result the retailer can already see; a
+    // failed mark is logged, not fatal (the result exists).
+    spent = true;
+    await markJobQuotaSpent(job_id, 'STUDIO_SHOOT').catch((err) => {
+      console.error(`[studio-shoot] failed to mark quota spent for job ${job_id}:`, err);
+    });
+
     // 5. Status AFTER the DB row exists — ready means the photo is live.
     await setStudioJobStatus(job_id, {
       status: 'ready',
@@ -215,13 +228,10 @@ export async function handleStudioShoot(data: StudioShootJobData): Promise<void>
       etaMs: 0,
     });
 
-    // 6. Record BFL credit consumption for the Admin → AI Usage dashboard,
-    // count it against the retailer's STUDIO_SHOOT plan quota (F-010), and
-    // bump the style's usage_count for the Admin → Studio Styles manager.
+    // 6. Record BFL credit consumption for the Admin → AI Usage dashboard and
+    // bump the style's usage_count for the Admin → Studio Styles manager. The
+    // STUDIO_SHOOT plan quota (F-010) was already counted at enqueue.
     recordBflStudioUsage(retailer_id, slug);
-    incrementUsage(retailer_id, 'STUDIO_SHOOT').catch((err) => {
-      console.error(`[studio-shoot] failed to record quota usage for ${retailer_id}:`, err);
-    });
     prisma.studioStyle
       .update({ where: { id: style_id }, data: { usage_count: { increment: 1 } } })
       .catch((err) =>
@@ -239,5 +249,11 @@ export async function handleStudioShoot(data: StudioShootJobData): Promise<void>
     // Mark the job failed for BullMQ visibility (no auto-retry by default —
     // each generation costs real BFL credits, so don't burn credits on retry).
     throw new Error(message);
+  } finally {
+    if (!spent) {
+      await refundJobQuota(job_id, 'STUDIO_SHOOT').catch((err) => {
+        console.error(`[studio-shoot] failed to refund quota for job ${job_id}:`, err);
+      });
+    }
   }
 }
