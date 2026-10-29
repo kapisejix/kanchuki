@@ -21,6 +21,16 @@ export function periodStart(period: QuotaPeriod, now = new Date()): Date {
   return new Date(0); // LIFETIME — one counter row forever
 }
 
+// Resources that cost real money per call: no limit row means "none", not "unlimited" (H6-1).
+// An explicit -1 row is still unlimited. ponytail: hand list; move to a plan_limits column if it grows.
+const METERED: ReadonlySet<QuotaResourceType> = new Set([
+  'STUDIO_SHOOT',
+  'TRY_ON_GENERATION',
+  'BG_REMOVAL',
+  'IMAGE_CROP',
+]);
+const NO_ROW_METERED: { limit: number; period: QuotaPeriod } = { limit: 0, period: 'MONTH' };
+
 export async function effectiveLimit(
   retailerId: string,
   resourceType: QuotaResourceType,
@@ -37,20 +47,19 @@ export async function effectiveLimit(
   const planLimit = await prisma.planLimit.findUnique({
     where: { plan_resource_type: { plan: retailer.plan, resource_type: resourceType } },
   });
-  // ponytail: plan_limits has no seed rows yet (business numbers not decided
-  // for AI_TAGGING_CALL/IMAGE_CROP/BG_REMOVAL/API_REQUEST) — fail-open until
-  // an admin adds a row, instead of blocking every retailer on every call.
-  if (!planLimit) return null;
+  // ponytail: plan_limits has no seed rows yet for the non-metered types
+  // (AI_TAGGING_CALL/API_REQUEST) — fail-open until an admin adds a row, instead
+  // of blocking every retailer on every call. METERED types fail CLOSED (H6-1).
+  if (!planLimit) return METERED.has(resourceType) ? NO_ROW_METERED : null;
   return { limit: planLimit.limit_per_period, period: planLimit.period };
 }
 
 /**
  * Customer-side twin of `effectiveLimit`: one global admin-editable number per
- * resource (shoppers have no plan), or null when unconfigured. Like the retailer
- * side this fails OPEN — an unseeded resource is "no limit" rather than an
- * outage. Migration 119 seeds TRY_ON_GENERATION so that default is not reachable
- * in practice for a metered GPU call, which is the case where fail-open would
- * cost real money.
+ * resource (shoppers have no plan), or null when unconfigured. An unseeded
+ * non-metered resource fails OPEN ("no limit" rather than an outage); a METERED
+ * one (real GPU/AI cost per call) fails CLOSED with limit 0 (H6-1). Migration 119
+ * seeds TRY_ON_GENERATION, so that path is not reachable in practice.
  */
 async function effectiveCustomerLimit(
   resourceType: QuotaResourceType,
@@ -58,7 +67,7 @@ async function effectiveCustomerLimit(
   const row = await prisma.customerResourceLimit.findUnique({
     where: { resource_type: resourceType },
   });
-  if (!row) return null;
+  if (!row) return METERED.has(resourceType) ? NO_ROW_METERED : null;
   return { limit: row.limit_per_period, period: row.period };
 }
 
@@ -191,7 +200,8 @@ export async function incrementUsage(
  * Atomic check-and-take (RC-102). One statement both tests `count + amount <= limit` and bumps
  * the counter, so concurrent callers cannot both pass a check that only one has room for — the
  * gap `checkQuota` + `incrementUsage` leave. Returns a refund to call if the work then fails.
- * Same limit rules as `checkQuota`: no row or -1 means unlimited, nothing is written, refund is a no-op.
+ * Same limit rules as `checkQuota`: -1 (or no row on a non-metered type) means unlimited, nothing is
+ * written, refund is a no-op. No row on a METERED type means limit 0 (H6-1).
  * Only for callers whose work runs inside the same request; a check at enqueue with the
  * increment in a later job still uses the two-call pair.
  */
@@ -232,7 +242,8 @@ export async function reserveQuota(
  * atomic counter bump, but the same statement also records WHO holds the slot in
  * `quota_reservations` (keyed by the payload `jobId`), so a refund by job id is idempotent
  * across the handler, the BullMQ `failed` hook and a sweep. Retailer scope only.
- * No row / -1 = unlimited: nothing is written, and refund/mark-spent find no row and no-op.
+ * -1 (or no row on a non-metered type) = unlimited: nothing is written, and refund/mark-spent find
+ * no row and no-op. No row on a METERED type is limit 0 (H6-1).
  * A repeated (jobId, resource) hits the unique index and throws, never double-reserves.
  */
 export async function reserveJobQuota(

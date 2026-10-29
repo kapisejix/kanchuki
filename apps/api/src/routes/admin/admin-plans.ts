@@ -124,8 +124,9 @@ export const adminPlansRoutes: FastifyPluginAsync = async (server) => {
   // ─── PUT /admin/plan-limits ─────────────────────────────────────
   // Upsert one (plan, resource_type) row. Creates it if this is the first
   // time a resource is being limited (e.g. admin decides to start metering
-  // API_REQUEST later) — checkQuota() treats a missing row as unlimited,
-  // so this is also how a limit gets turned on for the first time.
+  // API_REQUEST later) — checkQuota() treats a missing row as unlimited, except for
+  // the METERED types (STUDIO_SHOOT, TRY_ON_GENERATION, BG_REMOVAL, IMAGE_CROP) which
+  // treat it as 0 (H6-1), so this is also how those get turned on for a plan.
   server.put('/plan-limits', async (request) => {
     const body = z
       .object({

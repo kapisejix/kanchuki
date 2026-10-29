@@ -40,10 +40,13 @@ const {
   checkCustomerQuota,
   checkQuota,
   getEnforcedQuota,
+  getQuotaStatus,
   incrementCustomerUsage,
   markCustomerJobQuotaSpent,
   refundCustomerJobQuota,
   reserveCustomerJobQuota,
+  reserveJobQuota,
+  reserveQuota,
 } = await import('./quota.js');
 
 const CUSTOMER = 'customer_account_1';
@@ -62,14 +65,20 @@ beforeEach(() => {
 });
 
 describe('checkCustomerQuota', () => {
-  it('fails OPEN when no customer_resource_limits row exists', async () => {
-    // Unconfigured must not be an outage — same direction as checkQuota. (The
-    // seed in migration 119 means the metered try-on resource is never actually
-    // unconfigured in practice.)
+  it('fails OPEN when no row exists for a NON-metered resource', async () => {
     mockCustomerLimitFindUnique.mockResolvedValue(null);
 
-    await expect(checkCustomerQuota(CUSTOMER, 'TRY_ON_GENERATION')).resolves.toBeUndefined();
+    await expect(checkCustomerQuota(CUSTOMER, 'STYLE_ANALYSIS')).resolves.toBeUndefined();
     expect(mockCustomerCounterFindUnique).not.toHaveBeenCalled();
+  });
+
+  it('fails CLOSED when no row exists for a METERED resource (H6-1)', async () => {
+    mockCustomerLimitFindUnique.mockResolvedValue(null);
+    mockCustomerCounterFindUnique.mockResolvedValue(null);
+
+    await expect(checkCustomerQuota(CUSTOMER, 'TRY_ON_GENERATION')).rejects.toMatchObject({
+      code: 'CUSTOMER_LIMIT_EXCEEDED',
+    });
   });
 
   it('treats -1 as unlimited', async () => {
@@ -202,11 +211,19 @@ describe('the two caps are distinguishable', () => {
 const sqlOf = (call: unknown[]) => (call[0] as string[]).join('?');
 
 describe('reserveCustomerJobQuota', () => {
-  it('no limit row or -1: nothing is written', async () => {
+  it('-1, or no row on a non-metered type: nothing is written', async () => {
     mockCustomerLimitFindUnique.mockResolvedValue(null);
-    await reserveCustomerJobQuota(CUSTOMER, 'TRY_ON_GENERATION', 'job1');
+    await reserveCustomerJobQuota(CUSTOMER, 'STYLE_ANALYSIS', 'job1');
     mockCustomerLimitFindUnique.mockResolvedValue({ limit_per_period: -1, period: 'MONTH' });
     await reserveCustomerJobQuota(CUSTOMER, 'TRY_ON_GENERATION', 'job1');
+    expect(mockExecuteRaw).not.toHaveBeenCalled();
+  });
+
+  it('no row on a METERED type is refused without touching the DB (H6-1)', async () => {
+    mockCustomerLimitFindUnique.mockResolvedValue(null);
+    await expect(
+      reserveCustomerJobQuota(CUSTOMER, 'TRY_ON_GENERATION', 'job1'),
+    ).rejects.toMatchObject({ code: 'CUSTOMER_LIMIT_EXCEEDED' });
     expect(mockExecuteRaw).not.toHaveBeenCalled();
   });
 
@@ -266,19 +283,23 @@ describe('refundCustomerJobQuota / markCustomerJobQuotaSpent', () => {
 // RC-073: the screen must report what checkQuota enforces, not a plan default.
 describe('getEnforcedQuota', () => {
   it.each([
-    ['no limit row (fail-open)', null],
-    ['an explicit unlimited (-1) row', { limit_per_period: -1, period: 'MONTH' }],
-  ])('%s -> unlimited, and checkQuota agrees', async (_n, row) => {
+    ['no limit row on a non-metered type (fail-open)', 'AI_TAGGING_CALL', null],
+    [
+      'an explicit unlimited (-1) row',
+      'TRY_ON_GENERATION',
+      { limit_per_period: -1, period: 'MONTH' },
+    ],
+  ] as const)('%s -> unlimited, and checkQuota agrees', async (_n, resource, row) => {
     mockPlanLimitFindUnique.mockResolvedValue(row);
     for (const plan of ['STARTER', 'GROWTH', 'PRO']) {
       mockRetailerFindUniqueOrThrow.mockResolvedValue({ plan });
-      expect(await getEnforcedQuota('r1', 'TRY_ON_GENERATION')).toEqual({
+      expect(await getEnforcedQuota('r1', resource)).toEqual({
         used: 0,
         limit: -1,
         remaining: -1,
         unlimited: true,
       });
-      await expect(checkQuota('r1', 'TRY_ON_GENERATION', 99)).resolves.toBeUndefined();
+      await expect(checkQuota('r1', resource, 99)).resolves.toBeUndefined();
     }
   });
 
@@ -308,5 +329,69 @@ describe('getEnforcedQuota', () => {
       mockUsageCounterFindUnique.mock.calls[0]?.[0].where.retailer_id_resource_type_period_start
         .period_start,
     ).toEqual(monthStart());
+  });
+});
+
+// H6-1: a resource that costs real money per call must fail CLOSED when no plan_limits row exists.
+// beforeEach already leaves override and plan_limits empty, i.e. the shipped default.
+describe('metered resources with no plan_limits row (H6-1)', () => {
+  const METERED = ['STUDIO_SHOOT', 'TRY_ON_GENERATION', 'BG_REMOVAL', 'IMAGE_CROP'] as const;
+
+  it.each(METERED)('checkQuota(%s) is refused', async (resource) => {
+    mockUsageCounterFindUnique.mockResolvedValue(null);
+    await expect(checkQuota('r1', resource)).rejects.toMatchObject({ code: 'PLAN_LIMIT_EXCEEDED' });
+  });
+
+  it.each(METERED)('reserveQuota(%s) is refused before any SQL', async (resource) => {
+    await expect(reserveQuota('r1', resource)).rejects.toMatchObject({
+      code: 'PLAN_LIMIT_EXCEEDED',
+    });
+    expect(mockExecuteRaw).not.toHaveBeenCalled();
+  });
+
+  it.each(METERED)('reserveJobQuota(%s) is refused before any SQL', async (resource) => {
+    await expect(reserveJobQuota('r1', resource, 'job1')).rejects.toMatchObject({
+      code: 'PLAN_LIMIT_EXCEEDED',
+    });
+    expect(mockExecuteRaw).not.toHaveBeenCalled();
+  });
+
+  it('getQuotaStatus and getEnforcedQuota report 0 left, agreeing with checkQuota (RC-073)', async () => {
+    mockUsageCounterFindUnique.mockResolvedValue(null);
+    for (const plan of ['STARTER', 'GROWTH', 'PRO']) {
+      mockRetailerFindUnique.mockResolvedValue({ plan });
+      mockRetailerFindUniqueOrThrow.mockResolvedValue({ plan });
+      expect(await getQuotaStatus('r1', 'STUDIO_SHOOT')).toMatchObject({
+        limit: 0,
+        remaining: 0,
+        unlimited: false,
+      });
+      expect(await getEnforcedQuota('r1', 'STUDIO_SHOOT')).toEqual({
+        used: 0,
+        limit: 0,
+        remaining: 0,
+        unlimited: false,
+      });
+    }
+  });
+
+  it('an explicit -1 plan row is still unlimited', async () => {
+    mockPlanLimitFindUnique.mockResolvedValue({ limit_per_period: -1, period: 'MONTH' });
+    await expect(checkQuota('r1', 'STUDIO_SHOOT', 99)).resolves.toBeUndefined();
+    await expect(reserveJobQuota('r1', 'STUDIO_SHOOT', 'job1')).resolves.toBeUndefined();
+    expect(mockExecuteRaw).not.toHaveBeenCalled();
+  });
+
+  it('a retailer override row is honoured even with no plan row', async () => {
+    mockOverrideFindUnique.mockResolvedValue({ limit_per_period: 5, period: 'MONTH' });
+    mockUsageCounterFindUnique.mockResolvedValue({ count: 1 });
+    await expect(checkQuota('r1', 'STUDIO_SHOOT')).resolves.toBeUndefined();
+  });
+
+  it('a NON-metered resource with no row stays fail-open', async () => {
+    await expect(checkQuota('r1', 'AI_TAGGING_CALL', 99)).resolves.toBeUndefined();
+    const refund = await reserveQuota('r1', 'AI_TAGGING_CALL');
+    await refund();
+    expect(mockExecuteRaw).not.toHaveBeenCalled();
   });
 });
