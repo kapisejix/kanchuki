@@ -17,7 +17,7 @@ import {
   User,
   Zap,
 } from 'lucide-react-native';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { KeyboardScreen } from '../src/components/KeyboardScreen';
 import {
   ActivityIndicator,
@@ -191,6 +191,9 @@ export default function OnboardingScreen() {
   const [step, setStep] = useState<Step>(1);
   const [saving, setSaving] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
+  // Sync guard: `saving` state reaches the handlers a render late, so two taps in
+  // one tick (or Dashboard + QR) would both pass it and save/redirect twice.
+  const busyRef = useRef(false);
 
   // ── Form state ──
   const [shopName, setShopName] = useState('');
@@ -255,7 +258,8 @@ export default function OnboardingScreen() {
   }, [step, saving, goToStep]);
 
   const handleNext = async () => {
-    if (saving || showConfetti) return;
+    if (busyRef.current || saving || showConfetti) return;
+    busyRef.current = true;
     setSaving(true);
     try {
       const nextStep = (step + 1) as Step;
@@ -324,6 +328,7 @@ export default function OnboardingScreen() {
     } catch (err) {
       showError(err, 'Could not save details. Please check your connection and try again.');
     } finally {
+      busyRef.current = false;
       setSaving(false);
     }
   };
@@ -363,7 +368,8 @@ export default function OnboardingScreen() {
   };
 
   const handleGetCatalogHelp = async () => {
-    if (saving || showConfetti) return;
+    if (busyRef.current || saving || showConfetti) return;
+    busyRef.current = true;
     setSaving(true);
     try {
       await saveFinalStep();
@@ -374,12 +380,14 @@ export default function OnboardingScreen() {
     } catch (err) {
       showError(err, 'Could not save details. Please try again.');
     } finally {
+      busyRef.current = false;
       setSaving(false);
     }
   };
 
   const handleCreateStoreQr = async () => {
-    if (saving || showConfetti) return;
+    if (busyRef.current || saving || showConfetti) return;
+    busyRef.current = true;
     setSaving(true);
     try {
       await saveFinalStep();
@@ -390,6 +398,7 @@ export default function OnboardingScreen() {
     } catch (err) {
       showError(err, 'Could not save details. Please try again.');
     } finally {
+      busyRef.current = false;
       setSaving(false);
     }
   };

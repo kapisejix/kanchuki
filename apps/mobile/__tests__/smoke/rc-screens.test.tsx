@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { act } from 'react-test-renderer'
 import { Alert, Linking } from 'react-native'
 import { render } from '../../src/test/__mocks__/testing-library'
@@ -63,6 +63,7 @@ const apiMock = vi.hoisted(() => {
 const queryStore = vi.hoisted(() => new Map<string, unknown>())
 const authState = vi.hoisted(() => ({ staffRole: null as string | null }))
 const invalidateMock = vi.hoisted(() => vi.fn())
+const setQueryDataMock = vi.hoisted(() => vi.fn())
 
 // Real ApiError: errors.ts apiMessage() uses instanceof against api/api-error.
 vi.mock('../../src/lib/api', async () => ({
@@ -161,7 +162,11 @@ vi.mock('@tanstack/react-query', () => ({
     },
     isPending: false,
   }),
-  useQueryClient: () => ({ invalidateQueries: invalidateMock, clear: vi.fn() }),
+  useQueryClient: () => ({
+    invalidateQueries: invalidateMock,
+    setQueryData: setQueryDataMock,
+    clear: vi.fn(),
+  }),
 }))
 
 // ── Tree helpers (same pattern as retailer-onboard.test.tsx) ──────
@@ -743,6 +748,215 @@ describe('onboarding steps 1-4 (T3.2-a #4)', () => {
 
     expect(vi.mocked(apiMock.retailerApi.update).mock.calls.length).toBe(updatesBefore)
     expect(vi.mocked(apiMock.retailerApi.updateOnboarding).mock.calls.map((c) => c[0])).toEqual([1, 2, 3])
+  })
+
+  // T3.2-a #4b: step 5 (saveFinalStep + QR slug + timed redirect).
+  describe('step 5', () => {
+    const DASH = 'Go to Dashboard →'
+    const api = apiMock.retailerApi
+    const toStep5 = async (tree: T) => {
+      await toStep3(tree)
+      await press(tree, NEXT[3])
+      await pressPrefix(tree, 'Growth plan')
+      await press(tree, NEXT[4])
+      // count only what step 5 does
+      for (const fn of [api.update, api.updateOnboarding, api.getQrSlug, setQueryDataMock, invalidateMock, router.replace]) {
+        vi.mocked(fn).mockClear()
+      }
+    }
+    const pressText = async (tree: T, label: string) => {
+      const node = findPressableByText(tree, label)
+      expect(node, label).toBeTruthy()
+      await act(async () => {
+        await (node!.props.onPress as () => unknown)()
+      })
+    }
+    const advance = async (ms: number) => {
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(ms)
+      })
+    }
+    const done = { data: { onboarding_step: 5, onboarding_completed: true } }
+
+    beforeEach(() => {
+      vi.useFakeTimers()
+      vi.mocked(api.getQrSlug).mockResolvedValue({ data: {} } as never)
+      vi.mocked(api.updateOnboarding).mockResolvedValue(done as never)
+    })
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('Go to Dashboard saves profile, makes the QR slug, completes onboarding, then redirects after 1.5 s', async () => {
+      const tree = mount()
+      await toStep5(tree)
+      await press(tree, DASH)
+
+      expect(vi.mocked(api.update).mock.calls[0][0]).toMatchObject({ shop_name: 'Radha Sarees', address_line1: '1 MG Road' })
+      expect(vi.mocked(api.updateOnboarding).mock.calls).toEqual([[5, true]])
+      const order = [api.update, api.getQrSlug, api.updateOnboarding].map(
+        (f) => vi.mocked(f).mock.invocationCallOrder[0],
+      )
+      expect(order).toEqual([...order].sort((a, b) => a - b))
+      expect(router.replace).not.toHaveBeenCalled()
+      await advance(1499)
+      expect(router.replace).not.toHaveBeenCalled()
+      await advance(1)
+      expect(router.replace).toHaveBeenCalledWith('/(tabs)')
+    })
+
+    it('once saved, a second tap does not save again (confetti guard)', async () => {
+      const tree = mount()
+      await toStep5(tree)
+      await press(tree, DASH)
+      await press(tree, DASH)
+      await advance(1500)
+
+      expect(api.update).toHaveBeenCalledTimes(1)
+      expect(router.replace).toHaveBeenCalledTimes(1)
+    })
+
+    it.each([
+      ['Create your store QR code', '/store-profile'],
+      ['Catalog Upload Help', '/settings/catalog-upload'],
+    ])('%s saves first, then redirects to %s', async (label, target) => {
+      const tree = mount()
+      await toStep5(tree)
+      await pressText(tree, label)
+
+      expect(vi.mocked(api.updateOnboarding).mock.calls).toEqual([[5, true]])
+      await advance(1500)
+      expect(router.replace).toHaveBeenCalledWith(target)
+    })
+
+    it('a failed QR slug never blocks completing onboarding', async () => {
+      const tree = mount()
+      await toStep5(tree)
+      vi.mocked(api.getQrSlug).mockRejectedValueOnce(new Error('slug down'))
+      await press(tree, DASH)
+      await advance(1500)
+
+      expect(vi.mocked(api.updateOnboarding).mock.calls).toEqual([[5, true]])
+      expect(router.replace).toHaveBeenCalledWith('/(tabs)')
+    })
+
+    it('a rejected profile save shows the server reason, stops, and leaves the button usable', async () => {
+      const alertSpy = vi.spyOn(Alert, 'alert').mockImplementation(() => {})
+      const tree = mount()
+      await toStep5(tree)
+      vi.mocked(api.update).mockRejectedValueOnce(new ApiError('VALIDATION', 'Pincode invalid', 422))
+      await press(tree, DASH)
+      await advance(2000)
+
+      expect(alertSpy.mock.calls.find((c) => c[0] === 'Error')![1]).toBe('Pincode invalid')
+      expect(api.getQrSlug).not.toHaveBeenCalled()
+      expect(api.updateOnboarding).not.toHaveBeenCalled()
+      expect(router.replace).not.toHaveBeenCalled()
+      expect(disabled(tree, DASH)).toBe(false)
+    })
+
+    it('a failed completion call alerts, skips the cache write and does not redirect', async () => {
+      const alertSpy = vi.spyOn(Alert, 'alert').mockImplementation(() => {})
+      const tree = mount()
+      await toStep5(tree)
+      vi.mocked(api.updateOnboarding).mockRejectedValueOnce(new ApiError('SERVER', 'boom', 500))
+      await press(tree, DASH)
+      await advance(2000)
+
+      expect(alertSpy.mock.calls.find((c) => c[0] === 'Error')).toBeDefined()
+      expect(setQueryDataMock).not.toHaveBeenCalled()
+      expect(router.replace).not.toHaveBeenCalled()
+      expect(disabled(tree, DASH)).toBe(false)
+    })
+
+    it('writes the completed state into the retailer cache and refetches it', async () => {
+      const tree = mount()
+      await toStep5(tree)
+      await press(tree, DASH)
+
+      const [key, updater] = setQueryDataMock.mock.calls[0] as [unknown[], (old: unknown) => unknown]
+      expect(key).toEqual(['retailer', 'me'])
+      expect(updater({ data: { shop_name: 'Radha Sarees' } })).toEqual({
+        data: { shop_name: 'Radha Sarees', onboarding_step: 5, onboarding_completed: true },
+      })
+      expect(updater(undefined)).toEqual({ data: { onboarding_step: 5, onboarding_completed: true } })
+      expect(invalidateMock).toHaveBeenCalledWith({ queryKey: ['retailer', 'me'] })
+    })
+
+    // RC-135: the guard was `saving || showConfetti` STATE, which a second tap in
+    // the same tick still saw as false (RC-015/132/134 shape); now a sync ref.
+    it('two taps in one tick save once', async () => {
+      const tree = mount()
+      await toStep5(tree)
+      const tap = findPressableByLabel(tree, DASH)!.props.onPress as () => unknown
+      await act(async () => {
+        tap()
+        tap()
+      })
+      await advance(1500)
+
+      expect(api.update).toHaveBeenCalledTimes(1)
+      expect(router.replace).toHaveBeenCalledTimes(1)
+    })
+
+    it.each(['Create your store QR code', 'Catalog Upload Help'])('two taps on %s in one tick save once', async (label) => {
+      const tree = mount()
+      await toStep5(tree)
+      const tap = findPressableByText(tree, label)!.props.onPress as () => unknown
+      await act(async () => {
+        tap()
+        tap()
+      })
+      await advance(1500)
+
+      expect(api.update).toHaveBeenCalledTimes(1)
+      expect(router.replace).toHaveBeenCalledTimes(1)
+    })
+
+    it('two taps in one tick on step 1 save once, and the next step is usable afterwards', async () => {
+      const tree = mount()
+      await typeInto(tree, SHOP, 'Radha Sarees')
+      await press(tree, CONSENT)
+      const tap = findPressableByLabel(tree, NEXT[1])!.props.onPress as () => unknown
+      await act(async () => {
+        tap()
+        tap()
+      })
+
+      expect(api.update).toHaveBeenCalledTimes(1)
+      expect(vi.mocked(api.updateOnboarding).mock.calls.map((c) => c[0])).toEqual([1])
+      expect(input(tree, ADDRESS)).toBeDefined() // advanced exactly one step
+      await typeInto(tree, ADDRESS, '1 MG Road')
+      await press(tree, NEXT[2]) // guard released after success
+      expect(vi.mocked(api.updateOnboarding).mock.calls.map((c) => c[0])).toEqual([1, 2])
+    })
+
+    it('a failed save releases the guard so the retailer can retry', async () => {
+      vi.spyOn(Alert, 'alert').mockImplementation(() => {})
+      const tree = mount()
+      await toStep5(tree)
+      vi.mocked(api.update).mockRejectedValueOnce(new ApiError('SERVER', 'boom', 500))
+      await press(tree, DASH)
+      await press(tree, DASH)
+      await advance(1500)
+
+      expect(api.update).toHaveBeenCalledTimes(2)
+      expect(router.replace).toHaveBeenCalledTimes(1)
+    })
+
+    it('Dashboard + QR taps in one tick redirect once', async () => {
+      const tree = mount()
+      await toStep5(tree)
+      const dash = findPressableByLabel(tree, DASH)!.props.onPress as () => unknown
+      const qr = findPressableByText(tree, 'Create your store QR code')!.props.onPress as () => unknown
+      await act(async () => {
+        dash()
+        qr()
+      })
+      await advance(1500)
+
+      expect(router.replace).toHaveBeenCalledTimes(1)
+    })
   })
 })
 // ── T3.2-a #5: enquiries inbox (F-044 E3) ─────────────────────────
