@@ -6,7 +6,11 @@ import { render } from '../../src/test/__mocks__/testing-library'
 // RN injects `__DEV__` at runtime; vitest's Node env doesn't. showError()
 // (src/lib/errors.ts) references it before calling Alert.alert, so without
 // this the RC-009 interaction crashes instead of asserting the alert.
-;(globalThis as Record<string, unknown>).__DEV__ = true
+// vi.hoisted runs before the (hoisted) imports; a bare assignment here ran too late.
+vi.hoisted(() => {
+  ;(globalThis as Record<string, unknown>).__DEV__ = true
+})
+import { ApiError } from '../../src/lib/api/api-error'
 import CustomerDetailScreen from '../../app/customer/[id]'
 import GstScreen from '../../app/growth/gst'
 import StaffScreen from '../../app/settings/staff'
@@ -21,18 +25,7 @@ import { useLocalSearchParams } from 'expo-router'
 // that module gets its own mock.
 
 const apiMock = vi.hoisted(() => {
-  class ApiError extends Error {
-    code: string
-    status: number
-    constructor(code: string, message: string, status: number) {
-      super(message)
-      this.code = code
-      this.status = status
-      this.name = 'ApiError'
-    }
-  }
   return {
-    ApiError,
     customerApi: { get: vi.fn(), update: vi.fn(), delete: vi.fn() },
     productAttributeApi: { list: vi.fn() },
     staffApi: { list: vi.fn(), create: vi.fn(), delete: vi.fn() },
@@ -63,7 +56,11 @@ const apiMock = vi.hoisted(() => {
 
 const queryStore = vi.hoisted(() => new Map<string, unknown>())
 
-vi.mock('../../src/lib/api', () => apiMock)
+// Real ApiError: errors.ts apiMessage() uses instanceof against api/api-error.
+vi.mock('../../src/lib/api', async () => ({
+  ...apiMock,
+  ApiError: (await import('../../src/lib/api/api-error')).ApiError,
+}))
 vi.mock('../../src/lib/api/growth', () => ({
   growthApi: {
     gstSummary: vi.fn(),
@@ -117,6 +114,11 @@ vi.mock('expo-location', () => ({
   Accuracy: { High: 4 },
 }))
 
+// Some screen imports (e.g. lib/api/products.ts, which the api-barrel mock does not
+// cover) reach expo-file-system/legacy → real expo-modules-core, whose EventEmitter
+// needs the native runtime. Same reason as the mocks above.
+vi.mock('expo-file-system/legacy', () => ({}))
+vi.mock('expo-file-system', () => ({ File: class {}, Paths: {}, Directory: class {} }))
 // ── Data-driven react-query mock (overrides setup's empty-data mock) ──
 vi.mock('@tanstack/react-query', () => ({
   useQuery: ({ queryKey }: { queryKey: unknown[] }) => ({
@@ -248,13 +250,14 @@ const customer = {
   // dropped in the 2026-08-31 teardown (migration 082).
 }
 
+// Amounts are paise (RC-109): gst.tsx renders them via inrFromPaise.
 const gstSummary = {
-  total_sales: 100000,
-  total_gst: 18000,
-  total_taxable: 100000,
+  total_sales: 10000000,
+  total_gst: 1800000,
+  total_taxable: 10000000,
   total_orders: 5,
-  cgst: 9000,
-  sgst: 9000,
+  cgst: 900000,
+  sgst: 900000,
   igst: 0,
   invoiced_orders: 3,
   pending_orders: 2,
@@ -333,7 +336,7 @@ describe('RC-009 add team member smoke', () => {
 
     // The server rejects with a real ApiError (duplicate phone).
     vi.mocked(apiMock.staffApi.create).mockRejectedValue(
-      new apiMock.ApiError('TEAM_ERROR', 'This phone number already belongs to a retailer account', 400),
+      new ApiError('TEAM_ERROR', 'This phone number already belongs to a retailer account', 400),
     )
 
     const alertSpy = vi.spyOn(Alert, 'alert')

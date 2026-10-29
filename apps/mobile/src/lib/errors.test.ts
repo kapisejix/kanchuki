@@ -57,6 +57,13 @@ describe('raw err.message on screens', () => {
     expect(readFileSync(resolve(root, 'auth/otp.tsx'), 'utf8')).toMatch(/showError\(err, 'Failed to resend OTP'\)/)
     expect(readFileSync(resolve(root, 'enquiry-try-on.tsx'), 'utf8')).toMatch(/showError\(err, 'Please try again/)
   })
+  // RC-114: apiMessage's own tests pass whatever onboarding does, so pin the three catches
+  // (profile, GST, done) to showError; a constant Alert here swallows the 422 "invalid GSTIN".
+  it('onboarding save catches report through showError, not a constant Alert', () => {
+    const src = readFileSync(resolve(root, 'onboarding.tsx'), 'utf8')
+    expect(src.match(/showError\(err, 'Could not save details/g)).toHaveLength(3)
+    expect(src).not.toMatch(/Alert\.alert\([^)]*Could not save details/)
+  })
 })
 
 // RC-114: onboarding (and RC-003/RC-009 before it) replaced the server's reason with a
