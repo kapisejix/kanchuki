@@ -92,6 +92,8 @@ export const Dimensions = {
   addEventListener: () => ({ remove: () => {} }),
 }
 
+export const useWindowDimensions = () => ({ width: 390, height: 844, scale: 2, fontScale: 1 })
+
 export const PixelRatio = {
   get: () => 2,
   getFontScale: () => 1,
@@ -294,6 +296,7 @@ export default {
   StyleSheet,
   Platform,
   Dimensions,
+  useWindowDimensions,
   PixelRatio,
   Animated,
   Linking,
