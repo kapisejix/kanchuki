@@ -270,7 +270,6 @@ async function run(data: TryOnJobData, held: { spent: boolean }): Promise<void> 
           );
       }
     }
-
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error(`[try-on] job ${job_id} failed:`, err);

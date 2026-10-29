@@ -58,7 +58,10 @@ export async function handleQuotaReservationSweep(
   now = new Date(),
 ): Promise<QuotaReservationSweepResult> {
   const rows = await prisma.quotaReservation.findMany({
-    where: { state: 'RESERVED', created_at: { lt: new Date(now.getTime() - RESERVATION_MIN_AGE_MS) } },
+    where: {
+      state: 'RESERVED',
+      created_at: { lt: new Date(now.getTime() - RESERVATION_MIN_AGE_MS) },
+    },
     orderBy: { created_at: 'asc' },
     take: BATCH,
     select: { job_id: true, resource_type: true, retailer_id: true, customer_account_id: true },

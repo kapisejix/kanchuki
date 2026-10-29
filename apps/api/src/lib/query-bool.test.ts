@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { stripComments } from '@kanchuki/shared/testing';
 import { describe, expect, it } from 'vitest';

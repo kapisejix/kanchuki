@@ -96,9 +96,15 @@ describe('outbound fetch has a timeout (RC-118)', () => {
       .flatMap((f) => {
         const src = stripComments(readFileSync(f, 'utf8'));
         if (/fetchWithTimeout\s+as\s+fetch\b/.test(src)) return []; // every fetch( is wrapped
-        const rel = f.slice(SRC.length + 1).split('\\').join('/');
+        const rel = f
+          .slice(SRC.length + 1)
+          .split('\\')
+          .join('/');
         return fetchCalls(src)
-          .filter((c) => (seen++, !HAS_TIMEOUT.test(c.text)))
+          .filter((c) => {
+            seen++;
+            return !HAS_TIMEOUT.test(c.text);
+          })
           .map((c) => `${rel}:${c.line}`);
       });
     expect(seen).toBeGreaterThan(20); // the scan must reach the AbortSignal.timeout files
