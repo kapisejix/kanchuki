@@ -70,14 +70,18 @@ export default function BulkOnboardScreen() {
     retailerApi
       .getSections()
       .then((res) => setSections(res.data as Section[]))
-      .catch(() => {})
+      .catch((err) =>
+        setError(apiMessage(err, 'Could not load your racks. Go back and reopen this screen to retry.')),
+      )
     retailerApi
       .getStats()
       .then((res) => {
         const stats = res.data as { total_products_available?: number }
         setBaselineCount(stats.total_products_available ?? 0)
       })
-      .catch(() => {})
+      .catch((err) =>
+        setError(apiMessage(err, 'Could not load your catalogue count, so the number below may be low.')),
+      )
   }, [])
 
   // ── Create a new rack/shelf inline ──────────────────────────────
