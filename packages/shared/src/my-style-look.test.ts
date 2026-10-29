@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
+import { DEFAULT_COLOR_FAMILIES } from './color-family.js';
 import {
-  COMPLEMENT_MAP,
   COMPLEMENTARY_COLORS,
+  COMPLEMENT_MAP,
   LOOK_SLOTS,
   classifyAnchor,
   complementFamilies,
   matchesSlot,
 } from './my-style-look.js';
-import { DEFAULT_COLOR_FAMILIES } from './color-family.js';
 
 const p = (category: string | null, subtype: string | null = null) => ({ category, subtype });
 

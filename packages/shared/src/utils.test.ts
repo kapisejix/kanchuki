@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
+  INDIAN_MOBILE_REGEX,
   buildEnquiryMessage,
   formatPrice,
   formatPriceRange,
-  INDIAN_MOBILE_REGEX,
   isValidIndianPhone,
   normalizeIndianPhone,
 } from './utils/index.js';
@@ -116,7 +116,7 @@ describe('buildEnquiryMessage', () => {
       ...base,
       products: [{ name: 'Pink Embroidered Kurti', price_min: 110000 }],
     });
-    expect(message).toContain("• Pink Embroidered Kurti - ₹1,100/-");
+    expect(message).toContain('• Pink Embroidered Kurti - ₹1,100/-');
     expect(message).not.toContain('http');
   });
 
@@ -156,7 +156,12 @@ Please share availability and details. 🙏`);
     const message = buildEnquiryMessage({
       ...base,
       products: [
-        { name: 'Off-White Kurti', price_min: 80000, sku: 'KUR-101', product_url: 'https://k.app/p' },
+        {
+          name: 'Off-White Kurti',
+          price_min: 80000,
+          sku: 'KUR-101',
+          product_url: 'https://k.app/p',
+        },
       ],
     });
     expect(message).toContain('• Off-White Kurti - ₹800/- (SKU: KUR-101)\n  https://k.app/p');
@@ -169,7 +174,9 @@ Please share availability and details. 🙏`);
         collectionTitle,
         products: [{ name: 'Kurti', price_min: 80000 }],
       });
-      expect(message.startsWith('Namaste! I saw your collection from Radha Clothing Store.')).toBe(true);
+      expect(message.startsWith('Namaste! I saw your collection from Radha Clothing Store.')).toBe(
+        true,
+      );
       expect(message.match(/Radha Clothing Store/gi)).toHaveLength(1);
     }
   });

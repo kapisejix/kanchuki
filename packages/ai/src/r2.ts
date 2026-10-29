@@ -17,7 +17,7 @@ import { readCappedBuffer, ssrfSafeFetch } from './safe-fetch.js';
 // not worth a deeper async-endpoint refactor.
 const r2 = new S3Client({
   region: 'auto',
-  endpoint: `https://${process.env['R2_ACCOUNT_ID']}.r2.cloudflarestorage.com`,
+  endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
   credentials: async () => ({
     accessKeyId: (await getSecret('R2_ACCESS_KEY_ID')) ?? '',
     secretAccessKey: (await getSecret('R2_SECRET_ACCESS_KEY')) ?? '',
@@ -28,13 +28,13 @@ async function getBucket(): Promise<string> {
   return (await getSecret('R2_BUCKET_NAME')) ?? 'kanchuki-prod';
 }
 
-const PUBLIC_URL = process.env['R2_PUBLIC_URL'] ?? '';
+const PUBLIC_URL = process.env.R2_PUBLIC_URL ?? '';
 
 /** Generate presigned PUT URL for direct browser upload */
 export async function getUploadPresignedUrl(
   key: string,
   contentType: string,
-  expiresIn = 300, // 5 minutes
+  expiresIn: number | undefined, // undefined = 300 s (5 minutes)
   /**
    * Exact byte length of the PUT body. It is part of the signature, so a PUT of any other size
    * is rejected and one URL cannot be used to store a huge object (RC-080).
@@ -50,7 +50,7 @@ export async function getUploadPresignedUrl(
     ContentType: contentType,
     ContentLength: contentLength,
   });
-  return getSignedUrl(r2, command, { expiresIn });
+  return getSignedUrl(r2, command, { expiresIn: expiresIn ?? 300 });
 }
 
 /**
@@ -253,7 +253,7 @@ export function summarizeR2Objects(
  * via the admin Storage Report page). Throws when R2 is unconfigured.
  */
 export async function measureR2Storage(): Promise<R2StorageMeasurement> {
-  if (!process.env['R2_ACCOUNT_ID']) {
+  if (!process.env.R2_ACCOUNT_ID) {
     throw new Error('R2 not configured on this environment (R2_ACCOUNT_ID missing)');
   }
   const bucket = await getBucket();
