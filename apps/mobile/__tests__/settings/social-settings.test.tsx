@@ -389,10 +389,9 @@ describe('connect', () => {
     expect(byLabel(t, 'Connect Facebook Page')?.disabled).toBeFalsy()
   })
 
-  // RC-015 shape: openConnect has no sync guard, only `connecting` state, which reaches the
-  // button after a render. Two taps in one tick run the login + connect twice.
-  // it.fails = this expectation fails today; flip to `it` once a connectingRef guard lands.
-  it.fails('a second tap in the same tick starts no second login', async () => {
+  // RC-132 (RC-015 shape): `connecting` state reaches the button a render late, so openConnect
+  // is guarded by connectingRef; two taps in one tick start one login.
+  it('a second tap in the same tick starts no second login', async () => {
     let settle: (v: string) => void = () => {}
     m.loginWithFacebook.mockImplementation(() => new Promise((r) => (settle = r)))
     vi.spyOn(Alert, 'alert').mockImplementation(() => {})
