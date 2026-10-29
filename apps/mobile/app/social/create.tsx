@@ -234,6 +234,8 @@ export default function CreateSocialPostScreen() {
       });
       const d = (res as { data?: { caption?: string; hashtags?: string[] } }).data;
       if (!d?.caption) return;
+      // RC-133: the retailer typed while this request was in flight — theirs wins.
+      if (captionTouched.current) return;
       const tags = (d.hashtags ?? []).map((h) => (h.startsWith('#') ? h : `#${h}`));
       const text = d.caption + (tags.length > 0 ? `\n\n${tags.join(' ')}` : '');
       lastAiFill.current = text;
@@ -256,6 +258,8 @@ export default function CreateSocialPostScreen() {
     let cancelled = false;
     const timer = setTimeout(() => {
       if (cancelled) return;
+      // RC-133: typing does not re-run this effect, so re-check at fire time.
+      if (captionTouched.current) return;
       suggestedFor.current = suggestSignature; // never retry the same content
       void runCaptionSuggest();
     }, 900);

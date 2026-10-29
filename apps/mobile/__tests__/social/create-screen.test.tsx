@@ -452,3 +452,180 @@ describe('social composer (T3.2-a #6)', () => {
     })
   })
 })
+
+// T3.2-a #6b — AI caption auto-suggest: 900 ms debounce on content change, never over the
+// retailer's own text. Fake timers; the file's real-timer `flush`/`mount` are not used here.
+describe('caption auto-suggest (T3.2-a #6b)', () => {
+  const tick = (ms: number) => act(async () => { await vi.advanceTimersByTimeAsync(ms) })
+  const fakeMount = async (params: Record<string, string> = {}) => {
+    vi.mocked(useLocalSearchParams).mockReturnValue(params)
+    const t = render(<CreateSocialPostScreen />)
+    mounted.push(t)
+    await tick(0)
+    return t
+  }
+  const pick = async (t: Tree, id: string) => {
+    await act(async () => {
+      byLabel(t, `pick ${id}`)!.onPress()
+      await vi.advanceTimersByTimeAsync(0)
+    })
+  }
+  const type = (t: Tree, v: string) =>
+    act(async () => {
+      (collectNodes(t.toTree() as TreeNode, (x) => x.props?.accessibilityLabel === 'Post caption' && typeof x.props?.onChangeText === 'function')[0].props as unknown as { onChangeText: (v: string) => void }).onChangeText(v)
+    })
+  const captionValue = (t: Tree) =>
+    (collectNodes(t.toTree() as TreeNode, (x) => x.props?.accessibilityLabel === 'Post caption' && 'value' in x.props)[0].props as unknown as { value: string }).value
+  const suggest = vi.mocked(apiMock.socialApi.suggestCaption)
+  const ai = (caption: string, hashtags: string[] = []) => ({ data: { caption, hashtags } }) as never
+
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.mocked(apiMock.productApi.get).mockImplementation(async (id: string) => detail(id) as never)
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('waits 900 ms after a product is picked, then asks for that product; the fill adds # to tags and shows in the preview', async () => {
+    suggest.mockResolvedValue(ai('Festive suit', ['diwali', '#suit']))
+    const t = await fakeMount()
+    await pick(t, 'p1')
+    await tick(899)
+    expect(suggest).not.toHaveBeenCalled()
+    await tick(1)
+    expect(suggest).toHaveBeenCalledTimes(1)
+    expect(suggest).toHaveBeenCalledWith({ product_ids: ['p1'], post_type: 'SINGLE_PRODUCT' })
+    expect(captionValue(t)).toBe('Festive suit\n\n#diwali #suit')
+    expect(ui.preview!.caption).toBe('Festive suit\n\n#diwali #suit')
+    expect(text(t)).toContain('AI suggestion — edit freely')
+  })
+
+  it('shows "Writing with AI…" while the request is in flight', async () => {
+    let settle: (v: unknown) => void = () => {}
+    suggest.mockImplementation(() => new Promise((r) => (settle = r)) as never)
+    const t = await fakeMount()
+    await pick(t, 'p1')
+    await tick(900)
+    expect(text(t)).toContain('Writing with AI…')
+    await act(async () => {
+      settle(ai('Done'))
+      await vi.advanceTimersByTimeAsync(0)
+    })
+    expect(text(t)).not.toContain('Writing with AI…')
+    expect(captionValue(t)).toBe('Done')
+  })
+
+  it('nothing selected: never asks', async () => {
+    await fakeMount()
+    await tick(5000)
+    expect(suggest).not.toHaveBeenCalled()
+  })
+
+  it('a caption typed before picking is left alone: no request at all', async () => {
+    const t = await fakeMount()
+    await type(t, 'My own words')
+    await pick(t, 'p1')
+    await tick(5000)
+    expect(suggest).not.toHaveBeenCalled()
+    expect(captionValue(t)).toBe('My own words')
+  })
+
+  it('a failed suggest is silent, tried once for that content, and leaves the caption empty', async () => {
+    // a slow failure: the in-flight flag must commit between request and rejection, as on a real network
+    suggest.mockImplementation(() => new Promise((_, rej) => setTimeout(() => rej(new Error('off')), 50)) as never)
+    const t = await fakeMount()
+    await pick(t, 'p1')
+    await tick(900)
+    // 1 s steps: a retry loop re-arms its timer on each React commit, which only lands between acts
+    for (let i = 0; i < 6; i++) await tick(1000)
+    expect(suggest).toHaveBeenCalledTimes(1)
+    expect(captionValue(t)).toBe('')
+    expect(text(t)).not.toContain('Writing with AI…')
+    expect(text(t)).toContain('Empty caption = auto-filled at publish')
+  })
+
+  it('a response with no caption leaves the caption empty', async () => {
+    suggest.mockResolvedValue({ data: {} } as never)
+    const t = await fakeMount()
+    await pick(t, 'p1')
+    await tick(900)
+    expect(suggest).toHaveBeenCalledTimes(1)
+    expect(captionValue(t)).toBe('')
+  })
+
+  it('changing the content re-suggests over the previous AI fill', async () => {
+    suggest.mockResolvedValueOnce(ai('First')).mockResolvedValueOnce(ai('Second'))
+    const t = await fakeMount({ product_ids: 'p1,p2' })
+    await tick(900)
+    expect(captionValue(t)).toBe('First')
+    await pick(t, 'p2') // toggles p2 off
+    await tick(900)
+    expect(suggest).toHaveBeenCalledTimes(2)
+    expect(suggest).toHaveBeenLastCalledWith({ product_ids: ['p1'], post_type: 'CAROUSEL' })
+    expect(captionValue(t)).toBe('Second')
+  })
+
+  it('changing the content does not overwrite a caption the retailer edited after an AI fill', async () => {
+    suggest.mockResolvedValue(ai('First'))
+    const t = await fakeMount({ product_ids: 'p1' })
+    await tick(900)
+    await type(t, 'First, but mine')
+    await pick(t, 'p2')
+    await tick(5000)
+    expect(suggest).toHaveBeenCalledTimes(1)
+    expect(captionValue(t)).toBe('First, but mine')
+    expect(text(t)).toContain('Your caption — no auto-fill at publish')
+  })
+
+  it('rapid picks restart the 900 ms timer: one request, for both products', async () => {
+    suggest.mockResolvedValue(ai('Both'))
+    const t = await fakeMount({ product_ids: 'p1,p2' })
+    await tick(500)
+    await pick(t, 'p2') // off
+    await tick(500)
+    await pick(t, 'p2') // on again: timer restarts here, not at mount
+    await tick(899)
+    expect(suggest).not.toHaveBeenCalled()
+    await tick(1)
+    expect(suggest).toHaveBeenCalledTimes(1)
+    expect(suggest).toHaveBeenCalledWith({ product_ids: ['p1', 'p2'], post_type: 'CAROUSEL' })
+  })
+
+  it('a collection link asks with no products, from the collection id alone', async () => {
+    suggest.mockResolvedValue(ai('Diwali edit'))
+    const t = await fakeMount({ collection_id: 'col1' })
+    await tick(1000)
+    expect(suggest).toHaveBeenCalledWith({ product_ids: [], post_type: 'COLLECTION_LINK' })
+    expect(captionValue(t)).toBe('Diwali edit')
+  })
+
+  // Typing inside the debounce window: `captionTouched` was only read when the timer was armed,
+  // so the timer still fired and the AI text replaced the retailer's.
+  it('typing inside the 900 ms window cancels the suggestion', async () => {
+    suggest.mockResolvedValue(ai('AI text'))
+    const t = await fakeMount()
+    await pick(t, 'p1')
+    await tick(300)
+    await type(t, 'My own words')
+    await tick(5000)
+    expect(captionValue(t)).toBe('My own words')
+    expect(suggest).not.toHaveBeenCalled()
+  })
+
+  // Typing while the request is in flight: the response used to land on top of it.
+  it('typing while the request is in flight keeps the typed text', async () => {
+    let settle: (v: unknown) => void = () => {}
+    suggest.mockImplementation(() => new Promise((r) => (settle = r)) as never)
+    const t = await fakeMount()
+    await pick(t, 'p1')
+    await tick(900)
+    await type(t, 'Mine')
+    await act(async () => {
+      settle(ai('AI text'))
+      await vi.advanceTimersByTimeAsync(0)
+    })
+    expect(captionValue(t)).toBe('Mine')
+    expect(text(t)).toContain('Your caption — no auto-fill at publish')
+  })
+})
