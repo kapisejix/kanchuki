@@ -195,4 +195,4 @@ Status: Plausible
 - `pnpm audit` result (see §CVE).
 - Live validity of any leaked password; Supabase/Upstash/Hetzner network exposure; the `REDIS_URL` scheme; R2 bucket listing. All are owner checks in `00-hacker-report.md`.
 - `services/photo-cleanup/app.py` auth code not read (its compose file already fails closed on a missing secret).
-- No RC numbers assigned: none of these is a shipped fix yet. Next free ID: RC-090.
+- No RC numbers assigned: none of these is a shipped fix yet. Next free ID: RC-103.

@@ -25,10 +25,20 @@ Method: code/config review plus local Fastify `inject()` harnesses. Nothing was 
 | H1-8 One shared admin password, no 2FA, no revocation | Low | Open |
 | H1-9 MSG91 widget token replay | Low | Open (could not verify) |
 | H2-1 … H2-6 | Med/Low | Open |
-| H3-1 … H3-3 | High/Med | Open |
-| H4-1 … H4-8 | High/Med/Low | Open |
+| H3-1 Percent-encoded path skips Super-Admin gate | High | Fixed (RC-090), not deployed |
+| H3-2 Admin gate deny-list, `SUPPORT_MANAGER` full power | Medium | Fixed (RC-091), not deployed |
+| H3-3 Admin gate trusts JWT role, no DB re-check | Medium | Fixed (RC-092), not deployed. Follow-up open: `team-helpers.ts:76` `verifyAdminSession` still trusts the JWT role |
+| H4-1 Leads route trusts body `customer_account_id` | High | Fixed (RC-093), not deployed |
+| H4-2 `/v1/customers` leaks `phone_hash` + `customer_account_id` | Medium | Fixed (RC-096), not deployed |
+| H4-3 Anonymous reviews | Medium | Fixed (RC-098, RC-099), not deployed. Owner-action: apply migration 139 |
+| H4-4 Legacy lead form overwrites customers, forges consent | Medium | Fixed (RC-094), not deployed |
+| H4-5 Passport events accept any `retailer_id` | Low | Fixed (RC-095), not deployed. Known gap: store-level events can still be attributed to any real retailer |
+| H4-6 `near-me` exposes login phone | Low | Fixed (RC-097), not deployed |
+| H4-7, H4-8 | Low | Open |
 | H5-1 … H5-5 | Med/Low | Open (H5-1 Owner-action) |
-| H6-1 … H6-4 | High/Med/Low | Open (H6-1 Owner-action first) |
+| H6-1 STUDIO_SHOOT quota fails open on missing `plan_limits` row | High | **Open.** Re-checked 2026-10-29: `quota.ts` `checkQuota`, `reserveQuota`, `reserveJobQuota`, `reserveCustomerJobQuota` all still return on no row (RC-102 copied the rule). No `METERED` guard. Owner-action first: seed STUDIO_SHOOT rows |
+| H6-2 Burst overshoots an AI cap | Medium | Partly fixed (RC-102): reserve-at-enqueue for Studio Shoot, My Style, try-on, social templates, POST /products, growth AI routes. Tagging and catalog-import AI checks left on check-then-increment. Mock tests only; scratch-DB run pending; migration 145 not applied in prod |
+| H6-3, H6-4 | Low | Open |
 | H7-1 … H7-4 | Med/Low | Open (H7-1, H7-4 Owner-action) |
 | H8-1 … H8-6 | Crit/Med/Low | Open (H8-1 Owner-action only) |
 | SC-1 / SC-2 (supply-chain report) | P0 | Open, Owner-action (rotate; make repo private) |
@@ -80,7 +90,9 @@ Effort: S ≤ ½ day, M ≤ 2 days, L > 2 days. Owner = needs a dashboard/config
 | 39 | H5-5 | Low | Ken Burns raw `fetch(photo.url)` fallback (hardening, not exploitable) | S | n |
 | 40 | H7-3 | Low | No certificate pinning (informational, not exploitable) | — | n |
 
-**Totals (open): Critical 1, High 3, Medium 15, Low 21 = 40.** Dependency CVEs: see `H8-infra-secrets.md` §CVE (not in these counts). SC-1, SC-2 (P0, owner) tracked in the SC report.
+**Reconciled 2026-10-29 against the CLAUDE.md RC tracker.** Rows 2, 3, 8, 9, 10, 11, 12, 28, 29 below are Fixed locally (RC-090 … RC-098), not deployed; row 13 (H6-2) is partly fixed (RC-102). They are kept for history and excluded from the totals.
+
+**Totals (open): Critical 1, High 1, Medium 10, Low 19 = 31** (was 40; 9 fixed). H6-2 is counted as open until RC-102 is verified on a real DB. Dependency CVEs: see `H8-infra-secrets.md` §CVE (not in these counts). SC-1, SC-2 (P0, owner) tracked in the SC report.
 
 ## Owner checks (dashboard-only facts that set the severity)
 
