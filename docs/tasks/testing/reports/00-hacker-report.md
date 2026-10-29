@@ -36,7 +36,7 @@ Method: code/config review plus local Fastify `inject()` harnesses. Nothing was 
 | H4-6 `near-me` exposes login phone | Low | Fixed (RC-097), not deployed |
 | H4-7, H4-8 | Low | Open |
 | H5-1 … H5-5 | Med/Low | Open (H5-1 Owner-action) |
-| H6-1 STUDIO_SHOOT quota fails open on missing `plan_limits` row | High | **Open.** Re-checked 2026-10-29: `quota.ts` `checkQuota`, `reserveQuota`, `reserveJobQuota`, `reserveCustomerJobQuota` all still return on no row (RC-102 copied the rule). No `METERED` guard. Owner-action first: seed STUDIO_SHOOT rows |
+| H6-1 STUDIO_SHOOT quota fails open on missing `plan_limits` row | High | Fixed (RC-103), not deployed. `METERED` guard in `effectiveLimit` / `effectiveCustomerLimit` covers check, all reserve functions and both status readers; studio-shoot route 10/min. **Owner-action BEFORE deploy:** seed `STUDIO_SHOOT`, `BG_REMOVAL`, `IMAGE_CROP` (and `TRY_ON_GENERATION` if missing) for all three plans in Admin → Plan Limits, or those features refuse everyone |
 | H6-2 Burst overshoots an AI cap | Medium | Partly fixed (RC-102): reserve-at-enqueue for Studio Shoot, My Style, try-on, social templates, POST /products, growth AI routes. Tagging and catalog-import AI checks left on check-then-increment. Mock tests only; scratch-DB run pending; migration 145 not applied in prod |
 | H6-3, H6-4 | Low | Open |
 | H7-1 … H7-4 | Med/Low | Open (H7-1, H7-4 Owner-action) |
@@ -50,18 +50,18 @@ Effort: S ≤ ½ day, M ≤ 2 days, L > 2 days. Owner = needs a dashboard/config
 | # | ID | Sev | Issue | Effort | Owner |
 | --- | --- | --- | --- | --- | --- |
 | 1 | H8-1 | Critical | `postgres` superuser + `vault_app` passwords (plus app/migrator/purge, SC-1) in public git history, commits `541f312f`, `f624324a` | S | y |
-| 2 | H3-1 | High | Percent-encoded path segment skips the Super-Admin gate (Confirmed, local harness) | S | n |
-| 3 | H4-1 | High | Leads route trusts body `customer_account_id`: any store pulls a shopper's phone and forges consent | S | n |
-| 4 | H6-1 | High | STUDIO_SHOOT quota fails open on a missing `plan_limits` row: unlimited paid AI for free accounts | S | y |
+| 2 | ~~H3-1~~ | High | Percent-encoded path segment skips the Super-Admin gate (Confirmed, local harness). Fixed RC-090, not deployed | S | n |
+| 3 | ~~H4-1~~ | High | Leads route trusts body `customer_account_id`: any store pulls a shopper's phone and forges consent. Fixed RC-093, not deployed | S | n |
+| 4 | ~~H6-1~~ | High | STUDIO_SHOOT quota fails open on a missing `plan_limits` row: unlimited paid AI for free accounts. Fixed RC-103, not deployed (seed Plan Limits first) | S | y |
 | 5 | H8-2 | Medium | V-Tone (Hetzner, port 8000, plain HTTP): auth fails open when its secret is unset; `/try-on` fetches any URL (SSRF) | S | y |
 | 6 | H5-1 | Medium | Aadhaar KYC scans and try-on results in the public R2 bucket | M | y |
 | 7 | H7-1 | Medium | MSG91 widget credentials public: SMS pumping / OTP bombing that skips every API limit | S | y |
-| 8 | H3-2 | Medium | Admin gate is a deny-list; `SUPPORT_MANAGER` gets full standard-admin power (Confirmed, local harness) | S | y (role decision) |
-| 9 | H3-3 | Medium | Admin gate trusts the team JWT role with no DB re-check | S | n |
-| 10 | H4-2 | Medium | `/v1/customers` leaks `phone_hash` + `customer_account_id` to masked staff | S | n |
-| 11 | H4-3 | Medium | Anonymous reviews: fake ratings, overwrite a real review, rename CRM customers | M | n |
-| 12 | H4-4 | Medium | Legacy lead form overwrites existing customers and forges consent | S | n |
-| 13 | H6-2 | Medium | Check-at-route / count-at-job-end lets a burst overshoot any AI cap | M | n |
+| 8 | ~~H3-2~~ | Medium | Admin gate is a deny-list; `SUPPORT_MANAGER` gets full standard-admin power (Confirmed, local harness). Fixed RC-091, not deployed | S | y (role decision) |
+| 9 | ~~H3-3~~ | Medium | Admin gate trusts the team JWT role with no DB re-check. Fixed RC-092, not deployed (follow-up open: `team-helpers.ts:76`) | S | n |
+| 10 | ~~H4-2~~ | Medium | `/v1/customers` leaks `phone_hash` + `customer_account_id` to masked staff. Fixed RC-096, not deployed | S | n |
+| 11 | ~~H4-3~~ | Medium | Anonymous reviews: fake ratings, overwrite a real review, rename CRM customers. Fixed RC-098/099, not deployed (needs migration 139) | M | n |
+| 12 | ~~H4-4~~ | Medium | Legacy lead form overwrites existing customers and forges consent. Fixed RC-094, not deployed | S | n |
+| 13 | H6-2 | Medium | Check-at-route / count-at-job-end lets a burst overshoot any AI cap. Partly fixed RC-102 | M | n |
 | 14 | H5-2 | Medium | detect-items and catalog presigns write unverified bytes to the public CDN | M | n |
 | 15 | H5-3 | Medium | No pixel cap: decompression bomb against compress cron, ffmpeg, templates, My Style | S | n |
 | 16 | H2-1 | Medium | Cross-tenant products injected into own A/B variant collection | S | n |
@@ -76,8 +76,8 @@ Effort: S ≤ ½ day, M ≤ 2 days, L > 2 days. Owner = needs a dashboard/config
 | 25 | H2-4 | Low | Product update skips section/category/background ownership checks | S | n |
 | 26 | H2-5 | Low | `GET /retailers/me` over-shares to staff and delegates | S | n |
 | 27 | H2-6 | Low | Duplicate-phone error lets staff probe whether a number is a customer | S | n |
-| 28 | H4-5 | Low | Passport wishlist / recently-viewed / events accept any `retailer_id` | S | n |
-| 29 | H4-6 | Low | `near-me` exposes the retailer's login phone | S | n |
+| 28 | ~~H4-5~~ | Low | Passport wishlist / recently-viewed / events accept any `retailer_id`. Fixed RC-095, not deployed | S | n |
+| 29 | ~~H4-6~~ | Low | `near-me` exposes the retailer's login phone. Fixed RC-097, not deployed | S | n |
 | 30 | H4-7 | Low | Passport session ids stored in plaintext | M | y (migration revokes sessions) |
 | 31 | H5-4 | Low | SSRF blocklist gaps in `ssrfSafeFetch` | S | n |
 | 32 | H7-2 | Low | OAuth code and staff-invite token go over a hijackable custom scheme | M | n |
@@ -90,9 +90,9 @@ Effort: S ≤ ½ day, M ≤ 2 days, L > 2 days. Owner = needs a dashboard/config
 | 39 | H5-5 | Low | Ken Burns raw `fetch(photo.url)` fallback (hardening, not exploitable) | S | n |
 | 40 | H7-3 | Low | No certificate pinning (informational, not exploitable) | — | n |
 
-**Reconciled 2026-10-29 against the CLAUDE.md RC tracker.** Rows 2, 3, 8, 9, 10, 11, 12, 28, 29 below are Fixed locally (RC-090 … RC-098), not deployed; row 13 (H6-2) is partly fixed (RC-102). They are kept for history and excluded from the totals.
+**Reconciled 2026-10-29 against the CLAUDE.md RC tracker.** Rows 2, 3, 4, 8, 9, 10, 11, 12, 28, 29 below are Fixed locally (RC-090 … RC-098, RC-103), not deployed; row 13 (H6-2) is partly fixed (RC-102). They are kept for history and excluded from the totals.
 
-**Totals (open): Critical 1, High 1, Medium 10, Low 19 = 31** (was 40; 9 fixed). H6-2 is counted as open until RC-102 is verified on a real DB. Dependency CVEs: see `H8-infra-secrets.md` §CVE (not in these counts). SC-1, SC-2 (P0, owner) tracked in the SC report.
+**Totals (open): Critical 1, High 0, Medium 10, Low 19 = 30** (was 40; 10 fixed). H6-2 is counted as open until RC-102 is verified on a real DB. Dependency CVEs: see `H8-infra-secrets.md` §CVE (not in these counts). SC-1, SC-2 (P0, owner) tracked in the SC report.
 
 ## Owner checks (dashboard-only facts that set the severity)
 
@@ -159,3 +159,22 @@ Chain C works only if the passwords were never rotated; owner check 1 closes it.
 | 11 | Design items: H1-8 admin 2FA/revocation, H4-7 hashed passport sessions (migration), H6-4 referral | Owner approval (migration, design) |
 
 Not done: no finding was re-verified at runtime during the merge; statuses come from each H report.
+
+## T1-T3 status (checked 2026-10-29)
+
+Source: each T report's own status text plus the CLAUDE.md RC tracker. Code was not re-read, so "open" means "the report says proposed, not applied, and no RC covers it".
+
+Fixed:
+- T2.5 F2, F3, F4 (web proxy: reviews path encoding, multi-cookie, cache headers): RC-084, applied 2026-10-25.
+- T1.3 F1 (`customers.ts` masked-staff `phone_hash` leak): same root as H4-2, fixed by RC-096, not deployed.
+- T1.1: `lint` scripts added to `packages/ai` and `packages/shared`, safe fixes applied. ai still 42 errors, shared 2 (deferred P2).
+
+Open, P1 (no RC yet):
+- T1.4 F1 `jobs/index.ts:546-583`; T1.7 F1 `email.ts` / `meta-graph.ts`; T1.8 F1 `plugins/auth.ts:468-483` (add-on packs).
+- T2.4 F1, F2, F3 (admin mutation headers, social page, `admin-fetch.ts`): the proposed RC-084 was taken by T2.5, so renumber to a free ID.
+- T2.8 F1 (service worker caches `/me` across users), F2 (sitemap query): the proposed RC-085/086 were taken by H1-1/H1-3, so renumber.
+- T3.4-a (GST report shows paise as rupees), T3.5-a/b/c (GSTIN error swallowed, campaign sent twice, payment-link timeout), T3.6-a (forced logout keeps old account data), T3.7-a/b/c (never detects offline, Mark Sold retried forever, keyboard covers inputs).
+
+Open, P2 (not applied): T1.2, T1.3 F2-F3, T1.4 F2-F4, T1.5, T1.6, T1.7 F2-F6, T1.8 F2-F5, T2.1, T2.2, T2.3, T2.4 F4-F6, T2.5 F5, T2.6, T2.7, T3.1, T3.2, T3.3, T3.4 b-d, T3.5 d-h, T3.6 b-d, T3.7 d-e.
+
+Waiting on an owner decision: T1.8 F4 and T2.5 F1 (`trustProxy`, same as H1-4).
