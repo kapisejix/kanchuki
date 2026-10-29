@@ -180,6 +180,7 @@ Fixed 2026-10-29 (Batch 4 mobile behaviour, local, not deployed, not committed):
 
 Follow-up 2026-10-29 (local, not deployed, not committed):
 - T1.7 F1 sweep (bare `fetch` with no timeout in 8 more API files, 16 call sites): RC-118. Guard test added; falsified by removing one import. T2.4 (admin CSRF) re-audited across every mutating fetch under `apps/web/src/app/admin`: no further misses, no change.
+- T3.5 d-h (P2 batch, mobile): d = RC-121 (`sendCampaign` 120 s + "may still be sending" copy), h = RC-120 (OTP resend sync ref), f and g (inline `setError` constants) = RC-122; e and the try-on half of g were already fixed by RC-117. Source pins in `__tests__/t35-p2-pins.test.ts`, each falsified. Left: the bulk-onboard stats swallows.
 - RC-119 addendum: the keyboard guard's pin list is now derived (input components under `src/` to a fixpoint, every `app/` importer must wrap); falsified on `growth/ratings` and `onboarding`. Only `ReportProblem` stays pinned.
 - RC-118 addendum: `lib/meta-catalog.ts` now defaults to a 15 s timeout (caller `signal` still wins); its only importer already passed a signal. The guard is now per call (each `fetch(` needs its own `AbortSignal.timeout`/`any`, or the file aliases `fetchWithTimeout as fetch`); the 14 files it used to exempt were read and all already had per-call timeouts. Falsified on `fal-client`.
 - T3.7-c sweep (inputs owned by child components): RC-119, `growth/ratings` now wrapped. Other `src/` input components' host screens already wrapped.
@@ -203,6 +204,6 @@ Fixed 2026-10-29 (Batch 2 money and Batch 3 admin + observability, local, not de
 
 All 15 P1s above were re-read against current code on 2026-10-29 and were still real before Batch 1.
 
-Open, P2 (not applied): T1.2, T1.3 F2-F3, T1.4 F2-F4, T1.5, T1.6, T1.7 F2-F6, T1.8 F2-F5, T2.1, T2.2, T2.3, T2.4 F4-F6, T2.5 F5, T2.6, T2.7, T3.1, T3.2, T3.3, T3.4 b-d, T3.5 d-h, T3.6 b-d, T3.7 d-e.
+Open, P2 (not applied): T1.2, T1.3 F2-F3, T1.4 F2-F4, T1.5, T1.6, T1.7 F2-F6, T1.8 F2-F5, T2.1, T2.2, T2.3, T2.4 F4-F6, T2.5 F5, T2.6, T2.7, T3.1, T3.2, T3.3, T3.4 b-d, T3.5 g (stats swallows only), T3.6 b-d, T3.7 d-e.
 
 Waiting on an owner decision: T1.8 F4 and T2.5 F1 (`trustProxy`, same as H1-4).

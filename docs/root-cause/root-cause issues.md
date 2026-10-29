@@ -13,6 +13,39 @@
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
 
+## RC-122 — Inline `setError('…Try again.')` constants hid the server's 4xx reason on the catalog-import and bulk-onboard screens (T3.5-f, T3.5-g)
+
+- **Component:** `apps/mobile/app/product/catalog-import.tsx` (three catches: two "Upload failed", one "Detection failed"), `app/product/bulk-onboard.tsx` (one "Something went wrong").
+- **Symptom:** a retailer out of AI-tagging credits (the API checks `AI_TAGGING_CALL` quota on these routes and answers a 4xx with a reason) was told only to "Try again".
+- **Root cause:** RC-114/RC-117 shape. `showError` was fixed to apply `apiMessage`, but these screens render the error inline with `setError(constant)` instead of an Alert, so they never went through it.
+- **Fix:** each uses `setError(apiMessage(err, '<same fallback>'))`; `logError(err)` stays.
+- **Proof:** `__tests__/t35-p2-pins.test.ts` pins that none of the three fallbacks is a bare `setError('…')` and each is wrapped in `apiMessage`. Falsified: reverting the Detection catch, and separately the bulk-onboard catch, turns it red; restored. Mobile `tsc` clean.
+- **Limits, stated plainly:** a source pin, not a render test; not device-tested. Left on purpose (T3.5-g): the `getSections()` / `getStats()` loads in `bulk-onboard.tsx` still swallow their failure, so the "catalogued" count can read `0 + session` with no hint; a hint would be new UI. Other screens that put a constant into `setError` were not swept.
+
+---
+
+## RC-121 — A synchronous campaign fan-out ran on the 10 s default timeout, and a timeout was reported as a failed send (T3.5-d)
+
+- **Component:** `apps/mobile/src/lib/api/growth.ts` (`sendCampaign`), `app/growth/campaign/[id].tsx` (`sendMutation.onError`).
+- **Symptom:** on a big audience the app gave up after 10 s with "Send failed. Check that customers … have WhatsApp consent", while the server was still sending. The retailer tapped Send again. RC-111 made the server refuse the second send, but the screen still told the retailer the first one had failed.
+- **Root cause:** same as RC-011/RC-064: the client timeout was the default, not sized for the work (one Meta call per customer, awaited inside the request). The mobile half of T3.5-b stayed open when RC-111 fixed the server half.
+- **Fix:** `sendCampaign` carries `timeoutMs: 120_000`. `onError` branches on `ApiError` code `TIMEOUT` / `NETWORK_ERROR` and says "The send may still be running. Check this campaign in a minute before sending again."; any other error goes through `showError` as before.
+- **Proof:** `t35-p2-pins.test.ts` pins the timeout and the two codes in the screen. Falsified: deleting the `timeoutMs` line, and separately renaming `'TIMEOUT'` in the screen, each turns it red; restored. Mobile `tsc` clean.
+- **Limits, stated plainly:** 120 s is a guess, not measured against a real audience. The server still sends inside the request (the real fix is a background job); a send longer than 120 s still shows the "may still be running" text, which is the honest answer. Not device-tested, not run against real Meta.
+
+---
+
+## RC-120 — OTP resend guarded on React state, so two taps in one frame sent two SMS (T3.5-h)
+
+- **Component:** `apps/mobile/app/auth/otp.tsx` (`handleResend`).
+- **Symptom:** a double tap on "Resend OTP" fired two sends (two SMS, two MSG91 hits), and the second code invalidates the first.
+- **Root cause:** RC-015 shape. `handleResend` returned early on `resendTimer > 0` and relied on `disabled={resending}`; both are state, and neither has committed when the second tap lands in the same frame. RC-015 fixed `phone.tsx` and verify, not resend.
+- **Fix:** a `resendingRef` set before `setResending(true)`, checked in the guard and cleared in `finally`.
+- **Proof:** `t35-p2-pins.test.ts` pins the ref check, the set, and the release in `finally`. Falsified: removing the check, and separately the release, each turns it red; restored. Mobile `tsc` clean.
+- **Limits, stated plainly:** a source pin, not a render or tap test; not device-tested. T3.5-e (the resend catch hiding the server error) was already fixed by RC-117.
+
+---
+
 ## RC-119 — A screen whose text fields live in child components was invisible to the keyboard guard, so `growth/ratings` had no wrapper (RC-116 follow-up)
 
 - **Component:** `apps/mobile/app/growth/ratings.tsx` (renders `GooglePlaceField` and `GoogleReviewsTab`, whose reply box is a `TextInput`), and the guard `__tests__/keyboard-screen-adoption.test.ts`.
