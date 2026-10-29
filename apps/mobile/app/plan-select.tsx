@@ -25,6 +25,7 @@ import { useScreenInsets } from '../src/lib/safe-area';
 import { AnimatedPressable } from '../src/components/AnimatedPressable';
 import { GradientButton } from '../src/components/GradientButton';
 import { billingApi } from '../src/lib/api';
+import { apiMessage } from '../src/lib/errors';
 import { useTheme } from '../src/lib/theme';
 import { WEB_URL } from '../src/lib/web-url';
 
@@ -122,7 +123,7 @@ export default function PlanSelectScreen() {
                 queryClient.invalidateQueries({ queryKey: ['billing', 'subscription'] });
                 queryClient.invalidateQueries({ queryKey: ['retailer', 'me'] });
               } catch (err: unknown) {
-                const msg = err instanceof Error ? err.message : 'Failed to switch plan';
+                const msg = apiMessage(err, 'Failed to switch plan');
                 Alert.alert('Error', msg);
               } finally {
                 setSwitching(false);
@@ -144,7 +145,7 @@ export default function PlanSelectScreen() {
       queryClient.invalidateQueries({ queryKey: ['billing', 'subscription'] });
       queryClient.invalidateQueries({ queryKey: ['retailer', 'me'] });
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to start subscription';
+      const msg = apiMessage(err, 'Failed to start subscription');
       Alert.alert('Error', msg);
     } finally {
       setSwitching(false);

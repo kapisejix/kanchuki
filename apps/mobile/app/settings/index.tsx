@@ -49,13 +49,12 @@ import { UsageCard } from "../../src/components/UsageCard";
 import { WhiteButton } from "../../src/components/WhiteButton";
 import { SettingsSkeleton } from "../../src/components/Skeleton";
 import {
-  ApiError,
   readLocalImage,
   retailerApi,
   uploadImageToR2,
   prepareImageForUpload,
 } from "../../src/lib/api";
-import { showError } from "../../src/lib/errors";
+import { apiMessage, showError } from "../../src/lib/errors";
 import { clearPersistedCache } from "../../src/lib/offline-persister";
 import { useAuth } from "../../src/lib/auth-context";
 import { resolveMapsLink } from "../../src/lib/maps-link";
@@ -148,9 +147,7 @@ function ProfileEditModal({
       setLogoUrl(info.public_url);
       setLogoR2Key(info.r2_key);
     } catch (err) {
-      const msg =
-        err instanceof ApiError ? err.message : "Failed to upload logo";
-      showError(err, msg);
+      showError(err, "Failed to upload logo");
     } finally {
       setUploadingLogo(false);
     }
@@ -271,9 +268,7 @@ function ProfileEditModal({
       onSaved();
       onClose();
     } catch (err) {
-      const msg =
-        err instanceof ApiError ? err.message : "Failed to update profile";
-      showError(err, msg);
+      showError(err, "Failed to update profile");
     } finally {
       setSaving(false);
     }
@@ -1117,7 +1112,7 @@ function DeleteAccountModal({
     } catch (err: unknown) {
       // Surface the error so the retailer knows the server-side delete
       // failed — without this, they get logged out but their data stays.
-      const msg = err instanceof Error ? err.message : 'Server delete failed';
+      const msg = apiMessage(err, 'Server delete failed');
       Alert.alert(
         'Delete Failed',
         `Could not delete your account from the server: ${msg}\n\nPlease contact support or try again later.`,

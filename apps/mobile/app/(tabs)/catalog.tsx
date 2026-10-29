@@ -26,7 +26,7 @@ import ProductCard from '../../src/components/ProductCard'
 import { useGridColumns } from '../../src/hooks/useIsTablet'
 import { ProductGridSkeleton } from '../../src/components/Skeleton'
 import { productApi, retailerApi, whatsappCatalogApi } from '../../src/lib/api'
-import { apiMessage, showError } from '../../src/lib/errors'
+import { showError } from '../../src/lib/errors'
 import { prefetchProductImages } from '../../src/lib/image-prefetch'
 import { enqueueStatusMutation, isRetryable } from '../../src/lib/mutation-queue'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
@@ -290,7 +290,7 @@ export default function CatalogScreen() {
     } catch (err) {
       // A 4xx will never succeed on replay: surface it instead of queueing it forever.
       if (!isRetryable(err)) {
-        showError(err, apiMessage(err, 'Could not mark this product as sold. Please try again.'))
+        showError(err, 'Could not mark this product as sold. Please try again.')
         void queryClient.invalidateQueries({ queryKey: ['products'] })
         return
       }

@@ -13,8 +13,9 @@ export function apiMessage(err: unknown, fallback: string): string {
     : fallback
 }
 
-// Generic message to the user, real error to the dev console only (__DEV__ strips in
-// production builds) — never surface raw err.message on screen.
+// Fallback to the user (or the server's reason for an actionable 4xx, via apiMessage), real
+// error to the dev console only (__DEV__ strips in production builds) — never surface raw
+// err.message of a 5xx/network/timeout error on screen.
 export function showError(
   err: unknown,
   fallback: string,
@@ -22,7 +23,7 @@ export function showError(
   onDismiss?: () => void,
 ): void {
   if (__DEV__) console.error(title, err)
-  Alert.alert(title, fallback, onDismiss ? [{ text: 'OK', onPress: onDismiss }] : undefined)
+  Alert.alert(title, apiMessage(err, fallback), onDismiss ? [{ text: 'OK', onPress: onDismiss }] : undefined)
 }
 
 // For inline UI error text (no Alert) — same rule: log the real error dev-side only,

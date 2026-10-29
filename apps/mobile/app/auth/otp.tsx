@@ -305,8 +305,8 @@ export default function OtpScreen() {
       }
       setResendTimer(30)
       Alert.alert('OTP Sent', 'A new OTP has been sent to your number')
-    } catch {
-      Alert.alert('Error', 'Failed to resend OTP')
+    } catch (err) {
+      showError(err, 'Failed to resend OTP')
     } finally {
       setResending(false)
     }

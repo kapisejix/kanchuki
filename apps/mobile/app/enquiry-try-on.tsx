@@ -18,6 +18,7 @@ import { Camera, Check, ImagePlus, RotateCcw, Square, X } from 'lucide-react-nat
 import { TRY_ON_CONSENT } from '@kanchuki/shared'
 
 import { billingApi, productApi } from '../src/lib/api'
+import { showError } from '../src/lib/errors'
 import { useScreenInsets } from '../src/lib/safe-area'
 import {
   cleanupSession,
@@ -138,8 +139,8 @@ export default function EnquiryTryOnScreen() {
     try {
       const { data } = await billingApi.addonCheckout('TRY_ON_GENERATION', undefined, packId)
       await Linking.openURL(data.checkout_url)
-    } catch {
-      Alert.alert('Could not open payment', 'Please try again in a moment.')
+    } catch (err) {
+      showError(err, 'Please try again in a moment.', 'Could not open payment')
     } finally {
       buyingRef.current = false
       setBuying(false)
