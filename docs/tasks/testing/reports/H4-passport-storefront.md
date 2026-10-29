@@ -208,7 +208,7 @@ Status: Plausible (code-only). Cross-ref H1 (OTP limits), T2.5 F1.
 | SSRF via push endpoint | Not exploitable | `jobs/customer-push.ts:36-46` https-only, no port, host-suffix allowlist (FCM/Mozilla/Apple/WNS) |
 | Widget token for phone A logs in as phone B | Not exploitable | `msg91-otp.ts:353-358` requires exact match of verified digits vs claimed phone |
 | Stored XSS via JSON-LD (store/product/collection names) | Not exploitable | all storefront `dangerouslySetInnerHTML` go through `ldJson()` or `.replace(/</g,'\\u003c')` (`[store]/page.tsx:112`, `[store]/categories/page.tsx:259`, `[store]/[collection]/page.tsx:92`, product page `:111`, `stores/page.tsx:74`); the rest is React-escaped text (RC-040/RC-077) |
-| Open redirect (`?next=`, `?redirect=`) / `javascript:` hrefs on storefront | None found | no `searchParams.get('next'|'redirect'|'return'|'url')` in `apps/web/src` outside admin; `my-style/ShortlistBar.tsx:35,105` URL is server-built (`my-style/lib.ts:93`); `StarPicker.tsx:177` is a fixed Google host with `encodeURIComponent(placeId)` (`public-reviews.ts:63`) |
+| Open redirect (`?next=`, `?redirect=`) / `javascript:` hrefs on storefront | None found | no `searchParams.get('next'\|'redirect'\|'return'\|'url')` in `apps/web/src` outside admin; `my-style/ShortlistBar.tsx:35,105` URL is server-built (`my-style/lib.ts:93`); `StarPicker.tsx:177` is a fixed Google host with `encodeURIComponent(placeId)` (`public-reviews.ts:63`) |
 
 Anonymous AI cost routes: `/stylist` 10/min (`public-stylist.ts:83`), my-style analyze 5/min (`public-my-style-analyze.ts:69`), feed/complete-look 20–30/min (`public-my-style.ts:116,309,411`). These are per-IP only, so they inherit T2.5 F1 (RC-079 known); no new finding.
 
