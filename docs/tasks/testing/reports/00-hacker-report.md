@@ -169,15 +169,22 @@ Fixed:
 - T1.3 F1 (`customers.ts` masked-staff `phone_hash` leak): same root as H4-2, fixed by RC-096, not deployed.
 - T1.1: `lint` scripts added to `packages/ai` and `packages/shared`, safe fixes applied. ai still 42 errors, shared 2 (deferred P2).
 
-Open, P1 (no RC yet):
-- T1.4 F1 `jobs/index.ts:546-583`; T1.7 F1 `email.ts` / `meta-graph.ts`; T1.8 F1 `plugins/auth.ts:468-483` (add-on packs).
-- T2.4 F1, F2, F3 (admin mutation headers, social page, `admin-fetch.ts`): the proposed RC-084 was taken by T2.5, so renumber to a free ID.
-- T3.4-a (GST report shows paise as rupees), T3.5-a/b/c (GSTIN error swallowed, campaign sent twice, payment-link timeout), T3.7-a/b/c (never detects offline, Mark Sold retried forever, keyboard covers inputs; the queue-file-survives-logout part of b is fixed by RC-107).
+Open, P1 (no RC yet), Batch 4 only:
+- T3.5-a (onboarding swallows the 422 GSTIN error), T3.7-a/b/c (never detects offline, Mark Sold retried forever, keyboard covers inputs; the queue-file-survives-logout part of b is fixed by RC-107).
 
 Fixed 2026-10-29 (Batch 1, local, not deployed, not committed):
 - T2.8 F2 (sitemap lists shopper-specific collections): RC-105.
 - T2.8 F1 (service worker caches personal responses): RC-106.
 - T3.6-a (forced logout keeps old account data): RC-107.
+
+Fixed 2026-10-29 (Batch 2 money and Batch 3 admin + observability, local, not deployed, not committed):
+- T1.8 F1 (add-on callback 401 before the handler): RC-108.
+- T3.4-a (GST report shows paise as rupees, mobile and admin web): RC-109.
+- T1.7 F1 and T3.5-c (outbound fetch with no timeout; Resend, Meta Graph, Razorpay, mobile pay): RC-110.
+- T3.5-b (campaign sent twice): RC-111. No migration was needed; `SENT` already exists, so the claim is a conditional update before dispatch.
+- T2.4 F1, F2, F3 (admin SQL console and social Disconnect skip CSRF, failure swallowed, rejected token cached): RC-112.
+- T1.4 F1 (failed BullMQ jobs never reach Sentry): RC-113.
+- Verified: API tests 85 passed in the changed suites and 792 across plugins, jobs, team, retailers and meta-graph, web 6 and mobile 3 new tests pass, API and web `tsc` clean, mobile `tsc` shows only the 3 typed-route errors already open. Nothing was run against real Postgres, Razorpay, Meta, a browser or a device.
 
 All 15 P1s above were re-read against current code on 2026-10-29 and were still real before Batch 1.
 

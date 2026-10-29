@@ -13,6 +13,72 @@
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
 
+## RC-113 — A BullMQ job that failed for good was only `console.error`'d; nothing reached Sentry (T1.4 F1)
+
+- **Component:** `apps/api/src/jobs/index.ts` (8 `worker.on('failed')` listeners), new `apps/api/src/lib/job-failure.ts`.
+- **Symptom:** a dead tagging, studio-shoot, try-on, push, catalog-sync or maintenance job (payout, plan-lapse, publish tick) left no alert. The only trace was a Railway log line.
+- **Root cause:** observability was a per-listener habit (`console.error`), not one shared failure path, so each worker repeated it and none ever called Sentry.
+- **Fix:** `reportJobFailure(queue, job, err)` calls `Sentry.captureException` with `area/queue/job` tags and the job id. It reports only the final failure (`attemptsMade >= opts.attempts`, or no `job` for a stalled-out run) so retries do not flood Sentry, and it never sends `job.data` (phones, tokens). Each of the 8 listeners calls it after its existing `console.error`; quota-refund logic is untouched.
+- **Proof:** `lib/job-failure.test.ts` (5 tests: final failure tagged, retry silent, no-attempts single-shot, stalled job reported, no payload in the Sentry call). API typecheck clean, 792 API tests across the touched dirs pass.
+- **Limits, stated plainly:** needs a Sentry DSN set in Railway or `captureException` is a no-op. The listeners themselves are not unit-tested (only the helper). Job handlers that catch and swallow their own errors never reach `failed`, so they stay invisible.
+
+---
+
+## RC-112 — Admin writes bypassed the shared CSRF helper, and the helper cached a rejected token fetch (T2.4 F1, F2, F3)
+
+- **Component:** `apps/web/src/app/admin/database/query/page.tsx`, `apps/web/src/app/admin/social/page.tsx`, `apps/web/src/lib/admin-fetch.ts`.
+- **Symptom:** the SQL console `POST /v1/admin/query` and the social "Force Disconnect" `DELETE` returned 403 (no `x-csrf-token`, no cookie). Disconnect swallowed the 403 (`if (res.ok)` with no else, empty `catch`), so it did nothing and said nothing. After one failed CSRF-token fetch, every later admin mutation re-threw the same error until a full reload.
+- **Root cause:** `admin-fetch.ts` documents that every mutating admin call must use `adminMutateOptions()`, but the rule was a convention each page had to remember; two pages kept a local header builder or the GET options. Separately `ensureCsrfToken` stored its in-flight promise in a module variable and never cleared it on rejection.
+- **Fix:** both pages call `adminMutateOptions()`; Force Disconnect now shows the server message (or `HTTP <status>`) inside the detail sheet and clears it when another account opens; `ensureCsrfToken` clears the cached promise in `.finally`, so success keeps the cached token and failure allows a retry.
+- **Proof:** `apps/web/src/lib/__tests__/admin-csrf-and-units.test.ts` (rejected fetch then retry succeeds, concurrent callers share one fetch, SQL console and Disconnect source pins). Web typecheck clean.
+- **Limits, stated plainly:** only the two named pages were fixed; I did not audit the other admin pages for the same pattern. The two pages are source-pinned, not rendered or browser-tested.
+
+---
+
+## RC-111 — A campaign was marked SENT only after the whole audience had been sent, so two concurrent sends both went out (T3.5-b)
+
+- **Component:** `apps/api/src/routes/growth/growth-campaigns/growth-campaigns-send.ts`.
+- **Symptom:** a double tap, a retry after a slow response, or a manager and the owner pressing Send together dispatched the campaign to every customer twice.
+- **Root cause:** the "already sent" guard was a read at the top of the handler and the `status: 'SENT'` write came at the very end, after the dispatch. Any second request that arrived in between passed the read. No migration was needed: `SENT` already exists in `CampaignStatus`.
+- **Fix:** after all validation and the owner/API check, one conditional `updateMany` (`status != SENT`) claims the campaign before any `CampaignSend` row is written; a count of 0 answers 403 "Campaign already sent". If writing the send rows fails, the previous status and `sent_at` are restored so the retailer can retry. The per-message Meta call also gets a 15 s timeout (RC-110).
+- **Proof:** `growth-campaigns-send.test.ts` (claim shape and order before the transaction, lost race sends nothing, restore on failure). 5 tests pass. API typecheck clean.
+- **Limits, stated plainly:** not run against a real Postgres. A crash after the claim but during dispatch leaves the campaign SENT with partial sends and no automatic retry. A message that times out is counted as failed even if Meta delivered it.
+
+---
+
+## RC-110 — Outbound HTTP calls had no timeout, so one hung upstream pinned the request (T1.7 F1, T3.5-c)
+
+- **Component:** new `apps/api/src/lib/fetch-timeout.ts`; callers `lib/email.ts` (Resend), `lib/meta-graph.ts` (16 Graph calls), `routes/retailers/retailers-catalog-upload.ts` (Razorpay), the WhatsApp send in `growth-campaigns-send.ts`; mobile `src/lib/api/catalog-upload.ts`.
+- **Symptom:** a stalled Resend, Meta or Razorpay socket held the request open (and a whole `Promise.allSettled` fan-out) until the platform killed it. On mobile, "Pay" hit the 10 s client default while the server was still creating the Razorpay order and showed a false "server not running".
+- **Root cause:** each call site used bare `fetch`; `razorpayx.ts`, `msg91-otp.ts` and others had timeouts added one by one (RC-011, RC-079), so the next new call site shipped without one.
+- **Fix:** one `fetchWithTimeout` (15 s default, a caller-supplied signal wins), used by the four server call sites. `meta-graph.ts` imports it as `fetch`, which covers all 16 calls with one line. Mobile `catalogUploadApi.pay` gets `timeoutMs: 30_000`.
+- **Proof:** `lib/fetch-timeout.test.ts` (aborts a never-answering request, keeps a caller signal, adds a signal by default). The existing meta-graph, retailers, billing and jobs suites still pass (792 tests).
+- **Limits, stated plainly:** other bare `fetch` calls in the API (for example in `billing.ts`) were not audited here. The mobile timeout is not device-tested. A timed-out Meta publish may still have posted.
+
+---
+
+## RC-109 — Money amounts from the API are paise, but the GST screens printed them as rupees (T3.4-a)
+
+- **Component:** `apps/mobile/app/growth/gst.tsx`, new `apps/mobile/src/lib/format-inr.ts`, `apps/web/src/app/admin/reports/gst/page.tsx`.
+- **Symptom:** a ₹2,100 payment showed as ₹2,10,000 on the retailer GST report and the admin GST report (totals, CGST/SGST/IGST, monthly bars, transactions).
+- **Root cause:** `SubscriptionPayment.amount_inr`, `gst_amount` and the CGST/SGST/IGST columns hold integer paise (the Razorpay webhook writes `payment.amount` and `computeSubscriptionGst`; the invoice job reads `cgstPaise`). The routes pass them through unchanged and each screen kept its own `toLocaleString` formatter that assumed rupees.
+- **Fix:** mobile uses a shared `inrFromPaise` (divide by 100, Indian grouping, up to 2 decimals, ₹0 for missing/NaN); the admin page reuses the existing `rupees()` from `lib/plan-pricing`.
+- **Proof:** `apps/mobile/src/lib/format-inr.test.ts` (3 tests), `admin-csrf-and-units.test.ts` (`rupees` conversion and a source pin that `fmtINR` goes through it). Mobile and web typecheck clean apart from 3 typed-route errors in untouched files.
+- **Limits, stated plainly:** not checked on a device or in a browser against live data. Any other screen that renders these columns with its own formatter was not searched.
+
+---
+
+## RC-108 — The Razorpay add-on redirect carries no Bearer token, so the auth plugin 401'd it before the handler could credit the purchase (T1.8 F1)
+
+- **Component:** `apps/api/src/plugins/auth.ts` (global `preHandler` skip list), `routes/billing/billing-addons.ts`.
+- **Symptom:** after paying for an add-on or try-on pack, the buyer's browser GET to `/v1/billing/addon-callback` answered 401 "Missing Bearer token", so the purchase stayed PENDING and was never credited.
+- **Root cause:** the handler is written as a no-JWT endpoint (it verifies the Payment Link HMAC itself) but the auth plugin's skip list named the webhook routes and not this one. The route tests built the handler without the auth plugin, so nothing ever sent the real request through both.
+- **Fix:** one exact-path skip for `/v1/billing/addon-callback` beside the other Razorpay entries. The HMAC check in the handler is unchanged.
+- **Proof:** `plugins/auth-public-callbacks.test.ts` mounts the real `authPlugin`: a Bearer-less GET reaches the handler, and `/v1/billing/plans` and `/v1/billing/addon-callback/extra` still answer 401. Billing suites (68 tests) pass.
+- **Limits, stated plainly:** not run against a real Razorpay redirect. Purchases that were paid before this fix and stayed PENDING are not recovered by it.
+
+---
+
 ## RC-107 — Only the sign-out button cleaned up local account data; the forced-logout paths skipped it (T3.6-a, T3.7-b queue file)
 
 - **Component:** `apps/mobile/src/lib/auth-context.tsx`, `src/lib/api/client.ts` (401 branch), `src/lib/offline-persister.ts`, `src/lib/mutation-queue.ts`, `app/_layout.tsx`.
