@@ -36,32 +36,42 @@ vi.mock('../../src/components/social', async () => {
       }),
   }
 })
-vi.mock('@tanstack/react-query', () => ({
-  useQuery: ({ queryKey }: { queryKey: unknown[] }) => ({
-    data: queryStore.get(JSON.stringify(queryKey)),
-    isLoading: false,
-    isError: rq.isError,
-    refetch: rq.refetch,
-  }),
-  useMutation: ({
-    mutationFn,
-    onSuccess,
-    onError,
-  }: {
-    mutationFn: (v: never) => unknown
-    onSuccess?: (r: unknown, v: unknown) => void
-    onError?: (e: unknown) => void
-  }) => ({
-    mutate: (v: never) => {
-      void (async () => mutationFn(v))().then(
-        (r) => onSuccess?.(r, v),
-        (e) => onError?.(e),
-      )
+vi.mock('@tanstack/react-query', async () => {
+  const React = await import('react')
+  return {
+    useQuery: ({ queryKey }: { queryKey: unknown[] }) => ({
+      data: queryStore.get(JSON.stringify(queryKey)),
+      isLoading: false,
+      isError: rq.isError,
+      refetch: rq.refetch,
+    }),
+    // isPending is real state: true from mutate() until the mutation settles and its callbacks ran.
+    useMutation: ({
+      mutationFn,
+      onSuccess,
+      onError,
+    }: {
+      mutationFn: (v: never) => unknown
+      onSuccess?: (r: unknown, v: unknown) => void
+      onError?: (e: unknown) => void
+    }) => {
+      const [isPending, setPending] = React.useState(false)
+      return {
+        mutate: (v: never) => {
+          setPending(true)
+          void (async () => mutationFn(v))()
+            .then(
+              (r) => onSuccess?.(r, v),
+              (e) => onError?.(e),
+            )
+            .finally(() => setPending(false))
+        },
+        isPending,
+      }
     },
-    isPending: false,
-  }),
-  useQueryClient: () => ({ invalidateQueries: rq.invalidate }),
-}))
+    useQueryClient: () => ({ invalidateQueries: rq.invalidate }),
+  }
+})
 
 // ── Tree helpers ───────────────────────────────────────────────────
 type TreeNode = { type: unknown; props: Record<string, never>; children?: (TreeNode | string)[]; rendered?: TreeNode }
@@ -445,6 +455,76 @@ describe('schedule calendar (T3.2-a #7)', () => {
       await tap(option(t, 'White + price'), 'White + price')
       expect(alertSpy).toHaveBeenCalledWith('Error', 'Could not apply that style. Try another, or keep the original photo.', undefined)
       expect(modalVisible(t, 0)).toBe(true)
+    })
+  })
+
+  describe('pending states (#7b)', () => {
+    // A request the test settles by hand, so the in-flight UI can be inspected.
+    const hold = () => {
+      let release!: (v?: unknown) => void
+      const p = new Promise((r) => { release = r })
+      requestMock.mockImplementationOnce(() => p)
+      return () => act(async () => { release({ data: {} }); await new Promise((r) => setTimeout(r, 0)) })
+    }
+
+    it('item style: shows "Rendering your photo…" and hides the options until the render finishes', async () => {
+      const t = await mount()
+      await press(t, 'Style this photo')
+      const finish = hold()
+      await tap(option(t, 'White + price'), 'White + price')
+      expect(text(t)).toContain('Rendering your photo…')
+      expect(option(t, 'White + price')).toBeUndefined()
+      expect(option(t, 'Original photo')).toBeUndefined()
+      expect(modalVisible(t, 0)).toBe(true)
+      await finish()
+      expect(text(t)).not.toContain('Rendering your photo…')
+      expect(modalVisible(t, 0)).toBe(false)
+    })
+
+    it('post and plan style: shows "Applying…" instead', async () => {
+      const t = await mount()
+      await press(t, 'Style all photos')
+      const finish = hold()
+      await tap(option(t, 'White + price'), 'White + price')
+      expect(text(t)).toContain('Applying…')
+      expect(text(t)).not.toContain('Rendering your photo…')
+      await finish()
+      expect(modalVisible(t, 0)).toBe(false)
+    })
+
+    it('a failed render clears the pending state and puts the options back', async () => {
+      vi.spyOn(Alert, 'alert').mockImplementation(() => {})
+      const t = await mount()
+      await press(t, 'Style this photo')
+      let fail!: (e: unknown) => void
+      requestMock.mockImplementationOnce(() => new Promise((_r, rej) => { fail = rej }))
+      await tap(option(t, 'White + price'), 'White + price')
+      expect(text(t)).toContain('Rendering your photo…')
+      await act(async () => { fail(new ApiError('X', 'boom', 500)); await new Promise((r) => setTimeout(r, 0)) })
+      expect(text(t)).not.toContain('Rendering your photo…')
+      expect(option(t, 'White + price')).toBeDefined()
+    })
+
+    it('Confirm shows "Confirming…" and is disabled while the request runs', async () => {
+      vi.spyOn(Alert, 'alert').mockImplementation(() => {})
+      const t = await mount()
+      const finish = hold()
+      await press(t, 'Confirm 1 posts')
+      expect(byLabel(t, 'Confirming…')!.disabled).toBe(true)
+      expect(byLabel(t, 'Confirm 1 posts')).toBeUndefined()
+      await finish()
+      expect(byLabel(t, 'Confirm 1 posts')).toBeDefined()
+    })
+
+    it('AI caption shows "Writing…" and is disabled while the suggestion loads', async () => {
+      let done!: (v: unknown) => void
+      vi.mocked(apiMock.socialApi.suggestCaption).mockImplementationOnce(() => new Promise((r) => { done = r }) as never)
+      const t = await mount()
+      await press(t, 'AI caption')
+      expect(byLabel(t, 'Writing…')!.disabled).toBe(true)
+      await act(async () => { done({ data: { caption: 'Hi', hashtags: [] } }); await new Promise((r) => setTimeout(r, 0)) })
+      expect(byLabel(t, 'AI caption')!.disabled).toBeFalsy()
+      expect(captionValue(t)).toBe('Hi')
     })
   })
 
