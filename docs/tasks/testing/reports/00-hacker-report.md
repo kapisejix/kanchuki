@@ -172,8 +172,14 @@ Fixed:
 Open, P1 (no RC yet):
 - T1.4 F1 `jobs/index.ts:546-583`; T1.7 F1 `email.ts` / `meta-graph.ts`; T1.8 F1 `plugins/auth.ts:468-483` (add-on packs).
 - T2.4 F1, F2, F3 (admin mutation headers, social page, `admin-fetch.ts`): the proposed RC-084 was taken by T2.5, so renumber to a free ID.
-- T2.8 F1 (service worker caches `/me` across users), F2 (sitemap query): the proposed RC-085/086 were taken by H1-1/H1-3, so renumber.
-- T3.4-a (GST report shows paise as rupees), T3.5-a/b/c (GSTIN error swallowed, campaign sent twice, payment-link timeout), T3.6-a (forced logout keeps old account data), T3.7-a/b/c (never detects offline, Mark Sold retried forever, keyboard covers inputs).
+- T3.4-a (GST report shows paise as rupees), T3.5-a/b/c (GSTIN error swallowed, campaign sent twice, payment-link timeout), T3.7-a/b/c (never detects offline, Mark Sold retried forever, keyboard covers inputs; the queue-file-survives-logout part of b is fixed by RC-107).
+
+Fixed 2026-10-29 (Batch 1, local, not deployed, not committed):
+- T2.8 F2 (sitemap lists shopper-specific collections): RC-105.
+- T2.8 F1 (service worker caches personal responses): RC-106.
+- T3.6-a (forced logout keeps old account data): RC-107.
+
+All 15 P1s above were re-read against current code on 2026-10-29 and were still real before Batch 1.
 
 Open, P2 (not applied): T1.2, T1.3 F2-F3, T1.4 F2-F4, T1.5, T1.6, T1.7 F2-F6, T1.8 F2-F5, T2.1, T2.2, T2.3, T2.4 F4-F6, T2.5 F5, T2.6, T2.7, T3.1, T3.2, T3.3, T3.4 b-d, T3.5 d-h, T3.6 b-d, T3.7 d-e.
 

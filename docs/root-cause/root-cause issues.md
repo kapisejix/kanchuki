@@ -13,6 +13,50 @@
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
 
+## RC-107 — Only the sign-out button cleaned up local account data; the forced-logout paths skipped it (T3.6-a, T3.7-b queue file)
+
+- **Component:** `apps/mobile/src/lib/auth-context.tsx`, `src/lib/api/client.ts` (401 branch), `src/lib/offline-persister.ts`, `src/lib/mutation-queue.ts`, `app/_layout.tsx`.
+- **Symptom:** when token refresh fails the app redirects to login but leaves the previous account's persisted query cache (customer names/phones, enquiries), the `retailer_id` / `staff_*` keys and the offline Mark Sold queue on the device. On a shared shop phone the next person to sign in sees them until each query refetches (`staleTime` 60 s), the queue replays under the new account's token, and backgrounding the app re-persists the still-in-memory cache.
+- **Root cause:** sign-out cleanup lived in the button handler (`settings/index.tsx`: `queryClient.clear()` + `clearPersistedCache()`) and in `signOut()` (key deletion), not at the one point every path to logged-out passes through: the `authed: false` event. `client.ts` (401) and `team-api.ts` (team 401) only emit that event. Separately, `clearPersistedCache()` deleted the cache file but not `mutation-queue.json` in the same folder.
+- **Fix:** the `AuthProvider` `authed: false` listener now deletes every `AUTH_KEYS` entry and calls `clearPersistedCache()` (idempotent with `signOut`); `clearPersistedCache()` also calls the new `clearQueue()`; `AppContent` clears the in-memory `queryClient` when status becomes `unauthenticated`.
+- **Proof:** `auth-context.test.tsx` (new case: a bare `authed: false` emit leaves the store empty and calls `clearPersistedCache` once), `offline-persister.test.ts` (new case: the queue file is removed), `shop-staff-login-routing.test.tsx` (mock added so the real provider still mounts). 37 mobile tests across those files pass. API/web typecheck clean.
+- **Limits, stated plainly:** not device-tested. On a cold start with no token, `status` becomes `unauthenticated` and clears the cache while `restoreQueryCache` may still be running, so a stale file could repopulate once (needs a startup reorder, not done). A phone that logged out on an older build keeps its old files until its first sign-out on this build. The other half of T3.7-b (Mark Sold queues every failure and retries 4xx forever) and T3.7-a (offline detection) are Batch 4 and are not fixed. `__tests__/smoke/rc-screens.test.tsx` fails to load (`__DEV__ is not defined`); it mocks both changed modules, so I believe it is unrelated, but I did not run it on the unchanged tree.
+
+---
+
+## RC-106 — The service worker's default cache rules stored authenticated responses and nothing ever cleared them (T2.8 F1)
+
+- **Component:** `apps/web/src/app/sw.ts`.
+- **Symptom:** `/api/passport/me`, the full data export, wishlist, preferences, `/api/my-style/*` and the retailer's Bearer-token `GET /v1/retailers/*` calls were written to Cache Storage. On a shared phone, after shopper A logs out, shopper B going offline (or waiting past the 10 s network timeout) was served A's cached `/me` or export.
+- **Root cause:** `runtimeCaching` ended with `...defaultCache` (Serwist: same-origin `/api/*` NetworkFirst 24 h, cross-origin GET 1 h), and only `/api/c/…` store proxies and `/v1/admin` had their own rules. A new authenticated route is cached by default unless someone remembers to exclude it, and no code called `caches.delete`. `Cache-Control: no-store` on the response (RC-084) does not stop those strategies.
+- **Fix:** one `NetworkOnly` rule before `defaultCache` for same-origin `/api/*` and for `/v1/*` except `/v1/public/`, replacing the `/v1/admin`-only rule; the explicit public proxy rule stays above it. A one-time `activate` listener deletes the `apis` and `cross-origin` caches the old rules filled.
+- **Proof:** `apps/web/src/lib/__tests__/sw-no-personal-cache.test.ts` (3 tests, reads `sw.ts`: rule present and before `defaultCache`, `/v1/public/` carve-out, public proxies above it, cleanup listener present). Web typecheck clean.
+- **Limits, stated plainly:** a source guard, not a runtime test; not exercised in a browser with a real session. Offline use loses cached non-public `/api/*` and non-public `/v1/*` GETs by design. The default stays "cache unless excluded" for new same-origin paths outside `/api/`.
+
+---
+
+## RC-105 — The sitemap query listed every ACTIVE collection, including ones made for one shopper (T2.8 F2)
+
+- **Component:** `apps/api/src/routes/public/public-retailers/public-retailers-sitemap.ts`.
+- **Symptom:** collections created for a single customer (`Collection.customer_id` set; the AI-picks route titles them `AI Picks for <customer name>`) and collections past `expires_at` appeared in `/sitemap.xml`, so a shopper's name and preference-based picks were submitted to Google, and expired pages 404'd when crawled.
+- **Root cause:** "public collection" was implicit in the query (`status: 'ACTIVE', deleted_at: null`), but shopper-specific collections share that status; `expires_at` is only flipped lazily on a view (`public-collections.ts:98-104`).
+- **Fix:** the collections `where` adds `customer_id: null` and `OR: [{ expires_at: null }, { expires_at: { gt: now } }]`.
+- **Proof:** `routes/public.test.ts` asserts the exact `where` (21 tests pass). API typecheck clean.
+- **Limits, stated plainly:** Google may already have indexed existing URLs; this stops new submissions only. The customer-specific collection pages are still reachable by URL and have no `noindex` (product call, follow-up). Not run against a real Postgres.
+
+---
+
+## RC-104 — The migration history cannot build a fresh database: `000_baseline` was hand-patched in prod and the repo copy never was
+
+- **Component:** `packages/db/prisma/migrations/000_baseline/migration.sql`, `001_pgvector_indexes`.
+- **Symptom:** `prisma migrate deploy` on an empty Postgres fails three times in a row: `ERROR: syntax error at or near "┌───…"` (P3018, 000), `type "vector" does not exist` (000), `column does not have dimensions` (001). Found 2026-10-29 while preparing a scratch DB for the RC-102 verify script.
+- **Root cause:** the baseline was generated with `prisma migrate diff > migration.sql`, which captured Prisma's "Update available" banner on stdout (10 lines at the end of the file). It declared `product_embeddings.embedding` and `customer_fashion_dna.preference_vector` as plain `vector` and never created the extension, while `001` builds IVFFlat indexes that need a fixed dimension. Prod was never replayed: live `_prisma_migrations` shows `000_baseline` finished 2026-07-07 14:54, `001_pgvector_indexes` failed once (`finished_at` null) and finished 10 minutes later, i.e. a hand fix on the live database that never came back to the repo. Nothing replays the history on an empty DB, so the drift was invisible.
+- **Fix:** `000_baseline` now starts with `CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA public;`, declares `embedding vector(1536)` (matches `schema.prisma`) and `preference_vector vector(8)` (placeholder: the table is dropped by the teardown migration, 8 only lets the index build), and the banner is deleted. `001` is unchanged. `migrate deploy` does not re-check checksums of applied migrations, so live is unaffected.
+- **Proof:** none yet. Diff reviewed by hand only (5 lines added, 13 removed). No fresh-DB replay has passed.
+- **Limits, stated plainly:** migrations 002-145 were never replayed either, so more drift (missing roles such as `kanchuki_app` / `kanchuki_purge`, other hand edits) is likely. Prod's `000_baseline` checksum now differs from the file; `migrate dev` would flag it. The regression check is a full replay on a throwaway Postgres; until that passes, DR and CI cannot assume the history builds a database.
+
+---
+
 ## RC-103 — A quota with no `plan_limits` row meant "unlimited", including for resources that cost real money per call (H6-1)
 
 - **Component:** `apps/api/src/lib/quota.ts` (`effectiveLimit`, `effectiveCustomerLimit`), `apps/api/src/routes/products/products-studio.ts`.
