@@ -9,6 +9,7 @@
 
 import { prisma } from '@kanchuki/db';
 import { normalizeIndianPhone } from '@kanchuki/shared';
+import { fetchWithTimeout as fetch } from '../lib/fetch-timeout.js';
 import { canMessage, recordMessageSent } from '../lib/messaging-guard.js';
 
 interface WelcomePayload {

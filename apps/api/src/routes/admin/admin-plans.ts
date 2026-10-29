@@ -14,6 +14,7 @@ import {
 } from '@kanchuki/db';
 import { INTEGRATION_KEYS, PLAN_LIMIT_RESOURCE_TYPES, R2_PATHS } from '@kanchuki/shared';
 import { z } from 'zod';
+import { fetchWithTimeout as fetch } from '../../lib/fetch-timeout.js';
 import { forbidden, notFound, validationError } from '../../plugins/error-handler.js';
 import { adminAuthPreHandler } from '../admin-auth.js';
 import { planPriceMissing } from '../billing/billing-helpers.js';

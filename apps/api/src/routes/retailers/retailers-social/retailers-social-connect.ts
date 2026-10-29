@@ -10,6 +10,7 @@ import {
   listPages,
   resolveMetaCredentials,
 } from '../../../lib/meta-graph.js';
+import { fetchWithTimeout as fetch } from '../../../lib/fetch-timeout.js';
 import { AppError, serviceUnavailable, validationError } from '../../../plugins/error-handler.js';
 import {
   STATE_TTL_SEC,

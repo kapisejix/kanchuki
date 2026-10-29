@@ -7,6 +7,7 @@
 import { decryptSecret, encryptSecret, prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
+import { fetchWithTimeout as fetch } from '../../lib/fetch-timeout.js';
 import { notFound, validationError } from '../../plugins/error-handler.js';
 
 // ─── Provider response shapes ─────────────────────────────────────

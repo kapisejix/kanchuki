@@ -4,6 +4,7 @@ import { addDays, generateCollectionSlug, normalizeIndianPhone } from '@kanchuki
 import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { hasFeature } from '../lib/features.js';
+import { fetchWithTimeout as fetch } from '../lib/fetch-timeout.js';
 import { buildCollectionUrl } from '../lib/store-urls.js';
 import { isRealOwner, maskPhoneForRequest } from '../plugins/auth.js';
 import {
