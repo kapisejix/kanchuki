@@ -78,6 +78,29 @@ describe('RC-125: release builds never show the API URL or "check the server" te
   })
 })
 
+describe('RC-128: FREE_SIZE and the stock max have one home (@kanchuki/shared)', () => {
+  const apiStock = stripComments(
+    readFileSync(join(__dirname, '..', '..', 'api', 'src', 'lib', 'product-stock.ts'), 'utf8'),
+  )
+  const shared = stripComments(
+    readFileSync(join(__dirname, '..', '..', '..', 'packages', 'shared', 'src', 'constants', 'index.ts'), 'utf8'),
+  )
+
+  it('shared declares both constants', () => {
+    expect(shared).toContain("export const FREE_SIZE = 'FREE'")
+    expect(shared).toMatch(/export const MAX_STOCK_QUANTITY = 99_?999/)
+  })
+
+  it('StockEditor and the API import them instead of redeclaring', () => {
+    const editor = read('src/components/product-detail/StockEditor.tsx')
+    for (const src of [editor, apiStock]) {
+      expect(src).toMatch(/import \{[^}]*FREE_SIZE[^}]*\} from '@kanchuki\/shared'/)
+      expect(src).toMatch(/import \{[^}]*MAX_STOCK_QUANTITY[^}]*\} from '@kanchuki\/shared'/)
+      expect(src).not.toMatch(/(const|let) (FREE_SIZE|MAX_QTY|MAX_STOCK_QUANTITY)\b/)
+    }
+  })
+})
+
 describe('RC-126: every Modal in category/new.tsx handles Android back / iOS swipe-down', () => {
   it('each <Modal has onRequestClose', () => {
     const src = read('app/category/new.tsx')

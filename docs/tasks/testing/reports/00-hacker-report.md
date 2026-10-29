@@ -184,6 +184,7 @@ Follow-up 2026-10-29 (local, not deployed, not committed):
 - RC-119 addendum: the keyboard guard's pin list is now derived (input components under `src/` to a fixpoint, every `app/` importer must wrap); falsified on `growth/ratings` and `onboarding`. Only `ReportProblem` stays pinned.
 - RC-118 addendum: `lib/meta-catalog.ts` now defaults to a 15 s timeout (caller `signal` still wins); its only importer already passed a signal. The guard is now per call (each `fetch(` needs its own `AbortSignal.timeout`/`any`, or the file aliases `fetchWithTimeout as fetch`); the 14 files it used to exempt were read and all already had per-call timeouts. Falsified on `fal-client`.
 - T3.6 b, d (P2): b = RC-124 (`allowBackup: false` in `app.json`; **needs an EAS rebuild**), d = RC-123 (dead `admin_key` / `x-admin-key` branch removed from `teamRequest`). Source pins in `__tests__/t35-p2-pins.test.ts`, each falsified. T3.6 c (26 unguarded `console.*`, optional) left on purpose.
+- T3.4 c, d (P2): c = RC-127 (the report named `growth-gst.ts`; the same `z.coerce.boolean()` was at seven sites in six API files, all fixed through one `queryBool()` plus a guard), d = RC-128 (`FREE_SIZE` / stock max moved to `@kanchuki/shared`). Tests falsified; API and mobile `tsc` clean. **T3.4 b left open on purpose: the GST screen labels the retailer's own subscription payments "Sales" / "Walk-in Client", a product-copy decision for the owner.**
 - T3.7 d, e (P2, mobile): d = RC-126 (`onRequestClose` on both `category/new.tsx` pickers), e = RC-125 (release text for `TIMEOUT` / `NETWORK_ERROR` in `client.ts`, URL text under `__DEV__`; the `settings` / `staff` / `ai-campaign` callers were already fixed by RC-117, `useProductAiStudio` was the live leak). Source pins in `__tests__/t35-p2-pins.test.ts`, each falsified; mobile `tsc` clean. Not device-tested.
 - T3.7-c sweep (inputs owned by child components): RC-119, `growth/ratings` now wrapped. Other `src/` input components' host screens already wrapped.
 - Falsification of RC-114, RC-115, RC-116 tests, each fix reverted then restored: RC-115 `isRetryable` (4 cases + replay case red), RC-115 `setupOnlineManager` (red), RC-115 dequeue line (red, isolated), RC-116 guard (red). RC-114 had a gap: its tests covered `apiMessage` only, so reverting an onboarding catch stayed green; a source-pin for the three onboarding catches was added and then falsified (red).
@@ -206,6 +207,6 @@ Fixed 2026-10-29 (Batch 2 money and Batch 3 admin + observability, local, not de
 
 All 15 P1s above were re-read against current code on 2026-10-29 and were still real before Batch 1.
 
-Open, P2 (not applied): T1.2, T1.3 F2-F3, T1.4 F2-F4, T1.5, T1.6, T1.7 F2-F6, T1.8 F2-F5, T2.1, T2.2, T2.3, T2.4 F4-F6, T2.5 F5, T2.6, T2.7, T3.1, T3.2, T3.3, T3.4 b-d, T3.5 g (stats swallows only), T3.6 c.
+Open, P2 (not applied): T1.2, T1.3 F2-F3, T1.4 F2-F4, T1.5, T1.6, T1.7 F2-F6, T1.8 F2-F5, T2.1, T2.2, T2.3, T2.4 F4-F6, T2.5 F5, T2.6, T2.7, T3.1, T3.2, T3.3, T3.4 b, T3.5 g (stats swallows only), T3.6 c.
 
 Waiting on an owner decision: T1.8 F4 and T2.5 F1 (`trustProxy`, same as H1-4).

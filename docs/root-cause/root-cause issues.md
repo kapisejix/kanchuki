@@ -13,6 +13,28 @@
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
 
+## RC-128 — `FREE_SIZE` and the stock maximum were hand-copied in the API and the mobile `StockEditor` (T3.4-d)
+
+- **Component:** `apps/api/src/lib/product-stock.ts`, `apps/mobile/src/components/product-detail/StockEditor.tsx`, `packages/shared/src/constants/index.ts`.
+- **Symptom:** none today; both copies were equal (`'FREE'`, 99 999).
+- **Root cause:** a contract value with two owners and nothing pinning them together (RC-041 shape). Changing one side would make the editor offer a quantity or size row the API rejects, or the reverse.
+- **Fix:** `FREE_SIZE` and `MAX_STOCK_QUANTITY` live in `@kanchuki/shared`; the API schema and the editor import them. No re-export, since nothing else imported them from the old places.
+- **Proof:** `__tests__/t35-p2-pins.test.ts` asserts shared declares both and that neither consumer redeclares (`const FREE_SIZE` / `MAX_QTY` / `MAX_STOCK_QUANTITY`). Falsified by re-declaring both in `StockEditor`: red; restored, `git diff` identical. API `tsc` clean, `product-stock.test.ts` green.
+- **Limits, stated plainly:** `@kanchuki/shared` resolves to its gitignored `dist/` at runtime while `tsc` reads `src/`, so a stale local `dist` makes `FREE_SIZE` `undefined` with a clean typecheck (it failed 3 tests here until `packages/shared` was rebuilt). The deploy builds shared itself. Source pin, not device-tested.
+
+---
+
+## RC-127 — `z.coerce.boolean()` on query strings turned `?flag=false` into `true` at seven sites (T3.4-c)
+
+- **Component:** `growth-gst.ts` and `admin-gst.ts` (`invoiced`), `admin-social.ts` and `admin-social-templates.ts` (`is_active`), `admin-retailers-list.ts` (`suspended`, `featured`), `products-helpers.ts` (`is_new_arrival`). New helper `apps/api/src/lib/query-bool.ts`.
+- **Symptom:** latent. `?suspended=false` returned the suspended retailers, `?is_active=false` the active accounts, `?invoiced=false` the invoiced rows. No web or mobile caller sends these params today, so nothing hit it.
+- **Root cause:** `z.coerce.boolean()` is JavaScript `Boolean(string)`, and every non-empty string, including `"false"`, is truthy. The report named one site; the same call was copied to six files.
+- **Fix:** one `queryBool()` (`z.enum(['true','false'])` to boolean, optional) used at all seven sites. Anything other than `true` / `false` is now a 400 instead of silently `true`.
+- **Proof:** `src/lib/query-bool.test.ts` covers `false`, `true`, absent and rejected values, and walks every non-test `.ts` under `apps/api/src` failing on `z.coerce.boolean` (comments stripped). Falsified by reverting the helper and one route: three tests red; restored, `git diff` identical. 88 API test files (1195 tests) in `routes/products`, `routes/growth`, `routes/admin`, `lib` green; API `tsc` clean.
+- **Limits, stated plainly:** the guard is name-based (an aliased `z` or a `.pipe` form is missed). `z.coerce.number()` on query strings was not reviewed. The empty string (`?flag=`) is now rejected rather than coerced to `false`. Not run against a real server.
+
+---
+
 ## RC-126 — Two `pageSheet` `<Modal>`s had no `onRequestClose`, so Android back did nothing and an iOS swipe-down left the open flag stuck `true` (T3.7-d)
 
 - **Component:** `apps/mobile/app/category/new.tsx` (product picker, photo picker).

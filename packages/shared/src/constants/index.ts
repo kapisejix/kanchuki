@@ -162,6 +162,10 @@ export const SIZE_OPTIONS = [
   '8XL',
 ] as const;
 
+// Per-size stock: the API (lib/product-stock.ts) and the mobile StockEditor share these (RC-128).
+export const FREE_SIZE = 'FREE';
+export const MAX_STOCK_QUANTITY = 99_999;
+
 // ─── Color Swatch Resolution ──────────────────────────────────────
 // Common Indian-fashion color names aren't valid CSS/RN color keywords
 // (e.g. "Bottle Green", "Rani Pink", "Mustard") — used directly as a

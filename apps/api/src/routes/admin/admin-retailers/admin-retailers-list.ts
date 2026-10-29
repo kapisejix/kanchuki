@@ -3,6 +3,7 @@ import { prisma, vaultDelete } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { hardDeleteRetailer } from '../../../jobs/purge-retailer-now.js';
+import { queryBool } from '../../../lib/query-bool.js';
 import { forbidden } from '../../../plugins/error-handler.js';
 import { adminAuthPreHandler } from '../../admin-auth.js';
 
@@ -54,8 +55,8 @@ export const adminRetailersListRoutes: FastifyPluginAsync = async (server) => {
         state: z.string().max(100).optional(),
         plan: z.enum(['STARTER', 'GROWTH', 'PRO']).optional(),
         status: z.enum(['TRIAL', 'ACTIVE', 'PAST_DUE', 'CANCELLED', 'COMPLETED']).optional(),
-        suspended: z.coerce.boolean().optional(),
-        featured: z.coerce.boolean().optional(),
+        suspended: queryBool(),
+        featured: queryBool(),
       })
       .safeParse(request.query);
     const { cursor, limit, search, city, state, plan, status, suspended, featured } = query.success

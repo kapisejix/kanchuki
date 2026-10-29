@@ -2,12 +2,10 @@
 // A product with no product_stock rows is "not tracked" and behaves as before.
 // Rows are never deleted (RC-049): dropping a size writes quantity 0.
 import { prisma } from '@kanchuki/db';
-import { SIZE_OPTIONS } from '@kanchuki/shared';
+import { FREE_SIZE, MAX_STOCK_QUANTITY, SIZE_OPTIONS } from '@kanchuki/shared';
 import { z } from 'zod';
 
-export const FREE_SIZE = 'FREE';
 export const STOCK_SIZES = [...SIZE_OPTIONS, FREE_SIZE] as const;
-export const MAX_STOCK_QUANTITY = 99_999;
 
 export const StockInputSchema = z
   .array(
