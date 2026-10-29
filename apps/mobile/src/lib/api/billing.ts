@@ -50,15 +50,6 @@ export const billingApi = {
       timeoutMs: 60_000,
     }),
 
-  /** F-010: Get addon pricing packs for all resource types */
-  getAddonPricing: () =>
-    request<{
-      data: Record<
-        string,
-        { label: string; unit_label: string; pack_size: number; price_paise: number }[]
-      >;
-    }>('/v1/billing/addon-pricing', { getCacheTtlMs: 300_000 }),
-
   /** F-010: Create a Razorpay Payment Link for an addon purchase */
   addonCheckout: (resourceType: string, packIndex?: number, packId?: string) =>
     request<{

@@ -64,14 +64,6 @@ export const collectionApi = {
 
   delete: (id: string) => request<void>(`/v1/collections/${id}`, { method: 'DELETE' }),
 
-  // Phase 1 — AI auto-suggest collection for a customer
-  autoSuggest: (customerId: string, title?: string) =>
-    request<{ data: Record<string, unknown> }>('/v1/collections/auto-suggest', {
-      method: 'POST',
-      body: JSON.stringify({ customer_id: customerId, title, limit: 12 }),
-      timeoutMs: 15_000,
-    }),
-
   /** Bulk-send via retailer's configured WhatsApp Business API */
   bulkSend: (id: string, customerIds: string[]) =>
     request<{

@@ -111,17 +111,6 @@ export const showcaseDesignsApi = {
 
   remove: (id: string) => request<void>(`/v1/retailers/me/showcase-designs/${id}`, { method: 'DELETE' }),
 
-  // ── Public (customer storefront) ──────────────────────────────────
-  publicForProduct: (productId: string) =>
-    request<{
-      data: {
-        designs: PublicShowcaseDesign[]
-        category: { slug: string; name: string; related: string[] } | null
-      }
-    }>(`/v1/public/showcase-designs?product_id=${encodeURIComponent(productId)}`, {
-      getCacheTtlMs: 60_000,
-    }),
-
   publicBrowse: (store: string, category?: string) =>
     request<{
       data: { designs: PublicShowcaseDesign[]; related: string[]; next_cursor: string | null }

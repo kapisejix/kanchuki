@@ -445,7 +445,7 @@ function TxRow({
           className="text-base font-bold text-spaceCadet-900"
           numberOfLines={1}
         >
-          {tx.customer ?? 'Walk-in Client'}
+          Kanchuki subscription
         </Text>
         <Text
           style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}

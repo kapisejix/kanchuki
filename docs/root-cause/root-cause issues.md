@@ -13,6 +13,28 @@
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
 
+## RC-130 — the GST transaction row showed "Walk-in Client" for the retailer's own subscription payments (T3.4-b)
+
+- **Component:** `apps/mobile/app/growth/gst.tsx` (`TxRow`), `GstTransaction` in `apps/mobile/src/lib/api/growth.ts`.
+- **Symptom:** every row on the GST screen read "Walk-in Client".
+- **Root cause:** the endpoint returns the retailer's Kanchuki `subscriptionPayment` rows (`id`, amounts, invoice number, date) and never a customer, but the type declared `customer: string | null` and the row fell back to a sale-shaped label. A client type that promises a field the server does not send, with a fallback that hides the gap.
+- **Fix:** `customer` dropped from `GstTransaction`; the row reads "Kanchuki subscription". Owner chose Option A (relabel rows). The summary tiles ("Total Sales", "Sales: ₹…") are untouched; the report scoped the fix to the row.
+- **Proof:** `__tests__/t3-3-client-routes.test.ts` (RC-130 block) pins the label and the type; falsified by reverting each, red; restored, `git diff` identical. Mobile `tsc` clean. Source pin, not device-tested.
+
+---
+
+## RC-129 — 30 `growthApi` methods still called routes the teardown deleted (T3.3-a)
+
+- **Component:** `apps/mobile/src/lib/api/growth.ts` (referrals ×5, suppliers ×6, bookings ×4, partners ×8, incentives ×7, plus their types).
+- **Symptom:** none today. Every one of the 30 had zero callers, so no screen hit a 404.
+- **Root cause:** teardown `76c5acdb` removed the server routes and screens but not the client method and type layer, and nothing ties a client path to a server route (RC-012/RC-013 shape). The first caller wired to one of them would have shipped a 404 that typechecks.
+- **Fix:** the 30 methods and the types only they used are deleted (365 lines). Promotions and inventory-alerts, which have live routes, stay.
+- **Proof:** `__tests__/t3-3-client-routes.test.ts` (17 tests). Falsified by re-adding `referrals` to `growthApi`: the absence pin goes red (1 failed); restored, `git diff` identical. Mobile `tsc` clean.
+- **Limits, stated plainly:** the derived check (every `/v1/growth/<seg>` and `/v1/retailers/me/<seg>` in `growth.ts` must appear somewhere under `apps/api/src/routes`) is a substring match and did NOT catch the re-added `referrals` (the F-038 affiliate routes contain the word); only the explicit absence pin did. It covers `growth.ts` only, no HTTP method or param check. 
+- **Addendum (T3.3 b-d):** 13 more client methods with a live route but no caller (4 of the report's 17 had already gone) and the `FbAdCampaign` type were deleted; `GradientBorderCard.tsx` and `react-native.cjs` removed; `@gorhom/bottom-sheet`, `react-native-image-viewing`, `zustand`, `@expo/ngrok` removed from `package.json` and `pnpm-lock.yaml` (JS-only or dev-only, no addition to the EAS rebuild). Absence pins in the same test file, each falsified. No bug behind these (no caller), so no separate RC. If a screen needs one of those methods later, re-add it with the screen.
+
+---
+
 ## RC-128 — `FREE_SIZE` and the stock maximum were hand-copied in the API and the mobile `StockEditor` (T3.4-d)
 
 - **Component:** `apps/api/src/lib/product-stock.ts`, `apps/mobile/src/components/product-detail/StockEditor.tsx`, `packages/shared/src/constants/index.ts`.

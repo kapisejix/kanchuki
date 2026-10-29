@@ -64,30 +64,6 @@ export const catalogImportApi = {
     }),
 
   /**
-   * F-001b: Import a PDF catalog. If page_images[] is provided, runs
-   * multi-item detection on each page. If not, returns PDF metadata.
-   */
-  importPdf: (pdfUrl: string, pageImages?: string[]) =>
-    request<{
-      data: {
-        source_type: 'pdf'
-        total_items: number
-        total_pages: number
-        page_dimensions?: { width: number; height: number }[]
-        items: CatalogDetectedItem[]
-        render_required?: boolean
-        max_page_images?: number
-      }
-    }>('/v1/catalog-import/import-pdf', {
-      method: 'POST',
-      body: JSON.stringify({
-        pdf_url: pdfUrl,
-        ...(pageImages ? { page_images: pageImages } : {}),
-      }),
-      timeoutMs: 180_000, // PDF processing + detection can be slow
-    }),
-
-  /**
    * Save reviewed items as real products in one batch.
    */
   bulkCreateProducts: (
