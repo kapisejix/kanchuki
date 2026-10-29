@@ -153,7 +153,7 @@ async function cleanup(): Promise<void> {
   if (photoIds.length) await attempt('product_photos', () => prisma.$executeRaw`DELETE FROM product_photos WHERE id = ANY(${photoIds})`);
   if (retailerId) {
     await attempt('try_on_jobs', () => prisma.$executeRaw`DELETE FROM try_on_jobs WHERE retailer_id = ${retailerId}`);
-    await attempt('retailer (cascades counters, reservations, overrides)', () => prisma.retailer.delete({ where: { id: retailerId } }));
+    await attempt('retailer (cascades counters, reservations, overrides)', () => prisma.$executeRaw`DELETE FROM retailers WHERE id = ${retailerId}`);
   }
   if (customerId) await attempt('customer_account (cascades)', () => prisma.customerAccount.delete({ where: { id: customerId } }));
   await attempt('customer_resource_limits restore', async () => {
