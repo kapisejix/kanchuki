@@ -14,6 +14,7 @@ import {
   setAuthChangeListener,
 } from './auth-events'
 import { clearRequestCache, getToken } from './api'
+import { clearPersistedCache } from './offline-persister'
 import { unregisterPush } from './push-notifications'
 import { deleteItem, getItem } from './storage'
 
@@ -133,6 +134,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     setAuthChangeListener((change) => {
       if (change.authed === false) {
+        // RC-107: one cleanup for every path to logged-out (button, 401 refresh failure, team
+        // 401). Idempotent with signOut's own key deletion.
+        void Promise.all(AUTH_KEYS.map((key) => deleteItem(key))).catch(() => {})
+        void clearPersistedCache()
         setPendingNav(null)
         setIsTeamMember(false)
         setIsShopStaff(false)

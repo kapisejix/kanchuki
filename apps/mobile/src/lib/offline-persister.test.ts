@@ -184,4 +184,12 @@ describe('offline-persister', () => {
     await clearPersistedCache()
     expect(memory.has(CACHE_FILE_URI)).toBe(false)
   })
+
+  it('clearPersistedCache also deletes the offline mutation queue (RC-107)', async () => {
+    const queueUri = 'file:///documents/kanchuki-cache/mutation-queue.json'
+    memory.set(queueUri, '[{"id":"p1-1","productId":"p1","status":"SOLD","queuedAt":1}]')
+
+    await clearPersistedCache()
+    expect(memory.has(queueUri)).toBe(false)
+  })
 })

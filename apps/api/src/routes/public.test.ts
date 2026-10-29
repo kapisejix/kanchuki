@@ -172,6 +172,14 @@ describe('GET /public/retailers (sitemap discovery)', () => {
     expect(collectionProducts.take).toBeLessThanOrEqual(200);
     expect(collectionProducts.select.product.select.photos.take).toBe(1);
 
+    // RC-105: shopper-specific ("AI Picks for <name>") and expired collections stay out.
+    expect(mockRetailerFindMany.mock.calls[0]?.[0]?.select?.collections?.where).toEqual({
+      status: 'ACTIVE',
+      deleted_at: null,
+      customer_id: null,
+      OR: [{ expires_at: null }, { expires_at: { gt: expect.any(Date) } }],
+    });
+
     // Discovery query filters to indexable stores: has a public_slug, not
     // suspended/deleted, has live products. Deliberately NO onboarding gate —
     // the QR slug (POST /me/qr-slug) can exist before onboarding completes.

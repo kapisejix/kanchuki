@@ -82,6 +82,16 @@ export async function enqueueStatusMutation(productId: string, status: string): 
   await writeQueue(queue)
 }
 
+/** Delete the whole queue file (sign-out: it must not replay under the next account's token). */
+export async function clearQueue(): Promise<void> {
+  try {
+    const file = new File(queueFileUri())
+    if (file.exists) file.delete()
+  } catch {
+    // Best-effort
+  }
+}
+
 export async function dequeueStatusMutation(id: string): Promise<void> {
   const queue = await getQueue()
   await writeQueue(queue.filter((m) => m.id !== id))

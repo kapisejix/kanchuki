@@ -414,6 +414,12 @@ function AppContent({
 }) {
   const { status } = useAuth();
 
+  // RC-107: the in-memory cache goes too, or backgrounding the app re-persists the previous
+  // account's data.
+  useEffect(() => {
+    if (status === 'unauthenticated') queryClient.clear();
+  }, [status]);
+
   // 5B.2: an app link carrying ?ref=<CODE> (cold start or warm) is captured here,
   // before login, so onboarding can prefill it. See src/lib/referral-capture.ts.
   const incomingUrl = Linking.useURL();
