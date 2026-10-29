@@ -21,7 +21,7 @@ import {
   prepareImageForUpload,
   type CatalogDetectedItem,
 } from '../../src/lib/api'
-import { showError, logError } from '../../src/lib/errors'
+import { apiMessage, showError, logError } from '../../src/lib/errors'
 import { useTheme } from '../../src/lib/theme'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { KeyboardScreen } from '../../src/components/KeyboardScreen'
@@ -125,7 +125,7 @@ export default function BulkOnboardScreen() {
       setStep('reviewing')
     } catch (err) {
       logError(err)
-      setError('Something went wrong. Try again.')
+      setError(apiMessage(err, 'Something went wrong. Try again.'))
       setStep('location')
     }
   }, [selectedSectionId])

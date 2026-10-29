@@ -32,7 +32,7 @@ import {
   productAttributeApi,
   type CatalogDetectedItem,
 } from '../../src/lib/api'
-import { showError, logError } from '../../src/lib/errors'
+import { apiMessage, showError, logError } from '../../src/lib/errors'
 import { useTheme } from '../../src/lib/theme'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { KeyboardScreen } from '../../src/components/KeyboardScreen'
@@ -202,7 +202,7 @@ export default function CatalogImportScreen() {
       setStep('reviewing')
     } catch (err) {
       logError(err)
-      setError('Upload failed. Try again.')
+      setError(apiMessage(err, 'Upload failed. Try again.'))
       setStep('source')
     }
   }, [])
@@ -233,7 +233,7 @@ export default function CatalogImportScreen() {
       await runDetection(info.public_url)
     } catch (err) {
       logError(err)
-      setError('Upload failed. Try again.')
+      setError(apiMessage(err, 'Upload failed. Try again.'))
       setStep('source')
     }
     // runDetection is a stable useCallback defined below (forward reference) —
@@ -274,7 +274,7 @@ export default function CatalogImportScreen() {
       setStep('reviewing')
     } catch (err) {
       logError(err)
-      setError('Detection failed. Try again.')
+      setError(apiMessage(err, 'Detection failed. Try again.'))
       setStep('source')
     }
   }, [])
