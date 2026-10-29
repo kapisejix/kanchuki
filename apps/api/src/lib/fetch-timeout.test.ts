@@ -54,16 +54,54 @@ describe('outbound fetch has a timeout (RC-118)', () => {
     });
   }
 
-  it('no file calls bare fetch without fetchWithTimeout or an AbortSignal', () => {
+  // Text of each bare `fetch(...)` call by balanced-paren scan. An unbalanced call
+  // runs to the end of the file: lenient on purpose, a parse miss must not turn the
+  // guard red for a good file.
+  function fetchCalls(src: string): Array<{ line: number; text: string }> {
+    const out: Array<{ line: number; text: string }> = [];
+    for (const m of src.matchAll(/(^|[^A-Za-z0-9_.])fetch\(/gm)) {
+      const open = (m.index ?? 0) + m[0].length - 1;
+      let depth = 0;
+      let end = src.length;
+      for (let i = open; i < src.length; i++) {
+        if (src[i] === '(') depth++;
+        else if (src[i] === ')' && --depth === 0) {
+          end = i + 1;
+          break;
+        }
+      }
+      out.push({ line: src.slice(0, open).split('\n').length, text: src.slice(open, end) });
+    }
+    return out;
+  }
+
+  const HAS_TIMEOUT = /AbortSignal\.(timeout|any)\(/;
+
+  it('splits calls and tells a timeout from a bare optional signal', () => {
+    const calls = fetchCalls(
+      "const a = await fetch(`${u.replace(/x/, '')}`, { signal: AbortSignal.timeout(5) });\n" +
+        'const b = await fetch(u, { signal });\n' +
+        'const c = await fetchWithTimeout(u);',
+    );
+    expect(calls.map((c) => c.line)).toEqual([1, 2]);
+    expect(calls.map((c) => HAS_TIMEOUT.test(c.text))).toEqual([true, false]);
+  });
+
+  it('every bare fetch call carries its own timeout', () => {
     const files = walk(SRC);
     expect(files.length).toBeGreaterThan(100); // a broken walk must not pass vacuously
+    let seen = 0;
     const offenders = files
       .filter((f) => !f.endsWith('fetch-timeout.ts'))
-      .filter((f) => {
+      .flatMap((f) => {
         const src = stripComments(readFileSync(f, 'utf8'));
-        return /(^|[^A-Za-z0-9_.])fetch\(/m.test(src) && !/fetchWithTimeout|AbortSignal/.test(src);
-      })
-      .map((f) => f.slice(SRC.length + 1).split('\\').join('/'));
+        if (/fetchWithTimeout\s+as\s+fetch\b/.test(src)) return []; // every fetch( is wrapped
+        const rel = f.slice(SRC.length + 1).split('\\').join('/');
+        return fetchCalls(src)
+          .filter((c) => (seen++, !HAS_TIMEOUT.test(c.text)))
+          .map((c) => `${rel}:${c.line}`);
+      });
+    expect(seen).toBeGreaterThan(20); // the scan must reach the AbortSignal.timeout files
     expect(offenders).toEqual([]);
   });
 });
