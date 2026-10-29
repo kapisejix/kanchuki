@@ -105,7 +105,9 @@ export async function request<T>(
     if (err instanceof Error && err.name === 'AbortError') {
       throw new ApiError(
         'TIMEOUT',
-        `Request timed out (${path}). Check that the API server is running at ${API_URL} and try again.`,
+        __DEV__
+          ? `Request timed out (${path}). Check that the API server is running at ${API_URL} and try again.`
+          : 'The server took too long to respond. Please try again.',
         408,
       )
     }
@@ -141,7 +143,9 @@ export async function request<T>(
     // apps/mobile/.env.local overrides .env, see docs/ai-studio/history/photo-feature-progress-log.md).
     throw new ApiError(
       'NETWORK_ERROR',
-      `Network request failed to ${API_URL}${path}. Check that the API server is running and this device can reach it.`,
+      __DEV__
+        ? `Network request failed to ${API_URL}${path}. Check that the API server is running and this device can reach it.`
+        : 'No internet connection. Check your network and try again.',
       status ?? 0,
     )
   }

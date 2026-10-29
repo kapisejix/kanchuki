@@ -67,3 +67,22 @@ describe('RC-124: Android Auto Backup is off so the offline cache stays on the d
     expect(cfg.expo.android.allowBackup).toBe(false)
   })
 })
+
+describe('RC-125: release builds never show the API URL or "check the server" text', () => {
+  it('client.ts gates the dev-only timeout and network messages behind __DEV__', () => {
+    const src = read('src/lib/api/client.ts')
+    expect(src).toMatch(/__DEV__\s*\?\s*`Request timed out/)
+    expect(src).toMatch(/__DEV__\s*\?\s*`Network request failed to/)
+    expect(src).toContain('The server took too long to respond. Please try again.')
+    expect(src).toContain('No internet connection. Check your network and try again.')
+  })
+})
+
+describe('RC-126: every Modal in category/new.tsx handles Android back / iOS swipe-down', () => {
+  it('each <Modal has onRequestClose', () => {
+    const src = read('app/category/new.tsx')
+    const tags = src.match(/<Modal\b[^>]*>/g) ?? []
+    expect(tags.length).toBe(2)
+    for (const t of tags) expect(t).toContain('onRequestClose')
+  })
+})

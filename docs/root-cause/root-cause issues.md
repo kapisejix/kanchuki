@@ -13,6 +13,28 @@
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
 
+## RC-126 — Two `pageSheet` `<Modal>`s had no `onRequestClose`, so Android back did nothing and an iOS swipe-down left the open flag stuck `true` (T3.7-d)
+
+- **Component:** `apps/mobile/app/category/new.tsx` (product picker, photo picker).
+- **Symptom:** hardware Back is ignored while a picker is open (Android). Swipe-down dismisses the sheet on iOS but `showProductPicker` / `showPhotoPicker` stay `true`, so the "pick a product / photo" button cannot reopen it.
+- **Root cause:** `<Modal>` owns a dismiss path the parent never hears about unless `onRequestClose` is passed. The visible flag lived only in parent state, and only the X button reset it.
+- **Fix:** both modals get `onRequestClose` with the same handler as their X button (close the flag, clear `selectedProductId`).
+- **Proof:** `__tests__/t35-p2-pins.test.ts` finds every `<Modal …>` tag in the file (exactly 2) and asserts each has `onRequestClose`. Falsified by renaming the prop: red; restored, `git diff` identical.
+- **Limits, stated plainly:** source pin, this file only; no repo-wide `<Modal>` guard (the T3.7 scan found no other miss). Not device-tested.
+
+---
+
+## RC-125 — Timeout and offline errors carried developer text (API URL, "check that the API server is running") that callers surfaced to retailers (T3.7-e)
+
+- **Component:** `apps/mobile/src/lib/api/client.ts` (`request` catch: `TIMEOUT` and `NETWORK_ERROR` messages). Leak path still live through `src/hooks/useProductAiStudio.ts:167` (`err.message` into UI); the `settings` / `staff` / `ai-campaign` callers named in the report were already fixed by RC-117.
+- **Symptom:** a retailer with no signal read "Network request failed to https://…/v1/…. Check that the API server is running…".
+- **Root cause:** a dev diagnostic was the only message text on the error type that every caller receives. `apiMessage` / `showError` hid it (RC-117) but any caller that renders `ApiError.message` directly bypasses them.
+- **Fix:** fixed once at the source. Release builds throw "The server took too long to respond. Please try again." (408) and "No internet connection. Check your network and try again." (status 0); the URL text stays under `__DEV__`. `code` and `status` unchanged, and nothing in `app/` or `src/` matches on the old text.
+- **Proof:** `__tests__/t35-p2-pins.test.ts` asserts both `__DEV__ ?` gates and both release strings. Falsified by stripping the gate and one string: red; restored, `git diff` identical. Mobile `tsc` clean, `errors.test.ts` green.
+- **Limits, stated plainly:** source pin, not a runtime test of `__DEV__ === false`; not device-tested. `team-api.ts` has its own bare "Request timed out" (no URL), left alone.
+
+---
+
 ## RC-124 — Android Auto Backup was on by Expo default, so the offline cache (customer names, phones, enquiries) was copied to Google Drive and restored to other devices (T3.6-b)
 
 - **Component:** `apps/mobile/app.json` (`expo.android`, no `allowBackup`); data at `kanchuki-cache/*.json` in the documents dir (`src/lib/offline-persister.ts`).
