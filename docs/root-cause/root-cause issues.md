@@ -13,6 +13,39 @@
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
 
+## RC-116 — A screen with a text field had to remember the keyboard wrapper, and the guard only banned the wrong wrapper (T3.7-c)
+
+- **Component:** `apps/mobile` — `app/product/[id].tsx`, `app/social/schedule/[id].tsx`, `src/components/ReportProblem.tsx`, `app/staff/retailer-onboard.tsx`, plus `app/(tabs)/collections.tsx` (the Edit Collection dialog), found while building the guard.
+- **Symptom:** on a phone the software keyboard covered the lower fields of the product edit form (attributes, stock), the schedule post editor, the Report-a-problem sheet and the Edit Collection dialog, with no way to scroll to them.
+- **Root cause:** RC-042's guard (`keyboard-screen-adoption.test.ts`) banned the raw `KeyboardAvoidingView` in `app/`, but nothing required a screen that owns a `TextInput` to use `KeyboardScreen` at all. A screen that forgot any wrapper passed every arm. Three of the misses were also out of the guard's sight: `product/[id].tsx` owns its inputs through child components (`ProductAttributesForm`, `StockEditor`), `ReportProblem` lives in `src/components/`, and `retailer-onboard` was the one exemption (Android pinned to `undefined`, so Android got no lift).
+- **Fix:** `product/[id]`, `schedule/[id]` and `retailer-onboard` render `KeyboardScreen` as the screen root; `ReportProblem` and the Edit Collection dialog wrap their `Modal` overlay in it. `EXCLUDED` is now empty. New guard arms: every `app/` file with a `<TextInput` renders `<KeyboardScreen`, unless listed in `NO_WRAPPER` with a reason (the three header search fields: `catalog`, `customers`, `ai-search`); a stale `NO_WRAPPER` entry fails; `ReportProblem` and `product/[id]` are source-pinned because the scan cannot see their inputs.
+- **Proof:** `keyboard-screen-adoption.test.ts` 12 tests pass (was 8). Full mobile suite 258 tests pass.
+- **Limits, stated plainly:** like RC-042, no desktop run can show the keyboard, so the guard pins the wrapper, not the layout. Not device-tested on iOS or Android. `retailer-onboard` on Android changes from no lift to the shared `'height'` behaviour. The `NO_WRAPPER` reasons are from reading the code, not from a device. Input-owning components other than these (e.g. other `Modal`s in `src/components/`) were not audited. The new arms were not falsified by reverting a screen.
+
+---
+
+## RC-115 — React Native never told react-query it was offline, so the Mark Sold queue never replayed, and a 4xx in it would have looped forever (T3.7-a, T3.7-b)
+
+- **Component:** `apps/mobile` — new `src/lib/online-manager.ts` (+ `app/_layout.tsx`), `src/lib/mutation-queue.ts`, `src/hooks/useSyncQueue.ts`, `app/(tabs)/catalog.tsx`, `src/hooks/useNetworkStatus.ts` (comment); new dependency `expo-network ~8.0.8`.
+- **Symptom:** the offline banner never appeared, and a Mark Sold done offline stayed queued after reconnect. Separately, `handleMarkSold` queued every failure, so a 4xx (e.g. a product already deleted) was retried on every reconnect forever.
+- **Root cause:** `useNetworkStatus` and `useSyncQueue` read react-query's `onlineManager`, whose only event source is the browser `online`/`offline` events. React Native fires none, so `isOnline` was true for the whole session: `useSyncQueue` never saw an offline→online edge and never replayed, and the `NetworkBanner` never showed. The hook's own comment claimed it worked without a native module. The queue also had no notion of which failures can succeed later, and both the enqueue site and the replay loop treated every error as retryable.
+- **Fix:** `setupOnlineManager()` feeds `onlineManager` from `expo-network` (boot state via `getNetworkStateAsync`, then `addNetworkStateListener`; only an explicit `false` counts as offline), called once at module load in `app/_layout.tsx`. `isRetryable(err)` in `mutation-queue.ts`: network (status 0), 408, 429 and 5xx are retryable, other 4xx are not. `handleMarkSold` shows the server reason and refreshes the list instead of queueing a non-retryable error; the replay loop drops a queued mutation that gets a 4xx. `ApiError` moved to a dependency-free `api/api-error.ts` (re-exported from `client.ts`, same class) so these helpers do not pull native Expo modules into unit tests.
+- **Proof:** `online-manager.test.ts` (6 state cases + boot-seed and change-follow against the real `onlineManager`), `mutation-queue.test.ts` `isRetryable` (10 cases), `useSyncQueue.test.tsx` (success removes, 4xx dropped, 5xx and status 0 kept, no replay without an offline→online edge). Not falsified by reverting the fix.
+- **Limits, stated plainly:** **needs an EAS rebuild** — `expo-network` is a native module, so an OTA update will crash at import on a binary built without it. `pnpm-lock.yaml` changed. Not device-tested: nothing has toggled airplane mode on a phone. `isInternetReachable` can lag on some Android versions. The Mark Sold 4xx path in `catalog.tsx` is not unit-tested (only the helper it calls). Replay still swallows the cause of a dropped 4xx; the user is not told which sale was dropped.
+
+---
+
+## RC-114 — Onboarding's catch blocks replaced the server's validation message with a constant string (T3.5-a)
+
+- **Component:** `apps/mobile/app/onboarding.tsx` (the step handler and both final-step handlers), `src/lib/errors.ts`.
+- **Symptom:** entering a GSTIN the server rejects with 422 showed "Could not save details. Please check your connection and try again.", so the retailer retried on a good connection and never learned the GSTIN was the problem.
+- **Root cause:** the RC-003 / RC-009 shape again: `catch {}` discards the error and shows a fixed string. There was no shared way to decide when a server message is safe to show, and `errors.ts` told screens never to show raw `err.message`, so each screen either did nothing or hand-rolled the check (`help-support.tsx`).
+- **Fix:** `apiMessage(err, fallback)` in `errors.ts` returns the server message only for `ApiError` 4xx except 401 and 408; 401, 408 (its message holds the request URL), network (status 0), 5xx and non-`ApiError` throws stay on the fallback. Onboarding's three catches now call `showError(err, apiMessage(...))`. The best-effort `getQrSlug()` catch is deliberately left silent.
+- **Proof:** `errors.test.ts` (7 tests: 422/400/403/409 shown; 401, 408, status 0, 5xx and non-`ApiError` generic).
+- **Limits, stated plainly:** the wording shown is whatever the server sends for a 422, which was not read. The same `catch {}` shape elsewhere in `apps/mobile` was not swept; only onboarding was fixed, and `help-support.tsx` still has its own inline copy of the rule. Not device-tested.
+
+---
+
 ## RC-113 — A BullMQ job that failed for good was only `console.error`'d; nothing reached Sentry (T1.4 F1)
 
 - **Component:** `apps/api/src/jobs/index.ts` (8 `worker.on('failed')` listeners), new `apps/api/src/lib/job-failure.ts`.

@@ -15,6 +15,7 @@ import {
 import { AnimatedPressable } from '../../../src/components/AnimatedPressable';
 import { DangerButton } from '../../../src/components/DangerButton';
 import { GradientButton } from '../../../src/components/GradientButton';
+import { KeyboardScreen } from '../../../src/components/KeyboardScreen';
 import { WHITE_BUTTON_INK, WhiteButton } from '../../../src/components/WhiteButton';
 import { ProductGridPicker } from '../../../src/components/social';
 import type { ComposeProduct } from '../../../src/components/social/types';
@@ -343,7 +344,7 @@ export default function ScheduleCalendarScreen() {
   const pool = plan?.rotation_pool ?? [];
 
   return (
-    <View className="flex-1 bg-[#F8F7FC]">
+    <KeyboardScreen className="flex-1 bg-[#F8F7FC]">
       <View
         className="bg-white border-b border-lavender-200 px-5 pb-4"
         style={{ paddingTop: headerPaddingTop }}
@@ -624,6 +625,6 @@ export default function ScheduleCalendarScreen() {
           />
         </View>
       </Modal>
-    </View>
+    </KeyboardScreen>
   );
 }

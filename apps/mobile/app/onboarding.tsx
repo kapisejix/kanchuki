@@ -34,6 +34,7 @@ import { AnimatedPressable } from '../src/components/AnimatedPressable';
 import { GooglePlaceField } from '../src/components/GooglePlaceField';
 import { GradientButton } from '../src/components/GradientButton';
 import { billingApi, retailerApi } from '../src/lib/api';
+import { apiMessage, showError } from '../src/lib/errors';
 import {
   clearCapturedReferralCode,
   getCapturedReferralCode,
@@ -320,8 +321,8 @@ export default function OnboardingScreen() {
       setTimeout(() => {
         router.replace('/(tabs)');
       }, 1500);
-    } catch {
-      Alert.alert('Error', 'Could not save details. Please check your connection and try again.');
+    } catch (err) {
+      showError(err, apiMessage(err, 'Could not save details. Please check your connection and try again.'));
     } finally {
       setSaving(false);
     }
@@ -370,8 +371,8 @@ export default function OnboardingScreen() {
       setTimeout(() => {
         router.replace('/settings/catalog-upload');
       }, 1500);
-    } catch {
-      Alert.alert('Error', 'Could not save details. Please try again.');
+    } catch (err) {
+      showError(err, apiMessage(err, 'Could not save details. Please try again.'));
     } finally {
       setSaving(false);
     }
@@ -386,8 +387,8 @@ export default function OnboardingScreen() {
       setTimeout(() => {
         router.replace('/store-profile');
       }, 1500);
-    } catch {
-      Alert.alert('Error', 'Could not save details. Please try again.');
+    } catch (err) {
+      showError(err, apiMessage(err, 'Could not save details. Please try again.'));
     } finally {
       setSaving(false);
     }

@@ -7,6 +7,7 @@ import { emitAuthChange } from '../auth-events'
 import { getItem, setItem, deleteItem } from '../storage'
 import { cachedJsonRequest, clearRequestCache } from '../request-cache'
 import { compressImageForUpload } from '../compress-image'
+import { ApiError } from './api-error'
 
 export const API_URL = process.env['EXPO_PUBLIC_API_URL'] ?? 'http://localhost:3001'
 
@@ -24,19 +25,7 @@ export function clearToken(): Promise<void> {
 
 export { clearRequestCache }
 
-export class ApiError extends Error {
-  constructor(
-    public readonly code: string,
-    message: string,
-    public readonly status: number,
-    /** Optional structured payload from the server error envelope — e.g.
-     * per-target FAILED results on an all-failed social publish (T-7.2). */
-    public readonly results?: unknown[] | null,
-  ) {
-    super(message)
-    this.name = 'ApiError'
-  }
-}
+export { ApiError }
 
 // Single-flight refresh — concurrent 401s share one refresh call instead of
 // each racing to burn the same refresh_token.

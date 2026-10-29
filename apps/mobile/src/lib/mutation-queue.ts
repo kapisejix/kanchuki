@@ -11,6 +11,16 @@
  */
 
 import { Paths, File, Directory } from 'expo-file-system'
+import { ApiError } from './api/api-error'
+
+/**
+ * Only failures that can succeed later belong in the queue: network (status 0),
+ * timeout (408), 429 and 5xx. Any other 4xx never will, so replaying it loops forever.
+ */
+export function isRetryable(err: unknown): boolean {
+  if (!(err instanceof ApiError)) return true
+  return err.status === 0 || err.status === 408 || err.status === 429 || err.status >= 500
+}
 
 function queueDirUri(): string {
   return `${Paths.document.uri}kanchuki-cache/`

@@ -37,6 +37,7 @@ import {
   persistQueryCache,
   restoreQueryCache,
 } from "../src/lib/offline-persister";
+import { setupOnlineManager } from "../src/lib/online-manager";
 import { Sentry, initSentry } from "../src/lib/sentry";
 import { captureReferralFromUrl } from "../src/lib/referral-capture";
 import { getItem } from "../src/lib/storage";
@@ -49,6 +50,9 @@ import {
 // Initialize Sentry crash reporting as early as possible — must run
 // before any component renders so it can capture startup crashes.
 initSentry();
+
+// RN fires no browser online/offline events: feed react-query real connectivity (T3.7-a).
+setupOnlineManager();
 
 // Keep the native splash screen visible until fonts + palette are loaded.
 // Must be called at module level (before any component renders).

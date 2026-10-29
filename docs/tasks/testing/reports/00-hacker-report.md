@@ -169,8 +169,13 @@ Fixed:
 - T1.3 F1 (`customers.ts` masked-staff `phone_hash` leak): same root as H4-2, fixed by RC-096, not deployed.
 - T1.1: `lint` scripts added to `packages/ai` and `packages/shared`, safe fixes applied. ai still 42 errors, shared 2 (deferred P2).
 
-Open, P1 (no RC yet), Batch 4 only:
-- T3.5-a (onboarding swallows the 422 GSTIN error), T3.7-a/b/c (never detects offline, Mark Sold retried forever, keyboard covers inputs; the queue-file-survives-logout part of b is fixed by RC-107).
+Open, P1: none left. Batch 4 is applied locally (below).
+
+Fixed 2026-10-29 (Batch 4 mobile behaviour, local, not deployed, not committed):
+- T3.5-a (onboarding swallows the 422 GSTIN error): RC-114. Only onboarding was swept for the `catch {}` shape.
+- T3.7-a and T3.7-b (never detects offline, Mark Sold queued every failure and retried 4xx forever): RC-115. The detector was the bigger fault: with no offline signal the replay queue never ran at all. Adds `expo-network`, a native module, so it **needs an EAS rebuild** before the OTA/binary that includes it ships. The queue-file-survives-logout part of b was already fixed by RC-107.
+- T3.7-c (keyboard covers inputs): RC-116. Also fixed the Edit Collection dialog, found by the new guard arm.
+- Verified: mobile vitest 258 pass (38 of 39 files; the one failing file is `__tests__/smoke/rc-screens.test.tsx`, `__DEV__ is not defined`, believed pre-existing, not checked against the unchanged tree), mobile `tsc --noEmit` shows only the 3 typed-route errors already open. Not verified: any device (airplane-mode replay, keyboard on iOS/Android), and none of the new tests were falsified by reverting their fix.
 
 Fixed 2026-10-29 (Batch 1, local, not deployed, not committed):
 - T2.8 F2 (sitemap lists shopper-specific collections): RC-105.
