@@ -18,6 +18,7 @@ import SettingsScreen from '../../app/settings/index'
 import PlanSelectScreen from '../../app/plan-select'
 import BillingScreen from '../../app/billing'
 import OnboardingScreen from '../../app/onboarding'
+import EnquiriesScreen from '../../app/enquiries'
 import { router, useLocalSearchParams } from 'expo-router'
 
 // ── Shared mock state ─────────────────────────────────────────────
@@ -52,6 +53,7 @@ const apiMock = vi.hoisted(() => {
       sendWhatsappNumberOtp: vi.fn(),
       delete: vi.fn(),
     },
+    collectionApi: { enquiries: vi.fn(), takeEnquiry: vi.fn(), assignEnquiry: vi.fn(), setEnquiryStatus: vi.fn() },
     bugReportApi: { submit: vi.fn() },
     readLocalImage: vi.fn(),
     uploadImageToR2: vi.fn(),
@@ -59,6 +61,8 @@ const apiMock = vi.hoisted(() => {
 })
 
 const queryStore = vi.hoisted(() => new Map<string, unknown>())
+const authState = vi.hoisted(() => ({ staffRole: null as string | null }))
+const invalidateMock = vi.hoisted(() => vi.fn())
 
 // Real ApiError: errors.ts apiMessage() uses instanceof against api/api-error.
 vi.mock('../../src/lib/api', async () => ({
@@ -81,7 +85,7 @@ vi.mock('../../src/lib/theme', async () => {
 })
 
 vi.mock('../../src/lib/auth-context', () => ({
-  useAuth: () => ({ signOut: vi.fn(), status: 'authenticated', isAuthenticated: true, isStaff: false }),
+  useAuth: () => ({ signOut: vi.fn(), status: 'authenticated', isAuthenticated: true, isStaff: false, staffRole: authState.staffRole }),
 }))
 
 vi.mock('../../src/lib/storage', () => ({
@@ -157,7 +161,7 @@ vi.mock('@tanstack/react-query', () => ({
     },
     isPending: false,
   }),
-  useQueryClient: () => ({ invalidateQueries: vi.fn(), clear: vi.fn() }),
+  useQueryClient: () => ({ invalidateQueries: invalidateMock, clear: vi.fn() }),
 }))
 
 // ── Tree helpers (same pattern as retailer-onboard.test.tsx) ──────
@@ -295,6 +299,7 @@ const retailer = {
 beforeEach(() => {
   vi.clearAllMocks()
   queryStore.clear()
+  authState.staffRole = null
   vi.mocked(useLocalSearchParams).mockReturnValue({ id: 'c1' })
 })
 
@@ -738,5 +743,154 @@ describe('onboarding steps 1-4 (T3.2-a #4)', () => {
 
     expect(vi.mocked(apiMock.retailerApi.update).mock.calls.length).toBe(updatesBefore)
     expect(vi.mocked(apiMock.retailerApi.updateOnboarding).mock.calls.map((c) => c[0])).toEqual([1, 2, 3])
+  })
+})
+// ── T3.2-a #5: enquiries inbox (F-044 E3) ─────────────────────────
+describe('EnquiriesScreen', () => {
+  type Handler = { onPress: () => Promise<void> | void; disabled?: boolean }
+  const handler = (tree: ReturnType<typeof render>, label: string): Handler | undefined =>
+    findPressableByLabel(tree, label)?.props as unknown as Handler | undefined
+  const press = async (tree: ReturnType<typeof render>, label: string) => {
+    const h = handler(tree, label)
+    expect(h, label).toBeDefined()
+    await act(async () => {
+      await h!.onPress()
+    })
+  }
+  const enq = (over: Record<string, unknown> = {}) => ({
+    id: 'e1',
+    customer_name: 'Meena',
+    customer_phone: '98XXXX3210',
+    message: null,
+    status: 'NEW',
+    created_at: '2026-10-01T10:00:00Z',
+    collection: { id: 'col1', title: 'Diwali picks' },
+    products: [
+      { id: 'p1', name: 'Red Suit', photo_url: null },
+      { id: 'p2', name: null, photo_url: null },
+    ],
+    assigned_to: null,
+    ...over,
+  })
+  const seed = (list: unknown[], assignees: unknown[] = [{ id: 'u1', name: 'Ravi' }]) =>
+    setQuery(['enquiries'], { data: list, assignees })
+  const seedFeatures = (features: string[]) => setQuery(['retailer', 'me'], { data: { features } })
+
+  beforeEach(() => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+  })
+
+  it('renders each enquiry and the empty state', () => {
+    seed([enq()])
+    const text = treeText(render(<EnquiriesScreen />)).join('')
+    expect(text).toContain('Meena')
+    expect(text).toContain('Diwali picks')
+    expect(text).toContain('Red Suit')
+
+    seed([])
+    expect(treeText(render(<EnquiriesScreen />)).join('')).toContain('No enquiries yet')
+  })
+
+  it('Take shows only on unassigned rows', () => {
+    seed([enq(), enq({ id: 'e2', assigned_to: { id: 'u1', name: 'Ravi' } })])
+    const tree = render(<EnquiriesScreen />)
+    expect(treeText(tree).filter((t) => t === 'Take')).toHaveLength(1)
+    expect(treeText(tree).join('')).toContain('Being handled by Ravi')
+  })
+
+  it('Take calls the API once with the id, then refreshes the list', async () => {
+    seed([enq()])
+    vi.mocked(apiMock.collectionApi.takeEnquiry).mockResolvedValue({} as never)
+    await press(render(<EnquiriesScreen />), 'Take this enquiry')
+    expect(apiMock.collectionApi.takeEnquiry).toHaveBeenCalledWith('e1')
+    expect(invalidateMock).toHaveBeenCalledWith({ queryKey: ['enquiries'] })
+  })
+
+  it('double tap on Take sends one request (RC-015)', async () => {
+    seed([enq()])
+    vi.mocked(apiMock.collectionApi.takeEnquiry).mockResolvedValue({} as never)
+    const h = handler(render(<EnquiriesScreen />), 'Take this enquiry')!
+    await act(async () => {
+      await Promise.all([h.onPress(), h.onPress()])
+    })
+    expect(apiMock.collectionApi.takeEnquiry).toHaveBeenCalledTimes(1)
+  })
+
+  it('ENQUIRY_TAKEN shows "Already taken", not the generic error', async () => {
+    seed([enq()])
+    vi.mocked(apiMock.collectionApi.takeEnquiry).mockRejectedValue(
+      new ApiError('ENQUIRY_TAKEN', 'Ravi already took this', 409),
+    )
+    const alertSpy = vi.spyOn(Alert, 'alert').mockImplementation(() => {})
+    await press(render(<EnquiriesScreen />), 'Take this enquiry')
+    expect(alertSpy).toHaveBeenCalledWith('Already taken', 'Ravi already took this')
+    expect(alertSpy.mock.calls.some((c) => c[0] === 'Error')).toBe(false)
+  })
+
+  it.each([
+    ['4xx shows the server reason', 422, 'Cannot take closed enquiry', 'Cannot take closed enquiry'],
+    ['5xx shows the fallback', 500, 'pg exploded', 'Could not take this enquiry'],
+  ])('other error: %s', async (_n, status, serverMsg, shown) => {
+    seed([enq()])
+    vi.mocked(apiMock.collectionApi.takeEnquiry).mockRejectedValue(new ApiError('X', serverMsg, status))
+    const alertSpy = vi.spyOn(Alert, 'alert').mockImplementation(() => {})
+    await press(render(<EnquiriesScreen />), 'Take this enquiry')
+    expect(alertSpy).toHaveBeenCalledWith('Error', shown, undefined)
+  })
+
+  it('status buttons send collection id + enquiry id + status; active one is disabled', async () => {
+    seed([enq({ status: 'SEEN' })])
+    vi.mocked(apiMock.collectionApi.setEnquiryStatus).mockResolvedValue({} as never)
+    const tree = render(<EnquiriesScreen />)
+    expect(handler(tree, 'Mark Seen')!.disabled).toBe(true)
+    expect(handler(tree, 'Mark Replied')!.disabled).toBeFalsy()
+    await press(tree, 'Mark Replied')
+    expect(apiMock.collectionApi.setEnquiryStatus).toHaveBeenCalledWith('col1', 'e1', 'REPLIED')
+  })
+
+  it.each([
+    ['salesperson', false],
+    ['manager', true],
+    [null, true],
+  ])('Reassign for role %s visible=%s', (role, visible) => {
+    authState.staffRole = role
+    seed([enq()])
+    expect(handler(render(<EnquiriesScreen />), 'Reassign') !== undefined).toBe(visible)
+  })
+
+  it('Reassign opens assignees; picking one calls assignEnquiry', async () => {
+    seed([enq()])
+    vi.mocked(apiMock.collectionApi.assignEnquiry).mockResolvedValue({} as never)
+    const tree = render(<EnquiriesScreen />)
+    expect(handler(tree, 'Assign to Ravi')).toBeUndefined()
+    await press(tree, 'Reassign')
+    await press(tree, 'Assign to Ravi')
+    expect(apiMock.collectionApi.assignEnquiry).toHaveBeenCalledWith('e1', 'u1')
+  })
+
+  it.each([
+    ['owner + flag', null, ['VIRTUAL_TRY_ON_V2'], true],
+    ['manager + flag', 'manager', ['VIRTUAL_TRY_ON_V2'], true],
+    ['owner, flag off', null, [], false],
+    ['salesperson + flag', 'salesperson', ['VIRTUAL_TRY_ON_V2'], false],
+  ])('Try on button: %s -> %s', (_n, role, features, visible) => {
+    authState.staffRole = role
+    seed([enq()])
+    seedFeatures(features)
+    expect(handler(render(<EnquiriesScreen />), 'Try on with customer') !== undefined).toBe(visible)
+  })
+
+  it('Try on hides when the enquiry has no products and passes ids + names only', async () => {
+    seedFeatures(['VIRTUAL_TRY_ON_V2'])
+    seed([enq({ products: [] })])
+    expect(handler(render(<EnquiriesScreen />), 'Try on with customer')).toBeUndefined()
+
+    seed([enq()])
+    await press(render(<EnquiriesScreen />), 'Try on with customer')
+    const arg = vi.mocked(router.push).mock.calls.at(-1)![0] as { pathname: string; params: Record<string, string> }
+    expect(arg.pathname).toBe('/enquiry-try-on')
+    expect(arg.params.productIds).toBe('p1,p2')
+    expect(JSON.parse(arg.params.productNames)).toEqual(['Red Suit', 'Product'])
+    expect(JSON.stringify(arg)).not.toMatch(/Meena|98XXXX3210/)
   })
 })

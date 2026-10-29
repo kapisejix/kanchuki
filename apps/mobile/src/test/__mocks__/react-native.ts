@@ -27,7 +27,30 @@ export const View = createComponent('View')
 export const Text = createComponent('Text')
 export const TouchableOpacity = createComponent('TouchableOpacity')
 export const ScrollView = createComponent('ScrollView')
-export const FlatList = createComponent('FlatList')
+// Renders rows via renderItem (or ListEmptyComponent) so screen tests can see list content.
+type ListProps = {
+  data?: unknown[]
+  renderItem?: (info: { item: unknown; index: number }) => React.ReactNode
+  keyExtractor?: (item: unknown, index: number) => string
+  ListEmptyComponent?: React.ReactNode
+}
+export const FlatList = Object.assign(
+  ({ data, renderItem, keyExtractor, ListEmptyComponent }: ListProps) => {
+    if (!data?.length) return React.createElement('FlatList', null, ListEmptyComponent)
+    return React.createElement(
+      'FlatList',
+      null,
+      data.map((item, index) =>
+        React.createElement(
+          React.Fragment,
+          { key: keyExtractor ? keyExtractor(item, index) : index },
+          renderItem?.({ item, index }),
+        ),
+      ),
+    )
+  },
+  { displayName: 'FlatList' },
+)
 export const TextInput = createComponent('TextInput')
 export const Image = createComponent('Image')
 export const Modal = createComponent('Modal')
