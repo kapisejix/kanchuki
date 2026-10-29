@@ -13,6 +13,16 @@
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
 
+## RC-131 — a `collection_id` deep link opened the composer in collection mode with no collection chosen when the collections list was already cached (T3.2-a #6)
+
+- **Component:** `apps/mobile/app/social/create.tsx` (resolve-pending-collection effect).
+- **Symptom:** sharing a collection to social from a screen reached after the Collections tab opened "Create post" on the collection step with "Choose a collection to share." and nothing selected. A cold start worked.
+- **Root cause:** two effects share a ref (`pendingCollectionId`). The resolver (deps `[collections]`) is declared before the prefill effect that sets the ref, so on mount it runs with the ref still `null`; with a warm react-query cache `collections` is already populated and referentially stable, so the resolver never runs again. It only worked when the list arrived after mount. An ordering dependency between two effects, hidden behind a ref that triggers no render.
+- **Fix:** the resolver also depends on `postType`. The prefill calls `setPostType('COLLECTION_LINK')`, the re-render re-runs the resolver with the ref set and the list present. One dependency token; the cold-cache path is unchanged. Sibling check: no other `pending*` ref in `apps/mobile/app`.
+- **Proof:** `__tests__/social/create-screen.test.tsx` ("with the list already cached" + the cold-cache twin). Written first as `it.fails` against the bug, then green with the fix; falsified by reverting the dependency, red; restored, `cmp` clean. Mobile `tsc` clean. Not device-tested.
+
+---
+
 ## RC-130 — the GST transaction row showed "Walk-in Client" for the retailer's own subscription payments (T3.4-b)
 
 - **Component:** `apps/mobile/app/growth/gst.tsx` (`TxRow`), `GstTransaction` in `apps/mobile/src/lib/api/growth.ts`.

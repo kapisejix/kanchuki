@@ -300,7 +300,9 @@ export default function CreateSocialPostScreen() {
       pendingCollectionId.current = null;
       if (match) setCollectionLink(match);
     }
-  }, [collections]);
+    // postType: the prefill effect below sets the pending id AFTER this one runs on mount; a warm
+    // collections cache never changes `collections`, so the mode switch is what re-runs this (RC-131).
+  }, [collections, postType]);
 
   // Collection detail — fetched whenever a collection is chosen: the
   // 'carousel' sub-format feeds the CAROUSEL payload (product_id + primary
