@@ -268,15 +268,69 @@ describe('schedule calendar (T3.2-a #7)', () => {
       expect(router.replace).not.toHaveBeenCalled()
     })
 
-    // FINDING (not changed): Confirm sends only the plan id. A caption typed but not saved with
-    // "Save caption" is local state and is lost when the plan goes live.
-    it('an unsaved caption edit is NOT sent by Confirm (pins current behaviour)', async () => {
+    // Confirm sends only the plan id, so an unsaved caption edit used to be lost when the plan went
+    // live. Confirm now saves dirty captions first (owner decision, option A).
+    const paths = () => calls().map((c) => `${c.method} ${c.path.replace(/^.*\/schedule/, '')}`)
+
+    it('an unsaved caption edit is saved (trimmed) before the confirm request', async () => {
       vi.spyOn(Alert, 'alert').mockImplementation(() => {})
       const t = await mount()
-      await type(t, 'edited but not saved')
+      await type(t, '  edited but not saved  ')
       await press(t, 'Confirm 1 posts')
-      expect(calls().filter((c) => c.method === 'PATCH')).toEqual([])
-      expect(calls().map((c) => c.path.replace(/^.*\/schedule/, ''))).toEqual(['/plans/plan1/confirm'])
+      expect(paths()).toEqual(['PATCH /posts/p1', 'POST /plans/plan1/confirm'])
+      expect(findCall(/\/posts\/p1$/, 'PATCH')!.body).toEqual({ caption: 'edited but not saved' })
+    })
+
+    it('an AI-filled caption that was never saved is saved too', async () => {
+      vi.spyOn(Alert, 'alert').mockImplementation(() => {})
+      vi.mocked(apiMock.socialApi.suggestCaption).mockResolvedValue({ data: { caption: 'Fresh', hashtags: ['#a'] } } as never)
+      const t = await mount()
+      await press(t, 'AI caption')
+      await press(t, 'Confirm 1 posts')
+      expect(findCall(/\/posts\/p1$/, 'PATCH')!.body).toEqual({ caption: 'Fresh\n\n#a' })
+    })
+
+    it('an untouched, reverted or blank caption sends no PATCH', async () => {
+      vi.spyOn(Alert, 'alert').mockImplementation(() => {})
+      const t = await mount()
+      await press(t, 'Confirm 1 posts')
+      expect(paths()).toEqual(['POST /plans/plan1/confirm'])
+      requestMock.mockClear()
+      await type(t, 'temp')
+      await type(t, 'Caption p1') // back to the saved text
+      await press(t, 'Confirm 1 posts')
+      expect(paths()).toEqual(['POST /plans/plan1/confirm'])
+      requestMock.mockClear()
+      await type(t, '   ') // blank: Save caption refuses it, so Confirm leaves the saved text
+      await press(t, 'Confirm 1 posts')
+      expect(paths()).toEqual(['POST /plans/plan1/confirm'])
+    })
+
+    it('a post skipped after an edit is not saved on Confirm', async () => {
+      vi.spyOn(Alert, 'alert').mockImplementation(() => {})
+      const t = await mount({ posts: [post('p1', NOV2), post('p2', NOV3)] })
+      await type(t, 'edit then skip p1') // first caption box = p1
+      queryStore.set(JSON.stringify(['social', 'schedule', 'plan', 'plan1']), {
+        data: plan({ posts: [post('p1', NOV2, { status: 'SKIPPED' }), post('p2', NOV3)] }),
+      })
+      await act(async () => {
+        t.rerender(<ScheduleCalendarScreen />) // a refetch after Skip delivers the new plan
+      })
+      expect(text(t)).toContain('1 posts')
+      requestMock.mockClear()
+      await press(t, 'Confirm 1 posts')
+      expect(paths()).toEqual(['POST /plans/plan1/confirm'])
+    })
+
+    it('a failed caption save stops the confirm and shows the error', async () => {
+      requestMock.mockRejectedValue(new ApiError('BAD', 'Caption too long', 422))
+      const alertSpy = vi.spyOn(Alert, 'alert').mockImplementation(() => {})
+      const t = await mount()
+      await type(t, 'edited')
+      await press(t, 'Confirm 1 posts')
+      expect(paths()).toEqual(['PATCH /posts/p1'])
+      expect(alertSpy).toHaveBeenCalledWith('Error', 'Caption too long', undefined)
+      expect(router.replace).not.toHaveBeenCalled()
     })
   })
 
