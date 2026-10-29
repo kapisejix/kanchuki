@@ -19,6 +19,9 @@
 // Fail closed: any non-2xx Graph API response throws with a safe message —
 // the caller never reports a post that wasn't actually published.
 
+// Shadows global fetch so every Graph call below is bounded by a timeout (RC-110).
+import { fetchWithTimeout as fetch } from './fetch-timeout.js';
+
 const GRAPH_BASE = 'https://graph.facebook.com/v21.0';
 const OAUTH_DIALOG = 'https://www.facebook.com/v21.0/dialog/oauth';
 

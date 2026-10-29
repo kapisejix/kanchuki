@@ -11,13 +11,18 @@ const m = vi.hoisted(() => ({
   retailerFind: vi.fn(),
   sendCreate: vi.fn(),
   campaignUpdate: vi.fn(),
+  campaignUpdateMany: vi.fn(),
   transaction: vi.fn(),
   hasFeature: vi.fn(),
 }));
 
 vi.mock('@kanchuki/db', () => ({
   prisma: {
-    campaign: { findFirst: m.campaignFind, update: m.campaignUpdate },
+    campaign: {
+      findFirst: m.campaignFind,
+      update: m.campaignUpdate,
+      updateMany: m.campaignUpdateMany,
+    },
     customer: { findMany: m.customerFindMany },
     retailer: { findUnique: m.retailerFind },
     campaignSend: { create: m.sendCreate, update: vi.fn() },
@@ -52,6 +57,7 @@ beforeEach(() => {
   m.campaignFind.mockResolvedValue({
     id: 'camp1',
     status: 'DRAFT',
+    sent_at: null,
     message_template: 'Hi {name}',
     audience_json: {},
     festival_name: null,
@@ -60,6 +66,7 @@ beforeEach(() => {
   m.customerFindMany.mockResolvedValue([{ id: 'c1', name: 'Asha', phone: '9876543210' }]);
   m.transaction.mockResolvedValue([{ id: 's1' }]);
   m.campaignUpdate.mockResolvedValue({});
+  m.campaignUpdateMany.mockResolvedValue({ count: 1 });
 });
 
 describe('POST /v1/growth/campaigns/:id/send', () => {
@@ -81,5 +88,43 @@ describe('POST /v1/growth/campaigns/:id/send', () => {
     const res = await app.inject({ method: 'POST', url: '/v1/growth/campaigns/camp1/send' });
     expect(res.statusCode).toBe(200);
     expect(res.json().data.sent_via).toBe('manual_links');
+  });
+
+  // RC-111: the SENT check at the top is a read; the claim is the atomic gate.
+  it('claims the campaign with a conditional UPDATE before writing any send row', async () => {
+    m.retailerFind.mockResolvedValue({ shop_name: 'S', public_slug: 's' });
+    m.hasFeature.mockResolvedValue(false);
+    const app = await build(null);
+    await app.inject({ method: 'POST', url: '/v1/growth/campaigns/camp1/send' });
+    expect(m.campaignUpdateMany).toHaveBeenCalledWith({
+      where: { id: 'camp1', retailer_id: 'r1', status: { not: 'SENT' } },
+      data: { status: 'SENT', sent_at: expect.any(Date) },
+    });
+    expect(m.campaignUpdateMany.mock.invocationCallOrder[0]).toBeLessThan(
+      m.transaction.mock.invocationCallOrder[0] ?? Number.POSITIVE_INFINITY,
+    );
+  });
+
+  it('loses the race: a second concurrent send is refused and sends nothing', async () => {
+    m.retailerFind.mockResolvedValue({ shop_name: 'S', public_slug: 's' });
+    m.hasFeature.mockResolvedValue(false);
+    m.campaignUpdateMany.mockResolvedValue({ count: 0 }); // the other request already claimed it
+    const app = await build(null);
+    const res = await app.inject({ method: 'POST', url: '/v1/growth/campaigns/camp1/send' });
+    expect(res.statusCode).toBe(403);
+    expect(m.transaction).not.toHaveBeenCalled();
+  });
+
+  it('hands the claim back when the send rows cannot be written', async () => {
+    m.retailerFind.mockResolvedValue({ shop_name: 'S', public_slug: 's' });
+    m.hasFeature.mockResolvedValue(false);
+    m.transaction.mockRejectedValue(new Error('db down'));
+    const app = await build(null);
+    const res = await app.inject({ method: 'POST', url: '/v1/growth/campaigns/camp1/send' });
+    expect(res.statusCode).toBe(500);
+    expect(m.campaignUpdate).toHaveBeenCalledWith({
+      where: { id: 'camp1' },
+      data: { status: 'DRAFT', sent_at: null },
+    });
   });
 });

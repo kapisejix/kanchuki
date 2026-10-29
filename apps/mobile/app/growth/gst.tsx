@@ -12,6 +12,7 @@ import {
 } from 'lucide-react-native'
 import { RefreshControl, ScrollView, Text, View } from 'react-native'
 import { useScreenInsets } from '../../src/lib/safe-area'
+import { inrFromPaise } from '../../src/lib/format-inr'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { growthApi, type GstTransaction, type GstSummary, type GstMonthly, type GstTransactions } from '../../src/lib/api/growth'
 
@@ -22,13 +23,9 @@ const MONTHS = [
   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
 ]
 
-// Defensive: the API may omit fields on empty ledgers (e.g. summary.cgst on a
-// retailer with zero payments) — never let a missing number crash the screen
-// with "Cannot read property 'toLocaleString' of undefined".
-const inr = (n?: number) => {
-  if (n == null || Number.isNaN(n)) return '₹0'
-  return `₹${n.toLocaleString('en-IN')}`
-}
+// Every GST amount from the API is integer paise (RC-109), and may be omitted
+// on an empty ledger — inrFromPaise converts and never throws on a missing number.
+const inr = inrFromPaise
 
 // ─── Main Screen ──────────────────────────────────────────────────
 

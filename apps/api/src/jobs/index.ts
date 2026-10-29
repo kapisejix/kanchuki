@@ -1,5 +1,6 @@
 import { QUEUES } from '@kanchuki/shared';
 import { Worker } from 'bullmq';
+import { reportJobFailure } from '../lib/job-failure.js';
 import { refundCustomerJobQuota, refundJobQuota } from '../lib/quota.js';
 import { STUDIO_SHOOT_CONCURRENCY } from '../lib/studio-shoot.js';
 import { handleAiSpendAlert } from './ai-spend-alert.js';
@@ -576,10 +577,12 @@ export async function startWorkers(): Promise<void> {
 
   taggingWorker.on('failed', (job, err) => {
     console.error(`[jobs] tag-product failed ${job?.id}:`, err.message);
+    reportJobFailure('tag-product', job, err);
   });
 
   embeddingWorker.on('failed', (job, err) => {
     console.error(`[jobs] generate-embedding failed ${job?.id}:`, err.message);
+    reportJobFailure('generate-embedding', job, err);
   });
 
   // Quota refund backups below run ONLY for a stalled-out job (BullMQ: "job stalled more than
@@ -590,6 +593,7 @@ export async function startWorkers(): Promise<void> {
 
   studioShootWorker.on('failed', (job, err) => {
     console.error(`[jobs] studio-shoot failed ${job?.id}:`, err.message);
+    reportJobFailure('studio-shoot', job, err);
     // Backup for a job that died without its handler's `finally` running (stalled out):
     // idempotent, so a refund the handler already made is a no-op.
     const jobId = (job?.data as StudioShootJobData | undefined)?.job_id;
@@ -602,6 +606,7 @@ export async function startWorkers(): Promise<void> {
 
   tryOnWorker.on('failed', (job, err) => {
     console.error(`[jobs] try-on failed ${job?.id}:`, err.message);
+    reportJobFailure('try-on', job, err);
     // Stalled-out backup, same as studio-shoot: idempotent, and a SPENT slot is left alone.
     const d = job?.data as TryOnJobData | undefined;
     if (d?.job_id && stalledOut(err)) {
@@ -618,6 +623,7 @@ export async function startWorkers(): Promise<void> {
 
   myStyleAnalyzeWorker.on('failed', (job, err) => {
     console.error(`[jobs] my-style-analyze failed ${job?.id}:`, err.message);
+    reportJobFailure('my-style-analyze', job, err);
     const jobId = (job?.data as MyStyleAnalyzeJobData | undefined)?.job_id;
     if (jobId && stalledOut(err)) {
       refundCustomerJobQuota(jobId, 'STYLE_ANALYSIS').catch((e) =>
@@ -628,13 +634,16 @@ export async function startWorkers(): Promise<void> {
 
   pushWorker.on('failed', (job, err) => {
     console.error(`[jobs] push (${job?.name}) failed ${job?.id}:`, err.message);
+    reportJobFailure('push', job, err);
   });
 
   catalogSyncWorker.on('failed', (job, err) => {
     console.error(`[jobs] catalog-sync failed ${job?.id}:`, err.message);
+    reportJobFailure('catalog-sync', job, err);
   });
 
   maintenanceWorker.on('failed', (job, err) => {
     console.error(`[jobs] maintenance (${job?.name}) failed ${job?.id}:`, err.message);
+    reportJobFailure('maintenance', job, err);
   });
 }

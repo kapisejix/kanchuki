@@ -14,7 +14,7 @@ import {
   Instagram,
   type LucideIcon,
 } from 'lucide-react'
-import { adminGetOptions } from '@/lib/admin-fetch'
+import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
 import { safeHttpUrl } from '@/lib/safe-url'
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
@@ -102,6 +102,7 @@ export default function SocialPage() {
   const [selected, setSelected] = useState<SocialAccount | null>(null)
   const [tab, setTab] = useState<'accounts' | 'posts'>('accounts')
   const [disconnecting, setDisconnecting] = useState<string | null>(null)
+  const [disconnectError, setDisconnectError] = useState('')
 
   const load = async () => {
     try {
@@ -126,20 +127,26 @@ export default function SocialPage() {
   }, [])
 
   const handleDisconnect = async (id: string) => {
+    setDisconnectError('')
     try {
       setDisconnecting(id)
+      // RC-112: DELETE needs the CSRF token + cookie (adminGetOptions has neither),
+      // and a failure used to be swallowed, so Disconnect did nothing and said nothing.
       const res = await fetch(`${API_URL}/v1/admin/social/accounts/${id}`, {
         method: 'DELETE',
-        ...adminGetOptions(),
+        ...(await adminMutateOptions()),
       })
       if (res.ok) {
         setAccounts((prev) => (prev ? prev.filter((a) => a.id !== id) : null))
         setDetailOpen(false)
         setSelected(null)
         void load()
+      } else {
+        const json = await res.json().catch(() => null)
+        setDisconnectError(json?.error?.message ?? `Disconnect failed (HTTP ${res.status})`)
       }
-    } catch {
-      // ignore
+    } catch (err) {
+      setDisconnectError(err instanceof Error ? err.message : 'Disconnect failed')
     } finally {
       setDisconnecting(null)
     }
@@ -223,7 +230,7 @@ export default function SocialPage() {
                   <tr
                     key={account.id}
                     className="border-b border-gray-50 hover:bg-gray-50/50 cursor-pointer"
-                    onClick={() => { setSelected(account); setDetailOpen(true) }}
+                    onClick={() => { setSelected(account); setDisconnectError(''); setDetailOpen(true) }}
                   >
                     <td className="px-4 py-3">
                       <div className="font-medium text-gray-900">{account.retailer_name}</div>
@@ -258,6 +265,7 @@ export default function SocialPage() {
                         onClick={(e) => {
                           e.stopPropagation()
                           setSelected(account)
+                          setDisconnectError('')
                           setDetailOpen(true)
                         }}
                         className="text-indigo-500 hover:text-indigo-700 text-xs font-medium"
@@ -413,6 +421,11 @@ export default function SocialPage() {
                   >
                     {disconnecting === selected.id ? 'Disconnecting…' : '🔌 Force Disconnect'}
                   </button>
+                  {disconnectError && (
+                    <p role="alert" className="mt-2 text-sm text-red-600">
+                      {disconnectError}
+                    </p>
+                  )}
                 </div>
               </div>
             </motion.div>
