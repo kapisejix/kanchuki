@@ -13,6 +13,36 @@
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
 
+## RC-134 — the support-session request screen created two grants on a double tap, and entered a session whose request had just been cancelled (T3.2-a #10)
+
+- **Component:** `apps/mobile/app/staff/support-session.tsx` (`handleStart`, the polling effect).
+- **Symptom:** (A) two taps on a retailer card in one tick sent two `startSupportSession` requests, so the retailer's phone got two Approve/Deny prompts and the second grant's id was lost. (B) pressing "Cancel request" while a poll was awaiting the server still ended with `enterSupportSession` and `router.replace('/(tabs)')`, putting the manager into a session whose grant `handleCancel` had just ended; a late DENIED also raised a "Not approved" alert for a request the manager had cancelled.
+- **Root cause:** one shape twice, async work finishing against state that has moved on. (A) the only guard was the `starting` React state, which reaches the card's `disabled` after a render (RC-015/RC-132 shape). (B) the effect cleanup cleared the interval but not the callback already past its `await`, so that callback carried on as if the request were still live.
+- **Fix:** (A) a `startingRef` checked at the top of `handleStart` and released in `finally`. (B) a `live` flag per effect run, set false in the cleanup (cancel, approval, unmount all run it), checked after the status `await` and after the token `await`, before anything is entered or shown. Not changed: a cancel that lands while `enterSupportSession` itself is running (the session is mid-entry and `setWaiting(null)` follows); whether the server refuses a token for an ended grant is not verified; other screens that guard a start on state alone were not swept.
+- **Proof:** `__tests__/staff/support-session-screen.test.tsx`, 20 tests with fake timers. The double-tap and cancel-during-token tests were written as `it.fails` first, confirmed to fail for the right reason ("called 2 times", `enterSupportSession` called), then flipped to `it` with the fix; a third test pins the first await (cancel while the status request is pending shows no alert and fetches no token). Falsified: `startingRef` check and release, both `live` checks, the `live = false` cleanup each failed a test, restored, `cmp` clean. Mobile `tsc` clean. Not device-tested.
+
+---
+
+## RC-133 — the composer's AI caption suggestion overwrote text the retailer was typing (T3.2-a #6b)
+
+- **Component:** `apps/mobile/app/social/create.tsx` (debounced auto-suggest effect, `runCaptionSuggest`).
+- **Symptom:** pick a product and start writing a caption: a moment later (or when the AI response landed) the typed text was replaced by the AI caption. The code comment promised "never clobbers text they typed".
+- **Root cause:** `captionTouched` was read once, when the effect armed the 900 ms timer. Typing does not re-run that effect (`caption` is not in its deps), so the timer fired regardless; and `runCaptionSuggest` called `setCaption` after the `await` without looking again, then reset `captionTouched` to false. A guard checked at schedule time protecting an action that happens later (RC-111 shape: read, then act).
+- **Fix:** re-check `captionTouched.current` at both points where the AI text can land: in the timer callback before firing, and after the response before `setCaption`. The schedule-time check stays (it avoids arming a timer for nothing). Sibling check: `social/schedule/[id].tsx` AI caption is a button the retailer taps and fills only on that tap, so it has no background fill.
+- **Proof:** `__tests__/social/create-screen.test.tsx` "caption auto-suggest (T3.2-a #6b)", 12 tests with fake timers: debounce, fill and `#` tags, in-flight copy, no products, typed-first, silent single failure (slow rejection, stepped time), empty response, re-suggest over an AI fill, edit survives a content change, timer restart, collection link; the two new ones ("typing inside the 900 ms window", "typing while the request is in flight") were red against the old code (AI text replaced the typed text), then green. Falsified: fire-time check, in-flight check, 900 ms, products guard, empty-caption guard, `#` prefix, `suggestedFor` guard each failed a test. Not pinned: the schedule-time touched check and the `clearTimeout` (both redundant with the new fire-time check and the `cancelled` flag), and the `lastAiFill` guard (a template-applied caption; `TemplatePicker` is stubbed in this harness). Mobile `tsc` clean. Not device-tested.
+
+---
+
+## RC-132 — two taps in one tick on a Facebook/Instagram "Connect" button started two native logins and two `connect` calls (T3.2-a #9)
+
+- **Component:** `apps/mobile/app/settings/social.tsx` (`openConnect`), `app/growth/integrations/facebook.tsx` (`handleConnect`), `app/growth/integrations/instagram.tsx` (`handleOneClickConnect`).
+- **Symptom:** a double-tap on Connect opened the Facebook login twice and sent `connectWithToken` twice for the same retailer.
+- **Root cause:** the only guard was the `connecting` React state, which reaches the button's `loading` prop after a render; two `onPress` calls in the same tick both saw `connecting === false`. RC-015 shape (OTP send had the same hole until `sendingRef`); `enquiry-try-on.tsx` `buyMore` already used a ref. Three hand-copies of one connect flow, none guarded.
+- **Fix:** a `connectingRef` in each screen, checked at the top of the handler (`if (connectingRef.current) return`), set before `setConnecting(true)`, released in `finally` (so cancel, SDK-unavailable and API errors all release it). The deep-link `autoConnect` effects are separate paths and were left alone. Sibling check: no other `loginWithFacebook` caller in `apps/mobile`.
+- **Proof:** `__tests__/settings/social-settings.test.tsx` (the former `it.fails`, now `it`) and `__tests__/growth/connect-double-tap.test.tsx` (facebook + instagram: same-tick double tap starts one login, guard released after a success and after a failed login). Six breaks (guard line and release line, each screen) each failed a test, restored, `cmp` clean. Mobile `tsc` clean. Server-side effect of a double connect (upsert vs duplicate row) not verified. Not device-tested.
+
+---
+
 ## RC-131 — a `collection_id` deep link opened the composer in collection mode with no collection chosen when the collections list was already cached (T3.2-a #6)
 
 - **Component:** `apps/mobile/app/social/create.tsx` (resolve-pending-collection effect).
