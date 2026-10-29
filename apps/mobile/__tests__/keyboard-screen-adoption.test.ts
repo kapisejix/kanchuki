@@ -129,8 +129,9 @@ describe('mobile keyboard wrapper adoption', () => {
   })
 
   // Files whose inputs the `<TextInput` scan above cannot see: the Report-a-problem
-  // sheet lives outside app/, and product/[id] owns its inputs through child components.
-  it.each(['src/components/ReportProblem.tsx', 'app/product/[id].tsx'])(
+  // sheet lives outside app/, and product/[id] and growth/ratings (GooglePlaceField,
+  // GoogleReviewsTab reply box; RC-119) own their inputs through child components.
+  it.each(['src/components/ReportProblem.tsx', 'app/product/[id].tsx', 'app/growth/ratings.tsx'])(
     'wraps %s in KeyboardScreen',
     (rel) => {
       const source = stripComments(readFileSync(join(__dirname, '..', rel), 'utf8'))
