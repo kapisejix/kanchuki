@@ -13,6 +13,16 @@
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
 
+## RC-136 — bulk onboarding swallowed its two startup loads, so a failed count showed `0 items catalogued` as fact and a failed rack load showed an empty picker (T3.5 g)
+
+- **Component:** `apps/mobile/app/product/bulk-onboard.tsx` (the mount `useEffect`: `retailerApi.getSections()` and `getStats()`).
+- **Symptom:** when `getStats` failed, the card read "0 / 2000 items catalogued so far" for a store with hundreds of products (`baselineCount` stays at its initial 0); when `getSections` failed, the rack/shelf picker was empty and every detected item read "No location". Nothing on screen said a load had failed.
+- **Root cause:** both calls ended in `.catch(() => {})`, an operation that succeeds while doing nothing (RC-030 shape), and the default state (0, empty list) is indistinguishable from a real answer. The other catches in the file were already fixed by RC-117/RC-122; these two had no user-visible path at all.
+- **Fix:** both catches call `setError(apiMessage(err, '<fallback>'))`, reusing the existing banner above the rack picker (server reason for a 4xx except 401/408, generic text otherwise). Limits: the banner is shared with extraction errors, so the next extraction clears it, and if both loads fail the last one wins. Other bare `.catch(() => {})` in `apps/mobile` were not swept.
+- **Proof:** `__tests__/product/bulk-onboard-screen.test.tsx` (5 tests). The three failure pins were `it.fails` first and fail for the right reason ("expected ... to contain 'Could not load ...'") when flipped, then became normal tests with the fix. Falsified (each failed a test, restored, `cmp` clean): the sections catch, the stats catch, `apiMessage` on the stats catch, and on the sections catch (that one survived until the rack 4xx test was added). Mobile `tsc` clean, vitest 49 files / 535 tests. Not device-tested.
+
+---
+
 ## RC-135 — two taps in one tick on the onboarding buttons saved twice, and Dashboard + QR redirected twice (T3.2-a #4b)
 
 - **Component:** `apps/mobile/app/onboarding.tsx` (`handleNext`, `handleGetCatalogHelp`, `handleCreateStoreQr`).
