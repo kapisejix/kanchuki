@@ -31,6 +31,7 @@ import {
   type CampaignStatus,
   type CampaignType,
 } from '../../../src/lib/api'
+import { ApiError } from '../../../src/lib/api/api-error'
 import { showError } from '../../../src/lib/errors'
 
 const TYPE_LABEL: Record<CampaignType, { label: string; icon: React.ReactNode }> = {
@@ -76,10 +77,17 @@ export default function CampaignDetailScreen() {
       void queryClient.invalidateQueries({ queryKey: ['growth'] })
     },
     onError: (err) =>
-      showError(
-        err,
-        'Send failed. Check that customers in this audience have WhatsApp consent turned on in their profile.',
-      ),
+      // A timeout or dropped connection does not mean the send failed: the server may
+      // still be sending, and tapping Send again is what the claim in RC-111 guards.
+      err instanceof ApiError && (err.code === 'TIMEOUT' || err.code === 'NETWORK_ERROR')
+        ? Alert.alert(
+            'Still sending?',
+            'The send may still be running. Check this campaign in a minute before sending again.',
+          )
+        : showError(
+            err,
+            'Send failed. Check that customers in this audience have WhatsApp consent turned on in their profile.',
+          ),
   })
 
   const deleteMutation = useMutation({

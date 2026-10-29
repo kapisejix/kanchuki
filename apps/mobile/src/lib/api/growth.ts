@@ -978,6 +978,7 @@ export const growthApi = {
   sendCampaign: (id: string) =>
     request<{ data: CampaignSendResult }>(`/v1/growth/campaigns/${id}/send`, {
       method: 'POST',
+      timeoutMs: 120_000, // synchronous one-message-per-customer fan-out (RC-121)
     }),
 
   // ─── Campaign analytics (roadmap R) ─────────────────────────────
