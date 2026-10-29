@@ -105,6 +105,12 @@ export const Linking = {
   sendIntent: async () => {},
 }
 
+export const BackHandler = {
+  addEventListener: () => ({ remove: () => {} }),
+  removeEventListener: () => {},
+  exitApp: () => {},
+}
+
 export const Alert = {
   alert: () => {},
   prompt: () => {},
@@ -268,6 +274,7 @@ export default {
   PixelRatio,
   Animated,
   Linking,
+  BackHandler,
   Alert,
   Vibration,
   AccessibilityInfo,
