@@ -128,17 +128,65 @@ describe('mobile keyboard wrapper adoption', () => {
     }
   })
 
-  // Files whose inputs the `<TextInput` scan above cannot see: the Report-a-problem
-  // sheet lives outside app/, and product/[id] and growth/ratings (GooglePlaceField,
-  // GoogleReviewsTab reply box; RC-119) own their inputs through child components.
-  it.each(['src/components/ReportProblem.tsx', 'app/product/[id].tsx', 'app/growth/ratings.tsx'])(
-    'wraps %s in KeyboardScreen',
-    (rel) => {
-      const source = stripComments(readFileSync(join(__dirname, '..', rel), 'utf8'))
-      expect(source).toContain('<KeyboardScreen')
-      expect(source).toMatch(/import\s*\{[^}]*\bKeyboardScreen\b/)
-    },
-  )
+  // Inputs the `<TextInput` scan cannot see because they live in a child component
+  // (RC-119). Derived, not listed: a component under src/ that owns a `<TextInput`
+  // and does not wrap itself is an "input component"; so is any src/ file that
+  // imports one without wrapping. Every screen that imports an input component by
+  // name must render <KeyboardScreen (barrel imports included).
+  const importsName = (source: string, name: string) =>
+    new RegExp(`import\\s*\\{[^}]*\\b${name}\\b`).test(source)
+
+  function inputComponentNames(): string[] {
+    const files = walk(join(__dirname, '..', 'src'))
+      .filter((f) => !f.endsWith('.test.tsx'))
+      .map((f) => ({
+        name: f.split(/[\\/]/).pop()!.replace(/\.tsx$/, ''),
+        source: stripComments(readFileSync(f, 'utf8')),
+      }))
+    const names = new Set(
+      files
+        .filter((f) => /<TextInput\b/.test(f.source) && !f.source.includes('<KeyboardScreen'))
+        .map((f) => f.name),
+    )
+    for (let grew = true; grew; ) {
+      grew = false
+      for (const f of files) {
+        if (names.has(f.name) || f.source.includes('<KeyboardScreen')) continue
+        if ([...names].some((n) => importsName(f.source, n))) {
+          names.add(f.name)
+          grew = true
+        }
+      }
+    }
+    return [...names]
+  }
+
+  it('wraps every screen that imports an input component', () => {
+    const names = inputComponentNames()
+    // a broken derivation must not pass vacuously
+    expect(names).toEqual(
+      expect.arrayContaining([
+        'GooglePlaceField',
+        'GoogleReviewsTab',
+        'StockEditor',
+        'ProductAttributesForm',
+      ]),
+    )
+    const offenders = sources
+      .filter((s) => names.some((n) => importsName(s.source, n)))
+      .filter((s) => !s.source.includes('<KeyboardScreen') && !(s.path in NO_WRAPPER))
+      .map((s) => s.path)
+    expect(offenders).toEqual([])
+  })
+
+  // ReportProblem wraps itself (its importers include src/ErrorBoundary, outside app/).
+  it('wraps ReportProblem in KeyboardScreen', () => {
+    const source = stripComments(
+      readFileSync(join(__dirname, '..', 'src/components/ReportProblem.tsx'), 'utf8'),
+    )
+    expect(source).toContain('<KeyboardScreen')
+    expect(source).toMatch(/import\s*\{[^}]*\bKeyboardScreen\b/)
+  })
 
   it('imports the wrapper wherever it renders it', () => {
     const importing = sources
