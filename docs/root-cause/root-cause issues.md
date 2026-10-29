@@ -13,6 +13,28 @@
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
 
+## RC-124 — Android Auto Backup was on by Expo default, so the offline cache (customer names, phones, enquiries) was copied to Google Drive and restored to other devices (T3.6-b)
+
+- **Component:** `apps/mobile/app.json` (`expo.android`, no `allowBackup`); data at `kanchuki-cache/*.json` in the documents dir (`src/lib/offline-persister.ts`).
+- **Symptom:** none visible. A retailer's customer PII left the device through the OS backup and could land on a new phone.
+- **Root cause:** an unset platform default. Nothing declared `allowBackup`, so the prebuilt manifest got `allowBackup="true"`. SecureStore (tokens) is excluded by the `expo-secure-store` plugin, but the plain-JSON cache is not.
+- **Fix:** `"allowBackup": false` under `expo.android` in `app.json`.
+- **Proof:** `__tests__/t35-p2-pins.test.ts` parses `app.json` and asserts `expo.android.allowBackup === false`. Falsified by setting it to `true`: red; restored.
+- **Limits, stated plainly:** takes effect only in a new native build. **Needs an EAS rebuild (owner).** Already-backed-up data stays in the user's Drive. Not checked against a built manifest. `docs/SECURITY.md` has no device-backup rule to conflict with.
+
+---
+
+## RC-123 — A credential branch with no writer: `teamRequest` sent `x-admin-key` from SecureStore when an `admin_key` existed, but nothing ever stored one (T3.6-d)
+
+- **Component:** `apps/mobile/src/lib/team-api.ts` (`teamRequest`).
+- **Symptom:** none today. If any build ever wrote `admin_key`, the retailer app would send a platform admin key from a retailer device and skip the Bearer token.
+- **Root cause:** a dead auth branch that survived a removed feature. Reader with no writer, so nothing tied it to a live flow.
+- **Fix:** `teamRequest` always uses `Authorization: Bearer <auth_token>`; the `admin_key` read and `x-admin-key` header are deleted. Left on purpose: `admin_key` in `AUTH_KEYS` (wipes any legacy value at sign-out, pinned by `auth-context.test.tsx`) and the `x-admin-key` scrub in `sentry.ts`.
+- **Proof:** `__tests__/t35-p2-pins.test.ts` asserts the file has no `admin_key` / `x-admin-key` and sets the Bearer header. Falsified by re-adding the read: red; restored. Mobile `tsc` clean, `auth-context.test.tsx` green.
+- **Limits, stated plainly:** source pin, not a request-level test; not device-tested. Nothing in the API was changed.
+
+---
+
 ## RC-122 — Inline `setError('…Try again.')` constants hid the server's 4xx reason on the catalog-import and bulk-onboard screens (T3.5-f, T3.5-g)
 
 - **Component:** `apps/mobile/app/product/catalog-import.tsx` (three catches: two "Upload failed", one "Detection failed"), `app/product/bulk-onboard.tsx` (one "Something went wrong").

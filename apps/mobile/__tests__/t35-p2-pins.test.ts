@@ -51,3 +51,19 @@ describe('RC-122: inline setError constants must not hide the 4xx reason', () =>
     }
   })
 })
+
+describe('RC-123: team requests carry only the retailer Bearer token', () => {
+  it('team-api has no admin_key read and no x-admin-key header', () => {
+    const src = read('src/lib/team-api.ts')
+    expect(src).not.toContain('admin_key')
+    expect(src).not.toContain('x-admin-key')
+    expect(src).toContain("headers['Authorization'] = `Bearer ${token}`")
+  })
+})
+
+describe('RC-124: Android Auto Backup is off so the offline cache stays on the device', () => {
+  it('app.json sets expo.android.allowBackup to false', () => {
+    const cfg = JSON.parse(readFileSync(join(__dirname, '..', 'app.json'), 'utf8'))
+    expect(cfg.expo.android.allowBackup).toBe(false)
+  })
+})
