@@ -67,6 +67,8 @@ export const adminDataRoutes: FastifyPluginAsync = async (server) => {
       const result = (await Promise.race([
         replica.$transaction(async (tx) => {
           await tx.$executeRawUnsafe('SET TRANSACTION READ ONLY');
+          // Promise.race below only rejects the HTTP call; this makes Postgres cancel the query.
+          await tx.$executeRawUnsafe("SET LOCAL statement_timeout = '30s'");
           return tx.$queryRawUnsafe(sql);
         }),
         timerPromise,
