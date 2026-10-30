@@ -1,6 +1,6 @@
 // RC-112 (admin writes bypassing the shared CSRF helper, and the helper caching a rejected
 // token fetch) and RC-109 (admin GST report printing paise as rupees).
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { adminMutateOptions, resetAdminFetchCache } from '../admin-fetch';
@@ -58,6 +58,28 @@ describe('admin pages use the shared CSRF helper for writes (RC-112)', () => {
     expect(call).not.toContain('adminGetOptions()');
     expect(src).toContain('setDisconnectError(');
     expect(src).not.toMatch(/catch \{\s*\/\/ ignore/);
+  });
+});
+
+// T2.4 F6 - the hand-copied getAdminHeaders() helpers were the same copy-paste shape that
+// produced the RC-112 403s. Admin requests take their headers from lib/admin-fetch.ts;
+// layout.tsx is the one exception (the session check passes an explicit stored key).
+describe('admin pages do not hand-build the admin auth header (T2.4 F6)', () => {
+  const adminDir = path.resolve(__dirname, '../../app/admin');
+  const files = readdirSync(adminDir, { recursive: true, encoding: 'utf8' })
+    .map((f) => f.split(path.sep).join('/'))
+    .filter((f) => /\.tsx?$/.test(f) && !f.includes('__tests__') && f !== 'layout.tsx');
+
+  it('scans the admin tree (guards against a path that matches nothing)', () => {
+    expect(files.length).toBeGreaterThan(50);
+  });
+
+  it('no admin file defines getAdminHeaders or sets x-admin-key itself', () => {
+    const offenders = files.filter((f) => {
+      const src = readFileSync(path.join(adminDir, f), 'utf8');
+      return src.includes("'x-admin-key'") || /function getAdminHeaders\b/.test(src);
+    });
+    expect(offenders).toEqual([]);
   });
 });
 

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Bell, AlertCircle, HardDrive, Info, ExternalLink } from 'lucide-react'
+import { adminGetOptions } from '@/lib/admin-fetch'
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
 
@@ -27,9 +28,7 @@ export function NotificationBell() {
       const key = sessionStorage.getItem('admin_key')
       if (!key) return
       try {
-        const res = await fetch(`${API_URL}/v1/admin/alerts`, {
-          headers: { 'x-admin-key': key },
-        })
+        const res = await fetch(`${API_URL}/v1/admin/alerts`, adminGetOptions())
         if (res.ok) {
           const json = (await res.json()) as { data: Alert[] }
           const items = json.data ?? []
