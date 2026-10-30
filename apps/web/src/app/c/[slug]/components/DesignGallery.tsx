@@ -70,7 +70,7 @@ export function DesignGallery({ retailerPhone, retailerName }: Props) {
   const handleShare = useCallback((design: Design) => {
     const message = `Hi! I'd like this design for my unstitched suit:\n\n${design.name} (${design.category.replace(/_/g, ' ').toLowerCase()})\n\nPlease share this with my tailor.`
     const url = buildWhatsAppEnquiryLink(retailerPhone, message)
-    window.open(url, '_blank')
+    window.open(url, '_blank', 'noopener,noreferrer')
   }, [retailerPhone])
 
   if (loading) {

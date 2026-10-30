@@ -256,7 +256,7 @@ export function SurveyForm({
     const text = encodeURIComponent(
       `Namaste! Create your clothing store's digital catalog in minutes on Kanchuki (AI auto-tagging + WhatsApp selling). Register here: ${onboardingLink}\n\nReferred by: ${staffName} (Code: ${activeRefCode})`,
     )
-    window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank')
+    window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank', 'noopener,noreferrer')
   }
 
   if (status === 'sent') {

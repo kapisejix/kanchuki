@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { API_URL } from '@/lib/apiUrl'
 import { Footer, Navbar, PageHero, Section } from '@/components/site/Chrome'
 import type { StoreCardData } from '@/lib/nearby-stores'
+import { ldJson } from '../[store]/lib/store-seo'
 import StoresDirectory from './StoresDirectory'
 
 export const metadata: Metadata = {
@@ -70,8 +71,8 @@ export default async function StoresPage() {
       {itemList && (
         <script
           type="application/ld+json"
-          // biome-ignore lint/security/noDangerouslySetInnerHtml: JSON-LD; `<` escaped below because shop_name is retailer-controlled
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(itemList).replace(/</g, '\\u003c') }}
+          // biome-ignore lint/security/noDangerouslySetInnerHtml: JSON-LD, '<' escaped by ldJson (shop_name is retailer-controlled)
+          dangerouslySetInnerHTML={{ __html: ldJson(itemList) }}
         />
       )}
       <Navbar />
