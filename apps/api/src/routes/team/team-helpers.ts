@@ -68,7 +68,9 @@ export async function teamAuthPreHandler(request: FastifyRequest, reply: Fastify
     '/v1/team/forgot-password',
     '/v1/team/reset-password',
   ];
-  if (publicTeamPaths.some((p) => request.url.startsWith(p))) return;
+  // Exact match on the registered route pattern (as plugins/auth.ts does), not a
+  // prefix of request.url: a future `/login-history` must not inherit the bypass (T1.3 F2).
+  if (publicTeamPaths.includes(request.routeOptions.url ?? '')) return;
 
   // Bootstrap: the existing shared admin key acts as an unscoped Super Admin,
   // since team_members starts empty and needs a way to create the first one.
