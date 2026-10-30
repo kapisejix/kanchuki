@@ -48,7 +48,9 @@ export const productsAiRoutes: FastifyPluginAsync = async (server) => {
             ai_tag_error: 'Background AI tagging unavailable — try again later',
           },
         });
-      } catch {}
+      } catch (e) {
+        request.log.error({ err: e, product_id: id }, 'ai_tag_error write failed');
+      }
     });
 
     return reply.status(202).send({ data: { retag_queued: true } });

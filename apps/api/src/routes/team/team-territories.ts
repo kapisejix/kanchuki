@@ -2,6 +2,7 @@
 import { prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
+import { nullOnMissing } from '../../lib/prisma-errors.js';
 import { notFound, validationError } from '../../plugins/error-handler.js';
 import { requireRole, teamAuthPreHandler } from './team-helpers.js';
 
@@ -44,7 +45,7 @@ export const teamTerritoriesRoutes: FastifyPluginAsync = async (server) => {
 
     const territory = await prisma.territory
       .update({ where: { id: request.params.id }, data: body.data })
-      .catch(() => null);
+      .catch(nullOnMissing);
     if (!territory) throw notFound('Territory');
     return { data: territory };
   });

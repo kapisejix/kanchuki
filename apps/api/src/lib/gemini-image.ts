@@ -70,7 +70,10 @@ const MIME_BY_EXTENSION: Record<string, string> = {
 };
 
 export async function resolveGeminiKey(): Promise<string | null> {
-  const secret = await getSecret('GEMINI_API_KEY').catch(() => null);
+  const secret = await getSecret('GEMINI_API_KEY').catch((err) => {
+    console.error('[gemini-image] getSecret GEMINI_API_KEY failed:', err);
+    return null;
+  });
   return secret || process.env.GEMINI_API_KEY || null;
 }
 

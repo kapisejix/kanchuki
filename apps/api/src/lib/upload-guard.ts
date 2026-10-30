@@ -10,6 +10,10 @@
 import { copyObject, deleteObject, inspectObject, publicUrl } from '@kanchuki/ai';
 import { validationError } from '../plugins/error-handler.js';
 
+// Best-effort: a failed delete leaves a staged object for the lifecycle rule, but say so.
+const dropStaged = (key: string) =>
+  deleteObject(key).catch((err) => console.error('[upload-guard] staged delete failed:', key, err));
+
 export type UploadKind =
   | 'image/jpeg'
   | 'image/png'
@@ -162,7 +166,7 @@ export async function verifyUpload(
   if (obj.size > maxBytes || !kind || !allowed.includes(kind)) {
     // ponytail: only a staged object is deleted on reject — a final key may be a
     // live object another row points at (e.g. confirmed at the wrong endpoint).
-    if (key !== finalKey) await deleteObject(key).catch(() => {});
+    if (key !== finalKey) await dropStaged(key);
     throw validationError(
       obj.size > maxBytes ? 'File too large' : 'File is not an allowed image or document type',
       'r2_key',
@@ -176,14 +180,14 @@ export async function verifyUpload(
     } catch (err) {
       const e = err as { name?: string; $metadata?: { httpStatusCode?: number } } | null;
       if (e?.name !== 'PreconditionFailed' && e?.$metadata?.httpStatusCode !== 412) throw err;
-      await deleteObject(key).catch(() => {});
+      await dropStaged(key);
       throw validationError(
         'Upload changed while it was being checked — please upload again',
         'r2_key',
       );
     }
     // A failed delete leaves a staged copy for the lifecycle rule; not fatal.
-    await deleteObject(key).catch(() => {});
+    await dropStaged(key);
   }
   return { url: publicUrl(finalKey), kind, r2Key: finalKey };
 }
