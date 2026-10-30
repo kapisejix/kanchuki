@@ -684,7 +684,7 @@ describe('referral-accrue cron wiring', () => {
     // Accruing before qualification would mean tonight's newly-qualified rows
     // are invisible to tonight's accrual; 02:15 runs after T5's 02:00.
     expect(jobsIndex).toMatch(
-      /getMaintenanceQueue\(\)\.add\(\s*\n\s*'referral-accrue',[\s\S]{0,200}?pattern: '15 2 \* \* \*'/,
+      /addCron\(\s*\n\s*'referral-accrue',[\s\S]{0,200}?pattern: '15 2 \* \* \*'/,
     );
   });
 

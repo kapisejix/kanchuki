@@ -127,7 +127,7 @@ describe('cron registration', () => {
     .join('\n');
 
   it('registers color-family-backfill as a repeating job without repeat.limit', () => {
-    const block = src.match(/add\(\s*'color-family-backfill',[\s\S]*?\n {2}\);/)?.[0] ?? '';
+    const block = src.match(/addCron\(\s*'color-family-backfill',[\s\S]*?\n {2}\);/)?.[0] ?? '';
     expect(block, 'cron must be registered').not.toBe('');
     expect(block).toMatch(/repeat:\s*\{\s*pattern:/);
     expect(block).not.toMatch(/limit/);
