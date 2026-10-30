@@ -72,7 +72,7 @@ export function CustomerConsentModal({
 
     trackPassportEvent({ type: 'enquiry', product_id: product.id, retailer_id: retailer.id })
 
-    window.open(url, '_blank')
+    window.open(url, '_blank', 'noopener,noreferrer')
     onClose()
   }
 
