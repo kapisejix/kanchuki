@@ -61,6 +61,10 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           sessionStorage.removeItem('admin_key')
           sessionStorage.removeItem('admin_role')
           setAuthed(false)
+        } else if (!r.ok) {
+          // Fail closed (T2.4 F4): a 5xx is not proof of a valid session. Keep the key so a
+          // reload retries; the login screen is shown meanwhile.
+          setAuthed(false)
         } else {
           const json = (await r.json().catch(() => null)) as {
             data?: { authenticated?: boolean; role?: string }
@@ -78,7 +82,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         }
       })
       .catch(() => {
-        setAuthed(true)
+        setAuthed(false)
       })
       .finally(() => setCheckingSession(false))
   }, [router])

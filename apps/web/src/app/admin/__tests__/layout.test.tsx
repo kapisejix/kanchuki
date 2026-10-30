@@ -95,7 +95,9 @@ describe('AdminLayout auth/session check', () => {
     expect(screen.queryByText('Overview')).not.toBeInTheDocument()
   })
 
-  it('keeps the key and shows the shell when the session check hits a 500 (DB hiccup is NOT logout)', async () => {
+  // T2.4 F4: fail closed. A 5xx or a network error is not proof of a valid session, so the
+  // shell is not shown; the key is kept so a reload retries (only 401/403 clears it).
+  it('shows login and keeps the key when the session check hits a 500', async () => {
     sessionStorage.setItem('admin_key', 'k-db-down')
     fetchMock.mockResolvedValueOnce({
       ok: false,
@@ -108,15 +110,13 @@ describe('AdminLayout auth/session check', () => {
         <div>Shell content</div>
       </AdminLayout>,
     )
-    // This is the regression the old /stats gate had: a DB-backed check
-    // 500'd and logged the admin out on every refresh.
-    expect(await screen.findByText('Overview')).toBeInTheDocument()
-    expect(screen.getByText('Shell content')).toBeInTheDocument()
-    expect(screen.queryByTestId('login-screen')).not.toBeInTheDocument()
+    expect(await screen.findByTestId('login-screen')).toBeInTheDocument()
+    expect(screen.queryByText('Overview')).not.toBeInTheDocument()
+    expect(screen.queryByText('Shell content')).not.toBeInTheDocument()
     expect(sessionStorage.getItem('admin_key')).toBe('k-db-down')
   })
 
-  it('keeps the key and shows the shell when the session request fails (network)', async () => {
+  it('shows login and keeps the key when the session request fails (network)', async () => {
     sessionStorage.setItem('admin_key', 'k-offline')
     fetchMock.mockRejectedValueOnce(new Error('network down'))
 
@@ -125,8 +125,30 @@ describe('AdminLayout auth/session check', () => {
         <div>Shell content</div>
       </AdminLayout>,
     )
-    expect(await screen.findByText('Overview')).toBeInTheDocument()
+    expect(await screen.findByTestId('login-screen')).toBeInTheDocument()
+    expect(screen.queryByText('Overview')).not.toBeInTheDocument()
     expect(sessionStorage.getItem('admin_key')).toBe('k-offline')
+  })
+
+  it('a reload after a failed check retries with the kept key and shows the shell', async () => {
+    sessionStorage.setItem('admin_key', 'k-retry')
+    fetchMock.mockResolvedValueOnce({ ok: false, status: 503, json: async () => ({}) })
+
+    const first = render(
+      <AdminLayout>
+        <div>Shell content</div>
+      </AdminLayout>,
+    )
+    expect(await screen.findByTestId('login-screen')).toBeInTheDocument()
+    first.unmount()
+
+    render(
+      <AdminLayout>
+        <div>Shell content</div>
+      </AdminLayout>,
+    )
+    expect(await screen.findByText('Overview')).toBeInTheDocument()
+    expect(sessionFetchCount(fetchMock)).toBe(2)
   })
 
   it('shows the session-check spinner while validating — no flash of the login screen', async () => {
