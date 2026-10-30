@@ -12,6 +12,7 @@ import {
   vaultDelete,
 } from '@kanchuki/db';
 import { z } from 'zod';
+import { nullOnMissing } from '../../lib/prisma-errors.js';
 import { forbidden, notFound, validationError } from '../../plugins/error-handler.js';
 import { adminAuthPreHandler } from '../admin-auth.js';
 
@@ -47,7 +48,7 @@ export const adminMiscRoutes: FastifyPluginAsync = async (server) => {
           is_active: body.is_active ?? true,
         },
       })
-      .catch(() => null);
+      .catch(nullOnMissing);
     if (!category)
       throw validationError('A default category with this name already exists', 'name');
 
@@ -80,7 +81,7 @@ export const adminMiscRoutes: FastifyPluginAsync = async (server) => {
         where: { id: request.params.id },
         data: body.name !== undefined ? { ...body, name: body.name.trim() } : body,
       })
-      .catch(() => null);
+      .catch(nullOnMissing);
     if (!category) throw notFound('Default category');
 
     await prisma.auditLog.create({
@@ -105,7 +106,7 @@ export const adminMiscRoutes: FastifyPluginAsync = async (server) => {
   server.delete<{ Params: { id: string } }>('/default-categories/:id', async (request, reply) => {
     const category = await prisma.defaultProductCategory
       .delete({ where: { id: request.params.id } })
-      .catch(() => null);
+      .catch(nullOnMissing);
 
     if (category) {
       await prisma.auditLog.create({
@@ -159,7 +160,7 @@ export const adminMiscRoutes: FastifyPluginAsync = async (server) => {
           is_active: body.is_active ?? true,
         },
       })
-      .catch(() => null);
+      .catch(nullOnMissing);
     if (!attribute)
       throw validationError(
         'A default attribute with this name already exists for this kind',
@@ -195,7 +196,7 @@ export const adminMiscRoutes: FastifyPluginAsync = async (server) => {
         where: { id: request.params.id },
         data: body.name !== undefined ? { ...body, name: body.name.trim() } : body,
       })
-      .catch(() => null);
+      .catch(nullOnMissing);
     if (!attribute) throw notFound('Default attribute');
 
     await prisma.auditLog.create({
@@ -221,7 +222,7 @@ export const adminMiscRoutes: FastifyPluginAsync = async (server) => {
   server.delete<{ Params: { id: string } }>('/default-attributes/:id', async (request, reply) => {
     const attribute = await prisma.defaultProductAttribute
       .delete({ where: { id: request.params.id } })
-      .catch(() => null);
+      .catch(nullOnMissing);
 
     if (attribute) {
       await prisma.auditLog.create({

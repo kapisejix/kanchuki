@@ -227,3 +227,49 @@ describe('verifyUpload', () => {
     });
   });
 });
+
+describe('verifyUpload — failed staged delete is logged, not swallowed (T1.7 F6)', () => {
+  const run = (key: string, maxBytes = 1000) =>
+    verifyUpload({ retailerId: 'r1', r2Key: key, allowed: IMAGE_KINDS, maxBytes });
+  let errSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    inspectObject.mockReset();
+    deleteObject.mockReset();
+    copyObject.mockReset();
+    deleteObject.mockRejectedValue(new Error('r2 down'));
+    errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  it('oversize reject: still the validation error, delete failure logged with the key', async () => {
+    inspectObject.mockResolvedValue({ size: 5000, head: JPEG });
+    await expect(run(STAGED)).rejects.toThrow('File too large');
+    expect(errSpy).toHaveBeenCalledWith(
+      '[upload-guard] staged delete failed:',
+      STAGED,
+      expect.any(Error),
+    );
+  });
+
+  it('ETag mismatch: still rejected, delete failure logged', async () => {
+    inspectObject.mockResolvedValue({ size: 10, head: JPEG, etag: 'e1' });
+    copyObject.mockRejectedValue(Object.assign(new Error('412'), { name: 'PreconditionFailed' }));
+    await expect(run(STAGED)).rejects.toThrow('Upload changed');
+    expect(errSpy).toHaveBeenCalledWith(
+      '[upload-guard] staged delete failed:',
+      STAGED,
+      expect.any(Error),
+    );
+  });
+
+  it('successful promote: leftover staged copy failing to delete is logged, upload still succeeds', async () => {
+    inspectObject.mockResolvedValue({ size: 10, head: JPEG, etag: 'e1' });
+    copyObject.mockResolvedValue(undefined);
+    await expect(run(STAGED)).resolves.toMatchObject({ kind: 'image/jpeg' });
+    expect(errSpy).toHaveBeenCalledWith(
+      '[upload-guard] staged delete failed:',
+      STAGED,
+      expect.any(Error),
+    );
+  });
+});

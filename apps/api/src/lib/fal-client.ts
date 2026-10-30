@@ -4,7 +4,10 @@ import { AppError } from '../plugins/error-handler.js';
 const FAL_BASE = 'https://queue.fal.run';
 
 export async function resolveFalKey(): Promise<string | null> {
-  const secret = await getSecret('FAL_API_KEY').catch(() => null);
+  const secret = await getSecret('FAL_API_KEY').catch((err) => {
+    console.error('[fal-client] getSecret FAL_API_KEY failed:', err);
+    return null;
+  });
   return secret || process.env.FAL_API_KEY || process.env.FAL_KEY || null;
 }
 

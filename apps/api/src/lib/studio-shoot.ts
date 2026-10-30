@@ -59,7 +59,10 @@ const BFL_BASE = 'https://api.bfl.ai/v1';
 export const STUDIO_SHOOT_CONCURRENCY = 3;
 
 export async function resolveBflKey(): Promise<string | null> {
-  const secret = await getSecret('BFL_API_KEY').catch(() => null);
+  const secret = await getSecret('BFL_API_KEY').catch((err) => {
+    console.error('[studio-shoot] getSecret BFL_API_KEY failed:', err);
+    return null;
+  });
   return secret || process.env.BFL_API_KEY || null;
 }
 

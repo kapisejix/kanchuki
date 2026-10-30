@@ -72,7 +72,10 @@ const ASPECT_DIMS: Record<VideoAspect, [number, number]> = {
 };
 
 async function resolveFalKey(): Promise<string | null> {
-  const secret = await getSecret('FAL_API_KEY').catch(() => null);
+  const secret = await getSecret('FAL_API_KEY').catch((err) => {
+    console.error('[fal-video] getSecret FAL_API_KEY failed:', err);
+    return null;
+  });
   return secret || process.env.FAL_API_KEY || process.env.FAL_KEY || null;
 }
 

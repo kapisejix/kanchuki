@@ -4,6 +4,7 @@ import { isValidIndianPhone, normalizeIndianPhone } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { sendTeamMemberWelcomeEmail } from '../../lib/email.js';
+import { nullOnMissing } from '../../lib/prisma-errors.js';
 import { isReservedForAffiliateNamespace } from '../../lib/referral-codes.js';
 import { forbidden, notFound, validationError } from '../../plugins/error-handler.js';
 import { hashPassword } from '../../plugins/team-auth.js';
@@ -271,7 +272,7 @@ export const teamMembersRoutes: FastifyPluginAsync = async (server) => {
           referral_code: true,
         },
       })
-      .catch(() => null);
+      .catch(nullOnMissing);
     if (!member) throw notFound('Team member');
     return { data: member };
   });

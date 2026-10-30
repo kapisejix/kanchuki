@@ -3,6 +3,7 @@
 
 import { type Prisma, prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
+import { nullOnMissing } from '../../lib/prisma-errors.js';
 import { notFound } from '../../plugins/error-handler.js';
 import { adminAuthPreHandler } from '../admin-auth.js';
 
@@ -209,7 +210,7 @@ export const adminRatingsRoutes: FastifyPluginAsync = async (server) => {
             where: { id },
             data: { is_flagged: true },
           })
-          .catch(() => null);
+          .catch(nullOnMissing);
         if (!review) throw notFound('Review');
 
         const adminId = request.adminId ?? 'system';
@@ -232,7 +233,7 @@ export const adminRatingsRoutes: FastifyPluginAsync = async (server) => {
           where: { id },
           data: { is_flagged: true },
         })
-        .catch(() => null);
+        .catch(nullOnMissing);
       if (!review) throw notFound('Review');
 
       const adminId = request.adminId ?? 'system';
@@ -275,7 +276,7 @@ export const adminRatingsRoutes: FastifyPluginAsync = async (server) => {
             where: { id },
             data: { is_hidden: true },
           })
-          .catch(() => null);
+          .catch(nullOnMissing);
         if (!review) throw notFound('Review');
 
         // Recompute denormalized rating
@@ -309,7 +310,7 @@ export const adminRatingsRoutes: FastifyPluginAsync = async (server) => {
           where: { id },
           data: { is_hidden: true },
         })
-        .catch(() => null);
+        .catch(nullOnMissing);
       if (!review) throw notFound('Review');
 
       // Recompute denormalized store rating
@@ -363,7 +364,7 @@ export const adminRatingsRoutes: FastifyPluginAsync = async (server) => {
             where: { id },
             data: { is_hidden: false, is_flagged: false },
           })
-          .catch(() => null);
+          .catch(nullOnMissing);
         if (!review) throw notFound('Review');
 
         const agg = await prisma.productReview.aggregate({
@@ -384,7 +385,7 @@ export const adminRatingsRoutes: FastifyPluginAsync = async (server) => {
           where: { id },
           data: { is_hidden: false, is_flagged: false },
         })
-        .catch(() => null);
+        .catch(nullOnMissing);
       if (!review) throw notFound('Review');
 
       const agg = await prisma.storeReview.aggregate({

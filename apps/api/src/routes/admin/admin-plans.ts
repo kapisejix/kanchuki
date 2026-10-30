@@ -16,6 +16,7 @@ import { INTEGRATION_KEYS, PLAN_LIMIT_RESOURCE_TYPES, R2_PATHS } from '@kanchuki
 import { z } from 'zod';
 import { fetchWithTimeout as fetch } from '../../lib/fetch-timeout.js';
 import { computeSubscriptionGst } from '../../lib/gst.js';
+import { nullOnMissing } from '../../lib/prisma-errors.js';
 import { forbidden, notFound, validationError } from '../../plugins/error-handler.js';
 import { adminAuthPreHandler } from '../admin-auth.js';
 import { planPriceMissing } from '../billing/billing-helpers.js';
@@ -494,7 +495,7 @@ export const adminPlansRoutes: FastifyPluginAsync = async (server) => {
 
     const tier = await prisma.catalogUploadPriceTier
       .update({ where: { id: request.params.id }, data: body })
-      .catch(() => null);
+      .catch(nullOnMissing);
     if (!tier) throw notFound('Catalog upload price tier');
 
     await prisma.auditLog.create({
@@ -519,7 +520,7 @@ export const adminPlansRoutes: FastifyPluginAsync = async (server) => {
   server.delete<{ Params: { id: string } }>('/catalog-upload-tiers/:id', async (request, reply) => {
     const tier = await prisma.catalogUploadPriceTier
       .delete({ where: { id: request.params.id } })
-      .catch(() => null);
+      .catch(nullOnMissing);
 
     if (tier) {
       await prisma.auditLog.create({

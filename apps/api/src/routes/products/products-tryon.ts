@@ -416,7 +416,9 @@ export const productsTryOnRoutes: FastifyPluginAsync = async (server) => {
             completed_at: new Date(),
           },
         })
-        .catch(() => {});
+        .catch((err) =>
+          request.log.error({ err, job_id: jobId }, 'Failed to mark try-on job FAILED'),
+        );
       throw serviceUnavailable('Try-on is busy right now. Please try again in a moment.');
     }
 
@@ -440,7 +442,9 @@ export const productsTryOnRoutes: FastifyPluginAsync = async (server) => {
             completed_at: new Date(),
           },
         })
-        .catch(() => {});
+        .catch((e) =>
+          request.log.error({ err: e, job_id: jobId }, 'Failed to mark try-on job FAILED'),
+        );
       throw err;
     }
 
