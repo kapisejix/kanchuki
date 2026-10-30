@@ -41,6 +41,8 @@ export default function FeedProductCard({
       className="block overflow-hidden rounded-2xl border border-carbon/10 bg-white shadow-sm hover:shadow-md transition"
     >
       <div className="aspect-[3/4] bg-carbon/5">
+        {/* R2/CDN photos are already compressed to <=80KB; next/image would re-proxy them (T2.1-a). */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={p.primary_photo_url}
           alt={p.name ?? fallbackAlt}

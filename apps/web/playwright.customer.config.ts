@@ -69,7 +69,8 @@ export default defineConfig({
     // Always boot fresh: the build must regenerate public/sw.js and the
     // content-hashed chunks before `next start` serves them.
     reuseExistingServer: false,
-    timeout: 300_000,
+    // Local boxes need longer for the uncached turbo build (T2.2 F2).
+    timeout: process.env.CI ? 300_000 : 900_000,
     env: {
       // Pinned to the stub API origin the spec serves from :3001.
       // NEXT_PUBLIC_* is inlined at build time, so this must be set here —
