@@ -24,6 +24,9 @@ const {
   mockSubscriptionPaymentCreate,
   mockSubscriptionPaymentUpdateMany,
   mockQueryRaw,
+  mockSubscriptionFindFirst,
+  mockSubscriptionCreate,
+  mockPlanPricingFindUnique,
   prismaMock,
 } = vi.hoisted(() => {
   const p: Record<string, unknown> = {};
@@ -44,6 +47,9 @@ const {
     mockSubscriptionPaymentCreate: vi.fn(),
     mockSubscriptionPaymentUpdateMany: vi.fn(),
     mockQueryRaw: vi.fn(),
+    mockSubscriptionFindFirst: vi.fn(),
+    mockSubscriptionCreate: vi.fn(),
+    mockPlanPricingFindUnique: vi.fn(),
     prismaMock: p,
   };
   Object.assign(p, {
@@ -61,7 +67,13 @@ const {
     retailerLimitOverride: { findUnique: m.mockRetailerLimitOverrideFindUnique },
     planLimit: { findUnique: m.mockPlanLimitFindUnique },
     usageCounter: { upsert: m.mockUsageCounterUpsert },
-    subscription: { findUnique: m.mockSubscriptionFindUnique, update: m.mockSubscriptionUpdate },
+    subscription: {
+      findUnique: m.mockSubscriptionFindUnique,
+      update: m.mockSubscriptionUpdate,
+      findFirst: m.mockSubscriptionFindFirst,
+      create: m.mockSubscriptionCreate,
+    },
+    planPricing: { findUnique: m.mockPlanPricingFindUnique },
     platformGstProfile: { findUnique: m.mockPlatformGstProfileFindUnique },
     subscriptionPayment: {
       findUnique: m.mockSubscriptionPaymentFindUnique,
@@ -372,7 +384,7 @@ describe('GET /v1/billing/addon-callback', () => {
 
   function createValidSignature(linkId: string, paymentId: string): string {
     return createHmac('sha256', 'rzp_test_key_secret')
-      .update(`${linkId}|${paymentId}`)
+      .update(`${linkId}||paid|${paymentId}`)
       .digest('hex');
   }
 
@@ -404,7 +416,7 @@ describe('GET /v1/billing/addon-callback', () => {
 
     const res = await app.inject({
       method: 'GET',
-      url: `/v1/billing/addon-callback?razorpay_payment_id=${VALID_PAYMENT_ID}&razorpay_payment_link_id=${VALID_LINK_ID}&razorpay_signature=${signature}`,
+      url: `/v1/billing/addon-callback?razorpay_payment_id=${VALID_PAYMENT_ID}&razorpay_payment_link_id=${VALID_LINK_ID}&razorpay_signature=${signature}&razorpay_payment_link_status=paid`,
     });
 
     globalThis.fetch = originalFetch;
@@ -465,7 +477,7 @@ describe('GET /v1/billing/addon-callback', () => {
 
     const res = await app.inject({
       method: 'GET',
-      url: `/v1/billing/addon-callback?razorpay_payment_id=${VALID_PAYMENT_ID}&razorpay_payment_link_id=plink_unlimited&razorpay_signature=${signature}`,
+      url: `/v1/billing/addon-callback?razorpay_payment_id=${VALID_PAYMENT_ID}&razorpay_payment_link_id=plink_unlimited&razorpay_signature=${signature}&razorpay_payment_link_status=paid`,
     });
 
     globalThis.fetch = originalFetch;
@@ -524,7 +536,7 @@ describe('GET /v1/billing/addon-callback', () => {
     const app = await buildApp();
     const res = await app.inject({
       method: 'GET',
-      url: `/v1/billing/addon-callback?razorpay_payment_id=${VALID_PAYMENT_ID}&razorpay_payment_link_id=plink_orphan&razorpay_signature=${signature}`,
+      url: `/v1/billing/addon-callback?razorpay_payment_id=${VALID_PAYMENT_ID}&razorpay_payment_link_id=plink_orphan&razorpay_signature=${signature}&razorpay_payment_link_status=paid`,
     });
 
     expect(res.statusCode).toBe(302);
@@ -558,7 +570,7 @@ describe('GET /v1/billing/addon-callback', () => {
 
     const res = await app.inject({
       method: 'GET',
-      url: `/v1/billing/addon-callback?razorpay_payment_id=${VALID_PAYMENT_ID}&razorpay_payment_link_id=plink_override&razorpay_signature=${signature}`,
+      url: `/v1/billing/addon-callback?razorpay_payment_id=${VALID_PAYMENT_ID}&razorpay_payment_link_id=plink_override&razorpay_signature=${signature}&razorpay_payment_link_status=paid`,
     });
 
     globalThis.fetch = originalFetch;
@@ -657,6 +669,8 @@ describe('POST /v1/billing/webhook', () => {
     ['not captured', { status: 'failed' }],
     ['authorized only', { status: 'authorized' }],
     ['underpaid (below the plan base price)', { amount: 100 }],
+    ['base price only, no GST (a wrong GST invoice if granted)', { amount: 99900 }],
+    ['overpaid by one paisa (wrong Razorpay plan amount)', { amount: 117883 }],
     ['non-INR currency', { currency: 'USD' }],
   ])(
     'subscription.charged with a payment that is %s: nothing granted, no invoice',
@@ -997,5 +1011,61 @@ describe('razorpay() AbortSignal.timeout default', () => {
       timeoutSpy.mockRestore();
       globalThis.fetch = originalFetch;
     }
+  });
+});
+
+// ─── POST /v1/billing/subscription — Razorpay plan amount guard ──
+
+describe('POST /v1/billing/subscription - Razorpay plan amount must equal plan_pricing + GST', () => {
+  function primeSubscribe(razorpayPlanAmount: number) {
+    mockRetailerFindUnique.mockResolvedValue({ trial_ends_at: null });
+    mockSubscriptionFindFirst.mockResolvedValue(null);
+    mockPlanPricingFindUnique.mockResolvedValue({ plan: 'STARTER', monthly_paise: 99900 });
+    mockSubscriptionCreate.mockResolvedValue({});
+    mockRetailerUpdate.mockResolvedValue({});
+    const fetchMock = vi.fn(async (url: string) => ({
+      ok: true,
+      json: async () =>
+        url.includes('/plans/')
+          ? { item: { amount: razorpayPlanAmount } }
+          : { id: 'sub_new', status: 'created' },
+    }));
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    return fetchMock;
+  }
+
+  it('refuses (503) before creating a Razorpay subscription when the plan amount is stale', async () => {
+    const originalFetch = globalThis.fetch;
+    const fetchMock = primeSubscribe(117882 + 11800); // price edited, Razorpay plan not recreated
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/billing/subscription',
+      payload: { plan: 'STARTER' },
+    });
+    globalThis.fetch = originalFetch;
+
+    expect(res.statusCode).toBe(503);
+    expect(res.json().error.code).toBe('PLAN_PRICE_MISMATCH');
+    expect(fetchMock.mock.calls.some(([u]) => String(u).endsWith('/subscriptions'))).toBe(false);
+    expect(mockSubscriptionCreate).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('creates the subscription when the plan amount equals base + 18% GST', async () => {
+    const originalFetch = globalThis.fetch;
+    const fetchMock = primeSubscribe(117882);
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/billing/subscription',
+      payload: { plan: 'STARTER' },
+    });
+    globalThis.fetch = originalFetch;
+
+    expect(res.statusCode).toBeLessThan(300);
+    expect(fetchMock.mock.calls.some(([u]) => String(u).endsWith('/subscriptions'))).toBe(true);
+    expect(mockSubscriptionCreate).toHaveBeenCalledTimes(1);
+    await app.close();
   });
 });

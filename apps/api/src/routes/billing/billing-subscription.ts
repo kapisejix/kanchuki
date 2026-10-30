@@ -1,9 +1,11 @@
 import { prisma } from '@kanchuki/db';
 // billing-subscription.ts — retailer subscription lifecycle + invoice history (split from apps/api/src/routes/billing.ts — body byte-identical)
 import { isPlanEnded } from '@kanchuki/shared';
+import * as Sentry from '@sentry/node';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
-import { notFound, validationError } from '../../plugins/error-handler.js';
+import { computeSubscriptionGst } from '../../lib/gst.js';
+import { AppError, notFound, validationError } from '../../plugins/error-handler.js';
 import {
   type Plan,
   type RazorpaySubscription,
@@ -93,6 +95,29 @@ export const billingSubscriptionRoutes: FastifyPluginAsync = async (server) => {
     const trialEnd = retailer.trial_ends_at?.getTime() ?? 0;
     const startAt = Math.max(trialEnd, priorPeriodEnd, Date.now() + 5 * 60 * 1000); // Razorpay needs a future ts
 
+    // The webhook only activates on a charge of exactly base + GST, with the base
+    // taken from this snapshot. A Razorpay plan's amount is fixed when the plan is
+    // created, while plan_pricing is admin-editable, so a price edit without new
+    // Razorpay plans would charge the retailer and then refuse to activate them.
+    // Refuse here instead, before any money moves.
+    const pricing = await getPlanPricing(plan);
+    const expectedGross = computeSubscriptionGst({ basePaise: pricing.monthly }).gross;
+    const rzpPlan = await razorpay<{ item: { amount: number } }>(`/plans/${planId}`);
+    if (rzpPlan.item.amount !== expectedGross) {
+      const details = { plan, planId, razorpay_amount: rzpPlan.item.amount, expectedGross };
+      request.log.error(details, 'Razorpay plan amount does not match plan_pricing + GST');
+      Sentry.captureMessage('Razorpay plan amount out of sync with plan_pricing', {
+        level: 'error',
+        tags: { area: 'billing-subscription' },
+        extra: details,
+      });
+      throw new AppError(
+        'PLAN_PRICE_MISMATCH',
+        'This plan is being updated. Please try again later.',
+        503,
+      );
+    }
+
     const rzpSub = await razorpay<RazorpaySubscription>('/subscriptions', {
       method: 'POST',
       body: JSON.stringify({
@@ -105,7 +130,6 @@ export const billingSubscriptionRoutes: FastifyPluginAsync = async (server) => {
     });
 
     const now = new Date();
-    const pricing = await getPlanPricing(plan);
     await prisma.$transaction([
       prisma.subscription.create({
         data: {

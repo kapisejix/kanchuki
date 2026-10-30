@@ -60,24 +60,14 @@ export const publicCatalogPaymentRoutes: FastifyPluginAsync = async (server) => 
           .send('<html><body><p>Already paid. Return to the Kanchuki app.</p></body></html>');
       }
 
-      // Signature (empty key secret = fail) — documented 4-part form when the
-      // callback carries link status, legacy 2-part form otherwise.
-      const linkStatus = params.razorpay_payment_link_status;
-      const verified =
-        (linkStatus === undefined || linkStatus === 'paid') &&
-        ((linkStatus !== undefined &&
-          (await verifyPaymentLinkSignature({
-            linkId: razorpay_payment_link_id,
-            paymentId: razorpay_payment_id,
-            signature: razorpay_signature,
-            referenceId: params.razorpay_payment_link_reference_id,
-            status: linkStatus,
-          }))) ||
-          (await verifyPaymentLinkSignature({
-            linkId: razorpay_payment_link_id,
-            paymentId: razorpay_payment_id,
-            signature: razorpay_signature,
-          })));
+      // Signature (empty key secret = fail): documented 4-part form, link must be paid.
+      const verified = await verifyPaymentLinkSignature({
+        linkId: razorpay_payment_link_id,
+        paymentId: razorpay_payment_id,
+        signature: razorpay_signature,
+        referenceId: params.razorpay_payment_link_reference_id,
+        status: params.razorpay_payment_link_status,
+      });
 
       if (!verified) {
         request.log.warn({ ticket_id: ticket.id }, 'Catalog upload payment signature mismatch');

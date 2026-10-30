@@ -1,5 +1,6 @@
 import { prisma } from '@kanchuki/db';
 import { PLAN_LIMITS, orUnlimited } from '@kanchuki/shared';
+import * as Sentry from '@sentry/node';
 // billing-webhook.ts — Razorpay webhook → subscription/payment + GST invoice (split from apps/api/src/routes/billing.ts — body byte-identical)
 import type { FastifyPluginAsync } from 'fastify';
 import { addGenerateGstInvoiceJob } from '../../jobs/generate-gst-invoice.js';
@@ -165,28 +166,44 @@ export const billingWebhookRoutes: FastifyPluginAsync = async (server) => {
         const payment =
           event.event === 'subscription.charged' ? (event.payload.payment?.entity ?? null) : null;
 
-        // Never grant access on a payment that is not a real, full charge: it
-        // must be captured, in INR, and cover at least the plan's base price
-        // (the stored `subscription.amount_inr`; gross = base + GST, so a
-        // correct charge is >= base). A failed/authorized-only/underpaid or
-        // foreign-currency payment is logged and ignored — HTTP 200 so Razorpay
-        // does not retry a decision we have already made.
+        // Never grant access on a payment that is not exactly the plan's charge:
+        // captured, in INR, and equal to base + 18% GST (the stored
+        // `subscription.amount_inr` is the base; the Razorpay plan is created at
+        // the same gross by admin-plans.ts). Anything else would also produce a
+        // wrong GST invoice, which splits the base and GST out of this amount.
+        // Refused payments get HTTP 200 so Razorpay does not retry a decision
+        // already made.
+        const expectedGross = computeSubscriptionGst({ basePaise: subscription.amount_inr }).gross;
         if (
           payment &&
           (payment.status !== 'captured' ||
             (payment.currency !== undefined && payment.currency !== 'INR') ||
-            payment.amount < subscription.amount_inr)
+            payment.amount !== expectedGross)
         ) {
+          const details = {
+            razorpay_payment_id: payment.id,
+            subscription_id: subscription.id,
+            status: payment.status,
+            currency: payment.currency,
+            amount: payment.amount,
+            expected: expectedGross,
+          };
           request.log.error(
-            {
-              razorpay_payment_id: payment.id,
-              status: payment.status,
-              currency: payment.currency,
-              amount: payment.amount,
-              expected_min: subscription.amount_inr,
-            },
+            details,
             'subscription.charged payment failed verification — not activating',
           );
+          // Captured = the retailer has paid and is not activated. A log line nobody
+          // reads is how RC-071 lost paid purchases, so this one alerts.
+          if (payment.status === 'captured') {
+            Sentry.captureMessage(
+              'Captured subscription payment refused: amount/currency mismatch',
+              {
+                level: 'error',
+                tags: { area: 'billing-webhook' },
+                extra: details,
+              },
+            );
+          }
           return reply.send({ received: true });
         }
 
