@@ -394,3 +394,21 @@ describe('GET /addon-callback - a paid purchase is never terminally lost (RC-071
     expect(m.usageUpsert).not.toHaveBeenCalled();
   });
 });
+
+// T1.8 F5 - /create-order minted a Razorpay order of any amount for any owner and
+// /verify-payment fulfilled nothing; no client called either. Deleted, so they must
+// stay 404 and must never reach Razorpay.
+describe('removed one-time order routes (T1.8 F5)', () => {
+  it.each([
+    ['/v1/billing/create-order', { amount_paise: 100 }],
+    [
+      '/v1/billing/verify-payment',
+      { razorpay_order_id: 'o', razorpay_payment_id: 'p', razorpay_signature: 's' },
+    ],
+  ])('POST %s is 404 and never calls Razorpay', async (url, payload) => {
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url, payload });
+    expect(res.statusCode).toBe(404);
+    expect(m.razorpay).not.toHaveBeenCalled();
+  });
+});
