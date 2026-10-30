@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { stripComments } from '@kanchuki/shared/testing'
 
@@ -98,6 +98,49 @@ describe('RC-128: FREE_SIZE and the stock max have one home (@kanchuki/shared)',
       expect(src).toMatch(/import \{[^}]*MAX_STOCK_QUANTITY[^}]*\} from '@kanchuki\/shared'/)
       expect(src).not.toMatch(/(const|let) (FREE_SIZE|MAX_QTY|MAX_STOCK_QUANTITY)\b/)
     }
+  })
+})
+
+describe('T3.6 c: console output cannot carry secrets and release builds strip it', () => {
+  it('babel strips console in production but keeps console.error', () => {
+    const src = readFileSync(join(__dirname, '..', 'babel.config.js'), 'utf8')
+    expect(src).toMatch(/production:\s*\{[^}]*transform-remove-console/)
+    expect(src).toMatch(/exclude:\s*\[\s*'error'\s*\]/)
+  })
+
+  it('no unguarded console call passes a token, otp, phone or credential', () => {
+    // no \b: must also catch camelCase identifiers like authToken or phoneNumber
+    const SECRET = /(token|otp|phone|bearer|secret|authorization|password|jwt)/i
+    const offenders: string[] = []
+    const walk = (dir: string) => {
+      for (const e of readdirSync(dir, { withFileTypes: true })) {
+        const p = join(dir, e.name)
+        if (e.isDirectory()) walk(p)
+        else if (/\.tsx?$/.test(e.name) && !/\.test\./.test(e.name)) scan(p)
+      }
+    }
+    const scan = (file: string) => {
+      const lines = stripComments(readFileSync(file, 'utf8')).split('\n')
+      lines.forEach((line, i) => {
+        if (!/console\.(log|warn|error|info|debug)\(/.test(line) || line.includes('__DEV__')) return
+        // string literals are labels ("[msg91] ...", "otp send failed"), only identifiers count
+        const text = lines.slice(i, i + 8).join(' ').replace(/(['"`])(?:\\.|(?!\1).)*\1/g, '""')
+        // a call can span lines and the repo omits semicolons: cut at the balanced close paren
+        let depth = 0
+        let end = text.length
+        for (let k = text.search(/console\.\w+\(/); k < text.length; k++) {
+          if (text[k] === '(') depth++
+          if (text[k] === ')' && --depth === 0) {
+            end = k
+            break
+          }
+        }
+        if (SECRET.test(text.slice(0, end))) offenders.push(`${file}:${i + 1}`)
+      })
+    }
+    walk(join(__dirname, '..', 'app'))
+    walk(join(__dirname, '..', 'src'))
+    expect(offenders).toEqual([])
   })
 })
 
