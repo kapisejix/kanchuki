@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Sheet } from '@/components/Sheet'
-import { adminMutateOptions } from '@/lib/admin-fetch'
+import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
 import dynamic from 'next/dynamic'
 import {
   Play,
@@ -40,11 +40,6 @@ const MonacoEditor = dynamic(() => import('@monaco-editor/react'), {
     </div>
   ),
 })
-
-function getAdminHeaders() {
-  const key = typeof window !== 'undefined' ? sessionStorage.getItem('admin_key') : ''
-  return { 'x-admin-key': key ?? '', 'Content-Type': 'application/json' }
-}
 
 function downloadCsv(columns: string[], rows: Record<string, unknown>[], filename: string) {
   const header = columns.map((c) => `"${c.replace(/"/g, '""')}"`).join(',')
@@ -132,7 +127,7 @@ LIMIT 20;`)
       try {
         const res = await fetch(
           `${API_URL}/v1/admin/audit-logs?resource_type=DatabaseQuery&limit=50`,
-          { headers: getAdminHeaders() },
+          adminGetOptions(),
         )
         if (!res.ok) return
         const json = (await res.json()) as {
@@ -179,9 +174,7 @@ LIMIT 20;`)
       setSchemaError('')
       if (force) setSchema(null)
       try {
-        const res = await fetch(`${API_URL}/v1/admin/schema`, {
-          headers: getAdminHeaders(),
-        })
+        const res = await fetch(`${API_URL}/v1/admin/schema`, adminGetOptions())
         if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`)
         const json = (await res.json()) as SchemaResponse
         setSchema(json.data.schemas)

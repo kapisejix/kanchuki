@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { adminGetOptions } from '@/lib/admin-fetch'
 import {
   Database,
   Server,
@@ -75,11 +76,6 @@ type DatabaseStatusResponse = {
 }
 
 // ─── Helpers ───────────────────────────────────────────────────
-
-function getAdminHeaders() {
-  const key = sessionStorage.getItem('admin_key')
-  return { 'x-admin-key': key ?? '', 'Content-Type': 'application/json' }
-}
 
 function formatUptime(seconds: number): string {
   const days = Math.floor(seconds / 86400)
@@ -168,9 +164,7 @@ export default function DatabaseStatusPage() {
     setError('')
 
     try {
-      const res = await fetch(`${API_URL}/v1/admin/database/status`, {
-        headers: getAdminHeaders(),
-      })
+      const res = await fetch(`${API_URL}/v1/admin/database/status`, adminGetOptions())
       if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`)
 
       const json = (await res.json()) as DatabaseStatusResponse

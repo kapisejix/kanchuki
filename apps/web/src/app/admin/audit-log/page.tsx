@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
+import { adminGetOptions } from '@/lib/admin-fetch'
 import {
   History,
   Search,
@@ -38,11 +39,6 @@ type AuditLogEntry = {
 type Pagination = {
   cursor: string | null
   has_more: boolean
-}
-
-function getAdminHeaders() {
-  const key = sessionStorage.getItem('admin_key')
-  return { 'x-admin-key': key ?? '' }
 }
 
 function formatDate(iso: string): string {
@@ -329,9 +325,7 @@ export default function AuditLogPage() {
         if (val) params.set(key, val)
       }
 
-      const res = await fetch(`${API_URL}/v1/admin/audit-logs?${params.toString()}`, {
-        headers: getAdminHeaders(),
-      })
+      const res = await fetch(`${API_URL}/v1/admin/audit-logs?${params.toString()}`, adminGetOptions())
       if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`)
 
       const json = await res.json()

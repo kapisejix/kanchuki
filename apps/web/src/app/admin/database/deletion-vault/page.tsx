@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { adminGetOptions } from '@/lib/admin-fetch'
 import {
   Database,
   Search,
@@ -47,11 +48,6 @@ type VaultResponse = {
 }
 
 // ─── Helpers ───────────────────────────────────────────────────
-
-function getAdminHeaders() {
-  const key = sessionStorage.getItem('admin_key')
-  return { 'x-admin-key': key ?? '', 'Content-Type': 'application/json' }
-}
 
 function formatDate(iso: string | null): string {
   if (!iso) return '—'
@@ -185,9 +181,10 @@ export default function DeletionVaultPage() {
         if (sourceId) params.set('source_id', sourceId)
         if (retailerId) params.set('retailer_id', retailerId)
 
-        const res = await fetch(`${API_URL}/v1/admin/deletion-vault?${params.toString()}`, {
-          headers: getAdminHeaders(),
-        })
+        const res = await fetch(
+          `${API_URL}/v1/admin/deletion-vault?${params.toString()}`,
+          adminGetOptions(),
+        )
         if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`)
 
         const json = (await res.json()) as VaultResponse

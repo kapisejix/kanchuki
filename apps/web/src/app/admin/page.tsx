@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
+import { adminGetOptions } from '@/lib/admin-fetch'
 import {
   Store,
   Package,
@@ -48,11 +49,6 @@ type CommissionMonth = {
   spent_inr: number
   remaining_inr: number
   expense_count: number
-}
-
-function getAdminHeaders() {
-  const key = sessionStorage.getItem('admin_key')
-  return { 'x-admin-key': key ?? '' }
 }
 
 // ─── Animated Counter ──────────────────────────────────────────
@@ -140,11 +136,12 @@ export default function AdminDashboard() {
   useEffect(() => {
     async function load() {
       try {
-        const headers = getAdminHeaders()
         const [s, u, c] = await Promise.all([
-          fetch(`${API_URL}/v1/admin/stats`, { headers }).then((r) => r.json()),
-          fetch(`${API_URL}/v1/admin/usage`, { headers }).then((r) => r.json()),
-          fetch(`${API_URL}/v1/admin/commission/overview?months=1`, { headers }).then((r) => r.json()),
+          fetch(`${API_URL}/v1/admin/stats`, adminGetOptions()).then((r) => r.json()),
+          fetch(`${API_URL}/v1/admin/usage`, adminGetOptions()).then((r) => r.json()),
+          fetch(`${API_URL}/v1/admin/commission/overview?months=1`, adminGetOptions()).then((r) =>
+            r.json(),
+          ),
         ])
         // Guard: a 500 from the API returns { error: {...} } with no .data.
         // Writing undefined into state used to crash the render below on
