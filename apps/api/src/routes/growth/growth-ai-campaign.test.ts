@@ -9,8 +9,7 @@ const {
   mockCustomerFindMany,
   mockCampaignCreate,
   mockHasFeature,
-  mockCheckQuota,
-  mockIncrementUsage,
+  mockReserveQuota,
   mockRunVisionAsk,
 } = vi.hoisted(() => ({
   mockProductFindMany: vi.fn(),
@@ -18,8 +17,7 @@ const {
   mockCustomerFindMany: vi.fn(),
   mockCampaignCreate: vi.fn(),
   mockHasFeature: vi.fn(),
-  mockCheckQuota: vi.fn(),
-  mockIncrementUsage: vi.fn(),
+  mockReserveQuota: vi.fn(),
   mockRunVisionAsk: vi.fn(),
 }));
 
@@ -42,10 +40,7 @@ vi.mock('../../lib/features.js', () => ({
   hasFeature: mockHasFeature,
 }));
 
-vi.mock('../../lib/quota.js', () => ({
-  checkQuota: mockCheckQuota,
-  incrementUsage: mockIncrementUsage,
-}));
+vi.mock('../../lib/quota.js', () => ({ reserveQuota: mockReserveQuota }));
 
 const RETAILER_ID = 'retailer_1';
 
@@ -64,8 +59,7 @@ async function buildApp() {
 beforeEach(() => {
   vi.clearAllMocks();
   mockHasFeature.mockResolvedValue(true);
-  mockCheckQuota.mockResolvedValue(undefined);
-  mockIncrementUsage.mockResolvedValue(undefined);
+  mockReserveQuota.mockResolvedValue(async () => {});
 });
 
 describe('POST /v1/growth/ai-campaign', () => {

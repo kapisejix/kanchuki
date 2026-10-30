@@ -65,8 +65,6 @@ export const staffApi = {
       body: JSON.stringify(data),
     }),
 
-  delete: (id: string) => request<void>(`/v1/staff/${id}`, { method: 'DELETE' }),
-
   // FR-4.4 (DPDP erasure): hard-deletes the row after the 'type DELETE'
   // confirm. Blocked server-side while the member is still active.
   purge: (id: string) => request<void>(`/v1/staff/${id}?purge=true`, { method: 'DELETE' }),

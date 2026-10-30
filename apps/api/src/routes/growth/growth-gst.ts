@@ -7,6 +7,7 @@
 import { prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
+import { queryBool } from '../../lib/query-bool.js';
 
 export const growthGstRoutes: FastifyPluginAsync = async (server) => {
   // ─── GET /growth/gst/summary ────────────────────────────────────
@@ -162,7 +163,7 @@ export const growthGstRoutes: FastifyPluginAsync = async (server) => {
       .object({
         month: z.coerce.number().int().min(1).max(12).optional(),
         year: z.coerce.number().int().min(2020).max(2030).optional(),
-        invoiced: z.coerce.boolean().optional(),
+        invoiced: queryBool(),
         page: z.coerce.number().int().min(1).optional(),
         limit: z.coerce.number().int().min(1).max(100).optional(),
       })

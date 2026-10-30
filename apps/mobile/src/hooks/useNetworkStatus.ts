@@ -1,14 +1,10 @@
 /**
  * useNetworkStatus — wraps @tanstack/react-query's onlineManager.
  *
- * Why: react-query's onlineManager subscribes to the browser/native
- * connectivity APIs already. On React Native it uses the `navigator.onLine`
- * polyfill plus Platform-specific fetch-failure detection, which is
- * sufficient for catalog offline browsing.
- *
- * No @react-native-community/netinfo dep needed — that would require a native
- * module rebuild (expo prebuild / expo run:android). This hook gives the same
- * online/offline boolean without any native modules.
+ * onlineManager only reports real connectivity because
+ * `setupOnlineManager()` (lib/online-manager.ts, called in app/_layout.tsx)
+ * feeds it expo-network state. Without that feed React Native never fires the
+ * browser online/offline events it listens for, and it reports online forever.
  *
  * Usage:
  *   const { isOnline } = useNetworkStatus()

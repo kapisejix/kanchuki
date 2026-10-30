@@ -1,11 +1,11 @@
-import Anthropic from '@anthropic-ai/sdk'
-import OpenAI from 'openai'
+import Anthropic from '@anthropic-ai/sdk';
 import {
-  getSecret,
-  listActiveAiProviders,
   type AiProviderConfigRow,
   type AiProviderType,
-} from '@kanchuki/db'
+  getSecret,
+  listActiveAiProviders,
+} from '@kanchuki/db';
+import OpenAI from 'openai';
 
 // ─── Multi-provider vision failover (F-023) ───────────────────────────────
 // The provider list is DB-driven: admin adds any model + API key + priority
@@ -29,52 +29,52 @@ import {
 // If the registry table is empty/unreachable (migration not run, tests), the
 // legacy hardcoded claude/openai/gemini adapters are used so nothing breaks.
 
-export type { AiProviderType }
-export type AiProviderId = string
+export type { AiProviderType };
+export type AiProviderId = string;
 
 export interface AiImageInput {
-  buffer: Buffer
-  mediaType: 'image/jpeg' | 'image/png' | 'image/webp'
+  buffer: Buffer;
+  mediaType: 'image/jpeg' | 'image/png' | 'image/webp';
 }
 
 export interface AiJsonSchema {
-  name: string
-  description: string
+  name: string;
+  description: string;
   /** Plain JSON Schema object (the same shape Claude's tool input_schema uses). */
-  schema: Record<string, unknown>
+  schema: Record<string, unknown>;
 }
 
 export interface ProviderUsedInfo {
-  provider_id: string
-  provider_type: AiProviderType
-  model_name: string
-  credits_per_call: number
-  resource_type: 'AI_TAGGING_CALL' | 'AI_ITEM_DETECT' | 'AI_COLOR_DETECT'
+  provider_id: string;
+  provider_type: AiProviderType;
+  model_name: string;
+  credits_per_call: number;
+  resource_type: 'AI_TAGGING_CALL' | 'AI_ITEM_DETECT' | 'AI_COLOR_DETECT';
 }
 
 export interface VisionExtractRequest {
-  images: AiImageInput[]
-  systemPrompt: string
-  userPrompt: string
-  maxTokens: number
-  schema: AiJsonSchema
+  images: AiImageInput[];
+  systemPrompt: string;
+  userPrompt: string;
+  maxTokens: number;
+  schema: AiJsonSchema;
   /** Claude-only: treat a missing tool_use block as an empty result instead of an error. */
-  missingToolUseIsEmpty?: boolean
+  missingToolUseIsEmpty?: boolean;
   /** Fired once when a provider successfully serves the call (for usage attribution). */
-  onProviderUsed?: (info: ProviderUsedInfo) => void
+  onProviderUsed?: (info: ProviderUsedInfo) => void;
   /** Attribution bucket — defaults to AI_TAGGING_CALL for extract. */
-  resourceType?: ProviderUsedInfo['resource_type']
+  resourceType?: ProviderUsedInfo['resource_type'];
 }
 
 export interface VisionAskRequest {
-  images: AiImageInput[]
-  systemPrompt: string
-  userPrompt: string
-  maxTokens: number
+  images: AiImageInput[];
+  systemPrompt: string;
+  userPrompt: string;
+  maxTokens: number;
   /** Fired once when a provider successfully serves the call (for usage attribution). */
-  onProviderUsed?: (info: ProviderUsedInfo) => void
+  onProviderUsed?: (info: ProviderUsedInfo) => void;
   /** Attribution bucket — defaults to AI_COLOR_DETECT for ask. */
-  resourceType?: ProviderUsedInfo['resource_type']
+  resourceType?: ProviderUsedInfo['resource_type'];
 }
 
 /** Normalized provider outage so the failover runner can classify by status. */
@@ -88,26 +88,26 @@ export class AiProviderError extends Error {
      * helper returns AiProviderError instances as-is. */
     public readonly providerDown = false,
   ) {
-    super(message)
-    this.name = 'AiProviderError'
+    super(message);
+    this.name = 'AiProviderError';
   }
 }
 
 interface ProviderAdapter {
-  id: string
-  providerType: AiProviderType
-  modelName: string // model used for extract (tagging/detection)
-  liteModelName: string | null // model used for ask (color detection)
-  creditsPerCall: number
-  extract(req: VisionExtractRequest): Promise<Record<string, unknown>>
-  ask(req: VisionAskRequest): Promise<string>
+  id: string;
+  providerType: AiProviderType;
+  modelName: string; // model used for extract (tagging/detection)
+  liteModelName: string | null; // model used for ask (color detection)
+  creditsPerCall: number;
+  extract(req: VisionExtractRequest): Promise<Record<string, unknown>>;
+  ask(req: VisionAskRequest): Promise<string>;
 }
 
 function wrapProviderError(err: unknown, provider: AiProviderId): AiProviderError {
-  if (err instanceof AiProviderError) return err
-  const status = (err as { status?: number } | null)?.status ?? 0
-  const message = err instanceof Error ? err.message : String(err)
-  return new AiProviderError(message, status, provider)
+  if (err instanceof AiProviderError) return err;
+  const status = (err as { status?: number } | null)?.status ?? 0;
+  const message = err instanceof Error ? err.message : String(err);
+  return new AiProviderError(message, status, provider);
 }
 
 /**
@@ -117,13 +117,13 @@ function wrapProviderError(err: unknown, provider: AiProviderId): AiProviderErro
  */
 function parseJsonOutput(text: string, provider: AiProviderId): Record<string, unknown> {
   try {
-    return JSON.parse(text) as Record<string, unknown>
+    return JSON.parse(text) as Record<string, unknown>;
   } catch (err) {
     throw new AiProviderError(
       `${provider} returned unparseable JSON (${err instanceof Error ? err.message : String(err)})`,
       0,
       provider,
-    )
+    );
   }
 }
 
@@ -133,36 +133,36 @@ function parseJsonOutput(text: string, provider: AiProviderId): Record<string, u
  * drop null enum entries so the schema stays Gemini-valid.
  */
 function sanitizeSchemaForGemini(schema: unknown): unknown {
-  if (Array.isArray(schema)) return schema.map(sanitizeSchemaForGemini)
+  if (Array.isArray(schema)) return schema.map(sanitizeSchemaForGemini);
   if (schema && typeof schema === 'object') {
-    const out: Record<string, unknown> = {}
+    const out: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(schema as Record<string, unknown>)) {
       if (key === 'enum' && Array.isArray(value)) {
-        out[key] = value.filter((item) => item !== null)
+        out[key] = value.filter((item) => item !== null);
       } else {
-        out[key] = sanitizeSchemaForGemini(value)
+        out[key] = sanitizeSchemaForGemini(value);
       }
     }
-    return out
+    return out;
   }
-  return schema
+  return schema;
 }
 
 // ─── Health registry (circuit breaker + self-heal) ─────────────────────────
 // id → epoch-ms when the provider may be tried again. An outage sets
 // now + cooldown; a successful call deletes the mark (immediate heal).
-const health = new Map<string, number>()
-const DEFAULT_COOLDOWN_MS = 5 * 60_000
-let cooldownMs = Number(process.env['AI_PROVIDER_COOLDOWN_MS']) || DEFAULT_COOLDOWN_MS
+const health = new Map<string, number>();
+const DEFAULT_COOLDOWN_MS = 5 * 60_000;
+let cooldownMs = Number(process.env.AI_PROVIDER_COOLDOWN_MS) || DEFAULT_COOLDOWN_MS;
 
 /** Test hook: shrink the cooldown so self-heal can be exercised quickly. */
 export function __setProviderCooldownMs(ms: number): void {
-  cooldownMs = ms
+  cooldownMs = ms;
 }
 
 /** Test hook: clear all health marks between tests. */
 export function __resetProviderHealth(): void {
-  health.clear()
+  health.clear();
 }
 
 // ─── Provider registry loading ─────────────────────────────────────────────
@@ -186,7 +186,7 @@ const LEGACY_ROWS: AiProviderConfigRow[] = [
     id: 'legacy-openai',
     provider_type: 'OPENAI_COMPAT',
     label: 'OpenAI (legacy)',
-    model_name: process.env['OPENAI_VISION_MODEL'] ?? 'gpt-4o-mini',
+    model_name: process.env.OPENAI_VISION_MODEL ?? 'gpt-4o-mini',
     lite_model_name: null,
     base_url: null,
     api_key_name: 'OPENAI_API_KEY',
@@ -198,49 +198,49 @@ const LEGACY_ROWS: AiProviderConfigRow[] = [
     id: 'legacy-gemini',
     provider_type: 'GEMINI',
     label: 'Gemini (legacy)',
-    model_name: process.env['GEMINI_VISION_MODEL'] ?? 'gemini-2.5-flash',
-    lite_model_name: process.env['GEMINI_VISION_LITE_MODEL'] ?? 'gemini-2.5-flash-lite',
+    model_name: process.env.GEMINI_VISION_MODEL ?? 'gemini-2.5-flash',
+    lite_model_name: process.env.GEMINI_VISION_LITE_MODEL ?? 'gemini-2.5-flash-lite',
     base_url: null,
     api_key_name: 'GEMINI_API_KEY',
     priority: 3,
     is_active: true,
     credits_per_call: 1,
   },
-]
+];
 
 /** Order legacy rows by AI_PROVIDER_ORDER (claude,openai,gemini by default). */
 function legacyRowsOrdered(): AiProviderConfigRow[] {
-  const order = (process.env['AI_PROVIDER_ORDER'] ?? 'claude,openai,gemini')
+  const order = (process.env.AI_PROVIDER_ORDER ?? 'claude,openai,gemini')
     .split(',')
-    .map((s) => s.trim())
+    .map((s) => s.trim());
   const byLegacyId: Record<string, AiProviderConfigRow> = {
     claude: LEGACY_ROWS[0]!,
     openai: LEGACY_ROWS[1]!,
     gemini: LEGACY_ROWS[2]!,
-  }
-  const rows = order.map((id) => byLegacyId[id]).filter((r): r is AiProviderConfigRow => !!r)
-  return rows.length > 0 ? rows : LEGACY_ROWS
+  };
+  const rows = order.map((id) => byLegacyId[id]).filter((r): r is AiProviderConfigRow => !!r);
+  return rows.length > 0 ? rows : LEGACY_ROWS;
 }
 
 async function loadProviderRows(): Promise<AiProviderConfigRow[]> {
-  const rows = await listActiveAiProviders()
+  const rows = await listActiveAiProviders();
   // null = table missing/unreachable (migration not run, DB down) → legacy
   // hardcoded adapters keep working out of the box.
   // [] = table EXISTS but every row is inactive → that is admin intent
   // ("disable AI") — return [] so the caller surfaces a clear error instead
   // of silently resurrecting legacy providers the admin disabled.
-  if (rows !== null) return rows
-  return legacyRowsOrdered()
+  if (rows !== null) return rows;
+  return legacyRowsOrdered();
 }
 
 async function configuredAdapters(): Promise<ProviderAdapter[]> {
-  const rows = await loadProviderRows()
-  const adapters: ProviderAdapter[] = []
+  const rows = await loadProviderRows();
+  const adapters: ProviderAdapter[] = [];
   for (const row of rows) {
-    if (!(await getSecret(row.api_key_name))) continue // no key → skip provider
-    adapters.push(buildAdapter(row))
+    if (!(await getSecret(row.api_key_name))) continue; // no key → skip provider
+    adapters.push(buildAdapter(row));
   }
-  return adapters
+  return adapters;
 }
 
 /** Outage classification: auth/credit/rate/5xx/transport = provider down. */
@@ -250,19 +250,19 @@ function isProviderDown(err: unknown): boolean {
   // input entirely — text-only model). Must trip the breaker + fail over,
   // otherwise a single bad model selection halts tagging (the exact problem
   // this feature exists to solve).
-  if ((err as { providerDown?: boolean } | null)?.providerDown === true) return true
-  const status = (err as { status?: number } | null)?.status ?? 0
+  if ((err as { providerDown?: boolean } | null)?.providerDown === true) return true;
+  const status = (err as { status?: number } | null)?.status ?? 0;
   if (status === 401 || status === 402 || status === 403 || status === 408 || status === 429) {
-    return true
+    return true;
   }
-  if (status >= 500) return true
-  const msg = err instanceof Error ? err.message : String(err)
+  if (status >= 500) return true;
+  const msg = err instanceof Error ? err.message : String(err);
   // Anthropic maps a zero-credit 400 to "Unsupported state or unable to
   // authenticate data" — match the auth wording and the plain-English
   // credit/rate/overload phrasings each provider returns.
   return /credit balance|credit is too low|insufficient_?quota|quota|rate limit|rate_limit|overloaded|api key|authenticat|permission|billing|too many requests|unavailable|ECONNRESET|ECONNREFUSED|ENOTFOUND|ETIMEDOUT/i.test(
     msg,
-  )
+  );
 }
 
 async function runWithFailover<T>(
@@ -270,44 +270,44 @@ async function runWithFailover<T>(
   op: (p: ProviderAdapter) => Promise<T>,
   onProviderUsed?: (info: ProviderUsedInfo) => void,
 ): Promise<T> {
-  const adapters = await configuredAdapters()
+  const adapters = await configuredAdapters();
   if (adapters.length === 0) {
     throw new Error(
       'No AI provider configured — add an API key (Admin → Integrations) for at least one active AI provider',
-    )
+    );
   }
 
-  const failures: string[] = []
+  const failures: string[] = [];
   for (const adapter of adapters) {
-    const retryAt = health.get(adapter.id) ?? 0
+    const retryAt = health.get(adapter.id) ?? 0;
     if (Date.now() < retryAt) {
-      failures.push(`${adapter.id}: cooling down until ${new Date(retryAt).toISOString()}`)
-      continue
+      failures.push(`${adapter.id}: cooling down until ${new Date(retryAt).toISOString()}`);
+      continue;
     }
     try {
-      const result = await op(adapter)
-      health.delete(adapter.id) // self-heal on success
+      const result = await op(adapter);
+      health.delete(adapter.id); // self-heal on success
       onProviderUsed?.({
         provider_id: adapter.id,
         provider_type: adapter.providerType,
         model_name: adapter.modelName,
         credits_per_call: adapter.creditsPerCall,
         resource_type: resourceType,
-      })
-      return result
+      });
+      return result;
     } catch (err) {
-      const detail = err instanceof Error ? err.message : String(err)
-      failures.push(`${adapter.id}: ${detail}`)
+      const detail = err instanceof Error ? err.message : String(err);
+      failures.push(`${adapter.id}: ${detail}`);
       if (isProviderDown(err)) {
-        health.set(adapter.id, Date.now() + cooldownMs)
-        continue // outage — auto-try the next provider
+        health.set(adapter.id, Date.now() + cooldownMs);
+        continue; // outage — auto-try the next provider
       }
-      throw err // contract error — not a provider outage, don't burn another provider
+      throw err; // contract error — not a provider outage, don't burn another provider
     }
   }
   throw new Error(
     `All AI providers failed — tried ${adapters.map((a) => a.id).join(', ')}. ${failures.join(' | ')}`,
-  )
+  );
 }
 
 /**
@@ -317,9 +317,9 @@ async function runWithFailover<T>(
  * (failover only incurs costs from healthy providers). Min 1 credit.
  */
 export async function reserveAiCredits(): Promise<number> {
-  const adapters = await configuredAdapters()
-  const healthy = adapters.filter((a) => Date.now() >= (health.get(a.id) ?? 0))
-  return Math.max(1, ...healthy.map((a) => a.creditsPerCall))
+  const adapters = await configuredAdapters();
+  const healthy = adapters.filter((a) => Date.now() >= (health.get(a.id) ?? 0));
+  return Math.max(1, ...healthy.map((a) => a.creditsPerCall));
 }
 
 /**
@@ -328,7 +328,7 @@ export async function reserveAiCredits(): Promise<number> {
  * Ignores the health cooldown on purpose: a provider in cooldown is degraded, not absent.
  */
 export async function hasConfiguredVisionProvider(): Promise<boolean> {
-  return (await configuredAdapters()).length > 0
+  return (await configuredAdapters()).length > 0;
 }
 
 /** Structured JSON extraction with automatic provider failover. */
@@ -337,7 +337,7 @@ export function runVisionExtract(req: VisionExtractRequest): Promise<Record<stri
     req.resourceType ?? 'AI_TAGGING_CALL',
     (p) => p.extract(req),
     req.onProviderUsed,
-  )
+  );
 }
 
 /** Free-text single answer (e.g. color detection) with failover. */
@@ -346,7 +346,7 @@ export function runVisionAsk(req: VisionAskRequest): Promise<string> {
     req.resourceType ?? 'AI_COLOR_DETECT',
     (p) => p.ask(req),
     req.onProviderUsed,
-  )
+  );
 }
 
 // ─── Strategy Pattern Adapter Implementations ───────────────────────────
@@ -355,46 +355,55 @@ export abstract class BaseVisionProviderAdapter implements ProviderAdapter {
   constructor(public readonly config: AiProviderConfigRow) {}
 
   get id(): string {
-    return this.config.id
+    return this.config.id;
   }
 
   get providerType(): AiProviderType {
-    return this.config.provider_type
+    return this.config.provider_type;
   }
 
   get modelName(): string {
-    return this.config.model_name
+    return this.config.model_name;
   }
 
   get liteModelName(): string | null {
-    return this.config.lite_model_name
+    return this.config.lite_model_name;
   }
 
   get creditsPerCall(): number {
-    return this.config.credits_per_call
+    return this.config.credits_per_call;
   }
 
-  abstract extract(req: VisionExtractRequest): Promise<Record<string, unknown>>
-  abstract ask(req: VisionAskRequest): Promise<string>
+  abstract extract(req: VisionExtractRequest): Promise<Record<string, unknown>>;
+  abstract ask(req: VisionAskRequest): Promise<string>;
 }
 
 // ─── Anthropic (Claude) ────────────────────────────────────────────────────
 
-const claudeClients = new Map<string, Anthropic>()
+// RC-079: SDK defaults (10 min, 2 retries) x up to 3 BullMQ attempts let one hung
+// provider hold a worker for an hour. Provider failover already handles retries.
+export const SDK_TIMEOUT_MS = 60_000;
+export const SDK_MAX_RETRIES = 1;
+
+const claudeClients = new Map<string, Anthropic>();
 async function getClaudeClient(apiKeyName: string): Promise<Anthropic> {
-  let client = claudeClients.get(apiKeyName)
+  let client = claudeClients.get(apiKeyName);
   if (!client) {
-    client = new Anthropic({ apiKey: (await getSecret(apiKeyName)) ?? '' })
-    claudeClients.set(apiKeyName, client)
+    client = new Anthropic({
+      apiKey: (await getSecret(apiKeyName)) ?? '',
+      timeout: SDK_TIMEOUT_MS,
+      maxRetries: SDK_MAX_RETRIES,
+    });
+    claudeClients.set(apiKeyName, client);
   }
-  return client
+  return client;
 }
 
 function claudeImageBlocks(images: AiImageInput[]): Anthropic.ImageBlockParam[] {
   return images.map((img) => ({
     type: 'image',
     source: { type: 'base64', media_type: img.mediaType, data: img.buffer.toString('base64') },
-  }))
+  }));
 }
 
 export class AnthropicProviderAdapter extends BaseVisionProviderAdapter {
@@ -419,20 +428,20 @@ export class AnthropicProviderAdapter extends BaseVisionProviderAdapter {
             content: [...claudeImageBlocks(req.images), { type: 'text', text: req.userPrompt }],
           },
         ],
-      })
-      const toolUse = response.content.find((c) => c.type === 'tool_use')
+      });
+      const toolUse = response.content.find((c) => c.type === 'tool_use');
       if (!toolUse || toolUse.type !== 'tool_use') {
-        if (req.missingToolUseIsEmpty) return {}
-        throw new Error('Claude did not return tool use result')
+        if (req.missingToolUseIsEmpty) return {};
+        throw new Error('Claude did not return tool use result');
       }
-      return toolUse.input as Record<string, unknown>
+      return toolUse.input as Record<string, unknown>;
     } catch (err) {
-      throw wrapProviderError(err, this.id)
+      throw wrapProviderError(err, this.id);
     }
   }
 
   async ask(req: VisionAskRequest): Promise<string> {
-    const model = this.config.lite_model_name ?? this.config.model_name
+    const model = this.config.lite_model_name ?? this.config.model_name;
     try {
       const response = await (await getClaudeClient(this.config.api_key_name)).messages.create({
         model,
@@ -445,31 +454,33 @@ export class AnthropicProviderAdapter extends BaseVisionProviderAdapter {
             content: [...claudeImageBlocks(req.images), { type: 'text', text: req.userPrompt }],
           },
         ],
-      })
+      });
       return response.content
         .filter((c): c is { type: 'text'; text: string } => c.type === 'text')
         .map((c) => c.text.trim())
-        .join(' ')
+        .join(' ');
     } catch (err) {
-      throw wrapProviderError(err, this.id)
+      throw wrapProviderError(err, this.id);
     }
   }
 }
 
 // ─── OpenAI-compatible (OpenAI + OpenRouter/DeepSeek/Mistral/Groq/Together) ─
 
-const openaiClients = new Map<string, OpenAI>()
+const openaiClients = new Map<string, OpenAI>();
 async function getOpenAIClient(apiKeyName: string, baseUrl: string | null): Promise<OpenAI> {
-  const cacheKey = `${apiKeyName}|${baseUrl ?? ''}`
-  let client = openaiClients.get(cacheKey)
+  const cacheKey = `${apiKeyName}|${baseUrl ?? ''}`;
+  let client = openaiClients.get(cacheKey);
   if (!client) {
     client = new OpenAI({
       apiKey: (await getSecret(apiKeyName)) ?? '',
+      timeout: SDK_TIMEOUT_MS,
+      maxRetries: SDK_MAX_RETRIES,
       ...(baseUrl ? { baseURL: baseUrl } : {}),
-    })
-    openaiClients.set(cacheKey, client)
+    });
+    openaiClients.set(cacheKey, client);
   }
-  return client
+  return client;
 }
 
 function openaiContent(
@@ -481,13 +492,13 @@ function openaiContent(
       type: 'image_url' as const,
       image_url: { url: `data:${img.mediaType};base64,${img.buffer.toString('base64')}` },
     })),
-  ]
+  ];
 }
 
 export class OpenAiCompatProviderAdapter extends BaseVisionProviderAdapter {
   async extract(req: VisionExtractRequest): Promise<Record<string, unknown>> {
     try {
-      let response: OpenAI.Chat.Completions.ChatCompletion
+      let response: OpenAI.Chat.Completions.ChatCompletion;
       try {
         response = await (
           await getOpenAIClient(this.config.api_key_name, this.config.base_url)
@@ -505,10 +516,10 @@ export class OpenAiCompatProviderAdapter extends BaseVisionProviderAdapter {
             },
             { role: 'user', content: openaiContent(req) },
           ],
-        })
+        });
       } catch (err) {
-        const status = (err as { status?: number } | null)?.status ?? 0
-        if (status !== 400) throw err
+        const status = (err as { status?: number } | null)?.status ?? 0;
+        if (status !== 400) throw err;
         try {
           response = await (
             await getOpenAIClient(this.config.api_key_name, this.config.base_url)
@@ -520,29 +531,29 @@ export class OpenAiCompatProviderAdapter extends BaseVisionProviderAdapter {
               { role: 'system', content: req.systemPrompt },
               { role: 'user', content: openaiContent(req) },
             ],
-          })
+          });
         } catch (retryErr) {
-          const retryStatus = (retryErr as { status?: number } | null)?.status ?? 0
+          const retryStatus = (retryErr as { status?: number } | null)?.status ?? 0;
           if (retryStatus === 400) {
-            const detail = retryErr instanceof Error ? retryErr.message : String(retryErr)
-            throw new AiProviderError(detail, retryStatus, this.id, true)
+            const detail = retryErr instanceof Error ? retryErr.message : String(retryErr);
+            throw new AiProviderError(detail, retryStatus, this.id, true);
           }
-          throw retryErr
+          throw retryErr;
         }
       }
-      const text = response.choices[0]?.message?.content
+      const text = response.choices[0]?.message?.content;
       if (!text) {
-        if (req.missingToolUseIsEmpty) return {}
-        throw new Error('OpenAI returned an empty response')
+        if (req.missingToolUseIsEmpty) return {};
+        throw new Error('OpenAI returned an empty response');
       }
-      return parseJsonOutput(text, this.id)
+      return parseJsonOutput(text, this.id);
     } catch (err) {
-      throw wrapProviderError(err, this.id)
+      throw wrapProviderError(err, this.id);
     }
   }
 
   async ask(req: VisionAskRequest): Promise<string> {
-    const model = this.config.lite_model_name ?? this.config.model_name
+    const model = this.config.lite_model_name ?? this.config.model_name;
     try {
       const response = await (
         await getOpenAIClient(this.config.api_key_name, this.config.base_url)
@@ -554,15 +565,15 @@ export class OpenAiCompatProviderAdapter extends BaseVisionProviderAdapter {
           { role: 'system', content: req.systemPrompt },
           { role: 'user', content: openaiContent(req) },
         ],
-      })
-      return (response.choices[0]?.message?.content ?? '').trim()
+      });
+      return (response.choices[0]?.message?.content ?? '').trim();
     } catch (err) {
-      const status = (err as { status?: number } | null)?.status ?? 0
+      const status = (err as { status?: number } | null)?.status ?? 0;
       if (status === 400) {
-        const detail = err instanceof Error ? err.message : String(err)
-        throw new AiProviderError(detail, status, this.id, true)
+        const detail = err instanceof Error ? err.message : String(err);
+        throw new AiProviderError(detail, status, this.id, true);
       }
-      throw wrapProviderError(err, this.id)
+      throw wrapProviderError(err, this.id);
     }
   }
 }
@@ -576,8 +587,8 @@ async function geminiGenerateContent(
   responseMimeType: string,
   schema?: Record<string, unknown>,
 ): Promise<string> {
-  const apiKey = await getSecret(apiKeyName)
-  if (!apiKey) throw new AiProviderError(`${apiKeyName} not configured`, 0, apiKeyName)
+  const apiKey = await getSecret(apiKeyName);
+  if (!apiKey) throw new AiProviderError(`${apiKeyName} not configured`, 0, apiKeyName);
 
   const parts: Record<string, unknown>[] = [
     { text: req.systemPrompt },
@@ -585,9 +596,9 @@ async function geminiGenerateContent(
     ...req.images.map((img) => ({
       inline_data: { mime_type: img.mediaType, data: img.buffer.toString('base64') },
     })),
-  ]
+  ];
 
-  let res: Response
+  let res: Response;
   try {
     res = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
@@ -604,30 +615,30 @@ async function geminiGenerateContent(
           },
         }),
       },
-    )
+    );
   } catch (err) {
-    throw wrapProviderError(err, apiKeyName)
+    throw wrapProviderError(err, apiKeyName);
   }
 
   if (!res.ok) {
-    let detail = `HTTP ${res.status}`
+    let detail = `HTTP ${res.status}`;
     try {
-      const body = (await res.json()) as { error?: { message?: string } }
-      if (body.error?.message) detail = `${body.error.message} (HTTP ${res.status})`
+      const body = (await res.json()) as { error?: { message?: string } };
+      if (body.error?.message) detail = `${body.error.message} (HTTP ${res.status})`;
     } catch {
       // body wasn't JSON
     }
-    throw new AiProviderError(`Gemini API error: ${detail}`, res.status, apiKeyName)
+    throw new AiProviderError(`Gemini API error: ${detail}`, res.status, apiKeyName);
   }
 
   const data = (await res.json()) as {
-    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>
-    error?: { message?: string }
-  }
+    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+    error?: { message?: string };
+  };
   if (data.error?.message) {
-    throw new AiProviderError(`Gemini API error: ${data.error.message}`, res.status, apiKeyName)
+    throw new AiProviderError(`Gemini API error: ${data.error.message}`, res.status, apiKeyName);
   }
-  return data.candidates?.[0]?.content?.parts?.map((p) => p.text ?? '').join('') ?? ''
+  return data.candidates?.[0]?.content?.parts?.map((p) => p.text ?? '').join('') ?? '';
 }
 
 export class GeminiProviderAdapter extends BaseVisionProviderAdapter {
@@ -638,17 +649,17 @@ export class GeminiProviderAdapter extends BaseVisionProviderAdapter {
       req,
       'application/json',
       req.schema.schema,
-    )
+    );
     if (!text.trim()) {
-      if (req.missingToolUseIsEmpty) return {}
-      throw new Error('Gemini returned an empty response')
+      if (req.missingToolUseIsEmpty) return {};
+      throw new Error('Gemini returned an empty response');
     }
-    return parseJsonOutput(text, this.id)
+    return parseJsonOutput(text, this.id);
   }
 
   async ask(req: VisionAskRequest): Promise<string> {
-    const model = this.config.lite_model_name ?? this.config.model_name
-    return (await geminiGenerateContent(this.config.api_key_name, model, req, 'text/plain')).trim()
+    const model = this.config.lite_model_name ?? this.config.model_name;
+    return (await geminiGenerateContent(this.config.api_key_name, model, req, 'text/plain')).trim();
   }
 }
 
@@ -657,12 +668,12 @@ export class GeminiProviderAdapter extends BaseVisionProviderAdapter {
 function buildAdapter(row: AiProviderConfigRow): ProviderAdapter {
   switch (row.provider_type) {
     case 'ANTHROPIC':
-      return new AnthropicProviderAdapter(row)
+      return new AnthropicProviderAdapter(row);
     case 'OPENAI_COMPAT':
-      return new OpenAiCompatProviderAdapter(row)
+      return new OpenAiCompatProviderAdapter(row);
     case 'GEMINI':
-      return new GeminiProviderAdapter(row)
+      return new GeminiProviderAdapter(row);
     default:
-      throw new Error(`Unsupported AI provider type: ${row.provider_type}`)
+      throw new Error(`Unsupported AI provider type: ${row.provider_type}`);
   }
 }

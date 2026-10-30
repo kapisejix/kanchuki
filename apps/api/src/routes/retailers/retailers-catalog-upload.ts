@@ -2,6 +2,7 @@
 import { getSecret, prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
+import { fetchWithTimeout } from '../../lib/fetch-timeout.js';
 import { forbidden, notFound, validationError } from '../../plugins/error-handler.js';
 import { getCatalogUploadPromo } from '../admin-settings.js';
 import { routeTicket } from '../team.js';
@@ -11,7 +12,7 @@ import { routeTicket } from '../team.js';
 async function razorpayPlatform<T>(path: string, init?: RequestInit): Promise<T> {
   const keyId = (await getSecret('RAZORPAY_KEY_ID')) ?? '';
   const keySecret = (await getSecret('RAZORPAY_KEY_SECRET')) ?? '';
-  const res = await fetch(`https://api.razorpay.com/v1${path}`, {
+  const res = await fetchWithTimeout(`https://api.razorpay.com/v1${path}`, {
     ...init,
     headers: {
       Authorization: `Basic ${Buffer.from(`${keyId}:${keySecret}`).toString('base64')}`,

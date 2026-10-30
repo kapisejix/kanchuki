@@ -706,3 +706,38 @@ no migration, no schema change, and **no new request on any surface**.
 | Known gaps (unfixed) | A session ending by token expiry skips push unregister (removed staff are filtered server-side regardless). Stale `disabled_at` rows are not pruned. Delivery is at-least-once (a retry re-sends earlier 100-device chunks; a shop has a handful of devices). |
 | Not verified | No push has reached a real device. Migration 135 not confirmed applied (the spec's combined SQL check should return true, 1, true, false). Needs Firebase project + `google-services.json`, FCM V1 key via `eas credentials`, EAS file env var `GOOGLE_SERVICES_JSON`, an EAS rebuild, and the AD_ID guard (`scripts/check-aab-ad-id.mjs`) on that build (the plugin adds `POST_NOTIFICATIONS`). The cold-start notification tap is the likeliest thing to need a fix. |
 
+
+## 2026-10-22 - Security hardening: uploads, payment callbacks, HTML escaping (RC-075, RC-076, RC-077)
+
+| Item | Detail |
+|---|---|
+| Part 1 | `dbb389bb`, merged in PR #142: `upload-guard.ts` + `inspectObject`, wired into product photos/variants, KYC, logo/banner; Razorpay signature checks (`verifyPaymentLinkSignature`, `verifyOrderSignature`) in add-ons + catalog payment; webhook requires captured / INR / >= base; `safeHttpUrl` on admin hrefs, JSON-LD `<` escape, http(s)-only `channel_shop_url`. |
+| Part 2 | Branch `fix/security-hardening-2`, not committed at time of writing, no migration. |
+| Uploads (RC-075) | `verifyUpload` gains a `prefix` option and video kinds (MP4/MOV/WebM; HEIC/AVIF ftyp brands refused). Applied to: categories create/update (url rebuilt from key, bare url must be our CDN), bug-report screenshot (client `screenshot_url` ignored), growth video confirm (key must be under that product's `videos/`, client `public_url` ignored), retailer showcase create/update (raw bytes checked), catalog-import bulk create (key under `catalog-import/<retailer>/`, client `cropped_url` ignored). `/catalog-import/upload-url` content_type is an allow-list (was any string). |
+| Photos | `products-tryon.ts` sniffs the bytes (was trusting the client mimetype; HEIC/SVG now 422). My Style analyze uses the same shared `sniffImageType` (private copy removed). Mobile `compressImageForUpload` skips the "already small" shortcut for non-JPEG/PNG/WebP files so a small HEIC is re-encoded to JPEG. |
+| Email (RC-077) | `escapeHtml` on every interpolated value in the welcome and reset emails; no-key fallback logs the body only outside production. |
+| Security headers | Not changed. `next.config.mjs` already sends `nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy`. CSP / HSTS / Permissions-Policy proposed for owner review, not applied. |
+| Tests | API full suite + API/web tsc, web `safe-url.test.ts` 12, mobile `compress-image.test.ts` 6. |
+| Not verified | No live R2, Razorpay or device run. Known gaps listed under RC-075 / RC-076. |
+
+
+## 2026-10-22 - WhatsApp enquiry link + SKU, passport logo, My Style gallery upload (RC-078)
+
+| Item | Detail |
+|---|---|
+| PR | #147 (`446a0ec0`, `efa9f835` Biome fix, `14d8c918` e2e update), merge `707fa3a6` into `main` 2026-10-22. No migration. |
+| Enquiry text (RC-078) | `buildEnquiryMessage` prints `• Name - ₹800/- (SKU: X)` with the product link on the next line, and drops the quoted collection title when it is missing or equals the shop name. `public-collections.ts` and `public-my-style.ts` now select `sku` + `public_slug` and pass `product_url` via `buildProductUrl` (My Style: `all-{store}` pseudo-slug, `collectionTitle: null`). `GET /public/products/:id` returns `sku` (`PublicProductDetail.sku?`), used by `CustomerConsentModal`. |
+| Passport logo | `(shopper)/layout.tsx` header and `/login` (`LoginForm.tsx`) show `/kanchuki-logo.png` (same asset as the site Chrome) instead of the text wordmark. |
+| Gallery upload | `AnalyzeSheet` (selfie mode) adds "Choose from gallery": a second `accept="image/*"` input with no `capture` (`data-testid="my-style-gallery-input"`). `prepareUpload` rejects `unsupported` before decoding: types outside JPEG/PNG/WebP/HEIC/HEIF, or over 25 MB (an empty type passes; the decode is the gate). JPEG re-encode (drops EXIF/GPS) and the server `sniffImageType` (JPEG/PNG/WebP) are unchanged. Try-on (`TryOnSheet`) is still camera-only (F-040 flag OFF). |
+| Tests | shared 20/20, API enquire + whatsapp-target + product 41/41, web `(shopper)` + login 177/177, storefront 93/93, e2e `customer-my-style-analyze.spec.ts` updated for two inputs; tsc clean (shared, api, web); CI green. |
+| Not verified | No real WhatsApp send, no device run (logo, Android/iOS gallery, HEIC decode on Android Chrome). Bottom-bar "Enquire" sent no SKU (see RC-078); fixed in the next entry. |
+
+## 2026-10-22 - Storefront bottom-bar Enquire through the API + pseudo-slug enquiries (RC-078 follow-up)
+
+| Item | Detail |
+|---|---|
+| PR | #149 (`e3b1ce64`, `a50648d0` docs, `d9a443f8` Biome format), merge `97cad538` into `main` 2026-10-22. No migration. |
+| Bottom-bar Enquire | `CollectionView.handleEnquireAll` now POSTs saved picks to `{apiBase}/enquire` like `WishlistView`: the server adds each SKU and records the enquiry in the inbox. Nothing saved, or a failed POST, keeps the client-built link (link, no SKU, no inbox row). Opens with `_self` (a `_blank` after an await is popup-blocked); RC-015 sync guard. |
+| Pseudo-slug pages | Category (`cat-{id}`) and All-products (`all-{store}`) pages have no collection row, so `POST /public/collections/:slug/enquire` 404'd them (WishlistView too). The `/api/{store}/{collection}/enquire` proxy adds `store` to the body; for a `cat-`/`all-` slug with no collection the API resolves the store by `public_slug` and records against its oldest ACTIVE collection (same rule as My Style `/enquire`). A store with no live collection still gets the SKU'd link, no inbox row. Real slugs ignore `store`. |
+| Tests | API `public-collections-enquire` + `public-whatsapp-target` 31/31 (3 new), web enquire proxy + CollectionView + wishlist 16/16 (4 new); tsc clean (web, api). |
+| Not verified | No browser/device run, no real WhatsApp send. More than 20 saved picks → API 400 (deliberate cap) → client fallback without SKU or inbox row. |

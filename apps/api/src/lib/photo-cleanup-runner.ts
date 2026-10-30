@@ -60,7 +60,6 @@ export interface PhotoCleanupRequest {
   promptExcludes?: [number, number][];
   /** Portrait mode: keep the shot's own background, blur it by this radius. */
   blur?: number | null;
-  ghostMannequin?: boolean;
   shine?: boolean;
   /** Output JPEG quality (1-100) for fast/slow quality mode. */
   quality?: number | null;
@@ -85,9 +84,9 @@ export function buildCleanupScriptArgs(
   req: PhotoCleanupRequest & { bgImagePath?: string | null },
 ): string[] {
   const args = [inputDir, outputDir];
-  // Blur (portrait) mode wins over composite unless ghost-mannequin forces
-  // composite — same branching as the script's main().
-  if (req.blur != null && !req.ghostMannequin) {
+  // Blur (portrait) mode replaces composite mode — same branching as the
+  // script's main().
+  if (req.blur != null) {
     args.push('--blur', String(req.blur));
     if (req.shine) args.push('--shine');
     if (req.crop) {
@@ -100,7 +99,6 @@ export function buildCleanupScriptArgs(
   }
   if (req.bgImagePath) args.push('--bg-image', req.bgImagePath);
   if (req.shine) args.push('--shine');
-  if (req.ghostMannequin) args.push('--ghost-mannequin');
   if (req.removeHardware) args.push('--remove-hardware');
   if (req.promptPoints?.length) {
     args.push('--prompt-points', req.promptPoints.map(([x, y]) => `${x},${y}`).join(';'));
@@ -141,10 +139,9 @@ export async function runPhotoCleanupScript(
     try {
       // 180s default, not 60s: the first-ever run on a dev machine is a cold
       // start — `import rembg` + onnxruntime can take 30s+ alone, then the
-      // ~170MB model loads, then CPU inference runs. --ghost-mannequin and
-      // --remove-hardware get longer caps (see callers) — their first runs
-      // also download + load the LaMa checkpoint (and torch/SAM2 for
-      // hardware removal) on top of rembg's.
+      // ~170MB model loads, then CPU inference runs. --remove-hardware gets a
+      // longer cap (see callers) — its first run also downloads + loads the
+      // LaMa checkpoint and torch/SAM2 on top of rembg's.
       // Run the script THROUGH the discovered python3/python binary — the
       // bin loop exists exactly for this: a bare .py path isn't directly
       // executable on Windows, and different names can point at different
@@ -224,7 +221,6 @@ async function runPhotoCleanupViaService(
     form.append('prompt_excludes', req.promptExcludes.map(([x, y]) => `${x},${y}`).join(';'));
   }
   if (req.blur != null) form.append('blur', String(req.blur));
-  if (req.ghostMannequin) form.append('ghost_mannequin', 'true');
   if (req.shine) form.append('shine', 'true');
   if (req.quality != null) form.append('quality', String(req.quality));
 

@@ -10,12 +10,18 @@
 
 import { StyleQuiz } from '@/app/c/[slug]/components/StyleQuiz'
 import { type GarmentDescriptor, PRODUCT_OCCASIONS, formatPriceRange } from '@kanchuki/shared'
+import { Sheet } from '@/components/Sheet'
+import {
+  AlertCircle, Baby, Camera, ChevronLeft, ChevronRight, ClipboardList, Globe2, LocateFixed, MapPin,
+  ScanSearch, SearchX, SlidersHorizontal, Sparkles, UserRound, X,
+} from 'lucide-react'
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useSyncExternalStore } from 'react'
+import { BTN_PRIMARY, BTN_SECONDARY, BTN_TEXT, CARD, IconTile, Notice, SEGMENTED, SELECT, chip, segment } from '../ui'
 import { AnalyzeSheet } from './AnalyzeSheet'
 import type { AnalyzeMode } from './analyze'
 import { KidsForm } from './KidsForm'
-import { LookPanel, type LookView } from './LookPanel'
+import { CardSkeleton, LookPanel, type LookView } from './LookPanel'
 import { PaletteCard } from './PaletteCard'
 import { ShortlistBar, useEnquiry } from './ShortlistBar'
 import { StyleCard } from './StyleCard'
@@ -50,6 +56,22 @@ const SIZES = ['S', 'M', 'L', 'XL', 'XXL', 'XXXL']
 const OCCASIONS = ['Daily Wear', 'Party / Festive', 'Wedding / Bridal', 'Office / Formal']
 const RADII = [5, 10, 25, 50]
 const LOOK_KEY = 'my-style:look-anchor'
+
+// Below Tailwind's `sm`, budget/size/occasion move into a bottom sheet. With no
+// matchMedia (jsdom, very old browsers) they stay inline, so exactly one copy of
+// each labelled <select> is ever in the DOM.
+const PHONE = '(max-width: 639px)'
+function useIsPhone() {
+  return useSyncExternalStore(
+    (onChange) => {
+      const m = window.matchMedia?.(PHONE)
+      m?.addEventListener?.('change', onChange)
+      return () => m?.removeEventListener?.('change', onChange)
+    },
+    () => window.matchMedia?.(PHONE)?.matches ?? false,
+    () => false,
+  )
+}
 
 type View =
   | { kind: 'loading' }
@@ -90,6 +112,8 @@ export default function MyStylePage() {
   const [view, setView] = useState<View>({ kind: 'loading' })
   const [shortlist, setShortlist] = useState<ShortItem[]>([])
   const enquiry = useEnquiry()
+  const phone = useIsPhone()
+  const [filtersOpen, setFiltersOpen] = useState(false)
   const groups = groupByStore(shortlist)
 
   // Read after mount so the server and first client render agree.
@@ -219,36 +243,117 @@ export default function MyStylePage() {
     )
   }
 
-  const select = 'rounded-lg border border-stone-300 bg-white px-2 py-1.5 text-sm text-stone-700'
+  const activeFilters = [budget, size, occasion].filter(Boolean).length + (where ? 1 : 0)
+
+  // Rendered once: inline from `sm`, inside the filter sheet on a phone.
+  const filterControls = (stacked: boolean) => {
+    const sel = stacked ? `${SELECT} w-full` : `${SELECT} shrink-0`
+    const field = (label: string, control: React.ReactNode) =>
+      stacked ? (
+        <div className="space-y-1.5">
+          <p className="text-xs font-semibold text-heliotrope-500 px-1" aria-hidden="true">{label}</p>
+          {control}
+        </div>
+      ) : (
+        control
+      )
+    return (
+      <>
+        {field(
+          'Budget',
+          <select aria-label="Budget" className={sel} value={budget} onChange={(e) => reset(setBudget)(e.target.value)}>
+            <option value="">Any budget</option>
+            {BUDGETS.map((b) => (
+              <option key={b} value={b}>
+                Up to {formatPriceRange(b, null).replace('/-', '')}
+              </option>
+            ))}
+          </select>,
+        )}
+        {field(
+          'Size',
+          <select aria-label="Size" className={sel} value={size} onChange={(e) => reset(setSize)(e.target.value)}>
+            <option value="">Any size</option>
+            {SIZES.map((s) => <option key={s} value={s}>{s}</option>)}
+          </select>,
+        )}
+        {field(
+          'Occasion',
+          <select aria-label="Occasion" className={sel} value={occasion} onChange={(e) => reset(setOccasion)(e.target.value)}>
+            <option value="">Any occasion</option>
+            {OCCASIONS.map((o) => <option key={o} value={o}>{o}</option>)}
+          </select>,
+        )}
+        {where &&
+          field(
+            'Distance',
+            <select aria-label="Distance" className={sel} value={radius} onChange={(e) => reset(setRadius)(Number(e.target.value))}>
+              {RADII.map((r) => <option key={r} value={r}>Within {r} km</option>)}
+            </select>,
+          )}
+      </>
+    )
+  }
 
   return (
-    <div className="space-y-5">
-      <section className="bg-white rounded-lg border border-stone-200 p-5">
-        <h1 className="text-xl font-semibold text-stone-900">My Style</h1>
-        <p className="text-sm text-stone-500 mt-1">
-          Pieces from stores near you, picked for your taste.
-        </p>
-        <button
-          type="button"
-          onClick={() => setAnalyzeMode('selfie')}
-          className="mt-3 mr-4 rounded-lg border border-stone-300 px-3 py-2 text-sm font-medium text-stone-900"
-        >
-          Selfie / full body
-        </button>
-        <button
-          type="button"
-          onClick={() => setAnalyzeMode('garment')}
-          className="mt-3 mr-4 rounded-lg border border-stone-300 px-3 py-2 text-sm font-medium text-stone-900"
-        >
-          Find similar
-        </button>
-        <button
-          type="button"
-          onClick={() => setShowQuiz((v) => !v)}
-          className="mt-3 text-sm font-medium text-amber-700"
-        >
-          {showQuiz ? 'Close quiz' : 'Take the quick quiz'}
-        </button>
+    <div className="space-y-4">
+      <section className={`${CARD} p-5`}>
+        <div className="flex items-start gap-3.5">
+          <span className="h-12 w-12 shrink-0 rounded-2xl bg-gradient-to-br from-spaceCadet-900 to-tyrian-800 flex items-center justify-center shadow-lg shadow-spaceCadet-900/20">
+            <Sparkles aria-hidden className="h-6 w-6 text-white" />
+          </span>
+          <div className="min-w-0 pt-0.5">
+            <h1 className="text-xl font-bold text-spaceCadet-900">My Style</h1>
+            <p className="text-sm text-heliotrope-500 mt-0.5">
+              Pieces from stores near you, picked for your taste.
+            </p>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-2 mt-4">
+          {(
+            [
+              ['selfie', Camera, 'Selfie / full body', 'Colours that suit you'],
+              ['garment', ScanSearch, 'Find similar', 'Match a photo'],
+            ] as const
+          ).map(([mode, Icon, label, hint]) => (
+            <button
+              key={mode}
+              type="button"
+              onClick={() => setAnalyzeMode(mode)}
+              className="min-h-[88px] p-3 flex flex-col items-start justify-between gap-2 text-left rounded-2xl bg-lavender-50 border border-lavender-100 hover:bg-lavender-100 hover:border-lavender-200 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-500/50"
+            >
+              <span className="h-8 w-8 rounded-xl bg-white flex items-center justify-center shadow-sm shadow-spaceCadet-900/10">
+                <Icon aria-hidden className="h-4 w-4 text-fuchsia-600" />
+              </span>
+              <span className="min-w-0">
+                <span className="block text-sm font-bold text-spaceCadet-900 leading-tight">{label}</span>
+                <span className="block text-xs text-heliotrope-500 mt-0.5">{hint}</span>
+              </span>
+            </button>
+          ))}
+        </div>
+        <div className="flex flex-wrap gap-x-1 mt-2 -mx-2">
+          <button type="button" onClick={() => setShowQuiz((v) => !v)} aria-expanded={showQuiz} className={BTN_TEXT}>
+            <ClipboardList aria-hidden className="h-4 w-4" />
+            {showQuiz ? 'Close quiz' : 'Take the quick quiz'}
+          </button>
+          <button type="button" onClick={() => setShowKids((v) => !v)} aria-expanded={showKids} className={BTN_TEXT}>
+            <Baby aria-hidden className="h-4 w-4" />
+            {showKids ? 'Close' : 'For my child'}
+          </button>
+        </div>
+        {kids && (
+          <p className="mt-2 inline-flex items-center gap-1 rounded-full bg-fuchsia-500/10 pl-3 text-xs font-semibold text-fuchsia-600">
+            Shopping for: {kids.who}, {kids.age}{' '}
+            <button
+              type="button"
+              onClick={() => setKids(null)}
+              className="min-h-9 px-3 rounded-full underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-500/50"
+            >
+              Clear
+            </button>
+          </p>
+        )}
         {showQuiz && (
           <div className="mt-3">
             <StyleQuiz
@@ -259,21 +364,6 @@ export default function MyStylePage() {
               }}
             />
           </div>
-        )}
-        <button
-          type="button"
-          onClick={() => setShowKids((v) => !v)}
-          className="mt-3 ml-4 text-sm font-medium text-amber-700"
-        >
-          {showKids ? 'Close' : 'For my child'}
-        </button>
-        {kids && (
-          <p className="mt-2 text-xs text-stone-600">
-            Shopping for: {kids.who}, {kids.age}{' '}
-            <button type="button" onClick={() => setKids(null)} className="underline">
-              Clear
-            </button>
-          </p>
         )}
         {showKids && (
           <KidsForm
@@ -301,27 +391,34 @@ export default function MyStylePage() {
       )}
 
       {similar && (
-        <p className="text-sm text-stone-700 bg-white rounded-lg border border-stone-200 px-4 py-3">
-          Looking for: <span className="font-medium">{describeGarment(similar)}</span>{' '}
+        <div className={`${CARD} p-4 flex items-start gap-3`}>
+          <IconTile icon={ScanSearch} />
+          <p className="min-w-0 flex-1 pt-1.5 text-sm text-heliotrope-500">
+            Looking for: <span className="font-semibold text-spaceCadet-900">{describeGarment(similar)}</span>
+            {view.kind === 'ok' && view.meta.similar?.source === 'attributes' && (
+              <span className="block text-xs mt-1">
+                Matched on colour, style and work. Closer matching is not available right now.
+              </span>
+            )}
+          </p>
           <button
             type="button"
             onClick={() => {
               setSimilar(null)
               setPage(1)
             }}
-            className="underline text-stone-600"
+            className={`${BTN_TEXT} shrink-0 -my-1`}
           >
+            <X aria-hidden className="h-4 w-4" />
             Clear
           </button>
-          {view.kind === 'ok' && view.meta.similar?.source === 'attributes' && (
-            <span className="block text-xs text-stone-500 mt-1">
-              Matched on colour, style and work. Closer matching is not available right now.
-            </span>
-          )}
-        </p>
+        </div>
       )}
 
-      <nav className="flex gap-1 overflow-x-auto border-b border-stone-200" aria-label="Feed tabs">
+      <nav
+        className={`${SEGMENTED} overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden`}
+        aria-label="Feed tabs"
+      >
         {(
           [
             ['foryou', 'For you'],
@@ -339,11 +436,7 @@ export default function MyStylePage() {
               setTab(value)
               setPage(1)
             }}
-            className={`whitespace-nowrap px-3 py-2 text-sm ${
-              tab === value
-                ? 'border-b-2 border-stone-900 font-medium text-stone-900'
-                : 'text-stone-500'
-            }`}
+            className={`${segment(tab === value)} flex-1`}
           >
             {label}
           </button>
@@ -362,70 +455,102 @@ export default function MyStylePage() {
                   setTabOccasion(tabOccasion === o ? '' : o)
                   setPage(1)
                 }}
-                className={`px-3 py-1.5 rounded-full text-sm ${
-                  tabOccasion === o ? 'bg-stone-900 text-white' : 'bg-white border border-stone-300 text-stone-700'
-                }`}
+                className={chip(tabOccasion === o)}
               >
                 {o}
               </button>
             ))}
           </div>
-          {!tabOccasion && <p className="text-xs text-stone-500">Pick an occasion to see pieces chosen for it first.</p>}
+          {!tabOccasion && <p className="text-xs text-heliotrope-500 px-1">Pick an occasion to see pieces chosen for it first.</p>}
           {tabOccasion && view.kind === 'ok' && view.meta.occasion_matches === 0 && (
-            <p className="text-xs text-stone-500">
+            <p className="text-xs text-heliotrope-500 px-1">
               Nothing near you is marked for {tabOccasion} yet, so this is your general feed.
             </p>
           )}
         </div>
       )}
 
-      <section className="space-y-3" hidden={tab === 'look'}>
-        <div className="flex gap-2" role="group" aria-label="Sort">
-          {SORTS.map((s) => (
-            <button
-              key={s.value}
-              type="button"
-              aria-pressed={sort === s.value}
-              onClick={() => reset(setSort)(s.value)}
-              className={`px-3 py-1.5 rounded-full text-sm ${
-                sort === s.value ? 'bg-stone-900 text-white' : 'bg-white border border-stone-300 text-stone-700'
-              }`}
-            >
-              {s.label}
-            </button>
-          ))}
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <select aria-label="Budget" className={select} value={budget} onChange={(e) => reset(setBudget)(e.target.value)}>
-            <option value="">Any budget</option>
-            {BUDGETS.map((b) => (
-              <option key={b} value={b}>
-                Up to {formatPriceRange(b, null).replace('/-', '')}
-              </option>
+      <section className="space-y-2" hidden={tab === 'look'} aria-label="Sort and filter">
+        {/* One scrolling chip bar; it bleeds to the screen edge on a phone. */}
+        <div className="-mx-4 px-4 flex items-center gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className={`${SEGMENTED} shrink-0`} role="group" aria-label="Sort">
+            {SORTS.map((s) => (
+              <button
+                key={s.value}
+                type="button"
+                aria-pressed={sort === s.value}
+                onClick={() => reset(setSort)(s.value)}
+                className={segment(sort === s.value)}
+              >
+                {s.label}
+              </button>
             ))}
-          </select>
-          <select aria-label="Size" className={select} value={size} onChange={(e) => reset(setSize)(e.target.value)}>
-            <option value="">Any size</option>
-            {SIZES.map((s) => <option key={s} value={s}>{s}</option>)}
-          </select>
-          <select aria-label="Occasion" className={select} value={occasion} onChange={(e) => reset(setOccasion)(e.target.value)}>
-            <option value="">Any occasion</option>
-            {OCCASIONS.map((o) => <option key={o} value={o}>{o}</option>)}
-          </select>
-          <button type="button" onClick={nearMe} className="rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-sm text-stone-700">
+          </div>
+          <button type="button" onClick={nearMe} className={chip(Boolean(where))}>
+            <LocateFixed aria-hidden className={`h-4 w-4 ${where ? 'text-fuchsia-400' : 'text-heliotrope-500'}`} />
             Near me
           </button>
-          {where && (
-            <select aria-label="Distance" className={select} value={radius} onChange={(e) => reset(setRadius)(Number(e.target.value))}>
-              {RADII.map((r) => <option key={r} value={r}>Within {r} km</option>)}
-            </select>
+          {phone ? (
+            <button
+              type="button"
+              onClick={() => setFiltersOpen(true)}
+              aria-haspopup="dialog"
+              className={chip(activeFilters > 0)}
+            >
+              <SlidersHorizontal aria-hidden className={`h-4 w-4 ${activeFilters > 0 ? 'text-fuchsia-400' : 'text-heliotrope-500'}`} />
+              Filters
+              {activeFilters > 0 && (
+                <span className="ml-0.5 min-w-5 h-5 px-1.5 rounded-full bg-fuchsia-600 text-white text-xs leading-5 text-center tabular-nums">
+                  {activeFilters}
+                </span>
+              )}
+            </button>
+          ) : (
+            filterControls(false)
           )}
         </div>
         {geoDenied && (
-          <p className="text-xs text-stone-500">Location is off, so we are using your city.</p>
+          <p className="text-xs text-heliotrope-500 px-1 flex items-center gap-1.5">
+            <MapPin aria-hidden className="h-3.5 w-3.5" />
+            Location is off, so we are using your city.
+          </p>
         )}
       </section>
+
+      <Sheet
+        open={phone && filtersOpen}
+        onClose={() => setFiltersOpen(false)}
+        ariaLabel="Filters"
+        overlayClassName="z-[70] bg-spaceCadet-950/60 flex items-end justify-center"
+        panelClassName="w-full bg-white rounded-t-3xl shadow-2xl shadow-spaceCadet-900/30 max-h-[85vh] overflow-y-auto pb-safe"
+        maxHeightVh={85}
+        overlayAnimation={{ initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 } }}
+        panelAnimation={{
+          initial: { y: '100%' },
+          animate: { y: 0 },
+          exit: { y: '100%' },
+          transition: { duration: 0.3, ease: [0.22, 1, 0.36, 1] },
+        }}
+      >
+        <div className="px-5 pt-3 pb-4">
+          <div className="mx-auto mb-4 h-1.5 w-10 rounded-full bg-lavender-200" aria-hidden="true" />
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-bold text-spaceCadet-900">Filters</h2>
+            <button
+              type="button"
+              onClick={() => setFiltersOpen(false)}
+              aria-label="Close filters"
+              className="w-11 h-11 rounded-2xl border border-lavender-200 flex items-center justify-center text-heliotrope-500 hover:bg-lavender-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-500/50"
+            >
+              <X aria-hidden className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="space-y-4">{filterControls(true)}</div>
+          <button type="button" onClick={() => setFiltersOpen(false)} className={`${BTN_PRIMARY} w-full mt-6`}>
+            Show results
+          </button>
+        </div>
+      </Sheet>
 
       {tab === 'look' ? (
         <LookPanel
@@ -502,39 +627,43 @@ function Results({
     return (
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3" aria-busy="true">
         {Array.from({ length: 6 }, (_, i) => (
-          <div key={i} className="aspect-[3/4] bg-stone-200 rounded-lg animate-pulse" />
+          <CardSkeleton key={i} />
         ))}
       </div>
     )
   }
   if (view.kind === 'unauthorized') {
     return (
-      <p className="text-center py-10 text-stone-500">
-        Your session ended. <Link href={LOGIN_HREF} className="text-amber-700 font-medium">Please log in</Link> to see your feed.
-      </p>
+      <Notice icon={UserRound}>
+        <p>
+          Your session ended. <Link href={LOGIN_HREF} className="text-fuchsia-600 font-semibold underline">Please log in</Link> to see your feed.
+        </p>
+      </Notice>
     )
   }
   if (view.kind === 'error') {
     return (
-      <div className="text-center py-10">
-        <p className="text-stone-500 text-sm">We could not load your feed.</p>
-        <button type="button" onClick={onRetry} className="mt-2 text-sm font-medium text-amber-700">
-          Try again
-        </button>
-      </div>
+      <Notice
+        icon={AlertCircle}
+        action={<button type="button" onClick={onRetry} className={BTN_SECONDARY}>Try again</button>}
+      >
+        <p>We could not load your feed.</p>
+      </Notice>
     )
   }
 
   const { data, meta } = view
   if (data.length === 0) {
     return (
-      <p className="text-center py-10 text-stone-500 text-sm">
-        {tab === 'festival'
-          ? 'No festival pieces near you yet. Try a wider distance.'
-          : tab === 'trending'
-            ? 'Nothing trending near you right now. Try a wider distance.'
-            : 'No matches yet. Try a wider budget or distance, or take the quick quiz.'}
-      </p>
+      <Notice icon={SearchX}>
+        <p>
+          {tab === 'festival'
+            ? 'No festival pieces near you yet. Try a wider distance.'
+            : tab === 'trending'
+              ? 'Nothing trending near you right now. Try a wider distance.'
+              : 'No matches yet. Try a wider budget or distance, or take the quick quiz.'}
+        </p>
+      </Notice>
     )
   }
   const pages = Math.ceil(meta.total / meta.limit)
@@ -542,7 +671,10 @@ function Results({
   return (
     <div className="space-y-4">
       {meta.location_scope === 'nationwide' && (
-        <p className="text-xs text-stone-500">Showing stores from all of India. Tap Near me to see nearby stores first.</p>
+        <p className="text-xs text-heliotrope-500 px-1 flex items-start gap-1.5">
+          <Globe2 aria-hidden className="h-3.5 w-3.5 mt-px shrink-0" />
+          Showing stores from all of India. Tap Near me to see nearby stores first.
+        </p>
       )}
       <ul className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         {data.map((c) => (
@@ -559,13 +691,15 @@ function Results({
         ))}
       </ul>
       {pages > 1 && (
-        <div className="flex items-center justify-between">
-          <button type="button" disabled={page <= 1} onClick={() => onPage(page - 1)} className="text-sm text-stone-700 disabled:opacity-40">
+        <div className="flex items-center justify-between gap-2">
+          <button type="button" disabled={page <= 1} onClick={() => onPage(page - 1)} className={`${BTN_SECONDARY} px-4`}>
+            <ChevronLeft aria-hidden className="h-4 w-4" />
             Prev
           </button>
-          <span className="text-xs text-stone-500">Page {page} of {pages}</span>
-          <button type="button" disabled={page >= pages} onClick={() => onPage(page + 1)} className="text-sm text-stone-700 disabled:opacity-40">
+          <span className="text-xs font-semibold text-heliotrope-500 tabular-nums">Page {page} of {pages}</span>
+          <button type="button" disabled={page >= pages} onClick={() => onPage(page + 1)} className={`${BTN_SECONDARY} px-4`}>
             Next
+            <ChevronRight aria-hidden className="h-4 w-4" />
           </button>
         </div>
       )}

@@ -18,6 +18,7 @@ export { adminCommissionRoutes } from './admin-commission.js';
 export { adminFestivalsRoutes } from './admin-festivals.js';
 export { adminHsnRulesRoutes } from './admin-hsn-rules.js';
 export { adminWhatsAppCatalogRoutes } from './admin-whatsapp-catalog.js';
+export { adminGbpRoutes } from './admin-gbp.js';
 export { adminPostTemplatesRoutes } from './admin-post-templates.js';
 export { adminSocialTemplateRoutes } from './admin-social-templates.js';
 export { adminGstRoutes } from './admin-gst.js';

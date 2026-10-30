@@ -18,7 +18,7 @@ export const metadata: Metadata = {
 const FEATURES = [
   { icon: Camera, title: 'The catalog that writes itself', desc: 'Photograph a dress. AI adds category, subtype, colour, fabric and occasion, writes a short description, suggests a name, and generates an auto SKU. Edit anything it gets wrong — your picks always win.', accent: 'cobalt' as const },
   { icon: Wand2, title: 'AI works in the background', desc: 'Click photos, set a price, tap save. While you go back to the shop floor, AI tags the product, cleans up the photo, and sets a good background. No loading screen to wait on.', accent: 'volt' as const },
-  { icon: Wand2, title: 'Photos that look like a big brand’s', desc: 'Background removal, auto-contrast backdrops (dark clothes get a light background and vice versa), ghost-mannequin fill for hollow necklines, rotate and retouch — no photographer needed.', accent: 'terracotta' as const },
+  { icon: Wand2, title: 'Photos that look like a big brand’s', desc: 'Background removal, auto-contrast backdrops (dark clothes get a light background and vice versa), rotate and retouch — no photographer needed.', accent: 'terracotta' as const },
   { icon: MessageCircle, title: 'Sell on WhatsApp', desc: 'Select the pieces you want to show, get a collection link, share it on WhatsApp. Customers browse, favourite and tap Enquire to message you directly. No app for them, no website for you.', accent: 'iris' as const },
   { icon: Store, title: 'Your own store page', desc: 'Every shop gets a free storefront at its own link (e.g. kanchuki.app/store/your-shop) with your shop name, logo and categories, plus a store QR code you can print for the counter.', accent: 'moss' as const },
   { icon: Heart, title: 'Know your customers', desc: 'Save each customer’s colour, style, budget and occasions. Search your own racks in plain language: "pink cotton suit under ₹2000".', accent: 'mint' as const },
@@ -33,7 +33,7 @@ const COMING_SOON = [
   { feature: 'Play Store / iOS app listings', status: 'Coming soon — Android APK available now' },
 ]
 
-// §5B.1 — affiliate referral capture (docs/tasks/pending/post-referral-cleanup-and-launch.md §5B).
+// §5B.1 — affiliate referral capture (docs/tasks/done/post-referral-cleanup-and-launch.md §5B).
 // The shareable link T3 already mints (buildReferralLink) points HERE with
 // ?ref=<CODE> — reused rather than a new /r/<CODE> route, so there is one
 // referral-link shape, not two. Cosmetic shape check only (display gating,

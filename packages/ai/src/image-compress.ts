@@ -18,61 +18,61 @@
  */
 export interface CompressImageOptions {
   /** Byte budget the result must fit under. Default 80 * 1024. */
-  maxBytes?: number
+  maxBytes?: number;
   /** Long-edge cap in px. Default 1600. */
-  maxDimension?: number
+  maxDimension?: number;
   /** Starting JPEG quality (0-100). Default 88. */
-  startQuality?: number
+  startQuality?: number;
   /** Lowest JPEG quality we'll try before shrinking dimensions. Default 48. */
-  minQuality?: number
+  minQuality?: number;
   /** Floor for the resized long edge in px. Default 640. */
-  minDimension?: number
+  minDimension?: number;
 }
 
 export interface CompressImageResult {
-  buffer: Buffer
-  width: number
-  height: number
-  quality: number
+  buffer: Buffer;
+  width: number;
+  height: number;
+  quality: number;
   /** True when the source was returned untouched (already within budget). */
-  unchanged: boolean
+  unchanged: boolean;
 }
 
 // Lazy import — same reason as detector.ts: sharp's native dlopen can crash
 // on Windows+pnpm when loaded eagerly by a module the API imports broadly.
-let _sharp: any = null
+let _sharp: any = null;
 async function getSharp() {
   if (!_sharp) {
-    const mod = await import('sharp')
-    _sharp = mod.default ?? mod
+    const mod = await import('sharp');
+    _sharp = mod.default ?? mod;
   }
-  return _sharp
+  return _sharp;
 }
 
-const DEFAULT_QUALITY_STEP = 7
+const DEFAULT_QUALITY_STEP = 7;
 
 export async function compressImageToTarget(
   input: Buffer,
   options: CompressImageOptions = {},
 ): Promise<CompressImageResult> {
-  const maxBytes = options.maxBytes ?? 80 * 1024
-  const maxDimension = options.maxDimension ?? 1600
-  const startQuality = options.startQuality ?? 88
-  const minQuality = options.minQuality ?? 48
-  const minDimension = options.minDimension ?? 640
+  const maxBytes = options.maxBytes ?? 80 * 1024;
+  const maxDimension = options.maxDimension ?? 1600;
+  const startQuality = options.startQuality ?? 88;
+  const minQuality = options.minQuality ?? 48;
+  const minDimension = options.minDimension ?? 640;
 
-  const s = await getSharp()
+  const s = await getSharp();
 
   // Already within budget — don't re-encode (re-encoding a near-80KB image
   // at high quality can even grow it; untouched is strictly better).
   if (input.length <= maxBytes) {
-    const { width = 0, height = 0 } = await s(input).metadata()
-    return { buffer: input, width, height, quality: 100, unchanged: true }
+    const { width = 0, height = 0 } = await s(input).metadata();
+    return { buffer: input, width, height, quality: 100, unchanged: true };
   }
 
-  const meta = await s(input).metadata()
-  let width = meta.width ?? 0
-  let height = meta.height ?? 0
+  const meta = await s(input).metadata();
+  const width = meta.width ?? 0;
+  const height = meta.height ?? 0;
 
   const encode = async (w: number, h: number, q: number): Promise<Buffer> =>
     s(input)
@@ -83,42 +83,42 @@ export async function compressImageToTarget(
       // decode is unaffected) on some devices. Every other photo path in the
       // app (mobile-side compressImageForUpload) is baseline-only already.
       .jpeg({ quality: q })
-      .toBuffer()
+      .toBuffer();
 
-  let best: { buffer: Buffer; w: number; h: number; q: number } | null = null
+  let best: { buffer: Buffer; w: number; h: number; q: number } | null = null;
 
   // Dimension ladder: start at the source size (or maxDimension if larger),
   // shrink 15% each pass until the floor.
-  const initialLongEdge = Math.max(width, height)
-  let dim = Math.min(initialLongEdge, maxDimension)
+  const initialLongEdge = Math.max(width, height);
+  let dim = Math.min(initialLongEdge, maxDimension);
 
   while (dim >= minDimension) {
-    const scale = dim / initialLongEdge
-    const w = Math.max(1, Math.round(width * scale))
-    const h = Math.max(1, Math.round(height * scale))
+    const scale = dim / initialLongEdge;
+    const w = Math.max(1, Math.round(width * scale));
+    const h = Math.max(1, Math.round(height * scale));
 
     // Quality ladder: from startQuality down to minQuality.
     for (let q = startQuality; q >= minQuality; q -= DEFAULT_QUALITY_STEP) {
-      const buffer = await encode(w, h, q)
+      const buffer = await encode(w, h, q);
       // Keep the smallest encode so far regardless of budget (fallback).
       if (!best || buffer.length < best.buffer.length) {
-        best = { buffer, w, h, q }
+        best = { buffer, w, h, q };
       }
       if (buffer.length <= maxBytes) {
-        return { buffer, width: w, height: h, quality: q, unchanged: false }
+        return { buffer, width: w, height: h, quality: q, unchanged: false };
       }
     }
 
-    dim = Math.round(dim * 0.85)
+    dim = Math.round(dim * 0.85);
   }
 
   // Nothing fit — return the smallest thing we produced.
-  const fallback = best!
+  const fallback = best!;
   return {
     buffer: fallback.buffer,
     width: fallback.w,
     height: fallback.h,
     quality: fallback.q,
     unchanged: false,
-  }
+  };
 }

@@ -4,7 +4,7 @@
  * The real vendor build (`build/LinearGradient.js`) ships JSX in a plain
  * `.js` file. Vite/Rolldown's SSR transform (vitest's transform pipeline)
  * refuses to parse JSX in `.js` — only `.jsx`/`.tsx` — so any test that
- * pulls this in via GradientButton/GradientBorderCard fails at collect time
+ * pulls this in via GradientButton fails at collect time
  * with a RolldownError, not a real app bug. Aliased the same way as the
  * react-native/react-native-reanimated mocks in vitest.config.ts.
  */

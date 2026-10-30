@@ -60,4 +60,13 @@ describe('POST /api/[store]/[collection]/enquire', () => {
     })
     expect(upstream.mock.calls[0]?.[0]).toContain('/v1/public/collections/festive-edit/enquire')
   })
+
+  it('adds the store to the body so the API can resolve cat-/all- pseudo-slugs', async () => {
+    upstream.mockResolvedValue(Response.json({ data: {} }))
+    await storePOST(req({ product_ids: ['a'] }), {
+      params: Promise.resolve({ store: 'meera', collection: 'cat-xyz' }),
+    })
+    expect(upstream.mock.calls[0]?.[0]).toContain('/v1/public/collections/cat-xyz/enquire')
+    expect(JSON.parse(upstream.mock.calls[0]?.[1].body)).toEqual({ product_ids: ['a'], store: 'meera' })
+  })
 })

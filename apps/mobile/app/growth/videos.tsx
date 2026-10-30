@@ -146,6 +146,7 @@ export default function VideosScreen() {
         filename: asset.fileName ?? 'clip.mp4',
         content_type: contentType,
         size_bytes: file.size,
+        content_length: file.size,
       })
       const info = urlRes.data
       await uploadImageToR2(asset.uri, info.upload_url, contentType, 120_000, (f) =>

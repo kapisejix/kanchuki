@@ -3,6 +3,7 @@
 import { prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
+import { IMAGE_KINDS, verifyUpload } from '../../lib/upload-guard.js';
 import { forbidden, validationError } from '../../plugins/error-handler.js';
 
 const BugReportCreateSchema = z.object({
@@ -36,6 +37,16 @@ export const retailersBugReportRoutes: FastifyPluginAsync = async (server) => {
       throw validationError(body.error.issues[0]?.message ?? 'Invalid bug report');
     }
 
+    // The screenshot url is built from a verified own upload, never taken from the client.
+    const screenshot = body.data.screenshot_r2_key
+      ? await verifyUpload({
+          retailerId: request.retailerId,
+          r2Key: body.data.screenshot_r2_key,
+          allowed: IMAGE_KINDS,
+          maxBytes: 10_000_000,
+        })
+      : undefined;
+
     const report = await prisma.bugReport.create({
       data: {
         retailer_id: request.retailerId,
@@ -48,8 +59,8 @@ export const retailersBugReportRoutes: FastifyPluginAsync = async (server) => {
         last_screen: body.data.last_screen,
         error_message: body.data.error_message,
         error_stack: body.data.error_stack,
-        screenshot_url: body.data.screenshot_url,
-        screenshot_r2_key: body.data.screenshot_r2_key,
+        screenshot_url: screenshot?.url,
+        screenshot_r2_key: screenshot?.r2Key,
         notes: body.data.notes,
       },
       select: {

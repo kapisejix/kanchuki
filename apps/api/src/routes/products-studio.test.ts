@@ -18,11 +18,15 @@ const {
   mockGetStudioJobStatus,
   mockIsStudioShootConfigured,
   mockCheckQuota,
+  mockReserveJobQuota,
+  mockRefundJobQuota,
   mockStyleFindFirst,
   mockStyleFindMany,
   mockProductFindFirst,
   mockVariantFindFirst,
 } = vi.hoisted(() => ({
+  mockReserveJobQuota: vi.fn(),
+  mockRefundJobQuota: vi.fn(),
   mockVariantFindFirst: vi.fn(),
   mockRetailerFindUniqueOrThrow: vi.fn(),
   mockPhotoFindFirst: vi.fn(),
@@ -63,6 +67,9 @@ vi.mock('../lib/studio-shoot.js', () => ({
 
 vi.mock('../lib/quota.js', () => ({
   checkQuota: mockCheckQuota,
+  getQuotaStatus: vi.fn(),
+  reserveJobQuota: mockReserveJobQuota,
+  refundJobQuota: mockRefundJobQuota,
 }));
 
 const RETAILER_ID = 'retailer_1';
@@ -85,6 +92,8 @@ beforeEach(() => {
   mockRetailerFindUniqueOrThrow.mockResolvedValue({ plan: 'GROWTH' });
   mockPhotoFindFirst.mockResolvedValue({ id: 'photo_1' });
   mockCheckQuota.mockResolvedValue(undefined);
+  mockReserveJobQuota.mockResolvedValue(undefined);
+  mockRefundJobQuota.mockResolvedValue(undefined);
   mockProductFindFirst.mockResolvedValue({ name: 'Anarkali Suit', category: 'Ladies Suit' });
 });
 
@@ -124,6 +133,74 @@ describe('POST /products/:id/photos/:photoId/studio-shoot', () => {
         style_id: 'st1',
       }),
     );
+    // RC-102: the slot is reserved once, keyed by the same job_id the job carries, and kept.
+    expect(mockReserveJobQuota).toHaveBeenCalledExactlyOnceWith(
+      RETAILER_ID,
+      'STUDIO_SHOOT',
+      data.job_id,
+    );
+    expect(mockAddStudioShootJob).toHaveBeenCalledWith(
+      expect.objectContaining({ job_id: data.job_id }),
+    );
+    expect(mockRefundJobQuota).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('gives the slot back when the enqueue itself fails', async () => {
+    mockStyleFindFirst.mockResolvedValueOnce(STYLE_ROW);
+    mockAddStudioShootJob.mockRejectedValueOnce(new Error('redis down'));
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/products/p1/photos/photo_1/studio-shoot',
+      payload: { template: 'runway' },
+    });
+    expect(res.statusCode).toBe(500);
+    const jobId = mockReserveJobQuota.mock.calls[0]?.[2];
+    expect(mockRefundJobQuota).toHaveBeenCalledExactlyOnceWith(jobId, 'STUDIO_SHOOT');
+    await app.close();
+  });
+
+  it('a failing refund does not mask the enqueue error', async () => {
+    mockStyleFindFirst.mockResolvedValueOnce(STYLE_ROW);
+    mockAddStudioShootJob.mockRejectedValueOnce(new Error('redis down'));
+    mockRefundJobQuota.mockRejectedValueOnce(new Error('db down'));
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/products/p1/photos/photo_1/studio-shoot',
+      payload: { template: 'runway' },
+    });
+    expect(res.statusCode).toBe(500);
+    expect(res.json().error.message).not.toContain('db down');
+    await app.close();
+  });
+
+  it('402 from the atomic reserve (lost the race the fail-fast read passed): nothing enqueued, nothing refunded', async () => {
+    mockStyleFindFirst.mockResolvedValueOnce(STYLE_ROW);
+    mockReserveJobQuota.mockRejectedValueOnce(planLimitExceeded('studio shoot'));
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/products/p1/photos/photo_1/studio-shoot',
+      payload: { template: 'runway' },
+    });
+    expect(res.statusCode).toBe(402);
+    expect(mockAddStudioShootJob).not.toHaveBeenCalled();
+    expect(mockRefundJobQuota).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('reserves nothing when validation rejects the request', async () => {
+    mockStyleFindFirst.mockResolvedValueOnce(null);
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/products/p1/photos/photo_1/studio-shoot',
+      payload: { template: 'nope' },
+    });
+    expect(res.statusCode).toBe(422);
+    expect(mockReserveJobQuota).not.toHaveBeenCalled();
     await app.close();
   });
 

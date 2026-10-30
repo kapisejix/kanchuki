@@ -29,6 +29,16 @@ function parseCookies(cookieHeader: string): Record<string, string> {
 }
 
 /**
+ * The raw passport session id in a Cookie header, parsed exactly as getPassportSession
+ * parses it (last duplicate wins). Anything that keys on "the session" without
+ * authenticating it — e.g. a rate limit — must use this, never its own regex, or a request
+ * carrying two cookies can be keyed on one value and authenticated as the other.
+ */
+export function passportCookieId(cookieHeader: string): string | undefined {
+  return parseCookies(cookieHeader)[COOKIE_NAME] || undefined;
+}
+
+/**
  * Extract and validate the passport session from the request cookie.
  * Returns the session + account, or null if unauthenticated/expired.
  * Slides the session expiry on each valid access.
@@ -62,6 +72,16 @@ export async function getPassportSession(cookieHeader: string) {
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────
+
+/** product id → owning retailer id. H4-5/RC-095: never trust a client retailer_id. */
+export async function productRetailerMap(ids: string[]): Promise<Map<string, string>> {
+  if (ids.length === 0) return new Map();
+  const rows = await prisma.product.findMany({
+    where: { id: { in: ids }, deleted_at: null },
+    select: { id: true, retailer_id: true },
+  });
+  return new Map(rows.map((p) => [p.id, p.retailer_id]));
+}
 
 export function phoneHash(phone: string): string {
   return createHash('sha256').update(normalizeIndianPhone(phone)).digest('hex');

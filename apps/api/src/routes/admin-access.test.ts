@@ -27,6 +27,7 @@ import { fileURLToPath } from 'node:url';
 import {
   STANDARD_ADMIN_ADMIN_SEGMENTS,
   SUPER_ADMIN_ONLY_ADMIN_SEGMENTS,
+  SUPPORT_MANAGER_ADMIN_SEGMENTS,
   adminPathSegment,
   isSuperAdminOnlyAdminPath,
 } from '@kanchuki/shared';
@@ -222,7 +223,21 @@ describe('admin access list completeness (RC-034)', () => {
   });
 });
 
+describe('SUPPORT_MANAGER allow-list (H3-2)', () => {
+  it('is a subset of the standard-admin list, so it can never widen past it', () => {
+    const standard = STANDARD_ADMIN_ADMIN_SEGMENTS as readonly string[];
+    const extra = SUPPORT_MANAGER_ADMIN_SEGMENTS.filter((s) => !standard.includes(s));
+    expect(extra).toEqual([]);
+  });
+});
+
 describe('adminPathSegment', () => {
+  it('decodes percent-escapes and fails closed on a malformed one (H3-1)', () => {
+    expect(adminPathSegment('/v1/admin/%70lan-pricing')).toBe('plan-pricing');
+    expect(isSuperAdminOnlyAdminPath('/v1/admin/%70lan-pricing')).toBe(true);
+    expect(isSuperAdminOnlyAdminPath('/v1/admin/%E0%A4%A')).toBe(true);
+  });
+
   it('handles both apps and strips query/hash', () => {
     expect(adminPathSegment('/v1/admin/commission/expenses?x=1#y')).toBe('commission');
     expect(adminPathSegment('/admin/referral-settings')).toBe('referral-settings');

@@ -162,6 +162,10 @@ export const SIZE_OPTIONS = [
   '8XL',
 ] as const;
 
+// Per-size stock: the API (lib/product-stock.ts) and the mobile StockEditor share these (RC-128).
+export const FREE_SIZE = 'FREE';
+export const MAX_STOCK_QUANTITY = 99_999;
+
 // ─── Color Swatch Resolution ──────────────────────────────────────
 // Common Indian-fashion color names aren't valid CSS/RN color keywords
 // (e.g. "Bottle Green", "Rani Pink", "Mustard") — used directly as a
@@ -245,7 +249,7 @@ export function hexRelativeLuminance(hex: string): number {
   const n = Number.parseInt(match[1] ?? '000000', 16);
   const channels = [(n >> 16) & 0xff, (n >> 8) & 0xff, n & 0xff].map((c) => {
     const s = c / 255;
-    return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+    return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
   });
   return 0.2126 * (channels[0] ?? 0) + 0.7152 * (channels[1] ?? 0) + 0.0722 * (channels[2] ?? 0);
 }
@@ -347,8 +351,6 @@ export const R2_PATHS = {
     docType: 'gst' | 'aadhar_front' | 'aadhar_back',
     filename: string,
   ) => `retailers/${retailerId}/kyc/${docType}/${filename}`,
-  spinVideo: (retailerId: string, productId: string) =>
-    `retailers/${retailerId}/products/${productId}/spin/video.mp4`,
   productVideo: (retailerId: string, productId: string, filename: string) =>
     `retailers/${retailerId}/products/${productId}/videos/${filename}`,
   spinFrame: (retailerId: string, productId: string, frameIndex: number) =>
@@ -467,18 +469,90 @@ export interface StudioEngineInfo {
   usd: number | null;
 }
 export const STUDIO_ENGINE_INFO: Record<StudioEngine, StudioEngineInfo> = {
-  bfl_kontext: { label: 'FLUX.1 Kontext Pro (default)', version: 'fal-ai/flux-pro/kontext', provider: 'Fal', calls: 1, usd: 0.04 },
-  gemini_image: { label: 'Nano Banana 2 (Gemini Flash Image, 1K)', version: 'gemini-3.1-flash-image', provider: 'Google', calls: 1, usd: 0.067 },
-  gemini_image_pro: { label: 'Nano Banana Pro (Gemini Pro Image)', version: 'gemini-3-pro-image', provider: 'Google', calls: 1, usd: 0.134 },
-  vton_kontext: { label: 'Two-step: FASHN try-on → Kontext scene', version: 'flux-pro/v1.1 + fashn/tryon/v1.5 + flux-pro/kontext', provider: 'Fal', calls: 3, usd: null },
-  vton_gemini: { label: 'Two-step: FASHN try-on → Gemini scene', version: 'flux-pro/v1.1 + fashn/tryon/v1.5 + gemini-3.1-flash-image', provider: 'Fal + Google', calls: 3, usd: null },
-  flux2_pro: { label: 'FLUX.2 [pro] edit', version: 'fal-ai/flux-2-pro/edit', provider: 'Fal', calls: 1, usd: 0.03 },
-  gpt_image_2_low: { label: 'GPT Image 2 edit — low', version: 'openai/gpt-image-2/edit (quality=low)', provider: 'Fal', calls: 1, usd: 0.015 },
-  gpt_image_2_medium: { label: 'GPT Image 2 edit — medium', version: 'openai/gpt-image-2/edit (quality=medium)', provider: 'Fal', calls: 1, usd: 0.061 },
-  gpt_image_2_high: { label: 'GPT Image 2 edit — high', version: 'openai/gpt-image-2/edit (quality=high)', provider: 'Fal', calls: 1, usd: 0.219 },
-  qwen_edit: { label: 'Qwen Image Edit 2511 (≈1 MP)', version: 'fal-ai/qwen-image-edit-2511', provider: 'Fal', calls: 1, usd: 0.02 },
-  nano_banana: { label: 'Nano Banana v1 edit', version: 'fal-ai/nano-banana/edit', provider: 'Fal', calls: 1, usd: 0.0398 },
-  grok_imagine: { label: 'Grok Imagine Image 2.0 edit', version: 'xai/grok-imagine-image/v2.0/edit', provider: 'Fal', calls: 1, usd: 0.04 },
+  bfl_kontext: {
+    label: 'FLUX.1 Kontext Pro (default)',
+    version: 'fal-ai/flux-pro/kontext',
+    provider: 'Fal',
+    calls: 1,
+    usd: 0.04,
+  },
+  gemini_image: {
+    label: 'Nano Banana 2 (Gemini Flash Image, 1K)',
+    version: 'gemini-3.1-flash-image',
+    provider: 'Google',
+    calls: 1,
+    usd: 0.067,
+  },
+  gemini_image_pro: {
+    label: 'Nano Banana Pro (Gemini Pro Image)',
+    version: 'gemini-3-pro-image',
+    provider: 'Google',
+    calls: 1,
+    usd: 0.134,
+  },
+  vton_kontext: {
+    label: 'Two-step: FASHN try-on → Kontext scene',
+    version: 'flux-pro/v1.1 + fashn/tryon/v1.5 + flux-pro/kontext',
+    provider: 'Fal',
+    calls: 3,
+    usd: null,
+  },
+  vton_gemini: {
+    label: 'Two-step: FASHN try-on → Gemini scene',
+    version: 'flux-pro/v1.1 + fashn/tryon/v1.5 + gemini-3.1-flash-image',
+    provider: 'Fal + Google',
+    calls: 3,
+    usd: null,
+  },
+  flux2_pro: {
+    label: 'FLUX.2 [pro] edit',
+    version: 'fal-ai/flux-2-pro/edit',
+    provider: 'Fal',
+    calls: 1,
+    usd: 0.03,
+  },
+  gpt_image_2_low: {
+    label: 'GPT Image 2 edit — low',
+    version: 'openai/gpt-image-2/edit (quality=low)',
+    provider: 'Fal',
+    calls: 1,
+    usd: 0.015,
+  },
+  gpt_image_2_medium: {
+    label: 'GPT Image 2 edit — medium',
+    version: 'openai/gpt-image-2/edit (quality=medium)',
+    provider: 'Fal',
+    calls: 1,
+    usd: 0.061,
+  },
+  gpt_image_2_high: {
+    label: 'GPT Image 2 edit — high',
+    version: 'openai/gpt-image-2/edit (quality=high)',
+    provider: 'Fal',
+    calls: 1,
+    usd: 0.219,
+  },
+  qwen_edit: {
+    label: 'Qwen Image Edit 2511 (≈1 MP)',
+    version: 'fal-ai/qwen-image-edit-2511',
+    provider: 'Fal',
+    calls: 1,
+    usd: 0.02,
+  },
+  nano_banana: {
+    label: 'Nano Banana v1 edit',
+    version: 'fal-ai/nano-banana/edit',
+    provider: 'Fal',
+    calls: 1,
+    usd: 0.0398,
+  },
+  grok_imagine: {
+    label: 'Grok Imagine Image 2.0 edit',
+    version: 'xai/grok-imagine-image/v2.0/edit',
+    provider: 'Fal',
+    calls: 1,
+    usd: 0.04,
+  },
 };
 
 /** USD → ₹ and credits for one image, or null when the price is unknown. */

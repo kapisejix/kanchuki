@@ -29,7 +29,9 @@ export const catalogUploadApi = {
   pay: (ticketId: string) =>
     request<{ data: { checkout_url: string } }>(
       `/v1/retailers/me/catalog-upload-request/${ticketId}/pay`,
-      { method: 'POST' },
+      // The server creates a Razorpay order before answering; the 10 s default
+      // aborts first and shows a false "server not running" (RC-110).
+      { method: 'POST', timeoutMs: 30_000 },
     ),
   confirmSlot: (ticketId: string, slot: string) =>
     request<{ data: CatalogUploadTicket }>(

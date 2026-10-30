@@ -9,9 +9,10 @@
 // (RC-065/RC-006). The submit guard is a ref, not state, because two events can land
 // before React commits (RC-015). Polling is capped and stops on unmount.
 import { type GarmentDescriptor, MY_STYLE_CONSENT } from '@kanchuki/shared'
-import { Camera, Loader2, ShieldCheck, X } from 'lucide-react'
+import { Camera, ImageIcon, Loader2, ShieldCheck, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Sheet } from '@/components/Sheet'
+import { BTN_PRIMARY, BTN_SECONDARY } from '../ui'
 import { type AnalyzeMode, pollAnalysis, prepareUpload, startAnalysis } from './analyze'
 import { LOGIN_HREF } from './lib'
 
@@ -20,9 +21,9 @@ type Step = 'consent' | 'capture' | 'processing' | 'done' | 'error' | 'signin'
 const POLL_MS = 2500
 const MAX_POLLS = 36 // 90 s; the server drops the job after 15 min
 
-const btn =
-  'w-full py-3 rounded-lg bg-stone-900 text-white text-sm font-semibold active:scale-[0.98] transition'
-const quiet = 'w-full py-2.5 mt-2 text-xs font-medium text-stone-600'
+const btn = `${BTN_PRIMARY} w-full`
+const quiet =
+  'w-full min-h-11 mt-1 rounded-xl text-sm font-semibold text-heliotrope-500 hover:text-spaceCadet-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-500/50'
 
 // `mode` 'garment' is find similar (PR-9): the photo is of a garment the shopper likes, not of
 // them. Same consent, same flow; only the words, the picker and what onDone hands back differ.
@@ -87,9 +88,13 @@ export function AnalyzeSheet({
     let photo: Blob
     try {
       photo = await prepareUpload(file)
-    } catch {
+    } catch (e) {
       if (!stoppedRef.current) {
-        fail("We can't open that photo. Please take a new one, or choose a JPEG.")
+        fail(
+          e instanceof Error && e.message === 'unsupported'
+            ? 'Please choose a JPEG, PNG, WebP or HEIC photo under 25 MB.'
+            : "We can't open that photo. Please take a new one, or choose a JPEG.",
+        )
       }
       return
     }
@@ -104,18 +109,19 @@ export function AnalyzeSheet({
     <Sheet
       open
       onClose={onClose}
-      overlayClassName="z-[80] bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-4"
-      panelClassName="relative w-full max-w-md bg-white rounded-t-2xl sm:rounded-2xl p-5 pb-8 shadow-2xl max-h-[95vh] overflow-y-auto"
+      overlayClassName="z-[80] bg-spaceCadet-950/60 flex items-end sm:items-center justify-center p-0 sm:p-4"
+      panelClassName="relative w-full max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-5 pb-8 shadow-2xl shadow-spaceCadet-900/30 max-h-[95vh] overflow-y-auto"
+      panelAnimation={{ initial: { y: 24, opacity: 0 }, animate: { y: 0, opacity: 1 }, transition: { duration: 0.25, ease: [0.22, 1, 0.36, 1] } }}
       maxHeightVh={95}
       ariaLabel={garment ? 'Find similar' : 'Read my photo'}
     >
       <div className="flex justify-between items-center mb-4">
-        <span className="text-sm font-semibold text-stone-900">My Style</span>
+        <span className="text-sm font-bold text-spaceCadet-900">My Style</span>
         <button
           type="button"
           onClick={onClose}
           aria-label="Close"
-          className="w-9 h-9 rounded-lg border border-stone-200 flex items-center justify-center text-stone-700"
+          className="w-11 h-11 rounded-2xl border border-lavender-200 flex items-center justify-center text-heliotrope-500 hover:bg-lavender-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-500/50"
         >
           <X size={16} />
         </button>
@@ -123,27 +129,27 @@ export function AnalyzeSheet({
 
       {step === 'consent' && (
         <div>
-          <div className="flex items-center gap-2 mb-2 text-emerald-700">
+          <div className="flex items-center gap-2 mb-2 text-fuchsia-600">
             <ShieldCheck size={16} />
-            <h2 className="text-base font-semibold text-stone-900">{MY_STYLE_CONSENT.title}</h2>
+            <h2 className="text-base font-semibold text-spaceCadet-900">{MY_STYLE_CONSENT.title}</h2>
           </div>
-          <p className="text-xs text-stone-600 leading-relaxed mb-3">{MY_STYLE_CONSENT.intro}</p>
+          <p className="text-xs text-heliotrope-500 leading-relaxed mb-3">{MY_STYLE_CONSENT.intro}</p>
           <div className="space-y-2 mb-3">
             {MY_STYLE_CONSENT.points.map((p) => (
-              <div key={p.label} className="p-3 rounded-lg border border-stone-200">
-                <p className="text-xs font-semibold text-stone-900">{p.label}</p>
-                <p className="text-xs text-stone-600 leading-relaxed">{p.text}</p>
+              <div key={p.label} className="p-3 rounded-2xl bg-lavender-50 border border-lavender-100">
+                <p className="text-xs font-semibold text-spaceCadet-900">{p.label}</p>
+                <p className="text-xs text-heliotrope-500 leading-relaxed">{p.text}</p>
               </div>
             ))}
           </div>
-          <p className="text-xs text-stone-600 mb-1">{MY_STYLE_CONSENT.training}</p>
-          <p className="text-xs text-stone-500 mb-4">
+          <p className="text-xs text-heliotrope-500 mb-1">{MY_STYLE_CONSENT.training}</p>
+          <p className="text-xs text-heliotrope-500 mb-4">
             {MY_STYLE_CONSENT.withdrawal}{' '}
             <a
               href={MY_STYLE_CONSENT.full_notice_url}
               target="_blank"
               rel="noreferrer"
-              className="text-amber-700 font-medium underline"
+              className="text-fuchsia-600 font-semibold underline"
             >
               Read the full notice
             </a>
@@ -159,10 +165,10 @@ export function AnalyzeSheet({
 
       {step === 'capture' && (
         <div className="text-center py-2">
-          <p className="text-sm font-semibold text-stone-900 mb-1">
-            {garment ? 'Pick a photo of a garment you like' : 'Take a photo of yourself'}
+          <p className="text-sm font-semibold text-spaceCadet-900 mb-1">
+            {garment ? 'Pick a photo of a garment you like' : 'Take or choose a photo of yourself'}
           </p>
-          <p className="text-xs text-stone-600 mb-5">
+          <p className="text-xs text-heliotrope-500 mb-5">
             {garment
               ? 'A screenshot or a photo of one piece works. It is read once and thrown away. We keep nothing from it.'
               : 'Face the light, only you in the frame. A full-body photo works best.'}
@@ -184,30 +190,49 @@ export function AnalyzeSheet({
               }}
             />
           </label>
+          {/* Selfie mode: same pipeline, no `capture`, so the phone opens its gallery. */}
+          {!garment && (
+            <label
+              className={`${BTN_SECONDARY} w-full mt-2 cursor-pointer`}
+            >
+              <ImageIcon size={16} />
+              Choose from gallery
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                data-testid="my-style-gallery-input"
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (file) void handleFile(file)
+                }}
+              />
+            </label>
+          )}
         </div>
       )}
 
       {step === 'processing' && (
         <div className="text-center py-8" aria-live="polite">
-          <Loader2 size={26} className="animate-spin mx-auto text-amber-700" />
-          <p className="text-sm font-semibold text-stone-900 mt-3">
+          <Loader2 size={26} className="animate-spin motion-reduce:animate-none mx-auto text-fuchsia-600" />
+          <p className="text-sm font-semibold text-spaceCadet-900 mt-3">
             {garment ? 'Looking at the garment…' : 'Reading your photo…'}
           </p>
-          <p className="text-xs text-stone-600 mt-1">This usually takes under a minute.</p>
+          <p className="text-xs text-heliotrope-500 mt-1">This usually takes under a minute.</p>
         </div>
       )}
 
       {step === 'signin' && (
         <div className="text-center py-2">
-          <p className="text-sm font-semibold text-stone-900 mb-1">
+          <p className="text-sm font-semibold text-spaceCadet-900 mb-1">
             {garment ? 'Sign in to find similar pieces' : 'Sign in to read your photo'}
           </p>
-          <p className="text-xs text-stone-600 leading-relaxed mb-5">
+          <p className="text-xs text-heliotrope-500 leading-relaxed mb-5">
             {garment
               ? 'My Style searches stores for you, so you need to be signed in.'
               : 'My Style saves your palette to your account, so you need to be signed in.'}
           </p>
-          <a href={LOGIN_HREF} className={`${btn} block`}>
+          <a href={LOGIN_HREF} className={btn}>
             Sign in
           </a>
           <button type="button" onClick={onClose} className={quiet}>
@@ -218,7 +243,7 @@ export function AnalyzeSheet({
 
       {step === 'error' && (
         <div className="text-center py-2">
-          <p role="alert" className="text-sm font-semibold text-stone-900 py-4">
+          <p role="alert" className="text-sm font-semibold text-spaceCadet-900 py-4">
             {message}
           </p>
           <button
@@ -239,10 +264,10 @@ export function AnalyzeSheet({
 
       {step === 'done' && (
         <div className="text-center py-4">
-          <p className="text-sm font-semibold text-stone-900">
+          <p className="text-sm font-semibold text-spaceCadet-900">
             {garment ? 'Showing pieces like this' : 'Your palette is ready'}
           </p>
-          <p className="text-xs text-stone-600 mt-1 mb-5">
+          <p className="text-xs text-heliotrope-500 mt-1 mb-5">
             {garment
               ? 'Stores with similar pieces now come first.'
               : 'Your picks now lean toward colours that suit you.'}

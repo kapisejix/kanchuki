@@ -18,12 +18,4 @@ export const productAttributeApi = {
     request<{ data: ProductAttribute[] }>(`/v1/product-attributes?kind=${kind}`, {
       getCacheTtlMs: 15_000,
     }),
-
-  create: (kind: ProductAttributeKind, name: string) =>
-    request<{ data: ProductAttribute }>('/v1/product-attributes', {
-      method: 'POST',
-      body: JSON.stringify({ kind, name }),
-    }),
-
-  delete: (id: string) => request<void>(`/v1/product-attributes/${id}`, { method: 'DELETE' }),
 }

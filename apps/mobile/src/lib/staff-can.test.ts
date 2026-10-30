@@ -25,6 +25,11 @@ describe('staffCan mirrors the server allowlist', () => {
     expect(staffCan('manager', 'enquiries.tryon')).toBe(true)
     expect(staffCan('salesperson', 'enquiries.tryon')).toBe(false)
   })
+  it('setup checklist is owner-only (mirrors the server: no allowlist entry)', () => {
+    expect(staffCan(null, 'setup')).toBe(true)
+    expect(staffCan('manager', 'setup')).toBe(false)
+    expect(staffCan('salesperson', 'setup')).toBe(false)
+  })
   it('salesperson gets view + add customer only', () => {
     expect(staffCan('salesperson', 'catalog.view')).toBe(true)
     expect(staffCan('salesperson', 'customers.add')).toBe(true)

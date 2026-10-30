@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { prisma, vaultDelete } from '@kanchuki/db';
 import { SIZE_OPTIONS, isValidIndianPhone, normalizeIndianPhone } from '@kanchuki/shared';
-import type { FastifyPluginAsync } from 'fastify';
+import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { isRealOwner, maskPhoneForRequest } from '../plugins/auth.js';
 import { notFound, validationError } from '../plugins/error-handler.js';
@@ -30,6 +30,15 @@ const CustomerSchema = z.object({
   // Campaign send filters on this — false (the Prisma default) = never messaged.
   consent_given: z.boolean().optional(),
 });
+
+// H4-2/RC-096: phone_hash (SHA-256 of a 10-digit number, brute-forceable) and
+// customer_account_id (a passport identity) never leave the API, for any role.
+function toCustomerDto<
+  C extends { phone: string; phone_hash: string | null; customer_account_id: string | null },
+>(request: FastifyRequest, c: C) {
+  const { phone_hash: _hash, customer_account_id: _account, ...safe } = c;
+  return { ...safe, phone: maskPhoneForRequest(request, c.phone) };
+}
 
 export const customerRoutes: FastifyPluginAsync = async (server) => {
   // ─── POST /customers ────────────────────────────────────────────
@@ -69,7 +78,7 @@ export const customerRoutes: FastifyPluginAsync = async (server) => {
       },
     });
 
-    return reply.status(201).send({ data: customer });
+    return reply.status(201).send({ data: toCustomerDto(request, customer) });
   });
 
   // ─── GET /customers ─────────────────────────────────────────────
@@ -106,10 +115,9 @@ export const customerRoutes: FastifyPluginAsync = async (server) => {
     });
 
     const hasMore = customers.length > limit;
-    const page = (hasMore ? customers.slice(0, limit) : customers).map((c) => ({
-      ...c,
-      phone: maskPhoneForRequest(request, c.phone),
-    }));
+    const page = (hasMore ? customers.slice(0, limit) : customers).map((c) =>
+      toCustomerDto(request, c),
+    );
     return {
       data: page,
       pagination: {
@@ -128,7 +136,7 @@ export const customerRoutes: FastifyPluginAsync = async (server) => {
     });
     if (!customer) throw notFound('Customer');
 
-    return { data: { ...customer, phone: maskPhoneForRequest(request, customer.phone) } };
+    return { data: toCustomerDto(request, customer) };
   });
 
   // ─── PUT /customers/:id ─────────────────────────────────────────
@@ -167,7 +175,7 @@ export const customerRoutes: FastifyPluginAsync = async (server) => {
       },
     });
 
-    return { data: updated };
+    return { data: toCustomerDto(request, updated) };
   });
 
   // ─── DELETE /customers/:id ──────────────────────────────────────

@@ -12,9 +12,13 @@ import { passportRoutes } from '../passport.js';
 const mockPassportSessionFindUnique = vi.hoisted(() => vi.fn());
 const mockPassportSessionUpdate = vi.hoisted(() => vi.fn());
 const mockCustomerInteractionCreateMany = vi.hoisted(() => vi.fn());
+const mockProductFindMany = vi.hoisted(() => vi.fn());
+const mockRetailerFindMany = vi.hoisted(() => vi.fn());
 
 vi.mock('@kanchuki/db', () => ({
   prisma: {
+    product: { findMany: mockProductFindMany },
+    retailer: { findMany: mockRetailerFindMany },
     passportSession: {
       findUnique: mockPassportSessionFindUnique,
       update: mockPassportSessionUpdate,
@@ -46,6 +50,53 @@ beforeEach(() => {
   mockPassportSessionFindUnique.mockResolvedValue(mockSession);
   mockPassportSessionUpdate.mockResolvedValue({});
   mockCustomerInteractionCreateMany.mockResolvedValue({ count: 1 });
+  mockProductFindMany.mockResolvedValue([{ id: 'p_1', retailer_id: 'r_1' }]);
+  mockRetailerFindMany.mockResolvedValue([{ id: 'r_1' }]);
+});
+
+describe('POST /v1/public/passport/events retailer ownership (H4-5, RC-095)', () => {
+  const send = async (events: unknown[]) => {
+    const app = buildApp();
+    await app.ready();
+    return app.inject({
+      method: 'POST',
+      url: '/v1/public/passport/events',
+      headers: { cookie: 'kanchuki_passport=session_abc123', 'content-type': 'application/json' },
+      payload: { events },
+    });
+  };
+
+  it('drops a product event whose retailer_id is not the product owner', async () => {
+    const res = await send([{ type: 'view', product_id: 'p_1', retailer_id: 'r_victim' }]);
+
+    expect(res.statusCode).toBe(204);
+    expect(mockCustomerInteractionCreateMany).not.toHaveBeenCalled();
+  });
+
+  it('drops a product event for an unknown product', async () => {
+    const res = await send([{ type: 'view', product_id: 'p_nope', retailer_id: 'r_1' }]);
+
+    expect(res.statusCode).toBe(204);
+    expect(mockCustomerInteractionCreateMany).not.toHaveBeenCalled();
+  });
+
+  it('drops a store-level event for a retailer that does not exist', async () => {
+    const res = await send([{ type: 'view', retailer_id: 'r_fake' }]);
+
+    expect(res.statusCode).toBe(204);
+    expect(mockCustomerInteractionCreateMany).not.toHaveBeenCalled();
+  });
+
+  it('keeps valid rows and drops only the bad ones in a mixed batch', async () => {
+    await send([
+      { type: 'view', product_id: 'p_1', retailer_id: 'r_1' },
+      { type: 'view', product_id: 'p_1', retailer_id: 'r_victim' },
+    ]);
+
+    const data = mockCustomerInteractionCreateMany.mock.calls[0]?.[0].data;
+    expect(data).toHaveLength(1);
+    expect(data[0].retailer_id).toBe('r_1');
+  });
 });
 
 describe('POST /v1/public/passport/events', () => {

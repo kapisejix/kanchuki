@@ -20,6 +20,7 @@ const {
   mockGetUploadPresignedUrl,
   mockPublicUrl,
   mockSuggestDesignNameAndColor,
+  mockInspectObject,
 } = vi.hoisted(() => ({
   mockFindMany: vi.fn(),
   mockFindUnique: vi.fn(),
@@ -37,6 +38,7 @@ const {
   mockGetUploadPresignedUrl: vi.fn(),
   mockPublicUrl: vi.fn(),
   mockSuggestDesignNameAndColor: vi.fn(),
+  mockInspectObject: vi.fn(),
 }));
 
 vi.mock('@kanchuki/db', () => ({
@@ -61,6 +63,7 @@ vi.mock('@kanchuki/ai', () => ({
   publicUrl: mockPublicUrl,
   deleteObject: mockDeleteObject,
   suggestDesignNameAndColor: mockSuggestDesignNameAndColor,
+  inspectObject: mockInspectObject,
 }));
 
 vi.mock('../../lib/showcase-watermark.js', () => ({
@@ -97,6 +100,7 @@ async function buildApp() {
 beforeEach(() => {
   vi.clearAllMocks();
   mockPublicUrl.mockImplementation((key: string) => `https://cdn.test/${key}`);
+  mockInspectObject.mockResolvedValue({ size: 1000, head: Buffer.from([0xff, 0xd8, 0xff, 0xe0]) });
   mockWatermarkShowcaseDesign.mockResolvedValue({
     logo_source: 'builtin',
     width: 800,
@@ -308,7 +312,8 @@ describe('POST /showcase-designs', () => {
       payload: {
         category_id: 'cat_suits',
         retailer_id: 'ret_1',
-        raw_r2_key: 'showcase-designs/ret_1/raw/x.jpg',
+        // Admin uploads always land under the global raw prefix, whatever the owner.
+        raw_r2_key: 'showcase-designs/global/raw/x.jpg',
       },
     });
     expect(res.statusCode).toBe(201);
@@ -410,6 +415,38 @@ describe('PATCH /showcase-designs/:id', () => {
     const deleted = mockDeleteObject.mock.calls.map((c) => c[0]);
     expect(deleted).toContain(GLOBAL_ROW.r2_key);
     expect(deleted).toContain(GLOBAL_ROW.original_r2_key);
+    await app.close();
+  });
+
+  it('photo replace rejects non-image bytes, deletes the upload and never watermarks', async () => {
+    mockFindUnique.mockResolvedValue(GLOBAL_ROW);
+    mockInspectObject.mockResolvedValue({ size: 30, head: Buffer.from('<html><script>') });
+    mockDeleteObject.mockResolvedValue(undefined);
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'PATCH',
+      url: '/showcase-designs/design_1',
+      payload: { raw_r2_key: 'uploads/pending/showcase-designs/global/raw/evil.jpg' },
+    });
+    expect(res.statusCode).toBe(422);
+    expect(mockDeleteObject).toHaveBeenCalledWith(
+      'uploads/pending/showcase-designs/global/raw/evil.jpg',
+    );
+    expect(mockWatermarkShowcaseDesign).not.toHaveBeenCalled();
+    expect(mockUpdate).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('rejects a retailer raw key: admin may only reference its own global uploads', async () => {
+    mockFindUnique.mockResolvedValue(GLOBAL_ROW);
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'PATCH',
+      url: '/showcase-designs/design_1',
+      payload: { raw_r2_key: 'showcase-designs/ret_1/raw/x.jpg' },
+    });
+    expect(res.statusCode).toBe(422);
+    expect(mockInspectObject).not.toHaveBeenCalled();
     await app.close();
   });
 });

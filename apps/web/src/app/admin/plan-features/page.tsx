@@ -22,7 +22,6 @@ type FeatureKey =
   | 'CHECKOUT_CART'
   | 'DATA_EXPORT_CSV'
   | 'CUSTOM_BRANDING'
-  | 'GHOST_MANNEQUIN_AI'
   | 'RAZORPAY_ROUTE'
   | 'API_ACCESS'
   | 'PRIORITY_AI_QUEUE'
@@ -48,7 +47,6 @@ const FEATURES: { key: FeatureKey; label: string; description: string }[] = [
   { key: 'CHECKOUT_CART', label: 'Shopping Cart / Checkout', description: 'Online checkout with Razorpay payments' },
   { key: 'DATA_EXPORT_CSV', label: 'Data Export (CSV)', description: 'Export product/customer data to CSV' },
   { key: 'CUSTOM_BRANDING', label: 'Custom Branding', description: 'Custom logo/branding on collection pages' },
-  { key: 'GHOST_MANNEQUIN_AI', label: 'Ghost Mannequin AI', description: 'AI-generated worn catalog images via Snappyit' },
   { key: 'RAZORPAY_ROUTE', label: 'Razorpay Route', description: 'Marketplace split-payment settlement' },
   { key: 'API_ACCESS', label: 'API Access', description: 'External API access for third-party integrations' },
   { key: 'PRIORITY_AI_QUEUE', label: 'Priority AI Queue', description: 'Faster AI tagging queue priority' },

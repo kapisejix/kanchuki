@@ -6,7 +6,7 @@
 import { useEffect, useRef } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useNetworkStatus } from './useNetworkStatus'
-import { getQueue, dequeueStatusMutation } from '../lib/mutation-queue'
+import { getQueue, dequeueStatusMutation, isRetryable } from '../lib/mutation-queue'
 import { productApi } from '../lib/api'
 
 export function useSyncQueue(): void {
@@ -22,8 +22,10 @@ export function useSyncQueue(): void {
           try {
             await productApi.updateStatus(m.productId, m.status)
             await dequeueStatusMutation(m.id)
-          } catch {
-            // Network still flaky or request failed — leave queued, retry next reconnect
+          } catch (err) {
+            // Retryable (network/5xx) stays queued for the next reconnect. A 4xx will never
+            // succeed: drop it so it stops looping (the invalidate below reverts the UI).
+            if (!isRetryable(err)) await dequeueStatusMutation(m.id)
           }
         }
         if (queue.length) void queryClient.invalidateQueries({ queryKey: ['products'] })

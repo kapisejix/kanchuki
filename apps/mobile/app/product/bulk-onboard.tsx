@@ -18,10 +18,10 @@ import {
   catalogImportApi,
   retailerApi,
   uploadImageToR2,
-  readLocalImage,
+  prepareImageForUpload,
   type CatalogDetectedItem,
 } from '../../src/lib/api'
-import { showError, logError } from '../../src/lib/errors'
+import { apiMessage, showError, logError } from '../../src/lib/errors'
 import { useTheme } from '../../src/lib/theme'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { KeyboardScreen } from '../../src/components/KeyboardScreen'
@@ -70,14 +70,18 @@ export default function BulkOnboardScreen() {
     retailerApi
       .getSections()
       .then((res) => setSections(res.data as Section[]))
-      .catch(() => {})
+      .catch((err) =>
+        setError(apiMessage(err, 'Could not load your racks. Go back and reopen this screen to retry.')),
+      )
     retailerApi
       .getStats()
       .then((res) => {
         const stats = res.data as { total_products_available?: number }
         setBaselineCount(stats.total_products_available ?? 0)
       })
-      .catch(() => {})
+      .catch((err) =>
+        setError(apiMessage(err, 'Could not load your catalogue count, so the number below may be low.')),
+      )
   }, [])
 
   // ── Create a new rack/shelf inline ──────────────────────────────
@@ -107,10 +111,10 @@ export default function BulkOnboardScreen() {
         [{ resize: { width: 1400 } }],
         { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG },
       )
-      const blob = await readLocalImage(compressed.uri)
-      const uploadResult = await catalogImportApi.getUploadUrl('rack-photo.jpg', 'image/jpeg', blob.size)
+      const prep = await prepareImageForUpload(compressed.uri, 'image/jpeg')
+      const uploadResult = await catalogImportApi.getUploadUrl('rack-photo.jpg', 'image/jpeg', prep.size)
       const info = uploadResult.data
-      await uploadImageToR2(compressed.uri, info.upload_url, 'image/jpeg')
+      await uploadImageToR2(prep.uri, info.upload_url, 'image/jpeg', undefined, undefined, { compress: false })
       setSourceUrl(info.public_url)
 
       setStep('detecting')
@@ -125,7 +129,7 @@ export default function BulkOnboardScreen() {
       setStep('reviewing')
     } catch (err) {
       logError(err)
-      setError('Something went wrong. Try again.')
+      setError(apiMessage(err, 'Something went wrong. Try again.'))
       setStep('location')
     }
   }, [selectedSectionId])

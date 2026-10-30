@@ -1,6 +1,6 @@
 # Railway cost & memory improvements
 
-**Opened:** 2026-10-09 · **Status:** ✅ culprit found + fixed + deployed 2026-10-10; 24 h confirmation and a few owner decisions still open (§8) · **Trigger:** Railway memory bill after 24 Sep 2026
+**Opened:** 2026-10-09 · **Status:** ✅ culprit found + fixed + deployed 2026-10-10; 24 h recheck done 2026-10-25 (holds); a few owner decisions still open (§8) · **Trigger:** Railway memory bill after 24 Sep 2026
 
 ---
 
@@ -16,7 +16,7 @@
 
 - **Shipped:** #49 `f1148360` (removal pass, squash-merged 2026-10-10 05:22 UTC; API build `438e26b4` SUCCESS) and #50 `59f9fa59` (admin Server Memory card, merged 05:37 UTC).
 - **Estimated bill:** API ≈ $19/mo → ≈ $1–2/mo. Not yet confirmed on an invoice.
-- **Not yet proven:** that RSS stays ~150–250 MB over 24 h (the card's history resets on every deploy; compare Railway's own graph). If it creeps, §10's reading guide applies.
+- **24 h recheck (2026-10-25, Railway metrics, 24 h window, hourly points):** API now 0.22 GB, avg 0.29, min 0.15, max 0.95 GB; web now 0.54 GB, avg 0.30, min 0.17, max 0.80 GB. CPU near zero on both. API holds far below the old 1.34 GB flat line, so the fix stands. The maxima most likely come from deploy overlap (API #159 deploy 2026-10-24 15:45 UTC; two web builds 2026-10-25 05:07/05:08 UTC); Railway's points do not prove that. Web at 0.54 GB is above its own average, so look once more. If either climbs, §10's reading guide applies.
 - **Web healthcheck** is what hits `/v1/public/theme` every minute (§2, item 9).
 
 ## 1. The bill — what it actually says
@@ -120,7 +120,7 @@ Removing `@imgly/...` from `packages/ai/package.json` while `pnpm-lock.yaml` sti
 - **Catalog import / bulk onboarding (F-001b/c/d):** `detectCropAndTag` now uploads the photo as-is and tags it ONCE — one product per photo, no per-garment crop, no vision "detect items" call (saves that AI call). A catalog page with several garments becomes a single product. Response shape is unchanged: `phash` is `''`, `is_duplicate` is always `false`, `bbox` is the full image.
 - **Duplicate warnings** no longer appear. `product_photos.phash` column + index (migration 019) are left in place; new rows get no hash.
 - **Colour auto-fill** is gone: "Add Color Variant" falls back to `New Color`; add-photos skips auto-variant.
-- **Quotas:** `IMAGE_CROP` is still checked and incremented on the import routes though no crop happens (harmless but misleading) — remove in a follow-up.
+- **Quotas:** ~~`IMAGE_CROP` is still checked and incremented on the import routes though no crop happens~~ **Removed 2026-10-24** from `catalog-import.ts` (Pro cleanup still uses it).
 
 ## 8. Still open / waiting
 
@@ -128,17 +128,17 @@ Removing `@imgly/...` from `packages/ai/package.json` while `pnpm-lock.yaml` sti
 |---|---|---|
 | 1 | Regenerate `pnpm-lock.yaml` (§6) | **DONE** — regenerated in #49, build + deploy passed 2026-10-10 |
 | 2 | Mobile UI for removed features | **DONE 2026-10-09** — see 6b |
-| 3 | Admin pages for backgrounds / photo cleanup | not checked (`apps/web/src/app/admin/photo-cleanup-test`, background-image admin) |
+| 3 | Admin pages for backgrounds / photo cleanup | **CHECKED 2026-10-24.** `photo-cleanup-test`: live, in the admin sidebar, still the studio bench (run, studio-shoot, A/B, image-to-video, try-on results); keep. `background-images`: upload UI already removed (`c0b68e28`); the page now only lists, toggles and deletes rows, and its empty state said "upload one above" (fixed). Still reachable, now with no UI: `POST /background-images/upload-url` and `POST /background-images` in `admin-media.ts`. Rows are still read by Pro cleanup (`background_image_id`) and `pickContrastBackground`, so new backdrops can no longer be added. Open owner decision: delete the two dead routes, or restore an upload form |
 | 4 | DB columns/tables (`background_image_id`, `add_shadow`, `BackgroundImage`) | left in place — dropping needs a migration, which only the owner may approve |
-| 5 | Docs: `CLAUDE.md` index rows (#31, #33, #35, #53 mention these features), `docs/BUILD-LOG.md`, `docs/PRO-REQUIREMENTS.md`, `docs/PLAN.md` | **not updated** — `CLAUDE.md` needs explicit owner approval to edit |
+| 5 | Docs: `CLAUDE.md` index rows (#31, #33, #35, #53 mention these features), `docs/BUILD-LOG.md`, `docs/PRO-REQUIREMENTS.md`, `docs/PLAN.md` | **DONE 2026-10-24** — CLAUDE.md rows #31, #33, #35, #53; BUILD-LOG part-7, PRO-REQUIREMENTS (auto cleanup bullet) and PLAN.md (R7) updated |
 | 6 | Sharp removal from non-compress/watermark features (§7) | **DONE 2026-10-09** (rotate, crop/multi-detect, ranking, duplicate detection, colour auto-fill). Tests: API products/load-test 76 passed, `@kanchuki/ai` 90 passed, typecheck clean. |
 | 6b | Mobile removal pass | **DONE 2026-10-09.** Removed: colour-detect (button/chip in `ProductMediaCarousel`, `useProductDetailForm`, calls in `add-color.tsx`/`add-photos.tsx`), background + shadow controls in `ProductPhotoControls` (**Set as Main kept**), `useProductAiStudio` bg/shadow state, add-product Auto-clean / Shadow / Background picker + pro-options backdrop picker, duplicate badge + `phash`/`is_duplicate` fields, `productApi.cleanupPhoto/getBackgroundImages/setBackground/rotatePhoto/detectColor`. Server `catalog-import` no longer returns `phash`/`is_duplicate`/`duplicate_of_product_id`. Mobile `tsc` + eslint clean, API 84 tests, AI 90 tests. **Kept on purpose:** client-side pre-save rotate (expo ImageManipulator, no server), Pro cleanup path (hanger removal + tight crop via the separate photo-cleanup sidecar — not sharp/imgly; say if you want it removed too). |
-| 7 | Three Postgres services | **ON HOLD** (owner will review). Not touched. Before deleting any: find the one `DATABASE_URL` points to; the others each cost ~50 MB + a volume. Take a backup first. |
+| 7 | Three Postgres services | **ON HOLD, still open 2026-10-24.** Which Postgres `DATABASE_URL` points to could not be determined by the agent: it needs Railway access (login expired) and reading a production connection string, which the operational policy forbids. Owner: Railway dashboard, API service, Variables, check the host in `DATABASE_URL` and `PURGE_DATABASE_URL`. Not touched. Before deleting any: find the one `DATABASE_URL` points to; the others each cost ~50 MB + a volume. Take a backup first. |
 | 8 | Lower `--max-old-space-size` (now 1536 in `apps/api/Dockerfile`) | **low value now** — heap committed is 77 MB, so the 1536 limit is never approached. Optional tidy (try 512–768); no memory impact expected |
 | 9 | Find who calls `/v1/public/theme` every 2 min | **DONE 2026-10-10** — Railway's web healthcheck, `GET /` every 60 s (§2). Optional: lightweight `/api/health` that skips the theme fetch |
 | 10 | Exact memory culprit | **DONE 2026-10-10** — background-removal stack; API 1.34 → 0.14 GB (§0). Re-check after 24 h |
 | 11 | Stop idle workers/crons (owner ask: "only run on request") | **superseded** — at ~0.14 GB always-on is ≈ $1–2/mo, so API sleep was turned off (§4.1) and workers/crons run on schedule. A separate worker service is no longer worth building for cost |
-| 12 | 24 h recheck of API RSS (expect 150–250 MB) + Railway graph | open — owner/next session |
+| 12 | 24 h recheck of API RSS (expect 150–250 MB) + Railway graph | **DONE 2026-10-25** — API avg 0.29 GB, peak 0.95 likely deploy overlap (see §0); web avg 0.30, now 0.54, recheck once |
 | 13 | Web `/.git/config` returns 200 (soft-404, not a leak) | queued: `storefront-soft-404.md` |
 
 ## 9. Safety notes

@@ -42,8 +42,36 @@ describe('manager allowlist', () => {
     // Moved to Settings — owner-only: tax, account connections, marketplace sync.
     expect(m('GET', '/v1/growth/gst/summary')).toBe(false);
     expect(m('GET', '/v1/retailers/me/integrations')).toBe(false);
-    expect(m('POST', '/v1/retailers/me/integrations/gmb')).toBe(false);
     expect(m('GET', '/v1/retailers/me/aggregators')).toBe(false);
+  });
+});
+
+describe('Google listing routes are owner-only', () => {
+  const urls = [
+    ['PATCH', '/v1/retailers/reviews/google-place'],
+    ['GET', '/v1/retailers/me/google-place/search'],
+    ['GET', '/v1/retailers/me/setup-checklist'],
+    ['POST', '/v1/retailers/me/setup-checklist/dismiss'],
+    ['POST', '/v1/retailers/me/setup-checklist/restore'],
+    ['POST', '/v1/retailers/me/setup-checklist/:item_key/ask'],
+    ['GET', '/v1/retailers/me/google-business/status'],
+    ['POST', '/v1/retailers/me/google-business/request'],
+    ['GET', '/v1/retailers/me/google-business/reviews'],
+    ['POST', '/v1/retailers/me/google-business/reviews/:id/reply'],
+    ['DELETE', '/v1/retailers/me/google-business/link'],
+  ] as const;
+  it('no staff role and no support scope reaches them', () => {
+    for (const [method, url] of urls) {
+      expect(staffCanAccess(method, url, 'manager'), `manager ${method} ${url}`).toBe(false);
+      expect(staffCanAccess(method, url, 'salesperson'), `salesperson ${method} ${url}`).toBe(
+        false,
+      );
+      for (const scope of ['DEMO', 'GROWTH', 'MAINTENANCE'] as const) {
+        expect(supportDelegateCanAccess(method, url, scope), `${scope} ${method} ${url}`).toBe(
+          false,
+        );
+      }
+    }
   });
 });
 

@@ -30,7 +30,9 @@ export const isCoverStyle = (v: unknown): v is CoverStyle =>
 
 const W = 1080;
 const H = 1350;
-const FONT = 'font-family="DejaVu Sans, Noto Sans, Arial, Helvetica, sans-serif"';
+// Marcellus = the mobile app's heading font (apps/api/fonts, installed by apps/api/Dockerfile).
+// DejaVu stays as the fallback for glyphs Marcellus lacks (e.g. the rupee sign) and for hosts without it.
+const FONT = 'font-family="Marcellus, DejaVu Sans, Noto Sans, Arial, Helvetica, sans-serif"';
 const INK = '#231F48';
 const GOLD = '#C9A24B';
 

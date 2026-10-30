@@ -5,6 +5,7 @@ import {
   retailersAggregatorRoutes,
   retailersBugReportRoutes,
   retailersCatalogUploadRoutes,
+  retailersGoogleBusinessRoutes,
   retailersIntegrationsRoutes,
   retailersInvoicesRoutes,
   retailersPayoutAccountRoutes,
@@ -13,6 +14,7 @@ import {
   retailersReferralRoutes,
   retailersSectionsRoutes,
   retailersSettingsRoutes,
+  retailersSetupChecklistRoutes,
   retailersShowcaseDesignRoutes,
   retailersSocialRoutes,
   retailersStatsRoutes,
@@ -53,6 +55,10 @@ export const retailerRoutes: FastifyPluginAsync = async (server) => {
   await server.register(retailersBugReportRoutes);
   // retailers-tickets — retailer raises/lists support tickets (support-and-feedback-loop §1)
   await server.register(retailersTicketRoutes);
+  // retailers-setup-checklist — dashboard "Complete your profile" (owner-only)
+  await server.register(retailersSetupChecklistRoutes);
+  // retailers-google-business — Google reviews read + reply (owner-only, dark until enabled)
+  await server.register(retailersGoogleBusinessRoutes);
   // retailers-invoices — GST invoice list + PDF download
   await server.register(retailersInvoicesRoutes);
   // retailers-referral — F-038 affiliate program, own referral code + link (T3)

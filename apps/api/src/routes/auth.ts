@@ -9,6 +9,7 @@ import { seedDefaultAttributes } from '../lib/default-attributes.js';
 import { seedDefaultCategories } from '../lib/default-categories.js';
 import {
   isMsg91OtpConfigured,
+  otpTestBypassActive,
   sendOtpViaMsg91,
   verifyMsg91WidgetToken,
   verifyStoredOtp,
@@ -109,57 +110,8 @@ function sessionIssuanceError() {
   return new AppError('OTP_VERIFY_FAILED', 'Could not complete sign-in. Please try again.', 500);
 }
 
-// ─── TEST BYPASS (pre-production only) ─────────────────────────────
-// With OTP_TEST_BYPASS=1, phones listed in OTP_TEST_PHONES skip the real
-// MSG91 OTP send + verify entirely — any 6-digit code the tester types is
-// accepted. Lets a solo dev demo the app to retailers/team/photographers on
-// dummy numbers without owning 12-21 real SIMs, and without depending on
-// MSG91's DLT-registered SMS delivery.
-//
-// OTP_TEST_PHONES is a comma-separated list of bare 10-digit numbers, e.g.
-// "9000000001,9000000002,...". Flag OFF (production default) never engages
-// the bypass — unset OTP_TEST_BYPASS once real users are live; the same
-// phones then flow through the real OTP path with no data migration
-// (ensureSupabaseSession already find-or-creates the auth user).
-const DEFAULT_TEST_PHONES = new Set([
-  '9000000001',
-  '9000000002',
-  '9000000003',
-  '9000000004',
-  '9000000005',
-  '9999999999',
-  '9876543210',
-]);
-
-function otpTestPhones(): Set<string> {
-  const envVal = process.env.OTP_TEST_PHONES;
-  if (envVal !== undefined && envVal !== '') {
-    const custom = envVal
-      .replace(/[\[\]"']/g, '')
-      .split(',')
-      .map((p) => p.trim())
-      .filter(Boolean)
-      .map((p) => {
-        try {
-          return normalizeIndianPhone(p);
-        } catch {
-          return p.replace(/\D/g, '').slice(-10);
-        }
-      })
-      .filter((p) => p.length === 10);
-
-    return new Set(custom);
-  }
-
-  return DEFAULT_TEST_PHONES;
-}
-
-function otpTestBypassActive(phone: string): boolean {
-  if (process.env.OTP_TEST_BYPASS !== '1') return false;
-  const normalized = phone.replace(/\D/g, '').slice(-10);
-  if ((process.env.OTP_TEST_PHONES ?? '').includes('*')) return true;
-  return otpTestPhones().has(normalized);
-}
+// TEST BYPASS: see `otpTestBypassActive` in lib/msg91-otp.ts (no wildcard, no
+// default list, ignored in production unless explicitly allowed — RC-088).
 
 // ─── APPLE REVIEW BYPASS (App Store review only) ──────────────────
 // A FIXED demo phone + FIXED code so an Apple reviewer can reach the app

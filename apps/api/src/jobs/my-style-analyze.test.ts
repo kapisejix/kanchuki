@@ -3,16 +3,16 @@
 // profile), a bad/failed read never invents a profile, and the photo is taken exactly once.
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { mockAnalyze, mockGarment, mockFamilies, mockUpdate, mockIncrement, mockDaily } = vi.hoisted(
-  () => ({
+const { mockAnalyze, mockGarment, mockFamilies, mockUpdate, mockSpent, mockRefund, mockDaily } =
+  vi.hoisted(() => ({
     mockAnalyze: vi.fn(),
     mockGarment: vi.fn(),
     mockFamilies: vi.fn(),
     mockUpdate: vi.fn(),
-    mockIncrement: vi.fn(),
+    mockSpent: vi.fn(),
+    mockRefund: vi.fn(),
     mockDaily: vi.fn(),
-  }),
-);
+  }));
 
 vi.mock('@kanchuki/ai', () => ({
   analyzeStyleImage: mockAnalyze,
@@ -27,7 +27,10 @@ vi.mock('@kanchuki/db', () => ({
     styleAnalysisDaily: { upsert: mockDaily },
   },
 }));
-vi.mock('../lib/quota.js', () => ({ incrementCustomerUsage: mockIncrement }));
+vi.mock('../lib/quota.js', () => ({
+  markCustomerJobQuotaSpent: mockSpent,
+  refundCustomerJobQuota: mockRefund,
+}));
 
 import {
   __resetMyStyleState,
@@ -54,7 +57,8 @@ beforeEach(() => {
   mockGarment.mockReset();
   mockFamilies.mockReset().mockResolvedValue([{ name: 'red' }, { name: 'yellow' }]);
   mockUpdate.mockReset().mockResolvedValue({});
-  mockIncrement.mockReset().mockResolvedValue(undefined);
+  mockSpent.mockReset().mockResolvedValue(undefined);
+  mockRefund.mockReset().mockResolvedValue(undefined);
   mockDaily.mockReset().mockResolvedValue({});
 });
 
@@ -72,7 +76,8 @@ describe('handleMyStyleAnalyze', () => {
       data: { skin_undertone: 'warm', skin_depth: 'medium', body_frame: 'average' },
     });
     expect(mockUpdate.mock.calls[0]?.[0].data.style_profile_at).toBeInstanceOf(Date);
-    expect(mockIncrement).toHaveBeenCalledWith(ACCT, 'STYLE_ANALYSIS');
+    expect(mockSpent).toHaveBeenCalledWith(JOB, 'STYLE_ANALYSIS');
+    expect(mockRefund).not.toHaveBeenCalled();
     expect(await getAnalysis(JOB)).toEqual({ account_id: ACCT, status: 'ready', profile: PROFILE });
     expect(tryOnPhotoCount()).toBe(0);
   });
@@ -110,7 +115,9 @@ describe('handleMyStyleAnalyze', () => {
     await run();
     expect(mockAnalyze).not.toHaveBeenCalled();
     expect(await getAnalysis(JOB)).toMatchObject({ status: 'failed', reason: 'expired' });
-    expect(mockIncrement).not.toHaveBeenCalled();
+    expect(mockSpent).not.toHaveBeenCalled();
+    expect(mockRefund).toHaveBeenCalledTimes(1);
+    expect(mockRefund).toHaveBeenCalledWith(JOB, 'STYLE_ANALYSIS');
   });
 
   it('cancelled while queued: no model call, no write, no charge', async () => {
@@ -119,7 +126,9 @@ describe('handleMyStyleAnalyze', () => {
     await run();
     expect(mockAnalyze).not.toHaveBeenCalled();
     expect(mockUpdate).not.toHaveBeenCalled();
-    expect(mockIncrement).not.toHaveBeenCalled();
+    expect(mockSpent).not.toHaveBeenCalled();
+    expect(mockRefund).toHaveBeenCalledTimes(1);
+    expect(mockRefund).toHaveBeenCalledWith(JOB, 'STYLE_ANALYSIS');
     expect(tryOnPhotoCount()).toBe(0);
   });
 
@@ -129,7 +138,9 @@ describe('handleMyStyleAnalyze', () => {
     await run();
     expect(await getAnalysis(JOB)).toMatchObject({ status: 'failed', reason: 'face_not_clear' });
     expect(mockUpdate).not.toHaveBeenCalled();
-    expect(mockIncrement).not.toHaveBeenCalled();
+    expect(mockSpent).not.toHaveBeenCalled();
+    expect(mockRefund).toHaveBeenCalledTimes(1);
+    expect(mockRefund).toHaveBeenCalledWith(JOB, 'STYLE_ANALYSIS');
   });
 
   it('a model/provider failure fails the job, invents no profile, charges nothing', async () => {
@@ -138,7 +149,9 @@ describe('handleMyStyleAnalyze', () => {
     await expect(run()).rejects.toThrow(/providers failed/);
     expect(await getAnalysis(JOB)).toMatchObject({ status: 'failed', reason: 'read_failed' });
     expect(mockUpdate).not.toHaveBeenCalled();
-    expect(mockIncrement).not.toHaveBeenCalled();
+    expect(mockSpent).not.toHaveBeenCalled();
+    expect(mockRefund).toHaveBeenCalledTimes(1);
+    expect(mockRefund).toHaveBeenCalledWith(JOB, 'STYLE_ANALYSIS');
     expect(tryOnPhotoCount()).toBe(0);
   });
 
@@ -150,8 +163,27 @@ describe('handleMyStyleAnalyze', () => {
     });
     await run();
     expect(mockUpdate).not.toHaveBeenCalled();
-    expect(mockIncrement).toHaveBeenCalledWith(ACCT, 'STYLE_ANALYSIS');
+    expect(mockSpent).toHaveBeenCalledWith(JOB, 'STYLE_ANALYSIS');
+    expect(mockRefund).not.toHaveBeenCalled();
     expect((await getAnalysis(JOB))?.status).toBe('cancelled');
+  });
+
+  it('a throw after the model ran (account write fails) keeps the slot spent', async () => {
+    await queue();
+    mockAnalyze.mockResolvedValue({ usable: true, profile: PROFILE });
+    mockUpdate.mockRejectedValue(new Error('db down'));
+    await expect(run()).rejects.toThrow('db down');
+    expect(mockSpent).toHaveBeenCalledWith(JOB, 'STYLE_ANALYSIS');
+    expect(mockRefund).not.toHaveBeenCalled();
+  });
+
+  it('a failed mark-spent write is logged and does not refund a paid read', async () => {
+    await queue();
+    mockAnalyze.mockResolvedValue({ usable: true, profile: PROFILE });
+    mockSpent.mockRejectedValue(new Error('db down'));
+    await run();
+    expect(await getAnalysis(JOB)).toMatchObject({ status: 'ready' });
+    expect(mockRefund).not.toHaveBeenCalled();
   });
 
   it('cleared between the write and the completion: the job re-nulls the profile', async () => {
@@ -186,8 +218,9 @@ describe('handleMyStyleAnalyze - garment mode', () => {
     expect(mockGarment.mock.calls[0]?.[0]).toBeInstanceOf(Buffer);
     expect(mockGarment.mock.calls[0]?.[2]).toEqual(['red', 'yellow']); // the admin family list
     expect(mockUpdate).not.toHaveBeenCalled();
-    expect(mockIncrement).toHaveBeenCalledTimes(1);
-    expect(mockIncrement).toHaveBeenCalledWith(ACCT, 'STYLE_ANALYSIS');
+    expect(mockSpent).toHaveBeenCalledTimes(1);
+    expect(mockSpent).toHaveBeenCalledWith(JOB, 'STYLE_ANALYSIS');
+    expect(mockRefund).not.toHaveBeenCalled();
     expect(mockDaily).toHaveBeenCalledTimes(1);
     expect(await getAnalysis(JOB)).toEqual({ account_id: ACCT, status: 'ready', garment: GARMENT });
     expect(tryOnPhotoCount()).toBe(0);
@@ -198,7 +231,9 @@ describe('handleMyStyleAnalyze - garment mode', () => {
     mockGarment.mockResolvedValue({ usable: false, reason: 'no_garment' });
     await runGarment();
     expect(await getAnalysis(JOB)).toMatchObject({ status: 'failed', reason: 'no_garment' });
-    expect(mockIncrement).not.toHaveBeenCalled();
+    expect(mockSpent).not.toHaveBeenCalled();
+    expect(mockRefund).toHaveBeenCalledTimes(1);
+    expect(mockRefund).toHaveBeenCalledWith(JOB, 'STYLE_ANALYSIS');
     expect(mockDaily).not.toHaveBeenCalled();
   });
 
@@ -207,7 +242,9 @@ describe('handleMyStyleAnalyze - garment mode', () => {
     mockGarment.mockRejectedValue(new Error('unreadable model reply'));
     await expect(runGarment()).rejects.toThrow('unreadable model reply');
     expect(await getAnalysis(JOB)).toMatchObject({ status: 'failed', reason: 'read_failed' });
-    expect(mockIncrement).not.toHaveBeenCalled();
+    expect(mockSpent).not.toHaveBeenCalled();
+    expect(mockRefund).toHaveBeenCalledTimes(1);
+    expect(mockRefund).toHaveBeenCalledWith(JOB, 'STYLE_ANALYSIS');
   });
 
   it('a colour-family lookup failure fails the read instead of guessing', async () => {
@@ -226,7 +263,7 @@ describe('handleMyStyleAnalyze - garment mode', () => {
     });
     await runGarment();
     expect(await getAnalysis(JOB)).toMatchObject({ status: 'cancelled' });
-    expect(mockIncrement).toHaveBeenCalledTimes(1);
+    expect(mockSpent).toHaveBeenCalledTimes(1);
   });
 
   it('a job queued without a mode (pre-PR-9) still runs as a selfie', async () => {

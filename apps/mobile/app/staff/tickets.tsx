@@ -145,6 +145,7 @@ export default function StaffTicketsScreen() {
                     </View>
                     <Text className="text-xs font-semibold text-sand-700">
                       {TYPE_LABEL[t.ticket_type] ?? 'Support'}
+                      {t.setup_item ? ` · Setup: ${t.setup_item.replace(/_/g, ' ')}` : ''}
                       {t.requires_visit ? ' · visit needed' : ''}
                     </Text>
                     {t.note ? <Text className="text-xs text-sand-600 mt-1 leading-5">{t.note}</Text> : null}

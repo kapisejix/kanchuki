@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { PRODUCT_OCCASIONS } from './occasions.js';
 import { FESTIVAL_OCCASIONS, MY_STYLE_TABS, STYLE_TREND_KINDS } from './my-style-tabs.js';
+import { PRODUCT_OCCASIONS } from './occasions.js';
 import { occasionTargets } from './style-quiz.js';
 
 describe('occasionTargets (RC-070)', () => {

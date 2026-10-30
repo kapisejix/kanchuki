@@ -20,17 +20,12 @@ async function teamRequest<T>(
   path: string,
   options: RequestInit & { timeoutMs?: number } = {},
 ): Promise<T> {
-  const adminKey = await getItem('admin_key')
   const headers: Record<string, string> = {
     ...(options.body ? { 'Content-Type': 'application/json' } : {}),
     ...(options.headers as Record<string, string> | undefined),
   }
-  if (adminKey) {
-    headers['x-admin-key'] = adminKey
-  } else {
-    const token = await getItem('auth_token')
-    if (token) headers['Authorization'] = `Bearer ${token}`
-  }
+  const token = await getItem('auth_token')
+  if (token) headers['Authorization'] = `Bearer ${token}`
 
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), options.timeoutMs ?? 15_000)
@@ -99,6 +94,7 @@ export type SupportTicket = {
   assigned_to: { id: string; name: string } | null
   retailer: { id: string; shop_name: string; city: string; phone: string }
   ticket_type: 'GENERAL' | 'CATALOG_UPLOAD' | 'DEMO' | 'GROWTH_SETUP' | 'MAINTENANCE'
+  setup_item?: string | null
   item_count_requested: number | null
   quoted_price_inr: number | null
   proposed_slots: string[] | null

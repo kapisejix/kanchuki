@@ -1,26 +1,26 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mockCreate = vi.fn()
+const mockCreate = vi.fn();
 
 vi.mock('@anthropic-ai/sdk', () => ({
   default: class {
-    messages = { create: mockCreate }
+    messages = { create: mockCreate };
   },
-}))
+}));
 
 vi.mock('@kanchuki/db', () => ({
   getSecret: vi.fn().mockResolvedValue('test-anthropic-key'),
   // null = registry table missing → legacy hardcoded claude/openai/gemini
   // adapters (matches the pre-registry behavior these tests assert against).
   listActiveAiProviders: vi.fn().mockResolvedValue(null),
-}))
+}));
 
 // ssrfSafeFetch resolves the hostname before calling fetch — stub it to a
 // public IP so the cdn.example.com fixtures below don't hit real DNS.
 vi.mock('node:dns/promises', () => {
-  const lookup = vi.fn().mockResolvedValue([{ address: '93.184.216.34', family: 4 }])
-  return { lookup, default: { lookup } }
-})
+  const lookup = vi.fn().mockResolvedValue([{ address: '93.184.216.34', family: 4 }]);
+  return { lookup, default: { lookup } };
+});
 
 const {
   tagProductImages,
@@ -28,39 +28,39 @@ const {
   tagProductImageUrls,
   imageHash,
   suggestDesignNameAndColor,
-} = await import('./tagger.js')
+} = await import('./tagger.js');
 
 function toolUseResponse(input: Record<string, unknown>) {
-  return { content: [{ type: 'tool_use', input }] }
+  return { content: [{ type: 'tool_use', input }] };
 }
 
 beforeEach(() => {
-  mockCreate.mockReset()
-})
+  mockCreate.mockReset();
+});
 
 describe('imageHash', () => {
   it('is deterministic for identical buffers', () => {
-    const a = imageHash(Buffer.from('same-bytes'))
-    const b = imageHash(Buffer.from('same-bytes'))
-    expect(a).toBe(b)
-  })
+    const a = imageHash(Buffer.from('same-bytes'));
+    const b = imageHash(Buffer.from('same-bytes'));
+    expect(a).toBe(b);
+  });
 
   it('differs for different buffers', () => {
-    const a = imageHash(Buffer.from('one'))
-    const b = imageHash(Buffer.from('two'))
-    expect(a).not.toBe(b)
-  })
-})
+    const a = imageHash(Buffer.from('one'));
+    const b = imageHash(Buffer.from('two'));
+    expect(a).not.toBe(b);
+  });
+});
 
 describe('tagProductImages', () => {
   it('rejects empty image array', async () => {
-    await expect(tagProductImages([])).rejects.toThrow('At least one image required')
-  })
+    await expect(tagProductImages([])).rejects.toThrow('At least one image required');
+  });
 
   it('rejects more than 2 images', async () => {
-    const img = { buffer: Buffer.from('x'), mediaType: 'image/jpeg' as const }
-    await expect(tagProductImages([img, img, img])).rejects.toThrow('Max 2 images')
-  })
+    const img = { buffer: Buffer.from('x'), mediaType: 'image/jpeg' as const };
+    await expect(tagProductImages([img, img, img])).rejects.toThrow('Max 2 images');
+  });
 
   it('sends single image block + single-photo prompt for one image', async () => {
     mockCreate.mockResolvedValue(
@@ -71,22 +71,24 @@ describe('tagProductImages', () => {
         search_tags: ['pink kurti'],
         is_catalog_image: false,
       }),
-    )
+    );
 
-    const result = await tagProductImages([{ buffer: Buffer.from('front'), mediaType: 'image/jpeg' }])
+    const result = await tagProductImages([
+      { buffer: Buffer.from('front'), mediaType: 'image/jpeg' },
+    ]);
 
-    expect(mockCreate).toHaveBeenCalledTimes(1)
-    const call = mockCreate.mock.calls[0]![0]
-    const content = call.messages[0].content
-    expect(content).toHaveLength(2) // 1 image + 1 text
-    expect(content[0].type).toBe('image')
-    expect(content[1].text).toMatch(/Analyze this Indian ethnic fashion product image/)
+    expect(mockCreate).toHaveBeenCalledTimes(1);
+    const call = mockCreate.mock.calls[0]![0];
+    const content = call.messages[0].content;
+    expect(content).toHaveLength(2); // 1 image + 1 text
+    expect(content[0].type).toBe('image');
+    expect(content[1].text).toMatch(/Analyze this Indian ethnic fashion product image/);
 
-    expect(result.category).toBe('Kurti')
-    expect(result.primary_color).toBe('Pink')
-    expect(result.secondary_colors).toEqual([])
-    expect(result.fabric_estimate).toBeNull()
-  })
+    expect(result.category).toBe('Kurti');
+    expect(result.primary_color).toBe('Pink');
+    expect(result.secondary_colors).toEqual([]);
+    expect(result.fabric_estimate).toBeNull();
+  });
 
   it('keeps only enum occasions from the reply and offers the enum in the schema', async () => {
     mockCreate.mockResolvedValue(
@@ -98,23 +100,37 @@ describe('tagProductImages', () => {
         search_tags: [],
         is_catalog_image: false,
       }),
-    )
+    );
 
-    const result = await tagProductImages([{ buffer: Buffer.from('front'), mediaType: 'image/jpeg' }])
+    const result = await tagProductImages([
+      { buffer: Buffer.from('front'), mediaType: 'image/jpeg' },
+    ]);
 
-    expect(result.occasions).toEqual(['Wedding', 'Festive'])
-    const schema = mockCreate.mock.calls[0]![0].tools[0].input_schema
-    expect(schema.properties.occasions.items.enum).toEqual(['Daily Wear', 'Party Wear', 'Festive', 'Wedding'])
-    expect(schema.required).not.toContain('occasions')
-  })
+    expect(result.occasions).toEqual(['Wedding', 'Festive']);
+    const schema = mockCreate.mock.calls[0]![0].tools[0].input_schema;
+    expect(schema.properties.occasions.items.enum).toEqual([
+      'Daily Wear',
+      'Party Wear',
+      'Festive',
+      'Wedding',
+    ]);
+    expect(schema.required).not.toContain('occasions');
+  });
 
   it('returns [] occasions when the reply omits them', async () => {
     mockCreate.mockResolvedValue(
-      toolUseResponse({ category: 'Kurti', primary_color: 'Pink', search_tags: [], is_catalog_image: false }),
-    )
-    const result = await tagProductImages([{ buffer: Buffer.from('front'), mediaType: 'image/jpeg' }])
-    expect(result.occasions).toEqual([])
-  })
+      toolUseResponse({
+        category: 'Kurti',
+        primary_color: 'Pink',
+        search_tags: [],
+        is_catalog_image: false,
+      }),
+    );
+    const result = await tagProductImages([
+      { buffer: Buffer.from('front'), mediaType: 'image/jpeg' },
+    ]);
+    expect(result.occasions).toEqual([]);
+  });
 
   it('sends both image blocks + front/back prompt for two images', async () => {
     mockCreate.mockResolvedValue(
@@ -125,28 +141,28 @@ describe('tagProductImages', () => {
         search_tags: ['maroon saree'],
         is_catalog_image: false,
       }),
-    )
+    );
 
     await tagProductImages([
       { buffer: Buffer.from('front'), mediaType: 'image/jpeg' },
       { buffer: Buffer.from('back'), mediaType: 'image/png' },
-    ])
+    ]);
 
-    const call = mockCreate.mock.calls[0]![0]
-    const content = call.messages[0].content
-    expect(content).toHaveLength(3) // 2 images + 1 text
-    expect(content[0].source.media_type).toBe('image/jpeg')
-    expect(content[1].source.media_type).toBe('image/png')
-    expect(content[2].text).toMatch(/front and back photos/)
-  })
+    const call = mockCreate.mock.calls[0]![0];
+    const content = call.messages[0].content;
+    expect(content).toHaveLength(3); // 2 images + 1 text
+    expect(content[0].source.media_type).toBe('image/jpeg');
+    expect(content[1].source.media_type).toBe('image/png');
+    expect(content[2].text).toMatch(/front and back photos/);
+  });
 
   it('throws when Claude does not return a tool_use block', async () => {
-    mockCreate.mockResolvedValue({ content: [{ type: 'text', text: 'no tool call' }] })
+    mockCreate.mockResolvedValue({ content: [{ type: 'text', text: 'no tool call' }] });
 
     await expect(
       tagProductImages([{ buffer: Buffer.from('x'), mediaType: 'image/jpeg' }]),
-    ).rejects.toThrow('Claude did not return tool use result')
-  })
+    ).rejects.toThrow('Claude did not return tool use result');
+  });
 
   it('defaults missing optional fields to null/[]/false', async () => {
     mockCreate.mockResolvedValue(
@@ -157,13 +173,13 @@ describe('tagProductImages', () => {
         search_tags: [],
         is_catalog_image: undefined,
       }),
-    )
+    );
 
-    const result = await tagProductImages([{ buffer: Buffer.from('x'), mediaType: 'image/jpeg' }])
-    expect(result.product_type).toBeNull()
-    expect(result.embellishments).toEqual([])
-    expect(result.is_catalog_image).toBe(false)
-  })
+    const result = await tagProductImages([{ buffer: Buffer.from('x'), mediaType: 'image/jpeg' }]);
+    expect(result.product_type).toBeNull();
+    expect(result.embellishments).toEqual([]);
+    expect(result.is_catalog_image).toBe(false);
+  });
 
   it('derives a product_name fallback from color + category when the model omits it', async () => {
     mockCreate.mockResolvedValue(
@@ -175,14 +191,14 @@ describe('tagProductImages', () => {
         is_catalog_image: false,
         // product_name/short_description/subtype deliberately missing
       }),
-    )
+    );
 
-    const result = await tagProductImages([{ buffer: Buffer.from('x'), mediaType: 'image/jpeg' }])
-    expect(result.product_name).toBe('Pink Kurti')
+    const result = await tagProductImages([{ buffer: Buffer.from('x'), mediaType: 'image/jpeg' }]);
+    expect(result.product_name).toBe('Pink Kurti');
     // Occasion no longer drives the description fallback (removed feature).
-    expect(result.short_description).toBe('Pink.')
-    expect(result.subtype).toBeNull() // no forced fallback — UI uses category
-  })
+    expect(result.short_description).toBe('Pink.');
+    expect(result.subtype).toBeNull(); // no forced fallback — UI uses category
+  });
 
   it('keeps a model-provided product_name/description and never blanks them', async () => {
     mockCreate.mockResolvedValue(
@@ -196,17 +212,18 @@ describe('tagProductImages', () => {
         search_tags: ['peach lehenga'],
         is_catalog_image: false,
         product_name: 'Peach Floral Lehenga Skirt',
-        short_description: 'Peach organza lehenga skirt with floral embroidery, ideal for weddings.',
+        short_description:
+          'Peach organza lehenga skirt with floral embroidery, ideal for weddings.',
       }),
-    )
+    );
 
-    const result = await tagProductImages([{ buffer: Buffer.from('x'), mediaType: 'image/jpeg' }])
-    expect(result.product_name).toBe('Peach Floral Lehenga Skirt')
+    const result = await tagProductImages([{ buffer: Buffer.from('x'), mediaType: 'image/jpeg' }]);
+    expect(result.product_name).toBe('Peach Floral Lehenga Skirt');
     expect(result.short_description).toBe(
       'Peach organza lehenga skirt with floral embroidery, ideal for weddings.',
-    )
-    expect(result.subtype).toBe('Lehenga Skirt')
-  })
+    );
+    expect(result.subtype).toBe('Lehenga Skirt');
+  });
 
   it('leaves name/description null only when nothing is known at all', async () => {
     mockCreate.mockResolvedValue(
@@ -218,13 +235,13 @@ describe('tagProductImages', () => {
         search_tags: [],
         is_catalog_image: false,
       }),
-    )
+    );
 
-    const result = await tagProductImages([{ buffer: Buffer.from('x'), mediaType: 'image/jpeg' }])
-    expect(result.product_name).toBeNull()
-    expect(result.short_description).toBeNull()
-  })
-})
+    const result = await tagProductImages([{ buffer: Buffer.from('x'), mediaType: 'image/jpeg' }]);
+    expect(result.product_name).toBeNull();
+    expect(result.short_description).toBeNull();
+  });
+});
 
 describe('suggestDesignNameAndColor', () => {
   beforeEach(() => {
@@ -232,36 +249,36 @@ describe('suggestDesignNameAndColor', () => {
       ok: true,
       headers: { get: () => 'image/jpeg' },
       arrayBuffer: async () => new TextEncoder().encode('design-bytes').buffer,
-    }) as unknown as typeof fetch
-  })
+    }) as unknown as typeof fetch;
+  });
 
   it('returns the suggested name + color from a design photo', async () => {
     mockCreate.mockResolvedValue(
       toolUseResponse({ name: 'Pink Blouse - Deep Neck', color: 'Pink' }),
-    )
-    const result = await suggestDesignNameAndColor('https://cdn.example.com/design.jpg')
-    expect(result).toEqual({ name: 'Pink Blouse - Deep Neck', color: 'Pink' })
-    expect(mockCreate).toHaveBeenCalledTimes(1)
-  })
+    );
+    const result = await suggestDesignNameAndColor('https://cdn.example.com/design.jpg');
+    expect(result).toEqual({ name: 'Pink Blouse - Deep Neck', color: 'Pink' });
+    expect(mockCreate).toHaveBeenCalledTimes(1);
+  });
 
   it('trims and normalises the returned fields', async () => {
-    mockCreate.mockResolvedValue(toolUseResponse({ name: '  Teal Anarkali  ', color: '  Teal ' }))
-    const result = await suggestDesignNameAndColor('https://cdn.example.com/design.jpg')
-    expect(result).toEqual({ name: 'Teal Anarkali', color: 'Teal' })
-  })
+    mockCreate.mockResolvedValue(toolUseResponse({ name: '  Teal Anarkali  ', color: '  Teal ' }));
+    const result = await suggestDesignNameAndColor('https://cdn.example.com/design.jpg');
+    expect(result).toEqual({ name: 'Teal Anarkali', color: 'Teal' });
+  });
 
   it('returns nulls when the model omits both fields', async () => {
-    mockCreate.mockResolvedValue(toolUseResponse({}))
-    const result = await suggestDesignNameAndColor('https://cdn.example.com/design.jpg')
-    expect(result).toEqual({ name: null, color: null })
-  })
+    mockCreate.mockResolvedValue(toolUseResponse({}));
+    const result = await suggestDesignNameAndColor('https://cdn.example.com/design.jpg');
+    expect(result).toEqual({ name: null, color: null });
+  });
 
   it('fail-opens to nulls when the AI provider throws', async () => {
-    mockCreate.mockRejectedValue(new Error('provider down'))
-    const result = await suggestDesignNameAndColor('https://cdn.example.com/design.jpg')
-    expect(result).toEqual({ name: null, color: null })
-  })
-})
+    mockCreate.mockRejectedValue(new Error('provider down'));
+    const result = await suggestDesignNameAndColor('https://cdn.example.com/design.jpg');
+    expect(result).toEqual({ name: null, color: null });
+  });
+});
 
 describe('tagProductImageUrl(s)', () => {
   beforeEach(() => {
@@ -273,43 +290,45 @@ describe('tagProductImageUrl(s)', () => {
         search_tags: ['gold lehenga'],
         is_catalog_image: true,
       }),
-    )
-  })
+    );
+  });
 
   it('fetches a single url and tags it', async () => {
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: true,
       headers: { get: () => 'image/jpeg' },
       arrayBuffer: async () => new TextEncoder().encode('front-bytes').buffer,
-    }) as unknown as typeof fetch
+    }) as unknown as typeof fetch;
 
-    const result = await tagProductImageUrl('https://cdn.example.com/front.jpg')
-    expect(result.category).toBe('Lehenga')
-    expect(mockCreate).toHaveBeenCalledTimes(1)
-  })
+    const result = await tagProductImageUrl('https://cdn.example.com/front.jpg');
+    expect(result.category).toBe('Lehenga');
+    expect(mockCreate).toHaveBeenCalledTimes(1);
+  });
 
   it('fetches both front+back urls and tags together', async () => {
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: true,
       headers: { get: () => 'image/png' },
       arrayBuffer: async () => new TextEncoder().encode('bytes').buffer,
-    }) as unknown as typeof fetch
+    }) as unknown as typeof fetch;
 
     await tagProductImageUrls([
       'https://cdn.example.com/front.jpg',
       'https://cdn.example.com/back.jpg',
-    ])
+    ]);
 
-    expect(globalThis.fetch).toHaveBeenCalledTimes(2)
-    const content = mockCreate.mock.calls[0]![0].messages[0].content
-    expect(content).toHaveLength(3)
-  })
+    expect(globalThis.fetch).toHaveBeenCalledTimes(2);
+    const content = mockCreate.mock.calls[0]![0].messages[0].content;
+    expect(content).toHaveLength(3);
+  });
 
   it('throws when fetch fails', async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue({ ok: false, status: 404 }) as unknown as typeof fetch
+    globalThis.fetch = vi
+      .fn()
+      .mockResolvedValue({ ok: false, status: 404 }) as unknown as typeof fetch;
 
     await expect(tagProductImageUrl('https://cdn.example.com/missing.jpg')).rejects.toThrow(
       'Failed to fetch image for tagging: 404',
-    )
-  })
-})
+    );
+  });
+});

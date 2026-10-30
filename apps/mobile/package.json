@@ -17,7 +17,6 @@
     "@expo-google-fonts/inter": "^0.4.2",
     "@expo-google-fonts/marcellus": "^0.4.1",
     "@expo/metro-runtime": "~6.1.2",
-    "@gorhom/bottom-sheet": "^4.6.4",
     "@kanchuki/shared": "workspace:*",
     "@msg91comm/sendotp-react-native": "^2.1.0",
     "@react-navigation/native": "^7.3.8",
@@ -37,6 +36,7 @@
     "expo-linking": "~8.0.12",
     "expo-location": "~19.0.8",
     "expo-media-library": "^18.2.1",
+    "expo-network": "~8.0.8",
     "expo-notifications": "~0.32.17",
     "expo-router": "~6.0.24",
     "expo-secure-store": "~15.0.8",
@@ -52,7 +52,6 @@
     "react-native-css-interop": "~0.1.22",
     "react-native-fbsdk-next": "^13.4.1",
     "react-native-gesture-handler": "~2.28.0",
-    "react-native-image-viewing": "^0.2.2",
     "react-native-qrcode-svg": "^6.3.15",
     "react-native-reanimated": "~4.1.7",
     "react-native-safe-area-context": "5.6.2",
@@ -60,8 +59,7 @@
     "react-native-svg": "15.12.1",
     "react-native-web": "^0.21.0",
     "react-native-worklets": "0.5.1",
-    "tailwindcss": "^3.4.0",
-    "zustand": "^4.5.4"
+    "tailwindcss": "^3.4.0"
   },
   "expo": {
     "install": {
@@ -73,9 +71,9 @@
   },
   "devDependencies": {
     "@babel/core": "^7.24.0",
-    "@expo/ngrok": "^4.1.3",
     "@testing-library/react-native": "^12.4.0",
     "@types/react": "19.1.17",
+    "babel-plugin-transform-remove-console": "^6.9.4",
     "eslint": "^9.0.0",
     "eslint-config-expo": "~10.0.0",
     "react-test-renderer": "^19.0.0",

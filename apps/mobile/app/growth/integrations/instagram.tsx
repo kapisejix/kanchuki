@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { router } from 'expo-router'
 import {
@@ -119,7 +119,12 @@ export default function InstagramConfigScreen() {
 
   // 1-Click Connect Action — Instagram publishing runs through the linked
   // Facebook Page, so this is the same native FB login with IG scopes added.
+  // RC-132: sync guard — `connecting` state reaches the button a render late, so two
+  // taps in one tick would both start a login.
+  const connectingRef = useRef(false)
   const handleOneClickConnect = async () => {
+    if (connectingRef.current) return
+    connectingRef.current = true
     setConnecting(true)
     setConnectError(null)
     try {
@@ -151,6 +156,7 @@ export default function InstagramConfigScreen() {
       // account is linked to your Facebook Page…") or the Facebook SDK.
       setConnectError(err instanceof Error ? err.message : 'Could not connect your Instagram account')
     } finally {
+      connectingRef.current = false
       setConnecting(false)
     }
   }

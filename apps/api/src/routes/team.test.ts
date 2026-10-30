@@ -103,8 +103,53 @@ async function buildApp() {
   return app;
 }
 
+// In-memory stand-in for the team-session Redis client. `fail` makes every
+// command throw, the way a not-yet-ready client with the offline queue off does.
+const { redisStore, redisFail } = vi.hoisted(() => ({
+  redisStore: new Map<string, string>(),
+  redisFail: { on: false },
+}));
+vi.mock('ioredis', () => {
+  class FakeRedis {
+    status = 'ready';
+    once() {
+      return this;
+    }
+    off() {
+      return this;
+    }
+    async set(key: string, value: string) {
+      if (redisFail.on) throw new Error("Stream isn't writeable");
+      redisStore.set(key, value);
+      return 'OK';
+    }
+    async get(key: string) {
+      if (redisFail.on) throw new Error("Stream isn't writeable");
+      return redisStore.get(key) ?? null;
+    }
+    async incr(key: string) {
+      if (redisFail.on) throw new Error("Stream isn't writeable");
+      const next = Number(redisStore.get(key) ?? 0) + 1;
+      redisStore.set(key, String(next));
+      return next;
+    }
+    async expire() {
+      return 1;
+    }
+    async getdel(key: string) {
+      if (redisFail.on) throw new Error("Stream isn't writeable");
+      const value = redisStore.get(key) ?? null;
+      redisStore.delete(key);
+      return value;
+    }
+  }
+  return { Redis: FakeRedis, default: FakeRedis };
+});
+
 beforeEach(() => {
   vi.clearAllMocks();
+  redisStore.clear();
+  redisFail.on = false;
   process.env.TEAM_JWT_SECRET = 'test-team-secret';
   process.env.ADMIN_API_KEY = 'test-admin-key';
 });
@@ -132,6 +177,28 @@ describe('POST /team/login', () => {
       payload: { email: 'a@kanchuki.app', password: 'wrong' },
     });
     expect(res.statusCode).toBe(403);
+    await app.close();
+  });
+
+  // H1-2: per-email lock, so rotating IPs can't brute-force an admin password.
+  it('locks the email after 5 failures, even with the right password', async () => {
+    mockTeamMemberFindUnique.mockResolvedValue({
+      id: 'x',
+      name: 'Admin One',
+      email: 'a@kanchuki.app',
+      password_hash: hashPassword('correct-horse'),
+      role: 'SUPER_ADMIN',
+      is_active: true,
+    });
+    const app = await buildApp();
+    const login = (password: string) =>
+      app.inject({
+        method: 'POST',
+        url: '/v1/team/login',
+        payload: { email: 'A@kanchuki.app', password },
+      });
+    for (let i = 0; i < 5; i += 1) expect((await login('wrong')).statusCode).toBe(403);
+    expect((await login('correct-horse')).statusCode).toBe(429);
     await app.close();
   });
 
@@ -1022,16 +1089,44 @@ describe('POST /team/otp/send & POST /team/otp/verify', () => {
     expect(sendRes.statusCode).toBe(200);
     expect(sendRes.json().data.message).toBeDefined();
 
-    // 2. Verify OTP (using dev test code 123456)
+    // 2. Verify with the code the send stored
+    const code = redisStore.get('team:otp:9876543211');
+    expect(code).toMatch(/^\d{6}$/);
     const verifyRes = await app.inject({
       method: 'POST',
       url: '/v1/team/otp/verify',
-      payload: { identifier: '9876543211', otp: '123456' },
+      payload: { identifier: '9876543211', otp: code },
     });
     expect(verifyRes.statusCode).toBe(200);
     expect(verifyRes.json().data.token).toBeDefined();
     expect(verifyRes.json().data.team_member.name).toBe('Priya Sharma');
 
+    await app.close();
+  });
+
+  // RC-085: a Redis error used to fall back to accepting '123456'.
+  it('rejects 123456 when Redis throws (fails closed)', async () => {
+    // @ts-ignore
+    const { prisma } = await import('@kanchuki/db');
+    prisma.teamMember.findFirst = vi.fn().mockResolvedValue({
+      id: 'tm_otp_user',
+      name: 'Priya Sharma',
+      email: 'priya@kanchuki.app',
+      phone: '9876543211',
+      role: 'SUPER_ADMIN',
+      is_active: true,
+    });
+    redisFail.on = true;
+
+    const app = await buildApp();
+    for (const identifier of ['9876543211', 'priya@kanchuki.app']) {
+      const res = await app.inject({
+        method: 'POST',
+        url: '/v1/team/otp/verify',
+        payload: { identifier, otp: '123456' },
+      });
+      expect(res.statusCode).toBe(403);
+    }
     await app.close();
   });
 });
@@ -1046,6 +1141,7 @@ describe('POST /team/forgot-password & POST /team/reset-password', () => {
       is_active: true,
     };
 
+    mockTeamMemberFindUnique.mockReset(); // drop once-values left by earlier tests
     mockTeamMemberFindUnique.mockResolvedValue(mockMember);
     mockTeamMemberUpdate.mockResolvedValue({ ...mockMember, password_hash: 'new_hash' });
 
@@ -1060,13 +1156,15 @@ describe('POST /team/forgot-password & POST /team/reset-password', () => {
     expect(forgotRes.statusCode).toBe(200);
     expect(forgotRes.json().data.message).toBeDefined();
 
-    // 2. Reset password (using dev test code 123456)
+    // 2. Reset password with the code the forgot step stored
+    const code = redisStore.get('team:pwd-reset:vikram@kanchuki.app');
+    expect(code).toMatch(/^\d{6}$/);
     const resetRes = await app.inject({
       method: 'POST',
       url: '/v1/team/reset-password',
       payload: {
         email: 'vikram@kanchuki.app',
-        reset_code: '123456',
+        reset_code: code,
         new_password: 'brand-new-secure-password',
       },
     });
@@ -1079,6 +1177,32 @@ describe('POST /team/forgot-password & POST /team/reset-password', () => {
       }),
     );
 
+    await app.close();
+  });
+
+  // RC-085: a Redis error used to fall back to accepting '123456'.
+  it('rejects 123456 when Redis throws and never writes the password', async () => {
+    mockTeamMemberFindUnique.mockResolvedValue({
+      id: 'tm_reset_user',
+      name: 'Vikram Singh',
+      email: 'vikram@kanchuki.app',
+      password_hash: 'old_hash',
+      is_active: true,
+    });
+    redisFail.on = true;
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/team/reset-password',
+      payload: {
+        email: 'vikram@kanchuki.app',
+        reset_code: '123456',
+        new_password: 'attacker-chosen-password',
+      },
+    });
+    expect(res.statusCode).toBe(422);
+    expect(mockTeamMemberUpdate).not.toHaveBeenCalled();
     await app.close();
   });
 });

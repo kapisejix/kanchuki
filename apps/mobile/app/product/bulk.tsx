@@ -21,7 +21,7 @@ import {
   Upload,
 } from 'lucide-react-native'
 import { useScreenInsets } from '../../src/lib/safe-area'
-import { productApi, uploadImageToR2, readLocalImage } from '../../src/lib/api'
+import { productApi, uploadImageToR2, prepareImageForUpload } from '../../src/lib/api'
 import { logError } from '../../src/lib/errors'
 import { useTheme } from '../../src/lib/theme'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
@@ -145,9 +145,9 @@ export default function BulkImportScreen() {
         const compressedUri = await compressPhoto(photo.localUri)
 
         // Get upload URL
-        const blob = await readLocalImage(compressedUri)
+        const prep = await prepareImageForUpload(compressedUri, 'image/jpeg')
         const uploadResult = await withRetry(() =>
-          productApi.getUploadUrl('product.jpg', 'image/jpeg', blob.size),
+          productApi.getUploadUrl('product.jpg', 'image/jpeg', prep.size),
         )
         const info = uploadResult.data
 
@@ -159,7 +159,7 @@ export default function BulkImportScreen() {
         })
 
         // Upload to R2
-        await withRetry(() => uploadImageToR2(compressedUri, info.upload_url, 'image/jpeg'))
+        await withRetry(() => uploadImageToR2(prep.uri, info.upload_url, 'image/jpeg', undefined, undefined, { compress: false }))
 
         // Create product
         const productResult = await withRetry(() =>

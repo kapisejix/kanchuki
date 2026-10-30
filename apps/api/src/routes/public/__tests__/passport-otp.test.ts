@@ -477,6 +477,11 @@ describe('POST /v1/public/passport/recently-viewed', () => {
     const mockUpsert = vi.fn().mockResolvedValue({});
     // @ts-expect-error - extending mock
     prisma.customerRecentlyViewed = { upsert: mockUpsert };
+    // H4-5/RC-095: the retailer comes from the product row.
+    // @ts-expect-error - extending mock
+    prisma.product = {
+      findMany: vi.fn().mockResolvedValue([{ id: 'prod-1', retailer_id: 'ret-1' }]),
+    };
 
     const app = buildApp();
     await app.ready();
@@ -487,6 +492,8 @@ describe('POST /v1/public/passport/recently-viewed', () => {
       headers: { cookie: `kanchuki_passport=${sessionId}` },
       payload: { product_id: 'prod-1', retailer_id: 'ret-1' },
     });
+    // biome-ignore lint/suspicious/noExplicitAny: test cleanup
+    delete (prisma as any).product;
 
     expect(res.statusCode).toBe(204);
     expect(mockUpsert).toHaveBeenCalledOnce();
@@ -570,6 +577,11 @@ describe('POST /v1/public/passport/wishlist', () => {
     const mockUpsert = vi.fn().mockResolvedValue({});
     // @ts-expect-error - extending mock
     prisma.customerWishlistItem = { upsert: mockUpsert };
+    // H4-5/RC-095: the retailer comes from the product row.
+    // @ts-expect-error - extending mock
+    prisma.product = {
+      findMany: vi.fn().mockResolvedValue([{ id: 'prod-1', retailer_id: 'ret-1' }]),
+    };
 
     const app = buildApp();
     await app.ready();
@@ -579,6 +591,8 @@ describe('POST /v1/public/passport/wishlist', () => {
       headers: { cookie: `kanchuki_passport=${sessionId}` },
       payload: { product_id: 'prod-1', retailer_id: 'ret-1' },
     });
+    // biome-ignore lint/suspicious/noExplicitAny: test cleanup
+    delete (prisma as any).product;
 
     expect(res.statusCode).toBe(200);
     expect(res.json().ok).toBe(true);

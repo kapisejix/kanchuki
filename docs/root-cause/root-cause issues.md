@@ -12,6 +12,684 @@
 
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
+
+## RC-136 — bulk onboarding swallowed its two startup loads, so a failed count showed `0 items catalogued` as fact and a failed rack load showed an empty picker (T3.5 g)
+
+- **Component:** `apps/mobile/app/product/bulk-onboard.tsx` (the mount `useEffect`: `retailerApi.getSections()` and `getStats()`).
+- **Symptom:** when `getStats` failed, the card read "0 / 2000 items catalogued so far" for a store with hundreds of products (`baselineCount` stays at its initial 0); when `getSections` failed, the rack/shelf picker was empty and every detected item read "No location". Nothing on screen said a load had failed.
+- **Root cause:** both calls ended in `.catch(() => {})`, an operation that succeeds while doing nothing (RC-030 shape), and the default state (0, empty list) is indistinguishable from a real answer. The other catches in the file were already fixed by RC-117/RC-122; these two had no user-visible path at all.
+- **Fix:** both catches call `setError(apiMessage(err, '<fallback>'))`, reusing the existing banner above the rack picker (server reason for a 4xx except 401/408, generic text otherwise). Limits: the banner is shared with extraction errors, so the next extraction clears it, and if both loads fail the last one wins. Other bare `.catch(() => {})` in `apps/mobile` were not swept.
+- **Proof:** `__tests__/product/bulk-onboard-screen.test.tsx` (5 tests). The three failure pins were `it.fails` first and fail for the right reason ("expected ... to contain 'Could not load ...'") when flipped, then became normal tests with the fix. Falsified (each failed a test, restored, `cmp` clean): the sections catch, the stats catch, `apiMessage` on the stats catch, and on the sections catch (that one survived until the rack 4xx test was added). Mobile `tsc` clean, vitest 49 files / 535 tests. Not device-tested.
+
+---
+
+## RC-135 — two taps in one tick on the onboarding buttons saved twice, and Dashboard + QR redirected twice (T3.2-a #4b)
+
+- **Component:** `apps/mobile/app/onboarding.tsx` (`handleNext`, `handleGetCatalogHelp`, `handleCreateStoreQr`).
+- **Symptom:** a double tap on "Save & Proceed" / "Go to Dashboard →" / "Create your store QR code" / "Catalog Upload Help" ran the profile save twice; Dashboard + QR (or Catalog) in one tick also started two 1.5 s timers, so `router.replace` fired twice to two different screens. On steps 1-4 a double tap sent the step's update twice.
+- **Root cause:** the only guard was `saving || showConfetti`, both React state, which the handler reads one render late, so a second tap in the same tick still saw `false` (RC-015/RC-132/RC-134 shape). Three handlers, one copy of the guard each.
+- **Fix:** a `busyRef` checked first in all three handlers, set before `setSaving(true)` and released in the shared `finally` (success is still held shut by `showConfetti`, which commits in the same batch as the release; a failure frees the button for a retry). Not changed: the redirect timers are not cleared on unmount (harmless); other screens that guard a start on state alone were not swept.
+- **Proof:** `__tests__/smoke/rc-screens.test.tsx` ("onboarding steps 1-4" > "step 5", fake timers). The same-tick double tap and the Dashboard + QR tap were `it.fails` first, flipped once and confirmed to fail for the right reason ("called 1 times, but got 2 times"), then flipped to `it` with the fix; added double tap on QR and Catalog, double tap on step 1 (saves once, step 2 still usable), and retry after a failed save. 19 onboarding tests in all. Falsified (each failed a test, restored, `cmp` clean): the check in each of the three handlers, the set in each, the release (all and `handleNext` only). Mobile `tsc` clean, vitest 48 files / 530 tests. Not device-tested.
+
+---
+
+## RC-134 — the support-session request screen created two grants on a double tap, and entered a session whose request had just been cancelled (T3.2-a #10)
+
+- **Component:** `apps/mobile/app/staff/support-session.tsx` (`handleStart`, the polling effect).
+- **Symptom:** (A) two taps on a retailer card in one tick sent two `startSupportSession` requests, so the retailer's phone got two Approve/Deny prompts and the second grant's id was lost. (B) pressing "Cancel request" while a poll was awaiting the server still ended with `enterSupportSession` and `router.replace('/(tabs)')`, putting the manager into a session whose grant `handleCancel` had just ended; a late DENIED also raised a "Not approved" alert for a request the manager had cancelled.
+- **Root cause:** one shape twice, async work finishing against state that has moved on. (A) the only guard was the `starting` React state, which reaches the card's `disabled` after a render (RC-015/RC-132 shape). (B) the effect cleanup cleared the interval but not the callback already past its `await`, so that callback carried on as if the request were still live.
+- **Fix:** (A) a `startingRef` checked at the top of `handleStart` and released in `finally`. (B) a `live` flag per effect run, set false in the cleanup (cancel, approval, unmount all run it), checked after the status `await` and after the token `await`, before anything is entered or shown. Not changed: a cancel that lands while `enterSupportSession` itself is running (the session is mid-entry and `setWaiting(null)` follows); whether the server refuses a token for an ended grant is not verified; other screens that guard a start on state alone were not swept.
+- **Proof:** `__tests__/staff/support-session-screen.test.tsx`, 20 tests with fake timers. The double-tap and cancel-during-token tests were written as `it.fails` first, confirmed to fail for the right reason ("called 2 times", `enterSupportSession` called), then flipped to `it` with the fix; a third test pins the first await (cancel while the status request is pending shows no alert and fetches no token). Falsified: `startingRef` check and release, both `live` checks, the `live = false` cleanup each failed a test, restored, `cmp` clean. Mobile `tsc` clean. Not device-tested.
+
+---
+
+## RC-133 — the composer's AI caption suggestion overwrote text the retailer was typing (T3.2-a #6b)
+
+- **Component:** `apps/mobile/app/social/create.tsx` (debounced auto-suggest effect, `runCaptionSuggest`).
+- **Symptom:** pick a product and start writing a caption: a moment later (or when the AI response landed) the typed text was replaced by the AI caption. The code comment promised "never clobbers text they typed".
+- **Root cause:** `captionTouched` was read once, when the effect armed the 900 ms timer. Typing does not re-run that effect (`caption` is not in its deps), so the timer fired regardless; and `runCaptionSuggest` called `setCaption` after the `await` without looking again, then reset `captionTouched` to false. A guard checked at schedule time protecting an action that happens later (RC-111 shape: read, then act).
+- **Fix:** re-check `captionTouched.current` at both points where the AI text can land: in the timer callback before firing, and after the response before `setCaption`. The schedule-time check stays (it avoids arming a timer for nothing). Sibling check: `social/schedule/[id].tsx` AI caption is a button the retailer taps and fills only on that tap, so it has no background fill.
+- **Proof:** `__tests__/social/create-screen.test.tsx` "caption auto-suggest (T3.2-a #6b)", 12 tests with fake timers: debounce, fill and `#` tags, in-flight copy, no products, typed-first, silent single failure (slow rejection, stepped time), empty response, re-suggest over an AI fill, edit survives a content change, timer restart, collection link; the two new ones ("typing inside the 900 ms window", "typing while the request is in flight") were red against the old code (AI text replaced the typed text), then green. Falsified: fire-time check, in-flight check, 900 ms, products guard, empty-caption guard, `#` prefix, `suggestedFor` guard each failed a test. Not pinned: the schedule-time touched check and the `clearTimeout` (both redundant with the new fire-time check and the `cancelled` flag), and the `lastAiFill` guard (a template-applied caption; `TemplatePicker` is stubbed in this harness). Mobile `tsc` clean. Not device-tested.
+
+---
+
+## RC-132 — two taps in one tick on a Facebook/Instagram "Connect" button started two native logins and two `connect` calls (T3.2-a #9)
+
+- **Component:** `apps/mobile/app/settings/social.tsx` (`openConnect`), `app/growth/integrations/facebook.tsx` (`handleConnect`), `app/growth/integrations/instagram.tsx` (`handleOneClickConnect`).
+- **Symptom:** a double-tap on Connect opened the Facebook login twice and sent `connectWithToken` twice for the same retailer.
+- **Root cause:** the only guard was the `connecting` React state, which reaches the button's `loading` prop after a render; two `onPress` calls in the same tick both saw `connecting === false`. RC-015 shape (OTP send had the same hole until `sendingRef`); `enquiry-try-on.tsx` `buyMore` already used a ref. Three hand-copies of one connect flow, none guarded.
+- **Fix:** a `connectingRef` in each screen, checked at the top of the handler (`if (connectingRef.current) return`), set before `setConnecting(true)`, released in `finally` (so cancel, SDK-unavailable and API errors all release it). The deep-link `autoConnect` effects are separate paths and were left alone. Sibling check: no other `loginWithFacebook` caller in `apps/mobile`.
+- **Proof:** `__tests__/settings/social-settings.test.tsx` (the former `it.fails`, now `it`) and `__tests__/growth/connect-double-tap.test.tsx` (facebook + instagram: same-tick double tap starts one login, guard released after a success and after a failed login). Six breaks (guard line and release line, each screen) each failed a test, restored, `cmp` clean. Mobile `tsc` clean. Server-side effect of a double connect (upsert vs duplicate row) not verified. Not device-tested.
+
+---
+
+## RC-131 — a `collection_id` deep link opened the composer in collection mode with no collection chosen when the collections list was already cached (T3.2-a #6)
+
+- **Component:** `apps/mobile/app/social/create.tsx` (resolve-pending-collection effect).
+- **Symptom:** sharing a collection to social from a screen reached after the Collections tab opened "Create post" on the collection step with "Choose a collection to share." and nothing selected. A cold start worked.
+- **Root cause:** two effects share a ref (`pendingCollectionId`). The resolver (deps `[collections]`) is declared before the prefill effect that sets the ref, so on mount it runs with the ref still `null`; with a warm react-query cache `collections` is already populated and referentially stable, so the resolver never runs again. It only worked when the list arrived after mount. An ordering dependency between two effects, hidden behind a ref that triggers no render.
+- **Fix:** the resolver also depends on `postType`. The prefill calls `setPostType('COLLECTION_LINK')`, the re-render re-runs the resolver with the ref set and the list present. One dependency token; the cold-cache path is unchanged. Sibling check: no other `pending*` ref in `apps/mobile/app`.
+- **Proof:** `__tests__/social/create-screen.test.tsx` ("with the list already cached" + the cold-cache twin). Written first as `it.fails` against the bug, then green with the fix; falsified by reverting the dependency, red; restored, `cmp` clean. Mobile `tsc` clean. Not device-tested.
+
+---
+
+## RC-130 — the GST transaction row showed "Walk-in Client" for the retailer's own subscription payments (T3.4-b)
+
+- **Component:** `apps/mobile/app/growth/gst.tsx` (`TxRow`), `GstTransaction` in `apps/mobile/src/lib/api/growth.ts`.
+- **Symptom:** every row on the GST screen read "Walk-in Client".
+- **Root cause:** the endpoint returns the retailer's Kanchuki `subscriptionPayment` rows (`id`, amounts, invoice number, date) and never a customer, but the type declared `customer: string | null` and the row fell back to a sale-shaped label. A client type that promises a field the server does not send, with a fallback that hides the gap.
+- **Fix:** `customer` dropped from `GstTransaction`; the row reads "Kanchuki subscription". Owner chose Option A (relabel rows). The summary tiles ("Total Sales", "Sales: ₹…") are untouched; the report scoped the fix to the row.
+- **Proof:** `__tests__/t3-3-client-routes.test.ts` (RC-130 block) pins the label and the type; falsified by reverting each, red; restored, `git diff` identical. Mobile `tsc` clean. Source pin, not device-tested.
+
+---
+
+## RC-129 — 30 `growthApi` methods still called routes the teardown deleted (T3.3-a)
+
+- **Component:** `apps/mobile/src/lib/api/growth.ts` (referrals ×5, suppliers ×6, bookings ×4, partners ×8, incentives ×7, plus their types).
+- **Symptom:** none today. Every one of the 30 had zero callers, so no screen hit a 404.
+- **Root cause:** teardown `76c5acdb` removed the server routes and screens but not the client method and type layer, and nothing ties a client path to a server route (RC-012/RC-013 shape). The first caller wired to one of them would have shipped a 404 that typechecks.
+- **Fix:** the 30 methods and the types only they used are deleted (365 lines). Promotions and inventory-alerts, which have live routes, stay.
+- **Proof:** `__tests__/t3-3-client-routes.test.ts` (17 tests). Falsified by re-adding `referrals` to `growthApi`: the absence pin goes red (1 failed); restored, `git diff` identical. Mobile `tsc` clean.
+- **Limits, stated plainly:** the derived check (every `/v1/growth/<seg>` and `/v1/retailers/me/<seg>` in `growth.ts` must appear somewhere under `apps/api/src/routes`) is a substring match and did NOT catch the re-added `referrals` (the F-038 affiliate routes contain the word); only the explicit absence pin did. It covers `growth.ts` only, no HTTP method or param check. 
+- **Addendum (T3.3 b-d):** 13 more client methods with a live route but no caller (4 of the report's 17 had already gone) and the `FbAdCampaign` type were deleted; `GradientBorderCard.tsx` and `react-native.cjs` removed; `@gorhom/bottom-sheet`, `react-native-image-viewing`, `zustand`, `@expo/ngrok` removed from `package.json` and `pnpm-lock.yaml` (JS-only or dev-only, no addition to the EAS rebuild). Absence pins in the same test file, each falsified. No bug behind these (no caller), so no separate RC. If a screen needs one of those methods later, re-add it with the screen.
+
+---
+
+## RC-128 — `FREE_SIZE` and the stock maximum were hand-copied in the API and the mobile `StockEditor` (T3.4-d)
+
+- **Component:** `apps/api/src/lib/product-stock.ts`, `apps/mobile/src/components/product-detail/StockEditor.tsx`, `packages/shared/src/constants/index.ts`.
+- **Symptom:** none today; both copies were equal (`'FREE'`, 99 999).
+- **Root cause:** a contract value with two owners and nothing pinning them together (RC-041 shape). Changing one side would make the editor offer a quantity or size row the API rejects, or the reverse.
+- **Fix:** `FREE_SIZE` and `MAX_STOCK_QUANTITY` live in `@kanchuki/shared`; the API schema and the editor import them. No re-export, since nothing else imported them from the old places.
+- **Proof:** `__tests__/t35-p2-pins.test.ts` asserts shared declares both and that neither consumer redeclares (`const FREE_SIZE` / `MAX_QTY` / `MAX_STOCK_QUANTITY`). Falsified by re-declaring both in `StockEditor`: red; restored, `git diff` identical. API `tsc` clean, `product-stock.test.ts` green.
+- **Limits, stated plainly:** `@kanchuki/shared` resolves to its gitignored `dist/` at runtime while `tsc` reads `src/`, so a stale local `dist` makes `FREE_SIZE` `undefined` with a clean typecheck (it failed 3 tests here until `packages/shared` was rebuilt). The deploy builds shared itself. Source pin, not device-tested.
+
+---
+
+## RC-127 — `z.coerce.boolean()` on query strings turned `?flag=false` into `true` at seven sites (T3.4-c)
+
+- **Component:** `growth-gst.ts` and `admin-gst.ts` (`invoiced`), `admin-social.ts` and `admin-social-templates.ts` (`is_active`), `admin-retailers-list.ts` (`suspended`, `featured`), `products-helpers.ts` (`is_new_arrival`). New helper `apps/api/src/lib/query-bool.ts`.
+- **Symptom:** latent. `?suspended=false` returned the suspended retailers, `?is_active=false` the active accounts, `?invoiced=false` the invoiced rows. No web or mobile caller sends these params today, so nothing hit it.
+- **Root cause:** `z.coerce.boolean()` is JavaScript `Boolean(string)`, and every non-empty string, including `"false"`, is truthy. The report named one site; the same call was copied to six files.
+- **Fix:** one `queryBool()` (`z.enum(['true','false'])` to boolean, optional) used at all seven sites. Anything other than `true` / `false` is now a 400 instead of silently `true`.
+- **Proof:** `src/lib/query-bool.test.ts` covers `false`, `true`, absent and rejected values, and walks every non-test `.ts` under `apps/api/src` failing on `z.coerce.boolean` (comments stripped). Falsified by reverting the helper and one route: three tests red; restored, `git diff` identical. 88 API test files (1195 tests) in `routes/products`, `routes/growth`, `routes/admin`, `lib` green; API `tsc` clean.
+- **Limits, stated plainly:** the guard is name-based (an aliased `z` or a `.pipe` form is missed). `z.coerce.number()` on query strings was not reviewed. The empty string (`?flag=`) is now rejected rather than coerced to `false`. Not run against a real server.
+
+---
+
+## RC-126 — Two `pageSheet` `<Modal>`s had no `onRequestClose`, so Android back did nothing and an iOS swipe-down left the open flag stuck `true` (T3.7-d)
+
+- **Component:** `apps/mobile/app/category/new.tsx` (product picker, photo picker).
+- **Symptom:** hardware Back is ignored while a picker is open (Android). Swipe-down dismisses the sheet on iOS but `showProductPicker` / `showPhotoPicker` stay `true`, so the "pick a product / photo" button cannot reopen it.
+- **Root cause:** `<Modal>` owns a dismiss path the parent never hears about unless `onRequestClose` is passed. The visible flag lived only in parent state, and only the X button reset it.
+- **Fix:** both modals get `onRequestClose` with the same handler as their X button (close the flag, clear `selectedProductId`).
+- **Proof:** `__tests__/t35-p2-pins.test.ts` finds every `<Modal …>` tag in the file (exactly 2) and asserts each has `onRequestClose`. Falsified by renaming the prop: red; restored, `git diff` identical.
+- **Limits, stated plainly:** source pin, this file only; no repo-wide `<Modal>` guard (the T3.7 scan found no other miss). Not device-tested.
+
+---
+
+## RC-125 — Timeout and offline errors carried developer text (API URL, "check that the API server is running") that callers surfaced to retailers (T3.7-e)
+
+- **Component:** `apps/mobile/src/lib/api/client.ts` (`request` catch: `TIMEOUT` and `NETWORK_ERROR` messages). Leak path still live through `src/hooks/useProductAiStudio.ts:167` (`err.message` into UI); the `settings` / `staff` / `ai-campaign` callers named in the report were already fixed by RC-117.
+- **Symptom:** a retailer with no signal read "Network request failed to https://…/v1/…. Check that the API server is running…".
+- **Root cause:** a dev diagnostic was the only message text on the error type that every caller receives. `apiMessage` / `showError` hid it (RC-117) but any caller that renders `ApiError.message` directly bypasses them.
+- **Fix:** fixed once at the source. Release builds throw "The server took too long to respond. Please try again." (408) and "No internet connection. Check your network and try again." (status 0); the URL text stays under `__DEV__`. `code` and `status` unchanged, and nothing in `app/` or `src/` matches on the old text.
+- **Proof:** `__tests__/t35-p2-pins.test.ts` asserts both `__DEV__ ?` gates and both release strings. Falsified by stripping the gate and one string: red; restored, `git diff` identical. Mobile `tsc` clean, `errors.test.ts` green.
+- **Limits, stated plainly:** source pin, not a runtime test of `__DEV__ === false`; not device-tested. `team-api.ts` has its own bare "Request timed out" (no URL), left alone.
+
+---
+
+## RC-124 — Android Auto Backup was on by Expo default, so the offline cache (customer names, phones, enquiries) was copied to Google Drive and restored to other devices (T3.6-b)
+
+- **Component:** `apps/mobile/app.json` (`expo.android`, no `allowBackup`); data at `kanchuki-cache/*.json` in the documents dir (`src/lib/offline-persister.ts`).
+- **Symptom:** none visible. A retailer's customer PII left the device through the OS backup and could land on a new phone.
+- **Root cause:** an unset platform default. Nothing declared `allowBackup`, so the prebuilt manifest got `allowBackup="true"`. SecureStore (tokens) is excluded by the `expo-secure-store` plugin, but the plain-JSON cache is not.
+- **Fix:** `"allowBackup": false` under `expo.android` in `app.json`.
+- **Proof:** `__tests__/t35-p2-pins.test.ts` parses `app.json` and asserts `expo.android.allowBackup === false`. Falsified by setting it to `true`: red; restored.
+- **Limits, stated plainly:** takes effect only in a new native build. **Needs an EAS rebuild (owner).** Already-backed-up data stays in the user's Drive. Not checked against a built manifest. `docs/SECURITY.md` has no device-backup rule to conflict with.
+
+---
+
+## RC-123 — A credential branch with no writer: `teamRequest` sent `x-admin-key` from SecureStore when an `admin_key` existed, but nothing ever stored one (T3.6-d)
+
+- **Component:** `apps/mobile/src/lib/team-api.ts` (`teamRequest`).
+- **Symptom:** none today. If any build ever wrote `admin_key`, the retailer app would send a platform admin key from a retailer device and skip the Bearer token.
+- **Root cause:** a dead auth branch that survived a removed feature. Reader with no writer, so nothing tied it to a live flow.
+- **Fix:** `teamRequest` always uses `Authorization: Bearer <auth_token>`; the `admin_key` read and `x-admin-key` header are deleted. Left on purpose: `admin_key` in `AUTH_KEYS` (wipes any legacy value at sign-out, pinned by `auth-context.test.tsx`) and the `x-admin-key` scrub in `sentry.ts`.
+- **Proof:** `__tests__/t35-p2-pins.test.ts` asserts the file has no `admin_key` / `x-admin-key` and sets the Bearer header. Falsified by re-adding the read: red; restored. Mobile `tsc` clean, `auth-context.test.tsx` green.
+- **Limits, stated plainly:** source pin, not a request-level test; not device-tested. Nothing in the API was changed.
+
+---
+
+## RC-122 — Inline `setError('…Try again.')` constants hid the server's 4xx reason on the catalog-import and bulk-onboard screens (T3.5-f, T3.5-g)
+
+- **Component:** `apps/mobile/app/product/catalog-import.tsx` (three catches: two "Upload failed", one "Detection failed"), `app/product/bulk-onboard.tsx` (one "Something went wrong").
+- **Symptom:** a retailer out of AI-tagging credits (the API checks `AI_TAGGING_CALL` quota on these routes and answers a 4xx with a reason) was told only to "Try again".
+- **Root cause:** RC-114/RC-117 shape. `showError` was fixed to apply `apiMessage`, but these screens render the error inline with `setError(constant)` instead of an Alert, so they never went through it.
+- **Fix:** each uses `setError(apiMessage(err, '<same fallback>'))`; `logError(err)` stays.
+- **Proof:** `__tests__/t35-p2-pins.test.ts` pins that none of the three fallbacks is a bare `setError('…')` and each is wrapped in `apiMessage`. Falsified: reverting the Detection catch, and separately the bulk-onboard catch, turns it red; restored. Mobile `tsc` clean.
+- **Limits, stated plainly:** a source pin, not a render test; not device-tested. Left on purpose (T3.5-g): the `getSections()` / `getStats()` loads in `bulk-onboard.tsx` still swallow their failure, so the "catalogued" count can read `0 + session` with no hint; a hint would be new UI. Other screens that put a constant into `setError` were not swept.
+
+---
+
+## RC-121 — A synchronous campaign fan-out ran on the 10 s default timeout, and a timeout was reported as a failed send (T3.5-d)
+
+- **Component:** `apps/mobile/src/lib/api/growth.ts` (`sendCampaign`), `app/growth/campaign/[id].tsx` (`sendMutation.onError`).
+- **Symptom:** on a big audience the app gave up after 10 s with "Send failed. Check that customers … have WhatsApp consent", while the server was still sending. The retailer tapped Send again. RC-111 made the server refuse the second send, but the screen still told the retailer the first one had failed.
+- **Root cause:** same as RC-011/RC-064: the client timeout was the default, not sized for the work (one Meta call per customer, awaited inside the request). The mobile half of T3.5-b stayed open when RC-111 fixed the server half.
+- **Fix:** `sendCampaign` carries `timeoutMs: 120_000`. `onError` branches on `ApiError` code `TIMEOUT` / `NETWORK_ERROR` and says "The send may still be running. Check this campaign in a minute before sending again."; any other error goes through `showError` as before.
+- **Proof:** `t35-p2-pins.test.ts` pins the timeout and the two codes in the screen. Falsified: deleting the `timeoutMs` line, and separately renaming `'TIMEOUT'` in the screen, each turns it red; restored. Mobile `tsc` clean.
+- **Limits, stated plainly:** 120 s is a guess, not measured against a real audience. The server still sends inside the request (the real fix is a background job); a send longer than 120 s still shows the "may still be running" text, which is the honest answer. Not device-tested, not run against real Meta.
+
+---
+
+## RC-120 — OTP resend guarded on React state, so two taps in one frame sent two SMS (T3.5-h)
+
+- **Component:** `apps/mobile/app/auth/otp.tsx` (`handleResend`).
+- **Symptom:** a double tap on "Resend OTP" fired two sends (two SMS, two MSG91 hits), and the second code invalidates the first.
+- **Root cause:** RC-015 shape. `handleResend` returned early on `resendTimer > 0` and relied on `disabled={resending}`; both are state, and neither has committed when the second tap lands in the same frame. RC-015 fixed `phone.tsx` and verify, not resend.
+- **Fix:** a `resendingRef` set before `setResending(true)`, checked in the guard and cleared in `finally`.
+- **Proof:** `t35-p2-pins.test.ts` pins the ref check, the set, and the release in `finally`. Falsified: removing the check, and separately the release, each turns it red; restored. Mobile `tsc` clean.
+- **Limits, stated plainly:** a source pin, not a render or tap test; not device-tested. T3.5-e (the resend catch hiding the server error) was already fixed by RC-117.
+
+---
+
+## RC-119 — A screen whose text fields live in child components was invisible to the keyboard guard, so `growth/ratings` had no wrapper (RC-116 follow-up)
+
+- **Component:** `apps/mobile/app/growth/ratings.tsx` (renders `GooglePlaceField` and `GoogleReviewsTab`, whose reply box is a `TextInput`), and the guard `__tests__/keyboard-screen-adoption.test.ts`.
+- **Symptom:** on the Ratings & Reviews screen the software keyboard could cover the Google Place field and the review-reply input, with the same "no way to scroll to it" result as RC-116.
+- **Root cause:** RC-116's new arm looks for `<TextInput` in the screen file itself. A screen that gets its inputs from a child component never matches, so it passes with no wrapper. RC-116 hand-pinned the two cases it knew (`product/[id]`, `ReportProblem`); the third (`ratings`) was not on the list because the list was written from memory, not derived. Audit on 2026-10-29: of the five `src/` components that own a `TextInput` (`ProductGridPicker`, `StockEditor`, `ProductAttributesForm`, `GoogleReviewsTab`, `GooglePlaceField`), every host screen already wrapped (`schedule/[id]`, `product/add`, `onboarding`, `settings/index`, `product/[id]`) except `ratings`.
+- **Fix:** `ratings.tsx` renders `KeyboardScreen` as the screen root; `app/growth/ratings.tsx` added to the source-pinned list in the guard (comment names the child components).
+- **Proof:** `keyboard-screen-adoption.test.ts` passes. Falsified: reverting the wrapper turns "wraps app/growth/ratings.tsx in KeyboardScreen" red (and the import/render pairing arm); removing `app/ai-search.tsx` from `NO_WRAPPER` turns "wraps every screen that owns a TextInput" red; all restored.
+- **Limits, stated plainly:** the five components above were checked by reading imports, not by a device. Not device-tested on iOS or Android; the guard pins the wrapper, not the layout. Update 2026-10-29: the hand pin list is replaced by a derived check. `keyboard-screen-adoption.test.ts` computes the "input components" (a `src/` file with `<TextInput` that does not wrap itself, plus, to a fixpoint, any `src/` file importing one without wrapping) and requires every `app/` file that imports one by name to render `<KeyboardScreen` (or be in `NO_WRAPPER`). A non-vacuity check requires the derivation to find `GooglePlaceField`, `GoogleReviewsTab`, `StockEditor` and `ProductAttributesForm`. Only `ReportProblem` stays pinned, because it wraps itself and its importer `ErrorBoundary` is outside `app/`. Falsified: stripping the wrapper from `growth/ratings` and, separately, from `onboarding` turns the new test red naming that file; both restored from backups, `git status` clean for them. Mobile `tsc` clean, 78 tests pass in `__tests__`. Residual: matching is by imported name, so an aliased import or an input component defined inside an `app/` file's own helper is missed; not device-tested.
+
+---
+
+## RC-118 — RC-110 fixed the `fetch` calls someone remembered; 16 more still had no timeout (T1.7 F1 sweep)
+
+- **Component:** `apps/api` — `routes/retailers/retailers-integrations.ts` (7: FB Ads ×5, Google OAuth/API ×2), `routes/retailers/retailers-social/retailers-social-helpers.ts` (3: IG publish), `retailers-social-accounts.ts` (2), `retailers-social-connect.ts` (1), `routes/collections.ts` (1: WhatsApp send inside `Promise.allSettled`), `routes/admin/admin-plans.ts` (1: Razorpay plan create), `jobs/passport-welcome.ts` (1: WhatsApp send), `jobs/generate-ken-burns-video.ts` (1: photo download).
+- **Symptom:** a Meta, Google, Razorpay or WhatsApp socket that accepts the connection and never answers pins the request (or the whole collection fan-out, or the job) until the platform kills it. Same as RC-110.
+- **Root cause:** the timeout was a property of each call site, not of how the file reaches the network. RC-110 swept by grep for the integrations named in the report, so the files that call `fetch` directly and were not named kept the default (no timeout). Nothing failed when a new bare `fetch(` was added.
+- **Fix:** each of the 8 files imports `fetchWithTimeout as fetch` from `lib/fetch-timeout.js` (the pattern `meta-graph.ts` already used; caller-supplied `signal` still wins). New guard in `lib/fetch-timeout.test.ts`: any non-test `apps/api/src` file that calls `fetch(` must mention `fetchWithTimeout` or `AbortSignal`, with a size check so a broken directory walk cannot pass vacuously.
+- **Proof:** guard passes (comment-stripped scan over the API tree). Falsified: removing the import from `admin-plans.ts` turns the guard red naming `routes/admin/admin-plans.ts`; restored. 183 tests pass across the 10 related suites (social, integrations, collections, admin-plans, scheduled-post, passport-welcome, fetch-timeout); API `tsc --noEmit` clean.
+- **Limits, stated plainly:** the guard is file-level, so a file with one timed call and one bare call passes. Default is 15 s for all eight, including the Ken Burns photo download, not tuned per call. Not exercised against real Meta, Google, Razorpay or WhatsApp. Update 2026-10-29: `lib/meta-catalog.ts` (9 bare `fetch` calls taking an optional `signal`) passed the guard only because the token `AbortSignal` appears in the file as a type. Its sole importer, `jobs/catalog-sync.ts`, always threads `controller.signal` from `handleCatalogSync`, so production was covered; the hole was a future caller that omits `signal`. Fixed with the same `fetchWithTimeout as fetch` import (caller signal still wins, so the catalog-sync job timeout is unchanged); `meta-catalog.test.ts` gained 2 tests (default signal added, caller signal kept). Falsified: reverting the import turns the default-signal test red; restored. API `tsc` clean, 54 tests pass across meta-catalog, fetch-timeout and catalog-sync. Update 2026-10-29 (later): the guard is now per call. Every `fetch(` call, found by a balanced-paren scan, must contain `AbortSignal.timeout(` or `AbortSignal.any(` in its own text, unless the file imports `fetchWithTimeout as fetch`. A bare `{ signal }` does not count (that was the `meta-catalog` shape). Before changing it I read every call in the 14 files the old file-level rule passed on the `AbortSignal` token: all already carried their own timeout, so nothing else needed fixing. Proof: green on the real tree (a non-vacuity floor of more than 20 scanned calls); a unit test on the call splitter; falsified on `fal-client.ts` by removing the timeout and, separately, by replacing it with a bare `signal` (both red naming `lib/fal-client.ts:32`), restored. API `tsc` clean, 55 tests pass across fetch-timeout, meta-catalog and catalog-sync. Residual: a file that imports the alias is trusted for every `fetch(` in it; an unbalanced paren inside a string makes that call's text run to the end of the file (lenient, never red); `fetchWithTimeout(...)` called by name with an explicit huge timeout is not checked.
+
+---
+
+## RC-117 — `showError(err, fallback)` took the error and showed only the fallback, so ~60 screens hid the server's 4xx reason (RC-114 sweep)
+
+- **Component:** `apps/mobile/src/lib/errors.ts` (`showError`), plus the screens that hand-rolled the rule: `app/settings/help-support.tsx`, `app/settings/staff.tsx` (two sites), `app/settings/index.tsx` (logo upload, profile save, account delete), `app/plan-select.tsx` (two), `app/growth/aggregators.tsx`, `app/growth/templates.tsx`, `app/product/try-on.tsx`, and the two bare `catch {}` blocks in `app/auth/otp.tsx` (resend OTP) and `app/enquiry-try-on.tsx` (open payment).
+- **Symptom:** a 422/409/429 from the API read as a generic "Failed to …" or "Could not …" on every screen that called `showError` (RC-003, RC-009 and RC-114 were this same symptom fixed one screen at a time). The opposite leak lived in the hand-rolled copies: `err instanceof ApiError ? err.message` and `err instanceof Error ? err.message` also showed 5xx bodies and the 408 request URL.
+- **Root cause:** the error-to-text rule was a per-call-site choice, not a property of the one function every screen already routes through. `showError` accepted `err`, used it only for the dev console, and displayed `fallback`; each fix (RC-009, RC-114) patched a single screen with its own copy of the ladder, and the copies disagreed (some 4xx only, some any `ApiError`, some any `Error`).
+- **Fix:** `showError` now shows `apiMessage(err, fallback)` (server reason for a 4xx other than 401/408, the fallback for everything else). The inline copies are deleted in favour of `showError(err, 'fallback')`, the redundant `apiMessage` wrappers in `onboarding.tsx` and `catalog.tsx` are removed, and the pure-API raw `err.message` sites use `apiMessage`. The two bare `catch {}` blocks that showed a constant for a server call now go through `showError`.
+- **Proof:** `src/lib/errors.test.ts` 19 tests: `showError` shows a 409 reason and keeps the fallback for 500, status 0, 401 and a plain `Error`; a source pin over nine screens bans `err instanceof Error ? err.message`, the inline `err.status >= 400 && err.status < 500` ladder and `err instanceof ApiError ? err.message`; two pins for the OTP resend and payment catches. Falsified: with the `showError` line reverted the 4xx case fails (alert shows the fallback, not the server reason). `src/lib` suite 160 pass; mobile `tsc --noEmit` shows only the 3 typed-route errors already open.
+- **Limits, stated plainly:** this assumes API 4xx messages are readable by a shopper or retailer; a schema-validation 400 can read like "body/phone must match pattern". Not device-tested. Left on purpose: the Facebook/Instagram/social connect screens (`err instanceof Error ? err.message` there is how a native SDK error such as "Invalid key hash" reaches the user) and `auth/phone.tsx` (its own status ladder). Other screens that read `error.message` outside `showError`/`catch (err)` were not swept. Update 2026-10-29: `__tests__/smoke/rc-screens.test.tsx` now loads and passes (5/5): `__DEV__` is set in `vi.hoisted`, `expo-file-system` is mocked, its RC-009 case uses the real `ApiError`, and its RC-008 fixture was converted to paise (stale since RC-109). Falsified: with `apiMessage` always returning the fallback, RC-009 goes red; restored. Checked against `main` the same day: `main`'s version of the file passes on `main` and fails to load on this branch (`__DEV__ is not defined`), so the breakage came from this branch's RC-117/RC-109 changes, not from `main`.
+
+---
+
+## RC-116 — A screen with a text field had to remember the keyboard wrapper, and the guard only banned the wrong wrapper (T3.7-c)
+
+- **Component:** `apps/mobile` — `app/product/[id].tsx`, `app/social/schedule/[id].tsx`, `src/components/ReportProblem.tsx`, `app/staff/retailer-onboard.tsx`, plus `app/(tabs)/collections.tsx` (the Edit Collection dialog), found while building the guard.
+- **Symptom:** on a phone the software keyboard covered the lower fields of the product edit form (attributes, stock), the schedule post editor, the Report-a-problem sheet and the Edit Collection dialog, with no way to scroll to them.
+- **Root cause:** RC-042's guard (`keyboard-screen-adoption.test.ts`) banned the raw `KeyboardAvoidingView` in `app/`, but nothing required a screen that owns a `TextInput` to use `KeyboardScreen` at all. A screen that forgot any wrapper passed every arm. Three of the misses were also out of the guard's sight: `product/[id].tsx` owns its inputs through child components (`ProductAttributesForm`, `StockEditor`), `ReportProblem` lives in `src/components/`, and `retailer-onboard` was the one exemption (Android pinned to `undefined`, so Android got no lift).
+- **Fix:** `product/[id]`, `schedule/[id]` and `retailer-onboard` render `KeyboardScreen` as the screen root; `ReportProblem` and the Edit Collection dialog wrap their `Modal` overlay in it. `EXCLUDED` is now empty. New guard arms: every `app/` file with a `<TextInput` renders `<KeyboardScreen`, unless listed in `NO_WRAPPER` with a reason (the three header search fields: `catalog`, `customers`, `ai-search`); a stale `NO_WRAPPER` entry fails; `ReportProblem` and `product/[id]` are source-pinned because the scan cannot see their inputs.
+- **Proof:** `keyboard-screen-adoption.test.ts` 12 tests pass (was 8). Full mobile suite 258 tests pass.
+- **Limits, stated plainly:** like RC-042, no desktop run can show the keyboard, so the guard pins the wrapper, not the layout. Not device-tested on iOS or Android. `retailer-onboard` on Android changes from no lift to the shared `'height'` behaviour. The `NO_WRAPPER` reasons are from reading the code, not from a device. Input-owning components in `src/components/` were audited 2026-10-29 and produced RC-119 (`growth/ratings`). The arms were falsified 2026-10-29 by removing a `NO_WRAPPER` entry (guard red) and by reverting the `ratings` wrapper (pin red), then restored.
+
+---
+
+## RC-115 — React Native never told react-query it was offline, so the Mark Sold queue never replayed, and a 4xx in it would have looped forever (T3.7-a, T3.7-b)
+
+- **Component:** `apps/mobile` — new `src/lib/online-manager.ts` (+ `app/_layout.tsx`), `src/lib/mutation-queue.ts`, `src/hooks/useSyncQueue.ts`, `app/(tabs)/catalog.tsx`, `src/hooks/useNetworkStatus.ts` (comment); new dependency `expo-network ~8.0.8`.
+- **Symptom:** the offline banner never appeared, and a Mark Sold done offline stayed queued after reconnect. Separately, `handleMarkSold` queued every failure, so a 4xx (e.g. a product already deleted) was retried on every reconnect forever.
+- **Root cause:** `useNetworkStatus` and `useSyncQueue` read react-query's `onlineManager`, whose only event source is the browser `online`/`offline` events. React Native fires none, so `isOnline` was true for the whole session: `useSyncQueue` never saw an offline→online edge and never replayed, and the `NetworkBanner` never showed. The hook's own comment claimed it worked without a native module. The queue also had no notion of which failures can succeed later, and both the enqueue site and the replay loop treated every error as retryable.
+- **Fix:** `setupOnlineManager()` feeds `onlineManager` from `expo-network` (boot state via `getNetworkStateAsync`, then `addNetworkStateListener`; only an explicit `false` counts as offline), called once at module load in `app/_layout.tsx`. `isRetryable(err)` in `mutation-queue.ts`: network (status 0), 408, 429 and 5xx are retryable, other 4xx are not. `handleMarkSold` shows the server reason and refreshes the list instead of queueing a non-retryable error; the replay loop drops a queued mutation that gets a 4xx. `ApiError` moved to a dependency-free `api/api-error.ts` (re-exported from `client.ts`, same class) so these helpers do not pull native Expo modules into unit tests.
+- **Proof:** `online-manager.test.ts` (6 state cases + boot-seed and change-follow against the real `onlineManager`), `mutation-queue.test.ts` `isRetryable` (10 cases), `useSyncQueue.test.tsx` (success removes, 4xx dropped, 5xx and status 0 kept, no replay without an offline→online edge). Not falsified by reverting the fix.
+- **Limits, stated plainly:** **needs an EAS rebuild** — `expo-network` is a native module, so an OTA update will crash at import on a binary built without it. `pnpm-lock.yaml` changed. Not device-tested: nothing has toggled airplane mode on a phone. `isInternetReachable` can lag on some Android versions. The Mark Sold 4xx path in `catalog.tsx` is not unit-tested (only the helper it calls). Replay still swallows the cause of a dropped 4xx; the user is not told which sale was dropped.
+
+---
+
+## RC-114 — Onboarding's catch blocks replaced the server's validation message with a constant string (T3.5-a)
+
+- **Component:** `apps/mobile/app/onboarding.tsx` (the step handler and both final-step handlers), `src/lib/errors.ts`.
+- **Symptom:** entering a GSTIN the server rejects with 422 showed "Could not save details. Please check your connection and try again.", so the retailer retried on a good connection and never learned the GSTIN was the problem.
+- **Root cause:** the RC-003 / RC-009 shape again: `catch {}` discards the error and shows a fixed string. There was no shared way to decide when a server message is safe to show, and `errors.ts` told screens never to show raw `err.message`, so each screen either did nothing or hand-rolled the check (`help-support.tsx`).
+- **Fix:** `apiMessage(err, fallback)` in `errors.ts` returns the server message only for `ApiError` 4xx except 401 and 408; 401, 408 (its message holds the request URL), network (status 0), 5xx and non-`ApiError` throws stay on the fallback. Onboarding's three catches now call `showError(err, apiMessage(...))`. The best-effort `getQrSlug()` catch is deliberately left silent.
+- **Proof:** `errors.test.ts` (7 tests: 422/400/403/409 shown; 401, 408, status 0, 5xx and non-`ApiError` generic).
+- **Limits, stated plainly:** the wording shown is whatever the server sends for a 422, which was not read. The same `catch {}` shape elsewhere in `apps/mobile` was not swept; only onboarding was fixed, and `help-support.tsx` still has its own inline copy of the rule. Not device-tested.
+
+---
+
+## RC-113 — A BullMQ job that failed for good was only `console.error`'d; nothing reached Sentry (T1.4 F1)
+
+- **Component:** `apps/api/src/jobs/index.ts` (8 `worker.on('failed')` listeners), new `apps/api/src/lib/job-failure.ts`.
+- **Symptom:** a dead tagging, studio-shoot, try-on, push, catalog-sync or maintenance job (payout, plan-lapse, publish tick) left no alert. The only trace was a Railway log line.
+- **Root cause:** observability was a per-listener habit (`console.error`), not one shared failure path, so each worker repeated it and none ever called Sentry.
+- **Fix:** `reportJobFailure(queue, job, err)` calls `Sentry.captureException` with `area/queue/job` tags and the job id. It reports only the final failure (`attemptsMade >= opts.attempts`, or no `job` for a stalled-out run) so retries do not flood Sentry, and it never sends `job.data` (phones, tokens). Each of the 8 listeners calls it after its existing `console.error`; quota-refund logic is untouched.
+- **Proof:** `lib/job-failure.test.ts` (5 tests: final failure tagged, retry silent, no-attempts single-shot, stalled job reported, no payload in the Sentry call). API typecheck clean, 792 API tests across the touched dirs pass.
+- **Limits, stated plainly:** needs a Sentry DSN set in Railway or `captureException` is a no-op. The listeners themselves are not unit-tested (only the helper). Job handlers that catch and swallow their own errors never reach `failed`, so they stay invisible.
+
+---
+
+## RC-112 — Admin writes bypassed the shared CSRF helper, and the helper cached a rejected token fetch (T2.4 F1, F2, F3)
+
+- **Component:** `apps/web/src/app/admin/database/query/page.tsx`, `apps/web/src/app/admin/social/page.tsx`, `apps/web/src/lib/admin-fetch.ts`.
+- **Symptom:** the SQL console `POST /v1/admin/query` and the social "Force Disconnect" `DELETE` returned 403 (no `x-csrf-token`, no cookie). Disconnect swallowed the 403 (`if (res.ok)` with no else, empty `catch`), so it did nothing and said nothing. After one failed CSRF-token fetch, every later admin mutation re-threw the same error until a full reload.
+- **Root cause:** `admin-fetch.ts` documents that every mutating admin call must use `adminMutateOptions()`, but the rule was a convention each page had to remember; two pages kept a local header builder or the GET options. Separately `ensureCsrfToken` stored its in-flight promise in a module variable and never cleared it on rejection.
+- **Fix:** both pages call `adminMutateOptions()`; Force Disconnect now shows the server message (or `HTTP <status>`) inside the detail sheet and clears it when another account opens; `ensureCsrfToken` clears the cached promise in `.finally`, so success keeps the cached token and failure allows a retry.
+- **Proof:** `apps/web/src/lib/__tests__/admin-csrf-and-units.test.ts` (rejected fetch then retry succeeds, concurrent callers share one fetch, SQL console and Disconnect source pins). Web typecheck clean.
+- **Limits, stated plainly:** only the two named pages were fixed; I did not audit the other admin pages for the same pattern. The two pages are source-pinned, not rendered or browser-tested.
+
+---
+
+## RC-111 — A campaign was marked SENT only after the whole audience had been sent, so two concurrent sends both went out (T3.5-b)
+
+- **Component:** `apps/api/src/routes/growth/growth-campaigns/growth-campaigns-send.ts`.
+- **Symptom:** a double tap, a retry after a slow response, or a manager and the owner pressing Send together dispatched the campaign to every customer twice.
+- **Root cause:** the "already sent" guard was a read at the top of the handler and the `status: 'SENT'` write came at the very end, after the dispatch. Any second request that arrived in between passed the read. No migration was needed: `SENT` already exists in `CampaignStatus`.
+- **Fix:** after all validation and the owner/API check, one conditional `updateMany` (`status != SENT`) claims the campaign before any `CampaignSend` row is written; a count of 0 answers 403 "Campaign already sent". If writing the send rows fails, the previous status and `sent_at` are restored so the retailer can retry. The per-message Meta call also gets a 15 s timeout (RC-110).
+- **Proof:** `growth-campaigns-send.test.ts` (claim shape and order before the transaction, lost race sends nothing, restore on failure). 5 tests pass. API typecheck clean.
+- **Limits, stated plainly:** not run against a real Postgres. A crash after the claim but during dispatch leaves the campaign SENT with partial sends and no automatic retry. A message that times out is counted as failed even if Meta delivered it.
+
+---
+
+## RC-110 — Outbound HTTP calls had no timeout, so one hung upstream pinned the request (T1.7 F1, T3.5-c)
+
+- **Component:** new `apps/api/src/lib/fetch-timeout.ts`; callers `lib/email.ts` (Resend), `lib/meta-graph.ts` (16 Graph calls), `routes/retailers/retailers-catalog-upload.ts` (Razorpay), the WhatsApp send in `growth-campaigns-send.ts`; mobile `src/lib/api/catalog-upload.ts`.
+- **Symptom:** a stalled Resend, Meta or Razorpay socket held the request open (and a whole `Promise.allSettled` fan-out) until the platform killed it. On mobile, "Pay" hit the 10 s client default while the server was still creating the Razorpay order and showed a false "server not running".
+- **Root cause:** each call site used bare `fetch`; `razorpayx.ts`, `msg91-otp.ts` and others had timeouts added one by one (RC-011, RC-079), so the next new call site shipped without one.
+- **Fix:** one `fetchWithTimeout` (15 s default, a caller-supplied signal wins), used by the four server call sites. `meta-graph.ts` imports it as `fetch`, which covers all 16 calls with one line. Mobile `catalogUploadApi.pay` gets `timeoutMs: 30_000`.
+- **Proof:** `lib/fetch-timeout.test.ts` (aborts a never-answering request, keeps a caller signal, adds a signal by default). The existing meta-graph, retailers, billing and jobs suites still pass (792 tests).
+- **Limits, stated plainly:** other bare `fetch` calls in the API (for example in `billing.ts`) were not audited here. The mobile timeout is not device-tested. A timed-out Meta publish may still have posted.
+
+---
+
+## RC-109 — Money amounts from the API are paise, but the GST screens printed them as rupees (T3.4-a)
+
+- **Component:** `apps/mobile/app/growth/gst.tsx`, new `apps/mobile/src/lib/format-inr.ts`, `apps/web/src/app/admin/reports/gst/page.tsx`.
+- **Symptom:** a ₹2,100 payment showed as ₹2,10,000 on the retailer GST report and the admin GST report (totals, CGST/SGST/IGST, monthly bars, transactions).
+- **Root cause:** `SubscriptionPayment.amount_inr`, `gst_amount` and the CGST/SGST/IGST columns hold integer paise (the Razorpay webhook writes `payment.amount` and `computeSubscriptionGst`; the invoice job reads `cgstPaise`). The routes pass them through unchanged and each screen kept its own `toLocaleString` formatter that assumed rupees.
+- **Fix:** mobile uses a shared `inrFromPaise` (divide by 100, Indian grouping, up to 2 decimals, ₹0 for missing/NaN); the admin page reuses the existing `rupees()` from `lib/plan-pricing`.
+- **Proof:** `apps/mobile/src/lib/format-inr.test.ts` (3 tests), `admin-csrf-and-units.test.ts` (`rupees` conversion and a source pin that `fmtINR` goes through it). Mobile and web typecheck clean apart from 3 typed-route errors in untouched files.
+- **Limits, stated plainly:** not checked on a device or in a browser against live data. Any other screen that renders these columns with its own formatter was not searched.
+
+---
+
+## RC-108 — The Razorpay add-on redirect carries no Bearer token, so the auth plugin 401'd it before the handler could credit the purchase (T1.8 F1)
+
+- **Component:** `apps/api/src/plugins/auth.ts` (global `preHandler` skip list), `routes/billing/billing-addons.ts`.
+- **Symptom:** after paying for an add-on or try-on pack, the buyer's browser GET to `/v1/billing/addon-callback` answered 401 "Missing Bearer token", so the purchase stayed PENDING and was never credited.
+- **Root cause:** the handler is written as a no-JWT endpoint (it verifies the Payment Link HMAC itself) but the auth plugin's skip list named the webhook routes and not this one. The route tests built the handler without the auth plugin, so nothing ever sent the real request through both.
+- **Fix:** one exact-path skip for `/v1/billing/addon-callback` beside the other Razorpay entries. The HMAC check in the handler is unchanged.
+- **Proof:** `plugins/auth-public-callbacks.test.ts` mounts the real `authPlugin`: a Bearer-less GET reaches the handler, and `/v1/billing/plans` and `/v1/billing/addon-callback/extra` still answer 401. Billing suites (68 tests) pass.
+- **Limits, stated plainly:** not run against a real Razorpay redirect. Purchases that were paid before this fix and stayed PENDING are not recovered by it.
+
+---
+
+## RC-107 — Only the sign-out button cleaned up local account data; the forced-logout paths skipped it (T3.6-a, T3.7-b queue file)
+
+- **Component:** `apps/mobile/src/lib/auth-context.tsx`, `src/lib/api/client.ts` (401 branch), `src/lib/offline-persister.ts`, `src/lib/mutation-queue.ts`, `app/_layout.tsx`.
+- **Symptom:** when token refresh fails the app redirects to login but leaves the previous account's persisted query cache (customer names/phones, enquiries), the `retailer_id` / `staff_*` keys and the offline Mark Sold queue on the device. On a shared shop phone the next person to sign in sees them until each query refetches (`staleTime` 60 s), the queue replays under the new account's token, and backgrounding the app re-persists the still-in-memory cache.
+- **Root cause:** sign-out cleanup lived in the button handler (`settings/index.tsx`: `queryClient.clear()` + `clearPersistedCache()`) and in `signOut()` (key deletion), not at the one point every path to logged-out passes through: the `authed: false` event. `client.ts` (401) and `team-api.ts` (team 401) only emit that event. Separately, `clearPersistedCache()` deleted the cache file but not `mutation-queue.json` in the same folder.
+- **Fix:** the `AuthProvider` `authed: false` listener now deletes every `AUTH_KEYS` entry and calls `clearPersistedCache()` (idempotent with `signOut`); `clearPersistedCache()` also calls the new `clearQueue()`; `AppContent` clears the in-memory `queryClient` when status becomes `unauthenticated`.
+- **Proof:** `auth-context.test.tsx` (new case: a bare `authed: false` emit leaves the store empty and calls `clearPersistedCache` once), `offline-persister.test.ts` (new case: the queue file is removed), `shop-staff-login-routing.test.tsx` (mock added so the real provider still mounts). 37 mobile tests across those files pass. API/web typecheck clean.
+- **Limits, stated plainly:** not device-tested. On a cold start with no token, `status` becomes `unauthenticated` and clears the cache while `restoreQueryCache` may still be running, so a stale file could repopulate once (needs a startup reorder, not done). A phone that logged out on an older build keeps its old files until its first sign-out on this build. The other half of T3.7-b (Mark Sold queues every failure and retries 4xx forever) and T3.7-a (offline detection) are Batch 4 and are not fixed. `__tests__/smoke/rc-screens.test.tsx` fails to load (`__DEV__ is not defined`); it mocks both changed modules, so I believe it is unrelated, but I did not run it on the unchanged tree.
+
+---
+
+## RC-106 — The service worker's default cache rules stored authenticated responses and nothing ever cleared them (T2.8 F1)
+
+- **Component:** `apps/web/src/app/sw.ts`.
+- **Symptom:** `/api/passport/me`, the full data export, wishlist, preferences, `/api/my-style/*` and the retailer's Bearer-token `GET /v1/retailers/*` calls were written to Cache Storage. On a shared phone, after shopper A logs out, shopper B going offline (or waiting past the 10 s network timeout) was served A's cached `/me` or export.
+- **Root cause:** `runtimeCaching` ended with `...defaultCache` (Serwist: same-origin `/api/*` NetworkFirst 24 h, cross-origin GET 1 h), and only `/api/c/…` store proxies and `/v1/admin` had their own rules. A new authenticated route is cached by default unless someone remembers to exclude it, and no code called `caches.delete`. `Cache-Control: no-store` on the response (RC-084) does not stop those strategies.
+- **Fix:** one `NetworkOnly` rule before `defaultCache` for same-origin `/api/*` and for `/v1/*` except `/v1/public/`, replacing the `/v1/admin`-only rule; the explicit public proxy rule stays above it. A one-time `activate` listener deletes the `apis` and `cross-origin` caches the old rules filled.
+- **Proof:** `apps/web/src/lib/__tests__/sw-no-personal-cache.test.ts` (3 tests, reads `sw.ts`: rule present and before `defaultCache`, `/v1/public/` carve-out, public proxies above it, cleanup listener present). Web typecheck clean.
+- **Limits, stated plainly:** a source guard, not a runtime test; not exercised in a browser with a real session. Offline use loses cached non-public `/api/*` and non-public `/v1/*` GETs by design. The default stays "cache unless excluded" for new same-origin paths outside `/api/`.
+
+---
+
+## RC-105 — The sitemap query listed every ACTIVE collection, including ones made for one shopper (T2.8 F2)
+
+- **Component:** `apps/api/src/routes/public/public-retailers/public-retailers-sitemap.ts`.
+- **Symptom:** collections created for a single customer (`Collection.customer_id` set; the AI-picks route titles them `AI Picks for <customer name>`) and collections past `expires_at` appeared in `/sitemap.xml`, so a shopper's name and preference-based picks were submitted to Google, and expired pages 404'd when crawled.
+- **Root cause:** "public collection" was implicit in the query (`status: 'ACTIVE', deleted_at: null`), but shopper-specific collections share that status; `expires_at` is only flipped lazily on a view (`public-collections.ts:98-104`).
+- **Fix:** the collections `where` adds `customer_id: null` and `OR: [{ expires_at: null }, { expires_at: { gt: now } }]`.
+- **Proof:** `routes/public.test.ts` asserts the exact `where` (21 tests pass). API typecheck clean.
+- **Limits, stated plainly:** Google may already have indexed existing URLs; this stops new submissions only. The customer-specific collection pages are still reachable by URL and have no `noindex` (product call, follow-up). Not run against a real Postgres.
+
+---
+
+## RC-104 — The migration history cannot build a fresh database: `000_baseline` was hand-patched in prod and the repo copy never was
+
+- **Component:** `packages/db/prisma/migrations/000_baseline/migration.sql`, `001_pgvector_indexes`.
+- **Symptom:** `prisma migrate deploy` on an empty Postgres fails three times in a row: `ERROR: syntax error at or near "┌───…"` (P3018, 000), `type "vector" does not exist` (000), `column does not have dimensions` (001). Found 2026-10-29 while preparing a scratch DB for the RC-102 verify script.
+- **Root cause:** the baseline was generated with `prisma migrate diff > migration.sql`, which captured Prisma's "Update available" banner on stdout (10 lines at the end of the file). It declared `product_embeddings.embedding` and `customer_fashion_dna.preference_vector` as plain `vector` and never created the extension, while `001` builds IVFFlat indexes that need a fixed dimension. Prod was never replayed: live `_prisma_migrations` shows `000_baseline` finished 2026-07-07 14:54, `001_pgvector_indexes` failed once (`finished_at` null) and finished 10 minutes later, i.e. a hand fix on the live database that never came back to the repo. Nothing replays the history on an empty DB, so the drift was invisible.
+- **Fix:** `000_baseline` now starts with `CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA public;`, declares `embedding vector(1536)` (matches `schema.prisma`) and `preference_vector vector(8)` (placeholder: the table is dropped by the teardown migration, 8 only lets the index build), and the banner is deleted. `001` is unchanged. `migrate deploy` does not re-check checksums of applied migrations, so live is unaffected.
+- **Proof:** none yet. Diff reviewed by hand only (5 lines added, 13 removed). No fresh-DB replay has passed.
+- **Limits, stated plainly:** migrations 002-145 were never replayed either, so more drift (missing roles such as `kanchuki_app` / `kanchuki_purge`, other hand edits) is likely. Prod's `000_baseline` checksum now differs from the file; `migrate dev` would flag it. The regression check is a full replay on a throwaway Postgres; until that passes, DR and CI cannot assume the history builds a database.
+
+---
+
+## RC-103 — A quota with no `plan_limits` row meant "unlimited", including for resources that cost real money per call (H6-1)
+
+- **Component:** `apps/api/src/lib/quota.ts` (`effectiveLimit`, `effectiveCustomerLimit`), `apps/api/src/routes/products/products-studio.ts`.
+- **Symptom:** a brand-new retailer (any phone, 14-day STARTER trial) could loop `POST /products/:id/photos/:photoId/studio-shoot` with no cap, because no `STUDIO_SHOOT` row ships in `plan_limits` (migration 074 says so on purpose). Every call enqueued a paid FLUX Kontext / Gemini generation. The same hole applied to `BG_REMOVAL`, `IMAGE_CROP` and retailer-side `TRY_ON_GENERATION`. The only brake was the global 200 req/min/IP limit and the hourly `ai-spend-alert` (RC-081), which alerts and does not stop.
+- **Root cause:** "no row" was one state with one meaning for every resource: `effectiveLimit` returned `null` and each of `checkQuota`, `reserveQuota`, `reserveJobQuota`, `reserveCustomerJobQuota` read `!effective` as "unlimited, not yet configured". That default was chosen for cheap resources ("don't block every retailer until an admin picks a number") and applied unchanged to resources where an unset limit costs money. RC-102 copied the rule into its three new reserve functions. `getQuotaStatus` also invented plan defaults (Growth 30, Pro 100) for the same no-row case while the server enforced nothing, which is the RC-073 mismatch.
+- **Fix:** one guard where all callers route through. A `METERED` set (`STUDIO_SHOOT`, `TRY_ON_GENERATION`, `BG_REMOVAL`, `IMAGE_CROP`) in `quota.ts`; `effectiveLimit` and `effectiveCustomerLimit` return `{ limit: 0, period: 'MONTH' }` instead of `null` for those types when there is no row. `checkQuota`, `reserveQuota`, `reserveJobQuota`, `reserveCustomerJobQuota`, `getQuotaStatus` and `getEnforcedQuota` therefore refuse (402) and report 0 remaining, with no per-caller edit. An explicit `-1` row is still unlimited; a retailer override still wins; every non-metered type still fails open. The studio-shoot route also gets `config.rateLimit` 10 per 60 s (RC-079 shape). Doc comments in `quota.ts` and `admin-plans.ts` updated.
+- **Proof:** `lib/quota.test.ts` 38 tests (was 30). Three old fail-open tests flipped (shopper `TRY_ON_GENERATION` no row, shopper reserve no row, `getEnforcedQuota` no row). New `metered resources with no plan_limits row` block: for each of the four types `checkQuota`, `reserveQuota` and `reserveJobQuota` are refused before any SQL; `getQuotaStatus` and `getEnforcedQuota` report limit 0 / remaining 0 / not unlimited for STARTER, GROWTH and PRO and agree with `checkQuota`; an explicit `-1` row is still unlimited; an override with no plan row is honoured; `AI_TAGGING_CALL` with no row stays fail-open. Shopper side: `checkCustomerQuota` and `reserveCustomerJobQuota` refuse a metered type with no row (`CUSTOMER_LIMIT_EXCEEDED`) and stay open for `STYLE_ANALYSIS`. Full API suite: 2666 passed, 5 skipped, 1 failed (`retired-tryon-guard.test.ts`, a 32 s timeout under load that passes alone in 0.6 s; T1.2 F2 already flagged it). API typecheck clean.
+- **Limits, stated plainly:** **owner step before deploy: Admin → Plan Limits must hold `STUDIO_SHOOT`, `BG_REMOVAL` and `IMAGE_CROP` rows (and `TRY_ON_GENERATION` if missing) for STARTER, GROWTH and PRO, or those features refuse every retailer.** Not deployed, nothing run against a real Postgres. The route rate limit has no test (the test app does not register the rate-limit plugin). `STYLE_ANALYSIS` (a paid Vision call) is deliberately not in the set and stays fail-open; add it to `METERED` if wanted. The `METERED` list is hand-written, so a new paid resource must be added to it (a `plan_limits` column would remove that).
+
+---
+
+## RC-102 — A limit enforced as "read the count, then write" lets concurrent requests all pass the read
+
+- **Component:** `apps/api/src/lib/quota.ts` (`checkQuota` + `incrementUsage`), `apps/api/src/routes/public/public-reviews.ts` (20 new reviews / 24 h cap).
+- **Symptom:** two requests sent together could both be allowed past a limit that had room for one: quota overshoot (every metered resource, `GBP_REVIEW_REPLY` among them) and more than 20 new reviews in 24 h from one account. Both were noted as "known, small" in the RC-099 / GBP work.
+- **Root cause:** the limit was a check and the spend was a separate write, with `await`s between them, so the decision was made on a count another request was about to change. Same shape twice: a quota (`checkQuota` then `incrementUsage`) and a daily review cap (`count()` then `upsert`). A comment in `quota.ts` had accepted the race for quotas as "fine for a billing quota" without anything enforcing a bound.
+- **Fix:** (1) new `reserveQuota(retailerId, resource, amount)` in `quota.ts`: ONE `INSERT .. ON CONFLICT DO UPDATE .. WHERE count + amount <= limit`; zero rows touched means over limit (402 `PLAN_LIMIT_EXCEEDED`), and it returns a `refund` that gives the slot back. Same limit rules as `checkQuota` (no row or -1 = unlimited, nothing written); a batch larger than the whole limit is refused before the insert, because the guard only covers an existing row. Moved to it: GBP review reply (reserve before calling Google, refund if Google refuses or is down), `/growth/translate/product`, `/growth/translate/message`, `/growth/ai-campaign` (these already charged before the AI call and never refunded, so the pair became one reserve with unchanged semantics), then `POST /products` (`PRODUCT_UPLOAD`: reserved after body/upload validation, just before the create; refunded if the create throws or hits a duplicate SKU; a failed stock write keeps the slot, the product exists), `bulk-create-products` (`items.length` reserved at the old check point; the whole reservation is refunded if anything below throws, and products a failed batch already made stay uncharged exactly as before), `POST /products/pro-cleanup` (`BG_REMOVAL` for all photos and `IMAGE_CROP` for the cropped ones, reserved up front, still all-or-nothing; one slot of each handed back per photo that fails, all of it if the background lookup fails or `IMAGE_CROP` is refused) and the `scheduled-post-publish` job (a slot is reserved per attempt and `fail()` is the single exit that hands it back, nulled after use, so a retry reserves afresh and never double-refunds; a posted attempt keeps it). `refund(n)` takes an optional count for the per-photo case. (2) `saveUnderDailyCap` in `public-reviews.ts`: one `$transaction` that takes `pg_advisory_xact_lock(hashtextextended('review-cap:<account id>', 0))`, then runs the edit check, the 24 h count and the upsert. Edits still skip the cap; the lock is per account, so one shopper never waits on another.
+- **Proof:** new `lib/quota-reserve.test.ts` (9 cases): 10 concurrent callers on a limit of 3 → exactly 3 succeed and the counter ends at 3; refund frees a slot; `refund(n)` gives back part of a batch; refund never goes below 0; oversize batch writes nothing; unlimited writes nothing. The fake models the atomic statement, not the old check/increment pair. `public-reviews.test.ts` +4 cases (2 per route, 35 total): lock taken first and account-scoped, before the count and the upsert; capped request writes nothing. GBP reply tests assert refund on a Google refusal and on Google down, and no refund on success.
+- **Limits, stated plainly:** NOT run against a real Postgres, so the concurrency guarantee rests on the SQL being one atomic statement and on the advisory lock, not on a measured race. Only callers whose work runs in the same request (or, for `scheduled-post-publish`, in the same job attempt) were moved, plus step 1 of the enqueue-then-job work: **`products-studio` / `jobs/studio-shoot` now reserve at enqueue (`reserveJobQuota`, keyed by the payload `job_id`) and the job refunds in a `finally` unless a photo exists** (migration 144 `quota_reservations`, applied in prod 2026-10-27). **Steps 2-4 built the same way (2026-10-27, code only, nothing run against Postgres):** the shopper scope (`reserveCustomerJobQuota` / `refundCustomerJobQuota` / `markCustomerJobQuotaSpent` on `customer_usage_counters` + `quota_reservations.customer_account_id`), **My Style analyze** (`public-my-style-analyze` reserves once the per-account lock is held; `jobs/my-style-analyze` marks spent on a usable result, refunds on every other exit) and **retailer + shopper try-on** (`products-tryon` reserves shopper then retailer after the photo is sniffed and before `tryOnJob.create`, refunds on create / photo-store / enqueue failure; `jobs/tryon` marks both spent right after `generateTryOn` returns and refunds otherwise). `pendingTryOns` and the `reserved` argument of `getEnforcedQuota` were deleted: an in-flight job is already in the counter, so keeping them would charge each try-on two slots. The `failed` hooks for try-on and My Style are stalled-job backups. The studio route's sibling enqueuer `growth-social-templates` `/generate` also reserves now (it had no check at all; with the job no longer incrementing it would have been unmetered). Still check-then-increment: `jobs/tag-product` and `catalog-import` AI tagging with `ai-usage` (retried, provider-weighted spend). Sweep built 2026-10-27 (`jobs/quota-reservation-sweep.ts`, hourly :40, 6 h cutoff, SPENT if a paid result exists else refund); before it, a crash between reserve and handler leaves the slot held. Spec: `docs/tasks/pending/quota-reserve-at-enqueue.md`. Deliberately left alone: `growth-social-caption-suggest` (check only; its spend is the provider-weighted `recordAiUsage` after the call, so a flat reserve would double count) and the `AI_TAGGING_CALL` checks in `catalog-import` (`checkQuota` + `reserveAiCredits` + `beforeCall`, same weighted `recordAiUsage` spend). Not fixed by this change: the `max_products` count-then-create check in `POST /products` is its own race, separate from the quota. The usage counter and the review count can still drift if a process dies between reserve and refund (for the publish job: a crash mid-attempt leaves its slot spent). A failure semantics change worth knowing: `POST /products` now answers an invalid body or an unverifiable upload before it touches the quota, so a request that is both over quota and invalid gets the validation error, not the 402. Tests mock `reserveQuota`, so none of this ran against real Postgres.
+
+---
+
+## RC-101 — Legacy token-paste Google Business integration called the wrong Google API and reported `configured: true` without calling Google
+
+- **Component:** `apps/api/src/routes/retailers/retailers-integrations.ts` (`POST/DELETE /me/integrations/gmb`, `/gmb/test`, `/gmb/post`, the `gmb` block of `GET /me/integrations`), `apps/mobile/app/growth/integrations/gmb.tsx`, `growthApi.configureGmb/testGmb/disconnectGmb`.
+- **Symptom:** a Google Business "integration" that could never have worked. `/test` and `/post` could not succeed, yet `POST /gmb` stored whatever ids it was given and `GET /me/integrations` then answered `gmb.configured = !!gmb_account_id`.
+- **Root cause:** same shape as RC-056/057/060: a success state decided from our own column, not from the provider. The code also called `mybusinessbusinessinformation.googleapis.com/v1/locations/{id}/localPosts`, an endpoint that does not exist (Posts and Reviews live in the legacy `mybusiness.googleapis.com/v4/accounts/{accountId}/locations/{locationId}/…` API, and the account id is part of the path, which the code dropped). Nothing ever called Google to prove the pasted ids.
+- **Fix:** the four routes and the `gmb` block are removed; the dead mobile screen, its `_layout.tsx` registration and the three client methods are deleted. Replaced by Part B of `docs/tasks/pending/google-business-profile-and-setup-checklist.md`: a shared Kanchuki Google identity, a retailer consent, a team-picked location, and every state read from the server (`UNAVAILABLE` shows "Coming soon" with no action). The `retailers.gmb_*` columns are left in place (not dropped).
+- **Proof:** `apps/mobile/__tests__/google-listing.test.ts` (the screen has no success path of its own; `gmb.tsx` is gone and nothing references `configureGmb` or `integrations/gmb`), `unbuilt-integrations-hidden.test.ts`, `apps/api/src/lib/google-business.test.ts`.
+- **Limits:** the removed code may already have stored ids or encrypted tokens in `retailers.gmb_*`; the owner can check with the SQL in §E of the spec. Part B ships dark (no `plan_features` row, API not marked approved), so nothing user-visible replaces it yet.
+
+---
+
+## RC-100 — Mobile review routes were `/v1/retailers/me/reviews/*`; the API serves `/v1/retailers/reviews/*`
+
+- **Component:** `apps/mobile/src/lib/api/growth.ts`, `apps/mobile/src/lib/api/retailer.ts` (ratings/reviews client), `apps/api/src/routes/retailers/retailers-ratings.ts`.
+- **Symptom:** the ratings screen's review calls 404'd against the real API while the route's own tests passed.
+- **Root cause:** one path written in two places with no shared definition. The ratings plugin is mounted at `/v1/retailers` and registers `/reviews/...`; the mobile client had an extra `/me` segment. The new route test was first mounted under a different prefix, which made the wrong path resolve, so the test agreed with the client instead of with the server (RC-037 shape: the double agreed with the code, not with the platform).
+- **Fix:** mobile paths corrected to `/v1/retailers/reviews/*`; the route test registers the plugin with the same prefix as `src/index.ts` and says why.
+- **Proof:** `apps/mobile/__tests__/google-listing.test.ts` pins that neither client file contains `/v1/retailers/me/reviews`; `retailers-ratings.google-place.test.ts`.
+
+---
+
+## RC-099 — Review hardening: IP-keyed limit was one shared bucket, erasure left the reviewer's name, no per-account cap, owner could rate own store
+
+- **Component:** `apps/api/src/routes/public/public-reviews.ts`, `apps/api/src/routes/public/passport/passport-data.ts` (`POST /passport/delete`).
+- **Symptom:** four gaps left by RC-098's review (automated security review of `9104c495`). (1) The 10/min review limit keyed on `request.ip`; the web proxy forwards no client IP (RC-084 / T2.5 F1), so in production it was ONE bucket for every shopper: 11 reviews a minute site-wide gave everyone a 429, and one signed-in attacker could starve it. (2) After "delete my passport" the review rows kept `display_name` (a copy of the account name or a typed name), the free-text `comment` and `customer_account_id`. (3) No ceiling on how many different products/stores one account could rate. (4) A retailer could rate their own store from a shopper account.
+- **Root cause:** (1) a rate-limit key chosen for a world where the client IP is real, while the proxy hides it (RC-079 / RC-084 family). (2) The erasure was written for the columns that existed on `CustomerAccount`; reviews copy PII into their own table, and the FK `ON DELETE SET NULL` only fires on a hard delete, but `/passport/delete` is a soft delete (RC-044 shape: a promise made in one place, no code on the other side). (3)/(4) RC-098 made identity a verified account but put no limit on what one account may do.
+- **Fix:** (1) per-route `keyGenerator`: sha256 of the `kanchuki_passport` cookie value, `ip:<ip>` when there is no cookie; still 10 per 60 s. (2) `/passport/delete` runs `updateMany` on `product_reviews` and `store_reviews` for the account with `{ display_name: null, comment: null, customer_account_id: null }`; stars stay as anonymous ratings, so no ratings recompute. (3) `MAX_NEW_REVIEWS_PER_DAY = 20` per account per rolling 24 h, product + store combined, counted from `created_at` in the DB (no Redis); edits of an existing review do not count and still work at the cap; over it: 429 `DAILY_REVIEW_LIMIT`. (4) 403 `OWN_STORE_REVIEW` when the session account's phone equals the retailer's `phone` or `whatsapp_number` (both sides through `normalizeIndianPhone`).
+- **Proof:** `public-reviews.test.ts` 17 → 29 cases; 8 of the 12 new cases (separate buckets per cookie, the 429 daily cap, own-store 403 on `phone` and on `whatsapp_number`, on both routes) were red before the fix, and the cases that passed before (19 allowed, edit at the cap) pin behaviour the fix must keep. New `passport/__tests__/passport-data.test.ts` (delete clears the three fields on BOTH tables for the right account only; 401 touches nothing), 1 red before. `passport-export-delete.test.ts` mock gained the review `updateMany`.
+- **Limits, stated plainly:** the own-store guard catches only a shared number; it does not stop a friend, relative or staff member from rating the store. The session-keyed limit is per browser session, so a determined person with many OTP-verified accounts still gets 10/min each; the 20/day cap is per account. The IP-forwarding decision (RC-084) stays open. Found by the automated security review of RC-098.
+- **Follow-up (`273d54ad`):** the limit's cookie key was parsed separately from `getPassportSession`, so a request with duplicate `kanchuki_passport` cookies could be bucketed under one value while authenticated as another (bucket bypass). Fixed: the limit now keys on `passportCookieId()` (`passport-helpers.ts`), the same parser `getPassportSession` uses (last duplicate wins). Known, left: the 20/24 h cap is count-then-upsert, not atomic; overshoot is bounded by the 10/min limit.
+
+---
+
+## RC-098 — Reviews were keyed on an unverified phone and wrote to the retailer CRM
+
+- **Component:** `apps/api/src/routes/public/public-reviews.ts`, `ProductReview` / `StoreReview` (migration 139), `apps/web` `ReviewForm` + `/api/reviews/product` proxy.
+- **Symptom:** `POST /v1/public/reviews/product|store` took `{phone, name}` from the body with no OTP. Anyone could post unlimited fake ratings (a fresh phone per call, only the global per-IP limit), replace a real customer's review by typing their phone, and rename that customer in the retailer CRM (`customer.upsert … update: { name }`).
+- **Root cause:** the review's identity was the retailer-scoped CRM `Customer` row, and the only way to get one in a public route was to create it from a typed phone. "Who is reviewing" was a claim in the body, not a verified session, and the review table had nowhere to keep a display name except the CRM row it also edited (RC-093/RC-094 shape).
+- **Fix:** a review needs a passport session (`getPassportSession`, 401 `NO_SESSION` otherwise); identity is the session account, never the body. New nullable `customer_account_id` + `display_name` on both review tables (migration 139), one review per account per product/store via `upsert`, and reviews never touch `Customer`. Both POSTs are limited to 10/min. The response is an explicit `select` (no account id). Web: no phone field, cookie forwarded by the proxy, 401 shows a sign-in prompt, consent-to-be-contacted checkbox removed (nothing is shared with the retailer now). Google: the "Also post on Google" link (store write-review URL) shows for any rating when the store has a place id; no Google API write (F-022 stays Planned).
+- **Proof:** new `routes/public/public-reviews.test.ts` (17 cases, 15 failed before the fix): 401 without a session on both routes, body phone/account id ignored, `Customer` never touched, `upsert` on the session account, no account id echoed, 11th request in a minute → 429, Google link for any rating, GET shows `display_name` with the legacy customer-name fallback. New `ReviewForm.test.tsx` (no phone sent, 401 prompt, Google link for a 2-star).
+- **Behaviour change:** shoppers must sign in to review. Old phone-keyed rows are kept (`customer_id`, unverified) and not attributed to any account, so a shopper who reviewed before can leave a second review. Moderation screens show `display_name ?? customer.name`. **Migration 139 must be applied (owner) before the API is deployed**, otherwise every review POST 500s. Found by H4-3.
+
+---
+
+## RC-097 — near-me published the retailer's login phone
+
+- **Component:** `apps/api/src/routes/public/near-me.ts`.
+- **Symptom:** `GET /v1/public/near-me?latitude=…&longitude=…` returned the retailer's OTP-login `phone` next to `whatsapp_number`, so sweeping a grid of points harvested personal numbers of retailers who keep a separate business number.
+- **Root cause:** every other public route goes through `enquiryPhone()` (`public-helpers.ts`) to pick the one public number; this route selected both columns and returned them raw, so the rule "public surfaces expose the business number only" lived in each caller, not in one place (RC-078 shape).
+- **Fix:** `phone: enquiryPhone(r)` and no `whatsapp_number` key. `enquiryPhone` falls back to `phone` only when no WhatsApp number is set.
+- **Proof:** new `routes/public/__tests__/near-me.test.ts`: "returns the business WhatsApp number, never the login phone" failed before the fix (got the login phone); the fallback test guards the no-WhatsApp case.
+- **Behaviour change:** the response loses the `whatsapp_number` key. No caller in `apps/` reads `/near-me`. Found by H4-6.
+
+---
+
+## RC-096 — Customer routes returned the whole row, including phone_hash and customer_account_id
+
+- **Component:** `apps/api/src/routes/customers.ts` (`GET /`, `GET /:id`, `PUT /:id`, `POST /`).
+- **Symptom:** a masked salesperson/manager got `phone_hash` (unsalted SHA-256 of a 10-digit number, brute-forceable offline) and `customer_account_id` (the RC-093 input) on every row, defeating RC-066 phone masking. `PUT` also returned the raw, unmasked `phone`.
+- **Root cause:** each handler built its own response by spreading the Prisma row and patching `phone`; masking was applied per handler and nothing named the fields that must never leave the API.
+- **Fix:** one `toCustomerDto(request, row)` drops `phone_hash` and `customer_account_id` and masks `phone`; all four handlers use it. Stripped for every role, since no client reads either field.
+- **Proof:** new `routes/customers-dto.test.ts`: the GET list and GET `:id` tests failed before the fix for owner and salesperson. The `PUT` test was added together with the fix, so it was not seen failing. `collections.ts` customer reads only check existence or use a narrow `select`, so they needed no change.
+- **Behaviour change:** none for the mobile app (no reference to either field). Found by H4-2.
+
+---
+
+## RC-095 — Wishlist, recently-viewed and events trusted a client-supplied retailer_id
+
+- **Component:** `apps/api/src/routes/public/passport/passport-wishlist.ts`, `passport-activity.ts`, helper `passport-helpers.ts` `productRetailerMap`.
+- **Symptom:** any signed-in shopper could write up to 50 events per request attributed to any retailer, poisoning that retailer's engagement analytics (F-037) and wishlist counts.
+- **Root cause:** `retailer_id` was accepted from the body and stored; nothing tied it to the `product_id` it was sent with, though the product row already names its owner.
+- **Fix:** `productRetailerMap` looks the owner up from the product row. Wishlist uses it (unknown product → 404). Recently-viewed uses it (unknown product → silent 204). `/events` keeps a row only when a product event's `retailer_id` equals the product's owner, or a store-level event names a retailer that exists. `/events` also gets a 30/min route limit. The body `retailer_id` stays optional for wishlist and recently-viewed so older web clients do not get a 422; the value is ignored.
+- **Proof:** new `passport-retailer-ownership.test.ts` (4) and four ownership tests in `passport-events.test.ts` failed before the fix (8 red). The two older tests in `passport-otp.test.ts` now mock `prisma.product`.
+- **Known gap:** a store-level event (no `product_id`) can still be attributed to any real retailer; only made-up ids are blocked. Closing that needs a different rule. Found by H4-5.
+
+---
+
+## RC-094 — The unverified QR lead form could rewrite an existing customer and forge their consent
+
+- **Component:** `apps/api/src/routes/public/public-retailers/public-retailers-leads.ts` (legacy path, `prisma.customer.upsert`).
+- **Symptom:** any anonymous caller who knew a phone number could `POST /v1/public/retailers/:slug/leads` with `{name, phone, gender, consent: true}` and overwrite that customer's name and gender in the retailer's CRM and set `consent_given = true` with a fresh `consent_at`, without owning the phone. That is forged marketing consent (DPDP) on a number that may have opted out.
+- **Root cause:** the form is unverified (no OTP), but its `upsert` `update` branch had the same write power as `create`. An unauthenticated input was allowed to change a row it did not create (RC-093 shape: the caller's claim treated as identity).
+- **Fix:** the `update` branch is `{}`. The form is create-only; the response is a fixed `{ id: null, name: <submitted name> }` whether or not the phone existed. An earlier cut of this fix still returned the stored `id`/`name` of an existing customer, which made the form a phone→name lookup (found by the automated security review on this change); `select` was removed from the upsert.
+- **Proof:** `public-retailers-leads.test.ts` "H4-4 existing phone is left untouched (empty update)" failed before the fix (the old `update` carried name, gender and consent); "new phone is still created with consent and QR_SCAN source" guards the create path. "RC-094 response never echoes a stored customer" failed before the response change (got the stored name).
+- **Behaviour change:** a customer re-submitting the form can no longer correct their name or refresh consent through it. A retailer fixes a wrong name in the CRM. Found by H4-4, `docs/tasks/testing/reports/H4-passport-storefront.md`.
+
+---
+
+## RC-093 — The QR passport lead path took the shopper's identity from the request body
+
+- **Component:** `public-retailers-leads.ts` (passport path) and the two web proxies `apps/web/src/app/api/[store]/leads/route.ts`, `api/store/[slug]/leads/route.ts`.
+- **Symptom:** `POST /v1/public/retailers/:slug/leads` with `{customer_account_id, share_contact: true}` and no cookie copied that shopper's real phone, name and gender into the caller's own store CRM with `consent_given = true` and `whatsapp_consent = true`, wrote a `ConsentEvent` under the victim's id, and logged a forged store visit. The "Invalid passport session" reply also confirmed which account ids exist.
+- **Root cause:** the route never called `getPassportSession`; a client-supplied id was the identity, and the only check was that the account existed. The account id leaks to staff through `/v1/customers` (H4-2), so it is not a secret.
+- **Fix:** identity now comes from the passport session cookie via `getPassportSession`; a body `customer_account_id` is ignored and a missing or deleted session is 401 `NO_SESSION` (also when only `share_contact` is sent). Both web proxies forward the `cookie` header, which they previously dropped.
+- **Proof:** four tests in `public-retailers-leads.test.ts` (no-session body id → 401 and no `customer`, `customerStoreVisit` or `consentEvent` write; `share_contact` alone → 401; a differing body id is ignored and only the session account is written) failed before the fix. The two older tests now authenticate through a mocked session.
+- **Deploy note:** API and web must ship together, or share-contact returns 401 for real shoppers. Not verified against a real browser cookie. Found by H4-1, `docs/tasks/testing/reports/H4-passport-storefront.md`.
+
+---
+
+## RC-092 — The admin gate trusted the team token's role claim for 12 hours
+
+- **Component:** `apps/api/src/routes/admin-auth.ts` `adminSessionInfo` (team-token branch), used by `adminAuthPreHandler` and `GET /v1/admin/session`.
+- **Symptom:** a team member who was deactivated, deleted or demoted kept their old access to `/v1/admin/*` (a SUPER_ADMIN kept Super Admin) until the JWT expired, up to 12 h. The only early revoke was rotating `TEAM_JWT_SECRET`, which logs out all staff.
+- **Root cause:** the JWT role was treated as the current role. `/v1/team/*` re-reads `{ role, is_active }` from the DB on every request; the more powerful admin gate did not (two answers to one question, RC-073 shape).
+- **Fix:** `adminSessionInfo` re-reads the `TeamMember` row after `verifyTeamToken`; a missing or inactive row returns null (403 "Invalid admin key") and the DB role replaces the JWT role. The env admin key and the admin-session JWT stay DB-free.
+- **Proof:** `admin-gate.test.ts` H3-3 group (5 tests): deactivated, deleted, demoted-to-agent, demoted-super-admin (loses super-admin routes, keeps standard), and env key / session JWT never call the DB. 4 of the 5 failed before the fix.
+- **Not verified:** no live run. `GET /v1/admin/session` for a team token now touches the DB (it already passes through the preHandler); a DB outage 500s it for team sessions only. Found by H3-3, `docs/tasks/testing/reports/H3-admin-dashboard.md`.
+
+---
+
+## RC-091 — Admin panel access was a role deny-list, and money routes sat in a standard segment
+
+- **Component:** `adminAuthPreHandler` (`admin-auth.ts`), `packages/shared/src/constants/admin-access.ts`, `admin-retailers-detail.ts` (`extend-trial`, `change-plan`), `admin-retailers-management.ts` (`POST` and `DELETE` overrides).
+- **Symptom:** only `MARKETING_AGENT` and `SUPPORT_AGENT` were refused; every other role, including `SUPPORT_MANAGER`, a missing role, a future `TeamRole`, or any token that verified with a `role` claim, had full standard-admin power: give any retailer a free PRO plan, set unlimited AI quota overrides, extend trials, suspend stores.
+- **Root cause:** the gate listed who is denied instead of who is allowed, so unknown roles failed open (RC-034 shape, applied to roles). The money routes were deliberately left in `retailers` (suspend must stay standard) with no handler-level check.
+- **Fix:** `ADMIN_PANEL_ROLES` allow-list (`SUPER_ADMIN`, `ADMIN`, `MARKETING_MANAGER`, `SUPPORT_MANAGER`); `SUPPORT_MANAGER` is further limited to `SUPPORT_MANAGER_ADMIN_SEGMENTS` (a subset of the standard list, test-enforced). New `requireSuperAdmin(request)` guards extend-trial, change-plan and both overrides routes. Owner decisions 2026-10-26: support pages only; money routes Super Admin only.
+- **Proof:** `admin-gate.test.ts` H3-2 group (6 tests incl. unknown role and `authenticated` claim) and `admin-money-routes.test.ts` (4 routes x plain ADMIN refused / SUPER_ADMIN passes); `admin-access.test.ts` +1 subset check. The refusal cases failed before the fix.
+- **Owner action:** the admin UI shows Change plan / Overrides / Extend trial buttons to plain ADMIN accounts; they now 403. Hide them for non-super admins in a UI follow-up. Found by H3-2.
+
+---
+
+## RC-090 — The Super-Admin gate classified the raw URL, not the route the router matched
+
+- **Component:** `adminAuthPreHandler` and `adminPathSegment` / `isSuperAdminOnlyAdminPath` (`packages/shared/src/constants/admin-access.ts`).
+- **Symptom:** `PUT /v1/admin/%70lan-pricing` ran the `plan-pricing` handler, but the gate saw the segment `%70lan-pricing`, found it on no list, and let a non-Super-Admin through. Same for `%71uery` (replica SQL console), `%61udit-log`, `deletion-vault`, `settings`, `integrations`, `referral` and every other Super-Admin-only segment. RC-034's boundary was defeated by encoding one character.
+- **Root cause:** the classifier compared bytes that the router later decodes, so the check and the dispatch disagreed about which route this was. A security decision must be made on the same value the dispatcher used.
+- **Fix:** the preHandler classifies `request.routeOptions.url` (the matched pattern), falling back to the raw URL; `adminPathSegment` also percent-decodes, and a malformed escape returns a sentinel that `isSuperAdminOnlyAdminPath` treats as Super-Admin-only (fail closed).
+- **Proof:** `admin-gate.test.ts` H3-1 group (encoded PUT plan-pricing, POST query, GET audit-log all 403; SUPER_ADMIN still passes; standard route still passes); `admin-access.test.ts` +1 (decode, malformed escape). The encoded cases returned 200 before the fix.
+- **Not verified:** whether Railway's edge normalises `%XX` before Fastify (so prod may not have been reachable this way). `packages/shared` `dist/` must be rebuilt (`pnpm --filter @kanchuki/shared build`) for the API to see the new exports; CI does this. Found by H3-1.
+
+---
+
+## RC-089 — The admin session HMAC secret had no empty-key check
+
+- **Component:** `apps/api/src/routes/admin-auth.ts` `sessionSecret()` (used by `signAdminSession`, `verifyAdminSession`, `adminSessionInfo`).
+- **Symptom:** with `ADMIN_API_KEY` unset or empty, the session secret was the public string `admin-session:`, so anyone could sign `{role:"SUPER_ADMIN"}` and use it as `x-admin-key` to reach the full admin API.
+- **Root cause:** `validAdminKey` checked for an empty key, but the session path derived from the same env var did not. Two consumers of one secret, and only one guarded it (RC-076 shape).
+- **Fix:** `sessionSecret()` throws when the key is blank. All three callers already catch, so verify falls through to the team-token check and fails closed. A login with an empty key now 500s instead of minting a forgeable token. No minimum length was added because the length of the prod key is unknown and a minimum could lock the admin out.
+- **Proof:** `admin.login.test.ts` +1: a self-signed token with the empty-key secret gets 403 on `/v1/admin/stats`. The same test **fails** with the fix stashed (the forged token is accepted).
+- **Not verified:** whether any deployed environment has an empty key (no env access). Found by H1-6, `docs/tasks/testing/reports/H1-auth-sessions.md`.
+
+---
+
+## RC-088 — `OTP_TEST_BYPASS` accepted a `*` wildcard and a built-in phone list, with no production guard
+
+- **Component:** `apps/api/src/lib/msg91-otp.ts` `otpTestBypassActive` (moved from `routes/auth.ts`); `routes/team/team-session.ts` (its own copy removed).
+- **Symptom:** with `OTP_TEST_BYPASS=1`, `OTP_TEST_PHONES=*` let any phone log in with any code. An unset list fell back to 7 built-in numbers, including `9876543210` and `9999999999`, which may belong to real people. Nothing stopped this in `NODE_ENV=production`.
+- **Root cause:** a demo convenience grew powers (wildcard, defaults) without a guard, and the retailer and team routes each carried their own copy of the check.
+- **Fix:** one shared `otpTestBypassActive`: env list only (unset = no phones), no wildcard, and in production it is ignored unless `OTP_TEST_BYPASS_ALLOW_PROD=1` is also set. Four auth test files now spread the real module into their `msg91-otp.js` mock.
+- **Proof:** `auth-otp-bypass.test.ts` +4: production without the allow flag, `*`, and an unset list all go through MSG91; production with the allow flag still bypasses. 10 auth/team/admin files: 138/138; tsc and biome clean.
+- **Owner action:** if prod depends on the bypass for demo logins today, set `OTP_TEST_BYPASS_ALLOW_PROD=1` and an explicit `OTP_TEST_PHONES` list before deploying, or demos switch to real SMS. Found by H1-5.
+
+---
+
+## RC-087 — Team login had no route limit, so it sidestepped the admin login limit
+
+- **Component:** `apps/api/src/routes/team/team-session.ts` (`/v1/team/login`, `/otp/send`, `/otp/verify`, `/forgot-password`, `/reset-password`).
+- **Symptom:** `/admin/login` allows 5 tries per 15 min per IP (S-003), but `/v1/team/login` had only the global 200/min/IP. A SUPER_ADMIN/ADMIN team token is an admin session, so admin passwords could be brute-forced through the team route.
+- **Root cause:** the limit was written on one login route by hand, not on the identity it protects. Two routes mint admin sessions and only one had the limit. The per-IP key is also spoofable while `trustProxy` is `true` (T2.5 F1).
+- **Fix:** per-route limits (`TEAM_AUTH_RATE_LIMIT` 5/15 min on login, otp/send, forgot; `TEAM_CODE_RATE_LIMIT` 10/15 min on otp/verify, reset), plus a per-email lock on password login: 5 failures → 429 for 15 min, counter cleared on success. Counter errors fail open (`ponytail:` comment): the route limit still applies, and failing closed would lock the team out during a Redis outage.
+- **Proof:** `routes/team.test.ts` +1: 5 wrong passwords, then the right one is 429 (mixed-case email). team + admin.login + security: 48/48; tsc and biome clean.
+- **Not verified:** the route `config.rateLimit` is not exercised in tests (`buildApp` does not register `@fastify/rate-limit`); no live run. T2.5 F1 (`trustProxy`) still open. Found by H1-2, `docs/tasks/testing/reports/H1-auth-sessions.md`.
+
+---
+
+## RC-086 — The MSG91 send path logged every OTP in plaintext
+
+- **Component:** `apps/api/src/lib/msg91-otp.ts` `sendOtpViaMsg91` (used by retailer `/v1/auth/otp/send`, team `/v1/team/otp/send`, staff invite, passport, WhatsApp-number OTP).
+- **Symptom:** every live OTP was written to Railway logs as `[otp] Generated OTP for +91<phone>: <code>`. Anyone with log access (insider, log drain, leaked Railway token) could log in as any retailer within the 10-minute TTL.
+- **Root cause:** a developer debugging line (`biome-ignore … visible in Railway logs only`) on the production path. The ignore comment treated "only in logs" as private, but logs are a wider audience than the SIM holder.
+- **Fix:** line deleted. No other log line prints the code.
+- **Proof:** `grep -rn "Generated OTP" apps/api/src` returns nothing; `msg91-otp.test.ts` passes.
+- **Not verified / owner action:** historic Railway logs still contain codes (expired, but they link phones to login times). Limit or purge log retention. Found by H1-3, `docs/tasks/testing/reports/H1-auth-sessions.md`.
+
+---
+
+## RC-085 — Team OTP login and password reset accepted `123456` whenever Redis threw
+
+- **Component:** `apps/api/src/routes/team/team-session.ts` (`/v1/team/otp/send`, `/otp/verify`, `/forgot-password`, `/reset-password`).
+- **Symptom:** on any Redis error, `/v1/team/otp/verify` (email path, and phone path without MSG91) accepted `123456`, and so did `/v1/team/reset-password`. Anyone who knew a team member's email could reset a SUPER_ADMIN password and get admin access (team tokens with SUPER_ADMIN/ADMIN pass `verifyAdminSession`).
+- **Root cause:** a "dev mock" fallback in the `catch` around each Redis call made a failure grant access instead of denying it. The client is built lazily with `enableOfflineQueue: false` and no wait for `'ready'`, so the first command after every boot threw by design (the 2026-08-13 handshake race, fixed in `msg91-otp.ts` but not here), and Redis outages hit it too. The tests relied on that fallback, so the suite treated the bypass as normal behaviour.
+- **Fix:** `storeTeamCode` / `consumeTeamCode` await `'ready'` (`awaitRedisReady`, now exported) and fail closed: a read error means "no code", and a store error on `/otp/send` returns 503. `/forgot-password` skips the email when the store fails and keeps the same response (no enumeration). All `123456` fallbacks removed.
+- **Proof:** `routes/team.test.ts` now uses an in-memory Redis fake. Happy paths read the stored code. 2 new tests: `123456` with Redis throwing is 403 on both OTP paths and 422 on reset, and no password is written. team + msg91 + auth-team + auth-msg91 + admin.login: 85/85; security.test: 6/6; tsc clean.
+- **Not verified:** no live run against a local API + Redis. Found by H1-1, `docs/tasks/testing/reports/H1-auth-sessions.md`.
+
+---
+
+## RC-084 — Web proxy routes rebuilt the upstream request/response from partial inputs
+
+- **Component:** `apps/web/src/app/api/reviews/product/[productId]/route.ts`, `apps/web/src/app/api/passport/[...path]/route.ts`.
+- **Symptom:** (1) the reviews proxy put the decoded `productId` straight into the upstream URL, so `..` segments are normalised away by `fetch`/`new URL` and the GET can be steered to any API path (`.../reviews/product/../../../admin/retailers` → `/v1/admin/retailers`). (2) the passport proxy joined several `Set-Cookie` headers into one invalid header. (3) passport responses carried no `cache-control` and lost the upstream `content-type`.
+- **Root cause:** ~25 hand-copied proxies, each deciding for itself which parts of the upstream request and response to carry over. 24 of 25 encoded the path param and `my-style` set `private, no-store`; the others did not, and nothing compared them.
+- **Fix:** `encodeURIComponent(productId)`; `getSetCookie()` loop with `append`; passport now copies `content-type` and sets `cache-control: private, no-store`.
+- **Proof:** `passport/[...path]/__tests__/route.test.ts` (+1 test: two cookies stay separate, no-store, content-type); 14/14 pass. The reviews fix is a one-token change with no test.
+- **Not verified:** no runtime check that Next decodes `%2F` in the dynamic segment (so exploitability of (1) is code-level only). T2.5 F1 (no proxy forwards the client IP, so API rate limits and `ip_hash` see the web container) is **not fixed**, pending the `trustProxy` owner decision. Report: `docs/tasks/testing/reports/T2.5-web-passport-proxy.md`.
+
+---
+
+## RC-083 — Two /my-profile toggles were local state the server never filled
+
+- **Component:** `apps/web/src/app/(shopper)/my-profile/page.tsx`.
+- **Symptom:** (1) "Personalized recommendations" always rendered ticked. A shopper who turned it off (PUT saved `profiling_enabled: false`) saw it on again on the next visit. (2) "WhatsApp messages from stores" was `useState(true)`, never loaded and never saved, so switching it changed nothing.
+- **Root cause:** both boxes started from a hard-coded `useState(true)`. The page already called GET `/passport/preferences`, which returns `profiling_enabled`, but it read only the nominee fields from the response. The WhatsApp box had no column, no API field and no reader at all, so it was a control with nothing behind it (RC-058 shape).
+- **Fix:** `loadProfile` sets the personalization box from `profiling_enabled`. The WhatsApp box is removed (owner decision 2026-10-25): nothing sends store WhatsApp to shoppers, so a stored flag would have no reader (RC-038). Re-add it with a real setting alongside F-035. The section heading changed from "Notifications" to "Personalization".
+- **Proof:** `my-profile/__tests__/page.test.tsx` (3). Opted-out shopper sees the box unticked, enabled shopper sees it ticked, no WhatsApp toggle. 2 of 3 fail on the unfixed page.
+- **Not verified:** no browser check.
+
+---
+
+## RC-082 — A trial ending or a subscription lapsing never changed `retailer.plan`, so paid features stayed on forever
+
+- **Component:** `apps/api/src/jobs/plan-lapse.ts` (new), `apps/api/src/jobs/index.ts`. Every paid gate: `lib/features.ts` `hasFeature`, `lib/quota.ts` `effectiveLimit`, and ~12 direct `retailer.plan` readers.
+- **Symptom:** a store whose 14-day TRIAL ended, or whose subscription was CANCELLED / COMPLETED / PAST_DUE, kept PRO features and limits indefinitely. Onboarding `demo_plan` (PRO + TRIAL) was effectively a free PRO plan.
+- **Root cause:** every gate trusts `retailer.plan` and nothing ever wrote it back down. `plan_status`, `trial_ends_at` and `plan_expires_at` were stored but no gate and no job read them.
+- **Fix:** hourly `plan-lapse` job. Retailers with `plan != STARTER` whose TRIAL ended, or whose status is PAST_DUE / CANCELLED / COMPLETED with `plan_expires_at` null or past, are set to STARTER with STARTER `max_products` / `max_customers`, plus one `system` audit row each. The lapse predicate is repeated in the `updateMany` so a re-subscribe webhook between read and write is not downgraded. Cancel keeps access until `plan_expires_at` (owner decision 2026-10-22). TRIAL rows with no end date are counted in the log and left alone. Fixing the stored plan closes all readers at once, so no gate was patched. Registered with no `limit` (RC-062).
+- **Proof:** `apps/api/src/jobs/plan-lapse.test.ts` (10): expired trial downgraded, future trial / ACTIVE / STARTER / deleted untouched, CANCELLED in the future kept, race with re-subscribe not downgraded, audit row written.
+- **Not verified:** not run against a real DB. Watch the first run's log line `[plan-lapse] downgraded=…` after deploy. `checkQuota` still fails open when no `plan_limits` row exists (separate owner decision).
+
+---
+## RC-081 — The platform-wide daily AI spend cap in CLAUDE.md §5 was documented but never built
+
+- **Component:** `apps/api/src/jobs/ai-spend-alert.ts`, `apps/api/src/jobs/index.ts` (maintenance queue), `ai_usage_logs`.
+- **Symptom:** no alert fired however much AI was used. A runaway loop or abused route would show up only on the provider invoice.
+- **Root cause:** the cap was a paragraph in a doc ("platform-wide AI spend > ₹15,000/day -> alert") with no job behind it, and `ai_usage_logs` has no ₹ column, so nothing could compute it. The doc claimed a control the code did not have (RC-051 shape).
+- **Fix:** hourly `ai-spend-alert` job sums `credits_used` over a rolling 24 h and sends a Sentry warning above `AI_DAILY_CREDIT_ALERT` = 45,000 (₹15,000 at ~₹0.33 per call). Alert only, no blocking (owner decision 2026-10-22).
+- **Proof:** `jobs/ai-spend-alert.test.ts` (window, at-threshold quiet, over-threshold alert, null sum).
+- **Not verified / limits:** the threshold is a credit count, not real ₹; per-call cost differs by provider. It counts only retailer-attributed calls: anonymous `/stylist` and My Style calls write no `ai_usage_logs` row (they rely on their per-route rate limits, RC-079). Hourly repeat alerts while over the line. A true ₹ figure needs a cost column.
+
+---
+
+## RC-080 — A presigned PUT URL did not bind the body size, and the presign routes had only the global rate limit
+
+- **Component:** `packages/ai/src/r2.ts` `getUploadPresignedUrl`, `apps/api/src/lib/upload-guard.ts` (`UPLOAD_URL_RATE_LIMIT`), the 13 presign routes in 11 files (products, categories, growth videos, catalog import, retailer banner/logo/KYC, retailer + admin showcase designs, admin media / post templates / studio styles / watermark).
+- **Symptom:** one 5-minute URL accepted a PUT of any size (up to 5 GB) into `uploads/pending/`; `verifyUpload` only rejected it after the bytes had landed. Seven routes already validated a `size_bytes` field and then ignored it when signing.
+- **Root cause:** the signature carried only key and Content-Type. Size was checked in the request body (client-reported) and again after the upload, never bound into the URL. Rate limiting for these routes was the global 200/min per IP.
+- **Fix:** `getUploadPresignedUrl(key, type, expiresIn, contentLength?)` signs `content-length` when given. Every presign route accepts an optional `content_length` (max = that route's existing `verifyUpload` limit) and passes it through. **Follow-up 2026-10-22 (branch `feat/require-upload-content-length`, NOT merged until the device test passes): `content_length` is now required on all 13 routes and in `getUploadPresignedUrl`; the unbound path, its warning, `requireContentLengthHook` and `REQUIRE_UPLOAD_CONTENT_LENGTH` are deleted. Old app builds that omit it now get 422.** All 13 routes use the shared `UPLOAD_URL_RATE_LIMIT` (30/min per IP).
+- **Why a new field, not `size_bytes`:** the mobile `uploadImageToR2` recompresses JPEGs to <=80 KB before the PUT, but callers send `blob.size` of the uncompressed file as `size_bytes`. Binding that value would 403 almost every current mobile upload.
+- **Proof:** `packages/ai/src/r2-presign.test.ts` (content-length is in `X-Amz-SignedHeaders` only when given), `categories.test.ts` (length passed through, oversize 422, 31st request 429, old client unbound), `upload-url-guard.test.ts` (derived from source: every file calling `getUploadPresignedUrl` passes a 4th argument and uses `UPLOAD_URL_RATE_LIMIT`).
+- **Not verified / still open:** (1) real R2 enforcement of the signed length: run `packages/ai/scripts/check-r2-content-length.mjs` (owner). (2) Mobile and admin web send `content_length` (`9b2ec714`, `2909ec4f`). Merging the required-field branch before the new mobile build is live breaks uploads from old builds, so merge it only after the device test and the store rollout. (3) The R2 lifecycle rule for `uploads/pending/` is still an owner step.
+
+---
+
+## RC-079 — Anonymous and AI-backed endpoints had no per-route cap, and the AI SDK clients inherited a 10-minute timeout
+
+- **Component:** `apps/api/src/routes/public/public-stylist.ts`, `apps/api/src/routes/public/public-collections.ts` (`/enquire`), `packages/ai/src/providers.ts`, `packages/ai/src/embedder.ts`.
+- **Symptom:** anyone, logged out, could make `POST /v1/public/stylist` call Claude with up to 60 products of catalog JSON at the global 200 req/min per IP, with no timeout on the fetch. A hung provider held a request (and a BullMQ worker, for the SDK clients) for minutes. `/collections/:slug/enquire` could be spammed the same way, writing a row and a push each time.
+- **Root cause:** the only limit was the global per-IP one, and the cost of a call was not part of it. Each AI call site relied on the SDK or `fetch` defaults (10 min, 2 retries; no timeout), and nobody owned a per-route budget for unauthenticated routes.
+- **Fix:** `/stylist` 10/min per IP and `AbortSignal.timeout(20_000)` (a timeout lands in the existing `fallback`, which logs to Sentry per RC-059). Anthropic and OpenAI clients built with `timeout: 60_000, maxRetries: 1` (provider failover already retries). `/collections/:slug/enquire` 10/min per IP. `/my-style/enquire` already had 20/min behind a login and was left alone.
+- **Proof:** `public-stylist.test.ts` (11th request is 429; a hanging fetch is aborted and answered from the fallback), `public-collections-enquire.test.ts` (11th is 429), `packages/ai/src/providers.test.ts` and `embedder.test.ts` (clients built with the bounds).
+- **Not verified:** no live Anthropic call. The platform-wide daily AI spend cap described in CLAUDE.md §5 is still not built (deferred; needs an owner ₹/day figure). Rate limits are per IP, so shoppers behind one carrier NAT share the 10/min.
+
+---
+
+## RC-078 — The WhatsApp enquiry text was built from different inputs on the server and client paths
+
+- **Component:** `packages/shared/src/utils/index.ts` (`buildEnquiryMessage`), `apps/api/src/routes/public/public-collections.ts`, `apps/api/src/routes/public/public-my-style.ts`. Fixed 2026-10-22 (`446a0ec0`, PR #147, merge `707fa3a6`).
+- **Symptom:** an enquiry sent through the API (wishlist basket, My Style) reached the retailer with no product link and no SKU, and My Style named the store twice: `I saw your collection "Radha Clothing Store" from Radha Clothing Store.`
+- **Root cause:** one shared builder, but each caller chose its own inputs. The client paths passed `product_url`; the two API routes passed only name + price. My Style has no collection, so it passed the shop name as `collectionTitle`, and the builder always printed both.
+- **Fix:** both API routes pass `sku` and `product_url` (`buildProductUrl`; My Style uses the `all-{store}` pseudo-slug the product page already resolves). The builder prints `(SKU: …)` after the price and drops the quoted title when it is missing or equals the shop name. `GET /public/products/:id` returns `sku`, so the single-product consent-modal path carries it too.
+- **Proof:** `packages/shared/src/utils.test.ts` (SKU + link line, store named once for null/empty/same-as-shop titles), `public-collections-enquire.test.ts` (the route's wa.me text has the SKU and the `/shop/abc/product/a` link).
+- **Follow-up (`e3b1ce64`, PR #149, merge `97cad538`):** the storefront bottom-bar "Enquire" (`CollectionView.handleEnquireAll`) still built its text client-side from summaries with no `sku`. It now POSTs saved picks to the enquire route like WishlistView. Category / All-products pseudo-slugs (`cat-{id}`, `all-{store}`), which the route 404'd, now resolve through the `store` the proxy adds and record against the store's oldest live collection.
+- **Not verified / known gap:** no real WhatsApp send or device run. With nothing saved, or more than 20 picks (API cap), the bottom bar still falls back to the client-built link without SKU.
+
+---
+
+## RC-077 — Stored user text was placed into HTML (hrefs, JSON-LD, email bodies) with no escaping step
+
+- **Component:** `apps/web/src/app/admin/{aggregators,retailers/[id],social}/page.tsx`, `apps/web/src/app/stores/page.tsx`, `apps/api/src/routes/retailers/retailers-aggregators.ts`, `apps/api/src/lib/email.ts`. Fixed 2026-10-22 (`dbb389bb`, PR #142, plus `fix/security-hardening-2`).
+- **Symptom:** a retailer-controlled URL (e.g. `channel_shop_url`) could be `javascript:…` and rendered as an admin `href`; `/stores` JSON-LD could be closed early with `</script>`; team-member name/phone went raw into the welcome-email HTML. The no-API-key email fallback also logged the plain-text body (temp password / reset code) in every environment.
+- **Root cause:** each surface interpolated stored strings straight into markup. There was no shared escaper and no scheme check, so safety depended on every author remembering it (same shape as RC-040).
+- **Fix:** `safeHttpUrl()` (web) for every stored href, http(s) only; API rejects non-http(s) `channel_shop_url`; JSON-LD escapes `<`; `escapeHtml()` in `email.ts` applied to every interpolated value; the fallback logs the body only outside production.
+- **Proof:** `apps/web/src/lib/safe-url.test.ts` (12), `apps/api/src/lib/email.test.ts` (hostile name/phone never reach the HTML raw).
+- **Not verified:** no CSP yet (proposed, not applied), so a missed interpolation elsewhere would still execute.
+
+---
+
+## RC-076 — Payment callbacks granted access without verifying Razorpay's signature or the charge itself
+
+- **Component:** `apps/api/src/routes/billing/billing-{helpers,addons,webhook}.ts`, `apps/api/src/routes/public/public-catalog-payment.ts`. Fixed 2026-10-22 (`dbb389bb`, PR #142).
+- **Symptom:** a caller could post a payment-link / checkout callback with made-up ids and be credited; a `subscription.charged` webhook activated a plan for an authorized-only, non-INR or underpaid payment.
+- **Root cause:** the callbacks trusted what the client (or the webhook body) said about the payment. No HMAC check existed on the callback paths, and an empty `RAZORPAY_KEY_SECRET` would have made any HMAC forgeable.
+- **Fix:** `verifyPaymentLinkSignature` / `verifyOrderSignature` (fail closed on an empty secret or signature, constant-time compare); webhook requires `captured`, INR and amount >= base price; catalog payment re-fetches the payment from Razorpay and checks the exact amount.
+- **Proof:** `billing-signatures.test.ts`, additions in `billing.test.ts`.
+- **Not verified / known gaps:** no live Razorpay round trip. The legacy 2-part `link_id|payment_id` signature is still accepted. The webhook amount check is >= base, not exact base + GST.
+
+---
+
+## RC-075 — Upload "confirm" endpoints recorded whatever key, URL and bytes the client reported
+
+- **Component:** `apps/api/src/lib/upload-guard.ts` (`verifyUpload`, `sniffUploadType`, `sniffImageType`), `packages/ai/src/r2.ts` (`inspectObject`). Fixed 2026-10-22 in `dbb389bb` (PR #142: product photos, variants, KYC, logo/banner) and `fix/security-hardening-2` (categories, bug-report screenshots, growth videos, retailer showcase designs, catalog-import bulk create, try-on photo, catalog upload-url) and `fix/admin-upload-verify` (admin studio styles, post templates, background images, admin showcase designs, design references, showcase watermark logo).
+- **Symptom:** a retailer could save another retailer's R2 key or any external/`javascript:` URL as their own image; a PUT of HTML/SVG/EXE bytes to a presigned "image" URL was accepted; `/catalog-import/upload-url` signed any `content_type` (e.g. `text/html`) onto the public CDN; the try-on route accepted any `image/*` the client declared (HEIC, SVG). Admin side: studio-style / post-template thumbnails and background images stored the client's `*_url` as-is, and `POST /admin/background-images` then **fetched that URL server-side** for tone/naming (SSRF); admin showcase accepted any `showcase-designs/*` key (incl. other retailers' raw/final objects) to watermark and republish; design references took `image_url` + `r2_key` on trust; a new watermark logo key was composited onto every design without a byte check.
+- **Root cause:** a presigned PUT fixes the key and the declared Content-Type but not the body, and every confirm route was hand-written to trust the client's `r2_key` / `*_url` instead of checking ownership and the stored bytes. Nothing shared enforced it, so each new upload flow repeated the gap.
+- **Fix:** one `verifyUpload()` on every retailer confirm path: key under the caller's own prefix (no traversal), object exists, size cap, magic bytes in an allow-list (JPEG/PNG/WebP, PDF, MP4/MOV/WebM; HEIC/AVIF refused); a failing object is deleted; the stored URL is rebuilt server-side from the key. Admin confirm paths use the same `verifyUpload()` in prefix-only mode (no retailer): `admin/studio-styles/`, `admin/post-templates/`, `admin/background-images/`, `showcase-designs/global/raw/`, `admin/design-references/`, `showcase-watermark/logo/`; client `*_url`/`image_url` inputs were removed (admin web now sends the key). `isOwnedKey()` treats an empty prefix as owning nothing. Bare URLs must point at our CDN. Multipart photo routes (try-on, My Style) sniff bytes via the shared `sniffImageType`. Catalog upload-url content types are an allow-list. Mobile `compressImageForUpload` now re-encodes a small non-JPEG/PNG/WebP pick (HEIC) instead of passing it through.
+- **Proof:** `upload-guard.test.ts` (18), `products-tryon.test.ts` (HEIC labelled image/jpeg → 422, nothing stored), `categories.test.ts` +3, `growth-videos.test.ts` +3, `retailers-showcase-designs.test.ts` +1, mobile `compress-image.test.ts` +1; admin: `upload-guard.test.ts` +2 (prefix-only mode, empty prefix), `admin-showcase-designs.test.ts` +2, `admin-settings-watermark.test.ts` +1, `admin-studio-styles.test.ts` +2, `admin-post-templates.test.ts` +2.
+- **Not verified / known gaps:** nothing run against live R2 or a real device. Presigned PUTs cannot cap size (confirm deletes oversize objects after the fact). Uploads that are never confirmed stay in the bucket until an R2 lifecycle rule exists. Design references have no upload-url route or admin UI, so nothing mints `admin/design-references/` keys yet (the endpoint is unusable until one is added). Background-images and design-references have no route-level test. Web photo sheets (`accept="image/*"`) do not convert HEIC; Android Chrome may send one and gets a 422.
+
+---
+
 ## RC-074 — `POST /try-on/discard` counted every repeated job id as "skipped"
 
 - **Component:** `apps/api/src/routes/products/products-tryon.ts`. Fixed 2026-10-19 on `fix/f-044-tryon-cleanups`.

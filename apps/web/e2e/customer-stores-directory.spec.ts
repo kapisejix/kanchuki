@@ -109,6 +109,12 @@ test.beforeAll(async () => {
       return
     }
 
+    // F-036 PushOptIn on /my-stores: no VAPID in CI, so the real API's null key.
+    if (path === '/v1/public/passport/push/key') {
+      json(res, 200, { public_key: null })
+      return
+    }
+
     // The directory listing itself — fetched by the BROWSER, not by SSR, which
     // is why this stub (unlike the passport specs') must send CORS.
     if (path === '/v1/public/stores' && req.method === 'GET') {

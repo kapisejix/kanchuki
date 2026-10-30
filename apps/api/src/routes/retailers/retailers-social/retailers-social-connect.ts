@@ -2,6 +2,7 @@
 import { encryptSecret, prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
+import { fetchWithTimeout as fetch } from '../../../lib/fetch-timeout.js';
 import {
   buildOAuthUrl,
   exchangeCodeForToken,

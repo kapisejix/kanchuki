@@ -276,6 +276,7 @@ export const teamTicketsRoutes: FastifyPluginAsync = async (server) => {
         created_at: true,
         resolved_at: true,
         ticket_type: true,
+        setup_item: true,
         item_count_requested: true,
         quoted_price_inr: true,
         proposed_slots: true,

@@ -1,13 +1,19 @@
 // Task 18: /my-profile — Shopper profile page.
 //
 // Shows: name, phone (masked), city, usual size, style chips (editable),
-// saved items, recently viewed, enquiries/orders, notification toggles,
+// saved items, recently viewed, enquiries/orders,
 // data controls (export, delete, personalization toggle).
 
 'use client'
 
 import { useEffect, useState } from 'react'
+import { motion } from 'framer-motion'
+import {
+  AlertTriangle, Check, ChevronRight, Database, Download, Eye, Heart, Loader2, MapPin,
+  MessageCircle, Phone, ShieldCheck, SlidersHorizontal, Sparkles, Trash2, UserRound,
+} from 'lucide-react'
 import { getPassportSession, type PassportAccount } from '@/lib/passport-client'
+import { BTN_PRIMARY, BTN_SECONDARY, CARD, INPUT, ITEM, LIST, ROW_BTN, Section } from '../ui'
 
 interface ProfileData {
   account: PassportAccount
@@ -43,7 +49,6 @@ export default function MyProfilePage() {
   const [styleOptions, setStyleOptions] = useState<string[]>([])
   const [stylesStatus, setStylesStatus] = useState<'loading' | 'ready'>('loading')
   const [stylesNotice, setStylesNotice] = useState<string | null>(null)
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true)
   const [personalizationEnabled, setPersonalizationEnabled] = useState(true)
   const [saving, setSaving] = useState(false)
   const [exporting, setExporting] = useState(false)
@@ -107,10 +112,13 @@ export default function MyProfilePage() {
       })
       // Initialize style chips from account preferences
       setSelectedStyles((account as any).pref_styles ?? [])
-      // Nominee lives on the preferences endpoint (not in /me).
+      // Nominee and the profiling opt-out live on the preferences endpoint
+      // (not in /me). Without loading profiling_enabled an opted-out shopper
+      // saw the box ticked again on every visit (RC-083).
       const prefRes = await fetch('/api/passport/preferences', { credentials: 'include' })
       if (prefRes.ok) {
         const prefs = await prefRes.json()
+        setPersonalizationEnabled(prefs.profiling_enabled !== false)
         setNomineeName(prefs.nominee_name ?? '')
         setNomineePhone(prefs.nominee_phone ?? '')
         setNomineeSaved(Boolean(prefs.nominee_name))
@@ -164,107 +172,188 @@ export default function MyProfilePage() {
     }
   }
 
+  async function togglePersonalization(enabled: boolean) {
+    setPersonalizationEnabled(enabled)
+    try {
+      const res = await fetch('/api/passport/preferences', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ profiling_enabled: enabled }),
+      })
+      // A non-2xx resolves rather than throwing, so without this a
+      // 405 from a missing proxy verb (RC-026) or an expired
+      // session looked identical to a saved preference — the box
+      // stayed off and silently reverted on reload.
+      if (!res.ok) throw new Error(`preferences update failed: ${res.status}`)
+    } catch {
+      setPersonalizationEnabled(!enabled)
+      alert('Could not save your preference. Please try again.')
+    }
+  }
+
+  async function exportData() {
+    setExporting(true)
+    try {
+      const res = await fetch('/api/passport/export')
+      if (res.status === 429) {
+        alert('You can only export your data once per day.')
+        return
+      }
+      if (!res.ok) throw new Error('Export failed')
+      const data = await res.json()
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `kanchuki-data-${new Date().toISOString().slice(0, 10)}.json`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      alert('Failed to export data. Please try again.')
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  async function deleteAccount() {
+    if (!confirm('Are you sure you want to delete your account? This action cannot be undone.')) return
+    setDeleting(true)
+    try {
+      const res = await fetch('/api/passport/delete', { method: 'POST' })
+      if (!res.ok) throw new Error('Delete failed')
+      window.location.href = '/'
+    } catch (err) {
+      alert('Failed to delete account. Please try again.')
+    } finally {
+      setDeleting(false)
+    }
+  }
+
   if (loading) {
     return (
-      <div className="animate-pulse space-y-6">
-        <div className="h-24 bg-stone-200 rounded-lg" />
-        <div className="h-32 bg-stone-200 rounded-lg" />
-        <div className="h-48 bg-stone-200 rounded-lg" />
+      <div className="animate-pulse motion-reduce:animate-none space-y-4" aria-busy="true">
+        <div className="h-40 bg-lavender-100 rounded-3xl" />
+        <div className="h-44 bg-lavender-100 rounded-3xl" />
+        <div className="h-28 bg-lavender-100 rounded-3xl" />
+        <div className="h-48 bg-lavender-100 rounded-3xl" />
       </div>
     )
   }
 
   if (!profile) {
     return (
-      <div className="text-center py-12">
-        <p className="text-stone-500">Please log in to view your profile.</p>
+      <div className="bg-white rounded-3xl border border-lavender-200 px-6 py-12 text-center">
+        <UserRound aria-hidden className="h-10 w-10 mx-auto text-heliotrope-400 mb-3" />
+        <p className="text-heliotrope-500">Please log in to view your profile.</p>
       </div>
     )
   }
 
   const { account, recently_viewed } = profile
+  const stats = [
+    { label: 'Viewed', value: recently_viewed.length, icon: Eye },
+    { label: 'Saved', value: profile.wishlist_count, icon: Heart },
+    { label: 'Enquiries', value: profile.enquiry_count, icon: MessageCircle },
+  ]
 
   return (
-    <div className="space-y-6">
-      {/* Profile header */}
-      <section className="bg-white rounded-lg border border-stone-200 p-6">
-        <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-full bg-amber-100 flex items-center justify-center text-2xl font-bold text-amber-700">
-            {(account.name ?? account.phone_masked.slice(-1) ?? '?').charAt(0).toUpperCase()}
-          </div>
+    <motion.div variants={LIST} initial="hidden" animate="show" className="space-y-4">
+      {/* Account */}
+      <motion.section variants={ITEM} className={`${CARD} overflow-hidden`}>
+        <div className="h-16 bg-gradient-to-r from-spaceCadet-900 to-tyrian-800" />
+        <div className="px-5 pb-5 -mt-8">
           <div>
-            <h1 className="text-xl font-semibold text-stone-900">
-              {account.name ?? 'Shopper'}
-            </h1>
-            <p className="text-sm text-stone-500">{account.phone_masked}</p>
-            {account.city && (
-              <p className="text-sm text-stone-400">{account.city}</p>
-            )}
+            <div className="w-16 h-16 shrink-0 rounded-2xl bg-white p-1 shadow-lg shadow-spaceCadet-900/15">
+              <div className="w-full h-full rounded-xl bg-fuchsia-500/15 flex items-center justify-center text-2xl font-bold text-fuchsia-700">
+                {(account.name ?? account.phone_masked.slice(-1) ?? '?').charAt(0).toUpperCase()}
+              </div>
+            </div>
+            <div className="min-w-0 mt-3">
+              <h1 className="text-xl font-bold text-spaceCadet-900 truncate">
+                {account.name ?? 'Shopper'}
+              </h1>
+              <p className="text-sm text-heliotrope-500 flex flex-wrap items-center gap-x-3">
+                <span className="inline-flex items-center gap-1">
+                  <Phone aria-hidden className="h-3.5 w-3.5" />
+                  {account.phone_masked}
+                </span>
+                {account.city && (
+                  <span className="inline-flex items-center gap-1">
+                    <MapPin aria-hidden className="h-3.5 w-3.5" />
+                    {account.city}
+                  </span>
+                )}
+              </p>
+            </div>
           </div>
+          <dl className="grid grid-cols-3 gap-2 mt-5">
+            {stats.map(({ label, value, icon: Icon }) => (
+              <div key={label} className="flex flex-col-reverse rounded-2xl bg-lavender-50 border border-lavender-100 px-2 py-3 text-center">
+                <dt className="text-xs text-heliotrope-500">{label}</dt>
+                <dd className="text-xl font-bold text-spaceCadet-900 tabular-nums">{value}</dd>
+                <Icon aria-hidden className="h-4 w-4 mx-auto text-heliotrope-400 mb-1" />
+              </div>
+            ))}
+          </dl>
         </div>
-      </section>
+      </motion.section>
 
       {/* Style chips */}
-      <section className="bg-white rounded-lg border border-stone-200 p-6">
-        <h2 className="text-lg font-medium text-stone-900 mb-3">Your Style</h2>
-        <p className="text-sm text-stone-500 mb-4">
-          Tap to select styles you love — we&apos;ll use this to personalize your feed.
-        </p>
+      <Section
+        icon={Sparkles}
+        title="Your Style"
+        description="Tap the styles you love — we'll use them to personalize your feed."
+      >
         {stylesStatus === 'loading' ? (
-          <p className="text-sm text-stone-400">Loading styles…</p>
-        ) : (
-          <div className="flex flex-wrap gap-2">
-            {styleOptions.map((style) => (
-              <button
-                key={style}
-                onClick={() => toggleStyle(style)}
-                className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                  selectedStyles.includes(style)
-                    ? 'bg-amber-600 text-white'
-                    : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-                }`}
-              >
-                {style}
-              </button>
+          <div className="flex flex-wrap gap-2" aria-label="Loading styles…">
+            {[72, 56, 64, 80, 60, 68].map((w) => (
+              <div
+                key={w}
+                className="h-11 rounded-full bg-lavender-100 animate-pulse motion-reduce:animate-none"
+                style={{ width: w }}
+              />
             ))}
           </div>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {styleOptions.map((style) => {
+              const on = selectedStyles.includes(style)
+              return (
+                <motion.button
+                  key={style}
+                  type="button"
+                  whileTap={{ scale: 0.96 }}
+                  onClick={() => toggleStyle(style)}
+                  aria-pressed={on}
+                  className={`min-h-11 px-4 inline-flex items-center gap-1.5 rounded-full text-sm font-semibold border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-500/50 ${
+                    on
+                      ? 'bg-spaceCadet-900 border-spaceCadet-900 text-white'
+                      : 'bg-white border-lavender-200 text-spaceCadet-900 hover:border-heliotrope-400'
+                  }`}
+                >
+                  {on && <Check aria-hidden className="h-3.5 w-3.5 text-fuchsia-400" />}
+                  {style}
+                </motion.button>
+              )
+            })}
+          </div>
         )}
-        {stylesNotice && <p className="mt-3 text-xs text-stone-500">{stylesNotice}</p>}
+        {stylesNotice && <p className="mt-3 text-xs text-heliotrope-500">{stylesNotice}</p>}
         {selectedStyles.length > 0 && (
-          <button
-            onClick={savePreferences}
-            disabled={saving}
-            className="mt-4 px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700 disabled:opacity-50"
-          >
+          <button onClick={savePreferences} disabled={saving} className={`${BTN_PRIMARY} mt-4`}>
+            {saving && <Loader2 aria-hidden className="h-4 w-4 animate-spin motion-reduce:animate-none" />}
             {saving ? 'Saving…' : 'Save Preferences'}
           </button>
         )}
-      </section>
-
-      {/* Stats row */}
-      <section className="grid grid-cols-3 gap-4">
-        <div className="bg-white rounded-lg border border-stone-200 p-4 text-center">
-          <p className="text-2xl font-bold text-stone-900">{recently_viewed.length}</p>
-          <p className="text-xs text-stone-500">Viewed</p>
-        </div>
-        <div className="bg-white rounded-lg border border-stone-200 p-4 text-center">
-          <p className="text-2xl font-bold text-stone-900">{profile.wishlist_count}</p>
-          <p className="text-xs text-stone-500">Saved</p>
-        </div>
-        <div className="bg-white rounded-lg border border-stone-200 p-4 text-center">
-          <p className="text-2xl font-bold text-stone-900">{profile.enquiry_count}</p>
-          <p className="text-xs text-stone-500">Enquiries</p>
-        </div>
-      </section>
+      </Section>
 
       {/* Recently Viewed */}
-      {recently_viewed.length > 0 && (
-        <section className="bg-white rounded-lg border border-stone-200 p-6">
-          <h2 className="text-lg font-medium text-stone-900 mb-3">Recently Viewed</h2>
-          <div className="flex gap-3 overflow-x-auto pb-2">
+      <Section icon={Eye} title="Recently Viewed">
+        {recently_viewed.length > 0 ? (
+          <div className="flex gap-3 overflow-x-auto pb-1 -mx-5 px-5 snap-x">
             {recently_viewed.map((item) => (
-              <div key={item.id} className="flex-shrink-0 w-32">
-                <div className="w-32 h-32 bg-stone-100 rounded-lg overflow-hidden">
+              <div key={item.id} className="flex-shrink-0 w-28 snap-start">
+                <div className="w-28 h-36 bg-lavender-50 rounded-2xl overflow-hidden border border-lavender-100">
                   {item.photo_url ? (
                     // eslint-disable-next-line @next/next/no-img-element -- below-the-fold thumbnail row, no LCP benefit from next/image
                     <img
@@ -273,69 +362,60 @@ export default function MyProfilePage() {
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-stone-400 text-xs">
+                    <div className="w-full h-full flex items-center justify-center text-heliotrope-400 text-xs">
                       No photo
                     </div>
                   )}
                 </div>
-                <p className="text-xs text-stone-700 mt-1 truncate">{item.name}</p>
-                <p className="text-xs text-stone-400 truncate">{item.retailer.shop_name}</p>
+                <p className="text-xs font-semibold text-spaceCadet-900 mt-1.5 truncate">{item.name}</p>
+                <p className="text-xs text-heliotrope-500 truncate">{item.retailer.shop_name}</p>
               </div>
             ))}
           </div>
-        </section>
-      )}
+        ) : (
+          <p className="text-sm text-heliotrope-500 rounded-2xl bg-lavender-50 border border-dashed border-lavender-200 px-4 py-6 text-center">
+            Products you open in any store will show up here.
+          </p>
+        )}
+      </Section>
 
-      {/* Notification toggles */}
-      <section className="bg-white rounded-lg border border-stone-200 p-6">
-        <h2 className="text-lg font-medium text-stone-900 mb-3">Notifications</h2>
-        <div className="space-y-3">
-          <label className="flex items-center justify-between">
-            <span className="text-sm text-stone-700">WhatsApp messages from stores</span>
-            <input
-              type="checkbox"
-              checked={notificationsEnabled}
-              onChange={(e) => setNotificationsEnabled(e.target.checked)}
-              className="h-4 w-4 text-amber-600 rounded"
-            />
-          </label>
-          <label className="flex items-center justify-between">
-            <span className="text-sm text-stone-700">Personalized recommendations</span>
+      {/* Personalization. The "WhatsApp messages from stores" box was removed
+          (RC-083): it was never loaded or saved and nothing sends store
+          WhatsApp to shoppers. Re-add it with a real setting alongside F-035. */}
+      <Section icon={SlidersHorizontal} title="Personalization">
+        <div className="flex items-center justify-between gap-4">
+          <div className="min-w-0">
+            <p id="perso-label" className="text-sm font-semibold text-spaceCadet-900">
+              Personalized recommendations
+            </p>
+            <p id="perso-desc" className="text-xs text-heliotrope-500 mt-0.5">
+              Use your views and saved styles to rank what you see.
+            </p>
+          </div>
+          {/* Switch look over a real checkbox: the input fills the hit area at
+              opacity 0, so it keeps checkbox semantics, keyboard and the e2e
+              uncheck() — only the paint is custom. */}
+          <span className="relative inline-flex shrink-0 h-11 w-14 items-center justify-center">
             <input
               type="checkbox"
               checked={personalizationEnabled}
-              onChange={async (e) => {
-                const enabled = e.target.checked
-                setPersonalizationEnabled(enabled)
-                try {
-                  const res = await fetch('/api/passport/preferences', {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ profiling_enabled: enabled }),
-                  })
-                  // A non-2xx resolves rather than throwing, so without this a
-                  // 405 from a missing proxy verb (RC-026) or an expired
-                  // session looked identical to a saved preference — the box
-                  // stayed off and silently reverted on reload.
-                  if (!res.ok) throw new Error(`preferences update failed: ${res.status}`)
-                } catch {
-                  setPersonalizationEnabled(!enabled)
-                  alert('Could not save your preference. Please try again.')
-                }
-              }}
-              className="h-4 w-4 text-amber-600 rounded"
+              onChange={(e) => togglePersonalization(e.target.checked)}
+              aria-labelledby="perso-label"
+              aria-describedby="perso-desc"
+              className="peer absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
             />
-          </label>
+            <span className="h-7 w-12 rounded-full bg-lavender-200 transition-colors peer-checked:bg-fuchsia-600 peer-focus-visible:ring-2 peer-focus-visible:ring-fuchsia-500/50 peer-focus-visible:ring-offset-2" />
+            <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 h-5 w-5 rounded-full bg-white shadow transition-transform motion-reduce:transition-none peer-checked:translate-x-5" />
+          </span>
         </div>
-      </section>
+      </Section>
 
       {/* Right to nominate — DPDP Act s.14 */}
-      <section className="bg-white rounded-lg border border-stone-200 p-6">
-        <h2 className="text-lg font-medium text-stone-900 mb-1">Nominee</h2>
-        <p className="text-sm text-stone-500 mb-4">
-          Name someone who can exercise your data rights if you die or can no longer do so
-          yourself.
-        </p>
+      <Section
+        icon={ShieldCheck}
+        title="Nominee"
+        description="Name someone who can exercise your data rights if you die or can no longer do so yourself."
+      >
         <div className="space-y-3">
           <input
             type="text"
@@ -344,96 +424,74 @@ export default function MyProfilePage() {
             placeholder="Nominee's full name"
             maxLength={100}
             aria-label="Nominee's full name"
-            className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm"
+            className={INPUT}
           />
           <input
             type="tel"
             inputMode="numeric"
             value={nomineePhone}
             onChange={(e) => setNomineePhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
-            placeholder="Nominee's 10-digit mobile number"
+            placeholder="Nominee's mobile number"
             aria-label="Nominee's mobile number"
-            className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm"
+            className={INPUT}
           />
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <button
               onClick={() => saveNominee(false)}
               disabled={nomineeBusy || !nomineeName.trim() || nomineePhone.length !== 10}
-              className="px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700 disabled:opacity-50"
+              className={BTN_PRIMARY}
             >
+              {nomineeBusy && <Loader2 aria-hidden className="h-4 w-4 animate-spin motion-reduce:animate-none" />}
               {nomineeBusy ? 'Saving…' : nomineeSaved ? 'Update nominee' : 'Save nominee'}
             </button>
             {nomineeSaved && (
-              <button
-                onClick={() => saveNominee(true)}
-                disabled={nomineeBusy}
-                className="px-4 py-2 bg-stone-100 text-stone-600 rounded-lg text-sm font-medium hover:bg-stone-200 disabled:opacity-50"
-              >
+              <button onClick={() => saveNominee(true)} disabled={nomineeBusy} className={BTN_SECONDARY}>
                 Remove
               </button>
             )}
           </div>
         </div>
-      </section>
+      </Section>
 
       {/* Data controls */}
-      <section className="bg-white rounded-lg border border-stone-200 p-6">
-        <h2 className="text-lg font-medium text-stone-900 mb-3">Your Data</h2>
-        <div className="space-y-3">
-          <button
-            onClick={async () => {
-              setExporting(true)
-              try {
-                const res = await fetch('/api/passport/export')
-                if (res.status === 429) {
-                  alert('You can only export your data once per day.')
-                  return
-                }
-                if (!res.ok) throw new Error('Export failed')
-                const data = await res.json()
-                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
-                const url = URL.createObjectURL(blob)
-                const a = document.createElement('a')
-                a.href = url
-                a.download = `kanchuki-data-${new Date().toISOString().slice(0, 10)}.json`
-                a.click()
-                URL.revokeObjectURL(url)
-              } catch (err) {
-                alert('Failed to export data. Please try again.')
-              } finally {
-                setExporting(false)
-              }
-            }}
-            disabled={exporting}
-            className="w-full text-left px-4 py-3 bg-stone-50 rounded-lg hover:bg-stone-100 transition-colors text-sm text-stone-700 disabled:opacity-50"
-          >
-            {exporting ? '⏳ Exporting...' : '📥 Download my data'}
-          </button>
-          <button
-            onClick={async () => {
-              if (!confirm('Are you sure you want to delete your account? This action cannot be undone.')) return
-              setDeleting(true)
-              try {
-                const res = await fetch('/api/passport/delete', { method: 'POST' })
-                if (!res.ok) throw new Error('Delete failed')
-                window.location.href = '/'
-              } catch (err) {
-                alert('Failed to delete account. Please try again.')
-              } finally {
-                setDeleting(false)
-              }
-            }}
-            disabled={deleting}
-            className="w-full text-left px-4 py-3 bg-red-50 rounded-lg hover:bg-red-100 transition-colors text-sm text-red-600 disabled:opacity-50"
-          >
-            {deleting ? '⏳ Deleting...' : '🗑️ Delete my account'}
-          </button>
-        </div>
-        <p className="text-xs text-stone-400 mt-3">
-          Under the Digital Personal Data Protection Act, 2023, you can request a
-          copy of all data we hold about you, or ask us to delete it.
+      <Section
+        icon={Database}
+        title="Your Data"
+        description="Under the Digital Personal Data Protection Act, 2023, you can request a copy of all data we hold about you, or ask us to delete it."
+      >
+        <button onClick={exportData} disabled={exporting} className={ROW_BTN}>
+          {exporting ? (
+            <Loader2 aria-hidden className="h-5 w-5 text-heliotrope-500 animate-spin motion-reduce:animate-none" />
+          ) : (
+            <Download aria-hidden className="h-5 w-5 text-heliotrope-500" />
+          )}
+          <span className="flex-1">{exporting ? 'Exporting…' : 'Download my data'}</span>
+          <ChevronRight aria-hidden className="h-4 w-4 text-heliotrope-400" />
+        </button>
+      </Section>
+
+      {/* Danger zone */}
+      <motion.section variants={ITEM} className="bg-white rounded-3xl border border-red-200 p-5">
+        <h2 className="text-base font-bold text-red-700 flex items-center gap-2 mb-1">
+          <AlertTriangle aria-hidden className="h-4 w-4" />
+          Danger zone
+        </h2>
+        <p className="text-sm text-heliotrope-500 mb-4">
+          Deleting your account removes your profile, saved styles and history. This cannot be undone.
         </p>
-      </section>
-    </div>
+        <button
+          onClick={deleteAccount}
+          disabled={deleting}
+          className="w-full min-h-11 inline-flex items-center justify-center gap-2 rounded-2xl bg-red-600 hover:bg-red-700 text-white text-sm font-semibold shadow-lg shadow-red-600/20 transition-colors disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/50 focus-visible:ring-offset-2"
+        >
+          {deleting ? (
+            <Loader2 aria-hidden className="h-4 w-4 animate-spin motion-reduce:animate-none" />
+          ) : (
+            <Trash2 aria-hidden className="h-4 w-4" />
+          )}
+          {deleting ? 'Deleting…' : 'Delete my account'}
+        </button>
+      </motion.section>
+    </motion.div>
   )
 }
