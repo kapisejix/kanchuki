@@ -39,7 +39,6 @@
     "@kanchuki/db": "workspace:*",
     "@kanchuki/shared": "workspace:*",
     "openai": "^4.52.0",
-    "pdfjs-dist": "^4.8.69",
     "sharp": "^0.33.5"
   },
   "devDependencies": {
