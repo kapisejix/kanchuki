@@ -10,6 +10,7 @@ import { showError } from '../../src/lib/errors'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { WhiteButton } from '../../src/components/WhiteButton'
 import { GradientButton } from '../../src/components/GradientButton'
+import { KeyboardScreen } from '../../src/components/KeyboardScreen'
 
 type Collection = {
   id: string
@@ -84,6 +85,7 @@ function EditCollectionModal({
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <KeyboardScreen>
       <View className="flex-1 bg-black/50 items-center justify-center px-6">
         <View className="bg-white rounded-3xl w-full p-6 gap-4 border border-lavender-200 shadow-xl">
           <Text
@@ -136,6 +138,7 @@ function EditCollectionModal({
           </View>
         </View>
       </View>
+      </KeyboardScreen>
     </Modal>
   )
 }

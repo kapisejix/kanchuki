@@ -45,7 +45,7 @@ import {
   type SocialTemplate,
   type SocialTemplateType,
 } from '../../src/lib/api/growth'
-import { showError } from '../../src/lib/errors'
+import { apiMessage, showError } from '../../src/lib/errors'
 
 // ─── Helpers ──────────────────────────────────────────────────────
 
@@ -433,7 +433,7 @@ function CreateTemplateModal({
       })
       onSaved()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create template')
+      setError(apiMessage(err, 'Failed to create template'))
       setSaving(false)
     }
   }

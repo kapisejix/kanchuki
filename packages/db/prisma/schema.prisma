@@ -147,6 +147,7 @@ enum PlanFeatureKey {
   CHECKOUT_CART
   DATA_EXPORT_CSV
   CUSTOM_BRANDING
+  // @deprecated - F-001e (Snappyit ghost-mannequin) removed 2026-10; value stays until a migration drops it
   GHOST_MANNEQUIN_AI
   // @deprecated - removed in migration 082
   RAZORPAY_ROUTE
@@ -173,6 +174,9 @@ enum PlanFeatureKey {
   // F-043 — social post scheduler. Fails CLOSED (no row = OFF); seeded ON for
   // all plans in migration 129.
   SOCIAL_SCHEDULER
+  // Google Business Profile reviews (migration 140; docs/tasks/pending/google-business-profile-and-setup-checklist.md).
+  // Fails CLOSED and is NOT seeded: OFF for every plan until an admin enables it.
+  GOOGLE_BUSINESS_PROFILE
 }
 
 // ─── QUOTA & LIMITS (F-010) ──────────────────────────────────────
@@ -197,6 +201,8 @@ enum QuotaResourceType {
   ACTIVE_SCHEDULE_PLAN
   // F-045 — customer My Style photo/style analyses per month (customer_resource_limits).
   STYLE_ANALYSIS
+  // Replies posted to Google reviews per month (migration 140; seeded in 142).
+  GBP_REVIEW_REPLY
 }
 
 enum QuotaPeriod {
@@ -295,6 +301,8 @@ model Retailer {
    // WhatsApp Native Catalog Sync (Phase II) — sync product catalog to
    // WhatsApp Business native catalog (in-app product list under business profile).
    whatsapp_catalog_id    String? // Meta catalog ID (from WABA)
+   // Dashboard checklist items the owner hid (migration 143). Hides only; status is derived.
+   setup_dismissed        String[] @default([])
    sync_enabled           Boolean  @default(false)
    sync_categories        String[] @default([]) // ProductCategory IDs to sync
    last_synced_at         DateTime?
@@ -365,6 +373,7 @@ model Retailer {
   subscriptions         Subscription[]
   limit_overrides       RetailerLimitOverride[]
   usage_counters        UsageCounter[]
+  quota_reservations    QuotaReservation[]
   quota_addon_purchases QuotaAddonPurchase[]
   ai_usage_logs         AiUsageLog[]
   catalog_items         CatalogItem[]
@@ -376,7 +385,10 @@ model Retailer {
   support_tickets       SupportTicket[]
   support_session_grants SupportSessionGrant[]
   staff_push_devices    StaffPushDevice[]
+  product_stock         ProductStock[]
   social_accounts       SocialAccount[]
+  gbp_link              GbpLink?
+  gbp_reviews           GbpReview[]
   social_posts          SocialPost[]
   schedule_plans        PostSchedulePlan[]
   scheduled_posts       ScheduledPost[]
@@ -609,6 +621,7 @@ model Product {
   videos           ProductVideo[]
   reviews          ProductReview[]
   variants         ProductVariant[]
+  stock            ProductStock[]
   embedding        ProductEmbedding?
   collection_items CollectionProduct[]
   recently_viewed  CustomerRecentlyViewed[]
@@ -655,9 +668,8 @@ model ProductPhoto {
   // See packages/ai/src/phash.ts.
   phash String?
 
-  // F-001e: ghost-mannequin generation provenance and other photo-level
-  // metadata. JSON for flexible expansion — stores provider name,
-  // generated_at, error messages, original photo URL on failure, etc.
+  // Photo-level metadata. JSON for flexible expansion — stores provenance
+  // (provider name, generated_at), original_r2_key, error messages, etc.
   metadata Json?
 
   sort_order Int      @default(0)
@@ -998,6 +1010,12 @@ model SupportTicket {
   status          TicketStatus @default(OPEN)
   note            String?
 
+  // Dashboard "Complete your profile" (migration 143): which checklist item an
+  // "Ask Kanchuki team" ticket is for. NULL on ordinary tickets. At most one
+  // OPEN/ASSIGNED ticket per (retailer, item) — a partial unique index, which
+  // Prisma cannot express, lives in the migration.
+  setup_item      String?
+
   // F-019: fields used only when ticket_type = CATALOG_UPLOAD
   ticket_type          TicketType @default(GENERAL)
   item_count_requested Int?
@@ -1069,6 +1087,87 @@ model StaffPushDevice {
 
   @@index([retailer_id, disabled_at])
   @@map("staff_push_devices")
+}
+
+// Per-size stock for a product (docs/tasks/pending/product-stock-quantity.md).
+// One row per (product, size); size 'FREE' = unsized item. No row = stock is not
+// tracked for that product. Rows are never deleted by the app (RC-049): removing a
+// size writes quantity 0. quantity has a DB CHECK >= 0 (migration 137), so a future
+// checkout can decrement atomically with `... WHERE quantity >= n`.
+model ProductStock {
+  id          String   @id @default(cuid())
+  product_id  String
+  retailer_id String
+  size        String
+  quantity    Int      @default(0)
+  updated_at  DateTime @updatedAt
+
+  product  Product  @relation(fields: [product_id], references: [id], onDelete: Cascade)
+  retailer Retailer @relation(fields: [retailer_id], references: [id], onDelete: Cascade)
+
+  @@unique([product_id, size])
+  @@index([retailer_id])
+  @@map("product_stock")
+}
+
+
+// ─── GOOGLE BUSINESS PROFILE (migrations 140–142) ────────────────
+// docs/tasks/pending/google-business-profile-and-setup-checklist.md Part B.
+enum GbpLinkStatus {
+  REQUESTED // retailer consented; the marketing team has not linked a location yet
+  LINKED
+  NEEDS_ACCESS // Google refused the shared identity for this location (retailer removed us)
+  UNLINKED
+}
+
+// One per retailer. gbp_account_id / gbp_location_id are set ONLY by admin routes, never
+// from a retailer request, so a retailer can't point their link at someone else's location.
+model GbpLink {
+  id                       String        @id @default(cuid())
+  retailer_id              String        @unique
+  status                   GbpLinkStatus @default(REQUESTED)
+  gbp_account_id           String?
+  gbp_location_id          String?
+  location_title           String?
+  consented_at             DateTime
+  linked_by_team_member_id String?
+  linked_at                DateTime?
+  unlinked_at              DateTime?
+  last_synced_at           DateTime?
+  last_error_code          String?
+  avg_rating               Float?
+  review_count             Int?
+  created_at               DateTime      @default(now())
+  updated_at               DateTime      @updatedAt
+
+  retailer Retailer    @relation(fields: [retailer_id], references: [id], onDelete: Cascade)
+  reviews  GbpReview[]
+
+  @@unique([gbp_account_id, gbp_location_id])
+  @@index([status])
+  @@map("gbp_links")
+}
+
+model GbpReview {
+  id                String    @id @default(cuid())
+  retailer_id       String
+  link_id           String
+  google_review_id  String
+  reviewer_name     String?
+  star_rating       Int
+  comment           String?
+  google_created_at DateTime
+  google_updated_at DateTime
+  reply_comment     String?
+  reply_updated_at  DateTime?
+  synced_at         DateTime  @default(now())
+
+  retailer Retailer @relation(fields: [retailer_id], references: [id], onDelete: Cascade)
+  link     GbpLink  @relation(fields: [link_id], references: [id], onDelete: Cascade)
+
+  @@unique([link_id, google_review_id])
+  @@index([retailer_id, google_created_at(sort: Desc)])
+  @@map("gbp_reviews")
 }
 
 // F-019: admin-editable price tiers for the paid catalog upload service,
@@ -1391,6 +1490,27 @@ model UsageCounter {
   @@unique([retailer_id, resource_type, period_start])
   @@index([retailer_id])
   @@map("usage_counters")
+}
+
+// Which queued job holds which quota slot (migration 144, docs/tasks/pending/quota-reserve-at-enqueue.md).
+// Written only by raw SQL in lib/quota.ts (reserve is one CTE with the counter bump). The partial
+// unique indexes (per scope on job_id + resource_type), the CHECKs and the FKs live in the migration.
+model QuotaReservation {
+  id                  String            @id @default(cuid())
+  job_id              String
+  retailer_id         String?
+  customer_account_id String?
+  resource_type       QuotaResourceType
+  period_start        DateTime
+  amount              Int
+  state               String            @default("RESERVED") // RESERVED | SPENT | REFUNDED
+  created_at          DateTime          @default(now())
+  refunded_at         DateTime?
+
+  retailer         Retailer?        @relation(fields: [retailer_id], references: [id], onDelete: Cascade)
+  customer_account CustomerAccount? @relation(fields: [customer_account_id], references: [id], onDelete: Cascade)
+
+  @@map("quota_reservations")
 }
 
 // ─── F-040 — VIRTUAL TRY-ON (CatVTON on RunPod) ───────────
@@ -1863,6 +1983,8 @@ enum IntegrationCategory {
   PAYMENT
   STORAGE
   WHATSAPP
+  // The shared Kanchuki Google identity for Business Profile reviews (migration 140).
+  GOOGLE
 }
 
 model IntegrationSetting {
@@ -2550,7 +2672,9 @@ enum ChannelSyncStatus {
 model ProductReview {
   id          String @id @default(cuid())
   product_id  String
-  customer_id String
+  customer_id String? // legacy phone-keyed rows only (migration 139); new rows use customer_account_id
+  customer_account_id String? // RC-098: passport session account, never a body phone
+  display_name        String? // shown on the review; never written to Customer
   retailer_id String // denormalized for retailer-facing queries + moderation
   rating      Int    // 1–5 stars
   comment     String?
@@ -2560,10 +2684,13 @@ model ProductReview {
   updated_at  DateTime @updatedAt
 
   product  Product  @relation(fields: [product_id], references: [id])
-  customer Customer @relation(fields: [customer_id], references: [id])
+  customer Customer? @relation(fields: [customer_id], references: [id])
+  customer_account CustomerAccount? @relation(fields: [customer_account_id], references: [id], onDelete: SetNull)
   retailer Retailer @relation(fields: [retailer_id], references: [id])
 
-  @@unique([product_id, customer_id]) // one review per customer per product
+  @@unique([product_id, customer_id]) // legacy: one review per customer per product
+  @@unique([product_id, customer_account_id]) // one review per shopper account per product
+  @@index([customer_account_id])
   @@index([product_id])
   @@index([retailer_id])
   @@index([customer_id])
@@ -2574,7 +2701,9 @@ model ProductReview {
 model StoreReview {
   id          String @id @default(cuid())
   retailer_id String
-  customer_id String
+  customer_id String? // legacy phone-keyed rows only (migration 139)
+  customer_account_id String? // RC-098: passport session account
+  display_name        String?
   rating      Int    // 1–5 stars
   comment     String?
   is_flagged  Boolean @default(false) // admin moderation flag
@@ -2582,10 +2711,13 @@ model StoreReview {
   created_at  DateTime @default(now())
   updated_at  DateTime @updatedAt
 
-  customer Customer @relation(fields: [customer_id], references: [id])
+  customer Customer? @relation(fields: [customer_id], references: [id])
+  customer_account CustomerAccount? @relation(fields: [customer_account_id], references: [id], onDelete: SetNull)
   retailer Retailer @relation(fields: [retailer_id], references: [id])
 
-  @@unique([retailer_id, customer_id]) // one store review per customer per retailer
+  @@unique([retailer_id, customer_id]) // legacy: one store review per customer per retailer
+  @@unique([retailer_id, customer_account_id]) // one per shopper account per retailer
+  @@index([customer_account_id])
   @@index([retailer_id])
   @@index([customer_id])
   @@index([rating])
@@ -2789,7 +2921,11 @@ model CustomerAccount {
   interactions        CustomerInteraction[]
   try_on_jobs         TryOnJob[]
   resource_usage      CustomerUsageCounter[]
+  quota_reservations  QuotaReservation[]
   engagement_summaries CustomerEngagementSummary[]
+  push_subscriptions  CustomerPushSubscription[]
+  product_reviews     ProductReview[]
+  store_reviews       StoreReview[]
 
   @@map("customer_accounts")
 }
@@ -2877,12 +3013,37 @@ model CustomerStoreVisit {
   @@map("customer_store_visits")
 }
 
+// F-036 Phase B — one Web Push subscription per browser (migration 138). Which
+// stores may notify it is decided at send time from CustomerStoreVisit
+// (visited + !is_muted), not stored here. No hard deletes (RC-049): unsubscribe,
+// passport delete and a 404/410 from the push service all set disabled_at.
+// passport_session_id = the session that subscribed: a push needs it unrevoked and
+// unexpired, so logging out on that device stops its pushes.
+model CustomerPushSubscription {
+  id                  String  @id @default(cuid())
+  customer_account_id String
+  passport_session_id String?
+  endpoint            String @unique
+  p256dh              String
+  auth                String
+
+  last_seen_at DateTime  @default(now())
+  disabled_at  DateTime?
+  created_at   DateTime  @default(now())
+
+  customer_account CustomerAccount  @relation(fields: [customer_account_id], references: [id], onDelete: Cascade)
+  passport_session PassportSession? @relation(fields: [passport_session_id], references: [id], onDelete: SetNull)
+
+  @@index([customer_account_id, disabled_at])
+  @@map("customer_push_subscriptions")
+}
+
 // Append-only consent/withdrawal audit (DPDP record-keeping)
 model ConsentEvent {
   id                  String   @id @default(cuid())
   customer_account_id String
   retailer_id         String?
-  kind                String   // PASSPORT_CREATED | STORE_CONSENT_GRANTED | STORE_MUTED | STORE_CONSENT_WITHDRAWN | PASSPORT_DELETED | PROFILING_ENABLED | PROFILING_DISABLED | DATA_EXPORTED
+  kind                String   // PASSPORT_CREATED | STORE_CONSENT_GRANTED | STORE_MUTED | STORE_CONSENT_WITHDRAWN | PASSPORT_DELETED | PROFILING_ENABLED | PROFILING_DISABLED | DATA_EXPORTED | PUSH_SUBSCRIBED | PUSH_UNSUBSCRIBED
   notice_version      String   // which notice text was shown
   ip_hash             String?
   user_agent          String?
@@ -2905,7 +3066,8 @@ model PassportSession {
   user_agent          String?
   ip_hash             String?
 
-  customer_account CustomerAccount @relation(fields: [customer_account_id], references: [id], onDelete: Cascade)
+  customer_account   CustomerAccount            @relation(fields: [customer_account_id], references: [id], onDelete: Cascade)
+  push_subscriptions CustomerPushSubscription[]
 
   @@index([customer_account_id])
   @@map("passport_sessions")

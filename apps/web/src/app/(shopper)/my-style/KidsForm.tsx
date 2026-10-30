@@ -10,6 +10,7 @@
 
 import { formatPriceRange } from '@kanchuki/shared'
 import { useState } from 'react'
+import { BTN_PRIMARY, SELECT } from '../ui'
 
 export const KIDS_WHO = ['Girl', 'Boy'] as const
 export const KIDS_AGES = ['0–2 yrs', '3–5 yrs', '6–8 yrs', '9–12 yrs', '13–16 yrs'] as const
@@ -23,7 +24,7 @@ export interface KidsNeed {
   budget: string // paise as a string, '' = any
 }
 
-const select = 'w-full rounded-lg border border-stone-300 bg-white px-2 py-1.5 text-sm text-stone-700'
+const select = `${SELECT} w-full min-w-0`
 
 export function KidsForm({ onApply }: { onApply: (need: KidsNeed) => void }) {
   const [need, setNeed] = useState<KidsNeed>({ who: 'Girl', age: KIDS_AGES[0], occasion: '', budget: '' })
@@ -32,7 +33,7 @@ export function KidsForm({ onApply }: { onApply: (need: KidsNeed) => void }) {
 
   return (
     <form
-      className="mt-3 grid grid-cols-2 gap-2"
+      className="mt-4 grid grid-cols-2 gap-2 rounded-2xl bg-lavender-50 border border-lavender-100 p-3"
       onSubmit={(e) => {
         e.preventDefault()
         onApply(need)
@@ -54,10 +55,10 @@ export function KidsForm({ onApply }: { onApply: (need: KidsNeed) => void }) {
           <option key={b} value={b}>Up to {formatPriceRange(b, null).replace('/-', '')}</option>
         ))}
       </select>
-      <p className="col-span-2 text-xs text-stone-500">
+      <p className="col-span-2 text-xs text-heliotrope-500 px-1">
         Kids&apos; sizes vary by store, so we match on occasion and budget. Ask the store about size.
       </p>
-      <button type="submit" className="col-span-2 rounded-lg bg-stone-900 text-white text-sm py-2">
+      <button type="submit" className={`${BTN_PRIMARY} col-span-2`}>
         Show outfits
       </button>
     </form>

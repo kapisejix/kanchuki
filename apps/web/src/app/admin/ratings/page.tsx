@@ -37,7 +37,8 @@ type Review = {
   created_at: string
   _type: 'product' | 'store'
   product?: { id: string; name: string | null }
-  customer?: { id: string; name: string }
+  display_name?: string | null
+  customer?: { id: string; name: string } | null
   retailer?: { id: string; shop_name: string }
 }
 
@@ -390,7 +391,9 @@ function ReviewRow({
 
           {/* Meta */}
           <div className="flex items-center gap-3 text-xs text-gray-400">
-            {review.customer && <span>by {review.customer.name}</span>}
+            {(review.display_name ?? review.customer?.name) && (
+              <span>by {review.display_name ?? review.customer?.name}</span>
+            )}
             {review.retailer && <span>· {review.retailer.shop_name}</span>}
             {isProduct && review.product && <span>· {review.product.name ?? 'Unnamed'}</span>}
             <span>· {new Date(review.created_at).toLocaleDateString('en-IN')}</span>

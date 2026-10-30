@@ -42,7 +42,7 @@ export const catalogImportApi = {
       }
     }>('/v1/catalog-import/upload-url', {
       method: 'POST',
-      body: JSON.stringify({ filename, content_type: contentType, size_bytes: sizeBytes }),
+      body: JSON.stringify({ filename, content_type: contentType, size_bytes: sizeBytes, content_length: sizeBytes }),
       timeoutMs: 30_000,
     }),
 
@@ -61,30 +61,6 @@ export const catalogImportApi = {
       method: 'POST',
       body: JSON.stringify({ image_url: imageUrl }),
       timeoutMs: 60_000, // Claude Vision + cropping + re-tagging takes time
-    }),
-
-  /**
-   * F-001b: Import a PDF catalog. If page_images[] is provided, runs
-   * multi-item detection on each page. If not, returns PDF metadata.
-   */
-  importPdf: (pdfUrl: string, pageImages?: string[]) =>
-    request<{
-      data: {
-        source_type: 'pdf'
-        total_items: number
-        total_pages: number
-        page_dimensions?: { width: number; height: number }[]
-        items: CatalogDetectedItem[]
-        render_required?: boolean
-        max_page_images?: number
-      }
-    }>('/v1/catalog-import/import-pdf', {
-      method: 'POST',
-      body: JSON.stringify({
-        pdf_url: pdfUrl,
-        ...(pageImages ? { page_images: pageImages } : {}),
-      }),
-      timeoutMs: 180_000, // PDF processing + detection can be slow
     }),
 
   /**

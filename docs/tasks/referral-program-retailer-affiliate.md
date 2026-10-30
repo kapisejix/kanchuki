@@ -550,15 +550,14 @@ KNOWN TRAPS — already paid for, do not re-discover
     the committed blobs are LF (verify with git show :file | tr -cd '\\r' | wc -c == 0).
 
 OWNER ACTIONS STILL OUTSTANDING (nobody but the owner can close these)
-  1. Apply migrations 109, 110, 111 from the admin dashboard. Until then the referral tables
-     and the RLS policies do not exist in prod and T2's screen 404s its own data.
+  1. ✅ DONE 2026-09-23 — migrations 109–114 applied in prod by the owner (CLAUDE.md row 76).
   2. ✅ DONE 2026-09-28 — ran the opt-in purge-rls-live.test.ts against a real local Postgres.
      5/5 pass, all three RLS phases behaved as claimed. See §2.1 below for detail.
   3. Two RC-034 classifications were flagged rather than decided: `team-members` (staff
      account management — credential-adjacent) and `reports` (/admin/reports/gst is tax data
      but its fetches are the gated /v1/admin/gst/*). Both carry an in-file note with the
      one-line change to lock them down.
-  4. Migrations 104/105 (AI Studio engine rows) are still unapplied from an earlier session.
+  4. ✅ DONE — migrations 104/105 applied in prod (verified 2026-10-25, launch-readiness.md).
 
 START BY: re-reading §7 T6 and the §11 checklist, then planning T6 as its own commit. Before
 writing code, confirm with the owner whether T6's ledger should snapshot the plan tier at
@@ -592,7 +591,7 @@ feature has been careful to preserve everywhere else.
 - **Branch:** `fix/post-referral-cleanup-and-launch` — 48 commits ahead of `origin/main`, **not pushed**. Parent `chore/remove-text-to-image-studio-engines` (F-038 T1–T10, 22 commits) is pushed but **not merged**. `docs/reorganize` (docs tree reorg, 8 commits) is a sibling, unmerged — will conflict on ~12 files (`CLAUDE.md`, `BUILD-LOG.md`, `PRO-REQUIREMENTS.md`, `SECURITY.md`, `schema.prisma`, …).
 - **Migrations:** 063, 104–117 all applied in prod (116 + 117 applied by owner 2026-09-24).
 - **Referral program (F-038):** T1–T7, T9, T10 built + migrations applied. RC-033 (completed ≠ cancelled) fixed. Refunds (5A.1) write `status='refunded'`; T6 stops future earning, never un-earns; T5 claws back nothing (owner rulings). **Pays nobody until RazorpayX is live.**
-- **Board §3/§4/§5A/§6 done** (see `docs/tasks/pending/post-referral-cleanup-and-launch.md`). Static `PLAN_PRICING` deleted — `plan_pricing` table is the only price source (prod verified ₹4,999/₹9,999/₹14,999).
+- **Board §3/§4/§5A/§6 done** (see `docs/tasks/done/post-referral-cleanup-and-launch.md`). Static `PLAN_PRICING` deleted — `plan_pricing` table is the only price source (prod verified ₹4,999/₹9,999/₹14,999).
 - **§7A.1 + §7A.2 done 2026-09-24:** JSON-LD on collection (`ItemList`) + product (`Product`/`Offer`) pages via new `productLd`/`itemListLd`/`ldJson` in `apps/web/src/app/[store]/lib/store-seo.ts`; store + categories pages switched from raw `JSON.stringify` to escaped `ldJson`. This is **RC-040** — a retailer `shop_name` containing `</script>` broke out of the JSON-LD tag (stored XSS on every storefront page), and the first written escape had **one** backslash (a no-op) until the test caught it. §7A.1 needed no work: the sitemap already exists at `app/sitemap.xml/route.ts` + `[id]/route.ts`, not the `sitemap.ts` path the board named. `store-seo.test.ts` **3/3** (falsified: bare `JSON.stringify` → red); web **326/326**, tsc clean. `docs/ai-studio/` = local test images — **never commit, owner deleting**.
 
 ### 13.2 Left — code (Claude can do)
@@ -601,7 +600,7 @@ feature has been careful to preserve everywhere else.
 built across two later sessions and §7A is now **complete**; item 9's `?ref=`
 capture shipped in reduced form as **5B.1** (see below); T4 (signup wiring,
 listed as still-open in §7 above) also shipped. Full detail for all of it now
-lives in `docs/tasks/pending/post-referral-cleanup-and-launch.md` §7 and §5B —
+lives in `docs/tasks/done/post-referral-cleanup-and-launch.md` §7 and §5B —
 that board is the current source of truth, this file is the historical record.
 
 - ~~1–7 (§7A.1–§7A.7)~~ ✅ all built — board §7A, BUILD-LOG 2026-09-24 entries.
@@ -635,7 +634,7 @@ that board is the current source of truth, this file is the historical record.
 ### 13.4 Kickoff prompt — paste into a new session
 ```
 Kanchuki, branch fix/post-referral-cleanup-and-launch (48 commits ahead of main, not pushed — never push to main).
-Read docs/tasks/referral-program-retailer-affiliate.md §13 and docs/tasks/pending/post-referral-cleanup-and-launch.md §7 first.
+Read docs/tasks/referral-program-retailer-affiliate.md §13 and docs/tasks/done/post-referral-cleanup-and-launch.md §7 first.
 Do NOT commit docs/ai-studio/ (local test images).
 
 Step 1: finish §7A.2 already in the working tree — run apps/web/src/app/[store]/lib/store-seo.test.ts,

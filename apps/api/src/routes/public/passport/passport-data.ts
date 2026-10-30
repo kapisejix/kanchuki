@@ -159,6 +159,21 @@ export const passportDataRoutes: FastifyPluginAsync = async (server) => {
       },
     });
 
+    // RC-099: the FK SET NULL only fires on a hard delete, so anonymise reviews here.
+    // Stars stay as anonymous ratings (no ratings recompute needed).
+    const anon = { display_name: null, comment: null, customer_account_id: null };
+    await prisma.productReview.updateMany({
+      where: { customer_account_id: accountId },
+      data: anon,
+    });
+    await prisma.storeReview.updateMany({ where: { customer_account_id: accountId }, data: anon });
+
+    // Stop push to every browser of this account (F-036). Soft-disable, RC-049.
+    await prisma.customerPushSubscription.updateMany({
+      where: { customer_account_id: accountId, disabled_at: null },
+      data: { disabled_at: new Date() },
+    });
+
     // Revoke all sessions for this account
     await prisma.passportSession.updateMany({
       where: { customer_account_id: accountId, revoked_at: null },

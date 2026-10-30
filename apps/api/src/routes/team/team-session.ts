@@ -5,23 +5,22 @@ import type { FastifyPluginAsync } from 'fastify';
 import { Redis } from 'ioredis';
 import { z } from 'zod';
 import { sendEmail, sendTeamPasswordResetEmail } from '../../lib/email.js';
-import { isMsg91OtpConfigured, sendOtpViaMsg91, verifyStoredOtp } from '../../lib/msg91-otp.js';
-import { forbidden, notFound, validationError } from '../../plugins/error-handler.js';
+import {
+  awaitRedisReady,
+  isMsg91OtpConfigured,
+  otpTestBypassActive,
+  sendOtpViaMsg91,
+  verifyStoredOtp,
+} from '../../lib/msg91-otp.js';
+import {
+  AppError,
+  forbidden,
+  notFound,
+  serviceUnavailable,
+  validationError,
+} from '../../plugins/error-handler.js';
 import { hashPassword, signTeamToken, verifyPassword } from '../../plugins/team-auth.js';
 import { teamAuthPreHandler } from './team-helpers.js';
-
-function teamOtpTestBypassActive(phone: string): boolean {
-  if (process.env.OTP_TEST_BYPASS !== '1') return false;
-  const raw = process.env.OTP_TEST_PHONES ?? '';
-  const allowed = new Set(
-    raw
-      .split(',')
-      .map((p) => p.trim())
-      .filter(Boolean)
-      .map((p) => normalizeIndianPhone(p)),
-  );
-  return allowed.has(phone);
-}
 
 const LoginSchema = z.object({
   email: z.string().email(),
@@ -57,21 +56,77 @@ function getSessionRedis(): Redis {
   return sessionRedis;
 }
 
+// RC-085: codes fail closed. A Redis error (including the first command on the
+// lazily built client, which runs before 'ready' with the offline queue off)
+// means the code cannot be checked — never a dev default like '123456'.
+async function storeTeamCode(key: string, code: string, ttlSec: number): Promise<void> {
+  const redis = getSessionRedis();
+  await awaitRedisReady(redis);
+  await redis.set(key, code, 'EX', ttlSec);
+}
+
+async function consumeTeamCode(key: string): Promise<string | null> {
+  try {
+    const redis = getSessionRedis();
+    await awaitRedisReady(redis);
+    return await redis.getdel(key);
+  } catch {
+    return null;
+  }
+}
+
+// A SUPER_ADMIN/ADMIN team token is an admin session, so these routes get the
+// same per-IP limit as /admin/login (S-003). The per-IP key is spoofable while
+// trustProxy is `true` (T2.5 F1), so password login also has a per-email lock.
+const TEAM_AUTH_RATE_LIMIT = { config: { rateLimit: { max: 5, timeWindow: 15 * 60 * 1000 } } };
+const TEAM_CODE_RATE_LIMIT = { config: { rateLimit: { max: 10, timeWindow: 15 * 60 * 1000 } } };
+const LOGIN_MAX_FAILURES = 5;
+const LOGIN_LOCK_SEC = 15 * 60;
+const loginFailKey = (email: string) => `team:login-fail:${email}`;
+
+// ponytail: counter errors fail open — the per-route limit still applies, and
+// failing closed would lock every team member out during a Redis outage.
+async function loginFailures(email: string): Promise<number> {
+  try {
+    const redis = getSessionRedis();
+    await awaitRedisReady(redis);
+    return Number(await redis.get(loginFailKey(email))) || 0;
+  } catch {
+    return 0;
+  }
+}
+
+async function recordLoginFailure(email: string): Promise<void> {
+  try {
+    const redis = getSessionRedis();
+    await awaitRedisReady(redis);
+    const count = await redis.incr(loginFailKey(email));
+    if (count === 1) await redis.expire(loginFailKey(email), LOGIN_LOCK_SEC);
+  } catch {
+    // see loginFailures
+  }
+}
+
 export const teamSessionRoutes: FastifyPluginAsync = async (server) => {
   server.addHook('preHandler', teamAuthPreHandler);
 
   // ─── POST /team/login (Password Login) ───────────────────────────
-  server.post('/login', async (request) => {
+  server.post('/login', TEAM_AUTH_RATE_LIMIT, async (request) => {
     const body = LoginSchema.safeParse(request.body);
     if (!body.success)
       throw validationError(body.error.issues[0]?.message ?? 'Invalid credentials');
 
-    const member = await prisma.teamMember.findUnique({
-      where: { email: body.data.email.toLowerCase() },
-    });
+    const email = body.data.email.toLowerCase();
+    if ((await loginFailures(email)) >= LOGIN_MAX_FAILURES) {
+      throw new AppError('RATE_LIMITED', 'Too many failed attempts. Try again in 15 minutes.', 429);
+    }
+
+    const member = await prisma.teamMember.findUnique({ where: { email } });
     if (!member || !member.is_active || !verifyPassword(body.data.password, member.password_hash)) {
+      await recordLoginFailure(email);
       throw forbidden('Invalid credentials');
     }
+    await consumeTeamCode(loginFailKey(email)); // reset the counter on success
 
     const token = await signTeamToken({ sub: member.id, role: member.role });
     return {
@@ -89,7 +144,7 @@ export const teamSessionRoutes: FastifyPluginAsync = async (server) => {
   });
 
   // ─── POST /team/otp/send (Send OTP via Phone or Email) ───────────
-  server.post('/otp/send', async (request) => {
+  server.post('/otp/send', TEAM_AUTH_RATE_LIMIT, async (request) => {
     const body = SendOtpSchema.safeParse(request.body);
     if (!body.success) throw validationError('Invalid phone or email', 'identifier');
 
@@ -126,7 +181,7 @@ export const teamSessionRoutes: FastifyPluginAsync = async (server) => {
 
     // If member has a phone number matching or configured, send SMS/WhatsApp OTP
     if (normalizedPhone && member.phone) {
-      if (teamOtpTestBypassActive(member.phone)) {
+      if (otpTestBypassActive(member.phone)) {
         return {
           data: {
             message: 'OTP sent (test bypass)',
@@ -141,12 +196,9 @@ export const teamSessionRoutes: FastifyPluginAsync = async (server) => {
       } else {
         // Fallback for dev / environments without MSG91 keys
         const code = randomInt(100_000, 1_000_000).toString();
-        try {
-          const redis = getSessionRedis();
-          await redis.set(`team:otp:${member.phone}`, code, 'EX', 600);
-        } catch {
-          // Redis down in local test
-        }
+        await storeTeamCode(`team:otp:${member.phone}`, code, 600).catch(() => {
+          throw serviceUnavailable('Could not start a secure OTP session. Try again.');
+        });
       }
 
       return {
@@ -160,12 +212,9 @@ export const teamSessionRoutes: FastifyPluginAsync = async (server) => {
 
     // Email OTP flow
     const code = randomInt(100_000, 1_000_000).toString();
-    try {
-      const redis = getSessionRedis();
-      await redis.set(`team:email-otp:${member.email}`, code, 'EX', 600);
-    } catch {
-      // Redis fallback
-    }
+    await storeTeamCode(`team:email-otp:${member.email}`, code, 600).catch(() => {
+      throw serviceUnavailable('Could not start a secure OTP session. Try again.');
+    });
 
     await sendEmail({
       to: member.email,
@@ -193,7 +242,7 @@ export const teamSessionRoutes: FastifyPluginAsync = async (server) => {
   });
 
   // ─── POST /team/otp/verify (Verify OTP & Mint Team JWT) ──────────
-  server.post('/otp/verify', async (request) => {
+  server.post('/otp/verify', TEAM_CODE_RATE_LIMIT, async (request) => {
     const body = VerifyOtpSchema.safeParse(request.body);
     if (!body.success) throw validationError('Invalid OTP code or identifier');
 
@@ -222,30 +271,19 @@ export const teamSessionRoutes: FastifyPluginAsync = async (server) => {
     let verified = false;
 
     // Test bypass check
-    if (member.phone && teamOtpTestBypassActive(member.phone)) {
+    if (member.phone && otpTestBypassActive(member.phone)) {
       verified = true;
     } else if (normalizedPhone && member.phone) {
       if (isMsg91OtpConfigured()) {
         const res = await verifyStoredOtp(member.phone, otp, 'login');
         if (res === 'verified') verified = true;
       } else {
-        try {
-          const redis = getSessionRedis();
-          const stored = await redis.getdel(`team:otp:${member.phone}`);
-          if (stored === otp) verified = true;
-        } catch {
-          // Dev mock
-          if (otp === '123456') verified = true;
-        }
+        const stored = await consumeTeamCode(`team:otp:${member.phone}`);
+        if (stored !== null && stored === otp) verified = true;
       }
     } else if (normalizedEmail || member.email) {
-      try {
-        const redis = getSessionRedis();
-        const stored = await redis.getdel(`team:email-otp:${member.email}`);
-        if (stored === otp) verified = true;
-      } catch {
-        if (otp === '123456') verified = true;
-      }
+      const stored = await consumeTeamCode(`team:email-otp:${member.email}`);
+      if (stored !== null && stored === otp) verified = true;
     }
 
     if (!verified) {
@@ -268,7 +306,7 @@ export const teamSessionRoutes: FastifyPluginAsync = async (server) => {
   });
 
   // ─── POST /team/forgot-password ──────────────────────────────────
-  server.post('/forgot-password', async (request) => {
+  server.post('/forgot-password', TEAM_AUTH_RATE_LIMIT, async (request) => {
     const body = ForgotPasswordSchema.safeParse(request.body);
     if (!body.success) throw validationError('Invalid email address', 'email');
 
@@ -278,18 +316,22 @@ export const teamSessionRoutes: FastifyPluginAsync = async (server) => {
 
     if (member?.is_active) {
       const resetCode = randomInt(100_000, 1_000_000).toString();
-      try {
-        const redis = getSessionRedis();
-        await redis.set(`team:pwd-reset:${member.email}`, resetCode, 'EX', 900); // 15 min
-      } catch {
-        // Redis fallback
-      }
+      // Same response whether or not the store worked (no account
+      // enumeration), but never email a code that can't be verified.
+      const stored = await storeTeamCode(`team:pwd-reset:${member.email}`, resetCode, 900) // 15 min
+        .then(() => true)
+        .catch((err) => {
+          request.log.error({ err }, 'team forgot-password: reset code store failed');
+          return false;
+        });
 
-      await sendTeamPasswordResetEmail({
-        name: member.name,
-        email: member.email,
-        resetCode,
-      });
+      if (stored) {
+        await sendTeamPasswordResetEmail({
+          name: member.name,
+          email: member.email,
+          resetCode,
+        });
+      }
     }
 
     return {
@@ -301,7 +343,7 @@ export const teamSessionRoutes: FastifyPluginAsync = async (server) => {
   });
 
   // ─── POST /team/reset-password ───────────────────────────────────
-  server.post('/reset-password', async (request) => {
+  server.post('/reset-password', TEAM_CODE_RATE_LIMIT, async (request) => {
     const body = ResetPasswordSchema.safeParse(request.body);
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid input');
 
@@ -314,19 +356,8 @@ export const teamSessionRoutes: FastifyPluginAsync = async (server) => {
       throw validationError('Invalid or expired reset code', 'reset_code');
     }
 
-    let codeValid = false;
-    try {
-      const redis = getSessionRedis();
-      const stored = await redis.getdel(`team:pwd-reset:${member.email}`);
-      if (stored && stored === body.data.reset_code) {
-        codeValid = true;
-      }
-    } catch {
-      // Redis fallback for dev
-      if (body.data.reset_code === '123456') codeValid = true;
-    }
-
-    if (!codeValid) {
+    const stored = await consumeTeamCode(`team:pwd-reset:${member.email}`);
+    if (stored === null || stored !== body.data.reset_code) {
       throw validationError(
         'Invalid or expired reset code. Please request a new code.',
         'reset_code',

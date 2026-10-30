@@ -13,18 +13,18 @@
 
 export type PlatformTheme = {
   /** ink 600 — brand primary: buttons, active nav, selected states */
-  primary_color: string
+  primary_color: string;
   /** rust 600 — hero accent: CTAs, links, gold */
-  accent_color: string
+  accent_color: string;
   /** turmeric 600 — grounding accent: badges, checkmarks, star fill */
-  tertiary_color: string
+  tertiary_color: string;
   /** cotton — page background */
-  background_color: string
+  background_color: string;
   /** charcoal — body text */
-  text_color: string
+  text_color: string;
   /** sand 100 — card / surface fills */
-  surface_color: string
-}
+  surface_color: string;
+};
 
 export const DEFAULT_PLATFORM_THEME: PlatformTheme = {
   primary_color: '#14213D',
@@ -33,7 +33,7 @@ export const DEFAULT_PLATFORM_THEME: PlatformTheme = {
   background_color: '#FFFFFF',
   text_color: '#000000',
   surface_color: '#F5F5F5',
-}
+};
 
 /**
  * Overlay an admin theme onto the static COLORS palette. Pure and typed so
@@ -59,5 +59,5 @@ export function applyThemeOverrides(
     sand: { ...base.sand, 100: theme.surface_color },
     cotton: theme.background_color,
     charcoal: theme.text_color,
-  } as typeof import('./colors.js').COLORS
+  } as typeof import('./colors.js').COLORS;
 }

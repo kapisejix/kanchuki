@@ -161,14 +161,6 @@ export const adminPhotoCleanupRoutes: FastifyPluginAsync = async (server) => {
           background_url: z.string().url(),
           shine: z.boolean().default(false),
           blur: z.number().int().min(1).max(100).optional(),
-          // Ghost mannequin: fills the hollow neckline/sleeve/waist gaps in
-          // the garment silhouette via local LaMa inpainting (no 3rd-party
-          // API/key — see docs/ai-studio/ghost-mannequin-research.md
-          // for why the earlier Snappyit integration was dead on arrival).
-          // Passed straight through to batch-clean-photos.py's
-          // --ghost-mannequin flag, which forces composite mode (blur is
-          // ignored when set).
-          ghost_mannequin: z.boolean().default(false),
           // Pixel rect (x1,y1,x2,y2) to isolate the subject before rembg —
           // fixes the documented rembg failure mode where a second
           // garment/prop in frame gets kept as "foreground" too.
@@ -185,19 +177,16 @@ export const adminPhotoCleanupRoutes: FastifyPluginAsync = async (server) => {
 
       // Runs through the shared runner (services/photo-cleanup sidecar in
       // production, local python in dev) — same path as the retailer
-      // pro-cleanup route, one behavior, one place. Ghost mannequin's
-      // first-ever run also loads the LaMa checkpoint on top of rembg's —
-      // give it more room than the default 240s cap.
+      // pro-cleanup route, one behavior, one place.
       const { jpeg } = await runPhotoCleanup(
         {
           photoUrl: body.product_url,
           bgImageUrl: body.background_url,
           blur: body.blur ?? null,
-          ghostMannequin: body.ghost_mannequin,
           shine: body.shine,
           crop: body.crop ?? null,
         },
-        body.ghost_mannequin ? 600_000 : 240_000,
+        240_000,
       );
 
       // Compress the cleaned output to ≤80KB (quality-first) before it

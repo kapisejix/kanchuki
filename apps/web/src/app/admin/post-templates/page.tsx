@@ -183,7 +183,7 @@ function TemplateRow({ row, setRows, setStatus, setLightbox }: {
     try {
       const presign = await fetch(`${API_URL}/v1/admin/post-templates/thumbnail-url`, {
         ...(await adminMutateOptions()), method: 'POST',
-        body: JSON.stringify({ content_type: file.type, filename: file.name }),
+        body: JSON.stringify({ content_type: file.type, filename: file.name, content_length: file.size }),
       })
       if (!presign.ok) throw new Error('Failed to get upload URL')
       const { data } = await presign.json()
@@ -191,7 +191,7 @@ function TemplateRow({ row, setRows, setStatus, setLightbox }: {
       if (!put.ok) throw new Error('Upload to storage failed')
       const patchRes = await fetch(`${API_URL}/v1/admin/post-templates/${row.id}`, {
         ...(await adminMutateOptions()), method: 'PATCH',
-        body: JSON.stringify({ thumbnail_url: data.public_url }),
+        body: JSON.stringify({ thumbnail_r2_key: data.r2_key }),
       })
       if (!patchRes.ok) throw new Error('Failed to save thumbnail')
       const { data: updated } = await patchRes.json()

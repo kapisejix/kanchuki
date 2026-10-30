@@ -30,7 +30,7 @@ import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { GradientButton } from '../../src/components/GradientButton'
 import { WhiteButton } from '../../src/components/WhiteButton'
 import { growthApi, type ChannelSync, type ChannelType } from '../../src/lib/api/growth'
-import { showError } from '../../src/lib/errors'
+import { apiMessage, showError } from '../../src/lib/errors'
 
 // ─── Helpers ──────────────────────────────────────────────────────
 
@@ -334,7 +334,7 @@ function ConnectChannelModal({
       })
       onSaved()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to connect')
+      setError(apiMessage(err, 'Failed to connect'))
       setSaving(false)
     }
   }

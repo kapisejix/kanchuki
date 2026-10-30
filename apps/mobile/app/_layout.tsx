@@ -13,6 +13,7 @@ import {
   QueryClientProvider,
   focusManager,
 } from "@tanstack/react-query";
+import * as Linking from "expo-linking";
 import { Stack } from "expo-router";
 import * as ExpoSplashScreen from "expo-splash-screen";
 import { vars } from "nativewind";
@@ -36,7 +37,9 @@ import {
   persistQueryCache,
   restoreQueryCache,
 } from "../src/lib/offline-persister";
+import { setupOnlineManager } from "../src/lib/online-manager";
 import { Sentry, initSentry } from "../src/lib/sentry";
+import { captureReferralFromUrl } from "../src/lib/referral-capture";
 import { getItem } from "../src/lib/storage";
 import {
   loadPersistedPalette,
@@ -47,6 +50,9 @@ import {
 // Initialize Sentry crash reporting as early as possible — must run
 // before any component renders so it can capture startup crashes.
 initSentry();
+
+// RN fires no browser online/offline events: feed react-query real connectivity (T3.7-a).
+setupOnlineManager();
 
 // Keep the native splash screen visible until fonts + palette are loaded.
 // Must be called at module level (before any component renders).
@@ -224,7 +230,7 @@ function AppShell() {
           <Stack.Screen name="growth/integrations" />
           <Stack.Screen name="growth/integrations/facebook" />
           <Stack.Screen name="growth/integrations/fb-ads" />
-          <Stack.Screen name="growth/integrations/gmb" />
+          <Stack.Screen name="growth/integrations/google-business" />
           <Stack.Screen name="growth/integrations/google-ads" />
           <Stack.Screen name="growth/integrations/instagram" />
           <Stack.Screen name="growth/integrations/whatsapp" />
@@ -411,6 +417,19 @@ function AppContent({
   initialPalette: PlatformTheme | null
 }) {
   const { status } = useAuth();
+
+  // RC-107: the in-memory cache goes too, or backgrounding the app re-persists the previous
+  // account's data.
+  useEffect(() => {
+    if (status === 'unauthenticated') queryClient.clear();
+  }, [status]);
+
+  // 5B.2: an app link carrying ?ref=<CODE> (cold start or warm) is captured here,
+  // before login, so onboarding can prefill it. See src/lib/referral-capture.ts.
+  const incomingUrl = Linking.useURL();
+  useEffect(() => {
+    void captureReferralFromUrl(incomingUrl).catch(() => {});
+  }, [incomingUrl]);
 
   useEffect(() => {
     if (appReady && status !== "loading") {

@@ -1,4 +1,5 @@
 import {
+  CopyObjectCommand,
   DeleteObjectCommand,
   GetObjectCommand,
   ListObjectsV2Command,
@@ -16,7 +17,7 @@ import { readCappedBuffer, ssrfSafeFetch } from './safe-fetch.js';
 // not worth a deeper async-endpoint refactor.
 const r2 = new S3Client({
   region: 'auto',
-  endpoint: `https://${process.env['R2_ACCOUNT_ID']}.r2.cloudflarestorage.com`,
+  endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
   credentials: async () => ({
     accessKeyId: (await getSecret('R2_ACCESS_KEY_ID')) ?? '',
     secretAccessKey: (await getSecret('R2_SECRET_ACCESS_KEY')) ?? '',
@@ -27,20 +28,66 @@ async function getBucket(): Promise<string> {
   return (await getSecret('R2_BUCKET_NAME')) ?? 'kanchuki-prod';
 }
 
-const PUBLIC_URL = process.env['R2_PUBLIC_URL'] ?? '';
+const PUBLIC_URL = process.env.R2_PUBLIC_URL ?? '';
 
 /** Generate presigned PUT URL for direct browser upload */
 export async function getUploadPresignedUrl(
   key: string,
   contentType: string,
-  expiresIn = 300, // 5 minutes
+  expiresIn: number | undefined, // undefined = 300 s (5 minutes)
+  /**
+   * Exact byte length of the PUT body. It is part of the signature, so a PUT of any other size
+   * is rejected and one URL cannot be used to store a huge object (RC-080).
+   */
+  contentLength: number,
 ): Promise<string> {
+  if (contentLength === undefined) {
+    throw new Error(`presigned PUT requires content_length: ${key}`);
+  }
   const command = new PutObjectCommand({
     Bucket: await getBucket(),
     Key: key,
     ContentType: contentType,
+    ContentLength: contentLength,
   });
-  return getSignedUrl(r2, command, { expiresIn });
+  return getSignedUrl(r2, command, { expiresIn: expiresIn ?? 300 });
+}
+
+/**
+ * Size + first bytes of an uploaded object, without downloading it. Used to
+ * verify a presigned-PUT upload AFTER the fact: the presigned URL cannot bind
+ * the body's size or magic bytes, so the confirm step inspects what landed.
+ * Returns null when the object does not exist. `etag` is the whole object's
+ * ETag (a ranged GET still reports it), so a later copy can be bound to the
+ * exact bytes that were inspected.
+ */
+export async function inspectObject(
+  key: string,
+  headBytes = 16,
+): Promise<{ size: number; head: Buffer; etag?: string | undefined } | null> {
+  try {
+    const res = await r2.send(
+      new GetObjectCommand({
+        Bucket: await getBucket(),
+        Key: key,
+        Range: `bytes=0-${headBytes - 1}`,
+      }),
+    );
+    // ContentRange is "bytes 0-15/12345"; absent for a whole-object (tiny) read.
+    const total = res.ContentRange?.split('/')[1];
+    const chunks: Buffer[] = [];
+    for await (const chunk of res.Body as AsyncIterable<Buffer>) chunks.push(chunk);
+    const head = Buffer.concat(chunks);
+    return {
+      size: total ? Number(total) : (res.ContentLength ?? head.length),
+      head,
+      etag: res.ETag,
+    };
+  } catch (err) {
+    const name = (err as { name?: string } | null)?.name;
+    if (name === 'NoSuchKey' || name === 'NotFound') return null;
+    throw err;
+  }
 }
 
 /** Generate presigned GET URL for private objects */
@@ -55,6 +102,24 @@ export async function getDownloadPresignedUrl(
 /** Delete an object from R2 */
 export async function deleteObject(key: string): Promise<void> {
   await r2.send(new DeleteObjectCommand({ Bucket: await getBucket(), Key: key }));
+}
+
+/**
+ * Server-side copy within the bucket (no download). Content-Type is carried over.
+ * With `ifMatch`, the copy only happens if the source still has that ETag;
+ * otherwise R2 answers 412 PreconditionFailed.
+ */
+export async function copyObject(fromKey: string, toKey: string, ifMatch?: string): Promise<void> {
+  const bucket = await getBucket();
+  await r2.send(
+    new CopyObjectCommand({
+      Bucket: bucket,
+      Key: toKey,
+      // CopySource is "bucket/key", URL-encoded per path segment.
+      CopySource: `${bucket}/${fromKey.split('/').map(encodeURIComponent).join('/')}`,
+      CopySourceIfMatch: ifMatch,
+    }),
+  );
 }
 
 /** Download an object's bytes directly (for server-side processing, e.g. CV jobs) */
@@ -188,7 +253,7 @@ export function summarizeR2Objects(
  * via the admin Storage Report page). Throws when R2 is unconfigured.
  */
 export async function measureR2Storage(): Promise<R2StorageMeasurement> {
-  if (!process.env['R2_ACCOUNT_ID']) {
+  if (!process.env.R2_ACCOUNT_ID) {
     throw new Error('R2 not configured on this environment (R2_ACCOUNT_ID missing)');
   }
   const bucket = await getBucket();

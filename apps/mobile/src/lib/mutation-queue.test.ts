@@ -3,7 +3,9 @@ import {
   enqueueStatusMutation,
   dequeueStatusMutation,
   getQueue,
+  isRetryable,
 } from './mutation-queue'
+import { ApiError } from './api/api-error'
 
 // In-memory expo-file-system mock. The queue writes real JSON through the
 // File/Directory classes, so this exercises the actual enqueue → getQueue →
@@ -129,5 +131,26 @@ describe('mutation-queue', () => {
       FakeFile.prototype.write = originalWrite
       warn.mockRestore()
     }
+  })
+})
+
+// RC-115: a 4xx can never succeed on replay, so queueing it loops forever.
+describe('isRetryable', () => {
+  it.each([
+    ['network failure (status 0)', new ApiError('NETWORK_ERROR', 'x', 0), true],
+    ['timeout (408)', new ApiError('TIMEOUT', 'x', 408), true],
+    ['rate limited (429)', new ApiError('RATE_LIMITED', 'x', 429), true],
+    ['server error (500)', new ApiError('INTERNAL', 'x', 500), true],
+    ['bad gateway (502)', new ApiError('BAD_GATEWAY', 'x', 502), true],
+    ['validation (422)', new ApiError('VALIDATION', 'x', 422), false],
+    ['not found (404)', new ApiError('NOT_FOUND', 'x', 404), false],
+    ['forbidden (403)', new ApiError('FORBIDDEN', 'x', 403), false],
+    ['unauthorized (401)', new ApiError('UNAUTHORIZED', 'x', 401), false],
+  ])('%s', (_label, err, expected) => {
+    expect(isRetryable(err)).toBe(expected)
+  })
+
+  it('treats a non-ApiError throw (raw fetch failure) as retryable', () => {
+    expect(isRetryable(new TypeError('Network request failed'))).toBe(true)
   })
 })

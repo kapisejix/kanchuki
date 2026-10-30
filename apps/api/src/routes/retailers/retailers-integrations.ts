@@ -1,12 +1,13 @@
 // Retailer-facing integrations management.
 //
-// Retailers configure their own Google Business Profile, Facebook Ads,
+// Retailers configure their own Facebook Ads
 // and Google Ads credentials. Credentials are stored encrypted at rest.
 // Routes handle save, retrieve, test connection, and disconnect.
 
 import { decryptSecret, encryptSecret, prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
+import { fetchWithTimeout as fetch } from '../../lib/fetch-timeout.js';
 import { notFound, validationError } from '../../plugins/error-handler.js';
 
 // ─── Provider response shapes ─────────────────────────────────────
@@ -26,9 +27,6 @@ type MetaAccountResponse = {
   currency?: string;
 };
 
-/** Google localPosts create response uses `name` as the post identifier. */
-type GooglePostResponse = { name?: string };
-
 /** Google OAuth token response. */
 type GoogleTokenResponse = { access_token?: string };
 
@@ -38,13 +36,6 @@ function apiErrorMessage(body: unknown, fallback: string): string {
 }
 
 // ─── Zod Schemas ──────────────────────────────────────────────────
-
-const GmbConfigSchema = z.object({
-  account_id: z.string().min(1),
-  location_id: z.string().min(1),
-  access_token: z.string().min(1),
-  refresh_token: z.string().optional(),
-});
 
 const FbAdsConfigSchema = z.object({
   access_token: z.string().min(1),
@@ -67,9 +58,6 @@ export const retailersIntegrationsRoutes: FastifyPluginAsync = async (server) =>
     const retailer = await prisma.retailer.findUnique({
       where: { id: request.retailerId },
       select: {
-        gmb_account_id: true,
-        gmb_location_id: true,
-        gmb_configured_at: true,
         fb_ads_ad_account_id: true,
         fb_ads_page_id: true,
         fb_ads_configured_at: true,
@@ -133,12 +121,6 @@ export const retailersIntegrationsRoutes: FastifyPluginAsync = async (server) =>
           phone_number_id: retailer.whatsapp_api_phone_number_id,
           configured_at: retailer.whatsapp_api_configured_at,
         },
-        gmb: {
-          configured: !!retailer.gmb_account_id,
-          account_id: retailer.gmb_account_id,
-          location_id: retailer.gmb_location_id,
-          configured_at: retailer.gmb_configured_at,
-        },
         facebook_ads: {
           configured: !!retailer.fb_ads_ad_account_id,
           ad_account_id: retailer.fb_ads_ad_account_id,
@@ -174,137 +156,6 @@ export const retailersIntegrationsRoutes: FastifyPluginAsync = async (server) =>
       data: { is_active: false },
     });
     return { data: { configured: false } };
-  });
-
-  // ─── POST /retailers/me/integrations/gmb ────────────────────────
-  // Save Google Business Profile credentials.
-  server.post('/me/integrations/gmb', async (request) => {
-    const body = GmbConfigSchema.safeParse(request.body);
-    if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
-
-    const updated = await prisma.retailer.update({
-      where: { id: request.retailerId },
-      data: {
-        gmb_account_id: body.data.account_id,
-        gmb_location_id: body.data.location_id,
-        gmb_access_token: encryptSecret(body.data.access_token),
-        gmb_refresh_token: body.data.refresh_token ? encryptSecret(body.data.refresh_token) : null,
-        gmb_configured_at: new Date(),
-      },
-      select: { gmb_account_id: true, gmb_location_id: true, gmb_configured_at: true },
-    });
-
-    await prisma.auditLog.create({
-      data: {
-        actor_type: 'retailer',
-        actor_id: request.retailerId,
-        action: 'configure',
-        resource_type: 'Integration',
-        resource_id: 'gmb',
-        metadata: { account_id: body.data.account_id, location_id: body.data.location_id },
-        ip_address: request.ip,
-      },
-    });
-
-    return { data: { configured: true, ...updated } };
-  });
-
-  // ─── DELETE /retailers/me/integrations/gmb ──────────────────────
-  server.delete('/me/integrations/gmb', async (request, reply) => {
-    await prisma.retailer.update({
-      where: { id: request.retailerId },
-      data: {
-        gmb_account_id: null,
-        gmb_location_id: null,
-        gmb_access_token: null,
-        gmb_refresh_token: null,
-        gmb_token_expiry: null,
-        gmb_configured_at: null,
-      },
-    });
-    return reply.status(204).send();
-  });
-
-  // ─── POST /retailers/me/integrations/gmb/test ───────────────────
-  // Test GMB connection by listing the location's posts.
-  server.post('/me/integrations/gmb/test', async (request) => {
-    const retailer = await prisma.retailer.findUnique({
-      where: { id: request.retailerId },
-      select: { gmb_access_token: true, gmb_location_id: true },
-    });
-    if (!retailer?.gmb_access_token || !retailer.gmb_location_id) {
-      throw validationError('GMB is not configured');
-    }
-
-    const token = decryptSecret(retailer.gmb_access_token);
-    const res = await fetch(
-      `https://mybusinessbusinessinformation.googleapis.com/v1/locations/${retailer.gmb_location_id}/localPosts?pageSize=1`,
-      { headers: { Authorization: `Bearer ${token}` } },
-    );
-
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      return {
-        data: { connected: false, error: apiErrorMessage(err, 'API request failed') },
-      };
-    }
-
-    return { data: { connected: true } };
-  });
-
-  // ─── POST /retailers/me/integrations/gmb/post ───────────────────
-  // Post to Google Business Profile (new arrival, offer, etc.)
-  server.post('/me/integrations/gmb/post', async (request) => {
-    const retailer = await prisma.retailer.findUnique({
-      where: { id: request.retailerId },
-      select: { gmb_access_token: true, gmb_location_id: true, gmb_refresh_token: true },
-    });
-    if (!retailer?.gmb_access_token || !retailer.gmb_location_id) {
-      throw validationError('GMB is not configured');
-    }
-
-    const body = z
-      .object({
-        summary: z.string().min(1).max(1000),
-        call_to_action: z.enum(['LEARN_MORE', 'ORDER', 'BOOK', 'SHOP', 'SIGN_UP']).optional(),
-        url: z.string().url().optional(),
-      })
-      .safeParse(request.body);
-    if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
-
-    const token = decryptSecret(retailer.gmb_access_token);
-
-    const postBody: Record<string, unknown> = {
-      languageCode: 'en-IN',
-      summary: body.data.summary,
-      topicType: 'STANDARD',
-    };
-    if (body.data.call_to_action && body.data.url) {
-      postBody.callToAction = {
-        actionType: body.data.call_to_action,
-        url: body.data.url,
-      };
-    }
-
-    const res = await fetch(
-      `https://mybusinessbusinessinformation.googleapis.com/v1/locations/${retailer.gmb_location_id}/localPosts`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(postBody),
-      },
-    );
-
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw validationError(apiErrorMessage(err, 'Failed to post to GMB'));
-    }
-
-    const result = await res.json();
-    return { data: { post_id: (result as GooglePostResponse).name, status: 'posted' } };
   });
 
   // ─── POST /retailers/me/integrations/fb-ads ─────────────────────

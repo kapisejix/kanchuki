@@ -52,3 +52,39 @@ describe('migration 135 — staff_push_devices', () => {
     expect(purge).not.toContain('staff_push_devices');
   });
 });
+
+// Same guard for migration 138 (F-036 Phase B, customer Web Push subscriptions).
+const sql138 = readFileSync(
+  join(
+    here,
+    '../../../../packages/db/prisma/migrations/138_customer_push_subscriptions/migration.sql',
+  ),
+  'utf8',
+)
+  .split('\n')
+  .map((l) => l.replace(/--.*$/, ''))
+  .join('\n');
+
+describe('migration 138 — customer_push_subscriptions', () => {
+  it('has the sanity content and a unique endpoint', () => {
+    expect(sql138).toContain('CREATE TABLE IF NOT EXISTS "customer_push_subscriptions"');
+    expect(sql138).toMatch(/CREATE UNIQUE INDEX[^;]*"customer_push_subscriptions_endpoint_key"/);
+  });
+
+  it('RLS: backend-role policy first, then ENABLE', () => {
+    expect(sql138).toMatch(/CREATE POLICY %I ON %I FOR ALL TO kanchuki_app, kanchuki_purge/);
+    expect(sql138.indexOf('CREATE POLICY')).toBeLessThan(
+      sql138.indexOf('ALTER TABLE "customer_push_subscriptions" ENABLE ROW LEVEL SECURITY'),
+    );
+  });
+
+  it('DELETE is never granted to the app role', () => {
+    expect(sql138).not.toMatch(/GRANT[^;]*DELETE[^;]*TO[^;]*kanchuki_app/i);
+  });
+
+  it('the account FK cascades', () => {
+    expect(sql138).toMatch(
+      /FOREIGN KEY \("customer_account_id"\) REFERENCES "customer_accounts"\("id"\) ON DELETE CASCADE/,
+    );
+  });
+});

@@ -10,7 +10,7 @@ import { API_URL as apiUrl } from '@/lib/apiUrl';
 // missing while /my-profile already PUT to this path, which made the
 // "Personalized recommendations" opt-out fail silently: fetch does not throw on
 // a 405, so the toggle looked saved and came back on reload (RC-026).
-const PASSPORT_PATHS = ['otp/send', 'otp/verify', 'me', 'logout', 'stores', 'events', 'preferences', 'profile', 'wishlist', 'recently-viewed', 'export', 'delete', 'try-on/consent', 'try-on/withdraw'];
+const PASSPORT_PATHS = ['otp/send', 'otp/verify', 'me', 'logout', 'stores', 'events', 'preferences', 'profile', 'wishlist', 'recently-viewed', 'export', 'delete', 'try-on/consent', 'try-on/withdraw', 'push/key', 'push/subscribe', 'push/unsubscribe'];
 
 type ProxyMethod = 'GET' | 'POST' | 'PUT' | 'PATCH';
 
@@ -57,12 +57,14 @@ async function forward(request: NextRequest, path: string[], method: ProxyMethod
     // it would discard the throw, but there is nothing to read.
     const body = NULL_BODY_STATUS.has(res.status) ? null : await res.text();
     const response = new NextResponse(body, { status: res.status });
+    const type = res.headers.get('content-type');
+    if (type) response.headers.set('content-type', type);
+    // Account-specific: never let a CDN or the browser cache it.
+    response.headers.set('cache-control', 'private, no-store');
 
-    // Forward Set-Cookie headers from the API (session cookie on verify)
-    const setCookie = res.headers.get('set-cookie');
-    if (setCookie) {
-      response.headers.set('set-cookie', setCookie);
-    }
+    // Forward every Set-Cookie from the API (session cookie on verify); get()
+    // would join several into one invalid header.
+    for (const c of res.headers.getSetCookie()) response.headers.append('set-cookie', c);
 
     return response;
   } catch {

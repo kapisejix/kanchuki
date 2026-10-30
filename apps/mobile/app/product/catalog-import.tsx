@@ -28,11 +28,11 @@ import { useScreenInsets } from '../../src/lib/safe-area'
 import {
   catalogImportApi,
   uploadImageToR2,
-  readLocalImage,
+  prepareImageForUpload,
   productAttributeApi,
   type CatalogDetectedItem,
 } from '../../src/lib/api'
-import { showError, logError } from '../../src/lib/errors'
+import { apiMessage, showError, logError } from '../../src/lib/errors'
 import { useTheme } from '../../src/lib/theme'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { KeyboardScreen } from '../../src/components/KeyboardScreen'
@@ -150,14 +150,14 @@ export default function CatalogImportScreen() {
           [{ resize: { width: 1400 } }],
           { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG },
         )
-        const blob = await readLocalImage(compressed.uri)
+        const prep = await prepareImageForUpload(compressed.uri, 'image/jpeg')
         const uploadResult = await catalogImportApi.getUploadUrl(
           'catalog-source.jpg',
           'image/jpeg',
-          blob.size,
+          prep.size,
         )
         const info = uploadResult.data
-        await uploadImageToR2(compressed.uri, info.upload_url, 'image/jpeg')
+        await uploadImageToR2(prep.uri, info.upload_url, 'image/jpeg', undefined, undefined, { compress: false })
         uploadedUrls.push(info.public_url)
       }
       setSourceUrl(uploadedUrls[0] ?? '')
@@ -202,7 +202,7 @@ export default function CatalogImportScreen() {
       setStep('reviewing')
     } catch (err) {
       logError(err)
-      setError('Upload failed. Try again.')
+      setError(apiMessage(err, 'Upload failed. Try again.'))
       setStep('source')
     }
   }, [])
@@ -213,18 +213,18 @@ export default function CatalogImportScreen() {
     setStep('uploading')
 
     try {
-      const blob = await readLocalImage(uri)
+      const prep = await prepareImageForUpload(uri, contentType)
       const ext = contentType === 'application/pdf' ? '.pdf' : '.jpg'
       const filename = `catalog-source${ext}`
 
       const uploadResult = await catalogImportApi.getUploadUrl(
         filename,
         contentType,
-        blob.size,
+        prep.size,
       )
       const info = uploadResult.data
 
-      await uploadImageToR2(uri, info.upload_url, contentType)
+      await uploadImageToR2(prep.uri, info.upload_url, contentType, undefined, undefined, { compress: false })
 
       setSourceUrl(info.public_url)
       setSourceR2Key(info.r2_key)
@@ -233,7 +233,7 @@ export default function CatalogImportScreen() {
       await runDetection(info.public_url)
     } catch (err) {
       logError(err)
-      setError('Upload failed. Try again.')
+      setError(apiMessage(err, 'Upload failed. Try again.'))
       setStep('source')
     }
     // runDetection is a stable useCallback defined below (forward reference) —
@@ -274,7 +274,7 @@ export default function CatalogImportScreen() {
       setStep('reviewing')
     } catch (err) {
       logError(err)
-      setError('Detection failed. Try again.')
+      setError(apiMessage(err, 'Detection failed. Try again.'))
       setStep('source')
     }
   }, [])

@@ -280,8 +280,12 @@ export default function OtpScreen() {
     // are safe to declare. completeLogin/verifyWithMsg91Token are module-level.
   }, [phone, msg91, reqId, token, bypass])
 
+  // Sync ref, not the `resending` state: two taps in one frame both pass a state check
+  // before it commits and send two SMS (RC-120, same shape as RC-015).
+  const resendingRef = useRef(false)
   const handleResend = async () => {
-    if (!phone || resendTimer > 0) return
+    if (!phone || resendTimer > 0 || resendingRef.current) return
+    resendingRef.current = true
     setResending(true)
     try {
       let resent = false
@@ -305,9 +309,10 @@ export default function OtpScreen() {
       }
       setResendTimer(30)
       Alert.alert('OTP Sent', 'A new OTP has been sent to your number')
-    } catch {
-      Alert.alert('Error', 'Failed to resend OTP')
+    } catch (err) {
+      showError(err, 'Failed to resend OTP')
     } finally {
+      resendingRef.current = false
       setResending(false)
     }
   }

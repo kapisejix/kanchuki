@@ -28,7 +28,7 @@ import { ProductGridSkeleton } from '../../src/components/Skeleton'
 import { productApi, retailerApi, whatsappCatalogApi } from '../../src/lib/api'
 import { showError } from '../../src/lib/errors'
 import { prefetchProductImages } from '../../src/lib/image-prefetch'
-import { enqueueStatusMutation } from '../../src/lib/mutation-queue'
+import { enqueueStatusMutation, isRetryable } from '../../src/lib/mutation-queue'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { GradientButton } from '../../src/components/GradientButton'
 import { DangerButton } from '../../src/components/DangerButton'
@@ -44,6 +44,7 @@ type Product = {
   section: { name: string } | null
   location_notes: string | null
   ai_tagged: boolean
+  total_quantity?: number | null
 }
 
 // ── Price buckets (paise, matches formatPriceRange units) ──────────
@@ -136,6 +137,15 @@ const CatalogCard = memo(function CatalogCard({
           <Text className="text-sm font-bold text-spaceCadet-900 font-marcellus">
             {formatPriceRange(product.price_min, product.price_max)}
           </Text>
+          {product.total_quantity != null && (
+            <Text
+              className={`text-[11px] font-semibold ${
+                product.total_quantity <= 2 ? 'text-red-600' : 'text-heliotrope-400'
+              }`}
+            >
+              {product.total_quantity <= 2 ? `Low stock: ${product.total_quantity}` : `Stock: ${product.total_quantity}`}
+            </Text>
+          )}
           {product.section && (
             <View className="flex-row items-center gap-1">
               <MapPin size={10} color="#6B4773" />
@@ -277,7 +287,13 @@ export default function CatalogScreen() {
     try {
       await productApi.updateStatus(productId, 'SOLD')
       void queryClient.invalidateQueries({ queryKey: ['products'] })
-    } catch {
+    } catch (err) {
+      // A 4xx will never succeed on replay: surface it instead of queueing it forever.
+      if (!isRetryable(err)) {
+        showError(err, 'Could not mark this product as sold. Please try again.')
+        void queryClient.invalidateQueries({ queryKey: ['products'] })
+        return
+      }
       // A-5: offline (or a transient failure) — queue for replay on reconnect
       // and patch the cached list so the retailer sees the change now instead
       // of a silent no-op.

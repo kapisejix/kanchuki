@@ -34,7 +34,12 @@ async function ensureCsrfToken(): Promise<string> {
     cachedCsrfToken = json.data.csrf_token as string
     cachedCsrfKey = key
     return cachedCsrfToken
-  })()
+  })().finally(() => {
+    // RC-112: don't cache the in-flight promise past its settlement. A rejected
+    // one stayed here, so every later mutation re-threw the same stale error
+    // until a full page reload. On success the token is cached above.
+    csrfFetchPromise = null
+  })
 
   return csrfFetchPromise
 }

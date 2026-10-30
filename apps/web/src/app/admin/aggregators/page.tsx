@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { safeHttpUrl } from '@/lib/safe-url'
 import {
   RefreshCw,
   Store,
@@ -263,9 +264,9 @@ export default function AggregatorsPage() {
                       <td className="px-4 py-3.5 text-gray-500 text-xs">{fmtDate(s.last_synced_at)}</td>
                       <td className="px-6 py-3.5">
                         <div className="flex items-center justify-end gap-1">
-                          {s.channel_shop_url && (
+                          {safeHttpUrl(s.channel_shop_url) && (
                             <a
-                              href={s.channel_shop_url}
+                              href={safeHttpUrl(s.channel_shop_url)}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
@@ -376,7 +377,7 @@ function DetailModal({ sync, onClose }: { sync: ChannelSync; onClose: () => void
           <DetailRow label="Retailer" value={`${sync.retailer.shop_name} (${sync.retailer.phone})`} />
           <DetailRow label="Status" value={<span className={`inline-flex items-center text-[10px] font-semibold uppercase rounded-full px-2.5 py-1 border ${sc.bg} ${sc.text}`}>{sync.status}</span>} />
           <DetailRow label="Shop ID" value={sync.channel_shop_id ?? '—'} />
-          <DetailRow label="Shop URL" value={sync.channel_shop_url ? <a href={sync.channel_shop_url} target="_blank" rel="noopener noreferrer" className="text-indigo-500 hover:underline">{sync.channel_shop_url}</a> : '—'} />
+          <DetailRow label="Shop URL" value={safeHttpUrl(sync.channel_shop_url) ? <a href={safeHttpUrl(sync.channel_shop_url)} target="_blank" rel="noopener noreferrer" className="text-indigo-500 hover:underline">{sync.channel_shop_url}</a> : '—'} />
           <DetailRow label="Products Synced" value={String(sync.products_synced)} />
           <DetailRow label="Orders Synced" value={String(sync.orders_synced)} />
           <DetailRow label="Last Sync" value={fmtDate(sync.last_synced_at)} />

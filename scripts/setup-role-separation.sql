@@ -15,7 +15,7 @@
 -- first created 2026-07-26; re-running applies the sequence grants and
 -- default-privileges fixes below without failing on CREATE ROLE).
 -- Passwords are set ONLY when a role is first created. A re-run never touches
--- an existing role's password (RC-075: re-asserting it on every run silently
+-- an existing role's password (RC-137: re-asserting it on every run silently
 -- rotated all three passwords on 2026-10-19 and took production down).
 -- To rotate a password, do it on purpose, one role at a time, and update the
 -- matching Railway URL in the same sitting:

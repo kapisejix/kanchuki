@@ -1,3 +1,5 @@
+import rateLimit from '@fastify/rate-limit';
+import { getUploadPresignedUrl } from '@kanchuki/ai';
 import Fastify from 'fastify';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { errorHandler } from '../plugins/error-handler.js';
@@ -16,6 +18,7 @@ const {
   mockPurgeExecuteRaw,
   mockPurgeTransaction,
   mockPurgeCategoryDelete,
+  mockProductCategoryFindUnique,
 } = vi.hoisted(() => {
   return {
     mockProductCategoryFindMany: vi.fn(),
@@ -30,6 +33,7 @@ const {
     mockPurgeExecuteRaw: vi.fn(),
     mockPurgeTransaction: vi.fn(),
     mockPurgeCategoryDelete: vi.fn(),
+    mockProductCategoryFindUnique: vi.fn(),
   };
 });
 
@@ -41,6 +45,7 @@ vi.mock('@kanchuki/db', () => ({
     productCategory: {
       findMany: mockProductCategoryFindMany,
       findFirst: mockProductCategoryFindFirst,
+      findUnique: mockProductCategoryFindUnique,
       create: mockProductCategoryCreate,
       update: mockProductCategoryUpdate,
       delete: mockProductCategoryDelete,
@@ -64,9 +69,12 @@ vi.mock('@kanchuki/db', () => ({
   }),
 }));
 
+const { mockInspectObject } = vi.hoisted(() => ({ mockInspectObject: vi.fn() }));
 vi.mock('@kanchuki/ai', () => ({
   getUploadPresignedUrl: vi.fn().mockResolvedValue('https://upload.url'),
   publicUrl: vi.fn((key: string) => `https://r2.cdn/${key}`),
+  inspectObject: mockInspectObject,
+  deleteObject: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('../lib/default-categories.js', () => ({
@@ -211,5 +219,121 @@ describe('DELETE /v1/categories/:id — purge-role guardrail', () => {
     expect(mockPurgeTransaction).not.toHaveBeenCalled();
     expect(mockPurgeCategoryDelete).not.toHaveBeenCalled();
     await app.close();
+  });
+});
+
+describe('POST /v1/categories — image must be a verified own upload', () => {
+  async function buildApp() {
+    const app = Fastify();
+    app.setErrorHandler(errorHandler);
+    app.addHook('onRequest', async (req) => {
+      req.retailerId = 'ret_1';
+    });
+    await app.register(categoryRoutes, { prefix: '/v1/categories' });
+    return app;
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockProductCategoryFindUnique.mockResolvedValue(null);
+    mockProductCategoryCreate.mockImplementation(async ({ data }: { data: unknown }) => data);
+  });
+
+  it('rejects an external image_url', async () => {
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/categories',
+      payload: { name: 'Saree', image_url: 'https://evil.example/x.svg' },
+    });
+    expect(res.statusCode).toBe(422);
+    expect(mockProductCategoryCreate).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('stores the url rebuilt from a verified key, not the client url', async () => {
+    mockInspectObject.mockResolvedValue({ size: 100, head: Buffer.from([0xff, 0xd8, 0xff, 0xe0]) });
+    const app = await buildApp();
+    const key = 'retailers/ret_1/categories/a.jpg';
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/categories',
+      payload: { name: 'Saree', image_r2_key: key, image_url: 'https://r2.cdn/other.jpg' },
+    });
+    expect(res.statusCode).toBe(201);
+    expect(res.json().data.image_url).toBe(`https://r2.cdn/${key}`);
+    await app.close();
+  });
+
+  it("rejects another retailer's key", async () => {
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/categories',
+      payload: { name: 'Saree', image_r2_key: 'retailers/ret_2/categories/a.jpg' },
+    });
+    expect(res.statusCode).toBe(422);
+    expect(mockInspectObject).not.toHaveBeenCalled();
+    await app.close();
+  });
+});
+
+// RC-080 — the presign route must bind the PUT body length and be rate limited.
+describe('POST /v1/categories/upload-url — bounded presign (RC-080)', () => {
+  async function build(withRateLimit = false) {
+    const app = Fastify();
+    app.setErrorHandler(errorHandler);
+    app.addHook('onRequest', async (req) => {
+      req.retailerId = 'ret_1';
+    });
+    if (withRateLimit) await app.register(rateLimit, { max: 1000, timeWindow: 60_000 });
+    await app.register(categoryRoutes, { prefix: '/v1/categories' });
+    return app;
+  }
+  const post = (app: Awaited<ReturnType<typeof build>>, extra: Record<string, unknown> = {}) =>
+    app.inject({
+      method: 'POST',
+      url: '/v1/categories/upload-url',
+      payload: { filename: 'c.jpg', content_type: 'image/jpeg', size_bytes: 4000, ...extra },
+    });
+
+  beforeEach(() => vi.clearAllMocks());
+
+  it('passes content_length to the presigner so it is part of the signature', async () => {
+    const app = await build();
+    const res = await post(app, { content_length: 2048 });
+    expect(res.statusCode).toBe(200);
+    expect(getUploadPresignedUrl).toHaveBeenCalledWith(
+      expect.stringContaining('uploads/pending/'),
+      'image/jpeg',
+      300,
+      2048,
+    );
+    await app.close();
+  });
+
+  it('rejects a content_length above the route maximum', async () => {
+    const app = await build();
+    const res = await post(app, { content_length: 5_000_001 });
+    expect(res.statusCode).toBe(422);
+    expect(getUploadPresignedUrl).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('rejects a presign without content_length (no unbound URLs)', async () => {
+    const app = await build();
+    const res = await post(app);
+    expect(res.statusCode).toBe(422);
+    expect(getUploadPresignedUrl).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('the 31st request inside a minute is rejected with 429', async () => {
+    const app = await build(true);
+    const codes: number[] = [];
+    for (let i = 0; i < 31; i++) codes.push((await post(app, { content_length: 100 })).statusCode);
+    await app.close();
+    expect(codes.slice(0, 30).every((c) => c === 200)).toBe(true);
+    expect(codes[30]).toBe(429);
   });
 });

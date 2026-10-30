@@ -25,6 +25,7 @@ const {
   mockWatermark,
   mockSuggestDesignNameAndColor,
   mockRecordAiUsage,
+  mockInspectObject,
 } = vi.hoisted(() => ({
   mockShowcaseDesignFindMany: vi.fn(),
   mockShowcaseDesignCreate: vi.fn(),
@@ -46,6 +47,7 @@ const {
   mockWatermark: vi.fn(),
   mockSuggestDesignNameAndColor: vi.fn(),
   mockRecordAiUsage: vi.fn(),
+  mockInspectObject: vi.fn(),
 }));
 
 vi.mock('@kanchuki/db', () => ({
@@ -74,6 +76,7 @@ vi.mock('@kanchuki/ai', () => ({
   uploadBuffer: mockUploadBuffer,
   watermark: mockWatermark,
   suggestDesignNameAndColor: mockSuggestDesignNameAndColor,
+  inspectObject: mockInspectObject,
 }));
 
 vi.mock('../../lib/ai-usage.js', () => ({ recordAiUsage: mockRecordAiUsage }));
@@ -120,6 +123,7 @@ beforeEach(() => {
   mockHasFeature.mockResolvedValue(true);
   mockAssertQuota.mockResolvedValue(undefined);
   mockPublicUrl.mockImplementation((key: string) => `https://cdn.test/${key}`);
+  mockInspectObject.mockResolvedValue({ size: 1000, head: Buffer.from([0xff, 0xd8, 0xff, 0xe0]) });
   mockWatermarkShowcaseDesign.mockResolvedValue({
     logo_source: 'builtin',
     width: 800,
@@ -215,12 +219,12 @@ describe('POST /me/showcase-designs/upload-url', () => {
       method: 'POST',
       url: '/me/showcase-designs/upload-url',
       headers: { 'content-type': 'application/json' },
-      payload: { content_type: 'image/jpeg', filename: 'design.jpg' },
+      payload: { content_type: 'image/jpeg', filename: 'design.jpg', content_length: 1_000 },
     });
     expect(res.statusCode).toBe(200);
     const data = res.json().data;
     expect(data.upload_url).toBe('https://r2/presigned');
-    expect(data.r2_key).toMatch(/^showcase-designs\/retailer_1\/raw\/.+\.jpg$/);
+    expect(data.r2_key).toMatch(/^uploads\/pending\/showcase-designs\/retailer_1\/raw\/.+\.jpg$/);
     await app.close();
   });
 });
@@ -372,6 +376,28 @@ describe('POST /me/showcase-designs', () => {
       expect(mockSuggestDesignNameAndColor).not.toHaveBeenCalled();
       await app.close();
     });
+  });
+
+  it('rejects a raw upload whose bytes are not an image, and deletes it', async () => {
+    mockCategoryFindUnique.mockResolvedValue({ id: 'cat_suits', slug: 'suits' });
+    mockInspectObject.mockResolvedValue({ size: 30, head: Buffer.from('<html><script>') });
+    mockDeleteObject.mockResolvedValue(undefined);
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/me/showcase-designs',
+      headers: { 'content-type': 'application/json' },
+      payload: {
+        category_id: 'cat_suits',
+        raw_r2_key: 'uploads/pending/showcase-designs/retailer_1/raw/raw.jpg',
+      },
+    });
+    expect(res.statusCode).toBe(422);
+    expect(mockDeleteObject).toHaveBeenCalledWith(
+      'uploads/pending/showcase-designs/retailer_1/raw/raw.jpg',
+    );
+    expect(mockWatermarkShowcaseDesign).not.toHaveBeenCalled();
+    await app.close();
   });
 
   it('rejects an unknown category before watermarking', async () => {

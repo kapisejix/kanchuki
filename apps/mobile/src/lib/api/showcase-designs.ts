@@ -66,12 +66,12 @@ export const showcaseDesignsApi = {
       getCacheTtlMs: 30_000,
     }),
 
-  getUploadUrl: (contentType: string) =>
+  getUploadUrl: (contentType: string, sizeBytes: number) =>
     request<{
       data: { upload_url: string; r2_key: string; public_url: string; expires_in: number }
     }>('/v1/retailers/me/showcase-designs/upload-url', {
       method: 'POST',
-      body: JSON.stringify({ filename: 'design.jpg', content_type: contentType }),
+      body: JSON.stringify({ filename: 'design.jpg', content_type: contentType, content_length: sizeBytes }),
       timeoutMs: 30_000,
     }),
 
@@ -110,17 +110,6 @@ export const showcaseDesignsApi = {
     }),
 
   remove: (id: string) => request<void>(`/v1/retailers/me/showcase-designs/${id}`, { method: 'DELETE' }),
-
-  // ── Public (customer storefront) ──────────────────────────────────
-  publicForProduct: (productId: string) =>
-    request<{
-      data: {
-        designs: PublicShowcaseDesign[]
-        category: { slug: string; name: string; related: string[] } | null
-      }
-    }>(`/v1/public/showcase-designs?product_id=${encodeURIComponent(productId)}`, {
-      getCacheTtlMs: 60_000,
-    }),
 
   publicBrowse: (store: string, category?: string) =>
     request<{

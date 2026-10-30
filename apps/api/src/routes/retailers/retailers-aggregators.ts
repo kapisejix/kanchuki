@@ -40,7 +40,14 @@ const UpdateSchema = z.object({
   auth_token: z.string().max(500).optional(),
   webhook_secret: z.string().max(500).optional(),
   channel_shop_id: z.string().max(200).optional(),
-  channel_shop_url: z.string().url().max(500).optional(),
+  // http(s) only: z.url() also accepts javascript:/data:, and this value is
+  // rendered as an href in the admin panel.
+  channel_shop_url: z
+    .string()
+    .url()
+    .max(500)
+    .refine((u) => /^https?:\/\//i.test(u), 'Must be an http(s) URL')
+    .optional(),
   is_active: z.boolean().optional(),
 });
 

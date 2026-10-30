@@ -75,9 +75,7 @@ describe('analyzeStyleImage', () => {
 
   it('propagates a provider failure (no canned profile)', async () => {
     mockRunVisionExtract.mockRejectedValue(new Error('All AI providers failed'));
-    await expect(analyzeStyleImage(await jpeg(), 'image/jpeg')).rejects.toThrow(
-      /providers failed/,
-    );
+    await expect(analyzeStyleImage(await jpeg(), 'image/jpeg')).rejects.toThrow(/providers failed/);
   });
 
   it('times out instead of hanging', async () => {

@@ -8,8 +8,24 @@ import { type Prisma, prisma } from '@kanchuki/db';
 import { R2_PATHS, STUDIO_ENGINES } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
+import {
+  IMAGE_KINDS,
+  UPLOAD_URL_RATE_LIMIT,
+  stagingKey,
+  verifyUpload,
+} from '../../lib/upload-guard.js';
 import { AppError, notFound, validationError } from '../../plugins/error-handler.js';
 import { adminAuthPreHandler } from '../admin-auth.js';
+
+/** Real image under the admin thumbnail prefix → server-built public URL + final key. */
+function verifyThumb(r2Key: string) {
+  return verifyUpload({
+    r2Key,
+    allowed: IMAGE_KINDS,
+    maxBytes: 10_000_000,
+    prefix: R2_PATHS.studioStyleThumb(''),
+  });
+}
 
 const SLUG = /^[a-z0-9_]{2,40}$/;
 // Shared with the other three surfaces that validate/render this list — see
@@ -28,7 +44,7 @@ const CreateSchema = z.object({
   plans: z.array(z.enum(PLANS)).default([]),
   engine: z.enum(ENGINES).nullable().optional(),
   audience: z.array(z.enum(DEMOS)).default([]),
-  thumbnail_url: z.string().url().optional(),
+  // thumbnail_url is never taken from the client: it is built from the verified key.
   thumbnail_r2_key: z.string().optional(),
   sort_order: z.number().int().min(0).default(0),
 });
@@ -43,8 +59,7 @@ const PatchSchema = z.object({
   plans: z.array(z.enum(PLANS)).optional(),
   engine: z.enum(ENGINES).nullable().optional(),
   audience: z.array(z.enum(DEMOS)).optional(),
-  thumbnail_url: z.string().url().nullable().optional(),
-  thumbnail_r2_key: z.string().nullable().optional(),
+  thumbnail_r2_key: z.string().nullable().optional(), // null clears the thumbnail
   sort_order: z.number().int().min(0).optional(),
 });
 
@@ -63,21 +78,30 @@ export const adminStudioStylesRoutes: FastifyPluginAsync = async (server) => {
   // ─── POST /admin/studio-styles/thumbnail-url ───────────────────
   // Presigned PUT so the admin panel uploads the sample-output image
   // straight to R2 (verbatim shape of background-images/upload-url).
-  server.post('/studio-styles/thumbnail-url', async (request) => {
+  server.post('/studio-styles/thumbnail-url', UPLOAD_URL_RATE_LIMIT, async (request) => {
     const body = z
       .object({
         content_type: z.enum(['image/jpeg', 'image/png', 'image/webp']),
         filename: z.string().min(1).max(200),
+        // Exact byte length of the PUT, bound into the signature (RC-080). Same max as verifyUpload.
+        content_length: z.number().int().min(1).max(10_000_000),
       })
       .parse(request.body);
     const ext = body.content_type.split('/')[1];
-    const r2Key = R2_PATHS.studioStyleThumb(
-      `${createHash('sha256')
-        .update(body.filename + Date.now())
-        .digest('hex')
-        .slice(0, 16)}.${ext}`,
+    const r2Key = stagingKey(
+      R2_PATHS.studioStyleThumb(
+        `${createHash('sha256')
+          .update(body.filename + Date.now())
+          .digest('hex')
+          .slice(0, 16)}.${ext}`,
+      ),
     );
-    const uploadUrl = await getUploadPresignedUrl(r2Key, body.content_type, 300);
+    const uploadUrl = await getUploadPresignedUrl(
+      r2Key,
+      body.content_type,
+      300,
+      body.content_length,
+    );
     return {
       data: { upload_url: uploadUrl, r2_key: r2Key, public_url: publicUrl(r2Key), expires_in: 300 },
     };
@@ -88,6 +112,7 @@ export const adminStudioStylesRoutes: FastifyPluginAsync = async (server) => {
     const body = CreateSchema.parse(request.body);
     const dupe = await prisma.studioStyle.findFirst({ where: { slug: body.slug } });
     if (dupe) throw new AppError('CONFLICT', 'A style with this slug already exists.', 409);
+    const thumb = body.thumbnail_r2_key ? await verifyThumb(body.thumbnail_r2_key) : null;
 
     const row = await prisma.studioStyle.create({
       data: {
@@ -100,8 +125,7 @@ export const adminStudioStylesRoutes: FastifyPluginAsync = async (server) => {
         plans: body.plans,
         engine: body.engine ?? null,
         audience: body.audience,
-        ...(body.thumbnail_url ? { thumbnail_url: body.thumbnail_url } : {}),
-        ...(body.thumbnail_r2_key ? { thumbnail_r2_key: body.thumbnail_r2_key } : {}),
+        ...(thumb ? { thumbnail_url: thumb.url, thumbnail_r2_key: thumb.r2Key } : {}),
         sort_order: body.sort_order,
       },
     });
@@ -142,8 +166,11 @@ export const adminStudioStylesRoutes: FastifyPluginAsync = async (server) => {
       if (body[k] !== undefined) data[k] = body[k];
     }
     if (body.engine !== undefined) data.engine = body.engine; // null clears
-    if (body.thumbnail_url !== undefined) data.thumbnail_url = body.thumbnail_url;
-    if (body.thumbnail_r2_key !== undefined) data.thumbnail_r2_key = body.thumbnail_r2_key;
+    if (body.thumbnail_r2_key !== undefined) {
+      const thumb = body.thumbnail_r2_key ? await verifyThumb(body.thumbnail_r2_key) : null;
+      data.thumbnail_r2_key = thumb?.r2Key ?? null;
+      data.thumbnail_url = thumb?.url ?? null;
+    }
 
     const row = await prisma.studioStyle.update({ where: { id }, data });
     await prisma.auditLog.create({

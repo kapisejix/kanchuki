@@ -14,32 +14,32 @@
 
 /** One row whose cell count doesn't match its table's header. */
 export interface TableCellMismatch {
-  file: string
+  file: string;
   /** 1-indexed line number. */
-  line: number
-  expectedCells: number
-  actualCells: number
-  raw: string
+  line: number;
+  expectedCells: number;
+  actualCells: number;
+  raw: string;
 }
 
-const FENCE = /^\s*```/
+const FENCE = /^\s*```/;
 // A cell delimiter is a `|` not escaped with `\` — `\|` inside a cell must
 // not be counted, or an escaped pipe in prose is misread as a column boundary.
-const UNESCAPED_PIPE = /(?<!\\)\|/g
+const UNESCAPED_PIPE = /(?<!\\)\|/g;
 
 function countCells(row: string): number {
-  const pipes = row.match(UNESCAPED_PIPE)
-  return pipes ? Math.max(pipes.length - 1, 0) : 0
+  const pipes = row.match(UNESCAPED_PIPE);
+  return pipes ? Math.max(pipes.length - 1, 0) : 0;
 }
 
 function isTableRow(row: string): boolean {
-  return row.trim().startsWith('|')
+  return row.trim().startsWith('|');
 }
 
 /** `| --- | :---: | --- |` — the row between header and data, never itself a data row. */
 function isSeparatorRow(row: string): boolean {
-  const trimmed = row.trim()
-  return trimmed.startsWith('|') && trimmed.includes('-') && /^\|[\s:|-]*\|?$/.test(trimmed)
+  const trimmed = row.trim();
+  return trimmed.startsWith('|') && trimmed.includes('-') && /^\|[\s:|-]*\|?$/.test(trimmed);
 }
 
 /**
@@ -50,36 +50,36 @@ function isSeparatorRow(row: string): boolean {
  * a doc that shows example table syntax doesn't trip its own guard.
  */
 export function findTableCellMismatches(file: string, content: string): TableCellMismatch[] {
-  const lines = content.split(/\r?\n/)
-  const violations: TableCellMismatch[] = []
-  let inFence = false
-  let headerCells: number | null = null
+  const lines = content.split(/\r?\n/);
+  const violations: TableCellMismatch[] = [];
+  let inFence = false;
+  let headerCells: number | null = null;
 
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i] ?? ''
+    const line = lines[i] ?? '';
 
     if (FENCE.test(line)) {
-      inFence = !inFence
-      headerCells = null
-      continue
+      inFence = !inFence;
+      headerCells = null;
+      continue;
     }
-    if (inFence) continue
+    if (inFence) continue;
 
     if (!isTableRow(line)) {
-      headerCells = null
-      continue
+      headerCells = null;
+      continue;
     }
 
     if (headerCells === null) {
-      const next = lines[i + 1] ?? ''
+      const next = lines[i + 1] ?? '';
       if (isTableRow(next) && isSeparatorRow(next)) {
-        headerCells = countCells(line)
-        i++ // consume the separator row too — it never disagrees with itself
+        headerCells = countCells(line);
+        i++; // consume the separator row too — it never disagrees with itself
       }
-      continue
+      continue;
     }
 
-    const cells = countCells(line)
+    const cells = countCells(line);
     if (cells !== headerCells) {
       violations.push({
         file,
@@ -87,9 +87,9 @@ export function findTableCellMismatches(file: string, content: string): TableCel
         expectedCells: headerCells,
         actualCells: cells,
         raw: line.length > 140 ? `${line.slice(0, 140)}…` : line,
-      })
+      });
     }
   }
 
-  return violations
+  return violations;
 }

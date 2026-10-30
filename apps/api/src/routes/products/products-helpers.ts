@@ -4,6 +4,8 @@ import { getDownloadPresignedUrl } from '@kanchuki/ai';
 import { prisma } from '@kanchuki/db';
 import { SIZE_OPTIONS } from '@kanchuki/shared';
 import { z } from 'zod';
+import { StockInputSchema } from '../../lib/product-stock.js';
+import { queryBool } from '../../lib/query-bool.js';
 
 // ─── On-Demand ISR Revalidation ───────────────────────────────────
 // After a product status change, purge the ISR cache for every collection
@@ -59,9 +61,6 @@ export async function revalidateCollectionsForProduct(productId: string): Promis
 export const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
 export type AllowedMime = (typeof ALLOWED_MIME_TYPES)[number];
 
-export const ALLOWED_SPIN_VIDEO_MIME_TYPES = ['video/mp4', 'video/quicktime'] as const;
-export const MAX_SPIN_VIDEO_BYTES = 50_000_000; // ~50MB, a few seconds of 1080p
-
 export const CreateProductSchema = z.object({
   photo_r2_key: z.string().min(1),
   photo_url: z.string().url(),
@@ -85,6 +84,8 @@ export const CreateProductSchema = z.object({
   fabrics: z.array(z.string().max(100)).max(10).optional(),
   search_tags: z.array(z.string().max(100)).max(20).optional(),
   sizes: z.array(z.enum(SIZE_OPTIONS)).max(SIZE_OPTIONS.length).optional(),
+  // Per-size stock. Omitted on create -> 1 unit per selected size (FREE if unsized).
+  stock: StockInputSchema.optional(),
   section_id: z.string().optional(),
   category_id: z.string().nullable().optional(),
   location_notes: z.string().max(200).optional(),
@@ -108,7 +109,7 @@ export const ListProductsQuerySchema = z.object({
   status: z.enum(['AVAILABLE', 'SOLD', 'RESERVED', 'NOT_SURE']).optional(),
   category: z.string().optional(),
   category_id: z.string().optional(),
-  is_new_arrival: z.coerce.boolean().optional(),
+  is_new_arrival: queryBool(),
   // F-025 scan-to-sell: exact-match SKU lookup (SKUs are auto-generated per
   // retailer, e.g. LS0001, @@unique([retailer_id, sku])). Same no-owner-gate
   // behavior as the rest of this list endpoint — shop staff (Staff model)

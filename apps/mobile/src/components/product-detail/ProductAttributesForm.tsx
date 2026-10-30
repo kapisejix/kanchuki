@@ -12,6 +12,7 @@ import {
   resolveFashionColor,
 } from '@kanchuki/shared'
 import { AnimatedPressable } from '../AnimatedPressable'
+import { StockEditor } from './StockEditor'
 import type { ProductDetail } from '@kanchuki/shared'
 
 interface ProductAttributesFormProps {
@@ -28,6 +29,8 @@ interface ProductAttributesFormProps {
   setSelectedFabrics: React.Dispatch<React.SetStateAction<string[]>>
   selectedSizes: string[]
   setSelectedSizes: React.Dispatch<React.SetStateAction<string[]>>
+  stockQty: Record<string, number>
+  setStock: (size: string, quantity: number) => void
   selectedCategoryIds: string[]
   setSelectedCategoryIds: React.Dispatch<React.SetStateAction<string[]>>
   editedCategory: string | null
@@ -72,6 +75,8 @@ export function ProductAttributesForm({
   setSelectedFabrics,
   selectedSizes,
   setSelectedSizes,
+  stockQty,
+  setStock,
   selectedCategoryIds,
   setSelectedCategoryIds,
   editedCategory,
@@ -476,6 +481,19 @@ export function ProductAttributesForm({
               )
             })}
           </View>
+        </View>
+
+        {/* Stock per size */}
+        <View>
+          <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider mb-2">
+            Stock
+          </Text>
+          <StockEditor selectedSizes={selectedSizes} qty={stockQty} onChange={setStock} />
+          {!product.stock?.length && (
+            <Text className="text-[11px] text-heliotrope-400 mt-2">
+              Not tracked yet. Change a quantity and save to start tracking.
+            </Text>
+          )}
         </View>
 
         {/* SKU & Barcode Tag */}

@@ -70,8 +70,8 @@ export default async function StoresPage() {
       {itemList && (
         <script
           type="application/ld+json"
-          // biome-ignore lint/security/noDangerouslySetInnerHtml: JSON-LD built from our own retailer data, no user input
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(itemList) }}
+          // biome-ignore lint/security/noDangerouslySetInnerHtml: JSON-LD; `<` escaped below because shop_name is retailer-controlled
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(itemList).replace(/</g, '\\u003c') }}
         />
       )}
       <Navbar />

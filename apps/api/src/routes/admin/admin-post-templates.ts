@@ -9,8 +9,25 @@ import { type Prisma, prisma } from '@kanchuki/db';
 import { R2_PATHS } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
+import {
+  IMAGE_KINDS,
+  UPLOAD_URL_RATE_LIMIT,
+  stagingKey,
+  verifyUpload,
+} from '../../lib/upload-guard.js';
 import { notFound, validationError } from '../../plugins/error-handler.js';
 import { adminAuthPreHandler } from '../admin-auth.js';
+
+/** Real image under the admin thumbnail prefix → server-built public URL. */
+async function verifyThumb(r2Key: string): Promise<string> {
+  const { url } = await verifyUpload({
+    r2Key,
+    allowed: IMAGE_KINDS,
+    maxBytes: 10_000_000,
+    prefix: R2_PATHS.postTemplateThumb(''),
+  });
+  return url;
+}
 
 const PLANS = ['STARTER', 'GROWTH', 'PRO'] as const;
 const POST_TYPES = ['SINGLE_PRODUCT', 'COLLECTION_LINK', 'CAROUSEL'] as const;
@@ -23,7 +40,8 @@ const CreateSchema = z.object({
   caption_template: z.string().min(1).max(2200),
   hashtags: z.array(z.string().min(1).max(100)).max(30).default([]),
   occasion: z.string().max(60).nullable().optional(),
-  thumbnail_url: z.string().url().nullable().optional(),
+  // Key from /post-templates/thumbnail-url; thumbnail_url is built from it, never client-sent.
+  thumbnail_r2_key: z.string().nullable().optional(),
   status: z.enum(['DRAFT', 'PUBLISHED', 'HIDDEN']).default('DRAFT'),
   plans: z.array(z.enum(PLANS)).default([]),
   sort_order: z.number().int().min(0).default(0),
@@ -37,7 +55,8 @@ const PatchSchema = z.object({
   caption_template: z.string().min(1).max(2200).optional(),
   hashtags: z.array(z.string().min(1).max(100)).max(30).optional(),
   occasion: z.string().max(60).nullable().optional(),
-  thumbnail_url: z.string().url().nullable().optional(),
+  // Key from /post-templates/thumbnail-url; thumbnail_url is built from it, never client-sent.
+  thumbnail_r2_key: z.string().nullable().optional(),
   status: z.enum(['DRAFT', 'PUBLISHED', 'HIDDEN']).optional(),
   plans: z.array(z.enum(PLANS)).optional(),
   sort_order: z.number().int().min(0).optional(),
@@ -58,21 +77,30 @@ export const adminPostTemplatesRoutes: FastifyPluginAsync = async (server) => {
   // ─── POST /admin/post-templates/thumbnail-url ──────────────────
   // Presigned PUT so the admin panel uploads the preview thumbnail
   // straight to R2 (verbatim shape of studio-styles/thumbnail-url).
-  server.post('/post-templates/thumbnail-url', async (request) => {
+  server.post('/post-templates/thumbnail-url', UPLOAD_URL_RATE_LIMIT, async (request) => {
     const body = z
       .object({
         content_type: z.enum(['image/jpeg', 'image/png', 'image/webp']),
         filename: z.string().min(1).max(200),
+        // Exact byte length of the PUT, bound into the signature (RC-080). Same max as verifyUpload.
+        content_length: z.number().int().min(1).max(10_000_000),
       })
       .parse(request.body);
     const ext = body.content_type.split('/')[1];
-    const r2Key = R2_PATHS.postTemplateThumb(
-      `${createHash('sha256')
-        .update(body.filename + Date.now())
-        .digest('hex')
-        .slice(0, 16)}.${ext}`,
+    const r2Key = stagingKey(
+      R2_PATHS.postTemplateThumb(
+        `${createHash('sha256')
+          .update(body.filename + Date.now())
+          .digest('hex')
+          .slice(0, 16)}.${ext}`,
+      ),
     );
-    const uploadUrl = await getUploadPresignedUrl(r2Key, body.content_type, 300);
+    const uploadUrl = await getUploadPresignedUrl(
+      r2Key,
+      body.content_type,
+      300,
+      body.content_length,
+    );
     return {
       data: { upload_url: uploadUrl, r2_key: r2Key, public_url: publicUrl(r2Key), expires_in: 300 },
     };
@@ -81,6 +109,7 @@ export const adminPostTemplatesRoutes: FastifyPluginAsync = async (server) => {
   // ─── POST /admin/post-templates ────────────────────────────────
   server.post('/post-templates', async (request, reply) => {
     const body = CreateSchema.parse(request.body);
+    const thumbnailUrl = body.thumbnail_r2_key ? await verifyThumb(body.thumbnail_r2_key) : null;
     const row = await prisma.postTemplate.create({
       data: {
         name: body.name,
@@ -90,7 +119,7 @@ export const adminPostTemplatesRoutes: FastifyPluginAsync = async (server) => {
         caption_template: body.caption_template,
         hashtags: body.hashtags,
         occasion: body.occasion ?? null,
-        thumbnail_url: body.thumbnail_url ?? null,
+        thumbnail_url: thumbnailUrl,
         status: body.status,
         plans: body.plans,
         sort_order: body.sort_order,
@@ -132,7 +161,9 @@ export const adminPostTemplatesRoutes: FastifyPluginAsync = async (server) => {
     // Nullable fields: undefined = leave as-is, null = clear.
     if (body.description !== undefined) data.description = body.description;
     if (body.occasion !== undefined) data.occasion = body.occasion;
-    if (body.thumbnail_url !== undefined) data.thumbnail_url = body.thumbnail_url;
+    if (body.thumbnail_r2_key !== undefined) {
+      data.thumbnail_url = body.thumbnail_r2_key ? await verifyThumb(body.thumbnail_r2_key) : null;
+    }
 
     const row = await prisma.postTemplate.update({ where: { id }, data });
     await prisma.auditLog.create({

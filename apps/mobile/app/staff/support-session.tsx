@@ -41,15 +41,20 @@ export default function SupportSessionScreen() {
 
   useEffect(() => {
     if (!waiting) return
+    // Cleared by the effect cleanup (cancel, approval, unmount): a poll already awaiting
+    // the server must not act on a request the manager has since cancelled.
+    let live = true
     const id = setInterval(async () => {
       if (busy.current) return
       busy.current = true
       try {
         const res = await teamApi.getSupportSession(waiting.grantId)
+        if (!live) return
         const status = res.data.status
         if (status === 'APPROVED') {
           clearInterval(id)
           const t = await teamApi.getSupportSessionToken(waiting.grantId)
+          if (!live) return
           await enterSupportSession({
             token: t.data.token,
             shop_name: waiting.shop,
@@ -80,10 +85,18 @@ export default function SupportSessionScreen() {
         busy.current = false
       }
     }, POLL_MS)
-    return () => clearInterval(id)
+    return () => {
+      live = false
+      clearInterval(id)
+    }
   }, [waiting])
 
+  // Sync guard: `starting` state disables the cards only after a render, so two taps in one
+  // tick would each create a grant.
+  const startingRef = useRef(false)
   const handleStart = async (r: TerritoryRetailer) => {
+    if (startingRef.current) return
+    startingRef.current = true
     setStarting(r.id)
     try {
       const res = await teamApi.startSupportSession({ retailer_id: r.id, scope })
@@ -96,6 +109,7 @@ export default function SupportSessionScreen() {
     } catch (err) {
       showError(err, 'Could not request the session')
     } finally {
+      startingRef.current = false
       setStarting(null)
     }
   }

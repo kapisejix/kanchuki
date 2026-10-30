@@ -43,17 +43,18 @@ import {
 import { useScreenInsets } from "../../src/lib/safe-area";
 import { AnimatedPressable } from "../../src/components/AnimatedPressable";
 import { BuildInfoFooter } from "../../src/components/BuildInfoFooter";
+import { GooglePlaceField } from "../../src/components/GooglePlaceField";
 import { GradientButton } from "../../src/components/GradientButton";
 import { UsageCard } from "../../src/components/UsageCard";
 import { WhiteButton } from "../../src/components/WhiteButton";
 import { SettingsSkeleton } from "../../src/components/Skeleton";
 import {
-  ApiError,
   readLocalImage,
   retailerApi,
   uploadImageToR2,
+  prepareImageForUpload,
 } from "../../src/lib/api";
-import { showError } from "../../src/lib/errors";
+import { apiMessage, showError } from "../../src/lib/errors";
 import { clearPersistedCache } from "../../src/lib/offline-persister";
 import { useAuth } from "../../src/lib/auth-context";
 import { resolveMapsLink } from "../../src/lib/maps-link";
@@ -136,19 +137,17 @@ function ProfileEditModal({
         { compress: 0.85, format: ImageManipulator.SaveFormat.JPEG },
       );
       const uri = manipulated.uri;
-      const blob = await readLocalImage(uri);
+      const prep = await prepareImageForUpload(uri, "image/jpeg");
       const uploadResult = await retailerApi.getLogoUploadUrl(
         "image/jpeg",
-        blob.size,
+        prep.size,
       );
       const info = uploadResult.data;
-      await uploadImageToR2(uri, info.upload_url, "image/jpeg");
+      await uploadImageToR2(prep.uri, info.upload_url, "image/jpeg", undefined, undefined, { compress: false });
       setLogoUrl(info.public_url);
       setLogoR2Key(info.r2_key);
     } catch (err) {
-      const msg =
-        err instanceof ApiError ? err.message : "Failed to upload logo";
-      showError(err, msg);
+      showError(err, "Failed to upload logo");
     } finally {
       setUploadingLogo(false);
     }
@@ -171,13 +170,13 @@ function ProfileEditModal({
         { compress: 0.85, format: ImageManipulator.SaveFormat.JPEG },
       );
       const uri = manipulated.uri;
-      const blob = await readLocalImage(uri);
+      const prep = await prepareImageForUpload(uri, "image/jpeg");
       const uploadResult = await retailerApi.getBannerUploadUrl(
         "image/jpeg",
-        blob.size,
+        prep.size,
       );
       const info = uploadResult.data;
-      await uploadImageToR2(uri, info.upload_url, "image/jpeg");
+      await uploadImageToR2(prep.uri, info.upload_url, "image/jpeg", undefined, undefined, { compress: false });
       setBannerUrl(info.public_url);
       setBannerR2Key(info.r2_key);
     } catch (err) {
@@ -269,9 +268,7 @@ function ProfileEditModal({
       onSaved();
       onClose();
     } catch (err) {
-      const msg =
-        err instanceof ApiError ? err.message : "Failed to update profile";
-      showError(err, msg);
+      showError(err, "Failed to update profile");
     } finally {
       setSaving(false);
     }
@@ -882,6 +879,43 @@ function KycModal({
 
 // ─── WhatsApp Business API Modal (bring-your-own Meta credentials) ──
 
+function GoogleListingModal({
+  visible,
+  placeId,
+  defaultQuery,
+  onClose,
+  onSaved,
+}: {
+  visible: boolean;
+  placeId: string | null;
+  defaultQuery: string;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+    >
+      <View className="flex-1 bg-black/50 justify-center px-6">
+        <View className="bg-white rounded-3xl w-full p-6 gap-4 max-h-[85%]">
+          <Text className="text-lg font-bold text-sand-900">Google Listing</Text>
+          <ScrollView keyboardShouldPersistTaps="handled">
+            <GooglePlaceField
+              defaultQuery={defaultQuery}
+              placeId={placeId}
+              onChange={onSaved}
+            />
+          </ScrollView>
+          <WhiteButton label="Close" onPress={onClose} />
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 function WhatsAppApiModal({
   visible,
   onClose,
@@ -1078,7 +1112,7 @@ function DeleteAccountModal({
     } catch (err: unknown) {
       // Surface the error so the retailer knows the server-side delete
       // failed — without this, they get logged out but their data stays.
-      const msg = err instanceof Error ? err.message : 'Server delete failed';
+      const msg = apiMessage(err, 'Server delete failed');
       Alert.alert(
         'Delete Failed',
         `Could not delete your account from the server: ${msg}\n\nPlease contact support or try again later.`,
@@ -1212,6 +1246,7 @@ export default function SettingsScreen() {
   // Dismissed for the session via "Not now"; reappears next launch until added.
   const [gstReminderDismissed, setGstReminderDismissed] = useState(false);
   const [showWhatsApp, setShowWhatsApp] = useState(false);
+  const [showGoogleListing, setShowGoogleListing] = useState(false);
   const [showKyc, setShowKyc] = useState(false);
   const [showWhatsAppApi, setShowWhatsAppApi] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
@@ -1477,6 +1512,17 @@ export default function SettingsScreen() {
               />
 
               <SettingsRow
+                icon={<MapPin size={18} color={colors.danger} />}
+                label="Google Listing"
+                subtitle={
+                  retailer?.google_place_id
+                    ? "Linked — customers can review you on Google"
+                    : "Not linked — add it to collect Google reviews"
+                }
+                onPress={() => setShowGoogleListing(true)}
+              />
+
+              <SettingsRow
                 icon={<ShieldCheck size={18} color={primaryColor} />}
                 label="Identity Verification (KYC)"
                 subtitle={
@@ -1659,6 +1705,14 @@ export default function SettingsScreen() {
         onClose={() => setShowProfileEdit(false)}
         onSaved={handleProfileSaved}
         onStoreUrlChanged={(slug) => setStoreUrlNotice(slug)}
+      />
+
+      <GoogleListingModal
+        visible={showGoogleListing}
+        placeId={retailer?.google_place_id ?? null}
+        defaultQuery={[retailer?.shop_name, retailer?.city].filter(Boolean).join(" ")}
+        onClose={() => setShowGoogleListing(false)}
+        onSaved={handleProfileSaved}
       />
 
       <WhatsAppModal

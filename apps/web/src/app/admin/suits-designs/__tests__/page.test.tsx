@@ -217,6 +217,9 @@ describe('Admin Suits Designs page', () => {
     const body = JSON.parse(String(createCall[1]!.body))
     expect(body.category_id).toBe('cat-suits')
     expect(body.raw_r2_key).toBe('showcase-designs/global/raw/new.jpg')
+    // RC-080: the presign signs the exact byte length that is PUT.
+    const presignCall = fetchMock.mock.calls.find((c) => String(c[0]).endsWith('/showcase-designs/upload-url'))!
+    expect(JSON.parse(String(presignCall[1]!.body)).content_length).toBe(file.size)
     expect(await screen.findByText(/added \(Global\)/)).toBeInTheDocument()
   })
 

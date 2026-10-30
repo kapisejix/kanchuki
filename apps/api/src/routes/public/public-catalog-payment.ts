@@ -1,8 +1,8 @@
 // Auto-split from public.ts (scripts/check-route-size.sh) — route bodies verbatim.
-import { createHmac, timingSafeEqual } from 'node:crypto';
-import { getSecret, prisma } from '@kanchuki/db';
+import { prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
+import { razorpay, verifyPaymentLinkSignature } from '../billing/billing-helpers.js';
 
 export const publicCatalogPaymentRoutes: FastifyPluginAsync = async (server) => {
   // ── GET /public/catalog-upload-tickets/:id/payment-callback ─────
@@ -18,6 +18,8 @@ export const publicCatalogPaymentRoutes: FastifyPluginAsync = async (server) => 
         .object({
           razorpay_payment_id: z.string().optional(),
           razorpay_payment_link_id: z.string().optional(),
+          razorpay_payment_link_reference_id: z.string().optional(),
+          razorpay_payment_link_status: z.string().optional(),
           razorpay_signature: z.string().optional(),
         })
         .safeParse(request.query);
@@ -37,7 +39,13 @@ export const publicCatalogPaymentRoutes: FastifyPluginAsync = async (server) => 
 
       const ticket = await prisma.supportTicket.findUnique({
         where: { id: request.params.id },
-        select: { id: true, ticket_type: true, razorpay_order_id: true, paid_at: true },
+        select: {
+          id: true,
+          ticket_type: true,
+          razorpay_order_id: true,
+          paid_at: true,
+          quoted_price_inr: true,
+        },
       });
       if (
         !ticket ||
@@ -52,22 +60,57 @@ export const publicCatalogPaymentRoutes: FastifyPluginAsync = async (server) => 
           .send('<html><body><p>Already paid. Return to the Kanchuki app.</p></body></html>');
       }
 
-      const secret = (await getSecret('RAZORPAY_KEY_SECRET')) ?? '';
-      const expected = createHmac('sha256', secret)
-        .update(`${razorpay_payment_link_id}|${razorpay_payment_id}`)
-        .digest('hex');
-      const expectedBuf = Buffer.from(expected);
-      const providedBuf = Buffer.from(razorpay_signature);
+      // Signature (empty key secret = fail) — documented 4-part form when the
+      // callback carries link status, legacy 2-part form otherwise.
+      const linkStatus = params.razorpay_payment_link_status;
       const verified =
-        expectedBuf.length === providedBuf.length && timingSafeEqual(expectedBuf, providedBuf);
+        (linkStatus === undefined || linkStatus === 'paid') &&
+        ((linkStatus !== undefined &&
+          (await verifyPaymentLinkSignature({
+            linkId: razorpay_payment_link_id,
+            paymentId: razorpay_payment_id,
+            signature: razorpay_signature,
+            referenceId: params.razorpay_payment_link_reference_id,
+            status: linkStatus,
+          }))) ||
+          (await verifyPaymentLinkSignature({
+            linkId: razorpay_payment_link_id,
+            paymentId: razorpay_payment_id,
+            signature: razorpay_signature,
+          })));
 
       if (!verified) {
         request.log.warn({ ticket_id: ticket.id }, 'Catalog upload payment signature mismatch');
         return failPage('Payment verification failed.');
       }
 
-      await prisma.supportTicket.update({
-        where: { id: ticket.id },
+      // A signature proves the redirect came from Razorpay, not that the money
+      // is right: confirm with Razorpay the payment is captured, in INR, and for
+      // exactly the admin-quoted price before marking the ticket paid.
+      try {
+        const payment = await razorpay<{ amount: number; currency: string; status: string }>(
+          `/payments/${razorpay_payment_id}`,
+        );
+        if (
+          payment.status !== 'captured' ||
+          payment.currency !== 'INR' ||
+          ticket.quoted_price_inr == null ||
+          payment.amount !== ticket.quoted_price_inr * 100
+        ) {
+          request.log.error(
+            { ticket_id: ticket.id, status: payment.status, amount: payment.amount },
+            'Catalog upload payment status/amount mismatch — not marking paid',
+          );
+          return failPage('Payment could not be confirmed.');
+        }
+      } catch (err) {
+        request.log.error({ err, ticket_id: ticket.id }, 'Catalog upload payment lookup failed');
+        return failPage('Payment could not be confirmed.');
+      }
+
+      // Conditional flip: a replayed callback marks paid once.
+      await prisma.supportTicket.updateMany({
+        where: { id: ticket.id, paid_at: null },
         data: { paid_at: new Date() },
       });
 

@@ -7,6 +7,7 @@
 import { prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
+import { queryBool } from '../../lib/query-bool.js';
 import { notFound } from '../../plugins/error-handler.js';
 import { adminAuthPreHandler } from '../admin-auth.js';
 
@@ -20,7 +21,7 @@ export const adminSocialRoutes: FastifyPluginAsync = async (server) => {
       .object({
         retailer_id: z.string().optional(),
         platform: z.enum(['FACEBOOK', 'INSTAGRAM']).optional(),
-        is_active: z.coerce.boolean().optional(),
+        is_active: queryBool(),
       })
       .safeParse(request.query);
 

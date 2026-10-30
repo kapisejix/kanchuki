@@ -12,7 +12,7 @@ import {
 } from 'lucide-react-native'
 import { CustomerListSkeleton } from '../../src/components/Skeleton'
 import {
-  ApiError, retailerApi, staffApi,
+  retailerApi, staffApi,
   type StaffMember, type StaffCreateResult, type StaffInvitePayload,
 } from '../../src/lib/api'
 import { showError } from '../../src/lib/errors'
@@ -99,14 +99,10 @@ function AddStaffModal({
       // member don't need a "please log in" prompt).
       if (!editing && onCreated && result?.data) onCreated(result.data)
     },
-    onError: (err: Error) => {
-      // Surface the real server reason (duplicate phone, seat limit reached,
-      // phone already a retailer account) — the generic fallback only when
-      // the error isn't an API response. Without this every failure reads as
-      // the same dead "Failed to add team member".
-      const msg = err instanceof ApiError ? err.message : 'Failed to save team member'
-      showError(err, msg)
-    },
+    // showError surfaces the server reason for a 4xx (duplicate phone, seat limit reached,
+    // phone already a retailer account) — RC-009: without it every failure read as the same
+    // dead "Failed to add team member".
+    onError: (err: Error) => showError(err, 'Failed to save team member'),
   })
 
   return (
@@ -239,8 +235,7 @@ function PurgeModal({
       await staffApi.purge(member.id)
       onPurged()
     } catch (err) {
-      const msg = err instanceof ApiError ? err.message : 'Failed to delete permanently'
-      showError(err, msg)
+      showError(err, 'Failed to delete permanently')
       setDeleting(false)
     }
   }

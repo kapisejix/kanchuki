@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as Linking from 'expo-linking';
 import { router } from 'expo-router';
 import { CheckCircle2, ChevronLeft, Lock, RefreshCw, Zap } from 'lucide-react-native';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, Text, View } from 'react-native';
 import { useScreenInsets } from '../../../src/lib/safe-area';
 import { AnimatedPressable } from '../../../src/components/AnimatedPressable';
@@ -79,7 +79,12 @@ export default function FacebookConfigScreen() {
     await Linking.openURL(authUrl);
   };
 
+  // RC-132: sync guard — `connecting` state reaches the button a render late, so two
+  // taps in one tick would both start a login.
+  const connectingRef = useRef(false);
   const handleConnect = async () => {
+    if (connectingRef.current) return;
+    connectingRef.current = true;
     setConnecting(true);
     setConnectError(null);
     try {
@@ -109,6 +114,7 @@ export default function FacebookConfigScreen() {
       }
       setConnectError(err instanceof Error ? err.message : 'Could not connect your Facebook Page');
     } finally {
+      connectingRef.current = false;
       setConnecting(false);
     }
   };

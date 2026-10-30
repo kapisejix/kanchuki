@@ -5,6 +5,7 @@
 // store's most-recently-uploaded products regardless of category — so a
 // "2 years boy" query could return ladies suits. These tests fail if that
 // fallback comes back.
+import rateLimit from '@fastify/rate-limit';
 import Fastify from 'fastify';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { errorHandler } from '../../plugins/error-handler.js';
@@ -236,5 +237,58 @@ describe('POST /public/stylist — fallback is reported, not disguised as AI (RC
     const [err, ctx] = mockCapture.mock.calls[0] as [Error, { tags: Record<string, string> }];
     expect(err.message).toBe('network disabled in tests');
     expect(ctx.tags.fallback_reason).toBe('provider_error');
+  });
+});
+
+// RC-079 — /stylist needs no login and spends Claude credit on every call, so it
+// must be capped per IP and must not wait on Anthropic forever.
+describe('POST /public/stylist — cost caps (RC-079)', () => {
+  const payload = { slug: 'meera', query: 'something for a wedding' };
+
+  it('the 11th request inside a minute is rejected with 429', async () => {
+    mockProductFindMany.mockResolvedValue([LADIES_SUIT]);
+    const app = Fastify();
+    app.setErrorHandler(errorHandler);
+    // Global limit far above the route limit, so only the route's own cap can trip.
+    await app.register(rateLimit, { max: 1000, timeWindow: 60_000 });
+    await app.register(publicStylistRoutes, { prefix: '/v1/public' });
+    await app.ready();
+
+    const codes: number[] = [];
+    for (let i = 0; i < 11; i++) {
+      const res = await app.inject({ method: 'POST', url: '/v1/public/stylist', payload });
+      codes.push(res.statusCode);
+    }
+    await app.close();
+
+    expect(codes.slice(0, 10).every((c) => c === 200)).toBe(true);
+    expect(codes[10]).toBe(429);
+  });
+
+  it('a hanging Anthropic call is aborted after 20 s and answered from the fallback', async () => {
+    process.env.ANTHROPIC_API_KEY = 'test-key';
+    mockProductFindMany.mockResolvedValue([LADIES_SUIT]);
+    const timer = new AbortController();
+    const timeoutSpy = vi.spyOn(AbortSignal, 'timeout').mockReturnValue(timer.signal);
+    const fetchMock = vi.fn(
+      (_url: string, init: { signal: AbortSignal }) =>
+        new Promise((_resolve, reject) => {
+          init.signal.addEventListener('abort', () => reject(new Error('timed out')));
+        }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const app = await buildApp();
+    const pending = app.inject({ method: 'POST', url: '/v1/public/stylist', payload });
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    timer.abort();
+    const res = await pending;
+    await app.close();
+
+    expect(timeoutSpy).toHaveBeenCalledWith(20_000);
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data.fallback).toBe(true);
+    expect(mockCapture.mock.calls[0]?.[1].tags.fallback_reason).toBe('provider_error');
+    timeoutSpy.mockRestore();
   });
 });

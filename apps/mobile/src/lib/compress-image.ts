@@ -44,9 +44,11 @@ export async function compressImageForUpload(
 
   try {
     const file = new File(uri)
+    if (!file.exists) return uri
     // Already within budget — don't re-encode (re-encoding can even grow a
     // near-budget image at high quality; untouched is strictly better).
-    if (!file.exists || file.size <= maxBytes) return uri
+    // Only for types the server accepts: a small HEIC must still become JPEG.
+    if (file.size <= maxBytes && /.(jpe?g|png|webp)$/i.test(uri)) return uri
 
     // Read original dimensions (also normalizes to a JPEG base copy).
     const info = await ImageManipulator.manipulateAsync(uri, [], {

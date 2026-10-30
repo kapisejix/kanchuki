@@ -5,17 +5,25 @@ import { R2_PATHS } from '@kanchuki/shared';
 import { createId } from '@paralleldrive/cuid2';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
+import {
+  IMAGE_KINDS,
+  UPLOAD_URL_RATE_LIMIT,
+  stagingKey,
+  verifyUpload,
+} from '../../lib/upload-guard.js';
 import { validationError } from '../../plugins/error-handler.js';
 
 export const retailersUploadsRoutes: FastifyPluginAsync = async (server) => {
   // ─── POST /retailers/me/banner-upload-url ────────────────────────
   // Store banner image shown as a hero section on customer-facing pages.
-  server.post('/me/banner-upload-url', async (request, reply) => {
+  server.post('/me/banner-upload-url', UPLOAD_URL_RATE_LIMIT, async (request, reply) => {
     const body = z
       .object({
         filename: z.string().min(1).max(255),
         content_type: z.enum(['image/jpeg', 'image/png', 'image/webp']),
         size_bytes: z.number().int().min(1).max(10_000_000), // 10MB — banners are large
+        // Exact byte length of the PUT (post-compression), bound into the signature (RC-080).
+        content_length: z.number().int().min(1).max(10_000_000),
       })
       .safeParse(request.body);
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
@@ -23,11 +31,11 @@ export const retailersUploadsRoutes: FastifyPluginAsync = async (server) => {
     const { content_type } = body.data;
     const ext =
       content_type === 'image/png' ? 'png' : content_type === 'image/webp' ? 'webp' : 'jpg';
-    const r2Key = R2_PATHS.retailerBanner(request.retailerId, `${createId()}.${ext}`);
+    const r2Key = stagingKey(R2_PATHS.retailerBanner(request.retailerId, `${createId()}.${ext}`));
 
     let uploadUrl: string;
     try {
-      uploadUrl = await getUploadPresignedUrl(r2Key, content_type, 300);
+      uploadUrl = await getUploadPresignedUrl(r2Key, content_type, 300, body.data.content_length);
     } catch {
       throw validationError('Banner storage is not configured. Please contact support.');
     }
@@ -38,12 +46,14 @@ export const retailersUploadsRoutes: FastifyPluginAsync = async (server) => {
   });
 
   // ─── POST /retailers/me/logo-upload-url ─────────────────────────
-  server.post('/me/logo-upload-url', async (request, reply) => {
+  server.post('/me/logo-upload-url', UPLOAD_URL_RATE_LIMIT, async (request, reply) => {
     const body = z
       .object({
         filename: z.string().min(1).max(255),
         content_type: z.enum(['image/jpeg', 'image/png', 'image/webp']),
         size_bytes: z.number().int().min(1).max(5_000_000),
+        // Exact byte length of the PUT (post-compression), bound into the signature (RC-080).
+        content_length: z.number().int().min(1).max(5_000_000),
       })
       .safeParse(request.body);
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
@@ -51,11 +61,11 @@ export const retailersUploadsRoutes: FastifyPluginAsync = async (server) => {
     const { content_type } = body.data;
     const ext =
       content_type === 'image/png' ? 'png' : content_type === 'image/webp' ? 'webp' : 'jpg';
-    const r2Key = R2_PATHS.retailerLogo(request.retailerId, `${createId()}.${ext}`);
+    const r2Key = stagingKey(R2_PATHS.retailerLogo(request.retailerId, `${createId()}.${ext}`));
 
     let uploadUrl: string;
     try {
-      uploadUrl = await getUploadPresignedUrl(r2Key, content_type, 300);
+      uploadUrl = await getUploadPresignedUrl(r2Key, content_type, 300, body.data.content_length);
     } catch (err) {
       console.error('R2 presigned URL generation failed:', err);
       throw validationError('Photo storage is not configured. Please contact support.');
@@ -68,13 +78,15 @@ export const retailersUploadsRoutes: FastifyPluginAsync = async (server) => {
 
   // ─── POST /retailers/me/kyc-upload-url ──────────────────────────
   // KYC docs: GST certificate accepts PDF or image; Aadhar front/back are photos only.
-  server.post('/me/kyc-upload-url', async (request, reply) => {
+  server.post('/me/kyc-upload-url', UPLOAD_URL_RATE_LIMIT, async (request, reply) => {
     const body = z
       .object({
         doc_type: z.enum(['gst', 'aadhar_front', 'aadhar_back']),
         filename: z.string().min(1).max(255),
         content_type: z.enum(['image/jpeg', 'image/png', 'application/pdf']),
         size_bytes: z.number().int().min(1).max(10_000_000),
+        // Exact byte length of the PUT (post-compression), bound into the signature (RC-080).
+        content_length: z.number().int().min(1).max(10_000_000),
       })
       .safeParse(request.body);
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
@@ -86,11 +98,13 @@ export const retailersUploadsRoutes: FastifyPluginAsync = async (server) => {
 
     const ext =
       content_type === 'application/pdf' ? 'pdf' : content_type === 'image/png' ? 'png' : 'jpg';
-    const r2Key = R2_PATHS.retailerKyc(request.retailerId, doc_type, `${createId()}.${ext}`);
+    const r2Key = stagingKey(
+      R2_PATHS.retailerKyc(request.retailerId, doc_type, `${createId()}.${ext}`),
+    );
 
     let uploadUrl: string;
     try {
-      uploadUrl = await getUploadPresignedUrl(r2Key, content_type, 300);
+      uploadUrl = await getUploadPresignedUrl(r2Key, content_type, 300, body.data.content_length);
     } catch {
       throw validationError('Document storage is not configured. Please contact support.');
     }
@@ -112,7 +126,7 @@ export const retailersUploadsRoutes: FastifyPluginAsync = async (server) => {
       })
       .safeParse(request.body);
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
-    const { doc_type, r2_key, url } = body.data;
+    const { doc_type, r2_key } = body.data;
 
     const fieldMap = {
       gst: { urlField: 'kyc_gst_url', keyField: 'kyc_gst_r2_key' },
@@ -121,9 +135,18 @@ export const retailersUploadsRoutes: FastifyPluginAsync = async (server) => {
     } as const;
     const { urlField, keyField } = fieldMap[doc_type];
 
+    // KYC is the most sensitive upload: own key only, real image/PDF bytes
+    // (PDF for the GST certificate alone), and the url is rebuilt server-side.
+    const verified = await verifyUpload({
+      retailerId: request.retailerId,
+      r2Key: r2_key,
+      allowed: doc_type === 'gst' ? [...IMAGE_KINDS, 'application/pdf'] : IMAGE_KINDS,
+      maxBytes: 10_000_000,
+    });
+
     const updated = await prisma.retailer.update({
       where: { id: request.retailerId },
-      data: { [urlField]: url, [keyField]: r2_key },
+      data: { [urlField]: verified.url, [keyField]: verified.r2Key },
     });
 
     let kyc_status = updated.kyc_status;

@@ -1,8 +1,10 @@
 # Tasks — Work Board
 
-Where work lives: **`pending/` = open**, **`done/` = built** (kept as the design record + how it actually works).
+Where work lives: **`pending/` = open**, **`done/` = built**, **`archived/` = retired, not built, kept for reference** (kept as the design record + how it actually works).
 
 **How to use this board:** a task file is the spec. The status here is a *pointer*, not proof — when a doc and the code disagree, the code wins. See `../root-cause/README.md` before starting work in a feature area.
+
+**Audit program:** `testing/README.md` — bug / type-error / dead-code audit of API, Web, Mobile in ≤10-minute sessions, plus hacker-mode attack sessions and playbook.
 
 ---
 
@@ -11,20 +13,17 @@ Where work lives: **`pending/` = open**, **`done/` = built** (kept as the design
 | Task | File | Status | Blocker / decision needed |
 |---|---|---|---|
 | AI photo & video generation — F-032 phase B (video), F-034 retailer phase, engine rebuild | `pending/ai-photo-generation.md` | 🟡 Mixed — F-032 phase A ✅ built; bench run 1 ✅ 2026-09-20; runs 2–3 not run (checklist §8.1e); retailer-path wiring not built | Bench runs 2–3 (owner), engine per MODEL row, compression ceiling, R6 disclosure. |
-| AI fit/style recommendation — research notes (feeds F-039) | `pending/ai-fit-recommendation-research.md` | 🔬 Research only (2026-09-25) — nothing built, nothing decided | Superseded in practice by `style-match-lite.md`; fold in or archive |
-| Railway cost & memory improvements | `pending/improvments-railway.md` | 🟡 Partly done — API 1.34 → 0.14 GB after bg-removal removal (#49/#50); API sleep off | 24 h memory recheck + web/Postgres/docs items; owner decisions |
-| Post-referral cleanup + launch batch | `pending/post-referral-cleanup-and-launch.md` | 🟡 Mostly done — branch/migration sections stale (superseded 2026-09-28) | Re-read open `[ ]` items; fold remainder into `launch-readiness.md` |
 | AI credit / limit / billing model | `pending/ai-credit-billing-model.md` | 🟡 Design; admin addon-pack half built (migration `089`, `/admin/resource-packs`) | §8 decisions; retailer-side credit consumption/limits unbuilt |
-| Coupon codes on subscription checkout | `pending/coupon-codes.md` | 📋 Spec — not built | Product sign-off |
+| Billing decision sheets — prorated plan switch, coupon codes, AI credit model (one page each, with recommendations) | `pending/decision-sheets-2026-10-24.md` | ✅ Answered 2026-10-25: 1=A, 2=A, 3=B (AI Usage per-retailer grid built) | None — revisit 1/2 after ~10 paying retailers |
+| Coupon codes on subscription checkout | `pending/coupon-codes.md` | ⏸️ Deferred 2026-10-25 (decision sheet 2 = A, no coupons at launch) | Revisit for a promo; build must change the RC-076 guard first, migration 138 |
 | Customer engagement + admin behavior analytics (F-037) | `pending/customer-engagement-analytics.md` | 🟡 Phases 1–3 ✅ built; Phase 4 partly built (retailer aggregate view + engagement items 1, 2, 4, 5, 6, 8 built; item 7 at product-card level; item 9 infinite scroll reverted to Prev/Next pager 2026-09-29; 24-month raw-event prune built 2026-09-29) | Store-level rating on `/stores` (owner decision); PR #41 merged 2026-09-29 |
-| Customer PWA push notifications + home-screen icon (F-036) | `pending/customer-pwa-push-notifications.md` | 🟡 Phase A ✅ built (2026-09-17); B–D not started | VAPID/web-push + service-worker handler; iOS requires install-before-push |
-| Ghost mannequin AI generation (F-001e) | `pending/ghost-mannequin.md` | 🔴 Planned, P2 — not built | **Snappyit has no public API**; a local LaMa version exists but is reachable only from the admin photo-cleanup bench |
+| Customer PWA push notifications + home-screen icon (F-036) | `pending/customer-pwa-push-notifications.md` | 🟡 Phase A ✅ built (2026-09-17); Phase B built 2026-10-25 (`feat/f-036-web-push`, not device-tested); C–D not started | Owner: apply migration `138`, generate VAPID keys (`npx web-push generate-vapid-keys`) and set `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` on the API service, then test on an Android phone. iOS requires install-before-push (Phase C) |
 | Google Business Profile auto-post (F-022) | `pending/google-business-profile-autopost.md` | ⏸ **On hold** | Blocked on Google API access. **Do not start without an explicit go-ahead.** |
-| Launch readiness | `pending/launch-readiness.md` | 🟡 Open items | Mostly owner/account actions + 3 pre-launch verifications |
+| Launch readiness (the only launch board; absorbed the post-referral board 2026-10-25) | `pending/launch-readiness.md` | 🟡 Open items | Mostly owner/account actions, device passes, and the referral/refund leftovers |
 | i18n + dynamic-content audit (no-hardcoded-values program) | `pending/i18n-and-dynamic-content-audit.md` | 📋 Audit — awaiting owner approval (2026-09-29) | §5 open questions; Phase B starts only after approval |
-| Multi-language i18n (roadmap M) | `pending/multi-language-i18n.md` | 🟡 Partial — AI translate ✅; UI i18n not started | Migration `063` applied state **unverified**; there is no i18n infrastructure to build on |
+| Multi-language i18n (roadmap M) | `pending/multi-language-i18n.md` | 🟡 Partial — AI translate ✅; UI i18n not started | Migration `063` applied (verified 2026-09-29 + 2026-10-25); there is no i18n infrastructure to build on |
 | Pre-Loved — customer resale / rental / family gifting of used clothes (F-041) | `pending/how-customer-earn-from-this-platform.md` (spec + research merged) | 🔴 Idea — not approved (2026-09-29) | Owner decisions §13 D-1…D-7; legal review (intermediary, GST, DPDP) before P1; recommend no-code P0 pilot first |
-| Prorated mid-cycle plan switch (Model B) | `pending/plan-switch-prorated.md` | 🔴 Planned — Model A is what shipped | Product sign-off (formula in the file) |
+| Prorated mid-cycle plan switch (Model B) | `pending/plan-switch-prorated.md` | ⏸️ Deferred 2026-10-25 (decision sheet 1 = A) | Revisit after ~10 paying retailers; Razorpay UPI test-mode spike first |
 | Social publishing phase 3/4 — IG Reels scheduling, catalog broadcast analytics | `pending/social-publishing-phase-3.md` | 🔴 Planned | Phases 1–2 + composer are built; only these extensions remain |
 | Social Post Scheduler — daily FB/IG carousel plans, in-app status card, admin-limited (F-043) | `pending/post-scheduler.md` | 🟨 Tasks 1–5 built and on `main` (Task 1 #79, Task 2 #80, Tasks 3–5 landed via stacked #83 — #81/#82 were closed unmerged but their code is in #83); not device-tested | Owner: Meta App Review checklist §9; confirm migrations 128/129 applied; device test; `docs/runbooks/f-043-scheduler-launch-checklist.md` |
 | Retailer support tickets + feedback loop (retailer raises ticket, staff/retailer/customer feedback → admin report) — F-number unassigned | `pending/support-and-feedback-loop.md` | 🔴 Review only — not approved (2026-10-15) | Owner answers §5 (ticket vs consent steps, customer feedback in MVP?, report format); builds on `support-session-access.md` (migration 127 + switch still owner-side) |
@@ -34,8 +33,9 @@ Where work lives: **`pending/` = open**, **`done/` = built** (kept as the design
 | CatVTON-on-RunPod try-on, admin-gated launch + dual quota (F-040) | `pending/catvton-runpod-tryon-launch.md` | 🟨 Built, flag OFF — build done, launch owner-side (2026-09-26) | T0–T7 ✅ 2026-09-26 — endpoint + image alive; schema + dual quota built (migrations **118/119/120 applied** 2026-09-26); route + job built (server-side 404 gate, dual identity via Bearer or passport cookie, wearer photo handed over in-process so it never reaches R2/DB/**Redis**); consent gate + withdrawal + deletion sweep (`RC-044`); on-device + customer-web UI. **Before it works live:** re-point the RunPod template tag, set `workersMax > 0` (owner's RunPod key), set the Admin → Integrations secrets, confirm the `/privacy` notice is **deployed** (still the Sep 24 revision live), then flip `VIRTUAL_TRY_ON_V2`. Owner checklist: `../runbooks/tryon-launch-owner-steps.md`. Renumbered from "F-039 Phase 2" → F-040 |
 | Homepage product browse — "New arrivals near you" (F-042, proposed) | `pending/homepage-product-browse.md` | 🔴 Idea — not approved (2026-09-30) | Gates G-1…G-3 (≥10 active shops, consistent photos, retailer reaction); owner decisions §8 |
 | Kanchuki-managed WhatsApp sending (F-035) | `pending/whatsapp-managed-sending.md` | 🔴 Planned — post-launch | Meta Business Verification + App Review (4–8 weeks); design locked to Model A (per-retailer WABA) |
-| Railway cost & memory — background-removal removal, API memory 1.34 → 0.14 GB, admin Server Memory card | `pending/improvments-railway.md` | ✅ Culprit found + fixed + deployed (#49, #50, 2026-10-10); 24 h confirmation open | 24 h RSS recheck; 3 Postgres services on hold (owner review, back up first); stale `CLAUDE.md` index rows #31/#33/#35/#53 need owner approval to edit |
-| Storefront soft-404 — unknown paths (e.g. `/.git/config`) return HTTP 200 with the "not found" page | `pending/storefront-soft-404.md` | 🔴 Planned, low priority (2026-10-10) — no data exposure | Local repro of `loading.tsx` flush-before-`notFound()`; code change in `apps/web` needs owner approval |
+| Railway cost & memory — background-removal removal, API memory 1.34 → 0.14 GB, admin Server Memory card | `pending/improvments-railway.md` | ✅ Culprit found + fixed + deployed (#49, #50, 2026-10-10); 24 h recheck done 2026-10-25 (API avg 0.29 GB) | Web memory one more look; 3 Postgres services on hold (owner review, back up first). `CLAUDE.md` rows #31/#33/#35/#53 updated 2026-10-24 |
+| Security audit 5 points — paid-plan lapse (PRO free forever), public AI Stylist uncapped, presign not size-bound, admin route-guard test + RLS gap | `pending/security-audit-5-points.md` | ✅ Merged 2026-10-24 (#145, #151, #152): T1 (RC-082), T2 (RC-079), T3 (RC-080, `content_length` required), T4 route-guard test; T4 RLS needed no migration | Owner: R2 lifecycle rules, device test of uploads on the new EAS build, watch for 422s from old app builds |
+| Mobile + web-admin clients send `content_length` on presign (RC-080 follow-up) | `pending/mobile-presign-content-length.md` | ✅ Merged 2026-10-24 (#151, #152) — mobile compress -> size -> presign -> PUT and admin web send it; server requires it | Owner: device test on the new EAS build; watch for 422s from old builds |
 
 ## Done
 
@@ -57,4 +57,11 @@ Where work lives: **`pending/` = open**, **`done/` = built** (kept as the design
 | WhatsApp native catalog sync, Phase II (migrations `060`–`062`) | `done/whatsapp-catalog-sync.md` | 2026-08-18 |
 | Storefront soft-404 — unknown store → real 404 (+ scanner-probe middleware) | `done/storefront-soft-404.md` | 2026-10-10 |
 | Docs reorganization (phases 1–8; phase 9 KEEP/DELETE list moved here with the file) | `done/reorganize-files-folders-structure.md` | 2026-09-25 |
+| Post-referral cleanup + launch batch — referral follow-ups, admin access, RC-033, refunds, `?ref=` capture, lists → DB, launch §7A (open items moved to `pending/launch-readiness.md`) | `done/post-referral-cleanup-and-launch.md` | 2026-10-25 |
 | Studio Shoot option matrix (F-032) — shared styles + product-aware gating + mobile picker, migration `123` (27 rows `DRAFT`). Admin-only remainder: publish rows, engine per row, retire legacy rows, thumbnails | `done/studio-shoot-option-matrix.md` (+ `done/studio-shoot-retailer-rollout.md`, `done/studio-shoot-session-handoff.md`) | 2026-10-10 |
+
+## Archived
+
+| Doc | File | Archived | Why |
+|---|---|---|---|
+| AI fit/style recommendation — research notes (2026-09-25) | `archived/ai-fit-recommendation-research.md` | 2026-10-25 | Superseded by `pending/style-match-lite.md` (F-039), which carries its decisions |

@@ -136,7 +136,7 @@ export default function ShowcaseWatermarkSettings() {
       const presign = await fetch(`${API_URL}/v1/admin/settings/showcase-watermark/logo-upload-url`, {
         ...(await adminMutateOptions()),
         method: 'POST',
-        body: JSON.stringify({ content_type: file.type || 'image/png', filename: file.name }),
+        body: JSON.stringify({ content_type: file.type || 'image/png', filename: file.name, content_length: file.size }),
       })
       if (!presign.ok) throw new Error('Failed to get an upload URL')
       const { data } = await presign.json()

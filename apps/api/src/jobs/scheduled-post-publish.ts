@@ -18,7 +18,7 @@ import {
   publishInstagramCarousel,
   publishPhotoPost,
 } from '../lib/meta-graph.js';
-import { checkQuota, incrementUsage } from '../lib/quota.js';
+import { reserveQuota } from '../lib/quota.js';
 import { resolvePostImages } from '../lib/schedule-render.js';
 import { AppError } from '../plugins/error-handler.js';
 import {
@@ -151,7 +151,19 @@ async function publishOne(id: string, retailerId: string, now: Date): Promise<Ou
   const account = plan.account;
   const platform = plan.platform as Platform;
 
+  // RC-102: the SCHEDULED_POST slot is reserved before publishing and kept only if this attempt
+  // posts. `fail` is the one exit for every other path, so it hands the slot back there, once
+  // (nulled after use); a retry reserves afresh, so attempts never double-refund.
+  let giveBackSlot: (() => Promise<void>) | null = null;
+
   const fail = async (f: Failure, refund = false): Promise<Outcome> => {
+    if (giveBackSlot) {
+      const give = giveBackSlot;
+      giveBackSlot = null;
+      await give().catch((err) => {
+        console.error('[schedule-publish] quota refund failed', id, err);
+      });
+    }
     const retry = f.retry && post.attempts < MAX_ATTEMPTS;
     await prisma.scheduledPost.updateMany({
       where: { id, retailer_id: retailerId, status: 'PUBLISHING' },
@@ -183,7 +195,7 @@ async function publishOne(id: string, retailerId: string, now: Date): Promise<Ou
       return await fail({ reason: REASON.PLAN, retry: false, pause: null });
     }
     try {
-      await checkQuota(retailerId, 'SCHEDULED_POST');
+      giveBackSlot = await reserveQuota(retailerId, 'SCHEDULED_POST');
     } catch (err) {
       if (err instanceof AppError) {
         return await fail({ reason: REASON.PLAN, retry: false, pause: null });
@@ -295,12 +307,8 @@ async function publishOne(id: string, retailerId: string, now: Date): Promise<Ou
       where: { id, retailer_id: retailerId, status: 'PUBLISHING' },
       data: { status: 'POSTED', social_post_id: live?.id ?? null, error: null },
     });
-    // Counted on success only (D9). Never fails a live post.
-    try {
-      await incrementUsage(retailerId, 'SCHEDULED_POST');
-    } catch (err) {
-      console.error('[schedule-publish] usage increment failed', id, err);
-    }
+    // Counted on success only (D9): the reservation taken above is kept, never refunded.
+    giveBackSlot = null;
     return 'posted';
   } catch (err) {
     // Raw message only ever goes to the server log (finding 4).
