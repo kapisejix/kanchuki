@@ -1,17 +1,12 @@
 // billing-addons.ts — one-time addon packs (payment link + order + verification) (split from apps/api/src/routes/billing.ts — body byte-identical)
-import { type QuotaResourceType, type SubscriptionPlan, getSecret, prisma } from '@kanchuki/db';
+import { type QuotaResourceType, type SubscriptionPlan, prisma } from '@kanchuki/db';
 import { ADDON_PRICING } from '@kanchuki/shared';
 import * as Sentry from '@sentry/node';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { hasFeatureForPlan } from '../../lib/features.js';
 import { notFound, validationError } from '../../plugins/error-handler.js';
-import {
-  getEffectiveLimit,
-  razorpay,
-  verifyOrderSignature,
-  verifyPaymentLinkSignature,
-} from './billing-helpers.js';
+import { getEffectiveLimit, razorpay, verifyPaymentLinkSignature } from './billing-helpers.js';
 // The callback credits only a limited resource (limit !== -1, row exists); a pack
 // bought otherwise would take payment and credit nothing.
 async function canCredit(retailerId: string, plan: SubscriptionPlan): Promise<boolean> {
@@ -379,62 +374,5 @@ export const billingAddonRoutes: FastifyPluginAsync = async (server) => {
     return reply.redirect(
       `${process.env.WEB_URL ?? 'http://localhost:3000'}/billing/addon-success?status=success`,
     );
-  });
-  // ─── POST /billing/create-order (one-time payment, e.g. add-on credits) ─
-  server.post('/create-order', async (request) => {
-    const body = z
-      .object({ amount_paise: z.number().int().min(100).max(10_000_00) })
-      .parse(request.body);
-
-    const order = await razorpay<{ id: string; amount: number; currency: string; receipt: string }>(
-      '/orders',
-      {
-        method: 'POST',
-        body: JSON.stringify({
-          amount: body.amount_paise,
-          currency: 'INR',
-          receipt: `addon_${request.retailerId}_${Date.now()}`,
-          notes: { retailer_id: request.retailerId },
-        }),
-      },
-    );
-
-    return {
-      data: {
-        order_id: order.id,
-        amount: order.amount,
-        currency: order.currency,
-        key_id: await getSecret('RAZORPAY_KEY_ID'),
-      },
-    };
-  });
-  // ─── POST /billing/verify-payment ──────────────────────────────
-  // Verify Razorpay payment signature. Called from the mobile/web client
-  // after a successful Razorpay Standard Checkout payment.
-  server.post('/verify-payment', async (request) => {
-    const body = z
-      .object({
-        razorpay_order_id: z.string(),
-        razorpay_payment_id: z.string(),
-        razorpay_signature: z.string(),
-      })
-      .parse(request.body);
-
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = body;
-
-    // HMAC-SHA256(order_id + "|" + payment_id, key_secret); empty secret = fail
-    if (!(await verifyOrderSignature(razorpay_order_id, razorpay_payment_id, razorpay_signature))) {
-      throw validationError('Payment signature verification failed');
-    }
-
-    // Payment verified — webhook handler records subscription.charged events.
-    // One-time add-on fulfillment (e.g. extra try-on credits) happens separately.
-    return {
-      data: {
-        verified: true,
-        razorpay_order_id,
-        razorpay_payment_id,
-      },
-    };
   });
 };
