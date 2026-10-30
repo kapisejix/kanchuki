@@ -236,15 +236,25 @@ declare module 'fastify' {
   }
 }
 
+const WEBHOOK_BODY_LIMIT = 1024 * 1024;
+const tooLarge = () => new AppError('PAYLOAD_TOO_LARGE', 'Request body too large', 413);
+
 /**
  * preParsing hook for HMAC-signed webhooks: keep the raw body on
  * request.rawBody and hand the JSON parser a fresh stream. Hooks are
  * encapsulated per plugin — every webhook plugin must add this itself.
  */
 export async function captureRawBody(request: FastifyRequest): Promise<Readable> {
+  // This hook runs before Fastify's bodyLimit and before any signature/auth
+  // check, so cap the buffer here (T1.8 F3). Razorpay/Meta payloads are a few KB.
+  if (Number(request.headers['content-length']) > WEBHOOK_BODY_LIMIT) throw tooLarge();
   const chunks: Buffer[] = [];
+  let size = 0;
   for await (const chunk of request.raw) {
-    chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
+    const buf = typeof chunk === 'string' ? Buffer.from(chunk) : chunk;
+    size += buf.length;
+    if (size > WEBHOOK_BODY_LIMIT) throw tooLarge();
+    chunks.push(buf);
   }
   request.rawBody = Buffer.concat(chunks).toString();
   return Readable.from(request.rawBody);
