@@ -538,7 +538,7 @@ describe('referral-qualify cron wiring', () => {
 
   it('is scheduled on the maintenance queue', () => {
     expect(jobsIndex).toMatch(
-      /getMaintenanceQueue\(\)\.add\(\s*\n\s*'referral-qualify',[\s\S]{0,200}?repeat: \{ pattern: '[^']+'/,
+      /addCron\(\s*\n\s*'referral-qualify',[\s\S]{0,200}?repeat: \{ pattern: '[^']+'/,
     );
   });
 

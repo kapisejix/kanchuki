@@ -1,5 +1,5 @@
 import { QUEUES } from '@kanchuki/shared';
-import { Worker } from 'bullmq';
+import { type Queue, Worker } from 'bullmq';
 import { reportJobFailure } from '../lib/job-failure.js';
 import { refundCustomerJobQuota, refundJobQuota } from '../lib/quota.js';
 import { STUDIO_SHOOT_CONCURRENCY } from '../lib/studio-shoot.js';
@@ -32,6 +32,7 @@ import type { KenBurnsVideoJobData } from './generate-ken-burns-video.js';
 import { handleMeasureR2Storage } from './measure-r2-storage.js';
 import { type MyStyleAnalyzeJobData, handleMyStyleAnalyze } from './my-style-analyze.js';
 import { handlePlanLapse } from './plan-lapse.js';
+import { pruneStaleRepeatables } from './prune-stale-repeatables.js';
 import { handlePurgeSoftDeleted, pruneCustomerInteractions } from './purge-soft-deleted.js';
 import {
   getCatalogSyncQueue,
@@ -309,8 +310,16 @@ export async function startWorkers(): Promise<void> {
     { connection: redis, concurrency: 1 },
   );
 
+  // Every cron below goes through addCron so the prune at the end of this function can tell a
+  // changed pattern from a repeatable it does not own (T1.4 F4).
+  const registeredCrons = new Set<string>();
+  const addCron = (name: string, data: object, opts: NonNullable<Parameters<Queue['add']>[2]>) => {
+    registeredCrons.add(`${name}|${opts.repeat?.pattern}`);
+    return getMaintenanceQueue().add(name, data, opts);
+  };
+
   // Purge soft-deleted records daily at 1:30 AM UTC
-  await getMaintenanceQueue().add(
+  await addCron(
     'purge-soft-deleted',
     {},
     {
@@ -325,7 +334,7 @@ export async function startWorkers(): Promise<void> {
   // backfill and well before the 06:00 GST reconciliation, and after the 01:30
   // purge so a soft-deleted store's conversion is already gone or clawed back
   // rather than qualifying in the same hour it is being swept.
-  await getMaintenanceQueue().add(
+  await addCron(
     'referral-qualify',
     {},
     {
@@ -339,7 +348,7 @@ export async function startWorkers(): Promise<void> {
   // 02:00 qualification so a row T5 qualifies tonight is already visible to
   // T6's scan (though it cannot earn tonight — a month only earns once it has
   // fully ENDED), and before the 02:30 backfill.
-  await getMaintenanceQueue().add(
+  await addCron(
     'referral-accrue',
     {},
     {
@@ -357,7 +366,7 @@ export async function startWorkers(): Promise<void> {
   // `limit: 1` KEPT on purpose (RC-062): it caps this job to one run per API
   // boot. Every other cron had it removed because it silently stopped them;
   // payout moves real money, so a true monthly repeat is an owner decision.
-  await getMaintenanceQueue().add(
+  await addCron(
     'referral-payout',
     {},
     {
@@ -371,7 +380,7 @@ export async function startWorkers(): Promise<void> {
   // 01:30 purge sweep, so a retailer purged tonight still has last night's
   // rollup rather than a half-processed one. Summarizes the UTC day that just
   // ended; fully recomputes on every run, so a manual re-trigger is safe.
-  await getMaintenanceQueue().add(
+  await addCron(
     'engagement-aggregate',
     {},
     {
@@ -382,7 +391,7 @@ export async function startWorkers(): Promise<void> {
   );
 
   // AI-fields backfill daily at 2:30 AM UTC
-  await getMaintenanceQueue().add(
+  await addCron(
     'backfill-missing-ai-fields',
     {},
     {
@@ -393,7 +402,7 @@ export async function startWorkers(): Promise<void> {
   );
 
   // Database backup daily at 3:00 AM UTC
-  await getMaintenanceQueue().add(
+  await addCron(
     'backup-database',
     { type: 'daily' },
     {
@@ -404,7 +413,7 @@ export async function startWorkers(): Promise<void> {
   );
 
   // R2 image compression pass daily at 4:30 AM UTC
-  await getMaintenanceQueue().add(
+  await addCron(
     'compress-r2-images',
     {},
     {
@@ -416,7 +425,7 @@ export async function startWorkers(): Promise<void> {
 
   // WhatsApp catalog full-sync daily
   const catalogSyncCron = process.env.CATALOG_SYNC_CRON ?? '0 5 * * *';
-  await getMaintenanceQueue().add(
+  await addCron(
     'catalog-daily-full-sync',
     {},
     {
@@ -427,7 +436,7 @@ export async function startWorkers(): Promise<void> {
   );
 
   // Weekly backup Sunday at 4:00 AM UTC
-  await getMaintenanceQueue().add(
+  await addCron(
     'backup-database',
     { type: 'weekly' },
     {
@@ -438,7 +447,7 @@ export async function startWorkers(): Promise<void> {
   );
 
   // Embedding backfill — weekly Sunday at 7:00 AM UTC
-  await getMaintenanceQueue().add(
+  await addCron(
     'embedding-backfill',
     {},
     {
@@ -451,7 +460,7 @@ export async function startWorkers(): Promise<void> {
   // F-045 colour-family backfill — weekly Sunday at 7:30 AM UTC. Catches products
   // created by import / manual add (no tagger run) and any tag-time lookup miss.
   // No `limit` (RC-062: it is the TOTAL repeat count). Idempotent; fills NULL rows only.
-  await getMaintenanceQueue().add(
+  await addCron(
     'color-family-backfill',
     {},
     {
@@ -464,7 +473,7 @@ export async function startWorkers(): Promise<void> {
   // GST invoice reconciliation — daily at 6:00 AM UTC. Re-enqueues any
   // successful payment still missing its PDF (charged before the platform
   // GST profile was set, or retries exhausted).
-  await getMaintenanceQueue().add(
+  await addCron(
     'backfill-gst-invoices',
     {},
     {
@@ -480,7 +489,7 @@ export async function startWorkers(): Promise<void> {
   // consent was withdrawn. Hourly because each pass is a bounded query over a
   // small table, and an unmet deletion promise is worth retrying sooner than
   // daily.
-  await getMaintenanceQueue().add(
+  await addCron(
     'tryon-deletion-sweep',
     {},
     {
@@ -493,7 +502,7 @@ export async function startWorkers(): Promise<void> {
   // F-043 scheduler publish tick — every 5 min. No `limit` (that caps total
   // repeats): this one must keep firing. Rows are claimed by CAS, so an
   // overlapping or duplicate tick cannot double-post.
-  await getMaintenanceQueue().add(
+  await addCron(
     'schedule-publish-tick',
     {},
     {
@@ -505,7 +514,7 @@ export async function startWorkers(): Promise<void> {
 
   // RC-082 plan lapse — hourly at :00. Expired trials and lapsed subscriptions
   // drop to STARTER. No `limit` (RC-062); idempotent, re-checks in the write.
-  await getMaintenanceQueue().add(
+  await addCron(
     'plan-lapse',
     {},
     {
@@ -517,7 +526,7 @@ export async function startWorkers(): Promise<void> {
 
   // RC-102 quota reservation sweep — hourly at :40. Settles RESERVED slots whose job never
   // finished (spent if it left a paid result, else refunded). No `limit` (RC-062); idempotent.
-  await getMaintenanceQueue().add(
+  await addCron(
     'quota-reservation-sweep',
     {},
     {
@@ -529,7 +538,7 @@ export async function startWorkers(): Promise<void> {
 
   // AI spend alert — hourly at :30. Sentry warning when 24 h credits pass the
   // ₹15,000/day-equivalent threshold. No `limit` (RC-062); alert only.
-  await getMaintenanceQueue().add(
+  await addCron(
     'ai-spend-alert',
     {},
     {
@@ -542,7 +551,7 @@ export async function startWorkers(): Promise<void> {
   // F-036 Phase B new-arrivals push — daily 13:00 UTC (18:30 IST, evening browse).
   // Counts the last 24 h, so one run per day covers every product once. No
   // `limit` (RC-062). A no-op until VAPID keys are set.
-  await getMaintenanceQueue().add(
+  await addCron(
     'customer-new-arrivals-push',
     {},
     {
@@ -553,7 +562,7 @@ export async function startWorkers(): Promise<void> {
   );
 
   // F-043 token health — daily 01:45 UTC: pauses plans whose Meta connection died.
-  await getMaintenanceQueue().add(
+  await addCron(
     'schedule-token-health',
     {},
     {
@@ -565,7 +574,7 @@ export async function startWorkers(): Promise<void> {
 
   // Google Business Profile review sync — every 6 h at :20. No `limit` (RC-062).
   // A no-op until the shared Google identity is connected and API access approved.
-  await getMaintenanceQueue().add(
+  await addCron(
     'gbp-review-sync',
     {},
     {
@@ -574,6 +583,8 @@ export async function startWorkers(): Promise<void> {
       removeOnFail: { count: 10 },
     },
   );
+
+  await pruneStaleRepeatables(getMaintenanceQueue(), registeredCrons);
 
   taggingWorker.on('failed', (job, err) => {
     console.error(`[jobs] tag-product failed ${job?.id}:`, err.message);
