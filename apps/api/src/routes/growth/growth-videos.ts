@@ -7,7 +7,12 @@ import { z } from 'zod';
 import { handleGenerateKenBurnsVideo } from '../../jobs/generate-ken-burns-video.js';
 import { addKenBurnsVideoJob } from '../../jobs/index.js';
 import { hasFeature } from '../../lib/features.js';
-import { VIDEO_KINDS, verifyUpload } from '../../lib/upload-guard.js';
+import {
+  UPLOAD_URL_RATE_LIMIT,
+  VIDEO_KINDS,
+  stagingKey,
+  verifyUpload,
+} from '../../lib/upload-guard.js';
 import { featureUnavailable, notFound, validationError } from '../../plugins/error-handler.js';
 import { photoUrlToDisplay } from '../products/products-helpers.js';
 
@@ -22,7 +27,7 @@ export const growthVideoRoutes: FastifyPluginAsync = async (server) => {
   // ─── POST /growth/products/:id/videos/upload-url ────────────────
   // Presigned R2 upload for a short product clip. Mirrors the photo
   // upload-url pattern (products-media.ts).
-  server.post('/products/:id/videos/upload-url', async (request, reply) => {
+  server.post('/products/:id/videos/upload-url', UPLOAD_URL_RATE_LIMIT, async (request, reply) => {
     const retailerId = request.retailerId;
     await guard(retailerId);
     const { id } = request.params as { id: string };
@@ -39,6 +44,8 @@ export const growthVideoRoutes: FastifyPluginAsync = async (server) => {
         filename: z.string().min(1).max(255),
         content_type: z.enum(VIDEO_MIME_TYPES),
         size_bytes: z.number().int().min(1).max(MAX_VIDEO_BYTES),
+        // Exact byte length of the PUT (post-compression), bound into the signature (RC-080).
+        content_length: z.number().int().min(1).max(MAX_VIDEO_BYTES),
       })
       .safeParse(request.body);
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
@@ -47,11 +54,11 @@ export const growthVideoRoutes: FastifyPluginAsync = async (server) => {
     const ext =
       content_type === 'video/webm' ? 'webm' : content_type === 'video/quicktime' ? 'mov' : 'mp4';
     const filename = `${createId()}.${ext}`;
-    const r2Key = R2_PATHS.productVideo(retailerId, id, filename);
+    const r2Key = stagingKey(R2_PATHS.productVideo(retailerId, id, filename));
 
     let uploadUrl: string;
     try {
-      uploadUrl = await getUploadPresignedUrl(r2Key, content_type, 300);
+      uploadUrl = await getUploadPresignedUrl(r2Key, content_type, 300, body.data.content_length);
     } catch (err) {
       console.error('R2 presigned URL generation failed (video):', err);
       throw validationError('Video storage is not configured. Please contact support.');
@@ -86,17 +93,17 @@ export const growthVideoRoutes: FastifyPluginAsync = async (server) => {
       .safeParse(request.body);
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
 
-    const { r2_key, duration_sec, is_main } = body.data;
-    const existing = await prisma.productVideo.findFirst({ where: { r2_key } });
-    if (existing) throw validationError('This video was already saved');
-
-    const { url: public_url } = await verifyUpload({
+    const { duration_sec, is_main } = body.data;
+    // Verify first: it returns the FINAL key, which is what rows store and dedupe on.
+    const { url: public_url, r2Key: r2_key } = await verifyUpload({
       retailerId,
-      r2Key: r2_key,
+      r2Key: body.data.r2_key,
       allowed: VIDEO_KINDS,
       maxBytes: MAX_VIDEO_BYTES,
       prefix: R2_PATHS.productVideo(retailerId, id, ''),
     });
+    const existing = await prisma.productVideo.findFirst({ where: { r2_key } });
+    if (existing) throw validationError('This video was already saved');
 
     const video = await prisma.$transaction(async (tx) => {
       if (is_main) {

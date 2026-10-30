@@ -1,13 +1,13 @@
 # F-039 — Style Match Lite (AI Fit/Style Recommendation, MID tier)
 
 **Status:** 🔴 **Planned — not started, not yet approved by owner.** Research written
-2026-09-25 (`docs/tasks/pending/ai-fit-recommendation-research.md`), scoped into this
+2026-09-25 (`docs/tasks/archived/ai-fit-recommendation-research.md`), scoped into this
 spec 2026-09-26 on owner request. **Needs an explicit go-ahead before any code.**
 **Owner decision needed first:** see §7 Open Decisions — this spec cannot start
 without D-1 and D-2 answered.
 
 **Related:**
-- `docs/tasks/pending/ai-fit-recommendation-research.md` — the three-tier research
+- `docs/tasks/archived/ai-fit-recommendation-research.md` — the three-tier research
   this spec formalizes (LOW / MID / HIGH). This spec builds **MID only**.
 - `apps/api/src/routes/public/public-stylist.ts` — AI Stylist v1 (Claude-powered
   outfit recommendation from free text). The reinforcement/rationale layer this
@@ -41,7 +41,7 @@ pick using two cheap, already-partly-built signals:
 
 Output is **text + badge only** — "This shade suits your skin tone", "Good pick for
 wedding season" — never a rendered garment-on-body image. Full virtual try-on (HIGH
-tier) stays rejected; see `ai-fit-recommendation-research.md` §HIGH and the §8
+tier) stays rejected; see `../archived/ai-fit-recommendation-research.md` §HIGH and the §8
 "Not doing" list below.
 
 ---

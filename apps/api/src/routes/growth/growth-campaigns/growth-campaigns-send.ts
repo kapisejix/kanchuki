@@ -2,6 +2,7 @@
 import { prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
 import { hasFeature } from '../../../lib/features.js';
+import { fetchWithTimeout } from '../../../lib/fetch-timeout.js';
 import { isRealOwner, maskPhoneForRequest } from '../../../plugins/auth.js';
 import { forbidden, notFound, validationError } from '../../../plugins/error-handler.js';
 import { type AudienceSpec, buildWhatsAppDeepLink, fillTemplate } from '../growth-helpers.js';
@@ -165,19 +166,39 @@ export const growthCampaignSendRoutes: FastifyPluginAsync = async (server) => {
     // now + delay (drives hour-of-day analytics and the manual link list
     // ordering); the WhatsApp API path sends them all in one pass below.
     const now = new Date();
-    const sends = await prisma.$transaction(
-      messages.map((m, _i) =>
-        prisma.campaignSend.create({
-          data: {
-            campaign_id: campaign.id,
-            retailer_id: retailerId,
-            customer_id: m.customer.id,
-            variant_label: m.variantLabel,
-            sent_at: m.sendDelayMin > 0 ? new Date(now.getTime() + m.sendDelayMin * 60_000) : null,
-          },
-        }),
-      ),
-    );
+
+    // RC-111: claim the campaign BEFORE any row is written or message sent. The
+    // status check at the top is a read; two concurrent POSTs both passed it and
+    // both blasted the whole audience. One conditional UPDATE lets exactly one win.
+    const claimed = await prisma.campaign.updateMany({
+      where: { id: campaign.id, retailer_id: retailerId, status: { not: 'SENT' } },
+      data: { status: 'SENT', sent_at: now },
+    });
+    if (claimed.count === 0) throw forbidden('Campaign already sent');
+
+    const sends = await prisma
+      .$transaction(
+        messages.map((m, _i) =>
+          prisma.campaignSend.create({
+            data: {
+              campaign_id: campaign.id,
+              retailer_id: retailerId,
+              customer_id: m.customer.id,
+              variant_label: m.variantLabel,
+              sent_at:
+                m.sendDelayMin > 0 ? new Date(now.getTime() + m.sendDelayMin * 60_000) : null,
+            },
+          }),
+        ),
+      )
+      .catch(async (err) => {
+        // Nothing was sent: hand the claim back so the retailer can retry.
+        await prisma.campaign.update({
+          where: { id: campaign.id },
+          data: { status: campaign.status, sent_at: campaign.sent_at },
+        });
+        throw err;
+      });
 
     // ── Dispatch ──
     const manualLinks: {
@@ -203,7 +224,7 @@ export const growthCampaignSendRoutes: FastifyPluginAsync = async (server) => {
         messages.map(async (m, i) => {
           const send = sends[i];
           if (!send) throw new Error('campaignSend row missing for message');
-          const res = await fetch(
+          const res = await fetchWithTimeout(
             `https://graph.facebook.com/v21.0/${whatsapp_api_phone_number_id}/messages`,
             {
               method: 'POST',

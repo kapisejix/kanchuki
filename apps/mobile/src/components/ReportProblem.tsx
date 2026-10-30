@@ -22,15 +22,16 @@ import {
 } from "lucide-react-native";
 import {
   bugReportApi,
-  readLocalImage,
   retailerApi,
   uploadImageToR2,
+  prepareImageForUpload,
   type BugReportSeverity,
 } from "../lib/api";
 import { showError } from "../lib/errors";
 import { COLORS } from "@kanchuki/shared";
 import { AnimatedPressable } from "./AnimatedPressable";
 import { GradientButton } from "./GradientButton";
+import { KeyboardScreen } from "./KeyboardScreen";
 
 type Props = {
   visible: boolean;
@@ -111,10 +112,10 @@ export function ReportProblem({
     // Upload to R2 in background
     setUploadingScreenshot(true);
     try {
-      const blob = await readLocalImage(uri);
+      const prep = await prepareImageForUpload(uri, "image/jpeg");
       const uploadResult = await retailerApi.getLogoUploadUrl(
         "image/jpeg",
-        blob.size,
+        prep.size,
       );
       const info = uploadResult.data as {
         upload_url: string;
@@ -122,13 +123,13 @@ export function ReportProblem({
         public_url: string;
       };
       await uploadImageToR2(
-        uri,
+        prep.uri,
         info.upload_url,
         "image/jpeg",
         undefined,
         undefined,
         {
-          compress: true,
+          compress: false,
         },
       );
       setScreenshotR2Key(info.r2_key);
@@ -224,6 +225,7 @@ export function ReportProblem({
       animationType="fade"
       onRequestClose={onClose}
     >
+      <KeyboardScreen>
       <View
         className="flex-1 bg-black/50 justify-end"
         style={{ paddingBottom: insets.bottom }}
@@ -399,6 +401,7 @@ export function ReportProblem({
           </ScrollView>
         </View>
       </View>
+      </KeyboardScreen>
     </Modal>
   );
 }

@@ -1,6 +1,5 @@
 """Unit tests for the SAM2 hardware-mask classification in
-batch-clean-photos.py. Pure geometry/numpy — no torch, no model download,
-mirrors the approach of test_ghost_mannequin.py.
+batch-clean-photos.py. Pure geometry/numpy — no torch, no model download.
 
 Run: python scripts/test_remove_hardware.py
 """

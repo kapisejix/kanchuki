@@ -9,7 +9,7 @@ import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { recordAiUsage } from '../../lib/ai-usage.js';
 import { hasFeature } from '../../lib/features.js';
-import { checkQuota, incrementUsage } from '../../lib/quota.js';
+import { reserveQuota } from '../../lib/quota.js';
 import { featureUnavailable, notFound, validationError } from '../../plugins/error-handler.js';
 import { resolveAudienceCustomerIds } from './growth-campaigns.js';
 import { type AudienceSpec, buildAudienceWhere, fillTemplate } from './growth-helpers.js';
@@ -58,8 +58,7 @@ export const growthAiCampaignRoutes: FastifyPluginAsync = async (server) => {
     const prompt = body.data.prompt.trim();
 
     // Step 1: Parse intent with AI
-    await checkQuota(retailerId, 'AI_TAGGING_CALL');
-    await incrementUsage(retailerId, 'AI_TAGGING_CALL');
+    await reserveQuota(retailerId, 'AI_TAGGING_CALL');
 
     let intent: CampaignIntent;
     try {

@@ -41,7 +41,8 @@ import {
 import { getSecret, prisma } from '@kanchuki/db';
 import { pickContrastBackground } from '../../lib/backgrounds.js';
 import { runPhotoCleanup, serializePhotoCleanup } from '../../lib/photo-cleanup-runner.js';
-import { checkQuota, incrementUsage } from '../../lib/quota.js';
+import { reserveQuota } from '../../lib/quota.js';
+import { isOwnedKey, unstagedKey } from '../../lib/upload-guard.js';
 import { serviceUnavailable, validationError } from '../../plugins/error-handler.js';
 
 const CropRectSchema = z.object({
@@ -134,25 +135,56 @@ export const productsProCleanupRoutes: FastifyPluginAsync = async (server) => {
       const { photos, remove_hardware, tight_crop, background_image_id } = body.data;
 
       // Ownership guard: every r2_key must sit under this retailer's own path
-      // prefix (upload-url mints keys there) — stops a retailer from pointing
-      // the pipeline at another store's raw photo.
-      const prefix = `retailers/${retailerId}/`;
+      // prefix (upload-url mints keys there, staged under uploads/pending/ until
+      // product create confirms them) — stops a retailer from pointing the
+      // pipeline at another store's raw photo. A staged raw gives a staged
+      // cleaned key, which product create then verifies and promotes.
       for (const p of photos) {
-        if (!p.r2_key.startsWith(prefix)) throw validationError('Invalid photo key');
+        if (!isOwnedKey(retailerId, unstagedKey(p.r2_key)))
+          throw validationError('Invalid photo key');
       }
 
       // F-010 quota gates — BG_REMOVAL for every cleaned photo, IMAGE_CROP
       // for photos with a manual crop rect.
+      // RC-102: reserved up front for the whole batch (still all-or-nothing, as the old preflight
+      // was), then one slot handed back per photo that fails; a photo that succeeds keeps its slot.
       const cropCount = photos.filter((p) => p.crop).length;
-      await checkQuota(retailerId, 'BG_REMOVAL', photos.length);
-      if (cropCount > 0) await checkQuota(retailerId, 'IMAGE_CROP', cropCount);
+      const refundBg = await reserveQuota(retailerId, 'BG_REMOVAL', photos.length);
+      let refundCrop: ((give?: number) => Promise<void>) | null = null;
+      // Separate tries: a failed BG_REMOVAL refund must not skip the IMAGE_CROP one.
+      const giveBack = async (bg: number, crop: number) => {
+        try {
+          if (bg > 0) await refundBg(bg);
+        } catch (err) {
+          request.log.error({ err }, 'Failed to refund pro-cleanup BG_REMOVAL quota');
+        }
+        try {
+          if (crop > 0 && refundCrop) await refundCrop(crop);
+        } catch (err) {
+          request.log.error({ err }, 'Failed to refund pro-cleanup IMAGE_CROP quota');
+        }
+      };
+      if (cropCount > 0) {
+        try {
+          refundCrop = await reserveQuota(retailerId, 'IMAGE_CROP', cropCount);
+        } catch (err) {
+          await giveBack(photos.length, 0);
+          throw err;
+        }
+      }
 
       let bgUrl: string | null = null;
       if (background_image_id) {
-        const bg = await prisma.backgroundImage.findFirst({
-          where: { id: background_image_id, is_active: true },
-        });
-        if (!bg) throw validationError('Background image not found or inactive');
+        const bg = await prisma.backgroundImage
+          .findFirst({ where: { id: background_image_id, is_active: true } })
+          .catch(async (err) => {
+            await giveBack(photos.length, cropCount);
+            throw err;
+          });
+        if (!bg) {
+          await giveBack(photos.length, cropCount);
+          throw validationError('Background image not found or inactive');
+        }
         bgUrl = bg.image_url;
       } else {
         // F-028 auto-contrast: no explicit pick → classify the FIRST raw shot
@@ -202,11 +234,10 @@ export const productsProCleanupRoutes: FastifyPluginAsync = async (server) => {
             tap_removed: output.includes('point-prompt inpainted'),
             error: null,
           });
-          await incrementUsage(retailerId, 'BG_REMOVAL');
-          if (photo.crop) await incrementUsage(retailerId, 'IMAGE_CROP');
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err);
           request.log.error({ err, photo_index: i }, 'pro-cleanup photo failed');
+          await giveBack(1, photo.crop ? 1 : 0);
           rows.push({
             r2_key: photo.r2_key,
             url: photo.url,

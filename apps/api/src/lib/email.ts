@@ -1,3 +1,5 @@
+import { fetchWithTimeout } from './fetch-timeout.js';
+
 export interface SendEmailOptions {
   to: string;
   subject: string;
@@ -42,7 +44,7 @@ export async function sendEmail(options: SendEmailOptions): Promise<SendEmailRes
   }
 
   try {
-    const res = await fetch('https://api.resend.com/emails', {
+    const res = await fetchWithTimeout('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${apiKey}`,

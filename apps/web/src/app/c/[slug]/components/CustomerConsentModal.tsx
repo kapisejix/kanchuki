@@ -60,6 +60,7 @@ export function CustomerConsentModal({
         {
           name: (product as any).name ?? null,
           price_min: (product as any).price_min ?? null,
+          sku: (product as PublicProductDetail).sku ?? null,
           product_url: productUrl,
         },
       ],

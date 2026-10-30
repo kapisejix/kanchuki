@@ -13,8 +13,12 @@
 'use client'
 
 import { InstallPrompt } from '@/components/InstallPrompt'
+import { PushOptIn } from '@/components/PushOptIn'
+import { motion } from 'framer-motion'
+import { ChevronRight, Clock, MapPin, QrCode, Store, UserRound } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
+import { CARD, ITEM, LIST, Notice, SKELETON } from '../ui'
 import { formatLastVisit, mapStoreVisits, type StoreVisitRow } from './lib'
 
 type LoadState = 'loading' | 'anonymous' | 'ready'
@@ -56,46 +60,53 @@ export default function MyStoresPage() {
 
   if (state === 'loading') {
     return (
-      <div className="space-y-6" aria-busy="true">
-        <div className="h-20 bg-stone-200 rounded-lg animate-pulse" />
-        <div className="h-24 bg-stone-200 rounded-lg animate-pulse" />
-        <div className="h-24 bg-stone-200 rounded-lg animate-pulse" />
+      <div className="space-y-4" aria-busy="true">
+        <div className={`h-24 rounded-3xl ${SKELETON}`} />
+        <div className={`h-20 rounded-3xl ${SKELETON}`} />
+        <div className={`h-20 rounded-3xl ${SKELETON}`} />
       </div>
     )
   }
 
   if (state === 'anonymous') {
     return (
-      <div className="text-center py-12">
-        <p className="text-stone-500">
-          Please log in to see the stores you&apos;ve visited.
-        </p>
-      </div>
+      <Notice icon={UserRound}>
+        <p>Please log in to see the stores you&apos;ve visited.</p>
+      </Notice>
     )
   }
 
   return (
-    <div className="space-y-6">
-      <section className="bg-white rounded-lg border border-stone-200 p-6">
-        <h1 className="text-xl font-semibold text-stone-900">My Stores</h1>
-        <p className="text-sm text-stone-500 mt-1">
-          {stores.length === 0
-            ? 'Stores you scan or shop with will show up here.'
-            : `${stores.length} ${stores.length === 1 ? 'store' : 'stores'} you've visited.`}
-        </p>
-      </section>
+    <motion.div variants={LIST} initial="hidden" animate="show" className="space-y-4">
+      <motion.section variants={ITEM} className={`${CARD} p-5 flex items-center gap-4`}>
+        <span className="h-12 w-12 shrink-0 rounded-2xl bg-gradient-to-br from-spaceCadet-900 to-tyrian-800 flex items-center justify-center shadow-lg shadow-spaceCadet-900/20">
+          <Store aria-hidden className="h-6 w-6 text-white" />
+        </span>
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold text-spaceCadet-900">My Stores</h1>
+          <p className="text-sm text-heliotrope-500 mt-0.5">
+            {stores.length === 0
+              ? 'Stores you scan or shop with will show up here.'
+              : `${stores.length} ${stores.length === 1 ? 'store' : 'stores'} you've visited.`}
+          </p>
+        </div>
+      </motion.section>
 
       {/* F-036 Phase A: a non-empty list is proof of at least one verified
           store visit, which is the eligibility bar for the install ask. */}
       {stores.length > 0 && <InstallPrompt />}
+      {/* F-036 Phase B: same eligibility bar — only a shopper with a store visit is asked. */}
+      {stores.length > 0 && <PushOptIn />}
 
       {stores.length === 0 ? (
-        <section className="bg-white rounded-lg border border-stone-200 p-8 text-center">
-          <p className="text-stone-500 text-sm">
-            No stores yet. Scan a store&apos;s QR code or open a catalog link to
-            start your list.
-          </p>
-        </section>
+        <motion.div variants={ITEM}>
+          <Notice icon={QrCode}>
+            <p>
+              No stores yet. Scan a store&apos;s QR code or open a catalog link to
+              start your list.
+            </p>
+          </Notice>
+        </motion.div>
       ) : (
         <ul className="space-y-3">
           {stores.map((store) => (
@@ -103,7 +114,7 @@ export default function MyStoresPage() {
           ))}
         </ul>
       )}
-    </div>
+    </motion.div>
   )
 }
 
@@ -111,8 +122,12 @@ function StoreRow({ store }: { store: StoreVisitRow }) {
   const lastVisit = formatLastVisit(store.last_visited_at)
 
   const card = (
-    <div className="bg-white rounded-lg border border-stone-200 p-4 flex items-center gap-4 transition-colors group-hover:border-amber-300">
-      <div className="w-12 h-12 rounded-lg bg-amber-100 overflow-hidden flex-shrink-0 flex items-center justify-center">
+    <div
+      className={`${CARD} min-h-[76px] p-3 pr-4 flex items-center gap-3.5 transition-[border-color,box-shadow] ${
+        store.href ? 'group-hover:border-heliotrope-400 group-hover:shadow-md group-focus-visible:ring-2 group-focus-visible:ring-fuchsia-500/50' : ''
+      }`}
+    >
+      <div className="w-14 h-14 rounded-2xl bg-fuchsia-500/15 overflow-hidden flex-shrink-0 flex items-center justify-center">
         {store.logo_url ? (
           // eslint-disable-next-line @next/next/no-img-element -- small list thumbnail, no LCP benefit from next/image
           <img
@@ -121,22 +136,34 @@ function StoreRow({ store }: { store: StoreVisitRow }) {
             className="w-full h-full object-cover"
           />
         ) : (
-          <span className="text-lg font-semibold text-amber-700">
+          <span className="text-xl font-bold text-fuchsia-600">
             {store.shop_name.charAt(0).toUpperCase()}
           </span>
         )}
       </div>
 
       <div className="min-w-0 flex-1">
-        <p className="font-medium text-stone-900 truncate">{store.shop_name}</p>
-        <p className="text-xs text-stone-500 truncate">
-          {[store.city, lastVisit].filter(Boolean).join(' · ')}
+        <p className="font-bold text-spaceCadet-900 truncate">{store.shop_name}</p>
+        <p className="text-xs text-heliotrope-500 mt-1 flex items-center gap-x-3 min-w-0">
+          {store.city && (
+            <span className="inline-flex items-center gap-1 min-w-0">
+              <MapPin aria-hidden className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">{store.city}</span>
+            </span>
+          )}
+          {lastVisit && (
+            <span className="inline-flex items-center gap-1 shrink-0">
+              <Clock aria-hidden className="h-3.5 w-3.5" />
+              {lastVisit}
+            </span>
+          )}
         </p>
       </div>
 
       {store.href && (
-        <span className="text-xs text-amber-700 font-medium flex-shrink-0">
-          View catalog →
+        <span className="h-9 w-9 shrink-0 rounded-full bg-lavender-100 flex items-center justify-center transition-colors group-hover:bg-fuchsia-500/15">
+          <ChevronRight aria-hidden className="h-4 w-4 text-heliotrope-600" />
+          <span className="sr-only">View catalog</span>
         </span>
       )}
     </div>
@@ -145,22 +172,22 @@ function StoreRow({ store }: { store: StoreVisitRow }) {
   // A store with no storefront slug has no catalog page to open yet.
   if (!store.href) {
     return (
-      <li>
-        <div className="opacity-70">
-          {card}
-          <p className="text-xs text-stone-400 mt-1 ml-1">
+      <motion.li variants={ITEM}>
+        <div>
+          <div className="opacity-70">{card}</div>
+          <p className="text-xs text-heliotrope-500 mt-1.5 ml-4">
             This store hasn&apos;t published a catalog page yet.
           </p>
         </div>
-      </li>
+      </motion.li>
     )
   }
 
   return (
-    <li>
-      <Link href={store.href} className="block group" prefetch>
+    <motion.li variants={ITEM}>
+      <Link href={store.href} className="block group rounded-3xl focus-visible:outline-none" prefetch>
         {card}
       </Link>
-    </li>
+    </motion.li>
   )
 }

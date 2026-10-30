@@ -73,7 +73,15 @@ export function matchesSlot(p: LookProduct, slot: LookSlot): boolean {
 }
 
 /** Neutrals sit with any colour. */
-export const NEUTRAL_FAMILIES = ['white', 'cream', 'beige', 'black', 'grey', 'gold', 'silver'] as const;
+export const NEUTRAL_FAMILIES = [
+  'white',
+  'cream',
+  'beige',
+  'black',
+  'grey',
+  'gold',
+  'silver',
+] as const;
 
 /**
  * Hand-written pairings over the `color_families` names (see color-family.ts). Not a colour

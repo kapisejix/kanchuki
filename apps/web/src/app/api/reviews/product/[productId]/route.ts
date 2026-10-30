@@ -8,7 +8,7 @@ export async function GET(
 ) {
   const { productId } = await params
 
-  const res = await fetch(`${apiUrl}/v1/public/reviews/product/${productId}`, {
+  const res = await fetch(`${apiUrl}/v1/public/reviews/product/${encodeURIComponent(productId)}`, {
     next: { revalidate: 60 },
   })
 

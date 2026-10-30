@@ -15,6 +15,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { adminGetOptions } from '@/lib/admin-fetch'
+import { rupees } from '@/lib/plan-pricing'
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
 
@@ -79,7 +80,8 @@ const itemVariants = {
 // ─── Helpers ──────────────────────────────────────────────────────
 
 // ponytail: guard the shared sink — undefined/NaN from a partial API payload renders ₹0, not a crash
-const fmtINR = (n: number) => `₹${(Number.isFinite(n) ? n : 0).toLocaleString('en-IN')}`
+// The API returns paise (RC-109); `rupees` converts.
+const fmtINR = (n: number) => rupees(Number.isFinite(n) ? n : 0)
 const fmtDate = (iso: string) =>
   new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
 

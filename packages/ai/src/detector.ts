@@ -36,7 +36,7 @@ export async function detectCropAndTag(
   sourceImageUrl: string,
   retailerId: string,
   opts?: TaggingCallOpts,
-): Promise<Array<DetectedItem & { croppedUrl: string; r2Key: string}>> {
+): Promise<Array<DetectedItem & { croppedUrl: string; r2Key: string }>> {
   const imageBuffer = await fetchImageBuffer(sourceImageUrl);
   const r2Key = `catalog-import/${retailerId}/${createHash('sha256').update(imageBuffer).digest('hex').slice(0, 16)}.jpg`;
   await uploadBuffer(r2Key, imageBuffer, 'image/jpeg');

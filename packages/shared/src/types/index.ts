@@ -1,250 +1,259 @@
 // ─── API Response Envelope ────────────────────────────────────────
 
 export interface ApiSuccess<T> {
-  data: T
-  pagination?: Pagination
+  data: T;
+  pagination?: Pagination;
 }
 
 export interface ApiError {
   error: {
-    code: string
-    message: string
-    field?: string
-    status: number
-  }
+    code: string;
+    message: string;
+    field?: string;
+    status: number;
+  };
 }
 
 export interface Pagination {
-  cursor: string | null
-  has_more: boolean
-  total?: number
+  cursor: string | null;
+  has_more: boolean;
+  total?: number;
 }
 
 // ─── Retailer ────────────────────────────────────────────────────
 
 export interface RetailerProfile {
-  id: string
-  phone: string
-  shop_name: string
-  owner_name: string | null
-  city: string
-  state: string | null
-  gstin: string | null
-  categories: string[]
-  plan: PlanType
-  plan_status: PlanStatus
-  trial_ends_at: string | null
-  plan_expires_at: string | null
-  max_products: number
-  max_customers: number
-  onboarding_completed: boolean
-  onboarding_step: number
-  created_at: string
+  id: string;
+  phone: string;
+  shop_name: string;
+  owner_name: string | null;
+  city: string;
+  state: string | null;
+  gstin: string | null;
+  categories: string[];
+  plan: PlanType;
+  plan_status: PlanStatus;
+  trial_ends_at: string | null;
+  plan_expires_at: string | null;
+  max_products: number;
+  max_customers: number;
+  onboarding_completed: boolean;
+  onboarding_step: number;
+  created_at: string;
 }
 
-export type PlanType = 'STARTER' | 'GROWTH' | 'PRO'
-export type PlanStatus = 'TRIAL' | 'ACTIVE' | 'PAST_DUE' | 'CANCELLED'
+export type PlanType = 'STARTER' | 'GROWTH' | 'PRO';
+export type PlanStatus = 'TRIAL' | 'ACTIVE' | 'PAST_DUE' | 'CANCELLED';
 
 // ─── Products ────────────────────────────────────────────────────
 
-export type ProductStatus = 'AVAILABLE' | 'SOLD' | 'RESERVED' | 'NOT_SURE'
+export type ProductStatus = 'AVAILABLE' | 'SOLD' | 'RESERVED' | 'NOT_SURE';
 
 export interface ProductSummary {
-  id: string
-  retailer_id: string
-  name: string | null
-  sku?: string | null
-  price_min: number | null  // paise
-  price_max: number | null  // paise
-  status: ProductStatus
-  category: string | null
-  primary_color: string | null
-  secondary_colors: string[]
-  search_tags: string[]
-  ai_tagged: boolean
-  primary_photo_url: string | null
-  section: { name: string } | null
-  location_notes: string | null
-  created_at: string
+  id: string;
+  retailer_id: string;
+  name: string | null;
+  sku?: string | null;
+  price_min: number | null; // paise
+  price_max: number | null; // paise
+  status: ProductStatus;
+  category: string | null;
+  primary_color: string | null;
+  secondary_colors: string[];
+  search_tags: string[];
+  ai_tagged: boolean;
+  primary_photo_url: string | null;
+  section: { name: string } | null;
+  location_notes: string | null;
+  created_at: string;
+  /** Sum over tracked sizes; null/undefined = stock not tracked for this product. */
+  total_quantity?: number | null;
+}
+
+export interface ProductStockRow {
+  size: string; // a SIZE_OPTIONS value, or 'FREE' for unsized items
+  quantity: number;
 }
 
 export interface ProductDetail extends ProductSummary {
-  sku?: string | null
-  description?: string | null
-  subtype?: string | null
-  category_id?: string | null
-  background_image_id?: string | null
-  add_shadow?: boolean
-  sizes?: string[]
-  product_type: string | null
-  fabric_estimate: string | null
-  fabrics: string[]
-  styles: string[]
-  pattern: string | null
-  embellishments: string[]
-  neck_style: string | null
-  sleeve_type: string | null
-  mrp: number | null
-  notes: string | null
-  metadata: Record<string, unknown> | null
-  ai_tag_error?: string | null
-  spin_status?: string | null
-  spin_error?: string | null
-  photos: ProductPhotoItem[]
-  videos?: ProductVideoItem[]
-  spin_frames?: { id: string; url: string }[]
-  variants: ProductVariantItem[]
+  stock?: ProductStockRow[];
+  sku?: string | null;
+  description?: string | null;
+  subtype?: string | null;
+  category_id?: string | null;
+  background_image_id?: string | null;
+  add_shadow?: boolean;
+  sizes?: string[];
+  product_type: string | null;
+  fabric_estimate: string | null;
+  fabrics: string[];
+  styles: string[];
+  pattern: string | null;
+  embellishments: string[];
+  neck_style: string | null;
+  sleeve_type: string | null;
+  mrp: number | null;
+  notes: string | null;
+  metadata: Record<string, unknown> | null;
+  ai_tag_error?: string | null;
+  spin_status?: string | null;
+  spin_error?: string | null;
+  photos: ProductPhotoItem[];
+  videos?: ProductVideoItem[];
+  spin_frames?: { id: string; url: string }[];
+  variants: ProductVariantItem[];
 }
 
 export interface ProductPhotoItem {
-  id: string
-  url: string
-  is_primary: boolean
-  sort_order?: number
-  piece_type?: 'upper' | 'lower' | null
-  original_url?: string | null
-  metadata?: Record<string, unknown> | null
-  is_video?: boolean
-  video_duration?: number | null
+  id: string;
+  url: string;
+  is_primary: boolean;
+  sort_order?: number;
+  piece_type?: 'upper' | 'lower' | null;
+  original_url?: string | null;
+  metadata?: Record<string, unknown> | null;
+  is_video?: boolean;
+  video_duration?: number | null;
 }
 
 export interface ProductVideoItem {
-  id: string
-  product_id: string
-  retailer_id: string
-  r2_key: string
-  public_url: string
-  duration_sec: number | null
-  is_main: boolean
-  source: 'UPLOAD' | 'KEN_BURNS'
-  created_at: string
+  id: string;
+  product_id: string;
+  retailer_id: string;
+  r2_key: string;
+  public_url: string;
+  duration_sec: number | null;
+  is_main: boolean;
+  source: 'UPLOAD' | 'KEN_BURNS';
+  created_at: string;
 }
 
 export interface ProductVariantItem {
-  id: string
-  color: string
-  photo_url: string | null
-  ai_preview_url?: string | null
-  is_ai_preview?: boolean
-  status?: ProductStatus
-  price_override?: number | null
+  id: string;
+  color: string;
+  photo_url: string | null;
+  ai_preview_url?: string | null;
+  is_ai_preview?: boolean;
+  status?: ProductStatus;
+  price_override?: number | null;
 }
 
 export interface CreateProductInput {
-  name?: string
-  sku?: string
-  description?: string
-  category_id?: string
-  category?: string
-  subtype?: string
-  product_type?: string
-  primary_color?: string
-  secondary_colors?: string[]
-  fabric_estimate?: string
-  fabrics?: string[]
-  styles?: string[]
-  pattern?: string
-  embellishments?: string[]
-  neck_style?: string
-  sleeve_type?: string
-  sizes?: string[]
-  price_min?: number
-  price_max?: number
-  mrp?: number
-  status?: ProductStatus
-  section_id?: string
-  location_notes?: string
-  notes?: string
-  search_tags?: string[]
-  photo_url: string
-  photo_r2_key: string
-  metadata?: Record<string, unknown>
-  auto_cleanup?: boolean
-  background_image_id?: string
-  add_shadow?: boolean
+  name?: string;
+  sku?: string;
+  description?: string;
+  category_id?: string;
+  category?: string;
+  subtype?: string;
+  product_type?: string;
+  primary_color?: string;
+  secondary_colors?: string[];
+  fabric_estimate?: string;
+  fabrics?: string[];
+  styles?: string[];
+  pattern?: string;
+  embellishments?: string[];
+  neck_style?: string;
+  sleeve_type?: string;
+  sizes?: string[];
+  stock?: ProductStockRow[];
+  price_min?: number;
+  price_max?: number;
+  mrp?: number;
+  status?: ProductStatus;
+  section_id?: string;
+  location_notes?: string;
+  notes?: string;
+  search_tags?: string[];
+  photo_url: string;
+  photo_r2_key: string;
+  metadata?: Record<string, unknown>;
+  auto_cleanup?: boolean;
+  background_image_id?: string;
+  add_shadow?: boolean;
 }
 
 export interface UpdateProductInput extends Partial<CreateProductInput> {
-  id?: string
+  id?: string;
 }
 
 export interface AiTagResult {
-  category: string | null
-  subtype: string | null
-  product_type: string | null
-  primary_color: string | null
-  secondary_colors: string[]
-  fabric_estimate: string | null
-  pattern: string | null
-  embellishments: string[]
-  neck_style: string | null
-  sleeve_type: string | null
-  style: string[]
-  fabrics: string[]
+  category: string | null;
+  subtype: string | null;
+  product_type: string | null;
+  primary_color: string | null;
+  secondary_colors: string[];
+  fabric_estimate: string | null;
+  pattern: string | null;
+  embellishments: string[];
+  neck_style: string | null;
+  sleeve_type: string | null;
+  style: string[];
+  fabrics: string[];
   /** Ranking-only occasions (see occasions.ts); optional so the detector path can omit it. */
-  occasions?: string[]
-  price_range_estimate: string | null
-  design_number_visible: string | null
-  is_catalog_image: boolean
-  search_tags: string[]
-  confidence_notes: string | null
-  product_name: string | null
-  short_description: string | null
+  occasions?: string[];
+  price_range_estimate: string | null;
+  design_number_visible: string | null;
+  is_catalog_image: boolean;
+  search_tags: string[];
+  confidence_notes: string | null;
+  product_name: string | null;
+  short_description: string | null;
 }
 
 // ─── Customers ───────────────────────────────────────────────────
 
 export interface CustomerSummary {
-  id: string
-  retailer_id: string
-  name: string
-  phone: string
-  pref_colors: string[]
-  pref_styles: string[]
-  pref_fabrics: string[]
-  budget_min: number | null  // paise
-  budget_max: number | null  // paise
-  notes: string | null
-  last_visit_at: string | null
-  total_purchases: number
-  total_spent: number
-  created_at: string
+  id: string;
+  retailer_id: string;
+  name: string;
+  phone: string;
+  pref_colors: string[];
+  pref_styles: string[];
+  pref_fabrics: string[];
+  budget_min: number | null; // paise
+  budget_max: number | null; // paise
+  notes: string | null;
+  last_visit_at: string | null;
+  total_purchases: number;
+  total_spent: number;
+  created_at: string;
 }
 
 // ─── Collections ─────────────────────────────────────────────────
 
-export type CollectionStatus = 'ACTIVE' | 'EXPIRED' | 'ARCHIVED'
+export type CollectionStatus = 'ACTIVE' | 'EXPIRED' | 'ARCHIVED';
 
 export interface CollectionSummary {
-  id: string
-  retailer_id: string
-  title: string
-  description: string | null
-  slug: string
-  url: string
-  status: CollectionStatus
-  expires_at: string | null
-  view_count: number
-  unique_viewer_count: number
-  enquiry_count: number
-  favorite_count: number
-  product_count: number
-  created_at: string
+  id: string;
+  retailer_id: string;
+  title: string;
+  description: string | null;
+  slug: string;
+  url: string;
+  status: CollectionStatus;
+  expires_at: string | null;
+  view_count: number;
+  unique_viewer_count: number;
+  enquiry_count: number;
+  favorite_count: number;
+  product_count: number;
+  created_at: string;
 }
 
 export interface CollectionDetail extends CollectionSummary {
-  products: ProductSummary[]
-  enquiries: CollectionEnquiryItem[]
+  products: ProductSummary[];
+  enquiries: CollectionEnquiryItem[];
 }
 
 export interface CollectionEnquiryItem {
-  id: string
-  product_id: string | null
-  message: string | null
-  customer_name: string | null
-  customer_phone: string | null
-  status: 'NEW' | 'SEEN' | 'REPLIED' | 'CLOSED'
-  created_at: string
+  id: string;
+  product_id: string | null;
+  message: string | null;
+  customer_name: string | null;
+  customer_phone: string | null;
+  status: 'NEW' | 'SEEN' | 'REPLIED' | 'CLOSED';
+  created_at: string;
 }
 
 // ─── Public Collection (customer-facing, no auth) ────────────────
@@ -252,122 +261,124 @@ export interface CollectionEnquiryItem {
 export interface PublicCollection {
   // F-015: set when the retailer is suspended — retailer/products fields
   // below are not populated in that case, render a notice instead.
-  suspended?: boolean
+  suspended?: boolean;
   retailer: {
-    id: string
-    shop_name: string
-    city: string
-    phone: string  // for WhatsApp enquiry
-    logo_url: string | null
-    banner_url: string | null
+    id: string;
+    shop_name: string;
+    city: string;
+    phone: string; // for WhatsApp enquiry
+    logo_url: string | null;
+    banner_url: string | null;
     // Store URL segment (public_slug). Null when the retailer has no store
     // QR — the collection then lives at the legacy /c/{slug} URL.
-    public_slug: string | null
+    public_slug: string | null;
     // Map coordinates for Google Maps directions
-    latitude: number | null
-    longitude: number | null
-  }
-  title: string
-  description: string | null
-  expires_at: string | null
-  products: PublicProduct[]
-  total: number
-  page: number
-  page_size: number
+    latitude: number | null;
+    longitude: number | null;
+  };
+  title: string;
+  description: string | null;
+  expires_at: string | null;
+  products: PublicProduct[];
+  total: number;
+  page: number;
+  page_size: number;
   filters: {
-    categories: { value: string; count: number }[]
-    colors: { value: string; count: number }[]
+    categories: { value: string; count: number }[];
+    colors: { value: string; count: number }[];
     // Sizes the products in this view actually offer, counted across the whole
     // unfiltered set like the other facets. Optional because payloads served
     // from the CDN/Redis cache before the size filter shipped genuinely have
     // no `sizes` key — consumers read it as []. (Same reasoning as
     // `try_on_enabled` below.)
-    sizes?: { value: string; count: number }[]
-  }
+    sizes?: { value: string; count: number }[];
+  };
 }
 
 // Thin shape for grid/list views — excludes per-product arrays (photos,
 // spin_frames, variants) that require presigning every URL. Fetch
 // PublicProductDetail on demand (product detail sheet) instead.
 export interface PublicProduct {
-  id: string
-  name: string | null
-  price_min: number | null
-  price_max: number | null
+  id: string;
+  name: string | null;
+  price_min: number | null;
+  price_max: number | null;
   // F-024: virtual query-time flags (created_at within 30 days / mrp > price)
-  is_new_arrival: boolean
-  on_sale: boolean
-  status: ProductStatus
-  category: string | null
-  subtype: string | null
-  primary_color: string | null
-  location: string | null
-  primary_photo_url: string
-  has_360: boolean
-  avg_rating: number
-  rating_count: number
+  is_new_arrival: boolean;
+  on_sale: boolean;
+  status: ProductStatus;
+  category: string | null;
+  subtype: string | null;
+  primary_color: string | null;
+  location: string | null;
+  primary_photo_url: string;
+  has_360: boolean;
+  avg_rating: number;
+  rating_count: number;
 }
 
 export interface PublicProductDetail extends PublicProduct {
-  secondary_colors: string[]
-  fabric_estimate: string | null
-  description: string | null
-  search_tags: string[]
-  sizes: string[]
-  photos: string[]
-  spin_frames: string[]
-  variants: { color: string; photo_url: string | null; status: ProductStatus }[]
+  // Optional: cached payloads predating the field have no key.
+  sku?: string | null;
+  secondary_colors: string[];
+  fabric_estimate: string | null;
+  description: string | null;
+  search_tags: string[];
+  sizes: string[];
+  photos: string[];
+  spin_frames: string[];
+  variants: { color: string; photo_url: string | null; status: ProductStatus }[];
   // Roadmap Q / F-033 — short product clips. `GET /public/products/:id` has
   // always returned these; the type simply never declared the field, so every
   // consumer dropped them silently. `is_main` marks the clip the retailer
   // chose to lead with (or the Ken Burns auto-video, when it generated one).
   // Optional: cached payloads predating this declaration have no key.
-  videos?: { id: string; url: string; duration_sec: number | null; is_main: boolean }[]
-  is_unstitched?: boolean
+  videos?: { id: string; url: string; duration_sec: number | null; is_main: boolean }[];
+  is_unstitched?: boolean;
   // F-040: whether this store's plan has VIRTUAL_TRY_ON_V2 enabled.
   // Drives the customer "Try it on" button; the API route re-checks the same
   // flag server-side, so this is presentation only. Absent on older cached
   // payloads — treat undefined as false.
-  try_on_enabled?: boolean
+  try_on_enabled?: boolean;
 }
 
 // ─── Search ──────────────────────────────────────────────────────
 
 export interface SearchFilters {
-  status?: ProductStatus[]
-  category?: string
-  price_max?: number  // paise
-  price_min?: number  // paise
-  colors?: string[]
-  limit?: number
+  status?: ProductStatus[];
+  category?: string;
+  price_max?: number; // paise
+  price_min?: number; // paise
+  colors?: string[];
+  limit?: number;
 }
 
 export interface SearchResult {
-  products: ProductSummary[]
+  products: ProductSummary[];
   query_interpretation: {
-    detected_colors: string[]
-    detected_fabrics: string[]
-    detected_budget_max: number | null
-  }
-  total_found: number
+    detected_colors: string[];
+    detected_fabrics: string[];
+    detected_budget_max: number | null;
+  };
+  total_found: number;
 }
 
 // ─── Upload ───────────────────────────────────────────────────────
 
 export interface UploadUrlResponse {
-  upload_url: string
-  r2_key: string
-  public_url: string
-  expires_in: number  // seconds
+  upload_url: string;
+  r2_key: string;
+  public_url: string;
+  expires_in: number; // seconds
 }
 
 // ─── Store Structure ──────────────────────────────────────────────
 
 export interface StoreSectionItem {
-  id: string
-  name: string
-  type: string
-  parent_id: string | null
-  sort_order: number
-  children: StoreSectionItem[]
+  id: string;
+  name: string;
+  type: string;
+  parent_id: string | null;
+  sort_order: number;
+  children: StoreSectionItem[];
 }

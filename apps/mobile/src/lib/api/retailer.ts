@@ -1,5 +1,12 @@
 import { request } from './client'
 
+export type SetupChecklistItem = {
+  key: 'google_place' | 'google_business' | 'facebook' | 'instagram' | 'gst' | 'whatsapp_api'
+  status: 'done' | 'missing' | 'requested'
+  dismissed: boolean
+  can_ask: boolean
+}
+
 export const retailerApi = {
   getMe: () => request<{ data: unknown }>('/v1/retailers/me', { getCacheTtlMs: 60_000 }),
   getStats: () => request<{ data: unknown }>('/v1/retailers/me/stats', { getCacheTtlMs: 30_000 }),
@@ -8,6 +15,36 @@ export const retailerApi = {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
+  // Part A (google-business-profile spec): accepts a Place ID or a pasted Maps link; null removes.
+  setGooglePlace: (google_place_id: string | null) =>
+    request<{ success: boolean; google_place_id: string | null }>(
+      '/v1/retailers/reviews/google-place',
+      { method: 'PATCH', body: JSON.stringify({ google_place_id }) },
+    ),
+  searchGooglePlace: (q: string) =>
+    request<{ data: { place_id: string; name: string; address: string }[] }>(
+      `/v1/retailers/me/google-place/search?q=${encodeURIComponent(q)}`,
+    ),
+  // Dashboard "Complete your profile" (owner-only; status is derived server-side).
+  getSetupChecklist: () =>
+    request<{ data: { items: SetupChecklistItem[]; visible_missing: number } }>(
+      '/v1/retailers/me/setup-checklist',
+    ),
+  dismissSetupItem: (item_key: string) =>
+    request<{ data: { dismissed: string[] } }>('/v1/retailers/me/setup-checklist/dismiss', {
+      method: 'POST',
+      body: JSON.stringify({ item_key }),
+    }),
+  restoreSetupItems: () =>
+    request<{ data: { dismissed: string[] } }>('/v1/retailers/me/setup-checklist/restore', {
+      method: 'POST',
+      body: JSON.stringify({}),
+    }),
+  askTeamToSetUp: (item_key: string) =>
+    request<{ data: { status: 'requested' | 'done' } }>(
+      `/v1/retailers/me/setup-checklist/${encodeURIComponent(item_key)}/ask`,
+      { method: 'POST' },
+    ),
   sendWhatsappNumberOtp: (whatsapp_number: string) =>
     request<{ data: { sent_to: string } }>('/v1/retailers/me/whatsapp-number/otp', {
       method: 'POST',
@@ -45,7 +82,7 @@ export const retailerApi = {
       data: { upload_url: string; r2_key: string; public_url: string; expires_in: number }
     }>('/v1/retailers/me/banner-upload-url', {
       method: 'POST',
-      body: JSON.stringify({ filename: 'banner.jpg', content_type: contentType, size_bytes: sizeBytes }),
+      body: JSON.stringify({ filename: 'banner.jpg', content_type: contentType, size_bytes: sizeBytes, content_length: sizeBytes }),
       timeoutMs: 30_000,
     }),
 
@@ -55,7 +92,7 @@ export const retailerApi = {
       data: { upload_url: string; r2_key: string; public_url: string; expires_in: number }
     }>('/v1/retailers/me/logo-upload-url', {
       method: 'POST',
-      body: JSON.stringify({ filename: 'logo.jpg', content_type: contentType, size_bytes: sizeBytes }),
+      body: JSON.stringify({ filename: 'logo.jpg', content_type: contentType, size_bytes: sizeBytes, content_length: sizeBytes }),
       timeoutMs: 30_000,
     }),
 
@@ -70,6 +107,7 @@ export const retailerApi = {
         filename: `${docType}.jpg`,
         content_type: contentType,
         size_bytes: sizeBytes,
+        content_length: sizeBytes,
       }),
       timeoutMs: 30_000,
     }),

@@ -7,6 +7,7 @@ import { emitAuthChange } from '../auth-events'
 import { getItem, setItem, deleteItem } from '../storage'
 import { cachedJsonRequest, clearRequestCache } from '../request-cache'
 import { compressImageForUpload } from '../compress-image'
+import { ApiError } from './api-error'
 
 export const API_URL = process.env['EXPO_PUBLIC_API_URL'] ?? 'http://localhost:3001'
 
@@ -24,19 +25,7 @@ export function clearToken(): Promise<void> {
 
 export { clearRequestCache }
 
-export class ApiError extends Error {
-  constructor(
-    public readonly code: string,
-    message: string,
-    public readonly status: number,
-    /** Optional structured payload from the server error envelope — e.g.
-     * per-target FAILED results on an all-failed social publish (T-7.2). */
-    public readonly results?: unknown[] | null,
-  ) {
-    super(message)
-    this.name = 'ApiError'
-  }
-}
+export { ApiError }
 
 // Single-flight refresh — concurrent 401s share one refresh call instead of
 // each racing to burn the same refresh_token.
@@ -116,7 +105,9 @@ export async function request<T>(
     if (err instanceof Error && err.name === 'AbortError') {
       throw new ApiError(
         'TIMEOUT',
-        `Request timed out (${path}). Check that the API server is running at ${API_URL} and try again.`,
+        __DEV__
+          ? `Request timed out (${path}). Check that the API server is running at ${API_URL} and try again.`
+          : 'The server took too long to respond. Please try again.',
         408,
       )
     }
@@ -152,7 +143,9 @@ export async function request<T>(
     // apps/mobile/.env.local overrides .env, see docs/ai-studio/history/photo-feature-progress-log.md).
     throw new ApiError(
       'NETWORK_ERROR',
-      `Network request failed to ${API_URL}${path}. Check that the API server is running and this device can reach it.`,
+      __DEV__
+        ? `Network request failed to ${API_URL}${path}. Check that the API server is running and this device can reach it.`
+        : 'No internet connection. Check your network and try again.',
       status ?? 0,
     )
   }
@@ -182,6 +175,26 @@ export async function readLocalImage(uri: string, _timeoutMs = 15_000): Promise<
       500,
     )
   }
+}
+
+// Compresses (image/jpeg only, unless opted out) and returns the file that will
+// actually be PUT plus its real byte size. The presign must be asked for THIS
+// size (`content_length` is signed into the URL; R2 rejects any other length),
+// so the order is: prepare -> presign(size) -> uploadImageToR2(uri, ..., {compress:false}).
+export async function prepareImageForUpload(
+  localUri: string,
+  contentType: string,
+  options?: { compress?: boolean },
+): Promise<{ uri: string; size: number }> {
+  let uri = localUri
+  if (contentType === 'image/jpeg' && (options?.compress ?? true)) {
+    try {
+      uri = await compressImageForUpload(localUri)
+    } catch (err) {
+      console.warn('Image compression failed — uploading original:', err)
+    }
+  }
+  return { uri, size: new File(uri).size }
 }
 
 // PUTs the local file straight through native upload machinery (NSURLSession /

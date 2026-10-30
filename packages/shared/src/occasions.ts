@@ -3,12 +3,7 @@
 // (lowercased, exact match) and what the quiz in style-quiz.ts emits, so a new value here
 // must also exist there, and vice versa (pinned by occasions.test.ts).
 
-export const PRODUCT_OCCASIONS = [
-  'Daily Wear',
-  'Party Wear',
-  'Festive',
-  'Wedding',
-] as const;
+export const PRODUCT_OCCASIONS = ['Daily Wear', 'Party Wear', 'Festive', 'Wedding'] as const;
 
 export const MAX_PRODUCT_OCCASIONS = 2;
 

@@ -12,6 +12,7 @@ import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { addStudioShootJob } from '../../jobs/index.js';
 import { hasFeature } from '../../lib/features.js';
+import { refundJobQuota, reserveJobQuota } from '../../lib/quota.js';
 import {
   getStudioJobStatus,
   isStudioShootConfigured,
@@ -195,13 +196,23 @@ export const growthSocialTemplateRoutes: FastifyPluginAsync = async (server) => 
     const styleJob = await resolveStudioStyleJob(template.background_style);
 
     const jobId = createId();
-    await addStudioShootJob({
-      job_id: jobId,
-      retailer_id: retailerId,
-      product_id: productId,
-      photo_id: photo.id,
-      ...styleJob,
-    });
+    // Same slot the products-studio route takes: the job no longer increments, it only refunds
+    // a reservation, so an enqueue without one would be unmetered (RC-102).
+    await reserveJobQuota(retailerId, 'STUDIO_SHOOT', jobId);
+    try {
+      await addStudioShootJob({
+        job_id: jobId,
+        retailer_id: retailerId,
+        product_id: productId,
+        photo_id: photo.id,
+        ...styleJob,
+      });
+    } catch (err) {
+      await refundJobQuota(jobId, 'STUDIO_SHOOT').catch((refundErr) => {
+        request.log.error({ err: refundErr, job_id: jobId }, 'Failed to refund studio-shoot quota');
+      });
+      throw err;
+    }
 
     return reply.status(202).send({ data: { job_id: jobId, status: 'processing' } });
   });

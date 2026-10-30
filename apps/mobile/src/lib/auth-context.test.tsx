@@ -41,6 +41,11 @@ vi.mock('./storage', () => ({
   }),
 }))
 
+// RC-107: the authed:false cleanup wipes the on-disk query cache; its own test lives in
+// offline-persister.test.ts, here only the call is asserted.
+const clearPersistedCache = vi.hoisted(() => vi.fn(async () => {}))
+vi.mock('./offline-persister', () => ({ clearPersistedCache }))
+
 beforeEach(() => {
   store.clear()
   vi.clearAllMocks()
@@ -165,6 +170,24 @@ describe('AuthProvider', () => {
 
     expect(get()!.status).toBe('unauthenticated')
     expect(get()!.isAuthenticated).toBe(false)
+  })
+
+  it('authed:false from a forced logout wipes every auth key and the persisted cache (RC-107)', async () => {
+    for (const key of ['auth_token', 'retailer_id', 'staff_role', 'staff_retailer_id', 'admin_key']) {
+      store.set(key, 'x')
+    }
+    const { get, flush } = await mount()
+    await flush()
+
+    // client.ts's 401 path only emits the event; it never goes through signOut().
+    act(() => {
+      emitAuthChange({ authed: false })
+    })
+    await flush()
+
+    expect(get()!.status).toBe('unauthenticated')
+    expect(store.size).toBe(0)
+    expect(clearPersistedCache).toHaveBeenCalledTimes(1)
   })
 
   it('navigates to the pending destination only after an authed:true flip', async () => {

@@ -79,6 +79,8 @@ export const publicStylistRoutes: FastifyPluginAsync = async (server) => {
   server.post(
     '/stylist',
     {
+      // RC-079: anonymous + a paid Claude call per request, so cap it per IP.
+      config: { rateLimit: { max: 10, timeWindow: 60 * 1000 } },
       schema: {
         body: {
           type: 'object',
@@ -400,6 +402,8 @@ export const publicStylistRoutes: FastifyPluginAsync = async (server) => {
       try {
         const response = await fetch(ANTHROPIC_API_URL, {
           method: 'POST',
+          // RC-079: a hung Anthropic call falls through to `fallback` below.
+          signal: AbortSignal.timeout(20_000),
           headers: {
             'Content-Type': 'application/json',
             'x-api-key': anthropicKey,

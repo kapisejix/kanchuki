@@ -120,7 +120,11 @@ describe('generateTryOn', () => {
     secretState.keys.set('CATVTON_API_URL', ENDPOINT);
     secretState.keys.set('RUNPOD_API_KEY', 'rp-key');
     const fetchFn = mockFetchOnce({
-      output: { result_url: 'https://r2.example.com/out.jpg', latency_ms: 34_000, status: 'completed' },
+      output: {
+        result_url: 'https://r2.example.com/out.jpg',
+        latency_ms: 34_000,
+        status: 'completed',
+      },
     });
 
     const result = await generateTryOn(request);
@@ -232,13 +236,17 @@ describe('saveTryOnResultToR2', () => {
     expect(key).toBe('tryon-results/job-1/result.jpg');
     // Exactly one write, and it is the generated image — not the wearer's photo.
     expect(uploads).toEqual([
-      { key: 'tryon-results/job-1/result.jpg', buffer: Buffer.from('downloaded-result'), contentType: 'image/jpeg' },
+      {
+        key: 'tryon-results/job-1/result.jpg',
+        buffer: Buffer.from('downloaded-result'),
+        contentType: 'image/jpeg',
+      },
     ]);
     expect(uploads[0]!.buffer.toString()).not.toContain(PERSON_B64);
     expect(ssrfCalls).toEqual(['https://r2.example.com/out.jpg']);
   });
 
-  it('decodes the worker\'s data: URI fallback without a network fetch', async () => {
+  it("decodes the worker's data: URI fallback without a network fetch", async () => {
     const key = await saveTryOnResultToR2(
       'job-2',
       `data:image/jpeg;base64,${Buffer.from('inline-result').toString('base64')}`,

@@ -18,6 +18,7 @@ import { passportActivityRoutes } from './passport/passport-activity.js';
 import { passportDataRoutes } from './passport/passport-data.js';
 import { passportOtpRoutes } from './passport/passport-otp.js';
 import { passportPreferencesRoutes } from './passport/passport-preferences.js';
+import { passportPushRoutes } from './passport/passport-push.js';
 import { passportSessionRoutes } from './passport/passport-session.js';
 import { passportStoresRoutes } from './passport/passport-stores.js';
 import { passportStyleQuizRoutes } from './passport/passport-style-quiz.js';
@@ -31,6 +32,7 @@ export const passportRoutes: FastifyPluginAsync = async (server) => {
   await server.register(passportActivityRoutes);
   await server.register(passportWishlistRoutes);
   await server.register(passportPreferencesRoutes);
+  await server.register(passportPushRoutes);
   await server.register(passportStyleQuizRoutes);
   await server.register(passportTryOnRoutes);
   await server.register(passportDataRoutes);

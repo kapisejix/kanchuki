@@ -68,6 +68,25 @@ describe('prepareUpload', () => {
     await expect(prepareUpload(new File(['x'], 'a.jpg'))).rejects.toThrow('unreadable')
   })
 
+  it('rejects non-photo types and oversize files as "unsupported" before decoding', async () => {
+    const decode = vi.fn()
+    vi.stubGlobal('createImageBitmap', decode)
+    for (const type of ['image/svg+xml', 'image/gif', 'application/pdf', 'text/html']) {
+      await expect(prepareUpload(new File(['x'], 'a', { type }))).rejects.toThrow('unsupported')
+    }
+    const big = new File([new Uint8Array(25 * 1024 * 1024 + 1)], 'a.jpg', { type: 'image/jpeg' })
+    await expect(prepareUpload(big)).rejects.toThrow('unsupported')
+    expect(decode).not.toHaveBeenCalled()
+  })
+
+  it('accepts the Android/iOS photo types (and a missing type) through to the decoder', async () => {
+    vi.stubGlobal('createImageBitmap', vi.fn().mockResolvedValue({ width: 10, height: 10, close: vi.fn() }))
+    fakeCanvas()
+    for (const type of ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/HEIF', '']) {
+      await expect(prepareUpload(new File(['x'], 'a', { type }))).resolves.toBeInstanceOf(Blob)
+    }
+  })
+
   it('rejects when the canvas yields no blob', async () => {
     vi.stubGlobal('createImageBitmap', vi.fn().mockResolvedValue({ width: 10, height: 10, close: vi.fn() }))
     fakeCanvas(null)

@@ -3,7 +3,7 @@ import { prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { notFound, validationError } from '../../../plugins/error-handler.js';
-import { adminAuthPreHandler } from '../../admin-auth.js';
+import { adminAuthPreHandler, requireSuperAdmin } from '../../admin-auth.js';
 
 export const adminRetailersManagementRoutes: FastifyPluginAsync = async (server) => {
   server.addHook('preHandler', adminAuthPreHandler);
@@ -26,6 +26,7 @@ export const adminRetailersManagementRoutes: FastifyPluginAsync = async (server)
   // ─── POST /admin/retailers/:id/overrides ────────────────────────
   // F-010: Create or update a per-retailer limit override.
   server.post('/retailers/:id/overrides', async (request) => {
+    requireSuperAdmin(request); // H3-2: money route, standard segment
     const { id } = z.object({ id: z.string() }).parse(request.params);
     const body = z
       .object({
@@ -92,6 +93,7 @@ export const adminRetailersManagementRoutes: FastifyPluginAsync = async (server)
   // ─── DELETE /admin/retailers/:id/overrides/:overrideId ───────────
   // F-010: Remove a per-retailer limit override, falling back to plan default.
   server.delete('/retailers/:id/overrides/:overrideId', async (request, reply) => {
+    requireSuperAdmin(request); // H3-2: money route, standard segment
     const { id, overrideId } = z
       .object({ id: z.string(), overrideId: z.string() })
       .parse(request.params);

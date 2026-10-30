@@ -1,4 +1,4 @@
-import { HINDI_TO_ENGLISH } from '../constants/index.js'
+import { HINDI_TO_ENGLISH } from '../constants/index.js';
 
 // ─── Price Formatting ─────────────────────────────────────────────
 
@@ -6,80 +6,77 @@ import { HINDI_TO_ENGLISH } from '../constants/index.js'
  *  (₹2,100/- not ₹2.1K). Indian grouping with the trailing /- marker used
  *  across Indian retail billing. */
 export function formatPrice(paise: number | null | undefined): string {
-  if (paise == null) return '—'
-  const rupees = paise / 100
-  const isWhole = Number.isInteger(rupees)
+  if (paise == null) return '—';
+  const rupees = paise / 100;
+  const isWhole = Number.isInteger(rupees);
   const formatted = rupees.toLocaleString('en-IN', {
     minimumFractionDigits: isWhole ? 0 : 2,
     maximumFractionDigits: isWhole ? 0 : 2,
-  })
-  return `₹${formatted}/-`
+  });
+  return `₹${formatted}/-`;
 }
 
 export function formatPriceRange(
   min: number | null | undefined,
   max: number | null | undefined,
 ): string {
-  if (!min && !max) return 'Price on request'
-  if (!max || min === max) return formatPrice(min)
+  if (!min && !max) return 'Price on request';
+  if (!max || min === max) return formatPrice(min);
   // Range: one trailing /- on the final amount reads best (₹499 – ₹699/-).
-  return `${formatPrice(min).replace(/\/-$/, '')} – ${formatPrice(max)}`
+  return `${formatPrice(min).replace(/\/-$/, '')} – ${formatPrice(max)}`;
 }
 
 /** paise → "₹1,23,456" — Indian digit grouping, no "/-" marker, no forced
  *  decimals. The compact form for dashboard tiles and list rows; use
  *  formatPrice for billing/invoice display where the "/-" marker belongs. */
 export function formatPaiseShort(paise: number): string {
-  return `₹${(paise / 100).toLocaleString('en-IN')}`
+  return `₹${(paise / 100).toLocaleString('en-IN')}`;
 }
 
 /** ₹ rupees → paise integer */
 export function rupeesToPaise(rupees: number): number {
-  return Math.round(rupees * 100)
+  return Math.round(rupees * 100);
 }
 
 /** paise → ₹ float */
 export function paiseToRupees(paise: number): number {
-  return paise / 100
+  return paise / 100;
 }
 
 // ─── Search / Query Utils ─────────────────────────────────────────
 
 /** Normalize Hindi/transliterated query terms to English equivalents */
 export function normalizeSearchQuery(query: string): string {
-  let normalized = query.toLowerCase().trim()
+  let normalized = query.toLowerCase().trim();
   for (const [hindi, english] of Object.entries(HINDI_TO_ENGLISH)) {
-    normalized = normalized.replace(
-      new RegExp(`\\b${hindi}\\b`, 'gi'),
-      english,
-    )
+    normalized = normalized.replace(new RegExp(`\\b${hindi}\\b`, 'gi'), english);
   }
-  return normalized
+  return normalized;
 }
 
 /** Extract budget filter from natural language query */
 export function extractBudgetFromQuery(query: string): {
-  min: number | null
-  max: number | null
+  min: number | null;
+  max: number | null;
 } {
-  const lower = query.toLowerCase()
+  const lower = query.toLowerCase();
 
   // Match "under ₹2500", "below 2500", "less than 2500"
-  const underMatch = lower.match(/(?:under|below|less than|upto|up to)\s*[₹rs]?\s*(\d[\d,]*)/i)
+  const underMatch = lower.match(/(?:under|below|less than|upto|up to)\s*[₹rs]?\s*(\d[\d,]*)/i);
   if (underMatch?.[1]) {
-    const max = parseInt(underMatch[1].replace(/,/g, ''))
-    return { min: null, max: rupeesToPaise(max) }
+    const max = Number.parseInt(underMatch[1].replace(/,/g, ''));
+    return { min: null, max: rupeesToPaise(max) };
   }
 
   // Match "₹1000 to ₹3000", "1000-3000"
-  const rangeMatch = lower.match(/[₹rs]?\s*(\d[\d,]*)\s*(?:to|-)\s*[₹rs]?\s*(\d[\d,]*)/i)
+  const rangeMatch = lower.match(/[₹rs]?\s*(\d[\d,]*)\s*(?:to|-)\s*[₹rs]?\s*(\d[\d,]*)/i);
   if (rangeMatch?.[1] && rangeMatch[2]) {
-    const min = parseInt(rangeMatch[1].replace(/,/g, ''))
-    const max = parseInt(rangeMatch[2].replace(/,/g, ''))
-    return { min: rupeesToPaise(min), max: rupeesToPaise(max) }
+    const min = Number.parseInt(rangeMatch[1].replace(/,/g, ''));
+    const max = Number.parseInt(rangeMatch[2].replace(/,/g, ''));
+    return { min: rupeesToPaise(min), max: rupeesToPaise(max) };
   }
 
-  return { min: null, max: null }
+  return { min: null, max: null };
 }
 
 // ─── Slug Generation ─────────────────────────────────────────────
@@ -92,23 +89,20 @@ export function generateCollectionSlug(title: string): string {
     .trim()
     .split(/\s+/)
     .slice(0, 3)
-    .join('-')
+    .join('-');
 
-  const random = Math.random().toString(36).slice(2, 6)
-  return `${titlePart}-${random}`
+  const random = Math.random().toString(36).slice(2, 6);
+  return `${titlePart}-${random}`;
 }
 
 // ─── WhatsApp Utils ───────────────────────────────────────────────
 
 /** Build WhatsApp deep link for enquiry */
-export function buildWhatsAppEnquiryLink(
-  retailerPhone: string,
-  message: string,
-): string {
+export function buildWhatsAppEnquiryLink(retailerPhone: string, message: string): string {
   // RC-067: length-based, not prefix-based — a 10-digit 91xxxxxxxx is a mobile.
-  const fullPhone = `91${normalizeIndianPhone(retailerPhone)}`
-  const encoded = encodeURIComponent(message)
-  return `https://wa.me/${fullPhone}?text=${encoded}`
+  const fullPhone = `91${normalizeIndianPhone(retailerPhone)}`;
+  const encoded = encodeURIComponent(message);
+  return `https://wa.me/${fullPhone}?text=${encoded}`;
 }
 
 /**
@@ -117,30 +111,44 @@ export function buildWhatsAppEnquiryLink(
  * Each product can carry an optional `product_url` (a deep link to the product's
  * own shared page) so the retailer can open the product in one tap instead of
  * hunting for it by name. When present it is appended on its own line right
- * under the bullet, so WhatsApp auto-linkifies it.
+ * under the bullet, so WhatsApp auto-linkifies it. The SKU, when set, follows
+ * the price so the retailer can find the piece on the rack.
+ *
+ * A missing collection title, or one that is just the shop name (My Style
+ * enquiries have no collection), drops the quoted title so the store is named once.
  */
 export function buildEnquiryMessage(params: {
-  shopName: string
-  collectionTitle: string
+  shopName: string;
+  collectionTitle?: string | null;
   products: Array<{
-    name: string | null
-    price_min: number | null
-    product_url?: string | null
-  }>
+    name: string | null;
+    price_min: number | null;
+    sku?: string | null;
+    product_url?: string | null;
+  }>;
 }): string {
   const productList = params.products
     .map((p) => {
-      const line = `• ${p.name ?? 'Product'} ${p.price_min ? `- ${formatPrice(p.price_min)}` : ''}`
-      return p.product_url ? `${line}\n  ${p.product_url}` : line
+      const parts = [
+        `• ${p.name ?? 'Product'}`,
+        p.price_min ? `- ${formatPrice(p.price_min)}` : null,
+        p.sku ? `(SKU: ${p.sku})` : null,
+      ];
+      const line = parts.filter(Boolean).join(' ');
+      return p.product_url ? `${line}\n  ${p.product_url}` : line;
     })
-    .join('\n')
+    .join('\n');
 
-  return `Namaste! I saw your collection "${params.collectionTitle}" from ${params.shopName}.
+  const title = params.collectionTitle?.trim();
+  const sameAsShop = !title || title.toLowerCase() === params.shopName.trim().toLowerCase();
+  const seen = sameAsShop ? 'your collection' : `your collection "${title}"`;
+
+  return `Namaste! I saw ${seen} from ${params.shopName}.
 
 I'm interested in:
 ${productList}
 
-Please share availability and details. 🙏`
+Please share availability and details. 🙏`;
 }
 
 // ─── Phone Number Utils ───────────────────────────────────────────
@@ -149,14 +157,14 @@ Please share availability and details. 🙏`
  * Valid Indian mobile numbers: exactly 10 digits, first digit 6–9.
  * Accepts optional +91 / 91 / 0 prefixes (stripped before matching).
  */
-export const INDIAN_MOBILE_REGEX = /^[6-9]\d{9}$/
+export const INDIAN_MOBILE_REGEX = /^[6-9]\d{9}$/;
 
 export function normalizeIndianPhone(phone: string): string {
-  const digits = phone.replace(/\D/g, '')
-  if (digits.startsWith('91') && digits.length === 12) return digits.slice(2)!
-  if (digits.startsWith('0') && digits.length === 11) return digits.slice(1)!
-  if (digits.length === 10) return digits
-  return digits
+  const digits = phone.replace(/\D/g, '');
+  if (digits.startsWith('91') && digits.length === 12) return digits.slice(2)!;
+  if (digits.startsWith('0') && digits.length === 11) return digits.slice(1)!;
+  if (digits.length === 10) return digits;
+  return digits;
 }
 
 /**
@@ -167,25 +175,25 @@ export function normalizeIndianPhone(phone: string): string {
  * and non-Indian numbers.
  */
 export function isValidIndianPhone(phone: string): boolean {
-  return INDIAN_MOBILE_REGEX.test(normalizeIndianPhone(phone))
+  return INDIAN_MOBILE_REGEX.test(normalizeIndianPhone(phone));
 }
 
 export function maskPhone(phone: string): string {
-  const normalized = normalizeIndianPhone(phone)
-  return `****${normalized.slice(-4)}`
+  const normalized = normalizeIndianPhone(phone);
+  return `****${normalized.slice(-4)}`;
 }
 
 // ─── Date Utils ───────────────────────────────────────────────────
 
 export function addDays(date: Date, days: number): Date {
-  const result = new Date(date)
-  result.setDate(result.getDate() + days)
-  return result
+  const result = new Date(date);
+  result.setDate(result.getDate() + days);
+  return result;
 }
 
 export function isExpired(expiresAt: Date | string | null): boolean {
-  if (!expiresAt) return false
-  return new Date(expiresAt) < new Date()
+  if (!expiresAt) return false;
+  return new Date(expiresAt) < new Date();
 }
 
 // ─── String Utils ─────────────────────────────────────────────────
@@ -196,10 +204,10 @@ export function slugify(text: string): string {
     .replace(/[^a-z0-9\s-]/g, '')
     .trim()
     .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
+    .replace(/-+/g, '-');
 }
 
 export function truncate(text: string, maxLength: number): string {
-  if (text.length <= maxLength) return text
-  return text.slice(0, maxLength - 3) + '...'
+  if (text.length <= maxLength) return text;
+  return `${text.slice(0, maxLength - 3)}...`;
 }

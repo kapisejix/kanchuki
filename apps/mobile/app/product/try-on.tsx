@@ -8,6 +8,7 @@ import { Camera, ImagePlus, RotateCcw, Share2, X } from 'lucide-react-native'
 import { TRY_ON_CONSENT } from '@kanchuki/shared'
 
 import { productApi, ApiError } from '../../src/lib/api'
+import { apiMessage } from '../../src/lib/errors'
 import { pollWithBackoff } from '../../src/lib/polling'
 import { useScreenInsets } from '../../src/lib/safe-area'
 import { GradientButton } from '../../src/components/GradientButton'
@@ -135,7 +136,7 @@ export default function TryOnScreen() {
         // server.
         setError('Your sign-in has expired. Sign in again to continue.')
       } else {
-        setError(err instanceof Error ? err.message : 'Could not start the try-on. Please try again.')
+        setError(apiMessage(err, 'Could not start the try-on. Please try again.'))
       }
       setStep('result')
     }

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { isValidIndianPhone } from '@kanchuki/shared'
 import {
   View, Text, ScrollView, TextInput,
-  Alert, KeyboardAvoidingView, Platform,
+  Alert,
 } from 'react-native'
 import { router } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -15,6 +15,7 @@ import { useTheme } from '../../src/lib/theme'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { ScreenHeader } from '../../src/components/ScreenHeader'
 import { GradientButton } from '../../src/components/GradientButton'
+import { KeyboardScreen } from '../../src/components/KeyboardScreen'
 
 export default function RetailerOnboardScreen() {
   const { primaryColor, colors } = useTheme()
@@ -108,10 +109,7 @@ export default function RetailerOnboardScreen() {
   }
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      className="flex-1 bg-slate-50"
-    >
+    <KeyboardScreen className="flex-1 bg-slate-50">
       {/* Header */}
       <ScreenHeader title="New Retailer" subtitle="Quick field onboarding" />
 
@@ -246,6 +244,6 @@ export default function RetailerOnboardScreen() {
           icon={<UserPlus size={20} color="white" />}
         />
       </View>
-    </KeyboardAvoidingView>
+    </KeyboardScreen>
   )
 }

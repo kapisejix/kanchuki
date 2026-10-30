@@ -56,7 +56,8 @@ vi.mock('../index.js', () => ({
   },
 }));
 
-vi.mock('../lib/msg91-otp.js', () => ({
+vi.mock('../lib/msg91-otp.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../lib/msg91-otp.js')>()),
   isMsg91OtpConfigured: mockIsMsg91Configured,
   sendOtpViaMsg91: mockSendOtpViaMsg91,
   verifyMsg91WidgetToken: mockVerifyWidgetToken,

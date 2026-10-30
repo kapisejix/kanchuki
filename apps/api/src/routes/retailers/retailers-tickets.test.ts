@@ -148,6 +148,17 @@ describe('POST /me/tickets', () => {
     await app.close();
   });
 
+  it('does not count dashboard "Ask team" tickets toward the cap', async () => {
+    const app = await buildApp();
+    await app.inject({
+      method: 'POST',
+      url: '/me/tickets',
+      payload: { note: 'Need help setting up my catalog' },
+    });
+    expect(m.count.mock.calls[0]?.[0]?.where).toMatchObject({ setup_item: null });
+    await app.close();
+  });
+
   it(`returns 429 once ${MAX_OPEN_TICKETS} tickets are open`, async () => {
     m.count.mockResolvedValue(MAX_OPEN_TICKETS);
     const app = await buildApp();

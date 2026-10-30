@@ -7,7 +7,8 @@ export async function POST(request: Request) {
 
   const res = await fetch(`${apiUrl}/v1/public/reviews/product`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    // RC-098: reviewer identity is the passport session, so the cookie must reach the API.
+    headers: { 'Content-Type': 'application/json', cookie: request.headers.get('cookie') || '' },
     body,
   })
 

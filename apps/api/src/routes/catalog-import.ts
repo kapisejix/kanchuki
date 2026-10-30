@@ -12,9 +12,10 @@ import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { addTaggingJob } from '../jobs/index.js';
 import { recordAiUsage } from '../lib/ai-usage.js';
-import { checkQuota, incrementUsage } from '../lib/quota.js';
+import { defaultStock } from '../lib/product-stock.js';
+import { checkQuota, reserveQuota } from '../lib/quota.js';
 import { createSkuSequencer } from '../lib/sku.js';
-import { IMAGE_KINDS, verifyUpload } from '../lib/upload-guard.js';
+import { IMAGE_KINDS, UPLOAD_URL_RATE_LIMIT, verifyUpload } from '../lib/upload-guard.js';
 import { notFound, planLimitExceeded, validationError } from '../plugins/error-handler.js';
 
 // ─── Types ────────────────────────────────────────────────────────
@@ -94,6 +95,9 @@ const UploadUrlSchema = z.object({
   // so a free string let a client store text/html there (stored XSS).
   content_type: z.enum(UPLOAD_TYPES),
   size_bytes: z.number().int().positive(),
+  // Exact byte length of the PUT (post-compression), bound into the signature (RC-080).
+  // Bounded by the per-type maximum in the route.
+  content_length: z.number().int().positive(),
 });
 
 // ─── Helpers ──────────────────────────────────────────────────────
@@ -109,17 +113,17 @@ export const catalogImportRoutes: FastifyPluginAsync = async (server) => {
   //  POST /catalog-import/upload-url
   // ═══════════════════════════════════════════════════════════════
 
-  server.post('/catalog-import/upload-url', async (request, reply) => {
+  server.post('/catalog-import/upload-url', UPLOAD_URL_RATE_LIMIT, async (request, reply) => {
     const retailerId = request.retailerId;
 
     const parsed = UploadUrlSchema.safeParse(request.body);
     if (!parsed.success) throw validationError(parsed.error.issues[0]?.message ?? 'Invalid');
 
-    const { content_type, size_bytes } = parsed.data;
+    const { content_type, size_bytes, content_length } = parsed.data;
 
     const isPdf = content_type === 'application/pdf';
     const maxSize = isPdf ? 50 * 1024 * 1024 : 15 * 1024 * 1024;
-    if (size_bytes > maxSize) {
+    if (size_bytes > maxSize || content_length > maxSize) {
       return reply.status(413).send({
         error: 'FILE_TOO_LARGE',
         message: `Maximum file size is ${isPdf ? '50MB' : '15MB'}`,
@@ -131,7 +135,7 @@ export const catalogImportRoutes: FastifyPluginAsync = async (server) => {
     const r2Key = `${prefix}/${retailerId}/${randHex(16)}${ext}`;
     let upload_url: string;
     try {
-      upload_url = await getUploadPresignedUrl(r2Key, content_type);
+      upload_url = await getUploadPresignedUrl(r2Key, content_type, 300, content_length);
     } catch (err) {
       console.error('R2 presigned URL generation failed:', err);
       throw validationError(
@@ -158,11 +162,9 @@ export const catalogImportRoutes: FastifyPluginAsync = async (server) => {
 
     const { image_url } = parsed.data;
 
-    // F-010: gate before spending Vision API + crop cost; detectCropAndTag can
-    // return several items from one photo, so the exact count isn't known
-    // until after it runs — per-call weighted credits are recorded by the
-    // onProviderUsed callback below.
-    await checkQuota(retailerId, 'IMAGE_CROP');
+    // F-010: gate before spending Vision API cost; per-call weighted credits are
+    // recorded by the onProviderUsed callback below. No IMAGE_CROP gate: nothing
+    // is cropped any more (detectCropAndTag uploads the photo as-is).
     await checkQuota(retailerId, 'AI_TAGGING_CALL', await reserveAiCredits());
 
     try {
@@ -170,10 +172,6 @@ export const catalogImportRoutes: FastifyPluginAsync = async (server) => {
         onProviderUsed: recordAiUsage(retailerId),
         beforeCall: async () => checkQuota(retailerId, 'AI_TAGGING_CALL', await reserveAiCredits()),
       });
-      incrementUsage(retailerId, 'IMAGE_CROP', items.length).catch((err) => {
-        request.log.error({ err, retailer_id: retailerId }, 'Failed to record crop usage');
-      });
-
       const response: DetectedItemResponse[] = items.map((item) => ({
         description: item.description,
         cropped_url: item.croppedUrl,
@@ -209,10 +207,8 @@ export const catalogImportRoutes: FastifyPluginAsync = async (server) => {
     const { pdf_url, max_pages, page_images } = parsed.data;
 
     // F-010: gate once for the whole page batch (not per-page — one DB round
-    // trip, not N). Exact item count is only known after detection finishes,
-    // so increment by the real total below.
+    // trip, not N). No IMAGE_CROP gate: nothing is cropped any more.
     if (page_images && page_images.length > 0) {
-      await checkQuota(retailerId, 'IMAGE_CROP');
       await checkQuota(retailerId, 'AI_TAGGING_CALL', await reserveAiCredits());
     }
 
@@ -244,10 +240,6 @@ export const catalogImportRoutes: FastifyPluginAsync = async (server) => {
             request.log.warn({ err, pageNum: i + 1 }, 'Detection failed for PDF page');
           }
         }
-
-        incrementUsage(retailerId, 'IMAGE_CROP', allItems.length).catch((err) => {
-          request.log.error({ err, retailer_id: retailerId }, 'Failed to record crop usage');
-        });
 
         return reply.status(200).send({
           data: {
@@ -382,94 +374,102 @@ export const catalogImportRoutes: FastifyPluginAsync = async (server) => {
     // F-010: real quota gate — seed-plan-limits.ts seeds a PRODUCT_UPLOAD row
     // per plan. The PLAN_LIMITS check above stays authoritative for the exact
     // per-retailer number; this is what RetailerLimitOverride/addons hook into.
-    await checkQuota(retailerId, 'PRODUCT_UPLOAD', items.length);
-
-    // Every photo must be this retailer's own detect-items output (catalog-import/<id>/),
-    // and its url is rebuilt from the key — never the client-sent cropped_url.
-    const cropUrls = new Map<string, string>();
-    await Promise.all(
-      [...new Set(items.map((i) => i.cropped_r2_key))].map(async (key) => {
-        const { url } = await verifyUpload({
-          retailerId,
-          r2Key: key,
-          allowed: IMAGE_KINDS,
-          maxBytes: 15 * 1024 * 1024,
-          prefix: `catalog-import/${retailerId}/`,
-        });
-        cropUrls.set(key, url);
-      }),
-    );
-
-    // Create products in parallel, 10 at a time
+    // Reserved up front (RC-102) and handed back if anything below throws. Products a failed batch
+    // already created stay uncharged, exactly as before (the old increment only ran on success).
+    const refund = await reserveQuota(retailerId, 'PRODUCT_UPLOAD', items.length);
     const created: Array<{ id: string; cropped_url: string }> = [];
-
-    // Shares one count-per-prefix cache across the whole batch instead of a
-    // DB round trip per item (and avoids intra-batch SKU collisions when
-    // several items share a prefix, e.g. 5 kurtas in one import).
-    const nextSku = createSkuSequencer(retailerId);
-
-    const productData = await Promise.all(
-      items.map(async (item) => ({
-        retailer_id: retailerId,
-        status: 'AVAILABLE' as const,
-        category: item.category ?? undefined,
-        subtype: item.subtype ?? undefined,
-        name: item.product_name ?? undefined,
-        description: item.short_description ?? undefined,
-        sku: await nextSku(item.subtype ?? item.category),
-        primary_color: item.primary_color ?? undefined,
-        fabric_estimate: item.fabric_estimate ?? undefined,
-        pattern: item.pattern ?? undefined,
-        styles: item.styles ?? undefined,
-        fabrics: item.fabrics ?? undefined,
-        search_tags: item.search_tags ?? undefined,
-        sizes: item.sizes ?? undefined,
-        price_min: item.price_min ?? undefined,
-        price_max: item.price_max ?? undefined,
-        section_id: resolveSectionId(item.section_id),
-        photos: {
-          create: {
-            retailer_id: retailerId,
-            is_primary: true,
-            r2_key: item.cropped_r2_key,
-            url: cropUrls.get(item.cropped_r2_key) as string,
-          },
-        },
-      })),
-    );
-
-    for (let i = 0; i < productData.length; i += 10) {
-      const batch = productData.slice(i, i + 10);
-      const products = await Promise.all(
-        batch.map((data) =>
-          prisma.product.create({
-            data,
-            select: { id: true, photos: { take: 1, select: { url: true, r2_key: true } } },
-          }),
-        ),
+    try {
+      // Every photo must be this retailer's own detect-items output (catalog-import/<id>/),
+      // and its url is rebuilt from the key — never the client-sent cropped_url.
+      const cropUrls = new Map<string, string>();
+      await Promise.all(
+        [...new Set(items.map((i) => i.cropped_r2_key))].map(async (key) => {
+          const { url } = await verifyUpload({
+            retailerId,
+            r2Key: key,
+            allowed: IMAGE_KINDS,
+            maxBytes: 15 * 1024 * 1024,
+            prefix: `catalog-import/${retailerId}/`,
+          });
+          cropUrls.set(key, url);
+        }),
       );
 
-      for (const product of products) {
-        if (product.photos[0]) {
-          addTaggingJob({
-            product_id: product.id,
-            retailer_id: retailerId,
-            photo_url: product.photos[0].url,
-            r2_key: product.photos[0].r2_key,
-          }).catch((err: unknown) =>
-            request.log.warn({ err, productId: product.id }, 'Failed to queue AI tagging'),
-          );
-        }
-        created.push({
-          id: product.id,
-          cropped_url: product.photos[0]?.url ?? '',
-        });
-      }
-    }
+      // Create products in parallel, 10 at a time
 
-    incrementUsage(retailerId, 'PRODUCT_UPLOAD', created.length).catch((err) => {
-      request.log.error({ err, retailer_id: retailerId }, 'Failed to record product-upload usage');
-    });
+      // Shares one count-per-prefix cache across the whole batch instead of a
+      // DB round trip per item (and avoids intra-batch SKU collisions when
+      // several items share a prefix, e.g. 5 kurtas in one import).
+      const nextSku = createSkuSequencer(retailerId);
+
+      const productData = await Promise.all(
+        items.map(async (item) => ({
+          retailer_id: retailerId,
+          status: 'AVAILABLE' as const,
+          category: item.category ?? undefined,
+          subtype: item.subtype ?? undefined,
+          name: item.product_name ?? undefined,
+          description: item.short_description ?? undefined,
+          sku: await nextSku(item.subtype ?? item.category),
+          primary_color: item.primary_color ?? undefined,
+          fabric_estimate: item.fabric_estimate ?? undefined,
+          pattern: item.pattern ?? undefined,
+          styles: item.styles ?? undefined,
+          fabrics: item.fabrics ?? undefined,
+          search_tags: item.search_tags ?? undefined,
+          sizes: item.sizes ?? undefined,
+          price_min: item.price_min ?? undefined,
+          price_max: item.price_max ?? undefined,
+          section_id: resolveSectionId(item.section_id),
+          photos: {
+            create: {
+              retailer_id: retailerId,
+              is_primary: true,
+              r2_key: item.cropped_r2_key,
+              url: cropUrls.get(item.cropped_r2_key) as string,
+            },
+          },
+          // Stock starts at 1 per size; the retailer edits it later.
+          stock: {
+            create: defaultStock(item.sizes).map((row) => ({ ...row, retailer_id: retailerId })),
+          },
+        })),
+      );
+
+      for (let i = 0; i < productData.length; i += 10) {
+        const batch = productData.slice(i, i + 10);
+        const products = await Promise.all(
+          batch.map((data) =>
+            prisma.product.create({
+              data,
+              select: { id: true, photos: { take: 1, select: { url: true, r2_key: true } } },
+            }),
+          ),
+        );
+
+        for (const product of products) {
+          if (product.photos[0]) {
+            addTaggingJob({
+              product_id: product.id,
+              retailer_id: retailerId,
+              photo_url: product.photos[0].url,
+              r2_key: product.photos[0].r2_key,
+            }).catch((err: unknown) =>
+              request.log.warn({ err, productId: product.id }, 'Failed to queue AI tagging'),
+            );
+          }
+          created.push({
+            id: product.id,
+            cropped_url: product.photos[0]?.url ?? '',
+          });
+        }
+      }
+    } catch (err) {
+      await refund().catch((refundErr) => {
+        request.log.error({ err: refundErr }, 'Failed to refund product-upload quota');
+      });
+      throw err;
+    }
 
     await prisma.auditLog.create({
       data: {

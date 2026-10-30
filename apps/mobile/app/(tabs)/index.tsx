@@ -23,6 +23,7 @@ import { categoryApi, retailerApi } from '../../src/lib/api';
 import { useAuth } from '../../src/lib/auth-context';
 import { staffCan } from '../../src/lib/staff-can';
 import { SchedulerBanner } from '../../src/components/social/SchedulerBanner';
+import { SetupChecklist } from '../../src/components/SetupChecklist';
 import { useScreenInsets } from '../../src/lib/safe-area';
 import { useUnreadEnquiries } from '../../src/lib/use-unread-enquiries';
 
@@ -172,6 +173,8 @@ export default function HomeScreen() {
       <View className="px-5 pb-3">
         <SchedulerBanner />
       </View>
+
+      <SetupChecklist />
 
       {/* ── Signature Gradient Hero (#231F48 to #560A39) ── */}
       <View className="px-4 pb-3">

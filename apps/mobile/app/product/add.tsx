@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { SIZE_OPTIONS } from '@kanchuki/shared'
+import { StockEditor, toStockPayload } from '../../src/components/product-detail/StockEditor'
 import {
   View,
   Text,
@@ -23,6 +24,7 @@ import {
   categoryApi,
   productAttributeApi,
   uploadImageToR2,
+  prepareImageForUpload,
   readLocalImage,
 } from '../../src/lib/api'
 import { showError, logError } from '../../src/lib/errors'
@@ -134,6 +136,7 @@ export default function AddProductScreen() {
   const [selectedStyles, setSelectedStyles] = useState<string[]>([])
   const [selectedFabrics, setSelectedFabrics] = useState<string[]>([])
   const [selectedSizes, setSelectedSizes] = useState<string[]>([])
+  const [stockQty, setStockQty] = useState<Record<string, number>>({})
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([])
   const checkProAvailability = useCallback((refresh = false) => {
     setProAvailability('checking')
@@ -395,12 +398,12 @@ export default function AddProductScreen() {
     onProgress?: (pct: number, msg: string) => void,
   ): Promise<UploadInfo> => {
     onProgress?.(20, 'Reading photo...')
-    const blob = await readLocalImage(uri)
+    const prep = await prepareImageForUpload(uri, 'image/jpeg')
     onProgress?.(35, 'Getting upload link...')
-    const uploadResult = await productApi.getUploadUrl('product.jpg', 'image/jpeg', blob.size)
+    const uploadResult = await productApi.getUploadUrl('product.jpg', 'image/jpeg', prep.size)
     const info = uploadResult.data
     onProgress?.(55, 'Uploading to cloud...')
-    await uploadImageToR2(uri, info.upload_url, 'image/jpeg')
+    await uploadImageToR2(prep.uri, info.upload_url, 'image/jpeg', undefined, undefined, { compress: false })
     return info
   }
 
@@ -461,6 +464,7 @@ export default function AddProductScreen() {
         fabrics: selectedFabrics,
         search_tags: tagsToSave,
         sizes: selectedSizes,
+        stock: toStockPayload(selectedSizes, stockQty),
         category_id: primaryCategoryId,
         location_notes: location || undefined,
         notes: notes || undefined,
@@ -1165,6 +1169,18 @@ export default function AddProductScreen() {
               )
             })}
           </View>
+        </View>
+
+        {/* Stock per size (defaults to 1; edit later) */}
+        <View className="bg-white rounded-2xl p-4 border border-sand-100">
+          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-3">
+            Stock
+          </Text>
+          <StockEditor
+            selectedSizes={selectedSizes}
+            qty={stockQty}
+            onChange={(size, quantity) => setStockQty((prev) => ({ ...prev, [size]: quantity }))}
+          />
         </View>
 
         {/* Style tags (dynamic, DB-backed — multi-select) */}

@@ -9,13 +9,19 @@ const { mockRetailerFindUnique, mockRetailerUpdate, mockCollectionFindFirst } = 
   mockCollectionFindFirst: vi.fn(),
 }));
 
-const { mockGetUploadPresignedUrl, mockPublicUrl, mockInspectObject, mockDeleteObject } =
-  vi.hoisted(() => ({
-    mockGetUploadPresignedUrl: vi.fn(),
-    mockPublicUrl: vi.fn(),
-    mockInspectObject: vi.fn(),
-    mockDeleteObject: vi.fn(async () => {}),
-  }));
+const {
+  mockGetUploadPresignedUrl,
+  mockPublicUrl,
+  mockInspectObject,
+  mockDeleteObject,
+  mockCopyObject,
+} = vi.hoisted(() => ({
+  mockGetUploadPresignedUrl: vi.fn(),
+  mockPublicUrl: vi.fn(),
+  mockInspectObject: vi.fn(),
+  mockDeleteObject: vi.fn(async () => {}),
+  mockCopyObject: vi.fn(async () => {}),
+}));
 
 const {
   mockTeamMemberFindUnique,
@@ -118,6 +124,7 @@ vi.mock('@kanchuki/ai', () => ({
   publicUrl: mockPublicUrl,
   inspectObject: mockInspectObject,
   deleteObject: mockDeleteObject,
+  copyObject: mockCopyObject,
 }));
 
 // F-031 social publishing — Meta Graph API + Redis are mocked; the suite only
@@ -393,11 +400,44 @@ describe('PUT /retailers/me', () => {
       expect(mockRetailerUpdate).not.toHaveBeenCalled();
     });
 
+    it('a staged upload is promoted and the FINAL key + url are stored', async () => {
+      mockInspectObject.mockResolvedValue({ size: 50, head: Buffer.from([0xff, 0xd8, 0xff, 0]) });
+      const staged = 'uploads/pending/retailers/retailer_1/banner/x.jpg';
+      const res = await put({
+        banner_r2_key: staged,
+        banner_url: `https://cdn.example.com/${staged}`,
+      });
+      expect(res.statusCode).toBe(200);
+      expect(mockCopyObject).toHaveBeenCalledWith(
+        staged,
+        'retailers/retailer_1/banner/x.jpg',
+        undefined, // mock inspect has no ETag
+      );
+      expect(mockRetailerUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            banner_r2_key: 'retailers/retailer_1/banner/x.jpg',
+            banner_url: 'https://cdn.example.com/retailers/retailer_1/banner/x.jpg',
+          }),
+        }),
+      );
+    });
+
+    it('a staged url with no key is never stored (deleted on confirm)', async () => {
+      const res = await put({
+        logo_url: 'https://cdn.example.com/uploads/pending/retailers/retailer_1/logo/x.jpg',
+      });
+      expect(res.statusCode).toBe(422);
+      expect(mockRetailerUpdate).not.toHaveBeenCalled();
+    });
+
     it('rejects an uploaded file that is not an image and deletes it', async () => {
       mockInspectObject.mockResolvedValue({ size: 50, head: Buffer.from('<script>alert(1)') });
-      const res = await put({ banner_r2_key: 'retailers/retailer_1/banner/x.jpg' });
+      const res = await put({ banner_r2_key: 'uploads/pending/retailers/retailer_1/banner/x.jpg' });
       expect(res.statusCode).toBe(422);
-      expect(mockDeleteObject).toHaveBeenCalledWith('retailers/retailer_1/banner/x.jpg');
+      expect(mockDeleteObject).toHaveBeenCalledWith(
+        'uploads/pending/retailers/retailer_1/banner/x.jpg',
+      );
       expect(mockRetailerUpdate).not.toHaveBeenCalled();
     });
   });
@@ -630,6 +670,7 @@ describe('POST /retailers/me/banner-upload-url', () => {
       payload: {
         filename: 'summer-collection.jpg',
         content_type: 'image/jpeg',
+        content_length: 1_000,
         size_bytes: 2_500_000,
       },
     });
@@ -659,7 +700,12 @@ describe('POST /retailers/me/banner-upload-url', () => {
       const res = await app.inject({
         method: 'POST',
         url: '/v1/retailers/me/banner-upload-url',
-        payload: { filename: 'banner', content_type: ct, size_bytes: 1_000_000 },
+        payload: {
+          filename: 'banner',
+          content_type: ct,
+          content_length: 1_000,
+          size_bytes: 1_000_000,
+        },
       });
       expect(res.statusCode).toBe(200);
 
@@ -675,7 +721,12 @@ describe('POST /retailers/me/banner-upload-url', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/v1/retailers/me/banner-upload-url',
-      payload: { filename: 'banner.gif', content_type: 'image/gif', size_bytes: 1_000 },
+      payload: {
+        filename: 'banner.gif',
+        content_type: 'image/gif',
+        content_length: 1_000,
+        size_bytes: 1_000,
+      },
     });
 
     expect(res.statusCode).toBe(422);
@@ -688,7 +739,12 @@ describe('POST /retailers/me/banner-upload-url', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/v1/retailers/me/banner-upload-url',
-      payload: { filename: '', content_type: 'image/jpeg', size_bytes: 1_000 },
+      payload: {
+        filename: '',
+        content_type: 'image/jpeg',
+        content_length: 1_000,
+        size_bytes: 1_000,
+      },
     });
 
     expect(res.statusCode).toBe(422);
@@ -700,7 +756,12 @@ describe('POST /retailers/me/banner-upload-url', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/v1/retailers/me/banner-upload-url',
-      payload: { filename: 'banner.jpg', content_type: 'image/jpeg', size_bytes: 0 },
+      payload: {
+        filename: 'banner.jpg',
+        content_type: 'image/jpeg',
+        content_length: 1_000,
+        size_bytes: 0,
+      },
     });
 
     expect(res.statusCode).toBe(422);
@@ -712,7 +773,12 @@ describe('POST /retailers/me/banner-upload-url', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/v1/retailers/me/banner-upload-url',
-      payload: { filename: 'banner.jpg', content_type: 'image/jpeg', size_bytes: 11_000_001 },
+      payload: {
+        filename: 'banner.jpg',
+        content_type: 'image/jpeg',
+        content_length: 1_000,
+        size_bytes: 11_000_001,
+      },
     });
 
     expect(res.statusCode).toBe(422);
@@ -726,7 +792,12 @@ describe('POST /retailers/me/banner-upload-url', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/v1/retailers/me/banner-upload-url',
-      payload: { filename: 'banner.jpg', content_type: 'image/jpeg', size_bytes: 1_000_000 },
+      payload: {
+        filename: 'banner.jpg',
+        content_type: 'image/jpeg',
+        content_length: 1_000,
+        size_bytes: 1_000_000,
+      },
     });
 
     expect(res.statusCode).toBe(422);
@@ -742,12 +813,22 @@ describe('POST /retailers/me/banner-upload-url', () => {
     const res1 = await app.inject({
       method: 'POST',
       url: '/v1/retailers/me/banner-upload-url',
-      payload: { filename: 'a.jpg', content_type: 'image/jpeg', size_bytes: 500_000 },
+      payload: {
+        filename: 'a.jpg',
+        content_type: 'image/jpeg',
+        content_length: 1_000,
+        size_bytes: 500_000,
+      },
     });
     const res2 = await app.inject({
       method: 'POST',
       url: '/v1/retailers/me/banner-upload-url',
-      payload: { filename: 'b.jpg', content_type: 'image/jpeg', size_bytes: 500_000 },
+      payload: {
+        filename: 'b.jpg',
+        content_type: 'image/jpeg',
+        content_length: 1_000,
+        size_bytes: 500_000,
+      },
     });
 
     expect(res1.statusCode).toBe(200);

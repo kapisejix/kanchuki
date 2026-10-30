@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { normalizeOccasions, PRODUCT_OCCASIONS } from './occasions.js';
+import { PRODUCT_OCCASIONS, normalizeOccasions } from './occasions.js';
 import { mapStyleQuizAnswers } from './style-quiz.js';
 
 describe('normalizeOccasions', () => {

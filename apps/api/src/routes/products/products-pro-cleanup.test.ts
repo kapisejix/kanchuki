@@ -10,8 +10,9 @@ const {
   mockBackgroundFindFirst,
   mockAuditCreate,
   mockRunCleanup,
-  mockCheckQuota,
-  mockIncrementUsage,
+  mockReserveQuota,
+  mockRefundBg,
+  mockRefundCrop,
   mockGetSecret,
   mockSpawnSync,
   mockFetchImageBuffer,
@@ -25,8 +26,9 @@ const {
   mockBackgroundFindFirst: vi.fn(),
   mockAuditCreate: vi.fn(),
   mockRunCleanup: vi.fn(),
-  mockCheckQuota: vi.fn(),
-  mockIncrementUsage: vi.fn(),
+  mockReserveQuota: vi.fn(),
+  mockRefundBg: vi.fn(),
+  mockRefundCrop: vi.fn(),
   mockGetSecret: vi.fn(),
   mockSpawnSync: vi.fn(),
   mockFetchImageBuffer: vi.fn(),
@@ -66,10 +68,7 @@ vi.mock('../../lib/photo-cleanup-runner.js', () => ({
   serializePhotoCleanup: (fn: () => Promise<unknown>) => fn(),
 }));
 
-vi.mock('../../lib/quota.js', () => ({
-  checkQuota: mockCheckQuota,
-  incrementUsage: mockIncrementUsage,
-}));
+vi.mock('../../lib/quota.js', () => ({ reserveQuota: mockReserveQuota }));
 
 import { errorHandler } from '../../plugins/error-handler.js';
 import { productsProCleanupRoutes } from './products-pro-cleanup.js';
@@ -93,8 +92,12 @@ beforeEach(() => {
   mockPublicUrl.mockImplementation((key: string) => `https://cdn.example/${key}`);
   mockCompressImageToTarget.mockResolvedValue({ buffer: Buffer.from('cleaned-jpeg') });
   mockUploadBuffer.mockResolvedValue(undefined);
-  mockCheckQuota.mockResolvedValue(undefined);
-  mockIncrementUsage.mockResolvedValue(undefined);
+  // RC-102: reserveQuota hands back a per-resource refund, so each can be asserted on its own.
+  mockReserveQuota.mockImplementation(async (_id: string, resource: string) =>
+    resource === 'IMAGE_CROP' ? mockRefundCrop : mockRefundBg,
+  );
+  mockRefundBg.mockResolvedValue(undefined);
+  mockRefundCrop.mockResolvedValue(undefined);
   mockGetSecret.mockResolvedValue('');
   // F-028 auto-contrast path: default fetch rejects (no network in tests)
   // so the fallback-to-white branch runs unless a test overrides it.
@@ -144,8 +147,9 @@ describe('POST /products/pro-cleanup', () => {
 
     // Quota: BG_REMOVAL for both photos; pipeline delegated to the shared
     // runner with the long SAM2 cap (remove_hardware=true).
-    expect(mockCheckQuota).toHaveBeenCalledWith(RETAILER_ID, 'BG_REMOVAL', 2);
-    expect(mockIncrementUsage).toHaveBeenCalledWith(RETAILER_ID, 'BG_REMOVAL');
+    expect(mockReserveQuota).toHaveBeenCalledTimes(1);
+    expect(mockReserveQuota).toHaveBeenCalledWith(RETAILER_ID, 'BG_REMOVAL', 2);
+    expect(mockRefundBg).not.toHaveBeenCalled(); // both photos cleaned: both slots stay spent
     expect(mockRunCleanup).toHaveBeenCalledTimes(2);
     expect(mockRunCleanup).toHaveBeenCalledWith(
       expect.objectContaining({ removeHardware: true, tightCrop: true, bgImageUrl: null }),
@@ -191,6 +195,20 @@ describe('POST /products/pro-cleanup', () => {
     });
     expect(res.statusCode).toBe(422);
     expect(mockRunCleanup).not.toHaveBeenCalled();
+    expect(mockRefundBg).toHaveBeenCalledExactlyOnceWith(2); // nothing ran, all slots back
+    await app.close();
+  });
+
+  it('a throwing background lookup hands the slots back too', async () => {
+    mockBackgroundFindFirst.mockRejectedValue(new Error('db down'));
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/products/pro-cleanup',
+      payload: { ...validBody, background_image_id: 'bg1' },
+    });
+    expect(res.statusCode).toBe(500);
+    expect(mockRefundBg).toHaveBeenCalledExactlyOnceWith(2);
     await app.close();
   });
 
@@ -214,6 +232,81 @@ describe('POST /products/pro-cleanup', () => {
     expect(body.photos[0].error).toContain('fetch failed');
     expect(body.photos[1].error).toBeNull();
     expect(body.primary_url).toBe(body.photos[1].url);
+    // Only the failed photo's slot is handed back; the cleaned one keeps its slot.
+    expect(mockRefundBg).toHaveBeenCalledExactlyOnceWith(1);
+    expect(mockRefundCrop).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('crop photos reserve IMAGE_CROP separately and a failed crop photo refunds both', async () => {
+    mockRunCleanup
+      .mockRejectedValueOnce(new Error('fetch failed (500)'))
+      .mockResolvedValueOnce({ jpeg: Buffer.from('x'), output: '' });
+    mockScoreSharpness.mockResolvedValueOnce(7);
+    mockPickSharpest.mockReturnValue(0);
+    const crop = { x1: 0, y1: 0, x2: 10, y2: 10 };
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/products/pro-cleanup',
+      payload: {
+        ...validBody,
+        photos: [
+          { ...validBody.photos[0], crop }, // fails
+          { ...validBody.photos[1], crop }, // succeeds
+        ],
+      },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(mockReserveQuota).toHaveBeenCalledWith(RETAILER_ID, 'BG_REMOVAL', 2);
+    expect(mockReserveQuota).toHaveBeenCalledWith(RETAILER_ID, 'IMAGE_CROP', 2);
+    expect(mockRefundBg).toHaveBeenCalledExactlyOnceWith(1);
+    expect(mockRefundCrop).toHaveBeenCalledExactlyOnceWith(1);
+    await app.close();
+  });
+
+  it('a failing BG_REMOVAL refund does not skip the IMAGE_CROP refund', async () => {
+    mockRunCleanup
+      .mockRejectedValueOnce(new Error('fetch failed (500)'))
+      .mockResolvedValueOnce({ jpeg: Buffer.from('x'), output: '' });
+    mockScoreSharpness.mockResolvedValueOnce(7);
+    mockPickSharpest.mockReturnValue(0);
+    mockRefundBg.mockRejectedValue(new Error('db down'));
+    const crop = { x1: 0, y1: 0, x2: 10, y2: 10 };
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/products/pro-cleanup',
+      payload: {
+        ...validBody,
+        photos: [
+          { ...validBody.photos[0], crop }, // fails, bg refund rejects
+          { ...validBody.photos[1], crop },
+        ],
+      },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(mockRefundBg).toHaveBeenCalledExactlyOnceWith(1);
+    expect(mockRefundCrop).toHaveBeenCalledExactlyOnceWith(1);
+    await app.close();
+  });
+
+  it('IMAGE_CROP over quota gives the BG_REMOVAL reservation back and runs nothing', async () => {
+    const { AppError } = await import('../../plugins/error-handler.js');
+    mockReserveQuota.mockImplementation(async (_id: string, resource: string) => {
+      if (resource === 'IMAGE_CROP') throw new AppError('PLAN_LIMIT_EXCEEDED', 'crop', 402);
+      return mockRefundBg;
+    });
+    const crop = { x1: 0, y1: 0, x2: 10, y2: 10 };
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/products/pro-cleanup',
+      payload: { ...validBody, photos: [{ ...validBody.photos[0], crop }] },
+    });
+    expect(res.statusCode).toBe(402);
+    expect(mockRunCleanup).not.toHaveBeenCalled();
+    expect(mockRefundBg).toHaveBeenCalledExactlyOnceWith(1);
     await app.close();
   });
 
@@ -229,6 +322,9 @@ describe('POST /products/pro-cleanup', () => {
     });
     expect(res.statusCode).toBe(422);
     expect(res.json().error.message).toContain('failed to process');
+    expect(mockRefundBg).toHaveBeenCalledTimes(2); // every photo failed: every slot back
+    expect(mockRefundBg).toHaveBeenNthCalledWith(1, 1);
+    expect(mockRefundBg).toHaveBeenNthCalledWith(2, 1);
     await app.close();
   });
 
@@ -252,7 +348,7 @@ describe('POST /products/pro-cleanup', () => {
 
   it('surfaces the PLAN_LIMIT_EXCEEDED quota gate', async () => {
     const { AppError } = await import('../../plugins/error-handler.js');
-    mockCheckQuota.mockRejectedValue(new AppError('PLAN_LIMIT_EXCEEDED', 'bg removal', 409));
+    mockReserveQuota.mockRejectedValue(new AppError('PLAN_LIMIT_EXCEEDED', 'bg removal', 409));
     const app = await buildApp();
     const res = await app.inject({
       method: 'POST',

@@ -30,9 +30,20 @@ const WRAPPER_TEST_REL = 'src/components/KeyboardScreen.test.tsx'
  * it. The guard asserts the file still contains the raw view, so a stale entry
  * (the migration finished but the exemption was left behind) fails too.
  */
-const EXCLUDED: Record<string, string> = {
-  'app/staff/retailer-onboard.tsx':
-    "Pins Android to `behavior={undefined}` (iOS-only `padding`) — a deliberate choice for this screen, not the shared default.",
+const EXCLUDED: Record<string, string> = {}
+
+/**
+ * Screens that own a `TextInput` but do not render `KeyboardScreen`.
+ *
+ * The first rule (no raw view) only stops a wrong wrapper; it cannot notice a
+ * screen that forgot any wrapper, which is how `product/[id]`, `social/schedule/[id]`
+ * and the Report-a-problem sheet shipped with inputs the keyboard covered (RC-116).
+ * Each entry needs a reason the input can never be covered; a stale entry fails.
+ */
+const NO_WRAPPER: Record<string, string> = {
+  'app/(tabs)/catalog.tsx': 'Search field in the header; nothing is laid out below it to hide.',
+  'app/(tabs)/customers.tsx': 'Search field in the header; nothing is laid out below it to hide.',
+  'app/ai-search.tsx': 'Single query field at the top, results scroll below it.',
 }
 
 /** Slash-normalised path of `file` relative to `apps/mobile`. */
@@ -98,6 +109,83 @@ describe('mobile keyboard wrapper adoption', () => {
       .filter((s) => PLATFORM_TERNARY.test(s.source))
       .map((s) => s.path)
     expect(offenders.sort()).toEqual(excluded.sort())
+  })
+
+  it('wraps every screen that owns a TextInput (or lists why not)', () => {
+    const offenders = sources
+      .filter((s) => /<TextInput\b/.test(s.source) && !s.source.includes('<KeyboardScreen'))
+      .map((s) => s.path)
+    expect(offenders.sort()).toEqual(Object.keys(NO_WRAPPER).sort())
+  })
+
+  it('has no stale NO_WRAPPER entries', () => {
+    for (const path of Object.keys(NO_WRAPPER)) {
+      const source = sources.find((s) => s.path === path)?.source
+      expect(source, `${path} is listed in NO_WRAPPER but no longer exists`).toBeDefined()
+      expect(source, `${path} now renders KeyboardScreen — delete the entry`).not.toContain(
+        '<KeyboardScreen',
+      )
+    }
+  })
+
+  // Inputs the `<TextInput` scan cannot see because they live in a child component
+  // (RC-119). Derived, not listed: a component under src/ that owns a `<TextInput`
+  // and does not wrap itself is an "input component"; so is any src/ file that
+  // imports one without wrapping. Every screen that imports an input component by
+  // name must render <KeyboardScreen (barrel imports included).
+  const importsName = (source: string, name: string) =>
+    new RegExp(`import\\s*\\{[^}]*\\b${name}\\b`).test(source)
+
+  function inputComponentNames(): string[] {
+    const files = walk(join(__dirname, '..', 'src'))
+      .filter((f) => !f.endsWith('.test.tsx'))
+      .map((f) => ({
+        name: f.split(/[\\/]/).pop()!.replace(/\.tsx$/, ''),
+        source: stripComments(readFileSync(f, 'utf8')),
+      }))
+    const names = new Set(
+      files
+        .filter((f) => /<TextInput\b/.test(f.source) && !f.source.includes('<KeyboardScreen'))
+        .map((f) => f.name),
+    )
+    for (let grew = true; grew; ) {
+      grew = false
+      for (const f of files) {
+        if (names.has(f.name) || f.source.includes('<KeyboardScreen')) continue
+        if ([...names].some((n) => importsName(f.source, n))) {
+          names.add(f.name)
+          grew = true
+        }
+      }
+    }
+    return [...names]
+  }
+
+  it('wraps every screen that imports an input component', () => {
+    const names = inputComponentNames()
+    // a broken derivation must not pass vacuously
+    expect(names).toEqual(
+      expect.arrayContaining([
+        'GooglePlaceField',
+        'GoogleReviewsTab',
+        'StockEditor',
+        'ProductAttributesForm',
+      ]),
+    )
+    const offenders = sources
+      .filter((s) => names.some((n) => importsName(s.source, n)))
+      .filter((s) => !s.source.includes('<KeyboardScreen') && !(s.path in NO_WRAPPER))
+      .map((s) => s.path)
+    expect(offenders).toEqual([])
+  })
+
+  // ReportProblem wraps itself (its importers include src/ErrorBoundary, outside app/).
+  it('wraps ReportProblem in KeyboardScreen', () => {
+    const source = stripComments(
+      readFileSync(join(__dirname, '..', 'src/components/ReportProblem.tsx'), 'utf8'),
+    )
+    expect(source).toContain('<KeyboardScreen')
+    expect(source).toMatch(/import\s*\{[^}]*\bKeyboardScreen\b/)
   })
 
   it('imports the wrapper wherever it renders it', () => {

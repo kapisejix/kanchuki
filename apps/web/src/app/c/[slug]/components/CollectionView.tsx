@@ -292,23 +292,52 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
     item.name ? item : (productCacheRef.current.get(item.id) ?? item),
   );
 
-  const handleEnquireAll = useCallback(() => {
-    const message = buildEnquiryMessage({
-      shopName: collection.retailer.shop_name,
-      collectionTitle: collection.title,
-      // Deep link each listed product to its shared page so the retailer can
-      // open it directly instead of matching by name alone.
-      products: (favoriteProducts.length > 0 ? favoriteProducts : products.slice(0, 3)).map(
-        (p) => ({
-          name: p.name,
-          price_min: p.price_min,
-          product_url: `${window.location.origin}${basePath}/product/${p.id}`,
+  const enquiring = useRef(false);
+  const handleEnquireAll = useCallback(async () => {
+    if (enquiring.current) return; // RC-015: sync guard, not state
+    enquiring.current = true;
+    // Client-built text: no SKU (public summaries carry none). Used when nothing
+    // is saved, and as the fallback when the POST fails.
+    const clientLink = () =>
+      buildWhatsAppEnquiryLink(
+        collection.retailer.phone,
+        buildEnquiryMessage({
+          shopName: collection.retailer.shop_name,
+          collectionTitle: collection.title,
+          // Deep link each listed product to its shared page so the retailer can
+          // open it directly instead of matching by name alone.
+          products: (favoriteProducts.length > 0 ? favoriteProducts : products.slice(0, 3)).map(
+            (p) => ({
+              name: p.name,
+              price_min: p.price_min,
+              product_url: `${window.location.origin}${basePath}/product/${p.id}`,
+            }),
+          ),
         }),
-      ),
-    });
-    const url = buildWhatsAppEnquiryLink(collection.retailer.phone, message);
-    window.open(url, '_blank');
-  }, [collection, favoriteProducts, products, basePath]);
+      );
+    // Saved picks go through the API like WishlistView (F-044 E2): the server
+    // adds each SKU and records the enquiry in the store's inbox. With nothing
+    // saved the first 3 on screen are not the shopper's picks, so no inbox row.
+    // '_self' because a '_blank' open after an await is popup-blocked.
+    try {
+      let url: string | undefined;
+      if (favoriteProducts.length > 0) {
+        const res = await fetch(`${apiBasePath}/enquire`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ product_ids: favoriteProducts.map((p) => p.id) }),
+        });
+        url = res.ok
+          ? ((await res.json()) as { data?: { whatsapp_url?: string } }).data?.whatsapp_url
+          : undefined;
+      }
+      window.open(url ?? clientLink(), '_self');
+    } catch {
+      window.open(clientLink(), '_self');
+    } finally {
+      enquiring.current = false;
+    }
+  }, [collection, favoriteProducts, products, basePath, apiBasePath]);
 
   const handleShare = useCallback(async () => {
     const url = window.location.href;

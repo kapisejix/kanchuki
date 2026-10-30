@@ -1,3 +1,6 @@
+-- Replay fix (RC-104): a fresh DB has no pgvector yet; prod already did.
+CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA public;
+
 -- CreateEnum
 CREATE TYPE "CollectionStatus" AS ENUM ('ACTIVE', 'EXPIRED', 'ARCHIVED');
 
@@ -96,7 +99,7 @@ CREATE TABLE "customer_fashion_dna" (
     "id" TEXT NOT NULL,
     "customer_id" TEXT NOT NULL,
     "retailer_id" TEXT NOT NULL,
-    "preference_vector" vector,
+    "preference_vector" vector(8),
     "color_affinities" JSONB NOT NULL DEFAULT '{}',
     "style_affinities" JSONB NOT NULL DEFAULT '{}',
     "fabric_affinities" JSONB NOT NULL DEFAULT '{}',
@@ -152,7 +155,7 @@ CREATE TABLE "product_embeddings" (
     "id" TEXT NOT NULL,
     "product_id" TEXT NOT NULL,
     "retailer_id" TEXT NOT NULL,
-    "embedding" vector,
+    "embedding" vector(1536),
     "input_hash" TEXT NOT NULL,
     "model_version" TEXT NOT NULL DEFAULT 'text-embedding-3-small',
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -527,14 +530,3 @@ ALTER TABLE "subscription_payments" ADD CONSTRAINT "subscription_payments_subscr
 
 -- AddForeignKey
 ALTER TABLE "subscriptions" ADD CONSTRAINT "subscriptions_retailer_id_fkey" FOREIGN KEY ("retailer_id") REFERENCES "retailers"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
-┌─────────────────────────────────────────────────────────┐
-│  Update available 5.22.0 -> 7.8.0                       │
-│                                                         │
-│  This is a major update - please follow the guide at    │
-│  https://pris.ly/d/major-version-upgrade                │
-│                                                         │
-│  Run the following to update                            │
-│    npm i --save-dev prisma@latest                       │
-│    npm i @prisma/client@latest                          │
-└─────────────────────────────────────────────────────────┘

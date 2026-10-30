@@ -170,24 +170,24 @@ async function postTryOnJob(
 
   const raw = (await res.json()) as Record<string, unknown>;
 
-  const jobError = raw['error'];
+  const jobError = raw.error;
   if (jobError) throw new Error(`RunPod error: ${String(jobError)}`);
 
-  const output = raw['output'] as Record<string, unknown> | undefined;
-  const handlerError = output?.['error'];
+  const output = raw.output as Record<string, unknown> | undefined;
+  const handlerError = output?.error;
   if (handlerError) throw new Error(`CatVTON handler error: ${String(handlerError)}`);
 
-  const resultUrl = output?.['result_url'];
+  const resultUrl = output?.result_url;
   if (typeof resultUrl !== 'string' || !resultUrl) {
     // `status` is the worker's own verdict; surface it rather than only the
     // missing field, because a bare "no result_url" hides an OOM/timeout.
     throw new Error(
-      `CatVTON returned no result_url (worker status: ${String(output?.['status'] ?? raw['status'] ?? 'unknown')}). ` +
+      `CatVTON returned no result_url (worker status: ${String(output?.status ?? raw.status ?? 'unknown')}). ` +
         `Full response: ${JSON.stringify(raw).slice(0, 500)}`,
     );
   }
 
-  const latencyMs = output?.['latency_ms'];
+  const latencyMs = output?.latency_ms;
   // gpu_ms is a Prisma Int?: a fraction would throw after the GPU is paid for,
   // so round, and ignore NaN/negative/non-finite values.
   const msOrNull = (v: unknown): number | null =>
@@ -195,7 +195,7 @@ async function postTryOnJob(
   return {
     outputUrl: resultUrl,
     latencyMs: typeof latencyMs === 'number' ? latencyMs : null,
-    gpuMs: msOrNull(raw['executionTime']) ?? msOrNull(latencyMs),
+    gpuMs: msOrNull(raw.executionTime) ?? msOrNull(latencyMs),
   };
 }
 

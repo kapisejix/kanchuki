@@ -37,6 +37,10 @@ vi.mock('expo-router', () => ({
   router: { navigate: vi.fn(), replace: vi.fn(), back: vi.fn() },
 }))
 
+// RC-107: AuthProvider's authed:false branch wipes the on-disk query cache; the real module pulls
+// in expo-file-system (needs __DEV__), which this routing test does not exercise.
+vi.mock('../../src/lib/offline-persister', () => ({ clearPersistedCache: vi.fn(async () => {}) }))
+
 vi.mock('../../src/lib/api', () => ({
   authApi: {},
   // setToken must actually persist — AuthProvider hydrates from this token.

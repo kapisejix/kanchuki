@@ -104,4 +104,4 @@ export const COLORS = {
   dangerSurface: '#FFF1F1',
   dangerTint: '#FFDFDD',
   chartAccent: '#F75D59',
-} as const
+} as const;

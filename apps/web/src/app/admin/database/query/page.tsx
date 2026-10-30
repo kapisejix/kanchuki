@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Sheet } from '@/components/Sheet'
+import { adminMutateOptions } from '@/lib/admin-fetch'
 import dynamic from 'next/dynamic'
 import {
   Play,
@@ -228,9 +229,10 @@ LIMIT 20;`)
     setResult(null)
 
     try {
+      // RC-112: a mutating admin call needs the CSRF token + cookie, or it 403s.
       const res = await fetch(`${API_URL}/v1/admin/query`, {
         method: 'POST',
-        headers: getAdminHeaders(),
+        ...(await adminMutateOptions()),
         body: JSON.stringify({ query: trimmed }),
       })
       const json = await res.json()

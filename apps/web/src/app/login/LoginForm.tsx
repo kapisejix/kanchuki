@@ -1,6 +1,7 @@
 'use client'
 
 import { Loader2, ShieldCheck } from 'lucide-react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
@@ -225,8 +226,15 @@ export function LoginForm({ returnTo }: Props) {
     <div className="min-h-screen bg-stone-50 flex flex-col items-center justify-center px-4 py-10">
       <div className="w-full max-w-sm">
         <div className="text-center mb-6">
-          <Link href="/" className="font-semibold text-stone-900 text-lg">
-            Kanchuki
+          <Link href="/" className="inline-flex" aria-label="Kanchuki — home">
+            <Image
+              src="/kanchuki-logo.png"
+              alt="Kanchuki"
+              width={884}
+              height={176}
+              priority
+              className="h-8 w-auto rounded-md"
+            />
           </Link>
           <p className="text-stone-500 text-sm mt-1">
             {step === 'phone'

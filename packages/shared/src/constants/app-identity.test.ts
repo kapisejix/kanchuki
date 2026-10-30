@@ -1,15 +1,15 @@
-import { readFileSync } from 'node:fs'
-import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
-import { describe, expect, it } from 'vitest'
-import { stripComments } from '../testing/strip-comments.js'
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { describe, expect, it } from 'vitest';
+import { stripComments } from '../testing/strip-comments.js';
 import {
   ANDROID_PACKAGE,
   APP_SCHEME,
   IOS_BUNDLE_ID,
   androidIntentUrl,
   appLink,
-} from './app-identity.js'
+} from './app-identity.js';
 
 /**
  * RC-041 lived in a gap: nothing anywhere cross-checked the scheme or the
@@ -34,9 +34,9 @@ import {
  * to `app.json`, or the config stops importing it and types the literals again.
  */
 
-const HERE = dirname(fileURLToPath(import.meta.url))
-const REPO_ROOT = join(HERE, '..', '..', '..', '..')
-const MOBILE = join(REPO_ROOT, 'apps', 'mobile')
+const HERE = dirname(fileURLToPath(import.meta.url));
+const REPO_ROOT = join(HERE, '..', '..', '..', '..');
+const MOBILE = join(REPO_ROOT, 'apps', 'mobile');
 
 /**
  * The three identity fields are deliberately **absent** from the static manifest
@@ -45,13 +45,13 @@ const MOBILE = join(REPO_ROOT, 'apps', 'mobile')
  */
 interface ExpoManifest {
   expo: {
-    scheme?: string
-    android: { package?: string; versionCode?: number }
-    ios: { bundleIdentifier?: string }
-  }
+    scheme?: string;
+    android: { package?: string; versionCode?: number };
+    ios: { bundleIdentifier?: string };
+  };
 }
 
-const manifest = JSON.parse(readFileSync(join(MOBILE, 'app.json'), 'utf8')) as ExpoManifest
+const manifest = JSON.parse(readFileSync(join(MOBILE, 'app.json'), 'utf8')) as ExpoManifest;
 
 describe('app identity', () => {
   it('is not repeated in the static manifest', () => {
@@ -59,15 +59,15 @@ describe('app identity', () => {
     // but it would be a second source that looks authoritative and is read by
     // nothing, which is exactly how RC-041's wrong package survived a year.
     // Asserting absence is the only thing that keeps the count at one.
-    expect(manifest.expo.scheme).toBeUndefined()
-    expect(manifest.expo.android.package).toBeUndefined()
-    expect(manifest.expo.ios.bundleIdentifier).toBeUndefined()
-  })
+    expect(manifest.expo.scheme).toBeUndefined();
+    expect(manifest.expo.android.package).toBeUndefined();
+    expect(manifest.expo.ios.bundleIdentifier).toBeUndefined();
+  });
 
   it('is a syntactically valid Android application id', () => {
-    expect(ANDROID_PACKAGE).toMatch(/^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$/)
-    expect(IOS_BUNDLE_ID).toMatch(/^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$/)
-  })
+    expect(ANDROID_PACKAGE).toMatch(/^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$/);
+    expect(IOS_BUNDLE_ID).toMatch(/^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$/);
+  });
 
   it('is imported by the dynamic app config instead of re-typed there', () => {
     // `app.config.ts` is what `expo prebuild` reads to generate the application
@@ -76,39 +76,39 @@ describe('app identity', () => {
     // the values and the config only merged `extra.buildInfo` on top. It owns
     // them now, so the assertion inverts: the import has to be here, and no
     // literal copy may be.
-    const config = stripComments(readFileSync(join(MOBILE, 'app.config.ts'), 'utf8'))
-    expect(config).toContain('@kanchuki/shared/constants/app-identity')
-    expect(config).toMatch(/scheme:\s*APP_SCHEME/)
-    expect(config).toMatch(/package:\s*ANDROID_PACKAGE/)
-    expect(config).toMatch(/bundleIdentifier:\s*IOS_BUNDLE_ID/)
+    const config = stripComments(readFileSync(join(MOBILE, 'app.config.ts'), 'utf8'));
+    expect(config).toContain('@kanchuki/shared/constants/app-identity');
+    expect(config).toMatch(/scheme:\s*APP_SCHEME/);
+    expect(config).toMatch(/package:\s*ANDROID_PACKAGE/);
+    expect(config).toMatch(/bundleIdentifier:\s*IOS_BUNDLE_ID/);
     // Comments were stripped above, so a literal reaching these lines would be
     // code — the third copy, in the one file that is supposed to consume it.
-    expect(config).not.toContain(ANDROID_PACKAGE)
-    expect(config).not.toContain(IOS_BUNDLE_ID)
-    expect(config).not.toMatch(/scheme:\s*['\"]/)
+    expect(config).not.toContain(ANDROID_PACKAGE);
+    expect(config).not.toContain(IOS_BUNDLE_ID);
+    expect(config).not.toMatch(/scheme:\s*['\"]/);
     // It must still spread the static config in, or `app.json` is bypassed and
     // everything else it holds (plugins, versionCode, permissions) silently
     // vanishes from the build.
-    expect(config).toMatch(/\.\.\.config\b/)
-  })
+    expect(config).toMatch(/\.\.\.config\b/);
+  });
 
   it('builds the custom-scheme link', () => {
-    expect(appLink('join', { token: 'abc_123' })).toBe('kanchuki://join?token=abc_123')
-    expect(appLink('onboarding')).toBe('kanchuki://onboarding')
-  })
+    expect(appLink('join', { token: 'abc_123' })).toBe('kanchuki://join?token=abc_123');
+    expect(appLink('onboarding')).toBe('kanchuki://onboarding');
+  });
 
   it('builds a targeted Android intent naming the real package', () => {
     expect(androidIntentUrl('join', { token: 'abc_123' })).toBe(
       `intent://join?token=abc_123#Intent;scheme=${APP_SCHEME};package=${ANDROID_PACKAGE};end`,
-    )
-  })
+    );
+  });
 
   it('omits absent params instead of emitting them empty', () => {
-    expect(appLink('onboarding', { ref: undefined })).toBe('kanchuki://onboarding')
+    expect(appLink('onboarding', { ref: undefined })).toBe('kanchuki://onboarding');
     expect(androidIntentUrl('oauth/callback', { code: 'c', state: undefined })).toBe(
       `intent://oauth/callback?code=c#Intent;scheme=${APP_SCHEME};package=${ANDROID_PACKAGE};end`,
-    )
-  })
+    );
+  });
 
   it('encodes values that would otherwise break out of the query', () => {
     // `code`/`state` arrive from a Meta redirect — the params that can really
@@ -116,12 +116,12 @@ describe('app identity', () => {
     // why `apps/api`'s invite link is byte-identical before and after moving here.
     expect(appLink('oauth/callback', { code: 'a&b=c', state: 'x/y#z' })).toBe(
       'kanchuki://oauth/callback?code=a%26b%3Dc&state=x%2Fy%23z',
-    )
+    );
     expect(appLink('oauth/callback', { code: 'c', state: 's' })).toBe(
       'kanchuki://oauth/callback?code=c&state=s',
-    )
-  })
-})
+    );
+  });
+});
 
 // ─── Docs ──────────────────────────────────────────────────────────
 //
@@ -134,10 +134,10 @@ describe('app identity', () => {
 // `CLAUDE.md` and `docs/tasks/**` are historical records that quote the broken
 // value deliberately — pinning those would forbid writing down what happened.
 
-const OPERATOR_DOCS = ['docs/DEPLOY.md', 'docs/PLAY-STORE-RELEASES.md']
+const OPERATOR_DOCS = ['docs/DEPLOY.md', 'docs/PLAY-STORE-RELEASES.md'];
 
 /** Reverse-DNS shaped tokens (3+ segments), i.e. what an application id looks like. */
-const APP_ID_SHAPE = /\b[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*){2,}\b/g
+const APP_ID_SHAPE = /\b[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*){2,}\b/g;
 
 /**
  * Tokens on a package/bundle line that are *not* application ids — domains and
@@ -152,26 +152,26 @@ const NOT_AN_APP_ID = new Set([
   // filename looks like, and a filename can never be an application id; on that
   // line the id itself is still read and compared, which is the point.
   'app.config.ts',
-])
+]);
 
 describe('app identity in the operator docs', () => {
   for (const doc of OPERATOR_DOCS) {
     it(`${doc} names the real package in every package/bundle line`, () => {
-      const lines = readFileSync(join(REPO_ROOT, doc), 'utf8').split('\n')
-      const offenders: string[] = []
+      const lines = readFileSync(join(REPO_ROOT, doc), 'utf8').split('\n');
+      const offenders: string[] = [];
       lines.forEach((line, index) => {
-        if (!/package|bundle/i.test(line)) return
+        if (!/package|bundle/i.test(line)) return;
         for (const token of line.match(APP_ID_SHAPE) ?? []) {
-          if (token === ANDROID_PACKAGE || token === IOS_BUNDLE_ID) continue
-          if (NOT_AN_APP_ID.has(token)) continue
-          offenders.push(`${doc}:${index + 1} → ${token}`)
+          if (token === ANDROID_PACKAGE || token === IOS_BUNDLE_ID) continue;
+          if (NOT_AN_APP_ID.has(token)) continue;
+          offenders.push(`${doc}:${index + 1} → ${token}`);
         }
-      })
-      expect(offenders).toEqual([])
-    })
+      });
+      expect(offenders).toEqual([]);
+    });
 
     it(`${doc} does not mention the RC-041 package`, () => {
-      expect(readFileSync(join(REPO_ROOT, doc), 'utf8')).not.toContain('in.kanchuki.app')
-    })
+      expect(readFileSync(join(REPO_ROOT, doc), 'utf8')).not.toContain('in.kanchuki.app');
+    });
   }
-})
+});

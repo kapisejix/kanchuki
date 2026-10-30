@@ -2,7 +2,9 @@
 // an empty neighbourhood says so, it is never padded with unrelated pieces (RC-059).
 'use client'
 
+import { AlertCircle, PackageX, Sparkles, UserRound } from 'lucide-react'
 import Link from 'next/link'
+import { BTN_SECONDARY, CARD, Notice, SKELETON } from '../ui'
 import { StyleCard } from './StyleCard'
 import { LOGIN_HREF, type FeedCard, type LookResult } from './lib'
 import { MAX_PER_STORE, type ShortItem } from './shortlist'
@@ -24,52 +26,57 @@ export function LookPanel({ view, shortlist, busy, onToggle, onEnquire, onRetry,
     return (
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3" aria-busy="true">
         {Array.from({ length: 3 }, (_, i) => (
-          <div key={i} className="aspect-[3/4] bg-stone-200 rounded-lg animate-pulse" />
+          <CardSkeleton key={i} />
         ))}
       </div>
     )
   }
   if (view.kind === 'unauthorized') {
     return (
-      <p className="text-center py-10 text-stone-500">
-        Your session ended. <Link href={LOGIN_HREF} className="text-amber-700 font-medium">Please log in</Link> to continue.
-      </p>
+      <Notice icon={UserRound}>
+        <p>
+          Your session ended. <Link href={LOGIN_HREF} className="text-fuchsia-600 font-semibold underline">Please log in</Link> to continue.
+        </p>
+      </Notice>
     )
   }
   if (view.kind === 'unavailable') {
     return (
-      <div className="text-center py-10">
-        <p className="text-stone-500 text-sm">That piece is no longer available.</p>
-        <button type="button" onClick={onBack} className="mt-2 text-sm font-medium text-amber-700">
-          Back to your feed
-        </button>
-      </div>
+      <Notice
+        icon={PackageX}
+        action={<button type="button" onClick={onBack} className={BTN_SECONDARY}>Back to your feed</button>}
+      >
+        <p>That piece is no longer available.</p>
+      </Notice>
     )
   }
   if (view.kind === 'error') {
     return (
-      <div className="text-center py-10">
-        <p className="text-stone-500 text-sm">We could not load this look.</p>
-        <button type="button" onClick={onRetry} className="mt-2 text-sm font-medium text-amber-700">
-          Try again
-        </button>
-      </div>
+      <Notice
+        icon={AlertCircle}
+        action={<button type="button" onClick={onRetry} className={BTN_SECONDARY}>Try again</button>}
+      >
+        <p>We could not load this look.</p>
+      </Notice>
     )
   }
 
   return (
-    <div className="space-y-5">
-      <p className="text-sm text-stone-700">
-        Goes with: <span className="font-medium">{view.anchor.name ?? 'this piece'}</span>
+    <div className="space-y-6">
+      <p className={`${CARD} px-4 py-3 text-sm text-heliotrope-500 flex items-center gap-2`}>
+        <Sparkles aria-hidden className="h-4 w-4 shrink-0 text-fuchsia-600" />
+        <span className="min-w-0">
+          Goes with: <span className="font-semibold text-spaceCadet-900">{view.anchor.name ?? 'this piece'}</span>
+        </span>
       </p>
       {view.slots.length === 0 && (
-        <p className="text-center py-10 text-stone-500 text-sm">
-          Nothing near you goes with this piece yet. Try a wider distance.
-        </p>
+        <Notice icon={Sparkles}>
+          <p>Nothing near you goes with this piece yet. Try a wider distance.</p>
+        </Notice>
       )}
       {view.slots.map((slot) => (
-        <section key={slot.key} aria-label={slot.label} className="space-y-2">
-          <h2 className="text-sm font-semibold text-stone-900">{slot.label}</h2>
+        <section key={slot.key} aria-label={slot.label} className="space-y-3">
+          <h2 className="text-base font-bold text-spaceCadet-900 px-1">{slot.label}</h2>
           <ul className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {slot.items.map((c) => (
               <StyleCard
@@ -85,6 +92,20 @@ export function LookPanel({ view, shortlist, busy, onToggle, onEnquire, onRetry,
           </ul>
         </section>
       ))}
+    </div>
+  )
+}
+
+/** Same shape as a StyleCard, so the grid does not jump when results land. */
+export function CardSkeleton() {
+  return (
+    <div className={`${CARD} overflow-hidden`}>
+      <div className={`aspect-[3/4] ${SKELETON}`} />
+      <div className="p-3 space-y-2">
+        <div className={`h-3.5 w-3/4 rounded-full ${SKELETON}`} />
+        <div className={`h-4 w-1/2 rounded-full ${SKELETON}`} />
+        <div className={`h-11 rounded-2xl ${SKELETON}`} />
+      </div>
     </div>
   )
 }

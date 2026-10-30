@@ -145,7 +145,9 @@ describe.each([
     expect(db.collectionFindFirst).toHaveBeenCalledWith(
       expect.objectContaining({
         select: expect.objectContaining({
-          retailer: { select: { shop_name: true, phone: true, whatsapp_number: true } },
+          retailer: {
+            select: { shop_name: true, phone: true, whatsapp_number: true, public_slug: true },
+          },
         }),
       }),
     );
