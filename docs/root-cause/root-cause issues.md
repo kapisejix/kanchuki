@@ -12,6 +12,15 @@
 
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
+## RC-145 — A create route that answers "already exists" is a membership oracle, and no response shape can hide it, so the only available control is how fast it can be asked (H2-6)
+
+- **Component:** `apps/api/src/routes/customers.ts` (`POST /customers`).
+- **Symptom:** a salesperson (allowlisted for `POST /v1/customers`, phones masked everywhere else by RC-066) could type any 10-digit number and learn from `A customer with this phone number already exists` whether it was a customer of the store, bounded only by the global 200/min/IP.
+- **Root cause:** the duplicate check needs a distinct outcome, and the mobile add screen needs the new customer's `id` from the 201 (`customer/add.tsx:49-50`). The report's fix (a generic message for non-owners) leaves 422 vs 201 distinguishable. Returning a 201 for a duplicate cannot work either: a fake id is exposed by `GET /customers/:id` (404 vs 200), an existing id leaks the customer's name, a second row corrupts data.
+- **Fix:** a route-level limit on the create route, `max: 10` per minute (keyed by IP like the global limiter), which caps probing at ~600 numbers/hour and does not touch normal use (the add screen is one POST per Save tap, no bulk caller). The message is unchanged on purpose.
+- **Residual (accepted, owner decision):** a salesperson can still learn whether a given number is a customer, now at most 10 times a minute per IP. It only confirms numbers they already hold. Everyone behind one shop's wifi shares the 10.
+- **Proof:** `customers-dup-limit.test.ts`: the 11th duplicate probe is a 429 (first written as `it.fails`; the first draft expected 400 but `validationError` is 422, caught when falsified) and 10 normal creates all return 201. Falsified, each turned tests red and was restored: limit removed, `max: 11`, `max: 9` (also breaks the 10-creates test). API `tsc` and lint clean, the 5 gate scripts green, API suite 2782 passed / 5 skipped. In-memory limiter only; not run against the production Redis-backed limiter; not deployed.
+
 ## RC-144 — `plan-lapse` selected expired trials and cancelled/past-due subscriptions but never an `ACTIVE` store, so one missed renewal-cycle webhook left a paid plan on forever (H6-3)
 
 - **Component:** `apps/api/src/jobs/plan-lapse.ts` (`lapsedWhere`).
