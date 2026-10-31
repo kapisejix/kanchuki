@@ -64,7 +64,7 @@ Fix:
 +    const productIds = (variant.product_ids ?? []).filter((id) => ownedIds.has(id));
 ```
 Also reject unknown ids in campaign create/update (`growth-campaigns-crud.ts` near `:96` and `:206`) with the same `findMany` + `validationError('One or more products not found in your catalog')` used in `collections.ts:104-106`.
-Status: Plausible
+Status: Confirmed on the route with a fake product table (2026-10-30), then fixed: RC-138. Applied as one `assertOwnProducts` in `growth-campaigns-helpers.ts`, called by `POST` and `PUT /growth/campaigns` before any write (404 `Product`, not `validationError`, to match `growth-social-templates.ts`), rather than filtering inside `syncVariantCollections`, so no half-written campaign is left behind. Not run against a real Postgres, not deployed.
 
 ### H2-2 Support session and catalog delegate reach bulk-delete and WhatsApp bulk-send   Severity: Medium
 Attacker: staff (Kanchuki team member with an approved support session, or an assigned catalog-upload delegate)

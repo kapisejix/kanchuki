@@ -6,6 +6,7 @@ import { forbidden, notFound, validationError } from '../../../plugins/error-han
 import { AudienceSpecSchema } from '../growth-helpers.js';
 import {
   type AbVariant,
+  assertOwnProducts,
   campaignWithStats,
   requireGrowth,
   syncVariantCollections,
@@ -101,6 +102,11 @@ export const growthCampaignCrudRoutes: FastifyPluginAsync = async (server) => {
       schedule_at,
       ab_variants,
     } = body.data;
+
+    await assertOwnProducts(retailerId, [
+      ...(product_ids ?? []),
+      ...(ab_variants ?? []).flatMap((v) => v.product_ids ?? []),
+    ]);
 
     let festival_name: string | null = null;
     if (festival_id) {
@@ -213,6 +219,15 @@ export const growthCampaignCrudRoutes: FastifyPluginAsync = async (server) => {
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
     const data = body.data;
 
+    // Same variants syncVariantCollections will link below: the body's, else the stored ones.
+    const abVariants =
+      (data.ab_variants as unknown as AbVariant[] | null) ??
+      (existing.ab_variants as unknown as AbVariant[] | null);
+    await assertOwnProducts(retailerId, [
+      ...(data.product_ids ?? []),
+      ...(abVariants ?? []).flatMap((v) => v.product_ids ?? []),
+    ]);
+
     let festival_name: string | null | undefined;
     if (data.festival_id) {
       const festival = await prisma.festival.findUnique({ where: { id: data.festival_id } });
@@ -236,9 +251,6 @@ export const growthCampaignCrudRoutes: FastifyPluginAsync = async (server) => {
     });
 
     // Roadmap S — sync variant collections when A/B product sets change.
-    const abVariants =
-      (data.ab_variants as unknown as AbVariant[] | null) ??
-      (existing.ab_variants as unknown as AbVariant[] | null);
     const variantIds = await syncVariantCollections(
       retailerId,
       id,
