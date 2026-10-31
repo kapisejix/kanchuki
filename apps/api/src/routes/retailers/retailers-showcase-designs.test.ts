@@ -25,6 +25,7 @@ const {
   mockWatermark,
   mockSuggestDesignNameAndColor,
   mockRecordAiUsage,
+  mockReserveTaggingQuota,
   mockInspectObject,
 } = vi.hoisted(() => ({
   mockShowcaseDesignFindMany: vi.fn(),
@@ -47,6 +48,7 @@ const {
   mockWatermark: vi.fn(),
   mockSuggestDesignNameAndColor: vi.fn(),
   mockRecordAiUsage: vi.fn(),
+  mockReserveTaggingQuota: vi.fn(),
   mockInspectObject: vi.fn(),
 }));
 
@@ -79,7 +81,10 @@ vi.mock('@kanchuki/ai', () => ({
   inspectObject: mockInspectObject,
 }));
 
-vi.mock('../../lib/ai-usage.js', () => ({ recordAiUsage: mockRecordAiUsage }));
+vi.mock('../../lib/ai-usage.js', () => ({
+  recordAiUsage: mockRecordAiUsage,
+  reserveTaggingQuota: mockReserveTaggingQuota,
+}));
 vi.mock('../../lib/features.js', () => ({ hasFeature: mockHasFeature }));
 vi.mock('../../lib/showcase-quota.js', () => ({
   assertShowcaseQuota: mockAssertQuota,
@@ -122,6 +127,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockHasFeature.mockResolvedValue(true);
   mockAssertQuota.mockResolvedValue(undefined);
+  mockReserveTaggingQuota.mockResolvedValue({ onProviderUsed: vi.fn(), settle: vi.fn() });
   mockPublicUrl.mockImplementation((key: string) => `https://cdn.test/${key}`);
   mockInspectObject.mockResolvedValue({ size: 1000, head: Buffer.from([0xff, 0xd8, 0xff, 0xe0]) });
   mockWatermarkShowcaseDesign.mockResolvedValue({
@@ -309,6 +315,25 @@ describe('POST /me/showcase-designs', () => {
     await app.close();
   });
 
+  it('save without a name still succeeds with a null name when the quota is spent', async () => {
+    mockCategoryFindUnique.mockResolvedValue({ id: 'cat_suits', slug: 'suits' });
+    mockShowcaseDesignCreate.mockResolvedValue({ ...OWN_ROW, category: { name: 'Suits' } });
+    mockReserveTaggingQuota.mockRejectedValue(new Error('plan limit'));
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/me/showcase-designs',
+      headers: { 'content-type': 'application/json' },
+      payload: { category_id: 'cat_suits', raw_r2_key: 'showcase-designs/retailer_1/raw/raw.jpg' },
+    });
+    expect(res.statusCode).toBe(201);
+    expect(mockSuggestDesignNameAndColor).not.toHaveBeenCalled();
+    expect(mockShowcaseDesignCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ name: null }) }),
+    );
+    await app.close();
+  });
+
   it('skips AI suggestion when a name is provided', async () => {
     mockCategoryFindUnique.mockResolvedValue({ id: 'cat_suits', slug: 'suits' });
     mockShowcaseDesignCreate.mockResolvedValue({ ...OWN_ROW, category: { name: 'Suits' } });
@@ -361,6 +386,41 @@ describe('POST /me/showcase-designs', () => {
       });
       expect(res.statusCode).toBe(200);
       expect(res.json().data).toEqual({ name: null, color: null });
+      await app.close();
+    });
+
+    // H6-2 follow-up: suggest spent AI_TAGGING_CALL credits with no quota check at all.
+    it('reserves tagging quota, forwards its meter, then settles', async () => {
+      const quota = { onProviderUsed: vi.fn(), settle: vi.fn() };
+      mockReserveTaggingQuota.mockResolvedValue(quota);
+      mockSuggestDesignNameAndColor.mockResolvedValue({ name: 'A', color: 'Pink' });
+      const app = await buildApp();
+      await app.inject({
+        method: 'POST',
+        url: '/me/showcase-designs/suggest',
+        headers: { 'content-type': 'application/json' },
+        payload: { raw_r2_key: 'showcase-designs/retailer_1/raw/raw.jpg' },
+      });
+      expect(mockReserveTaggingQuota).toHaveBeenCalledWith(RETAILER_ID);
+      expect(mockSuggestDesignNameAndColor).toHaveBeenCalledWith(expect.any(String), {
+        onProviderUsed: quota.onProviderUsed,
+      });
+      expect(quota.settle).toHaveBeenCalledTimes(1);
+      await app.close();
+    });
+
+    it('fail-opens to nulls without calling the provider when the quota is spent', async () => {
+      mockReserveTaggingQuota.mockRejectedValue(new Error('plan limit'));
+      const app = await buildApp();
+      const res = await app.inject({
+        method: 'POST',
+        url: '/me/showcase-designs/suggest',
+        headers: { 'content-type': 'application/json' },
+        payload: { raw_r2_key: 'showcase-designs/retailer_1/raw/raw.jpg' },
+      });
+      expect(res.statusCode).toBe(200);
+      expect(res.json().data).toEqual({ name: null, color: null });
+      expect(mockSuggestDesignNameAndColor).not.toHaveBeenCalled();
       await app.close();
     });
 
