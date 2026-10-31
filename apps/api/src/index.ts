@@ -193,11 +193,9 @@ server.get('/health', async (_request, reply) => {
         await getRedis().ping();
         return { ok: true as const, latencyMs: Date.now() - start };
       } catch (err) {
-        return {
-          ok: false as const,
-          latencyMs: Date.now() - start,
-          error: err instanceof Error ? err.message : String(err),
-        };
+        // H8-4: anonymous route — driver text carries hosts/ports; log it, don't return it.
+        server.log.warn({ err }, 'health check: redis unreachable');
+        return { ok: false as const, latencyMs: Date.now() - start, error: 'unreachable' };
       }
     })(),
   ]);

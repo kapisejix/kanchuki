@@ -21,12 +21,16 @@ function isPrivateOrReservedIp(ip: string): boolean {
     if (a === 172 && b >= 16 && b <= 31) return true;
     if (a === 192 && b === 168) return true;
     if (a === 169 && b === 254) return true; // link-local, incl. 169.254.169.254 cloud metadata
+    if (a === 100 && b >= 64 && b <= 127) return true; // 100.64/10 CGNAT
+    if (a === 198 && (b === 18 || b === 19)) return true; // 198.18/15 benchmark
     return false;
   }
   if (version === 6) {
     const lower = ip.toLowerCase();
     if (lower === '::1' || lower === '::') return true;
-    if (lower.startsWith('fe80:') || lower.startsWith('fc') || lower.startsWith('fd')) return true;
+    // fe80::/10 link-local and fec0::/10 site-local (fe8x-feb.. / fec.-fef..), fc00::/7 unique-local
+    if (/^fe[8-9a-f]/.test(lower) || lower.startsWith('fc') || lower.startsWith('fd')) return true;
+    if (lower.startsWith('64:ff9b:')) return true; // NAT64 maps onto any IPv4, incl. metadata
     if (lower.startsWith('::ffff:')) return isPrivateOrReservedIp(lower.slice(7));
     return false;
   }

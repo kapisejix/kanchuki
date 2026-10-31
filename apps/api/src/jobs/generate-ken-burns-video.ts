@@ -3,12 +3,17 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
-import { downloadBuffer, publicUrl, uploadBuffer } from '@kanchuki/ai';
+import {
+  downloadBuffer,
+  publicUrl,
+  readCappedBuffer,
+  ssrfSafeFetch,
+  uploadBuffer,
+} from '@kanchuki/ai';
 import { prisma } from '@kanchuki/db';
 import { R2_PATHS } from '@kanchuki/shared';
 import { createId } from '@paralleldrive/cuid2';
 import ffmpegPath from 'ffmpeg-static';
-import { fetchWithTimeout as fetch } from '../lib/fetch-timeout.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -52,11 +57,8 @@ export async function handleGenerateKenBurnsVideo(data: KenBurnsVideoJobData): P
         }
         if (!buf && photo.url) {
           try {
-            const resp = await fetch(photo.url);
-            if (resp.ok) {
-              const arrayBuf = await resp.arrayBuffer();
-              buf = Buffer.from(arrayBuf);
-            }
+            const resp = await ssrfSafeFetch(photo.url);
+            if (resp.ok) buf = await readCappedBuffer(resp);
           } catch (e) {
             console.warn(`[jobs] Failed to fetch photo url ${photo.url}:`, e);
           }

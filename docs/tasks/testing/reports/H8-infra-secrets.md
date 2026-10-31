@@ -132,7 +132,7 @@ Fix:
 +          error: 'unreachable',
 ```
 in both places, plus `server.log.warn({ err }, 'health check failed')`.
-Status: Plausible
+Status: Fixed (RC-151), not deployed. As built: `unreachable` in both `dbHealthCheck` and the Redis branch of `/health`; the real error is logged server-side.
 
 ### H8-5 Redis TLS depends on the URL scheme; the deploy doc gives the plaintext form             Severity: Low
 Attacker: on-path network between Railway and Upstash

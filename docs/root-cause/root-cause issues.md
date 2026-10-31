@@ -12,6 +12,42 @@
 
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
+## RC-151 — The anonymous `/health` route returned raw driver error text, so a DB or Redis outage published the pooler and cache hosts and ports (H8-4)
+
+- **Component:** `apps/api/src/index.ts` (`/health` Redis branch), `packages/db/src/client.ts` (`dbHealthCheck`).
+- **Symptom:** during an outage `GET /health` answered 503 with the Prisma or ioredis message in `db.error` / `redis.error`; those messages can carry connection details.
+- **Root cause:** the error object was serialised straight into a response body that has no auth, because the route was written for the load balancer and the body was treated as a log line.
+- **Fix:** both places now return the fixed string `unreachable` and log the real error server-side (`server.log.warn`, `console.warn`). Status code and shape are unchanged, so the Railway check is unaffected.
+- **Not done, on purpose:** `health.test.ts` still exercises a copy of the handler (its Redis branch was updated to match); `health-leak.test.ts` pins the real sources by reading them, so a regression in either file is caught.
+- **Proof:** `health-leak.test.ts`, 2 cases, red first; reverting either file turns its case red.
+
+## RC-150 — The Ken Burns photo-URL fallback used a bare `fetch` and read the whole body, the one SSRF-capable fetch left outside the shared guard (H5-5)
+
+- **Component:** `apps/api/src/jobs/generate-ken-burns-video.ts`.
+- **Symptom:** none today: every writer of `product_photos.url` stores a server-built URL. A future write path that stored a client URL would have let the job fetch internal addresses, with no size cap.
+- **Root cause:** the fallback predates `ssrfSafeFetch` and kept its own `fetch` (RC-118 added a timeout, not the address check).
+- **Fix:** `ssrfSafeFetch(photo.url)` plus `readCappedBuffer`, both from `@kanchuki/ai`; the now-unused timeout alias import is gone.
+- **Not done, on purpose:** the ffmpeg pixel cap (H5-3 follow-up) is still open.
+- **Proof:** `generate-ken-burns-video.test.ts`, a source pin (no bare `fetch(`, no `arrayBuffer()`, the two helpers present), red first and falsified by restoring the old file.
+
+## RC-149 — The SSRF blocklist was a hand-written list of ranges and missed CGNAT, the benchmark range, NAT64 and site-local IPv6 (H5-4)
+
+- **Component:** `packages/ai/src/safe-fetch.ts` (`isPrivateOrReservedIp`).
+- **Symptom:** `ssrfSafeFetch` accepted `100.64.0.0/10`, `198.18.0.0/15`, a host resolving to `64:ff9b::` (NAT64 maps onto any IPv4, including the metadata address) and `fec0::/10`, and treated only `fe80:` as link-local rather than `fe80::/10`.
+- **Root cause:** an allow-by-default list of ranges written once from memory; nothing listed what the reserved IPv4 and IPv6 blocks are.
+- **Fix:** the four missing ranges added and the link-local test widened to the full `/10`. IPv6 literals in a URL still fail closed (the bracketed host is not an IP to `isIP`, so DNS rejects it), so the IPv6 rules cover hosts that resolve to such addresses.
+- **Not done, on purpose:** the resolve-then-fetch DNS-rebinding window stays (documented ceiling in the file).
+- **Proof:** `safe-fetch.test.ts`, 7 blocked cases red first, plus 5 public neighbours that must stay allowed; falsified by restoring the old file.
+
+## RC-148 — Two catalog-import doors wrote bytes to the public CDN with no byte check, outside the verifyUpload gate every other path uses (H5-2)
+
+- **Component:** `packages/ai/src/detector.ts` (`detectCropAndTag`), `apps/api/src/routes/catalog-import.ts` (`POST /catalog-import/upload-url`).
+- **Symptom:** a retailer could point `detect-items` at any URL (up to 25 MB, SSRF-guarded) and get the bytes re-hosted at a public CDN URL under a fixed `image/jpeg` type, or presign a final `catalog-source/` or `catalog-pdf/` key and PUT anything. Nothing ever sniffed or expired either. Not stored XSS (the content type is fixed), but free hosting on the Kanchuki domain and unbounded storage.
+- **Root cause:** RC-075 put the magic-byte check in `verifyUpload`, which these two paths never call: one uploads server-fetched bytes directly, the other hands out a final key with no confirm step.
+- **Fix:** `detectCropAndTag` sniffs JPEG, PNG or WebP before the upload and throws otherwise (an inline copy, since `packages/ai` cannot import the sniffer from `apps/api`); the presign wraps its key in `stagingKey`, so an unconfirmed upload sits under `uploads/pending/`.
+- **Not done, on purpose:** nothing confirms the source upload, so a staged object stays reachable until the R2 lifecycle rule on `uploads/pending/` expires it (owner check 7 in the 00 report); `detect-items` now refuses non-images regardless. No pixel cap on this path (detect-items does not decode).
+- **Proof:** `detector.test.ts` (4 reject cases red first), `catalog-import-upload-url.test.ts` (2 cases red first); falsified by restoring each old file.
+
 ## RC-147 — The self-referral check ran once at signup on fields a second store can leave empty, so a different phone with no GSTIN passed it and the commission gate never looked again (H6-4)
 
 - **Component:** `apps/api/src/jobs/referral-qualify.ts` (`decideQualification`, `handleReferralQualify`), `lib/referral-conversions.ts` (`sameGstin` now exported).
