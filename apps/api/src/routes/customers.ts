@@ -45,7 +45,18 @@ export const customerRoutes: FastifyPluginAsync = async (server) => {
   // H2-6/RC-145: bounds the "already exists" phone probe; no response shape can hide it.
   server.post(
     '/',
-    { config: { rateLimit: { max: 10, timeWindow: 60 * 1000 } } },
+    {
+      config: {
+        rateLimit: {
+          max: 10,
+          timeWindow: 60 * 1000,
+          // preHandler, not the default onRequest: auth sets retailerId/staffId in a preHandler,
+          // and an empty key at onRequest would pool every retailer into one bucket.
+          hook: 'preHandler',
+          keyGenerator: (r) => `${r.retailerId}:${r.staffId ?? 'owner'}`,
+        },
+      },
+    },
     async (request, reply) => {
       const retailerId = request.retailerId;
 
