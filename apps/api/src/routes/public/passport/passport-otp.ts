@@ -14,6 +14,7 @@ import { AppError, validationError } from '../../../plugins/error-handler.js';
 import {
   CURRENT_NOTICE_VERSION,
   SESSION_TTL_SEC,
+  hashSessionId,
   maskPhone,
   phoneHash,
   setPassportCookie,
@@ -150,7 +151,7 @@ export const passportOtpRoutes: FastifyPluginAsync = async (server) => {
 
     await prisma.passportSession.create({
       data: {
-        id: sessionId,
+        id: hashSessionId(sessionId), // the cookie carries sessionId; the DB never holds it (H4-7)
         customer_account_id: account.id,
         expires_at: expiresAt,
         user_agent: request.headers['user-agent'] || null,

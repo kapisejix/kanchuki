@@ -39,14 +39,23 @@ export function passportCookieId(cookieHeader: string): string | undefined {
 }
 
 /**
+ * The DB key for a cookie value. The cookie is a bearer secret, so only its SHA-256 is stored in
+ * `passport_sessions.id` — a leaked row, backup or log line cannot be pasted back as a cookie
+ * (H4-7, RC-154). Every read and write of that column goes through this.
+ */
+export const hashSessionId = (cookieId: string): string =>
+  createHash('sha256').update(cookieId).digest('hex');
+
+/**
  * Extract and validate the passport session from the request cookie.
  * Returns the session + account, or null if unauthenticated/expired.
  * Slides the session expiry on each valid access.
  */
 export async function getPassportSession(cookieHeader: string) {
   const cookies = parseCookies(cookieHeader);
-  const sessionId = cookies[COOKIE_NAME];
-  if (!sessionId) return null;
+  const cookieId = cookies[COOKIE_NAME];
+  if (!cookieId) return null;
+  const sessionId = hashSessionId(cookieId);
 
   const session = await prisma.passportSession.findUnique({
     where: { id: sessionId },

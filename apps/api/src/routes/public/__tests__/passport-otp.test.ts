@@ -152,8 +152,18 @@ describe('POST /v1/public/passport/otp/verify', () => {
     expect(body.account_id).toBe('acct_123');
     expect(body.phone_masked).toMatch(/XXXXX\d{4}/);
 
-    // Session created
+    // Session created. H4-7: the cookie carries the raw secret, the DB row holds only its hash.
     expect(mockPassportSessionCreate).toHaveBeenCalledOnce();
+    const minted = (res.headers['set-cookie'] as string).match(/kanchuki_passport=([^;]+)/)?.[1];
+    const storedId = (mockPassportSessionCreate.mock.calls[0]?.[0] as { data: { id: string } }).data
+      .id;
+    expect(minted).toBeTruthy();
+    expect(storedId).not.toBe(minted);
+    expect(storedId).toBe(
+      createHash('sha256')
+        .update(minted as string)
+        .digest('hex'),
+    );
     // ConsentEvent written — Prisma create receives { data: { ... } }
     expect(mockConsentEventCreate).toHaveBeenCalled();
     const consentArg = mockConsentEventCreate.mock.calls[0]?.[0] as
@@ -779,7 +789,7 @@ describe('POST /v1/public/passport/logout', () => {
     expect(res.json().ok).toBe(true);
     expect(mockPassportSessionUpdateMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: sessionId, revoked_at: null },
+        where: { id: createHash('sha256').update(sessionId).digest('hex'), revoked_at: null },
         data: { revoked_at: expect.any(Date) },
       }),
     );

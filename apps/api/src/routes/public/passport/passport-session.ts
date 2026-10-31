@@ -6,6 +6,7 @@ import {
   COOKIE_NAME,
   COOKIE_SECURE,
   getPassportSession,
+  hashSessionId,
   maskPhone,
 } from './passport-helpers.js';
 export const passportSessionRoutes: FastifyPluginAsync = async (server) => {
@@ -45,7 +46,7 @@ export const passportSessionRoutes: FastifyPluginAsync = async (server) => {
 
     if (sessionId) {
       await prisma.passportSession.updateMany({
-        where: { id: sessionId, revoked_at: null },
+        where: { id: hashSessionId(sessionId), revoked_at: null },
         data: { revoked_at: new Date() },
       });
     }

@@ -1,5 +1,6 @@
 // F-036 Phase B: /v1/public/passport/push/* — verified-session only, SSRF-safe
 // endpoint, unsubscribe scoped to the signed-in account, consent audit written.
+import { createHash } from 'node:crypto';
 import Fastify from 'fastify';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { errorHandler } from '../../../../plugins/error-handler.js';
@@ -45,7 +46,7 @@ beforeEach(() => {
   process.env.VAPID_PUBLIC_KEY = 'pub-key';
   process.env.VAPID_PRIVATE_KEY = 'priv-key';
   m.sessionFind.mockImplementation(async ({ where }: { where: { id: string } }) =>
-    where.id === 'sess_a'
+    where.id === createHash('sha256').update('sess_a').digest('hex') // H4-7: DB holds the hash
       ? {
           id: 'sess_a',
           customer_account_id: 'acct_a',

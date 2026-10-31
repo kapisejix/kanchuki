@@ -12,14 +12,7 @@ import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { validationError } from '../../plugins/error-handler.js';
 
-function parseCookies(cookieHeader: string): Record<string, string> {
-  return Object.fromEntries(
-    cookieHeader.split(';').map((c) => {
-      const [key, ...val] = c.trim().split('=');
-      return [key ?? '', val.join('=')];
-    }),
-  );
-}
+import { getPassportSession } from './passport/passport-helpers.js';
 
 const SearchSchema = z.object({
   query: z.string().min(1).max(500),
@@ -48,18 +41,9 @@ export const publicSearchRoutes: FastifyPluginAsync = async (server) => {
 
     // Extract passport session for personalization
     let _accountId: string | null = null;
-    const cookieHeader = request.headers.cookie || '';
-    const cookies = parseCookies(cookieHeader);
-    const sessionId = cookies.kanchuki_passport;
-    if (sessionId) {
-      const session = await prisma.passportSession.findUnique({
-        where: { id: sessionId },
-        select: { customer_account_id: true, expires_at: true, revoked_at: true },
-      });
-      if (session && !session.revoked_at && session.expires_at > new Date()) {
-        _accountId = session.customer_account_id;
-      }
-    }
+    // One cookie -> session lookup (hashes the cookie, H4-7); don't copy it here.
+    const session = await getPassportSession(request.headers.cookie || '');
+    if (session) _accountId = session.customer_account_id;
 
     // Embed the search query for vector search
     let queryEmbedding: number[] | null = null;

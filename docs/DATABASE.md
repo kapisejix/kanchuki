@@ -1055,6 +1055,10 @@ When adding a new business table:
 
 ---
 
+## Passport sessions — `passport_sessions.id` is a hash (H4-7, RC-154, no migration)
+
+`passport_sessions.id` holds `sha256(<kanchuki_passport cookie value>)` as hex, never the cookie itself. All reads and writes of that column go through `hashSessionId()` in `routes/public/passport/passport-helpers.ts` (only `getPassportSession` reads, slides or deletes a row; mint and logout write by hash). Rows created before 2026-10-31 hold a raw cookie value, match no hash, and are inert; `passport_push_subscriptions.passport_session_id` may still point at them. Account-wide revocation (`passport-data.ts`) is by `customer_account_id` and is unaffected.
+
 ## Shopper nominee — `customer_accounts` (migration 108, DPDP s.14 — applied 2026-09-23)
 
 `nominee_name TEXT NULL`, `nominee_phone TEXT NULL` — the person a shopper names to exercise their data rights on death/incapacity. Both set or both NULL (enforced in `PUT /v1/public/passport/preferences`; phone must be a 10-digit Indian mobile). Existing rows stay NULL. Included in the "Download my data" export. Nothing acts on it automatically — a nominee contacts `privacy@kanchuki.app`. No new RLS needed (existing table, same row-level policy).
