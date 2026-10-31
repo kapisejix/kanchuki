@@ -38,7 +38,7 @@ Method: code/config review plus local Fastify `inject()` harnesses. Nothing was 
 | H4-5 Passport events accept any `retailer_id` | Low | Fixed (RC-095), not deployed. Known gap: store-level events can still be attributed to any real retailer |
 | H4-6 `near-me` exposes login phone | Low | Fixed (RC-097), not deployed |
 | H4-7, H4-8 | Low | Open |
-| H5-2 Unverified bytes on the public CDN (detect-items, catalog presign) | Medium | Fixed (RC-148), not deployed. Staged source uploads persist until the R2 lifecycle rule (owner check 7) |
+| H5-2 Unverified bytes on the public CDN (detect-items, catalog presign) | Medium | Fixed (RC-148), not deployed. Unconfirmed staged uploads are deleted after 24 h by the hourly sweep (RC-152) |
 | H5-4 SSRF blocklist gaps | Low | Fixed (RC-149), not deployed |
 | H5-5 Ken Burns raw fetch fallback | Low | Fixed (RC-150), not deployed |
 | H5-1 KYC and try-on in the public bucket | Medium | Open (Owner-action) |
@@ -49,7 +49,8 @@ Method: code/config review plus local Fastify `inject()` harnesses. Nothing was 
 | H7-1 … H7-4 | Med/Low | Open (H7-1, H7-4 Owner-action) |
 | H8-3 CORS allows plain-http `*.kanchuki.app` with credentials | Low | Fixed (RC-140), not deployed |
 | H8-4 Anonymous `/health` echoes raw error text | Low | Fixed (RC-151), not deployed |
-| H8-1, H8-2, H8-5, H8-6, H8-7 | Crit/Med/Low | Open (H8-1, H8-2, H8-5 Owner-action; H8-6 needs CI approval; H8-7 needs a pnpm 9 lockfile check) |
+| H8-7 pnpm overrides in `package.json` | Low | Not a defect under the pinned pnpm 9.0.0; move the keys when `packageManager` reaches 10.5 or later |
+| H8-1, H8-2, H8-5, H8-6 | Crit/Med/Low | Open (H8-1, H8-2, H8-5 Owner-action; H8-6 needs CI approval) |
 | SC-1 / SC-2 (supply-chain report) | P0 | Open, Owner-action (rotate; make repo private) |
 
 ## Ranked open findings (H1–H8)
@@ -101,7 +102,7 @@ Effort: S ≤ ½ day, M ≤ 2 days, L > 2 days. Owner = needs a dashboard/config
 
 **Reconciled 2026-10-29 against the CLAUDE.md RC tracker.** Rows 2, 3, 4, 8, 9, 10, 11, 12, 28, 29 below are Fixed locally (RC-090 … RC-098, RC-103), not deployed; rows 15, 16, 20, 24, 25, 26 (H5-3, H2-1, H8-3, H2-3, H2-4, H2-5: RC-141, RC-138, RC-140, RC-142, RC-139, RC-143) likewise, added 2026-10-31; rows 14, 31, 34 and 39 (H5-2, H5-4, H8-4, H5-5: RC-148, RC-149, RC-151, RC-150) likewise; row 13 (H6-2) is partly fixed (RC-102). They are kept for history and excluded from the totals.
 
-**Totals (open): Critical 1, High 0, Medium 7, Low 9 = 17** (was 40; 23 fixed). H8-7 (Low, in `H8-infra-secrets.md`, never in the ranked table) is not counted. H6-2 is counted as open until RC-102 is verified on a real DB. Dependency CVEs: see `H8-infra-secrets.md` §CVE (not in these counts). SC-1, SC-2 (P0, owner) tracked in the SC report.
+**Totals (open): Critical 1, High 0, Medium 7, Low 9 = 17** (was 40; 23 fixed). H8-7 (Low, in `H8-infra-secrets.md`, never in the ranked table) was never counted and is now closed as not a defect. H6-2 is counted as open until RC-102 is verified on a real DB. Dependency CVEs: see `H8-infra-secrets.md` §CVE (not in these counts). SC-1, SC-2 (P0, owner) tracked in the SC report.
 
 ## Owner checks (dashboard-only facts that set the severity)
 
@@ -113,7 +114,7 @@ Effort: S ≤ ½ day, M ≤ 2 days, L > 2 days. Owner = needs a dashboard/config
 | 4 | Railway prod env: `OTP_TEST_BYPASS` unset, `REVIEW_PHONE`/`REVIEW_OTP` unset outside App Review, `ADMIN_API_KEY` ≥32 chars | H1-5, H1-6, H1-7 |
 | 5 | Staging request with `X-Forwarded-For: 203.0.113.7`: does Railway's edge overwrite or append? Then set `trustProxy` to the hop count | T1.8 F4, T2.5 F1, H1-4, H4-8 |
 | 6 | R2: is the bucket public (r2.dev or custom domain)? Any WAF/deny rule on `kyc/` and `tryon/`? | H5-1 |
-| 7 | R2: lifecycle rule expiring `uploads/pending/` | H5 A4 |
+| 7 | R2: lifecycle rule expiring `uploads/pending/` (second line only since the RC-152 sweep) | H5 A4 |
 | 8 | Admin → Plan Limits: `STUDIO_SHOOT`, `BG_REMOVAL`, `IMAGE_CROP` rows exist for all three plans | H6-1 (set **before** the fail-closed guard deploys) |
 | 9 | MSG91: widget per-number/per-IP limits, India-only routing, rotate the widget token | H7-1, H1-9 |
 | 10 | EAS: credentials hold the release signing key, so the in-tree keystores can be deleted | H7-4 |

@@ -164,7 +164,7 @@ Attacker: none (process gap)
 Goal: n/a. A dev who runs the newer local CLI and commits the lockfile would silently drop the CVE overrides (`fastify`, `find-my-way`, `fast-uri`, `tar`, `sharp`, …).
 Evidence: running `pnpm` on this machine prints: `The "pnpm" field in package.json is no longer read by pnpm. The following keys were ignored: "pnpm.overrides", "pnpm.patchedDependencies"`. `pnpm-lock.yaml:7` still has `overrides:`, and the lockfile resolves `fastify@5.10.0`, `find-my-way@9.7.0`, `fast-uri@4.1.1`, `sharp@0.35.3`, `tar@7.5.22`. CI pins `pnpm@9.0.0` via `packageManager`.
 Fix: move both keys to `pnpm-workspace.yaml` (`overrides:` / `patchedDependencies:`), delete them from `package.json`, run `pnpm install --lockfile-only`, and check that the lockfile diff is empty.
-Status: Plausible
+Status: Not a defect under the pinned `packageManager: pnpm@9.0.0` (CI and every in-repo command run 9.0.0, which reads `pnpm.overrides` from `package.json`; the warning comes from a newer global pnpm that only hands off to 9.0.0, and `--frozen-lockfile` already fails if overrides and lockfile disagree). Moving the keys to `pnpm-workspace.yaml` would DROP them in CI, since pnpm 9.0.0 does not read them there. Revisit when `packageManager` moves to 10.5 or later: move both keys then.
 
 ## CVE (pnpm audit --prod)
 

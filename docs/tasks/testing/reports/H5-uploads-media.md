@@ -113,7 +113,7 @@ Fix:
 +    const r2Key = stagingKey(`${prefix}/${retailerId}/${randHex(16)}${ext}`);
 ```
 The mobile client and whatever reads `catalog-source/` must then pass the staged key through a `verifyUpload` confirm. Check the F-001b/F-001d callers before applying. Could not verify in time.
-Status: Fixed (RC-148), not deployed. As built: byte sniff in `detectCropAndTag` (inline JPEG/PNG/WebP check) and `stagingKey` on the catalog-import presign; mobile unchanged (it reads `public_url`). The source upload is never confirmed, so a staged object lives until the R2 lifecycle rule on `uploads/pending/` expires it (owner check 7).
+Status: Fixed (RC-148), not deployed. As built: byte sniff in `detectCropAndTag` (inline JPEG/PNG/WebP check) and `stagingKey` on the catalog-import presign; mobile unchanged (it reads `public_url`). The source upload is never confirmed; an hourly sweep (RC-152) deletes staged objects older than 24 h, so the R2 lifecycle rule (owner check 7) is a second line, not a dependency.
 
 ---
 

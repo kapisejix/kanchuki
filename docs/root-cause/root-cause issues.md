@@ -12,6 +12,16 @@
 
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
+## RC-152 — Staged uploads had no expiry the repo could see, so an unconfirmed upload stayed on the public CDN until a dashboard-only R2 lifecycle rule removed it, if that rule existed (H5-2 follow-up)
+
+- **Component:** new `apps/api/src/jobs/staged-upload-sweep.ts`, `listObjectsByPrefix` in `packages/ai/src/r2.ts`, registered in `jobs/index.ts`.
+- **Symptom:** every presign route hands out an `uploads/pending/` key that `verifyUpload` promotes on confirm. RC-148 moved the catalog-import presign onto that prefix, but a source upload is never confirmed (only the client knows it uploaded), so an abandoned or planted object kept its public URL indefinitely.
+- **Root cause:** the cleanup for staged objects was an R2 lifecycle rule configured in the Cloudflare dashboard (owner check 7). Nothing in code, tests or the deploy could tell whether it existed, so a control the design depended on had no owner in the repo.
+- **Fix:** an hourly maintenance job (`50 * * * *`, no repeat `limit`, RC-062) lists only `uploads/pending/`, re-checks the prefix per key, and deletes objects whose last-modified time is known and older than 24 h, at most 500 per run; one failed delete is counted and logged and does not stop the rest; it does nothing where R2 is unconfigured. It covers every presign route, not just catalog-import.
+- **Cost accepted:** a client that confirms more than 24 h after its upload gets "Upload not found, please upload the file again".
+- **Not done, on purpose:** a client-side confirm for the catalog source upload (needs an app release); objects with no `LastModified` are kept; the lifecycle rule stays worth setting as a second line.
+- **Proof:** `staged-upload-sweep.test.ts`, 8 cases (7 sweep behaviours, 1 cron-registration pin), red first (module missing); each of 8 mutations (prefix re-check, unknown-age rule, age cutoff, batch cap, unconfigured skip, failure isolation, cron pattern, case routing) turned a test red.
+
 ## RC-151 — The anonymous `/health` route returned raw driver error text, so a DB or Redis outage published the pooler and cache hosts and ports (H8-4)
 
 - **Component:** `apps/api/src/index.ts` (`/health` Redis branch), `packages/db/src/client.ts` (`dbHealthCheck`).
@@ -45,7 +55,7 @@
 - **Symptom:** a retailer could point `detect-items` at any URL (up to 25 MB, SSRF-guarded) and get the bytes re-hosted at a public CDN URL under a fixed `image/jpeg` type, or presign a final `catalog-source/` or `catalog-pdf/` key and PUT anything. Nothing ever sniffed or expired either. Not stored XSS (the content type is fixed), but free hosting on the Kanchuki domain and unbounded storage.
 - **Root cause:** RC-075 put the magic-byte check in `verifyUpload`, which these two paths never call: one uploads server-fetched bytes directly, the other hands out a final key with no confirm step.
 - **Fix:** `detectCropAndTag` sniffs JPEG, PNG or WebP before the upload and throws otherwise (an inline copy, since `packages/ai` cannot import the sniffer from `apps/api`); the presign wraps its key in `stagingKey`, so an unconfirmed upload sits under `uploads/pending/`.
-- **Not done, on purpose:** nothing confirms the source upload, so a staged object stays reachable until the R2 lifecycle rule on `uploads/pending/` expires it (owner check 7 in the 00 report); `detect-items` now refuses non-images regardless. No pixel cap on this path (detect-items does not decode).
+- **Not done, on purpose:** nothing confirms the source upload, so a staged object stays reachable until the hourly staged-upload sweep (RC-152) deletes it after 24 h; `detect-items` now refuses non-images regardless. No pixel cap on this path (detect-items does not decode).
 - **Proof:** `detector.test.ts` (4 reject cases red first), `catalog-import-upload-url.test.ts` (2 cases red first); falsified by restoring each old file.
 
 ## RC-147 — The self-referral check ran once at signup on fields a second store can leave empty, so a different phone with no GSTIN passed it and the commission gate never looked again (H6-4)

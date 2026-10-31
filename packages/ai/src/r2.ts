@@ -176,6 +176,36 @@ export async function listObjects(): Promise<{ key: string; size: number }[]> {
   return objects;
 }
 
+/**
+ * List objects under one prefix with their last-modified time, stopping after `limit`
+ * (cursor-paginated, MaxKeys 1000 per call). Used by the staged-upload sweep (RC-152).
+ */
+export async function listObjectsByPrefix(
+  prefix: string,
+  limit: number,
+): Promise<{ key: string; size: number; modified: Date | null }[]> {
+  const bucket = await getBucket();
+  const objects: { key: string; size: number; modified: Date | null }[] = [];
+  let continuation: string | undefined;
+  do {
+    const res = await r2.send(
+      new ListObjectsV2Command({
+        Bucket: bucket,
+        Prefix: prefix,
+        ContinuationToken: continuation,
+        MaxKeys: Math.min(1000, limit - objects.length),
+      }),
+    );
+    for (const obj of res.Contents ?? []) {
+      if (obj.Key) {
+        objects.push({ key: obj.Key, size: obj.Size ?? 0, modified: obj.LastModified ?? null });
+      }
+    }
+    continuation = res.IsTruncated ? res.NextContinuationToken : undefined;
+  } while (continuation && objects.length < limit);
+  return objects;
+}
+
 // Same image-format list as scripts/measure-r2-storage.ts — .jpg/.jpeg/.png/.webp
 // count toward "image storage" (even though only .jpg/.jpeg are compressible).
 const MEASURE_IMAGE_EXTS = ['.jpg', '.jpeg', '.png', '.webp'];
