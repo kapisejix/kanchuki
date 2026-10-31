@@ -6,7 +6,12 @@ vi.mock('./providers.js', () => ({
   runVisionAsk: mockRunVisionAsk,
 }));
 
-import { generateSocialPostCaption, normalizeCampaignIntent } from './campaign-assistant.js';
+import {
+  generateCampaignMessage,
+  generateSocialPostCaption,
+  normalizeCampaignIntent,
+  parseCampaignIntent,
+} from './campaign-assistant.js';
 
 const BASE = {
   productNames: ['Pink Embroidered Lehenga Choli'],
@@ -45,6 +50,25 @@ describe('generateSocialPostCaption — fenced JSON', () => {
     const r = await generateSocialPostCaption(BASE);
     expect(r.caption).toBe('Just some caption text.');
     expect(r.hashtags).toEqual([]);
+  });
+});
+
+// RC-158: the route meters these calls, so they must hand the serving provider to the caller.
+describe('campaign assistant calls forward onProviderUsed', () => {
+  beforeEach(() => mockRunVisionAsk.mockReset());
+
+  it('parseCampaignIntent passes the hook to the provider request', async () => {
+    mockRunVisionAsk.mockResolvedValue('{}');
+    const onProviderUsed = vi.fn();
+    await parseCampaignIntent('diwali sale on kurtis', { onProviderUsed });
+    expect(mockRunVisionAsk).toHaveBeenCalledWith(expect.objectContaining({ onProviderUsed }));
+  });
+
+  it('generateCampaignMessage passes the hook to the provider request', async () => {
+    mockRunVisionAsk.mockResolvedValue('{"message_template":"Hi"}');
+    const onProviderUsed = vi.fn();
+    await generateCampaignMessage(normalizeCampaignIntent({}), [], { onProviderUsed });
+    expect(mockRunVisionAsk).toHaveBeenCalledWith(expect.objectContaining({ onProviderUsed }));
   });
 });
 

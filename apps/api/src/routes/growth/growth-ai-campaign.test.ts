@@ -9,7 +9,7 @@ const {
   mockCustomerFindMany,
   mockCampaignCreate,
   mockHasFeature,
-  mockReserveQuota,
+  mockReserveTaggingQuota,
   mockRunVisionAsk,
 } = vi.hoisted(() => ({
   mockProductFindMany: vi.fn(),
@@ -17,7 +17,7 @@ const {
   mockCustomerFindMany: vi.fn(),
   mockCampaignCreate: vi.fn(),
   mockHasFeature: vi.fn(),
-  mockReserveQuota: vi.fn(),
+  mockReserveTaggingQuota: vi.fn(),
   mockRunVisionAsk: vi.fn(),
 }));
 
@@ -40,7 +40,7 @@ vi.mock('../../lib/features.js', () => ({
   hasFeature: mockHasFeature,
 }));
 
-vi.mock('../../lib/quota.js', () => ({ reserveQuota: mockReserveQuota }));
+vi.mock('../../lib/ai-usage.js', () => ({ reserveTaggingQuota: mockReserveTaggingQuota }));
 
 const RETAILER_ID = 'retailer_1';
 
@@ -59,7 +59,83 @@ async function buildApp() {
 beforeEach(() => {
   vi.clearAllMocks();
   mockHasFeature.mockResolvedValue(true);
-  mockReserveQuota.mockResolvedValue(async () => {});
+  mockReserveTaggingQuota.mockResolvedValue({ onProviderUsed: vi.fn(), settle: vi.fn() });
+});
+
+// RC-158: the two AI calls are metered by the serving provider's credits and settled once,
+// so an outage costs nothing while a served-but-unusable answer still counts.
+describe('POST /v1/growth/ai-campaign — tagging quota', () => {
+  const INTENT = {
+    name: 'Diwali',
+    campaign_type: 'PROMOTION',
+    festival_id: null,
+    audience: { source: 'ALL' },
+    product_criteria: {},
+    message_tone: 'casual',
+    schedule_hint: null,
+  };
+  const post = async () => {
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/growth/ai-campaign',
+      headers: { 'content-type': 'application/json' },
+      payload: { prompt: 'Send cotton kurtis to everyone' },
+    });
+    await app.close();
+    return res;
+  };
+
+  it('reserves once, meters both AI calls, settles once', async () => {
+    const quota = { onProviderUsed: vi.fn(), settle: vi.fn() };
+    mockReserveTaggingQuota.mockResolvedValue(quota);
+    mockRunVisionAsk
+      .mockResolvedValueOnce(INTENT)
+      .mockResolvedValueOnce({ message_template: 'Hi', rationale: 'r' });
+    mockProductFindMany.mockResolvedValue([]);
+    mockCustomerFindMany.mockResolvedValue([]);
+    const res = await post();
+    expect(res.statusCode).toBe(200);
+    expect(mockReserveTaggingQuota).toHaveBeenCalledWith(RETAILER_ID);
+    expect(mockRunVisionAsk).toHaveBeenNthCalledWith(1, expect.any(String), {
+      onProviderUsed: quota.onProviderUsed,
+    });
+    expect(mockRunVisionAsk).toHaveBeenNthCalledWith(2, expect.anything(), expect.anything(), {
+      onProviderUsed: quota.onProviderUsed,
+    });
+    expect(quota.settle).toHaveBeenCalledTimes(1);
+  });
+
+  it('settles (so an outage is given back) when parsing the request fails', async () => {
+    const quota = { onProviderUsed: vi.fn(), settle: vi.fn() };
+    mockReserveTaggingQuota.mockResolvedValue(quota);
+    mockRunVisionAsk.mockRejectedValueOnce(new Error('provider down'));
+    const res = await post();
+    expect(res.statusCode).toBe(422);
+    expect(mockRunVisionAsk).toHaveBeenCalledTimes(1);
+    expect(quota.settle).toHaveBeenCalledTimes(1);
+  });
+
+  it('settles when message generation fails after a good parse', async () => {
+    const quota = { onProviderUsed: vi.fn(), settle: vi.fn() };
+    mockReserveTaggingQuota.mockResolvedValue(quota);
+    mockRunVisionAsk
+      .mockResolvedValueOnce(INTENT)
+      .mockRejectedValueOnce(new Error('provider down'));
+    mockProductFindMany.mockResolvedValue([]);
+    const res = await post();
+    expect(res.statusCode).toBe(500);
+    expect(quota.settle).toHaveBeenCalledTimes(1);
+  });
+
+  it('a refused reserve stops before any AI call', async () => {
+    mockReserveTaggingQuota.mockRejectedValue(
+      Object.assign(new Error('limit'), { statusCode: 402 }),
+    );
+    const res = await post();
+    expect(res.statusCode).toBe(402);
+    expect(mockRunVisionAsk).not.toHaveBeenCalled();
+  });
 });
 
 describe('POST /v1/growth/ai-campaign', () => {

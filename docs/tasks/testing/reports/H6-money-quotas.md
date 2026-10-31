@@ -139,7 +139,7 @@ Status: Plausible
 
 ---
 
-Status: Fixed locally (RC-102 for the flat-spend flows, RC-155 for weighted tagging via `reserveTaggingQuota`), not deployed, mock tests only. Found while fixing it: RC-156 (translate charged 1 + credits). Also fixed: RC-157 (`showcase-designs/suggest` and the nameless save spent `AI_TAGGING_CALL` with no check; now `reserveTaggingQuota`, fail-open to nulls). Still open and separate: `growth-ai-campaign` flat reserve with no refund on a failed parse.
+Status: Fixed locally (RC-102 for the flat-spend flows, RC-155 for weighted tagging via `reserveTaggingQuota`), not deployed, mock tests only. Found while fixing it: RC-156 (translate charged 1 + credits). Also fixed: RC-157 (`showcase-designs/suggest` and the nameless save spent `AI_TAGGING_CALL` with no check; now `reserveTaggingQuota`, fail-open to nulls). Also fixed: RC-158 (`growth-ai-campaign` flat reserve with no give-back; now `reserveTaggingQuota`, both AI calls metered). No known open sibling.
 
 ### H6-3 `plan-lapse` never lapses an ACTIVE plan whose paid period has ended             Severity: Low
 Attacker: retailer (passive): stop paying, or have the card fail, at a time when the `subscription.halted` / `pending` webhook is not processed (endpoint down, signature-secret rotation, a stale-event 401 from clock skew, `billing-webhook.ts:50-56`)

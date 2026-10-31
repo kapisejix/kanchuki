@@ -7,9 +7,8 @@ import {
 import { prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
-import { recordAiUsage } from '../../lib/ai-usage.js';
+import { reserveTaggingQuota } from '../../lib/ai-usage.js';
 import { hasFeature } from '../../lib/features.js';
-import { reserveQuota } from '../../lib/quota.js';
 import { featureUnavailable, notFound, validationError } from '../../plugins/error-handler.js';
 import { resolveAudienceCustomerIds } from './growth-campaigns.js';
 import { type AudienceSpec, buildAudienceWhere, fillTemplate } from './growth-helpers.js';
@@ -57,117 +56,124 @@ export const growthAiCampaignRoutes: FastifyPluginAsync = async (server) => {
 
     const prompt = body.data.prompt.trim();
 
-    // Step 1: Parse intent with AI
-    await reserveQuota(retailerId, 'AI_TAGGING_CALL');
-
-    let intent: CampaignIntent;
+    // Step 1: Parse intent with AI. H6-2/RC-158: reserve the worst-case credits first (a capped
+    // retailer is refused before any AI call), meter both AI calls through the same hook and give
+    // back the unspent part in the finally (all of it when no provider served).
+    const quota = await reserveTaggingQuota(retailerId);
     try {
-      intent = await parseCampaignIntent(prompt);
-    } catch (err) {
-      throw validationError(
-        `Failed to understand request: ${err instanceof Error ? err.message : 'unknown error'}`,
-      );
-    }
+      let intent: CampaignIntent;
+      try {
+        intent = await parseCampaignIntent(prompt, { onProviderUsed: quota.onProviderUsed });
+      } catch (err) {
+        throw validationError(
+          `Failed to understand request: ${err instanceof Error ? err.message : 'unknown error'}`,
+        );
+      }
 
-    // Step 2: Query matching products
-    const productWhere: Record<string, unknown> = {
-      retailer_id: retailerId,
-      status: 'AVAILABLE',
-      deleted_at: null,
-    };
-
-    const criteria = intent.product_criteria;
-    if (criteria.category) {
-      productWhere.category = { equals: criteria.category, mode: 'insensitive' } as never;
-    }
-    if (criteria.colors?.length) {
-      productWhere.OR = [
-        { primary_color: { in: criteria.colors, mode: 'insensitive' } },
-        { secondary_colors: { hasSome: criteria.colors } },
-        { search_tags: { hasSome: criteria.colors } },
-      ];
-    }
-    if (criteria.styles?.length) {
-      productWhere.OR = [
-        ...((productWhere.OR as Record<string, unknown>[]) ?? []),
-        { styles: { hasSome: criteria.styles } },
-        { search_tags: { hasSome: criteria.styles } },
-      ];
-    }
-    if (criteria.fabrics?.length) {
-      productWhere.OR = [
-        ...((productWhere.OR as Record<string, unknown>[]) ?? []),
-        { fabrics: { hasSome: criteria.fabrics } },
-        { fabric_estimate: { in: criteria.fabrics, mode: 'insensitive' } },
-      ];
-    }
-    if (criteria.max_price_paise || criteria.min_price_paise) {
-      productWhere.price_min = {
-        ...(criteria.max_price_paise ? { lte: criteria.max_price_paise } : {}),
-        ...(criteria.min_price_paise ? { gte: criteria.min_price_paise } : {}),
+      // Step 2: Query matching products
+      const productWhere: Record<string, unknown> = {
+        retailer_id: retailerId,
+        status: 'AVAILABLE',
+        deleted_at: null,
       };
-    }
 
-    const matchedProducts = await prisma.product.findMany({
-      where: productWhere as never,
-      select: {
-        id: true,
-        name: true,
-        category: true,
-        primary_color: true,
-        price_min: true,
-      },
-      orderBy: { updated_at: 'desc' },
-      take: criteria.limit ?? 15,
-    });
+      const criteria = intent.product_criteria;
+      if (criteria.category) {
+        productWhere.category = { equals: criteria.category, mode: 'insensitive' } as never;
+      }
+      if (criteria.colors?.length) {
+        productWhere.OR = [
+          { primary_color: { in: criteria.colors, mode: 'insensitive' } },
+          { secondary_colors: { hasSome: criteria.colors } },
+          { search_tags: { hasSome: criteria.colors } },
+        ];
+      }
+      if (criteria.styles?.length) {
+        productWhere.OR = [
+          ...((productWhere.OR as Record<string, unknown>[]) ?? []),
+          { styles: { hasSome: criteria.styles } },
+          { search_tags: { hasSome: criteria.styles } },
+        ];
+      }
+      if (criteria.fabrics?.length) {
+        productWhere.OR = [
+          ...((productWhere.OR as Record<string, unknown>[]) ?? []),
+          { fabrics: { hasSome: criteria.fabrics } },
+          { fabric_estimate: { in: criteria.fabrics, mode: 'insensitive' } },
+        ];
+      }
+      if (criteria.max_price_paise || criteria.min_price_paise) {
+        productWhere.price_min = {
+          ...(criteria.max_price_paise ? { lte: criteria.max_price_paise } : {}),
+          ...(criteria.min_price_paise ? { gte: criteria.min_price_paise } : {}),
+        };
+      }
 
-    const suggestedProducts: SuggestedProduct[] = matchedProducts.map((p) => ({
-      id: p.id,
-      name: p.name,
-      category: p.category,
-      primary_color: p.primary_color,
-      price_min: p.price_min,
-    }));
-
-    // Step 3: Generate message template with AI
-    const messageResult = await generateCampaignMessage(intent, suggestedProducts);
-
-    // Step 4: Resolve audience count
-    const customerIds = await resolveAudienceCustomerIds(retailerId, intent.audience);
-    const audienceCount = customerIds.length;
-
-    // Step 5: Resolve festival_id for FESTIVAL campaigns.
-    // The AI has no festival table access, so festival_id is always null —
-    // match the festival by name against the retailers' festival calendar.
-    // Match any festival whose name appears in the prompt (e.g. "Create a
-    // Diwali collection" → Diwali), newest-starting first, instead of the old
-    // first-3-words exact match that never matched anything.
-    let festivalId = intent.festival_id;
-    if (festivalId == null && intent.campaign_type === 'FESTIVAL') {
-      const candidates = await prisma.festival.findMany({
-        where: { deleted_at: null },
-        select: { id: true, name: true },
-        orderBy: { starts_at: 'desc' },
-        take: 50,
+      const matchedProducts = await prisma.product.findMany({
+        where: productWhere as never,
+        select: {
+          id: true,
+          name: true,
+          category: true,
+          primary_color: true,
+          price_min: true,
+        },
+        orderBy: { updated_at: 'desc' },
+        take: criteria.limit ?? 15,
       });
-      const lowerPrompt = prompt.toLowerCase();
-      const match = candidates.find((f) => lowerPrompt.includes(f.name.toLowerCase()));
-      if (match) festivalId = match.id;
+
+      const suggestedProducts: SuggestedProduct[] = matchedProducts.map((p) => ({
+        id: p.id,
+        name: p.name,
+        category: p.category,
+        primary_color: p.primary_color,
+        price_min: p.price_min,
+      }));
+
+      // Step 3: Generate message template with AI
+      const messageResult = await generateCampaignMessage(intent, suggestedProducts, {
+        onProviderUsed: quota.onProviderUsed,
+      });
+
+      // Step 4: Resolve audience count
+      const customerIds = await resolveAudienceCustomerIds(retailerId, intent.audience);
+      const audienceCount = customerIds.length;
+
+      // Step 5: Resolve festival_id for FESTIVAL campaigns.
+      // The AI has no festival table access, so festival_id is always null —
+      // match the festival by name against the retailers' festival calendar.
+      // Match any festival whose name appears in the prompt (e.g. "Create a
+      // Diwali collection" → Diwali), newest-starting first, instead of the old
+      // first-3-words exact match that never matched anything.
+      let festivalId = intent.festival_id;
+      if (festivalId == null && intent.campaign_type === 'FESTIVAL') {
+        const candidates = await prisma.festival.findMany({
+          where: { deleted_at: null },
+          select: { id: true, name: true },
+          orderBy: { starts_at: 'desc' },
+          take: 50,
+        });
+        const lowerPrompt = prompt.toLowerCase();
+        const match = candidates.find((f) => lowerPrompt.includes(f.name.toLowerCase()));
+        if (match) festivalId = match.id;
+      }
+
+      const draft: AiCampaignDraft = {
+        name: intent.name,
+        type: intent.campaign_type,
+        festival_id: festivalId,
+        message_template: messageResult.message_template,
+        audience: intent.audience,
+        product_ids: suggestedProducts.map((p) => p.id),
+        schedule_hint: intent.schedule_hint,
+        rationale: messageResult.rationale,
+        matched_products: suggestedProducts,
+        audience_count: audienceCount,
+      };
+
+      return { data: draft };
+    } finally {
+      await quota.settle();
     }
-
-    const draft: AiCampaignDraft = {
-      name: intent.name,
-      type: intent.campaign_type,
-      festival_id: festivalId,
-      message_template: messageResult.message_template,
-      audience: intent.audience,
-      product_ids: suggestedProducts.map((p) => p.id),
-      schedule_hint: intent.schedule_hint,
-      rationale: messageResult.rationale,
-      matched_products: suggestedProducts,
-      audience_count: audienceCount,
-    };
-
-    return { data: draft };
   });
 };

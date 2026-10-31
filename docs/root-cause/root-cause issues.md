@@ -12,6 +12,16 @@
 
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
+## RC-158 — The AI Campaign Assistant took a flat 1 slot for two AI calls, never counted their real spend and never gave anything back, so an outage was charged (H6-2 follow-up)
+
+- **Component:** `routes/growth/growth-ai-campaign.ts` (`POST /v1/growth/ai-campaign`), `packages/ai/src/campaign-assistant.ts` (`parseCampaignIntent`, `generateCampaignMessage`).
+- **Symptom:** the route took `reserveQuota(1)`, then made two `AI_TAGGING_CALL` calls (parse, then message). A provider outage in either, or a DB error after them, left the slot spent and no draft returned. The calls' real credits were never counted and no `AiUsageLog` row was written, because neither function forwarded `onProviderUsed` (`VisionAskRequest` already supported it).
+- **Root cause:** same as RC-156/RC-157, one resource with no single owner of the count: a flat guess at the route, the real spend nowhere. RC-156 left this route alone because it had no usage callback; the callback was one missing argument.
+- **Fix:** both AI functions take an optional `{ onProviderUsed }` and pass it on. The route uses `reserveTaggingQuota` (RC-155): it reserves the worst-case credits before any AI call (a capped retailer is refused with the plan-limit error first), feeds both calls through the one hook and settles in a `finally`. A provider outage gives everything back; a served but unparseable answer stays counted, so bad model output cannot be used for free calls.
+- **Cost accepted:** the charge is the serving provider's real `credits_per_call` for both calls instead of a flat 1, so a draft can cost more credits than before; a call needs headroom for the worst-case provider's credits.
+- **Not done, on purpose:** a crash between reserve and settle keeps the credits until the period ends (no sweep, as for every reserve caller); no real-Postgres run.
+- **Proof:** four route tests in `growth-ai-campaign.test.ts` (reserve once, both calls metered, settle once; settle on a failed parse; settle on a failed message call; a refused reserve stops before any AI call) and two in `campaign-assistant.test.ts` (each function forwards the hook), all `it.fails` first. Dropping the settle, the reserve, or either hook in the route, or either forward in the AI package, each turned a test red. Mock Postgres only; not deployed.
+
 ## RC-157 — Showcase-design AI naming spent `AI_TAGGING_CALL` credits through a bare usage recorder, so no plan cap ever applied (H6-2 follow-up)
 
 - **Component:** `routes/retailers/retailers-showcase-designs.ts` (`POST /me/showcase-designs/suggest`, and the nameless `POST /me/showcase-designs`).
