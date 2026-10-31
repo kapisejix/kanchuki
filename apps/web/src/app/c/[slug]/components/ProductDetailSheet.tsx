@@ -184,9 +184,11 @@ export function ProductDetailSheet({
   const fsTouchStartX = useRef<number | null>(null)
   const recentTouchRef = useRef(0)
   const singleTapTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const transitionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
     return () => {
       if (singleTapTimeoutRef.current) clearTimeout(singleTapTimeoutRef.current)
+      if (transitionTimeoutRef.current) clearTimeout(transitionTimeoutRef.current)
     }
   }, [])
 
@@ -275,7 +277,7 @@ export function ProductDetailSheet({
     const clamped = Math.max(0, Math.min(i, totalSlides - 1))
     prevIndexRef.current = photoIndex // store previous before updating
     setPhotoIndex(clamped)
-    setTimeout(() => setIsTransitioning(false), 300)
+    transitionTimeoutRef.current = setTimeout(() => setIsTransitioning(false), 300)
   }, [totalSlides, isTransitioning, photoIndex])
 
   // ── Touch handlers for swipe + pinch/zoom + double-tap ──────────
