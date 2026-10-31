@@ -24,7 +24,8 @@ Method: code/config review plus local Fastify `inject()` harnesses. Nothing was 
 | H1-7 Apple review code has no attempt limit | Medium | Open (only while `REVIEW_*` vars are set) |
 | H1-8 One shared admin password, no 2FA, no revocation | Low | Open |
 | H1-9 MSG91 widget token replay | Low | Open (could not verify) |
-| H2-1 … H2-6 | Med/Low | Open |
+| H2-1 Cross-tenant products injected into own A/B variant collection | Medium | Fixed (RC-138), not deployed |
+| H2-2 … H2-6 | Med/Low | Open |
 | H3-1 Percent-encoded path skips Super-Admin gate | High | Fixed (RC-090), not deployed |
 | H3-2 Admin gate deny-list, `SUPPORT_MANAGER` full power | Medium | Fixed (RC-091), not deployed |
 | H3-3 Admin gate trusts JWT role, no DB re-check | Medium | Fixed (RC-092), not deployed. Follow-up open: `team-helpers.ts:76` `verifyAdminSession` still trusts the JWT role |
@@ -64,7 +65,7 @@ Effort: S ≤ ½ day, M ≤ 2 days, L > 2 days. Owner = needs a dashboard/config
 | 13 | H6-2 | Medium | Check-at-route / count-at-job-end lets a burst overshoot any AI cap. Partly fixed RC-102 | M | n |
 | 14 | H5-2 | Medium | detect-items and catalog presigns write unverified bytes to the public CDN | M | n |
 | 15 | H5-3 | Medium | No pixel cap: decompression bomb against compress cron, ffmpeg, templates, My Style | S | n |
-| 16 | H2-1 | Medium | Cross-tenant products injected into own A/B variant collection | S | n |
+| 16 | ~~H2-1~~ | Medium | Cross-tenant products injected into own A/B variant collection. Fixed RC-138, not deployed | S | n |
 | 17 | H2-2 | Medium | Support session / catalog delegate reach bulk-delete and WhatsApp bulk-send | S | y (delegate scope) |
 | 18 | H1-4 | Medium | Retailer OTP: no daily cap, per-IP key spoofable (T1.8 F4) | S | y (trustProxy) |
 | 19 | H1-7 | Medium | Apple review code has no attempt limit | S | y (unset vars after review) |
