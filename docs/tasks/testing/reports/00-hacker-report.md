@@ -66,7 +66,7 @@ Effort: S ≤ ½ day, M ≤ 2 days, L > 2 days. Owner = needs a dashboard/config
 | 12 | ~~H4-4~~ | Medium | Legacy lead form overwrites existing customers and forges consent. Fixed RC-094, not deployed | S | n |
 | 13 | H6-2 | Medium | Check-at-route / count-at-job-end lets a burst overshoot any AI cap. Partly fixed RC-102 | M | n |
 | 14 | H5-2 | Medium | detect-items and catalog presigns write unverified bytes to the public CDN | M | n |
-| 15 | H5-3 | Medium | No pixel cap: decompression bomb against compress cron, ffmpeg, templates, My Style | S | n |
+| 15 | ~~H5-3~~ | Medium | No pixel cap: decompression bomb against compress cron, ffmpeg, templates, My Style. Fixed RC-141, not deployed (Ken Burns ffmpeg not separately capped) | S | n |
 | 16 | ~~H2-1~~ | Medium | Cross-tenant products injected into own A/B variant collection. Fixed RC-138, not deployed | S | n |
 | 17 | H2-2 | Medium | Support session / catalog delegate reach bulk-delete and WhatsApp bulk-send | S | y (delegate scope) |
 | 18 | H1-4 | Medium | Retailer OTP: no daily cap, per-IP key spoofable (T1.8 F4) | S | y (trustProxy) |
@@ -93,9 +93,9 @@ Effort: S ≤ ½ day, M ≤ 2 days, L > 2 days. Owner = needs a dashboard/config
 | 39 | H5-5 | Low | Ken Burns raw `fetch(photo.url)` fallback (hardening, not exploitable) | S | n |
 | 40 | H7-3 | Low | No certificate pinning (informational, not exploitable) | — | n |
 
-**Reconciled 2026-10-29 against the CLAUDE.md RC tracker.** Rows 2, 3, 4, 8, 9, 10, 11, 12, 28, 29 below are Fixed locally (RC-090 … RC-098, RC-103), not deployed; row 13 (H6-2) is partly fixed (RC-102). They are kept for history and excluded from the totals.
+**Reconciled 2026-10-29 against the CLAUDE.md RC tracker.** Rows 2, 3, 4, 8, 9, 10, 11, 12, 28, 29 below are Fixed locally (RC-090 … RC-098, RC-103), not deployed; rows 15, 16, 20, 25 (H5-3, H2-1, H8-3, H2-4: RC-141, RC-138, RC-140, RC-139) likewise, added 2026-10-31; row 13 (H6-2) is partly fixed (RC-102). They are kept for history and excluded from the totals.
 
-**Totals (open): Critical 1, High 0, Medium 10, Low 19 = 30** (was 40; 10 fixed). H6-2 is counted as open until RC-102 is verified on a real DB. Dependency CVEs: see `H8-infra-secrets.md` §CVE (not in these counts). SC-1, SC-2 (P0, owner) tracked in the SC report.
+**Totals (open): Critical 1, High 0, Medium 8, Low 17 = 26** (was 40; 14 fixed). H6-2 is counted as open until RC-102 is verified on a real DB. Dependency CVEs: see `H8-infra-secrets.md` §CVE (not in these counts). SC-1, SC-2 (P0, owner) tracked in the SC report.
 
 ## Owner checks (dashboard-only facts that set the severity)
 

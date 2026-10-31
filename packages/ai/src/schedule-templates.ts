@@ -6,8 +6,15 @@
 //
 // Text is drawn through an SVG overlay. The font stack falls back to whatever
 // sans the host has; price is digits + ₹ only so no Indic shaping is needed.
-import { SCHEDULE_COVER_STYLES, SCHEDULE_SLIDE_TEMPLATES } from '@kanchuki/shared';
+import {
+  MAX_IMAGE_PIXELS,
+  SCHEDULE_COVER_STYLES,
+  SCHEDULE_SLIDE_TEMPLATES,
+} from '@kanchuki/shared';
 import sharp from 'sharp';
+
+// Retailer photos and logos are untrusted: refuse a decompression bomb instead of decoding it (H5-3).
+const IN = { limitInputPixels: MAX_IMAGE_PIXELS };
 
 export const SLIDE_TEMPLATES = SCHEDULE_SLIDE_TEMPLATES;
 export const COVER_STYLES = SCHEDULE_COVER_STYLES;
@@ -51,7 +58,7 @@ const jpeg = (img: ReturnType<typeof sharp>) => img.jpeg({ quality: 88, mozjpeg:
 
 /** Center-crop any photo to the carousel's one aspect ratio (IG: first slide sets it). */
 export async function normalizePhoto(photo: Buffer): Promise<Buffer> {
-  return jpeg(sharp(photo).rotate().resize(W, H, { fit: 'cover', position: 'attention' }));
+  return jpeg(sharp(photo, IN).rotate().resize(W, H, { fit: 'cover', position: 'attention' }));
 }
 
 export interface SlideInput {
@@ -66,13 +73,13 @@ export interface SlideInput {
 
 export async function renderSlide(template: SlideTemplate, i: SlideInput): Promise<Buffer> {
   const cover = () =>
-    sharp(i.photo).rotate().resize(W, H, { fit: 'cover', position: 'attention' }).toBuffer();
+    sharp(i.photo, IN).rotate().resize(W, H, { fit: 'cover', position: 'attention' }).toBuffer();
 
   switch (template) {
     case 'white_price': {
       // Photo contained on white, price strip across the bottom.
       const stripH = 170;
-      const photo = await sharp(i.photo)
+      const photo = await sharp(i.photo, IN)
         .rotate()
         .resize(W - 80, H - stripH - 60, { fit: 'inside' })
         .toBuffer();
@@ -97,7 +104,7 @@ export async function renderSlide(template: SlideTemplate, i: SlideInput): Promi
     }
     case 'festival_frame': {
       const name = (i.festival ?? 'Festive Collection').toUpperCase();
-      const inner = await sharp(i.photo)
+      const inner = await sharp(i.photo, IN)
         .rotate()
         .resize(W - 120, H - 260, { fit: 'cover', position: 'attention' })
         .toBuffer();
@@ -117,7 +124,7 @@ export async function renderSlide(template: SlideTemplate, i: SlideInput): Promi
     case 'logo_corner': {
       const base = await cover();
       if (i.logo) {
-        const logo = await sharp(i.logo).resize({ width: 190, fit: 'inside' }).png().toBuffer();
+        const logo = await sharp(i.logo, IN).resize({ width: 190, fit: 'inside' }).png().toBuffer();
         const meta = await sharp(logo).metadata();
         const lw = meta.width ?? 190;
         const lh = meta.height ?? 190;
@@ -153,7 +160,7 @@ export async function renderCollage(photos: Buffer[], storeName: string): Promis
   const ch = Math.floor(areaH / rows);
   const tiles = await Promise.all(
     picks.map(async (p, n) => ({
-      input: await sharp(p)
+      input: await sharp(p, IN)
         .rotate()
         .resize(cw, ch, { fit: 'cover', position: 'attention' })
         .toBuffer(),

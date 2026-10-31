@@ -38,6 +38,8 @@ export interface CompressImageResult {
   unchanged: boolean;
 }
 
+import { MAX_IMAGE_PIXELS } from '@kanchuki/shared';
+
 // Lazy import — same reason as detector.ts: sharp's native dlopen can crash
 // on Windows+pnpm when loaded eagerly by a module the API imports broadly.
 let _sharp: any = null;
@@ -75,7 +77,7 @@ export async function compressImageToTarget(
   const height = meta.height ?? 0;
 
   const encode = async (w: number, h: number, q: number): Promise<Buffer> =>
-    s(input)
+    s(input, { limitInputPixels: MAX_IMAGE_PIXELS })
       .resize(w, h, { fit: 'inside', withoutEnlargement: true })
       .flatten({ background: '#ffffff' })
       // Baseline JPEG only — mozjpeg's progressive scan blanks out in
