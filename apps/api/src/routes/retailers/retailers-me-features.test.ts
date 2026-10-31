@@ -61,6 +61,40 @@ beforeEach(() => {
   mockCustomerCount.mockResolvedValue(0);
 });
 
+// H2-5: every column below is a credential (ciphertext), a KYC object pointer or an auth id. None
+// belongs on a profile response that managers, salespeople and support delegates can fetch.
+const SECRET_COLUMNS = [
+  'whatsapp_api_access_token',
+  'gmb_access_token',
+  'gmb_refresh_token',
+  'fb_ads_access_token',
+  'google_ads_refresh_token',
+  'google_ads_developer_token',
+  'kyc_gst_r2_key',
+  'kyc_aadhar_front_r2_key',
+  'kyc_aadhar_back_r2_key',
+  'kyc_gst_url',
+  'kyc_aadhar_front_url',
+  'kyc_aadhar_back_url',
+  'auth_user_id',
+];
+
+describe('GET /v1/retailers/me — secrets stay server-side (H2-5)', () => {
+  it('returns no token ciphertext, KYC pointer or auth id', async () => {
+    mockRetailerFindUnique.mockResolvedValue({
+      id: RETAILER_ID,
+      shop_name: 'Meera Sarees',
+      ...Object.fromEntries(SECRET_COLUMNS.map((c) => [c, `secret-${c}`])),
+    });
+    mockGetEnabledFeatures.mockResolvedValue([]);
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/me' });
+    expect(res.statusCode).toBe(200);
+    for (const c of SECRET_COLUMNS) expect(res.json().data).not.toHaveProperty(c);
+    expect(res.json().data.shop_name).toBe('Meera Sarees');
+  });
+});
+
 describe('GET /v1/retailers/me — plan features', () => {
   it('returns the enabled-feature list from the same helper the routes gate on', async () => {
     mockGetEnabledFeatures.mockResolvedValue(['BULK_ONBOARDING_IMPORT', 'VIRTUAL_TRY_ON_V2']);

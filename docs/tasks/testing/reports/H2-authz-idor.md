@@ -176,7 +176,7 @@ Fix:
      });
 ```
 Check first that the mobile app does not read these fields (`grep -rn "kyc_aadhar\|gmb_access\|fb_ads_access" apps/mobile`); also confirm the installed Prisma version supports `omit` (GA in 6.2). If it does not, extend the destructure at `:86`.
-Status: Plausible
+Status: Fixed (RC-143), not deployed. As built: not `omit` (Prisma 5.16 still has it as a preview feature) but one `toRetailerDto()` / `RETAILER_SECRET_FIELDS` in `routes/retailers/retailers-dto.ts`, applied to `GET /me` **and `PUT /me`** (it returned the same full row, reachable by support MAINTENANCE, and did not strip the WhatsApp token). The `kyc_*_url` columns are stripped too, since they are permanent public links to the same scans. A test reads `schema.prisma` and fails on any unlisted secret-looking `Retailer` column. Grep confirmed no app reads these fields.
 
 ### H2-6 Duplicate-phone error lets staff check whether a number is a customer   Severity: Low
 Attacker: staff (salesperson; `POST /v1/customers` is allowlisted at `auth.ts:232`)
