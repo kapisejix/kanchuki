@@ -29,7 +29,7 @@ sed -n … catalog-import.ts, detector.ts, generate-ken-burns-video.ts, retailer
 | Low | 2 | H5-4, H5-5 |
 | Not exploitable (attack disproved) | 7 | A1–A7 below |
 
-All 5 findings are **Plausible** (code-only). H5-3 is **Fixed locally (RC-141), not deployed**; the other four are not applied.
+H5-3 is **Fixed locally (RC-141)**, H5-2 **(RC-148)**, H5-4 **(RC-149)** and H5-5 **(RC-150)** likewise, none deployed; H5-1 (public bucket, owner-side) stays open.
 
 ## Findings table
 
@@ -113,7 +113,7 @@ Fix:
 +    const r2Key = stagingKey(`${prefix}/${retailerId}/${randHex(16)}${ext}`);
 ```
 The mobile client and whatever reads `catalog-source/` must then pass the staged key through a `verifyUpload` confirm. Check the F-001b/F-001d callers before applying. Could not verify in time.
-Status: Plausible
+Status: Fixed (RC-148), not deployed. As built: byte sniff in `detectCropAndTag` (inline JPEG/PNG/WebP check) and `stagingKey` on the catalog-import presign; mobile unchanged (it reads `public_url`). The source upload is never confirmed; an hourly sweep (RC-152) deletes staged objects older than 24 h, so the R2 lifecycle rule (owner check 7) is a second line, not a dependency.
 
 ---
 
@@ -174,7 +174,7 @@ Fix:
 +    if (/^fe[89ab]/.test(lower) || /^fe[c-f]/.test(lower) || lower.startsWith('fc') || lower.startsWith('fd')) return true
 +    if (lower.startsWith('64:ff9b:')) return true // NAT64 can map to any IPv4, incl. metadata
 ```
-Status: Plausible
+Status: Fixed (RC-149), not deployed. As built: 100.64/10, 198.18/15, 64:ff9b::/96 and fec0::/10 added, link-local widened to fe80::/10.
 
 ---
 
@@ -196,7 +196,7 @@ Fix:
 +            if (resp.ok) buf = await readCappedBuffer(resp);
 ```
 (import both from `@kanchuki/ai`; check they are exported from the package index first.)
-Status: Not exploitable (hardening)
+Status: Fixed (RC-150), not deployed (hardening). As built: `ssrfSafeFetch` plus `readCappedBuffer`.
 
 ---
 

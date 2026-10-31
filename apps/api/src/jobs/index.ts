@@ -54,6 +54,7 @@ import {
   handleRewatermarkShowcaseDesigns,
 } from './rewatermark-showcase-designs.js';
 import { handleSchedulePublishTick, handleScheduleTokenHealth } from './scheduled-post-publish.js';
+import { handleStagedUploadSweep } from './staged-upload-sweep.js';
 import { handleStudioShoot } from './studio-shoot.js';
 import type { StudioShootJobData } from './studio-shoot.js';
 import { handleTagProduct } from './tag-product.js';
@@ -301,6 +302,8 @@ export async function startWorkers(): Promise<void> {
           return handleAiSpendAlert();
         case 'quota-reservation-sweep':
           return handleQuotaReservationSweep();
+        case 'staged-upload-sweep':
+          return handleStagedUploadSweep();
         case 'customer-new-arrivals-push':
           return handleNewArrivalsPush();
         default:
@@ -531,6 +534,18 @@ export async function startWorkers(): Promise<void> {
     {},
     {
       repeat: { pattern: '40 * * * *' },
+      removeOnComplete: { count: 10 },
+      removeOnFail: { count: 10 },
+    },
+  );
+
+  // RC-152 staged upload sweep — hourly at :50. Deletes `uploads/pending/` objects older than
+  // 24 h that no confirm ever promoted. No `limit` (RC-062); idempotent, bounded per run.
+  await addCron(
+    'staged-upload-sweep',
+    {},
+    {
+      repeat: { pattern: '50 * * * *' },
       removeOnComplete: { count: 10 },
       removeOnFail: { count: 10 },
     },

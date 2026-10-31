@@ -15,7 +15,12 @@ import { recordAiUsage } from '../lib/ai-usage.js';
 import { defaultStock } from '../lib/product-stock.js';
 import { checkQuota, reserveQuota } from '../lib/quota.js';
 import { createSkuSequencer } from '../lib/sku.js';
-import { IMAGE_KINDS, UPLOAD_URL_RATE_LIMIT, verifyUpload } from '../lib/upload-guard.js';
+import {
+  IMAGE_KINDS,
+  UPLOAD_URL_RATE_LIMIT,
+  stagingKey,
+  verifyUpload,
+} from '../lib/upload-guard.js';
 import { notFound, planLimitExceeded, validationError } from '../plugins/error-handler.js';
 
 // ─── Types ────────────────────────────────────────────────────────
@@ -132,7 +137,8 @@ export const catalogImportRoutes: FastifyPluginAsync = async (server) => {
 
     const prefix = isPdf ? 'catalog-pdf' : 'catalog-source';
     const ext = isPdf ? '.pdf' : '.jpg';
-    const r2Key = `${prefix}/${retailerId}/${randHex(16)}${ext}`;
+    // H5-2: staged like every other presign route, so an unconfirmed upload expires by lifecycle.
+    const r2Key = stagingKey(`${prefix}/${retailerId}/${randHex(16)}${ext}`);
     let upload_url: string;
     try {
       upload_url = await getUploadPresignedUrl(r2Key, content_type, 300, content_length);

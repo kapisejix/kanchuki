@@ -100,3 +100,34 @@ describe('readCappedBuffer', () => {
     await expect(readCappedBuffer(res)).rejects.toThrow(/exceeded/);
   });
 });
+
+// H5-4 / RC-149 — ranges the blocklist missed: CGNAT, benchmark, NAT64 (maps onto any IPv4,
+// incl. cloud metadata), deprecated site-local. The neighbours just outside must stay allowed.
+describe('ssrfSafeFetch — reserved ranges (H5-4)', () => {
+  it.each(['100.64.0.1', '100.127.255.254', '198.18.0.1', '198.19.255.255'])(
+    'blocks the IPv4 literal %s',
+    async (ip) => {
+      await expect(ssrfSafeFetch(`http://${ip}/x`)).rejects.toThrow(/Blocked unsafe address/);
+    },
+  );
+
+  it.each(['64:ff9b::a9fe:a9fe', 'fec0::1', 'febf::1'])(
+    'blocks a host that resolves to %s',
+    async (address) => {
+      mockLookup.mockResolvedValue([{ address, family: 6 }]);
+      await expect(ssrfSafeFetch('http://v6.example.com/x')).rejects.toThrow(
+        /Blocked unsafe address/,
+      );
+      expect(fetch).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(['100.63.255.255', '100.128.0.1', '198.17.255.255', '198.20.0.1', '93.184.216.34'])(
+    'still allows the public neighbour %s',
+    async (ip) => {
+      vi.mocked(fetch).mockResolvedValue(jsonResponse({ ok: true }));
+      const res = await ssrfSafeFetch(`http://${ip}/x`);
+      expect(res.status).toBe(200);
+    },
+  );
+});

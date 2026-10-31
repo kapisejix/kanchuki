@@ -45,11 +45,9 @@ async function buildHealthApp() {
           await getRedis().ping();
           return { ok: true as const, latencyMs: Date.now() - start };
         } catch (err) {
-          return {
-            ok: false as const,
-            latencyMs: Date.now() - start,
-            error: err instanceof Error ? err.message : String(err),
-          };
+          // Mirrors index.ts (H8-4): the body never carries driver text; health-leak.test.ts pins the real one.
+          void err;
+          return { ok: false as const, latencyMs: Date.now() - start, error: 'unreachable' };
         }
       })(),
     ]);
@@ -158,7 +156,7 @@ describe('GET /health', () => {
     expect(body.status).toBe('degraded');
     expect(body.db.ok).toBe(true);
     expect(body.redis.ok).toBe(false);
-    expect(body.redis.error).toBe('ECONNREFUSED');
+    expect(body.redis.error).toBe('unreachable');
     await app.close();
   });
 

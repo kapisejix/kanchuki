@@ -104,11 +104,9 @@ export async function dbHealthCheck(): Promise<{
     await prisma.$queryRaw`SELECT 1`
     return { ok: true, latencyMs: Date.now() - start }
   } catch (err) {
-    return {
-      ok: false,
-      latencyMs: Date.now() - start,
-      error: err instanceof Error ? err.message : String(err),
-    }
+    // H8-4: the /health body is anonymous — driver text carries hosts/ports; log it, don't return it.
+    console.warn('[db] health check failed:', err)
+    return { ok: false, latencyMs: Date.now() - start, error: 'unreachable' }
   }
 }
 

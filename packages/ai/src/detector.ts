@@ -26,6 +26,18 @@ export async function fetchImageBuffer(imageUrl: string): Promise<Buffer> {
   return readCappedBuffer(res);
 }
 
+function isJpegPngWebp(b: Buffer): boolean {
+  const jpeg = b.length >= 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff;
+  const png =
+    b.length >= 8 &&
+    b.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+  const webp =
+    b.length >= 12 &&
+    b.toString('latin1', 0, 4) === 'RIFF' &&
+    b.toString('latin1', 8, 12) === 'WEBP';
+  return jpeg || png || webp;
+}
+
 /**
  * Upload the photo to R2 as-is and run AI tagging on it. One product per photo:
  * multi-item detection, cropping and perceptual-hash duplicate detection were
@@ -38,6 +50,10 @@ export async function detectCropAndTag(
   opts?: TaggingCallOpts,
 ): Promise<Array<DetectedItem & { croppedUrl: string; r2Key: string }>> {
   const imageBuffer = await fetchImageBuffer(sourceImageUrl);
+  // H5-2: same magic-byte gate as verifyUpload (RC-075) — this key goes on the public CDN.
+  // ponytail: inline copy, packages/ai cannot import sniffUploadType from apps/api; move it to
+  // @kanchuki/shared if a third caller needs it.
+  if (!isJpegPngWebp(imageBuffer)) throw new Error('Not a JPEG/PNG/WebP image');
   const r2Key = `catalog-import/${retailerId}/${createHash('sha256').update(imageBuffer).digest('hex').slice(0, 16)}.jpg`;
   await uploadBuffer(r2Key, imageBuffer, 'image/jpeg');
   const croppedUrl = publicUrl(r2Key);
