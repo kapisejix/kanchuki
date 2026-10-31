@@ -74,12 +74,25 @@ vi.mock('../lib/quota.js', () => ({
 
 const RETAILER_ID = 'retailer_1';
 
-async function buildApp() {
+async function buildApp(session: { catalogDelegate?: boolean; supportDelegate?: boolean } = {}) {
   const app = Fastify();
   app.setErrorHandler(errorHandler);
   app.decorateRequest('retailerId', '');
+  app.decorateRequest('catalogDelegate', null);
+  app.decorateRequest('supportDelegate', null);
   app.addHook('preHandler', async (request) => {
     request.retailerId = RETAILER_ID;
+    if (session.catalogDelegate) {
+      request.catalogDelegate = { team_member_id: 'tm1', ticket_id: 't1' };
+    }
+    if (session.supportDelegate) {
+      request.supportDelegate = {
+        team_member_id: 'tm1',
+        ticket_id: 't1',
+        grant_id: 'g1',
+        scope: 'GROWTH',
+      };
+    }
   });
   await app.register(productsStudioRoutes, { prefix: '/v1/products' });
   await app.ready();
@@ -108,6 +121,23 @@ const STYLE_ROW = {
 };
 
 describe('POST /products/:id/photos/:photoId/studio-shoot', () => {
+  // H2-3: a delegated session (catalog upload / support) must not spend the retailer's quota.
+  it.each([
+    ['catalog delegate', { catalogDelegate: true }],
+    ['support delegate', { supportDelegate: true }],
+  ])('H2-3: refuses a %s before any quota or enqueue', async (_name, session) => {
+    const app = await buildApp(session);
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/products/p1/photos/photo_1/studio-shoot',
+      payload: { template: 'runway' },
+    });
+    expect(res.statusCode).toBe(403);
+    expect(mockCheckQuota).not.toHaveBeenCalled();
+    expect(mockReserveJobQuota).not.toHaveBeenCalled();
+    expect(mockAddStudioShootJob).not.toHaveBeenCalled();
+  });
+
   it('202 + job_id for a Growth retailer with a valid style slug', async () => {
     mockStyleFindFirst.mockResolvedValueOnce(STYLE_ROW);
     const app = await buildApp();

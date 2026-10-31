@@ -75,12 +75,25 @@ import { productsProCleanupRoutes } from './products-pro-cleanup.js';
 
 const RETAILER_ID = 'retailer_1';
 
-async function buildApp() {
+async function buildApp(session: { catalogDelegate?: boolean; supportDelegate?: boolean } = {}) {
   const app = Fastify();
   app.setErrorHandler(errorHandler);
   app.decorateRequest('retailerId', '');
+  app.decorateRequest('catalogDelegate', null);
+  app.decorateRequest('supportDelegate', null);
   app.addHook('preHandler', async (request) => {
     request.retailerId = RETAILER_ID;
+    if (session.catalogDelegate) {
+      request.catalogDelegate = { team_member_id: 'tm1', ticket_id: 't1' };
+    }
+    if (session.supportDelegate) {
+      request.supportDelegate = {
+        team_member_id: 'tm1',
+        ticket_id: 't1',
+        grant_id: 'g1',
+        scope: 'MAINTENANCE',
+      };
+    }
   });
   await app.register(productsProCleanupRoutes, { prefix: '/v1/products' });
   await app.ready();
@@ -122,6 +135,22 @@ const validBody = {
 };
 
 describe('POST /products/pro-cleanup', () => {
+  // H2-3: a delegated session (catalog upload / support) must not spend the retailer's paid-AI quota.
+  it.each([
+    ['catalog delegate', { catalogDelegate: true }],
+    ['support delegate', { supportDelegate: true }],
+  ])('H2-3: refuses a %s before reserving any quota', async (_name, session) => {
+    const app = await buildApp(session);
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/products/pro-cleanup',
+      payload: validBody,
+    });
+    expect(res.statusCode).toBe(403);
+    expect(mockReserveQuota).not.toHaveBeenCalled();
+    expect(mockRunCleanup).not.toHaveBeenCalled();
+  });
+
   it('cleans kept photos, flags the sharpest primary, meters quota and audits', async () => {
     mockScoreSharpness.mockResolvedValueOnce(5).mockResolvedValueOnce(12);
     mockPickSharpest.mockReturnValue(1);

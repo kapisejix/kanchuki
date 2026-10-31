@@ -374,6 +374,15 @@ export function isRealOwner(request: FastifyRequest): boolean {
 }
 
 /**
+ * A delegated session (catalog upload, support) — never the retailer or their staff. The
+ * delegate allowlists grant whole path prefixes (`/v1/products`), so a route that spends the
+ * retailer's paid-AI quota must refuse these itself (H2-3, RC-142).
+ */
+export function isDelegate(request: FastifyRequest): boolean {
+  return !!request.catalogDelegate || !!request.supportDelegate;
+}
+
+/**
  * Staff (manager/salesperson) must never receive a customer's full number.
  * Masking is done here, server-side — a UI-only mask still ships the number
  * over the wire. "98•••••210" keeps enough to tell customers apart.

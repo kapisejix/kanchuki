@@ -43,7 +43,8 @@ import { pickContrastBackground } from '../../lib/backgrounds.js';
 import { runPhotoCleanup, serializePhotoCleanup } from '../../lib/photo-cleanup-runner.js';
 import { reserveQuota } from '../../lib/quota.js';
 import { isOwnedKey, unstagedKey } from '../../lib/upload-guard.js';
-import { serviceUnavailable, validationError } from '../../plugins/error-handler.js';
+import { isDelegate } from '../../plugins/auth.js';
+import { forbidden, serviceUnavailable, validationError } from '../../plugins/error-handler.js';
 
 const CropRectSchema = z.object({
   x1: z.number().int(),
@@ -128,6 +129,8 @@ export const productsProCleanupRoutes: FastifyPluginAsync = async (server) => {
   // ─── POST /products/pro-cleanup ──────────────────────────────────
   server.post('/pro-cleanup', async (request, reply) =>
     serializePhotoCleanup(async () => {
+      // H2-3: a delegated session must not spend the retailer's BG_REMOVAL / IMAGE_CROP quota.
+      if (isDelegate(request)) throw forbidden('Only the shop team can run AI edits');
       const retailerId = request.retailerId;
       const body = ProCleanupSchema.safeParse(request.body);
       if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
