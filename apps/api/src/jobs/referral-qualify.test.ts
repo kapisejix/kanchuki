@@ -47,14 +47,18 @@ import { decideQualification, handleReferralQualify } from './referral-qualify.j
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
 
+const REFERRER_GSTIN = '27AAPFU0939F1ZV';
+
 /** A due PENDING conversion for a paid, active store — the happy path baseline. */
 function candidate(overrides: Record<string, unknown> = {}) {
   return {
     id: 'rc_1',
     referrer_id: 'ref_1',
     referred_id: 'shop_1',
+    referrer: { gstin: REFERRER_GSTIN },
     referred: {
       id: 'shop_1',
+      gstin: '29ABCDE1234F1Z5',
       deleted_at: null,
       is_suspended: false,
       subscriptions: [{ status: 'ACTIVE' as const, amount_inr: 999_900 }],
@@ -325,6 +329,77 @@ describe('decideQualification', () => {
     ).toEqual({ outcome: 'WAIT', reason: 'NO_ACTIVE_SUBSCRIPTION' });
   });
 
+  // H6-4 — a second store with no GSTIN used to slip past the capture-time self-referral check.
+  // Same GSTIN is one business (final); no GSTIN is "cannot tell yet" (recoverable).
+  describe('GSTIN self-referral gate (H6-4)', () => {
+    const paidActive = {
+      deleted_at: null,
+      is_suspended: false,
+      subscriptions: [{ status: 'ACTIVE' as const, amount_inr: 999_900 }],
+    };
+    const decide = (
+      gstins: { referrer: string | null; referred: string | null },
+      referred: typeof paidActive | Record<string, unknown> = paidActive,
+      hasSuccessfulPayment = true,
+    ) =>
+      decideQualification({
+        referred: referred as typeof paidActive,
+        hasSuccessfulPayment,
+        gstins,
+      } as Parameters<typeof decideQualification>[0]);
+
+    it('claws back a store sharing the referrer GSTIN, ignoring case and spaces', () => {
+      expect(decide({ referrer: '27AAPFU0939F1ZV', referred: ' 27aapfu0939f1zv ' })).toEqual({
+        outcome: 'CLAW_BACK',
+        reason: 'SELF_REFERRAL',
+      });
+    });
+
+    it('claws back a same-GSTIN store even before it has paid', () => {
+      expect(
+        decide({ referrer: '27AAPFU0939F1ZV', referred: '27AAPFU0939F1ZV' }, paidActive, false),
+      ).toEqual({ outcome: 'CLAW_BACK', reason: 'SELF_REFERRAL' });
+    });
+
+    it('a deleted store is still REFERRED_DELETED, not SELF_REFERRAL', () => {
+      const d = decide(
+        { referrer: '27AAPFU0939F1ZV', referred: '27AAPFU0939F1ZV' },
+        { ...paidActive, deleted_at: new Date('2026-09-01') },
+      );
+      expect(d).toEqual({ outcome: 'CLAW_BACK', reason: 'REFERRED_DELETED' });
+    });
+
+    it.each([
+      ['null', null],
+      ['blank', '  '],
+    ])('waits, does not qualify, a paid active store with a %s GSTIN', (_n, referred) => {
+      expect(decide({ referrer: '27AAPFU0939F1ZV', referred })).toEqual({
+        outcome: 'WAIT',
+        reason: 'NO_GSTIN',
+      });
+    });
+
+    it('qualifies once the store carries a GSTIN different from the referrer', () => {
+      expect(decide({ referrer: '27AAPFU0939F1ZV', referred: '29ABCDE1234F1Z5' })).toMatchObject({
+        outcome: 'QUALIFY',
+      });
+    });
+
+    it('a referrer with no GSTIN does not block a referred store that has one', () => {
+      expect(decide({ referrer: null, referred: '29ABCDE1234F1Z5' })).toMatchObject({
+        outcome: 'QUALIFY',
+      });
+    });
+
+    it('a GSTIN-less store that paid and cancelled is still clawed back as churn', () => {
+      const d = decide(
+        { referrer: '27AAPFU0939F1ZV', referred: null },
+        { ...paidActive, subscriptions: [{ status: 'CANCELLED' as const, amount_inr: 1 }] },
+      );
+      expect(d).toEqual({ outcome: 'CLAW_BACK', reason: 'REFERRED_CHURNED_AFTER_PAYMENT' });
+    });
+  });
+
   it('every outcome and every reason is produced by an input in this file', () => {
     // Anti-vacuous-guard check. A branch nothing can reach is coverage that reads
     // as protection; this asserts the table above covers the whole decision type.
@@ -339,11 +414,14 @@ describe('decideQualification', () => {
       ]) {
         for (const deleted_at of [null, new Date('2026-09-01')]) {
           for (const is_suspended of [false, true]) {
-            const d = decideQualification({
-              referred: { deleted_at, is_suspended, subscriptions },
-              hasSuccessfulPayment,
-            });
-            produced.add(d.outcome === 'WAIT' ? `WAIT:${d.reason}` : d.outcome);
+            for (const referred of ['29ABCDE1234F1Z5', null]) {
+              const d = decideQualification({
+                referred: { deleted_at, is_suspended, subscriptions },
+                hasSuccessfulPayment,
+                gstins: { referrer: '27AAPFU0939F1ZV', referred },
+              });
+              produced.add(d.outcome === 'WAIT' ? `WAIT:${d.reason}` : d.outcome);
+            }
           }
         }
       }
@@ -354,6 +432,7 @@ describe('decideQualification', () => {
       // 'T' sorts before '_', so NOT_PAID precedes NO_ACTIVE_SUBSCRIPTION.
       'WAIT:NOT_PAID',
       'WAIT:NO_ACTIVE_SUBSCRIPTION',
+      'WAIT:NO_GSTIN',
       'WAIT:PAST_DUE_REVIEW',
       'WAIT:SUSPENDED',
     ]);
@@ -371,7 +450,17 @@ describe('decideQualification', () => {
       const d = decideQualification({ referred: input, hasSuccessfulPayment: true });
       if (d.outcome === 'CLAW_BACK') reasons.add(d.reason);
     }
-    expect([...reasons].sort()).toEqual(['REFERRED_CHURNED_AFTER_PAYMENT', 'REFERRED_DELETED']);
+    const same = decideQualification({
+      referred: { deleted_at: null, is_suspended: false, subscriptions: [] },
+      hasSuccessfulPayment: false,
+      gstins: { referrer: '27AAPFU0939F1ZV', referred: '27AAPFU0939F1ZV' },
+    });
+    if (same.outcome === 'CLAW_BACK') reasons.add(same.reason);
+    expect([...reasons].sort()).toEqual([
+      'REFERRED_CHURNED_AFTER_PAYMENT',
+      'REFERRED_DELETED',
+      'SELF_REFERRAL',
+    ]);
   });
 });
 
@@ -464,6 +553,47 @@ describe('handleReferralQualify', () => {
       actor_type: 'system',
       metadata: { reason: 'REFERRED_DELETED' },
     });
+  });
+
+  it('claws back a same-GSTIN store with SELF_REFERRAL in the audit trail (H6-4)', async () => {
+    withCandidates(
+      candidate({
+        referrer: { gstin: REFERRER_GSTIN },
+        referred: { ...candidate().referred, gstin: REFERRER_GSTIN },
+      }),
+    );
+
+    const summary = await handleReferralQualify({ now: NOW });
+
+    expect(summary.clawed_back).toBe(1);
+    expect(mockUpdateMany.mock.calls[0]?.[0].data).toEqual({
+      status: 'CLAWED_BACK',
+      clawed_back_at: NOW,
+    });
+    expect(mockAuditCreate.mock.calls[0]?.[0]?.data).toMatchObject({
+      action: 'REFERRAL_CLAWED_BACK',
+      metadata: { reason: 'SELF_REFERRAL' },
+    });
+  });
+
+  it('leaves a GSTIN-less store PENDING and writes nothing (H6-4)', async () => {
+    mockPaymentFindMany.mockResolvedValue([{ retailer_id: 'shop_1' }]);
+    withCandidates(candidate({ referred: { ...candidate().referred, gstin: null } }));
+
+    const summary = await handleReferralQualify({ now: NOW });
+
+    expect(summary).toMatchObject({ qualified: 0, clawed_back: 0, not_yet_eligible: 1 });
+    expect(mockUpdateMany).not.toHaveBeenCalled();
+    expect(mockAuditCreate).not.toHaveBeenCalled();
+  });
+
+  it('reads both GSTINs from the database (H6-4)', async () => {
+    withCandidates(candidate());
+    await handleReferralQualify({ now: NOW });
+
+    const select = mockConversionFindMany.mock.calls[0]?.[0].select;
+    expect(select.referrer).toEqual({ select: { gstin: true } });
+    expect(select.referred.select.gstin).toBe(true);
   });
 
   it('never writes anything for a row that is not yet eligible', async () => {
