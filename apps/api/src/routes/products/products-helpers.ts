@@ -6,6 +6,27 @@ import { SIZE_OPTIONS } from '@kanchuki/shared';
 import { z } from 'zod';
 import { StockInputSchema } from '../../lib/product-stock.js';
 import { queryBool } from '../../lib/query-bool.js';
+import { forbidden } from '../../plugins/error-handler.js';
+
+// H2-4: section_id / category_id arrive from the client; both POST and PUT /products must
+// prove they belong to the caller before they are written.
+export async function assertOwnRefs(
+  retailerId: string,
+  refs: { section_id?: string | null; category_id?: string | null },
+): Promise<void> {
+  if (refs.section_id) {
+    const section = await prisma.storeSection.findFirst({
+      where: { id: refs.section_id, retailer_id: retailerId },
+    });
+    if (!section) throw forbidden('Section does not belong to your store');
+  }
+  if (refs.category_id) {
+    const cat = await prisma.productCategory.findFirst({
+      where: { id: refs.category_id, retailer_id: retailerId },
+    });
+    if (!cat) throw forbidden('Category does not belong to your store');
+  }
+}
 
 // ─── On-Demand ISR Revalidation ───────────────────────────────────
 // After a product status change, purge the ISR cache for every collection

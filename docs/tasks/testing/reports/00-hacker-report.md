@@ -25,7 +25,8 @@ Method: code/config review plus local Fastify `inject()` harnesses. Nothing was 
 | H1-8 One shared admin password, no 2FA, no revocation | Low | Open |
 | H1-9 MSG91 widget token replay | Low | Open (could not verify) |
 | H2-1 Cross-tenant products injected into own A/B variant collection | Medium | Fixed (RC-138), not deployed |
-| H2-2 … H2-6 | Med/Low | Open |
+| H2-4 Product update skips section/category ownership checks | Low | Fixed (RC-139), not deployed |
+| H2-2, H2-3, H2-5, H2-6 | Med/Low | Open |
 | H3-1 Percent-encoded path skips Super-Admin gate | High | Fixed (RC-090), not deployed |
 | H3-2 Admin gate deny-list, `SUPPORT_MANAGER` full power | Medium | Fixed (RC-091), not deployed |
 | H3-3 Admin gate trusts JWT role, no DB re-check | Medium | Fixed (RC-092), not deployed. Follow-up open: `team-helpers.ts:76` `verifyAdminSession` still trusts the JWT role |
@@ -74,7 +75,7 @@ Effort: S ≤ ½ day, M ≤ 2 days, L > 2 days. Owner = needs a dashboard/config
 | 22 | H6-3 | Low | `plan-lapse` never lapses an ACTIVE plan whose paid period ended | S | n |
 | 23 | H6-4 | Low | Self-referral check bypassed by a second phone with no GSTIN | M | n |
 | 24 | H2-3 | Low | Delegates spend paid-AI quota (RC-068 shape outside try-on) | S | n |
-| 25 | H2-4 | Low | Product update skips section/category/background ownership checks | S | n |
+| 25 | ~~H2-4~~ | Low | Product update skips section/category ownership checks. Fixed RC-139, not deployed (`background_image_id` is a global table, no check needed) | S | n |
 | 26 | H2-5 | Low | `GET /retailers/me` over-shares to staff and delegates | S | n |
 | 27 | H2-6 | Low | Duplicate-phone error lets staff probe whether a number is a customer | S | n |
 | 28 | ~~H4-5~~ | Low | Passport wishlist / recently-viewed / events accept any `retailer_id`. Fixed RC-095, not deployed | S | n |
