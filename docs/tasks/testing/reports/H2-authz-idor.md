@@ -184,7 +184,7 @@ Goal: learn whether a given phone number is a customer of the store. List and de
 Steps: `POST /v1/customers {"name":"x","phone":"98XXXXXXXX"}`. The reply is "already exists" if the number is a customer; otherwise a customer row is created, which is a visible side effect. Only the global 200/min limit applies.
 Impact: small. It confirms numbers the salesperson already has; it does not reveal unknown numbers. Listed so H8 can rank it.
 Fix: keep the message for the owner; return a generic `validationError('Could not add this customer')` for `!isRealOwner(request)` at `customers.ts:48-49`.
-Status: Plausible
+Status: Mitigated (RC-145), not deployed. The proposed generic message was NOT applied: 422 vs 201 still tells the two cases apart, and returning a 201 for a duplicate cannot work (the mobile add screen needs the new `id`; a fake id shows via `GET /customers/:id`, an existing id leaks the name). Built instead: a 10/min limit per staff member (not per IP, which rotates) on `POST /customers`. Residual accepted by the owner: a salesperson can still check numbers, at most 10 a minute. Related, open: H2-7 (soft-deleted customer's number re-added → P2002 500, unique index covers soft-deleted rows).
 
 ---
 

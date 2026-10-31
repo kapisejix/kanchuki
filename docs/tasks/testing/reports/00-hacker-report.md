@@ -26,7 +26,8 @@ Method: code/config review plus local Fastify `inject()` harnesses. Nothing was 
 | H1-9 MSG91 widget token replay | Low | Open (could not verify) |
 | H2-1 Cross-tenant products injected into own A/B variant collection | Medium | Fixed (RC-138), not deployed |
 | H2-4 Product update skips section/category ownership checks | Low | Fixed (RC-139), not deployed |
-| H2-2, H2-6 | Med/Low | Open (H2-3 fixed RC-142, H2-5 fixed RC-143, not deployed) |
+| H2-2 | Medium | Open (needs delegate-scope decision) |
+| H2-6 Duplicate-phone error lets staff probe customers | Low | Mitigated (RC-145), not deployed. Residual accepted: 10 probes/min per staff member |
 | H3-1 Percent-encoded path skips Super-Admin gate | High | Fixed (RC-090), not deployed |
 | H3-2 Admin gate deny-list, `SUPPORT_MANAGER` full power | Medium | Fixed (RC-091), not deployed |
 | H3-3 Admin gate trusts JWT role, no DB re-check | Medium | Fixed (RC-092), not deployed. Follow-up open: `team-helpers.ts:76` `verifyAdminSession` still trusts the JWT role |
@@ -79,7 +80,7 @@ Effort: S ≤ ½ day, M ≤ 2 days, L > 2 days. Owner = needs a dashboard/config
 | 24 | ~~H2-3~~ | Low | Delegates spend paid-AI quota (RC-068 shape outside try-on). Fixed RC-142 for studio-shoot + pro-cleanup, not deployed (retag and support-GROWTH AI routes left open, owner decision) | S | n |
 | 25 | ~~H2-4~~ | Low | Product update skips section/category ownership checks. Fixed RC-139, not deployed (`background_image_id` is a global table, no check needed) | S | n |
 | 26 | ~~H2-5~~ | Low | `GET /retailers/me` over-shares to staff and delegates (`PUT /me` too). Fixed RC-143, not deployed | S | n |
-| 27 | H2-6 | Low | Duplicate-phone error lets staff probe whether a number is a customer | S | n |
+| 27 | ~~H2-6~~ | Low | Duplicate-phone error lets staff probe whether a number is a customer. Mitigated RC-145 (10/min per staff member; residual accepted, no response shape can hide it), not deployed | S | n |
 | 28 | ~~H4-5~~ | Low | Passport wishlist / recently-viewed / events accept any `retailer_id`. Fixed RC-095, not deployed | S | n |
 | 29 | ~~H4-6~~ | Low | `near-me` exposes the retailer's login phone. Fixed RC-097, not deployed | S | n |
 | 30 | H4-7 | Low | Passport session ids stored in plaintext | M | y (migration revokes sessions) |
@@ -96,7 +97,7 @@ Effort: S ≤ ½ day, M ≤ 2 days, L > 2 days. Owner = needs a dashboard/config
 
 **Reconciled 2026-10-29 against the CLAUDE.md RC tracker.** Rows 2, 3, 4, 8, 9, 10, 11, 12, 28, 29 below are Fixed locally (RC-090 … RC-098, RC-103), not deployed; rows 15, 16, 20, 24, 25, 26 (H5-3, H2-1, H8-3, H2-3, H2-4, H2-5: RC-141, RC-138, RC-140, RC-142, RC-139, RC-143) likewise, added 2026-10-31; row 13 (H6-2) is partly fixed (RC-102). They are kept for history and excluded from the totals.
 
-**Totals (open): Critical 1, High 0, Medium 8, Low 14 = 23** (was 40; 17 fixed). H6-2 is counted as open until RC-102 is verified on a real DB. Dependency CVEs: see `H8-infra-secrets.md` §CVE (not in these counts). SC-1, SC-2 (P0, owner) tracked in the SC report.
+**Totals (open): Critical 1, High 0, Medium 8, Low 13 = 22** (was 40; 18 fixed). H6-2 is counted as open until RC-102 is verified on a real DB. Dependency CVEs: see `H8-infra-secrets.md` §CVE (not in these counts). SC-1, SC-2 (P0, owner) tracked in the SC report.
 
 ## Owner checks (dashboard-only facts that set the severity)
 

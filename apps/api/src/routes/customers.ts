@@ -42,44 +42,60 @@ function toCustomerDto<
 
 export const customerRoutes: FastifyPluginAsync = async (server) => {
   // ─── POST /customers ────────────────────────────────────────────
-  server.post('/', async (request, reply) => {
-    const retailerId = request.retailerId;
-
-    const body = CustomerSchema.safeParse(request.body);
-    if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
-
-    const normalizedPhone = normalizeIndianPhone(body.data.phone);
-    const phone_hash = createHash('sha256').update(normalizedPhone).digest('hex');
-
-    const existing = await prisma.customer.findFirst({
-      where: { retailer_id: retailerId, phone: normalizedPhone, deleted_at: null },
-    });
-    if (existing)
-      throw validationError('A customer with this phone number already exists', 'phone');
-
-    const customer = await prisma.customer.create({
-      data: {
-        retailer_id: retailerId,
-        ...body.data,
-        phone: normalizedPhone,
-        phone_hash,
+  // H2-6/RC-145: bounds the "already exists" phone probe; no response shape can hide it.
+  server.post(
+    '/',
+    {
+      config: {
+        rateLimit: {
+          max: 10,
+          timeWindow: 60 * 1000,
+          // preHandler, not the default onRequest: auth sets retailerId/staffId in a preHandler,
+          // and an empty key at onRequest would pool every retailer into one bucket.
+          hook: 'preHandler',
+          keyGenerator: (r) => `${r.retailerId}:${r.staffId ?? 'owner'}`,
+        },
       },
-    });
+    },
+    async (request, reply) => {
+      const retailerId = request.retailerId;
 
-    await prisma.auditLog.create({
-      data: {
-        actor_type: 'retailer',
-        actor_id: retailerId,
-        action: 'create',
-        resource_type: 'Customer',
-        resource_id: customer.id,
-        metadata: { name: customer.name },
-        ip_address: request.ip,
-      },
-    });
+      const body = CustomerSchema.safeParse(request.body);
+      if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
 
-    return reply.status(201).send({ data: toCustomerDto(request, customer) });
-  });
+      const normalizedPhone = normalizeIndianPhone(body.data.phone);
+      const phone_hash = createHash('sha256').update(normalizedPhone).digest('hex');
+
+      const existing = await prisma.customer.findFirst({
+        where: { retailer_id: retailerId, phone: normalizedPhone, deleted_at: null },
+      });
+      if (existing)
+        throw validationError('A customer with this phone number already exists', 'phone');
+
+      const customer = await prisma.customer.create({
+        data: {
+          retailer_id: retailerId,
+          ...body.data,
+          phone: normalizedPhone,
+          phone_hash,
+        },
+      });
+
+      await prisma.auditLog.create({
+        data: {
+          actor_type: 'retailer',
+          actor_id: retailerId,
+          action: 'create',
+          resource_type: 'Customer',
+          resource_id: customer.id,
+          metadata: { name: customer.name },
+          ip_address: request.ip,
+        },
+      });
+
+      return reply.status(201).send({ data: toCustomerDto(request, customer) });
+    },
+  );
 
   // ─── GET /customers ─────────────────────────────────────────────
   server.get('/', async (request) => {
