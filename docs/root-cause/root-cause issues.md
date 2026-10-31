@@ -22,6 +22,16 @@
 
 ---
 
+## RC-138 — Campaign and A/B variant product ids were never checked against the caller's store, so one retailer could show another's catalog under their own link (H2-1)
+
+- **Component:** `apps/api/src/routes/growth/growth-campaigns/growth-campaigns-crud.ts` (`POST /growth/campaigns`, `PUT /growth/campaigns/:id`) and `growth-campaigns-helpers.ts` (`syncVariantCollections`).
+- **Symptom:** retailer A sends `ab_variants[].product_ids` holding retailer B's product ids (public: storefront and collection pages return them). The API created a HIDDEN collection with `retailer_id = A` and `collectionProduct` rows pointing at B's products, so A's store link showed B's photos, names and prices, including sold items, and A took the enquiries. The same unchecked ids went into `campaign.product_ids`. A soft-deleted own product was accepted too.
+- **Root cause:** the ids are client input that ends up in a write under the caller's `retailer_id`, and the route validated only their shape (`z.array(z.string()).max(50)`). Ownership was checked on other growth routes (`growth-social-templates.ts`, `growth-social-caption-suggest.ts`) but each route had to remember to; nothing shared it, and the CRUD routes had no test at all.
+- **Fix:** one `assertOwnProducts(retailerId, ids)` in `growth-campaigns-helpers.ts`: de-duplicate, load with `{ id in, retailer_id, deleted_at: null }`, `notFound('Product')` if the count differs. `POST` and `PUT` call it before any write, over `product_ids` and every `ab_variants[].product_ids` (on `PUT`, the same variants `syncVariantCollections` will link: the body's, else the stored ones). `growth-promotions.ts` also takes `product_ids` but only compares them to a cart, so it was left alone. Variants already stored with foreign ids are not cleaned up; a `PUT` that keeps them now gets a 404 until the retailer replaces them.
+- **Proof:** new `growth-campaigns-crud.test.ts` (7 tests, fake product table that honours `retailer_id`/`deleted_at` only if the query asks): 5 were red against the old code (`expected 201/200 to be >= 400`), 2 controls green. Seven mutations (count check, `retailer_id` scope, `deleted_at` scope, `POST` `product_ids`, `POST` variants, `PUT` `product_ids`, `PUT` variants) each turned at least one test red. API `tsc` clean, 2750 passed, CI gate scripts green. Not run against a real Postgres or a deployed API.
+
+---
+
 ## RC-137 — Re-running `setup-role-separation.sql` silently rotated every app role's password, so the API lost its database login
 
 - **Component:** Railway API `DATABASE_URL` / Supabase role `kanchuki_app` (pooler `aws-1-ap-south-1.pooler.supabase.com`). Seen 2026-10-19 from 07:58Z (earliest log we have); fixed the same day by resetting the role password and updating `DATABASE_URL`.

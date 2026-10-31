@@ -24,7 +24,9 @@ Method: code/config review plus local Fastify `inject()` harnesses. Nothing was 
 | H1-7 Apple review code has no attempt limit | Medium | Open (only while `REVIEW_*` vars are set) |
 | H1-8 One shared admin password, no 2FA, no revocation | Low | Open |
 | H1-9 MSG91 widget token replay | Low | Open (could not verify) |
-| H2-1 … H2-6 | Med/Low | Open |
+| H2-1 Cross-tenant products injected into own A/B variant collection | Medium | Fixed (RC-138), not deployed |
+| H2-4 Product update skips section/category ownership checks | Low | Fixed (RC-139), not deployed |
+| H2-2, H2-3, H2-5, H2-6 | Med/Low | Open |
 | H3-1 Percent-encoded path skips Super-Admin gate | High | Fixed (RC-090), not deployed |
 | H3-2 Admin gate deny-list, `SUPPORT_MANAGER` full power | Medium | Fixed (RC-091), not deployed |
 | H3-3 Admin gate trusts JWT role, no DB re-check | Medium | Fixed (RC-092), not deployed. Follow-up open: `team-helpers.ts:76` `verifyAdminSession` still trusts the JWT role |
@@ -64,7 +66,7 @@ Effort: S ≤ ½ day, M ≤ 2 days, L > 2 days. Owner = needs a dashboard/config
 | 13 | H6-2 | Medium | Check-at-route / count-at-job-end lets a burst overshoot any AI cap. Partly fixed RC-102 | M | n |
 | 14 | H5-2 | Medium | detect-items and catalog presigns write unverified bytes to the public CDN | M | n |
 | 15 | H5-3 | Medium | No pixel cap: decompression bomb against compress cron, ffmpeg, templates, My Style | S | n |
-| 16 | H2-1 | Medium | Cross-tenant products injected into own A/B variant collection | S | n |
+| 16 | ~~H2-1~~ | Medium | Cross-tenant products injected into own A/B variant collection. Fixed RC-138, not deployed | S | n |
 | 17 | H2-2 | Medium | Support session / catalog delegate reach bulk-delete and WhatsApp bulk-send | S | y (delegate scope) |
 | 18 | H1-4 | Medium | Retailer OTP: no daily cap, per-IP key spoofable (T1.8 F4) | S | y (trustProxy) |
 | 19 | H1-7 | Medium | Apple review code has no attempt limit | S | y (unset vars after review) |
@@ -274,6 +276,8 @@ T2.6 F1-F2 (web XSS sinks, applied 2026-10-30, PR #189 merged `29ca3bf4`, no RC:
 
 T2.7 (web runtime errors at 360px, re-checked 2026-10-30, no code change, no RC): the report's two "could not verify" items were re-run on a production build (`next build` + `next start`, `.next/cache` cleared, scratch stub API, 3 loads of the collection page). `networkidle` was reached in 1.3-3.5 s every time, with no overflow, page errors or >=400 responses, so the 90 s hang was dev mode plus the stale cache. The `POST .../view` `net::ERR_ABORTED` reproduces on prod but is a reporting artefact: the API received every call, `curl` gets a clean 204, `fetch` resolves 204 inside the page (so the caller's `.catch` never runs), blocking the service worker changes nothing, and the unrelated `/api/passport/events` 204 route is reported the same way. Cause is probably Chromium cancelling the unread body of a bodyless 204; not confirmed. Signed-in passport pages were still not checked.
 
-Open, P2 (not applied): T1.2, T1.4 F2-F3, T1.5 F5-F7, T1.6 F1 and F3 (owner-side), T1.8 F2, F4, T2.2 F1 (local-only Windows e2e failure), T2.3 F2 (360 spin removal, own branch, needs a browser check), T2.4 F5, T2.5 F5, T3.1.
+T3.1 (mobile typecheck + lint, re-run 2026-10-30, no code change, no RC): the 3 typed-route errors were a stale gitignored `.expo/types/router.d.ts` and are gone now that the file is regenerated. The CI risk the report left open is answered: with the file moved aside (a clean checkout, which is what CI has) `tsc --noEmit` still exits 0, because `typedRoutes` with no generated file leaves `Href` a plain string. Lint is exit 0 with 7 warnings, all in test files (5 `import/first` after `vi.mock`, deliberate; 2 `Array<T>` from `d74e1c8e`). Warnings do not fail CI, so none were touched.
+
+Open, P2 (not applied): T1.2, T1.4 F2-F3, T1.5 F5-F7, T1.6 F1 and F3 (owner-side), T1.8 F2, F4, T2.2 F1 (local-only Windows e2e failure), T2.3 F2 (360 spin removal, own branch, needs a browser check), T2.4 F5, T2.5 F5.
 
 Waiting on an owner decision: T1.8 F4 and T2.5 F1 (`trustProxy`, same as H1-4).

@@ -2,7 +2,7 @@ import { prisma } from '@kanchuki/db';
 import { generateCollectionSlug } from '@kanchuki/shared';
 import { hasFeature } from '../../../lib/features.js';
 import { buildCollectionUrl } from '../../../lib/store-urls.js';
-import { featureUnavailable } from '../../../plugins/error-handler.js';
+import { featureUnavailable, notFound } from '../../../plugins/error-handler.js';
 import { type AudienceSpec, buildAudienceWhere } from '../growth-helpers.js';
 
 // Shared helpers for the growth-campaign route modules (split from
@@ -13,6 +13,21 @@ export async function requireGrowth(retailerId: string): Promise<void> {
   if (!(await hasFeature(retailerId, 'GROWTH_ENGINE'))) {
     throw featureUnavailable('Growth tools');
   }
+}
+
+/**
+ * H2-1: product ids in a campaign body or an A/B variant come from the client and end up in
+ * a HIDDEN collection under this store, so every one must be a live product of this retailer.
+ * Call before any write.
+ */
+export async function assertOwnProducts(retailerId: string, ids: string[]): Promise<void> {
+  const unique = [...new Set(ids)];
+  if (unique.length === 0) return;
+  const found = await prisma.product.findMany({
+    where: { id: { in: unique }, retailer_id: retailerId, deleted_at: null },
+    select: { id: true },
+  });
+  if (found.length !== unique.length) throw notFound('Product');
 }
 
 export function campaignWithStats(campaign: {
