@@ -121,6 +121,7 @@
 // which is not a property cron gives you.
 
 import { prisma } from '@kanchuki/db';
+import { sameGstin } from '../lib/referral-conversions.js';
 
 /** Rows per page. The work is a small scan of PENDING rows; this bounds memory. */
 const BATCH_SIZE = 200;
@@ -141,7 +142,7 @@ export interface ReferralQualifySummary {
   /** Moved to CLAWED_BACK. */
   clawed_back: number;
   /**
-   * Examined but not eligible: no successful payment, suspended, PAST_DUE, or a
+   * Examined but not eligible: no successful payment, suspended, PAST_DUE, no GSTIN (H6-4), or a
    * never-paid cancellation. Includes the inert never-paid case explicitly, so
    * "the ledger is not shrinking" is observable instead of guessed at.
    */
@@ -159,11 +160,11 @@ export type QualificationDecision =
   | { outcome: 'QUALIFY'; base_amount: number }
   | {
       outcome: 'CLAW_BACK';
-      reason: 'REFERRED_DELETED' | 'REFERRED_CHURNED_AFTER_PAYMENT';
+      reason: 'REFERRED_DELETED' | 'REFERRED_CHURNED_AFTER_PAYMENT' | 'SELF_REFERRAL';
     }
   | {
       outcome: 'WAIT';
-      reason: 'NOT_PAID' | 'SUSPENDED' | 'NO_ACTIVE_SUBSCRIPTION' | 'PAST_DUE_REVIEW';
+      reason: 'NOT_PAID' | 'SUSPENDED' | 'NO_ACTIVE_SUBSCRIPTION' | 'PAST_DUE_REVIEW' | 'NO_GSTIN';
     };
 
 /** The subscription facts the gate needs. */
@@ -189,6 +190,11 @@ export function decideQualification(input: {
   };
   /** A `SubscriptionPayment` with status `success` exists for this retailer. */
   hasSuccessfulPayment: boolean;
+  /**
+   * H6-4/RC-147: both stores' GSTINs. Optional only so the pure-table tests stay small;
+   * the job always passes it (pinned in the handler tests).
+   */
+  gstins?: { referrer: string | null; referred: string | null };
 }): QualificationDecision {
   const { referred } = input;
 
@@ -198,6 +204,13 @@ export function decideQualification(input: {
   // the billing rows say.
   if (referred.deleted_at) {
     return { outcome: 'CLAW_BACK', reason: 'REFERRED_DELETED' };
+  }
+
+  // Same GSTIN is one legal business, so this is final and is checked even before the
+  // store has paid. Capture-time only compared what existed at signup; a GSTIN added
+  // later is caught here.
+  if (input.gstins && sameGstin(input.gstins.referrer, input.gstins.referred)) {
+    return { outcome: 'CLAW_BACK', reason: 'SELF_REFERRAL' };
   }
 
   // Nothing was ever earned, so there is nothing to claw back. A store that
@@ -218,6 +231,11 @@ export function decideQualification(input: {
   // is what gets snapshotted.
   const active = referred.subscriptions.find((s) => s.status === 'ACTIVE');
   if (active) {
+    // No GSTIN = cannot tell yet whether this is a separate business (H6-4): wait rather
+    // than end the referral. Adding a GSTIN that differs from the referrer's qualifies it.
+    if (input.gstins && !input.gstins.referred?.trim()) {
+      return { outcome: 'WAIT', reason: 'NO_GSTIN' };
+    }
     return { outcome: 'QUALIFY', base_amount: active.amount_inr };
   }
 
@@ -315,9 +333,11 @@ export async function handleReferralQualify(
         id: true,
         referrer_id: true,
         referred_id: true,
+        referrer: { select: { gstin: true } },
         referred: {
           select: {
             id: true,
+            gstin: true,
             deleted_at: true,
             is_suspended: true,
             subscriptions: {
@@ -339,6 +359,7 @@ export async function handleReferralQualify(
       const decision = decideQualification({
         referred: candidate.referred,
         hasSuccessfulPayment: paidIds.has(candidate.referred_id),
+        gstins: { referrer: candidate.referrer.gstin, referred: candidate.referred.gstin },
       });
 
       if (decision.outcome === 'WAIT') {

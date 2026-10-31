@@ -126,7 +126,7 @@ export function addCalendarMonths(from: Date, months: number, now: Date = new Da
  * stores `''` as NULL, but a legacy row could still carry a blank, and two blanks
  * are not "the same GSTIN".
  */
-function sameGstin(a: string | null, b: string | null): boolean {
+export function sameGstin(a: string | null, b: string | null): boolean {
   const norm = (v: string | null) => (v ?? '').replace(/\s+/g, '').toUpperCase();
   const left = norm(a);
   const right = norm(b);

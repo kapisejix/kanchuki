@@ -38,7 +38,7 @@ All 4 findings are **Plausible** (code-only). None applied. H6-1's real severity
 | H6-1 | High | `quota.ts:135-140`, `products-studio.ts:101-110`, migration `074…/migration.sql:5-7` | `STUDIO_SHOOT` (paid FLUX/Gemini) is not seeded, and `checkQuota` treats a missing row as unlimited. It is the only limiter, every plan incl. a fresh STARTER trial can call it, and it has no per-route rate limit. | Fail closed for metered resources. Seed the rows (needs approval). Add a route rate limit |
 | H6-2 | Medium | `products-studio.ts:110` + `jobs/studio-shoot.ts:222`; `public-my-style-analyze.ts:101` + `jobs/my-style-analyze.ts:85,126`; `jobs/tag-product.ts:29` + `lib/ai-usage.ts:55` | Quota is checked at the route but only counted when the job finishes. A burst of N requests all pass against the same count, so a cap of 5 can become N paid generations. | Atomic reserve-at-route (conditional increment), refund on job failure; same shape try-on already uses (`1 + pending`) |
 | H6-3 | Low | `jobs/plan-lapse.ts:22-28` | Lapse covers only `TRIAL` past `trial_ends_at` and `PAST_DUE/CANCELLED/COMPLETED`. An `ACTIVE` retailer whose `plan_expires_at` is long past (a missed `subscription.halted` webhook) keeps the paid plan forever. | Add `ACTIVE` + `plan_expires_at < now − grace` |
-| H6-4 | Low | `lib/referral-conversions.ts:229-236`, `retailers-profile.ts:159,311` | The self-referral check is same id, same phone, or same GSTIN. GSTIN is nullable, so a second phone number with no GSTIN passes. The referred account gets the FREE_MONTH bonus, and the referrer earns commission on their own second store. | Re-check at accrual: block when the referred retailer has no GSTIN; compare payout bank account |
+| H6-4 | Low | `lib/referral-conversions.ts:229-236`, `retailers-profile.ts:159,311` | The self-referral check is same id, same phone, or same GSTIN. GSTIN is nullable, so a second phone number with no GSTIN passes. The referred account gets the FREE_MONTH bonus, and the referrer earns commission on their own second store. | Re-check at accrual: block when the referred retailer has no GSTIN; compare payout bank account. Built differently, see Status below |
 
 ---
 
@@ -182,7 +182,7 @@ Fix: re-check at accrual, when GST onboarding has had time to complete, and make
 +    }
 ```
 Optionally also block payout when the referrer's payout bank account equals the referred store's (`referral_payout_accounts`). Business decision whether a GSTIN-less store can ever qualify; owner to decide.
-Status: Plausible
+Status: Fixed (RC-147), not deployed. The nightly `referral-qualify` job re-checks with both GSTINs from the database: same GSTIN is `CLAW_BACK` (`SELF_REFERRAL`, final); a paid active store with no GSTIN is `WAIT` (`NO_GSTIN`, stays `PENDING`, qualifies once it adds a different GSTIN). Owner chose this 2026-10-31. Payout-account comparison dropped (only a masked display is stored, migration 115). Residual: GSTIN is format-checked, not verified, so a made-up different GSTIN still qualifies; FREE_MONTH is still granted at capture. Before deploy, count `PENDING` conversions with a null or blank referred GSTIN (each waits on the next run).
 
 ---
 
