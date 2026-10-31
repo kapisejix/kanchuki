@@ -9,16 +9,12 @@ import { NEW_ARRIVAL_DAYS, isNewArrival } from '../../lib/product-flags.js';
 import { defaultStock, totalQuantity, writeStock, zeroStock } from '../../lib/product-stock.js';
 import { reserveQuota } from '../../lib/quota.js';
 import { IMAGE_KINDS, verifyUpload } from '../../lib/upload-guard.js';
-import {
-  forbidden,
-  notFound,
-  planLimitExceeded,
-  validationError,
-} from '../../plugins/error-handler.js';
+import { notFound, planLimitExceeded, validationError } from '../../plugins/error-handler.js';
 import {
   CreateProductSchema,
   ListProductsQuerySchema,
   UpdateProductSchema,
+  assertOwnRefs,
   photoUrlToDisplay,
   revalidateCollectionsForProduct,
 } from './products-helpers.js';
@@ -59,18 +55,7 @@ export const productsCrudRoutes: FastifyPluginAsync = async (server) => {
       maxBytes: 10_000_000,
     });
 
-    if (rest.section_id) {
-      const section = await prisma.storeSection.findFirst({
-        where: { id: rest.section_id, retailer_id: retailerId },
-      });
-      if (!section) throw forbidden('Section does not belong to your store');
-    }
-    if (rest.category_id) {
-      const cat = await prisma.productCategory.findFirst({
-        where: { id: rest.category_id, retailer_id: retailerId },
-      });
-      if (!cat) throw forbidden('Category does not belong to your store');
-    }
+    await assertOwnRefs(retailerId, rest);
 
     const refund = await reserveQuota(retailerId, 'PRODUCT_UPLOAD');
 
@@ -307,6 +292,7 @@ export const productsCrudRoutes: FastifyPluginAsync = async (server) => {
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
 
     const { metadata, stock, ...rest } = body.data;
+    await assertOwnRefs(request.retailerId, rest);
     // F-045: a manual colour edit re-derives color_family (null if unmapped) so it never
     // keeps pointing at the old colour; the backfill only fills NULLs, not stale values.
     const colorFamily =

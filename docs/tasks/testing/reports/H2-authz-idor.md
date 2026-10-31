@@ -156,7 +156,7 @@ Fix:
 +    }
 ```
 (Better: move both checks into one `assertOwnedRefs(retailerId, rest)` used by create and PUT; also check `background_image_id` there once its table is confirmed.)
-Status: Plausible
+Status: Confirmed on the route with fake tables (2026-10-31), then fixed: RC-139. Applied as one `assertOwnRefs` in `products-helpers.ts`, called by `POST` (replacing its inline copy) and `PUT` before any write; foreign id is a 403. Open questions answered: the public category query filters `retailer_id` as well as `category_id` (`public-retailers-catalog.ts:291-302`), so no cross-store appearance; `background_image_id` points at the admin-curated global `BackgroundImage` table (no owner), so it needs no ownership check. Not run against a real Postgres, not deployed.
 
 ### H2-5 `GET /retailers/me` over-shares to staff and delegates   Severity: Low
 Attacker: staff (manager, salesperson, any support scope; all allowlisted at `auth.ts:180, 234, 285`)

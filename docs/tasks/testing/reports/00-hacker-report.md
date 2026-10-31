@@ -73,7 +73,7 @@ Effort: S ≤ ½ day, M ≤ 2 days, L > 2 days. Owner = needs a dashboard/config
 | 22 | H6-3 | Low | `plan-lapse` never lapses an ACTIVE plan whose paid period ended | S | n |
 | 23 | H6-4 | Low | Self-referral check bypassed by a second phone with no GSTIN | M | n |
 | 24 | H2-3 | Low | Delegates spend paid-AI quota (RC-068 shape outside try-on) | S | n |
-| 25 | H2-4 | Low | Product update skips section/category/background ownership checks | S | n |
+| 25 | ~~H2-4~~ | Low | Product update skips section/category ownership checks. Fixed RC-139, not deployed (`background_image_id` is a global table, no check needed) | S | n |
 | 26 | H2-5 | Low | `GET /retailers/me` over-shares to staff and delegates | S | n |
 | 27 | H2-6 | Low | Duplicate-phone error lets staff probe whether a number is a customer | S | n |
 | 28 | ~~H4-5~~ | Low | Passport wishlist / recently-viewed / events accept any `retailer_id`. Fixed RC-095, not deployed | S | n |

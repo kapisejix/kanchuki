@@ -12,6 +12,16 @@
 
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
+## RC-139 — `PUT /products/:id` wrote client-supplied `section_id` / `category_id` with no ownership check, so one retailer could link a product to another's rack and read its name back (H2-4)
+
+- **Component:** `apps/api/src/routes/products/products-crud.ts` (`PUT /:id`), `products-helpers.ts`.
+- **Symptom:** `PUT /v1/products/<own_id> {"section_id":"<B_section>"}` returned 200 and stored the foreign id; the response `include: { section: { select: { name } } }` then returned B's rack/shelf name. Same for `category_id`, which also left A's product pointing at B's category row.
+- **Root cause:** the ownership checks for `section_id` and `category_id` were written inline in `POST` only. `UpdateProductSchema` is `CreateProductSchema.partial()`, so `PUT` accepts the same fields and spreads them into `prisma.product.update`, but nothing made the second writer run the first writer's checks (RC-034 shape: one rule, hand-copied per route, one copy missing).
+- **Fix:** one `assertOwnRefs(retailerId, { section_id, category_id })` in `products-helpers.ts` (retailer-scoped `findFirst`, 403 "Section/Category does not belong to your store", skips null/absent ids). `POST` now calls it instead of its inline copy; `PUT` calls it after the body parse and before any write. Not changed on purpose: `background_image_id` (an admin-curated global table with no owner, and pro-cleanup already checks `is_active`). The public category query already filters `retailer_id` + `category_id`, so the foreign product never appeared in B's store. Sibling writers checked: `categories.ts` bulk-assign is retailer-scoped, `catalog-import.ts` validates sections, `bulk-create-products` takes neither field.
+- **Proof:** `routes/products/products-crud-ownership.test.ts` (7 tests). The two foreign-id `PUT` pins were `it.fails` first and went green with the fix. Falsified (each failed a test, restored): the `PUT` call, the `POST` call, the section throw, the category throw, the `retailer_id` scope. API `tsc` clean, API suite 2750 passed / 5 skipped, delete/route-size/secrets/v1-fetch/android gates green, biome clean. Mock Postgres only, not deployed. Prod effect: a `PUT` naming another store's section or category now returns 403.
+
+---
+
 ## RC-137 — Re-running `setup-role-separation.sql` silently rotated every app role's password, so the API lost its database login
 
 - **Component:** Railway API `DATABASE_URL` / Supabase role `kanchuki_app` (pooler `aws-1-ap-south-1.pooler.supabase.com`). Seen 2026-10-19 from 07:58Z (earliest log we have); fixed the same day by resetting the role password and updating `DATABASE_URL`.
