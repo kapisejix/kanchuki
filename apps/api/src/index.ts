@@ -104,7 +104,7 @@ await server.register(helmet, {
 await server.register(cors, {
   origin:
     process.env.NODE_ENV === 'production'
-      ? [process.env.WEB_URL ?? '', /(^|\.)kanchuki\.app$/]
+      ? [process.env.WEB_URL ?? '', /^https:\/\/([a-z0-9-]+\.)*kanchuki\.app$/]
       : true,
   credentials: true,
   // Let the browser read download headers on cross-origin file responses

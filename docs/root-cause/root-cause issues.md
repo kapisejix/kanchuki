@@ -12,6 +12,16 @@
 
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
+## RC-140 — The production CORS regex matched any `kanchuki.app` host on any scheme with `credentials: true`, so a plain-http or taken-over subdomain could make credentialed reads (H8-3)
+
+- **Component:** `apps/api/src/index.ts` (`@fastify/cors` `origin`, production branch).
+- **Symptom:** `Origin: http://evil.kanchuki.app` got `Access-Control-Allow-Origin: http://evil.kanchuki.app` and `Access-Control-Allow-Credentials: true` (confirmed with a local Fastify harness in the H8 report). The apex `https://kanchuki.app` was not matched by the regex at all and worked only through `WEB_URL`.
+- **Root cause:** the allow-list was written as a host test, `/(^|\.)kanchuki\.app$/`, but CORS compares whole origins (`scheme://host`). Nothing anchored the scheme, so `http://` passed, and the `(^|\.)` prefix only ever matched on a dot inside the host. With `credentials: true` the scheme is part of the trust decision.
+- **Fix:** `/^https:\/\/([a-z0-9-]+\.)*kanchuki\.app$/`: https only, any depth of subdomain (owner chose multi-level over the report's one-level `?`), apex included. `WEB_URL` stays in the list. Bearer-token routes were never affected (a hostile page has no token); cookie routes (admin session and CSRF) were.
+- **Proof:** `apps/api/src/cors-origin.test.ts` reads the regex literal out of `index.ts` (importing it boots the server). The http and apex pins were `it.fails` first. Falsified (each turned a test red, restored): `https?`, end anchor dropped, start anchor dropped (needed an `xhttps://` case), `*` back to `?`. API `tsc` clean, API suite 2760 passed / 5 skipped, delete/route-size/secrets/v1-fetch/android gates green, biome clean. Not run against a deployed API. Prod effect: http origins and non-kanchuki.app hosts get no CORS headers; `https://*.kanchuki.app` and `WEB_URL` unchanged.
+
+---
+
 ## RC-139 — `PUT /products/:id` wrote client-supplied `section_id` / `category_id` with no ownership check, so one retailer could link a product to another's rack and read its name back (H2-4)
 
 - **Component:** `apps/api/src/routes/products/products-crud.ts` (`PUT /:id`), `products-helpers.ts`.

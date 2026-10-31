@@ -42,7 +42,8 @@ Method: code/config review plus local Fastify `inject()` harnesses. Nothing was 
 | H6-2 Burst overshoots an AI cap | Medium | Partly fixed (RC-102): reserve-at-enqueue for Studio Shoot, My Style, try-on, social templates, POST /products, growth AI routes. Tagging and catalog-import AI checks left on check-then-increment. Mock tests only; scratch-DB run pending; migration 145 not applied in prod |
 | H6-3, H6-4 | Low | Open |
 | H7-1 … H7-4 | Med/Low | Open (H7-1, H7-4 Owner-action) |
-| H8-1 … H8-6 | Crit/Med/Low | Open (H8-1 Owner-action only) |
+| H8-3 CORS allows plain-http `*.kanchuki.app` with credentials | Low | Fixed (RC-140), not deployed |
+| H8-1, H8-2, H8-4 … H8-6 | Crit/Med/Low | Open (H8-1 Owner-action only) |
 | SC-1 / SC-2 (supply-chain report) | P0 | Open, Owner-action (rotate; make repo private) |
 
 ## Ranked open findings (H1–H8)
@@ -70,7 +71,7 @@ Effort: S ≤ ½ day, M ≤ 2 days, L > 2 days. Owner = needs a dashboard/config
 | 17 | H2-2 | Medium | Support session / catalog delegate reach bulk-delete and WhatsApp bulk-send | S | y (delegate scope) |
 | 18 | H1-4 | Medium | Retailer OTP: no daily cap, per-IP key spoofable (T1.8 F4) | S | y (trustProxy) |
 | 19 | H1-7 | Medium | Apple review code has no attempt limit | S | y (unset vars after review) |
-| 20 | H8-3 | Low | CORS regex allows any `*.kanchuki.app` over plain `http` with credentials (Confirmed, local harness) | S | n |
+| 20 | ~~H8-3~~ | Low | CORS regex allowed any `*.kanchuki.app` over plain `http` with credentials. Fixed RC-140, not deployed | S | n |
 | 21 | H4-8 | Low | Shopper OTP send has no per-route limit (SMS pumping) | S | n |
 | 22 | H6-3 | Low | `plan-lapse` never lapses an ACTIVE plan whose paid period ended | S | n |
 | 23 | H6-4 | Low | Self-referral check bypassed by a second phone with no GSTIN | M | n |
