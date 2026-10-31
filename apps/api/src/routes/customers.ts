@@ -66,20 +66,41 @@ export const customerRoutes: FastifyPluginAsync = async (server) => {
       const normalizedPhone = normalizeIndianPhone(body.data.phone);
       const phone_hash = createHash('sha256').update(normalizedPhone).digest('hex');
 
+      // H2-7/RC-146: the unique index covers soft-deleted rows, so look them up too.
       const existing = await prisma.customer.findFirst({
-        where: { retailer_id: retailerId, phone: normalizedPhone, deleted_at: null },
+        where: { retailer_id: retailerId, phone: normalizedPhone },
       });
-      if (existing)
+      // Staff get the same 422 for a deleted number as for an active one: they cannot undo the
+      // owner's delete, and the H2-6 probe answer is identical in both cases.
+      if (existing && (existing.deleted_at === null || !isRealOwner(request)))
         throw validationError('A customer with this phone number already exists', 'phone');
 
-      const customer = await prisma.customer.create({
-        data: {
-          retailer_id: retailerId,
-          ...body.data,
-          phone: normalizedPhone,
-          phone_hash,
-        },
-      });
+      const fresh = { ...body.data, phone: normalizedPhone, phone_hash };
+      const customer = existing
+        ? await prisma.customer.update({
+            where: { id: existing.id },
+            data: {
+              // a re-added customer starts clean: nothing inherited from before the delete
+              email: null,
+              address_line1: null,
+              address_line2: null,
+              city: null,
+              state: null,
+              pincode: null,
+              budget_min: null,
+              budget_max: null,
+              usual_size: null,
+              notes: null,
+              consent_given: false,
+              consent_at: null,
+              gender: null,
+              source: 'MANUAL',
+              pref_occasions: [],
+              ...fresh,
+              deleted_at: null,
+            },
+          })
+        : await prisma.customer.create({ data: { retailer_id: retailerId, ...fresh } });
 
       await prisma.auditLog.create({
         data: {
@@ -88,7 +109,7 @@ export const customerRoutes: FastifyPluginAsync = async (server) => {
           action: 'create',
           resource_type: 'Customer',
           resource_id: customer.id,
-          metadata: { name: customer.name },
+          metadata: existing ? { name: customer.name, restored: true } : { name: customer.name },
           ip_address: request.ip,
         },
       });
@@ -166,6 +187,19 @@ export const customerRoutes: FastifyPluginAsync = async (server) => {
 
     const body = CustomerSchema.partial().safeParse(request.body);
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
+
+    // H2-7/RC-146: a phone held by another row (active or soft-deleted) would hit the unique index.
+    if (body.data.phone) {
+      const taken = await prisma.customer.findFirst({
+        where: {
+          retailer_id: request.retailerId,
+          phone: normalizeIndianPhone(body.data.phone),
+          id: { not: id },
+        },
+        select: { id: true },
+      });
+      if (taken) throw validationError('A customer with this phone number already exists', 'phone');
+    }
 
     const data = body.data.phone
       ? {
