@@ -105,6 +105,8 @@ describe('POST /customers when the number belongs to a soft-deleted customer (H2
     expect(data.email).toBeNull();
     expect(data.notes).toBeNull();
     expect(data.consent_given).toBe(false);
+    expect(data.gender).toBeNull();
+    expect(data.source).toBe('MANUAL');
   });
 
   it('staff get the same 422 as for an active duplicate, and nothing is written', async () => {

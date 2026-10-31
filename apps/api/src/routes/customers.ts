@@ -93,6 +93,8 @@ export const customerRoutes: FastifyPluginAsync = async (server) => {
               notes: null,
               consent_given: false,
               consent_at: null,
+              gender: null,
+              source: 'MANUAL',
               pref_occasions: [],
               ...fresh,
               deleted_at: null,
