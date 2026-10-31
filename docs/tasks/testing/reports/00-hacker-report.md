@@ -40,7 +40,8 @@ Method: code/config review plus local Fastify `inject()` harnesses. Nothing was 
 | H5-1 … H5-5 | Med/Low | Open (H5-1 Owner-action) |
 | H6-1 STUDIO_SHOOT quota fails open on missing `plan_limits` row | High | Fixed (RC-103), not deployed. `METERED` guard in `effectiveLimit` / `effectiveCustomerLimit` covers check, all reserve functions and both status readers; studio-shoot route 10/min. **Owner-action BEFORE deploy:** seed `STUDIO_SHOOT`, `BG_REMOVAL`, `IMAGE_CROP` (and `TRY_ON_GENERATION` if missing) for all three plans in Admin → Plan Limits, or those features refuse everyone |
 | H6-2 Burst overshoots an AI cap | Medium | Partly fixed (RC-102): reserve-at-enqueue for Studio Shoot, My Style, try-on, social templates, POST /products, growth AI routes. Tagging and catalog-import AI checks left on check-then-increment. Mock tests only; scratch-DB run pending; migration 145 not applied in prod |
-| H6-3, H6-4 | Low | Open |
+| H6-3 `plan-lapse` never lapses an ACTIVE plan | Low | Fixed (RC-144), not deployed. Known limit: admin-comped ACTIVE with a stale expiry lapses after 3 days |
+| H6-4 | Low | Open |
 | H7-1 … H7-4 | Med/Low | Open (H7-1, H7-4 Owner-action) |
 | H8-3 CORS allows plain-http `*.kanchuki.app` with credentials | Low | Fixed (RC-140), not deployed |
 | H8-1, H8-2, H8-4 … H8-6 | Crit/Med/Low | Open (H8-1 Owner-action only) |
@@ -73,7 +74,7 @@ Effort: S ≤ ½ day, M ≤ 2 days, L > 2 days. Owner = needs a dashboard/config
 | 19 | H1-7 | Medium | Apple review code has no attempt limit | S | y (unset vars after review) |
 | 20 | ~~H8-3~~ | Low | CORS regex allowed any `*.kanchuki.app` over plain `http` with credentials. Fixed RC-140, not deployed | S | n |
 | 21 | H4-8 | Low | Shopper OTP send has no per-route limit (SMS pumping) | S | n |
-| 22 | H6-3 | Low | `plan-lapse` never lapses an ACTIVE plan whose paid period ended | S | n |
+| 22 | ~~H6-3~~ | Low | `plan-lapse` never lapsed an ACTIVE plan whose paid period ended. Fixed RC-144 (3-day grace), not deployed | S | n |
 | 23 | H6-4 | Low | Self-referral check bypassed by a second phone with no GSTIN | M | n |
 | 24 | ~~H2-3~~ | Low | Delegates spend paid-AI quota (RC-068 shape outside try-on). Fixed RC-142 for studio-shoot + pro-cleanup, not deployed (retag and support-GROWTH AI routes left open, owner decision) | S | n |
 | 25 | ~~H2-4~~ | Low | Product update skips section/category ownership checks. Fixed RC-139, not deployed (`background_image_id` is a global table, no check needed) | S | n |
@@ -95,7 +96,7 @@ Effort: S ≤ ½ day, M ≤ 2 days, L > 2 days. Owner = needs a dashboard/config
 
 **Reconciled 2026-10-29 against the CLAUDE.md RC tracker.** Rows 2, 3, 4, 8, 9, 10, 11, 12, 28, 29 below are Fixed locally (RC-090 … RC-098, RC-103), not deployed; rows 15, 16, 20, 24, 25, 26 (H5-3, H2-1, H8-3, H2-3, H2-4, H2-5: RC-141, RC-138, RC-140, RC-142, RC-139, RC-143) likewise, added 2026-10-31; row 13 (H6-2) is partly fixed (RC-102). They are kept for history and excluded from the totals.
 
-**Totals (open): Critical 1, High 0, Medium 8, Low 15 = 24** (was 40; 16 fixed). H6-2 is counted as open until RC-102 is verified on a real DB. Dependency CVEs: see `H8-infra-secrets.md` §CVE (not in these counts). SC-1, SC-2 (P0, owner) tracked in the SC report.
+**Totals (open): Critical 1, High 0, Medium 8, Low 14 = 23** (was 40; 17 fixed). H6-2 is counted as open until RC-102 is verified on a real DB. Dependency CVEs: see `H8-infra-secrets.md` §CVE (not in these counts). SC-1, SC-2 (P0, owner) tracked in the SC report.
 
 ## Owner checks (dashboard-only facts that set the severity)
 

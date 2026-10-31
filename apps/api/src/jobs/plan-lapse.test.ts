@@ -124,10 +124,53 @@ describe('handlePlanLapse', () => {
     },
   );
 
-  it('leaves ACTIVE, already-STARTER and deleted retailers alone', async () => {
+  // H6-3: a missed subscription.halted webhook leaves ACTIVE with a long-past
+  // plan_expires_at. Grace covers renewal-webhook lag on a paying store.
+  it('drops ACTIVE once plan_expires_at is past the grace window', async () => {
+    expect(
+      await lapsedIds([row({ id: 'stale', plan_status: 'ACTIVE', plan_expires_at: PAST })]),
+    ).toEqual(['stale']);
+  });
+
+  it('keeps ACTIVE inside the grace window, drops it just past', async () => {
+    const edge = new Date(NOW.getTime() - 3 * 86_400_000);
     expect(
       await lapsedIds([
-        row({ plan_status: 'ACTIVE', plan_expires_at: PAST }),
+        row({
+          id: 'inside',
+          plan_status: 'ACTIVE',
+          plan_expires_at: new Date(edge.getTime() + 60_000),
+        }),
+        row({
+          id: 'past',
+          plan_status: 'ACTIVE',
+          plan_expires_at: new Date(edge.getTime() - 60_000),
+        }),
+      ]),
+    ).toEqual(['past']);
+  });
+
+  // Known limit (option A, owner decision 2026-10-31): change-plan can grant
+  // ACTIVE without touching plan_expires_at, so a comp on a previously-paid
+  // store keeps its stale expiry and lapses after the grace window.
+  it('lapses an admin-comped ACTIVE store that still carries a stale expiry', async () => {
+    expect(
+      await lapsedIds([row({ id: 'comp', plan_status: 'ACTIVE', plan_expires_at: PAST })]),
+    ).toEqual(['comp']);
+  });
+
+  it('leaves ACTIVE with a future or unset plan_expires_at alone', async () => {
+    expect(
+      await lapsedIds([
+        row({ id: 'future', plan_status: 'ACTIVE', plan_expires_at: FUTURE }),
+        row({ id: 'comped', plan_status: 'ACTIVE', plan_expires_at: null }),
+      ]),
+    ).toEqual([]);
+  });
+
+  it('leaves already-STARTER and deleted retailers alone', async () => {
+    expect(
+      await lapsedIds([
         row({ plan: 'STARTER', trial_ends_at: PAST }),
         row({ trial_ends_at: PAST, deleted_at: PAST }),
       ]),

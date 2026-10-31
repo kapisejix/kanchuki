@@ -17,12 +17,24 @@ export interface PlanLapseResult {
   trialWithoutEnd: number;
 }
 
+// H6-3: an ACTIVE store is only lapsed this long after its paid period ended.
+// The renewal charge settles (UPI/card) and its `subscription.charged` webhook
+// lands some hours after `plan_expires_at`; the webhook is what moves it forward.
+// ponytail: 3 days is a chosen buffer, not tied to Razorpay's retry schedule.
+const ACTIVE_LAPSE_GRACE_MS = 3 * 86_400_000;
+
 function lapsedWhere(now: Date): Prisma.RetailerWhereInput {
   return {
     plan: { not: 'STARTER' },
     deleted_at: null,
     OR: [
       { plan_status: 'TRIAL', trial_ends_at: { lt: now } },
+      // A missed webhook leaves ACTIVE with a long-past expiry. `lt` skips NULL,
+      // so admin-granted ACTIVE rows with no expiry never lapse here.
+      {
+        plan_status: 'ACTIVE',
+        plan_expires_at: { lt: new Date(now.getTime() - ACTIVE_LAPSE_GRACE_MS) },
+      },
       {
         plan_status: { in: ['PAST_DUE', 'CANCELLED', 'COMPLETED'] },
         OR: [{ plan_expires_at: null }, { plan_expires_at: { lt: now } }],
