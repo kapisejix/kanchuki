@@ -365,13 +365,17 @@ export function normalizeCampaignIntent(raw: unknown): CampaignIntent {
   };
 }
 
-export async function parseCampaignIntent(prompt: string): Promise<CampaignIntent> {
+export async function parseCampaignIntent(
+  prompt: string,
+  opts?: { onProviderUsed?: (info: ProviderUsedInfo) => void },
+): Promise<CampaignIntent> {
   const req: VisionAskRequest = {
     images: [],
     systemPrompt: PARSE_SYSTEM,
     userPrompt: PARSE_USER(prompt),
     maxTokens: 1024,
     resourceType: 'AI_TAGGING_CALL',
+    ...(opts?.onProviderUsed ? { onProviderUsed: opts.onProviderUsed } : {}),
   };
 
   const raw = await runVisionAsk(req);
@@ -387,6 +391,7 @@ export async function parseCampaignIntent(prompt: string): Promise<CampaignInten
 export async function generateCampaignMessage(
   intent: CampaignIntent,
   products: SuggestedProduct[],
+  opts?: { onProviderUsed?: (info: ProviderUsedInfo) => void },
 ): Promise<{ message_template: string; rationale: string; audience_estimate_note: string }> {
   const req: VisionAskRequest = {
     images: [],
@@ -394,6 +399,7 @@ export async function generateCampaignMessage(
     userPrompt: MESSAGE_USER(intent, products),
     maxTokens: 512,
     resourceType: 'AI_TAGGING_CALL',
+    ...(opts?.onProviderUsed ? { onProviderUsed: opts.onProviderUsed } : {}),
   };
 
   const raw = await runVisionAsk(req);
