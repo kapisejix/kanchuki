@@ -12,6 +12,16 @@
 
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
+## RC-154 — The passport cookie value was the `passport_sessions.id` primary key, so any read of the table, a backup or a query log was a working shopper login (H4-7)
+
+- **Component:** `routes/public/passport/passport-helpers.ts` (`hashSessionId`, `getPassportSession`), `passport-otp.ts` (mint), `passport-session.ts` (logout), `public-search.ts`, `discover-stores.ts`.
+- **Symptom:** none visible. Anyone with read access to `passport_sessions` could copy an `id` into a `kanchuki_passport` cookie and be that shopper for the 180-day sliding TTL (profile, wishlist, export, delete).
+- **Root cause:** the bearer secret was stored as the row key, so the DB held a usable credential instead of a verifier. Three hand-written copies of the cookie → session lookup (the helper, `public-search`, `discover-stores`) meant a fix to the helper alone would have left two readers on the raw id (RC-084 shape).
+- **Fix:** the cookie keeps the 32-byte random value; the DB stores `sha256(cookie)` in the same TEXT `id` column, via one `hashSessionId()`. Mint stores the hash, `getPassportSession` and logout look up the hash, and the two copied lookups now call `getPassportSession`. No schema change. Every existing row holds a raw id that no hash matches, so all current sessions stop working at deploy (shoppers sign in once with an OTP; their account data hangs off `customer_accounts` and is untouched), and a leaked raw id is useless as a cookie. `passport_push_subscriptions.passport_session_id` keeps pointing at the old rows, which stay.
+- **Behaviour change:** `public-search` and `discover-stores` now also slide the session expiry and delete an expired row, like every other passport route.
+- **Not done, on purpose:** no grace window that still accepts raw ids (it would keep the hole open); old dead rows are not deleted (the app role has no DELETE, and they are inert).
+- **Proof:** `passport-session-hash.test.ts` (3 behaviour cases on a Map keyed like the primary key, 2 derived source guards: only the helper may read/slide/delete a session row, and every create/updateMany by id must use `hashSessionId`) plus the mint and logout assertions in `passport-otp.test.ts`. Red first; four mutations (raw lookup, raw mint, raw logout, a copied lookup back in `discover-stores`) each turned a test red. Mock Postgres only; not deployed.
+
 ## RC-153 — A timer started in an event handler was never cleared on unmount, so it fired after jsdom teardown and turned main CI red at random
 
 - **Component:** `apps/web/src/app/c/[slug]/components/ProductDetailSheet.tsx` (`goTo`).

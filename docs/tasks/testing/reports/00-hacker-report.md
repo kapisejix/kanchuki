@@ -37,7 +37,8 @@ Method: code/config review plus local Fastify `inject()` harnesses. Nothing was 
 | H4-4 Legacy lead form overwrites customers, forges consent | Medium | Fixed (RC-094), not deployed |
 | H4-5 Passport events accept any `retailer_id` | Low | Fixed (RC-095), not deployed. Known gap: store-level events can still be attributed to any real retailer |
 | H4-6 `near-me` exposes login phone | Low | Fixed (RC-097), not deployed |
-| H4-7, H4-8 | Low | Open |
+| H4-7 Passport session ids stored in plaintext | Low | Fixed (RC-154), not deployed. No migration needed; every shopper signs in once with an OTP after deploy |
+| H4-8 | Low | Open |
 | H5-2 Unverified bytes on the public CDN (detect-items, catalog presign) | Medium | Fixed (RC-148), not deployed. Unconfirmed staged uploads are deleted after 24 h by the hourly sweep (RC-152) |
 | H5-4 SSRF blocklist gaps | Low | Fixed (RC-149), not deployed |
 | H5-5 Ken Burns raw fetch fallback | Low | Fixed (RC-150), not deployed |
@@ -100,9 +101,9 @@ Effort: S ≤ ½ day, M ≤ 2 days, L > 2 days. Owner = needs a dashboard/config
 | 39 | ~~H5-5~~ | Low | Ken Burns raw `fetch(photo.url)` fallback (hardening, not exploitable) Fixed RC-150, not deployed | S | n |
 | 40 | H7-3 | Low | No certificate pinning (informational, not exploitable) | — | n |
 
-**Reconciled 2026-10-29 against the CLAUDE.md RC tracker.** Rows 2, 3, 4, 8, 9, 10, 11, 12, 28, 29 below are Fixed locally (RC-090 … RC-098, RC-103), not deployed; rows 15, 16, 20, 24, 25, 26 (H5-3, H2-1, H8-3, H2-3, H2-4, H2-5: RC-141, RC-138, RC-140, RC-142, RC-139, RC-143) likewise, added 2026-10-31; rows 14, 31, 34 and 39 (H5-2, H5-4, H8-4, H5-5: RC-148, RC-149, RC-151, RC-150) likewise; row 13 (H6-2) is partly fixed (RC-102). They are kept for history and excluded from the totals.
+**Reconciled 2026-10-29 against the CLAUDE.md RC tracker.** Rows 2, 3, 4, 8, 9, 10, 11, 12, 28, 29 below are Fixed locally (RC-090 … RC-098, RC-103), not deployed; rows 15, 16, 20, 24, 25, 26 (H5-3, H2-1, H8-3, H2-3, H2-4, H2-5: RC-141, RC-138, RC-140, RC-142, RC-139, RC-143) likewise, added 2026-10-31; rows 14, 31, 34 and 39 (H5-2, H5-4, H8-4, H5-5: RC-148, RC-149, RC-151, RC-150) likewise; row 30 (H4-7: RC-154) likewise; row 13 (H6-2) is partly fixed (RC-102). They are kept for history and excluded from the totals.
 
-**Totals (open): Critical 1, High 0, Medium 7, Low 9 = 17** (was 40; 23 fixed). H8-7 (Low, in `H8-infra-secrets.md`, never in the ranked table) was never counted and is now closed as not a defect. H6-2 is counted as open until RC-102 is verified on a real DB. Dependency CVEs: see `H8-infra-secrets.md` §CVE (not in these counts). SC-1, SC-2 (P0, owner) tracked in the SC report.
+**Totals (open): Critical 1, High 0, Medium 7, Low 8 = 16** (was 40; 24 fixed). H8-7 (Low, in `H8-infra-secrets.md`, never in the ranked table) was never counted and is now closed as not a defect. H6-2 is counted as open until RC-102 is verified on a real DB. Dependency CVEs: see `H8-infra-secrets.md` §CVE (not in these counts). SC-1, SC-2 (P0, owner) tracked in the SC report.
 
 ## Owner checks (dashboard-only facts that set the severity)
 
@@ -166,7 +167,7 @@ Chain C works only if the passwords were never rotated; owner check 1 closes it.
 | 8 | Staff scope: H2-1, H2-2, H2-4, H2-5, H2-6 | H2-2 delegate decision |
 | 9 | Infra: H8-3 CORS regex, H8-4 `/health`, H8-6 CI permissions/pins, H8-2 V-Tone fail-closed + URL allow-list | H8-2: owner check 11 (secret set) before fail-closed ships |
 | 10 | Mobile: H7-2 App Links for OAuth/invite, H7-4 remove keystores, H7-1 widget rotation | Owner checks 9–10 |
-| 11 | Design items: H1-8 admin 2FA/revocation, H4-7 hashed passport sessions (migration) | Owner approval (migration, design) |
+| 11 | Design items: H1-8 admin 2FA/revocation (H4-7 hashed passport sessions is done, RC-154: no migration needed) | Owner approval (migration, design) |
 
 Not done: no finding was re-verified at runtime during the merge; statuses come from each H report.
 

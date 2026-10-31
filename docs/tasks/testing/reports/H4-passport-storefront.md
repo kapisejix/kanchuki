@@ -186,7 +186,7 @@ Steps: Copy a `passport_sessions.id` value into a `kanchuki_passport` cookie.
 Impact: Full shopper passport access (profile, wishlist, export, delete).
 Evidence: `passport-otp.ts:139-150` (`id: sessionId` raw); `passport-helpers.ts:41-44` (`findUnique({ where: { id: sessionId } })`); `public-search.ts:53-56` reads the same way.
 Fix: store `createHash('sha256').update(sessionId).digest('hex')` as the id and hash the cookie value before each lookup (3 call sites). This needs a one-off migration to revoke existing sessions, so it requires owner approval.
-Status: Plausible (code-only)
+Status: Fixed locally (RC-154), not deployed. The "one-off migration to revoke" in the Fix line was not needed. Owner-side effect of a merge: every signed-in shopper does one OTP.
 
 ### H4-8 Shopper OTP send has no per-route limit (SMS pumping)             Severity: Low
 Attacker: anonymous
@@ -221,7 +221,7 @@ Anonymous AI cost routes: `/stylist` 10/min (`public-stylist.ts:83`), my-style a
 
 ## Fix diffs status
 
-H4-1, H4-4 (Batch 3, part 1) and H4-2, H4-5, H4-6 (Batch 3, part 2) are **applied**; see below. H4-3 is **applied** (Batch 3, part 3, RC-098, needs migration 139). H4-7 and H4-8 are still proposed, not applied. Each shipped fix needs an RC-### entry (next free: RC-098).
+H4-1, H4-4 (Batch 3, part 1) and H4-2, H4-5, H4-6 (Batch 3, part 2) are **applied**; see below. H4-3 is **applied** (Batch 3, part 3, RC-098, needs migration 139). H4-7 is **applied** (RC-154, 2026-10-31, branch `fix/h4-7-hashed-passport-sessions`, not deployed; **no migration was needed**: `passport_sessions.id` is TEXT, the hash goes in the same column and old rows simply stop matching, which is the revocation). H4-8 is still proposed, not applied. Each shipped fix needs an RC-### entry (next free: RC-098).
 
 ## Fixes applied 2026-10-26 (Batch 3, part 1: H4-1, H4-4) — before / after
 

@@ -7,6 +7,7 @@
 // route against a fake in-memory table holding BOTH accounts' rows — if the
 // route ever loses its `customer_account_id` filter, the other account's store
 // shows up in the response and the test fails.
+import { createHash } from 'node:crypto';
 import Fastify from 'fastify';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { errorHandler } from '../../../../plugins/error-handler.js';
@@ -111,7 +112,8 @@ const ALL_VISITS = [VISIT_A1, VISIT_A2, VISIT_B1];
  */
 function wireFakeDb() {
   mockPassportSessionFindUnique.mockImplementation(async ({ where }: { where: { id: string } }) => {
-    if (where.id !== SESSION_A) return null;
+    // H4-7: the DB is keyed by the hash of the cookie value, never the cookie itself.
+    if (where.id !== createHash('sha256').update(SESSION_A).digest('hex')) return null;
     return {
       id: SESSION_A,
       customer_account_id: ACCOUNT_A,

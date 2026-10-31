@@ -21,6 +21,9 @@ vi.mock('@kanchuki/db', () => ({
   prisma: {
     passportSession: {
       findUnique: mockPassportSessionFindUnique,
+      // getPassportSession slides a valid session and deletes an expired one
+      update: vi.fn().mockResolvedValue({}),
+      delete: vi.fn().mockResolvedValue({}),
     },
     storeAffinity: {
       findMany: mockStoreAffinityFindMany,
