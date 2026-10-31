@@ -176,16 +176,23 @@ export async function listObjects(): Promise<{ key: string; size: number }[]> {
   return objects;
 }
 
+type PrefixObject = { key: string; size: number; modified: Date | null };
+
 /**
- * List objects under one prefix with their last-modified time, stopping after `limit`
- * (cursor-paginated, MaxKeys 1000 per call). Used by the staged-upload sweep (RC-152).
+ * List objects under one prefix with their last-modified time (cursor-paginated, MaxKeys 1000
+ * per call). `keep` is applied while paging and `limit` counts only the objects it accepts, so a
+ * run that wants N matches walks past any number of non-matching keys that sort ahead of them.
+ * Used by the staged-upload sweep (RC-152).
+ * ponytail: walks the whole prefix when fewer than `limit` match; fine while the prefix only
+ * holds ~24 h of uploads, add a persisted cursor if it ever grows past ~100k keys.
  */
 export async function listObjectsByPrefix(
   prefix: string,
   limit: number,
-): Promise<{ key: string; size: number; modified: Date | null }[]> {
+  keep: (o: PrefixObject) => boolean = () => true,
+): Promise<PrefixObject[]> {
   const bucket = await getBucket();
-  const objects: { key: string; size: number; modified: Date | null }[] = [];
+  const objects: PrefixObject[] = [];
   let continuation: string | undefined;
   do {
     const res = await r2.send(
@@ -193,13 +200,13 @@ export async function listObjectsByPrefix(
         Bucket: bucket,
         Prefix: prefix,
         ContinuationToken: continuation,
-        MaxKeys: Math.min(1000, limit - objects.length),
+        MaxKeys: 1000,
       }),
     );
     for (const obj of res.Contents ?? []) {
-      if (obj.Key) {
-        objects.push({ key: obj.Key, size: obj.Size ?? 0, modified: obj.LastModified ?? null });
-      }
+      if (!obj.Key) continue;
+      const o = { key: obj.Key, size: obj.Size ?? 0, modified: obj.LastModified ?? null };
+      if (keep(o) && objects.length < limit) objects.push(o);
     }
     continuation = res.IsTruncated ? res.NextContinuationToken : undefined;
   } while (continuation && objects.length < limit);

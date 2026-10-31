@@ -15,7 +15,6 @@ import { STAGING_PREFIX } from '../lib/upload-guard.js';
 /** Longer than any realistic gap between a presign and its confirm. */
 export const STAGED_UPLOAD_TTL_HOURS = 24;
 export const STAGED_UPLOAD_BATCH = 500;
-const LIST_LIMIT = 1000;
 
 export interface StagedUploadSweepResult {
   scanned: number;
@@ -35,12 +34,15 @@ export async function handleStagedUploadSweep(): Promise<StagedUploadSweepResult
   if (!process.env.R2_ACCOUNT_ID) return { ...res, skipped_unconfigured: true };
 
   const cutoff = Date.now() - STAGED_UPLOAD_TTL_HOURS * 3600_000;
-  const objects = await listObjectsByPrefix(STAGING_PREFIX, LIST_LIMIT);
+  // The age filter runs while paging, not after a capped listing: R2 lists in key order, so a cap
+  // applied first lets 1000+ young keys sorted ahead of the stale ones hide them for good.
+  const isStale = (o: { modified: Date | null }) => !!o.modified && o.modified.getTime() < cutoff;
+  const objects = await listObjectsByPrefix(STAGING_PREFIX, STAGED_UPLOAD_BATCH, isStale);
   res.scanned = objects.length;
 
-  // The prefix is re-checked here, not trusted from the listing call.
+  // Prefix and age are re-checked here, not trusted from the listing call.
   const stale = objects
-    .filter((o) => o.key.startsWith(STAGING_PREFIX) && o.modified && o.modified.getTime() < cutoff)
+    .filter((o) => o.key.startsWith(STAGING_PREFIX) && isStale(o))
     .slice(0, STAGED_UPLOAD_BATCH);
 
   for (const o of stale) {

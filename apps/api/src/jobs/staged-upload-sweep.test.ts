@@ -34,7 +34,23 @@ beforeEach(() => {
 describe('handleStagedUploadSweep', () => {
   it('lists only the staging prefix', async () => {
     await handleStagedUploadSweep();
-    expect(mockList).toHaveBeenCalledWith(STAGING_PREFIX, expect.any(Number));
+    expect(mockList).toHaveBeenCalledWith(STAGING_PREFIX, expect.any(Number), expect.any(Function));
+  });
+
+  // Security review of #203: the listing cap was applied before the age filter, so 1000+ young
+  // keys sorted ahead of the stale ones hid them forever. The fake honours the helper contract:
+  // `keep` is applied while paging and `limit` counts only kept objects.
+  it('still reaches stale objects sorted behind more young ones than one list page holds', async () => {
+    const young = Array.from({ length: 1500 }, (_, i) =>
+      obj(`${STAGING_PREFIX}a-young/${i}.jpg`, ago(1)),
+    );
+    const stale = ['x', 'y', 'z'].map((k) => obj(`${STAGING_PREFIX}z-stale/${k}.jpg`, ago(100)));
+    mockList.mockImplementation(async (_p: string, limit: number, keep?: (o: unknown) => boolean) =>
+      [...young, ...stale].filter((o) => (keep ? keep(o) : true)).slice(0, limit),
+    );
+    const res = await handleStagedUploadSweep();
+    expect(mockDelete).toHaveBeenCalledTimes(3);
+    expect(res.deleted).toBe(3);
   });
 
   it('deletes staged objects past the TTL and keeps younger ones', async () => {
