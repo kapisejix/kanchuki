@@ -1,18 +1,12 @@
-import {
-  fetchImageBuffer,
-  reserveAiCredits,
-  tagProductImageUrls,
-  uploadBuffer,
-} from '@kanchuki/ai';
+import { fetchImageBuffer, tagProductImageUrls, uploadBuffer } from '@kanchuki/ai';
 import { type Prisma, prisma } from '@kanchuki/db';
 import { classifyColorTone } from '@kanchuki/shared';
-import { recordAiUsage } from '../lib/ai-usage.js';
+import { reserveTaggingQuota } from '../lib/ai-usage.js';
 import { pickContrastBackground } from '../lib/backgrounds.js';
 import { resolveColorFamily } from '../lib/color-families.js';
 import { resolveAttributeNames } from '../lib/default-attributes.js';
 import { resolveCategoryId } from '../lib/default-categories.js';
 import { bumpPhotoUrlVersion, preserveOriginalPhoto } from '../lib/photo-cleanup.js';
-import { checkQuota, incrementUsage } from '../lib/quota.js';
 import { withUniqueSku } from '../lib/sku.js';
 import { maybeEnqueueProductSync } from './catalog-sync.js';
 import { addEmbeddingJob } from './index.js';
@@ -20,13 +14,15 @@ import type { TaggingJobData } from './index.js';
 
 export async function handleTagProduct(data: TaggingJobData): Promise<void> {
   const { product_id, retailer_id, photo_url } = data;
+  let quota: Awaited<ReturnType<typeof reserveTaggingQuota>> | undefined;
 
   try {
-    // F-010: weighted quota gate — reserves the most expensive currently-
-    // healthy provider's credits so the retailer can always afford whichever
-    // provider actually serves (failover never incurs an unaffordable cost).
+    // F-010 / H6-2: weighted quota gate — atomically reserves the most expensive currently-
+    // healthy provider's credits so the retailer can always afford whichever provider actually
+    // serves, and so a burst cannot all pass one check. `finally` settles to the real spend
+    // (everything back if no provider served; a BullMQ retry reserves again).
     // Falls through as a no-op until plan_limits has a row for AI_TAGGING_CALL.
-    await checkQuota(retailer_id, 'AI_TAGGING_CALL', await reserveAiCredits());
+    quota = await reserveTaggingQuota(retailer_id);
 
     // Mark photo as tagging in progress
     await prisma.productPhoto.updateMany({
@@ -39,9 +35,9 @@ export async function handleTagProduct(data: TaggingJobData): Promise<void> {
     // general-purpose bg removal can over-strip a busy/patterned garment shot
     // down to a near-blank cutout — feeding that into Claude Vision produced
     // null category/color instead of a bad-but-present garment photo.
-    // onProviderUsed: weighted quota increment + per-call attribution log.
+    // onProviderUsed: sums the real spend for settle() + per-call attribution log.
     const tags = await tagProductImageUrls([photo_url], {
-      onProviderUsed: recordAiUsage(retailer_id),
+      onProviderUsed: quota.onProviderUsed,
     });
 
     // Only fill name/sku/description/subtype/styles/fabrics when still unset
@@ -186,5 +182,7 @@ export async function handleTagProduct(data: TaggingJobData): Promise<void> {
       console.error(`Failed to persist ai_tag_error for product ${product_id}:`, persistErr);
     }
     throw err; // re-throw so BullMQ records the failure and retries
+  } finally {
+    await quota?.settle();
   }
 }

@@ -11,7 +11,7 @@ import { PLAN_LIMITS, SIZE_OPTIONS } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { addTaggingJob } from '../jobs/index.js';
-import { recordAiUsage } from '../lib/ai-usage.js';
+import { reserveTaggingQuota } from '../lib/ai-usage.js';
 import { defaultStock } from '../lib/product-stock.js';
 import { checkQuota, reserveQuota } from '../lib/quota.js';
 import { createSkuSequencer } from '../lib/sku.js';
@@ -168,16 +168,15 @@ export const catalogImportRoutes: FastifyPluginAsync = async (server) => {
 
     const { image_url } = parsed.data;
 
-    // F-010: gate before spending Vision API cost; per-call weighted credits are
-    // recorded by the onProviderUsed callback below. No IMAGE_CROP gate: nothing
-    // is cropped any more (detectCropAndTag uploads the photo as-is).
-    await checkQuota(retailerId, 'AI_TAGGING_CALL', await reserveAiCredits());
+    // F-010 / H6-2: reserve the worst-case credits atomically before spending Vision API cost
+    // (a refusal is a clean 402); the real per-call spend is summed by onProviderUsed and
+    // settled after the call. No IMAGE_CROP gate: nothing is cropped any more.
+    const quota = await reserveTaggingQuota(retailerId);
 
     try {
       const items = await detectCropAndTag(image_url, retailerId, {
-        onProviderUsed: recordAiUsage(retailerId),
-        beforeCall: async () => checkQuota(retailerId, 'AI_TAGGING_CALL', await reserveAiCredits()),
-      });
+        onProviderUsed: quota.onProviderUsed,
+      }).finally(() => quota.settle());
       const response: DetectedItemResponse[] = items.map((item) => ({
         description: item.description,
         cropped_url: item.croppedUrl,
@@ -212,8 +211,9 @@ export const catalogImportRoutes: FastifyPluginAsync = async (server) => {
 
     const { pdf_url, max_pages, page_images } = parsed.data;
 
-    // F-010: gate once for the whole page batch (not per-page — one DB round
-    // trip, not N). No IMAGE_CROP gate: nothing is cropped any more.
+    // F-010: fail-fast READ for the whole page batch, so a full quota is a 402 and not a 200 with
+    // zero items. The atomic take is the per-page reserveTaggingQuota below (H6-2). No IMAGE_CROP
+    // gate: nothing is cropped any more.
     if (page_images && page_images.length > 0) {
       await checkQuota(retailerId, 'AI_TAGGING_CALL', await reserveAiCredits());
     }
@@ -228,11 +228,12 @@ export const catalogImportRoutes: FastifyPluginAsync = async (server) => {
           try {
             const pageImg = page_images[i];
             if (!pageImg) continue;
+            // H6-2: reserve per page, settle to the real spend. Running out mid-batch throws
+            // here and is swallowed as a page warning, as the old per-page check was.
+            const quota = await reserveTaggingQuota(retailerId);
             const items = await detectCropAndTag(pageImg, retailerId, {
-              onProviderUsed: recordAiUsage(retailerId),
-              beforeCall: async () =>
-                checkQuota(retailerId, 'AI_TAGGING_CALL', await reserveAiCredits()),
-            });
+              onProviderUsed: quota.onProviderUsed,
+            }).finally(() => quota.settle());
             for (const item of items) {
               allItems.push({
                 description: `Page ${i + 1}: ${item.description}`,

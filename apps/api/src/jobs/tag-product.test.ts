@@ -53,6 +53,25 @@ vi.mock('./index.js', () => ({
   addEmbeddingJob: mockAddEmbeddingJob,
 }));
 
+// Real reserve/settle behaviour, with settle() made observable (H6-2).
+const mockSettle = vi.hoisted(() => vi.fn());
+vi.mock('../lib/ai-usage.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../lib/ai-usage.js')>();
+  return {
+    ...actual,
+    reserveTaggingQuota: async (retailerId: string) => {
+      const q = await actual.reserveTaggingQuota(retailerId);
+      return {
+        ...q,
+        settle: async () => {
+          mockSettle(retailerId);
+          await q.settle();
+        },
+      };
+    },
+  };
+});
+
 const { handleTagProduct } = await import('./tag-product.js');
 const { clearColorFamilyCache } = await import('../lib/color-families.js');
 
@@ -106,6 +125,7 @@ beforeEach(() => {
   mockFindUniqueOrThrowRetailer.mockReset().mockResolvedValue({ plan: 'STARTER' });
   mockFindUniquePlanLimit.mockReset().mockResolvedValue(null);
   mockUpsertUsageCounter.mockReset().mockResolvedValue({});
+  mockSettle.mockReset();
 });
 
 describe('handleTagProduct', () => {
@@ -308,5 +328,19 @@ describe('handleTagProduct', () => {
       data: { ai_tagged: false, ai_tag_error: 'Claude timed out' },
     });
     expect(mockAddEmbeddingJob).not.toHaveBeenCalled();
+  });
+
+  // H6-2: the credits reserved before the provider call are settled exactly once on every exit.
+  it('settles the quota reserve once after a successful tag', async () => {
+    mockTagProductImageUrls.mockResolvedValue(fakeTags);
+    await handleTagProduct(baseData);
+    expect(mockSettle).toHaveBeenCalledOnce();
+    expect(mockSettle).toHaveBeenCalledWith('retailer_1');
+  });
+
+  it('settles the quota reserve once when tagging throws (BullMQ retries and re-reserves)', async () => {
+    mockTagProductImageUrls.mockRejectedValue(new Error('Claude timed out'));
+    await expect(handleTagProduct(baseData)).rejects.toThrow('Claude timed out');
+    expect(mockSettle).toHaveBeenCalledOnce();
   });
 });
