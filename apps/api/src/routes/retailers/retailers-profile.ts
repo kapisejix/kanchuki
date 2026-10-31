@@ -12,6 +12,7 @@ import {
 } from '../../lib/referral-conversions.js';
 import { IMAGE_KINDS, STAGING_PREFIX, verifyUpload } from '../../lib/upload-guard.js';
 import { notFound, validationError } from '../../plugins/error-handler.js';
+import { toRetailerDto } from './retailers-dto.js';
 
 const WhatsAppNumberSchema = z
   .string()
@@ -81,13 +82,11 @@ export const retailersProfileRoutes: FastifyPluginAsync = async (server) => {
       getEnabledFeatures(request.retailerId),
     ]);
 
-    // Secret access token never rides along on the generic profile fetch —
+    // Tokens, KYC pointers and the auth id never ride along on the generic profile fetch (H2-5) —
     // see GET /me/whatsapp-api for the "is it configured" check.
-    const { whatsapp_api_access_token: _token, ...safeRetailer } = retailer;
-
     return {
       data: {
-        ...safeRetailer,
+        ...toRetailerDto(retailer),
         whatsapp_api_configured: !!retailer.whatsapp_api_access_token,
         features,
         usage: { product_count: productCount, customer_count: customerCount },
@@ -335,6 +334,6 @@ export const retailersProfileRoutes: FastifyPluginAsync = async (server) => {
       ? ((await prisma.retailer.findUnique({ where: { id: request.retailerId } })) ?? updated)
       : updated;
 
-    return { data, referral };
+    return { data: toRetailerDto(data), referral };
   });
 };

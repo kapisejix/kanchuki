@@ -261,6 +261,36 @@ describe('referral is additive to the response', () => {
   });
 });
 
+// H2-5: the PUT response is the full row too, and the support MAINTENANCE delegate may call it.
+describe('PUT /me — secrets stay server-side (H2-5)', () => {
+  const SECRET_COLUMNS = [
+    'whatsapp_api_access_token',
+    'gmb_access_token',
+    'gmb_refresh_token',
+    'fb_ads_access_token',
+    'google_ads_refresh_token',
+    'google_ads_developer_token',
+    'kyc_gst_r2_key',
+    'kyc_aadhar_front_r2_key',
+    'kyc_aadhar_back_r2_key',
+    'kyc_gst_url',
+    'kyc_aadhar_front_url',
+    'kyc_aadhar_back_url',
+    'auth_user_id',
+  ];
+  it.each([
+    ['a plain save', {}],
+    ['a save that applies a FREE_MONTH bonus (re-read path)', { referral_code: AFFILIATE_CODE }],
+  ])('returns no token ciphertext, KYC pointer or auth id on %s', async (_name, extra) => {
+    Object.assign(dbRow, Object.fromEntries(SECRET_COLUMNS.map((c) => [c, `secret-${c}`])));
+    const app = await buildApp();
+    const res = await put(app, { shop_name: 'Sharma Cloth House 2', ...extra });
+    expect(res.statusCode).toBe(200);
+    for (const c of SECRET_COLUMNS) expect(res.json().data).not.toHaveProperty(c);
+    expect(res.json().data.shop_name).toBe('Sharma Cloth House 2');
+  });
+});
+
 describe('a capture that fails is non-fatal, not silent', () => {
   it('still saves the profile and reports CAPTURE_FAILED', async () => {
     // The realistic cause: migration 109 not applied yet, so `referral_codes`
