@@ -1190,6 +1190,8 @@ Apply order **139 → 140 → 141 → 142 → 143**, each as its own run (140 ad
 
 ## Queued-job quota reservations — `quota_reservations` (migration 144, RC-102 follow-up, written 2026-10-27, applied in prod 2026-10-27 by owner: "Success. No rows returned")
 
+**Status update 2026-10-31:** migration 145 (`product_photos_studio_job_id_idx`, the sweep's expression index) is applied in prod per the owner; not re-queried by the agent. Migration 144 is as recorded below.
+
 Which queued job holds which quota slot, so a refund keyed by `job_id` is idempotent. The counters (`usage_counters`, later `customer_usage_counters`) stay the number the limit is checked against; this table only records the holder. Spec: `docs/tasks/pending/quota-reserve-at-enqueue.md`. 144 is applied, so the reserving code and the sweep can deploy.
 
 Columns: `id`, `job_id` (the payload id, not BullMQ's), `retailer_id` XOR `customer_account_id` (CHECK; both FKs `ON DELETE CASCADE`, so `hardDeleteRetailer()` needs no list entry, RC-050), `resource_type`, `period_start` (the counter row it bumped), `amount` (CHECK `> 0`), `state` (CHECK `RESERVED | SPENT | REFUNDED`), `created_at`, `refunded_at`. Partial unique indexes on `(job_id, resource_type)` per scope (a shopper try-on later holds one retailer row and one customer row for one job), plus a partial index on `created_at WHERE state = 'RESERVED'` for the not-yet-built sweep.

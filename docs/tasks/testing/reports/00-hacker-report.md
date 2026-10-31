@@ -44,7 +44,7 @@ Method: code/config review plus local Fastify `inject()` harnesses. Nothing was 
 | H5-5 Ken Burns raw fetch fallback | Low | Fixed (RC-150), not deployed |
 | H5-1 KYC and try-on in the public bucket | Medium | Open (Owner-action) |
 | H6-1 STUDIO_SHOOT quota fails open on missing `plan_limits` row | High | Fixed (RC-103), not deployed. `METERED` guard in `effectiveLimit` / `effectiveCustomerLimit` covers check, all reserve functions and both status readers; studio-shoot route 10/min. **Owner-action BEFORE deploy:** seed `STUDIO_SHOOT`, `BG_REMOVAL`, `IMAGE_CROP` (and `TRY_ON_GENERATION` if missing) for all three plans in Admin → Plan Limits, or those features refuse everyone |
-| H6-2 Burst overshoots an AI cap | Medium | Partly fixed (RC-102): reserve-at-enqueue for Studio Shoot, My Style, try-on, social templates, POST /products, growth AI routes. Tagging and catalog-import AI checks left on check-then-increment. Mock tests only; scratch-DB run pending; migration 145 not applied in prod |
+| H6-2 Burst overshoots an AI cap | Medium | Fixed (RC-102 + RC-155), not deployed: reserve-at-enqueue for Studio Shoot, My Style, try-on, social templates, POST /products, growth AI routes, and now tagging (tag job, detect-items, import-pdf, caption suggest) via `reserveTaggingQuota`. Also RC-156 (translate charged 1 + credits). Mock tests only; scratch-DB run pending; migrations 144 and 145 applied in prod per owner (145 not re-queried) |
 | H6-3 `plan-lapse` never lapses an ACTIVE plan | Low | Fixed (RC-144), not deployed. Known limit: admin-comped ACTIVE with a stale expiry lapses after 3 days |
 | H6-4 | Low | Fixed (RC-147), not deployed. Residual: GSTIN is format-checked only; FREE_MONTH still granted at capture |
 | H7-1 … H7-4 | Med/Low | Open (H7-1, H7-4 Owner-action) |
@@ -72,7 +72,7 @@ Effort: S ≤ ½ day, M ≤ 2 days, L > 2 days. Owner = needs a dashboard/config
 | 10 | ~~H4-2~~ | Medium | `/v1/customers` leaks `phone_hash` + `customer_account_id` to masked staff. Fixed RC-096, not deployed | S | n |
 | 11 | ~~H4-3~~ | Medium | Anonymous reviews: fake ratings, overwrite a real review, rename CRM customers. Fixed RC-098/099, not deployed (needs migration 139) | M | n |
 | 12 | ~~H4-4~~ | Medium | Legacy lead form overwrites existing customers and forges consent. Fixed RC-094, not deployed | S | n |
-| 13 | H6-2 | Medium | Check-at-route / count-at-job-end lets a burst overshoot any AI cap. Partly fixed RC-102 | M | n |
+| 13 | H6-2 | Medium | Check-at-route / count-at-job-end lets a burst overshoot any AI cap. Fixed RC-102 + RC-155 (mock tests only) | M | n |
 | 14 | ~~H5-2~~ | Medium | detect-items and catalog presigns write unverified bytes to the public CDN Fixed RC-148, not deployed | M | n |
 | 15 | ~~H5-3~~ | Medium | No pixel cap: decompression bomb against compress cron, ffmpeg, templates, My Style. Fixed RC-141, not deployed (Ken Burns ffmpeg not separately capped) | S | n |
 | 16 | ~~H2-1~~ | Medium | Cross-tenant products injected into own A/B variant collection. Fixed RC-138, not deployed | S | n |
@@ -101,9 +101,9 @@ Effort: S ≤ ½ day, M ≤ 2 days, L > 2 days. Owner = needs a dashboard/config
 | 39 | ~~H5-5~~ | Low | Ken Burns raw `fetch(photo.url)` fallback (hardening, not exploitable) Fixed RC-150, not deployed | S | n |
 | 40 | H7-3 | Low | No certificate pinning (informational, not exploitable) | — | n |
 
-**Reconciled 2026-10-29 against the CLAUDE.md RC tracker.** Rows 2, 3, 4, 8, 9, 10, 11, 12, 28, 29 below are Fixed locally (RC-090 … RC-098, RC-103), not deployed; rows 15, 16, 20, 24, 25, 26 (H5-3, H2-1, H8-3, H2-3, H2-4, H2-5: RC-141, RC-138, RC-140, RC-142, RC-139, RC-143) likewise, added 2026-10-31; rows 14, 31, 34 and 39 (H5-2, H5-4, H8-4, H5-5: RC-148, RC-149, RC-151, RC-150) likewise; row 30 (H4-7: RC-154) likewise; row 13 (H6-2) is partly fixed (RC-102). They are kept for history and excluded from the totals.
+**Reconciled 2026-10-29 against the CLAUDE.md RC tracker.** Rows 2, 3, 4, 8, 9, 10, 11, 12, 28, 29 below are Fixed locally (RC-090 … RC-098, RC-103), not deployed; rows 15, 16, 20, 24, 25, 26 (H5-3, H2-1, H8-3, H2-3, H2-4, H2-5: RC-141, RC-138, RC-140, RC-142, RC-139, RC-143) likewise, added 2026-10-31; rows 14, 31, 34 and 39 (H5-2, H5-4, H8-4, H5-5: RC-148, RC-149, RC-151, RC-150) likewise; row 30 (H4-7: RC-154) likewise; row 13 (H6-2: RC-102 + RC-155) is fixed locally, mock tests only. They are kept for history and excluded from the totals.
 
-**Totals (open): Critical 1, High 0, Medium 7, Low 8 = 16** (was 40; 24 fixed). H8-7 (Low, in `H8-infra-secrets.md`, never in the ranked table) was never counted and is now closed as not a defect. H6-2 is counted as open until RC-102 is verified on a real DB. Dependency CVEs: see `H8-infra-secrets.md` §CVE (not in these counts). SC-1, SC-2 (P0, owner) tracked in the SC report.
+**Totals (open): Critical 1, High 0, Medium 6, Low 8 = 15** (was 40; 25 fixed). H8-7 (Low, in `H8-infra-secrets.md`, never in the ranked table) was never counted and is now closed as not a defect. H6-2 is counted as fixed locally like the other mock-tested fixes; a scratch-DB run is still worth doing before launch. Dependency CVEs: see `H8-infra-secrets.md` §CVE (not in these counts). SC-1, SC-2 (P0, owner) tracked in the SC report.
 
 ## Owner checks (dashboard-only facts that set the severity)
 

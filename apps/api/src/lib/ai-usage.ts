@@ -1,6 +1,6 @@
-import type { ProviderUsedInfo } from '@kanchuki/ai';
+import { type ProviderUsedInfo, reserveAiCredits } from '@kanchuki/ai';
 import { prisma } from '@kanchuki/db';
-import { incrementUsage } from './quota.js';
+import { incrementUsage, reserveQuota } from './quota.js';
 
 // F-023: weighted AI usage recording. The failover engine (packages/ai)
 // fires onProviderUsed once per successfully-served call; this helper turns
@@ -38,7 +38,7 @@ export function recordBflStudioUsage(retailerId: string, template: string): void
     });
 }
 
-export function recordAiUsage(retailerId: string) {
+export function recordAiUsage(retailerId: string, opts: { meter?: boolean } = {}) {
   return (info: ProviderUsedInfo): void => {
     // Quota consumption is gated on the AI_TAGGING_CALL resource only — that's
     // the metered quota retailers see and purchase addons against. Detection
@@ -51,7 +51,8 @@ export function recordAiUsage(retailerId: string) {
     // (AI_ITEM_DETECT) and color detection (AI_COLOR_DETECT) even when a
     // single route fires multiple call types (detectCropAndTag fires both a
     // detect extract and per-item tag extracts).
-    if (info.resource_type === 'AI_TAGGING_CALL') {
+    // `meter: false` = the caller reserved up front and settles itself (reserveTaggingQuota).
+    if (info.resource_type === 'AI_TAGGING_CALL' && opts.meter !== false) {
       incrementUsage(retailerId, 'AI_TAGGING_CALL', info.credits_per_call).catch((err) => {
         console.error(`[ai-usage] failed to record AI_TAGGING_CALL usage for ${retailerId}:`, err);
       });
@@ -71,5 +72,40 @@ export function recordAiUsage(retailerId: string) {
       .catch((err) => {
         console.error(`[ai-usage] failed to log ${info.resource_type} for ${retailerId}:`, err);
       });
+  };
+}
+
+/**
+ * H6-2 (RC-155): weighted AI tagging spend, reserved atomically BEFORE the provider call.
+ * Reserves the most expensive healthy provider's credits (`reserveAiCredits`, so failover can
+ * never be unaffordable), `onProviderUsed` adds up what the serving provider really charged,
+ * and `settle()` hands the unspent part back. Call `settle()` once, in a `finally`: it gives
+ * everything back when no provider served. Best-effort like `recordAiUsage` — a failed give-back
+ * is logged (credits stay reserved until the period ends), never thrown over the caller's result.
+ * An unlimited plan reserves nothing, and its spend is still counted (as before).
+ */
+export async function reserveTaggingQuota(retailerId: string) {
+  const reserved = await reserveAiCredits();
+  const refund = await reserveQuota(retailerId, 'AI_TAGGING_CALL', reserved);
+  const record = recordAiUsage(retailerId, { meter: false });
+  let spent = 0;
+  return {
+    onProviderUsed(info: ProviderUsedInfo): void {
+      if (info.resource_type === 'AI_TAGGING_CALL') spent += info.credits_per_call;
+      record(info);
+    },
+    async settle(): Promise<void> {
+      try {
+        if (!refund.reserved) {
+          if (spent > 0) await incrementUsage(retailerId, 'AI_TAGGING_CALL', spent);
+        } else if (spent < reserved) {
+          await refund(reserved - spent);
+        } else if (spent > reserved) {
+          await incrementUsage(retailerId, 'AI_TAGGING_CALL', spent - reserved); // pricier provider mid-call
+        }
+      } catch (err) {
+        console.error(`[ai-usage] failed to settle AI_TAGGING_CALL for ${retailerId}:`, err);
+      }
+    },
   };
 }

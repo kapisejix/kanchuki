@@ -7,17 +7,17 @@ const {
   mockProductFindMany,
   mockRetailerFindUniqueOrThrow,
   mockHasFeature,
-  mockCheckQuota,
+  mockReserveTagging,
   mockGenerateCaption,
-  mockRecordAiUsage,
   mockAiUsageLogCreate,
+  mockSettle,
 } = vi.hoisted(() => ({
   mockProductFindMany: vi.fn(),
   mockRetailerFindUniqueOrThrow: vi.fn(),
   mockHasFeature: vi.fn(),
-  mockCheckQuota: vi.fn(),
+  mockReserveTagging: vi.fn(),
   mockGenerateCaption: vi.fn(),
-  mockRecordAiUsage: vi.fn(() => vi.fn()),
+  mockSettle: vi.fn(),
   mockAiUsageLogCreate: vi.fn(),
 }));
 
@@ -38,13 +38,8 @@ vi.mock('../../lib/features.js', () => ({
   hasFeature: mockHasFeature,
 }));
 
-vi.mock('../../lib/quota.js', () => ({
-  checkQuota: mockCheckQuota,
-  incrementUsage: vi.fn(),
-}));
-
 vi.mock('../../lib/ai-usage.js', () => ({
-  recordAiUsage: mockRecordAiUsage,
+  reserveTaggingQuota: mockReserveTagging,
 }));
 
 const RETAILER_ID = 'retailer_1';
@@ -64,7 +59,8 @@ async function buildApp() {
 beforeEach(() => {
   vi.clearAllMocks();
   mockHasFeature.mockResolvedValue(true);
-  mockCheckQuota.mockResolvedValue(undefined);
+  mockSettle.mockResolvedValue(undefined);
+  mockReserveTagging.mockResolvedValue({ onProviderUsed: vi.fn(), settle: mockSettle });
   mockAiUsageLogCreate.mockResolvedValue({});
   mockRetailerFindUniqueOrThrow.mockResolvedValue({ shop_name: 'Sharma Silks' });
 });
@@ -105,7 +101,7 @@ describe('POST /v1/growth/social-caption-suggest', () => {
       }),
     );
     // Quota checked + usage hook wired.
-    expect(mockCheckQuota).toHaveBeenCalledWith(RETAILER_ID, 'AI_TAGGING_CALL');
+    expect(mockReserveTagging).toHaveBeenCalledWith(RETAILER_ID);
     expect(mockGenerateCaption).toHaveBeenCalledWith(
       expect.objectContaining({
         productNames: ['Banarasi Silk Saree'],
@@ -116,7 +112,8 @@ describe('POST /v1/growth/social-caption-suggest', () => {
         onProviderUsed: expect.any(Function),
       }),
     );
-    expect(mockRecordAiUsage).toHaveBeenCalledWith(RETAILER_ID);
+    // Settled once the AI call is over (H6-2): gives the unspent reserve back.
+    expect(mockSettle).toHaveBeenCalledOnce();
   });
 
   it('fails open to the templated caption when the AI call throws (never blocks publishing)', async () => {
@@ -141,13 +138,15 @@ describe('POST /v1/growth/social-caption-suggest', () => {
     expect(body.data.caption).not.toMatch(/\{[a-z_]+\}/);
     // The quota check passed but the AI call failed — no provider ever served,
     // so no usage-attribution row is written.
-    expect(mockCheckQuota).toHaveBeenCalledWith(RETAILER_ID, 'AI_TAGGING_CALL');
+    expect(mockReserveTagging).toHaveBeenCalledWith(RETAILER_ID);
     expect(mockAiUsageLogCreate).not.toHaveBeenCalled();
+    // ...and the whole reserve is handed back even though the AI call threw.
+    expect(mockSettle).toHaveBeenCalledOnce();
   });
 
   it('fails open when quota is exhausted (suggest is additive, must not hard-fail)', async () => {
     mockProductFindMany.mockResolvedValue([]);
-    mockCheckQuota.mockRejectedValue(new Error('AI_TAGGING_CALL quota exceeded'));
+    mockReserveTagging.mockRejectedValue(new Error('AI_TAGGING_CALL quota exceeded'));
 
     const app = await buildApp();
     const res = await app.inject({

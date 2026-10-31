@@ -2,9 +2,8 @@ import { type VisionAskRequest, runVisionAsk } from '@kanchuki/ai';
 import { prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
-import { recordAiUsage } from '../../lib/ai-usage.js';
+import { reserveTaggingQuota } from '../../lib/ai-usage.js';
 import { hasFeature } from '../../lib/features.js';
-import { reserveQuota } from '../../lib/quota.js';
 import { featureUnavailable, notFound, validationError } from '../../plugins/error-handler.js';
 
 // Roadmap M Phase 1 priorities: Hindi + Hinglish first, then the big regional
@@ -64,8 +63,9 @@ export const growthTranslateRoutes: FastifyPluginAsync = async (server) => {
     if (cached)
       return reply.send({ data: { product_id: id, language, description: cached, cached: true } });
 
-    // Metered like tagging: AI_TAGGING_CALL quota + per-call usage log.
-    await reserveQuota(retailerId, 'AI_TAGGING_CALL');
+    // Metered like tagging: AI_TAGGING_CALL quota + per-call usage log. Reserve, then settle to the
+    // real spend — a bare reserveQuota(1) next to recordAiUsage charged 1 + credits (RC-156).
+    const quota = await reserveTaggingQuota(retailerId);
 
     const attrs = [
       product.name,
@@ -83,18 +83,20 @@ export const growthTranslateRoutes: FastifyPluginAsync = async (server) => {
 
     const req: VisionAskRequest = {
       resourceType: 'AI_TAGGING_CALL',
-      onProviderUsed: recordAiUsage(retailerId),
+      onProviderUsed: quota.onProviderUsed,
       images: [],
       systemPrompt:
         'You are a fashion copywriter for an Indian clothing store. Write short, friendly, accurate product descriptions in the requested language.',
       userPrompt: `Write a 2-3 sentence product description (no emojis, no prices unless given) ${LANGUAGE_PROMPT[language]}. Base it ONLY on these facts:\n\n${attrs || 'A new Indian fashion product.'}\n\nReturn only the description text.`,
       maxTokens: 300,
     };
-    const description = await runVisionAsk(req).catch((err: unknown) => {
-      throw validationError(
-        `AI description failed: ${err instanceof Error ? err.message : 'unknown error'}`,
-      );
-    });
+    const description = await runVisionAsk(req)
+      .catch((err: unknown) => {
+        throw validationError(
+          `AI description failed: ${err instanceof Error ? err.message : 'unknown error'}`,
+        );
+      })
+      .finally(() => quota.settle());
 
     const clean = description.trim().replace(/\s+/g, ' ');
     if (!clean) throw validationError('AI returned an empty description — try again');
@@ -130,11 +132,11 @@ export const growthTranslateRoutes: FastifyPluginAsync = async (server) => {
 
     const { message, language, context } = body.data;
 
-    await reserveQuota(retailerId, 'AI_TAGGING_CALL');
+    const quota = await reserveTaggingQuota(retailerId);
 
     const req: VisionAskRequest = {
       resourceType: 'AI_TAGGING_CALL',
-      onProviderUsed: recordAiUsage(retailerId),
+      onProviderUsed: quota.onProviderUsed,
       images: [],
       systemPrompt:
         'You are a WhatsApp marketing copywriter for an Indian clothing store. Rewrite messages naturally in the requested language, keeping a warm, short, sales-friendly tone.',
@@ -143,11 +145,13 @@ export const growthTranslateRoutes: FastifyPluginAsync = async (server) => {
       }\n\nMessage to translate:\n${message}\n\nReturn only the translated message text.`,
       maxTokens: 500,
     };
-    const translated = await runVisionAsk(req).catch((err: unknown) => {
-      throw validationError(
-        `AI translation failed: ${err instanceof Error ? err.message : 'unknown error'}`,
-      );
-    });
+    const translated = await runVisionAsk(req)
+      .catch((err: unknown) => {
+        throw validationError(
+          `AI translation failed: ${err instanceof Error ? err.message : 'unknown error'}`,
+        );
+      })
+      .finally(() => quota.settle());
 
     const clean = translated.trim().replace(/\s+/g, ' ');
     if (!clean) throw validationError('AI returned an empty message — try again');

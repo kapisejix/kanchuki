@@ -7,10 +7,9 @@ import { generateSocialPostCaption } from '@kanchuki/ai';
 import { prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
-import { recordAiUsage } from '../../lib/ai-usage.js';
+import { reserveTaggingQuota } from '../../lib/ai-usage.js';
 import { hasFeature } from '../../lib/features.js';
 import { resolvePostTemplate } from '../../lib/post-template-placeholders.js';
-import { checkQuota } from '../../lib/quota.js';
 import { featureUnavailable, validationError } from '../../plugins/error-handler.js';
 
 const SUGGEST_SCHEMA = z.object({
@@ -60,7 +59,9 @@ export const growthSocialCaptionSuggestRoutes: FastifyPluginAsync = async (serve
     // AI generation, fail-open. Quota exhaustion (AI_TAGGING_CALL) must NOT
     // break the suggest button — fall through to the template caption.
     try {
-      await checkQuota(retailerId, 'AI_TAGGING_CALL');
+      // H6-2: reserve atomically, then settle to the real spend; the AiUsageLog row with the
+      // real serving provider is written by the same onProviderUsed.
+      const quota = await reserveTaggingQuota(retailerId);
       const result = await generateSocialPostCaption({
         productNames: names,
         category: products[0]?.category?.trim() || undefined,
@@ -68,10 +69,8 @@ export const growthSocialCaptionSuggestRoutes: FastifyPluginAsync = async (serve
         storeName: retailer.shop_name?.trim() || undefined,
         festival: festival?.trim() || undefined,
         postType: post_type,
-        // recordAiUsage handles the weighted AI_TAGGING_CALL quota increment
-        // AND the per-call AiUsageLog row with the real serving provider.
-        onProviderUsed: recordAiUsage(retailerId),
-      });
+        onProviderUsed: quota.onProviderUsed,
+      }).finally(() => quota.settle());
       return {
         data: {
           caption: result.caption,

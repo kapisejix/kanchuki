@@ -209,9 +209,10 @@ export async function reserveQuota(
   retailerId: string,
   resourceType: QuotaResourceType,
   amount = 1,
-): Promise<(give?: number) => Promise<void>> {
+): Promise<((give?: number) => Promise<void>) & { reserved: boolean }> {
   const effective = await effectiveLimit(retailerId, resourceType);
-  if (!effective || effective.limit === -1) return async () => {};
+  if (!effective || effective.limit === -1)
+    return Object.assign(async () => {}, { reserved: false });
   const limit = effective.limit;
   const label = resourceType.toLowerCase().replace(/_/g, ' ');
   // The ON CONFLICT guard only covers an existing row; a first insert must be bounded here.
@@ -227,13 +228,17 @@ export async function reserveQuota(
   if (taken === 0) throw planLimitExceeded(label);
 
   // `give` lets a batch hand back part of what it took (pro-cleanup: one slot per failed photo).
-  return async (give = amount) => {
-    await prisma.$executeRaw`
+  // `reserved` tells a caller that settles later whether anything was written (unlimited = false).
+  return Object.assign(
+    async (give = amount) => {
+      await prisma.$executeRaw`
       UPDATE usage_counters SET count = GREATEST(count - ${give}, 0), updated_at = now()
       WHERE retailer_id = ${retailerId}
         AND resource_type = ${resourceType}::"QuotaResourceType"
         AND period_start = ${start}`;
-  };
+    },
+    { reserved: true },
+  );
 }
 
 /**
