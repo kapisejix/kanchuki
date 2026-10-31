@@ -29,6 +29,7 @@ All 6 findings are **Plausible** (code-only). No cross-tenant read of customer P
 | H2-4 | Low | `routes/products/products-crud.ts:296-320` vs `:61-72` | `PUT /products/:id` spreads `...rest` into the update, so `section_id`, `category_id` and `background_image_id` are not ownership-checked. Create checks the first two. | Copy the create-path checks into PUT |
 | H2-5 | Low | `routes/retailers/retailers-profile.ts:64-87` | `GET /retailers/me` is reachable by manager, salesperson and every support scope, and returns the full Retailer row minus only the WhatsApp token: encrypted GMB/FB-Ads/Google-Ads tokens, KYC Aadhaar/GST R2 keys, `auth_user_id` | Prisma `omit` of the secret and KYC columns |
 | H2-6 | Low | `routes/customers.ts:44-49` | `POST /customers` (salesperson-allowed) answers "A customer with this phone number already exists". That lets a salesperson check whether any phone number is already a customer, even though the list masks phones. | Owner gets the message; staff get a generic error |
+| H2-7 | Low | `routes/customers.ts` POST and PUT | Re-adding a soft-deleted customer's number (or a PUT phone change onto one) hit the unique index and returned a 500: the index covers deleted rows, the duplicate check did not. | Fixed RC-146: owner restores the row, staff get the active-duplicate 422, PUT answers 422 |
 
 ---
 
