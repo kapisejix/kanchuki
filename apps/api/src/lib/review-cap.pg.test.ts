@@ -11,14 +11,14 @@
 import type { PrismaClient } from '@prisma/client';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const url = process.env['REVIEW_CAP_PG_URL'];
+const url = process.env.REVIEW_CAP_PG_URL;
 const enabled = !!url && /@(localhost|127\.0\.0\.1)[:/]/.test(url);
 if (url && !enabled) throw new Error('REVIEW_CAP_PG_URL must be a localhost database');
 
 const m = vi.hoisted(() => ({ client: undefined as unknown }));
 vi.mock('@kanchuki/db', async () => {
   const { PrismaClient: Client } = await import('@prisma/client');
-  const client = new Client({ datasourceUrl: process.env['REVIEW_CAP_PG_URL'] });
+  const client = new Client({ datasourceUrl: process.env.REVIEW_CAP_PG_URL });
   m.client = client;
   return { prisma: client };
 });
@@ -71,7 +71,11 @@ describe.skipIf(!enabled)('saveUnderDailyCap on real Postgres', () => {
 
   it('a capped account can still edit (isEdit skips the cap)', async () => {
     await burst(MAX_NEW_REVIEWS_PER_DAY);
-    const edit = await saveUnderDailyCap(ACCOUNT, async () => true, async () => 'edited');
+    const edit = await saveUnderDailyCap(
+      ACCOUNT,
+      async () => true,
+      async () => 'edited',
+    );
     expect(edit).toBe('edited');
   });
 
@@ -81,7 +85,8 @@ describe.skipIf(!enabled)('saveUnderDailyCap on real Postgres', () => {
   });
 
   it('reviews older than 24 h do not count', async () => {
-    await db().$executeRaw`INSERT INTO store_reviews (id, retailer_id, customer_account_id, rating, updated_at, created_at)
+    await db()
+      .$executeRaw`INSERT INTO store_reviews (id, retailer_id, customer_account_id, rating, updated_at, created_at)
       SELECT 'old_' || g, 'ret_old_' || g, ${ACCOUNT}, 5, now(), now() - interval '25 hours' FROM generate_series(1, 30) g`;
     expect(await burst(1)).toEqual([true]);
   });

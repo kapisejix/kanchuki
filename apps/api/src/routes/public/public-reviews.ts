@@ -50,7 +50,6 @@ const REVIEW_RATE_LIMIT = {
   rateLimit: { max: 10, timeWindow: 60 * 1000, keyGenerator: reviewLimitKey },
 };
 
-
 const NO_SESSION = { error: { code: 'NO_SESSION', message: 'Sign in to leave a review' } };
 const OWN_STORE = {
   error: { code: 'OWN_STORE_REVIEW', message: "You can't review your own store" },
