@@ -12,6 +12,15 @@
 
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
+## RC-144 — `plan-lapse` selected expired trials and cancelled/past-due subscriptions but never an `ACTIVE` store, so one missed renewal-cycle webhook left a paid plan on forever (H6-3)
+
+- **Component:** `apps/api/src/jobs/plan-lapse.ts` (`lapsedWhere`).
+- **Symptom:** a retailer whose `plan_status` stayed `ACTIVE` with `plan_expires_at` long past (the `subscription.halted` / `pending` webhook was never processed: endpoint down, secret rotation, stale-event 401) kept GROWTH/PRO indefinitely.
+- **Root cause:** RC-082 listed the statuses that mean "lapsed" and `ACTIVE` was not one, on the assumption that a webhook always moves the status first. The job's `WHERE` clause is the whole boundary for every paid gate, and it had no rule for "the paid period ended and nothing renewed it".
+- **Fix:** one more `OR` branch: `plan_status: 'ACTIVE'` and `plan_expires_at < now - 3 days`. The 3 days (`ACTIVE_LAPSE_GRACE_MS`) cover the lag between a period ending and its `subscription.charged` webhook (the only writer that moves `plan_expires_at` forward, `billing-webhook.ts`), so a normally renewing store is not downgraded for hours; it is a chosen buffer, not tied to Razorpay's retry schedule. `lt` does not match NULL, so admin-granted ACTIVE rows with no expiry never lapse. The existing re-check of the same predicate inside `updateMany` also covers the new branch (a renewal webhook between read and write is not downgraded).
+- **Known limit (owner decision, option A):** `POST /admin/retailers/:id/change-plan` can grant `ACTIVE` without touching `plan_expires_at`, so a comp on a previously-paid store keeps its stale expiry and lapses 3 days after it. Pinned by a test; `change-plan` unchanged.
+- **Proof:** the ACTIVE-lapse pin was `it.fails` first. Tests: past-grace lapses, a 60 s inside/outside edge, future and NULL expiry stay, the stale-comp limit. Falsified, each turned tests red and was restored: grace 0, grace 9 days, `ACTIVE` mistyped as `PAST_DUE`, NULL expiry matched. API `tsc`/lint clean, gate scripts green, API suite passed. Mock Postgres only; not deployed. **Before deploy: read-only count of ACTIVE rows with `plan_expires_at < now() - 3 days`; each one downgrades on the next hourly run.**
+
 ## RC-143 — The retailer profile responses returned the whole `Retailer` row and stripped one secret by hand, so every other credential and KYC column shipped to managers, salespeople and support delegates (H2-5)
 
 - **Component:** `apps/api/src/routes/retailers/retailers-profile.ts` (`GET /me`, `PUT /me`), new `retailers-dto.ts`.

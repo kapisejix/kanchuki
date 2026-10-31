@@ -157,7 +157,7 @@ Fix:
 +      { plan_status: 'ACTIVE', plan_expires_at: { lt: new Date(now.getTime() - 3 * 86_400_000) } },
 ```
 Check before applying: confirm `subscription.charged` always moves `plan_expires_at` forward (`billing-webhook.ts:~215-224` sets `plan_expires_at: end`), otherwise this lapses paying retailers. A test is required (`plan-lapse.test.ts` exists).
-Status: Plausible
+Status: Fixed (RC-144), not deployed. `ACTIVE` with `plan_expires_at` more than 3 days past now lapses; the 3 days cover renewal-webhook lag (`subscription.charged` is the only writer that moves `plan_expires_at` forward, checked at `billing-webhook.ts:239-240`). `lt` skips NULL, so admin-granted ACTIVE with no expiry is safe. Known limit, owner decision option A: `change-plan` can grant ACTIVE over a stale expiry, which then lapses after the grace; pinned by a test, route unchanged. Before deploy: count ACTIVE rows with `plan_expires_at < now() - 3 days` (each downgrades on the next hourly run).
 
 ---
 
