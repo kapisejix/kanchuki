@@ -28,8 +28,10 @@ import {
   getStudioJobStatus,
   isStudioShootConfigured,
 } from '../../lib/studio-shoot.js';
+import { isDelegate } from '../../plugins/auth.js';
 import {
   AppError,
+  forbidden,
   notFound,
   serviceUnavailable,
   validationError,
@@ -102,6 +104,9 @@ export const productsStudioRoutes: FastifyPluginAsync = async (server) => {
     { config: { rateLimit: { max: 10, timeWindow: 60 * 1000 } } },
     async (request, reply) => {
       const { id, photoId } = request.params as { id: string; photoId: string };
+
+      // H2-3: a delegated session must not spend the retailer's STUDIO_SHOOT quota.
+      if (isDelegate(request)) throw forbidden('Only the shop team can run AI edits');
 
       // All plans get AI Studio Shoots — the STUDIO_SHOOT quota (admin-set
       // per-plan image cap at /admin/plan-limits) is the only limiter.

@@ -26,7 +26,7 @@ Method: code/config review plus local Fastify `inject()` harnesses. Nothing was 
 | H1-9 MSG91 widget token replay | Low | Open (could not verify) |
 | H2-1 Cross-tenant products injected into own A/B variant collection | Medium | Fixed (RC-138), not deployed |
 | H2-4 Product update skips section/category ownership checks | Low | Fixed (RC-139), not deployed |
-| H2-2, H2-3, H2-5, H2-6 | Med/Low | Open |
+| H2-2, H2-5, H2-6 | Med/Low | Open (H2-3 fixed RC-142, not deployed) |
 | H3-1 Percent-encoded path skips Super-Admin gate | High | Fixed (RC-090), not deployed |
 | H3-2 Admin gate deny-list, `SUPPORT_MANAGER` full power | Medium | Fixed (RC-091), not deployed |
 | H3-3 Admin gate trusts JWT role, no DB re-check | Medium | Fixed (RC-092), not deployed. Follow-up open: `team-helpers.ts:76` `verifyAdminSession` still trusts the JWT role |
@@ -75,7 +75,7 @@ Effort: S ≤ ½ day, M ≤ 2 days, L > 2 days. Owner = needs a dashboard/config
 | 21 | H4-8 | Low | Shopper OTP send has no per-route limit (SMS pumping) | S | n |
 | 22 | H6-3 | Low | `plan-lapse` never lapses an ACTIVE plan whose paid period ended | S | n |
 | 23 | H6-4 | Low | Self-referral check bypassed by a second phone with no GSTIN | M | n |
-| 24 | H2-3 | Low | Delegates spend paid-AI quota (RC-068 shape outside try-on) | S | n |
+| 24 | ~~H2-3~~ | Low | Delegates spend paid-AI quota (RC-068 shape outside try-on). Fixed RC-142 for studio-shoot + pro-cleanup, not deployed (retag and support-GROWTH AI routes left open, owner decision) | S | n |
 | 25 | ~~H2-4~~ | Low | Product update skips section/category ownership checks. Fixed RC-139, not deployed (`background_image_id` is a global table, no check needed) | S | n |
 | 26 | H2-5 | Low | `GET /retailers/me` over-shares to staff and delegates | S | n |
 | 27 | H2-6 | Low | Duplicate-phone error lets staff probe whether a number is a customer | S | n |
@@ -93,9 +93,9 @@ Effort: S ≤ ½ day, M ≤ 2 days, L > 2 days. Owner = needs a dashboard/config
 | 39 | H5-5 | Low | Ken Burns raw `fetch(photo.url)` fallback (hardening, not exploitable) | S | n |
 | 40 | H7-3 | Low | No certificate pinning (informational, not exploitable) | — | n |
 
-**Reconciled 2026-10-29 against the CLAUDE.md RC tracker.** Rows 2, 3, 4, 8, 9, 10, 11, 12, 28, 29 below are Fixed locally (RC-090 … RC-098, RC-103), not deployed; rows 15, 16, 20, 25 (H5-3, H2-1, H8-3, H2-4: RC-141, RC-138, RC-140, RC-139) likewise, added 2026-10-31; row 13 (H6-2) is partly fixed (RC-102). They are kept for history and excluded from the totals.
+**Reconciled 2026-10-29 against the CLAUDE.md RC tracker.** Rows 2, 3, 4, 8, 9, 10, 11, 12, 28, 29 below are Fixed locally (RC-090 … RC-098, RC-103), not deployed; rows 15, 16, 20, 24, 25 (H5-3, H2-1, H8-3, H2-3, H2-4: RC-141, RC-138, RC-140, RC-142, RC-139) likewise, added 2026-10-31; row 13 (H6-2) is partly fixed (RC-102). They are kept for history and excluded from the totals.
 
-**Totals (open): Critical 1, High 0, Medium 8, Low 17 = 26** (was 40; 14 fixed). H6-2 is counted as open until RC-102 is verified on a real DB. Dependency CVEs: see `H8-infra-secrets.md` §CVE (not in these counts). SC-1, SC-2 (P0, owner) tracked in the SC report.
+**Totals (open): Critical 1, High 0, Medium 8, Low 16 = 25** (was 40; 15 fixed). H6-2 is counted as open until RC-102 is verified on a real DB. Dependency CVEs: see `H8-infra-secrets.md` §CVE (not in these counts). SC-1, SC-2 (P0, owner) tracked in the SC report.
 
 ## Owner checks (dashboard-only facts that set the severity)
 

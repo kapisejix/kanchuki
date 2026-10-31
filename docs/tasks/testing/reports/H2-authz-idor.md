@@ -129,7 +129,7 @@ and at the top of each of the three handlers:
 +    if (isDelegate(request)) throw forbidden('Only the shop team can run AI edits');
 ```
 (Retag on a mis-tagged upload is arguably in scope for a catalog delegate. If so, gate only studio-shoot + pro-cleanup.)
-Status: Plausible
+Status: Fixed (RC-142), not deployed. As built: `isDelegate()` in `plugins/auth.ts`, a 403 first in the studio-shoot and pro-cleanup POSTs, and `requireTryOnStaff` reuses it. **Owner decisions taken (2026-10-31, revisit if wrong):** `retag` stays open to a catalog delegate (it checks no quota), and the support-GROWTH routes `social-templates` (reserves `STUDIO_SHOOT`), `ai-campaign` and `social-caption-suggest` (both spend `AI_TAGGING_CALL`) stay allowed because a support session is retailer-approved marketing work.
 
 ### H2-4 Product update skips section/category/background ownership checks   Severity: Low
 Attacker: retailer

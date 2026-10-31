@@ -61,6 +61,7 @@ import {
 import { hasLiveTryOnConsent, recordTryOnConsent } from '../../lib/tryon-consent.js';
 import { discardTryOnPhoto, putTryOnPhoto } from '../../lib/tryon-photo-store.js';
 import { sniffImageType } from '../../lib/upload-guard.js';
+import { isDelegate } from '../../plugins/auth.js';
 import {
   AppError,
   forbidden,
@@ -161,7 +162,7 @@ async function resolveTryOnContext(
 async function requireTryOnStaff(request: FastifyRequest): Promise<string> {
   if (!request.retailerId) throw notFound('Product');
   if (!(await hasFeature(request.retailerId, 'VIRTUAL_TRY_ON_V2'))) throw notFound('Product');
-  if (request.staffRole === 'salesperson' || request.catalogDelegate || request.supportDelegate) {
+  if (request.staffRole === 'salesperson' || isDelegate(request)) {
     throw forbidden();
   }
   return request.retailerId;
