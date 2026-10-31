@@ -14,8 +14,8 @@ const columns = [...model.matchAll(/^[ \t]+([a-z][a-z0-9_]*)[ \t]+\S/gm)].map(
   (m) => m[1] as string,
 );
 
-// Secret-looking by name but not secret: an expiry date and the public logo/banner object keys.
-const NOT_SECRET = new Set(['gmb_token_expiry', 'logo_r2_key', 'banner_r2_key']);
+// Secret-looking by name but not secret: the public logo/banner object keys.
+const NOT_SECRET = new Set(['logo_r2_key', 'banner_r2_key']);
 const looksSecret = (c: string) =>
   /token|secret|password|ciphertext/.test(c) ||
   /_r2_key$/.test(c) ||
@@ -37,9 +37,9 @@ describe('toRetailerDto', () => {
     });
   });
   it('does not mutate the row it is given', () => {
-    const row = { id: 'r1', gmb_access_token: 'x' };
+    const row = { id: 'r1', fb_ads_access_token: 'x' };
     toRetailerDto(row);
-    expect(row).toEqual({ id: 'r1', gmb_access_token: 'x' });
+    expect(row).toEqual({ id: 'r1', fb_ads_access_token: 'x' });
   });
 });
 
@@ -47,6 +47,9 @@ describe('RETAILER_SECRET_FIELDS vs schema.prisma', () => {
   it('found the Retailer model (the guard below is not vacuous)', () => {
     expect(columns.length).toBeGreaterThan(20);
     expect(columns).toContain('shop_name');
+  });
+  it('Retailer has no gmb_ columns (legacy GMB integration removed in RC-101)', () => {
+    expect(columns.filter((c) => c.startsWith('gmb_'))).toEqual([]);
   });
   it('every listed field is a real Retailer column', () => {
     for (const f of RETAILER_SECRET_FIELDS) expect(columns, f).toContain(f);

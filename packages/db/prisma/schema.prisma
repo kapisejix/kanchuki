@@ -271,20 +271,12 @@ model Retailer {
    whatsapp_api_template_lang   String?
    whatsapp_api_configured_at   DateTime?
 
-   // Google My Business
-   gmb_account_id   String? // Google My Business account ID
-   gmb_location_id  String? // Google My Business location ID (for the retailer's shop)
-   gmb_access_token String? // Encrypted access token for GMB API
-   gmb_refresh_token String? // Encrypted refresh token
-   gmb_token_expiry DateTime? // Expiry time of the access token
-
    // F-021 Ratings — Google Business Profile place ID for review deep-link
    google_place_id String? // retailer pastes once; Kanchuki builds the write-review URL
 
    // F-021 Ratings — denormalized store rating (updated on every review write)
    avg_rating    Float @default(0)
    rating_count  Int   @default(0)
-   gmb_configured_at DateTime? // When GMB was last configured
 
    // Facebook Local Awareness Ads (bring-your-own Meta Business creds)
    fb_ads_access_token  String? // Encrypted long-lived Business token
