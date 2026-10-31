@@ -12,6 +12,15 @@
 
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
+## RC-157 — Showcase-design AI naming spent `AI_TAGGING_CALL` credits through a bare usage recorder, so no plan cap ever applied (H6-2 follow-up)
+
+- **Component:** `routes/retailers/retailers-showcase-designs.ts` (`POST /me/showcase-designs/suggest`, and the nameless `POST /me/showcase-designs`).
+- **Symptom:** both routes called `suggestDesignNameAndColor` with `onProviderUsed: recordAiUsage(...)`, which counts the credits after the call and never checks a limit. A capped or trial retailer could call suggest in a loop (global rate limit only) and spend provider money with no refusal.
+- **Root cause:** the route was written as "attribute the usage, do not gate it" (the vision helper's own doc comment says so) and stayed that way when RC-102/RC-155 moved every other `AI_TAGGING_CALL` spender onto an atomic reserve. A spender that only records has no cap by construction (RC-156 shape: who owns the count).
+- **Fix:** one local `suggestWithQuota` calls `reserveTaggingQuota` first, forwards its `onProviderUsed` to the vision call and settles in a `finally`. Fail-open is kept: a spent cap (or any reserve error, same precedent as caption suggest) returns `{ name: null, color: null }` without calling the provider, so suggest hands back nulls and a nameless save succeeds with `name: null`. No 402.
+- **Not done, on purpose:** `growth-ai-campaign` (flat `reserveQuota(1)`, no refund on a failed parse); a reserve DB error is swallowed like a spent cap; no real-Postgres run.
+- **Proof:** three tests in `retailers-showcase-designs.test.ts` (reserve, meter forwarded and settle once; suggest fail-open on a spent cap with the provider not called; nameless save with a spent cap), each `it.fails` first. Removing the `finally` settle, the fail-open catch, or the meter forwarding each turned a test red. Mock Postgres only; not deployed.
+
 ## RC-156 — A reserve and a metered spend on the same resource charged twice: every growth translate cost 1 + `credits_per_call` (H6-2 follow-up)
 
 - **Component:** `routes/growth/growth-translate.ts` (`/products/:id/descriptions`, `/translate/message`).

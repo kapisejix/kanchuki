@@ -21,7 +21,7 @@ import { R2_PATHS } from '@kanchuki/shared';
 import { createId } from '@paralleldrive/cuid2';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
-import { recordAiUsage } from '../../lib/ai-usage.js';
+import { reserveTaggingQuota } from '../../lib/ai-usage.js';
 import { hasFeature } from '../../lib/features.js';
 import { assertShowcaseQuota, getShowcaseUsage } from '../../lib/showcase-quota.js';
 import { watermarkShowcaseDesign } from '../../lib/showcase-watermark.js';
@@ -35,6 +35,20 @@ import {
   verifyUpload,
 } from '../../lib/upload-guard.js';
 import { featureUnavailable, notFound, validationError } from '../../plugins/error-handler.js';
+
+// H6-2: reserve tagging credits first, settle to the real spend. Fail-open like the caption
+// suggester: a spent cap (or any reserve error) returns nulls so the retailer types a name.
+async function suggestWithQuota(retailerId: string, imageUrl: string) {
+  let quota: Awaited<ReturnType<typeof reserveTaggingQuota>>;
+  try {
+    quota = await reserveTaggingQuota(retailerId);
+  } catch {
+    return { name: null, color: null };
+  }
+  return suggestDesignNameAndColor(imageUrl, { onProviderUsed: quota.onProviderUsed }).finally(() =>
+    quota.settle(),
+  );
+}
 
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
 
@@ -208,9 +222,7 @@ export const retailersShowcaseDesignRoutes: FastifyPluginAsync = async (server) 
     assertOwnRawKey(body.data.raw_r2_key, request.retailerId);
 
     const key = await currentKey(body.data.raw_r2_key);
-    const suggestion = await suggestDesignNameAndColor(publicUrl(key), {
-      onProviderUsed: recordAiUsage(request.retailerId),
-    });
+    const suggestion = await suggestWithQuota(request.retailerId, publicUrl(key));
     return reply.status(200).send({ data: suggestion });
   });
 
@@ -229,9 +241,10 @@ export const retailersShowcaseDesignRoutes: FastifyPluginAsync = async (server) 
     // multi-provider vision call + usage attribution as product tagging.
     let name = body.data.name ?? null;
     if (!name) {
-      const suggestion = await suggestDesignNameAndColor(publicUrl(body.data.raw_r2_key), {
-        onProviderUsed: recordAiUsage(request.retailerId),
-      });
+      const suggestion = await suggestWithQuota(
+        request.retailerId,
+        publicUrl(body.data.raw_r2_key),
+      );
       name = suggestion.name;
     }
 
