@@ -191,6 +191,33 @@ describe('ProductDetailSheet media slides', () => {
     fireEvent.click(video);
     expect(screen.queryByRole('button', { name: 'Close fullscreen image' })).not.toBeInTheDocument();
   });
+
+  // CI flake: goTo()'s 300 ms isTransitioning timer outlived the component and fired after
+  // jsdom teardown ("ReferenceError: window is not defined"). Unmount must clear it.
+  it('clears the slide-transition timer on unmount', async () => {
+    const setSpy = vi.spyOn(globalThis, 'setTimeout');
+    const clearSpy = vi.spyOn(globalThis, 'clearTimeout');
+    const { unmount } = render(
+      <ProductDetailSheet
+        product={PRODUCT}
+        retailer={RETAILER}
+        collectionTitle="Festive Edit"
+        isFavorited={false}
+        slug="festive-edit"
+        onFavorite={() => undefined}
+        onClose={() => undefined}
+      />,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Next' }));
+    const idx = setSpy.mock.calls.findIndex(([, ms]) => ms === 300);
+    expect(idx).toBeGreaterThanOrEqual(0);
+    const handle = setSpy.mock.results[idx]?.value;
+    unmount();
+    expect(clearSpy).toHaveBeenCalledWith(handle);
+    setSpy.mockRestore();
+    clearSpy.mockRestore();
+  });
 });
 
 describe('ProductDetailSheet Related Products strip', () => {

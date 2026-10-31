@@ -12,6 +12,15 @@
 
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
+## RC-153 — A timer started in an event handler was never cleared on unmount, so it fired after jsdom teardown and turned main CI red at random
+
+- **Component:** `apps/web/src/app/c/[slug]/components/ProductDetailSheet.tsx` (`goTo`).
+- **Symptom:** the `quality` run on the #200 merge failed on one unhandled error, `ReferenceError: window is not defined`, from the timer at `ProductDetailSheet.tsx:278`. The same suite passed on #201, #202 and #203, so it was timing-dependent.
+- **Root cause:** `goTo` set `isTransitioning` and released it with a bare `setTimeout(..., 300)`. The component's unmount cleanup cleared only the single-tap timer, so a test that clicked Next and finished inside 300 ms left a live timer that ran after the environment was torn down. Not test-only: the same timer fires `setState` on an unmounted sheet in the browser.
+- **Fix:** the handle is kept in `transitionTimeoutRef` and cleared in the existing unmount cleanup. Rapid calls cannot overwrite it, because `isTransitioning` already blocks a second `goTo`.
+- **Not done, on purpose:** no sweep of other bare `setTimeout` calls in web components; none is a known failure.
+- **Proof:** `ProductDetailSheet.test.tsx` "clears the slide-transition timer on unmount", red first (the 300 ms handle was never passed to `clearTimeout`); removing the cleanup line and removing the ref assignment each turned it red.
+
 ## RC-152 — Staged uploads had no expiry the repo could see, so an unconfirmed upload stayed on the public CDN until a dashboard-only R2 lifecycle rule removed it, if that rule existed (H5-2 follow-up)
 
 - **Component:** new `apps/api/src/jobs/staged-upload-sweep.ts`, `listObjectsByPrefix` in `packages/ai/src/r2.ts`, registered in `jobs/index.ts`.
