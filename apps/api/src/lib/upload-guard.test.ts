@@ -13,6 +13,7 @@ vi.mock('@kanchuki/ai', () => ({
 import {
   IMAGE_KINDS,
   currentKey,
+  imageDimensions,
   isOwnedKey,
   sniffImageType,
   sniffUploadType,
@@ -45,6 +46,71 @@ describe('sniffUploadType', () => {
     ['empty', Buffer.alloc(0)],
   ])('rejects %s', (_n, buf) => {
     expect(sniffUploadType(buf)).toBeNull();
+  });
+});
+
+// JPEG: SOI, an APP1 segment of `pad` bytes, then SOF0 with the dimensions.
+const jpegHead = (w: number, h: number, pad = 0) => {
+  const app1 = Buffer.alloc(2 + pad);
+  app1.writeUInt16BE(2 + pad);
+  const sof = Buffer.alloc(15);
+  sof.writeUInt16BE(11, 0);
+  sof[2] = 8;
+  sof.writeUInt16BE(h, 3);
+  sof.writeUInt16BE(w, 5);
+  return Buffer.concat([
+    Buffer.from([0xff, 0xd8, 0xff, 0xe1]),
+    app1,
+    Buffer.from([0xff, 0xc0]),
+    sof,
+  ]);
+};
+const webpHead = (chunk: string, body: Buffer) =>
+  Buffer.concat([
+    Buffer.from('RIFF'),
+    Buffer.alloc(4),
+    Buffer.from('WEBP'),
+    Buffer.from(chunk),
+    Buffer.alloc(4),
+    body,
+  ]);
+
+describe('imageDimensions (H5-3)', () => {
+  it('PNG IHDR', () => {
+    const b = Buffer.concat([
+      PNG.subarray(0, 8),
+      Buffer.alloc(4),
+      Buffer.from('IHDR'),
+      Buffer.alloc(8),
+    ]);
+    b.writeUInt32BE(1234, 16);
+    b.writeUInt32BE(567, 20);
+    expect(imageDimensions(b)).toEqual({ width: 1234, height: 567 });
+  });
+  it('JPEG SOF, also past a large APP1 block', () => {
+    expect(imageDimensions(jpegHead(4000, 3000))).toEqual({ width: 4000, height: 3000 });
+    expect(imageDimensions(jpegHead(4000, 3000, 30_000))).toEqual({ width: 4000, height: 3000 });
+  });
+  it('WebP VP8X, VP8L, VP8', () => {
+    const x = Buffer.alloc(10);
+    x.writeUIntLE(999, 4, 3); // canvas width - 1 at file offset 24
+    x.writeUIntLE(499, 7, 3);
+    expect(imageDimensions(webpHead('VP8X', x))).toEqual({ width: 1000, height: 500 });
+    const l = Buffer.alloc(10);
+    l[0] = 0x2f;
+    l.writeUInt32LE(((300 - 1) | ((200 - 1) << 14)) >>> 0, 1);
+    expect(imageDimensions(webpHead('VP8L', l))).toEqual({ width: 300, height: 200 });
+    const v = Buffer.alloc(12);
+    v.writeUInt16LE(640, 6); // file offset 26
+    v.writeUInt16LE(480, 8);
+    expect(imageDimensions(webpHead('VP8 ', v))).toEqual({ width: 640, height: 480 });
+  });
+  it('null for truncated, non-image and unknown layouts', () => {
+    expect(imageDimensions(JPEG)).toBeNull();
+    expect(imageDimensions(PNG)).toBeNull();
+    expect(imageDimensions(WEBP)).toBeNull();
+    expect(imageDimensions(PDF)).toBeNull();
+    expect(imageDimensions(Buffer.alloc(0))).toBeNull();
   });
 });
 
@@ -111,6 +177,35 @@ describe('verifyUpload', () => {
     expect(copyObject).not.toHaveBeenCalled();
   });
 
+  // H5-3: a few-hundred-KB PNG that decodes to ~768 MB must not pass the gate.
+  const pngHead = (w: number, h: number) => {
+    const ihdr = Buffer.alloc(13);
+    ihdr.writeUInt32BE(w, 0);
+    ihdr.writeUInt32BE(h, 4);
+    const len = Buffer.alloc(4);
+    len.writeUInt32BE(13);
+    return Buffer.concat([PNG.subarray(0, 8), len, Buffer.from('IHDR'), ihdr]);
+  };
+  it('H5-3: rejects a 16000x16000 PNG (decompression bomb) and drops the staged copy', async () => {
+    inspectObject.mockResolvedValueOnce({ size: 400_000, head: pngHead(16000, 16000) });
+    await expect(run(STAGED, IMAGE_KINDS, 1_000_000)).rejects.toThrow();
+    expect(deleteObject).toHaveBeenCalledWith(STAGED);
+  });
+  it('H5-3: still accepts a phone-sized PNG', async () => {
+    inspectObject.mockResolvedValueOnce({ size: 500, head: pngHead(4000, 3000) });
+    await expect(run(STAGED)).resolves.toMatchObject({ kind: 'image/png' });
+  });
+
+  it('H5-3: dimensions unreadable from the head → accepted (decode sites still cap)', async () => {
+    inspectObject.mockResolvedValueOnce({ size: 500, head: JPEG });
+    await expect(run(STAGED)).resolves.toMatchObject({ kind: 'image/jpeg' });
+  });
+  it('H5-3: reads a 64 KB head so a late JPEG SOF is seen', async () => {
+    inspectObject.mockResolvedValueOnce({ size: 500, head: jpegHead(16000, 16000, 40_000) });
+    await expect(run(STAGED)).rejects.toThrow();
+    expect(inspectObject).toHaveBeenCalledWith(STAGED, 65_536);
+  });
+
   it('rejects another retailer’s key without touching storage', async () => {
     await expect(run('retailers/r2/x.jpg')).rejects.toThrow();
     expect(inspectObject).not.toHaveBeenCalled();
@@ -170,7 +265,7 @@ describe('verifyUpload', () => {
       kind: 'image/jpeg',
       r2Key: KEY,
     });
-    expect(inspectObject).toHaveBeenCalledWith(STAGED);
+    expect(inspectObject).toHaveBeenCalledWith(STAGED, 65_536);
     // The copy is bound to the ETag that was inspected.
     expect(copyObject).toHaveBeenCalledWith(STAGED, KEY, '"abc"');
     expect(deleteObject).toHaveBeenCalledWith(STAGED);

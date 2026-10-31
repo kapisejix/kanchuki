@@ -20,6 +20,7 @@ import {
   PRODUCT_TYPES,
   parseGarmentDescriptor,
 } from '@kanchuki/shared';
+import { MAX_IMAGE_PIXELS } from '@kanchuki/shared';
 import sharp from 'sharp';
 import { runVisionExtract } from './providers.js';
 
@@ -93,7 +94,7 @@ async function readPhoto(
   opts: AnalyzeStyleOptions,
 ): Promise<Record<string, unknown>> {
   // rotate() applies EXIF orientation before the metadata is dropped on re-encode.
-  const prepared = await sharp(photo)
+  const prepared = await sharp(photo, { limitInputPixels: MAX_IMAGE_PIXELS })
     .rotate()
     .resize({ width: MAX_EDGE, height: MAX_EDGE, fit: 'inside', withoutEnlargement: true })
     .jpeg({ quality: 85 })

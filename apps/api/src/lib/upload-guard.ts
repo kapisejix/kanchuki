@@ -8,6 +8,7 @@
 // upload that is never confirmed stays under one prefix an R2 lifecycle rule can
 // expire. verifyUpload promotes a passing staged object to its final key.
 import { copyObject, deleteObject, inspectObject, publicUrl } from '@kanchuki/ai';
+import { MAX_IMAGE_PIXELS } from '@kanchuki/shared';
 import { validationError } from '../plugins/error-handler.js';
 
 // Best-effort: a failed delete leaves a staged object for the lifecycle rule, but say so.
@@ -74,6 +75,44 @@ export function sniffUploadType(b: Buffer): UploadKind | null {
   return null;
 }
 
+/**
+ * Width/height from an image's header bytes (PNG IHDR, WebP VP8/VP8L/VP8X, JPEG SOF) — no
+ * decode. null when the head is too short or the layout is unknown (H5-3, RC-141).
+ */
+export function imageDimensions(b: Buffer): { width: number; height: number } | null {
+  const kind = sniffUploadType(b);
+  if (kind === 'image/png' && b.length >= 24 && b.toString('latin1', 12, 16) === 'IHDR') {
+    return { width: b.readUInt32BE(16), height: b.readUInt32BE(20) };
+  }
+  if (kind === 'image/webp' && b.length >= 30) {
+    const chunk = b.toString('latin1', 12, 16);
+    if (chunk === 'VP8X') {
+      return { width: 1 + b.readUIntLE(24, 3), height: 1 + b.readUIntLE(27, 3) };
+    }
+    if (chunk === 'VP8L' && b[20] === 0x2f) {
+      const bits = b.readUInt32LE(21);
+      return { width: 1 + (bits & 0x3fff), height: 1 + ((bits >>> 14) & 0x3fff) };
+    }
+    if (chunk === 'VP8 ') {
+      return { width: b.readUInt16LE(26) & 0x3fff, height: b.readUInt16LE(28) & 0x3fff };
+    }
+  }
+  if (kind === 'image/jpeg') {
+    let i = 2;
+    while (i + 9 <= b.length && b[i] === 0xff) {
+      const marker = b[i + 1] as number;
+      if (marker === 0xff)
+        i += 1; // fill byte
+      else if (marker === 0x01 || (marker >= 0xd0 && marker <= 0xd8))
+        i += 2; // no length field
+      else if (marker >= 0xc0 && marker <= 0xcf && ![0xc4, 0xc8, 0xcc].includes(marker)) {
+        return { width: b.readUInt16BE(i + 7), height: b.readUInt16BE(i + 5) };
+      } else i += 2 + b.readUInt16BE(i + 2);
+    }
+  }
+  return null;
+}
+
 /** Image-only sniff for multipart photo bodies (try-on, My Style). HEIC/SVG/anything else → null. */
 export function sniffImageType(b: Buffer): 'image/jpeg' | 'image/png' | 'image/webp' | null {
   const kind = sniffUploadType(b);
@@ -91,6 +130,7 @@ export const UPLOAD_URL_RATE_LIMIT = {
 };
 
 export const STAGING_PREFIX = 'uploads/pending/';
+const HEAD_BYTES = 65_536;
 
 /** Key a presign route hands the client; verifyUpload moves it to `finalKey`. */
 export function stagingKey(finalKey: string): string {
@@ -155,20 +195,29 @@ export async function verifyUpload(
     throw validationError('Invalid upload reference', 'r2_key');
 
   let key = r2Key;
-  let obj = await inspectObject(r2Key);
+  // 64 KB head: enough to reach the dimensions of any normal JPEG/PNG/WebP header.
+  let obj = await inspectObject(r2Key, HEAD_BYTES);
   if (!obj && staged) {
     key = finalKey;
-    obj = await inspectObject(finalKey);
+    obj = await inspectObject(finalKey, HEAD_BYTES);
   }
   if (!obj) throw validationError('Upload not found — please upload the file again', 'r2_key');
 
   const kind = sniffUploadType(obj.head);
-  if (obj.size > maxBytes || !kind || !allowed.includes(kind)) {
+  // ponytail: unreadable dimensions (e.g. a JPEG whose SOF sits past the head) pass; the decode
+  // sites carry sharp's limitInputPixels. Fail closed here if ffmpeg-fed JPEGs become a concern.
+  const dims = kind && IMAGE_KINDS.includes(kind) ? imageDimensions(obj.head) : null;
+  const tooManyPixels = !!dims && dims.width * dims.height > MAX_IMAGE_PIXELS;
+  if (obj.size > maxBytes || !kind || !allowed.includes(kind) || tooManyPixels) {
     // ponytail: only a staged object is deleted on reject — a final key may be a
     // live object another row points at (e.g. confirmed at the wrong endpoint).
     if (key !== finalKey) await dropStaged(key);
     throw validationError(
-      obj.size > maxBytes ? 'File too large' : 'File is not an allowed image or document type',
+      obj.size > maxBytes
+        ? 'File too large'
+        : tooManyPixels
+          ? 'Image dimensions are too large'
+          : 'File is not an allowed image or document type',
       'r2_key',
     );
   }

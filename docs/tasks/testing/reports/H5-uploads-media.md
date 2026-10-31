@@ -29,7 +29,7 @@ sed -n … catalog-import.ts, detector.ts, generate-ken-burns-video.ts, retailer
 | Low | 2 | H5-4, H5-5 |
 | Not exploitable (attack disproved) | 7 | A1–A7 below |
 
-All 5 findings are **Plausible** (code-only). None applied.
+All 5 findings are **Plausible** (code-only). H5-3 is **Fixed locally (RC-141), not deployed**; the other four are not applied.
 
 ## Findings table
 
@@ -149,7 +149,7 @@ Fix: cap at the gate, so every consumer is covered, and belt-and-braces at decod
 +  if (obj.size > maxBytes || !kind || !allowed.includes(kind) || tooManyPixels) {
 ```
 with `const MAX_PIXELS = 40_000_000; // ponytail: ~8K×5K, above any phone camera` and `import sharp from 'sharp'`. Also pass `{ limitInputPixels: 40_000_000 }` to every `sharp(input)` call in `packages/ai` (schedule-templates, my-style-vision, compress helper), and to ffmpeg either pre-resize with sharp or add `-max_pixels` via the `scale` input. Check before applying: JPEG files with a large EXIF/APP1 block may need more than 64 KB of head. Decide whether a failed metadata read should reject (fail closed, as drafted) or skip.
-Status: Plausible
+Status: Fixed (RC-141), not deployed. As built: header-dimension check in `verifyUpload` (hand-written PNG/WebP/JPEG parser, 64 KB head, fail-open on unreadable dimensions) instead of `sharp().metadata()`, because `apps/api` has no sharp dependency and its tests mock `@kanchuki/ai`; `MAX_IMAGE_PIXELS` (40 MP) lives in `@kanchuki/shared`; `limitInputPixels` added to the compressor, `readPhoto` and all six template inputs. `watermark.ts` already had its own cap. ffmpeg (Ken Burns) is not separately capped: it reads only gated product photos, but a JPEG with unreadable dimensions could still reach it.
 
 ---
 

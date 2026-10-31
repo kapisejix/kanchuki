@@ -166,6 +166,10 @@ export const SIZE_OPTIONS = [
 export const FREE_SIZE = 'FREE';
 export const MAX_STOCK_QUANTITY = 99_999;
 
+// Pixel cap for untrusted images (H5-3, RC-141). The API upload gate reads dimensions from the
+// header, and packages/ai passes it as sharp's `limitInputPixels`. ~8K×5K, above any phone camera.
+export const MAX_IMAGE_PIXELS = 40_000_000;
+
 // ─── Color Swatch Resolution ──────────────────────────────────────
 // Common Indian-fashion color names aren't valid CSS/RN color keywords
 // (e.g. "Bottle Green", "Rani Pink", "Mustard") — used directly as a
