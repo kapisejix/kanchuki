@@ -84,8 +84,9 @@ export function recordAiUsage(retailerId: string, opts: { meter?: boolean } = {}
  * is logged (credits stay reserved until the period ends), never thrown over the caller's result.
  * An unlimited plan reserves nothing, and its spend is still counted (as before).
  */
-export async function reserveTaggingQuota(retailerId: string) {
-  const reserved = await reserveAiCredits();
+export async function reserveTaggingQuota(retailerId: string, calls = 1) {
+  // `calls` = how many provider calls the route may make; all of them are reserved up front.
+  const reserved = (await reserveAiCredits()) * calls;
   const refund = await reserveQuota(retailerId, 'AI_TAGGING_CALL', reserved);
   const record = recordAiUsage(retailerId, { meter: false });
   let spent = 0;

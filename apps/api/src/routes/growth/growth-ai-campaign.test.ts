@@ -96,7 +96,7 @@ describe('POST /v1/growth/ai-campaign — tagging quota', () => {
     mockCustomerFindMany.mockResolvedValue([]);
     const res = await post();
     expect(res.statusCode).toBe(200);
-    expect(mockReserveTaggingQuota).toHaveBeenCalledWith(RETAILER_ID);
+    expect(mockReserveTaggingQuota).toHaveBeenCalledWith(RETAILER_ID, 2);
     expect(mockRunVisionAsk).toHaveBeenNthCalledWith(1, expect.any(String), {
       onProviderUsed: quota.onProviderUsed,
     });
