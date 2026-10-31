@@ -265,8 +265,6 @@ describe('referral is additive to the response', () => {
 describe('PUT /me — secrets stay server-side (H2-5)', () => {
   const SECRET_COLUMNS = [
     'whatsapp_api_access_token',
-    'gmb_access_token',
-    'gmb_refresh_token',
     'fb_ads_access_token',
     'google_ads_refresh_token',
     'google_ads_developer_token',

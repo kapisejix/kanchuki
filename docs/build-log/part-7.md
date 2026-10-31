@@ -227,3 +227,13 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Tests | API `tsc` clean; full vitest 2565 passed / 5 skipped; web `tsc` clean; mobile 218 passed (+ the pre-existing `__DEV__` suite failure in `smoke/rc-screens.test.tsx`); mobile `tsc` shows only the pre-existing `/enquiries` and `/enquiry-try-on` route-type errors. New: `google-business.test.ts`, `admin-gbp.test.ts`, `retailers-google-business.test.ts`, `retailers-setup-checklist.test.ts`, `retailers-ratings.google-place.test.ts`, `team-tickets.test.ts`, `google-place.test.ts`, mobile `google-listing.test.ts`. |
 | Not verified | Nothing has run against real Google (no OAuth client, no `business.manage` API access yet). No device test, no browser check of `/admin/gbp`. Migrations not applied. |
 | Owner steps | Google Cloud project + OAuth client + Business Profile API access request, Places API key; env vars `GOOGLE_PLACES_API_KEY`, `GOOGLE_GBP_CLIENT_ID`, `GOOGLE_GBP_CLIENT_SECRET`, `GOOGLE_GBP_REDIRECT_URI`, `GBP_MANAGER_EMAIL`; then a Super Admin connects Google and enables `GOOGLE_BUSINESS_PROFILE` per plan only after Google approves. |
+
+## 2026-10-31 - Dead `retailers.gmb_*` columns dropped from the schema (RC-159 drift cleanup)
+
+| Area | Change |
+|---|---|
+| Schema | Six `gmb_*` fields removed from the `Retailer` model in `packages/db/prisma/schema.prisma` (`gmb_account_id`, `gmb_location_id`, `gmb_access_token`, `gmb_refresh_token`, `gmb_token_expiry`, `gmb_configured_at`). Nothing read or wrote them since RC-101. |
+| Migration | `146_drop_gmb_columns` drops them with `IF EXISTS` (only `gmb_configured_at` ever had a migration, 071). Written, NOT applied by the agent. Owner ran the check first: zero rows held a value in any of the six. |
+| Code | `RETAILER_SECRET_FIELDS` no longer lists the two gmb tokens; fixtures in `retailers-dto.test.ts`, `retailers-me-features.test.ts`, `retailers-profile.test.ts` updated. New test in `retailers-dto.test.ts`: the Retailer model has no `gmb_` column (red first as `it.fails`, falsified by injecting a `gmb_probe` column). |
+| Tests | API `tsc` clean; full API vitest 2859 passed / 9 skipped; API biome lint 0 errors (2 pre-existing warnings in `passport-otp.test.ts`); `prisma validate` and `generate` OK. |
+| Not verified | Migration 146 not applied and not replayed on a scratch DB. Order is safe either way: Prisma ignores extra DB columns, so the code can deploy before 146 is applied. No RC minted (cleanup, not a bug); progress noted under RC-159. |

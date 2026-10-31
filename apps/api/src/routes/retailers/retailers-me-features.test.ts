@@ -65,8 +65,6 @@ beforeEach(() => {
 // belongs on a profile response that managers, salespeople and support delegates can fetch.
 const SECRET_COLUMNS = [
   'whatsapp_api_access_token',
-  'gmb_access_token',
-  'gmb_refresh_token',
   'fb_ads_access_token',
   'google_ads_refresh_token',
   'google_ads_developer_token',

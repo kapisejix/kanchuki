@@ -6,8 +6,6 @@
 export const RETAILER_SECRET_FIELDS = [
   'auth_user_id',
   'whatsapp_api_access_token',
-  'gmb_access_token',
-  'gmb_refresh_token',
   'fb_ads_access_token',
   'google_ads_refresh_token',
   'google_ads_developer_token',
