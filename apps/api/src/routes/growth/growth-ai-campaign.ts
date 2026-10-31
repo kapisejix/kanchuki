@@ -59,7 +59,7 @@ export const growthAiCampaignRoutes: FastifyPluginAsync = async (server) => {
     // Step 1: Parse intent with AI. H6-2/RC-158: reserve the worst-case credits first (a capped
     // retailer is refused before any AI call), meter both AI calls through the same hook and give
     // back the unspent part in the finally (all of it when no provider served).
-    const quota = await reserveTaggingQuota(retailerId);
+    const quota = await reserveTaggingQuota(retailerId, 2);
     try {
       let intent: CampaignIntent;
       try {

@@ -92,6 +92,23 @@ describe('reserveTaggingQuota', () => {
     expect(count()).toBe(8);
   });
 
+  // Two-call routes (ai-campaign) reserve both calls' worst case, so spend cannot overshoot the cap.
+  it('calls = 2 reserves 2 x worst case: 3 callers, limit 10, worst 4: only 1 gets in', async () => {
+    const results = await Promise.allSettled(
+      Array.from({ length: 3 }, () => reserveTaggingQuota('ret1', 2)),
+    );
+    expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
+    expect(count()).toBe(8);
+  });
+
+  it('calls = 2 settles down to what both calls charged', async () => {
+    const q = await reserveTaggingQuota('ret1', 2);
+    q.onProviderUsed(served(1));
+    q.onProviderUsed(served(1));
+    await q.settle();
+    expect(count()).toBe(2);
+  });
+
   it('settles down to what the serving provider charged', async () => {
     const q = await reserveTaggingQuota('ret1');
     q.onProviderUsed(served(1));
