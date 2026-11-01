@@ -194,3 +194,13 @@ describe.each([204, 205, 304])('a null-body upstream status (%i)', (status) => {
     expect(res.status).toBe(status)
   })
 })
+
+describe('allowlist has no entry without an API route or caller (T2.5 F5)', () => {
+  it.each([
+    ['GET', 'profile'],
+    ['POST', 'profile'],
+  ] as const)('%s %s answers 404 and never reaches the API', async (method, path) => {
+    expect((await call(method, path.split('/'), method === 'POST' ? { body: '{}' } : {})).status).toBe(404)
+    expect(upstream).not.toHaveBeenCalled()
+  })
+})

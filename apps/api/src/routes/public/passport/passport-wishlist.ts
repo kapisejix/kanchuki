@@ -89,25 +89,4 @@ export const passportWishlistRoutes: FastifyPluginAsync = async (server) => {
 
     return reply.status(200).send({ ok: true });
   });
-  // ─── DELETE /passport/wishlist/:productId ───────────────────────
-  // Remove a product from the wishlist.
-  server.delete('/wishlist/:productId', async (request, reply) => {
-    const session = await getPassportSession(request.headers.cookie || '');
-    if (!session) {
-      return reply
-        .status(401)
-        .send({ error: { code: 'NO_SESSION', message: 'Not authenticated' } });
-    }
-
-    const { productId } = request.params as { productId: string };
-
-    await prisma.customerWishlistItem.deleteMany({
-      where: {
-        customer_account_id: session.customer_account_id,
-        product_id: productId,
-      },
-    });
-
-    return reply.status(200).send({ ok: true });
-  });
 };
