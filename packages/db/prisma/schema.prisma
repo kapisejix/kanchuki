@@ -408,7 +408,7 @@ model Retailer {
   @@index([territory_id])
 @@index([is_suspended])
    @@index([is_featured])
-// Location for geo-targeting and GMB
+// Location for geo-targeting (migration 147 backfills these two columns + index)
    latitude   Float?
    longitude  Float?
    @@index([latitude, longitude])
@@ -2121,6 +2121,8 @@ enum SocialPostType {
 enum SocialPostStatus {
   POSTED
   FAILED
+  SCHEDULED // added to the DB enum by migration 090; unused on SocialPost (scheduler has its own enums)
+  DRAFT // same
 }
 
 model SocialPost {
