@@ -6,7 +6,7 @@ import { createHash } from 'node:crypto';
 import { prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
 import { z } from 'zod';
-import { getPassportSession, passportCookieId } from './passport-helpers.js';
+import { getPassportSession, hashSessionId, passportCookieId } from './passport-helpers.js';
 
 // Feature names the web screens send. A closed list so a caller cannot file reports
 // under an arbitrary label in the admin queue.
@@ -29,10 +29,26 @@ const ACCOUNT_DAILY_CAP = 20;
 // the whole class per hour rather than pretend to a per-visitor limit.
 const ANON_HOURLY_CAP = 100;
 
-// Same keying as reviews (RC-099): key the limit on the session, not request.ip.
-function limitKey(request: FastifyRequest): string {
+// Key the limit on the session only when the cookie maps to a live one. An unchecked cookie
+// value is attacker-chosen, so every fake value would mint its own bucket and the limit would
+// never apply. Anything unverifiable falls back to request.ip — which, until the proxy
+// forwards a trusted client IP (RC-084), is one shared bucket for all anonymous traffic.
+async function limitKey(request: FastifyRequest): Promise<string> {
   const sid = passportCookieId(request.headers.cookie ?? '');
-  return sid ? `sess:${createHash('sha256').update(sid).digest('hex')}` : `ip:${request.ip}`;
+  if (sid) {
+    try {
+      const row = await prisma.passportSession.findUnique({
+        where: { id: hashSessionId(sid) },
+        select: { id: true, revoked_at: true, expires_at: true },
+      });
+      if (row && !row.revoked_at && row.expires_at > new Date()) {
+        return `sess:${createHash('sha256').update(row.id).digest('hex')}`;
+      }
+    } catch {
+      // DB hiccup: fall through to the IP key rather than fail the request.
+    }
+  }
+  return `ip:${request.ip}`;
 }
 
 const LIMIT = { config: { rateLimit: { max: 10, timeWindow: 60 * 1000, keyGenerator: limitKey } } };
