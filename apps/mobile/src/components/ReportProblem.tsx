@@ -45,6 +45,12 @@ type Props = {
   screenName?: string;
   /** Previous screen for navigation trail */
   lastScreen?: string;
+  /**
+   * Set when reporting a piece of AI-generated content (Google Play AI-content
+   * policy). Text only — the output itself is never attached, so a try-on
+   * picture that is meant to be deleted does not leave the device.
+   */
+  aiContent?: { feature: string; ref?: string };
 };
 
 const SEVERITY_OPTIONS: {
@@ -64,6 +70,7 @@ export function ReportProblem({
   errorContext,
   screenName,
   lastScreen,
+  aiContent,
 }: Props) {
   const insets = useSafeAreaInsets();
   const [description, setDescription] = useState("");
@@ -161,12 +168,14 @@ export function ReportProblem({
         "unknown";
 
       await bugReportApi.submit({
-        description: description.trim().slice(0, 4000),
+        description: aiContent
+          ? `[AI content report: ${aiContent.feature}${aiContent.ref ? ` · ${aiContent.ref}` : ""}] ${description.trim().slice(0, 3800)}`
+          : description.trim().slice(0, 4000),
         severity,
         app_version: appVersion.slice(0, 100),
         os_version: osVersion.slice(0, 100),
         device_model: `${Platform.OS} ${Platform.Version} (${Platform.OS === "android" ? (Constants.expoConfig?.android?.package ?? "unknown") : (Constants.expoConfig?.ios?.bundleIdentifier ?? "unknown")})`.slice(0, 300),
-        screen_name: screenName?.slice(0, 100),
+        screen_name: (aiContent?.feature ?? screenName)?.slice(0, 100),
         last_screen: lastScreen?.slice(0, 100),
         error_message: errorContext?.errorMessage?.slice(0, 2000),
         error_stack: errorContext?.errorStack?.slice(0, 10000),
@@ -189,6 +198,7 @@ export function ReportProblem({
     screenName,
     lastScreen,
     errorContext,
+    aiContent,
   ]);
 
   if (submitted) {
@@ -241,7 +251,7 @@ export function ReportProblem({
                 <Bug size={18} color={COLORS.danger} />
               </View>
               <Text className="text-lg font-bold text-sand-900">
-                Report a Problem
+                {aiContent ? "Report AI Content" : "Report a Problem"}
               </Text>
             </View>
             <AnimatedPressable
@@ -272,7 +282,9 @@ export function ReportProblem({
             {/* Description */}
             <View className="mb-4">
               <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-1.5">
-                What went wrong? *
+                {aiContent
+                  ? "What is wrong with this AI-generated content? *"
+                  : "What went wrong? *"}
               </Text>
               <TextInput
                 value={description}

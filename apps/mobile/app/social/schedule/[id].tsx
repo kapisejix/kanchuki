@@ -16,6 +16,7 @@ import { AnimatedPressable } from '../../../src/components/AnimatedPressable';
 import { DangerButton } from '../../../src/components/DangerButton';
 import { GradientButton } from '../../../src/components/GradientButton';
 import { KeyboardScreen } from '../../../src/components/KeyboardScreen';
+import { ReportAiContent } from '../../../src/components/ReportAiContent';
 import { WHITE_BUTTON_INK, WhiteButton } from '../../../src/components/WhiteButton';
 import { ProductGridPicker } from '../../../src/components/social';
 import type { ComposeProduct } from '../../../src/components/social/types';
@@ -250,6 +251,10 @@ function PostCard({
             onPress={() => act.mutate({ action: 'skip' })}
           />
         </View>
+      ) : null}
+      {/* Plan captions are AI-filled by default, so offer the report here. */}
+      {editable && caption.trim().length > 0 ? (
+        <ReportAiContent feature="AI caption (scheduler)" contentRef={post.id} />
       ) : null}
     </View>
   );

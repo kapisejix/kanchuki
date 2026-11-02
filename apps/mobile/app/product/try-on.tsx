@@ -14,6 +14,7 @@ import { useScreenInsets } from '../../src/lib/safe-area'
 import { GradientButton } from '../../src/components/GradientButton'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { TryOnConsent } from '../../src/components/TryOnConsent'
+import { ReportAiContent } from '../../src/components/ReportAiContent'
 
 // F-040 — in-store virtual try-on (retailer app).
 //
@@ -272,6 +273,7 @@ export default function TryOnScreen() {
                   />
                 </View>
               </View>
+              <ReportAiContent feature="Virtual try-on" contentRef={productId} dark />
             </>
           ) : (
             <>

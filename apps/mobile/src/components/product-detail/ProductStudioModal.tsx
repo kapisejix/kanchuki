@@ -14,6 +14,7 @@ import { STUDIO_CREDITS_PER_IMAGE, demographicForCategory } from '@kanchuki/shar
 import { productApi } from '../../lib/api'
 import { AnimatedPressable } from '../AnimatedPressable'
 import { GradientButton } from '../GradientButton'
+import { ReportAiContent } from '../ReportAiContent'
 
 type StudioStatus = 'processing' | 'ready' | 'failed' | null
 
@@ -226,6 +227,7 @@ export function ProductStudioModal({
             >
               <Text className="text-xs font-bold text-sand-600">Keep as extra photo</Text>
             </AnimatedPressable>
+            <ReportAiContent feature="AI Studio Shoot" contentRef={productId} />
           </View>
         </View>
       )

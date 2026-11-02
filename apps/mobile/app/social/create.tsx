@@ -22,6 +22,7 @@ import {
 } from 'react-native';
 import { AnimatedPressable } from '../../src/components/AnimatedPressable';
 import { ScreenHeader } from '../../src/components/ScreenHeader';
+import { ReportAiContent } from '../../src/components/ReportAiContent';
 import { BrandIcon } from '../../src/components/BrandIcon';
 import { GradientButton } from '../../src/components/GradientButton';
 import {
@@ -1213,6 +1214,9 @@ export default function CreateSocialPostScreen() {
                 )}
                 <Text className="text-[10px] text-sand-400">{caption.length}/2200</Text>
               </View>
+              {lastAiFill.current === caption && caption.length > 0 && (
+                <ReportAiContent feature="AI caption" />
+              )}
             </View>
 
             {sectionTitle(
