@@ -80,6 +80,20 @@ export async function getPassportSession(cookieHeader: string) {
   return session;
 }
 
+/**
+ * A rate-limit bucket id for a cookie, or null unless it maps to a live session. Read-only (no
+ * sliding, no delete), so it is safe in a keyGenerator that runs before the handler. Lives here
+ * because only this file may touch passport_sessions (RC-154 guard).
+ */
+export async function verifiedSessionKey(cookieId: string): Promise<string | null> {
+  const row = await prisma.passportSession.findUnique({
+    where: { id: hashSessionId(cookieId) },
+    select: { id: true, revoked_at: true, expires_at: true },
+  });
+  if (!row || row.revoked_at || row.expires_at < new Date()) return null;
+  return row.id;
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────
 
 /** product id → owning retailer id. H4-5/RC-095: never trust a client retailer_id. */

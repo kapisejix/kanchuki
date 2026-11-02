@@ -167,6 +167,11 @@ export const passportDataRoutes: FastifyPluginAsync = async (server) => {
       data: anon,
     });
     await prisma.storeReview.updateMany({ where: { customer_account_id: accountId }, data: anon });
+    // AI-content reports (Play policy): unlink from the account, keep the report text for moderation.
+    await prisma.aiContentReport.updateMany({
+      where: { customer_account_id: accountId },
+      data: { customer_account_id: null },
+    });
 
     // Stop push to every browser of this account (F-036). Soft-disable, RC-049.
     await prisma.customerPushSubscription.updateMany({

@@ -15,6 +15,7 @@ const m = vi.hoisted(() => ({
   sessionUpdateMany: vi.fn(),
   prUpdateMany: vi.fn(),
   srUpdateMany: vi.fn(),
+  aiReportUpdateMany: vi.fn(),
 }));
 
 vi.mock('@kanchuki/db', () => ({
@@ -25,6 +26,7 @@ vi.mock('@kanchuki/db', () => ({
     passportSession: { updateMany: m.sessionUpdateMany },
     productReview: { updateMany: m.prUpdateMany },
     storeReview: { updateMany: m.srUpdateMany },
+    aiContentReport: { updateMany: m.aiReportUpdateMany },
   },
 }));
 vi.mock('../passport-helpers.js', () => ({
@@ -62,6 +64,14 @@ describe('POST /passport/delete — reviews', () => {
     };
     expect(m.prUpdateMany).toHaveBeenCalledWith(expected);
     expect(m.srUpdateMany).toHaveBeenCalledWith(expected);
+  });
+
+  it('unlinks the account from its AI-content reports, keeping the report text', async () => {
+    await del();
+    expect(m.aiReportUpdateMany).toHaveBeenCalledWith({
+      where: { customer_account_id: 'ca_1' },
+      data: { customer_account_id: null },
+    });
   });
 
   it('401 without a session and touches no review', async () => {

@@ -246,3 +246,13 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Mobile | `ReportProblem` takes `aiContent` (retitles the sheet, prefixes the description `[AI content report: feature · id]`, no image attached). New `ReportAiContent` button on: AI Studio Shoot result, retailer try-on result, in-store enquiry try-on gallery, composer AI caption, scheduler caption. No API or migration change (reuses `/v1/retailers/me/bug-reports`). |
 | Tests | New source-pin test `__tests__/ai-content-report.test.ts`; shared setup gained an `expo-image-picker` mock. Mobile `tsc` clean, vitest 543/543. |
 | Not verified | No device test, no EAS build. Web PWA surfaces, admin triage and the Play Console declaration are open - see `docs/tasks/pending/ai-content-reporting.md`. Videos skipped on purpose (`KEN_BURNS` is a photo slideshow, not generative AI). |
+
+## 2026-11-02 - Web PWA "Report this AI content" + migration 148
+
+| Area | Change |
+|---|---|
+| Schema | `ai_content_reports` (migration `148`, written, NOT applied): nullable `customer_account_id` (anonymous = AI Stylist visitors), `feature`, `content_ref`, `description`, `status`. RLS policy as 144. |
+| API | `POST /v1/public/passport/ai-report`: closed feature list, 10-2000 char text, session identity only, 20/24 h per account and 100/h for all anonymous reports. Account delete unlinks reports (soft delete, so no FK cascade). |
+| Web | Inline `ReportAiContent` on AI Stylist, customer try-on, My Style selfie / find similar / complete the look; proxy allowlist gains `ai-report`. |
+| Tests | API 2873 passed; web component test 3/3; web `tsc` clean. 10 unrelated web test files fail identically on a clean tree. |
+| Not verified | Migration unapplied, so the route 500s until the owner applies it. No admin screen for these reports. No browser/device test. See `docs/tasks/pending/ai-content-reporting.md`. |

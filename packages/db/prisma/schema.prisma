@@ -2920,6 +2920,7 @@ model CustomerAccount {
   push_subscriptions  CustomerPushSubscription[]
   product_reviews     ProductReview[]
   store_reviews       StoreReview[]
+  ai_content_reports  AiContentReport[]
 
   @@map("customer_accounts")
 }
@@ -3182,3 +3183,21 @@ model CustomerEngagementSummary {
 }
 
 // Nightly precomputed store-discovery score per shopper (§16.4)
+
+// Shopper "Report this AI content" (Google Play AI-Generated Content policy). Text only:
+// the AI output itself is never stored here. Retailer-side reports use BugReport.
+model AiContentReport {
+  id                  String   @id @default(cuid())
+  customer_account_id String? // NULL = anonymous visitor (AI Stylist has no sign-in)
+  feature             String // e.g. "My Style selfie analysis", "AI Stylist"
+  content_ref         String? // store slug / product id, when the screen has one
+  description         String
+  status              String   @default("NEW") // NEW | REVIEWED
+  created_at          DateTime @default(now())
+
+  customer_account CustomerAccount? @relation(fields: [customer_account_id], references: [id], onDelete: Cascade)
+
+  @@index([created_at])
+  @@index([customer_account_id, created_at])
+  @@map("ai_content_reports")
+}
