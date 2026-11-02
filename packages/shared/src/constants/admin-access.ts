@@ -110,6 +110,7 @@ export const SUPER_ADMIN_ONLY_ADMIN_SEGMENTS = [
 export const STANDARD_ADMIN_ADMIN_SEGMENTS = [
   'activity', // audit-logging of day-to-day admin actions
   'aggregators', // retailer aggregator sync config — ops, not pricing
+  'ai-content-reports', // shopper "Report this AI content" queue (Play AI-content policy); phones masked
   'alerts', // admin alert feed (admin-settings/notifications.ts, GET /alerts)
   'background-images', // studio backdrop library (content)
   'bug-reports', // triage inbox
