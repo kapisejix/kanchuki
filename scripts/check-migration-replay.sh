@@ -16,7 +16,12 @@ case "$DATABASE_URL" in
   *) echo "refusing: DATABASE_URL is not localhost" >&2; exit 2 ;;
 esac
 
-KNOWN="009_revocation_token 015_public_write_rls_hardening"
+# "migration::error text it must fail with". A pinned migration failing any other way is a new bug.
+KNOWN=(
+  '009_revocation_token::column "revocation_token" of relation "training_photo_consents" already exists'
+  '015_public_write_rls_hardening::schema "extensions" does not exist'
+)
+hits=0
 prisma() { pnpm --filter @kanchuki/db exec prisma "$@"; }
 
 # Supabase pieces the history assumes. No privileges: grants/RLS are created, not exercised.
@@ -44,17 +49,24 @@ for _ in 1 2 3; do
     break
   fi
   hit=""
-  for m in $KNOWN; do
-    if grep -q "$m" <<<"$out"; then hit="$m"; break; fi
+  for k in "${KNOWN[@]}"; do
+    if grep -qF "${k%%::*}" <<<"$out" && grep -qF "${k#*::}" <<<"$out"; then hit="${k%%::*}"; break; fi
   done
   if [ -z "$hit" ]; then
     echo "$out" >&2
-    echo "FAIL: a migration outside the known RC-159 set failed to replay" >&2
+    echo "FAIL: a migration outside the known RC-159 set (or a known one with a different error) failed to replay" >&2
     exit 1
   fi
   echo "known RC-159 failure, marking applied: $hit"
   prisma migrate resolve --applied "$hit"
+  hits=$((hits + 1))
 done
+
+# A pin that no longer fails means its migration was fixed: drop it from KNOWN.
+if [ "$hits" -ne "${#KNOWN[@]}" ]; then
+  echo "FAIL: ${#KNOWN[@]} known failures pinned but only $hits occurred; remove the fixed one(s) from KNOWN" >&2
+  exit 1
+fi
 
 # Must be clean now (also catches the loop running out of passes).
 prisma migrate deploy >/dev/null
