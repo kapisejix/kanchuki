@@ -1,6 +1,6 @@
 # AI-generated content reporting (Google Play AI-Generated Content policy)
 
-**Status:** 🟨 Mobile buttons built 2026-11-02 on `feat/ai-content-report-buttons` — not device-tested, no EAS build yet. Web PWA, admin triage and Play Console declaration still open.
+**Status:** 🟨 Merged to `main` 2026-11-02 (PRs #221 mobile, #222 web + API, #223 admin queue; migration 148 applied by owner). Not device/browser-tested, no EAS build yet. Play Console declaration still open.
 
 ## Why
 
