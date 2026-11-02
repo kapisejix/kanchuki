@@ -156,7 +156,14 @@ export const teamReportingRoutes: FastifyPluginAsync = async (server) => {
       ? { deleted_at: null }
       : { deleted_at: null, territory_id: { in: tm.territoryIds } };
 
-    const [total, onboarded, trial, active, cancelled] = await Promise.all([
+    // Trial→paid conversion is a cohort rate: of retailers whose trial has
+    // finished (or who already paid), how many ever made a successful payment.
+    // Not active ÷ current-trial — that mixes two different populations and
+    // can exceed 100%. Trials still running are excluded: they haven't had the
+    // chance to convert yet.
+    const paidWhere = { subscriptions: { some: { payments: { some: { status: 'success' } } } } };
+
+    const [total, onboarded, trial, active, cancelled, converted, trialCohort] = await Promise.all([
       prisma.retailer.count({ where: baseWhere }),
       prisma.retailer.count({ where: { ...baseWhere, onboarding_completed: true } }),
       prisma.retailer.count({ where: { ...baseWhere, plan_status: 'TRIAL' as const } }),
@@ -170,6 +177,13 @@ export const teamReportingRoutes: FastifyPluginAsync = async (server) => {
       prisma.retailer.count({
         where: { ...baseWhere, plan_status: { in: ['CANCELLED', 'COMPLETED'] } },
       }),
+      prisma.retailer.count({ where: { ...baseWhere, ...paidWhere } }),
+      prisma.retailer.count({
+        where: {
+          ...baseWhere,
+          OR: [{ trial_ends_at: { lte: new Date() } }, paidWhere],
+        },
+      }),
     ]);
 
     return {
@@ -180,7 +194,7 @@ export const teamReportingRoutes: FastifyPluginAsync = async (server) => {
         active_subscription: active,
         cancelled,
         onboarding_rate: total > 0 ? Math.round((onboarded / total) * 100) : 0,
-        trial_to_active_rate: trial > 0 ? Math.round((active / trial) * 100) : 0,
+        trial_to_active_rate: trialCohort > 0 ? Math.round((converted / trialCohort) * 100) : 0,
       },
     };
   });

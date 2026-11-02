@@ -91,8 +91,8 @@ type TestWindow = Window & {
 const NAV_PAGES = [
   { group: 'Retailers & Network', link: 'Retailers', heading: 'Retailers', url: /\/admin\/retailers$/ },
   { group: 'Retailers & Network', link: 'Customers', heading: 'Customers', url: /\/admin\/customers$/ },
-  { group: 'Reports & Finance', link: 'Billing & Invoices', heading: 'Billing', url: /\/admin\/billing$/ },
-  { group: 'Reports & Finance', link: 'Overview', heading: 'Manager Reports', url: /\/admin\/reports$/ },
+  { group: 'Finance', link: 'Billing & Invoices', heading: 'Billing', url: /\/admin\/billing$/ },
+  { group: 'Reports', link: 'Overview', heading: 'Manager Reports', url: /\/admin\/reports$/ },
 ]
 
 test('admin pages swap the content area in place — no full page reload', async ({ page }) => {
@@ -177,11 +177,11 @@ test('admin pages swap the content area in place — no full page reload', async
   }
 
   // Final hop into a superAdmin-only page — Plan Limits sits in the
-  // Reports & Finance flyout (the old top-level Plans group was folded into
-  // it in the sidebar redesign), same hover + keyboard activation mechanics
-  // as the loop above.
+  // Finance flyout (the old top-level Plans group was folded into it in the
+  // sidebar redesign), same hover + keyboard activation mechanics as the
+  // loop above.
   await page.mouse.move(0, 0)
-  await page.getByRole('button', { name: 'Reports & Finance', exact: true }).hover()
+  await page.getByRole('button', { name: 'Finance', exact: true }).hover()
   const planLimits = page.getByRole('link', { name: 'Plan Limits', exact: true })
   await expect(planLimits).toBeVisible()
   await planLimits.focus()

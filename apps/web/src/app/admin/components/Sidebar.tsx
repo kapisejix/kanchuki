@@ -88,22 +88,28 @@ const NAV_ITEMS: NavItem[] = [
     ],
   },
   {
-    label: 'Catalog & Creative',
+    label: 'Catalog',
     icon: Package,
     children: [
       { label: 'Default Categories', href: '/admin/default-categories', icon: LayoutGrid },
       { label: 'Default Attributes', href: '/admin/default-attributes', icon: Tags },
+      { label: 'Catalog Upload Tiers', href: '/admin/catalog-upload-tiers', icon: Package },
       { label: 'Suits Designs', href: '/admin/suits-designs', icon: Sparkles },
       { label: 'Design Categories', href: '/admin/suits-design-categories', icon: Tags },
-      { label: 'Festivals', href: '/admin/festivals', icon: CalendarDays },
+      { label: 'Ratings & Reviews', href: '/admin/ratings', icon: Star },
+    ],
+  },
+  {
+    label: 'Creative',
+    icon: Palette,
+    children: [
+      { label: 'Studio Styles', href: '/admin/studio-styles', icon: Clapperboard },
+      { label: 'Photo Cleanup Test', href: '/admin/photo-cleanup-test', icon: Wand2 },
       { label: 'My Style', href: '/admin/my-style', icon: Palette },
+      { label: 'Festivals', href: '/admin/festivals', icon: CalendarDays },
       { label: 'Social Templates', href: '/admin/social-templates', icon: Share2 },
       { label: 'Social Publishing', href: '/admin/social', icon: Megaphone },
-      { label: 'Catalog Upload Tiers', href: '/admin/catalog-upload-tiers', icon: Package },
-      { label: 'Ratings & Reviews', href: '/admin/ratings', icon: Star },
       { label: 'Google Business', href: '/admin/gbp', icon: MapPin },
-      { label: 'Photo Cleanup Test', href: '/admin/photo-cleanup-test', icon: Wand2 },
-      { label: 'Studio Styles', href: '/admin/studio-styles', icon: Clapperboard },
     ],
   },
   {
@@ -119,11 +125,30 @@ const NAV_ITEMS: NavItem[] = [
     ],
   },
   {
-    label: 'Reports & Finance',
+    label: 'Reports',
     icon: BarChart3,
     children: [
       { label: 'Overview', href: '/admin/reports', icon: BarChart3 },
       { label: 'GST Reports', href: '/admin/reports/gst', icon: Receipt },
+      { label: 'AI Usage', href: '/admin/ai-usage', icon: Bot, superAdminOnly: true },
+      {
+        label: 'Try-On GPU Usage',
+        href: '/admin/try-on-usage',
+        icon: Cpu,
+        superAdminOnly: true,
+      },
+      {
+        label: 'Storage Report',
+        href: '/admin/storage-report',
+        icon: DatabaseBackup,
+        superAdminOnly: true,
+      },
+    ],
+  },
+  {
+    label: 'Finance',
+    icon: CreditCard,
+    children: [
       { label: 'HSN Rules', href: '/admin/hsn-rules', icon: Receipt, superAdminOnly: true },
       {
         label: 'Billing & Invoices',
@@ -161,10 +186,11 @@ const NAV_ITEMS: NavItem[] = [
     ],
   },
   {
-    label: 'Settings & Operations',
+    label: 'Settings',
     icon: Settings,
     superAdminOnly: true,
     children: [
+      { label: 'General Settings', href: '/admin/settings', icon: Settings, superAdminOnly: true },
       {
         label: 'Integrations & API Keys',
         href: '/admin/integrations',
@@ -172,14 +198,6 @@ const NAV_ITEMS: NavItem[] = [
         superAdminOnly: true,
       },
       { label: 'AI Providers', href: '/admin/ai-providers', icon: Bot, superAdminOnly: true },
-      { label: 'AI Usage', href: '/admin/ai-usage', icon: BarChart3, superAdminOnly: true },
-      {
-        label: 'Try-On GPU Usage',
-        href: '/admin/try-on-usage',
-        icon: Cpu,
-        superAdminOnly: true,
-      },
-      { label: 'General Settings', href: '/admin/settings', icon: Settings, superAdminOnly: true },
       { label: 'AI Config', href: '/admin/settings/ai-config', icon: Cpu, superAdminOnly: true },
       {
         label: 'Rate Limits',
@@ -188,6 +206,13 @@ const NAV_ITEMS: NavItem[] = [
         superAdminOnly: true,
       },
       { label: 'Theme', href: '/admin/settings/theme', icon: Palette, superAdminOnly: true },
+    ],
+  },
+  {
+    label: 'Operations',
+    icon: Shield,
+    superAdminOnly: true,
+    children: [
       {
         label: 'Operations Overview',
         href: '/admin/operations',
@@ -235,12 +260,6 @@ const NAV_ITEMS: NavItem[] = [
         label: 'Deletion Vault',
         href: '/admin/database/deletion-vault',
         icon: Archive,
-        superAdminOnly: true,
-      },
-      {
-        label: 'Storage Report',
-        href: '/admin/storage-report',
-        icon: DatabaseBackup,
         superAdminOnly: true,
       },
       {

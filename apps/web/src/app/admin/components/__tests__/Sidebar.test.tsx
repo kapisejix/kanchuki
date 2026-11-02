@@ -39,10 +39,13 @@ describe('Sidebar state', () => {
     for (const label of [
       'Overview',
       'Retailers & Network',
-      'Catalog & Creative',
+      'Catalog',
+      'Creative',
       'Team & Support',
-      'Reports & Finance',
-      'Settings & Operations',
+      'Reports',
+      'Finance',
+      'Settings',
+      'Operations',
     ]) {
       expect(screen.getByRole('button', { name: label })).toBeInTheDocument()
     }
@@ -125,14 +128,14 @@ describe('Sidebar state', () => {
     })
   })
 
-  it('links the Referral Program page under Reports & Finance', () => {
+  it('links the Referral Program page under Finance', () => {
     // Importing the page is half the assertion: a nav entry pointing at a
     // route that does not exist is the RC-025 class of bug, and it renders
     // as a working-looking link right up until somebody clicks it.
     expect(ReferralSettingsPage).toBeTypeOf('function')
 
     renderSidebar()
-    const finance = screen.getByRole('button', { name: 'Reports & Finance' }).closest('div') as HTMLElement
+    const finance = screen.getByRole('button', { name: 'Finance' }).closest('div') as HTMLElement
     fireEvent.mouseEnter(finance)
 
     expect(screen.getByRole('link', { name: 'Referral Program' })).toHaveAttribute(
@@ -157,13 +160,12 @@ describe('Sidebar state', () => {
     expect(screen.getByRole('link', { name: 'Support Tickets' })).toBeInTheDocument()
     fireEvent.mouseLeave(teamSupport)
 
-    // Every child of Reports & Finance is super-admin-only now — `reports` was
-    // the last standard-admin entry in the group — so the Sidebar drops the
-    // group entirely (it filters out empty groups). Asserted so the group's
+    // Every child of Reports and Finance is super-admin-only now — `reports`
+    // was the last standard-admin entry — so the Sidebar drops both groups
+    // entirely (it filters out empty groups). Asserted so the groups'
     // disappearance is a recorded consequence, not a surprise.
-    expect(
-      screen.queryByRole('button', { name: 'Reports & Finance' }),
-    ).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Reports' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Finance' })).not.toBeInTheDocument()
   })
 
   it('keeps Team Members, Overview and GST Reports for a SUPER_ADMIN', () => {
@@ -177,7 +179,7 @@ describe('Sidebar state', () => {
     fireEvent.mouseLeave(teamSupport)
 
     const finance = screen
-      .getByRole('button', { name: 'Reports & Finance' })
+      .getByRole('button', { name: 'Reports' })
       .closest('div') as HTMLElement
     fireEvent.mouseEnter(finance)
     expect(screen.getByRole('link', { name: 'Overview' })).toBeInTheDocument()
