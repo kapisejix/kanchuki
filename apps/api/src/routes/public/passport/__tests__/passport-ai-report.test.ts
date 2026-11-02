@@ -70,7 +70,10 @@ describe('POST /passport/ai-report', () => {
   });
 
   it('201 stores the report under the session account, ignoring any body identity', async () => {
-    const res = await post({ ...OK, content_ref: 'store-slug', customer_account_id: 'acct_evil' }, COOKIE);
+    const res = await post(
+      { ...OK, content_ref: 'store-slug', customer_account_id: 'acct_evil' },
+      COOKIE,
+    );
     expect(res.statusCode).toBe(201);
     expect(m.create).toHaveBeenCalledWith({
       data: {
