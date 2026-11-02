@@ -35,7 +35,9 @@ const money = [
 
 // Owner decision 2026-11-02: ADMIN and SUPER_ADMIN may both change any plan/status.
 describe('change-plan role rules', () => {
-  const retailer = { current: { plan: 'GROWTH', plan_status: 'ACTIVE' } as Record<string, unknown> };
+  const retailer = {
+    current: { plan: 'GROWTH', plan_status: 'ACTIVE' } as Record<string, unknown>,
+  };
   const update = vi.fn();
   const adminPost = async (role: 'ADMIN' | 'SUPER_ADMIN', payload: Record<string, unknown>) => {
     const key = role === 'ADMIN' ? await signAdminSession('a@b.c', 'ADMIN') : 'test-admin-key';
@@ -76,7 +78,11 @@ describe('change-plan role rules', () => {
   });
   it('ADMIN: extend_trial_days shortcut ok (owner: both roles)', async () => {
     retailer.current = { plan: 'STARTER', plan_status: 'TRIAL' };
-    const res = await adminPost('ADMIN', { plan: 'STARTER', status: 'TRIAL', extend_trial_days: 7 });
+    const res = await adminPost('ADMIN', {
+      plan: 'STARTER',
+      status: 'TRIAL',
+      extend_trial_days: 7,
+    });
     expect(res.statusCode).toBe(200);
   });
   it('ADMIN: extend-trial ok (owner: both roles)', async () => {
@@ -90,20 +96,30 @@ describe('change-plan role rules', () => {
     });
     expect(res.statusCode).toBe(200);
   });
-  it.each(['SUPPORT_MANAGER', 'MARKETING_MANAGER'])('%s: change-plan and extend-trial refused', async (role) => {
-    retailer.current = { plan: 'STARTER', plan_status: 'TRIAL', id: 'r1', trial_ends_at: null };
-    const key = await signAdminSession('m@b.c', role);
-    for (const [url, payload] of [
-      ['/v1/admin/retailers/r1/change-plan', { plan: 'PRO', status: 'ACTIVE' }],
-      ['/v1/admin/retailers/r1/extend-trial', { days: 7 }],
-    ] as const) {
-      const res = await app.inject({ method: 'POST', url, headers: { 'x-admin-key': key, ...CSRF }, payload });
-      expect(res.statusCode, `${role} ${url}`).toBe(403);
-    }
-  });
+  it.each(['SUPPORT_MANAGER', 'MARKETING_MANAGER'])(
+    '%s: change-plan and extend-trial refused',
+    async (role) => {
+      retailer.current = { plan: 'STARTER', plan_status: 'TRIAL', id: 'r1', trial_ends_at: null };
+      const key = await signAdminSession('m@b.c', role);
+      for (const [url, payload] of [
+        ['/v1/admin/retailers/r1/change-plan', { plan: 'PRO', status: 'ACTIVE' }],
+        ['/v1/admin/retailers/r1/extend-trial', { days: 7 }],
+      ] as const) {
+        const res = await app.inject({
+          method: 'POST',
+          url,
+          headers: { 'x-admin-key': key, ...CSRF },
+          payload,
+        });
+        expect(res.statusCode, `${role} ${url}`).toBe(403);
+      }
+    },
+  );
   it('SUPER_ADMIN: upgrade + force ACTIVE ok', async () => {
     retailer.current = { plan: 'STARTER', plan_status: 'TRIAL' };
-    expect((await adminPost('SUPER_ADMIN', { plan: 'PRO', status: 'ACTIVE' })).statusCode).toBe(200);
+    expect((await adminPost('SUPER_ADMIN', { plan: 'PRO', status: 'ACTIVE' })).statusCode).toBe(
+      200,
+    );
   });
 });
 
