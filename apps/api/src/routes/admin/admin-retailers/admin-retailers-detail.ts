@@ -185,6 +185,9 @@ export const adminRetailersDetailRoutes: FastifyPluginAsync = async (server) => 
         resource_type: 'Retailer',
         resource_id: id,
         metadata: {
+          // Plain Admin may change plans too, so record who acted.
+          actor: request.adminId ?? null,
+          actor_role: request.adminRole ?? null,
           before: {
             plan: retailer.plan,
             plan_status: retailer.plan_status,
