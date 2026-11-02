@@ -12,9 +12,9 @@ import { adminAuthPreHandler } from './admin-auth.js';
 import {
   adminActivityRoutes,
   adminAggregatorRoutes,
+  adminAiContentReportRoutes,
   adminAiRoutes,
   adminBackupsRoutes,
-  adminAiContentReportRoutes,
   adminBugReportRoutes,
   adminColorFamilyRoutes,
   adminCommissionRoutes,
