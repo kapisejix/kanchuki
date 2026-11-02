@@ -55,6 +55,13 @@ vi.mock('expo-constants', () => ({
   default: { expoConfig: { extra: {} }, statusBarHeight: 0 },
 }))
 
+// ── expo-image-picker (native module; ReportProblem screenshot picker) ──
+// Pulled in transitively by any screen that renders ReportAiContent.
+
+vi.mock('expo-image-picker', () => ({
+  launchImageLibraryAsync: vi.fn(async () => ({ canceled: true, assets: null })),
+}))
+
 // ── expo-notifications (native module; F-046 push) ─────────────────
 // Default: permission granted, a fixed token. push-notifications.test.ts overrides per case.
 

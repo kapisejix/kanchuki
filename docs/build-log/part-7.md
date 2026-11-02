@@ -237,3 +237,12 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Code | `RETAILER_SECRET_FIELDS` no longer lists the two gmb tokens; fixtures in `retailers-dto.test.ts`, `retailers-me-features.test.ts`, `retailers-profile.test.ts` updated. New test in `retailers-dto.test.ts`: the Retailer model has no `gmb_` column (red first as `it.fails`, falsified by injecting a `gmb_probe` column). |
 | Tests | API `tsc` clean; full API vitest 2859 passed / 9 skipped; API biome lint 0 errors (2 pre-existing warnings in `passport-otp.test.ts`); `prisma validate` and `generate` OK. |
 | Not verified | Migration 146 not applied and not replayed on a scratch DB. Order is safe either way: Prisma ignores extra DB columns, so the code can deploy before 146 is applied. No RC minted (cleanup, not a bug); progress noted under RC-159. |
+
+## 2026-11-02 - In-app "Report this AI content" buttons (Google Play AI-Generated Content policy)
+
+| Area | Change |
+|---|---|
+| Trigger | A developer reported a Play rejection for apps with AI output but no in-app report/flag. Kanchuki only had the generic Settings "Report a Problem". |
+| Mobile | `ReportProblem` takes `aiContent` (retitles the sheet, prefixes the description `[AI content report: feature · id]`, no image attached). New `ReportAiContent` button on: AI Studio Shoot result, retailer try-on result, in-store enquiry try-on gallery, composer AI caption, scheduler caption. No API or migration change (reuses `/v1/retailers/me/bug-reports`). |
+| Tests | New source-pin test `__tests__/ai-content-report.test.ts`; shared setup gained an `expo-image-picker` mock. Mobile `tsc` clean, vitest 543/543. |
+| Not verified | No device test, no EAS build. Web PWA surfaces, admin triage and the Play Console declaration are open - see `docs/tasks/pending/ai-content-reporting.md`. Videos skipped on purpose (`KEN_BURNS` is a photo slideshow, not generative AI). |

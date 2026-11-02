@@ -32,6 +32,7 @@ import {
 import { GradientButton } from '../src/components/GradientButton'
 import { AnimatedPressable } from '../src/components/AnimatedPressable'
 import { TryOnConsent } from '../src/components/TryOnConsent'
+import { ReportAiContent } from '../src/components/ReportAiContent'
 
 // F-044 R2 — "Try on with customer": one wearer photo, N products from an
 // enquiry, results shown to the customer on this phone only. The wearer photo
@@ -536,9 +537,12 @@ export default function EnquiryTryOnScreen() {
               </View>
             )}
           />
-          <Text className="text-white/60 text-xs text-center py-3">
+          <Text className="text-white/60 text-xs text-center pt-3">
             Swipe for more · Pictures are deleted when you leave
           </Text>
+          <View className="pb-2">
+            <ReportAiContent feature="Virtual try-on (in-store)" dark />
+          </View>
         </View>
       )}
     </View>
