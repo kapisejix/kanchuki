@@ -32,6 +32,7 @@ export { adminShowcaseDesignRoutes } from './admin-showcase-designs.js';
 export { adminShowcaseDesignCategoryRoutes } from './admin-showcase-design-categories.js';
 export { adminColorFamilyRoutes } from './admin-color-families.js';
 export { adminMyStyleRoutes } from './admin-my-style.js';
+export { adminAiContentReportRoutes } from './admin-ai-content-reports.js';
 export { adminBugReportRoutes } from './admin-bug-reports.js';
 export { adminSurveyRoutes } from './admin-survey.js';
 export { adminInvoicesRoutes } from './admin-invoices.js';

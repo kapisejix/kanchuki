@@ -30,7 +30,7 @@ Reports go through the existing `POST /v1/retailers/me/bug-reports` route — **
 ## Still open
 
 1. **Migration 148** — written, NOT applied (owner applies). Until it is applied, `POST /v1/public/passport/ai-report` 500s on every submit.
-2. **Triage** — retailer reports land in the bug-report inbox (prefix-tagged); shopper reports land in `ai_content_reports` with **no admin screen yet**, so nobody can read them without SQL. Build an admin list (and decide on one shared queue) before relying on this for the Play review.
+2. **Triage** — built 2026-11-02 (`feat/ai-content-report-admin`, stacked on the web PR): shopper reports have an admin queue at **Admin → Team & Support → AI Content Reports** (`/admin/ai-content-reports`; filter by status / feature, mark reviewed / reopen, reporter phone masked, anonymous shown as such). API `GET /v1/admin/ai-content-reports`, `…/stats`, `PATCH …/:id` (`admin-ai-content-reports.ts`, inherits the `adminRoutes` auth hook, covered by the route-guard test; 5 route tests). Still two queues: retailer reports stay in Bug Reports (prefix-tagged `[AI content report: …]`), shopper reports here. Standard admins only (SUPPORT_MANAGER allow-list not extended). Needs migration 148 applied before it shows anything.
 3. **Play Console** — declare in-app reporting in the AI-generated content section and check the data-safety answers; the build must go to Play via EAS (mobile JS change, needs a new build).
 4. **Device / browser test** — mobile: open each of the five surfaces, submit, confirm the `[AI content report: …]` bug report. Web: submit from AI Stylist (signed out), try-on, My Style selfie / find similar / complete the look; confirm a row in `ai_content_reports`.
 
