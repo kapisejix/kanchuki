@@ -58,6 +58,7 @@ vi.mock('@kanchuki/db', () => ({
     // RC-099: /delete anonymises the account's reviews
     productReview: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
     storeReview: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
+    aiContentReport: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
   },
   Prisma: {},
 }));

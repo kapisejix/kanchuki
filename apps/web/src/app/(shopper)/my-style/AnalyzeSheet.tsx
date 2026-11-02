@@ -12,6 +12,7 @@ import { type GarmentDescriptor, MY_STYLE_CONSENT } from '@kanchuki/shared'
 import { Camera, ImageIcon, Loader2, ShieldCheck, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Sheet } from '@/components/Sheet'
+import { ReportAiContent } from '@/components/ReportAiContent'
 import { BTN_PRIMARY, BTN_SECONDARY } from '../ui'
 import { type AnalyzeMode, pollAnalysis, prepareUpload, startAnalysis } from './analyze'
 import { LOGIN_HREF } from './lib'
@@ -275,6 +276,10 @@ export function AnalyzeSheet({
           <button type="button" onClick={onClose} className={btn}>
             {garment ? 'See matches' : 'See my picks'}
           </button>
+          <ReportAiContent
+            feature={garment ? 'My Style find similar' : 'My Style selfie analysis'}
+            className="mt-3"
+          />
         </div>
       )}
     </Sheet>

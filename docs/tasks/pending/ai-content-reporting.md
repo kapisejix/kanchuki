@@ -29,10 +29,24 @@ Reports go through the existing `POST /v1/retailers/me/bug-reports` route — **
 
 ## Still open
 
-1. **Web PWA** — My Style (selfie analysis, find-similar), AI Stylist, customer try-on: no report control yet. Needs the same pattern on the customer web plus a passport-session route (the retailer bug-report route needs a retailer token).
-2. **Triage** — AI reports land in the same bug-report inbox as ordinary bugs, tagged only by the description prefix. Decide whether admin needs a filter or a separate queue.
+1. **Migration 148** — written, NOT applied (owner applies). Until it is applied, `POST /v1/public/passport/ai-report` 500s on every submit.
+2. **Triage** — retailer reports land in the bug-report inbox (prefix-tagged); shopper reports land in `ai_content_reports` with **no admin screen yet**, so nobody can read them without SQL. Build an admin list (and decide on one shared queue) before relying on this for the Play review.
 3. **Play Console** — declare in-app reporting in the AI-generated content section and check the data-safety answers; the build must go to Play via EAS (mobile JS change, needs a new build).
-4. **Device test** — open each of the five surfaces, submit a report, confirm it appears in Admin → bug reports with the `[AI content report: …]` prefix.
+4. **Device / browser test** — mobile: open each of the five surfaces, submit, confirm the `[AI content report: …]` bug report. Web: submit from AI Stylist (signed out), try-on, My Style selfie / find similar / complete the look; confirm a row in `ai_content_reports`.
+
+## Web PWA (built 2026-11-02, branch `feat/ai-content-report-web`, stacked on the mobile PR)
+
+| Piece | Where |
+|---|---|
+| Table `ai_content_reports` (`customer_account_id` nullable = anonymous; `feature`, `content_ref`, `description`, `status NEW/REVIEWED`), RLS policy, text only | migration `148_ai_content_reports`, `AiContentReport` in `schema.prisma` |
+| `POST /v1/public/passport/ai-report` — closed list of 5 feature labels, description 10–2000 chars, identity from the passport session if any (never the body); cap 20/24 h per account, 100/h for all anonymous reports (the proxy forwards no client IP, RC-084) | `apps/api/src/routes/public/passport/passport-ai-report.ts`, registered in `passport.ts` |
+| Account delete unlinks the account's reports (`customer_account_id = null`, text kept for moderation) — the delete is soft, so the FK cascade never fires (RC-099 shape) | `passport-data.ts` |
+| Proxy path allowlist gains `ai-report` | `apps/web/src/app/api/passport/[...path]/route.ts` |
+| Inline `<ReportAiContent feature contentRef? />` (no modal: safe inside `Sheet`, RC-065) | `apps/web/src/components/ReportAiContent.tsx` |
+| Wired into: AI Stylist results, customer try-on result, My Style selfie / find-similar result, Complete-the-look | `AIStylist.tsx`, `TryOnSheet.tsx`, `AnalyzeSheet.tsx`, `LookPanel.tsx` |
+| Tests | API `passport-ai-report.test.ts` (6) + delete unlink case; web `ReportAiContent.test.tsx` (3) |
+
+Verification: API `tsc` clean, vitest 2873 passed / 9 skipped; web `tsc` clean, new component test 3/3. Ten web test files (`WishlistView`, `shortlist`, `recentlyViewed`, …) fail identically with and without this change (checked by stashing) — not touched here.
 
 ## Verification
 

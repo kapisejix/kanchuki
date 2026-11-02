@@ -5,6 +5,7 @@ import Image from 'next/image'
 import { Sparkles, Send, Loader2, X, MessageCircle } from 'lucide-react'
 import { formatPrice } from '@kanchuki/shared'
 import { Sheet } from '@/components/Sheet'
+import { ReportAiContent } from '@/components/ReportAiContent'
 
 interface Recommendation {
   product_id: string
@@ -276,6 +277,7 @@ export function AIStylist({ storeSlug, storeName, onProductTap }: Props) {
               >
                 Ask for something else
               </button>
+              <ReportAiContent feature="AI Stylist" contentRef={storeSlug} />
             </>
           )}
         </div>

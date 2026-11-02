@@ -1306,3 +1306,19 @@ Checked directly against the production project (`thpqcylmcxokajxoerjx`, `ACTIVE
 - Once reconciled, this is an **excellent** rating with no caveats. The underlying design was never the problem — the deployment process (some combination of `db push` and `migrate deploy` used inconsistently over the last 12 days) is what needs discipline going forward: pick one workflow (`migrate deploy` only, from CI or an admin-dashboard-triggered step) and stop mixing it with direct pushes.
 
 Table count staying at ~73 (and growing with every future feature) is correct and expected — don't chase a lower number as a goal.
+
+## AI-content reports — `ai_content_reports` (migration 148, written 2026-11-02, NOT applied)
+
+Shopper "Report this AI content" (Google Play AI-Generated Content policy). Text only; the AI output is never stored.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | TEXT PK | cuid |
+| `customer_account_id` | TEXT NULL | FK `customer_accounts` ON DELETE CASCADE; NULL = anonymous visitor, or unlinked by `/passport/delete` (soft delete) |
+| `feature` | TEXT | one of 5 labels (`AI_REPORT_FEATURES`) |
+| `content_ref` | TEXT NULL | store slug / product id |
+| `description` | TEXT | 10-2000 chars |
+| `status` | TEXT | `NEW` / `REVIEWED` (CHECK) |
+| `created_at` | TIMESTAMP | indexed; also `(customer_account_id, created_at)` |
+
+Writer: `routes/public/passport/passport-ai-report.ts` (INSERT); `passport-data.ts` (UPDATE unlink). No DELETE. RLS `backend_roles_full_access`.

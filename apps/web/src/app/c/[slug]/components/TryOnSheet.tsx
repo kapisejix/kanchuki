@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Camera, Loader2, LogIn, ShieldCheck, X } from 'lucide-react'
 import { TRY_ON_CONSENT } from '@kanchuki/shared'
 import { Sheet } from '@/components/Sheet'
+import { ReportAiContent } from '@/components/ReportAiContent'
 import { RETURN_TO_PARAM, sanitizeReturnTo } from '@/lib/return-to'
 
 // F-040 — customer-web virtual try-on.
@@ -325,6 +326,7 @@ export function TryOnSheet({
               <p className="text-[10px] text-[#928EB2] mt-2">
                 Only you and the store can see this. Withdraw any time from My Profile.
               </p>
+              <ReportAiContent feature="Virtual try-on" contentRef={productId} className="mt-2" />
             </>
           ) : (
             <p className="text-sm font-semibold text-[#231F48] py-6">{error ?? 'Something went wrong.'}</p>

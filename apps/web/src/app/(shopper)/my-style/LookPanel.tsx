@@ -4,6 +4,7 @@
 
 import { AlertCircle, PackageX, Sparkles, UserRound } from 'lucide-react'
 import Link from 'next/link'
+import { ReportAiContent } from '@/components/ReportAiContent'
 import { BTN_SECONDARY, CARD, Notice, SKELETON } from '../ui'
 import { StyleCard } from './StyleCard'
 import { LOGIN_HREF, type FeedCard, type LookResult } from './lib'
@@ -92,6 +93,7 @@ export function LookPanel({ view, shortlist, busy, onToggle, onEnquire, onRetry,
           </ul>
         </section>
       ))}
+      {view.slots.length > 0 && <ReportAiContent feature="My Style complete the look" />}
     </div>
   )
 }
