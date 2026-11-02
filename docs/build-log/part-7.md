@@ -256,3 +256,12 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Web | Inline `ReportAiContent` on AI Stylist, customer try-on, My Style selfie / find similar / complete the look; proxy allowlist gains `ai-report`. |
 | Tests | API 2873 passed; web component test 3/3; web `tsc` clean. 10 unrelated web test files fail identically on a clean tree. |
 | Not verified | Migration unapplied, so the route 500s until the owner applies it. No admin screen for these reports. No browser/device test. See `docs/tasks/pending/ai-content-reporting.md`. |
+
+## 2026-11-02 - Admin queue for shopper AI-content reports
+
+| Area | Change |
+|---|---|
+| API | `GET /v1/admin/ai-content-reports` (status/feature filter, paginated, reporter phone masked, anonymous = null reporter), `GET .../stats`, `PATCH .../:id` (NEW/REVIEWED). Registered inside `adminRoutes`, so it inherits the admin auth hook; `admin-route-guard.test.ts` covers it. |
+| Web | `/admin/ai-content-reports` page + Sidebar item under Team & Support. |
+| Tests | `admin-ai-content-reports.test.ts` (5) + route guard green; API tsc clean; web tsc clean. `Sidebar.test.tsx` sign-out case fails identically on a clean tree (not touched). |
+| Not verified | Not browser-tested; empty until migration 148 is applied. Standard admins only; retailer reports stay in Bug Reports. |

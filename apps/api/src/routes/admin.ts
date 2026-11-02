@@ -14,6 +14,7 @@ import {
   adminAggregatorRoutes,
   adminAiRoutes,
   adminBackupsRoutes,
+  adminAiContentReportRoutes,
   adminBugReportRoutes,
   adminColorFamilyRoutes,
   adminCommissionRoutes,
@@ -257,4 +258,6 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
   await server.register(adminMyStyleRoutes);
   // admin-bug-reports — retailer-submitted bug reports
   await server.register(adminBugReportRoutes);
+  // admin-ai-content-reports — shopper "Report this AI content" queue (Play AI-content policy)
+  await server.register(adminAiContentReportRoutes);
 };
