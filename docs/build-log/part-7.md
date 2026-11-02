@@ -265,3 +265,13 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Web | `/admin/ai-content-reports` page + Sidebar item under Team & Support. |
 | Tests | `admin-ai-content-reports.test.ts` (5) + route guard green; API tsc clean; web tsc clean. `Sidebar.test.tsx` sign-out case fails identically on a clean tree (not touched). |
 | Not verified | Not browser-tested; empty until migration 148 is applied. Standard admins only; retailer reports stay in Bug Reports. |
+
+## 2026-11-02 - Admin sidebar regroup + trial_to_active_rate fix (`af106be8`)
+
+| Area | Change |
+|---|---|
+| Sidebar | `Catalog & Creative`, `Reports & Finance`, `Settings & Operations` each split in two: **Catalog** (categories, attributes, upload tiers, suits designs + categories, ratings), **Creative** (studio styles, photo cleanup test, My Style, festivals, social templates/publishing, Google Business), **Reports** (overview, GST, AI Usage, Try-On GPU Usage, Storage Report), **Finance** (HSN rules, billing, commission, referral program/monitor, addon purchases, plan limits, resource packs, plan features), **Settings** (general, integrations, AI providers/config, rate limits, theme), **Operations** (operations overview, deployments, gate, audit log, DB health, server memory, query console, backup, deletion vault, support sessions). Overview, Retailers & Network and Team & Support unchanged. Access rules unchanged: Reports, Finance, Settings, Operations are Super-Admin only, so a plain ADMIN sees neither. |
+| Analytics audit | Dashboard, Reports, AI Usage, Try-On GPU, Storage Report, Engagement all read real Prisma aggregates; no mock or random data found. Dashboard MRR divides paise by 100 correctly. |
+| Bug | `trial_to_active_rate` (`/v1/team/reporting/retailer-activation`) was active / current trials and could exceed 100%. Now a cohort rate: retailers with a successful `SubscriptionPayment` / retailers whose `trial_ends_at` has passed or who have paid. Field name unchanged, so the Reports page needs no edit. |
+| Tests | `Sidebar.test.tsx` and `e2e/admin-navigation.spec.ts` updated for the new group names; new `team-reporting.test.ts` (2). API tsc clean. `Sidebar.test.tsx` sign-out case fails identically on a clean tree (not touched). |
+| Not verified | Not browser-checked, e2e spec not run, rate not run against real Postgres. A retailer who paid once and later cancelled still counts as converted. |
