@@ -8,6 +8,7 @@ import rateLimit from '@fastify/rate-limit';
 import { dbHealthCheck } from '@kanchuki/db';
 import { createClient } from '@supabase/supabase-js';
 import Fastify from 'fastify';
+import { checkSchemaDrift, getSchemaDrift, schemaHealth } from './lib/schema-drift.js';
 
 import { getRedis, startWorkers } from './jobs/index.js';
 import { authPlugin } from './plugins/auth.js';
@@ -207,7 +208,11 @@ server.get('/health', async (_request, reply) => {
       ? redis.value
       : { ok: false, latencyMs: 0, error: 'promise rejected' };
 
-  const healthy = dbResult.ok && redisResult.ok;
+  // RC-160: a model column the DB lacks. Names stay in logs/Sentry; the body only says "drift".
+  // Fails the probe only when SCHEMA_DRIFT_BLOCKS_HEALTH=1 (owner opt-in, default report-only).
+  const schema = schemaHealth(getSchemaDrift(), process.env.SCHEMA_DRIFT_BLOCKS_HEALTH === '1');
+
+  const healthy = dbResult.ok && redisResult.ok && !schema.failsHealth;
   reply.code(healthy ? 200 : 503);
 
   return {
@@ -215,6 +220,7 @@ server.get('/health', async (_request, reply) => {
     ts: Date.now(),
     db: dbResult,
     redis: redisResult,
+    schema: schema.status,
   };
 });
 
@@ -228,6 +234,9 @@ async function start(): Promise<void> {
     startWorkers().catch((err) => {
       server.log.warn({ err }, 'BullMQ workers failed to start — background jobs disabled');
     });
+    // RC-160: look for missing model columns BEFORE the first /health probe so a deploy that
+    // expects an unapplied migration is visible to it. Capped at 3 s; never throws.
+    await Promise.race([checkSchemaDrift(), new Promise((r) => setTimeout(r, 3000))]);
     await server.listen({ port, host: '0.0.0.0' });
     server.log.info(`API running on port ${port}`);
   } catch (err) {
