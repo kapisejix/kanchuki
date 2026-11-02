@@ -4,7 +4,7 @@ import { PLAN_LIMITS, orUnlimited } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { notFound } from '../../../plugins/error-handler.js';
-import { adminAuthPreHandler } from '../../admin-auth.js';
+import { adminAuthPreHandler, requireAdminOrSuperAdmin } from '../../admin-auth.js';
 
 export const adminRetailersDetailRoutes: FastifyPluginAsync = async (server) => {
   server.addHook('preHandler', adminAuthPreHandler);
@@ -99,6 +99,7 @@ export const adminRetailersDetailRoutes: FastifyPluginAsync = async (server) => 
   // Extend a retailer's trial by N days.
   // Owner decision 2026-11-02: Admin and Super Admin may both extend trials.
   server.post('/retailers/:id/extend-trial', async (request) => {
+    requireAdminOrSuperAdmin(request);
     const { id } = z.object({ id: z.string() }).parse(request.params);
     const body = z.object({ days: z.number().int().min(1).max(90) }).parse(request.body);
 
@@ -141,6 +142,7 @@ export const adminRetailersDetailRoutes: FastifyPluginAsync = async (server) => 
   // ─── POST /admin/retailers/:id/change-plan ─────────────────────
   // Change a retailer's plan and update limits.
   server.post('/retailers/:id/change-plan', async (request) => {
+    requireAdminOrSuperAdmin(request);
     const { id } = z.object({ id: z.string() }).parse(request.params);
     const body = z
       .object({
