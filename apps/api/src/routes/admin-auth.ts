@@ -102,6 +102,17 @@ export function requireSuperAdmin(request: import('fastify').FastifyRequest): vo
   }
 }
 
+/**
+ * Handler-level gate for retailer money routes that plain ADMIN may also use (owner
+ * decision 2026-11-02). Explicit allow-list: SUPPORT_MANAGER / MARKETING_MANAGER reach
+ * the `retailers` segment but must NOT change plans or trials.
+ */
+export function requireAdminOrSuperAdmin(request: import('fastify').FastifyRequest): void {
+  if (request.adminRole !== 'SUPER_ADMIN' && request.adminRole !== 'ADMIN') {
+    throw forbidden('Access denied — Admin privileges required');
+  }
+}
+
 // Decode the admin email from a session JWT, or null when the token is
 // absent/invalid. Used by GET /admin/session — a DB-free session check so
 // the admin panel's refresh gate never depends on database health.

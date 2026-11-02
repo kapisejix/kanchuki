@@ -180,8 +180,8 @@ export default function RetailerDetailPage() {
         method: 'POST',
         body: JSON.stringify({ days: extendDays }),
       })
-      if (!res.ok) throw new Error('Failed to extend trial')
-      const json = await res.json()
+      const json = await res.json().catch(() => null)
+      if (!res.ok) throw new Error(json?.error?.message ?? json?.message ?? `Failed to extend trial (HTTP ${res.status})`)
       setRetailer((prev) =>
         prev ? { ...prev, trial_ends_at: json.data.trial_ends_at, plan_status: 'TRIAL' } : prev
       )
@@ -256,8 +256,8 @@ export default function RetailerDetailPage() {
         method: 'POST',
         body: JSON.stringify({ plan, status: plan === retailer.plan ? retailer.plan_status : 'ACTIVE' }),
       })
-      if (!res.ok) throw new Error('Failed to change plan')
-      const json = await res.json()
+      const json = await res.json().catch(() => null)
+      if (!res.ok) throw new Error(json?.error?.message ?? json?.message ?? `Failed to change plan (HTTP ${res.status})`)
       setRetailer((prev) =>
         prev ? { ...prev, plan: json.data.plan, plan_status: json.data.plan_status } : prev
       )
