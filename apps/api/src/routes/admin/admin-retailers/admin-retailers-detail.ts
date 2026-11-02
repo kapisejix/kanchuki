@@ -3,8 +3,8 @@ import { prisma } from '@kanchuki/db';
 import { PLAN_LIMITS, orUnlimited } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
-import { forbidden, notFound } from '../../../plugins/error-handler.js';
-import { adminAuthPreHandler, requireSuperAdmin } from '../../admin-auth.js';
+import { notFound } from '../../../plugins/error-handler.js';
+import { adminAuthPreHandler } from '../../admin-auth.js';
 
 export const adminRetailersDetailRoutes: FastifyPluginAsync = async (server) => {
   server.addHook('preHandler', adminAuthPreHandler);
@@ -97,8 +97,8 @@ export const adminRetailersDetailRoutes: FastifyPluginAsync = async (server) => 
 
   // ─── POST /admin/retailers/:id/extend-trial ────────────────────
   // Extend a retailer's trial by N days.
+  // Owner decision 2026-11-02: Admin and Super Admin may both extend trials.
   server.post('/retailers/:id/extend-trial', async (request) => {
-    requireSuperAdmin(request); // H3-2: money route, standard segment
     const { id } = z.object({ id: z.string() }).parse(request.params);
     const body = z.object({ days: z.number().int().min(1).max(90) }).parse(request.body);
 
@@ -156,11 +156,7 @@ export const adminRetailersDetailRoutes: FastifyPluginAsync = async (server) => 
     if (!retailer) throw notFound('Retailer not found');
 
     // Owner decision 2026-11-02: Admin and Super Admin may both change any plan/status
-    // (every change is audit-logged below). Extend-trial and overrides stay Super Admin,
-    // including the extend_trial_days shortcut on this route.
-    if (request.adminRole !== 'SUPER_ADMIN' && body.extend_trial_days) {
-      throw forbidden('Access denied — Super Admin privileges required');
-    }
+    // (every change is audit-logged below). Only limit overrides stay Super Admin.
 
     // Same source the billing webhook writes from — one table of plan limits.
     const planLimits = PLAN_LIMITS[body.plan];

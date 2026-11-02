@@ -29,7 +29,6 @@ beforeAll(async () => {
 afterAll(() => app.close());
 
 const money = [
-  ['POST', '/v1/admin/retailers/r1/extend-trial'],
   ['POST', '/v1/admin/retailers/r1/overrides'],
   ['DELETE', '/v1/admin/retailers/r1/overrides/o1'],
 ] as const;
@@ -75,10 +74,21 @@ describe('change-plan role rules', () => {
     retailer.current = { plan: 'STARTER', plan_status: 'TRIAL' };
     expect((await adminPost('ADMIN', { plan: 'STARTER', status: 'ACTIVE' })).statusCode).toBe(200);
   });
-  it('ADMIN: extend_trial_days shortcut refused', async () => {
+  it('ADMIN: extend_trial_days shortcut ok (owner: both roles)', async () => {
     retailer.current = { plan: 'STARTER', plan_status: 'TRIAL' };
     const res = await adminPost('ADMIN', { plan: 'STARTER', status: 'TRIAL', extend_trial_days: 7 });
-    expect(res.statusCode).toBe(403);
+    expect(res.statusCode).toBe(200);
+  });
+  it('ADMIN: extend-trial ok (owner: both roles)', async () => {
+    retailer.current = { plan: 'STARTER', plan_status: 'TRIAL', id: 'r1', trial_ends_at: null };
+    const key = await signAdminSession('a@b.c', 'ADMIN');
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/admin/retailers/r1/extend-trial',
+      headers: { 'x-admin-key': key, ...CSRF },
+      payload: { days: 7 },
+    });
+    expect(res.statusCode).toBe(200);
   });
   it('SUPER_ADMIN: upgrade + force ACTIVE ok', async () => {
     retailer.current = { plan: 'STARTER', plan_status: 'TRIAL' };
