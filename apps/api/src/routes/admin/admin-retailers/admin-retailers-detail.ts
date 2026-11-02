@@ -3,7 +3,7 @@ import { prisma } from '@kanchuki/db';
 import { PLAN_LIMITS, orUnlimited } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
-import { notFound } from '../../../plugins/error-handler.js';
+import { forbidden, notFound } from '../../../plugins/error-handler.js';
 import { adminAuthPreHandler, requireSuperAdmin } from '../../admin-auth.js';
 
 export const adminRetailersDetailRoutes: FastifyPluginAsync = async (server) => {
@@ -141,7 +141,6 @@ export const adminRetailersDetailRoutes: FastifyPluginAsync = async (server) => 
   // ─── POST /admin/retailers/:id/change-plan ─────────────────────
   // Change a retailer's plan and update limits.
   server.post('/retailers/:id/change-plan', async (request) => {
-    requireSuperAdmin(request); // H3-2: money route, standard segment
     const { id } = z.object({ id: z.string() }).parse(request.params);
     const body = z
       .object({
@@ -155,6 +154,13 @@ export const adminRetailersDetailRoutes: FastifyPluginAsync = async (server) => 
       where: { id, deleted_at: null },
     });
     if (!retailer) throw notFound('Retailer not found');
+
+    // Owner decision 2026-11-02: Admin and Super Admin may both change any plan/status
+    // (every change is audit-logged below). Extend-trial and overrides stay Super Admin,
+    // including the extend_trial_days shortcut on this route.
+    if (request.adminRole !== 'SUPER_ADMIN' && body.extend_trial_days) {
+      throw forbidden('Access denied — Super Admin privileges required');
+    }
 
     // Same source the billing webhook writes from — one table of plan limits.
     const planLimits = PLAN_LIMITS[body.plan];
