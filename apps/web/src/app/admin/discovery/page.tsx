@@ -25,12 +25,25 @@ type RetailerLocation = {
   state: string | null
   latitude: number | null
   longitude: number | null
+  /** 'RETAILER_PIN' = shop pinned in the app; 'GEOCODED_APPROX' = guessed from the typed address. */
+  location_source: string | null
   address_line1: string | null
   address_line2: string | null
   pincode: string | null
   public_slug: string | null
   product_count: number
+  /** Only on "nearby" results: straight-line km from the searched pincode/city centre. */
+  distance_km?: number
 }
+
+type Nearby = {
+  center: { lat: number; lng: number; label: string; level: 'address' | 'pincode' | 'city' }
+  radius_km: number
+  count: number
+  retailers: RetailerLocation[]
+}
+
+const RADIUS_OPTIONS = [5, 10, 25, 50, 100, 200]
 
 // ─── Helpers ──────────────────────────────────────────────────────
 
@@ -47,24 +60,69 @@ const itemVariants = {
 
 export default function DiscoveryPage() {
   const [retailers, setRetailers] = useState<RetailerLocation[] | null>(null)
+  const [totalAll, setTotalAll] = useState(0)
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  // "Stores near a pincode / city" search. null = not searching (show every located store).
+  const [place, setPlace] = useState('')
+  const [radius, setRadius] = useState(25)
+  const [nearby, setNearby] = useState<Nearby | null>(null)
+  const [nearbyError, setNearbyError] = useState('')
+  const [nearbyLoading, setNearbyLoading] = useState(false)
+
+  const runNearby = async () => {
+    const q = place.trim()
+    if (q.length < 2) return
+    setNearbyLoading(true)
+    setNearbyError('')
+    try {
+      const res = await fetch(
+        `${API_URL}/v1/admin/discovery/nearby?query=${encodeURIComponent(q)}&radius_km=${radius}`,
+        adminGetOptions(),
+      )
+      const json = await res.json()
+      if (!res.ok) {
+        throw new Error(
+          res.status === 404
+            ? `Could not find "${q}" in India. Check the pincode or city name.`
+            : (json?.error?.message ?? `Search failed (HTTP ${res.status})`),
+        )
+      }
+      setNearby(json.data)
+    } catch (err) {
+      setNearby(null)
+      setNearbyError(err instanceof Error ? err.message : 'Search failed')
+    } finally {
+      setNearbyLoading(false)
+    }
+  }
+
+  const clearNearby = () => {
+    setNearby(null)
+    setNearbyError('')
+    setPlace('')
+  }
 
   const load = async () => {
     try {
-      const res = await fetch(`${API_URL}/v1/admin/retailers?limit=500`, adminGetOptions())
-      const json = await res.json()
-      if (json?.data) {
-        // Filter to retailers with location data
-        const withLocation = json.data
-          .filter((r: RetailerLocation) => r.latitude != null && r.longitude != null)
-          .map((r: RetailerLocation) => ({
-            ...r,
-            product_count: r.product_count ?? 0,
-          }))
-        setRetailers(withLocation)
-      }
+      // Only retailers with coordinates can appear in "Near Me" discovery, so ask the
+      // API for just those (has_location) and walk its cursor, 100 per page (API max).
+      const located: RetailerLocation[] = []
+      let cursor: string | null = null
+      do {
+        const qs: string = `limit=100&has_location=true${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`
+        const res = await fetch(`${API_URL}/v1/admin/retailers?${qs}`, adminGetOptions())
+        if (!res.ok) throw new Error(`Failed to load retailers (HTTP ${res.status})`)
+        const json = await res.json()
+        located.push(...(json?.data ?? []))
+        cursor = json?.pagination?.has_more ? (json.pagination.cursor ?? null) : null
+      } while (cursor)
+
+      const statsRes = await fetch(`${API_URL}/v1/admin/stats`, adminGetOptions())
+      const stats = statsRes.ok ? await statsRes.json() : null
+      setTotalAll(stats?.data?.total_retailers ?? located.length)
+      setRetailers(located.map((r) => ({ ...r, product_count: r.product_count ?? 0 })))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load retailer locations')
     }
@@ -74,7 +132,7 @@ export default function DiscoveryPage() {
     void load()
   }, [])
 
-  const filtered = (retailers ?? []).filter((r) => {
+  const filtered = (nearby?.retailers ?? retailers ?? []).filter((r) => {
     if (!search) return true
     const q = search.toLowerCase()
     return (
@@ -113,11 +171,11 @@ export default function DiscoveryPage() {
       {/* Stats */}
       {retailers && (
         <motion.div variants={containerVariants} className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatsCard icon={Store} label="Total Retailers" value={String(retailers.length)} color="emerald" />
+          <StatsCard icon={Store} label="Total Retailers" value={String(totalAll)} color="emerald" />
           <StatsCard
             icon={MapPin}
             label="With Location"
-            value={String(retailers.filter((r) => r.latitude != null).length)}
+            value={`${retailers.length} of ${totalAll}`}
             color="blue"
           />
           <StatsCard
@@ -138,6 +196,66 @@ export default function DiscoveryPage() {
           />
         </motion.div>
       )}
+
+      {/* Stores near a pincode / city, within a radius */}
+      <motion.div
+        variants={itemVariants}
+        className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200/80 p-4 space-y-3"
+      >
+        <p className="text-sm font-semibold text-gray-900">Find stores near a pincode or city</p>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            void runNearby()
+          }}
+          className="flex flex-wrap items-center gap-2"
+        >
+          <input
+            value={place}
+            onChange={(e) => setPlace(e.target.value)}
+            placeholder="Pincode (e.g. 160022) or city (e.g. Mohali)"
+            className="flex-1 min-w-[220px] border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-700 outline-none focus:border-emerald-400 bg-white"
+          />
+          <select
+            value={radius}
+            onChange={(e) => setRadius(Number(e.target.value))}
+            aria-label="Radius"
+            className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-700 bg-white"
+          >
+            {RADIUS_OPTIONS.map((km) => (
+              <option key={km} value={km}>
+                Within {km} km
+              </option>
+            ))}
+          </select>
+          <button
+            type="submit"
+            disabled={nearbyLoading || place.trim().length < 2}
+            className="px-4 py-2.5 rounded-xl bg-gray-900 text-white text-sm font-medium disabled:opacity-50"
+          >
+            {nearbyLoading ? 'Searching…' : 'Search'}
+          </button>
+          {(nearby || nearbyError) && (
+            <button
+              type="button"
+              onClick={clearNearby}
+              className="px-3 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-600 bg-white"
+            >
+              Clear
+            </button>
+          )}
+        </form>
+        {nearbyError && <p className="text-sm text-red-600">{nearbyError}</p>}
+        {nearby && (
+          <p className="text-xs text-gray-500">
+            <span className="font-semibold text-gray-700">{nearby.count}</span> store
+            {nearby.count === 1 ? '' : 's'} within {nearby.radius_km} km of{' '}
+            <span className="font-medium text-gray-700">{nearby.center.label}</span>
+            {nearby.center.level !== 'address' &&
+              ` (centre of the ${nearby.center.level === 'pincode' ? 'pincode area' : 'city'}, straight-line distance)`}
+          </p>
+        )}
+      </motion.div>
 
       {/* Search */}
       <motion.div variants={itemVariants}>
@@ -182,6 +300,19 @@ export default function DiscoveryPage() {
                 <span className="truncate">
                   {r.latitude?.toFixed(4)}, {r.longitude?.toFixed(4)}
                 </span>
+                {r.distance_km !== undefined && (
+                  <span className="shrink-0 rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+                    {r.distance_km} km
+                  </span>
+                )}
+                {r.location_source === 'GEOCODED_APPROX' && (
+                  <span
+                    title="Guessed from the typed address. Replaced when the retailer pins their shop."
+                    className="shrink-0 rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-[10px] font-semibold text-amber-700"
+                  >
+                    Approx
+                  </span>
+                )}
               </div>
               <div className="flex items-center gap-2">
                 <Phone size={12} className="text-gray-400 shrink-0" />
@@ -196,7 +327,7 @@ export default function DiscoveryPage() {
             {r.public_slug && (
               <div className="mt-3 pt-3 border-t border-gray-100">
                 <a
-                  href={`/c/${r.public_slug}`}
+                  href={`/${r.public_slug}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={(e) => e.stopPropagation()}
@@ -218,7 +349,11 @@ export default function DiscoveryPage() {
       {retailers && filtered.length === 0 && (
         <div className="text-center py-12">
           <p className="text-sm text-gray-500">
-            {search ? 'No retailers match your search.' : 'No retailers have location data yet.'}
+            {search
+              ? 'No retailers match your search.'
+              : nearby
+                ? `No stores with a location within ${nearby.radius_km} km. Try a bigger radius.`
+                : 'No retailers have location data yet.'}
           </p>
         </div>
       )}

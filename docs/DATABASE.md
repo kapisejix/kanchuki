@@ -212,7 +212,16 @@ model Retailer {
   support_owner  TeamMember?  @relation("SupportedRetailers", fields: [support_owner_id], references: [id])
   support_tickets SupportTicket[]
   suspended_by   TeamMember?  @relation("SuspendedRetailers", fields: [suspended_by_id], references: [id])
-  
+
+  // Shop map pin (migration 147 columns, 151 location_source). Written by PUT /v1/retailers/me
+  // (RC-163: that route accepted but never wrote them before). location_source says where the
+  // pair came from: 'RETAILER_PIN' (retailer pinned in the app) | 'GEOCODED_APPROX' (guessed from
+  // the typed address by scripts/backfill-retailer-location.ts) | NULL (no pin).
+  latitude        Float?
+  longitude       Float?
+  location_source String?
+
+  @@index([latitude, longitude])
   @@index([phone])
   @@index([city])
   @@index([territory_id])

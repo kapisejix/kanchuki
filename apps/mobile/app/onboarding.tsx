@@ -35,6 +35,9 @@ import { GooglePlaceField } from '../src/components/GooglePlaceField';
 import { GradientButton } from '../src/components/GradientButton';
 import { billingApi, retailerApi } from '../src/lib/api';
 import { showError } from '../src/lib/errors';
+import { resolveMapsLink } from '../src/lib/maps-link';
+import { showPinReview } from '../src/lib/pin-alert';
+import { reviewPin } from '../src/lib/pin-check';
 import {
   clearCapturedReferralCode,
   getCapturedReferralCode,
@@ -207,6 +210,8 @@ export default function OnboardingScreen() {
   const [latitude, setLatitude] = useState<number | null>(null);
   const [longitude, setLongitude] = useState<number | null>(null);
   const [locating, setLocating] = useState(false);
+  const [mapsLink, setMapsLink] = useState('');
+  const [resolvingLink, setResolvingLink] = useState(false);
   const [gstin, setGstin] = useState('');
   const [referralCode, setReferralCode] = useState('');
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
@@ -416,26 +421,57 @@ export default function OnboardingScreen() {
         return;
       }
       const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
-      setLatitude(loc.coords.latitude);
-      setLongitude(loc.coords.longitude);
-      // Reverse geocode to fill address fields if empty
-      const [place] = await Location.reverseGeocodeAsync({
-        latitude: loc.coords.latitude,
-        longitude: loc.coords.longitude,
-      });
-      if (place) {
-        if (!city.trim() && place.city) setCity(place.city);
-        if (!state.trim() && place.region) setState(place.region);
-        if (!shopAddress.trim()) {
-          const parts = [place.name, place.street, place.district].filter(Boolean);
-          if (parts.length > 0) setShopAddress(parts.join(', '));
-        }
-      }
+      await applyPoint(loc.coords.latitude, loc.coords.longitude);
     } catch {
       Alert.alert('Location Error', 'Could not get your current location. Please try again.');
     } finally {
       setLocating(false);
     }
+  };
+
+  // Paste a Google Maps "Share" link instead of using GPS — same review as GPS.
+  const handleUseMapsLink = async () => {
+    setResolvingLink(true);
+    try {
+      const point = await resolveMapsLink(mapsLink);
+      if (!point) {
+        Alert.alert(
+          'Link not recognised',
+          'Open your shop in Google Maps, tap Share, and paste that link here.',
+        );
+        return;
+      }
+      setMapsLink('');
+      await applyPoint(point.lat, point.lng);
+    } finally {
+      setResolvingLink(false);
+    }
+  };
+
+  // One flow for GPS and pasted links: keep the pin, fill any EMPTY address fields from where
+  // it landed (typed values are never overwritten), then show the nearby address with
+  // Use this pin / Clear pin. The typed address is read before the fill, so the mismatch
+  // warning compares against what the retailer actually typed.
+  const applyPoint = async (lat: number, lng: number) => {
+    setLatitude(lat);
+    setLongitude(lng);
+    const review = await reviewPin(lat, lng, { pincode, state });
+    const place = review?.place;
+    if (place) {
+      if (!city.trim() && place.city) setCity(place.city);
+      if (!state.trim() && place.region) setState(place.region);
+      if (!pincode.trim() && place.postalCode && /^\d{6}$/.test(place.postalCode)) {
+        setPincode(place.postalCode);
+      }
+      if (!shopAddress.trim()) {
+        const parts = [place.name, place.street, place.district].filter(Boolean);
+        if (parts.length > 0) setShopAddress(parts.join(', '));
+      }
+    }
+    showPinReview(review, () => {
+      setLatitude(null);
+      setLongitude(null);
+    });
   };
 
   const renderContent = () => {
@@ -722,6 +758,34 @@ export default function OnboardingScreen() {
                 <Text className="text-heliotrope-400 text-lg">→</Text>
               )}
             </AnimatedPressable>
+
+            {/* Or paste the shop's Google Maps share link (works from anywhere, no GPS needed) */}
+            <View className="flex-row items-center gap-2 mt-2">
+              <TextInput
+                value={mapsLink}
+                onChangeText={setMapsLink}
+                placeholder="Or paste a Google Maps link"
+                placeholderTextColor="#928EB2"
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="url"
+                className="flex-1 bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3 text-sm font-bold text-spaceCadet-900"
+              />
+              <AnimatedPressable
+                onPress={() => void handleUseMapsLink()}
+                disabled={resolvingLink || mapsLink.trim().length === 0}
+                accessibilityLabel="Use pasted Google Maps link"
+                accessibilityRole="button"
+                className="bg-spaceCadet-900 px-4 py-3 rounded-2xl min-h-[44px] justify-center"
+                style={{ opacity: mapsLink.trim().length === 0 ? 0.5 : 1 }}
+              >
+                {resolvingLink ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text className="text-white text-sm font-bold">Use</Text>
+                )}
+              </AnimatedPressable>
+            </View>
 
             {/* Optional: link the shop's Google listing (saved immediately on pick) */}
             <View className="mt-3">

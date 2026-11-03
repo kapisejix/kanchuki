@@ -57,9 +57,11 @@ export const adminRetailersListRoutes: FastifyPluginAsync = async (server) => {
         status: z.enum(['TRIAL', 'ACTIVE', 'PAST_DUE', 'CANCELLED', 'COMPLETED']).optional(),
         suspended: queryBool(),
         featured: queryBool(),
+        has_location: queryBool(),
       })
       .safeParse(request.query);
-    const { cursor, limit, search, city, state, plan, status, suspended, featured } = query.success
+    const { cursor, limit, search, city, state, plan, status, suspended, featured, has_location } =
+      query.success
       ? query.data
       : {
           cursor: undefined,
@@ -71,12 +73,13 @@ export const adminRetailersListRoutes: FastifyPluginAsync = async (server) => {
           status: undefined,
           suspended: undefined,
           featured: undefined,
+          has_location: undefined,
         };
 
     const retailers = await prisma.retailer.findMany({
       where: {
         deleted_at: null,
-        ...(cursor ? { id: { gt: cursor } } : {}),
+        ...(has_location ? { latitude: { not: null }, longitude: { not: null } } : {}),
         ...(city ? { city: { contains: city, mode: 'insensitive' as const } } : {}),
         ...(state ? { state: { equals: state, mode: 'insensitive' as const } } : {}),
         ...(plan ? { plan } : {}),
@@ -99,6 +102,14 @@ export const adminRetailersListRoutes: FastifyPluginAsync = async (server) => {
         city: true,
         state: true,
         phone: true,
+        // Location + storefront fields: the Local Discovery admin page filters on these.
+        latitude: true,
+        longitude: true,
+        location_source: true,
+        public_slug: true,
+        address_line1: true,
+        address_line2: true,
+        pincode: true,
         plan: true,
         plan_status: true,
         trial_ends_at: true,
@@ -114,7 +125,10 @@ export const adminRetailersListRoutes: FastifyPluginAsync = async (server) => {
           },
         },
       },
-      orderBy: { created_at: 'desc' },
+      // id tiebreak makes the order total, so the id cursor never skips or repeats rows.
+      orderBy: [{ created_at: 'desc' }, { id: 'desc' }],
+      take: limit + 1, // one extra row tells us whether another page exists
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
     });
 
     const hasMore = retailers.length > limit;

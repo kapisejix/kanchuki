@@ -1,0 +1,12 @@
+-- 151: retailers.location_source — where the latitude/longitude pair came from.
+-- NOT APPLIED by the agent; the owner applies it, and BEFORE the API that selects it is deployed
+-- (a Prisma model with a column the DB lacks makes every whole-row retailer query fail, RC-160).
+--
+--   RETAILER_PIN     the retailer pinned the shop (GPS or Google Maps link) in the app
+--   GEOCODED_APPROX  backfilled from the typed address by scripts/backfill-retailer-location.ts;
+--                    street/pincode accuracy at best, replaced when the retailer pins the shop
+--   NULL             no coordinates (or coordinates from before this column existed)
+--
+-- Nullable, no default, no backfill: existing rows stay NULL, so nothing changes until written.
+-- Idempotent.
+ALTER TABLE retailers ADD COLUMN IF NOT EXISTS location_source TEXT;

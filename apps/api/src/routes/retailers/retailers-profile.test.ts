@@ -330,3 +330,53 @@ describe('a capture that fails is non-fatal, not silent', () => {
     expect((logged[0] as unknown[])[1]).toBe('referral capture failed');
   });
 });
+
+describe('PUT /me — shop pin (latitude / longitude)', () => {
+  const written = () => mockRetailerUpdate.mock.calls[0]?.[0].data as Record<string, unknown>;
+
+  it('writes the pin and marks it RETAILER_PIN (it was accepted but silently dropped before)', async () => {
+    const app = await buildApp();
+    const res = await put(app, { latitude: 30.7333, longitude: 76.7794 });
+    expect(res.statusCode).toBe(200);
+    expect(written()).toMatchObject({
+      latitude: 30.7333,
+      longitude: 76.7794,
+      location_source: 'RETAILER_PIN',
+    });
+  });
+
+  it('clears the pin and its source when both are null', async () => {
+    dbRow = { ...dbRow, latitude: 30.7333, longitude: 76.7794, location_source: 'RETAILER_PIN' };
+    const app = await buildApp();
+    await put(app, { latitude: null, longitude: null });
+    expect(written()).toMatchObject({ latitude: null, longitude: null, location_source: null });
+  });
+
+  it('does not relabel a geocoded pin when the app re-sends the same coordinates', async () => {
+    dbRow = { ...dbRow, latitude: 30.7333, longitude: 76.7794, location_source: 'GEOCODED_APPROX' };
+    const app = await buildApp();
+    await put(app, { shop_name: 'Sharma Cloth House', latitude: 30.7333, longitude: 76.7794 });
+    expect(written()).not.toHaveProperty('location_source');
+    expect(written()).not.toHaveProperty('latitude');
+  });
+
+  it('leaves the pin alone when neither field is sent', async () => {
+    const app = await buildApp();
+    await put(app, { city: 'Mohali' });
+    expect(written()).not.toHaveProperty('latitude');
+    expect(written()).not.toHaveProperty('location_source');
+  });
+
+  it.each([
+    ['only latitude', { latitude: 30.7 }],
+    ['only longitude', { longitude: 76.7 }],
+    ['one null, one set', { latitude: null, longitude: 76.7 }],
+    ['outside India (0,0)', { latitude: 0, longitude: 0 }],
+    ['outside India (swapped)', { latitude: 76.7794, longitude: 30.7333 }],
+  ])('rejects %s and writes nothing', async (_name, body) => {
+    const app = await buildApp();
+    const res = await put(app, body);
+    expect(res.statusCode).toBe(422);
+    expect(mockRetailerUpdate).not.toHaveBeenCalled();
+  });
+});

@@ -58,6 +58,8 @@ import { apiMessage, showError } from "../../src/lib/errors";
 import { clearPersistedCache } from "../../src/lib/offline-persister";
 import { useAuth } from "../../src/lib/auth-context";
 import { resolveMapsLink } from "../../src/lib/maps-link";
+import { showPinReview } from "../../src/lib/pin-alert";
+import { reviewPin } from "../../src/lib/pin-check";
 import { getItem } from "../../src/lib/storage";
 import { useTheme } from "../../src/lib/theme";
 import { WEB_URL } from "../../src/lib/web-url";
@@ -194,6 +196,30 @@ function ProfileEditModal({
   const gstinChanged =
     (gstin.trim() || "") !== String(retailer?.gstin ?? "").trim();
 
+  // After a pin is captured (GPS or pasted link): fill any EMPTY address fields from where it
+  // landed (typed values are never overwritten), then show the nearby address with
+  // Use this pin / Clear pin, plus a warning when it disagrees with the saved pincode / state.
+  // Never blocks: no result from the geocoder = no dialog, the pin simply stays.
+  const warnIfPinOffAddress = async (lat: number, lng: number) => {
+    const review = await reviewPin(lat, lng, {
+      pincode: retailer?.pincode,
+      state: stateVal,
+    });
+    const place = review?.place;
+    if (place) {
+      if (!city.trim() && place.city) setCity(place.city);
+      if (!stateVal.trim() && place.region) setStateVal(place.region);
+      if (!addressLine1.trim()) {
+        const parts = [place.name, place.street, place.district].filter(Boolean);
+        if (parts.length > 0) setAddressLine1(parts.join(", "));
+      }
+    }
+    showPinReview(review, () => {
+      setLatitude(null);
+      setLongitude(null);
+    });
+  };
+
   // Stand in the shop and tap — saves the device's current position as the pin.
   const handleSetLocation = async () => {
     setLocating(true);
@@ -209,6 +235,7 @@ function ProfileEditModal({
       const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
       setLatitude(loc.coords.latitude);
       setLongitude(loc.coords.longitude);
+      await warnIfPinOffAddress(loc.coords.latitude, loc.coords.longitude);
     } catch (err) {
       showError(err, "Could not get your location. Please try again.");
     } finally {
@@ -231,6 +258,7 @@ function ProfileEditModal({
       setLatitude(point.lat);
       setLongitude(point.lng);
       setMapsLink("");
+      await warnIfPinOffAddress(point.lat, point.lng);
     } finally {
       setResolvingLink(false);
     }
