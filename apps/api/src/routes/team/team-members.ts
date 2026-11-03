@@ -31,6 +31,8 @@ const referralCodeSchema = z
       'Referral codes cannot contain a hyphen — the "KAN-" prefix is reserved for the retailer referral program.',
   });
 
+const generateTempPassword = () => `Kanchuki-${randomBytes(6).toString('hex')}!`;
+
 const CreateMemberSchema = z.object({
   name: z.string().min(1).max(200),
   email: z.string().email(),
@@ -126,7 +128,7 @@ export const teamMembersRoutes: FastifyPluginAsync = async (server) => {
       body.data.referral_code ??
       (body.data.role === 'MARKETING_AGENT' ? generateReferralCode() : undefined);
 
-    const rawPassword = body.data.password || `Kanchuki-${randomBytes(6).toString('hex')}!`;
+    const rawPassword = body.data.password || generateTempPassword();
 
     const member = await prisma.teamMember.create({
       data: {
@@ -164,7 +166,42 @@ export const teamMembersRoutes: FastifyPluginAsync = async (server) => {
       console.error('[team] Failed to send welcome email:', err);
     });
 
-    return { data: member };
+    // Shown once to the creator so a failed or unconfigured email never strands the new member.
+    // Only present when the server generated it; a password the creator typed is not echoed back.
+    return {
+      data: { ...member, generated_password: body.data.password ? undefined : rawPassword },
+    };
+  });
+
+  // Super Admin only: set a fresh random password for an existing member and return it once.
+  // Not emailed. Existing 12 h team tokens stay valid until they expire (no revocation list).
+  server.post<{ Params: { id: string } }>('/members/:id/reset-password', async (request) => {
+    const tm = request.teamMember;
+    if (!tm) throw forbidden('Not authenticated');
+    if (!tm.isSuperAdmin) throw forbidden('Only a Super Admin can reset a password');
+
+    const password = generateTempPassword();
+    const member = await prisma.teamMember
+      .update({
+        where: { id: request.params.id },
+        data: { password_hash: hashPassword(password) },
+        select: { id: true, email: true },
+      })
+      .catch(nullOnMissing);
+    if (!member) throw notFound('Team member');
+
+    // Never put the password (or its hash) in the audit row.
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'admin',
+        action: 'RESET_TEAM_PASSWORD',
+        resource_type: 'TeamMember',
+        resource_id: member.id,
+        metadata: { actor: tm.id },
+      },
+    });
+
+    return { data: { id: member.id, email: member.email, generated_password: password } };
   });
 
   server.get('/members', async (request) => {
