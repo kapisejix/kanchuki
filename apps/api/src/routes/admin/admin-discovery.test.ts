@@ -45,7 +45,12 @@ const row = (id: string, lat: number | null, lng: number | null, extra = {}) => 
 // caches a found place for a day (so a second test with the same query would skip the geocoder).
 beforeEach(() => {
   vi.clearAllMocks();
-  mockGeocode.mockResolvedValue({ lat: 30.7333, lng: 76.7794, level: 'pincode', display: 'Chandigarh' });
+  mockGeocode.mockResolvedValue({
+    lat: 30.7333,
+    lng: 76.7794,
+    level: 'pincode',
+    display: 'Chandigarh',
+  });
 });
 
 describe('GET /discovery/nearby', () => {
@@ -57,7 +62,10 @@ describe('GET /discovery/nearby', () => {
       row('nogeo', null, null),
     ]);
     const app = await buildApp();
-    const res = await app.inject({ method: 'GET', url: '/discovery/nearby?query=160022&radius_km=10' });
+    const res = await app.inject({
+      method: 'GET',
+      url: '/discovery/nearby?query=160022&radius_km=10',
+    });
     expect(res.statusCode).toBe(200);
     const d = res.json().data;
     expect(d.retailers.map((r: { id: string }) => r.id)).toEqual(['near', 'far-ish']);

@@ -7,8 +7,8 @@
 import { prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
-import { type GeocodeHit, geocodeAddress } from '../../lib/geocode-address.js';
 import { getBoundingBox, haversineDistance } from '../../lib/geo.js';
+import { type GeocodeHit, geocodeAddress } from '../../lib/geocode-address.js';
 import { notFound } from '../../plugins/error-handler.js';
 import { adminAuthPreHandler } from '../admin-auth.js';
 

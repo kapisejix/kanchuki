@@ -28,7 +28,10 @@ export function buildQueries(a: AddressParts): GeocodeQuery[] {
   const street = [clean(a.address_line1), clean(a.address_line2)].filter(Boolean).join(', ');
   const out: GeocodeQuery[] = [];
   if (street && (city || pin)) {
-    out.push({ level: 'address', q: [street, city, state, pin, 'India'].filter(Boolean).join(', ') });
+    out.push({
+      level: 'address',
+      q: [street, city, state, pin, 'India'].filter(Boolean).join(', '),
+    });
   }
   if (pin) out.push({ level: 'pincode', q: `${pin}, India` });
   if (city) out.push({ level: 'city', q: [city, state, 'India'].filter(Boolean).join(', ') });

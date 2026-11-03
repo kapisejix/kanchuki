@@ -58,7 +58,9 @@ describe('geocodeAddress', () => {
 
   it('makes no request for an address with nothing searchable', async () => {
     const fetchImpl = vi.fn();
-    expect(await geocodeAddress({}, fetchImpl as unknown as typeof fetch, async () => {})).toBeNull();
+    expect(
+      await geocodeAddress({}, fetchImpl as unknown as typeof fetch, async () => {}),
+    ).toBeNull();
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 });
