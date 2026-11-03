@@ -192,6 +192,15 @@ export const ADMIN_PANEL_ROLES = [
   'SUPPORT_MANAGER',
 ] as const;
 
+/**
+ * Admin-tier surfaces where an ADMIN session may only READ (owner decision 2026-11-03): backup
+ * list/metadata and the deletion-vault listing are visible, but creating or restoring a backup
+ * is Super Admin only. Enforced by HTTP method in the admin gate, so a new write route under
+ * these segments is refused for Admin by default. Every entry must be in
+ * {@link ADMIN_TIER_ADMIN_SEGMENTS}.
+ */
+export const ADMIN_READ_ONLY_ADMIN_SEGMENTS = ['backup', 'backups', 'deletion-vault'] as const;
+
 /** `/v1/admin/<segment>` routes exempt from auth entirely — must stay excluded by construction. */
 export const ADMIN_AUTH_EXEMPT_SEGMENTS = ['login'] as const;
 
@@ -271,4 +280,11 @@ export function isSupportManagerAdminPath(pathWithQuery: string | null | undefin
   const segment = adminPathSegment(pathWithQuery);
   if (!segment) return false;
   return (SUPPORT_MANAGER_ADMIN_SEGMENTS as readonly string[]).includes(segment);
+}
+
+/** True when ADMIN may only read this path (see {@link ADMIN_READ_ONLY_ADMIN_SEGMENTS}). */
+export function isAdminReadOnlyAdminPath(pathWithQuery: string | null | undefined): boolean {
+  const segment = adminPathSegment(pathWithQuery);
+  if (!segment) return false;
+  return (ADMIN_READ_ONLY_ADMIN_SEGMENTS as readonly string[]).includes(segment);
 }

@@ -299,3 +299,13 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Web | `adminRoleCanReach(role, path)` drives the layout guard and the sidebar; stale `superAdminOnly` flags removed from the moved items (Query Console keeps its flag). |
 | Tests | `admin-access.test.ts` (3 disjoint tiers, role matrix, `database/query`), new `admin-team-readonly.test.ts` (5), Sidebar tests rewritten (ADMIN, MARKETING_MANAGER). API + web `tsc` clean. The `Sidebar` sign-out test still fails as before (pre-existing). |
 | Risk accepted by the owner | Admin can now restore backups, hard-delete via Deletion Vault, view Deployments / Gate, and open Support Sessions. Not verified in a browser; no live Admin login yet. |
+
+## 2026-11-03 — Backup & Restore and Deletion Vault made view-only for Admin, branch `fix/admin-backup-vault-readonly`
+
+| Item | Detail |
+|---|---|
+| Decision | Owner, after seeing the risk of #230 ("Admin can restore backups / use Deletion Vault"): "limited access", chose **view-only** over Super-Admin-only. |
+| Rule | `ADMIN_READ_ONLY_ADMIN_SEGMENTS` (`backup`, `backups`, `deletion-vault`) + `isAdminReadOnlyAdminPath` in `admin-access.ts`; `adminAuthPreHandler` refuses any non-GET/HEAD/OPTIONS request from an ADMIN session on those segments (403 "Super Admin privileges required to change this"). By method, so a future write route there is refused for Admin by default. |
+| Effect | Admin can list backups and their metadata and the deletion vault. `POST /backup/create` and `POST /backups/restore` are Super Admin only. The vault API is GET-only today. |
+| Tests | New `admin-readonly-surfaces.test.ts` (5, dummy handlers at the real paths; fails when the rule is removed). 130 related API tests pass, API `tsc` clean. |
+| Not done | The Backup page still shows the Create/Restore buttons to Admin; they return 403. Not browser-checked. |
