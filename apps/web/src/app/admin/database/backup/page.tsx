@@ -149,6 +149,17 @@ export default function DatabaseBackupPage() {
   // Expanded rows
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
 
+  // Create/Restore are Super Admin only (Admin is view-only, API returns 403).
+  // Fail closed: hidden until the stored role is confirmed SUPER_ADMIN.
+  const [canWrite, setCanWrite] = useState(false)
+  useEffect(() => {
+    try {
+      setCanWrite(sessionStorage.getItem('admin_role') === 'SUPER_ADMIN')
+    } catch {
+      setCanWrite(false)
+    }
+  }, [])
+
   // ── Fetch backups ────────────────────────────────────────────
   const fetchBackups = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true)
@@ -267,20 +278,22 @@ export default function DatabaseBackupPage() {
               <RefreshCw size={13} className={refreshing ? 'animate-spin' : ''} />
               Refresh
             </motion.button>
-            <motion.button
-              onClick={handleTriggerBackup}
-              disabled={triggering}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 rounded-xl transition-all disabled:opacity-50 shadow-lg shadow-emerald-500/20"
-            >
-              {triggering ? (
-                <Loader2 size={14} className="animate-spin" />
-              ) : (
-                <Upload size={14} />
-              )}
-              {triggering ? 'Triggering...' : 'Trigger Backup'}
-            </motion.button>
+            {canWrite && (
+              <motion.button
+                onClick={handleTriggerBackup}
+                disabled={triggering}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 rounded-xl transition-all disabled:opacity-50 shadow-lg shadow-emerald-500/20"
+              >
+                {triggering ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : (
+                  <Upload size={14} />
+                )}
+                {triggering ? 'Triggering...' : 'Trigger Backup'}
+              </motion.button>
+            )}
           </div>
         </div>
       </motion.div>
@@ -443,16 +456,18 @@ export default function DatabaseBackupPage() {
             Backups are stored in Cloudflare R2 under the <code className="text-gray-500 font-mono">backups/</code> prefix.
             Run <code className="text-gray-500 font-mono">pnpm db:backup</code> from a machine with Docker to create the first backup.
           </p>
-          <motion.button
-            onClick={handleTriggerBackup}
-            disabled={triggering}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 rounded-xl transition-all shadow-lg shadow-emerald-500/20"
-          >
-            <Upload size={14} />
-            Trigger Backup
-          </motion.button>
+          {canWrite && (
+            <motion.button
+              onClick={handleTriggerBackup}
+              disabled={triggering}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 rounded-xl transition-all shadow-lg shadow-emerald-500/20"
+            >
+              <Upload size={14} />
+              Trigger Backup
+            </motion.button>
+          )}
         </motion.div>
       )}
 
@@ -501,21 +516,23 @@ export default function DatabaseBackupPage() {
                     )}
                   </div>
                   <div className="w-28 text-right shrink-0 hidden md:flex items-center justify-end gap-1">
-                    <motion.button
-                      onClick={(e) => { e.stopPropagation(); handleRestore(backup.key) }}
-                      disabled={restoringKey === backup.key}
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.98 }}
-                      className="flex items-center gap-1 px-2.5 py-1.5 text-[10px] font-medium text-amber-600 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-all disabled:opacity-40"
-                      title="Restore from this backup"
-                    >
-                      {restoringKey === backup.key ? (
-                        <Loader2 size={11} className="animate-spin" />
-                      ) : (
-                        <Download size={11} />
-                      )}
-                      Restore
-                    </motion.button>
+                    {canWrite && (
+                      <motion.button
+                        onClick={(e) => { e.stopPropagation(); handleRestore(backup.key) }}
+                        disabled={restoringKey === backup.key}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.98 }}
+                        className="flex items-center gap-1 px-2.5 py-1.5 text-[10px] font-medium text-amber-600 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-all disabled:opacity-40"
+                        title="Restore from this backup"
+                      >
+                        {restoringKey === backup.key ? (
+                          <Loader2 size={11} className="animate-spin" />
+                        ) : (
+                          <Download size={11} />
+                        )}
+                        Restore
+                      </motion.button>
+                    )}
                     <button
                       onClick={(e) => { e.stopPropagation(); toggleRow(backup.key) }}
                       className="p-1 text-gray-300 hover:text-gray-500"
@@ -564,17 +581,19 @@ export default function DatabaseBackupPage() {
                     )}
 
                     {/* Mobile actions */}
-                    <div className="mt-3 flex items-center gap-2 md:hidden">
-                      <motion.button
-                        onClick={() => handleRestore(backup.key)}
-                        disabled={restoringKey === backup.key}
-                        whileHover={{ scale: 1.02 }}
-                        className="flex items-center gap-1 px-3 py-1.5 text-[10px] font-medium text-amber-600 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-all disabled:opacity-40"
-                      >
-                        <Download size={11} />
-                        Restore
-                      </motion.button>
-                    </div>
+                    {canWrite && (
+                      <div className="mt-3 flex items-center gap-2 md:hidden">
+                        <motion.button
+                          onClick={() => handleRestore(backup.key)}
+                          disabled={restoringKey === backup.key}
+                          whileHover={{ scale: 1.02 }}
+                          className="flex items-center gap-1 px-3 py-1.5 text-[10px] font-medium text-amber-600 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-all disabled:opacity-40"
+                        >
+                          <Download size={11} />
+                          Restore
+                        </motion.button>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
