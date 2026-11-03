@@ -59,7 +59,7 @@ const ROLE_LABELS: Record<TeamRole, string> = {
 
 const ROLE_DESCRIPTIONS: Record<TeamRole, string> = {
   SUPER_ADMIN: 'Full unrestricted access to all admin tools, Settings, API keys/Integrations, Billing/Payments, and Operations.',
-  ADMIN: 'Everything a Marketing Manager has, plus change a retailer\'s plan and extend trials (audit-logged). Excludes API keys, Payments, Limit overrides, Team, Reports, Settings, and Operations.',
+  ADMIN: 'Everything a Marketing Manager has, plus change a retailer\'s plan and extend trials (audit-logged). Plus manage per-retailer limit overrides. Excludes API keys, Payments, Team, Reports, Settings, and Operations.',
   MARKETING_MANAGER: 'Admin dashboard access (Retailers, Customers, Catalog, Social). Cannot change plans or trials. Excludes API keys, Payments, Settings, Team, Reports, and Operations.',
   MARKETING_AGENT: 'Field staff access for the /survey field survey and mobile staff tools only. Has NO access to the Admin dashboard.',
   SUPPORT_MANAGER: 'Access to manage support tickets, customer inquiries, and retailer support issues.',

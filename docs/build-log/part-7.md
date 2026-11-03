@@ -284,6 +284,6 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Schema | `ADMIN` added to `TeamRole`; `149_team_role_admin` = `ALTER TYPE "TeamRole" ADD VALUE IF NOT EXISTS 'ADMIN'`. NOT applied by the agent. Apply before deploying the API. |
 | Security | `verifyAdminSession` (only caller: `teamAuthPreHandler`, which grants unscoped Super Admin over `/v1/team`) now passes `SUPER_ADMIN` only. Before, an `ADMIN` session would have been able to create `SUPER_ADMIN` team members. An Admin gets 401 on `/v1/team/*`. |
 | API / web | `ADMIN` in the create-member schema (only a Super Admin can create one); team page label "Admin (Standard Access + Plan Changes)", description, colour; `MARKETING_MANAGER` relabelled "Marketing Manager (Standard Access)"; welcome-email label. |
-| Access rule | Unchanged: ADMIN = all standard admin segments + change-plan + extend-trial. Limit overrides, team members, reports, money, settings, operations stay Super Admin. |
+| Access rule | ADMIN = all standard admin segments + change-plan + extend-trial + per-retailer limit overrides POST/DELETE (owner decision 2026-11-03; audit entries now carry actor + role). Team members, reports, money, settings, operations stay Super Admin. |
 | Tests | New `admin-role-escalation.test.ts` (4; 2 fail on the old code). API + web `tsc` clean; 147 related API tests pass. |
 | Not verified | Migration unapplied; no Admin member created; no live Admin login or Change Plan; mobile staff OTP login for an ADMIN phone not checked; web page not browser-checked. |

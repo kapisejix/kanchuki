@@ -2,8 +2,8 @@
 --
 -- Code has allowed a plain ADMIN since PR #225 (change plan / extend trial), but the enum
 -- had no such value, so no ADMIN account could ever be created. ADMIN is the standard
--- admin tier: everything outside SUPER_ADMIN_ONLY_ADMIN_SEGMENTS, plus change-plan and
--- extend-trial. Limit overrides, team members and reports stay Super Admin only.
+-- admin tier: everything outside SUPER_ADMIN_ONLY_ADMIN_SEGMENTS, plus change-plan,
+-- extend-trial, limit overrides. Team members and reports stay Super Admin only.
 --
 -- ENUM VALUE ONLY. PostgreSQL 55P04: a value added via ALTER TYPE ... ADD VALUE cannot be
 -- used in the same transaction that added it, and Prisma runs each file as one
