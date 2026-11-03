@@ -87,6 +87,7 @@ enum ProductAttributeKind {
 
 enum TeamRole {
   SUPER_ADMIN
+  ADMIN
   MARKETING_MANAGER
   MARKETING_AGENT
   SUPPORT_MANAGER

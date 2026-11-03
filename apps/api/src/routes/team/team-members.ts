@@ -50,6 +50,7 @@ const CreateMemberSchema = z.object({
   password: z.string().min(8).max(128).optional(),
   role: z.enum([
     'SUPER_ADMIN',
+    'ADMIN',
     'MARKETING_MANAGER',
     'MARKETING_AGENT',
     'SUPPORT_MANAGER',

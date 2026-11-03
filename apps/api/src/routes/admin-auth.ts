@@ -52,15 +52,18 @@ export async function signAdminSession(email: string, role = 'SUPER_ADMIN'): Pro
     .sign(sessionSecret());
 }
 
+/**
+ * True only for a SUPER_ADMIN session. Its one caller, `teamAuthPreHandler`, turns a pass into
+ * unscoped Super Admin over /v1/team (create members, any role), so a plain ADMIN must not pass
+ * here (RC-161) — that was harmless only while no ADMIN account could exist.
+ */
 export async function verifyAdminSession(token: string): Promise<boolean> {
   try {
-    await jwtVerify(token, sessionSecret());
-    return true;
+    const { payload } = await jwtVerify(token, sessionSecret());
+    return (typeof payload.role === 'string' ? payload.role : 'SUPER_ADMIN') === 'SUPER_ADMIN';
   } catch {
     const teamClaims = await verifyTeamToken(token);
-    return (
-      teamClaims !== null && (teamClaims.role === 'SUPER_ADMIN' || teamClaims.role === 'ADMIN')
-    );
+    return teamClaims !== null && teamClaims.role === 'SUPER_ADMIN';
   }
 }
 
