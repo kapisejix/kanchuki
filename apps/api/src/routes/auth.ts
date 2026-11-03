@@ -559,8 +559,10 @@ export const authRoutes: FastifyPluginAsync = async (server) => {
       }
 
       // ── TeamMember Login (Kanchuki's own field/sales/support agents) ──
+      // ADMIN is a web-only role: refused here so a phone OTP never mints a team token for it
+      // (the mobile staff screens are for field/support agents; RC-161 follow-up).
       const teamMember = await prisma.teamMember.findFirst({
-        where: { phone, is_active: true },
+        where: { phone, is_active: true, role: { not: 'ADMIN' } },
         select: { id: true, name: true, email: true, role: true, referral_code: true },
       });
 
