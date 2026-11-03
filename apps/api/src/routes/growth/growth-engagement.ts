@@ -9,7 +9,7 @@
 
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
-import { loadRetailerEngagementView } from '../../lib/engagement-view.js';
+import { loadProductSummaries, loadRetailerEngagementView } from '../../lib/engagement-view.js';
 
 export const growthEngagementRoutes: FastifyPluginAsync = async (server) => {
   // ─── GET /engagement ─────────────────────────────────────────────
@@ -20,6 +20,11 @@ export const growthEngagementRoutes: FastifyPluginAsync = async (server) => {
       .parse(request.query ?? {});
 
     const view = await loadRetailerEngagementView(retailerId, query.days);
-    return { data: view };
+    const products = await loadProductSummaries(
+      retailerId,
+      view.top_products,
+      view.top_favorited_products,
+    );
+    return { data: { ...view, products } };
   });
 };

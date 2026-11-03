@@ -292,6 +292,7 @@ export type EngagementView = {
   top_favorited_products: EngagementTopEntry[]
   top_searches: EngagementTopEntry[]
   zero_result_terms: EngagementTopEntry[]
+  products: Record<string, { name: string | null; sku: string | null; thumbnail_url: string | null }>
   funnel: {
     view_count: number
     favorite_count: number

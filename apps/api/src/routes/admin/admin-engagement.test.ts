@@ -19,7 +19,9 @@ const {
   mockSummaryFindUnique,
   mockInteractionFindMany,
   mockAuditCreate,
+  mockProductFindMany,
 } = vi.hoisted(() => ({
+  mockProductFindMany: vi.fn(),
   mockRetailerFindUnique: vi.fn(),
   mockDailyFindMany: vi.fn(),
   mockSummaryFindUnique: vi.fn(),
@@ -30,6 +32,7 @@ const {
 vi.mock('@kanchuki/db', () => ({
   prisma: {
     retailer: { findUnique: mockRetailerFindUnique },
+    product: { findMany: mockProductFindMany },
     retailerEngagementDaily: { findMany: mockDailyFindMany },
     customerEngagementSummary: { findUnique: mockSummaryFindUnique },
     customerInteraction: { findMany: mockInteractionFindMany },
@@ -52,6 +55,7 @@ async function buildApp() {
 beforeEach(() => {
   vi.clearAllMocks();
   mockAuditCreate.mockResolvedValue({});
+  mockProductFindMany.mockResolvedValue([]);
 });
 
 describe('GET /engagement/retailers/:id', () => {
@@ -103,6 +107,19 @@ describe('GET /engagement/retailers/:id', () => {
       { value: 'p_2', count: 6 },
       { value: 'p_1', count: 5 },
     ]);
+    // Product details resolved once, scoped to the retailer; thumbnail = first photo.
+    mockProductFindMany.mockResolvedValue([
+      { id: 'p_2', name: 'Pink Suit', sku: 'SKU-2', photos: [{ url: 'https://cdn/x.jpg' }] },
+      { id: 'p_1', name: null, sku: null, photos: [] },
+    ]);
+    const res2 = await app.inject({ method: 'GET', url: '/engagement/retailers/r_1?days=7' });
+    expect(mockProductFindMany).toHaveBeenLastCalledWith(
+      expect.objectContaining({ where: { id: { in: ['p_2', 'p_1'] }, retailer_id: 'r_1' } }),
+    );
+    expect(res2.json().data.products).toEqual({
+      p_2: { name: 'Pink Suit', sku: 'SKU-2', thumbnail_url: 'https://cdn/x.jpg' },
+      p_1: { name: null, sku: null, thumbnail_url: null },
+    });
     expect(body.data.totals.total_dwell_ms).toBe('5000');
     expect(body.data.totals.view_count).toBe(9);
     expect(body.data.dwell_trend).toHaveLength(2);

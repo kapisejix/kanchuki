@@ -26,6 +26,41 @@ export function mergeTopLists(lists: unknown[], limit = 10): TopEntry[] {
     .slice(0, limit);
 }
 
+export interface ProductSummary {
+  name: string | null;
+  sku: string | null;
+  thumbnail_url: string | null;
+}
+
+/**
+ * Rollup top lists hold bare product ids. Resolve name / SKU / primary photo
+ * for them, scoped to `retailerId`, so no caller shows raw cuids. Unknown or
+ * deleted ids get no entry (callers fall back).
+ */
+export async function loadProductSummaries(
+  retailerId: string,
+  ...lists: TopEntry[][]
+): Promise<Record<string, ProductSummary>> {
+  const ids = [...new Set(lists.flat().map((e) => e.value))];
+  if (ids.length === 0) return {};
+  const rows = await prisma.product.findMany({
+    where: { id: { in: ids }, retailer_id: retailerId },
+    select: {
+      id: true,
+      name: true,
+      sku: true,
+      photos: {
+        select: { url: true },
+        orderBy: [{ is_primary: 'desc' }, { sort_order: 'asc' }],
+        take: 1,
+      },
+    },
+  });
+  return Object.fromEntries(
+    rows.map((p) => [p.id, { name: p.name, sku: p.sku, thumbnail_url: p.photos[0]?.url ?? null }]),
+  );
+}
+
 /** view→favorite→enquiry conversion, guarded against divide-by-zero. */
 export function funnelRates(views: number, favorites: number, enquiries: number) {
   const rate = (num: number, den: number) => (den > 0 ? Math.round((num / den) * 1000) / 10 : 0);
