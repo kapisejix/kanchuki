@@ -38,6 +38,11 @@ const COPY: Record<Key, { title: string; why: string; href: string }> = {
     why: 'Needed for GST invoices',
     href: '/settings',
   },
+  store_location: {
+    title: 'Pin your shop location',
+    why: 'Nearby customers find you and get directions',
+    href: '/settings',
+  },
   whatsapp_api: {
     title: 'Set up WhatsApp Business API',
     why: 'Send collections to many customers at once',

@@ -94,6 +94,46 @@ describe('Google Business Profile item', () => {
   });
 });
 
+describe('Store location item (opt-in: old builds crash on keys they do not know)', () => {
+  const getWith = (app: App) =>
+    app.inject({
+      method: 'GET',
+      url: '/v1/retailers/me/setup-checklist',
+      headers: { 'x-checklist-store-location': '1' },
+    });
+  const loc = (items: Item[]) => items.find((i) => i.key === 'store_location');
+
+  it('is never sent without the opt-in header', async () => {
+    expect(loc(itemsOf(await get(await buildApp())))).toBeUndefined();
+  });
+
+  it('is missing until the owner has pinned the shop', async () => {
+    expect(loc(itemsOf(await getWith(await buildApp())))?.status).toBe('missing');
+  });
+
+  it('is done for an own pin and for a legacy pin with no source', async () => {
+    for (const source of ['RETAILER_PIN', null]) {
+      m.retailerFind.mockResolvedValue({
+        ...BASE_ROW,
+        latitude: 30.7,
+        longitude: 76.8,
+        location_source: source,
+      });
+      expect(loc(itemsOf(await getWith(await buildApp())))?.status).toBe('done');
+    }
+  });
+
+  it('stays missing for a backfilled guess (GEOCODED_APPROX): the owner still has to pin', async () => {
+    m.retailerFind.mockResolvedValue({
+      ...BASE_ROW,
+      latitude: 30.7,
+      longitude: 76.8,
+      location_source: 'GEOCODED_APPROX',
+    });
+    expect(loc(itemsOf(await getWith(await buildApp())))?.status).toBe('missing');
+  });
+});
+
 describe('GET /me/setup-checklist', () => {
   it('lists only what the plan/platform can offer; Google Business + WhatsApp API are hidden', async () => {
     const res = await get(await buildApp());

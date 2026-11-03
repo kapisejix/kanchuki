@@ -26,7 +26,16 @@ const ITEMS = {
   instagram: { ticket: 'GROWTH_SETUP', label: 'Instagram account' },
   gst: { ticket: 'MAINTENANCE', label: 'GST details' },
   whatsapp_api: { ticket: 'MAINTENANCE', label: 'WhatsApp Business API' },
+  // Offered only to app builds that send STORE_LOCATION_HEADER (see deriveChecklist).
+  store_location: { ticket: 'MAINTENANCE', label: 'Store location' },
 } as const;
+
+/**
+ * Builds older than this item crash on a checklist key they have no copy for, and the API cannot
+ * tell build versions apart. So the item is opt-in: only a build that sends this header is told
+ * about `store_location`. Delete the header check once every supported build ignores unknown keys.
+ */
+export const STORE_LOCATION_HEADER = 'x-checklist-store-location';
 
 export type SetupItemKey = keyof typeof ITEMS;
 const KEYS = Object.keys(ITEMS) as [SetupItemKey, ...SetupItemKey[]];
@@ -41,11 +50,17 @@ export type ChecklistItem = {
 };
 
 /** All reads keyed on retailerId. Items the retailer's plan/platform can't offer are omitted. */
-export async function deriveChecklist(retailerId: string): Promise<ChecklistItem[]> {
+export async function deriveChecklist(
+  retailerId: string,
+  withStoreLocation = false,
+): Promise<ChecklistItem[]> {
   const [retailer, social, openAsks, waPlan, gbpOn, gbpDone] = await Promise.all([
     prisma.retailer.findUnique({
       where: { id: retailerId },
       select: {
+        latitude: true,
+        longitude: true,
+        location_source: true,
         google_place_id: true,
         gstin: true,
         whatsapp_api_phone_number_id: true,
@@ -82,6 +97,11 @@ export async function deriveChecklist(retailerId: string): Promise<ChecklistItem
     instagram: platforms.has('INSTAGRAM'),
     gst: !!retailer.gstin?.trim(),
     whatsapp_api: !!retailer.whatsapp_api_phone_number_id && !!retailer.whatsapp_api_access_token,
+    // A backfilled guess (GEOCODED_APPROX) still needs the owner's own pin.
+    store_location:
+      retailer.latitude != null &&
+      retailer.longitude != null &&
+      retailer.location_source !== 'GEOCODED_APPROX',
   };
   const offered: Record<SetupItemKey, boolean> = {
     google_place: true,
@@ -90,6 +110,7 @@ export async function deriveChecklist(retailerId: string): Promise<ChecklistItem
     instagram: true,
     gst: true,
     whatsapp_api: waPlan,
+    store_location: withStoreLocation,
   };
 
   return KEYS.filter((key) => offered[key]).map((key) => {
@@ -97,6 +118,9 @@ export async function deriveChecklist(retailerId: string): Promise<ChecklistItem
     return { key, status, dismissed: dismissed.has(key), can_ask: status === 'missing' };
   });
 }
+
+const wantsStoreLocation = (request: FastifyRequest) =>
+  request.headers[STORE_LOCATION_HEADER] === '1';
 
 function requireOwner(request: FastifyRequest): void {
   if (!isRealOwner(request)) throw forbidden('Only the shop owner can do this');
@@ -106,7 +130,7 @@ export const retailersSetupChecklistRoutes: FastifyPluginAsync = async (server) 
   // ─── GET /me/setup-checklist ────────────────────────────────────
   server.get('/me/setup-checklist', async (request) => {
     requireOwner(request);
-    const items = await deriveChecklist(request.retailerId);
+    const items = await deriveChecklist(request.retailerId, wantsStoreLocation(request));
     const visible_missing = items.filter((i) => i.status !== 'done' && !i.dismissed).length;
     return { data: { items, visible_missing } };
   });
@@ -158,7 +182,7 @@ export const retailersSetupChecklistRoutes: FastifyPluginAsync = async (server) 
       if (!parsed.success) throw notFound('Checklist item');
       const key = parsed.data;
 
-      const items = await deriveChecklist(request.retailerId);
+      const items = await deriveChecklist(request.retailerId, wantsStoreLocation(request));
       const item = items.find((i) => i.key === key);
       if (!item) throw notFound('Checklist item');
       if (item.status === 'done') {
