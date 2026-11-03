@@ -41,7 +41,9 @@
 // the failure message names the segment nobody decided about.
 
 /**
- * Admin surfaces only a Super Admin may reach — money, credentials, tax records,
+ * Admin surfaces only a Super Admin may reach — Finance (money, tax records), Settings
+ * (credentials, provider config) and the Query Console (owner decision 2026-11-03; the rest of
+ * the former Super-only set is in {@link ADMIN_TIER_ADMIN_SEGMENTS}). Original rationale: money, tax records,
  * platform config, and anything destructive.
  *
  * Consumers must match on the whole first path segment after `/admin/`, never a
@@ -49,13 +51,10 @@
  * `/admin/commission-x` for `commission`, and the reverse mistake (matching only
  * the exact path) leaves deeper routes open.
  *
- * SCOPE — what this list does NOT cover: it governs `/v1/admin/*` and the
- * `/admin/*` web pages. Two entries (`reports`, `team-members`) gate pages whose
- * *data* is fetched from `/v1/team/*`, and no list here covers that prefix —
- * `teamAuthPreHandler` accepts any valid admin key and grants it unscoped Super
- * Admin. The pages are therefore closed for a standard ADMIN while the routes
- * behind them are not; locking those down is a separate decision (RC-034,
- * post-referral cleanup board §3.3).
+ * SCOPE — what this list does NOT cover: it governs `/v1/admin/*` and the `/admin/*` web pages.
+ * The Reports and Team Members pages fetch from `/v1/team/*`, which this list does not cover:
+ * `teamAuthPreHandler` gives a SUPER_ADMIN session unscoped access, and an ADMIN session
+ * unscoped READS only (`readsAll`; every write stays Super Admin — RC-161).
  */
 export const SUPER_ADMIN_ONLY_ADMIN_SEGMENTS = [
   // ── Money: what retailers are charged, and what the platform earns ──
@@ -69,34 +68,16 @@ export const SUPER_ADMIN_ONLY_ADMIN_SEGMENTS = [
   'referral', // T9 referral monitoring — leaderboard, payout trigger, irreversible clawback, payout-account entry (money)
   'referral-settings',
   // ── Tax and legal documents ──
-  'gst',
   'gst-profile',
   'hsn-rules', // §6.11 keyword → HSN map used on WhatsApp catalog items (tax data)
   'invoices',
-  'reports', // admin reporting rollups (/admin/reports) — GST figures are tax data
   // ── Credentials and provider configuration ──
   'ai-providers',
   'integrations',
   'settings',
-  'support-sessions', // global switch + kill for Kanchuki-staff sessions inside retailer accounts
-  'team-members', // staff/sales-team accounts — invite + edit members via /v1/team/*
-  // ── Infrastructure and destructive operations ──
-  'backup',
-  'backups',
-  'database',
-  'deletion-vault',
-  'deployment-gate',
-  'deployments',
-  'operations',
+  // ── Raw database access ──
   'query',
   'schema',
-  'server-memory', // live process memory + 24 h history — infrastructure telemetry
-  'storage-report',
-  // ── Platform-wide audit + cost telemetry ──
-  'ai-usage',
-  'try-on-usage', // F-044 R2 T7 GPU cost telemetry
-  'audit-log',
-  'audit-logs',
 ] as const;
 
 /**
@@ -153,6 +134,35 @@ export const STANDARD_ADMIN_ADMIN_SEGMENTS = [
 ] as const;
 
 /**
+ * Surfaces reachable by SUPER_ADMIN and ADMIN only — not by MARKETING_MANAGER or SUPPORT_MANAGER
+ * (who otherwise share the standard tier). Owner decision 2026-11-03: Admin may open every menu
+ * except Finance, Settings and the Query Console, which stay in
+ * {@link SUPER_ADMIN_ONLY_ADMIN_SEGMENTS}. These were Super-Admin-only before (RC-034 / H3-2).
+ *
+ * Several are destructive or infrastructure (backup/restore, deletion vault, deployments): that
+ * is the owner's explicit choice, recorded here so a later edit knows it was decided.
+ */
+export const ADMIN_TIER_ADMIN_SEGMENTS = [
+  'ai-usage', // Reports -> AI Usage
+  'audit-log', // Operations -> Audit Log
+  'audit-logs',
+  'backup', // Operations -> Backup & Restore (destructive: restore)
+  'backups',
+  'database', // Operations -> DB Health / Backup / Deletion Vault. Its /query page is gated by path below
+  'deletion-vault', // Operations -> Deletion Vault (hard-deletes retailer/customer data)
+  'deployment-gate', // Operations -> Deployment Gate
+  'deployments', // Operations -> Deployments
+  'gst', // Reports -> GST Reports (the /v1/admin/gst/* data)
+  'operations', // Operations -> overview
+  'reports', // Reports -> Overview (data is /v1/team/reporting, read-only for Admin)
+  'server-memory', // Operations -> Server Memory
+  'storage-report', // Reports -> Storage Report
+  'support-sessions', // Operations -> Support Sessions
+  'team-members', // Team & Support -> Team Members (read-only for Admin; creating/editing stays Super Admin)
+  'try-on-usage', // Reports -> Try-On GPU Usage
+] as const;
+
+/**
  * Standard-admin surfaces a SUPPORT_MANAGER may also reach (H3-2). Every entry must be
  * in {@link STANDARD_ADMIN_ADMIN_SEGMENTS}; anything else is denied by default, so a
  * support manager can work tickets and retailer/customer records but not content,
@@ -201,6 +211,11 @@ export const INVALID_ADMIN_SEGMENT = '\u0000invalid';
  * Returns null for a bare `/admin`/`/admin/`, which is not a route in either app.
  */
 export function adminPathSegment(pathWithQuery: string | null | undefined): string | null {
+  return adminPathParts(pathWithQuery)?.[0] ?? null;
+}
+
+/** Path segments after `/admin/` (decoded, lower-cased), or null; one-element INVALID on a bad escape. */
+function adminPathParts(pathWithQuery: string | null | undefined): string[] | null {
   if (!pathWithQuery) return null;
   // Strip query and hash FIRST: `request.url` on the API includes `?foo=bar`, and
   // a naive split on '/' would make '/v1/admin/commission?x=1' still work but
@@ -212,22 +227,43 @@ export function adminPathSegment(pathWithQuery: string | null | undefined): stri
   try {
     decoded = decodeURIComponent(withoutQuery);
   } catch {
-    return INVALID_ADMIN_SEGMENT;
+    return [INVALID_ADMIN_SEGMENT];
   }
   const lower = decoded.toLowerCase();
   // The API mounts the admin tree at /v1/admin; the web app serves /admin.
   const adminPath = lower.startsWith('/v1/admin/') ? lower.slice(3) : lower;
   if (!adminPath.startsWith('/admin/')) return null;
-  const segment = adminPath.slice('/admin/'.length).split('/')[0];
-  return segment ? segment : null;
+  const parts = adminPath.slice('/admin/'.length).split('/');
+  return parts[0] ? parts : null;
 }
 
-/** True when `pathWithQuery` names a Super-Admin-only admin surface. */
+/**
+ * True when `pathWithQuery` names a Super-Admin-only admin surface: Finance, Settings, the Query
+ * Console. The web Query Console lives under the shared `database` segment (which Admin may open
+ * for DB Health / Backup / Deletion Vault), so `/admin/database/query` is matched by path.
+ */
 export function isSuperAdminOnlyAdminPath(pathWithQuery: string | null | undefined): boolean {
-  const segment = adminPathSegment(pathWithQuery);
+  const parts = adminPathParts(pathWithQuery);
+  const segment = parts?.[0];
   if (!segment) return false;
   if (segment === INVALID_ADMIN_SEGMENT) return true; // fail closed
+  if (segment === 'database' && parts?.[1] === 'query') return true;
   return (SUPER_ADMIN_ONLY_ADMIN_SEGMENTS as readonly string[]).includes(segment);
+}
+
+/** True when the path is an Admin+Super surface that MARKETING_MANAGER / SUPPORT_MANAGER must not reach. */
+export function isAdminTierAdminPath(pathWithQuery: string | null | undefined): boolean {
+  const segment = adminPathSegment(pathWithQuery);
+  if (!segment) return false;
+  return (ADMIN_TIER_ADMIN_SEGMENTS as readonly string[]).includes(segment);
+}
+
+/** Role-aware reach for the web layout and sidebar (the API gate applies the same two checks). */
+export function adminRoleCanReach(role: string, pathWithQuery: string | null | undefined): boolean {
+  if (role === 'SUPER_ADMIN') return true;
+  if (isSuperAdminOnlyAdminPath(pathWithQuery)) return false;
+  if (isAdminTierAdminPath(pathWithQuery)) return role === 'ADMIN';
+  return true;
 }
 
 /** True when a SUPPORT_MANAGER may reach this admin path (allow-list; unknown/invalid = no). */

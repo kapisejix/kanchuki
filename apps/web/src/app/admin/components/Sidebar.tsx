@@ -1,7 +1,7 @@
 'use client';
 
 import { resetAdminFetchCache } from '@/lib/admin-fetch';
-import { isSuperAdminOnlyAdminPath } from '@kanchuki/shared';
+import { adminRoleCanReach } from '@kanchuki/shared';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   Activity,
@@ -130,18 +130,16 @@ const NAV_ITEMS: NavItem[] = [
     children: [
       { label: 'Overview', href: '/admin/reports', icon: BarChart3 },
       { label: 'GST Reports', href: '/admin/reports/gst', icon: Receipt },
-      { label: 'AI Usage', href: '/admin/ai-usage', icon: Bot, superAdminOnly: true },
+      { label: 'AI Usage', href: '/admin/ai-usage', icon: Bot },
       {
         label: 'Try-On GPU Usage',
         href: '/admin/try-on-usage',
         icon: Cpu,
-        superAdminOnly: true,
       },
       {
         label: 'Storage Report',
         href: '/admin/storage-report',
         icon: DatabaseBackup,
-        superAdminOnly: true,
       },
     ],
   },
@@ -211,38 +209,32 @@ const NAV_ITEMS: NavItem[] = [
   {
     label: 'Operations',
     icon: Shield,
-    superAdminOnly: true,
     children: [
       {
         label: 'Operations Overview',
         href: '/admin/operations',
         icon: Shield,
-        superAdminOnly: true,
       },
       {
         label: 'Deployments',
         href: '/admin/operations/deployments',
         icon: GitBranch,
-        superAdminOnly: true,
       },
       {
         label: 'Deployment Gate',
         href: '/admin/operations/gate',
         icon: Activity,
-        superAdminOnly: true,
       },
-      { label: 'Audit Log', href: '/admin/audit-log', icon: History, superAdminOnly: true },
+      { label: 'Audit Log', href: '/admin/audit-log', icon: History },
       {
         label: 'Database Health',
         href: '/admin/database/status',
         icon: Activity,
-        superAdminOnly: true,
       },
       {
         label: 'Server Memory',
         href: '/admin/server-memory',
         icon: Activity,
-        superAdminOnly: true,
       },
       {
         label: 'Query Console',
@@ -254,19 +246,16 @@ const NAV_ITEMS: NavItem[] = [
         label: 'Backup & Restore',
         href: '/admin/database/backup',
         icon: HardDrive,
-        superAdminOnly: true,
       },
       {
         label: 'Deletion Vault',
         href: '/admin/database/deletion-vault',
         icon: Archive,
-        superAdminOnly: true,
       },
       {
         label: 'Support Sessions',
         href: '/admin/support-sessions',
         icon: KeyRound,
-        superAdminOnly: true,
       },
     ],
   },
@@ -319,7 +308,9 @@ export function Sidebar({
   const isSuperAdminOnlyItem = (entry: NavItem) => {
     const href = 'href' in entry ? entry.href : undefined;
     const flagged = 'superAdminOnly' in entry && entry.superAdminOnly === true;
-    return flagged || isSuperAdminOnlyAdminPath(href);
+    // adminRoleCanReach covers Super-only AND the Admin-only tier (Operations, Reports...)
+    // that MARKETING_MANAGER / SUPPORT_MANAGER must not see (owner decision 2026-11-03).
+    return flagged || !adminRoleCanReach(role, href);
   };
 
   const filteredNavItems = NAV_ITEMS.filter((item) => {

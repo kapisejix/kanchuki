@@ -170,11 +170,12 @@ export const teamMembersRoutes: FastifyPluginAsync = async (server) => {
   server.get('/members', async (request) => {
     const tm = request.teamMember;
     if (!tm) throw forbidden('Not authenticated');
-    const where = tm.isSuperAdmin
-      ? {}
-      : MANAGER_ROLES.includes(tm.role)
-        ? { territories: { some: { territory_id: { in: tm.territoryIds } } } }
-        : { id: tm.id }; // agents see only themselves
+    const where =
+      tm.isSuperAdmin || tm.readsAll
+        ? {}
+        : MANAGER_ROLES.includes(tm.role)
+          ? { territories: { some: { territory_id: { in: tm.territoryIds } } } }
+          : { id: tm.id }; // agents see only themselves
 
     const members = await prisma.teamMember.findMany({
       where,

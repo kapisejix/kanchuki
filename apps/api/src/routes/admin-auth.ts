@@ -6,6 +6,7 @@ import { prisma } from '@kanchuki/db';
 import {
   ADMIN_PANEL_ROLES,
   adminPathSegment,
+  isAdminTierAdminPath,
   isSuperAdminOnlyAdminPath,
   isSupportManagerAdminPath,
 } from '@kanchuki/shared';
@@ -207,6 +208,11 @@ export async function adminAuthPreHandler(
   // path segment, so `/v1/admin/commission-x` is not mistaken for `commission`.
   if (info.role !== 'SUPER_ADMIN' && isSuperAdminOnlyAdminPath(routePath)) {
     throw forbidden('Access denied — Super Admin privileges required');
+  }
+  // Owner decision 2026-11-03: Reports, Operations, Team Members etc. are open to ADMIN but
+  // not to the manager roles that share the standard tier.
+  if (info.role !== 'SUPER_ADMIN' && info.role !== 'ADMIN' && isAdminTierAdminPath(routePath)) {
+    throw forbidden('Access denied — Admin privileges required');
   }
 
   // Session login carries the admin's email (per-admin audit attribution);
