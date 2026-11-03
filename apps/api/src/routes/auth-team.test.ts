@@ -90,6 +90,29 @@ beforeEach(() => {
   mockRetailerUpsert.mockRejectedValue(new Error('retailer.upsert must not be called'));
 });
 
+describe('POST /auth/otp/verify — ADMIN is a web-only role', () => {
+  it('never looks up an ADMIN for the phone login, so no team token is minted for one', async () => {
+    mockVerifyOtp.mockResolvedValue(validSession);
+    mockStaffFindFirst.mockResolvedValue(null);
+    mockTeamMemberFindFirst.mockResolvedValue(null); // what the DB returns once ADMIN is excluded
+    mockRetailerFindUnique.mockResolvedValue(null);
+
+    const app = await buildApp();
+    await app.inject({
+      method: 'POST',
+      url: '/v1/auth/otp/verify',
+      payload: { phone: '9876543210', otp: '123456' },
+    });
+
+    expect(mockTeamMemberFindFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ role: { not: 'ADMIN' } }),
+      }),
+    );
+    expect(mockSignTeamToken).not.toHaveBeenCalled();
+  });
+});
+
 describe('POST /auth/otp/verify — TeamMember (Kanchuki agent) login', () => {
   it('returns a team JWT + team_member payload for an active TeamMember phone', async () => {
     mockVerifyOtp.mockResolvedValue(validSession);

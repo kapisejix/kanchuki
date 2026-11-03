@@ -113,6 +113,27 @@ describe('ADMIN session on /v1/team: reads everything, writes nothing', () => {
     }
   });
 
+  it('a team JWT with role ADMIN (web OTP login) is read-only too, sent as Bearer', async () => {
+    process.env.TEAM_JWT_SECRET = 'test-team-secret';
+    const { signTeamToken } = await import('../plugins/team-auth.js');
+    memberFindUnique.mockResolvedValue({ id: 'adm1', role: 'ADMIN', is_active: true });
+    const headers = {
+      authorization: `Bearer ${await signTeamToken({ sub: 'adm1', role: 'ADMIN' })}`,
+    };
+    memberCreate.mockClear();
+
+    for (const [method, url] of [
+      ['POST', '/v1/team/members'],
+      ['PATCH', '/v1/team/members/m1'],
+    ] as const) {
+      const res = await app.inject({ method, url, headers, payload: {} });
+      expect(res.statusCode, method).toBe(403);
+      expect(res.body, method).toContain('read-only');
+    }
+    expect(memberCreate).not.toHaveBeenCalled();
+    memberFindUnique.mockResolvedValue(null);
+  });
+
   it('SUPER_ADMIN is unchanged: can create', async () => {
     memberFindUnique.mockResolvedValueOnce(null);
     memberCreate.mockResolvedValueOnce({

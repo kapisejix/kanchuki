@@ -60,6 +60,18 @@ export async function deriveTerritoryFromPincode(
   return zone?.id ?? null;
 }
 
+const isReadMethod = (request: FastifyRequest) =>
+  ['GET', 'HEAD', 'OPTIONS'].includes(request.method.toUpperCase());
+
+const refuseAdminWrite = (reply: FastifyReply) =>
+  reply.status(403).send({
+    error: {
+      code: 'FORBIDDEN',
+      message: 'Admin access to team data is read-only',
+      status: 403,
+    },
+  });
+
 // Shared preHandler — auth applies to every /v1/team route except /login.
 // Extracted so each domain module can independently register it (matches the
 // admin.ts/admin/*.ts split convention: adminAuthPreHandler re-added per module).
@@ -94,15 +106,7 @@ export async function teamAuthPreHandler(request: FastifyRequest, reply: Fastify
     if (info?.role === 'ADMIN') {
       // Read-only is enforced here, not left to each route's own role check: a /v1/team write
       // route with no role check (open to any team member) must not be reachable by Admin.
-      if (!['GET', 'HEAD', 'OPTIONS'].includes(request.method.toUpperCase())) {
-        return reply.status(403).send({
-          error: {
-            code: 'FORBIDDEN',
-            message: 'Admin access to team data is read-only',
-            status: 403,
-          },
-        });
-      }
+      if (!isReadMethod(request)) return refuseAdminWrite(reply);
       request.teamMember = {
         id: info.email ?? 'admin',
         role: 'ADMIN',
@@ -137,6 +141,10 @@ export async function teamAuthPreHandler(request: FastifyRequest, reply: Fastify
       error: { code: 'FORBIDDEN', message: 'Account inactive or removed', status: 403 },
     });
   }
+
+  // A team JWT with role ADMIN (web OTP login) is the same Admin as the x-admin-key session
+  // above: read-only. Without this, sending the token as Bearer skipped the guard.
+  if (member.role === 'ADMIN' && !isReadMethod(request)) return refuseAdminWrite(reply);
 
   const isSuperAdmin = member.role === 'SUPER_ADMIN';
   let territoryIds: string[] = [];
