@@ -44,9 +44,32 @@ export function missingColumns(
   return missing.sort();
 }
 
+type EnumLike = {
+  name: string;
+  dbName?: string | null;
+  values: readonly { name: string; dbName?: string | null }[];
+};
+
+/** "enum Type.VALUE" for each enum value the model has and the DB lacks. A missing type lists every value. */
+export function missingEnumValues(
+  enums: readonly EnumLike[],
+  actual: Map<string, Set<string>>,
+): string[] {
+  const missing: string[] = [];
+  for (const e of enums) {
+    const type = e.dbName ?? e.name;
+    const have = actual.get(type);
+    for (const v of e.values) {
+      if (!have?.has(v.dbName ?? v.name)) missing.push(`enum ${type}.${v.dbName ?? v.name}`);
+    }
+  }
+  return missing.sort();
+}
+
 export type SchemaDrift = { ok: boolean; missing: string[]; checkedAt: number };
 
 let cached: SchemaDrift | null = null;
+let lastReported = '';
 
 /** Last result of {@link checkSchemaDrift}; null until the first check settles. */
 export function getSchemaDrift(): SchemaDrift | null {
@@ -68,32 +91,59 @@ export function schemaHealth(
 }
 
 /**
- * Read-only: one SELECT on information_schema. Never throws — a DB that cannot be asked is
+ * Migrations are applied by hand after deploy, so the boot check goes stale both ways.
+ * Re-run it on a timer; unref'd so it never keeps the process alive.
+ */
+export function startSchemaDriftRecheck(everyMs = 15 * 60_000): void {
+  setInterval(() => void checkSchemaDrift(), everyMs).unref();
+}
+
+/**
+ * Read-only: two SELECTs on information_schema. Never throws — a DB that cannot be asked is
  * reported by /health's own DB check, and an unknown answer must not look like drift.
  */
 export async function checkSchemaDrift(): Promise<SchemaDrift | null> {
   try {
-    const rows = await prisma.$queryRaw<{ table_name: string; column_name: string }[]>`
-      SELECT table_name, column_name FROM information_schema.columns
-      WHERE table_schema = current_schema()`;
-    const actual = new Map<string, Set<string>>();
-    for (const r of rows) {
-      const set = actual.get(r.table_name) ?? new Set<string>();
-      set.add(r.column_name);
-      actual.set(r.table_name, set);
-    }
-    const missing = missingColumns(expectedColumns(Prisma.dmmf.datamodel.models), actual);
+    const [rows, enumRows] = await Promise.all([
+      prisma.$queryRaw<{ table_name: string; column_name: string }[]>`
+        SELECT table_name, column_name FROM information_schema.columns
+        WHERE table_schema = current_schema()`,
+      prisma.$queryRaw<{ typname: string; enumlabel: string }[]>`
+        SELECT t.typname, e.enumlabel FROM pg_enum e
+        JOIN pg_type t ON t.oid = e.enumtypid
+        JOIN pg_namespace n ON n.oid = t.typnamespace
+        WHERE n.nspname = current_schema()`,
+    ]);
+    const group = (pairs: [string, string][]) => {
+      const out = new Map<string, Set<string>>();
+      for (const [k, v] of pairs) out.set(k, (out.get(k) ?? new Set<string>()).add(v));
+      return out;
+    };
+    const actual = group(rows.map((r) => [r.table_name, r.column_name]));
+    const actualEnums = group((enumRows ?? []).map((r) => [r.typname, r.enumlabel]));
+    const missing = [
+      ...missingColumns(expectedColumns(Prisma.dmmf.datamodel.models), actual),
+      ...missingEnumValues(Prisma.dmmf.datamodel.enums ?? [], actualEnums),
+    ];
     cached = { ok: missing.length === 0, missing, checkedAt: Date.now() };
-    if (!cached.ok) {
-      const shown = missing.slice(0, 20).join(', ');
-      console.error(
-        `[schema-drift] ${missing.length} model column(s) missing in the database: ${shown}`,
-      );
-      Sentry.captureMessage(`Schema drift: ${missing.length} Prisma column(s) missing in DB`, {
-        level: 'error',
-        tags: { area: 'schema-drift' },
-        extra: { missing: missing.slice(0, 50) },
-      });
+    // Alert on change only, so the periodic recheck does not repeat the same Sentry event.
+    const signature = missing.join('|');
+    if (signature !== lastReported) {
+      lastReported = signature;
+      if (!cached.ok) {
+        const shown = missing.slice(0, 20).join(', ');
+        console.error(
+          `[schema-drift] ${missing.length} model column/enum value(s) missing in the database: ${shown}`,
+        );
+        Sentry.captureMessage(
+          `Schema drift: ${missing.length} Prisma column/enum value(s) missing in DB`,
+          {
+            level: 'error',
+            tags: { area: 'schema-drift' },
+            extra: { missing: missing.slice(0, 50) },
+          },
+        );
+      }
     }
     return cached;
   } catch (err) {
