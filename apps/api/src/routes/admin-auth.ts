@@ -6,6 +6,7 @@ import { prisma } from '@kanchuki/db';
 import {
   ADMIN_PANEL_ROLES,
   adminPathSegment,
+  isAdminReadOnlyAdminPath,
   isAdminTierAdminPath,
   isSuperAdminOnlyAdminPath,
   isSupportManagerAdminPath,
@@ -213,6 +214,14 @@ export async function adminAuthPreHandler(
   // not to the manager roles that share the standard tier.
   if (info.role !== 'SUPER_ADMIN' && info.role !== 'ADMIN' && isAdminTierAdminPath(routePath)) {
     throw forbidden('Access denied — Admin privileges required');
+  }
+  // Backup & Restore and the Deletion Vault are view-only for ADMIN (owner decision 2026-11-03).
+  if (
+    info.role === 'ADMIN' &&
+    isAdminReadOnlyAdminPath(routePath) &&
+    !['GET', 'HEAD', 'OPTIONS'].includes(request.method.toUpperCase())
+  ) {
+    throw forbidden('Access denied — Super Admin privileges required to change this');
   }
 
   // Session login carries the admin's email (per-admin audit attribution);
