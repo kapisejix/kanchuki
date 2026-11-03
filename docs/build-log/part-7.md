@@ -309,3 +309,12 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Effect | Admin can list backups and their metadata and the deletion vault. `POST /backup/create` and `POST /backups/restore` are Super Admin only. The vault API is GET-only today. |
 | Tests | New `admin-readonly-surfaces.test.ts` (5, dummy handlers at the real paths; fails when the rule is removed). 130 related API tests pass, API `tsc` clean. |
 | Not done | The Backup page still shows the Create/Restore buttons to Admin; they return 403. Not browser-checked. |
+
+## 2026-11-03 — Closing note: ADMIN role work (RC-161), PRs #228–#231
+
+| Item | Detail |
+|---|---|
+| Shipped | #228 drift guard checks enum values + 15 min recheck; #229 real `ADMIN` role (migration 149 applied by owner) and `verifyAdminSession` Super-only; #230 Admin opens every menu except Finance, Settings, Query Console (+ `/v1/team` read-only for Admin, enforced in `teamAuthPreHandler` after a security review); #231 Backup & Restore and Deletion Vault view-only for Admin. |
+| Owner check | Owner created an Admin and reported all new menus work. Details of what was clicked not given. |
+| Open | Hide the Create/Restore buttons on the Backup page for Admin (they 403). Decide `SCHEMA_DRIFT_BLOCKS_HEALTH=1`. Check the `CHANGE_PLAN` audit row for the Admin's own change (actor + role). Mobile staff phone-OTP login for an ADMIN member not checked. `DELETE` of limit overrides uses a hard delete: confirm the app DB role has DELETE on `retailer_limit_overrides` (RC-049 shape) by deleting one as Admin. |
+| Decisions on record | Admin may change plans, extend trials, manage limit overrides (2026-11-03). Marketing/Support managers do not get the Admin tier. Team members, reports writes, Finance, Settings, Query Console stay Super Admin. |
