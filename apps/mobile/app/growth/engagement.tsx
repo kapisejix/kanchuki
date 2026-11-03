@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { ChevronLeft, Eye, Heart, MessageSquare, Search, TrendingUp } from 'lucide-react-native';
-import { ActivityIndicator, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Image, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { AnimatedPressable } from '../../src/components/AnimatedPressable';
 import { growthApi } from '../../src/lib/api/growth';
 import { useScreenInsets } from '../../src/lib/safe-area';
@@ -43,10 +43,18 @@ function StatTile({ icon, label, value }: { icon: React.ReactNode; label: string
   );
 }
 
+type ProductInfo = { name: string | null; sku: string | null; thumbnail_url: string | null };
+
 function TopList({
   title,
   entries,
-}: { title: string; entries: { value: string; count: number }[] }) {
+  products,
+}: {
+  title: string;
+  entries: { value: string; count: number }[];
+  /** When set, entries are product ids shown as thumbnail + name + SKU. */
+  products?: Record<string, ProductInfo>;
+}) {
   if (entries.length === 0) {
     return (
       <View className="mb-3">
@@ -63,12 +71,36 @@ function TopList({
       <Text className="text-[10px] font-bold text-spaceCadet-900 uppercase tracking-wider mb-1.5">
         {title}
       </Text>
-      {entries.slice(0, 5).map((e) => (
+      {entries.slice(0, 5).map((e) => {
+        const p = products?.[e.value];
+        return (
         <View key={e.value} className="mb-2">
-          <View className="flex-row justify-between mb-1">
-            <Text className="text-xs text-spaceCadet-900 flex-1 mr-2" numberOfLines={1}>
-              {e.value}
-            </Text>
+          <View className="flex-row justify-between items-center mb-1">
+            {products ? (
+              <View className="flex-row items-center flex-1 mr-2">
+                {p?.thumbnail_url ? (
+                  <Image
+                    source={{ uri: p.thumbnail_url }}
+                    className="w-10 h-10 rounded-lg bg-lavender-100"
+                    accessibilityLabel={p.name ?? 'Product'}
+                  />
+                ) : (
+                  <View className="w-10 h-10 rounded-lg bg-lavender-100" />
+                )}
+                <View className="flex-1 ml-2.5">
+                  <Text className="text-xs text-spaceCadet-900" numberOfLines={1}>
+                    {p?.name ?? 'Unnamed / removed product'}
+                  </Text>
+                  <Text className="text-[10px] text-heliotrope-400" numberOfLines={1}>
+                    {p?.sku ? `SKU ${p.sku}` : 'No SKU'}
+                  </Text>
+                </View>
+              </View>
+            ) : (
+              <Text className="text-xs text-spaceCadet-900 flex-1 mr-2" numberOfLines={1}>
+                {e.value}
+              </Text>
+            )}
             <Text className="text-[11px] text-heliotrope-500 font-medium">{e.count}</Text>
           </View>
           <View className="h-1.5 bg-lavender-100 rounded-full overflow-hidden border border-lavender-200">
@@ -78,7 +110,8 @@ function TopList({
             />
           </View>
         </View>
-      ))}
+        );
+      })}
     </View>
   );
 }
@@ -205,8 +238,16 @@ export default function GrowthEngagementScreen() {
             </Section>
 
             <Section icon={<TrendingUp size={16} color="#BB3F95" />} title="What's working">
-              <TopList title="Top viewed products" entries={view.top_products} />
-              <TopList title="Top favorited products" entries={view.top_favorited_products} />
+              <TopList
+                title="Top viewed products"
+                entries={view.top_products}
+                products={view.products}
+              />
+              <TopList
+                title="Top favorited products"
+                entries={view.top_favorited_products}
+                products={view.products}
+              />
               <TopList title="Top searches" entries={view.top_searches} />
             </Section>
               </>

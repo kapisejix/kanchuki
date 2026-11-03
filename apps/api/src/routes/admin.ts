@@ -21,6 +21,7 @@ import {
   adminContactRoutes,
   adminDataRoutes,
   adminDesignReferenceRoutes,
+  adminDiscoveryRoutes,
   adminEngagementRoutes,
   adminFestivalsRoutes,
   adminGbpRoutes,
@@ -208,6 +209,8 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
   await server.register(adminReferralMonitorRoutes);
   // admin-engagement — F-037 Phase 3 behavior analytics (store view + audited per-customer drill-down)
   await server.register(adminEngagementRoutes);
+  // admin-discovery — Local Discovery nearby search (pincode/city + radius), segment 'discovery'
+  await server.register(adminDiscoveryRoutes);
   // admin-try-on-usage - F-044 R2 T7 GPU usage report (super-admin segment)
   await server.register(adminTryOnUsageRoutes);
   // admin-data — auto-split module

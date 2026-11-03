@@ -81,7 +81,9 @@ export function SetupChecklist() {
 
   if (!allowed || !data) return null
 
-  const items = data.data.items
+  // Keys this build has no copy for (added by a newer API) are ignored, not rendered: an
+  // old build must never crash on a checklist item it does not know.
+  const items = data.data.items.filter((i) => i.key in COPY)
   const open = items.filter((i) => i.status !== 'done' && !i.dismissed)
   const hidden = items.filter((i) => i.status !== 'done' && i.dismissed).length
   if (open.length === 0 && hidden === 0) return null

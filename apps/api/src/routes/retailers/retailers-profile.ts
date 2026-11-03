@@ -4,6 +4,7 @@ import { generateCollectionSlug } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { getEnabledFeatures } from '../../lib/features.js';
+import { isInIndia } from '../../lib/geo.js';
 import { sendOtpViaMsg91, verifyStoredOtp } from '../../lib/msg91-otp.js';
 import {
   type ReferralCaptureReport,
@@ -116,6 +117,19 @@ export const retailersProfileRoutes: FastifyPluginAsync = async (server) => {
 
     const { referral_code, whatsapp_otp, ...profileFields } = body.data;
 
+    // Shop pin: both or neither, and inside India. null + null clears the pin. The schema
+    // accepted these fields before but nothing wrote them, so every saved pin was dropped.
+    const { latitude: pinLat, longitude: pinLng } = profileFields;
+    if ((pinLat === undefined) !== (pinLng === undefined)) {
+      throw validationError('latitude and longitude must be sent together');
+    }
+    if ((pinLat === null) !== (pinLng === null)) {
+      throw validationError('latitude and longitude must both be set or both be cleared');
+    }
+    if (typeof pinLat === 'number' && typeof pinLng === 'number' && !isInIndia(pinLat, pinLng)) {
+      throw validationError('That location is outside India. Please pin your shop again.');
+    }
+
     // One current-row fetch serves both the F-018 referral resolution and the
     // public_slug auto-regeneration below.
     const current = await prisma.retailer.findUnique({
@@ -127,9 +141,18 @@ export const retailersProfileRoutes: FastifyPluginAsync = async (server) => {
         whatsapp_number: true,
         logo_r2_key: true,
         banner_r2_key: true,
+        latitude: true,
+        longitude: true,
       },
     });
     if (!current) throw notFound('Retailer');
+    // The app re-sends the stored pin on every profile save. Only a real change may touch the
+    // pin or its source — otherwise saving an unrelated field would relabel a geocoded guess
+    // as RETAILER_PIN.
+    const pinChanged =
+      pinLat !== undefined &&
+      pinLng !== undefined &&
+      (pinLat !== (current.latitude ?? null) || pinLng !== (current.longitude ?? null));
 
     // WhatsApp number changes are a phone-number change like any other — never
     // apply one without OTP verification of the NEW number, even though this
@@ -246,6 +269,14 @@ export const retailersProfileRoutes: FastifyPluginAsync = async (server) => {
         ? { address_line2: profileFields.address_line2 }
         : {}),
       ...(profileFields.pincode !== undefined ? { pincode: profileFields.pincode } : {}),
+      // A pin the retailer sets always replaces a geocoded guess; clearing it clears the source.
+      ...(pinChanged
+        ? {
+            latitude: pinLat,
+            longitude: pinLng,
+            location_source: pinLat === null ? null : 'RETAILER_PIN',
+          }
+        : {}),
       ...(profileFields.logo_url !== undefined ? { logo_url: profileFields.logo_url } : {}),
       ...(profileFields.logo_r2_key !== undefined
         ? { logo_r2_key: profileFields.logo_r2_key }

@@ -8,6 +8,7 @@ import { useEffect, useMemo, useState } from 'react';
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
 
 type TopEntry = { value: string; count: number };
+type ProductInfo = { name: string | null; sku: string | null; thumbnail_url: string | null };
 
 type StoreView = {
   retailer: { id: string; shop_name: string };
@@ -25,6 +26,7 @@ type StoreView = {
   top_favorited_products: TopEntry[];
   top_searches: TopEntry[];
   zero_result_terms: TopEntry[];
+  products: Record<string, ProductInfo>;
   funnel: {
     view_count: number;
     favorite_count: number;
@@ -206,8 +208,16 @@ export default function EngagementPage() {
           </Section>
 
           <div className="grid sm:grid-cols-3 gap-4">
-            <TopList title="Top viewed products" entries={store.top_products} />
-            <TopList title="Top favorited products" entries={store.top_favorited_products} />
+            <TopList
+              title="Top viewed products"
+              entries={store.top_products}
+              products={store.products}
+            />
+            <TopList
+              title="Top favorited products"
+              entries={store.top_favorited_products}
+              products={store.products}
+            />
             <TopList
               title="Top searches"
               entries={store.top_searches}
@@ -313,25 +323,52 @@ function TopList({
   entries,
   flagged,
   flagIcon,
+  products,
 }: {
   title: string;
   entries: TopEntry[];
   flagged?: Set<string>;
   flagIcon?: React.ReactNode;
+  /** When set, entries are product ids shown as thumbnail + name + SKU. */
+  products?: Record<string, ProductInfo>;
 }) {
   return (
     <div className="border border-gray-200 rounded-lg p-4">
       <h3 className="text-sm font-medium text-gray-900 mb-2">{title}</h3>
-      <ul className="text-sm space-y-1">
-        {entries.map((e) => (
-          <li key={e.value} className="flex justify-between items-center text-gray-700">
-            <span className="truncate flex items-center gap-1">
-              {flagged?.has(e.value) ? flagIcon : null}
-              {e.value}
-            </span>
-            <span className="text-gray-400 tabular-nums">{e.count}</span>
-          </li>
-        ))}
+      <ul className="text-sm space-y-2">
+        {entries.map((e) => {
+          const p = products?.[e.value];
+          return (
+            <li key={e.value} className="flex justify-between items-center gap-2 text-gray-700">
+              {products ? (
+                <span className="flex items-center gap-2 min-w-0">
+                  {p?.thumbnail_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={p.thumbnail_url}
+                      alt={p.name ?? 'Product'}
+                      className="w-10 h-10 rounded object-cover shrink-0 bg-gray-100"
+                    />
+                  ) : (
+                    <span className="w-10 h-10 rounded bg-gray-100 shrink-0" />
+                  )}
+                  <span className="min-w-0">
+                    <span className="block truncate">{p?.name ?? 'Unnamed / removed product'}</span>
+                    <span className="block truncate text-xs text-gray-400">
+                      {p?.sku ? `SKU ${p.sku}` : 'No SKU'}
+                    </span>
+                  </span>
+                </span>
+              ) : (
+                <span className="truncate flex items-center gap-1">
+                  {flagged?.has(e.value) ? flagIcon : null}
+                  {e.value}
+                </span>
+              )}
+              <span className="text-gray-400 tabular-nums">{e.count}</span>
+            </li>
+          );
+        })}
         {entries.length === 0 && <li className="text-gray-400">No data in range</li>}
       </ul>
     </div>

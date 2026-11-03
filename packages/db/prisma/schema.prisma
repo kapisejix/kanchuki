@@ -412,6 +412,8 @@ model Retailer {
 // Location for geo-targeting (migration 147 backfills these two columns + index)
    latitude   Float?
    longitude  Float?
+   // Where lat/lng came from: 'RETAILER_PIN' | 'GEOCODED_APPROX' | NULL (migration 151).
+   location_source String?
    @@index([latitude, longitude])
    @@map("retailers")
 }

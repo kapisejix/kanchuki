@@ -19,6 +19,14 @@ export function getBoundingBox(lat: number, lng: number, radiusKm: number) {
 }
 
 /**
+ * Rough bounding box of India (incl. islands). Not a border test — it rejects a pin that is
+ * clearly not an Indian shop (swapped lat/lng, 0,0, a GPS in another country), nothing finer.
+ */
+export function isInIndia(lat: number, lng: number): boolean {
+  return lat >= 6 && lat <= 37.5 && lng >= 68 && lng <= 97.5;
+}
+
+/**
  * Haversine distance between two points in kilometers.
  * Accurate to ~0.3% — plenty for "near me" retailer search.
  */

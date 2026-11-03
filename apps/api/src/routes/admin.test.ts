@@ -334,6 +334,35 @@ describe('GET /admin/retailers', () => {
     await app.close();
   });
 
+  it('pages with take = limit + 1 and an id cursor; has_more comes from the extra row', async () => {
+    const row = (id: string) => ({
+      ...fakeRetailer,
+      id,
+      _count: { products: 0, customers: 0, collections: 0 },
+    });
+    mockRetailerFindMany.mockResolvedValue([row('r3'), row('r2'), row('r1')]); // limit 2 + 1 extra
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'GET',
+      url: '/v1/admin/retailers?limit=2&cursor=r4&has_location=true',
+      headers: authedHeaders(),
+    });
+
+    expect(mockRetailerFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        take: 3,
+        cursor: { id: 'r4' },
+        skip: 1,
+        orderBy: [{ created_at: 'desc' }, { id: 'desc' }],
+        where: expect.objectContaining({ latitude: { not: null }, longitude: { not: null } }),
+      }),
+    );
+    expect(res.json().data.map((r: { id: string }) => r.id)).toEqual(['r3', 'r2']);
+    expect(res.json().pagination).toEqual({ cursor: 'r2', has_more: true });
+    await app.close();
+  });
+
   it('filters by search term', async () => {
     mockRetailerFindMany.mockResolvedValue([]);
 

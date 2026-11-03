@@ -22,7 +22,7 @@
 import { prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
-import { loadRetailerEngagementView } from '../../lib/engagement-view.js';
+import { loadProductSummaries, loadRetailerEngagementView } from '../../lib/engagement-view.js';
 import { notFound } from '../../plugins/error-handler.js';
 import { adminAuthPreHandler } from '../admin-auth.js';
 
@@ -44,8 +44,14 @@ export const adminEngagementRoutes: FastifyPluginAsync = async (server) => {
 
     const view = await loadRetailerEngagementView(params.id, query.days);
 
+    const products = await loadProductSummaries(
+      params.id,
+      view.top_products,
+      view.top_favorited_products,
+    );
+
     return {
-      data: { retailer: { id: retailer.id, shop_name: retailer.shop_name }, ...view },
+      data: { retailer: { id: retailer.id, shop_name: retailer.shop_name }, ...view, products },
     };
   });
 

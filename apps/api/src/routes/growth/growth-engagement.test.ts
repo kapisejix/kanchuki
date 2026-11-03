@@ -7,9 +7,15 @@
 import Fastify from 'fastify';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { mockLoadView } = vi.hoisted(() => ({ mockLoadView: vi.fn() }));
+const { mockLoadView, mockLoadProducts } = vi.hoisted(() => ({
+  mockLoadView: vi.fn(),
+  mockLoadProducts: vi.fn(),
+}));
 
-vi.mock('../../lib/engagement-view.js', () => ({ loadRetailerEngagementView: mockLoadView }));
+vi.mock('../../lib/engagement-view.js', () => ({
+  loadRetailerEngagementView: mockLoadView,
+  loadProductSummaries: mockLoadProducts,
+}));
 
 const { growthEngagementRoutes } = await import('./growth-engagement.js');
 
@@ -25,6 +31,7 @@ async function buildApp(retailerId: string) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockLoadProducts.mockResolvedValue({});
   mockLoadView.mockResolvedValue({
     range_days: 30,
     dwell_trend: [],
@@ -57,6 +64,9 @@ describe('GET /engagement', () => {
     const res = await app.inject({ method: 'GET', url: '/engagement' });
     expect(res.statusCode).toBe(200);
     expect(mockLoadView).toHaveBeenCalledWith('r_own_store', 30);
+    // Product lookup is scoped to the same own-store id, never a client value.
+    expect(mockLoadProducts).toHaveBeenCalledWith('r_own_store', [], []);
+    expect(res.json().data.products).toEqual({});
   });
 
   it('respects the days query param, clamped 1-90 by the schema', async () => {
