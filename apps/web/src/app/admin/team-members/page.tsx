@@ -96,7 +96,7 @@ function MemberModal({
 }: {
   open: boolean
   onClose: () => void
-  onSaved: () => void
+  onSaved: (created?: { email: string; password: string }) => void
   editMember: TeamMember | null
   territories: Territory[]
 }) {
@@ -133,6 +133,7 @@ function MemberModal({
     setSaving(true)
     setError('')
     try {
+      let generated: string | undefined
       if (editMember) {
         const res = await fetch(`${API_URL}/v1/team/members/${editMember.id}`, {
           ...(await adminMutateOptions()),
@@ -164,8 +165,12 @@ function MemberModal({
           const json = await res.json()
           throw new Error(json?.error?.message ?? 'Create failed')
         }
+        const created = (await res.json().catch(() => null)) as {
+          data?: { generated_password?: string }
+        } | null
+        generated = created?.data?.generated_password
       }
-      onSaved()
+      onSaved(generated ? { email, password: generated } : undefined)
       onClose()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Operation failed')
@@ -393,6 +398,20 @@ export default function TeamMembersPage() {
   const [roleFilter, setRoleFilter] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
   const [editMember, setEditMember] = useState<TeamMember | null>(null)
+  // Shown once after create or reset; never stored.
+  const [revealed, setRevealed] = useState<{ email: string; password: string; emailed?: boolean } | null>(null)
+  const [copied, setCopied] = useState(false)
+  const [resettingId, setResettingId] = useState<string | null>(null)
+  const [resetError, setResetError] = useState('')
+  // Reset is Super Admin only (API 403s otherwise). Fail closed until the role is known.
+  const [canReset, setCanReset] = useState(false)
+  useEffect(() => {
+    try {
+      setCanReset(sessionStorage.getItem('admin_role') === 'SUPER_ADMIN')
+    } catch {
+      setCanReset(false)
+    }
+  }, [])
 
   const loadData = useCallback(async () => {
     setLoading(true)
@@ -424,8 +443,52 @@ export default function TeamMembersPage() {
     setModalOpen(true)
   }
 
-  const handleSaved = () => {
+  const handleSaved = (created?: { email: string; password: string }) => {
     loadData()
+    if (created) {
+      setCopied(false)
+      setRevealed(created)
+    }
+  }
+
+  const resetPassword = async (member: TeamMember) => {
+    if (!confirm(`Generate a new password for ${member.email} and email it to them? Their current password stops working.`)) return
+    setResetError('')
+    setResettingId(member.id)
+    try {
+      const res = await fetch(`${API_URL}/v1/team/members/${member.id}/reset-password`, {
+        ...(await adminMutateOptions()),
+        method: 'POST',
+        body: JSON.stringify({}),
+      })
+      const json = (await res.json().catch(() => null)) as {
+        error?: { message?: string }
+        data?: { generated_password?: string; email_sent?: boolean }
+      } | null
+      if (!res.ok || !json?.data?.generated_password) {
+        throw new Error(json?.error?.message ?? 'Could not reset the password')
+      }
+      setCopied(false)
+      setRevealed({
+        email: member.email,
+        password: json.data.generated_password,
+        emailed: json.data.email_sent === true,
+      })
+    } catch (err) {
+      setResetError(err instanceof Error ? err.message : 'Could not reset the password')
+    } finally {
+      setResettingId(null)
+    }
+  }
+
+  const copyPassword = async () => {
+    if (!revealed) return
+    try {
+      await navigator.clipboard.writeText(revealed.password)
+      setCopied(true)
+    } catch {
+      // clipboard blocked: the password stays selectable on screen
+    }
   }
 
   const toggleActive = async (member: TeamMember) => {
@@ -670,6 +733,19 @@ export default function TeamMembersPage() {
                         >
                           <UserCog size={15} />
                         </motion.button>
+                        {canReset && (
+                          <motion.button
+                            onClick={() => resetPassword(m)}
+                            disabled={resettingId === m.id}
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            className="p-1.5 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all disabled:opacity-40"
+                            title="Generate new password"
+                            aria-label={`Generate new password for ${m.email}`}
+                          >
+                            {resettingId === m.id ? <Loader2 size={15} className="animate-spin" /> : <KeyRound size={15} />}
+                          </motion.button>
+                        )}
                         <ChevronRight size={16} className="text-gray-300" />
                       </div>
                     </td>
@@ -689,6 +765,72 @@ export default function TeamMembersPage() {
         editMember={editMember}
         territories={territories}
       />
+
+      {resetError && (
+        <div role="alert" className="flex items-start gap-2 bg-red-50 border border-red-200 text-red-600 text-sm rounded-xl px-4 py-3">
+          <AlertCircle size={15} className="mt-0.5 shrink-0" />
+          <span>{resetError}</span>
+        </div>
+      )}
+
+      {/* One-time password reveal (after create without a typed password, or after reset) */}
+      <AnimatePresence>
+        {revealed && (
+          <Sheet
+            open
+            onClose={() => setRevealed(null)}
+            overlayClassName="z-50 flex items-start justify-center p-4 bg-black/50 backdrop-blur-sm sm:pt-10"
+            panelClassName="w-full max-w-md max-h-full bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-y-auto"
+            overlayAnimation={{ initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 } }}
+            panelAnimation={{
+              initial: { opacity: 0, scale: 0.95, y: 20 },
+              animate: { opacity: 1, scale: 1, y: 0 },
+              exit: { opacity: 0, scale: 0.95, y: 20 },
+              transition: { type: 'spring', stiffness: 300, damping: 30 },
+            }}
+            ariaLabel="Generated password"
+          >
+            <div className="p-6 space-y-4">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl flex items-center justify-center">
+                  <KeyRound size={18} className="text-white" />
+                </div>
+                <div>
+                  <h2 className="text-sm font-bold text-gray-900">Password generated</h2>
+                  <p className="text-xs text-gray-600">{revealed.email}</p>
+                </div>
+              </div>
+              <code className="block select-all break-all rounded-lg bg-gray-100 px-3 py-2.5 font-mono text-sm text-gray-900">
+                {revealed.password}
+              </code>
+              {revealed.emailed !== undefined && (
+                <p className={`text-xs font-medium ${revealed.emailed ? 'text-green-700' : 'text-red-700'}`}>
+                  {revealed.emailed
+                    ? `Also emailed to ${revealed.email}.`
+                    : `Email was NOT sent (no email provider configured or it failed). Share this password yourself.`}
+                </p>
+              )}
+              <p className="text-xs text-gray-600">
+                Shown once. Copy it and share it with the member now; it cannot be shown again, only replaced with a new one.
+              </p>
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={copyPassword}
+                  className="px-4 py-2 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50"
+                >
+                  {copied ? 'Copied' : 'Copy password'}
+                </button>
+                <button
+                  onClick={() => setRevealed(null)}
+                  className="px-4 py-2 text-xs font-semibold text-white bg-gradient-to-r from-cyan-500 to-blue-600 rounded-xl"
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+          </Sheet>
+        )}
+      </AnimatePresence>
     </motion.div>
   )
 }

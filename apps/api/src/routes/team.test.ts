@@ -1,7 +1,7 @@
 import Fastify from 'fastify';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { errorHandler } from '../plugins/error-handler.js';
-import { hashPassword, signTeamToken } from '../plugins/team-auth.js';
+import { hashPassword, signTeamToken, verifyPassword } from '../plugins/team-auth.js';
 import { teamRoutes } from './team.js';
 
 const {
@@ -1056,6 +1056,135 @@ describe('POST /team/members — passwordless creation & email', () => {
       }),
     );
     await app.close();
+  });
+});
+
+describe('POST /team/members — generated password is returned once', () => {
+  const created = {
+    id: 'tm_new',
+    name: 'Adi Admin',
+    email: 'adi@kanchuki.app',
+    phone: null,
+    role: 'ADMIN',
+    is_active: true,
+    max_retailers: null,
+    referral_code: null,
+  };
+  const post = async (payload: Record<string, unknown>) => {
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/team/members',
+      headers: { 'x-admin-key': 'test-admin-key', 'content-type': 'application/json' },
+      payload: { name: 'Adi Admin', email: 'adi@kanchuki.app', role: 'ADMIN', ...payload },
+    });
+    await app.close();
+    return res;
+  };
+
+  it('returns the server-generated password, and it is the one that was hashed', async () => {
+    mockTeamMemberFindUnique.mockResolvedValueOnce(null);
+    mockTeamMemberCreate.mockResolvedValueOnce(created);
+    const res = await post({});
+    const shown = res.json().data.generated_password as string;
+    expect(res.statusCode).toBe(200);
+    expect(shown).toMatch(/^Kanchuki-[0-9a-f]{12}!$/);
+    const stored = mockTeamMemberCreate.mock.calls[0]?.[0].data.password_hash as string;
+    expect(verifyPassword(shown, stored)).toBe(true);
+  });
+
+  it('does not echo a password the creator typed', async () => {
+    mockTeamMemberFindUnique.mockResolvedValueOnce(null);
+    mockTeamMemberCreate.mockResolvedValueOnce(created);
+    const res = await post({ password: 'typed-by-super-admin' });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data.generated_password).toBeUndefined();
+  });
+});
+
+describe('POST /team/members/:id/reset-password', () => {
+  const reset = async (headers: Record<string, string>, id = 'tm_1') => {
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: `/v1/team/members/${id}/reset-password`,
+      headers: { 'content-type': 'application/json', ...headers },
+      payload: {},
+    });
+    await app.close();
+    return res;
+  };
+
+  it('Super Admin gets a new password once; it is what was stored, and the audit row omits it', async () => {
+    mockTeamMemberUpdate.mockResolvedValueOnce({ id: 'tm_1', email: 'adi@kanchuki.app' });
+    const res = await reset({ 'x-admin-key': 'test-admin-key' });
+    expect(res.statusCode).toBe(200);
+    const shown = res.json().data.generated_password as string;
+    expect(shown).toMatch(/^Kanchuki-[0-9a-f]{12}!$/);
+    const stored = mockTeamMemberUpdate.mock.calls[0]?.[0].data.password_hash as string;
+    expect(verifyPassword(shown, stored)).toBe(true);
+    const audit = mockAuditLogCreate.mock.calls[0]?.[0].data;
+    expect(audit).toMatchObject({ action: 'RESET_TEAM_PASSWORD', resource_id: 'tm_1' });
+    expect(JSON.stringify(audit)).not.toContain(shown);
+    expect(JSON.stringify(audit)).not.toContain(stored);
+  });
+
+  it('emails the new password to the member when an email provider is configured', async () => {
+    process.env.RESEND_API_KEY = 're_test';
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ id: 're_1' }) });
+    vi.stubGlobal('fetch', fetchMock);
+    try {
+      mockTeamMemberUpdate.mockResolvedValueOnce({
+        id: 'tm_1',
+        name: 'Adi',
+        email: 'adi@kanchuki.app',
+      });
+      const res = await reset({ 'x-admin-key': 'test-admin-key' });
+      const data = res.json().data;
+      expect(data.email_sent).toBe(true);
+      const sent = JSON.parse(fetchMock.mock.calls[0]?.[1].body as string);
+      expect(sent.to).toEqual(['adi@kanchuki.app']);
+      expect(sent.text).toContain(data.generated_password);
+    } finally {
+      vi.unstubAllGlobals();
+      Reflect.deleteProperty(process.env, 'RESEND_API_KEY');
+    }
+  });
+
+  it('reports email_sent false (and still returns the password) when no provider is configured', async () => {
+    Reflect.deleteProperty(process.env, 'RESEND_API_KEY');
+    mockTeamMemberUpdate.mockResolvedValueOnce({
+      id: 'tm_1',
+      name: 'Adi',
+      email: 'adi@kanchuki.app',
+    });
+    const res = await reset({ 'x-admin-key': 'test-admin-key' });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data.email_sent).toBe(false);
+    expect(res.json().data.generated_password).toMatch(/^Kanchuki-/);
+  });
+
+  it('a manager cannot reset anyone, and nothing is written', async () => {
+    mockTeamMemberFindUnique.mockResolvedValueOnce({
+      id: 'mgr_1',
+      role: 'MARKETING_MANAGER',
+      is_active: true,
+    });
+    mockTeamMemberTerritoryFindMany.mockResolvedValue([{ territory_id: 't1' }]);
+    const token = await signTeamToken({ sub: 'mgr_1', role: 'MARKETING_MANAGER' });
+    const res = await reset({ authorization: `Bearer ${token}` });
+    expect(res.statusCode).toBe(403);
+    expect(mockTeamMemberUpdate).not.toHaveBeenCalled();
+    expect(mockAuditLogCreate).not.toHaveBeenCalled();
+  });
+
+  it('unknown member is a 404 and writes no audit row', async () => {
+    mockTeamMemberUpdate.mockRejectedValueOnce(
+      Object.assign(new Error('missing'), { code: 'P2025' }),
+    );
+    const res = await reset({ 'x-admin-key': 'test-admin-key' }, 'nope');
+    expect(res.statusCode).toBe(404);
+    expect(mockAuditLogCreate).not.toHaveBeenCalled();
   });
 });
 
