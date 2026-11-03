@@ -287,3 +287,15 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Access rule | ADMIN = all standard admin segments + change-plan + extend-trial + per-retailer limit overrides POST/DELETE (owner decision 2026-11-03; audit entries now carry actor + role). Team members, reports, money, settings, operations stay Super Admin. |
 | Tests | New `admin-role-escalation.test.ts` (4; 2 fail on the old code). API + web `tsc` clean; 147 related API tests pass. |
 | Not verified | Migration unapplied; no Admin member created; no live Admin login or Change Plan; mobile staff OTP login for an ADMIN phone not checked; web page not browser-checked. |
+
+## 2026-11-03 — Admin role opened to every menu except Finance, Settings, Query Console, branch `feat/admin-role-access`
+
+| Item | Detail |
+|---|---|
+| Decision | Owner: "all the permission to Admin except Finance, Settings and Query Console; rest all menus and pages Admin can explore." Reverses the 2026-09-24 RC-034 decision that kept Reports / Team Members Super-Admin-only, and H3-2's Super-only Operations tier. |
+| Three tiers | `SUPER_ADMIN_ONLY_ADMIN_SEGMENTS` (Finance, Settings, `query`, `schema`), new `ADMIN_TIER_ADMIN_SEGMENTS` (Super + Admin only: reports, gst, ai-usage, try-on-usage, storage-report, audit-log(s), operations, deployments, deployment-gate, database, backup(s), deletion-vault, server-memory, support-sessions, team-members), `STANDARD_ADMIN_ADMIN_SEGMENTS` (everyone else). MARKETING_MANAGER / SUPPORT_MANAGER do NOT get the new tier (they share the standard list), so it is its own list. |
+| Query Console | Lives under the `database` page segment, which Admin now opens (DB Health, Backup, Deletion Vault), so `/admin/database/query` is matched by path in `isSuperAdminOnlyAdminPath`. API `/v1/admin/query` stays in the Super list. |
+| /v1/team | An ADMIN session now gets unscoped READS (`readsAll`) so Reports and Team Members load; create/edit member, territories and all other writes stay Super Admin (tested: Admin cannot create any role, incl. SUPER_ADMIN). |
+| Web | `adminRoleCanReach(role, path)` drives the layout guard and the sidebar; stale `superAdminOnly` flags removed from the moved items (Query Console keeps its flag). |
+| Tests | `admin-access.test.ts` (3 disjoint tiers, role matrix, `database/query`), new `admin-team-readonly.test.ts` (5), Sidebar tests rewritten (ADMIN, MARKETING_MANAGER). API + web `tsc` clean. The `Sidebar` sign-out test still fails as before (pre-existing). |
+| Risk accepted by the owner | Admin can now restore backups, hard-delete via Deletion Vault, view Deployments / Gate, and open Support Sessions. Not verified in a browser; no live Admin login yet. |

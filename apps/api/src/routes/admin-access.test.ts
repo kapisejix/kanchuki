@@ -25,10 +25,13 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
+  ADMIN_TIER_ADMIN_SEGMENTS,
   STANDARD_ADMIN_ADMIN_SEGMENTS,
   SUPER_ADMIN_ONLY_ADMIN_SEGMENTS,
   SUPPORT_MANAGER_ADMIN_SEGMENTS,
   adminPathSegment,
+  adminRoleCanReach,
+  isAdminTierAdminPath,
   isSuperAdminOnlyAdminPath,
 } from '@kanchuki/shared';
 import { stripComments } from '@kanchuki/shared/testing';
@@ -130,6 +133,7 @@ function derivedWebSegments(): string[] {
 const CLASSIFIED: readonly string[] = [
   ...SUPER_ADMIN_ONLY_ADMIN_SEGMENTS,
   ...STANDARD_ADMIN_ADMIN_SEGMENTS,
+  ...ADMIN_TIER_ADMIN_SEGMENTS,
 ];
 
 // ─── Tests ─────────────────────────────────────────────────────────
@@ -178,11 +182,14 @@ describe('admin access list completeness (RC-034)', () => {
     ).toEqual([]);
   });
 
-  it('keeps the two lists disjoint', () => {
-    const overlap = SUPER_ADMIN_ONLY_ADMIN_SEGMENTS.filter((s) =>
-      (STANDARD_ADMIN_ADMIN_SEGMENTS as readonly string[]).includes(s),
-    );
-    expect(overlap, 'A segment cannot be both restricted and permitted').toEqual([]);
+  it('keeps the three lists disjoint', () => {
+    const all = [
+      ...SUPER_ADMIN_ONLY_ADMIN_SEGMENTS,
+      ...STANDARD_ADMIN_ADMIN_SEGMENTS,
+      ...ADMIN_TIER_ADMIN_SEGMENTS,
+    ];
+    const dupes = all.filter((s, i) => all.indexOf(s) !== i);
+    expect(dupes, 'A segment cannot sit in two tiers').toEqual([]);
   });
 
   it('gates the surfaces this change was made for', () => {
@@ -195,30 +202,68 @@ describe('admin access list completeness (RC-034)', () => {
       '/v1/admin/commission/expenses?month=2026-09',
       '/v1/admin/plan-pricing',
       '/v1/admin/invoices',
-      '/v1/admin/database/deletion-vault',
+      '/v1/admin/query',
+      '/admin/database/query',
+      '/admin/settings/theme',
+      '/v1/admin/integrations',
     ]) {
       expect(isSuperAdminOnlyAdminPath(path), `${path} must require Super Admin`).toBe(true);
     }
   });
 
-  it('gates the two surfaces RC-034 left flagged (2026-09-24 follow-up)', () => {
-    // RC-034 shipped with `reports` and `team-members` deliberately left in the
-    // standard-admin list, each carrying an in-file note saying why — the
-    // decision was flagged rather than made. Both are now decided the other
-    // way: `/admin/team-members` manages staff accounts, and `/admin/reports`
-    // carries the GST figures. Pinned so an edit that moves either back fails
-    // here instead of silently reopening the page.
-    //
-    // The API half of these two segments is `/v1/team/*`, which this list does
-    // NOT cover — see the scope note in admin-access.ts. That remains open.
+  it('Admin tier (owner decision 2026-11-03): open to ADMIN and SUPER_ADMIN, closed to managers', () => {
+    // Reports, Operations and Team Members were Super-Admin-only (RC-034 / H3-2). The owner opened
+    // them to ADMIN; every other non-Super role must still be refused.
     for (const path of [
       '/admin/team-members',
-      '/admin/team-members/anything',
       '/admin/reports',
       '/admin/reports/gst',
+      '/v1/admin/gst/summary',
       '/v1/admin/reports',
+      '/admin/ai-usage',
+      '/admin/audit-log',
+      '/admin/database/status',
+      '/admin/database/backup',
+      '/admin/database/deletion-vault',
+      '/v1/admin/deletion-vault',
+      '/admin/operations/deployments',
+      '/admin/support-sessions',
     ]) {
-      expect(isSuperAdminOnlyAdminPath(path), `${path} must require Super Admin`).toBe(true);
+      expect(isAdminTierAdminPath(path), `${path} is Admin tier`).toBe(true);
+      expect(isSuperAdminOnlyAdminPath(path), `${path} is not Super-only`).toBe(false);
+      expect(adminRoleCanReach('SUPER_ADMIN', path), path).toBe(true);
+      expect(adminRoleCanReach('ADMIN', path), path).toBe(true);
+      expect(adminRoleCanReach('MARKETING_MANAGER', path), path).toBe(false);
+      expect(adminRoleCanReach('SUPPORT_MANAGER', path), path).toBe(false);
+    }
+  });
+
+  it('Finance, Settings and the Query Console stay Super Admin only, including the web /database/query page', () => {
+    for (const path of [
+      '/admin/commission',
+      '/admin/billing',
+      '/admin/plan-limits',
+      '/admin/plan-features',
+      '/admin/hsn-rules',
+      '/admin/referral',
+      '/admin/settings/theme',
+      '/admin/ai-providers',
+      '/admin/integrations',
+      '/admin/database/query',
+      '/admin/database/query/anything',
+      '/admin/database/QUERY',
+      '/v1/admin/query',
+    ]) {
+      expect(adminRoleCanReach('SUPER_ADMIN', path), path).toBe(true);
+      expect(adminRoleCanReach('ADMIN', path), `${path} must stay Super Admin only`).toBe(false);
+    }
+    // its siblings under the same segment are open to Admin
+    expect(adminRoleCanReach('ADMIN', '/admin/database/status')).toBe(true);
+  });
+
+  it('a standard surface is open to every admin role', () => {
+    for (const role of ['ADMIN', 'MARKETING_MANAGER', 'SUPPORT_MANAGER']) {
+      expect(adminRoleCanReach(role, '/admin/retailers'), role).toBe(true);
     }
   });
 });

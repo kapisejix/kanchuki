@@ -6,7 +6,7 @@ import Link from 'next/link'
 import nextDynamic from 'next/dynamic'
 import { motion } from 'framer-motion'
 import { Menu, Shield, ShieldAlert, ArrowLeft } from 'lucide-react'
-import { isSuperAdminOnlyAdminPath } from '@kanchuki/shared'
+import { adminRoleCanReach } from '@kanchuki/shared'
 import { PageLoader } from '@/components/PageLoader'
 import { RouteProgress } from '@/components/RouteProgress'
 import { FloatingOrbs } from './components/FloatingOrbs'
@@ -127,7 +127,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   }
 
   const isRestrictedForStandardAdmin =
-    adminRole !== 'SUPER_ADMIN' && isSuperAdminOnlyAdminPath(pathname)
+    !adminRoleCanReach(adminRole, pathname)
 
   return (
     <div className="min-h-screen bg-gray-50">

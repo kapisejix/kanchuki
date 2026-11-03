@@ -144,27 +144,44 @@ describe('Sidebar state', () => {
     )
   })
 
-  it('hides the newly-restricted surfaces from a plain ADMIN (RC-034 follow-up)', () => {
-    // `team-members` and `reports` moved into the super-admin list on
-    // 2026-09-24. This is the nav half of that decision — the layout's page
-    // guard reads the same predicate, but the nav is what a standard ADMIN
-    // actually sees first, so pin both directions here.
+  it('ADMIN sees every menu except Finance and Settings, and not the Query Console (owner decision 2026-11-03)', () => {
     renderSidebar({ role: 'ADMIN' })
 
-    const teamSupport = screen
-      .getByRole('button', { name: 'Team & Support' })
-      .closest('div') as HTMLElement
-    fireEvent.mouseEnter(teamSupport)
-    expect(screen.queryByRole('link', { name: 'Team Members' })).not.toBeInTheDocument()
-    // …while the support inboxes it shares a group with are untouched.
-    expect(screen.getByRole('link', { name: 'Support Tickets' })).toBeInTheDocument()
-    fireEvent.mouseLeave(teamSupport)
+    const open = (name: string) =>
+      fireEvent.mouseEnter(screen.getByRole('button', { name }).closest('div') as HTMLElement)
 
-    // Every child of Reports and Finance is super-admin-only now — `reports`
-    // was the last standard-admin entry — so the Sidebar drops both groups
-    // entirely (it filters out empty groups). Asserted so the groups'
-    // disappearance is a recorded consequence, not a surprise.
+    open('Team & Support')
+    expect(screen.getByRole('link', { name: 'Team Members' })).toBeInTheDocument()
+    fireEvent.mouseLeave(screen.getByRole('button', { name: 'Team & Support' }).closest('div') as HTMLElement)
+
+    open('Reports')
+    expect(screen.getByRole('link', { name: 'GST Reports' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'AI Usage' })).toBeInTheDocument()
+    fireEvent.mouseLeave(screen.getByRole('button', { name: 'Reports' }).closest('div') as HTMLElement)
+
+    open('Operations')
+    expect(screen.getByRole('link', { name: 'Deletion Vault' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Backup & Restore' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Database Health' })).toBeInTheDocument()
+    // the Query Console shares the /database segment but stays Super Admin only
+    expect(screen.queryByRole('link', { name: 'Query Console' })).not.toBeInTheDocument()
+
+    // Finance and Settings: every child is Super-Admin-only, so both groups disappear
+    expect(screen.queryByRole('button', { name: 'Finance' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Settings' })).not.toBeInTheDocument()
+  })
+
+  it('MARKETING_MANAGER keeps the standard tier only: no Team Members, Reports or Operations', () => {
+    renderSidebar({ role: 'MARKETING_MANAGER' })
+
+    fireEvent.mouseEnter(
+      screen.getByRole('button', { name: 'Team & Support' }).closest('div') as HTMLElement,
+    )
+    expect(screen.queryByRole('link', { name: 'Team Members' })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Support Tickets' })).toBeInTheDocument()
+
     expect(screen.queryByRole('button', { name: 'Reports' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Operations' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Finance' })).not.toBeInTheDocument()
   })
 

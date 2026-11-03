@@ -12,11 +12,12 @@ export const teamReportingRoutes: FastifyPluginAsync = async (server) => {
   server.get('/reporting/agents', async (request) => {
     const tm = request.teamMember;
     if (!tm) throw forbidden('Not authenticated');
-    requireRole(request, ['MARKETING_MANAGER', 'SUPPORT_MANAGER']);
+    requireRole(request, ['ADMIN', 'MARKETING_MANAGER', 'SUPPORT_MANAGER']);
 
-    const where = tm.isSuperAdmin
-      ? {}
-      : { territories: { some: { territory_id: { in: tm.territoryIds } } } };
+    const where =
+      tm.isSuperAdmin || tm.readsAll
+        ? {}
+        : { territories: { some: { territory_id: { in: tm.territoryIds } } } };
 
     const agents = await prisma.teamMember.findMany({
       where: {
@@ -100,7 +101,7 @@ export const teamReportingRoutes: FastifyPluginAsync = async (server) => {
   server.get('/reporting/coverage-gaps', async (request) => {
     const tm = request.teamMember;
     if (!tm) throw forbidden('Not authenticated');
-    requireRole(request, ['MARKETING_MANAGER', 'SUPPORT_MANAGER']);
+    requireRole(request, ['ADMIN', 'MARKETING_MANAGER', 'SUPPORT_MANAGER']);
 
     // Find ZONE-level territories that have no team member assignments
     const territories = await prisma.territory.findMany({
@@ -130,7 +131,10 @@ export const teamReportingRoutes: FastifyPluginAsync = async (server) => {
 
     // Scope to manager's own territories if not Super Admin
     const gaps = territories
-      .filter((t) => tm.isSuperAdmin || !t.parent_id || tm.territoryIds.includes(t.parent_id))
+      .filter(
+        (t) =>
+          tm.isSuperAdmin || tm.readsAll || !t.parent_id || tm.territoryIds.includes(t.parent_id),
+      )
       .map((t) => ({
         id: t.id,
         name: t.name,
@@ -152,9 +156,10 @@ export const teamReportingRoutes: FastifyPluginAsync = async (server) => {
     const tm = request.teamMember;
     if (!tm) throw forbidden('Not authenticated');
 
-    const baseWhere = tm.isSuperAdmin
-      ? { deleted_at: null }
-      : { deleted_at: null, territory_id: { in: tm.territoryIds } };
+    const baseWhere =
+      tm.isSuperAdmin || tm.readsAll
+        ? { deleted_at: null }
+        : { deleted_at: null, territory_id: { in: tm.territoryIds } };
 
     // Trial→paid conversion is a cohort rate: of retailers whose trial has
     // finished (or who already paid), how many ever made a successful payment.

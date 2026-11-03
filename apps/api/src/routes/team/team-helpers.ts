@@ -4,6 +4,7 @@ import { type TeamRole, prisma } from '@kanchuki/db';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { forbidden } from '../../plugins/error-handler.js';
 import { verifyTeamToken } from '../../plugins/team-auth.js';
+import { adminSessionInfo } from '../admin-auth.js';
 import { validAdminKey, verifyAdminSession } from '../admin.js';
 
 declare module 'fastify' {
@@ -13,6 +14,8 @@ declare module 'fastify' {
       role: TeamRole;
       territoryIds: string[]; // empty + isSuperAdmin true means "unscoped, sees all"
       isSuperAdmin: boolean;
+      /** ADMIN admin session: reads everything like a Super Admin, but every write stays Super Admin. */
+      readsAll?: boolean;
     };
   }
 }
@@ -83,6 +86,21 @@ export async function teamAuthPreHandler(request: FastifyRequest, reply: Fastify
       isSuperAdmin: true,
     };
     return;
+  }
+  // ADMIN session (Admin menus Reports + Team Members read /v1/team): unscoped READS only.
+  // Not isSuperAdmin, so create/edit member, territories and every other write stay refused.
+  if (adminKey) {
+    const info = await adminSessionInfo(adminKey);
+    if (info?.role === 'ADMIN') {
+      request.teamMember = {
+        id: info.email ?? 'admin',
+        role: 'ADMIN',
+        territoryIds: [],
+        isSuperAdmin: false,
+        readsAll: true,
+      };
+      return;
+    }
   }
 
   const authHeader = request.headers.authorization;
