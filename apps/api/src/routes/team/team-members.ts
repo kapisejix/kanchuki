@@ -3,7 +3,7 @@ import { prisma } from '@kanchuki/db';
 import { isValidIndianPhone, normalizeIndianPhone } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
-import { sendTeamMemberWelcomeEmail } from '../../lib/email.js';
+import { sendTeamMemberWelcomeEmail, sendTeamPasswordGeneratedEmail } from '../../lib/email.js';
 import { nullOnMissing } from '../../lib/prisma-errors.js';
 import { isReservedForAffiliateNamespace } from '../../lib/referral-codes.js';
 import { forbidden, notFound, validationError } from '../../plugins/error-handler.js';
@@ -173,8 +173,8 @@ export const teamMembersRoutes: FastifyPluginAsync = async (server) => {
     };
   });
 
-  // Super Admin only: set a fresh random password for an existing member and return it once.
-  // Not emailed. Existing 12 h team tokens stay valid until they expire (no revocation list).
+  // Super Admin only: set a fresh random password for an existing member, email it to them and
+  // return it once. Existing 12 h team tokens stay valid until they expire (no revocation list).
   server.post<{ Params: { id: string } }>('/members/:id/reset-password', async (request) => {
     const tm = request.teamMember;
     if (!tm) throw forbidden('Not authenticated');
@@ -185,7 +185,7 @@ export const teamMembersRoutes: FastifyPluginAsync = async (server) => {
       .update({
         where: { id: request.params.id },
         data: { password_hash: hashPassword(password) },
-        select: { id: true, email: true },
+        select: { id: true, name: true, email: true },
       })
       .catch(nullOnMissing);
     if (!member) throw notFound('Team member');
@@ -201,7 +201,25 @@ export const teamMembersRoutes: FastifyPluginAsync = async (server) => {
       },
     });
 
-    return { data: { id: member.id, email: member.email, generated_password: password } };
+    // The password is already changed; a failed email must not fail the request. The caller still
+    // gets the password and is told whether the email actually went out.
+    const { delivered } = await sendTeamPasswordGeneratedEmail({
+      name: member.name,
+      email: member.email,
+      tempPassword: password,
+    }).catch((err) => {
+      request.log.error({ err }, 'team reset-password: email failed');
+      return { delivered: false };
+    });
+
+    return {
+      data: {
+        id: member.id,
+        email: member.email,
+        generated_password: password,
+        email_sent: delivered,
+      },
+    };
   });
 
   server.get('/members', async (request) => {

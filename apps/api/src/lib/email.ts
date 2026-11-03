@@ -199,6 +199,32 @@ export async function sendTeamMemberWelcomeEmail(params: {
 /**
  * Send password reset code to a team member.
  */
+/**
+ * Tell a team member a Super Admin generated a new password for them.
+ * `delivered` is false when no email provider is configured (sendEmail only logs then).
+ */
+export async function sendTeamPasswordGeneratedEmail(params: {
+  name: string;
+  email: string;
+  tempPassword: string;
+}): Promise<{ delivered: boolean }> {
+  const { name, email, tempPassword } = params;
+  const loginUrl = `${process.env.WEB_URL || 'https://kanchuki.app'}/admin`;
+  const result = await sendEmail({
+    to: email,
+    subject: 'Kanchuki Team Login: your new password',
+    html: `
+      <div style="font-family: sans-serif; max-width: 480px;">
+        <p>Hello ${escapeHtml(name)},</p>
+        <p>A Kanchuki Super Admin generated a new password for your team login. Your old password no longer works.</p>
+        <p style="font-family: monospace; font-size: 16px; background: #f3f4f6; padding: 12px; border-radius: 8px;">${escapeHtml(tempPassword)}</p>
+        <p><a href="${escapeHtml(loginUrl)}">Sign in</a> with this email and password, or use "Forgot password?" to choose your own.</p>
+      </div>`,
+    text: `Hello ${name},\n\nA Kanchuki Super Admin generated a new password for your team login. Your old password no longer works.\n\nNew password: ${tempPassword}\n\nSign in: ${loginUrl}\n`,
+  });
+  return { delivered: result.success && !result.id?.startsWith('mock-') };
+}
+
 export async function sendTeamPasswordResetEmail(params: {
   name: string;
   email: string;

@@ -399,7 +399,7 @@ export default function TeamMembersPage() {
   const [modalOpen, setModalOpen] = useState(false)
   const [editMember, setEditMember] = useState<TeamMember | null>(null)
   // Shown once after create or reset; never stored.
-  const [revealed, setRevealed] = useState<{ email: string; password: string } | null>(null)
+  const [revealed, setRevealed] = useState<{ email: string; password: string; emailed?: boolean } | null>(null)
   const [copied, setCopied] = useState(false)
   const [resettingId, setResettingId] = useState<string | null>(null)
   const [resetError, setResetError] = useState('')
@@ -452,7 +452,7 @@ export default function TeamMembersPage() {
   }
 
   const resetPassword = async (member: TeamMember) => {
-    if (!confirm(`Generate a new password for ${member.email}? Their current password stops working.`)) return
+    if (!confirm(`Generate a new password for ${member.email} and email it to them? Their current password stops working.`)) return
     setResetError('')
     setResettingId(member.id)
     try {
@@ -463,13 +463,17 @@ export default function TeamMembersPage() {
       })
       const json = (await res.json().catch(() => null)) as {
         error?: { message?: string }
-        data?: { generated_password?: string }
+        data?: { generated_password?: string; email_sent?: boolean }
       } | null
       if (!res.ok || !json?.data?.generated_password) {
         throw new Error(json?.error?.message ?? 'Could not reset the password')
       }
       setCopied(false)
-      setRevealed({ email: member.email, password: json.data.generated_password })
+      setRevealed({
+        email: member.email,
+        password: json.data.generated_password,
+        emailed: json.data.email_sent === true,
+      })
     } catch (err) {
       setResetError(err instanceof Error ? err.message : 'Could not reset the password')
     } finally {
@@ -799,6 +803,13 @@ export default function TeamMembersPage() {
               <code className="block select-all break-all rounded-lg bg-gray-100 px-3 py-2.5 font-mono text-sm text-gray-900">
                 {revealed.password}
               </code>
+              {revealed.emailed !== undefined && (
+                <p className={`text-xs font-medium ${revealed.emailed ? 'text-green-700' : 'text-red-700'}`}>
+                  {revealed.emailed
+                    ? `Also emailed to ${revealed.email}.`
+                    : `Email was NOT sent (no email provider configured or it failed). Share this password yourself.`}
+                </p>
+              )}
               <p className="text-xs text-gray-600">
                 Shown once. Copy it and share it with the member now; it cannot be shown again, only replaced with a new one.
               </p>

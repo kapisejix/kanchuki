@@ -1129,6 +1129,41 @@ describe('POST /team/members/:id/reset-password', () => {
     expect(JSON.stringify(audit)).not.toContain(stored);
   });
 
+  it('emails the new password to the member when an email provider is configured', async () => {
+    process.env.RESEND_API_KEY = 're_test';
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ id: 're_1' }) });
+    vi.stubGlobal('fetch', fetchMock);
+    try {
+      mockTeamMemberUpdate.mockResolvedValueOnce({
+        id: 'tm_1',
+        name: 'Adi',
+        email: 'adi@kanchuki.app',
+      });
+      const res = await reset({ 'x-admin-key': 'test-admin-key' });
+      const data = res.json().data;
+      expect(data.email_sent).toBe(true);
+      const sent = JSON.parse(fetchMock.mock.calls[0]?.[1].body as string);
+      expect(sent.to).toEqual(['adi@kanchuki.app']);
+      expect(sent.text).toContain(data.generated_password);
+    } finally {
+      vi.unstubAllGlobals();
+      Reflect.deleteProperty(process.env, 'RESEND_API_KEY');
+    }
+  });
+
+  it('reports email_sent false (and still returns the password) when no provider is configured', async () => {
+    Reflect.deleteProperty(process.env, 'RESEND_API_KEY');
+    mockTeamMemberUpdate.mockResolvedValueOnce({
+      id: 'tm_1',
+      name: 'Adi',
+      email: 'adi@kanchuki.app',
+    });
+    const res = await reset({ 'x-admin-key': 'test-admin-key' });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data.email_sent).toBe(false);
+    expect(res.json().data.generated_password).toMatch(/^Kanchuki-/);
+  });
+
   it('a manager cannot reset anyone, and nothing is written', async () => {
     mockTeamMemberFindUnique.mockResolvedValueOnce({
       id: 'mgr_1',
