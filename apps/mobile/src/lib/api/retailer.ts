@@ -1,11 +1,22 @@
 import { request } from './client'
 
 export type SetupChecklistItem = {
-  key: 'google_place' | 'google_business' | 'facebook' | 'instagram' | 'gst' | 'whatsapp_api'
+  key:
+    | 'google_place'
+    | 'google_business'
+    | 'facebook'
+    | 'instagram'
+    | 'gst'
+    | 'whatsapp_api'
+    | 'store_location'
   status: 'done' | 'missing' | 'requested'
   dismissed: boolean
   can_ask: boolean
 }
+
+// This build knows how to render `store_location`. Older builds do not send this header, so the
+// API never returns that item to them (an unknown key would crash their dashboard).
+const CHECKLIST_OPT_IN = { 'x-checklist-store-location': '1' }
 
 export const retailerApi = {
   getMe: () => request<{ data: unknown }>('/v1/retailers/me', { getCacheTtlMs: 60_000 }),
@@ -29,6 +40,7 @@ export const retailerApi = {
   getSetupChecklist: () =>
     request<{ data: { items: SetupChecklistItem[]; visible_missing: number } }>(
       '/v1/retailers/me/setup-checklist',
+      { headers: CHECKLIST_OPT_IN },
     ),
   dismissSetupItem: (item_key: string) =>
     request<{ data: { dismissed: string[] } }>('/v1/retailers/me/setup-checklist/dismiss', {
@@ -43,7 +55,7 @@ export const retailerApi = {
   askTeamToSetUp: (item_key: string) =>
     request<{ data: { status: 'requested' | 'done' } }>(
       `/v1/retailers/me/setup-checklist/${encodeURIComponent(item_key)}/ask`,
-      { method: 'POST' },
+      { method: 'POST', headers: CHECKLIST_OPT_IN },
     ),
   sendWhatsappNumberOtp: (whatsapp_number: string) =>
     request<{ data: { sent_to: string } }>('/v1/retailers/me/whatsapp-number/otp', {
