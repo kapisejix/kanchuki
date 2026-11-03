@@ -92,6 +92,17 @@ export async function teamAuthPreHandler(request: FastifyRequest, reply: Fastify
   if (adminKey) {
     const info = await adminSessionInfo(adminKey);
     if (info?.role === 'ADMIN') {
+      // Read-only is enforced here, not left to each route's own role check: a /v1/team write
+      // route with no role check (open to any team member) must not be reachable by Admin.
+      if (!['GET', 'HEAD', 'OPTIONS'].includes(request.method.toUpperCase())) {
+        return reply.status(403).send({
+          error: {
+            code: 'FORBIDDEN',
+            message: 'Admin access to team data is read-only',
+            status: 403,
+          },
+        });
+      }
       request.teamMember = {
         id: info.email ?? 'admin',
         role: 'ADMIN',

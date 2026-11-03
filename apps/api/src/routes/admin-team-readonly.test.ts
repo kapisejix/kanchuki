@@ -86,7 +86,6 @@ describe('ADMIN session on /v1/team: reads everything, writes nothing', () => {
   });
 
   it('cannot edit a member', async () => {
-    memberFindUnique.mockResolvedValueOnce({ territories: [] });
     const res = await app.inject({
       method: 'PATCH',
       url: '/v1/team/members/m1',
@@ -95,6 +94,23 @@ describe('ADMIN session on /v1/team: reads everything, writes nothing', () => {
     });
     expect(res.statusCode).toBe(403);
     expect(memberUpdate).not.toHaveBeenCalled();
+  });
+
+  it('every write method is refused by the pre-handler itself, whatever the route checks', async () => {
+    // Read-only must not depend on each route remembering a role check (security review).
+    for (const [method, url] of [
+      ['POST', '/v1/team/members'],
+      ['PATCH', '/v1/team/members/m1'],
+    ] as const) {
+      const res = await app.inject({
+        method,
+        url,
+        headers: await as('ADMIN'),
+        payload: {},
+      });
+      expect(res.statusCode, method).toBe(403);
+      expect(res.body, method).toContain('read-only');
+    }
   });
 
   it('SUPER_ADMIN is unchanged: can create', async () => {
