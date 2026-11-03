@@ -12,6 +12,15 @@
 
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
+## RC-162 — The `kanchuki_app` DELETE exceptions (083, 097, 099, 125) are absent on production, so every route that hard-deletes through the main client fails with 42501
+
+- **Component:** DB role grants on prod; `packages/db/prisma/migrations/083`, `097`, `099`, `125`; first seen through `DELETE /v1/admin/retailers/:id/limit-overrides/:overrideId` (`admin-retailers-management.ts:108`, `prisma.retailerLimitOverride.delete`). Same class as RC-004 / RC-028 / RC-029 / RC-049.
+- **Symptom:** found 2026-11-03 while checking whether an Admin can delete a limit override. Nothing had failed in front of anyone yet; the grant was checked read-only before the delete was tried.
+- **Root cause:** `information_schema.role_table_grants` on prod shows `kanchuki_app` with `INSERT, SELECT, UPDATE` on `retailer_limit_overrides` and `DELETE` on `background_images` only. All 19 other tables in 125's list, plus `product_photos` (083), `showcase_designs` (097) and `staff_invites` (099), lack DELETE. A grant is invisible to types and tests (RC-049), and nothing compares the migration-declared grants with the live ones. Why they are missing is NOT established: `_prisma_migrations` shows 090-099 and 120-132 with the identical `finished_at` 2026-10-25 06:39:51 (consistent with a bulk mark-as-applied that never ran the SQL), and `scripts/setup-role-separation.sql` revokes DELETE on all tables if re-run (RC-137). Either explains it.
+- **Fix (branch `fix/restore-app-role-delete-grants`):** `150_restore_app_role_delete_grants` re-grants DELETE to `kanchuki_app` on those 20 tables (idempotent, skips absent tables). NOT applied by the agent; the owner applies it.
+- **Proof:** none yet. After the owner applies 150, re-run the grants query: every table in the list must show `DELETE` for `kanchuki_app`. Then delete a limit override as Admin.
+- **Not verified / not fixed:** 084's grants (`social_posts`, `social_accounts`, `product_videos`, `quota_addon_purchases`) and 109's referral tables were not checked. No guard yet fails a deploy when a declared grant is missing; the schema-drift guard checks columns and enum values only. The other migrations bulk-stamped on 2026-10-25 may have been skipped too; only their grants were examined here.
+
 ## RC-161 — Code allowed a plain `ADMIN` role that the `TeamRole` enum did not have, so no Admin account could exist and PR #225's "Admin may change plans" reached nobody
 
 - **Component:** `packages/db/prisma/schema.prisma` `enum TeamRole`; `apps/api/src/routes/admin-auth.ts` (`requireAdminOrSuperAdmin`, `verifyAdminSession`); `ADMIN_PANEL_ROLES` in `packages/shared/src/constants/admin-access.ts`; `apps/api/src/routes/team/team-members.ts` (create schema); web `admin/team-members/page.tsx`.
