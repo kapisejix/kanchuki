@@ -8,7 +8,12 @@ import rateLimit from '@fastify/rate-limit';
 import { dbHealthCheck } from '@kanchuki/db';
 import { createClient } from '@supabase/supabase-js';
 import Fastify from 'fastify';
-import { checkSchemaDrift, getSchemaDrift, schemaHealth } from './lib/schema-drift.js';
+import {
+  checkSchemaDrift,
+  getSchemaDrift,
+  schemaHealth,
+  startSchemaDriftRecheck,
+} from './lib/schema-drift.js';
 
 import { getRedis, startWorkers } from './jobs/index.js';
 import { authPlugin } from './plugins/auth.js';
@@ -238,6 +243,7 @@ async function start(): Promise<void> {
     // expects an unapplied migration is visible to it. Capped at 3 s; never throws.
     await Promise.race([checkSchemaDrift(), new Promise((r) => setTimeout(r, 3000))]);
     await server.listen({ port, host: '0.0.0.0' });
+    startSchemaDriftRecheck();
     server.log.info(`API running on port ${port}`);
   } catch (err) {
     server.log.error(err);

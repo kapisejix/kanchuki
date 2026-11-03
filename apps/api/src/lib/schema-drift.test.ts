@@ -21,6 +21,7 @@ vi.mock('@kanchuki/db', () => ({
           },
           { name: 'Plain', dbName: null, fields: [{ name: 'id', kind: 'scalar' }] },
         ],
+        enums: [{ name: 'Tier', dbName: null, values: [{ name: 'FREE' }, { name: 'GOLD' }] }],
       },
     },
   },
@@ -32,6 +33,7 @@ import {
   expectedColumns,
   getSchemaDrift,
   missingColumns,
+  missingEnumValues,
   schemaHealth,
 } from './schema-drift.js';
 
@@ -77,8 +79,20 @@ describe('checkSchemaDrift', () => {
     captureMessage.mockReset();
   });
 
+  const allEnums = [
+    { typname: 'Tier', enumlabel: 'FREE' },
+    { typname: 'Tier', enumlabel: 'GOLD' },
+  ];
+  // checkSchemaDrift asks twice: columns first, enum labels second.
+  const answer = (cols: unknown[], enums: unknown[] = allEnums) =>
+    queryRaw.mockResolvedValueOnce(cols).mockResolvedValueOnce(enums);
+  const allCols = [
+    ...rows('retailers', ['id', 'setup_dismissed', 'plan']),
+    ...rows('Plain', ['id']),
+  ];
+
   it('RC-160: reports the exact column and alerts Sentry', async () => {
-    queryRaw.mockResolvedValue([...rows('retailers', ['id', 'plan']), ...rows('Plain', ['id'])]);
+    answer([...rows('retailers', ['id', 'plan']), ...rows('Plain', ['id'])]);
     const res = await checkSchemaDrift();
     expect(res?.ok).toBe(false);
     expect(res?.missing).toEqual(['retailers.setup_dismissed']);
@@ -87,13 +101,29 @@ describe('checkSchemaDrift', () => {
   });
 
   it('is ok and silent when nothing is missing', async () => {
-    queryRaw.mockResolvedValue([
-      ...rows('retailers', ['id', 'setup_dismissed', 'plan']),
-      ...rows('Plain', ['id']),
-    ]);
+    answer(allCols);
     const res = await checkSchemaDrift();
     expect(res).toMatchObject({ ok: true, missing: [] });
     expect(captureMessage).not.toHaveBeenCalled();
+  });
+
+  it('flags an enum value the DB lacks (unapplied ALTER TYPE ... ADD VALUE)', async () => {
+    answer(allCols, [{ typname: 'Tier', enumlabel: 'FREE' }]);
+    const res = await checkSchemaDrift();
+    expect(res?.missing).toEqual(['enum Tier.GOLD']);
+  });
+
+  it('alerts Sentry once per change, not on every recheck', async () => {
+    answer(allCols, []);
+    await checkSchemaDrift();
+    answer(allCols, []);
+    await checkSchemaDrift(); // same missing set: silent
+    expect(captureMessage).toHaveBeenCalledTimes(1);
+    answer(allCols); // fixed
+    await checkSchemaDrift();
+    answer(allCols, []); // drifts again: alert again
+    await checkSchemaDrift();
+    expect(captureMessage).toHaveBeenCalledTimes(2);
   });
 
   it('a DB that cannot be asked is "unknown", not drift, and never throws', async () => {
@@ -116,6 +146,14 @@ describe('schemaHealth', () => {
 });
 
 describe('against the real Prisma model', () => {
+  it('sees real enums, so the enum check has something to compare', () => {
+    const enums = RealPrisma.dmmf.datamodel.enums;
+    expect(enums.length).toBeGreaterThan(0);
+    expect(missingEnumValues(enums, new Map())).toHaveLength(
+      enums.reduce((n, e) => n + e.values.length, 0),
+    );
+  });
+
   it('knows retailers.setup_dismissed (the RC-160 column) and a mapped table', () => {
     const exp = expectedColumns(RealPrisma.dmmf.datamodel.models);
     expect(exp.get('retailers')).toContain('setup_dismissed');
