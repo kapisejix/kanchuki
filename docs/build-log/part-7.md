@@ -275,3 +275,15 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Bug | `trial_to_active_rate` (`/v1/team/reporting/retailer-activation`) was active / current trials and could exceed 100%. Now a cohort rate: retailers with a successful `SubscriptionPayment` / retailers whose `trial_ends_at` has passed or who have paid. Field name unchanged, so the Reports page needs no edit. |
 | Tests | `Sidebar.test.tsx` and `e2e/admin-navigation.spec.ts` updated for the new group names; new `team-reporting.test.ts` (2). API tsc clean. `Sidebar.test.tsx` sign-out case fails identically on a clean tree (not touched). |
 | Not verified | Not browser-checked, e2e spec not run, rate not run against real Postgres. A retailer who paid once and later cancelled still counts as converted. |
+
+## 2026-11-03 — Real `ADMIN` team role (RC-161), branch `feat/admin-team-role`
+
+| Item | Detail |
+|---|---|
+| Why | PR #225 let "Admin and Super Admin" change plans, but production `TeamRole` had no `ADMIN`, so no Admin account could exist (found while planning a live Admin test). Owner chose to add the role. |
+| Schema | `ADMIN` added to `TeamRole`; `149_team_role_admin` = `ALTER TYPE "TeamRole" ADD VALUE IF NOT EXISTS 'ADMIN'`. NOT applied by the agent. Apply before deploying the API. |
+| Security | `verifyAdminSession` (only caller: `teamAuthPreHandler`, which grants unscoped Super Admin over `/v1/team`) now passes `SUPER_ADMIN` only. Before, an `ADMIN` session would have been able to create `SUPER_ADMIN` team members. An Admin gets 401 on `/v1/team/*`. |
+| API / web | `ADMIN` in the create-member schema (only a Super Admin can create one); team page label "Admin (Standard Access + Plan Changes)", description, colour; `MARKETING_MANAGER` relabelled "Marketing Manager (Standard Access)"; welcome-email label. |
+| Access rule | ADMIN = all standard admin segments + change-plan + extend-trial + per-retailer limit overrides POST/DELETE (owner decision 2026-11-03; audit entries now carry actor + role). Team members, reports, money, settings, operations stay Super Admin. |
+| Tests | New `admin-role-escalation.test.ts` (4; 2 fail on the old code). API + web `tsc` clean; 147 related API tests pass. |
+| Not verified | Migration unapplied; no Admin member created; no live Admin login or Change Plan; mobile staff OTP login for an ADMIN phone not checked; web page not browser-checked. |

@@ -123,21 +123,27 @@ describe('change-plan role rules', () => {
   });
 });
 
+// Limit overrides: owner decision 2026-11-03 — ADMIN and SUPER_ADMIN may both manage them.
 describe.each(money)('%s %s', (method, url) => {
-  it('plain ADMIN is refused', async () => {
-    const token = await signAdminSession('a@b.c', 'ADMIN');
-    const res = await app.inject({ method, url, headers: { 'x-admin-key': token, ...CSRF } });
-    expect(res.statusCode).toBe(403);
-    expect(res.body).toContain('Super Admin');
-  });
-
-  it('SUPER_ADMIN gets past the role check', async () => {
+  it.each(['ADMIN', 'SUPER_ADMIN'])('%s gets past the role check', async (role) => {
+    const key = role === 'ADMIN' ? await signAdminSession('a@b.c', 'ADMIN') : 'test-admin-key';
     const res = await app.inject({
       method,
       url,
-      headers: { 'x-admin-key': 'test-admin-key', ...CSRF },
+      headers: { 'x-admin-key': key, ...CSRF },
       payload: {},
     });
     expect(res.statusCode).not.toBe(403); // prisma is a stub, so 4xx/5xx from the handler is fine
+  });
+
+  it.each(['SUPPORT_MANAGER', 'MARKETING_MANAGER'])('%s is refused', async (role) => {
+    const key = await signAdminSession('m@b.c', role);
+    const res = await app.inject({
+      method,
+      url,
+      headers: { 'x-admin-key': key, ...CSRF },
+      payload: {},
+    });
+    expect(res.statusCode).toBe(403);
   });
 });

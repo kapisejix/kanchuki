@@ -25,7 +25,7 @@ import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
 
-type TeamRole = 'SUPER_ADMIN' | 'MARKETING_MANAGER' | 'MARKETING_AGENT' | 'SUPPORT_MANAGER' | 'SUPPORT_AGENT'
+type TeamRole = 'SUPER_ADMIN' | 'ADMIN' | 'MARKETING_MANAGER' | 'MARKETING_AGENT' | 'SUPPORT_MANAGER' | 'SUPPORT_AGENT'
 
 type Territory = {
   id: string
@@ -50,7 +50,8 @@ type TeamMember = {
 
 const ROLE_LABELS: Record<TeamRole, string> = {
   SUPER_ADMIN: 'Super Admin (Full Access)',
-  MARKETING_MANAGER: 'Admin / Manager (Standard Access)',
+  ADMIN: 'Admin (Standard Access + Plan Changes)',
+  MARKETING_MANAGER: 'Marketing Manager (Standard Access)',
   MARKETING_AGENT: 'Sales / Field Surveyor (Survey Only)',
   SUPPORT_MANAGER: 'Support Manager (Support & Tickets)',
   SUPPORT_AGENT: 'Support Agent (Tickets Only)',
@@ -58,7 +59,8 @@ const ROLE_LABELS: Record<TeamRole, string> = {
 
 const ROLE_DESCRIPTIONS: Record<TeamRole, string> = {
   SUPER_ADMIN: 'Full unrestricted access to all admin tools, Settings, API keys/Integrations, Billing/Payments, and Operations.',
-  MARKETING_MANAGER: 'Admin dashboard access (Retailers, Customers, Catalog, Social, Team, Reports). Excludes API keys, Payments, Settings, and Operations.',
+  ADMIN: 'Everything a Marketing Manager has, plus change a retailer\'s plan and extend trials (audit-logged). Plus manage per-retailer limit overrides. Excludes API keys, Payments, Team, Reports, Settings, and Operations.',
+  MARKETING_MANAGER: 'Admin dashboard access (Retailers, Customers, Catalog, Social). Cannot change plans or trials. Excludes API keys, Payments, Settings, Team, Reports, and Operations.',
   MARKETING_AGENT: 'Field staff access for the /survey field survey and mobile staff tools only. Has NO access to the Admin dashboard.',
   SUPPORT_MANAGER: 'Access to manage support tickets, customer inquiries, and retailer support issues.',
   SUPPORT_AGENT: 'Access to resolve assigned support tickets only. Has NO access to Admin Settings or Operations.',
@@ -66,6 +68,7 @@ const ROLE_DESCRIPTIONS: Record<TeamRole, string> = {
 
 const ROLE_COLORS: Record<TeamRole, string> = {
   SUPER_ADMIN: 'bg-purple-100 text-purple-700 border-purple-200',
+  ADMIN: 'bg-indigo-100 text-indigo-700 border-indigo-200',
   MARKETING_MANAGER: 'bg-blue-100 text-blue-700 border-blue-200',
   MARKETING_AGENT: 'bg-cyan-100 text-cyan-700 border-cyan-200',
   SUPPORT_MANAGER: 'bg-amber-100 text-amber-700 border-amber-200',

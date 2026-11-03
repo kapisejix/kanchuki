@@ -98,6 +98,7 @@ export async function sendTeamMemberWelcomeEmail(params: {
 
   const roleLabels: Record<string, string> = {
     SUPER_ADMIN: 'Super Admin',
+    ADMIN: 'Admin',
     MARKETING_MANAGER: 'Marketing Manager',
     MARKETING_AGENT: 'Marketing Agent',
     SUPPORT_MANAGER: 'Support Manager',
