@@ -1,6 +1,6 @@
 # Admin-managed Social Design Templates + Paid AI Custom-Prompt Templates
 
-**Status:** 🔴 Proposed — not approved, nothing built (2026-11-04)
+**Status:** 🟨 Decisions D1–D7 settled; T1–T3 built 2026-11-04 (not browser-tested); T4–T6 not started
 **Origin:** owner review of `/admin/social-templates` (2026-11-04). Page is a read-only monitor of retailer-made rows; no sample templates exist; the AI generate path never saves its result (see §2).
 **Owner decisions needed:** §9.
 

@@ -1331,3 +1331,8 @@ Shopper "Report this AI content" (Google Play AI-Generated Content policy). Text
 | `created_at` | TIMESTAMP | indexed; also `(customer_account_id, created_at)` |
 
 Writer: `routes/public/passport/passport-ai-report.ts` (INSERT); `passport-data.ts` (UPDATE unlink). No DELETE. RLS `backend_roles_full_access`.
+
+
+## Social design templates — `design_templates` (migration 152, applied in prod 2026-11-04)
+
+Admin-authored free post designs. `spec` is JSON `{ layers: [...] }` validated by `parseDesignSpec()` (`packages/shared/src/design-template.ts`) on every write and again before render. `status` reuses `PostTemplateStatus` (DRAFT | PUBLISHED | HIDDEN); `plans` empty = nobody. `format` is enum `DesignFormat` (SQUARE | PORTRAIT_4_5 | STORY_9_16); `product_slots` 1..6 (CHECK). `background_key` / `thumbnail_key` are R2 keys under `admin/design-templates/`. **Writer:** `routes/admin/admin-design-templates.ts` only. `kanchuki_app` has no DELETE grant: designs are retired with status HIDDEN, never deleted. RLS policy `backend_roles_full_access` is created by the migration; prod presence not yet confirmed.

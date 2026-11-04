@@ -329,3 +329,16 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Proof | #238 CI green: quality, unit-web, migration-replay, build, e2e-web. |
 | Prod check 2026-11-04 | Read-only: 20 retailers, 0 with latitude/longitude, `location_source` NULL on all. Backfill not run. |
 | Not done | No device test, no EAS build, nothing run against real Nominatim. Existing retailers must re-pin from the app. |
+
+## 2026-11-04 — Admin social design templates: T1 + T2 + T3 (branch `feat/design-templates-t3`, stacked on `fix/social-templates-t1`, not pushed)
+
+| Item | Detail |
+|---|---|
+| T1 (`9a2a3bf7`) | Retailer templates screen: expo-clipboard copy, hashtag parse, Android share; admin monitor Occasions stat and inactive-badge contrast. |
+| T2 (`845c0372`) | `packages/shared/src/design-template.ts` (format/variable lists, `parseDesignSpec()` which rebuilds an untrusted spec), `packages/ai/src/design-render.ts` (`renderDesign`, sharp), table `design_templates` + enum `DesignFormat` (migration 152, applied in prod by owner 2026-11-04). |
+| T3 API | `apps/api/src/routes/admin/admin-design-templates.ts`: list, get, create (always DRAFT, plans default to all three per D5), partial update (format + slots + spec re-validated together), status (DRAFT/PUBLISHED/HIDDEN), stateless `POST /preview` (unsaved draft, sample data), `POST /upload-url` (signed `content_length`, RC-080; keys verified by `verifyUpload`, RC-075; URLs always server-built). **No DELETE route**: `kanchuki_app` has no DELETE grant; retire = HIDDEN. Segment `design-templates` classified in `ADMIN_TIER_ADMIN_SEGMENTS` (Super Admin + Admin, D6); `R2_PATHS.designTemplateAsset`. |
+| T3 UI | `/admin/social-templates` is now two tabs: Design Library (new: list, publish/hide, form + live-preview editor with layer list, background upload) and Retailer AI Templates (the previous page, unchanged). Editor lists come from `@kanchuki/shared`. |
+| Seed | `apps/api/scripts/seed-design-templates.ts`: 9 DRAFT starter designs with generated placeholder backgrounds (D7). Dry-run is offline and validated all 9 specs; `--apply` is owner-run. |
+| Deviations from the brief | Preview is `POST /design-templates/preview` (spec in the body), not `:id/preview`, so an unsaved draft can be previewed. Assets live under `admin/design-templates/` (one shared prefix) instead of `templates/<id>/`: the id does not exist before create. `parseDesignSpec` uses an indexed loop because `apps/web` compiles shared from source at a lower TS target. |
+| Proof | API `tsc` clean; new route tests 14/14 (spec rejection, unknown format, index vs slots, prefix guard, no-DELETE, `content_length` required, preview); `admin-access` + `admin-gate` guards pass; shared 28/28; web `tsc` + `next lint` clean. |
+| Not done / not verified | **Not browser-tested**, no real R2 upload or render through the route, `--apply` never run. Hindi text renders as boxes (no Devanagari font in the API image). Retailer-side picker (T4), AI paid tier (T5), `social_templates` retirement (T5/T6) not started. RLS policy `backend_roles_full_access` on `design_templates` is in migration 152 but not confirmed in prod (owner: `select policyname from pg_policies where tablename='design_templates';`). |

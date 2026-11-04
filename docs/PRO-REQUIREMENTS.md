@@ -4414,3 +4414,17 @@ The owner, managers and salespeople get a push on their phone when a customer se
 **Owner steps before any push can be tested:** confirm migration 135 is applied (combined SQL check in the spec, expected true, 1, true, false); Firebase project + `google-services.json`; FCM V1 key via `eas credentials`; EAS file env var `GOOGLE_SERVICES_JSON`; EAS rebuild (native module, not in Expo Go); AD_ID guard (`scripts/check-aab-ad-id.mjs`) on that build; device test as owner with a customer enquiry.
 
 **Not verified / known gaps (unfixed on purpose, owner decides):** no push has reached a real device; a cold-start notification tap is held until the session is authenticated and is the likeliest thing to need a fix; a session ending by token expiry skips push unregister; stale `disabled_at` rows are not pruned (the app role has no DELETE).
+
+
+## 44. Admin social design templates (F-number unassigned) — 🟨 T1–T3 BUILT 2026-11-04, NOT BROWSER-TESTED
+
+**Spec:** `docs/tasks/pending/admin-social-design-templates.md` (decisions D1–D7 settled by owner). Admin builds free designs (background art + variable layers) in Admin → Social Templates → Design Library; retailers will pick one in the composer/scheduler (T4); a paid AI tier follows (T5).
+
+| Task | State |
+|---|---|
+| T1 retailer templates fixes | ✅ `9a2a3bf7` |
+| T2 spec validator, sharp renderer, `design_templates` (migration 152) | ✅ `845c0372`, migration applied in prod |
+| T3 admin API + Design Library tab + editor + live preview + seed script | ✅ built on `feat/design-templates-t3`, tests green, not browser-tested, seed not run |
+| T4 retailer picker + render at publish | 🔴 Not started |
+| T5 paid AI tier, retire `social_templates` | 🔴 Not started |
+| Hindi (Devanagari) font in API image | 🔴 Open, needed before Hindi shop names render |
