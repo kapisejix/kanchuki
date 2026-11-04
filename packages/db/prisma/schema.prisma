@@ -2601,6 +2601,39 @@ enum PostTemplateStatus {
   HIDDEN
 }
 
+// Admin-made social image designs: background art + variable layers (migration 152;
+// docs/tasks/pending/admin-social-design-templates.md). Same catalog shape as PostTemplate
+// (status + plans[] + sort_order) but for images. Admin catalog, not retailer-scoped; no
+// delete path — a retired design is set HIDDEN, so no DELETE grant is needed (RC-049).
+// `spec` is validated by parseDesignSpec() in @kanchuki/shared before every write and render.
+model DesignTemplate {
+  id             String             @id @default(cuid())
+  name           String
+  description    String?
+  status         PostTemplateStatus @default(DRAFT) // DRAFT | PUBLISHED | HIDDEN
+  plans          SubscriptionPlan[] @default([])    // [] = nobody
+  occasion       String?            // "Diwali", "Wedding", "General"… picker filter
+  format         DesignFormat       @default(PORTRAIT_4_5)
+  product_slots  Int                @default(1)     // 1..6, CHECK in the migration
+  spec           Json               // { layers: [...] } — see packages/shared/src/design-template.ts
+  background_key String?            // R2 key of the background art; null = plain white
+  thumbnail_key  String?            // R2 key of the picker preview
+  sort_order     Int                @default(0)
+  usage_count    Int                @default(0)
+  created_at     DateTime           @default(now())
+  updated_at     DateTime           @updatedAt
+
+  @@index([status])
+  @@index([occasion])
+  @@map("design_templates")
+}
+
+enum DesignFormat {
+  SQUARE        // 1080x1080
+  PORTRAIT_4_5  // 1080x1350
+  STORY_9_16    // 1080x1920
+}
+
 enum PostTemplateContext {
   POST
   CAMPAIGN

@@ -15,3 +15,4 @@ export * from './my-style-tabs.js';
 export * from './occasions.js';
 export * from './my-style-look.js';
 export * from './google-place.js';
+export * from './design-template.js';
