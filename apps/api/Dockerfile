@@ -42,6 +42,11 @@ COPY . .
 RUN mkdir -p /usr/share/fonts/truetype/marcellus \
     && cp apps/api/fonts/Marcellus-Regular.ttf apps/api/fonts/Marcellus-OFL.txt /usr/share/fonts/truetype/marcellus/
 
+# Noto Sans Devanagari (OFL) so Hindi text in admin design templates renders
+# glyphs instead of boxes (packages/ai/src/design-render.ts FONT_STACK).
+RUN mkdir -p /usr/share/fonts/truetype/noto-devanagari \
+    && cp apps/api/fonts/NotoSansDevanagari.ttf apps/api/fonts/NotoSansDevanagari-OFL.txt /usr/share/fonts/truetype/noto-devanagari/
+
 # Retry once on failure: pnpm install has historically failed on
 # onnxruntime-node's postinstall downloading CUDA EP binaries (~330MB) from
 # GitHub releases — Railway's Southeast-Asia build egress to github.com

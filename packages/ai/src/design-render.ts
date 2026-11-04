@@ -51,8 +51,8 @@ export interface DesignRenderInput {
 }
 
 const FONT_STACK: Record<DesignFont, string> = {
-  serif: 'Marcellus, DejaVu Serif, serif',
-  sans: 'DejaVu Sans, Noto Sans, Arial, Helvetica, sans-serif',
+  serif: 'Marcellus, Noto Sans Devanagari, DejaVu Serif, serif',
+  sans: 'DejaVu Sans, Noto Sans Devanagari, Noto Sans, Arial, Helvetica, sans-serif',
 };
 
 const esc = (s: string) =>
