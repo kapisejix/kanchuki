@@ -318,3 +318,14 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Owner check | Owner created an Admin and reported all new menus work. Details of what was clicked not given. |
 | Open | Hide the Create/Restore buttons on the Backup page for Admin (they 403). Decide `SCHEMA_DRIFT_BLOCKS_HEALTH=1`. Check the `CHANGE_PLAN` audit row for the Admin's own change (actor + role). Mobile staff phone-OTP login for an ADMIN member not checked. `DELETE` of limit overrides uses a hard delete: confirm the app DB role has DELETE on `retailer_limit_overrides` (RC-049 shape) by deleting one as Admin. |
 | Decisions on record | Admin may change plans, extend trials, manage limit overrides (2026-11-03). Marketing/Support managers do not get the Admin tier. Team members, reports writes, Finance, Settings, Query Console stay Super Admin. |
+
+## 2026-11-03 — Shop pin saved (RC-163), PRs #238 + #239
+
+| Item | Detail |
+|---|---|
+| Bug | `PUT /v1/retailers/me` accepted `latitude`/`longitude` but never wrote them; prod had 20 retailers, 0 with coordinates. |
+| Shipped (#238) | Pin written (both-or-neither, India box, unchanged re-send is a no-op); `retailers.location_source` (migration 151, applied on prod); real paging on `GET /v1/admin/retailers`; admin Local Discovery pincode/city + radius search (`/v1/admin/discovery/nearby`); onboarding paste-a-Maps-link; pin review dialog (Use this pin / Clear pin); engagement product thumbnail/name/SKU; dry-run-first `scripts/backfill-retailer-location.ts`. |
+| Shipped (#239) | Opt-in `store_location` item on the dashboard setup checklist. |
+| Proof | #238 CI green: quality, unit-web, migration-replay, build, e2e-web. |
+| Prod check 2026-11-04 | Read-only: 20 retailers, 0 with latitude/longitude, `location_source` NULL on all. Backfill not run. |
+| Not done | No device test, no EAS build, nothing run against real Nominatim. Existing retailers must re-pin from the app. |
