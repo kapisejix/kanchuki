@@ -469,7 +469,7 @@ function ReviewRow({
             <button
               onClick={onFlag}
               aria-label="Flag for review"
-              className="p-1.5 rounded-lg text-gray-400 hover:text-orange-500 hover:bg-orange-50 transition-colors"
+              className="p-1.5 rounded-lg text-gray-500 hover:text-orange-500 hover:bg-orange-50 transition-colors"
               title="Flag for review"
             >
               <Flag size={14} />
@@ -487,7 +487,7 @@ function ReviewRow({
           {!review.is_hidden ? (
             <button
               onClick={onHide}
-              className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+              className="p-1.5 rounded-lg text-gray-500 hover:text-red-500 hover:bg-red-50 transition-colors"
               title="Hide review"
             >
               <EyeOff size={14} />
@@ -495,7 +495,7 @@ function ReviewRow({
           ) : (
             <button
               onClick={onUnhide}
-              className="p-1.5 rounded-lg text-gray-400 hover:text-green-500 hover:bg-green-50 transition-colors"
+              className="p-1.5 rounded-lg text-gray-500 hover:text-green-500 hover:bg-green-50 transition-colors"
               title="Restore review"
             >
               <Eye size={14} />
@@ -504,7 +504,7 @@ function ReviewRow({
           <button
             onClick={onDelete}
             aria-label="Delete review permanently"
-            className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+            className="p-1.5 rounded-lg text-gray-500 hover:text-red-600 hover:bg-red-50 transition-colors"
             title="Delete permanently"
           >
             <Trash2 size={14} />
