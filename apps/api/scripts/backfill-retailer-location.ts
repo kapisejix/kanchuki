@@ -11,7 +11,7 @@
  * Safe to re-run: only rows with latitude AND longitude NULL are read, and the write repeats that
  * condition, so a retailer's own pin (or an earlier run) is never overwritten.
  * Written rows get location_source = 'GEOCODED_APPROX'; a retailer's own pin replaces them.
- * Match level (address / pincode / city) is printed: 'city' and 'pincode' are coarse - review them.
+ * Match level (address / pincode) is printed: 'pincode' is coarse - review it. City-level matches are skipped.
  */
 import { prisma } from '@kanchuki/db';
 import { geocodeAddress } from '../src/lib/geocode-address.js';
@@ -40,6 +40,12 @@ try {
     const name = r.shop_name || '(no name)';
     if (!hit) {
       console.log(`SKIP   ${r.id}  ${name}  - nothing to search or no match`);
+      continue;
+    }
+    // City-level hits are the city centre, which can be tens of km from the shop (a bad address
+    // like a mistyped pincode lands in the wrong town). Leave those for the retailer to pin.
+    if (hit.level === 'city') {
+      console.log(`SKIP   ${r.id}  ${name}  - city-level match only (${hit.display.slice(0, 50)})`);
       continue;
     }
     matched++;
