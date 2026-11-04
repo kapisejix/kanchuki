@@ -25,7 +25,7 @@ const mocks = vi.hoisted(() => ({
   srAggregate: vi.fn(),
   prCount: vi.fn(),
   srCount: vi.fn(),
-  wheres: {} as Record<string, unknown>,
+  wheres: {} as { product?: unknown; store?: unknown },
   prFindUnique: vi.fn(),
   srFindUnique: vi.fn(),
   prGroupBy: vi.fn(),
@@ -225,7 +225,10 @@ describe('moderation actions', () => {
     const app = await buildApp();
     const res = await app.inject({ method: 'PATCH', url: '/reviews/store/y/unflag' });
     expect(res.statusCode).toBe(200);
-    expect(mocks.srUpdate).toHaveBeenCalledWith({ where: { id: 'y' }, data: { is_flagged: false } });
+    expect(mocks.srUpdate).toHaveBeenCalledWith({
+      where: { id: 'y' },
+      data: { is_flagged: false },
+    });
     expect(mocks.auditCreate.mock.calls[0]![0].data).toMatchObject({
       action: 'review_unflagged',
       resource_type: 'StoreReview',
@@ -309,8 +312,8 @@ describe('moderation actions', () => {
       is_hidden: false,
       rating: { gte: 2, lte: 4 },
     };
-    expect(mocks.wheres['product']).toEqual(want);
-    expect(mocks.wheres['store']).toEqual(want);
+    expect(mocks.wheres.product).toEqual(want);
+    expect(mocks.wheres.store).toEqual(want);
   });
 
   it('GET /reviews/retailers → unique shops that have reviews, sorted by name', async () => {
@@ -381,7 +384,9 @@ describe('moderation actions', () => {
       mocks.srFindUnique.mockResolvedValue(null);
       const app = await buildApp();
       for (const type of ['product', 'store']) {
-        expect((await app.inject({ method: 'DELETE', url: `/reviews/${type}/nope` })).statusCode).toBe(404);
+        expect(
+          (await app.inject({ method: 'DELETE', url: `/reviews/${type}/nope` })).statusCode,
+        ).toBe(404);
       }
       expect(mocks.purgePrDelete).not.toHaveBeenCalled();
       expect(mocks.purgeSrDelete).not.toHaveBeenCalled();
