@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import * as Clipboard from 'expo-clipboard'
 import { router } from 'expo-router'
 import { Image } from 'expo-image'
 import {
@@ -29,6 +30,7 @@ import {
   Alert,
   RefreshControl,
   ScrollView,
+  Platform,
   Text,
   TextInput,
   View,
@@ -722,10 +724,12 @@ function TemplateDetailModal({
     mutationFn: () =>
       growthApi.updateSocialTemplate(template.id, {
         caption: caption || undefined,
+        // Accept "diwali" and "#diwali" alike; drop empties and bare "#".
         hashtags: hashtags
           .split(/\s+/)
-          .filter((h) => h.startsWith('#'))
-          .map((h) => (h.startsWith('#') ? h : `#${h}`)),
+          .map((h) => h.replace(/^#+/, ''))
+          .filter(Boolean)
+          .map((h) => `#${h}`),
       }),
     onSuccess: () => {
       setEditingCaption(false)
@@ -779,10 +783,13 @@ function TemplateDetailModal({
   const handleShare = async () => {
     if (!template.image_url) return
     try {
-      await Share.share({
-        message: `${template.name}\n\n${template.caption ?? ''}\n\n${template.hashtags.join(' ')}`,
-        url: template.image_url,
-      })
+      const text = `${template.name}\n\n${template.caption ?? ''}\n\n${template.hashtags.join(' ')}`
+      // iOS honours `url`; Android ignores it, so the link goes in the message.
+      await Share.share(
+        Platform.OS === 'ios'
+          ? { message: text, url: template.image_url }
+          : { message: `${text}\n\n${template.image_url}` },
+      )
       void useMutationHook.mutate()
     } catch {
       // user cancelled
@@ -791,11 +798,10 @@ function TemplateDetailModal({
 
   const handleCopyCaption = async () => {
     try {
-      const { Clipboard } = await import('react-native')
-      Clipboard.setString(`${template.caption ?? ''}\n\n${template.hashtags.join(' ')}`)
+      await Clipboard.setStringAsync(`${template.caption ?? ''}\n\n${template.hashtags.join(' ')}`)
       Alert.alert('Copied', 'Caption & hashtags copied to clipboard')
-    } catch {
-      // fallback
+    } catch (err) {
+      showError(err, 'Could not copy to clipboard')
     }
   }
 

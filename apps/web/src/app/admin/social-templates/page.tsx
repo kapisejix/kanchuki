@@ -180,7 +180,7 @@ export default function SocialTemplatesPage() {
             <StatCard icon={Share2} label="Total Templates" value={stats.total} color="bg-pink-50 text-pink-600" />
             <StatCard icon={Eye} label="Active" value={stats.active} color="bg-green-50 text-green-600" />
             <StatCard icon={EyeOff} label="Inactive" value={stats.inactive} color="bg-gray-50 text-gray-500" />
-            <StatCard icon={BarChart3} label="Occasions" value={stats.by_occasion.length} color="bg-purple-50 text-purple-600" />
+            <StatCard icon={BarChart3} label="Occasions" value={stats.by_occasion.filter((r) => r.occasion).length} color="bg-purple-50 text-purple-600" />
           </motion.div>
         )}
 
@@ -246,7 +246,7 @@ export default function SocialTemplatesPage() {
                       {TYPE_LABELS[t.template_type] ?? t.template_type}
                     </span>
                     <span className={`absolute top-2 right-2 px-2 py-0.5 rounded-full text-xs font-medium border ${
-                      t.is_active ? 'bg-green-50 text-green-600 border-green-100' : 'bg-gray-50 text-gray-400 border-gray-100'
+                      t.is_active ? 'bg-green-50 text-green-600 border-green-100' : 'bg-gray-50 text-gray-500 border-gray-100'
                     }`}>
                       {t.is_active ? 'Active' : 'Inactive'}
                     </span>
@@ -366,7 +366,7 @@ export default function SocialTemplatesPage() {
                   <div className="flex justify-between">
                     <span className="text-gray-500">Status</span>
                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${
-                      detailBg.is_active ? 'bg-green-50 text-green-600 border-green-100' : 'bg-gray-50 text-gray-400 border-gray-100'
+                      detailBg.is_active ? 'bg-green-50 text-green-600 border-green-100' : 'bg-gray-50 text-gray-500 border-gray-100'
                     }`}>
                       {detailBg.is_active ? 'Active' : 'Inactive'}
                     </span>
