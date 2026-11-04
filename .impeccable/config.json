@@ -8,6 +8,15 @@
         "value": "plus jakarta sans",
         "createdAt": "2026-09-19T10:01:50.161Z",
         "reason": "User confirmed Plus Jakarta Sans is intentional"
+      },
+      {
+        "rule": "gray-on-color",
+        "value": "*",
+        "files": [
+          "src/app/admin/ratings/page.tsx"
+        ],
+        "createdAt": "2026-11-04T06:02:53.363Z",
+        "reason": "User confirmed: muted gray icon buttons on transparent bg, color only on hover"
       }
     ]
   }

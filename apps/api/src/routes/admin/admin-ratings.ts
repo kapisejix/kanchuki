@@ -1,11 +1,11 @@
 // F-021: Product & Store Ratings — admin moderation routes
 // Admin can list, flag, hide, and delete reviews across all retailers
 
-import { type Prisma, prisma } from '@kanchuki/db';
+import { type Prisma, getPurgePrisma, prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
 import { nullOnMissing } from '../../lib/prisma-errors.js';
 import { notFound } from '../../plugins/error-handler.js';
-import { adminAuthPreHandler } from '../admin-auth.js';
+import { adminAuthPreHandler, requireSuperAdmin } from '../admin-auth.js';
 
 export const adminRatingsRoutes: FastifyPluginAsync = async (server) => {
   server.addHook('preHandler', adminAuthPreHandler);
@@ -24,7 +24,9 @@ export const adminRatingsRoutes: FastifyPluginAsync = async (server) => {
             hidden: { type: 'boolean' },
             min_rating: { type: 'number' },
             max_rating: { type: 'number' },
-            page: { type: 'number', minimum: 1 },
+            // ponytail: merged window = page*limit rows per source, so cap page (max 10k rows each).
+            // Past that, narrow with filters; keyset/UNION pagination if reviews ever outgrow it.
+            page: { type: 'number', minimum: 1, maximum: 100 },
             limit: { type: 'number', minimum: 1, maximum: 100 },
           },
         },
@@ -107,8 +109,8 @@ export const adminRatingsRoutes: FastifyPluginAsync = async (server) => {
               retailer: { select: { id: true, shop_name: true } },
             },
             orderBy: { created_at: 'desc' },
-            skip,
-            take: limit,
+            // ponytail: merged page needs top skip+limit of each source; deep pages fetch more
+            take: skip + limit,
           }),
           prisma.productReview.count({ where: productWhere }),
         ]);
@@ -123,8 +125,7 @@ export const adminRatingsRoutes: FastifyPluginAsync = async (server) => {
               retailer: { select: { id: true, shop_name: true } },
             },
             orderBy: { created_at: 'desc' },
-            skip,
-            take: limit,
+            take: skip + limit,
           }),
           prisma.storeReview.count({ where: storeWhere }),
         ]);
@@ -137,7 +138,7 @@ export const adminRatingsRoutes: FastifyPluginAsync = async (server) => {
       ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
       return reply.send({
-        data: allReviews.slice(0, limit),
+        data: allReviews.slice(skip, skip + limit),
         pagination: {
           page,
           limit,
@@ -184,6 +185,21 @@ export const adminRatingsRoutes: FastifyPluginAsync = async (server) => {
         hidden: hiddenProducts + hiddenStore,
       },
     });
+  });
+
+  // ─── GET /admin/reviews/retailers — shops that have reviews (for the filter picker) ───
+  server.get('/reviews/retailers', async (_request, reply) => {
+    const [p, s] = await Promise.all([
+      prisma.productReview.groupBy({ by: ['retailer_id'] }),
+      prisma.storeReview.groupBy({ by: ['retailer_id'] }),
+    ]);
+    const ids = [...new Set([...p, ...s].map((r) => r.retailer_id))];
+    const data = await prisma.retailer.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, shop_name: true },
+      orderBy: { shop_name: 'asc' },
+    });
+    return reply.send({ data });
   });
 
   // ─── PATCH /admin/reviews/:type/:id/flag — flag a review ───
@@ -377,6 +393,17 @@ export const adminRatingsRoutes: FastifyPluginAsync = async (server) => {
           data: { avg_rating: agg._avg.rating ?? 0, rating_count: agg._count.rating },
         });
 
+        await prisma.auditLog.create({
+          data: {
+            actor_type: 'admin',
+            actor_id: request.adminId ?? 'system',
+            action: 'review_unhidden',
+            resource_type: 'ProductReview',
+            resource_id: id,
+            metadata: { product_id: review.product_id },
+          },
+        });
+
         return reply.send({ data: review });
       }
 
@@ -396,6 +423,135 @@ export const adminRatingsRoutes: FastifyPluginAsync = async (server) => {
       await prisma.retailer.update({
         where: { id: review.retailer_id },
         data: { avg_rating: agg._avg.rating ?? 0, rating_count: agg._count.rating },
+      });
+
+      await prisma.auditLog.create({
+        data: {
+          actor_type: 'admin',
+          actor_id: request.adminId ?? 'system',
+          action: 'review_unhidden',
+          resource_type: 'StoreReview',
+          resource_id: id,
+          metadata: { retailer_id: review.retailer_id },
+        },
+      });
+
+      return reply.send({ data: review });
+    },
+  );
+
+  // ─── DELETE /admin/reviews/:type/:id — permanent delete (Super Admin; hide is the reversible option) ───
+  // kanchuki_app has no DELETE on review tables (RC-049) → scoped purge role + allow_hard_delete, as in growth-promotions.
+  server.delete<{ Params: { type: 'product' | 'store'; id: string } }>(
+    '/reviews/:type/:id',
+    {
+      schema: {
+        params: {
+          type: 'object',
+          required: ['type', 'id'],
+          properties: {
+            type: { type: 'string', enum: ['product', 'store'] },
+            id: { type: 'string' },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      requireSuperAdmin(request);
+      const { type, id } = request.params;
+      const purgeDb = getPurgePrisma();
+
+      if (type === 'product') {
+        const review = await prisma.productReview.findUnique({ where: { id } });
+        if (!review) throw notFound('Review');
+        await purgeDb.$transaction([
+          purgeDb.$executeRawUnsafe(`SET LOCAL app.allow_hard_delete = 'true';`),
+          purgeDb.productReview.delete({ where: { id } }),
+        ]);
+        const agg = await prisma.productReview.aggregate({
+          where: { product_id: review.product_id, is_hidden: false },
+          _avg: { rating: true },
+          _count: { rating: true },
+        });
+        await prisma.product.update({
+          where: { id: review.product_id },
+          data: { avg_rating: agg._avg.rating ?? 0, rating_count: agg._count.rating },
+        });
+        await prisma.auditLog.create({
+          data: {
+            actor_type: 'admin',
+            actor_id: request.adminId ?? 'system',
+            action: 'review_deleted',
+            resource_type: 'ProductReview',
+            resource_id: id,
+            metadata: { rating: review.rating, product_id: review.product_id },
+          },
+        });
+        return reply.status(204).send();
+      }
+
+      const review = await prisma.storeReview.findUnique({ where: { id } });
+      if (!review) throw notFound('Review');
+      await purgeDb.$transaction([
+        purgeDb.$executeRawUnsafe(`SET LOCAL app.allow_hard_delete = 'true';`),
+        purgeDb.storeReview.delete({ where: { id } }),
+      ]);
+      const agg = await prisma.storeReview.aggregate({
+        where: { retailer_id: review.retailer_id, is_hidden: false },
+        _avg: { rating: true },
+        _count: { rating: true },
+      });
+      await prisma.retailer.update({
+        where: { id: review.retailer_id },
+        data: { avg_rating: agg._avg.rating ?? 0, rating_count: agg._count.rating },
+      });
+      await prisma.auditLog.create({
+        data: {
+          actor_type: 'admin',
+          actor_id: request.adminId ?? 'system',
+          action: 'review_deleted',
+          resource_type: 'StoreReview',
+          resource_id: id,
+          metadata: { rating: review.rating, retailer_id: review.retailer_id },
+        },
+      });
+      return reply.status(204).send();
+    },
+  );
+
+  // ─── PATCH /admin/reviews/:type/:id/unflag — dismiss a flag (review stays visible) ───
+  server.patch<{ Params: { type: 'product' | 'store'; id: string } }>(
+    '/reviews/:type/:id/unflag',
+    {
+      schema: {
+        params: {
+          type: 'object',
+          required: ['type', 'id'],
+          properties: {
+            type: { type: 'string', enum: ['product', 'store'] },
+            id: { type: 'string' },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      const { type, id } = request.params;
+      const data = { is_flagged: false };
+      const review =
+        type === 'product'
+          ? await prisma.productReview.update({ where: { id }, data }).catch(nullOnMissing)
+          : await prisma.storeReview.update({ where: { id }, data }).catch(nullOnMissing);
+      if (!review) throw notFound('Review');
+
+      await prisma.auditLog.create({
+        data: {
+          actor_type: 'admin',
+          actor_id: request.adminId ?? 'system',
+          action: 'review_unflagged',
+          resource_type: type === 'product' ? 'ProductReview' : 'StoreReview',
+          resource_id: id,
+          metadata: { rating: review.rating },
+        },
       });
 
       return reply.send({ data: review });
