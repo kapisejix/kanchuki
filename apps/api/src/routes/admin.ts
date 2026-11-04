@@ -21,6 +21,7 @@ import {
   adminContactRoutes,
   adminDataRoutes,
   adminDesignReferenceRoutes,
+  adminDesignTemplateRoutes,
   adminDiscoveryRoutes,
   adminEngagementRoutes,
   adminFestivalsRoutes,
@@ -257,6 +258,7 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
   // admin-showcase-designs + categories — Suits Designs library
   await server.register(adminShowcaseDesignRoutes);
   await server.register(adminShowcaseDesignCategoryRoutes);
+  await server.register(adminDesignTemplateRoutes);
   await server.register(adminColorFamilyRoutes);
   await server.register(adminMyStyleRoutes);
   // admin-bug-reports — retailer-submitted bug reports

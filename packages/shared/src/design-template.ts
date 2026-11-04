@@ -133,7 +133,10 @@ export function parseDesignSpec(
   }
 
   const layers: DesignLayer[] = [];
-  for (const [n, l] of (raw.layers as unknown[]).entries()) {
+  const rawLayers = raw.layers as unknown[];
+  // Indexed loop, not `.entries()`: apps/web compiles this file from source at a lower TS target.
+  for (let n = 0; n < rawLayers.length; n++) {
+    const l = rawLayers[n];
     const at = `layer ${n + 1}`;
     if (!isObj(l)) return fail(`${at}: not an object`);
     if (!isNum(l.x) || !isNum(l.y)) return fail(`${at}: x and y are required numbers`);

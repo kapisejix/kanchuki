@@ -16,6 +16,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
+import DesignLibrary from './DesignLibrary'
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
 
@@ -102,7 +103,47 @@ function StatCard({ icon: Icon, label, value, color }: { icon: LucideIcon; label
 
 // ─── Main Page ────────────────────────────────────────────────────
 
+// Two tabs: the new admin-made Design Library, and the existing retailer AI-template monitor
+// (D1: monitor stays until the paid AI tier replaces it in T5).
 export default function SocialTemplatesPage() {
+  const [tab, setTab] = useState<'library' | 'retailer'>('library')
+  return (
+    <div>
+      <div role="tablist" className="flex gap-1 border-b border-gray-200 px-6 pt-4">
+        {(
+          [
+            ['library', 'Design Library'],
+            ['retailer', 'Retailer AI Templates'],
+          ] as const
+        ).map(([k, label]) => (
+          <button
+            key={k}
+            type="button"
+            role="tab"
+            aria-selected={tab === k}
+            onClick={() => setTab(k)}
+            className={`-mb-px border-b-2 px-4 py-2 text-sm font-medium ${
+              tab === k
+                ? 'border-black text-black'
+                : 'border-transparent text-gray-500 hover:text-gray-800'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {tab === 'library' ? (
+        <div className="p-6">
+          <DesignLibrary />
+        </div>
+      ) : (
+        <RetailerTemplatesTab />
+      )}
+    </div>
+  )
+}
+
+function RetailerTemplatesTab() {
   const [templates, setTemplates] = useState<SocialTemplate[] | null>(null)
   const [stats, setStats] = useState<Stats | null>(null)
   const [error, setError] = useState('')

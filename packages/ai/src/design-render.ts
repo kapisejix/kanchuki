@@ -165,6 +165,13 @@ function textSvgFragment(layer: DesignTextLayer, value: string, canvasW: number)
 
 // ── render ─────────────────────────────────────────────────────
 
+/** Flat tan rectangle standing in for a product photo in admin previews. */
+export function samplePhoto(): Promise<Buffer> {
+  return sharp({ create: { width: 800, height: 1000, channels: 3, background: '#c9b8a6' } })
+    .jpeg()
+    .toBuffer();
+}
+
 export async function renderDesign(input: DesignRenderInput): Promise<Buffer> {
   const { w: cw, h: ch } = DESIGN_FORMATS[input.format];
   // The spec comes from a DB row: re-validate rather than trust it, and use the rebuilt copy.

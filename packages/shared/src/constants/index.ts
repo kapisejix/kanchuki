@@ -363,6 +363,8 @@ export const R2_PATHS = {
   studioStyleThumb: (filename: string) => `admin/studio-styles/${filename}`,
   // Post-template admin preview thumbnails (admin-post-templates.ts).
   postTemplateThumb: (filename: string) => `admin/post-templates/${filename}`,
+  // Design-template background art + picker thumbnails (admin-design-templates.ts).
+  designTemplateAsset: (filename: string) => `admin/design-templates/${filename}`,
   categoryImage: (retailerId: string, filename: string) =>
     `retailers/${retailerId}/categories/${filename}`,
   retailerBanner: (retailerId: string, filename: string) =>

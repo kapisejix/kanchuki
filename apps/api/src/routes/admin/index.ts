@@ -28,6 +28,7 @@ export { adminSocialRoutes } from './admin-social.js';
 export { adminRatingsRoutes } from './admin-ratings.js';
 export { adminResourcePacksRoutes } from './admin-resource-packs.js';
 export { adminDesignReferenceRoutes } from './admin-design-references.js';
+export { adminDesignTemplateRoutes } from './admin-design-templates.js';
 export { adminShowcaseDesignRoutes } from './admin-showcase-designs.js';
 export { adminShowcaseDesignCategoryRoutes } from './admin-showcase-design-categories.js';
 export { adminColorFamilyRoutes } from './admin-color-families.js';

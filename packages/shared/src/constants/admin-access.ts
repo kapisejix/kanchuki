@@ -150,6 +150,7 @@ export const ADMIN_TIER_ADMIN_SEGMENTS = [
   'backups',
   'database', // Operations -> DB Health / Backup / Deletion Vault. Its /query page is gated by path below
   'deletion-vault', // Operations -> Deletion Vault (hard-deletes retailer/customer data)
+  'design-templates', // social design templates: create/edit by Super Admin + Admin only (owner D6, 2026-11-04)
   'deployment-gate', // Operations -> Deployment Gate
   'deployments', // Operations -> Deployments
   'gst', // Reports -> GST Reports (the /v1/admin/gst/* data)
