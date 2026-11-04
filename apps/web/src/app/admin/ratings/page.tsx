@@ -6,6 +6,7 @@ import {
   Flag,
   EyeOff,
   Eye,
+  Trash2,
   AlertTriangle,
   Filter,
   ChevronLeft,
@@ -80,22 +81,23 @@ export default function AdminRatingsPage() {
   const [loading, setLoading] = useState(true)
   const [filters, setFilters] = useState({
     type: 'all' as 'all' | 'product' | 'store',
+    retailer_id: '' as string,
     flagged: '' as string,
     hidden: '' as string,
     min_rating: '' as string,
     max_rating: '' as string,
   })
   const [page, setPage] = useState(1)
+  const [error, setError] = useState<string | null>(null)
 
   const loadStats = useCallback(async () => {
     try {
       const res = await fetch(`${API_URL}/v1/admin/reviews/stats`, adminGetOptions())
-      if (res.ok) {
-        const json = await res.json()
-        setStats(json.data)
-      }
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const json = await res.json()
+      setStats(json.data)
     } catch {
-      // ignore
+      setError('Could not load review stats. Check your admin session and retry.')
     }
   }, [])
 
@@ -106,45 +108,76 @@ export default function AdminRatingsPage() {
       params.set('page', String(page))
       params.set('limit', '20')
       if (filters.type !== 'all') params.set('type', filters.type)
+      if (filters.retailer_id) params.set('retailer_id', filters.retailer_id)
       if (filters.flagged) params.set('flagged', filters.flagged)
       if (filters.hidden) params.set('hidden', filters.hidden)
       if (filters.min_rating) params.set('min_rating', filters.min_rating)
       if (filters.max_rating) params.set('max_rating', filters.max_rating)
 
       const res = await fetch(`${API_URL}/v1/admin/reviews?${params}`, adminGetOptions())
-      if (res.ok) {
-        const json = await res.json()
-        setReviews(json.data)
-        setPagination(json.pagination)
-      }
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const json = await res.json()
+      setReviews(json.data)
+      setPagination(json.pagination)
+      setError(null)
     } catch {
-      // ignore
+      setReviews([])
+      setError('Could not load reviews. Check your admin session and retry.')
     } finally {
       setLoading(false)
     }
   }, [page, filters])
 
+  const [shops, setShops] = useState<{ id: string; shop_name: string }[]>([])
+  const loadShops = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_URL}/v1/admin/reviews/retailers`, adminGetOptions())
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      setShops((await res.json()).data)
+    } catch {
+      // ponytail: picker is optional — page still works without the shop filter
+    }
+  }, [])
+
   useEffect(() => {
     void loadStats()
-  }, [loadStats])
+    void loadShops()
+  }, [loadStats, loadShops])
 
   useEffect(() => {
     void loadReviews()
   }, [loadReviews])
 
-  const handleAction = async (type: string, id: string, action: 'flag' | 'hide' | 'unhide') => {
+  const handleAction = async (type: string, id: string, action: 'flag' | 'unflag' | 'hide' | 'unhide') => {
     try {
       const opts = await adminMutateOptions()
       const res = await fetch(`${API_URL}/v1/admin/reviews/${type}/${id}/${action}`, {
         ...opts,
         method: 'PATCH',
       })
-      if (res.ok) {
-        void loadReviews()
-        void loadStats()
-      }
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      void loadReviews()
+      void loadStats()
     } catch {
-      // ignore
+      setError(`Could not ${action} review. Try again.`)
+    }
+  }
+
+  const handleDelete = async (type: string, id: string) => {
+    if (!window.confirm('Permanently delete this review? This cannot be undone. Use Hide if you may want it back.')) return
+    try {
+      const opts = await adminMutateOptions()
+      const res = await fetch(`${API_URL}/v1/admin/reviews/${type}/${id}`, { ...opts, method: 'DELETE' })
+      if (res.status === 403) {
+        setError('Only a Super Admin can permanently delete reviews.')
+        return
+      }
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      void loadReviews()
+      void loadStats()
+      void loadShops()
+    } catch {
+      setError('Could not delete review. Try again.')
     }
   }
 
@@ -161,9 +194,15 @@ export default function AdminRatingsPage() {
         </p>
       </div>
 
+      {error && (
+        <div role="alert" className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
+        </div>
+      )}
+
       {/* Stats Cards */}
       {stats && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
           <StatCard
             icon={<MessageSquare size={18} className="text-blue-500" />}
             label="Total Reviews"
@@ -174,6 +213,12 @@ export default function AdminRatingsPage() {
             icon={<Star size={18} className="text-amber-500" />}
             label="Avg Product Rating"
             value={stats.avg_product_rating.toFixed(1)}
+            sub="out of 5"
+          />
+          <StatCard
+            icon={<Store size={18} className="text-purple-500" />}
+            label="Avg Store Rating"
+            value={stats.avg_store_rating.toFixed(1)}
             sub="out of 5"
           />
           <StatCard
@@ -207,6 +252,18 @@ export default function AdminRatingsPage() {
             <option value="all">All Types</option>
             <option value="product">Product Reviews</option>
             <option value="store">Store Reviews</option>
+          </select>
+
+          <select
+            aria-label="Filter by shop"
+            value={filters.retailer_id}
+            onChange={(e) => { setFilters((f) => ({ ...f, retailer_id: e.target.value })); setPage(1) }}
+            className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-cyan-400 max-w-[14rem]"
+          >
+            <option value="">All Shops</option>
+            {shops.map((s) => (
+              <option key={s.id} value={s.id}>{s.shop_name}</option>
+            ))}
           </select>
 
           <select
@@ -276,6 +333,8 @@ export default function AdminRatingsPage() {
                 key={review.id}
                 review={review}
                 onFlag={() => handleAction(review._type, review.id, 'flag')}
+                onUnflag={() => handleAction(review._type, review.id, 'unflag')}
+                onDelete={() => handleDelete(review._type, review.id)}
                 onHide={() => handleAction(review._type, review.id, 'hide')}
                 onUnhide={() => handleAction(review._type, review.id, 'unhide')}
               />
@@ -344,11 +403,15 @@ function StatCard({
 function ReviewRow({
   review,
   onFlag,
+  onUnflag,
+  onDelete,
   onHide,
   onUnhide,
 }: {
   review: Review
   onFlag: () => void
+  onUnflag: () => void
+  onDelete: () => void
   onHide: () => void
   onUnhide: () => void
 }) {
@@ -402,13 +465,23 @@ function ReviewRow({
 
         {/* Actions */}
         <div className="flex items-center gap-1.5 flex-shrink-0">
-          {!review.is_flagged && (
+          {!review.is_flagged ? (
             <button
               onClick={onFlag}
+              aria-label="Flag for review"
               className="p-1.5 rounded-lg text-gray-400 hover:text-orange-500 hover:bg-orange-50 transition-colors"
               title="Flag for review"
             >
               <Flag size={14} />
+            </button>
+          ) : (
+            <button
+              onClick={onUnflag}
+              aria-label="Dismiss flag"
+              className="p-1.5 rounded-lg text-orange-500 hover:bg-orange-50 transition-colors"
+              title="Dismiss flag"
+            >
+              <Flag size={14} className="fill-orange-500" />
             </button>
           )}
           {!review.is_hidden ? (
@@ -428,6 +501,14 @@ function ReviewRow({
               <Eye size={14} />
             </button>
           )}
+          <button
+            onClick={onDelete}
+            aria-label="Delete review permanently"
+            className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+            title="Delete permanently"
+          >
+            <Trash2 size={14} />
+          </button>
         </div>
       </div>
     </div>
