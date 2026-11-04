@@ -18,6 +18,7 @@ import { prisma } from '@kanchuki/db';
 import { SCHEDULE_COVER_STYLES, SCHEDULE_SLIDE_TEMPLATES } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
+import { findPublishedDesign } from '../../../lib/design-post-render.js';
 import { styleItemNow } from '../../../lib/schedule-render.js';
 import { isRealOwner } from '../../../plugins/auth.js';
 import { AppError, forbidden, notFound, validationError } from '../../../plugins/error-handler.js';
@@ -33,9 +34,15 @@ const LABELS: Record<string, string> = {
 
 type Slide = (typeof SCHEDULE_SLIDE_TEMPLATES)[number];
 
-const styleSchema = z.object({
-  template: z.union([z.enum(SCHEDULE_SLIDE_TEMPLATES), z.literal('rotate'), z.null()]),
-});
+// `template` = a built-in id / 'rotate' / null. `design_id` = an admin design (design_templates.id),
+// stored in the same `template_id` column (cuids never collide with the 5 built-in names).
+const styleSchema = z.union([
+  z.object({
+    template: z.union([z.enum(SCHEDULE_SLIDE_TEMPLATES), z.literal('rotate'), z.null()]),
+  }),
+  z.object({ design_id: z.string().min(1).max(40) }),
+]);
+type Choice = Slide | 'rotate' | null | { design: string };
 const designSchema = z.object({
   cover_style: z.enum(SCHEDULE_COVER_STYLES).nullable().optional(),
   rotation_pool: z.array(z.enum(SCHEDULE_SLIDE_TEMPLATES)).max(10).optional(),
@@ -47,6 +54,17 @@ export const retailersSocialScheduleStyleRoutes: FastifyPluginAsync = async (ser
   const owner = (request: Parameters<typeof isRealOwner>[0]) => {
     if (!isRealOwner(request)) throw forbidden('Only the shop owner can style posts');
   };
+
+  // Normalise the body; a design must be PUBLISHED for the caller's plan (else 404).
+  async function choiceOf(retailerId: string, data: z.infer<typeof styleSchema>): Promise<Choice> {
+    if ('template' in data) return data.template;
+    const { plan } = await prisma.retailer.findUniqueOrThrow({
+      where: { id: retailerId },
+      select: { plan: true },
+    });
+    if (!(await findPublishedDesign(data.design_id, plan))) throw notFound('Design');
+    return { design: data.design_id };
+  }
 
   server.get('/me/social/schedule/templates', async () => ({
     data: {
@@ -60,11 +78,13 @@ export const retailersSocialScheduleStyleRoutes: FastifyPluginAsync = async (ser
     owner(request);
     const { id } = request.params as { id: string };
     const parsed = styleSchema.safeParse(request.body);
-    if (!parsed.success || parsed.data.template === 'rotate') {
+    if (!parsed.success || ('template' in parsed.data && parsed.data.template === 'rotate')) {
       throw validationError('Pick a template, or none to use the original photo');
     }
-    const { template } = parsed.data;
     const retailerId = request.retailerId;
+    const choice = await choiceOf(retailerId, parsed.data);
+    const template = choice !== null && typeof choice === 'object' ? choice.design : choice;
+    if (template === 'rotate') throw validationError('Pick a template');
 
     const item = await prisma.scheduledPostItem.findFirst({
       where: { id, retailer_id: retailerId },
@@ -102,7 +122,7 @@ export const retailersSocialScheduleStyleRoutes: FastifyPluginAsync = async (ser
   async function applyToItems(
     retailerId: string,
     items: { id: string }[],
-    template: Slide | 'rotate' | null,
+    template: Choice,
     pool: string[],
   ) {
     if (items.length === 0) return 0;
@@ -132,7 +152,11 @@ export const retailersSocialScheduleStyleRoutes: FastifyPluginAsync = async (ser
       data:
         template === null
           ? { image_level: 'ORIGINAL', template_id: null, resolved_image_key: null }
-          : { image_level: 'TEMPLATE', template_id: template, resolved_image_key: null },
+          : {
+              image_level: 'TEMPLATE',
+              template_id: typeof template === 'object' ? template.design : template,
+              resolved_image_key: null,
+            },
     });
     return items.length;
   }
@@ -156,7 +180,12 @@ export const retailersSocialScheduleStyleRoutes: FastifyPluginAsync = async (ser
     const pool = Array.isArray(post.plan.rotation_pool)
       ? (post.plan.rotation_pool as string[])
       : [];
-    const count = await applyToItems(retailerId, post.items, parsed.data.template, pool);
+    const count = await applyToItems(
+      retailerId,
+      post.items,
+      await choiceOf(retailerId, parsed.data),
+      pool,
+    );
     return { data: { styled: count } };
   });
 
@@ -183,7 +212,12 @@ export const retailersSocialScheduleStyleRoutes: FastifyPluginAsync = async (ser
       select: { id: true },
     });
     const pool = Array.isArray(plan.rotation_pool) ? (plan.rotation_pool as string[]) : [];
-    const count = await applyToItems(retailerId, items, parsed.data.template, pool);
+    const count = await applyToItems(
+      retailerId,
+      items,
+      await choiceOf(retailerId, parsed.data),
+      pool,
+    );
     return { data: { styled: count } };
   });
 

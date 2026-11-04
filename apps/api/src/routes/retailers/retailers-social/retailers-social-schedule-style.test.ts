@@ -10,9 +10,13 @@ const m = vi.hoisted(() => ({
   planFindFirst: vi.fn(),
   planUpdateMany: vi.fn(),
   styleItemNow: vi.fn(),
+  findPublishedDesign: vi.fn(),
 }));
 
 vi.mock('../../../lib/schedule-render.js', () => ({ styleItemNow: m.styleItemNow }));
+vi.mock('../../../lib/design-post-render.js', () => ({
+  findPublishedDesign: m.findPublishedDesign,
+}));
 vi.mock('@kanchuki/ai', () => ({ publicUrl: (k: string) => `https://cdn/${k}` }));
 vi.mock('@kanchuki/db', () => {
   const prisma: Record<string, unknown> = {
@@ -22,6 +26,7 @@ vi.mock('@kanchuki/db', () => {
       updateMany: m.itemUpdateMany,
     },
     scheduledPost: { findFirst: m.postFindFirst },
+    retailer: { findUniqueOrThrow: async () => ({ plan: 'STARTER' }) },
     postSchedulePlan: { findFirst: m.planFindFirst, updateMany: m.planUpdateMany },
   };
   prisma.$transaction = async (arg: unknown) =>
@@ -68,6 +73,7 @@ beforeEach(() => {
   m.styleItemNow.mockResolvedValue('retailers/r1/schedule/sp1-0-new_arrival-x.jpg');
   m.itemUpdateMany.mockResolvedValue({ count: 1 });
   m.planUpdateMany.mockResolvedValue({ count: 1 });
+  m.findPublishedDesign.mockResolvedValue({ id: 'dz1' });
 });
 
 describe('GET /templates', () => {
@@ -147,6 +153,48 @@ describe('POST /items/:id/style', () => {
     const res = await post(await buildApp(), '/items/i1/style', { template: 'new_arrival' });
     expect(res.statusCode).toBe(422);
     expect(res.body).not.toContain('secret');
+  });
+});
+
+describe('admin design as a style (design_id)', () => {
+  it('single slide: renders with the design id', async () => {
+    const res = await post(await buildApp(), '/items/i1/style', { design_id: 'dz1' });
+    expect(res.statusCode).toBe(200);
+    expect(m.findPublishedDesign).toHaveBeenCalledWith('dz1', 'STARTER');
+    expect(m.styleItemNow).toHaveBeenCalledWith(
+      'r1',
+      'sp1',
+      expect.objectContaining({ id: 'i1' }),
+      'dz1',
+      slide.scheduled_post.scheduled_at,
+    );
+  });
+
+  it('a draft / hidden / wrong-plan design is a 404 and nothing is written or rendered', async () => {
+    m.findPublishedDesign.mockResolvedValue(null);
+    const app = await buildApp();
+    expect((await post(app, '/items/i1/style', { design_id: 'dz1' })).statusCode).toBe(404);
+    m.planFindFirst.mockResolvedValue({ id: 'pl1', status: 'ACTIVE', rotation_pool: [] });
+    expect((await post(app, '/plans/pl1/style', { design_id: 'dz1' })).statusCode).toBe(404);
+    expect(m.styleItemNow).not.toHaveBeenCalled();
+    expect(m.itemUpdateMany).not.toHaveBeenCalled();
+  });
+
+  it('whole plan: lazy — stores the design id on TEMPLATE items, key cleared, nothing rendered', async () => {
+    m.planFindFirst.mockResolvedValue({ id: 'pl1', status: 'ACTIVE', rotation_pool: [] });
+    m.itemFindMany.mockResolvedValue([{ id: 'a' }, { id: 'b' }]);
+    const res = await post(await buildApp(), '/plans/pl1/style', { design_id: 'dz1' });
+    expect(res.json().data.styled).toBe(2);
+    expect(m.itemUpdateMany).toHaveBeenCalledWith({
+      where: { id: { in: ['a', 'b'] }, retailer_id: 'r1' },
+      data: { image_level: 'TEMPLATE', template_id: 'dz1', resolved_image_key: null },
+    });
+    expect(m.styleItemNow).not.toHaveBeenCalled();
+  });
+
+  it('a manager is refused', async () => {
+    const res = await post(await buildApp('manager'), '/items/i1/style', { design_id: 'dz1' });
+    expect(res.statusCode).toBe(403);
   });
 });
 

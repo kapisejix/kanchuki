@@ -37,6 +37,7 @@ const TYPE_LABEL: Record<CampaignType, string> = {
 // GST, Integrations and Marketplace Sync live under Settings (owner-only).
 const GROWTH_MODULES = [
   { icon: Share2, label: 'Create Social Post', hint: 'Post to Facebook & Instagram', href: '/social/create?source=growth' as const },
+  { icon: Wand2, label: 'Design a Post', hint: 'Festival & sale designs with your products', href: '/social/design' as const },
   { icon: CalendarClock, label: 'Post Scheduler', hint: 'Auto-post daily to Facebook & Instagram', href: '/social/schedule' as const },
   { icon: Wand2, label: 'AI Campaign Assistant', hint: 'Type a command, get a campaign', href: '/growth/ai-campaign' as const },
   { icon: Users, label: 'Customer List', hint: 'Manage your customers', href: '/customers' as const },

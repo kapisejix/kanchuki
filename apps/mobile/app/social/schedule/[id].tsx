@@ -20,7 +20,7 @@ import { ReportAiContent } from '../../../src/components/ReportAiContent';
 import { WHITE_BUTTON_INK, WhiteButton } from '../../../src/components/WhiteButton';
 import { ProductGridPicker } from '../../../src/components/social';
 import type { ComposeProduct } from '../../../src/components/social/types';
-import { socialApi } from '../../../src/lib/api';
+import { designTemplatesApi, socialApi } from '../../../src/lib/api';
 import {
   EDITABLE_POST_STATUSES,
   TEMPLATE_OPTIONS,
@@ -29,7 +29,7 @@ import {
   scheduleApi,
   templateLabel,
 } from '../../../src/lib/api/schedule';
-import type { SchedulePost, SlideTemplateId } from '../../../src/lib/api/schedule';
+import type { SchedulePost, StyleChoice } from '../../../src/lib/api/schedule';
 import { useAuth } from '../../../src/lib/auth-context';
 import { showError } from '../../../src/lib/errors';
 import { useScreenInsets } from '../../../src/lib/safe-area';
@@ -343,8 +343,18 @@ export default function ScheduleCalendarScreen() {
     onError: (err) => showError(err, 'That product could not be used here. Pick another.'),
   });
 
+  // Admin designs for the style sheet. A design uses this slide's product only, so multi-product
+  // designs are left out; the list is best-effort (a failed load just hides the section).
+  const designsQuery = useQuery({
+    queryKey: ['designs', 'list'],
+    queryFn: () => designTemplatesApi.list(),
+    enabled: styleTarget !== null,
+    staleTime: 30_000,
+  });
+  const designList = (designsQuery.data?.data ?? []).filter((d) => d.product_slots === 1);
+
   const style = useMutation({
-    mutationFn: async (t: SlideTemplateId | 'rotate' | null): Promise<unknown> => {
+    mutationFn: async (t: StyleChoice): Promise<unknown> => {
       if (!styleTarget) throw new Error('no target');
       if (styleTarget.scope === 'item') {
         return scheduleApi.styleItem(styleTarget.id, t === 'rotate' ? null : t);
@@ -598,6 +608,25 @@ export default function ScheduleCalendarScreen() {
                     <Text className="text-sm font-bold text-spaceCadet-900">{t.label}</Text>
                   </AnimatedPressable>
                 ))}
+                {designList.length > 0 ? (
+                  <>
+                    <Text className="text-xs font-bold text-heliotrope-500 mt-1">Your designs</Text>
+                    {designList.map((d) => (
+                      <AnimatedPressable
+                        key={d.id}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Design ${d.name}`}
+                        onPress={() => style.mutate({ design_id: d.id })}
+                        className="px-4 py-3 rounded-2xl border border-lavender-200"
+                      >
+                        <Text className="text-sm font-bold text-spaceCadet-900">{d.name}</Text>
+                        {d.occasion ? (
+                          <Text className="text-[11px] text-heliotrope-500">{d.occasion}</Text>
+                        ) : null}
+                      </AnimatedPressable>
+                    ))}
+                  </>
+                ) : null}
                 {styleTarget && styleTarget.scope !== 'item' ? (
                   <AnimatedPressable
                     accessibilityRole="button"

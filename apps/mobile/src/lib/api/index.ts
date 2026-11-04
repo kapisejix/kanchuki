@@ -34,3 +34,4 @@ export * from "./whatsapp-catalog";
 export * from "./bug-reports";
 export * from "./tickets";
 export * from "./showcase-designs";
+export * from "./designs";

@@ -77,6 +77,8 @@ interface DeepIntent {
   /** Suits Design deep link (T-6.2): the composer posts the design's
    * watermarked image as an IMAGE post — no product selection. */
   designId: string | null;
+  /** T4: a rendered admin design (app/social/design.tsx) — posted as an IMAGE post. */
+  designImage: string | null;
   photoId: string | null;
   videoId: string | null;
 }
@@ -85,6 +87,9 @@ interface DeepIntent {
  * out (suits-designs.md §2.6). Only ever set by the design_id entry; the
  * composer never lets a retailer reach IMAGE mode on their own (there is no
  * arbitrary-image picker, so the type stays internal to the design flow). */
+/** Only https URLs shaped like the server's render output are accepted from a deep link. */
+const RENDERED_DESIGN_URL = /^https:\/\/[^\s/]+\/retailers\/[^\s/]+\/designs\/[a-f0-9]+\.jpg$/;
+
 interface DesignPost {
   id: string;
   name: string | null;
@@ -142,6 +147,7 @@ export default function CreateSocialPostScreen() {
     product_ids?: string;
     collection_id?: string;
     design_id?: string;
+    design_image?: string;
     photo_id?: string;
     video_id?: string;
   }>();
@@ -284,6 +290,9 @@ export default function CreateSocialPostScreen() {
         : [],
       collectionId: params.collection_id ?? null,
       designId: params.design_id ?? null,
+      designImage: RENDERED_DESIGN_URL.test(params.design_image ?? '')
+        ? (params.design_image as string)
+        : null,
       photoId: params.photo_id ?? null,
       videoId: params.video_id ?? null,
     };
@@ -347,6 +356,13 @@ export default function CreateSocialPostScreen() {
   useEffect(() => {
     if (appliedDeepLink.current) return;
     if (intent.productIds.length === 0) {
+      if (intent.designImage) {
+        // Server-rendered admin design: the URL is its own id (a remake is a new post).
+        appliedDeepLink.current = true;
+        setDesignPost({ id: intent.designImage, name: null, url: intent.designImage });
+        setPostType('IMAGE');
+        return;
+      }
       if (intent.designId) {
         // Design-only entry: lock the composer to IMAGE with the design's
         // watermarked photo. Best-effort — a miss leaves the product composer.
