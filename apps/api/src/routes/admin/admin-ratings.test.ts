@@ -157,6 +157,12 @@ describe('GET /reviews — merged pagination (type=all)', () => {
     expect(body.counts).toEqual({ product: 0, store: 1 });
   });
 
+  it('rejects an out-of-range page (bounds the merged fetch window)', async () => {
+    const app = await buildApp();
+    expect((await app.inject({ method: 'GET', url: '/reviews?page=101' })).statusCode).toBe(422);
+    expect((await app.inject({ method: 'GET', url: '/reviews?page=100' })).statusCode).toBe(200);
+  });
+
   it('empty DB returns empty page, not an error', async () => {
     const app = await buildApp();
     const res = await app.inject({ method: 'GET', url: '/reviews' });

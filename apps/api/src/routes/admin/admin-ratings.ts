@@ -24,7 +24,9 @@ export const adminRatingsRoutes: FastifyPluginAsync = async (server) => {
             hidden: { type: 'boolean' },
             min_rating: { type: 'number' },
             max_rating: { type: 'number' },
-            page: { type: 'number', minimum: 1 },
+            // ponytail: merged window = page*limit rows per source, so cap page (max 10k rows each).
+            // Past that, narrow with filters; keyset/UNION pagination if reviews ever outgrow it.
+            page: { type: 'number', minimum: 1, maximum: 100 },
             limit: { type: 'number', minimum: 1, maximum: 100 },
           },
         },
