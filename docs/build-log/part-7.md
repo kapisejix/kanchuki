@@ -409,3 +409,11 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Merged | PR #243 merged to `main` as `aab29697` and deployed; migrations 153-155 applied by owner (2026-11-14 status). Seed run, published designs and the `AI_CUSTOM_TEMPLATE` `plan_features` / `plan_limits` rows not confirmed by me. |
 | Not done | Seed NOT applied as of this entry (owner runs `--apply`, rows land as DRAFT for review in Admin -> Design Library). Rakhi, Limited stock, Back in stock, Look of the day, Store intro; no 1.91:1 format exists, so no FB-landscape designs. Art is simple flat shapes, not designer-grade; Hindi text is never baked in (all words come from layers). Not seen on a real device or with real product photos. |
 
+
+## 2026-11-14 — Starter pack gaps: Rakhi, Limited stock, Back in stock, Look of the day, Meet our store (branch `feat/design-starter-pack-gaps`, local commit `2ee07ec4`, not pushed)
+
+| Item | Detail |
+|---|---|
+| What | 5 more code-drawn designs appended to `apps/api/src/lib/design-seed-data.ts`: Rakhi Thread (4:5, thread + flower rakhi), Limited Stock (square, baked English pill), Back In Stock (4:5, gold pill on emerald), Look of the Day (4:5, 2 slots, baked heading), Meet Our Store (9:16, logo + shop name + `custom_text` tagline + city/phone/URL, mandala). Catalogue is now 24 designs. |
+| Verification | `design-seed-data.test.ts` 51/51 (occasion coverage extended), API `tsc` clean. Rendered all 5 through the real `renderDesign` with synthetic shop/product data and looked at them: no overlap or clipping, rupee glyph and fonts load. Temp render script deleted. |
+| Not done | Seed NOT run: owner runs `seed-design-templates.ts --apply` (idempotent by name, adds only these 5 as DRAFT). Baked words are English only (same as SALE). Not seen with real product photos, on a device, or via the admin preview. Still no 1.91:1 format, so no FB-landscape designs. |
