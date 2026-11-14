@@ -20,6 +20,13 @@ interface Props {
   /** Shows the "Looking up" overlay. */
   busy?: boolean
   hint?: string
+  /**
+   * Embedded mode for a host screen that lays out its own header and list
+   * (F-047 sell screen): fills the box the parent gives it, manual entry sits
+   * under the camera, no close button and no KeyboardScreen of its own. The host
+   * MUST wrap itself in KeyboardScreen (RC-116/042). `onClose` is unused.
+   */
+  compact?: boolean
 }
 
 /**
@@ -32,6 +39,7 @@ export function SkuScanner({
   paused = false,
   busy = false,
   hint = 'Point at the product’s SKU tag (QR or barcode)',
+  compact = false,
 }: Props) {
   const { insets } = useScreenInsets()
   const [permission, requestPermission] = useCameraPermissions()
@@ -52,6 +60,8 @@ export function SkuScanner({
     inFlightRef.current = true
     try {
       await onSku(sku)
+      // Compact stays open for the next article: a kept SKU would add it twice on a second Enter.
+      if (compact && !fromCamera) setManualSku('')
     } catch (err) {
       // Callers own their error UI (showError); this only keeps `void submit()` from leaking a rejection.
       if (__DEV__) console.warn('[SkuScanner] onSku threw', err)
@@ -60,35 +70,123 @@ export function SkuScanner({
     }
   }
 
+  // Manual entry fallback: pinned over the camera in full mode, a plain row in compact mode.
+  const manualRow = (
+    <View
+      className={
+        compact
+          ? 'flex-row items-center gap-2 bg-white rounded-2xl px-3 py-2 mx-3 my-2'
+          : 'absolute left-4 right-4 flex-row items-center gap-2 bg-white/95 rounded-2xl px-3 py-2.5'
+      }
+      style={compact ? undefined : { bottom: insets.bottom + 24 }}
+    >
+      <ScanLine size={18} color={COLORS.sand[600]} />
+      <TextInput
+        testID="sku-manual-input"
+        value={manualSku}
+        onChangeText={setManualSku}
+        placeholder="Or type SKU (e.g. LS0001)"
+        placeholderTextColor={COLORS.sand[400]}
+        autoCapitalize="characters"
+        className="flex-1 text-sm text-sand-900"
+        onSubmitEditing={() => void submit(manualSku, false)}
+        returnKeyType="search"
+      />
+      <AnimatedPressable
+        onPress={() => void submit(manualSku, false)}
+        disabled={busy}
+        className="bg-ink-600 px-4 min-h-[44px] items-center justify-center rounded-xl"
+        accessibilityLabel="Look up SKU"
+        accessibilityRole="button"
+      >
+        <Text className="text-white text-xs font-bold">Find</Text>
+      </AnimatedPressable>
+    </View>
+  )
+
   if (!permission) return <View className="flex-1 bg-black" />
 
   if (!permission.granted) {
-    return (
-      <View testID="sku-permission-denied" className="flex-1 bg-black items-center justify-center px-8">
+    const prompt = (
+      <View
+        testID="sku-permission-denied"
+        className={
+          compact
+            ? 'flex-1 items-center justify-center px-6'
+            : 'flex-1 bg-black items-center justify-center px-8'
+        }
+      >
         <Text className="text-white text-center text-base mb-6">
           Camera access needed to scan product SKU tags
         </Text>
         <WhiteButton compact label="Allow Camera" onPress={() => void requestPermission()} />
       </View>
     )
+    // Compact keeps typing usable without the camera; full mode is unchanged.
+    return compact ? (
+      <View className="flex-1 bg-black">
+        {prompt}
+        {manualRow}
+      </View>
+    ) : (
+      prompt
+    )
+  }
+
+  const camera = (
+    <CameraView
+      style={{ flex: 1 }}
+      facing="back"
+      active={!paused}
+      barcodeScannerSettings={{
+        barcodeTypes: ['qr', 'ean13', 'ean8', 'code128', 'code39', 'upc_a', 'upc_e', 'pdf417'],
+      }}
+      onBarcodeScanned={({ data }) => {
+        if (!paused) void submit(data, true)
+      }}
+    />
+  )
+
+  const frameGuide = (
+    <View className="absolute inset-0 items-center justify-center" pointerEvents="none">
+      <View
+        className={
+          compact
+            ? 'w-48 h-24 border-2 border-white/60 rounded-2xl bg-white/5'
+            : 'w-64 h-40 border-2 border-white/60 rounded-3xl bg-white/5'
+        }
+      />
+      <Text className="text-white/80 text-sm mt-3">{hint}</Text>
+    </View>
+  )
+
+  const resolving = busy && (
+    <View className="absolute inset-0 bg-black/60 items-center justify-center">
+      <ActivityIndicator size="large" color="white" />
+      <Text className="text-white mt-3 font-semibold">Looking up product...</Text>
+    </View>
+  )
+
+  if (compact) {
+    return (
+      <View className="flex-1 bg-black">
+        <View className="flex-1 overflow-hidden">
+          {camera}
+          {frameGuide}
+          {resolving}
+        </View>
+        {manualRow}
+      </View>
+    )
   }
 
   return (
     <KeyboardScreen className="flex-1 bg-black">
-      <CameraView
-        style={{ flex: 1 }}
-        facing="back"
-        active={!paused}
-        barcodeScannerSettings={{
-          barcodeTypes: ['qr', 'ean13', 'ean8', 'code128', 'code39', 'upc_a', 'upc_e', 'pdf417'],
-        }}
-        onBarcodeScanned={({ data }) => {
-          if (!paused) void submit(data, true)
-        }}
-      />
+      {camera}
 
       {/* Close */}
       <AnimatedPressable
+        testID="sku-close"
         onPress={onClose}
         className="absolute left-4 w-10 h-10 bg-black/50 rounded-full items-center justify-center"
         style={{ top: insets.top + 8 }}
@@ -98,47 +196,9 @@ export function SkuScanner({
         <X size={20} color="white" />
       </AnimatedPressable>
 
-      {/* Frame guide */}
-      <View className="absolute inset-0 items-center justify-center">
-        <View className="w-64 h-40 border-2 border-white/60 rounded-3xl bg-white/5" />
-        <Text className="text-white/80 text-sm mt-4">{hint}</Text>
-      </View>
-
-      {/* Resolving state */}
-      {busy && (
-        <View className="absolute inset-0 bg-black/60 items-center justify-center">
-          <ActivityIndicator size="large" color="white" />
-          <Text className="text-white mt-3 font-semibold">Looking up product...</Text>
-        </View>
-      )}
-
-      {/* Manual entry fallback */}
-      <View
-        className="absolute left-4 right-4 flex-row items-center gap-2 bg-white/95 rounded-2xl px-3 py-2.5"
-        style={{ bottom: insets.bottom + 24 }}
-      >
-        <ScanLine size={18} color={COLORS.sand[600]} />
-        <TextInput
-          testID="sku-manual-input"
-          value={manualSku}
-          onChangeText={setManualSku}
-          placeholder="Or type SKU (e.g. LS0001)"
-          placeholderTextColor={COLORS.sand[400]}
-          autoCapitalize="characters"
-          className="flex-1 text-sm text-sand-900"
-          onSubmitEditing={() => void submit(manualSku, false)}
-          returnKeyType="search"
-        />
-        <AnimatedPressable
-          onPress={() => void submit(manualSku, false)}
-          disabled={busy}
-          className="bg-ink-600 px-3.5 py-2 rounded-xl"
-          accessibilityLabel="Look up SKU"
-          accessibilityRole="button"
-        >
-          <Text className="text-white text-xs font-bold">Find</Text>
-        </AnimatedPressable>
-      </View>
+      {frameGuide}
+      {resolving}
+      {manualRow}
     </KeyboardScreen>
   )
 }

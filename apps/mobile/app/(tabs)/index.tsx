@@ -11,6 +11,7 @@ import {
   Package,
   PackagePlus,
   QrCode,
+  ScanLine,
   Settings,
 } from 'lucide-react-native';
 import { useCallback, useRef } from 'react';
@@ -382,6 +383,14 @@ export default function HomeScreen() {
               onPress={() => router.push('/enquiries')}
               accent="#E0E1F6"
               badge={unreadEnquiries}
+            />
+            {/* F-047 Scan & Sell — every role the server allows (owner, manager, salesperson), so no staffCan gate. */}
+            <QuickAction
+              icon={<ScanLine size={20} color="#560A39" />}
+              label="Sell items"
+              sublabel="Scan and mark sold"
+              onPress={() => router.push('/product/sell')}
+              accent="#E0E1F6"
             />
           </View>
           {/* Suits Designs — retailer entry hidden by owner decision

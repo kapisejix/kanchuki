@@ -10,6 +10,31 @@ import type {
 import { compressImageForUpload } from '../compress-image';
 import { API_URL, ApiError, getToken, request } from './client';
 
+export interface SellLineInput {
+  product_id: string;
+  size: string;
+  quantity: number;
+}
+
+export interface SellLineResult {
+  product_id: string;
+  size: string;
+  ok: boolean;
+  remaining_total?: number | null;
+  status?: string;
+  error?: 'NOT_FOUND' | 'INVALID_SIZE' | 'INSUFFICIENT_STOCK' | 'BILL_UNDONE' | string;
+  replayed?: boolean;
+  undone?: boolean;
+}
+
+export interface UndoLineResult {
+  product_id: string;
+  size: string;
+  restored_quantity: number;
+  remaining_total: number | null;
+  status?: string;
+}
+
 export const productApi = {
   getUploadUrl: (filename: string, contentType: string, sizeBytes: number) =>
     request<{
@@ -73,6 +98,27 @@ export const productApi = {
     }),
 
   delete: (id: string) => request<void>(`/v1/products/${id}`, { method: 'DELETE' }),
+
+  /** F-047 Scan & Sell: one whole bill in one request. `clientBillId` is the
+   * idempotency key (a spent id answers BILL_UNDONE after an Undo, so a new
+   * bill needs a new id). Per-line failures come back with ok:false. */
+  sell: (clientBillId: string, lines: SellLineInput[]) =>
+    request<{ data: { bill_id: string; replayed: boolean; lines: SellLineResult[] } }>(
+      '/v1/products/sell',
+      {
+        method: 'POST',
+        body: JSON.stringify({ client_bill_id: clientBillId, lines }),
+        timeoutMs: 30_000,
+      },
+    ),
+
+  /** F-047: undo a whole bill within 10 minutes. 409 UNDO_WINDOW_EXPIRED after
+   * that, 404 for an unknown bill, `undone:false` when already undone. */
+  undoSale: (billId: string) =>
+    request<{ data: { bill_id: string; undone: boolean; lines: UndoLineResult[] } }>(
+      `/v1/products/sell/${encodeURIComponent(billId)}/undo`,
+      { method: 'POST', timeoutMs: 30_000 },
+    ),
 
   bulkDelete: (ids: string[]) =>
     request<{ data: { deleted_count: number } }>('/v1/products/bulk-delete', {

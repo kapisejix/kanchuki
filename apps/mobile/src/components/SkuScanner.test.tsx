@@ -125,4 +125,42 @@ describe('SkuScanner', () => {
     expect(tree.getByTestId('sku-permission-denied')).toBeTruthy()
     expect(m.cameraProps.active).toBeUndefined() // camera not rendered
   })
+
+  describe('compact (embedded in the F-047 sell screen)', () => {
+    it('has no close button; the host screen owns the header', () => {
+      const { tree } = setup(vi.fn(), { compact: true })
+      expect(tree.queryByTestId('sku-close')).toBeNull()
+      const full = render(<SkuScanner onSku={vi.fn()} onClose={vi.fn()} />)
+      expect(full.queryByTestId('sku-close')).toBeTruthy()
+    })
+
+    it('still scans and accepts a typed SKU', async () => {
+      const { tree, onSku } = setup(vi.fn(), { compact: true })
+      await act(async () => scan('LS0042'))
+      expect(onSku).toHaveBeenCalledWith('LS0042')
+      // re-query after each state change: props on a held element are stale
+      const input = () => tree.getByTestId('sku-manual-input') as any
+      await act(async () => input().props.onChangeText('ls0043'))
+      await act(async () => input().props.onSubmitEditing())
+      expect(onSku).toHaveBeenCalledWith('ls0043')
+    })
+
+    it('clears the typed SKU after a manual submit so Enter twice cannot add the article twice', async () => {
+      const { tree, onSku } = setup(vi.fn(), { compact: true })
+      const input = () => tree.getByTestId('sku-manual-input') as any
+      await act(async () => input().props.onChangeText('LS0043'))
+      await act(async () => input().props.onSubmitEditing())
+      expect(onSku).toHaveBeenCalledTimes(1)
+      expect(input().props.value).toBe('')
+      await act(async () => input().props.onSubmitEditing())
+      expect(onSku).toHaveBeenCalledTimes(1) // empty submit is ignored
+    })
+
+    it('keeps manual entry usable when camera permission is denied', () => {
+      m.permission = { granted: false }
+      const { tree } = setup(vi.fn(), { compact: true })
+      expect(tree.getByTestId('sku-permission-denied')).toBeTruthy()
+      expect(tree.getByTestId('sku-manual-input')).toBeTruthy()
+    })
+  })
 })
