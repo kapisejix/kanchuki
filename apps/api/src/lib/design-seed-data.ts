@@ -308,7 +308,14 @@ function lookOfDay(ink: string): DesignLayer[] {
     ...[60, 560].flatMap((x, i) => [
       image(x, 230, 460, 600, i),
       text('product_name', 850, 36, ink, { x, w: 460, maxLines: 2, index: i }),
-      text('price', 940, 52, ink, { x, w: 460, font: 'serif', bold: true, format: 'inr', index: i }),
+      text('price', 940, 52, ink, {
+        x,
+        w: 460,
+        font: 'serif',
+        bold: true,
+        format: 'inr',
+        index: i,
+      }),
     ]),
     text('offer_text', 1130, 44, ink),
     text('shop_phone', 1270, 34, ink),
