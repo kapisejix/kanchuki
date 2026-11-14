@@ -47,8 +47,21 @@ const image = (x: number, y: number, w: number, h: number, index = 0): DesignLay
   index,
 });
 
-// ponytail: no landscape starter layout yet (1200x628 needs a side-by-side image/text design).
+// `single()` is a stacked layout: landscape (1200x628) uses `sideBySide()` instead.
 type SeedFormat = Exclude<DesignFormat, 'LANDSCAPE_1_91_1'>;
+
+/** 1.91:1: product image on the left, text column on the right. */
+function sideBySide(ink: string): DesignLayer[] {
+  const col = { x: 600, w: 560, align: 'left' };
+  return [
+    image(40, 40, 520, 548),
+    text('shop_name', 50, 40, ink, { ...col, font: 'serif' }),
+    text('product_name', 130, 44, ink, { ...col, maxLines: 2 }),
+    text('price', 270, 76, ink, { ...col, font: 'serif', bold: true, format: 'inr' }),
+    text('offer_text', 390, 38, ink, { ...col, maxLines: 2 }),
+    text('shop_phone', 540, 32, ink, col),
+  ];
+}
 
 function single(format: SeedFormat, ink: string, withOffer: boolean): DesignLayer[] {
   // [shopY, imgY, imgH, nameY, priceY, offerY, phoneY]
@@ -525,6 +538,16 @@ const STARTER: SeedDesign[] = [
     layers: (p) => lookOfDay(p.ink),
     art: (w, _h, p) =>
       `<text x="${f(w / 2)}" y="112" font-family="DejaVu Serif, Georgia, serif" font-size="58" font-weight="700" fill="${p.border}" text-anchor="middle">LOOK OF THE DAY</text>`,
+  },
+  {
+    name: 'Landscape Showcase',
+    occasion: 'General',
+    format: 'LANDSCAPE_1_91_1',
+    slots: 1,
+    palette: IVORY,
+    layers: (p) => sideBySide(p.ink),
+    art: (_w, h, p) =>
+      `<line x1="580" y1="60" x2="580" y2="${h - 60}" stroke="${p.border}" stroke-width="2"/>`,
   },
   {
     name: 'Meet Our Store',

@@ -32,7 +32,7 @@ describe('design seed catalogue (T3 placeholders + T6 starter pack)', () => {
     },
   );
 
-  it('covers every festival in the spec starter list and all three formats', () => {
+  it('covers every festival in the spec starter list and all four formats', () => {
     const occasions = new Set(DESIGNS.map((d) => d.occasion));
     for (const o of [
       'Diwali',
@@ -51,7 +51,7 @@ describe('design seed catalogue (T3 placeholders + T6 starter pack)', () => {
       expect(occasions.has(o), o).toBe(true);
     }
     expect(new Set(DESIGNS.map((d) => d.format))).toEqual(
-      new Set(['SQUARE', 'PORTRAIT_4_5', 'STORY_9_16']),
+      new Set(['SQUARE', 'PORTRAIT_4_5', 'STORY_9_16', 'LANDSCAPE_1_91_1']),
     );
   });
 
