@@ -41,7 +41,9 @@ const W = 1080;
 const H = 1350;
 // Marcellus = the mobile app's heading font (apps/api/fonts, installed by apps/api/Dockerfile).
 // DejaVu stays as the fallback for glyphs Marcellus lacks (e.g. the rupee sign) and for hosts without it.
-const FONT = 'font-family="Marcellus, DejaVu Sans, Noto Sans, Arial, Helvetica, sans-serif"';
+// Noto Sans Devanagari (same Dockerfile) covers Hindi text; fontconfig falls back per glyph, same as design-render.ts.
+const FONT =
+  'font-family="Marcellus, DejaVu Sans, Noto Sans Devanagari, Noto Sans, Arial, Helvetica, sans-serif"';
 const INK = '#231F48';
 const GOLD = '#C9A24B';
 
