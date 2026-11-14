@@ -43,6 +43,10 @@ describe('design seed catalogue (T3 placeholders + T6 starter pack)', () => {
       'Holi',
       'Independence Day',
       'Sale',
+      'Rakhi',
+      'Limited Stock',
+      'Back in Stock',
+      'Look of the Day',
     ]) {
       expect(occasions.has(o), o).toBe(true);
     }

@@ -286,6 +286,49 @@ function visitUs(ink: string): DesignLayer[] {
   ];
 }
 
+/** Baked-in English pill (same precedent as the SALE starburst); the retailer's words stay in layers. */
+const banner = (w: number, label: string, fill: string, ink = '#fff'): string =>
+  `<rect x="${f(w / 2 - 270)}" y="44" width="540" height="58" rx="29" fill="${fill}"/><text x="${f(w / 2)}" y="85" font-family="DejaVu Sans, Arial, sans-serif" font-size="34" font-weight="700" fill="${ink}" text-anchor="middle">${label}</text>`;
+
+/** Rakhi: a red thread across the top with a flower-shaped rakhi in the middle. */
+function rakhi(w: number): string {
+  const cx = f(w / 2);
+  const petals = Array.from(
+    { length: 8 },
+    (_, i) =>
+      `<ellipse cx="${cx}" cy="90" rx="16" ry="30" transform="rotate(${45 * i} ${cx} 120)" fill="#e63946"/>`,
+  ).join('');
+  return `<path d="M40 70 Q${f(w / 4)} 130 ${cx} 120 T${w - 40} 70" fill="none" stroke="#c1121f" stroke-width="5"/>${petals}<circle cx="${cx}" cy="120" r="20" fill="#f2b632"/><circle cx="${cx}" cy="120" r="8" fill="#fff2cf"/>`;
+}
+
+/** Two products under a baked heading: image pair, name + price each, shared offer + phone. */
+function lookOfDay(ink: string): DesignLayer[] {
+  return [
+    text('shop_name', 150, 40, ink, { font: 'serif' }),
+    ...[60, 560].flatMap((x, i) => [
+      image(x, 230, 460, 600, i),
+      text('product_name', 850, 36, ink, { x, w: 460, maxLines: 2, index: i }),
+      text('price', 940, 52, ink, { x, w: 460, font: 'serif', bold: true, format: 'inr', index: i }),
+    ]),
+    text('offer_text', 1130, 44, ink),
+    text('shop_phone', 1270, 34, ink),
+  ];
+}
+
+function storeIntro(ink: string): DesignLayer[] {
+  return [
+    { type: 'image', var: 'shop_logo', x: 340, y: 260, w: 400, h: 280, fit: 'contain' },
+    text('shop_name', 620, 90, ink, { font: 'serif', maxLines: 2 }),
+    text('custom_text', 860, 52, ink, { maxLines: 3 }),
+    text('shop_city', 1080, 58, ink, { font: 'serif' }),
+    text('shop_phone', 1170, 48, ink),
+    text('store_url', 1250, 38, ink),
+  ];
+}
+
+const RAKHI: Palette = { from: '#fff0d6', to: '#ffc27a', border: '#b3261e', ink: '#3a1408' };
+const IVORY_GOLD: Palette = { from: '#fffdf6', to: '#f1e2bd', border: '#b8860b', ink: '#33261a' };
+
 const STARTER: SeedDesign[] = [
   {
     name: 'Diwali Diyas',
@@ -435,6 +478,52 @@ const STARTER: SeedDesign[] = [
     layers: (p) => visitUs(p.ink),
     art: (w, h, p) =>
       `<line x1="200" y1="${h - 60}" x2="${w - 200}" y2="${h - 60}" stroke="${p.border}" stroke-width="3"/>${star(w / 2, h - 60, 14, 4, 0.4, p.border)}`,
+  },
+  {
+    name: 'Rakhi Thread',
+    occasion: 'Rakhi',
+    format: 'PORTRAIT_4_5',
+    slots: 1,
+    palette: RAKHI,
+    layers: (p) => framed('PORTRAIT_4_5', p.ink, 190, 70),
+    art: (w) => rakhi(w),
+  },
+  {
+    name: 'Limited Stock',
+    occasion: 'Limited Stock',
+    format: 'SQUARE',
+    slots: 1,
+    palette: SLATE,
+    layers: (p) => framed('SQUARE', p.ink, 110, 100),
+    art: (w) => banner(w, 'LIMITED STOCK', '#c1121f'),
+  },
+  {
+    name: 'Back In Stock',
+    occasion: 'Back in Stock',
+    format: 'PORTRAIT_4_5',
+    slots: 1,
+    palette: EMERALD,
+    layers: (p) => framed('PORTRAIT_4_5', p.ink, 110, 70),
+    art: (w) => banner(w, 'BACK IN STOCK', '#e6c36a', '#06281f'),
+  },
+  {
+    name: 'Look of the Day',
+    occasion: 'Look of the Day',
+    format: 'PORTRAIT_4_5',
+    slots: 2,
+    palette: IVORY_GOLD,
+    layers: (p) => lookOfDay(p.ink),
+    art: (w, _h, p) =>
+      `<text x="${f(w / 2)}" y="112" font-family="DejaVu Serif, Georgia, serif" font-size="58" font-weight="700" fill="${p.border}" text-anchor="middle">LOOK OF THE DAY</text>`,
+  },
+  {
+    name: 'Meet Our Store',
+    occasion: 'Store',
+    format: 'STORY_9_16',
+    slots: 1,
+    palette: MAROON,
+    layers: (p) => storeIntro(p.ink),
+    art: (w, h, p) => mandala(w / 2, h - 260, 130, p.border),
   },
 ];
 
