@@ -96,11 +96,6 @@ const EXCLUDED: Record<string, { reason: string; marker?: string }> = {
     reason: 'the only overlay is the design lightbox; its inputs are in page flow',
     marker: 'cursor-zoom-out',
   },
-  'social-templates/page.tsx': {
-    reason:
-      'the overlay is a read-only detail modal (labels only) and the file has no <input> at all — ' +
-      'both <select>s are the page-flow filter bar, ahead of the overlay',
-  },
 }
 
 /** Files whose overlay is the shared component. */
@@ -168,17 +163,5 @@ describe('admin fixed-overlay keyboard insets', () => {
       'components/Sheet.tsx',
       'lib/keyboard-inset.ts',
     ])
-  })
-
-  it('reads social-templates as a read-only modal rather than an unclassified one', () => {
-    const src = read('social-templates/page.tsx')
-    // No text entry at all — the two <select>s are the filter bar, and every one
-    // of them appears before the overlay opens, so neither can be inside it.
-    expect(src).not.toMatch(/<input|<textarea/)
-    const overlay = src.indexOf(HAS_OVERLAY)
-    expect(overlay).toBeGreaterThan(-1)
-    for (const match of Array.from(src.matchAll(/<select\b/g))) {
-      expect(match.index).toBeLessThan(overlay)
-    }
   })
 })

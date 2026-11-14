@@ -332,65 +332,6 @@ export type ChannelConnectPayload = {
   channel_shop_url?: string
 }
 
-// ─── AI Social Media Templates (Phase 5) ───────────────────────
-
-export type SocialTemplateType =
-  | 'INSTAGRAM_POST'
-  | 'INSTAGRAM_REEL'
-  | 'INSTAGRAM_STORY'
-  | 'WHATSAPP_STATUS'
-  | 'WHATSAPP_CATALOG'
-  | 'FACEBOOK_POST'
-  | 'FACEBOOK_STORY'
-  | 'PDF_FLYER'
-
-export type SocialTemplate = {
-  id: string
-  retailer_id: string
-  name: string
-  description: string | null
-  template_type: SocialTemplateType
-  occasion: string | null
-  platform: string | null
-  overlay_festival: string | null
-  background_style: string | null
-  image_url: string | null
-  image_r2_key: string | null
-  caption: string | null
-  hashtags: string[]
-  usage_count: number
-  product_ids: string[]
-  is_active: boolean
-  created_at: string
-  updated_at: string
-}
-
-export type SocialTemplateStats = {
-  total: number
-  active: number
-  inactive: number
-  total_usage: number
-}
-
-export type SocialTemplateCreatePayload = {
-  name: string
-  description?: string
-  template_type: SocialTemplateType
-  occasion?: string
-  product_ids: string[]
-  studio_template: string
-}
-
-export type SocialTemplateUpdatePayload = {
-  name?: string
-  description?: string
-  template_type?: SocialTemplateType
-  occasion?: string
-  caption?: string
-  hashtags?: string[]
-  is_active?: boolean
-}
-
 // ─── GST Report (retailer-facing) ───────────────────────────────
 
 export type GstSummary = {
@@ -731,57 +672,6 @@ export const growthApi = {
       `/v1/retailers/me/aggregators/${id}/sync`,
       { method: 'POST' },
     ),
-
-  // ─── AI Social Media Templates (Phase 5) ─────────────────────
-  socialTemplates: (filters?: { template_type?: string; occasion?: string }) => {
-    const params = new URLSearchParams()
-    if (filters?.template_type) params.set('template_type', filters.template_type)
-    if (filters?.occasion) params.set('occasion', filters.occasion)
-    const qs = params.toString()
-    return request<{ data: SocialTemplate[] }>(
-      `/v1/growth/social-templates${qs ? `?${qs}` : ''}`,
-      { getCacheTtlMs: 15_000 },
-    )
-  },
-
-  socialTemplateStats: () =>
-    request<{ data: SocialTemplateStats }>('/v1/growth/social-templates/stats', {
-      getCacheTtlMs: 30_000,
-    }),
-
-  createSocialTemplate: (payload: SocialTemplateCreatePayload) =>
-    request<{ data: SocialTemplate }>('/v1/growth/social-templates', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }),
-
-  updateSocialTemplate: (id: string, payload: SocialTemplateUpdatePayload) =>
-    request<{ data: SocialTemplate }>(`/v1/growth/social-templates/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(payload),
-    }),
-
-  deleteSocialTemplate: (id: string) =>
-    request<void>(`/v1/growth/social-templates/${id}`, { method: 'DELETE' }),
-
-  generateSocialTemplate: (id: string, productId?: string) =>
-    request<{ data: { job_id: string; status: string } }>(
-      `/v1/growth/social-templates/${id}/generate`,
-      {
-        method: 'POST',
-        body: JSON.stringify(productId ? { product_id: productId } : {}),
-      },
-    ),
-
-  socialTemplateGenerateStatus: (id: string, jobId: string) =>
-    request<{ data: { status: string; photo_id?: string; url?: string } }>(
-      `/v1/growth/social-templates/${id}/generate/status?job_id=${jobId}`,
-    ),
-
-  useSocialTemplate: (id: string) =>
-    request<{ data: SocialTemplate }>(`/v1/growth/social-templates/${id}/use`, {
-      method: 'POST',
-    }),
 
   // ─── GST Report (retailer-facing) ─────────────────────────────
   gstSummary: (filters?: { month?: number; year?: number }) => {

@@ -107,7 +107,7 @@ const NAV_ITEMS: NavItem[] = [
       { label: 'Photo Cleanup Test', href: '/admin/photo-cleanup-test', icon: Wand2 },
       { label: 'My Style', href: '/admin/my-style', icon: Palette },
       { label: 'Festivals', href: '/admin/festivals', icon: CalendarDays },
-      { label: 'Social Templates', href: '/admin/social-templates', icon: Share2 },
+      { label: 'Design Library', href: '/admin/design-templates', icon: Share2 },
       { label: 'Social Publishing', href: '/admin/social', icon: Megaphone },
       { label: 'Google Business', href: '/admin/gbp', icon: MapPin },
     ],

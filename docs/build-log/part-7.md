@@ -379,3 +379,11 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Proof | API `tsc` clean, Biome clean; API suite 232 files / 3010 tests pass (new: sanitiser 6, route 10, job 6, render +4, style routes +3, fan-out CDN pin +1); mobile `tsc` clean, vitest 551/551; shared 227/227; web `tsc` clean. |
 | Not done / not verified | **No real FLUX call, nothing run against Postgres, no device or browser test.** T5 is dark: needs migrations 153-155 applied, a `plan_features` row for `AI_CUSTOM_TEMPLATE`, and `plan_limits` rows (else it is off / limit 0). Skipped from spec §5: no output-format picker (Kontext keeps the photo's aspect), no "variable fill" of price/logo over the AI image (the AI image is picture-only; add when asked), no "save as reusable template", no admin screen for the prompts, `social_templates` not retired (still live). Output goes through the <= 80 KB compressor, so quality is Studio-Shoot level, not poster level. |
 
+## 2026-11-05 — Retire `social_templates` (D1), code only (branch `feat/design-templates-t3`, not pushed)
+
+| What | Detail |
+|---|---|
+| Removed | `growth-social-templates.ts` (+ test), `admin-social-templates.ts`, mobile `growth/templates.tsx` (orphan, nothing linked to it) and its 11 client methods/types, the `/v1/growth/social-templates` auth allowlist lines, the `social-templates` admin API segment. Admin page now only the Design Library and lives at `/admin/design-templates` (already `ADMIN_TIER`, D6); sidebar label "Design Library". |
+| Kept on purpose | `social_templates` table + rows, `SocialTemplateType` enum, `SOCIAL_TEMPLATES` plan feature key, the `purge-retailer-now` delete. No migration; dropping is an owner decision. |
+| Proof | API tsc + vitest 3006/3006 (admin-access guard caught the moved web segment), mobile tsc + 549/549, shared 227/227, web tsc clean. `Sidebar.test.tsx` "sign out" fails on the untouched baseline too (not from this change). |
+

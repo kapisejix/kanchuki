@@ -1,6 +1,6 @@
 # Admin-managed Social Design Templates + Paid AI Custom-Prompt Templates
 
-**Status:** 🟨 Decisions D1–D7 settled; T1–T4 built 2026-11-04; per-slide headline/offer text (migration 153) + multi-slot designs in the scheduler + **T5 paid AI tier (migrations 154/155, dark)** built 2026-11-05; none browser/device-tested; migrations 153–155 unapplied; `social_templates` not yet retired; T6 content not started
+**Status:** 🟨 Decisions D1–D7 settled; T1–T4 built 2026-11-04; per-slide headline/offer text (migration 153) + multi-slot designs in the scheduler + **T5 paid AI tier (migrations 154/155, dark)** built 2026-11-05; none browser/device-tested; migrations 153–155 unapplied; `social_templates` code retired 2026-11-05 (table kept); T6 content not started
 **Origin:** owner review of `/admin/social-templates` (2026-11-04). Page is a read-only monitor of retailer-made rows; no sample templates exist; the AI generate path never saves its result (see §2).
 **Owner decisions needed:** §9.
 
@@ -153,7 +153,7 @@ Look references (layout/mood only, not to copy): Visme Diwali sale posts, Kapwin
 
 | ID | Question | Recommendation |
 | --- | --- | --- |
-| D1 | Keep `social_templates` (retailer AI table) or retire it and replace with §5? | Retire; §5 supersedes it. Keep admin monitor until data migrated. |
+| D1 | Keep `social_templates` (retailer AI table) or retire it and replace with §5? | Retire; §5 supersedes it. **Done 2026-11-05 (code only):** API route, mobile `growth/templates.tsx`, client methods and the admin monitor are gone; the `social_templates` table, `SocialTemplateType` enum and `SOCIAL_TEMPLATES` plan key stay (no destructive migration; owner decides when to drop). Admin page moved to `/admin/design-templates`. |
 | D2 | Move the 5 built-in sharp templates into `design_templates`, or keep as code? | Keep as code + register as BUILTIN; avoids regression risk in F-043. |
 | D3 | Editor: form + live preview (Phase 1) or drag-drop canvas now? | Form first; canvas only if admin finds it painful. |
 | D4 | Paid tier pricing unit — credits (needs `ai-credit-billing-model.md`) or flat monthly quota per plan? | Flat quota now, credits later. |
