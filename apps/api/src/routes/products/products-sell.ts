@@ -156,13 +156,15 @@ async function sellLine(
  */
 async function undoLine(
   retailerId: string,
+  staffId: string | null,
   sale: { id: string; product_id: string; size: string; quantity: number },
 ) {
   const { id, product_id, size, quantity } = sale;
   return prisma.$transaction(async (tx) => {
+    // The actor is written in the same claim, so it can only ever belong to the request that won it.
     const claim = await tx.productSale.updateMany({
       where: { id, retailer_id: retailerId, undone_at: null },
-      data: { undone_at: new Date() },
+      data: { undone_at: new Date(), undone_by_staff_id: staffId },
     });
     if (claim.count === 0) return null;
 
@@ -218,7 +220,7 @@ export const productsSellRoutes: FastifyPluginAsync = async (server) => {
       // cannot re-sell an undone bill. Selling again needs a new client_bill_id.
       const lines = [];
       for (const sale of live) {
-        const done = await undoLine(retailerId, sale);
+        const done = await undoLine(retailerId, request.staffId ?? null, sale);
         if (done) lines.push(done);
       }
 

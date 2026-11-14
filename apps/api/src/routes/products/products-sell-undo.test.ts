@@ -16,6 +16,7 @@ type Sale = {
   size: string;
   quantity: number;
   undone_at: Date | null;
+  undone_by_staff_id?: string | null;
   created_at: Date;
 };
 
@@ -34,11 +35,15 @@ function makeTx() {
       updateMany: async ({
         where,
         data,
-      }: { where: { id: string; undone_at: null }; data: { undone_at: Date } }) => {
+      }: {
+        where: { id: string; undone_at: null };
+        data: { undone_at: Date; undone_by_staff_id?: string | null };
+      }) => {
         if (db.stealClaimFor.has(where.id)) return { count: 0 };
         const s = db.sales.find((x) => x.id === where.id);
         if (!s || s.undone_at !== null) return { count: 0 };
         s.undone_at = data.undone_at;
+        s.undone_by_staff_id = data.undone_by_staff_id;
         return { count: 1 };
       },
     },
@@ -249,6 +254,28 @@ describe('POST /products/sell/:billId/undo', () => {
     expect(res.statusCode).toBe(200);
     expect(res.json().data).toEqual({ bill_id: BILL, undone: false, lines: [] });
     expect(db.stock.find((s) => s.product_id === 'tracked')?.quantity).toBe(0);
+  });
+
+  it('records which staff member undid the bill on every row it claimed', async () => {
+    addSale({ product_id: 'tracked', size: 'FREE' });
+    addSale({ product_id: 'sized', size: 'M' });
+    const res = await undo(BILL, { staffRole: 'salesperson', staffId: 'staff_9' });
+    expect(res.statusCode).toBe(200);
+    expect(db.sales.map((s) => s.undone_by_staff_id)).toEqual(['staff_9', 'staff_9']);
+  });
+
+  it('records null when the owner undid it (NULL = owner, like sold_by_staff_id)', async () => {
+    addSale({ product_id: 'tracked', size: 'FREE' });
+    const res = await undo();
+    expect(res.statusCode).toBe(200);
+    expect(db.sales[0]!.undone_by_staff_id).toBeNull();
+  });
+
+  it('a second undo by someone else does not overwrite the first actor', async () => {
+    addSale({ product_id: 'tracked', size: 'FREE' });
+    await undo(BILL, { staffRole: 'manager', staffId: 'first' });
+    await undo(BILL, { staffRole: 'salesperson', staffId: 'second' });
+    expect(db.sales[0]!.undone_by_staff_id).toBe('first');
   });
 
   it('two undos in a row restore the stock once', async () => {

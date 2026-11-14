@@ -26,8 +26,10 @@ const COLUMNS = [
   'unit_price',
   'sold_by_staff_id',
   'undone_at',
+  'undone_by_staff_id', // added by migration 159, pinned in product-sales-undo-actor-migration.test.ts
   'created_at',
 ];
+const COLUMNS_158 = COLUMNS.filter((c) => c !== 'undone_by_staff_id');
 
 describe('migration 158 — product_sales', () => {
   it('has real content (guard is not scanning an empty string)', () => {
@@ -79,7 +81,7 @@ describe('migration 158 — product_sales', () => {
       .map((m) => m[1] as string)
       .filter((f) => !['retailer', 'product'].includes(f));
     expect(fields.sort()).toEqual([...COLUMNS].sort());
-    for (const c of COLUMNS) expect(sql, `SQL missing column ${c}`).toContain(`"${c}"`);
+    for (const c of COLUMNS_158) expect(sql, `SQL missing column ${c}`).toContain(`"${c}"`);
   });
 
   it('schema.prisma declares the same unique key, table map and cascades', () => {
