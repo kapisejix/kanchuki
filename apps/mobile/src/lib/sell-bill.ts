@@ -84,7 +84,7 @@ function addLine(state: BillState, sku: string, product: SellProduct | null): Bi
     if (state.lines.some((l) => l.key === key)) return state
     return { lines: [...state.lines, { key, sku, product, size: null, qty: 1 }] }
   }
-  const size = sizes.length === 1 ? sizes[0]! : null
+  const size = sizes.length === 1 ? (sizes[0] ?? null) : null
   const key = keyOf(product.id, size)
   const existing = state.lines.find((l) => l.key === key)
   if (existing) {
@@ -147,9 +147,11 @@ export function canConfirm(s: BillState): boolean {
 }
 
 export function toSellLines(s: BillState): { product_id: string; size: string; quantity: number }[] {
-  return s.lines
-    .filter((l) => lineState(l) === 'ok')
-    .map((l) => ({ product_id: l.product!.id, size: l.size!, quantity: l.qty }))
+  return s.lines.flatMap((l) =>
+    lineState(l) === 'ok' && l.product && l.size
+      ? [{ product_id: l.product.id, size: l.size, quantity: l.qty }]
+      : [],
+  )
 }
 
 /** Informational total in paise (price is not editable in v1). */

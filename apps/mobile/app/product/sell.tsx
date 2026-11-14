@@ -452,7 +452,7 @@ export default function SellScreen() {
                     testID={`size-option-${size}`}
                     onPress={() => dispatch({ type: 'setSize', key: pending.key, size })}
                     className="min-w-[56px] h-12 px-4 rounded-2xl border border-lavender-300 items-center justify-center"
-                    accessibilityLabel={`Size ${size}, ${stockFor(pending.product!, size)} in stock`}
+                    accessibilityLabel={`Size ${size}, ${pending.product ? stockFor(pending.product, size) : 0} in stock`}
                   >
                     <Text className="text-sm font-bold text-sand-900">{size}</Text>
                   </AnimatedPressable>
