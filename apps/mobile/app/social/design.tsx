@@ -1,3 +1,4 @@
+import { DESIGN_FORMATS } from '@kanchuki/shared';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useState } from 'react';
@@ -54,6 +55,9 @@ export default function DesignPostScreen() {
   };
 
   const list = designs.data?.data ?? [];
+  // Preview at the design's real shape (landscape 1.91:1, story 9:16, ...); unknown format → 4:5.
+  const fmt = (DESIGN_FORMATS as Record<string, { w: number; h: number }>)[design?.format ?? ''];
+  const previewAspect = fmt ? fmt.w / fmt.h : 4 / 5;
 
   return (
     <KeyboardScreen className="flex-1 bg-ink-50">
@@ -88,13 +92,14 @@ export default function DesignPostScreen() {
                   }}
                 >
                   {d.thumbnail_url ? (
-                    <Image source={{ uri: d.thumbnail_url }} className="h-full w-full" />
+                    <Image
+                      source={{ uri: d.thumbnail_url }}
+                      className="h-full w-full"
+                      resizeMode="contain"
+                    />
                   ) : null}
                 </View>
-                <Text
-                  className="text-xs font-semibold mt-1 text-sand-900"
-                  numberOfLines={1}
-                >
+                <Text className="text-xs font-semibold mt-1 text-sand-900" numberOfLines={1}>
                   {d.name}
                 </Text>
                 {d.occasion ? (
@@ -164,7 +169,7 @@ export default function DesignPostScreen() {
             <Image
               source={{ uri: preview }}
               className="w-full rounded-2xl bg-sand-100"
-              style={{ aspectRatio: 4 / 5 }}
+              style={{ aspectRatio: previewAspect }}
               resizeMode="contain"
               accessibilityLabel="Design preview"
             />
