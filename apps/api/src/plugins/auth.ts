@@ -225,6 +225,8 @@ const MANAGER_ALLOWED_ROUTES: StaffRule[] = [
 
 const SALESPERSON_ALLOWED_ROUTES: StaffRule[] = [
   { method: 'GET', path: '/v1/products' }, // view catalog only — no add/edit/delete
+  // F-047: salespeople ring up sales at the counter. Sell is the only product write they get.
+  { method: 'POST', path: '/v1/products/sell', exact: true },
   { method: 'GET', path: '/v1/categories' }, // view only
   { method: 'POST', path: '/v1/customers', exact: true }, // add new customers only
   { method: 'GET', path: '/v1/retailers/me', exact: true }, // shop name shown in app header
