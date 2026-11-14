@@ -1,5 +1,6 @@
-'use client'
+'use client';
 
+import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch';
 // Admin Design Library — form + live preview editor for social design templates (D3: no canvas).
 // Talks to /v1/admin/design-templates (apps/api admin-design-templates.ts). Variable / font /
 // format lists come from @kanchuki/shared so the editor cannot offer what the server rejects.
@@ -12,41 +13,40 @@ import {
   DESIGN_TEXT_VARS,
   type DesignFormat,
   type DesignLayer,
-} from '@kanchuki/shared'
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
+} from '@kanchuki/shared';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
-const BASE = `${API_URL}/v1/admin/design-templates`
-const PLANS = ['STARTER', 'GROWTH', 'PRO'] as const
-type Status = 'DRAFT' | 'PUBLISHED' | 'HIDDEN'
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
+const BASE = `${API_URL}/v1/admin/design-templates`;
+const PLANS = ['STARTER', 'GROWTH', 'PRO'] as const;
+type Status = 'DRAFT' | 'PUBLISHED' | 'HIDDEN';
 
 type Design = {
-  id: string
-  name: string
-  description: string | null
-  status: Status
-  plans: string[]
-  occasion: string | null
-  format: DesignFormat
-  product_slots: number
-  spec: { layers: DesignLayer[] }
-  background_key: string | null
-  background_url: string | null
-  sort_order: number
-  usage_count: number
-}
+  id: string;
+  name: string;
+  description: string | null;
+  status: Status;
+  plans: string[];
+  occasion: string | null;
+  format: DesignFormat;
+  product_slots: number;
+  spec: { layers: DesignLayer[] };
+  background_key: string | null;
+  background_url: string | null;
+  sort_order: number;
+  usage_count: number;
+};
 
 type Draft = {
-  id: string | null
-  name: string
-  occasion: string
-  format: DesignFormat
-  product_slots: number
-  plans: string[]
-  layers: DesignLayer[]
-  background_key: string | null
-}
+  id: string | null;
+  name: string;
+  occasion: string;
+  format: DesignFormat;
+  product_slots: number;
+  plans: string[];
+  layers: DesignLayer[];
+  background_key: string | null;
+};
 
 const blank = (): Draft => ({
   id: null,
@@ -59,27 +59,27 @@ const blank = (): Draft => ({
     { type: 'text', var: 'shop_name', x: 60, y: 60, size: 56, font: 'serif', color: '#000000' },
   ],
   background_key: null,
-})
+});
 
 const STATUS_STYLE: Record<Status, string> = {
   DRAFT: 'bg-gray-100 text-gray-700',
   PUBLISHED: 'bg-green-100 text-green-800',
   HIDDEN: 'bg-amber-100 text-amber-800',
-}
+};
 
 async function apiError(res: Response, fallback: string): Promise<string> {
   try {
-    const j = await res.json()
-    return j?.error?.message ?? j?.message ?? fallback
+    const j = await res.json();
+    return j?.error?.message ?? j?.message ?? fallback;
   } catch {
-    return fallback
+    return fallback;
   }
 }
 
-const num = (v: string, fallback: number) => (v.trim() === '' || Number.isNaN(+v) ? fallback : +v)
+const num = (v: string, fallback: number) => (v.trim() === '' || Number.isNaN(+v) ? fallback : +v);
 
-const INPUT = 'w-full rounded border border-gray-300 px-2 py-1 text-sm'
-const LABEL = 'block text-xs font-medium text-gray-600'
+const INPUT = 'w-full rounded border border-gray-300 px-2 py-1 text-sm';
+const LABEL = 'block text-xs font-medium text-gray-600';
 
 function Field({ id, label, children }: { id: string; label: string; children: React.ReactNode }) {
   return (
@@ -89,39 +89,39 @@ function Field({ id, label, children }: { id: string; label: string; children: R
       </label>
       {children}
     </div>
-  )
+  );
 }
 
 export default function DesignLibrary() {
-  const [designs, setDesigns] = useState<Design[] | null>(null)
-  const [draft, setDraft] = useState<Draft | null>(null)
-  const [error, setError] = useState('')
-  const [saving, setSaving] = useState(false)
-  const [preview, setPreview] = useState('')
-  const [previewError, setPreviewError] = useState('')
-  const previewSeq = useRef(0)
+  const [designs, setDesigns] = useState<Design[] | null>(null);
+  const [draft, setDraft] = useState<Draft | null>(null);
+  const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [preview, setPreview] = useState('');
+  const [previewError, setPreviewError] = useState('');
+  const previewSeq = useRef(0);
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch(BASE, adminGetOptions())
-      if (!res.ok) throw new Error(await apiError(res, `Failed to load designs (${res.status})`))
-      setDesigns((await res.json()).data ?? [])
+      const res = await fetch(BASE, adminGetOptions());
+      if (!res.ok) throw new Error(await apiError(res, `Failed to load designs (${res.status})`));
+      setDesigns((await res.json()).data ?? []);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load')
+      setError(e instanceof Error ? e.message : 'Failed to load');
     }
-  }, [])
+  }, []);
 
   useEffect(() => {
-    void load()
-  }, [load])
+    void load();
+  }, [load]);
 
   // Live preview: debounce edits, drop out-of-order responses.
   useEffect(() => {
-    if (!draft) return
-    const seq = ++previewSeq.current
+    if (!draft) return;
+    const seq = ++previewSeq.current;
     const t = setTimeout(async () => {
       try {
-        const opts = await adminMutateOptions()
+        const opts = await adminMutateOptions();
         const res = await fetch(`${BASE}/preview`, {
           ...opts,
           method: 'POST',
@@ -131,40 +131,40 @@ export default function DesignLibrary() {
             spec: { layers: draft.layers },
             background_key: draft.background_key,
           }),
-        })
-        if (seq !== previewSeq.current) return
+        });
+        if (seq !== previewSeq.current) return;
         if (!res.ok) {
-          setPreviewError(await apiError(res, 'Preview failed'))
-          return
+          setPreviewError(await apiError(res, 'Preview failed'));
+          return;
         }
-        setPreviewError('')
-        setPreview((await res.json()).data.image)
+        setPreviewError('');
+        setPreview((await res.json()).data.image);
       } catch (e) {
         if (seq === previewSeq.current)
-          setPreviewError(e instanceof Error ? e.message : 'Preview failed')
+          setPreviewError(e instanceof Error ? e.message : 'Preview failed');
       }
-    }, 500)
-    return () => clearTimeout(t)
-  }, [draft])
+    }, 500);
+    return () => clearTimeout(t);
+  }, [draft]);
 
-  const patch = (p: Partial<Draft>) => setDraft((d) => (d ? { ...d, ...p } : d))
+  const patch = (p: Partial<Draft>) => setDraft((d) => (d ? { ...d, ...p } : d));
   const patchLayer = (i: number, p: Record<string, unknown>) =>
     setDraft((d) =>
       d
         ? { ...d, layers: d.layers.map((l, n) => (n === i ? ({ ...l, ...p } as DesignLayer) : l)) }
         : d,
-    )
+    );
   const swap = (i: number, j: number) =>
     setDraft((d) => {
-      if (!d) return d
-      const a = [...d.layers]
-      ;[a[i], a[j]] = [a[j] as DesignLayer, a[i] as DesignLayer]
-      return { ...d, layers: a }
-    })
+      if (!d) return d;
+      const a = [...d.layers];
+      [a[i], a[j]] = [a[j] as DesignLayer, a[i] as DesignLayer];
+      return { ...d, layers: a };
+    });
 
   const edit = (d: Design) => {
-    setError('')
-    setPreview('')
+    setError('');
+    setPreview('');
     setDraft({
       id: d.id,
       name: d.name,
@@ -174,39 +174,43 @@ export default function DesignLibrary() {
       plans: d.plans,
       layers: d.spec.layers,
       background_key: d.background_key,
-    })
-  }
+    });
+  };
 
   const uploadBackground = async (file: File) => {
-    setError('')
+    setError('');
     try {
-      const type = file.type
+      const type = file.type;
       if (!['image/jpeg', 'image/png', 'image/webp'].includes(type))
-        throw new Error('Use a JPEG, PNG or WebP image')
-      const opts = await adminMutateOptions()
+        throw new Error('Use a JPEG, PNG or WebP image');
+      const opts = await adminMutateOptions();
       const res = await fetch(`${BASE}/upload-url`, {
         ...opts,
         method: 'POST',
-        body: JSON.stringify({ content_type: type, filename: file.name, content_length: file.size }),
-      })
-      if (!res.ok) throw new Error(await apiError(res, 'Could not start upload'))
-      const { upload_url, r2_key } = (await res.json()).data
+        body: JSON.stringify({
+          content_type: type,
+          filename: file.name,
+          content_length: file.size,
+        }),
+      });
+      if (!res.ok) throw new Error(await apiError(res, 'Could not start upload'));
+      const { upload_url, r2_key } = (await res.json()).data;
       const put = await fetch(upload_url, {
         method: 'PUT',
         headers: { 'Content-Type': type },
         body: file,
-      })
-      if (!put.ok) throw new Error(`Upload failed (${put.status})`)
-      patch({ background_key: r2_key })
+      });
+      if (!put.ok) throw new Error(`Upload failed (${put.status})`);
+      patch({ background_key: r2_key });
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Upload failed')
+      setError(e instanceof Error ? e.message : 'Upload failed');
     }
-  }
+  };
 
   const save = async () => {
-    if (!draft) return
-    setSaving(true)
-    setError('')
+    if (!draft) return;
+    setSaving(true);
+    setError('');
     try {
       const body = {
         name: draft.name,
@@ -216,38 +220,38 @@ export default function DesignLibrary() {
         plans: draft.plans,
         spec: { layers: draft.layers },
         background_key: draft.background_key,
-      }
-      const opts = await adminMutateOptions()
+      };
+      const opts = await adminMutateOptions();
       const res = await fetch(draft.id ? `${BASE}/${draft.id}` : BASE, {
         ...opts,
         method: draft.id ? 'PUT' : 'POST',
         body: JSON.stringify(body),
-      })
-      if (!res.ok) throw new Error(await apiError(res, `Save failed (${res.status})`))
-      setDraft(null)
-      await load()
+      });
+      if (!res.ok) throw new Error(await apiError(res, `Save failed (${res.status})`));
+      setDraft(null);
+      await load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Save failed')
+      setError(e instanceof Error ? e.message : 'Save failed');
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
-  }
+  };
 
   const setStatus = async (id: string, status: Status) => {
-    setError('')
+    setError('');
     try {
-      const opts = await adminMutateOptions()
+      const opts = await adminMutateOptions();
       const res = await fetch(`${BASE}/${id}/status`, {
         ...opts,
         method: 'PUT',
         body: JSON.stringify({ status }),
-      })
-      if (!res.ok) throw new Error(await apiError(res, `Status change failed (${res.status})`))
-      await load()
+      });
+      if (!res.ok) throw new Error(await apiError(res, `Status change failed (${res.status})`));
+      await load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Status change failed')
+      setError(e instanceof Error ? e.message : 'Status change failed');
     }
-  }
+  };
 
   return (
     <div className="space-y-4">
@@ -266,8 +270,8 @@ export default function DesignLibrary() {
             <button
               type="button"
               onClick={() => {
-                setPreview('')
-                setDraft(blank())
+                setPreview('');
+                setDraft(blank());
               }}
               className="shrink-0 rounded bg-black px-3 py-1.5 text-sm font-medium text-white"
             >
@@ -299,7 +303,11 @@ export default function DesignLibrary() {
                     Plans: {d.plans.length ? d.plans.join(', ') : 'none'} · used {d.usage_count}×
                   </p>
                   <div className="flex flex-wrap gap-2 text-xs">
-                    <button type="button" onClick={() => edit(d)} className="rounded border px-2 py-1">
+                    <button
+                      type="button"
+                      onClick={() => edit(d)}
+                      className="rounded border px-2 py-1"
+                    >
                       Edit
                     </button>
                     {d.status !== 'PUBLISHED' && (
@@ -415,15 +423,18 @@ export default function DesignLibrary() {
               </div>
             </fieldset>
 
-            <Field id="dt-bg" label="Background art (JPEG / PNG / WebP, ≤ 10 MB). Empty = plain white.">
+            <Field
+              id="dt-bg"
+              label="Background art (JPEG / PNG / WebP, ≤ 10 MB). Empty = plain white."
+            >
               <input
                 id="dt-bg"
                 type="file"
                 accept="image/jpeg,image/png,image/webp"
                 className="text-sm"
                 onChange={(e) => {
-                  const f = e.target.files?.[0]
-                  if (f) void uploadBackground(f)
+                  const f = e.target.files?.[0];
+                  if (f) void uploadBackground(f);
                 }}
               />
               {draft.background_key && (
@@ -728,5 +739,5 @@ export default function DesignLibrary() {
         </div>
       )}
     </div>
-  )
+  );
 }
