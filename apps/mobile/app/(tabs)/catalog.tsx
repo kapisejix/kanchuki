@@ -17,6 +17,7 @@ import {
   SlidersHorizontal,
   X,
   ScanLine,
+  ShoppingBag,
   Camera,
   Search,
   CheckSquare,
@@ -453,6 +454,14 @@ export default function CatalogScreen() {
             accessibilityRole="button"
           >
             <ScanLine size={18} color="#231F48" />
+          </AnimatedPressable>
+          <AnimatedPressable
+            onPress={() => router.push('/product/sell')}
+            className="w-10 h-10 rounded-2xl items-center justify-center bg-white border border-lavender-200 shadow-sm"
+            accessibilityLabel="Sell items: scan and mark several articles sold"
+            accessibilityRole="button"
+          >
+            <ShoppingBag size={18} color="#231F48" />
           </AnimatedPressable>
           <AnimatedPressable
             onPress={() => setShowFilters((v) => !v)}
