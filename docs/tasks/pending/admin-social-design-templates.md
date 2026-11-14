@@ -168,4 +168,5 @@ Look references (layout/mood only, not to copy): Visme Diwali sale posts, Kapwin
 - Hidden/Draft designs invisible to retailers; plan gate enforced server-side.
 - Paid prompt tier: refused at 0 quota, charged once, refunded on provider failure, result saved and re-openable.
 - Tests: golden-image render per template, escaping/overflow cases, quota reserve/refund, route authz (retailer A cannot render with retailer B's product — RC-138/139 `assertOwnProducts` pattern).
+- Device acceptance (none run yet as of 2026-11-14): `docs/tasks/pending/design-templates-device-test.md` — retailer picker, scheduler design step, AI design.
 - Mobile `tsc` clean; **not device-tested until run on a real phone** (state this honestly in BUILD-LOG).
