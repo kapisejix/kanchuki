@@ -179,9 +179,9 @@ Ground rules for every task: branch from `main` (`feat/f-047-<task>`), invoke th
 - Skills: `superpowers:test-driven-development`, `ecc:api-design`, `ecc:backend-patterns`, `ecc:redis-patterns` (cache invalidation), `ecc:security-review`. Agents: `ecc:typescript-reviewer`, `ecc:silent-failure-hunter`, `ecc:security-reviewer`.
 - Done when: all tests green locally, mutation-checked (remove the `quantity >= n` guard and the idempotency guard, confirm tests fail), reviewers' findings fixed.
 
-### T4. API Undo `POST /v1/products/sell/:billId/undo`  ·  ~0.5 day
-- [ ] Tests first: undo within 10 min restores stock + status AVAILABLE, second undo is a no-op, after 10 min refused, other retailer's bill = not found, who may undo (same roles as sell).
-- [ ] Implement: set `undone_at`, add quantities back in one transaction, re-run `applyStatusFromTotal`.
+### T4. API Undo `POST /v1/products/sell/:billId/undo`  ·  ~0.5 day  ·  ✅ built 2026-11-14 (branch `feat/f-047-t4-undo`, PR pending)
+- [x] Tests first: undo within 10 min restores stock + status AVAILABLE, second undo is a no-op, after 10 min refused, other retailer's bill = not found, who may undo (same roles as sell).
+- [x] Implement: set `undone_at`, add quantities back in one transaction, re-run `applyStatusFromTotal`. Decisions: one `$transaction` per line (claim `undone_at null` -> restore -> status); untracked product goes back to `AVAILABLE` only if still `SOLD` (sell keeps no prior status); the Redis sell key is NOT released, so a bill id is spent and a replay of an undone bill answers `BILL_UNDONE` (sell replay branch changed in the same PR); salesperson allowlist gained the undo path.
 - Skills: `superpowers:test-driven-development`, `ecc:api-design`; agent `ecc:silent-failure-hunter`.
 
 ### T5. Mobile: extract scanner block  ·  ~0.5 day

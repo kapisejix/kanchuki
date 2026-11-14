@@ -1161,7 +1161,7 @@ One row per `(bill, product, size)` sold at the counter. Columns: `id`, `retaile
 
 - **No DELETE from the app** (RC-049): Undo sets `undone_at` and adds the stock back. `kanchuki_app` gets an explicit `SELECT, INSERT, UPDATE` (RC-162: default privileges were found missing on prod); `kanchuki_purge` gets DELETE as belt-and-braces. Both FKs cascade, so `hardDeleteRetailer()` needs no list entry (RC-050).
 - RLS on, one `backend_roles_full_access` policy for `kanchuki_app`/`kanchuki_purge` (policy first, then ENABLE — RC-030).
-- Writer map (planned, T3/T4 not built): `POST /v1/products/sell` inserts rows and decrements `product_stock`; `POST /v1/products/sell/:billId/undo` sets `undone_at` and restores stock. Redis key `sell:{retailer_id}:{bill_id}` (24 h) is a fast first check only; this UNIQUE is the source of truth.
+- Writer map (T3 + T4 built; Undo claims a row with `UPDATE ... WHERE undone_at IS NULL`, never deletes): `POST /v1/products/sell` inserts rows and decrements `product_stock`; `POST /v1/products/sell/:billId/undo` sets `undone_at` and restores stock. Redis key `sell:{retailer_id}:{bill_id}` (24 h) is a fast first check only; this UNIQUE is the source of truth.
 - Pinned by `apps/api/src/lib/product-sales-migration.test.ts`.
 
 ## Social post scheduler — `post_schedule_plans`, `scheduled_posts`, `scheduled_post_items` (migrations 128/129, F-043, written 2026-10-15, NOT yet applied)
