@@ -48,10 +48,10 @@ export async function applyStatusFromTotal(
     select: { quantity: true },
   });
   const total = all.reduce((n, r) => n + r.quantity, 0);
+  const soldOut = total === 0;
   await tx.product.updateMany({
-    where:
-      total === 0 ? { id: productId, status: { not: 'SOLD' } } : { id: productId, status: 'SOLD' },
-    data: { status: total === 0 ? 'SOLD' : 'AVAILABLE' },
+    where: soldOut ? { id: productId, status: { not: 'SOLD' } } : { id: productId, status: 'SOLD' },
+    data: { status: soldOut ? 'SOLD' : 'AVAILABLE' },
   });
   return total;
 }

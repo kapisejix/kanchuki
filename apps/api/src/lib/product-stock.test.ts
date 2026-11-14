@@ -44,16 +44,20 @@ describe('applyStatusFromTotal', () => {
 });
 
 describe('writeStock uses the shared status helper', () => {
-  const src = readFileSync(
-    join(dirname(fileURLToPath(import.meta.url)), 'product-stock.ts'),
-    'utf8',
-  )
-    .split('\n')
-    .map((l) => l.replace(/\/\/.*$/, ''))
-    .join('\n');
-
   it('calls applyStatusFromTotal and does not re-implement the status rule', () => {
-    const write = /export async function writeStock[\s\S]*?\n}\n/.exec(src)?.[0] ?? '';
+    const src = readFileSync(
+      join(dirname(fileURLToPath(import.meta.url)), 'product-stock.ts'),
+      'utf8',
+    )
+      .split('\n')
+      .map((l) => l.replace(/\/\/.*$/, ''))
+      .join('\n');
+    // writeStock body = from its signature to the next top-level export
+    const start = src.indexOf('export async function writeStock');
+    expect(start, 'writeStock not found (renamed?)').toBeGreaterThan(-1);
+    const rest = src.slice(start + 1);
+    const next = rest.indexOf('\nexport ');
+    const write = next === -1 ? rest : rest.slice(0, next);
     expect(write).toContain('applyStatusFromTotal(tx, productId)');
     expect(write).not.toMatch(/status:\s*'(SOLD|AVAILABLE)'/);
   });
