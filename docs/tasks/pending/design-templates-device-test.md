@@ -13,7 +13,7 @@ Record result per row: ✅ / ❌ + note + screenshot. A ❌ gets an RC entry if 
 | 0.1 | Test retailer exists, **PRO plan**, has ≥8 products with photos, a logo, a shop name. A second retailer with **no logo** and one with a **product that has no photo**. | Logo-missing and no-photo paths (spec §4.5) |
 | 0.2 | In `/admin/design-templates`: publish **at least 4 designs**: one single-product, one multi-slot (≥3 slots), one with a headline/offer layer, one festival frame. Leave 2 DRAFT and 1 HIDDEN. | Draft/Hidden must not reach retailers |
 | 0.3 | Starter-plan test retailer, to test the plan gate (spec D5: Starter 3 designs, Growth/Pro all — **confirm what was actually built before testing**). | Server-side gate |
-| 0.4 | For §3 only: `plan_features` row `AI_CUSTOM_TEMPLATE` and `plan_limits` rows for the test plan, quota set to **2**. No row = refused (METERED, RC-103). | T5 is off without these |
+| 0.4 | For §3 only: `plan_features` row `AI_CUSTOM_TEMPLATE` and `plan_limits` rows for the test plan, quota set to **2**. No row = refused (METERED, RC-103). | T5 is off without these. **Where:** the quota is Admin → Plan Limits (`/admin/plan-limits`, resource `AI_CUSTOM_TEMPLATE`, one cell per plan). The feature is **not** in the Admin → Plan Features grid or its API allowlist (`admin-plans.ts` `PUT /plan-features`) yet, despite migration 154's comment, so it cannot be toggled from the UI: until it is added there, the `plan_features` rows need an owner-run SQL insert (pattern: migration 129, ids like `pf_aicustom_pro`). Checked in code 2026-11-14, not on prod |
 | 0.5 | Android release/dev build with the merged `main`. Note build number. Test on a mid-range Android and, if possible, a slow connection. | Real conditions |
 | 0.6 | Facebook Page + Instagram connected on the test retailer (or a Meta test page). | Needed to publish for real |
 
@@ -30,7 +30,7 @@ Record result per row: ✅ / ❌ + note + screenshot. A ❌ gets an RC entry if 
 | 1.7 | Make design (single) | Spinner, then preview with **correct ₹ price, product name, shop name, logo**, product photo not distorted |
 | 1.8 | Check the price against the product's real price | Exact (paise→rupees right; ₹2,100 not ₹2,10,000) |
 | 1.9 | Edit headline/offer after a preview | Preview clears; "Remake design" re-renders with the new text |
-| 1.10 | **Hindi/Devanagari** headline, e.g. `दिवाली स्पेशल` and offer `20% छूट` | Renders as glyphs, **not boxes** (Noto Sans Devanagari is bundled in the API image since `2e468ae3`; never verified in a built image on Railway. Quick check without a device: type the text in the `/admin/design-templates` live preview) |
+| 1.10 | **Hindi/Devanagari** headline, e.g. `दिवाली स्पेशल` and offer `20% छूट` | Renders as glyphs, **not boxes** (Noto Sans Devanagari is bundled in the API image since `2e468ae3`; owner confirmed glyphs render in a design preview on Railway 2026-11-14. Quick check without a device: type the text in the `/admin/design-templates` live preview) |
 | 1.11 | 80-char headline, and a very long product name | Shrinks or ellipsises, nothing runs off the canvas |
 | 1.12 | Emoji and `<script>` / `&` in headline | Rendered literally, no crash, no blank image |
 | 1.13 | Retailer with **no logo** | Logo layer hidden, no broken box |
@@ -60,6 +60,7 @@ Record result per row: ✅ / ❌ + note + screenshot. A ❌ gets an RC entry if 
 | 2.12 | Delete the retailer logo before publish | Publishes without a broken logo box |
 | 2.13 | Downgrade plan / turn off feature, then publish | Publish-time plan re-check behaves (refused or skipped with plain reason), no crash loop |
 | 2.14 | Status card on the scheduler home | Counts correct after the above; failures show a plain-language reason |
+| 2.15 | **Scheduler Hindi, built-in styles (not a design):** slide with a built-in style (white price / New arrival badge / festival frame) on a product whose name or the badge text is Devanagari, e.g. `दिवाली स्पेशल`; let it publish | Published image shows glyphs, **not boxes**. These templates use their own font stack (`schedule-templates.ts`, `Noto Sans Devanagari` added in #249) and were **not** covered by the owner's 2026-11-14 design-preview Hindi check |
 
 ## 3. AI design (`/social/ai-design`) — needs 0.4
 
@@ -70,7 +71,7 @@ Record result per row: ✅ / ❌ + note + screenshot. A ❌ gets an RC entry if 
 | 3.3 | Prompt `Warm Diwali evening, soft diya glow, festive bokeh` | Spinner "about a minute"; polls every 3 s; result appears |
 | 3.4 | Result looks right | **Garment kept** (same product), scene changed, **no AI-drawn text** |
 | 3.5 | Quota after success | Used exactly **1** (not 2) |
-| 3.6 | Format chips: Original / Square / Portrait / Story | Output matches; choosing an overlay disables format chips and says 4:5 |
+| 3.6 | Format chips: Original / Square / Portrait / Story / Landscape | Output matches (Landscape = 1200×628, cover-cropped); choosing an overlay disables format chips and says 4:5 |
 | 3.7 | Overlay Price strip / New arrival / Your logo | Drawn by us, exact digits; logo overlay with no logo handled |
 | 3.8 | Prompt with a URL, a brand name, "make it look like <celebrity>" | Rejected or cleaned with a plain message; no model call charged |
 | 3.9 | 300-char prompt; Hindi prompt | Accepted; no crash |
@@ -98,10 +99,9 @@ Record result per row: ✅ / ❌ + note + screenshot. A ❌ gets an RC entry if 
 
 ## 5. Known gaps (do not file as new)
 
-- Hindi font: Noto Sans Devanagari is bundled (`apps/api/fonts/`, Dockerfile lines 45-48, `FONT_STACK` in `design-render.ts`) but **unverified on Railway** (1.10, 2.10 are the real test). Old built-in scheduler templates (`schedule-templates.ts`) do not list it and may still show boxes.
-- 1.91:1 format `LANDSCAPE_1_91_1` (1200×628) added 2026-11-14 on `feat/design-landscape-format` (migration 157, owner applies first). No starter design uses it yet; `design.tsx` letterboxes it inside the 4:5 preview. Never rendered with a real photo.
+- Hindi font: Noto Sans Devanagari is bundled (`apps/api/fonts/`, Dockerfile, `FONT_STACK` in `design-render.ts`); the Dockerfile build now fails if it is missing. Owner confirmed 2026-11-14 that Hindi renders as glyphs in a **design preview** on Railway (1.10 partly done: owner's report). Still open: the scheduler's built-in templates (row 2.15) and a scheduled publish (2.10).
+- 1.91:1 format `LANDSCAPE_1_91_1` (1200×628), migration 157 applied. Starter design "Landscape Showcase" seeded and published by owner 2026-11-14 (owner's report) and looked good in the Design Library. `design.tsx` now previews at the design's true aspect (PR #251): **needs an EAS build, not device-tested**. AI custom designs also have a `LANDSCAPE` output format (1200×628, row 3.6): local tests only, not device-tested.
 - Backdrop/starter designs seen only with synthetic data, never with real product photos.
-- `design.tsx` previews at a fixed 4:5; non-4:5 designs are letterboxed (cosmetic).
 - Real FLUX quality/latency never measured (3.3–3.4 are the first real run).
 
 ## 6. Result log

@@ -193,6 +193,7 @@ const FORMAT_SIZE: Record<Exclude<AiDesignFormat, 'ORIGINAL'>, [number, number]>
   SQUARE: [1080, 1080],
   PORTRAIT: [1080, 1350],
   STORY: [1080, 1920],
+  LANDSCAPE: [1200, 628],
 };
 
 /**
