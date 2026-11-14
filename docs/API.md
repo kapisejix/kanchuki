@@ -225,7 +225,14 @@ Response 200: { "data": { "bill_id": "...", "replayed": false, "lines": [
   released when nothing sold, so the bill can be corrected and retried.
 - **Errors:** 422 for a bad body (empty or >100 lines, size outside the shared list, quantity < 1, repeated
   product + size). Rate limit 30/min.
-- **Undo:** `POST /products/sell/:billId/undo` (T4, not built yet).
+- **Undo:** `POST /products/sell/:billId/undo` (T4). Same roles as sell (owner, manager, salesperson; delegates
+  403). Per line, in one transaction: claim the row (`undone_at` null -> now), add the quantity back to that size
+  (`product_stock` upsert) and re-run the status rule; an untracked product goes back to `AVAILABLE` only if it is
+  still `SOLD`. Response `{bill_id, undone, lines: [{product_id, size, restored_quantity, remaining_total, status}]}`.
+  A bill with nothing left to undo answers `undone: false` (200, no-op, any age); otherwise more than 10 minutes
+  after the bill's first line is `409 UNDO_WINDOW_EXPIRED`; unknown or another retailer's bill is `404`. The sell
+  Redis key is kept, so a replay of an undone bill answers each line `ok: false, error: BILL_UNDONE, undone: true`
+  and sells nothing; selling again needs a new `client_bill_id`. Rate limit 30/min.
 
 #### Search
 ```

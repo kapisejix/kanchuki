@@ -305,6 +305,23 @@ describe('POST /products/sell', () => {
     expect(db.stock.find((s) => s.size === 'L')?.quantity).toBe(1);
   });
 
+  it('a replay of an undone bill reports BILL_UNDONE per line and sells nothing (T4)', async () => {
+    await sell({ client_bill_id: BILL, lines: [line('sized', 'L', 2)] });
+    (db.sales[0] as Sale & { undone_at?: Date }).undone_at = new Date();
+    db.stock.find((s) => s.size === 'L')!.quantity = 3; // as if Undo restored it
+    m.claim.mockResolvedValue({ isNew: false, degradedReason: null });
+    const res = await sell({ client_bill_id: BILL, lines: [line('sized', 'L', 2)] });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data.lines[0]).toMatchObject({
+      product_id: 'sized',
+      size: 'L',
+      ok: false,
+      error: 'BILL_UNDONE',
+      undone: true,
+    });
+    expect(db.stock.find((s) => s.size === 'L')?.quantity).toBe(3);
+  });
+
   it('Redis says duplicate but nothing is stored yet: 409 BILL_IN_PROGRESS, no sale', async () => {
     m.claim.mockResolvedValue({ isNew: false, degradedReason: null });
     const res = await sell({ client_bill_id: BILL, lines: [line('tracked')] });
