@@ -4416,7 +4416,7 @@ The owner, managers and salespeople get a push on their phone when a customer se
 **Not verified / known gaps (unfixed on purpose, owner decides):** no push has reached a real device; a cold-start notification tap is held until the session is authenticated and is the likeliest thing to need a fix; a session ending by token expiry skips push unregister; stale `disabled_at` rows are not pruned (the app role has no DELETE).
 
 
-## 44. Admin social design templates (F-number unassigned) — 🟨 T1–T3 BUILT 2026-11-04, NOT BROWSER-TESTED
+## 44. Admin social design templates (F-number unassigned) — 🟨 T1–T5 BUILT 2026-11-04/05, NOT BROWSER/DEVICE-TESTED
 
 **Spec:** `docs/tasks/pending/admin-social-design-templates.md` (decisions D1–D7 settled by owner). Admin builds free designs (background art + variable layers) in Admin → Social Templates → Design Library; retailers will pick one in the composer/scheduler (T4); a paid AI tier follows (T5).
 
@@ -4425,6 +4425,6 @@ The owner, managers and salespeople get a push on their phone when a customer se
 | T1 retailer templates fixes | ✅ `9a2a3bf7` |
 | T2 spec validator, sharp renderer, `design_templates` (migration 152) | ✅ `845c0372`, migration applied in prod |
 | T3 admin API + Design Library tab + editor + live preview + seed script | ✅ built on `feat/design-templates-t3`, tests green, not browser-tested, seed not run |
-| T4 retailer picker + render at publish | 🔴 Not started |
-| T5 paid AI tier, retire `social_templates` | 🔴 Not started |
-| Hindi (Devanagari) font in API image | 🔴 Open, needed before Hindi shop names render |
+| T4 retailer picker + render at publish | ✅ `3d155ad0` (composer + scheduler slide style; multi-slot designs and per-slide headline/offer text added after, migration 153 unapplied) |
+| T5 paid AI custom-prompt tier | 🟨 Built, **dark**: `POST/GET /me/ai-designs`, job on the studio queue, `ai_custom_designs`, mobile `social/ai-design.tsx`. Needs migrations 154+155, a `plan_features` row and `plan_limits` rows. Retiring `social_templates` NOT done |
+| Hindi (Devanagari) font in API image | 🟨 Bundled in `apps/api/Dockerfile`, not verified on Railway |

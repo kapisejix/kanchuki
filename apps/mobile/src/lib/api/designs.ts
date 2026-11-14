@@ -20,6 +20,35 @@ export type RenderDesignInput = {
   offer_text?: string
 }
 
+// T5 — paid AI custom-prompt design. POST answers 202 {id}; poll GET /:id until READY/FAILED.
+// Needs the AI_CUSTOM_TEMPLATE plan feature + quota (402 with a plain message otherwise).
+export type AiDesignStatus = {
+  id: string
+  status: 'PENDING' | 'READY' | 'FAILED'
+  image_url: string | null
+  error: string | null
+}
+
+export type AiDesignRow = {
+  id: string
+  prompt: string
+  image_url: string | null
+  created_at: string
+}
+
+export const aiDesignsApi = {
+  create: (body: { product_id: string; prompt: string }) =>
+    request<{ data: { id: string; status: 'PENDING' } }>('/v1/retailers/me/ai-designs', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+
+  get: (id: string) =>
+    request<{ data: AiDesignStatus }>(`/v1/retailers/me/ai-designs/${encodeURIComponent(id)}`),
+
+  list: () => request<{ data: AiDesignRow[] }>('/v1/retailers/me/ai-designs'),
+}
+
 export const designTemplatesApi = {
   list: () =>
     request<{ data: DesignTemplateRow[] }>('/v1/retailers/me/designs', { getCacheTtlMs: 30_000 }),

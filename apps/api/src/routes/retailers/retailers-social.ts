@@ -1,5 +1,6 @@
 import type { FastifyPluginAsync } from 'fastify';
 import { retailersSocialAccountsRoutes } from './retailers-social/retailers-social-accounts.js';
+import { retailersSocialAiDesignsRoutes } from './retailers-social/retailers-social-ai-designs.js';
 import { retailersSocialConnectRoutes } from './retailers-social/retailers-social-connect.js';
 import { retailersSocialDesignsRoutes } from './retailers-social/retailers-social-designs.js';
 import { retailersSocialFanoutRoutes } from './retailers-social/retailers-social-fanout.js';
@@ -49,4 +50,5 @@ export const retailersSocialRoutes: FastifyPluginAsync = async (server) => {
   await server.register(retailersSocialScheduleStyleRoutes);
   // Admin design templates (T4): plan-filtered list + render → image_url for an IMAGE post.
   await server.register(retailersSocialDesignsRoutes);
+  await server.register(retailersSocialAiDesignsRoutes);
 };

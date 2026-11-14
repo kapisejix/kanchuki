@@ -96,6 +96,8 @@ export const PLAN_LIMIT_RESOURCE_TYPES = [
   // F-043 — scheduler: posts published per month, and max active plans per platform.
   'SCHEDULED_POST',
   'ACTIVE_SCHEDULE_PLAN',
+  // T5 — AI custom-prompt social designs per month (METERED: no row = 0).
+  'AI_CUSTOM_TEMPLATE',
 ] as const;
 
 export type PlanLimitResource = (typeof PLAN_LIMIT_RESOURCE_TYPES)[number];

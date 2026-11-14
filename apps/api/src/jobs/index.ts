@@ -3,6 +3,8 @@ import { type Queue, Worker } from 'bullmq';
 import { reportJobFailure } from '../lib/job-failure.js';
 import { refundCustomerJobQuota, refundJobQuota } from '../lib/quota.js';
 import { STUDIO_SHOOT_CONCURRENCY } from '../lib/studio-shoot.js';
+import { handleAiCustomDesign } from './ai-custom-design.js';
+import type { AiCustomDesignJobData } from './ai-custom-design.js';
 import { handleAiSpendAlert } from './ai-spend-alert.js';
 import { handleBackfillMissingAiFields } from './backfill-missing-ai-fields.js';
 import { handleBackupDatabase } from './backup-database.js';
@@ -134,6 +136,14 @@ export async function addStudioShootJob(data: StudioShootJobData): Promise<void>
   });
 }
 
+/** T5: AI custom-prompt design. Shares the STUDIO_SHOOT queue (same FLUX capacity cap). */
+export async function addAiCustomDesignJob(data: AiCustomDesignJobData): Promise<void> {
+  await getStudioShootQueue().add('ai-custom-design', data, {
+    removeOnComplete: { count: 100 },
+    removeOnFail: { count: 50 },
+  });
+}
+
 /** F-040: enqueue one try-on. The payload carries NO image bytes — the wearer's
  *  photo is handed over in-process via lib/tryon-photo-store.ts, so it never
  *  reaches Redis (T6). */
@@ -193,6 +203,10 @@ export async function startWorkers(): Promise<void> {
   const studioShootWorker = new Worker(
     QUEUES.STUDIO_SHOOT,
     async (job) => {
+      if (job.name === 'ai-custom-design') {
+        await handleAiCustomDesign(job.data as AiCustomDesignJobData);
+        return;
+      }
       const data = job.data as StudioShootJobData;
       await handleStudioShoot(data);
     },
@@ -624,7 +638,9 @@ export async function startWorkers(): Promise<void> {
     // idempotent, so a refund the handler already made is a no-op.
     const jobId = (job?.data as StudioShootJobData | undefined)?.job_id;
     if (jobId && stalledOut(err)) {
-      refundJobQuota(jobId, 'STUDIO_SHOOT').catch((e) =>
+      // The AI custom-design job rides this queue; its slot is a different resource.
+      const resource = job?.name === 'ai-custom-design' ? 'AI_CUSTOM_TEMPLATE' : 'STUDIO_SHOOT';
+      refundJobQuota(jobId, resource).catch((e) =>
         console.error(`[jobs] studio-shoot quota refund failed ${jobId}:`, e),
       );
     }
