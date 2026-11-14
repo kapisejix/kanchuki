@@ -22,6 +22,8 @@ const listed = [...arrayBody.matchAll(/'([^']+)'/g)].map((m) => m[1] as string);
 const mapped = new Set([...SCHEMA.matchAll(/@@map\("([^"]+)"\)/g)].map((m) => m[1]));
 // Prisma implicit many-to-many join table: has no @@map.
 const IMPLICIT = new Set(['_RelatedShowcaseCategories']);
+// Tables 136 named that a later migration dropped (136 is applied history, not edited).
+const DROPPED_LATER = new Set(['social_templates']); // migration 156
 
 describe('migration 136 table list', () => {
   it('has no duplicates', () => {
@@ -29,7 +31,9 @@ describe('migration 136 table list', () => {
   });
 
   it('lists only real tables', () => {
-    const unknown = listed.filter((t) => !mapped.has(t) && !IMPLICIT.has(t));
+    const unknown = listed.filter(
+      (t) => !mapped.has(t) && !IMPLICIT.has(t) && !DROPPED_LATER.has(t),
+    );
     expect(unknown).toEqual([]);
   });
 
