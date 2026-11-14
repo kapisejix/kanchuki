@@ -399,3 +399,12 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Proof | API tsc + vitest 3016/3016; ai 195/195; mobile tsc + 553/553 (new `ai-design-screen.test.tsx`, 4); shared 227/227; web tsc clean. Web `Sidebar.test.tsx` sign-out still fails on the untouched baseline. |
 | Not verified | No real FLUX call, no Postgres, no device/browser run; overlay look and the 450 KB budget never seen on a real AI image. |
 
+## 2026-11-05 — T6 starter pack: 10 original designs (branch `feat/design-templates-t3`, not pushed)
+
+| What | Detail |
+|---|---|
+| Catalogue moved | The seed catalogue left `apps/api/scripts/seed-design-templates.ts` for `apps/api/src/lib/design-seed-data.ts` (pure data + SVG strings, no sharp/DB/R2) so it is unit-testable; the script imports it and rasterises with sharp. The 9 placeholder designs are unchanged. |
+| New designs | Diwali Diyas, Navratri Garba, Eid Mubarak (9:16), Karwa Chauth Moon, Wedding Season, Holi Colours, Independence Day, Sale Starburst (baked English "SALE", discount from `offer_text`), Under Price Collage (4 products, headline typed as `custom_text`), Visit Us Card (`shop_logo`, city, phone, URL). All motifs (diya, crescent, star, mandala, tricolour band) are drawn in code: original art, nothing from Canva/Visme. |
+| Verification | `design-seed-data.test.ts` (41): names unique, every spec parses for its format and slots, backgrounds are well-formed SVG of the right size with unique ids, festival/format coverage. Rendered all 10 through the real `renderDesign` with sample vars and looked at them: found and fixed the SALE badge hidden under the product image and the Visit-Us divider cutting its URL. Script dry-run lists 19 designs and writes nothing. |
+| Not done | Seed NOT applied (owner runs `--apply`, rows land as DRAFT for review in Admin -> Design Library). Rakhi, Limited stock, Back in stock, Look of the day, Store intro; no 1.91:1 format exists, so no FB-landscape designs. Art is simple flat shapes, not designer-grade; Hindi text is never baked in (all words come from layers). Not seen on a real device or with real product photos. |
+

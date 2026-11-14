@@ -1,6 +1,6 @@
 # Admin-managed Social Design Templates + Paid AI Custom-Prompt Templates
 
-**Status:** 🟨 Decisions D1–D7 settled; T1–T4 built 2026-11-04; per-slide headline/offer text (migration 153) + multi-slot designs in the scheduler + **T5 paid AI tier (migrations 154/155, dark)** built 2026-11-05; none browser/device-tested; migrations 153–155 unapplied; `social_templates` code retired 2026-11-05 (table kept); T5 gaps built 2026-11-05 (see BUILD-LOG); T6 content not started
+**Status:** 🟨 Decisions D1–D7 settled; T1–T4 built 2026-11-04; per-slide headline/offer text (migration 153) + multi-slot designs in the scheduler + **T5 paid AI tier (migrations 154/155, dark)** built 2026-11-05; none browser/device-tested; migrations 153–155 unapplied; `social_templates` code retired 2026-11-05 (table kept); T5 gaps built 2026-11-05 (see BUILD-LOG); T6 starter pack built 2026-11-05 (10 designs, seed not run)
 **Origin:** owner review of `/admin/social-templates` (2026-11-04). Page is a read-only monitor of retailer-made rows; no sample templates exist; the AI generate path never saves its result (see §2).
 **Owner decisions needed:** §9.
 
