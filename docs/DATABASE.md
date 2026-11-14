@@ -1155,7 +1155,7 @@ Per-size stock. One row per `(product_id, size)`; `size` is a `SIZE_OPTIONS` val
 - RLS on, one `backend_roles_full_access` policy for `kanchuki_app`/`kanchuki_purge` (policy first, then ENABLE — RC-030).
 - Writer map: `lib/product-stock.ts` (`writeStock`, `zeroStock`) called from `routes/products/products-crud.ts` and `lib/catalog-import.ts`.
 
-## Scan & Sell ledger — `product_sales` (migration 158, F-047, written 2026-11-14, NOT yet applied)
+## Scan & Sell ledger — `product_sales` (migration 158, F-047, written + applied 2026-11-14 by the owner; read back: `kanchuki_app` SELECT/INSERT/UPDATE only, `kanchuki_purge` DELETE, RLS on, policy `backend_roles_full_access`)
 
 One row per `(bill, product, size)` sold at the counter. Columns: `id`, `retailer_id` (FK `retailers`, `ON DELETE CASCADE`), `bill_id` (phone-made uuid), `product_id` (FK `products`, `ON DELETE CASCADE`), `size` (`SIZE_OPTIONS` value or `FREE`), `quantity` (CHECK `> 0`), `unit_price` (paise snapshot of `price_min`, nullable), `sold_by_staff_id` (`Staff.id`, NULL = owner; **plain column, no FK**, so a staff row never blocks history or purge), `undone_at` (nullable), `created_at`. UNIQUE `(retailer_id, bill_id, product_id, size)` is the durable idempotency guard (retailer-scoped because `bill_id` comes from the phone); indexes `(retailer_id, created_at)`, `product_id`.
 
