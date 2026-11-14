@@ -352,6 +352,8 @@ export const adminPlansRoutes: FastifyPluginAsync = async (server) => {
           'VIRTUAL_TRY_ON_V2',
           // F-043 social post scheduler (fails closed; seeded ON in migration 129).
           'SOCIAL_SCHEDULER',
+          // T5 AI custom-prompt designs (fails closed: no row = OFF; also needs plan_limits rows).
+          'AI_CUSTOM_TEMPLATE',
           'WHATSAPP_BUSINESS_API',
           'CHECKOUT_CART',
           'DATA_EXPORT_CSV',
