@@ -30,7 +30,7 @@ Record result per row: ✅ / ❌ + note + screenshot. A ❌ gets an RC entry if 
 | 1.7 | Make design (single) | Spinner, then preview with **correct ₹ price, product name, shop name, logo**, product photo not distorted |
 | 1.8 | Check the price against the product's real price | Exact (paise→rupees right; ₹2,100 not ₹2,10,000) |
 | 1.9 | Edit headline/offer after a preview | Preview clears; "Remake design" re-renders with the new text |
-| 1.10 | **Hindi/Devanagari** headline, e.g. `दिवाली स्पेशल` and offer `20% छूट` | Renders as glyphs, **not boxes** (known risk: no Devanagari font in the API image) |
+| 1.10 | **Hindi/Devanagari** headline, e.g. `दिवाली स्पेशल` and offer `20% छूट` | Renders as glyphs, **not boxes** (Noto Sans Devanagari is bundled in the API image since `2e468ae3`; never verified in a built image on Railway. Quick check without a device: type the text in the `/admin/design-templates` live preview) |
 | 1.11 | 80-char headline, and a very long product name | Shrinks or ellipsises, nothing runs off the canvas |
 | 1.12 | Emoji and `<script>` / `&` in headline | Rendered literally, no crash, no blank image |
 | 1.13 | Retailer with **no logo** | Logo layer hidden, no broken box |
@@ -98,8 +98,8 @@ Record result per row: ✅ / ❌ + note + screenshot. A ❌ gets an RC entry if 
 
 ## 5. Known gaps (do not file as new)
 
-- Hindi font on Railway is **unverified** (1.10, 2.10 are the real test).
-- No 1.91:1 format exists, so no FB-landscape designs.
+- Hindi font: Noto Sans Devanagari is bundled (`apps/api/fonts/`, Dockerfile lines 45-48, `FONT_STACK` in `design-render.ts`) but **unverified on Railway** (1.10, 2.10 are the real test). Old built-in scheduler templates (`schedule-templates.ts`) do not list it and may still show boxes.
+- 1.91:1 format `LANDSCAPE_1_91_1` (1200×628) added 2026-11-14 on `feat/design-landscape-format` (migration 157, owner applies first). No starter design uses it yet; `design.tsx` letterboxes it inside the 4:5 preview. Never rendered with a real photo.
 - Backdrop/starter designs seen only with synthetic data, never with real product photos.
 - `design.tsx` previews at a fixed 4:5; non-4:5 designs are letterboxed (cosmetic).
 - Real FLUX quality/latency never measured (3.3–3.4 are the first real run).

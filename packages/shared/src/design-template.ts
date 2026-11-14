@@ -10,6 +10,8 @@ export const DESIGN_FORMATS = {
   SQUARE: { w: 1080, h: 1080 },
   PORTRAIT_4_5: { w: 1080, h: 1350 },
   STORY_9_16: { w: 1080, h: 1920 },
+  // Facebook link/landscape post, 1.91:1.
+  LANDSCAPE_1_91_1: { w: 1200, h: 628 },
 } as const;
 export type DesignFormat = keyof typeof DESIGN_FORMATS;
 export const DESIGN_FORMAT_KEYS = Object.keys(DESIGN_FORMATS) as DesignFormat[];
