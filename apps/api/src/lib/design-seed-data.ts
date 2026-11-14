@@ -59,7 +59,7 @@ function sideBySide(ink: string): DesignLayer[] {
     text('product_name', 130, 44, ink, { ...col, maxLines: 2 }),
     text('price', 270, 76, ink, { ...col, font: 'serif', bold: true, format: 'inr' }),
     text('offer_text', 390, 38, ink, { ...col, maxLines: 2 }),
-    text('shop_phone', 540, 32, ink, col),
+    text('shop_phone', 500, 32, ink, col),
   ];
 }
 
