@@ -2612,6 +2612,7 @@ enum DesignFormat {
   SQUARE        // 1080x1080
   PORTRAIT_4_5  // 1080x1350
   STORY_9_16    // 1080x1920
+  LANDSCAPE_1_91_1 // 1200x628 (migration 157)
 }
 
 enum PostTemplateContext {

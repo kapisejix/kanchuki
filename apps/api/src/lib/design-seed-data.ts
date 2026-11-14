@@ -47,9 +47,12 @@ const image = (x: number, y: number, w: number, h: number, index = 0): DesignLay
   index,
 });
 
-function single(format: DesignFormat, ink: string, withOffer: boolean): DesignLayer[] {
+// ponytail: no landscape starter layout yet (1200x628 needs a side-by-side image/text design).
+type SeedFormat = Exclude<DesignFormat, 'LANDSCAPE_1_91_1'>;
+
+function single(format: SeedFormat, ink: string, withOffer: boolean): DesignLayer[] {
   // [shopY, imgY, imgH, nameY, priceY, offerY, phoneY]
-  const L: Record<DesignFormat, number[]> = {
+  const L: Record<SeedFormat, number[]> = {
     SQUARE: [40, 120, 640, 800, 870, 960, 1020],
     PORTRAIT_4_5: [70, 150, 800, 990, 1090, 1190, 1270],
     STORY_9_16: [110, 260, 1100, 1420, 1520, 1650, 1780],

@@ -86,5 +86,7 @@ describe('parseDesignSpec', () => {
     expect(bad(spec(text({ y: 1500 })), 'PORTRAIT_4_5')).toMatch(/canvas/);
     expect(bad(spec(text({ y: 1500 })), 'STORY_9_16')).toBeNull();
     expect(bad(spec(text({ y: 1100 })), 'SQUARE')).toMatch(/canvas/);
+    expect(bad(spec(text({ y: 700 })), 'LANDSCAPE_1_91_1')).toMatch(/canvas/);
+    expect(bad(spec(text({ y: 500 })), 'LANDSCAPE_1_91_1')).toBeNull();
   });
 });

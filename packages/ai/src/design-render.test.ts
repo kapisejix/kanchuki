@@ -118,7 +118,21 @@ describe('renderDesign', () => {
   it.each(Object.keys(DESIGN_FORMATS) as DesignFormat[])(
     '%s renders a JPEG at the format size',
     async (format) => {
-      const out = await renderDesign(await base({ format }));
+      // One layer near the top: the shared fixture's y values do not fit the 628px landscape canvas.
+      const spec = {
+        layers: [
+          {
+            type: 'text',
+            var: 'shop_name',
+            x: 90,
+            y: 60,
+            size: 40,
+            font: 'sans',
+            color: '#000000',
+          },
+        ],
+      } as DesignRenderInput['spec'];
+      const out = await renderDesign(await base({ format, spec }));
       const meta = await sharp(out).metadata();
       expect([meta.format, meta.width, meta.height]).toEqual([
         'jpeg',

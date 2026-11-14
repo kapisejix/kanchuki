@@ -286,7 +286,7 @@ export default function DesignLibrary() {
                     <div>
                       <p className="font-medium text-gray-900">{d.name}</p>
                       <p className="text-xs text-gray-500">
-                        {d.format.replace('_', ' ')} · {d.product_slots} product
+                        {d.format.replace(/_/g, ' ')} ·{d.product_slots} product
                         {d.product_slots > 1 ? 's' : ''}
                         {d.occasion ? ` · ${d.occasion}` : ''}
                       </p>
@@ -368,7 +368,7 @@ export default function DesignLibrary() {
                 >
                   {Object.entries(DESIGN_FORMATS).map(([k, v]) => (
                     <option key={k} value={k}>
-                      {k.replace('_', ' ')} ({v.w}×{v.h})
+                      {k.replace(/_/g, ' ')} ({v.w}×{v.h})
                     </option>
                   ))}
                 </select>
