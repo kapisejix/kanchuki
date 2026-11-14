@@ -383,6 +383,7 @@ model Retailer {
   support_session_grants SupportSessionGrant[]
   staff_push_devices    StaffPushDevice[]
   product_stock         ProductStock[]
+  product_sales         ProductSale[]
   social_accounts       SocialAccount[]
   gbp_link              GbpLink?
   gbp_reviews           GbpReview[]
@@ -622,6 +623,7 @@ model Product {
   reviews          ProductReview[]
   variants         ProductVariant[]
   stock            ProductStock[]
+  sales            ProductSale[]
   embedding        ProductEmbedding?
   collection_items CollectionProduct[]
   recently_viewed  CustomerRecentlyViewed[]
@@ -1108,6 +1110,31 @@ model ProductStock {
   @@unique([product_id, size])
   @@index([retailer_id])
   @@map("product_stock")
+}
+
+// F-047 Scan & Sell ledger (migration 158). One row per (bill, product, size) sold.
+// Never deleted by the app (RC-049): Undo sets undone_at. The unique key is the durable
+// idempotency guard for a replayed bill; bill_id is a phone-made uuid, so it is retailer-scoped.
+// sold_by_staff_id = Staff.id, null = owner; deliberately not an FK.
+model ProductSale {
+  id               String    @id @default(cuid())
+  retailer_id      String
+  bill_id          String
+  product_id       String
+  size             String
+  quantity         Int
+  unit_price       Int? // paise snapshot of price_min at sale time
+  sold_by_staff_id String?
+  undone_at        DateTime?
+  created_at       DateTime  @default(now())
+
+  retailer Retailer @relation(fields: [retailer_id], references: [id], onDelete: Cascade)
+  product  Product  @relation(fields: [product_id], references: [id], onDelete: Cascade)
+
+  @@unique([retailer_id, bill_id, product_id, size])
+  @@index([retailer_id, created_at])
+  @@index([product_id])
+  @@map("product_sales")
 }
 
 
