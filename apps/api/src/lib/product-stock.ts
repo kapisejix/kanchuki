@@ -1,7 +1,7 @@
 // Per-size product stock (docs/tasks/pending/product-stock-quantity.md).
 // A product with no product_stock rows is "not tracked" and behaves as before.
 // Rows are never deleted (RC-049): dropping a size writes quantity 0.
-import { prisma } from '@kanchuki/db';
+import { type Prisma, prisma } from '@kanchuki/db';
 import { FREE_SIZE, MAX_STOCK_QUANTITY, SIZE_OPTIONS } from '@kanchuki/shared';
 import { z } from 'zod';
 
@@ -35,6 +35,28 @@ export function totalQuantity(stock: readonly StockRow[] | undefined): number | 
 }
 
 /**
+ * The one status rule for tracked stock: total 0 -> SOLD, total > 0 on a SOLD product ->
+ * AVAILABLE. The `where` makes it a no-op when the status is already right. Call inside the
+ * transaction that changed product_stock. Returns the new total.
+ */
+export async function applyStatusFromTotal(
+  tx: Prisma.TransactionClient,
+  productId: string,
+): Promise<number> {
+  const all = await tx.productStock.findMany({
+    where: { product_id: productId },
+    select: { quantity: true },
+  });
+  const total = all.reduce((n, r) => n + r.quantity, 0);
+  const soldOut = total === 0;
+  await tx.product.updateMany({
+    where: soldOut ? { id: productId, status: { not: 'SOLD' } } : { id: productId, status: 'SOLD' },
+    data: { status: soldOut ? 'SOLD' : 'AVAILABLE' },
+  });
+  return total;
+}
+
+/**
  * Replace-semantics write: sizes in `rows` are upserted, tracked sizes missing from
  * `rows` go to 0. Then products.status follows the total (0 -> SOLD, >0 on SOLD ->
  * AVAILABLE). Returns the new total.
@@ -57,19 +79,7 @@ export async function writeStock(
         update: { quantity },
       });
     }
-    const all = await tx.productStock.findMany({
-      where: { product_id: productId },
-      select: { quantity: true },
-    });
-    const total = all.reduce((n, r) => n + r.quantity, 0);
-    await tx.product.updateMany({
-      where:
-        total === 0
-          ? { id: productId, status: { not: 'SOLD' } }
-          : { id: productId, status: 'SOLD' },
-      data: { status: total === 0 ? 'SOLD' : 'AVAILABLE' },
-    });
-    return total;
+    return applyStatusFromTotal(tx, productId);
   });
 }
 

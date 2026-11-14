@@ -2,7 +2,66 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { StockInputSchema, defaultStock, totalQuantity } from './product-stock.js';
+import {
+  StockInputSchema,
+  applyStatusFromTotal,
+  defaultStock,
+  totalQuantity,
+} from './product-stock.js';
+
+// applyStatusFromTotal: the one place "total 0 -> SOLD, >0 on SOLD -> AVAILABLE" lives (F-047 T2).
+// Fake tx records the status write; the real conditional `where` is what makes it a no-op otherwise.
+function fakeTx(quantities: number[]) {
+  const updates: { where: unknown; data: unknown }[] = [];
+  const tx = {
+    productStock: { findMany: async () => quantities.map((quantity) => ({ quantity })) },
+    product: {
+      updateMany: async (args: { where: unknown; data: unknown }) => {
+        updates.push(args);
+        return { count: 1 };
+      },
+    },
+  };
+  return { tx: tx as unknown as Parameters<typeof applyStatusFromTotal>[0], updates };
+}
+
+describe('applyStatusFromTotal', () => {
+  it('total 0 -> marks SOLD, only where not already SOLD; returns 0', async () => {
+    const { tx, updates } = fakeTx([0, 0]);
+    expect(await applyStatusFromTotal(tx, 'p1')).toBe(0);
+    expect(updates).toEqual([
+      { where: { id: 'p1', status: { not: 'SOLD' } }, data: { status: 'SOLD' } },
+    ]);
+  });
+
+  it('total > 0 -> flips SOLD back to AVAILABLE, only where SOLD; returns the total', async () => {
+    const { tx, updates } = fakeTx([0, 2, 1]);
+    expect(await applyStatusFromTotal(tx, 'p1')).toBe(3);
+    expect(updates).toEqual([
+      { where: { id: 'p1', status: 'SOLD' }, data: { status: 'AVAILABLE' } },
+    ]);
+  });
+});
+
+describe('writeStock uses the shared status helper', () => {
+  it('calls applyStatusFromTotal and does not re-implement the status rule', () => {
+    const src = readFileSync(
+      join(dirname(fileURLToPath(import.meta.url)), 'product-stock.ts'),
+      'utf8',
+    )
+      .split('\n')
+      .map((l) => l.replace(/\/\/.*$/, ''))
+      .join('\n');
+    // writeStock body = from its signature to the next top-level export
+    const start = src.indexOf('export async function writeStock');
+    expect(start, 'writeStock not found (renamed?)').toBeGreaterThan(-1);
+    const rest = src.slice(start + 1);
+    const next = rest.indexOf('\nexport ');
+    const write = next === -1 ? rest : rest.slice(0, next);
+    expect(write).toContain('applyStatusFromTotal(tx, productId)');
+    expect(write).not.toMatch(/status:\s*'(SOLD|AVAILABLE)'/);
+  });
+});
 
 describe('defaultStock', () => {
   it('gives 1 unit per selected size', () => {

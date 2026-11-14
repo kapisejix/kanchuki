@@ -167,9 +167,9 @@ Ground rules for every task: branch from `main` (`feat/f-047-<task>`), invoke th
 - Skills: `ecc:database-migrations`, `ecc:postgres-patterns`, `supabase:supabase-postgres-best-practices`; agent `ecc:database-reviewer` on the SQL; memory note: every retailer table needs RLS.
 - Done when: migration reviewed, applied by owner, grants verified, DATABASE.md updated.
 
-### T2. Shared logic: `applyStatusFromTotal`  ·  ~0.25 day
-- [ ] Extract the "total 0 -> SOLD, >0 on SOLD -> AVAILABLE" tail of `writeStock` (`apps/api/src/lib/product-stock.ts`) into one function used by both `writeStock` and the new sell code. No behaviour change.
-- [ ] Existing stock tests stay green; add a test pinning both callers use it.
+### T2. Shared logic: `applyStatusFromTotal`  ·  ~0.25 day  ·  ✅ done 2026-11-14
+- [x] Extract the "total 0 -> SOLD, >0 on SOLD -> AVAILABLE" tail of `writeStock` (`apps/api/src/lib/product-stock.ts`) into one function used by both `writeStock` and the new sell code. No behaviour change. (`applyStatusFromTotal(tx, productId)`, takes the open transaction client; the sell route in T3 must call it inside its per-product `$transaction`.)
+- [x] Existing stock tests stay green; add a test pinning both callers use it. (Pinned for `writeStock` now; **T3 must add the same source pin for the sell route**, since it does not exist yet.) Full API suite 3081 passed, mutation-checked.
 - Skills: `superpowers:test-driven-development`, `ecc:tdd-workflow`; agent `ecc:code-simplifier`.
 
 ### T3. API `POST /v1/products/sell`  ·  ~1 day
