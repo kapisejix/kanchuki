@@ -417,3 +417,12 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | What | 5 more code-drawn designs appended to `apps/api/src/lib/design-seed-data.ts`: Rakhi Thread (4:5, thread + flower rakhi), Limited Stock (square, baked English pill), Back In Stock (4:5, gold pill on emerald), Look of the Day (4:5, 2 slots, baked heading), Meet Our Store (9:16, logo + shop name + `custom_text` tagline + city/phone/URL, mandala). Catalogue is now 24 designs. |
 | Verification | `design-seed-data.test.ts` 51/51 (occasion coverage extended), API `tsc` clean. Rendered all 5 through the real `renderDesign` with synthetic shop/product data and looked at them: no overlap or clipping, rupee glyph and fonts load. Temp render script deleted. |
 | Not done | Seed NOT run: owner runs `seed-design-templates.ts --apply` (idempotent by name, adds only these 5 as DRAFT). Baked words are English only (same as SALE). Not seen with real product photos, on a device, or via the admin preview. Still no 1.91:1 format, so no FB-landscape designs. |
+
+## 2026-11-14 — Drop `social_templates` (migration 156, written, NOT applied)
+
+| What | Detail |
+|---|---|
+| Changed | New `156_drop_social_templates` (`DROP TABLE IF EXISTS "social_templates"; DROP TYPE IF EXISTS "SocialTemplateType";`). `schema.prisma`: `SocialTemplate` model, `SocialTemplateType` enum and `Retailer.social_templates` removed. `purge-retailer-now.ts`: the `DELETE FROM social_templates` line removed (it would have rolled back every retailer self-delete once the table is gone). `rls-remaining-policy.test.ts`: allows `social_templates` as dropped-later (migration 136 is applied history and still names it). |
+| Kept on purpose | `PlanFeatureKey.SOCIAL_TEMPLATES` (enum value drop needs a type rebuild); migrations 069/124/125/136/150 untouched. |
+| Owner steps | Deploy the code first, then `select count(*) from social_templates;`, `pg_dump -t social_templates --data-only` if non-empty, then apply 156 as the migrator role. Rollback: re-run 069's DDL and restore the dump. |
+| Verification | `prisma validate` OK, API `tsc` clean, API vitest 3067 passed / 9 skipped, biome clean on touched TS. Migration not run against any database; row count in prod unknown. |

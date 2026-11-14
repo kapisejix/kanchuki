@@ -85,7 +85,6 @@ export async function hardDeleteRetailer(retailerId: string): Promise<void> {
     // Reviews reference products + customers, so they go first.
     'DELETE FROM product_reviews WHERE retailer_id = $1;',
     'DELETE FROM store_reviews WHERE retailer_id = $1;',
-    'DELETE FROM social_templates WHERE retailer_id = $1;',
     'DELETE FROM channel_syncs WHERE retailer_id = $1;',
     'DELETE FROM bug_reports WHERE retailer_id = $1;',
     'DELETE FROM product_variants WHERE retailer_id = $1;',
