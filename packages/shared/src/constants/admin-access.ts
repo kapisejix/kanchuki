@@ -121,7 +121,6 @@ export const STANDARD_ADMIN_ADMIN_SEGMENTS = [
   'showcase-design-categories', // suits-designs taxonomy — API side
   'showcase-designs', // suits-designs content — API side
   'social', // connected FB/IG accounts
-  'social-templates', // social template content
   'stats', // DASHBOARD REQUIRED — /admin renders it unconditionally
   'studio-styles', // AI Studio scenes/styles (content)
   'suits-design-categories', // suits-designs taxonomy — web page segment
@@ -150,6 +149,8 @@ export const ADMIN_TIER_ADMIN_SEGMENTS = [
   'backups',
   'database', // Operations -> DB Health / Backup / Deletion Vault. Its /query page is gated by path below
   'deletion-vault', // Operations -> Deletion Vault (hard-deletes retailer/customer data)
+  'ai-custom-designs', // read-only view of retailer AI design prompts + usage (T5)
+  'design-templates', // social design templates: create/edit by Super Admin + Admin only (owner D6, 2026-11-04)
   'deployment-gate', // Operations -> Deployment Gate
   'deployments', // Operations -> Deployments
   'gst', // Reports -> GST Reports (the /v1/admin/gst/* data)

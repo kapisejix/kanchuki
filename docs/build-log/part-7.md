@@ -329,3 +329,82 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Proof | #238 CI green: quality, unit-web, migration-replay, build, e2e-web. |
 | Prod check 2026-11-04 | Read-only: 20 retailers, 0 with latitude/longitude, `location_source` NULL on all. Backfill not run. |
 | Not done | No device test, no EAS build, nothing run against real Nominatim. Existing retailers must re-pin from the app. |
+
+## 2026-11-04 — Admin social design templates: T1 + T2 + T3 (branch `feat/design-templates-t3`, stacked on `fix/social-templates-t1`, not pushed)
+
+| Item | Detail |
+|---|---|
+| T1 (`9a2a3bf7`) | Retailer templates screen: expo-clipboard copy, hashtag parse, Android share; admin monitor Occasions stat and inactive-badge contrast. |
+| T2 (`845c0372`) | `packages/shared/src/design-template.ts` (format/variable lists, `parseDesignSpec()` which rebuilds an untrusted spec), `packages/ai/src/design-render.ts` (`renderDesign`, sharp), table `design_templates` + enum `DesignFormat` (migration 152, applied in prod by owner 2026-11-04). |
+| T3 API | `apps/api/src/routes/admin/admin-design-templates.ts`: list, get, create (always DRAFT, plans default to all three per D5), partial update (format + slots + spec re-validated together), status (DRAFT/PUBLISHED/HIDDEN), stateless `POST /preview` (unsaved draft, sample data), `POST /upload-url` (signed `content_length`, RC-080; keys verified by `verifyUpload`, RC-075; URLs always server-built). **No DELETE route**: `kanchuki_app` has no DELETE grant; retire = HIDDEN. Segment `design-templates` classified in `ADMIN_TIER_ADMIN_SEGMENTS` (Super Admin + Admin, D6); `R2_PATHS.designTemplateAsset`. |
+| T3 UI | `/admin/social-templates` is now two tabs: Design Library (new: list, publish/hide, form + live-preview editor with layer list, background upload) and Retailer AI Templates (the previous page, unchanged). Editor lists come from `@kanchuki/shared`. |
+| Seed | `apps/api/scripts/seed-design-templates.ts`: 9 DRAFT starter designs with generated placeholder backgrounds (D7). Dry-run is offline and validated all 9 specs; `--apply` is owner-run. |
+| Deviations from the brief | Preview is `POST /design-templates/preview` (spec in the body), not `:id/preview`, so an unsaved draft can be previewed. Assets live under `admin/design-templates/` (one shared prefix) instead of `templates/<id>/`: the id does not exist before create. `parseDesignSpec` uses an indexed loop because `apps/web` compiles shared from source at a lower TS target. |
+| Proof | API `tsc` clean; new route tests 14/14 (spec rejection, unknown format, index vs slots, prefix guard, no-DELETE, `content_length` required, preview); `admin-access` + `admin-gate` guards pass; shared 28/28; web `tsc` + `next lint` clean. |
+| Not done / not verified | **Not browser-tested**, no real R2 upload or render through the route, `--apply` never run. Hindi text renders as boxes (no Devanagari font in the API image). Retailer-side picker (T4), AI paid tier (T5), `social_templates` retirement (T5/T6) not started. RLS policy `backend_roles_full_access` on `design_templates` is in migration 152 but not confirmed in prod (owner: `select policyname from pg_policies where tablename='design_templates';`). |
+
+**Hindi font (same day, T3 follow-up):** bundled Noto Sans Devanagari (OFL, variable TTF, `apps/api/fonts/`) and installed it in `apps/api/Dockerfile`; added to both `FONT_STACK` entries in `design-render.ts` so fontconfig falls back per glyph. Tests 17/17 (no Devanagari pixel check: this Windows box has no matching fontconfig). Not built in Docker, not verified on Railway; Hindi may still render as boxes until the image is rebuilt. Only one Dockerfile (`apps/api/Dockerfile`) exists, not two.
+
+## 2026-11-04 — Admin social design templates: T4 retailer picker + render (same branch, not committed, not pushed)
+
+| Item | Detail |
+|---|---|
+| API | `apps/api/src/routes/retailers/retailers-social/retailers-social-designs.ts`, registered in `retailers-social.ts`. `GET /v1/retailers/me/designs` = PUBLISHED designs whose `plans` include the caller's plan. `POST /v1/retailers/me/designs/:id/render` takes `product_ids` (≤ design slots) + optional `custom_text` / `offer_text` (≤ 80 chars) and returns `{image_url, image_key}`. Draft / hidden / wrong-plan design = 404. Owner-only (`isRealOwner`; managers are default-denied). |
+| Variables | Server-filled from the caller's own rows, never the client: shop name, city, `enquiryPhone()`, store URL, logo (missing logo = layer skipped), product name / price / mrp / `discount_pct` / sku / fabric. Foreign product id = 404 via `assertOwnProducts` (RC-138). Product with no photo = 422. `usage_count` bumped after a successful render only (a failed bump is logged, image still returned). Image stored at `retailers/<id>/designs/<hex>.jpg`. |
+| Publish path | **No new publishing code.** The image goes through the existing composer `IMAGE` post (`POST /me/social/posts`, `items:[{image_url}]`). |
+| Mobile | `src/lib/api/designs.ts` (`designTemplatesApi`), new screen `app/social/design.tsx` (pick design -> `ProductGridPicker` -> optional headline/offer -> Make design -> preview -> Post), Growth hub row "Design a Post". `create.tsx` accepts `?design_image=` and only if it matches `https://<host>/retailers/<id>/designs/<hex>.jpg`. |
+| Proof | API `tsc` clean; new route tests 8/8 (plan filter, variables from DB rows, draft = 404, foreign product, slot cap, no photo, manager 403, text cap, render failure no usage bump); full API suite 2975 passed; Biome clean on new files; mobile `tsc` clean; mobile vitest 551/551 (keyboard / a11y guards included). |
+| Not done | **Scheduler (F-043) not wired**: its items are product-keyed and render at publish; a design step there needs a `design_template_id` + vars column (migration) and was left out. Composer design posts are single-image only (no carousel of designs). No render cache. **Not device-tested, no real R2 download/render through the route, Hindi glyphs unverified, `design_image` regex and the new screen have no UI test.** Needs designs PUBLISHED by an admin (seed not run) before the picker shows anything. |
+
+## 2026-11-04 — Admin social design templates: T4b scheduler design step (same branch, not committed, not pushed)
+
+| Item | Detail |
+|---|---|
+| Shape | A design is a **slide style**. Its id goes in the existing `scheduled_post_items.template_id` (image_level `TEMPLATE`); built-in ids are 4 fixed names and design ids are cuids, so they cannot collide. **No migration** (the earlier "needs a column" estimate was only for per-slide headline/offer text, see Not done). |
+| Server | `lib/design-post-render.ts` (new): `findPublishedDesign` + `renderDesignJpeg`, extracted from the T4 composer route, which now calls it. `lib/schedule-render.ts`: a non-built-in `template_id` renders through it with THIS slide's product (`<postId>-<pos>-design-*.jpg`), `usage_count` bumped via `bumpDesignUsage`. `retailers-social-schedule-style.ts`: the three style routes (`items/:id`, `posts/:id`, `plans/:id`) accept `{design_id}` next to `{template}`; a design must be PUBLISHED for the caller's plan (else 404). Item route renders now (preview); post/plan routes only store the id, the publish tick renders (price stays current). |
+| Safety | Render at publish re-checks PUBLISHED + plan: a design hidden or unpublished after scheduling throws inside `renderItem`, `resolvePostImages` falls back to the original photo, the post still goes out. Rotation pool stays built-ins only. |
+| Mobile | `scheduleApi.style*` take `StyleChoice` (built-in / `'rotate'` / `null` / `{design_id}`); the schedule style sheet (`app/social/schedule/[id].tsx`) lists "Your designs" (single-product designs only) under the built-ins. |
+| Proof | API `tsc` clean, Biome clean; API suite 2982 passed (new: 3 render tests incl. retired-design fallback, 4 style-route tests incl. 404 + lazy plan apply); mobile `tsc` clean, vitest 551/551. `silent-failures-guard` caught a proximity false positive on my first layout; fixed by moving the bump into a helper. |
+| Not done | **No per-slide headline / offer text** (`custom_text` / `offer_text` render empty; layers using them are skipped): storing them needs a `design_vars` column, i.e. a migration. Designs with more than one product slot are hidden in the scheduler (a slide has one product). A slide's label shows "Styled", not the design name. Not device-tested, no real render at publish, no test that a design render is accepted by Meta. |
+
+## 2026-11-05 — Admin social design templates: T4 committed, per-slide text, multi-slot designs, T5 paid AI tier (branch `feat/design-templates-t3`, not pushed)
+
+| Item | Detail |
+|---|---|
+| Commit | T4 + T4b committed locally as `3d155ad0`. Everything below is uncommitted. |
+| Per-slide headline / offer text | Migration `153_scheduled_post_item_design_vars` (nullable JSONB `design_vars`, **not applied**). The three style routes take `custom_text` / `offer_text` (trimmed, <= 80) next to `design_id`; stored on the item(s), cleared (`Prisma.DbNull`) when a slide goes back to a built-in or the original. `renderItem` passes them to `renderDesignJpeg`. Mobile style sheet gets two inputs (wrapped in `KeyboardScreen`). |
+| Multi-slot designs | `slotProducts()`: this slide's product, then the post's next products in order, wrapping (a 4-slot design on a 2-slide post repeats). The mobile filter that hid multi-slot designs is gone; slide badge shows the design name. Known gap: swapping/removing a slide clears only that slide's cached render, so neighbours' multi-slot renders can be stale until restyled. |
+| Security finding (hook, on `create.tsx` `design_image`) | Valid: a crafted deep link could make the app post any third-party image. Fixed server-side in the composer fan-out: an IMAGE `image_url` must start with `R2_PUBLIC_URL/` (skipped when the env is unset, dev only). Test added. The mobile regex still does not pin the host (server is the authority). |
+| T5 paid AI tier | Migrations `154_ai_custom_template_enums` (`PlanFeatureKey` + `QuotaResourceType` `AI_CUSTOM_TEMPLATE`) and `155_ai_custom_designs` (**not applied**). `lib/ai-custom-design.ts`: prompt cleaned (control chars, quote/brace chars, <= 300, no links/handles, small blocklist for people-likeness/brands/overrides) then wrapped in a fixed instruction that forbids drawn text. `POST /me/ai-designs` (owner-only, 10/min): feature gate (fails closed) -> provider configured -> sanitise -> own product + photo -> `checkQuota` -> atomic `reserveJobQuota` -> PENDING row -> enqueue; any failure after the reserve refunds. Job `ai-custom-design` runs on the studio queue, same FLUX path as Studio Shoot, saves to `retailers/<id>/designs/<hex>.jpg`, row READY, slot marked spent; every other exit refunds. Quota sweep treats a READY row as spent. `AI_CUSTOM_TEMPLATE` is METERED (no `plan_limits` row = 0) and listed in `PLAN_LIMIT_RESOURCE_TYPES`. Mobile `app/social/ai-design.tsx` + Growth hub row, polling the row, `ReportAiContent`, "My AI designs", posts via the composer IMAGE path. |
+| Proof | API `tsc` clean, Biome clean; API suite 232 files / 3010 tests pass (new: sanitiser 6, route 10, job 6, render +4, style routes +3, fan-out CDN pin +1); mobile `tsc` clean, vitest 551/551; shared 227/227; web `tsc` clean. |
+| Not done / not verified | **No real FLUX call, nothing run against Postgres, no device or browser test.** T5 is dark: needs migrations 153-155 applied, a `plan_features` row for `AI_CUSTOM_TEMPLATE`, and `plan_limits` rows (else it is off / limit 0). Skipped from spec §5: no output-format picker (Kontext keeps the photo's aspect), no "variable fill" of price/logo over the AI image (the AI image is picture-only; add when asked), no "save as reusable template", no admin screen for the prompts, `social_templates` not retired (still live). Output goes through the <= 80 KB compressor, so quality is Studio-Shoot level, not poster level. |
+
+## 2026-11-05 — Retire `social_templates` (D1), code only (branch `feat/design-templates-t3`, not pushed)
+
+| What | Detail |
+|---|---|
+| Removed | `growth-social-templates.ts` (+ test), `admin-social-templates.ts`, mobile `growth/templates.tsx` (orphan, nothing linked to it) and its 11 client methods/types, the `/v1/growth/social-templates` auth allowlist lines, the `social-templates` admin API segment. Admin page now only the Design Library and lives at `/admin/design-templates` (already `ADMIN_TIER`, D6); sidebar label "Design Library". |
+| Kept on purpose | `social_templates` table + rows, `SocialTemplateType` enum, `SOCIAL_TEMPLATES` plan feature key, the `purge-retailer-now` delete. No migration; dropping is an owner decision. |
+| Proof | API tsc + vitest 3006/3006 (admin-access guard caught the moved web segment), mobile tsc + 549/549, shared 227/227, web tsc clean. `Sidebar.test.tsx` "sign out" fails on the untouched baseline too (not from this change). |
+
+## 2026-11-05 — T5 gaps: format picker, price/logo overlay, prompt reuse, poster quality, admin view (branch `feat/design-templates-t3`, not pushed)
+
+| What | Detail |
+|---|---|
+| Output format | `POST /me/ai-designs` takes optional `format` (ORIGINAL / SQUARE / PORTRAIT / STORY, default ORIGINAL) and `overlay` (white_price / new_arrival / logo_corner, default none). Lists live in `@kanchuki/shared` (`AI_DESIGN_FORMATS`, `AI_DESIGN_OVERLAYS`). No migration: both ride in the job data, nothing is stored on the row. |
+| Overlay | `finishDesignImage()` (packages/ai `schedule-templates.ts`) reuses the free 4:5 slide renderer, so an overlay forces 4:5 and the format is ignored. Price = product `price_min`, store name and logo from the retailer. `festival_frame` left out (needs a DB lookup). A missing/unreadable logo falls back to the store-name pill. |
+| Quality | `downloadCompressAndUpload` gained `{ transform, compress }`; the job uses a 450 KB / 2000 px / q92 budget instead of the 80 KB catalog one. |
+| Reusable template | Built as **prompt reuse**: a chip row under "My AI designs" copies a past prompt into the box for another product. No stored background or new table. |
+| Admin view | `GET /v1/admin/ai-custom-designs` (read-only, `ADMIN_TIER`, no PII selected, 30-day status counts) + web page `/admin/ai-custom-designs` + sidebar "AI Designs". |
+| Proof | API tsc + vitest 3016/3016; ai 195/195; mobile tsc + 553/553 (new `ai-design-screen.test.tsx`, 4); shared 227/227; web tsc clean. Web `Sidebar.test.tsx` sign-out still fails on the untouched baseline. |
+| Not verified | No real FLUX call, no Postgres, no device/browser run; overlay look and the 450 KB budget never seen on a real AI image. |
+
+## 2026-11-05 — T6 starter pack: 10 original designs (branch `feat/design-templates-t3`, not pushed)
+
+| What | Detail |
+|---|---|
+| Catalogue moved | The seed catalogue left `apps/api/scripts/seed-design-templates.ts` for `apps/api/src/lib/design-seed-data.ts` (pure data + SVG strings, no sharp/DB/R2) so it is unit-testable; the script imports it and rasterises with sharp. The 9 placeholder designs are unchanged. |
+| New designs | Diwali Diyas, Navratri Garba, Eid Mubarak (9:16), Karwa Chauth Moon, Wedding Season, Holi Colours, Independence Day, Sale Starburst (baked English "SALE", discount from `offer_text`), Under Price Collage (4 products, headline typed as `custom_text`), Visit Us Card (`shop_logo`, city, phone, URL). All motifs (diya, crescent, star, mandala, tricolour band) are drawn in code: original art, nothing from Canva/Visme. |
+| Verification | `design-seed-data.test.ts` (41): names unique, every spec parses for its format and slots, backgrounds are well-formed SVG of the right size with unique ids, festival/format coverage. Rendered all 10 through the real `renderDesign` with sample vars and looked at them: found and fixed the SALE badge hidden under the product image and the Visit-Us divider cutting its URL. Script dry-run lists 19 designs and writes nothing. |
+| Not done | Seed NOT applied (owner runs `--apply`, rows land as DRAFT for review in Admin -> Design Library). Rakhi, Limited stock, Back in stock, Look of the day, Store intro; no 1.91:1 format exists, so no FB-landscape designs. Art is simple flat shapes, not designer-grade; Hindi text is never baked in (all words come from layers). Not seen on a real device or with real product photos. |
+

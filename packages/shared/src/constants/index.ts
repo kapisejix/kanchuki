@@ -96,6 +96,8 @@ export const PLAN_LIMIT_RESOURCE_TYPES = [
   // F-043 — scheduler: posts published per month, and max active plans per platform.
   'SCHEDULED_POST',
   'ACTIVE_SCHEDULE_PLAN',
+  // T5 — AI custom-prompt social designs per month (METERED: no row = 0).
+  'AI_CUSTOM_TEMPLATE',
 ] as const;
 
 export type PlanLimitResource = (typeof PLAN_LIMIT_RESOURCE_TYPES)[number];
@@ -363,6 +365,8 @@ export const R2_PATHS = {
   studioStyleThumb: (filename: string) => `admin/studio-styles/${filename}`,
   // Post-template admin preview thumbnails (admin-post-templates.ts).
   postTemplateThumb: (filename: string) => `admin/post-templates/${filename}`,
+  // Design-template background art + picker thumbnails (admin-design-templates.ts).
+  designTemplateAsset: (filename: string) => `admin/design-templates/${filename}`,
   categoryImage: (retailerId: string, filename: string) =>
     `retailers/${retailerId}/categories/${filename}`,
   retailerBanner: (retailerId: string, filename: string) =>
@@ -851,6 +855,11 @@ export const INDIAN_STATES = [
 
 // F-043 Task 4 — scheduler image templates. Ids only (pure, importable from
 // anywhere); the renderers live in packages/ai/src/schedule-templates.ts.
+/** Output shapes for an AI-made design (T5). ORIGINAL keeps the aspect the model returned. */
+export const AI_DESIGN_FORMATS = ['ORIGINAL', 'SQUARE', 'PORTRAIT', 'STORY'] as const;
+/** Free overlays drawn after the AI image; festival_frame needs a DB lookup so it is left out. */
+export const AI_DESIGN_OVERLAYS = ['white_price', 'new_arrival', 'logo_corner'] as const;
+
 export const SCHEDULE_SLIDE_TEMPLATES = [
   'white_price',
   'new_arrival',

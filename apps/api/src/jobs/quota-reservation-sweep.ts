@@ -38,6 +38,14 @@ async function producedResult(resource: QuotaResourceType, jobId: string): Promi
       LIMIT 1`;
     return rows.length > 0;
   }
+  if (resource === 'AI_CUSTOM_TEMPLATE') {
+    // ai_custom_designs.id is the job id; READY is written before the slot is marked spent.
+    const row = await prisma.aiCustomDesign.findUnique({
+      where: { id: jobId },
+      select: { status: true },
+    });
+    return row?.status === 'READY';
+  }
   if (resource === 'TRY_ON_GENERATION') {
     const job = await prisma.tryOnJob.findUnique({
       where: { id: jobId },

@@ -1331,3 +1331,17 @@ Shopper "Report this AI content" (Google Play AI-Generated Content policy). Text
 | `created_at` | TIMESTAMP | indexed; also `(customer_account_id, created_at)` |
 
 Writer: `routes/public/passport/passport-ai-report.ts` (INSERT); `passport-data.ts` (UPDATE unlink). No DELETE. RLS `backend_roles_full_access`.
+
+
+## Social design templates — `design_templates` (migration 152, applied in prod 2026-11-04)
+
+Admin-authored free post designs. `spec` is JSON `{ layers: [...] }` validated by `parseDesignSpec()` (`packages/shared/src/design-template.ts`) on every write and again before render. `status` reuses `PostTemplateStatus` (DRAFT | PUBLISHED | HIDDEN); `plans` empty = nobody. `format` is enum `DesignFormat` (SQUARE | PORTRAIT_4_5 | STORY_9_16); `product_slots` 1..6 (CHECK). `background_key` / `thumbnail_key` are R2 keys under `admin/design-templates/`. **Writer:** `routes/admin/admin-design-templates.ts` only. `kanchuki_app` has no DELETE grant: designs are retired with status HIDDEN, never deleted. RLS policy `backend_roles_full_access` is created by the migration; prod presence not yet confirmed.
+
+### Scheduler per-slide design text — `scheduled_post_items.design_vars` (migration 153, NOT applied)
+
+Nullable JSONB `{custom_text?, offer_text?}` (each <= 80 chars, route-validated). Read only when `template_id` is an admin design id; NULL = those layers render empty. **Writer:** `retailers-social-schedule-style.ts` (style routes). Set to NULL whenever a slide is restyled to a built-in or reset.
+
+## AI custom-prompt designs — `ai_custom_designs` (migrations 154 enums + 155 table, NOT applied)
+
+One row per paid AI generation (T5). `id` = BullMQ job id = `quota_reservations.job_id`. `status` PENDING | READY | FAILED (CHECK). `prompt` is the retailer's sanitised text; `image_key` / `image_url` set only on READY (`retailers/<id>/designs/<hex>.jpg`). FKs cascade from `retailers` / `products`. **Writers:** `routes/retailers/retailers-social/retailers-social-ai-designs.ts` (insert PENDING) and `jobs/ai-custom-design.ts` (READY/FAILED). No DELETE grant. Migration 154 adds `PlanFeatureKey.AI_CUSTOM_TEMPLATE` (fails CLOSED) and `QuotaResourceType.AI_CUSTOM_TEMPLATE` (METERED: no `plan_limits` row = 0).
+

@@ -28,6 +28,7 @@ const METERED: ReadonlySet<QuotaResourceType> = new Set([
   'TRY_ON_GENERATION',
   'BG_REMOVAL',
   'IMAGE_CROP',
+  'AI_CUSTOM_TEMPLATE', // T5: a FLUX generation per call
 ]);
 const NO_ROW_METERED: { limit: number; period: QuotaPeriod } = { limit: 0, period: 'MONTH' };
 

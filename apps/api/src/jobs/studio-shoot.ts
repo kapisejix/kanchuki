@@ -43,7 +43,7 @@ import {
 /** Same fallback as routes/products/products-helpers.ts photoUrlToDisplay —
  * a stored public URL is used as-is; a relative path falls back to a
  * presigned GET URL when R2_PUBLIC_URL is unset. */
-async function studioSourceUrl(photo: {
+export async function studioSourceUrl(photo: {
   url: string;
   r2_key: string | null;
 }): Promise<string | null> {

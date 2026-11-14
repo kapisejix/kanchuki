@@ -192,7 +192,6 @@ const MANAGER_ALLOWED_ROUTES: StaffRule[] = [
   { method: 'GET', path: '/v1/growth/festivals' },
   { method: 'GET', path: '/v1/growth/analytics' },
   { method: '*', path: '/v1/growth/social-caption-suggest' },
-  { method: '*', path: '/v1/growth/social-templates' },
   // Growth hub (store/catalog management + customer insight). None of these
   // return customer phone numbers (pinned by staff-access.test.ts).
   { method: 'POST', path: '/v1/growth/ai-campaign', exact: true },
@@ -306,7 +305,6 @@ const SUPPORT_SCOPE_ROUTES: Record<SupportScope, StaffRule[]> = {
     ...rw('/v1/growth/promotions'),
     { method: 'GET', path: '/v1/growth/festivals' },
     ...rw('/v1/growth/social-caption-suggest'),
-    ...rw('/v1/growth/social-templates'),
     { method: 'POST', path: '/v1/growth/ai-campaign', exact: true },
     // Composer + account list only; connect/disconnect/callback stay owner-only.
     { method: 'POST', path: '/v1/retailers/me/social/posts', exact: true },

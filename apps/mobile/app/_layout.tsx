@@ -235,7 +235,6 @@ function AppShell() {
           <Stack.Screen name="growth/integrations/instagram" />
           <Stack.Screen name="growth/integrations/whatsapp" />
           <Stack.Screen name="growth/ratings" />
-          <Stack.Screen name="growth/templates" />
           <Stack.Screen name="settings/index" />
           <Stack.Screen name="settings/catalog-upload" />
           <Stack.Screen name="settings/deleted-products" />

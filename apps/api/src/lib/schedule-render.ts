@@ -25,6 +25,7 @@ import {
   uploadBuffer,
 } from '@kanchuki/ai';
 import { prisma } from '@kanchuki/db';
+import { findPublishedDesign, renderDesignJpeg } from './design-post-render.js';
 
 const MAX_SLIDES = 10;
 const FESTIVAL_WINDOW_MS = 7 * 86_400_000;
@@ -37,10 +38,15 @@ export interface RenderItem {
   image_level: 'ORIGINAL' | 'TEMPLATE';
   template_id: string | null;
   resolved_image_key: string | null;
+  /** {custom_text?, offer_text?} for an admin design; ignored for built-in templates. */
+  design_vars?: unknown;
 }
 
 interface Ctx {
+  /** Product ids of the whole post in slide order: a multi-slot design fills its slots from here. */
+  order: string[];
   retailerId: string;
+  plan: 'STARTER' | 'GROWTH' | 'PRO';
   storeName: string;
   logoKey: string | null;
   photos: { id: string; product_id: string; url: string; r2_key: string; is_primary: boolean }[];
@@ -48,11 +54,15 @@ interface Ctx {
   buffers: Map<string, Buffer>;
 }
 
-async function loadCtx(retailerId: string, productIds: string[]): Promise<Ctx> {
+async function loadCtx(
+  retailerId: string,
+  productIds: string[],
+  order: string[] = productIds,
+): Promise<Ctx> {
   const [retailer, photos, products] = await Promise.all([
     prisma.retailer.findUniqueOrThrow({
       where: { id: retailerId },
-      select: { shop_name: true, logo_r2_key: true },
+      select: { shop_name: true, logo_r2_key: true, plan: true },
     }),
     prisma.productPhoto.findMany({
       where: { retailer_id: retailerId, product_id: { in: productIds } },
@@ -64,7 +74,9 @@ async function loadCtx(retailerId: string, productIds: string[]): Promise<Ctx> {
     }),
   ]);
   return {
+    order,
     retailerId,
+    plan: retailer.plan,
     storeName: retailer.shop_name ?? '',
     logoKey: retailer.logo_r2_key,
     photos,
@@ -99,16 +111,52 @@ async function nearestFestival(at: Date): Promise<string | null> {
   return f?.name ?? null;
 }
 
+/**
+ * A slide has one product but a design may have N slots: this slide's product first, then the
+ * post's next products in order, wrapping round (a 4-slot design on a 2-slide post repeats).
+ */
+export function slotProducts(order: string[], productId: string, slots: number): string[] {
+  const at = Math.max(0, order.indexOf(productId));
+  const ring = order.length > 0 ? order : [productId];
+  return Array.from({ length: slots }, (_, n) => ring[(at + n) % ring.length] as string);
+}
+
+/** Stored design_vars -> render input; anything malformed renders as empty text. */
+function designVars(v: unknown): { custom_text?: string; offer_text?: string } {
+  const o = v && typeof v === 'object' ? (v as Record<string, unknown>) : {};
+  return {
+    ...(typeof o.custom_text === 'string' ? { custom_text: o.custom_text.slice(0, 80) } : {}),
+    ...(typeof o.offer_text === 'string' ? { offer_text: o.offer_text.slice(0, 80) } : {}),
+  };
+}
+
 const keyFor = (retailerId: string, postId: string, tag: string) =>
   `retailers/${retailerId}/schedule/${postId}-${tag}-${Date.now().toString(36)}.jpg`;
 
 async function renderItem(
   ctx: Ctx,
   item: RenderItem,
-  template: SlideTemplate,
+  template: string,
   postId: string,
   at: Date,
 ): Promise<string> {
+  // A non-built-in template id is an admin design (design_templates.id): same render the
+  // composer uses, with this slide's product. Draft / hidden / wrong-plan => throws => the
+  // caller falls back to the original photo, so a retired design never blocks a post.
+  if (!isSlideTemplate(template)) {
+    const design = await findPublishedDesign(template, ctx.plan);
+    if (!design) throw new Error('design unavailable');
+    const out = await renderDesignJpeg({
+      retailerId: ctx.retailerId,
+      design,
+      productIds: slotProducts(ctx.order, item.product_id, design.product_slots),
+      custom: designVars(item.design_vars),
+    });
+    const key = keyFor(ctx.retailerId, postId, `${item.position}-design`);
+    await uploadBuffer(key, out, 'image/jpeg');
+    await bumpDesignUsage(design.id);
+    return key;
+  }
   const photo = photoFor(ctx, item);
   if (!photo) throw new Error('no photo');
   const [buf, festival, logo] = await Promise.all([
@@ -138,10 +186,16 @@ export async function styleItemNow(
   retailerId: string,
   postId: string,
   item: RenderItem,
-  template: SlideTemplate,
+  template: string,
   at: Date,
 ): Promise<string> {
-  const ctx = await loadCtx(retailerId, [item.product_id]);
+  const siblings = await prisma.scheduledPostItem.findMany({
+    where: { scheduled_post_id: postId, retailer_id: retailerId },
+    orderBy: { position: 'asc' },
+    select: { product_id: true },
+  });
+  const order = siblings.map((s) => s.product_id);
+  const ctx = await loadCtx(retailerId, [item.product_id], order.length ? order : undefined);
   const key = await renderItem(ctx, item, template, postId, at);
   await prisma.scheduledPostItem.updateMany({
     where: { id: item.id, retailer_id: retailerId },
@@ -159,10 +213,13 @@ export async function resolvePostImages(args: {
   items: RenderItem[];
 }): Promise<string[]> {
   const { retailerId, postId, scheduledAt, coverStyle, items } = args;
-  const ctx = await loadCtx(retailerId, [...new Set(items.map((i) => i.product_id))]);
+  const ctx = await loadCtx(
+    retailerId,
+    [...new Set(items.map((i) => i.product_id))],
+    items.map((i) => i.product_id),
+  );
 
-  const templated = (i: RenderItem) =>
-    i.image_level === 'TEMPLATE' && isSlideTemplate(i.template_id);
+  const templated = (i: RenderItem) => i.image_level === 'TEMPLATE' && !!i.template_id;
   const withCover = isCoverStyle(coverStyle) && items.length >= 2 && items.length < MAX_SLIDES;
   const normalizeRest = withCover || items.some(templated);
 
@@ -174,7 +231,7 @@ export async function resolvePostImages(args: {
       if (templated(item)) {
         let key = item.resolved_image_key;
         if (!key) {
-          key = await renderItem(ctx, item, item.template_id as SlideTemplate, postId, scheduledAt);
+          key = await renderItem(ctx, item, item.template_id as string, postId, scheduledAt);
           await prisma.scheduledPostItem.updateMany({
             where: { id: item.id, retailer_id: retailerId },
             data: { resolved_image_key: key },
@@ -214,4 +271,16 @@ export async function resolvePostImages(args: {
     }
   }
   return urls;
+}
+
+/** Counter only: a failed bump is logged and never loses a rendered slide. */
+async function bumpDesignUsage(designId: string): Promise<void> {
+  try {
+    await prisma.designTemplate.update({
+      where: { id: designId },
+      data: { usage_count: { increment: 1 } },
+    });
+  } catch (err) {
+    console.error('[schedule-render] usage_count bump failed', designId, err);
+  }
 }

@@ -13,6 +13,7 @@ import {
   adminActivityRoutes,
   adminAggregatorRoutes,
   adminAiContentReportRoutes,
+  adminAiCustomDesignRoutes,
   adminAiRoutes,
   adminBackupsRoutes,
   adminBugReportRoutes,
@@ -21,6 +22,7 @@ import {
   adminContactRoutes,
   adminDataRoutes,
   adminDesignReferenceRoutes,
+  adminDesignTemplateRoutes,
   adminDiscoveryRoutes,
   adminEngagementRoutes,
   adminFestivalsRoutes,
@@ -46,7 +48,6 @@ import {
   adminShowcaseDesignCategoryRoutes,
   adminShowcaseDesignRoutes,
   adminSocialRoutes,
-  adminSocialTemplateRoutes,
   adminStorageRoutes,
   adminStudioStylesRoutes,
   adminSurveyRoutes,
@@ -239,8 +240,6 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
   await server.register(adminGbpRoutes);
   // admin-post-templates — Create Post Composer v2 post-template library (§11)
   await server.register(adminPostTemplatesRoutes);
-  // admin-social-templates — AI Social Media Templates management
-  await server.register(adminSocialTemplateRoutes);
   // admin-gst — GST report dashboard + transaction list
   await server.register(adminGstRoutes);
   // admin-gst-profile — seller GST identity for invoice PDFs
@@ -257,6 +256,9 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
   // admin-showcase-designs + categories — Suits Designs library
   await server.register(adminShowcaseDesignRoutes);
   await server.register(adminShowcaseDesignCategoryRoutes);
+  await server.register(adminDesignTemplateRoutes);
+  // admin-ai-custom-designs — read-only view of retailers' paid AI design prompts + usage
+  await server.register(adminAiCustomDesignRoutes);
   await server.register(adminColorFamilyRoutes);
   await server.register(adminMyStyleRoutes);
   // admin-bug-reports — retailer-submitted bug reports

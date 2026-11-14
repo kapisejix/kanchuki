@@ -20,7 +20,7 @@ import { ReportAiContent } from '../../../src/components/ReportAiContent';
 import { WHITE_BUTTON_INK, WhiteButton } from '../../../src/components/WhiteButton';
 import { ProductGridPicker } from '../../../src/components/social';
 import type { ComposeProduct } from '../../../src/components/social/types';
-import { socialApi } from '../../../src/lib/api';
+import { designTemplatesApi, socialApi } from '../../../src/lib/api';
 import {
   EDITABLE_POST_STATUSES,
   TEMPLATE_OPTIONS,
@@ -29,7 +29,7 @@ import {
   scheduleApi,
   templateLabel,
 } from '../../../src/lib/api/schedule';
-import type { SchedulePost, SlideTemplateId } from '../../../src/lib/api/schedule';
+import type { SchedulePost, StyleChoice } from '../../../src/lib/api/schedule';
 import { useAuth } from '../../../src/lib/auth-context';
 import { showError } from '../../../src/lib/errors';
 import { useScreenInsets } from '../../../src/lib/safe-area';
@@ -61,6 +61,16 @@ function PostCard({
   onStyle: (scope: 'item' | 'post', id: string) => void;
 }) {
   const editable = EDITABLE_POST_STATUSES.includes(post.status);
+  // Design names for the slide badges; only fetched when a slide actually uses a design.
+  const usesDesign = post.items.some((i) => i.template_id && !templateLabel(i.template_id));
+  const designNames = useQuery({
+    queryKey: ['designs', 'list'],
+    queryFn: () => designTemplatesApi.list(),
+    enabled: usesDesign,
+    staleTime: 30_000,
+  });
+  const designName = (id: string | null) =>
+    designNames.data?.data.find((d) => d.id === id)?.name ?? null;
   const [caption, setCaptionState] = useState(post.caption);
   // The screen needs the live text so Confirm can save unsaved edits first.
   const setCaption = (c: string) => {
@@ -160,7 +170,7 @@ function PostCard({
                   <View className="flex-row items-center gap-1">
                     <Sparkles size={10} color="#A21CAF" />
                     <Text className="text-[10px] font-bold text-fuchsia-700 flex-shrink" numberOfLines={1}>
-                      {templateLabel(item.template_id) ?? 'Styled'}
+                      {templateLabel(item.template_id) ?? designName(item.template_id) ?? 'Styled'}
                     </Text>
                   </View>
                 ) : null}
@@ -343,8 +353,21 @@ export default function ScheduleCalendarScreen() {
     onError: (err) => showError(err, 'That product could not be used here. Pick another.'),
   });
 
+  // Admin designs for the style sheet. A multi-slot design fills its slots with this slide's
+  // product and the post's next products. Best-effort: a failed load just hides the section.
+  const designsQuery = useQuery({
+    queryKey: ['designs', 'list'],
+    queryFn: () => designTemplatesApi.list(),
+    enabled: styleTarget !== null,
+    staleTime: 30_000,
+  });
+  const designList = designsQuery.data?.data ?? [];
+  // Per-slide headline / offer line for the design's text layers (empty = layer skipped).
+  const [headline, setHeadline] = useState('');
+  const [offerLine, setOfferLine] = useState('');
+
   const style = useMutation({
-    mutationFn: async (t: SlideTemplateId | 'rotate' | null): Promise<unknown> => {
+    mutationFn: async (t: StyleChoice): Promise<unknown> => {
       if (!styleTarget) throw new Error('no target');
       if (styleTarget.scope === 'item') {
         return scheduleApi.styleItem(styleTarget.id, t === 'rotate' ? null : t);
@@ -557,7 +580,7 @@ export default function ScheduleCalendarScreen() {
         animationType="fade"
         onRequestClose={() => setStyleTarget(null)}
       >
-        <View className="flex-1 bg-black/40 justify-end">
+        <KeyboardScreen className="flex-1 bg-black/40 justify-end">
           <View
             className="bg-white rounded-t-3xl p-5 gap-2"
             style={{ paddingBottom: screenPaddingBottom }}
@@ -598,6 +621,47 @@ export default function ScheduleCalendarScreen() {
                     <Text className="text-sm font-bold text-spaceCadet-900">{t.label}</Text>
                   </AnimatedPressable>
                 ))}
+                {designList.length > 0 ? (
+                  <>
+                    <Text className="text-xs font-bold text-heliotrope-500 mt-1">Your designs</Text>
+                    <TextInput
+                      value={headline}
+                      onChangeText={setHeadline}
+                      maxLength={80}
+                      placeholder="Headline (optional)"
+                      accessibilityLabel="Design headline"
+                      className="bg-[#F8F7FC] border border-lavender-200 rounded-xl px-3 py-2 text-sm text-spaceCadet-900"
+                    />
+                    <TextInput
+                      value={offerLine}
+                      onChangeText={setOfferLine}
+                      maxLength={80}
+                      placeholder="Offer line, e.g. Flat 20% off (optional)"
+                      accessibilityLabel="Design offer line"
+                      className="bg-[#F8F7FC] border border-lavender-200 rounded-xl px-3 py-2 text-sm text-spaceCadet-900"
+                    />
+                    {designList.map((d) => (
+                      <AnimatedPressable
+                        key={d.id}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Design ${d.name}`}
+                        onPress={() =>
+                          style.mutate({
+                            design_id: d.id,
+                            ...(headline.trim() ? { custom_text: headline.trim() } : {}),
+                            ...(offerLine.trim() ? { offer_text: offerLine.trim() } : {}),
+                          })
+                        }
+                        className="px-4 py-3 rounded-2xl border border-lavender-200"
+                      >
+                        <Text className="text-sm font-bold text-spaceCadet-900">{d.name}</Text>
+                        {d.occasion ? (
+                          <Text className="text-[11px] text-heliotrope-500">{d.occasion}</Text>
+                        ) : null}
+                      </AnimatedPressable>
+                    ))}
+                  </>
+                ) : null}
                 {styleTarget && styleTarget.scope !== 'item' ? (
                   <AnimatedPressable
                     accessibilityRole="button"
@@ -623,7 +687,7 @@ export default function ScheduleCalendarScreen() {
               </>
             )}
           </View>
-        </View>
+        </KeyboardScreen>
       </Modal>
 
       <Modal

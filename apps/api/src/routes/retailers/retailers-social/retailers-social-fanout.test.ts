@@ -258,6 +258,28 @@ describe('IMAGE post (standalone design image)', () => {
       ...overrides,
     });
 
+  it('refuses an image_url outside our CDN (crafted deep link), accepts one on it', async () => {
+    const prev = process.env.R2_PUBLIC_URL;
+    process.env.R2_PUBLIC_URL = 'https://cdn.example';
+    try {
+      const app = await buildApp();
+      for (const image_url of [
+        'https://evil.example/designs/x.jpg',
+        'https://cdn.example.evil.io/x.jpg',
+      ]) {
+        const res = await app.inject({
+          method: 'POST',
+          url: '/v1/me/social/posts',
+          payload: imagePayload({ items: [{ image_url }] }),
+        });
+        expect(res.statusCode).toBe(422);
+      }
+    } finally {
+      if (prev === undefined) Reflect.deleteProperty(process.env, 'R2_PUBLIC_URL');
+      else process.env.R2_PUBLIC_URL = prev;
+    }
+  });
+
   it('422 when no items or the item lacks an image_url', async () => {
     const app = await buildApp();
     const res = await app.inject({

@@ -38,7 +38,6 @@ describe('raw err.message on screens', () => {
   const root = resolve(__dirname, '../../app')
   const files = [
     'growth/aggregators.tsx',
-    'growth/templates.tsx',
     'plan-select.tsx',
     'settings/index.tsx',
     'product/try-on.tsx',
