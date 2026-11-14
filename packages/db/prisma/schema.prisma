@@ -1126,6 +1126,7 @@ model ProductSale {
   unit_price       Int? // paise snapshot of price_min at sale time
   sold_by_staff_id String?
   undone_at        DateTime?
+  undone_by_staff_id String? // migration 159: Staff.id of whoever undid it, NULL = owner; no FK
   created_at       DateTime  @default(now())
 
   retailer Retailer @relation(fields: [retailer_id], references: [id], onDelete: Cascade)
