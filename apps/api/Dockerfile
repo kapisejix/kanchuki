@@ -30,6 +30,7 @@ RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
 # local dev boxes, where python is installed by hand.
 RUN apt-get update && apt-get install -y --no-install-recommends \
         ffmpeg \
+        fontconfig \
         fonts-dejavu-core \
     && rm -rf /var/lib/apt/lists/*
 
@@ -45,7 +46,9 @@ RUN mkdir -p /usr/share/fonts/truetype/marcellus \
 # Noto Sans Devanagari (OFL) so Hindi text in admin design templates renders
 # glyphs instead of boxes (packages/ai/src/design-render.ts FONT_STACK).
 RUN mkdir -p /usr/share/fonts/truetype/noto-devanagari \
-    && cp apps/api/fonts/NotoSansDevanagari.ttf apps/api/fonts/NotoSansDevanagari-OFL.txt /usr/share/fonts/truetype/noto-devanagari/
+    && cp apps/api/fonts/NotoSansDevanagari.ttf apps/api/fonts/NotoSansDevanagari-OFL.txt /usr/share/fonts/truetype/noto-devanagari/ \
+    && fc-cache -f \
+    && (fc-list :lang=hi | grep -q "Noto Sans Devanagari" || (echo "Devanagari font missing from image" >&2 && exit 1))
 
 # Retry once on failure: pnpm install has historically failed on
 # onnxruntime-node's postinstall downloading CUDA EP binaries (~330MB) from
