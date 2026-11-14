@@ -112,13 +112,13 @@ Minimal v1 needs **no new table**: decrement + status only. But three things nee
 | `size` | text | size sold, or `FREE` |
 | `quantity` | int CHECK > 0 | |
 | `unit_price` | int nullable | paise, snapshot of the product's `price_min` at sale time (not editable in v1) |
-| `sold_by_team_member_id` | text nullable | staff accountability; null = owner |
+| `sold_by_staff_id` | text nullable, no FK | `Staff.id` (retailer staff; `TeamMember` is the platform team). null = owner. **Built as `sold_by_staff_id`, migration 158.** |
 | `undone_at` | timestamptz nullable | set by Undo, rows are never deleted |
 | `created_at` | timestamptz | |
 
-- `UNIQUE (bill_id, product_id, size)` is the idempotency guard: a replayed bill hits the constraint and returns the stored result instead of decrementing again.
+- `UNIQUE (retailer_id, bill_id, product_id, size)` (built; retailer-scoped because `bill_id` comes from the phone) is the idempotency guard: a replayed bill hits the constraint and returns the stored result instead of decrementing again.
 - **Redis layer (§10 Q4b):** before the transaction, `SET sell:{retailer_id}:{bill_id} NX EX 86400`. Key already exists -> return the stored result (or 409 "bill in progress" if still running). Reuse the shared short-fail ioredis pattern (`awaitRedisReady()`, RC-155 era handshake race) and treat Redis errors as "skip the fast check", never as "allow a second sale". On a failed transaction delete the key so the retailer can retry.
-- Index `(retailer_id, created_at)`, index `(bill_id)`.
+- Index `(retailer_id, created_at)`, index `(product_id)` (built; the `(bill_id)` index is covered by the unique key's prefix).
 - RLS on `retailer_id` (project convention: every retailer table). No DELETE grant for `kanchuki_app` (RC-049); Undo sets `undone_at` and adds the stock back.
 - Check `docs/DATABASE.md` first and update it in the same session.
 
@@ -159,11 +159,11 @@ Ground rules for every task: branch from `main` (`feat/f-047-<task>`), invoke th
 - [ ] Owner assigns the F-number (proposed F-047), confirm §10 table has no wrong assumption.
 - Skills: none. Output: this doc's header updated.
 
-### T1. Migration + schema `product_sales`  ·  ~0.5 day
-- [ ] Read `docs/DATABASE.md`, `docs/SECURITY.md` (RLS + grants), RC-049/RC-162 (grants are invisible to types and tests).
-- [ ] Add Prisma model + SQL migration (table, UNIQUE, indexes, CHECK quantity > 0, RLS policy, `GRANT SELECT, INSERT, UPDATE` to `kanchuki_app`, no DELETE).
-- [ ] Update `docs/DATABASE.md` (table + writer map: `POST /products/sell`, `POST /products/sell/:billId/undo`).
-- [ ] Owner applies the migration in prod, then reads back the grants (agent only proposes the SQL).
+### T1. Migration + schema `product_sales`  ·  ~0.5 day  ·  ✅ done 2026-11-14 (PR #261)
+- [x] Read `docs/DATABASE.md`, `docs/SECURITY.md` (RLS + grants), RC-049/RC-162 (grants are invisible to types and tests).
+- [x] Add Prisma model + SQL migration (table, UNIQUE, indexes, CHECK quantity > 0, RLS policy, `GRANT SELECT, INSERT, UPDATE` to `kanchuki_app`, no DELETE).
+- [x] Update `docs/DATABASE.md` (table + writer map: `POST /products/sell`, `POST /products/sell/:billId/undo`).
+- [x] Owner applies the migration in prod, then reads back the grants (agent only proposes the SQL). Applied 2026-11-14; read back: `kanchuki_app` INSERT/SELECT/UPDATE, `kanchuki_purge` DELETE, RLS on, policy `backend_roles_full_access`.
 - Skills: `ecc:database-migrations`, `ecc:postgres-patterns`, `supabase:supabase-postgres-best-practices`; agent `ecc:database-reviewer` on the SQL; memory note: every retailer table needs RLS.
 - Done when: migration reviewed, applied by owner, grants verified, DATABASE.md updated.
 
