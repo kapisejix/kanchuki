@@ -116,7 +116,11 @@ export const templateLabel = (id: string | null) =>
 
 /** What a style call applies: a built-in id, 'rotate' (post/plan only), null = original photo,
  * or an admin design (stored in the same template_id column server-side). */
-export type StyleChoice = SlideTemplateId | 'rotate' | null | { design_id: string };
+export type StyleChoice =
+  | SlideTemplateId
+  | 'rotate'
+  | null
+  | { design_id: string; custom_text?: string; offer_text?: string };
 const styleBody = (c: StyleChoice) => (c !== null && typeof c === 'object' ? c : { template: c });
 
 const BASE = '/v1/retailers/me/social/schedule';

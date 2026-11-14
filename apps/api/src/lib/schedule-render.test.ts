@@ -67,12 +67,15 @@ vi.mock('@kanchuki/db', () => ({
       ]),
     },
     festival: { findFirst: m.festivalFindFirst },
-    scheduledPostItem: { updateMany: m.itemUpdateMany },
+    scheduledPostItem: {
+      updateMany: m.itemUpdateMany,
+      findMany: vi.fn(async () => [{ product_id: 'p1' }, { product_id: 'p2' }]),
+    },
     designTemplate: { update: m.designUpdate },
   },
 }));
 
-import { resolvePostImages, styleItemNow } from './schedule-render.js';
+import { resolvePostImages, slotProducts, styleItemNow } from './schedule-render.js';
 
 const item = (n: number, over: Record<string, unknown> = {}) => ({
   id: `i${n}`,
@@ -94,7 +97,7 @@ beforeEach(() => {
   m.normalizePhoto.mockResolvedValue(Buffer.from('norm'));
   m.renderCollage.mockResolvedValue(Buffer.from('collage'));
   m.festivalFindFirst.mockResolvedValue({ name: 'Diwali' });
-  m.findPublishedDesign.mockResolvedValue({ id: 'dz1' });
+  m.findPublishedDesign.mockResolvedValue({ id: 'dz1', product_slots: 1 });
   m.renderDesignJpeg.mockResolvedValue(Buffer.from('design'));
   m.designUpdate.mockResolvedValue({});
 });
@@ -122,6 +125,34 @@ describe('admin design as a slide template (template_id = design id)', () => {
     expect(m.normalizePhoto).toHaveBeenCalledTimes(1); // the plain slide is 4:5-normalised
   });
 
+  it('passes the slide design_vars (headline / offer) to the renderer, capped at 80', async () => {
+    await resolvePostImages({
+      ...base,
+      coverStyle: null,
+      items: [
+        item(1, {
+          image_level: 'TEMPLATE',
+          template_id: 'dz1',
+          design_vars: { custom_text: 'Diwali Sale', offer_text: 'x'.repeat(100), junk: 1 },
+        }),
+      ],
+    });
+    const custom = m.renderDesignJpeg.mock.calls[0]?.[0].custom;
+    expect(custom.custom_text).toBe('Diwali Sale');
+    expect(custom.offer_text).toHaveLength(80);
+    expect(custom).not.toHaveProperty('junk');
+  });
+
+  it('a multi-slot design takes this slide product plus the next ones in the post', async () => {
+    m.findPublishedDesign.mockResolvedValue({ id: 'dz4', product_slots: 4 });
+    await resolvePostImages({
+      ...base,
+      coverStyle: null,
+      items: [item(1), item(2, { image_level: 'TEMPLATE', template_id: 'dz4' }), item(3)],
+    });
+    expect(m.renderDesignJpeg.mock.calls[0]?.[0].productIds).toEqual(['p2', 'p3', 'p1', 'p2']);
+  });
+
   it('design retired / not on the plan → slide falls back to the original photo, post still goes', async () => {
     m.findPublishedDesign.mockResolvedValue(null);
     const urls = await resolvePostImages({
@@ -140,6 +171,15 @@ describe('admin design as a slide template (template_id = design id)', () => {
       where: { id: 'i1', retailer_id: 'r1' },
       data: { image_level: 'TEMPLATE', template_id: 'dz1', resolved_image_key: key },
     });
+  });
+});
+
+describe('slotProducts', () => {
+  it('starts at the slide, wraps round, and survives an unknown product', () => {
+    expect(slotProducts(['a', 'b', 'c'], 'b', 2)).toEqual(['b', 'c']);
+    expect(slotProducts(['a', 'b'], 'b', 3)).toEqual(['b', 'a', 'b']);
+    expect(slotProducts(['a', 'b'], 'zzz', 1)).toEqual(['a']);
+    expect(slotProducts([], 'a', 2)).toEqual(['a', 'a']);
   });
 });
 

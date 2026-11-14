@@ -14,7 +14,7 @@
 // "apply to all" is instant and the price on the strip is the price at post
 // time. Owner-only by MANAGER_ALLOWED_ROUTES default-deny (§8.3).
 import { publicUrl } from '@kanchuki/ai';
-import { prisma } from '@kanchuki/db';
+import { Prisma, prisma } from '@kanchuki/db';
 import { SCHEDULE_COVER_STYLES, SCHEDULE_SLIDE_TEMPLATES } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
@@ -40,9 +40,14 @@ const styleSchema = z.union([
   z.object({
     template: z.union([z.enum(SCHEDULE_SLIDE_TEMPLATES), z.literal('rotate'), z.null()]),
   }),
-  z.object({ design_id: z.string().min(1).max(40) }),
+  z.object({
+    design_id: z.string().min(1).max(40),
+    // per-slide text for the design's custom_text / offer_text layers (migration 153)
+    custom_text: z.string().trim().max(80).optional(),
+    offer_text: z.string().trim().max(80).optional(),
+  }),
 ]);
-type Choice = Slide | 'rotate' | null | { design: string };
+type Choice = Slide | 'rotate' | null | { design: string; vars: Record<string, string> | null };
 const designSchema = z.object({
   cover_style: z.enum(SCHEDULE_COVER_STYLES).nullable().optional(),
   rotation_pool: z.array(z.enum(SCHEDULE_SLIDE_TEMPLATES)).max(10).optional(),
@@ -63,7 +68,11 @@ export const retailersSocialScheduleStyleRoutes: FastifyPluginAsync = async (ser
       select: { plan: true },
     });
     if (!(await findPublishedDesign(data.design_id, plan))) throw notFound('Design');
-    return { design: data.design_id };
+    const vars = {
+      ...(data.custom_text ? { custom_text: data.custom_text } : {}),
+      ...(data.offer_text ? { offer_text: data.offer_text } : {}),
+    };
+    return { design: data.design_id, vars: Object.keys(vars).length ? vars : null };
   }
 
   server.get('/me/social/schedule/templates', async () => ({
@@ -98,16 +107,22 @@ export const retailersSocialScheduleStyleRoutes: FastifyPluginAsync = async (ser
     if (template === null) {
       await prisma.scheduledPostItem.updateMany({
         where: { id: item.id, retailer_id: retailerId },
-        data: { image_level: 'ORIGINAL', template_id: null, resolved_image_key: null },
+        data: {
+          image_level: 'ORIGINAL',
+          template_id: null,
+          resolved_image_key: null,
+          design_vars: Prisma.DbNull,
+        },
       });
       return { data: { template: null, resolved_image_url: null } };
     }
 
     try {
+      const vars = typeof choice === 'object' && choice !== null ? choice.vars : null;
       const key = await styleItemNow(
         retailerId,
         item.scheduled_post.id,
-        item,
+        { ...item, design_vars: vars },
         template,
         item.scheduled_post.scheduled_at,
       );
@@ -141,6 +156,7 @@ export const retailersSocialScheduleStyleRoutes: FastifyPluginAsync = async (ser
               image_level: 'TEMPLATE',
               template_id: ids[n % ids.length] as string,
               resolved_image_key: null,
+              design_vars: Prisma.DbNull,
             },
           }),
         ),
@@ -151,11 +167,18 @@ export const retailersSocialScheduleStyleRoutes: FastifyPluginAsync = async (ser
       where: { id: { in: items.map((i) => i.id) }, retailer_id: retailerId },
       data:
         template === null
-          ? { image_level: 'ORIGINAL', template_id: null, resolved_image_key: null }
+          ? {
+              image_level: 'ORIGINAL',
+              template_id: null,
+              resolved_image_key: null,
+              design_vars: Prisma.DbNull,
+            }
           : {
               image_level: 'TEMPLATE',
               template_id: typeof template === 'object' ? template.design : template,
               resolved_image_key: null,
+              design_vars:
+                typeof template === 'object' && template.vars ? template.vars : Prisma.DbNull,
             },
     });
     return items.length;

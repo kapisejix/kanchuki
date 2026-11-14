@@ -163,6 +163,12 @@ export const retailersSocialFanoutRoutes: FastifyPluginAsync = async (server) =>
     const snapshots: Snapshot[] = [];
     for (const item of itemList) {
       if (item.image_url) {
+        // IMAGE posts only ever carry our own CDN images (rendered designs, Suits Designs); a
+        // crafted deep link must not make the app post an arbitrary third-party URL.
+        const cdn = process.env.R2_PUBLIC_URL;
+        if (cdn && !item.image_url.startsWith(`${cdn}/`)) {
+          throw validationError('That image cannot be posted');
+        }
         snapshots.push({ product_id: null, kind: 'photo', url: item.image_url });
         continue;
       }

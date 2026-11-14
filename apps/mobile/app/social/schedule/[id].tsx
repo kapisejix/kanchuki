@@ -61,6 +61,16 @@ function PostCard({
   onStyle: (scope: 'item' | 'post', id: string) => void;
 }) {
   const editable = EDITABLE_POST_STATUSES.includes(post.status);
+  // Design names for the slide badges; only fetched when a slide actually uses a design.
+  const usesDesign = post.items.some((i) => i.template_id && !templateLabel(i.template_id));
+  const designNames = useQuery({
+    queryKey: ['designs', 'list'],
+    queryFn: () => designTemplatesApi.list(),
+    enabled: usesDesign,
+    staleTime: 30_000,
+  });
+  const designName = (id: string | null) =>
+    designNames.data?.data.find((d) => d.id === id)?.name ?? null;
   const [caption, setCaptionState] = useState(post.caption);
   // The screen needs the live text so Confirm can save unsaved edits first.
   const setCaption = (c: string) => {
@@ -160,7 +170,7 @@ function PostCard({
                   <View className="flex-row items-center gap-1">
                     <Sparkles size={10} color="#A21CAF" />
                     <Text className="text-[10px] font-bold text-fuchsia-700 flex-shrink" numberOfLines={1}>
-                      {templateLabel(item.template_id) ?? 'Styled'}
+                      {templateLabel(item.template_id) ?? designName(item.template_id) ?? 'Styled'}
                     </Text>
                   </View>
                 ) : null}
@@ -343,15 +353,18 @@ export default function ScheduleCalendarScreen() {
     onError: (err) => showError(err, 'That product could not be used here. Pick another.'),
   });
 
-  // Admin designs for the style sheet. A design uses this slide's product only, so multi-product
-  // designs are left out; the list is best-effort (a failed load just hides the section).
+  // Admin designs for the style sheet. A multi-slot design fills its slots with this slide's
+  // product and the post's next products. Best-effort: a failed load just hides the section.
   const designsQuery = useQuery({
     queryKey: ['designs', 'list'],
     queryFn: () => designTemplatesApi.list(),
     enabled: styleTarget !== null,
     staleTime: 30_000,
   });
-  const designList = (designsQuery.data?.data ?? []).filter((d) => d.product_slots === 1);
+  const designList = designsQuery.data?.data ?? [];
+  // Per-slide headline / offer line for the design's text layers (empty = layer skipped).
+  const [headline, setHeadline] = useState('');
+  const [offerLine, setOfferLine] = useState('');
 
   const style = useMutation({
     mutationFn: async (t: StyleChoice): Promise<unknown> => {
@@ -567,7 +580,7 @@ export default function ScheduleCalendarScreen() {
         animationType="fade"
         onRequestClose={() => setStyleTarget(null)}
       >
-        <View className="flex-1 bg-black/40 justify-end">
+        <KeyboardScreen className="flex-1 bg-black/40 justify-end">
           <View
             className="bg-white rounded-t-3xl p-5 gap-2"
             style={{ paddingBottom: screenPaddingBottom }}
@@ -611,12 +624,34 @@ export default function ScheduleCalendarScreen() {
                 {designList.length > 0 ? (
                   <>
                     <Text className="text-xs font-bold text-heliotrope-500 mt-1">Your designs</Text>
+                    <TextInput
+                      value={headline}
+                      onChangeText={setHeadline}
+                      maxLength={80}
+                      placeholder="Headline (optional)"
+                      accessibilityLabel="Design headline"
+                      className="bg-[#F8F7FC] border border-lavender-200 rounded-xl px-3 py-2 text-sm text-spaceCadet-900"
+                    />
+                    <TextInput
+                      value={offerLine}
+                      onChangeText={setOfferLine}
+                      maxLength={80}
+                      placeholder="Offer line, e.g. Flat 20% off (optional)"
+                      accessibilityLabel="Design offer line"
+                      className="bg-[#F8F7FC] border border-lavender-200 rounded-xl px-3 py-2 text-sm text-spaceCadet-900"
+                    />
                     {designList.map((d) => (
                       <AnimatedPressable
                         key={d.id}
                         accessibilityRole="button"
                         accessibilityLabel={`Design ${d.name}`}
-                        onPress={() => style.mutate({ design_id: d.id })}
+                        onPress={() =>
+                          style.mutate({
+                            design_id: d.id,
+                            ...(headline.trim() ? { custom_text: headline.trim() } : {}),
+                            ...(offerLine.trim() ? { offer_text: offerLine.trim() } : {}),
+                          })
+                        }
                         className="px-4 py-3 rounded-2xl border border-lavender-200"
                       >
                         <Text className="text-sm font-bold text-spaceCadet-900">{d.name}</Text>
@@ -652,7 +687,7 @@ export default function ScheduleCalendarScreen() {
               </>
             )}
           </View>
-        </View>
+        </KeyboardScreen>
       </Modal>
 
       <Modal
