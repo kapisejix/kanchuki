@@ -454,3 +454,12 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Docs | `docs/tasks/pending/design-templates-device-test.md`: new row 2.15 (scheduler Hindi on built-in styles), row 3.6 lists Landscape, row 1.10 notes the owner's design-preview Hindi pass, §5 known gaps rewritten (Hindi, landscape, fixed 4:5 preview bullet removed because #251 fixed it). |
 | Verification | Local only (CI blocked by billing): shared rebuilt, AI vitest 197 passed (new LANDSCAPE 1200×628 case), API `tsc` clean, API vitest on `ai-custom-design` + `routes/retailers` 317 passed, mobile `tsc` clean, biome clean on touched files. |
 | Not verified | No device or EAS build; the Landscape chip was never opened in the app; no real FLUX output cropped to landscape (cover-crop of a portrait model image to 1.91:1 may cut the garment, check row 3.6). Scheduler Hindi (row 2.15) not checked. |
+
+## 2026-11-14 (night) — `AI_CUSTOM_TEMPLATE` added to the Plan Features allowlist and grid (T5 owner step unblocked)
+
+| What | Detail |
+|---|---|
+| Found | Migration 154's owner step says "Admin → Plan Features, enable AI_CUSTOM_TEMPLATE", but the key was in neither the `PUT /plan-features` zod allowlist (`apps/api/src/routes/admin/admin-plans.ts`) nor the web grid (`apps/web/src/app/admin/plan-features/page.tsx`), the two hand-kept lists that file's own comment warns drift. The Prisma enum value already existed (migration 154), so the toggle was unreachable from the UI. |
+| Changed | `'AI_CUSTOM_TEMPLATE'` added to the API allowlist, the web `FeatureKey` union and the feature list (label "AI Custom Designs"). No migration. The key still fails closed (no row = OFF) and the quota still needs `plan_limits` rows (Admin → Plan Limits, METERED). |
+| Verification | Local only (CI blocked by billing): API `tsc` clean, API vitest `src/routes/admin` 461 passed, web `tsc` clean. Not browser-tested. `biome check` on `plan-features/page.tsx` already failed on `main` (5 errors: import order, formatting, `Infinity`, an unused variable, a literal key); left alone on purpose because `--write` reformats the whole file (225 lines) and two errors need manual fixes. |
+| Not verified | Grid not opened in a browser; no toggle saved; `plan_features` / `plan_limits` rows for `AI_CUSTOM_TEMPLATE` still not set (owner step); no real FLUX call. |
