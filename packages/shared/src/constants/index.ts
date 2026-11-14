@@ -856,7 +856,7 @@ export const INDIAN_STATES = [
 // F-043 Task 4 — scheduler image templates. Ids only (pure, importable from
 // anywhere); the renderers live in packages/ai/src/schedule-templates.ts.
 /** Output shapes for an AI-made design (T5). ORIGINAL keeps the aspect the model returned. */
-export const AI_DESIGN_FORMATS = ['ORIGINAL', 'SQUARE', 'PORTRAIT', 'STORY'] as const;
+export const AI_DESIGN_FORMATS = ['ORIGINAL', 'SQUARE', 'PORTRAIT', 'STORY', 'LANDSCAPE'] as const;
 /** Free overlays drawn after the AI image; festival_frame needs a DB lookup so it is left out. */
 export const AI_DESIGN_OVERLAYS = ['white_price', 'new_arrival', 'logo_corner'] as const;
 

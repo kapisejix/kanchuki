@@ -18,6 +18,7 @@ describe('finishDesignImage', () => {
     ['SQUARE', 1080, 1080],
     ['PORTRAIT', 1080, 1350],
     ['STORY', 1080, 1920],
+    ['LANDSCAPE', 1200, 628],
   ] as const)('%s is cover-cropped to %ix%i', async (format, w, h) => {
     const out = await finishDesignImage(await photo(), { format, overlay: null, slide });
     const m = await sharp(out).metadata();

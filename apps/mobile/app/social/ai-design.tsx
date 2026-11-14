@@ -24,6 +24,7 @@ const FORMATS: { id: AiDesignFormat; label: string }[] = [
   { id: 'SQUARE', label: 'Square' },
   { id: 'PORTRAIT', label: 'Portrait' },
   { id: 'STORY', label: 'Story' },
+  { id: 'LANDSCAPE', label: 'Landscape' },
 ];
 const OVERLAYS: { id: AiDesignOverlay | null; label: string }[] = [
   { id: null, label: 'None' },
@@ -140,8 +141,8 @@ export default function AiDesignScreen() {
           style={{ textAlignVertical: 'top' }}
         />
         <Text className="text-[11px] text-sand-400 mt-1">
-          Describe a setting or mood. No links, brand names or people. The AI never draws text; add a
-          price or your logo below.
+          Describe a setting or mood. No links, brand names or people. The AI never draws text; add
+          a price or your logo below.
         </Text>
 
         <Text className="text-sm font-bold mt-5 mb-2 text-sand-900">3. Finish (optional)</Text>
@@ -217,7 +218,11 @@ export default function AiDesignScreen() {
                 onPress={() => post(result.image_url as string)}
               />
             </View>
-            <AnimatedPressable onPress={reset} accessibilityRole="button" className="items-center py-3">
+            <AnimatedPressable
+              onPress={reset}
+              accessibilityRole="button"
+              className="items-center py-3"
+            >
               <Text className="text-sm font-semibold text-sand-900">Make another</Text>
             </AnimatedPressable>
           </View>
@@ -248,7 +253,9 @@ export default function AiDesignScreen() {
                 ) : null,
               )}
             </ScrollView>
-            <Text className="text-[11px] text-sand-400 mt-3 mb-1">Reuse a prompt on another product</Text>
+            <Text className="text-[11px] text-sand-400 mt-3 mb-1">
+              Reuse a prompt on another product
+            </Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               {mine.data?.data.map((d) =>
                 d.image_url ? (
