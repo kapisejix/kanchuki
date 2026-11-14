@@ -6,6 +6,7 @@ import {
   productsCrudRoutes,
   productsMediaRoutes,
   productsProCleanupRoutes,
+  productsSellRoutes,
   productsStudioRoutes,
   productsTrashRoutes,
   productsTryOnRoutes,
@@ -15,6 +16,8 @@ import {
 export const productRoutes: FastifyPluginAsync = async (server) => {
   // products-crud — auto-split module
   await server.register(productsCrudRoutes);
+  // products-sell — F-047 Scan & Sell billing (one bill = one request)
+  await server.register(productsSellRoutes);
   // products-trash — auto-split module
   await server.register(productsTrashRoutes);
   // products-media — auto-split module

@@ -202,6 +202,31 @@ PATCH  /products/:id/status  # Quick status change
 Body: { "status": "SOLD" }
 ```
 
+#### Sell a bill (F-047 Scan & Sell)
+```
+POST /products/sell          # One bill = one request, up to 100 lines
+Body: { "client_bill_id": "<uuid made on the phone>",
+        "lines": [{ "product_id": "clxxx", "size": "M", "quantity": 1 }] }   // size "FREE" = unsized
+Response 200: { "data": { "bill_id": "...", "replayed": false, "lines": [
+  { "product_id": "clxxx", "size": "M", "ok": true, "remaining_total": 3, "status": "AVAILABLE" },
+  { "product_id": "cly",   "size": "L", "ok": false, "error": "INSUFFICIENT_STOCK" } ] } }
+```
+- **Access:** owner, manager, salesperson. Catalog-upload and support delegates get 403 (`isDelegate()`).
+- **Per line:** each (product, size) is its own transaction, so one stale line never blocks the others.
+  `error` is `NOT_FOUND` (foreign, deleted or unknown id), `INVALID_SIZE` (size not stocked, or not `FREE` on an
+  untracked product) or `INSUFFICIENT_STOCK` (the guarded `quantity >= n` update matched nothing).
+- **Stock:** tracked products decrement `product_stock` atomically; total 0 flips the product to `SOLD`
+  (`applyStatusFromTotal`). Untracked products go straight to `SOLD`. `remaining_total` is `null` when untracked.
+- **Record:** every sold line writes a `product_sales` row (`unit_price` = `price_min` snapshot, paise;
+  `sold_by_staff_id` = `Staff.id`, null for the owner).
+- **Idempotency:** Redis key `sell:{retailer_id}:{client_bill_id}` (24 h) answers a replay first with the stored
+  result (`replayed: true`); `409 BILL_IN_PROGRESS` if the first request has stored nothing yet. If Redis is down the
+  check is skipped and `UNIQUE (retailer_id, bill_id, product_id, size)` still blocks a second decrement. The key is
+  released when nothing sold, so the bill can be corrected and retried.
+- **Errors:** 422 for a bad body (empty or >100 lines, size outside the shared list, quantity < 1, repeated
+  product + size). Rate limit 30/min.
+- **Undo:** `POST /products/sell/:billId/undo` (T4, not built yet).
+
 #### Search
 ```
 POST /search
