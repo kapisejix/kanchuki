@@ -108,6 +108,7 @@ const NAV_ITEMS: NavItem[] = [
       { label: 'My Style', href: '/admin/my-style', icon: Palette },
       { label: 'Festivals', href: '/admin/festivals', icon: CalendarDays },
       { label: 'Design Library', href: '/admin/design-templates', icon: Share2 },
+      { label: 'AI Designs', href: '/admin/ai-custom-designs', icon: Wand2 },
       { label: 'Social Publishing', href: '/admin/social', icon: Megaphone },
       { label: 'Google Business', href: '/admin/gbp', icon: MapPin },
     ],

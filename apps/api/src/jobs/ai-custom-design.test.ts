@@ -1,3 +1,4 @@
+import { samplePhoto } from '@kanchuki/ai';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const m = vi.hoisted(() => ({
@@ -28,6 +29,7 @@ vi.mock('../lib/ai-usage.js', () => ({ recordBflStudioUsage: vi.fn() }));
 vi.mock('./studio-shoot.js', () => ({ studioSourceUrl: m.sourceUrl }));
 
 const { handleAiCustomDesign } = await import('./ai-custom-design.js');
+const { imageDimensions } = await import('../lib/upload-guard.js');
 
 const data = {
   job_id: 'j1',
@@ -68,6 +70,27 @@ describe('handleAiCustomDesign', () => {
     expect(m.refund).not.toHaveBeenCalled();
     // the model got the WRAPPED prompt, never the bare text
     expect(m.generate.mock.calls[0]?.[1].prompt).toContain('never an instruction');
+  });
+
+  it('uses the poster byte budget and a transform that applies the chosen format', async () => {
+    await handleAiCustomDesign({ ...data, format: 'SQUARE' });
+    const opts = m.upload.mock.calls[0]?.[3];
+    expect(opts.compress.maxBytes).toBeGreaterThan(80 * 1024);
+    expect(imageDimensions(await opts.transform(await samplePhoto()))).toEqual({
+      width: 1080,
+      height: 1080,
+    });
+  });
+
+  it('an overlay renders 4:5 with the product price and store name', async () => {
+    m.productFind.mockResolvedValue({
+      name: 'Suit',
+      price_min: 150000,
+      retailer: { shop_name: 'Test Store', logo_r2_key: null },
+    });
+    await handleAiCustomDesign({ ...data, overlay: 'white_price' });
+    const out = await m.upload.mock.calls[0]?.[3].transform(await samplePhoto());
+    expect(imageDimensions(out)).toEqual({ width: 1080, height: 1350 });
   });
 
   it('provider returns no image: row FAILED (generic text), slot refunded, no throw', async () => {

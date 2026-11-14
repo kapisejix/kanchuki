@@ -89,6 +89,27 @@ describe('POST /me/ai-designs', () => {
     );
   });
 
+  it('defaults to ORIGINAL / no overlay, and passes a chosen format + overlay to the job', async () => {
+    await post(await buildApp(), ok);
+    expect(m.enqueue).toHaveBeenLastCalledWith(
+      expect.objectContaining({ format: 'ORIGINAL', overlay: null }),
+    );
+    const res = await post(await buildApp(), { ...ok, format: 'STORY', overlay: 'new_arrival' });
+    expect(res.statusCode).toBe(202);
+    expect(m.enqueue).toHaveBeenLastCalledWith(
+      expect.objectContaining({ format: 'STORY', overlay: 'new_arrival' }),
+    );
+  });
+
+  it('an unknown format or overlay is a 4xx before any spend', async () => {
+    for (const extra of [{ format: 'BILLBOARD' }, { overlay: 'festival_frame' }]) {
+      const res = await post(await buildApp(), { ...ok, ...extra });
+      expect(res.statusCode).toBeGreaterThanOrEqual(400);
+      expect(res.statusCode).toBeLessThan(500);
+    }
+    expect(m.reserve).not.toHaveBeenCalled();
+  });
+
   it('plan feature off → 402, nothing reserved or queued', async () => {
     m.hasFeature.mockResolvedValue(false);
     const res = await post(await buildApp(), ok);

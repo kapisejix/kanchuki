@@ -387,3 +387,15 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Kept on purpose | `social_templates` table + rows, `SocialTemplateType` enum, `SOCIAL_TEMPLATES` plan feature key, the `purge-retailer-now` delete. No migration; dropping is an owner decision. |
 | Proof | API tsc + vitest 3006/3006 (admin-access guard caught the moved web segment), mobile tsc + 549/549, shared 227/227, web tsc clean. `Sidebar.test.tsx` "sign out" fails on the untouched baseline too (not from this change). |
 
+## 2026-11-05 — T5 gaps: format picker, price/logo overlay, prompt reuse, poster quality, admin view (branch `feat/design-templates-t3`, not pushed)
+
+| What | Detail |
+|---|---|
+| Output format | `POST /me/ai-designs` takes optional `format` (ORIGINAL / SQUARE / PORTRAIT / STORY, default ORIGINAL) and `overlay` (white_price / new_arrival / logo_corner, default none). Lists live in `@kanchuki/shared` (`AI_DESIGN_FORMATS`, `AI_DESIGN_OVERLAYS`). No migration: both ride in the job data, nothing is stored on the row. |
+| Overlay | `finishDesignImage()` (packages/ai `schedule-templates.ts`) reuses the free 4:5 slide renderer, so an overlay forces 4:5 and the format is ignored. Price = product `price_min`, store name and logo from the retailer. `festival_frame` left out (needs a DB lookup). A missing/unreadable logo falls back to the store-name pill. |
+| Quality | `downloadCompressAndUpload` gained `{ transform, compress }`; the job uses a 450 KB / 2000 px / q92 budget instead of the 80 KB catalog one. |
+| Reusable template | Built as **prompt reuse**: a chip row under "My AI designs" copies a past prompt into the box for another product. No stored background or new table. |
+| Admin view | `GET /v1/admin/ai-custom-designs` (read-only, `ADMIN_TIER`, no PII selected, 30-day status counts) + web page `/admin/ai-custom-designs` + sidebar "AI Designs". |
+| Proof | API tsc + vitest 3016/3016; ai 195/195; mobile tsc + 553/553 (new `ai-design-screen.test.tsx`, 4); shared 227/227; web tsc clean. Web `Sidebar.test.tsx` sign-out still fails on the untouched baseline. |
+| Not verified | No real FLUX call, no Postgres, no device/browser run; overlay look and the 450 KB budget never seen on a real AI image. |
+

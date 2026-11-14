@@ -10,6 +10,12 @@
 // The slot stays spent only once the row is READY; every other exit hands it back in `finally`
 // (BullMQ counts a plain `return` as completed, so its `failed` hook never sees those).
 import { randomBytes } from 'node:crypto';
+import {
+  type AiDesignFormat,
+  type AiDesignOverlay,
+  downloadBuffer,
+  finishDesignImage,
+} from '@kanchuki/ai';
 import { prisma } from '@kanchuki/db';
 import { buildDesignPrompt } from '../lib/ai-custom-design.js';
 import { recordBflStudioUsage } from '../lib/ai-usage.js';
@@ -24,7 +30,14 @@ export interface AiCustomDesignJobData {
   photo_id: string;
   /** Already passed sanitizeDesignPrompt in the route. */
   prompt: string;
+  /** Output shape; ORIGINAL (or missing, for a job queued before this field) keeps the model's aspect. */
+  format?: AiDesignFormat;
+  /** Free price / badge / logo overlay from the built-in slide renderer (forces 4:5). */
+  overlay?: AiDesignOverlay | null;
 }
+
+// Social posters get a bigger budget than the 80 KB catalog default (they are shown full-screen).
+const POSTER_BUDGET = { maxBytes: 450 * 1024, maxDimension: 2000, startQuality: 92 };
 
 const GENERIC_FAILURE = 'The design could not be made. Please try again.';
 
@@ -41,7 +54,15 @@ async function markFailed(id: string, retailerId: string, error: string): Promis
 }
 
 export async function handleAiCustomDesign(data: AiCustomDesignJobData): Promise<void> {
-  const { job_id, retailer_id, product_id, photo_id, prompt } = data;
+  const {
+    job_id,
+    retailer_id,
+    product_id,
+    photo_id,
+    prompt,
+    format = 'ORIGINAL',
+    overlay = null,
+  } = data;
   let spent = false;
   try {
     // Queue = trust boundary: re-check the photo belongs to this retailer's product.
@@ -64,6 +85,8 @@ export async function handleAiCustomDesign(data: AiCustomDesignJobData): Promise
         fabric_estimate: true,
         pattern: true,
         embellishments: true,
+        price_min: true,
+        retailer: { select: { shop_name: true, logo_r2_key: true } },
       },
     });
 
@@ -91,7 +114,25 @@ export async function handleAiCustomDesign(data: AiCustomDesignJobData): Promise
 
     // hex name: the mobile composer only accepts /retailers/<id>/designs/<hex>.jpg
     const key = `retailers/${retailer_id}/designs/${randomBytes(12).toString('hex')}.jpg`;
-    const uploaded = await downloadCompressAndUpload(payload, key, Boolean(result.base64Data));
+    // Only an overlay needs the retailer's logo; a missing/unreadable one falls back to the store-name pill.
+    const logo =
+      overlay === 'logo_corner' && product?.retailer?.logo_r2_key
+        ? await downloadBuffer(product.retailer.logo_r2_key).catch(() => null)
+        : null;
+    const uploaded = await downloadCompressAndUpload(payload, key, Boolean(result.base64Data), {
+      compress: POSTER_BUDGET,
+      transform: (raw) =>
+        finishDesignImage(raw, {
+          format,
+          overlay,
+          slide: {
+            pricePaise: product?.price_min ?? null,
+            storeName: product?.retailer?.shop_name ?? '',
+            festival: null,
+            logo,
+          },
+        }),
+    });
 
     await prisma.aiCustomDesign.update({
       where: { id: job_id },

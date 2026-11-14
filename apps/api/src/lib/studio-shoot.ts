@@ -1128,6 +1128,12 @@ export async function downloadCompressAndUpload(
   sampleUrlOrBase64: string,
   r2Key: string,
   isBase64 = false,
+  opts: {
+    /** Runs on the raw model output before compression (e.g. crop to a format). */
+    transform?: (raw: Buffer) => Promise<Buffer>;
+    /** Overrides the 80 KB catalog budget (posters want more). */
+    compress?: Parameters<typeof compressImageToTarget>[1];
+  } = {},
 ): Promise<StudioR2Output> {
   let raw: Buffer;
   if (isBase64) {
@@ -1137,7 +1143,8 @@ export async function downloadCompressAndUpload(
     if (!res.ok) throw new Error(`Failed to fetch studio result: ${res.status}`);
     raw = await readCappedBuffer(res);
   }
-  const { buffer, width, height } = await compressImageToTarget(raw);
+  if (opts.transform) raw = await opts.transform(raw);
+  const { buffer, width, height } = await compressImageToTarget(raw, opts.compress);
   await uploadBuffer(r2Key, buffer, 'image/jpeg');
   return { key: r2Key, url: publicUrl(r2Key), width, height };
 }

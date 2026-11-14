@@ -7,6 +7,8 @@
 // Text is drawn through an SVG overlay. The font stack falls back to whatever
 // sans the host has; price is digits + ₹ only so no Indic shaping is needed.
 import {
+  type AI_DESIGN_FORMATS,
+  type AI_DESIGN_OVERLAYS,
   MAX_IMAGE_PIXELS,
   SCHEDULE_COVER_STYLES,
   SCHEDULE_SLIDE_TEMPLATES,
@@ -178,4 +180,33 @@ export async function renderCollage(photos: Buffer[], storeName: string): Promis
       { input: band },
     ]),
   );
+}
+
+// ─── AI custom design finishing (T5 gaps: output format + price/logo overlay) ───
+
+export type AiDesignFormat = (typeof AI_DESIGN_FORMATS)[number];
+export type AiDesignOverlay = (typeof AI_DESIGN_OVERLAYS)[number];
+
+const FORMAT_SIZE: Record<Exclude<AiDesignFormat, 'ORIGINAL'>, [number, number]> = {
+  SQUARE: [1080, 1080],
+  PORTRAIT: [1080, 1350],
+  STORY: [1080, 1920],
+};
+
+/**
+ * Last step of an AI design. An overlay reuses the free 4:5 slide renderer (so it forces 4:5 and the
+ * chosen format is ignored); otherwise the image is cover-cropped to the format, or returned as is.
+ */
+export async function finishDesignImage(
+  photo: Buffer,
+  opts: {
+    format: AiDesignFormat;
+    overlay: AiDesignOverlay | null;
+    slide: Omit<SlideInput, 'photo'>;
+  },
+): Promise<Buffer> {
+  if (opts.overlay) return renderSlide(opts.overlay, { ...opts.slide, photo });
+  if (opts.format === 'ORIGINAL') return photo;
+  const [w, h] = FORMAT_SIZE[opts.format];
+  return jpeg(sharp(photo, IN).rotate().resize(w, h, { fit: 'cover', position: 'attention' }));
 }

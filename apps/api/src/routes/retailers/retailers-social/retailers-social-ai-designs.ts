@@ -2,7 +2,7 @@
 // (docs/tasks/pending/admin-social-design-templates.md §5).
 //
 // Routes (under /v1/retailers), all owner-only (manager default-deny list, re-checked here):
-//   POST /me/ai-designs        {product_id, prompt} -> 202 {id}   reserve quota, enqueue
+//   POST /me/ai-designs        {product_id, prompt, format?, overlay?} -> 202 {id}   reserve quota, enqueue
 //   GET  /me/ai-designs        the retailer's finished designs, newest first ("My AI designs")
 //   GET  /me/ai-designs/:id    {status: PENDING|READY|FAILED, image_url, error}  (poll)
 //
@@ -11,6 +11,7 @@
 // row = 0). The model is never called in this request: the BullMQ job does it and hands the slot
 // back unless a READY row exists. The finished image feeds the existing composer IMAGE post.
 import { prisma } from '@kanchuki/db';
+import { AI_DESIGN_FORMATS, AI_DESIGN_OVERLAYS } from '@kanchuki/shared';
 import { createId } from '@paralleldrive/cuid2';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
@@ -28,7 +29,13 @@ import {
   validationError,
 } from '../../../plugins/error-handler.js';
 
-const bodySchema = z.object({ product_id: z.string().min(1), prompt: z.string() });
+const bodySchema = z.object({
+  product_id: z.string().min(1),
+  prompt: z.string(),
+  // Optional finishing (T5 gaps). An overlay forces 4:5, so the format only matters without one.
+  format: z.enum(AI_DESIGN_FORMATS).default('ORIGINAL'),
+  overlay: z.enum(AI_DESIGN_OVERLAYS).nullish(),
+});
 
 export const retailersSocialAiDesignsRoutes: FastifyPluginAsync = async (server) => {
   const owner = (request: Parameters<typeof isRealOwner>[0]) => {
@@ -82,6 +89,8 @@ export const retailersSocialAiDesignsRoutes: FastifyPluginAsync = async (server)
           product_id: product.id,
           photo_id: photo.id,
           prompt: clean.prompt,
+          format: body.data.format,
+          overlay: body.data.overlay ?? null,
         });
       } catch (err) {
         // No job will run, so the slot goes back now.

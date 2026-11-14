@@ -9,7 +9,7 @@ import { ReportAiContent } from '../../src/components/ReportAiContent';
 import { ScreenHeader } from '../../src/components/ScreenHeader';
 import { ProductGridPicker } from '../../src/components/social';
 import type { ComposeProduct } from '../../src/components/social/types';
-import { aiDesignsApi } from '../../src/lib/api';
+import { type AiDesignFormat, type AiDesignOverlay, aiDesignsApi } from '../../src/lib/api';
 import { showError } from '../../src/lib/errors';
 import { useTheme } from '../../src/lib/theme';
 
@@ -19,17 +19,70 @@ import { useTheme } from '../../src/lib/theme';
 const POLL_MS = 3000;
 const GIVE_UP_MS = 4 * 60 * 1000;
 
+const FORMATS: { id: AiDesignFormat; label: string }[] = [
+  { id: 'ORIGINAL', label: 'Original' },
+  { id: 'SQUARE', label: 'Square' },
+  { id: 'PORTRAIT', label: 'Portrait' },
+  { id: 'STORY', label: 'Story' },
+];
+const OVERLAYS: { id: AiDesignOverlay | null; label: string }[] = [
+  { id: null, label: 'None' },
+  { id: 'white_price', label: 'Price strip' },
+  { id: 'new_arrival', label: 'New arrival' },
+  { id: 'logo_corner', label: 'Your logo' },
+];
+
+function Chip({
+  label,
+  active,
+  disabled,
+  onPress,
+  primaryColor,
+}: {
+  label: string;
+  active: boolean;
+  disabled?: boolean;
+  onPress: () => void;
+  primaryColor: string;
+}) {
+  return (
+    <AnimatedPressable
+      onPress={onPress}
+      disabled={disabled}
+      accessibilityRole="button"
+      accessibilityState={{ selected: active, disabled: !!disabled }}
+      accessibilityLabel={label}
+      className="mr-2 mb-2 rounded-full px-4 py-2"
+      style={{
+        backgroundColor: active ? primaryColor : '#ffffff',
+        opacity: disabled ? 0.4 : 1,
+      }}
+    >
+      <Text className="text-xs font-semibold" style={{ color: active ? '#ffffff' : '#231F48' }}>
+        {label}
+      </Text>
+    </AnimatedPressable>
+  );
+}
+
 export default function AiDesignScreen() {
   const { primaryColor } = useTheme();
   const queryClient = useQueryClient();
   const [product, setProduct] = useState<ComposeProduct | null>(null);
   const [prompt, setPrompt] = useState('');
+  const [format, setFormat] = useState<AiDesignFormat>('ORIGINAL');
+  const [overlay, setOverlay] = useState<AiDesignOverlay | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);
   const startedAt = useRef(0);
 
   const create = useMutation({
     mutationFn: () =>
-      aiDesignsApi.create({ product_id: (product as ComposeProduct).id, prompt: prompt.trim() }),
+      aiDesignsApi.create({
+        product_id: (product as ComposeProduct).id,
+        prompt: prompt.trim(),
+        format,
+        overlay,
+      }),
     onSuccess: (res) => {
       startedAt.current = Date.now();
       setJobId(res.data.id);
@@ -87,9 +140,37 @@ export default function AiDesignScreen() {
           style={{ textAlignVertical: 'top' }}
         />
         <Text className="text-[11px] text-sand-400 mt-1">
-          Describe a setting or mood. No links, brand names or people. Prices and your shop name are
-          not drawn by the AI.
+          Describe a setting or mood. No links, brand names or people. The AI never draws text; add a
+          price or your logo below.
         </Text>
+
+        <Text className="text-sm font-bold mt-5 mb-2 text-sand-900">3. Finish (optional)</Text>
+        <View className="flex-row flex-wrap">
+          {FORMATS.map((f) => (
+            <Chip
+              key={f.id}
+              label={f.label}
+              active={overlay === null && format === f.id}
+              disabled={overlay !== null}
+              onPress={() => setFormat(f.id)}
+              primaryColor={primaryColor}
+            />
+          ))}
+        </View>
+        <View className="flex-row flex-wrap">
+          {OVERLAYS.map((o) => (
+            <Chip
+              key={o.label}
+              label={o.label}
+              active={overlay === o.id}
+              onPress={() => setOverlay(o.id)}
+              primaryColor={primaryColor}
+            />
+          ))}
+        </View>
+        {overlay !== null ? (
+          <Text className="text-[11px] text-sand-400">An overlay is drawn on a 4:5 picture.</Text>
+        ) : null}
 
         <View className="mt-4">
           <GradientButton
@@ -164,6 +245,20 @@ export default function AiDesignScreen() {
                       {d.prompt}
                     </Text>
                   </AnimatedPressable>
+                ) : null,
+              )}
+            </ScrollView>
+            <Text className="text-[11px] text-sand-400 mt-3 mb-1">Reuse a prompt on another product</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {mine.data?.data.map((d) =>
+                d.image_url ? (
+                  <Chip
+                    key={d.id}
+                    label={d.prompt.length > 28 ? `${d.prompt.slice(0, 28)}…` : d.prompt}
+                    active={prompt === d.prompt}
+                    onPress={() => setPrompt(d.prompt)}
+                    primaryColor={primaryColor}
+                  />
                 ) : null,
               )}
             </ScrollView>

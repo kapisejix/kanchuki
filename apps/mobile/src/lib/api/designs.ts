@@ -36,8 +36,17 @@ export type AiDesignRow = {
   created_at: string
 }
 
+export type AiDesignFormat = 'ORIGINAL' | 'SQUARE' | 'PORTRAIT' | 'STORY'
+/** Free overlays drawn by the server after the AI image (price strip / badge / store logo). */
+export type AiDesignOverlay = 'white_price' | 'new_arrival' | 'logo_corner'
+
 export const aiDesignsApi = {
-  create: (body: { product_id: string; prompt: string }) =>
+  create: (body: {
+    product_id: string
+    prompt: string
+    format?: AiDesignFormat
+    overlay?: AiDesignOverlay | null
+  }) =>
     request<{ data: { id: string; status: 'PENDING' } }>('/v1/retailers/me/ai-designs', {
       method: 'POST',
       body: JSON.stringify(body),
