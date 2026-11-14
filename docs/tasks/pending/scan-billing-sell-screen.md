@@ -185,8 +185,8 @@ Ground rules for every task: branch from `main` (`feat/f-047-<task>`), invoke th
 - Skills: `superpowers:test-driven-development`, `ecc:api-design`; agent `ecc:silent-failure-hunter`.
 
 ### T5. Mobile: extract scanner block  ·  ~0.5 day
-- [ ] Pull the camera + manual-SKU input out of `apps/mobile/app/product/scan.tsx` into a shared component (`src/components/SkuScanner.tsx`); `scan.tsx` uses it, behaviour unchanged, existing tests green.
-- [ ] Add scan debounce (same code within ~1.5 s ignored).
+- [x] Pull the camera + manual-SKU input out of `apps/mobile/app/product/scan.tsx` into a shared component (`src/components/SkuScanner.tsx`); `scan.tsx` uses it, behaviour unchanged, existing tests green.
+- [x] Add scan debounce (same code within ~1.5 s ignored). Camera scans only; a manual Find is never debounced. One-at-a-time guard is a ref (RC-015/135). Local tests only (mobile vitest + tsc), no device test.
 - Skills: `vercel-react-native-skills`, `ecc:react-testing`, `ecc:frontend-a11y`; agent `ecc:react-reviewer`. Keep `KeyboardScreen` (RC-116/042 guard).
 
 ### T6. Mobile: bill state + sell screen  ·  ~1.5 days
