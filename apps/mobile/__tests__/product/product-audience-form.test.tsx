@@ -26,7 +26,7 @@ function Harness({ product }: { product: any }) {
 }
 const base = { id: 'p1', name: 'Frock', search_tags: [], sizes: [], stock: [], photos: [] }
 const mount = async (product: any) => {
-  let r!: renderer.ReactTestRenderer
+  let r!: ReturnType<typeof renderer.create>
   await act(async () => {
     r = renderer.create(<Harness product={product} />)
   })
