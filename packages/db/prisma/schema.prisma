@@ -65,6 +65,26 @@ enum Gender {
 // (default_product_categories, product_categories, default_product_attributes,
 // product_attributes). Only LADIES is seeded today — MEN/KIDS added later
 // need zero schema/code changes, just new rows.
+// Who a product is for. Retailer-set (AI pre-fills). NULL = adult unisex / not decided; My Style
+// then falls back to a keyword rule on category + subtype. Migration 160.
+enum ProductAudience {
+  WOMEN
+  MEN
+  BOYS
+  GIRLS
+  KIDS_UNISEX
+}
+
+// Kids' age band, only meaningful when audience is BOYS / GIRLS / KIDS_UNISEX (API enforces).
+enum KidsAgeGroup {
+  NEW_BORN
+  AGE_0_2
+  AGE_3_5
+  AGE_6_8
+  AGE_9_12
+  AGE_13_16
+}
+
 enum ProductSegment {
   LADIES
   MEN
@@ -548,6 +568,8 @@ model Product {
   category         String?
   subtype          String? // finer-grained garment type, e.g. "Lehenga Skirt", "Kurta Set", "Suit with Dupatta"
   product_type     String?
+  audience         ProductAudience? // who it is for; NULL = adult unisex / undecided
+  kids_age_group   KidsAgeGroup? // only with a kids audience
   primary_color    String?
   // F-045 — normalised family of primary_color ("Mustard" → "yellow"), matches
   // color_families.name. NULL = unmapped; set by PR-2, never required.
