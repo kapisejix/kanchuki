@@ -1,3 +1,5 @@
+import type { ProductAudienceValue } from '../product-audience.js';
+
 // ─── Plan Limits ──────────────────────────────────────────────────
 
 export const PLAN_LIMITS = {
@@ -593,10 +595,21 @@ export const PRODUCT_DEMOGRAPHICS = [
 ] as const;
 export type Demographic = (typeof PRODUCT_DEMOGRAPHICS)[number];
 
+const AUDIENCE_DEMOGRAPHIC: Record<ProductAudienceValue, Demographic> = {
+  WOMEN: 'womens',
+  MEN: 'mens',
+  BOYS: 'kids_boy',
+  GIRLS: 'kids_girl',
+  KIDS_UNISEX: 'kids_boy',
+};
+
 export function demographicForCategory(
   category?: string | null,
   name?: string | null,
+  audience?: ProductAudienceValue | null,
 ): Demographic {
+  // A retailer-set audience beats the keyword guess below.
+  if (audience) return AUDIENCE_DEMOGRAPHIC[audience];
   const s = `${category ?? ''} ${name ?? ''}`.toLowerCase();
   const kid =
     /\b(kid|kids|kid'?s|child|children|toddler|infant|baby)\b/.test(s) || /\bfrock\b/.test(s);
