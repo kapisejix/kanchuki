@@ -90,6 +90,7 @@ Drop the first line if `SOCIAL_SCHEDULER` is off for retailers at submit time.
 ### B. Build
 
 - [x] `apps/mobile/app.json` → `"versionCode": 7` — already reserved 2026-09-29 in the same commit that logged v6 (guard rule). Re-run `node scripts/check-android-version-code.mjs` before dispatch
+- [ ] **Repo secret `GOOGLE_SERVICES_JSON_BASE64` exists** (F-046 push; the workflow fails closed without it). Create it from the Firebase `google-services.json` (NOT the `*-adminsdk-*.json` service-account key): `base64 -w0 google-services.json | gh secret set GOOGLE_SERVICES_JSON_BASE64`
 - [ ] Build from **`main`** (GitHub → Actions → *Android Release (AAB)* → Run workflow)
 - [ ] Download artifact `app-release-aab`; verify:
       `node scripts/inspect-aab-manifest.mjs --aab <path>` → `AD_ID` absent, `RECORD_AUDIO` absent
