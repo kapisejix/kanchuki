@@ -12,6 +12,7 @@ import {
   LOOK_SLOT_LIMIT,
   type LookSlot,
   MY_STYLE_DEFAULT_RADIUS_KM,
+  KIDS_AGE_GROUPS,
   MY_STYLE_TABS,
   buildEnquiryMessage,
   buildWhatsAppEnquiryLink,
@@ -62,6 +63,9 @@ const BodySchema = z
     budget_max: z.number().int().positive().optional(), // paise
     // "For my child": only kids' wear. Default (false) = adult feed, kids' wear left out.
     kids: z.boolean().default(false),
+    // Only read when kids is true: the child's gender narrows, age boosts (never filters).
+    kids_who: z.enum(['Girl', 'Boy']).optional(),
+    kids_age: z.enum(KIDS_AGE_GROUPS).optional(),
     size: z.string().trim().min(1).max(10).optional(),
     page: z.number().int().min(1).max(50).default(1),
     limit: z.number().int().min(1).max(30).default(12),
@@ -141,6 +145,7 @@ export const publicMyStyleRoutes: FastifyPluginAsync = async (server) => {
         undertone: account.skin_undertone,
         depth: account.skin_depth,
         audience: b.kids ? 'kids' : 'adults',
+        ...(b.kids && b.kids_who ? { kidsWho: b.kids_who } : {}),
       });
 
       // Find similar: a 0..1 score per candidate. Embedding where a product has one, attribute
@@ -259,6 +264,7 @@ export const publicMyStyleRoutes: FastifyPluginAsync = async (server) => {
           origin,
           radiusKm: b.radius_km,
           trends: rankTrends,
+          ...(b.kids && b.kids_age ? { kidsAge: b.kids_age } : {}),
         },
         b.sort,
         now,

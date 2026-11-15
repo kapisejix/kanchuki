@@ -1,7 +1,7 @@
 // F-045 My Style: the candidate query shared by /feed and /complete-look. SQL narrows to
 // live, in-stock, public-storefront products near the shopper; callers rank in memory.
 import { type Prisma, prisma } from '@kanchuki/db';
-import { KIDS_KEYWORDS } from '@kanchuki/shared';
+import { KIDS_KEYWORDS, kidsAudiencesFor } from '@kanchuki/shared';
 import { getBoundingBox, haversineDistance } from './geo.js';
 import type { RankCandidate } from './my-style-rank.js';
 
@@ -20,25 +20,44 @@ export interface CandidateQuery {
   depth: string | null;
   /** 'adults' (default) leaves kids' wear out; 'kids' shows only kids' wear ("For my child"). */
   audience?: 'adults' | 'kids';
+  /** With audience 'kids': the child's Girl/Boy pick narrows stored audiences (unisex matches both). */
+  kidsWho?: 'Girl' | 'Boy';
   /** AND-ed into the product filter (e.g. a complement slot). */
   extraWhere?: Prisma.ProductWhereInput;
 }
 
-// SQL `NOT (x ILIKE ..)` is NULL for a NULL column, which would drop products with no
-// subtype; each keyword is therefore "null, or not containing it" on both fields.
-export const adultsWhere: Prisma.ProductWhereInput = {
-  AND: KIDS_KEYWORDS.flatMap((k) =>
-    (['category', 'subtype'] as const).map((f) => ({
-      OR: [{ [f]: null }, { NOT: { [f]: { contains: k, mode: 'insensitive' as const } } }],
-    })),
-  ),
-};
-export const kidsWhere: Prisma.ProductWhereInput = {
+// The adult / kids split. A product's stored `audience` decides. Only a product whose audience
+// is NULL (adult unisex, or never classified) falls back to the KIDS_KEYWORDS guess on
+// category + subtype. Every audience arm is an explicit `audience IN (...)` or `audience IS NULL`
+// and never a NOT over audience: SQL `NOT (x IN ..)` / `NOT (x ILIKE ..)` is NULL for a NULL
+// column and would silently drop the very rows the fallback exists for.
+const KIDS_AUDIENCES = ['BOYS', 'GIRLS', 'KIDS_UNISEX'] as const;
+
+// Keyword fallback (audience IS NULL only). Each keyword is "null, or not containing it" on
+// both fields so a product with no subtype is not dropped.
+const notKidsByKeyword: Prisma.ProductWhereInput[] = KIDS_KEYWORDS.flatMap((k) =>
+  (['category', 'subtype'] as const).map((f) => ({
+    OR: [{ [f]: null }, { NOT: { [f]: { contains: k, mode: 'insensitive' as const } } }],
+  })),
+);
+const kidsByKeyword: Prisma.ProductWhereInput = {
   OR: KIDS_KEYWORDS.flatMap((k) => [
     { category: { contains: k, mode: 'insensitive' as const } },
     { subtype: { contains: k, mode: 'insensitive' as const } },
   ]),
 };
+
+export const adultsWhere = (): Prisma.ProductWhereInput => ({
+  OR: [{ audience: { in: ['WOMEN', 'MEN'] } }, { AND: [{ audience: null }, ...notKidsByKeyword] }],
+});
+
+/** `who` (the KidsForm Girl/Boy pick) hard-filters stored audiences; unisex matches both. */
+export const kidsWhere = (who?: 'Girl' | 'Boy'): Prisma.ProductWhereInput => ({
+  OR: [
+    { audience: { in: who ? kidsAudiencesFor(who) : [...KIDS_AUDIENCES] } },
+    { AND: [{ audience: null }, kidsByKeyword] },
+  ],
+});
 
 export async function loadMyStyleCandidates(q: CandidateQuery) {
   const { origin, city, radiusKm, budgetMax, size } = q;
@@ -75,7 +94,7 @@ export async function loadMyStyleCandidates(q: CandidateQuery) {
       // Unsized garments (sarees, unstitched) have no sizes and must not vanish.
       ...(size ? { OR: [{ sizes: { has: size } }, { sizes: { isEmpty: true } }] } : {}),
       AND: [
-        q.audience === 'kids' ? kidsWhere : adultsWhere,
+        q.audience === 'kids' ? kidsWhere(q.kidsWho) : adultsWhere(),
         ...(q.extraWhere ? [q.extraWhere] : []),
       ],
     },
@@ -128,6 +147,7 @@ export function toRankCandidate(p: CandidateRow): RankCandidate {
     avg_rating: p.avg_rating,
     rating_count: p.rating_count,
     created_at: p.created_at,
+    kids_age_group: p.kids_age_group,
     lat: p.retailer.latitude,
     lng: p.retailer.longitude,
   };

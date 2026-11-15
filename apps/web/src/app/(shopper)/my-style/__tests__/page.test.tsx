@@ -177,8 +177,10 @@ describe('My Style feed', () => {
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
     expect(bodyOf(1)).toMatchObject({ occasion: 'Party / Festive', budget_max: 100000, page: 1 });
-    // Age/gender are not sent: the feed cannot filter on them, and the page says so.
+    // Gender narrows and age boosts server-side: both ride along as enums, never the raw label.
+    expect(bodyOf(1)).toMatchObject({ kids: true, kids_who: 'Girl', kids_age: 'AGE_6_8' });
     expect(bodyOf(1)).not.toHaveProperty('age');
+    expect(screen.queryByText(/we match on occasion and budget/)).toBeNull();
     expect(container.querySelector('input[type="file"]')).toBeNull();
     expect(screen.getByText(/Shopping for: Girl, 6–8 yrs/)).toBeTruthy();
   });

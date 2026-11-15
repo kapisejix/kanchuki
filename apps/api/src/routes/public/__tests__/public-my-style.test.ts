@@ -104,6 +104,8 @@ const row = (id: string, retailer: Row['retailer'], over: Partial<Row> = {}): Ro
     search_tags: [],
     category: null,
     subtype: null,
+    audience: null,
+    kids_age_group: null,
     product_type: null,
     pattern: null,
     embellishments: [],
@@ -251,6 +253,76 @@ describe("kids' wear (adult feed vs For my child)", () => {
   it('rejects a non-boolean kids flag', async () => {
     expect((await feed({ kids: 'yes' })).statusCode).toBe(422);
   });
+});
+
+describe('stored audience (set by the retailer) beats the category keywords', () => {
+  const s = store('1');
+  const aud = (id: string, audience: string | null, category: string | null, age?: string) =>
+    row(id, s, { audience, category, kids_age_group: age ?? null } as unknown as Partial<Row>);
+  const mixed = () => [
+    aud('womanKidsText', 'WOMEN', 'Kids Ethnic Wear'), // adult piece the retailer typed oddly
+    aud('boyLadiesText', 'BOYS', 'Ladies'), // kids piece tagged "Ladies": the old leak
+    aud('girl', 'GIRLS', 'Frock'),
+    aud('uni', 'KIDS_UNISEX', null),
+    aud('nullSaree', null, 'Saree'),
+    aud('nullKids', null, 'Kids'),
+  ];
+
+  it('adult feed: stored adults + unclassified adults only, kids tagged Ladies stay out', async () => {
+    DB = mixed();
+    expect(ids(await feed()).sort()).toEqual(['nullSaree', 'womanKidsText']);
+  });
+
+  it('kids feed: stored kids + unclassified kids-keyword rows', async () => {
+    DB = mixed();
+    expect(ids(await feed({ kids: true })).sort()).toEqual([
+      'boyLadiesText',
+      'girl',
+      'nullKids',
+      'uni',
+    ]);
+  });
+
+  it('Girl hides BOYS, keeps GIRLS and unisex', async () => {
+    DB = mixed();
+    expect(ids(await feed({ kids: true, kids_who: 'Girl' })).sort()).toEqual([
+      'girl',
+      'nullKids',
+      'uni',
+    ]);
+  });
+
+  it('Boy hides GIRLS, keeps BOYS and unisex', async () => {
+    DB = mixed();
+    expect(ids(await feed({ kids: true, kids_who: 'Boy' })).sort()).toEqual([
+      'boyLadiesText',
+      'nullKids',
+      'uni',
+    ]);
+  });
+
+  it('kids_who without kids is ignored (adult feed unchanged)', async () => {
+    DB = mixed();
+    expect(ids(await feed({ kids_who: 'Girl' })).sort()).toEqual(['nullSaree', 'womanKidsText']);
+  });
+
+  it('age is a boost: the exact band comes first and nobody is dropped', async () => {
+    DB = [
+      aud('far', 'GIRLS', null, 'AGE_13_16'),
+      aud('exact', 'GIRLS', null, 'AGE_3_5'),
+      aud('unknown', 'GIRLS', null),
+    ];
+    const res = await feed({ kids: true, kids_age: 'AGE_3_5' });
+    expect(ids(res)[0]).toBe('exact');
+    expect(ids(res)).toHaveLength(3);
+  });
+
+  it.each([{ kids_who: 'Other' }, { kids_age: '3-5' }, { kids_who: 1 }])(
+    'rejects an invalid kids pick %j with 422',
+    async (body) => {
+      expect((await feed({ kids: true, ...body })).statusCode).toBe(422);
+    },
+  );
 });
 
 describe('meta.taste (what the quick quiz saved)', () => {
