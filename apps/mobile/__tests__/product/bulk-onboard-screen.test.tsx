@@ -1,5 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { act } from 'react-test-renderer'
 import { render } from '../../src/test/__mocks__/testing-library'
 
@@ -70,6 +72,19 @@ beforeEach(() => {
   vi.mocked(useLocalSearchParams).mockReturnValue({})
   m.getSections.mockResolvedValue({ data: racks })
   m.getStats.mockResolvedValue({ data: { total_products_available: 120 } })
+})
+
+// Product audience: the save payload carries the AI's audience (like catalog-import) instead of
+// leaving every bulk row NULL until the post-save tag job runs. Source pin: driving the camera,
+// upload and detect flow in this harness is not worth it; the two helpers have their own tests
+// in audience-chips.test.tsx.
+describe('bulk-onboard save seeds audience from the AI tags', () => {
+  const src = readFileSync(resolve(__dirname, '../../app/product/bulk-onboard.tsx'), 'utf8')
+  const save = src.slice(src.indexOf('bulkCreateProducts('))
+  it('spreads addAudience(audienceFromTags(tags), [category]) into every row', () => {
+    expect(src).toMatch(/import \{[^}]*\baddAudience\b[^}]*\baudienceFromTags\b[^}]*\} from '[^']*AudienceChips'/)
+    expect(save).toMatch(/\.\.\.addAudience\(\s*audienceFromTags\(item\.original\.tags\)/)
+  })
 })
 
 describe('bulk-onboard startup loads (T3.5 g)', () => {

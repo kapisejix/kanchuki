@@ -26,6 +26,7 @@ import { useTheme } from '../../src/lib/theme'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { KeyboardScreen } from '../../src/components/KeyboardScreen'
 import { GradientButton } from '../../src/components/GradientButton'
+import { addAudience, audienceFromTags } from '../../src/components/product-detail/AudienceChips'
 
 // F-001d: guided bulk onboarding — Path A (rack/shelf batch capture).
 // Reuses the same detect/tag/crop pipeline as F-001c/F-001b (catalog-import.ts);
@@ -169,6 +170,8 @@ export default function BulkOnboardScreen() {
           cropped_r2_key: item.original.cropped_r2_key,
           cropped_url: item.original.cropped_url,
           category: item.original.tags.category,
+          // AI audience first, keyword guess from the category when the AI gave none.
+          ...addAudience(audienceFromTags(item.original.tags), [item.original.tags.category ?? '']),
           primary_color: item.original.tags.primary_color,
           fabric_estimate: item.original.tags.fabric_estimate,
           pattern: item.original.tags.pattern,
