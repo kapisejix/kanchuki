@@ -234,7 +234,7 @@ test('over the monthly limit: plain copy, no polling, never the API sentence', a
     .getByTestId('my-style-selfie-input')
     .setInputFiles({ name: 'me.png', mimeType: 'image/png', buffer: PNG_1x1 })
 
-  await expect(page.getByText(/reached this month's limit/i)).toBeVisible()
+  await expect(page.getByText(/used this month's limit/i)).toBeVisible()
   expect(await page.getByText('RAW API SENTENCE').count()).toBe(0)
   expect(state.polls).toBe(0)
   await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible()
