@@ -148,13 +148,13 @@ export async function restoreQueryCache(queryClient: any): Promise<boolean> {
 
     // Version check — clear and bail if format changed
     if (payload.version !== CURRENT_VERSION) {
-      await clearPersistedCache()
+      deleteCacheFile()
       return false
     }
 
     // Skip cache older than 24 hours (stale data isn't useful)
     if (Date.now() - payload.timestamp > 24 * 60 * 60 * 1000) {
-      await clearPersistedCache()
+      deleteCacheFile()
       return false
     }
 
@@ -174,7 +174,7 @@ export async function restoreQueryCache(queryClient: any): Promise<boolean> {
       '[offline-persister] Failed to restore cache, clearing:',
       err instanceof Error ? err.message : String(err),
     )
-    await clearPersistedCache().catch(() => {})
+    deleteCacheFile()
     return false
   }
 }
@@ -187,6 +187,14 @@ export async function restoreQueryCache(queryClient: any): Promise<boolean> {
 export async function clearPersistedCache(): Promise<void> {
   // RC-107: the offline mutation queue lives in the same folder and must not outlive the account.
   await clearQueue()
+  deleteCacheFile()
+}
+
+/**
+ * Delete only the query-cache file. Restore uses this: a stale, old-version or corrupt cache says
+ * nothing about the account, so unsent offline sales and status changes must survive it (T8).
+ */
+function deleteCacheFile(): void {
   try {
     const file = cacheFile()
     if (file.exists) {

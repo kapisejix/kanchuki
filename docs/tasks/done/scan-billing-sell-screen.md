@@ -1,6 +1,6 @@
 # Scan & Sell billing screen (multi-item counter sale)
 
-**Opened:** 2026-11-14 · **Status:** 🟨 Approved 2026-11-14 (owner answered all §10 questions), nothing built · **F-number:** F-047 (proposed, unassigned) · **Priority:** closes the "stale catalog after an in-shop sale" gap for busy counters
+**Opened:** 2026-11-14 · **Status:** ✅ Built + merged T1–T8, T9 closed 2026-11-15 (owner device-tested, reported all working) · **F-number:** F-047 (assigned 2026-11-15) · **Priority:** closes the "stale catalog after an in-shop sale" gap for busy counters
 
 > **Start here:** §10 holds the owner's decisions, §11 is the step-by-step task list (tick each box as it lands), §13 is the prompt for a fresh session.
 
@@ -156,7 +156,7 @@ Clarified by the owner 2026-11-14: the "both options" answer was for Q4, not Q3.
 Ground rules for every task: branch from `main` (`feat/f-047-<task>`), invoke the listed skills **before** writing code, tests first where marked, run tests/tsc/biome **locally** before every push (GitHub Actions minutes are used up), no deploys or migrations by the agent, check `docs/root-cause/root-cause issues.md` before editing. API tests: `pnpm --filter @kanchuki/api test`; mobile: `pnpm --filter @kanchuki/mobile test` + `tsc --noEmit`.
 
 ### T0. Approve + number the feature  ·  ~15 min
-- [ ] Owner assigns the F-number (proposed F-047), confirm §10 table has no wrong assumption.
+- [x] Owner assigns the F-number (F-047, confirmed 2026-11-15), confirm §10 table has no wrong assumption.
 - Skills: none. Output: this doc's header updated.
 
 ### T1. Migration + schema `product_sales`  ·  ~0.5 day  ·  ✅ done 2026-11-14 (PR #261)
@@ -200,19 +200,23 @@ Ground rules for every task: branch from `main` (`feat/f-047-<task>`), invoke th
 - Skills: `superpowers:test-driven-development`, `vercel-react-native-skills`, `ecc:react-testing`, `ecc:frontend-a11y`, `emil-design-eng` + `impeccable` (UI polish pass, touch targets, Reduce Motion), `ecc:make-interfaces-feel-better`. Agents: `ecc:react-reviewer`, `ecc:silent-failure-hunter`.
 
 ### T7. Mobile: offline queue for bills  ·  ~0.5 day
-- [ ] Tests first in `mutation-queue.test.ts`: enqueue `PendingSellMutation`, replay on reconnect, 4xx dropped via `isRetryable`, replay is idempotent (same `bill_id`), queue cleared on sign-out.
-- [ ] Add the entry kind + replay in `useSyncQueue`; lookup tries the persisted catalog cache before the network; surface per-line replay failures as a notice (never silent).
+- [x] Tests first in `mutation-queue.test.ts`: enqueue `PendingSellMutation`, replay on reconnect, 4xx dropped via `isRetryable`, replay is idempotent (same `bill_id`), queue cleared on sign-out.
+- [x] Add the entry kind + replay in `useSyncQueue`; lookup tries the persisted catalog cache before the network; surface per-line replay failures as a notice (never silent).
+- Built (branch `feat/f-047-t7-offline-queue`): bills queue in their own file `sell-queue.json` (`enqueueSellMutation` / `getSellQueue` / `dequeueSellMutation`, one entry per bill id, serialised, a file it cannot parse is never overwritten and enqueue then reports failure); `clearQueue` (sign-out, RC-107) deletes it too. `sell.tsx`: a retryable failure queues the bill and shows "Saved on this phone" with no Undo (only claimed if the write succeeded); offline lookup reads the product lists already cached by the catalog screens (`findInCachedLists`), online lookup stays network-first and falls back to that cache on a network failure; a miss offline says so instead of adding a red "not found" row. `useSyncQueue` replays on start, on reconnect and every 60 s while online; 4xx is dropped with the articles named, 401 is kept (session not ready), failed/missing lines raise an Alert (`settleSell` + `describeFailures`, shared with the screen). Reviews: `ecc:react-reviewer` + `ecc:silent-failure-hunter`, findings fixed except the residuals below.
+- Residuals / not done: queued bills carry no retailer id (sign-out clear is the only account guard; a sign-out landing mid-drain could still post a bill already read); an iOS Alert raised while another modal is dismissing can be dropped; offline lookup only finds SKUs the catalog screens already loaded (pages of 50), so a large store will miss some; stock in the cache can be stale (reported per line at replay); no device test, no EAS build. Local tests only (mobile vitest 659 pass, `tsc` clean, `biome lint` 0 errors on changed files).
 - Skills: `superpowers:test-driven-development`, `ecc:error-handling`; agent `ecc:silent-failure-hunter`. Guard: RC-115 (online manager) + RC-107 (clear on sign-out).
 
 ### T8. Whole-feature review + verification  ·  ~0.5 day
-- [ ] `/code-review` on the branch stack, `ecc:security-review` pass (ownership, delegate, idempotency, rate limit), `/simplify` pass.
-- [ ] Run API security tests (`npx vitest run src/routes/security.test.ts`), full API + mobile suites, `tsc`, biome, all local.
-- [ ] Root-cause check: if any bug is found and fixed, add an RC-### entry + tracker row.
+- [x] `/code-review` on the branch stack, `ecc:security-review` pass (ownership, delegate, idempotency, rate limit), `/simplify` pass.
+- [x] Run API security tests (`npx vitest run src/routes/security.test.ts`), full API + mobile suites, `tsc`, biome, all local.
+- [x] Root-cause check: if any bug is found and fixed, add an RC-### entry + tracker row.
+- Built (branch `feat/f-047-t8-review`): reviewed by `ecc:security-reviewer`, `ecc:typescript-reviewer`, `agent-skills:test-engineer`, then `ecc:silent-failure-hunter` + `ecc:react-reviewer` on the fix diff. Ownership, delegate 403 (both routes), retailer-scoped idempotency key, atomic stock guard, undo claim, input bounds and grants all held (no CRITICAL/HIGH on the API). Three bugs fixed test-first: **RC-164** cache restore deleted the unsent offline queues (`offline-persister.ts`), **RC-165** a replayed line of an undone bill answered `ok: true` when the Redis key was gone (`products-sell.ts` P2002 branch), **RC-166** the queue dropped a 401 status change and a 409 `BILL_IN_PROGRESS` bill (shared `shouldWait` in `useSyncQueue.ts`). Local only: API 3131 pass (incl. `security.test.ts` 6/6), mobile 659 + 6 new, both `tsc` clean, `biome lint` 0 errors on changed files. Migration 159 not confirmed applied in prod by me.
+- Open, NOT fixed (owner decisions, see the T8 report): (M2) untracked product has no sold-state guard, so two counters can both sell the same one-off piece and Undo of one revives it as AVAILABLE; (M3/#2) a Redis claim stuck by an API crash keeps a queued bill waiting up to 24 h with no signal (needs an age-based alert); salesperson may undo any bill; L1 reused `client_bill_id` with different lines is answered with the old lines; L2 undo writes to soft-deleted products and has no stock cap clamp; L4 rate limit keys on IP, not `retailerId:staffId`; sign-out mid-drain can post an already-read bill (no retailer id in queued bills); status-queue read-modify-write is not serialised; test gaps: no real concurrency test (mock cannot interleave), `sell-idempotency.ts` has no unit test, 10-minute boundary and rate limit unpinned.
 - Skills: `superpowers:verification-before-completion`, `ecc:verification-loop`, `ecc:code-review`, `simplify`, `ecc:security-review`. Agent: `agent-skills:test-engineer` for coverage gaps.
 
 ### T9. Owner device test + docs + close-out  ·  ~0.5 day
-- [ ] Owner: new EAS build, then test: scan 3 articles (one multi-size), type one SKU by hand, scan an unknown SKU, sell, undo within 10 min, sell while offline then reconnect, two phones selling the last piece, staff login sells, catalog-upload delegate is refused.
-- [ ] Same-session docs: CLAUDE.md index row (status honest: what was and was not device-tested), `docs/BUILD-LOG.md` entry, `docs/PRO-REQUIREMENTS.md` (F-number + section), `docs/DATABASE.md`, move this file to `docs/tasks/done/` when finished.
+- [x] Owner: new EAS build, then test: scan 3 articles (one multi-size), type one SKU by hand, scan an unknown SKU, sell, undo within 10 min, sell while offline then reconnect, two phones selling the last piece, staff login sells, catalog-upload delegate is refused.
+- [x] Same-session docs: CLAUDE.md index row (status honest: what was and was not device-tested), `docs/BUILD-LOG.md` entry, `docs/PRO-REQUIREMENTS.md` (F-number + section), `docs/DATABASE.md`, move this file to `docs/tasks/done/` when finished.
 - Skills: `ecc:update-docs`, `superpowers:finishing-a-development-branch`.
 
 **Estimate:** ~5.5 days of build + owner steps (migration apply, EAS build, device test).

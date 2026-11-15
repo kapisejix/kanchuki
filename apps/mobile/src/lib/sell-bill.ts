@@ -1,5 +1,6 @@
 import { FREE_SIZE } from '@kanchuki/shared'
 import type { ProductStockRow, ProductSummary } from '@kanchuki/shared'
+import type { SellLineResult } from './api'
 
 /** What the list endpoint returns per product (it includes `stock`, the shared type omits it). */
 export type SellProduct = Pick<
@@ -152,6 +153,56 @@ export function toSellLines(s: BillState): { product_id: string; size: string; q
       ? [{ product_id: l.product.id, size: l.size, quantity: l.qty }]
       : [],
   )
+}
+
+export const LINE_ERRORS: Record<string, string> = {
+  INSUFFICIENT_STOCK: 'Not enough stock',
+  NOT_FOUND: 'Product not found',
+  INVALID_SIZE: 'That size is no longer valid',
+  BILL_UNDONE: 'This bill was undone',
+  // The server sent no row for this line (a replay after a timeout only knows committed sales).
+  NOT_APPLIED: 'Not sold: scan it again',
+}
+
+/**
+ * Server rows for a bill plus a NOT_APPLIED row for every sent line it left out: a replay answers
+ * only from committed sales, so a line that failed the first time has no row. Never let it vanish.
+ */
+export function settleSell(
+  sent: { product_id: string; size: string }[],
+  rows: SellLineResult[],
+): SellLineResult[] {
+  const missing: SellLineResult[] = sent
+    .filter((s) => !rows.some((l) => l.product_id === s.product_id && l.size === s.size))
+    .map((s) => ({ product_id: s.product_id, size: s.size, ok: false, error: 'NOT_APPLIED' }))
+  return [...rows, ...missing]
+}
+
+/** One "Name: reason" line per failed row. `names` maps product_id to a display name. */
+export function describeFailures(rows: SellLineResult[], names: Record<string, string>): string[] {
+  return rows
+    .filter((r) => !r.ok)
+    .map((r) => `${names[r.product_id] ?? r.product_id}: ${LINE_ERRORS[r.error ?? ''] ?? 'Could not update'}`)
+}
+
+/**
+ * Offline SKU lookup: scan product lists the catalog screens already cached (plain `{data}` or
+ * infinite `{pages:[{data}]}`). Only reads what is there, so a SKU the retailer never loaded is a miss.
+ */
+export function findInCachedLists(entries: [unknown, unknown][], rawSku: string): SellProduct | null {
+  const sku = rawSku.trim().toUpperCase()
+  for (const [, data] of entries) {
+    const d = data as { data?: unknown; pages?: { data?: unknown }[] } | null | undefined
+    const lists = [d?.data, ...(Array.isArray(d?.pages) ? d.pages.map((p) => p?.data) : [])]
+    for (const list of lists) {
+      if (!Array.isArray(list)) continue
+      const hit = list.find(
+        (p) => typeof p?.sku === 'string' && p.sku.trim().toUpperCase() === sku,
+      )
+      if (hit) return hit as SellProduct
+    }
+  }
+  return null
 }
 
 /** Informational total in paise (price is not editable in v1). */

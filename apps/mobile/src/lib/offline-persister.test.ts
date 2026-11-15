@@ -185,6 +185,31 @@ describe('offline-persister', () => {
     expect(memory.has(CACHE_FILE_URI)).toBe(false)
   })
 
+  it.each([
+    ['a version mismatch', JSON.stringify({ version: 999, timestamp: Date.now(), queries: [] })],
+    [
+      'a cache older than 24 hours',
+      JSON.stringify({ version: 1, timestamp: Date.now() - 25 * 60 * 60 * 1000, queries: [] }),
+    ],
+    ['a corrupt cache file', '{not json'],
+  ])('T8: restoring %s never deletes unsent offline sales or status changes', async (_name, body) => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const queueUri = 'file:///documents/kanchuki-cache/mutation-queue.json'
+    const sellUri = 'file:///documents/kanchuki-cache/sell-queue.json'
+    memory.set(CACHE_FILE_URI, body)
+    memory.set(queueUri, '[{"id":"p1-1"}]')
+    memory.set(sellUri, '[{"id":"bill-1"}]')
+
+    try {
+      expect(await restoreQueryCache(makeClient())).toBe(false)
+      expect(memory.has(CACHE_FILE_URI)).toBe(false) // the cache itself is still cleared
+      expect(memory.has(queueUri)).toBe(true)
+      expect(memory.has(sellUri)).toBe(true)
+    } finally {
+      warn.mockRestore()
+    }
+  })
+
   it('clearPersistedCache also deletes the offline mutation queue (RC-107)', async () => {
     const queueUri = 'file:///documents/kanchuki-cache/mutation-queue.json'
     memory.set(queueUri, '[{"id":"p1-1","productId":"p1","status":"SOLD","queuedAt":1}]')
