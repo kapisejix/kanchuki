@@ -389,6 +389,9 @@ export default function ProductDetailScreen() {
           setEditedDescription={form.setEditedDescription}
           editedSubtype={form.editedSubtype}
           setEditedSubtype={form.setEditedSubtype}
+          audience={form.audience}
+          kidsAge={form.kidsAge}
+          onAudienceChange={form.setAudiencePick}
           dirty={form.dirty}
           primaryColor={primaryColor}
           colors={colors}

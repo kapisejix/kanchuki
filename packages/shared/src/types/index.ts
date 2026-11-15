@@ -82,6 +82,9 @@ export interface ProductDetail extends ProductSummary {
   sku?: string | null;
   description?: string | null;
   subtype?: string | null;
+  /** Who it is for (retailer pick or AI-filled); null = not decided. */
+  audience?: ProductAudienceValue | null;
+  kids_age_group?: KidsAgeGroupValue | null;
   category_id?: string | null;
   background_image_id?: string | null;
   add_shadow?: boolean;
@@ -147,6 +150,8 @@ export interface CreateProductInput {
   category_id?: string;
   category?: string;
   subtype?: string;
+  audience?: ProductAudienceValue | null;
+  kids_age_group?: KidsAgeGroupValue | null;
   product_type?: string;
   primary_color?: string;
   secondary_colors?: string[];

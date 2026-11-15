@@ -36,6 +36,7 @@ import { apiMessage, showError, logError } from '../../src/lib/errors'
 import { useTheme } from '../../src/lib/theme'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { KeyboardScreen } from '../../src/components/KeyboardScreen'
+import { AudienceChips, addAudience, type AudiencePick } from '../../src/components/product-detail/AudienceChips'
 
 // ─── Types ────────────────────────────────────────────────────────
 
@@ -45,6 +46,8 @@ type Step = 'source' | 'uploading' | 'detecting' | 'reviewing' | 'saving' | 'don
 type ReviewItem = {
   original: CatalogDetectedItem
   approved: boolean
+  // null until the retailer taps a chip; until then a keyword guess (see audienceOf).
+  audience: AudiencePick | null
   edits: {
     product_name: string
     subtype: string
@@ -60,6 +63,10 @@ type ReviewItem = {
     price: string
   }
 }
+
+// What a row sends: the retailer's pick, else a keyword guess (null = leave it to the AI tagger).
+const audienceOf = (item: ReviewItem) =>
+  addAudience(item.audience, [item.edits.category, item.edits.subtype, item.edits.product_name])
 
 // ─── Screen ───────────────────────────────────────────────────────
 
@@ -183,6 +190,7 @@ export default function CatalogImportScreen() {
         merged.map((item) => ({
           original: item,
           approved: true,
+          audience: null,
           edits: {
             product_name: item.tags.product_name ?? '',
             subtype: item.tags.subtype ?? '',
@@ -254,6 +262,7 @@ export default function CatalogImportScreen() {
         result.data.items.map((item) => ({
           original: item,
           approved: true,
+          audience: null,
           edits: {
             product_name: item.tags.product_name ?? '',
             subtype: item.tags.subtype ?? '',
@@ -373,6 +382,7 @@ export default function CatalogImportScreen() {
           cropped_url: item.original.cropped_url,
           product_name: item.edits.product_name || null,
           subtype: item.edits.subtype || null,
+          ...audienceOf(item),
           short_description: item.edits.short_description || null,
           category: item.edits.category || null,
           primary_color: item.edits.primary_color || null,
@@ -670,6 +680,16 @@ export default function CatalogImportScreen() {
                   value={item.edits.category}
                   onChange={(v) => updateEdit(index, 'category', v)}
                 />
+                <View>
+                  <Text className="text-xs font-medium text-sand-500 mb-1">Who is it for?</Text>
+                  <AudienceChips
+                    audience={audienceOf(item).audience}
+                    ageGroup={audienceOf(item).kids_age_group}
+                    onChange={(p) =>
+                      setItems((prev) => prev.map((it, i) => (i === index ? { ...it, audience: p } : it)))
+                    }
+                  />
+                </View>
                 <EditField
                   label="Color"
                   value={item.edits.primary_color}

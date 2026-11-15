@@ -1,3 +1,4 @@
+import type { KidsAgeGroupValue, ProductAudienceValue } from '@kanchuki/shared'
 import { request } from './client'
 
 // ─── Catalog Import (F-001b / F-001c) ────────────────────────────
@@ -75,6 +76,8 @@ export const catalogImportApi = {
       fabric_estimate?: string | null
       pattern?: string | null
       subtype?: string | null
+      audience?: ProductAudienceValue | null
+      kids_age_group?: KidsAgeGroupValue | null
       product_name?: string | null
       short_description?: string | null
       styles?: string[]
