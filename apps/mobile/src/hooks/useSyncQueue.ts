@@ -30,6 +30,20 @@ function summarize(b: PendingSellMutation): string {
   return b.lines.map((l) => `${b.names[l.product_id] ?? l.product_id} ×${l.quantity}`).join(', ')
 }
 
+/**
+ * Keep an entry for the next try? Network/5xx/429 (isRetryable), 401 (the session is not ready or
+ * is refreshing: a real sale or status change must wait, not vanish; sign-out clears the queue
+ * itself) and 409 BILL_IN_PROGRESS (the first request is still committing: dropping the bill would
+ * tell the retailer "not sold" about a sale the server then records). Anything else will never
+ * succeed.
+ */
+function shouldWait(err: unknown): boolean {
+  return (
+    isRetryable(err) ||
+    (err instanceof ApiError && (err.status === 401 || (err.status === 409 && err.code === 'BILL_IN_PROGRESS')))
+  )
+}
+
 export function useSyncQueue(): void {
   const { isOnline } = useNetworkStatus()
   // First run counts as a transition: a bill queued just before the app was killed must not
@@ -49,9 +63,9 @@ export function useSyncQueue(): void {
           await productApi.updateStatus(m.productId, m.status)
           await dequeueStatusMutation(m.id)
         } catch (err) {
-          // Retryable (network/5xx) stays queued for the next reconnect. A 4xx will never
+          // Waiting errors stay queued for the next reconnect. Any other 4xx will never
           // succeed: drop it so it stops looping (the invalidate below reverts the UI).
-          if (!isRetryable(err)) await dequeueStatusMutation(m.id)
+          if (!shouldWait(err)) await dequeueStatusMutation(m.id)
         }
       }
 
@@ -66,10 +80,8 @@ export function useSyncQueue(): void {
             Alert.alert('Some items were not marked sold', failures.join('\n'))
           }
         } catch (err) {
-          // 401 = the session is not ready (or expired and refreshing): a real sale must wait, not
-          // vanish. Sign-out clears the queue itself. Any other 4xx will never succeed: drop and tell.
-          const wait = isRetryable(err) || (err instanceof ApiError && err.status === 401)
-          if (!wait) {
+          // A real sale must wait, not vanish (shouldWait). Any other 4xx will never succeed: drop and tell.
+          if (!shouldWait(err)) {
             await dequeueSellMutation(b.id)
             showError(err, `A bill saved while offline could not be sent and was dropped: ${summarize(b)}.`)
           }

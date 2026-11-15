@@ -12,6 +12,33 @@
 
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
+## RC-166 — The offline queue's "keep this entry or drop it?" rule was hand-written twice with different answers, so a 401 dropped queued status changes and a 409 `BILL_IN_PROGRESS` dropped a bill the server was still committing
+
+- **Component:** `apps/mobile/src/hooks/useSyncQueue.ts` (status loop and sell loop in `drain`); server side `apps/api/src/routes/products/products-sell.ts` (replay branch answers 409 `BILL_IN_PROGRESS`).
+- **Symptom:** (a) a status change queued offline was deleted when the app started before the session token was ready (401). (b) A Scan & Sell bill that timed out, was queued, and replayed while the first request was still committing got 409 `BILL_IN_PROGRESS`; the drain dropped it and told the retailer "could not be sent and was dropped", then the first request recorded the sale: the retailer re-entered a sale that already existed. Found in the F-047 T8 review.
+- **Root cause:** one question (can this error ever succeed on retry?) answered in two hand-written places. The sell loop had been taught that 401 means wait (T7); the status loop kept `!isRetryable(err)`, and the new mount-time drain (T7) made a not-ready session at start a normal case. Neither loop knew that a 409 can mean "still running", because `isRetryable` treats every 4xx except 408/429 as final.
+- **Fix:** one `shouldWait(err)` in `useSyncQueue.ts` (retryable, 401, or 409 with code `BILL_IN_PROGRESS`) used by both loops. Any other 409 and every other 4xx still drops.
+- **Proof:** `useSyncQueue.test.tsx`: status 401 kept, 409 `BILL_IN_PROGRESS` kept, other 409 dropped (3 new tests; the 401 and the 409 `BILL_IN_PROGRESS` ones were red against the old code for the stated reason).
+- **Not verified:** a bill whose key is stuck (API killed after the Redis claim, before any sale row) now waits in the queue until the 24 h key expires instead of being dropped; the retailer sees nothing meanwhile. No device test.
+
+## RC-165 — A replayed line of an undone bill was reported as sold whenever the Redis key was gone, because "undone bills are spent" lived only in Redis
+
+- **Component:** `apps/api/src/routes/products/products-sell.ts` (`sellLine`, unique-violation branch), `apps/api/src/lib/sell-idempotency.ts` (24 h key, fails open).
+- **Symptom:** sell a bill, undo it, then send the same `client_bill_id` after the 24 h key expires or while Redis is down: the response said `ok: true, replayed: true` for every line, no stock changed (Undo had restored it). A queued offline replay then marked the bill as sold on the phone while the server held nothing sold. Found in the F-047 T8 security review.
+- **Root cause:** the BILL_UNDONE answer was produced only on the Redis-hit path (`claim.isNew === false`). The Postgres unique index catches the replayed line (P2002) but that branch assumed a hit meant "already sold" and never read `undone_at`. The rule had one owner that can expire or be down (RC-103 shape: a guard whose absence reads as permission).
+- **Fix:** the P2002 branch reads the row and answers `BILL_UNDONE` (`ok: false, undone: true`) when `undone_at` is set. Postgres is now the source of truth for "spent", Redis stays a fast path.
+- **Proof:** `products-sell.test.ts` "T8: with Redis down, a replay of an UNDONE bill reports BILL_UNDONE" (red first: answered `ok: true`).
+- **Not verified:** mock Postgres only; not deployed.
+
+## RC-164 — Cache restore reused the sign-out cleanup, so a stale, old-version or corrupt query cache at app start deleted the unsent offline queues
+
+- **Component:** `apps/mobile/src/lib/offline-persister.ts` (`restoreQueryCache` → `clearPersistedCache` → `clearQueue`).
+- **Symptom:** after the query cache file aged past 24 h, changed version in an app update, or failed to parse, the next app start silently deleted `sell-queue.json` and `mutation-queue.json`. A bill the retailer had been told "Saved on this phone, will be marked sold automatically" never reached the server and stock never changed. Found in the F-047 T8 code review.
+- **Root cause:** RC-107 made `clearPersistedCache()` also delete the offline queues so they cannot replay under the next account. That is right for sign-out but `restoreQueryCache` called the same function for an unrelated reason (the cache file is unusable). One name, two intents; the restore paths inherited a delete the cache state says nothing about.
+- **Fix:** the file delete is a private `deleteCacheFile()`; restore uses it; `clearPersistedCache()` (sign-out, account delete) is queue wipe + `deleteCacheFile()`, unchanged for callers.
+- **Proof:** `offline-persister.test.ts` 3 new cases (version mismatch, older than 24 h, corrupt file): the cache file is still cleared and both queue files survive (red first: both were deleted). The RC-107 sign-out test still passes.
+- **Not verified:** no device test. Status mutations queued before F-047 had the same loss; this closes it too.
+
 ## RC-163 — `PUT /v1/retailers/me` validated `latitude` / `longitude` but never wrote them, so every shop pin the apps sent was silently dropped and no retailer had coordinates
 
 - **Component:** `apps/api/src/routes/retailers/retailers-profile.ts` (`UpdateRetailerSchema` lines 58-60 vs the `updateData` object); callers `apps/mobile/app/onboarding.tsx` (step 2) and `apps/mobile/app/settings/index.tsx`; read side `GET /v1/admin/retailers`, `/admin/discovery`, `/public/near-me`, `/public/stores` nearby.
