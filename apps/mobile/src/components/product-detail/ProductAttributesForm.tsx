@@ -13,7 +13,8 @@ import {
 } from '@kanchuki/shared'
 import { AnimatedPressable } from '../AnimatedPressable'
 import { StockEditor } from './StockEditor'
-import type { ProductDetail } from '@kanchuki/shared'
+import { AudienceChips, type AudiencePick } from './AudienceChips'
+import type { KidsAgeGroupValue, ProductAudienceValue, ProductDetail } from '@kanchuki/shared'
 
 interface ProductAttributesFormProps {
   product: ProductDetail
@@ -49,6 +50,9 @@ interface ProductAttributesFormProps {
   setEditedDescription: (d: string) => void
   editedSubtype: string
   setEditedSubtype: (s: string) => void
+  audience: ProductAudienceValue | null
+  kidsAge: KidsAgeGroupValue | null
+  onAudienceChange: (p: AudiencePick) => void
   dirty: <T>(setter: (v: T) => void) => (val: T) => void
   primaryColor: string
   colors: any
@@ -95,6 +99,9 @@ export function ProductAttributesForm({
   setEditedDescription,
   editedSubtype,
   setEditedSubtype,
+  audience,
+  kidsAge,
+  onAudienceChange,
   dirty,
   primaryColor,
   colors,
@@ -451,6 +458,14 @@ export function ProductAttributesForm({
             </View>
           </View>
         )}
+
+        {/* Who is it for? (AI pre-fills it; tap to change, tap again to clear) */}
+        <View>
+          <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider mb-2">
+            Who is it for?
+          </Text>
+          <AudienceChips audience={audience} ageGroup={kidsAge} onChange={onAudienceChange} />
+        </View>
 
         {/* Available Sizes */}
         <View>

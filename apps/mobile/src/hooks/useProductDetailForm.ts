@@ -2,7 +2,12 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { Alert } from 'react-native'
 import { router } from 'expo-router'
 import { useQueryClient } from '@tanstack/react-query'
-import type { ProductDetail, ProductStatus } from '@kanchuki/shared'
+import type {
+  KidsAgeGroupValue,
+  ProductAudienceValue,
+  ProductDetail,
+  ProductStatus,
+} from '@kanchuki/shared'
 import { productApi } from '../lib/api'
 import { showError } from '../lib/errors'
 import { toStockPayload } from '../components/product-detail/StockEditor'
@@ -39,6 +44,11 @@ export function useProductDetailForm({
   const [editedSku, setEditedSku] = useState<string>('')
   const [editedDescription, setEditedDescription] = useState<string>('')
   const [editedSubtype, setEditedSubtype] = useState<string>('')
+  // "Who is it for?" — shown from the stored (maybe AI-filled) value, sent only once the
+  // retailer touches it, so saving an unrelated edit never rewrites the AI's pick.
+  const [audience, setAudience] = useState<ProductAudienceValue | null>(null)
+  const [kidsAge, setKidsAge] = useState<KidsAgeGroupValue | null>(null)
+  const [audienceTouched, setAudienceTouched] = useState(false)
 
   const [isDirty, setIsDirty] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -85,6 +95,9 @@ export function useProductDetailForm({
     setEditedSku(product.sku ?? '')
     setEditedDescription(product.description ?? '')
     setEditedSubtype(product.subtype ?? '')
+    setAudience(product.audience ?? null)
+    setKidsAge(product.kids_age_group ?? null)
+    setAudienceTouched(false)
   }, [product, isDirty])
 
   const invalidate = useCallback(() => {
@@ -134,11 +147,13 @@ export function useProductDetailForm({
         fabrics: selectedFabrics,
         sizes: selectedSizes,
         ...(stockTouched ? { stock: toStockPayload(selectedSizes, stockQty) } : {}),
+        ...(audienceTouched ? { audience, kids_age_group: kidsAge } : {}),
         search_tags: tagsToSave,
       })
       invalidate()
       setIsDirty(false)
       setStockTouched(false)
+      setAudienceTouched(false)
       Alert.alert('Saved', 'Product updated.')
     } catch (err) {
       showError(err, 'Failed to save')
@@ -233,6 +248,14 @@ export function useProductDetailForm({
     setEditedDescription,
     editedSubtype,
     setEditedSubtype,
+    audience,
+    kidsAge,
+    setAudiencePick: (p: { audience: ProductAudienceValue | null; kids_age_group: KidsAgeGroupValue | null }) => {
+      setIsDirty(true)
+      setAudienceTouched(true)
+      setAudience(p.audience)
+      setKidsAge(p.kids_age_group)
+    },
     isDirty,
     dirty,
     saving,

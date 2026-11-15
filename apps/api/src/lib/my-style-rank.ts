@@ -2,10 +2,12 @@
 // ordered scored items out. No DB, no clock (callers pass `now`), no AI — so a fallback can
 // never be mistaken for model output (RC-059). Weights live in @kanchuki/shared.
 import {
+  KIDS_AGE_GROUPS,
   MY_STYLE_DEFAULT_RADIUS_KM,
   MY_STYLE_DIVERSITY,
   MY_STYLE_FIT,
   MY_STYLE_FRESH_DAYS,
+  MY_STYLE_KIDS_AGE,
   MY_STYLE_SIMILAR,
   MY_STYLE_WEIGHTS,
   type MyStyleSort,
@@ -28,6 +30,8 @@ export interface RankCandidate {
   lng: number | null;
   /** 0..1 from lib/my-style-similar.ts; set on every candidate or on none. */
   similarity?: number;
+  /** The product's KidsAgeGroup, or null (unknown). Only read when the profile has `kidsAge`. */
+  kids_age_group?: string | null;
 }
 
 export interface RankProfile {
@@ -38,6 +42,8 @@ export interface RankProfile {
   origin: { lat: number; lng: number } | null;
   radiusKm?: number;
   trends: readonly { match_keywords: readonly string[]; boost: number }[];
+  /** "For my child": the child's age band (a KidsAgeGroup). Boosts, never filters. */
+  kidsAge?: string;
 }
 
 export interface RankedItem {
@@ -50,6 +56,16 @@ export interface RankedItem {
 
 const clamp01 = (n: number) => Math.min(1, Math.max(0, n));
 const lower = (xs: readonly string[]) => new Set(xs.map((x) => x.trim().toLowerCase()));
+
+// Exact band = `exact`, a neighbouring band = `adjacent`, anything else (or an unknown age) = 0.
+function ageBoost(c: RankCandidate, p: RankProfile): number {
+  if (!p.kidsAge || !c.kids_age_group) return 0;
+  const want = (KIDS_AGE_GROUPS as readonly string[]).indexOf(p.kidsAge);
+  const have = (KIDS_AGE_GROUPS as readonly string[]).indexOf(c.kids_age_group);
+  if (want < 0 || have < 0) return 0;
+  const gap = Math.abs(want - have);
+  return gap === 0 ? MY_STYLE_KIDS_AGE.exact : gap === 1 ? MY_STYLE_KIDS_AGE.adjacent : 0;
+}
 
 function fit(c: RankCandidate, p: RankProfile): number {
   const family = c.color_family?.toLowerCase() ?? null;
@@ -68,7 +84,8 @@ function fit(c: RankCandidate, p: RankProfile): number {
       MY_STYLE_FIT.palette * palette +
       MY_STYLE_FIT.occasion * hit(c.occasions, lower(p.occasions)) +
       MY_STYLE_FIT.prefColor * (family && lower(p.colorFamilies).has(family) ? 1 : 0) +
-      MY_STYLE_FIT.prefFabric * hit(c.fabrics, lower(p.fabrics)),
+      MY_STYLE_FIT.prefFabric * hit(c.fabrics, lower(p.fabrics)) +
+      ageBoost(c, p),
   );
   // Find similar: the garment the shopper showed us takes over part of `fit`. Absent =
   // an ordinary feed, unchanged.

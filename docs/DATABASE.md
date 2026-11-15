@@ -268,6 +268,8 @@ model Product {
   // AI-generated tags (editable by retailer)
   category    String?           // "Ladies Suit", "Saree", "Kurti", etc.
   product_type String?          // "Unstitched", "Semi-stitched", "Ready-made"
+  audience    ProductAudience?  // migration 160: WOMEN|MEN|BOYS|GIRLS|KIDS_UNISEX; NULL = adult unisex / undecided
+  kids_age_group KidsAgeGroup?  // migration 160: NEW_BORN|AGE_0_2|AGE_3_5|AGE_6_8|AGE_9_12|AGE_13_16; kids audiences only
   primary_color String?         // "Pink", "Maroon", "Navy Blue"
   secondary_colors String[]     // ["Gold", "White"]
   fabric_estimate String?       // "Cotton", "Silk", "Georgette"
@@ -803,6 +805,21 @@ model AuditLog {
 ```
 
 ---
+
+### Product audience (migration 160, owner applies)
+
+`products.audience` (`ProductAudience`: WOMEN, MEN, BOYS, GIRLS, KIDS_UNISEX) and `products.kids_age_group`
+(`KidsAgeGroup`: NEW_BORN, AGE_0_2, AGE_3_5, AGE_6_8, AGE_9_12, AGE_13_16). Both nullable, no default, no index,
+no CHECK. NULL audience = adult unisex or not decided.
+
+- **Writers:** retailer product routes (`POST/PUT /v1/products`, catalog import / bulk onboarding) through
+  `normalizeAudience()`, which clears `kids_age_group` unless the audience is a kids value; the `tag-product` job
+  (only while the column is still NULL, never over a retailer's value); `apps/api/scripts/backfill-product-audience.ts`
+  (owner-run, dry-run by default, only rows where `audience IS NULL`).
+- **Reader:** My Style candidate query (`apps/api/src/lib/my-style-candidates.ts`). Rows with a stored audience are
+  split by it; rows with `audience IS NULL` fall back to the `KIDS_KEYWORDS` match on category + subtype.
+- **Grants/RLS:** unchanged (`kanchuki_app` already has table-level SELECT/INSERT/UPDATE on `products`).
+- **Rollback:** `ALTER TABLE products DROP COLUMN audience, DROP COLUMN kids_age_group; DROP TYPE "ProductAudience"; DROP TYPE "KidsAgeGroup";`
 
 ## Indexes Strategy
 

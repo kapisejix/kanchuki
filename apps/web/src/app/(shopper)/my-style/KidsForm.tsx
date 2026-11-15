@@ -2,9 +2,8 @@
 // path here at all — no file input, no camera — and nothing is stored: the
 // values live in page state for the visit only.
 //
-// The feed cannot filter on age or gender (kids' sizing varies by store), so
-// only occasion and budget reach it; the form says so rather than implying a
-// match it does not make.
+// Gender narrows the feed and age boosts closer age groups (never filters:
+// kids' sizing varies by store); occasion and budget work as for adults.
 
 'use client'
 
@@ -56,7 +55,8 @@ export function KidsForm({ onApply }: { onApply: (need: KidsNeed) => void }) {
         ))}
       </select>
       <p className="col-span-2 text-xs text-heliotrope-500 px-1">
-        Kids&apos; sizes vary by store, so we match on occasion and budget. Ask the store about size.
+        We use gender and age to pick outfits, plus occasion and budget. Kids&apos; sizes vary by store, so ask
+        the store about size.
       </p>
       <button type="submit" className={`${BTN_PRIMARY} col-span-2`}>
         Show outfits

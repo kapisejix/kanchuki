@@ -11,8 +11,15 @@ export function evalCond(p: Record<string, unknown>, c: Cond): boolean | null {
     else if (k === 'NOT') {
       const inner = evalCond(p, v as Cond);
       parts.push(inner === null ? null : !inner);
-    } else if (v === null) parts.push(p[k] === null);
-    else {
+    } else if (v === null)
+      parts.push(p[k] == null); // a column the fixture omits is NULL, as in Postgres
+    else if ('in' in (v as object)) {
+      // SQL `col IN (...)`: a NULL column is NULL (not a match), same as NOT over NULL.
+      const col = p[k];
+      parts.push(
+        col === null || col === undefined ? null : (v as { in: unknown[] }).in.includes(col),
+      );
+    } else {
       const col = p[k] as string | null;
       const needle = (v as { contains: string }).contains.toLowerCase();
       parts.push(col === null ? null : col.toLowerCase().includes(needle));

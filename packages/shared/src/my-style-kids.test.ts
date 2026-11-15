@@ -13,6 +13,7 @@ describe('isKidsProduct', () => {
   });
   it.each([
     ['Ladies Suit', 'Anarkali'],
+    ['Ladies', 'Frock suit'],
     ['Saree', null],
     ["Men's Kurta Pajama", null],
     [null, null],

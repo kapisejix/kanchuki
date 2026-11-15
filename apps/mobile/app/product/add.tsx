@@ -2,6 +2,11 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import { SIZE_OPTIONS } from '@kanchuki/shared'
 import { StockEditor, toStockPayload } from '../../src/components/product-detail/StockEditor'
 import {
+  AudienceChips,
+  addAudience,
+  type AudiencePick,
+} from '../../src/components/product-detail/AudienceChips'
+import {
   View,
   Text,
   TextInput,
@@ -136,6 +141,8 @@ export default function AddProductScreen() {
   const [selectedStyles, setSelectedStyles] = useState<string[]>([])
   const [selectedFabrics, setSelectedFabrics] = useState<string[]>([])
   const [selectedSizes, setSelectedSizes] = useState<string[]>([])
+  // null until the retailer taps a chip; until then the chips show a guess from the category.
+  const [audiencePick, setAudiencePick] = useState<AudiencePick | null>(null)
   const [stockQty, setStockQty] = useState<Record<string, number>>({})
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([])
   const checkProAvailability = useCallback((refresh = false) => {
@@ -161,6 +168,10 @@ export default function AddProductScreen() {
     queryFn: () => categoryApi.list(),
   })
   const categories = categoriesData?.data ?? []
+  const audienceNow = addAudience(
+    audiencePick,
+    selectedCategoryIds.map((id) => categories.find((c) => c.id === id)?.name ?? ''),
+  )
 
   // Dynamic, retailer-editable Style/Fabric taxonomy (DB-backed, seeded from
   // the admin default template — no hardcoded option lists).
@@ -465,6 +476,9 @@ export default function AddProductScreen() {
         search_tags: tagsToSave,
         sizes: selectedSizes,
         stock: toStockPayload(selectedSizes, stockQty),
+        ...(audienceNow.audience
+          ? { audience: audienceNow.audience, kids_age_group: audienceNow.kids_age_group }
+          : {}),
         category_id: primaryCategoryId,
         location_notes: location || undefined,
         notes: notes || undefined,
@@ -1137,6 +1151,18 @@ export default function AddProductScreen() {
               })}
             </View>
           )}
+        </View>
+
+        {/* Who is it for? */}
+        <View className="bg-white rounded-2xl p-4 border border-sand-100">
+          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-3">
+            Who is it for?
+          </Text>
+          <AudienceChips
+            audience={audienceNow.audience}
+            ageGroup={audienceNow.kids_age_group}
+            onChange={setAudiencePick}
+          />
         </View>
 
         {/* Sizes */}

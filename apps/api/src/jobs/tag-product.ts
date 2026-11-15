@@ -1,6 +1,6 @@
 import { fetchImageBuffer, tagProductImageUrls, uploadBuffer } from '@kanchuki/ai';
 import { type Prisma, prisma } from '@kanchuki/db';
-import { classifyColorTone } from '@kanchuki/shared';
+import { classifyColorTone, isKidsAudience, normalizeAudience } from '@kanchuki/shared';
 import { reserveTaggingQuota } from '../lib/ai-usage.js';
 import { pickContrastBackground } from '../lib/backgrounds.js';
 import { resolveColorFamily } from '../lib/color-families.js';
@@ -49,6 +49,8 @@ export async function handleTagProduct(data: TaggingJobData): Promise<void> {
         sku: true,
         description: true,
         subtype: true,
+        audience: true,
+        kids_age_group: true,
         category_id: true,
         styles: true,
         fabrics: true,
@@ -87,6 +89,17 @@ export async function handleTagProduct(data: TaggingJobData): Promise<void> {
     // never left pointing at the previous colour. Null if unmapped; on lookup failure
     // (undefined) the column is left alone. resolveColorFamily never throws.
     const colorFamily = await resolveColorFamily(tags.primary_color);
+
+    // Audience / age band: AI fills only what is still NULL (a retailer's pick survives a
+    // re-tag). The age is offered only while the effective audience is a kids value;
+    // normalizeAudience clears it if the tagged audience turns out to be an adult one.
+    const aiAudience = current?.audience == null ? (tags.audience ?? undefined) : undefined;
+    const effectiveAudience = aiAudience ?? current?.audience ?? null;
+    const aiAge =
+      current?.kids_age_group == null && isKidsAudience(effectiveAudience)
+        ? (tags.kids_age_group ?? undefined)
+        : undefined;
+    const audiencePatch = normalizeAudience(aiAudience, aiAge, current?.audience ?? null);
 
     const mergedSearchTags = Array.from(
       new Set([
@@ -127,6 +140,7 @@ export async function handleTagProduct(data: TaggingJobData): Promise<void> {
           neck_style: tags.neck_style,
           sleeve_type: tags.sleeve_type,
           search_tags: mergedSearchTags,
+          ...audiencePatch,
           ...(current?.subtype == null ? { subtype: tags.subtype } : {}),
           ...(current?.name == null ? { name: tags.product_name } : {}),
           ...(current?.description == null ? { description: tags.short_description } : {}),

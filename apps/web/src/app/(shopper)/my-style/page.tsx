@@ -9,7 +9,7 @@
 'use client'
 
 import { StyleQuiz } from '@/app/c/[slug]/components/StyleQuiz'
-import { type GarmentDescriptor, PRODUCT_OCCASIONS, formatPriceRange } from '@kanchuki/shared'
+import { type GarmentDescriptor, PRODUCT_OCCASIONS, ageGroupFromLabel, formatPriceRange } from '@kanchuki/shared'
 import { Sheet } from '@/components/Sheet'
 import {
   AlertCircle, Baby, Camera, ChevronLeft, ChevronRight, ClipboardList, Globe2, LocateFixed, MapPin,
@@ -183,7 +183,13 @@ export default function MyStylePage() {
         ...(budget ? { budget_max: Number(budget) } : {}),
         ...(size ? { size } : {}),
         // "For my child" shows kids' wear only; without it the adult feed leaves it out.
-        ...(kids ? { kids: true } : {}),
+        ...(kids
+          ? {
+              kids: true,
+              ...(kids.who === 'Girl' || kids.who === 'Boy' ? { kids_who: kids.who } : {}),
+              ...(ageGroupFromLabel(kids.age) ? { kids_age: ageGroupFromLabel(kids.age) } : {}),
+            }
+          : {}),
         ...(tab === 'occasion' ? (tabOccasion ? { occasion: tabOccasion } : {}) : occasion ? { occasion } : {}),
         ...(where ? { ...where, radius_km: radius } : {}),
         ...(similar ? { similar } : {}),

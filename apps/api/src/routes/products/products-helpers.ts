@@ -2,7 +2,7 @@
 // (scripts/check-route-size.sh split). Route modules import from here.
 import { getDownloadPresignedUrl } from '@kanchuki/ai';
 import { prisma } from '@kanchuki/db';
-import { SIZE_OPTIONS } from '@kanchuki/shared';
+import { KIDS_AGE_GROUPS, PRODUCT_AUDIENCES, SIZE_OPTIONS } from '@kanchuki/shared';
 import { z } from 'zod';
 import { StockInputSchema } from '../../lib/product-stock.js';
 import { queryBool } from '../../lib/query-bool.js';
@@ -94,6 +94,10 @@ export const CreateProductSchema = z.object({
   category: z.string().max(100).optional(),
   subtype: z.string().max(100).optional(),
   product_type: z.string().max(50).optional(),
+  // Who it is for. null = adult unisex / undecided. The age band is kept only with a kids
+  // audience (normalizeAudience in the handlers).
+  audience: z.enum(PRODUCT_AUDIENCES).nullable().optional(),
+  kids_age_group: z.enum(KIDS_AGE_GROUPS).nullable().optional(),
   primary_color: z.string().max(50).optional(),
   secondary_colors: z.array(z.string().max(50)).max(10).optional(),
   fabric_estimate: z.string().max(100).optional(),

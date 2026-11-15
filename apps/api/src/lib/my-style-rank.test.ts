@@ -33,6 +33,46 @@ const profile = (over: Partial<RankProfile> = {}): RankProfile => ({
 const ids = (xs: { id: string }[]) => xs.map((x) => x.id);
 const scoreOf = (c: RankCandidate, p: RankProfile) => rankProducts([c], p, 'best', NOW)[0]!.score;
 
+describe('kids age band (a rank boost, never a filter)', () => {
+  const p = profile({ kidsAge: 'AGE_3_5' });
+  const at = (age: string | null) => scoreOf(cand('a', { kids_age_group: age }), p);
+
+  it('ranks exact > one band away > further away', () => {
+    expect(at('AGE_3_5')).toBeGreaterThan(at('AGE_6_8'));
+    expect(at('AGE_6_8')).toBeGreaterThan(at('AGE_13_16'));
+    expect(at('AGE_0_2')).toBeCloseTo(at('AGE_6_8'), 10); // both are one band away
+  });
+
+  it('treats an unknown age like a far one: neutral, never a penalty', () => {
+    expect(at(null)).toBeCloseTo(at('AGE_13_16'), 10);
+  });
+
+  it('changes nothing when the shopper gave no age', () => {
+    const none = profile();
+    const a = scoreOf(cand('a', { kids_age_group: 'AGE_3_5' }), none);
+    const b = scoreOf(cand('a', { kids_age_group: null }), none);
+    expect(a).toBeCloseTo(b, 10);
+  });
+
+  it('keeps every candidate in the result', () => {
+    const pool = [
+      cand('a', { kids_age_group: 'AGE_3_5' }),
+      cand('b', { kids_age_group: 'AGE_13_16' }),
+      cand('c', { kids_age_group: null }),
+    ];
+    expect(rankProducts(pool, p, 'best', NOW)).toHaveLength(3);
+  });
+
+  it('puts the exact-age product first among otherwise equal products', () => {
+    const pool = [
+      cand('far', { kids_age_group: 'AGE_13_16' }),
+      cand('exact', { kids_age_group: 'AGE_3_5' }),
+      cand('unknown', { kids_age_group: null }),
+    ];
+    expect(ids(rankProducts(pool, p, 'best', NOW))[0]).toBe('exact');
+  });
+});
+
 describe('palette fit', () => {
   const palette = { good: ['maroon'], avoid: ['yellow'] };
   const pool = [

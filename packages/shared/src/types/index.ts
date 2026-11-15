@@ -1,3 +1,5 @@
+import type { KidsAgeGroupValue, ProductAudienceValue } from '../product-audience.js';
+
 // ─── API Response Envelope ────────────────────────────────────────
 
 export interface ApiSuccess<T> {
@@ -80,6 +82,9 @@ export interface ProductDetail extends ProductSummary {
   sku?: string | null;
   description?: string | null;
   subtype?: string | null;
+  /** Who it is for (retailer pick or AI-filled); null = not decided. */
+  audience?: ProductAudienceValue | null;
+  kids_age_group?: KidsAgeGroupValue | null;
   category_id?: string | null;
   background_image_id?: string | null;
   add_shadow?: boolean;
@@ -145,6 +150,8 @@ export interface CreateProductInput {
   category_id?: string;
   category?: string;
   subtype?: string;
+  audience?: ProductAudienceValue | null;
+  kids_age_group?: KidsAgeGroupValue | null;
   product_type?: string;
   primary_color?: string;
   secondary_colors?: string[];
@@ -192,6 +199,9 @@ export interface AiTagResult {
   fabrics: string[];
   /** Ranking-only occasions (see occasions.ts); optional so the detector path can omit it. */
   occasions?: string[];
+  /** Who it is for; null/absent when the model abstains. Optional so older fixtures compile. */
+  audience?: ProductAudienceValue | null;
+  kids_age_group?: KidsAgeGroupValue | null;
   price_range_estimate: string | null;
   design_number_visible: string | null;
   is_catalog_image: boolean;

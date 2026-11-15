@@ -23,6 +23,14 @@ export const MY_STYLE_FIT = {
   prefFabric: 0.05,
 } as const;
 
+/**
+ * "For my child": added on top of the fit parts (before the 0..1 clamp) when the parent picked
+ * an age band. An exact match to the product's `kids_age_group` gets `exact`, a neighbouring band
+ * `adjacent`; any other band and an unknown (NULL) age get nothing. A boost only: age never
+ * removes a product, because band edges are fuzzy and kids' sizing varies by store.
+ */
+export const MY_STYLE_KIDS_AGE = { exact: 0.1, adjacent: 0.05 } as const;
+
 /** Best-match only: at most `perStore` items per store inside the first `window` results. */
 export const MY_STYLE_DIVERSITY = { perStore: 3, window: 12 } as const;
 

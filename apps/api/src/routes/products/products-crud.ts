@@ -1,5 +1,6 @@
 // Auto-split from products.ts (scripts/check-route-size.sh) — route bodies verbatim.
 import { type Prisma, prisma, vaultDelete } from '@kanchuki/db';
+import { normalizeAudience } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { maybeEnqueueFullSync, maybeEnqueueProductSync } from '../../jobs/catalog-sync.js';
@@ -45,7 +46,15 @@ export const productsCrudRoutes: FastifyPluginAsync = async (server) => {
     const body = CreateProductSchema.safeParse(request.body);
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
 
-    const { photo_r2_key: uploadKey, metadata, auto_cleanup, stock, ...rest } = body.data;
+    const {
+      photo_r2_key: uploadKey,
+      metadata,
+      auto_cleanup,
+      stock,
+      audience,
+      kids_age_group,
+      ...rest
+    } = body.data;
     // Client-supplied photo_url is ignored: key must be the retailer's own real
     // image, and the url is rebuilt from it.
     const { url: photo_url, r2Key: photo_r2_key } = await verifyUpload({
@@ -66,6 +75,7 @@ export const productsCrudRoutes: FastifyPluginAsync = async (server) => {
           retailer_id: retailerId,
           metadata: metadata !== undefined ? (metadata as Prisma.InputJsonValue) : undefined,
           ...rest,
+          ...normalizeAudience(audience, kids_age_group, null),
           photos: {
             create: [
               { url: photo_url, r2_key: photo_r2_key, is_primary: true, retailer_id: retailerId },
@@ -291,7 +301,7 @@ export const productsCrudRoutes: FastifyPluginAsync = async (server) => {
     const body = UpdateProductSchema.safeParse(request.body);
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
 
-    const { metadata, stock, ...rest } = body.data;
+    const { metadata, stock, audience, kids_age_group, ...rest } = body.data;
     await assertOwnRefs(request.retailerId, rest);
     // F-045: a manual colour edit re-derives color_family (null if unmapped) so it never
     // keeps pointing at the old colour; the backfill only fills NULLs, not stale values.
@@ -306,6 +316,7 @@ export const productsCrudRoutes: FastifyPluginAsync = async (server) => {
         data: {
           metadata: metadata !== undefined ? (metadata as Prisma.InputJsonValue) : undefined,
           ...rest,
+          ...normalizeAudience(audience, kids_age_group, existing.audience),
           ...(colorFamily !== undefined ? { color_family: colorFamily } : {}),
         },
         include: { photos: true, section: { select: { name: true } }, stock: true },
