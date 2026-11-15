@@ -463,3 +463,13 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Changed | `'AI_CUSTOM_TEMPLATE'` added to the API allowlist, the web `FeatureKey` union and the feature list (label "AI Custom Designs"). No migration. The key still fails closed (no row = OFF) and the quota still needs `plan_limits` rows (Admin → Plan Limits, METERED). |
 | Verification | Local only (CI blocked by billing): API `tsc` clean, API vitest `src/routes/admin` 461 passed, web `tsc` clean. Not browser-tested. `biome check` on `plan-features/page.tsx` already failed on `main` (5 errors: import order, formatting, `Infinity`, an unused variable, a literal key); left alone on purpose because `--write` reformats the whole file (225 lines) and two errors need manual fixes. |
 | Not verified | Grid not opened in a browser; no toggle saved; `plan_features` / `plan_limits` rows for `AI_CUSTOM_TEMPLATE` still not set (owner step); no real FLUX call. |
+
+## 2026-11-15 — F-047 Scan & Sell billing screen closed out (T9)
+
+| What | Detail |
+|---|---|
+| Built (T1–T8, earlier) | `product_sales` ledger (migrations 158, 159), `POST /v1/products/sell` + undo, mobile `product/sell.tsx`, offline queue, whole-feature review PR #270 (`9c292f80`) fixing RC-164, RC-165, RC-166. |
+| Owner steps | Migration 159 applied in prod (owner confirmed). New EAS build device-tested by the owner. |
+| Device result | Owner: "everything working perfect". Per-step results not itemised, so the RC-164/165/166 steps and the two-phone last-piece step are not individually confirmed. |
+| Docs | CLAUDE.md row 114, PRO-REQUIREMENTS §45, DATABASE.md note (159 applied), spec moved to `docs/tasks/done/`. |
+| Open, not built | Open, NOT built (owner decisions): untracked one-off product can be sold twice and Undo revives it; a Redis claim stuck by an API crash keeps a queued bill waiting up to 24 h with no alert; a salesperson may undo any bill. Residuals: queued bills carry no retailer id; reused `client_bill_id` with different lines is answered with the old lines; undo writes to soft-deleted products with no stock-cap clamp; sell/undo rate limit keys on IP; status-queue read-modify-write not serialised; offline lookup only finds SKUs the catalog already cached; no real concurrency test. |

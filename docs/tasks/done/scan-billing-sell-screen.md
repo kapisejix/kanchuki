@@ -1,6 +1,6 @@
 # Scan & Sell billing screen (multi-item counter sale)
 
-**Opened:** 2026-11-14 · **Status:** 🟨 Approved 2026-11-14 (owner answered all §10 questions), nothing built · **F-number:** F-047 (proposed, unassigned) · **Priority:** closes the "stale catalog after an in-shop sale" gap for busy counters
+**Opened:** 2026-11-14 · **Status:** ✅ Built + merged T1–T8, T9 closed 2026-11-15 (owner device-tested, reported all working) · **F-number:** F-047 (assigned 2026-11-15) · **Priority:** closes the "stale catalog after an in-shop sale" gap for busy counters
 
 > **Start here:** §10 holds the owner's decisions, §11 is the step-by-step task list (tick each box as it lands), §13 is the prompt for a fresh session.
 
@@ -156,7 +156,7 @@ Clarified by the owner 2026-11-14: the "both options" answer was for Q4, not Q3.
 Ground rules for every task: branch from `main` (`feat/f-047-<task>`), invoke the listed skills **before** writing code, tests first where marked, run tests/tsc/biome **locally** before every push (GitHub Actions minutes are used up), no deploys or migrations by the agent, check `docs/root-cause/root-cause issues.md` before editing. API tests: `pnpm --filter @kanchuki/api test`; mobile: `pnpm --filter @kanchuki/mobile test` + `tsc --noEmit`.
 
 ### T0. Approve + number the feature  ·  ~15 min
-- [ ] Owner assigns the F-number (proposed F-047), confirm §10 table has no wrong assumption.
+- [x] Owner assigns the F-number (F-047, confirmed 2026-11-15), confirm §10 table has no wrong assumption.
 - Skills: none. Output: this doc's header updated.
 
 ### T1. Migration + schema `product_sales`  ·  ~0.5 day  ·  ✅ done 2026-11-14 (PR #261)
@@ -215,8 +215,8 @@ Ground rules for every task: branch from `main` (`feat/f-047-<task>`), invoke th
 - Skills: `superpowers:verification-before-completion`, `ecc:verification-loop`, `ecc:code-review`, `simplify`, `ecc:security-review`. Agent: `agent-skills:test-engineer` for coverage gaps.
 
 ### T9. Owner device test + docs + close-out  ·  ~0.5 day
-- [ ] Owner: new EAS build, then test: scan 3 articles (one multi-size), type one SKU by hand, scan an unknown SKU, sell, undo within 10 min, sell while offline then reconnect, two phones selling the last piece, staff login sells, catalog-upload delegate is refused.
-- [ ] Same-session docs: CLAUDE.md index row (status honest: what was and was not device-tested), `docs/BUILD-LOG.md` entry, `docs/PRO-REQUIREMENTS.md` (F-number + section), `docs/DATABASE.md`, move this file to `docs/tasks/done/` when finished.
+- [x] Owner: new EAS build, then test: scan 3 articles (one multi-size), type one SKU by hand, scan an unknown SKU, sell, undo within 10 min, sell while offline then reconnect, two phones selling the last piece, staff login sells, catalog-upload delegate is refused.
+- [x] Same-session docs: CLAUDE.md index row (status honest: what was and was not device-tested), `docs/BUILD-LOG.md` entry, `docs/PRO-REQUIREMENTS.md` (F-number + section), `docs/DATABASE.md`, move this file to `docs/tasks/done/` when finished.
 - Skills: `ecc:update-docs`, `superpowers:finishing-a-development-branch`.
 
 **Estimate:** ~5.5 days of build + owner steps (migration apply, EAS build, device test).

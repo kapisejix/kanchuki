@@ -4429,3 +4429,18 @@ The owner, managers and salespeople get a push on their phone when a customer se
 | T5 paid AI custom-prompt tier | 🟨 Built, **dark**: `POST/GET /me/ai-designs`, job on the studio queue, `ai_custom_designs`, mobile `social/ai-design.tsx`. Needs migrations 154+155, a `plan_features` row and `plan_limits` rows. Retiring `social_templates` NOT done |
 | T6 starter pack | 🟨 Built 2026-11-05: 10 original code-drawn designs (Diwali, Navratri, Eid, Karwa Chauth, Wedding, Holi, Independence Day, Sale, Under-price 4-up collage, Visit-us card) in `apps/api/src/lib/design-seed-data.ts`, seeded as DRAFT by the owner-run script (`--apply`; dry-run only so far). Not yet in the pack: Rakhi, Limited stock, Back in stock, Look of the day, Store intro, FB 1.91:1 (no such format exists) |
 | Hindi (Devanagari) font in API image | 🟨 Bundled in `apps/api/Dockerfile`, not verified on Railway |
+
+---
+
+## 45. F-047 Scan & Sell billing screen — ✅ BUILT + MERGED 2026-11-15 (T1–T8), OWNER DEVICE-TESTED (summary only)
+
+**Spec:** `docs/tasks/done/scan-billing-sell-screen.md` (owner decisions §10 final). Closes the "stale catalog after an in-shop sale" gap: one counter bill of several articles sold in one tap, stock decremented per size, Undo within 10 minutes, works offline.
+
+| Area | State |
+|---|---|
+| Ledger | `product_sales` (migration 158) + `undone_by_staff_id` (migration 159), both applied in prod. See DATABASE.md. |
+| API | `POST /v1/products/sell`, `POST /v1/products/sell/:billId/undo`; owner + staff only, delegates 403; idempotent on `client_bill_id`. See API.md. |
+| Mobile | `apps/mobile/app/product/sell.tsx`, offline queue `sell-queue.json`, replay in `useSyncQueue`. |
+| Review fixes | RC-164, RC-165, RC-166. |
+| Device test | Owner reported all working on the new EAS build, 2026-11-15; per-step results not itemised. |
+| Open, not built | Untracked one-off product double sale; stuck Redis claim has no age alert; salesperson can undo any bill; plus the residuals listed in the spec's T8 section. |
