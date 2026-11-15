@@ -6,6 +6,8 @@ import { Minus, Plus, Trash2, X } from 'lucide-react-native'
 import { productApi, type SellLineResult } from '../../src/lib/api'
 import { ApiError } from '../../src/lib/api/api-error'
 import { showError } from '../../src/lib/errors'
+import { enqueueSellMutation, isRetryable } from '../../src/lib/mutation-queue'
+import { useNetworkStatus } from '../../src/hooks/useNetworkStatus'
 import { inrFromPaise } from '../../src/lib/format-inr'
 import { useScreenInsets } from '../../src/lib/safe-area'
 import {
@@ -13,12 +15,15 @@ import {
   billTotalPaise,
   canConfirm,
   emptyBill,
+  findInCachedLists,
   inStockSizes,
   lineState,
   newBillId,
+  settleSell,
   stockFor,
   toSellLines,
   type BillAction,
+  LINE_ERRORS,
   type BillLine,
   type SellProduct,
 } from '../../src/lib/sell-bill'
@@ -32,19 +37,11 @@ import { SkuScanner } from '../../src/components/SkuScanner'
  * request keyed by `client_bill_id` (retrying the same id is safe), and Undo is
  * open for 10 minutes. Not a GST invoice and not a payment tool.
  *
- * T6 is online only: lookups hit the network (T7 adds the offline queue).
+ * Offline (T7): lookups fall back to the product lists already cached on the phone, and a bill that
+ * cannot be sent is queued under its bill id and replayed by `useSyncQueue` (no Undo until it syncs).
  */
 
 const UNDO_WINDOW_MS = 10 * 60 * 1000
-
-const LINE_ERRORS: Record<string, string> = {
-  INSUFFICIENT_STOCK: 'Not enough stock',
-  NOT_FOUND: 'Product not found',
-  INVALID_SIZE: 'That size is no longer valid',
-  BILL_UNDONE: 'This bill was undone',
-  // The server sent no row for this line (a replay after a timeout only knows committed sales).
-  NOT_APPLIED: 'Not sold: scan it again',
-}
 
 /** iOS drops an Alert raised while a Modal is still dismissing; wait out the fade. */
 const MODAL_DISMISS_MS = 400
@@ -164,6 +161,11 @@ export default function SellScreen() {
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [result, setResult] = useState<SaleResult | null>(null)
+  // Units in a bill saved on this phone and waiting for a connection (no server rows yet, so no Undo).
+  const [queuedUnits, setQueuedUnits] = useState<number | null>(null)
+  const { isOnline } = useNetworkStatus()
+  const onlineRef = useRef(isOnline)
+  onlineRef.current = isOnline
   const [undone, setUndone] = useState<null | 'done' | 'already'>(null)
   const [undoExpired, setUndoExpired] = useState(false)
   const [now, setNow] = useState(() => Date.now())
@@ -190,7 +192,7 @@ export default function SellScreen() {
   const handleClose = useCallback(() => {
     // A request in flight may already be committed server-side: leaving now would hide the result and Undo.
     if (busyRef.current) return
-    if (result || billRef.current.lines.length === 0) {
+    if (result || queuedUnits !== null || billRef.current.lines.length === 0) {
       router.back()
       return
     }
@@ -198,33 +200,48 @@ export default function SellScreen() {
       { text: 'Keep editing', style: 'cancel' },
       { text: 'Discard', style: 'destructive', onPress: () => !busyRef.current && router.back() },
     ])
-  }, [result])
+  }, [result, queuedUnits])
 
   // Android hardware back asks first, like the Close button.
   useEffect(() => {
-    if (result || bill.lines.length === 0) return
+    if (result || queuedUnits !== null || bill.lines.length === 0) return
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
       handleClose()
       return true
     })
     return () => sub.remove()
-  }, [result, bill.lines.length, handleClose])
+  }, [result, queuedUnits, bill.lines.length, handleClose])
 
   const onSku = async (raw: string) => {
     const sku = raw.trim().toUpperCase()
     let product = cacheRef.current.get(sku) ?? null
     if (!product) {
-      setLooking(true)
-      try {
-        const res = await productApi.list({ sku, limit: 1 })
-        product = ((res.data ?? [])[0] as SellProduct | undefined) ?? null
-        if (product) cacheRef.current.set(sku, product)
-      } catch (err) {
-        showError(err, 'Could not look up that SKU')
-        return
-      } finally {
-        setLooking(false)
+      // Whatever the catalog screens already loaded on this phone. Stock here may be stale: a bad
+      // line is reported when the bill is sent, never hidden.
+      const fromCatalog = () => findInCachedLists(queryClient.getQueriesData({ queryKey: ['products'] }), sku)
+      if (!onlineRef.current) {
+        product = fromCatalog()
+        if (!product) {
+          setNotice(`${sku} is not in this phone's saved catalog. Connect to the internet to look it up.`)
+          return
+        }
+      } else {
+        setLooking(true)
+        try {
+          const res = await productApi.list({ sku, limit: 1 })
+          product = ((res.data ?? [])[0] as SellProduct | undefined) ?? null
+        } catch (err) {
+          // Network trouble (not a rejection): try the saved catalog before giving up.
+          product = isRetryable(err) ? fromCatalog() : null
+          if (!product) {
+            showError(err, 'Could not look up that SKU')
+            return
+          }
+        } finally {
+          setLooking(false)
+        }
       }
+      if (product) cacheRef.current.set(sku, product)
     }
     const action: BillAction = { type: 'add', sku, product }
     const grew = billReducer(billRef.current, action) !== billRef.current
@@ -237,25 +254,41 @@ export default function SellScreen() {
     busyRef.current = true
     setSubmitting(true)
     const snapshot = billRef.current.lines
+    const sent = toSellLines(billRef.current)
     try {
-      const sent = toSellLines(billRef.current)
       const res = await productApi.sell(billIdRef.current, sent)
       void queryClient.invalidateQueries({ queryKey: ['products'] })
-      // A replay answers only from committed sales: a line that failed the first time has no row.
-      // Never let it vanish from the result.
-      const missing: SellLineResult[] = sent
-        .filter((s) => !res.data.lines.some((l) => l.product_id === s.product_id && l.size === s.size))
-        .map((s) => ({ product_id: s.product_id, size: s.size, ok: false, error: 'NOT_APPLIED' }))
       setConfirmOpen(false)
       setNow(Date.now())
       setResult({
         replayed: res.data.replayed,
-        lines: [...res.data.lines, ...missing],
+        // A replay answers only from committed sales; a line with no row must not vanish.
+        lines: settleSell(sent, res.data.lines),
         snapshot,
         soldAt: Date.now(),
       })
     } catch (err) {
       setConfirmOpen(false)
+      if (isRetryable(err)) {
+        // No connection (or the server is down): keep the bill on the phone and send it later under
+        // the same bill id, which the server dedupes. A timeout may already have been applied; the
+        // replay then just reports it. Only claim "saved" if the write really happened.
+        const names: Record<string, string> = {}
+        for (const l of snapshot) if (l.product) names[l.product.id] = l.product.name ?? l.sku
+        if (await enqueueSellMutation(billIdRef.current, sent, names)) {
+          setQueuedUnits(sent.reduce((n, s) => n + s.quantity, 0))
+          return
+        }
+        setTimeout(
+          () =>
+            showError(
+              err,
+              'Could not send the sale or save it on this phone. Your bill is kept — check your connection and try again.',
+            ),
+          MODAL_DISMISS_MS,
+        )
+        return
+      }
       // The bill and its id are kept: retrying is safe (same client_bill_id).
       setTimeout(
         () =>
@@ -291,6 +324,7 @@ export default function SellScreen() {
     cacheRef.current.clear()
     dispatch({ type: 'reset' })
     setResult(null)
+    setQueuedUnits(null)
     setUndone(null)
     setUndoExpired(false)
     setNotice('')
@@ -310,6 +344,41 @@ export default function SellScreen() {
       <View className="w-11" />
     </View>
   )
+
+  if (queuedUnits !== null) {
+    return (
+      <View className="flex-1 bg-white">
+        {header}
+        <View className="flex-1 px-6 pt-6">
+          <Text className="text-2xl font-bold text-sand-900">Saved on this phone</Text>
+          <Text className="text-base text-sand-900 mt-2">
+            {items(queuedUnits)} will be marked sold automatically once this phone can reach the server. Your catalog does not show it yet.
+          </Text>
+          <Text className="text-sm text-sand-600 mt-2">
+            Undo is available only after it syncs. If an article cannot be sold then, you will be told which one.
+          </Text>
+        </View>
+        <View className="flex-row gap-3 px-4" style={{ paddingBottom: insets.bottom + 12 }}>
+          <AnimatedPressable
+            testID="sell-new-bill"
+            onPress={newBill}
+            className="flex-1 border border-lavender-300 rounded-2xl py-3.5 items-center bg-white"
+            accessibilityLabel="Start a new bill"
+          >
+            <Text className="text-sm font-bold text-sand-900">New bill</Text>
+          </AnimatedPressable>
+          <AnimatedPressable
+            testID="sell-done"
+            onPress={() => router.back()}
+            className="flex-1 bg-ink-600 rounded-2xl py-3.5 items-center"
+            accessibilityLabel="Done"
+          >
+            <Text className="text-sm font-bold text-white">Done</Text>
+          </AnimatedPressable>
+        </View>
+      </View>
+    )
+  }
 
   if (result) {
     const okLines = result.lines.filter((l) => l.ok)

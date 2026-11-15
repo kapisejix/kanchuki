@@ -18,6 +18,22 @@ const m = vi.hoisted(() => ({
   showError: vi.fn(),
   invalidate: vi.fn(),
   cameraProps: {} as Record<string, any>,
+  enqueue: vi.fn(),
+  online: { value: true },
+  cached: { entries: [] as [unknown, unknown][] },
+}))
+
+vi.mock('../../src/hooks/useNetworkStatus', () => ({
+  useNetworkStatus: () => ({ isOnline: m.online.value }),
+}))
+vi.mock('expo-file-system', () => ({
+  Paths: { document: { uri: 'file:///documents/' } },
+  File: class {},
+  Directory: class {},
+}))
+vi.mock('../../src/lib/mutation-queue', async (orig) => ({
+  ...(await orig<typeof import('../../src/lib/mutation-queue')>()),
+  enqueueSellMutation: m.enqueue,
 }))
 
 vi.mock('expo-camera', () => ({
@@ -35,7 +51,7 @@ vi.mock('../../src/lib/errors', () => ({
   apiMessage: (_e: unknown, fallback: string) => fallback,
 }))
 vi.mock('@tanstack/react-query', () => ({
-  useQueryClient: () => ({ invalidateQueries: m.invalidate }),
+  useQueryClient: () => ({ invalidateQueries: m.invalidate, getQueriesData: () => m.cached.entries }),
 }))
 vi.mock('../../src/lib/safe-area', () => ({
   useScreenInsets: () => ({ insets: { top: 0, bottom: 0, left: 0, right: 0 }, headerPaddingTop: 0 }),
@@ -117,6 +133,9 @@ async function sellOne(t: Tree) {
 beforeEach(() => {
   vi.clearAllMocks()
   m.cameraProps = {}
+  m.online.value = true
+  m.cached.entries = []
+  m.enqueue.mockResolvedValue(true)
   vi.spyOn(Alert, 'alert').mockImplementation(() => {})
   m.list.mockImplementation(async ({ sku }: { sku: string }) => ({
     data: bySku[sku] ? [bySku[sku]] : [],
@@ -305,9 +324,9 @@ describe('SellScreen — selling', () => {
     expect(text(t)).not.toMatch(/left\)/)
   })
 
-  it('a request failure keeps the bill, shows the error, and a retry reuses the same bill id', async () => {
+  it('a rejected request (4xx) keeps the bill, shows the error, and a retry reuses the same bill id', async () => {
     vi.useFakeTimers({ toFake: ['setTimeout'] })
-    m.sell.mockRejectedValueOnce(new ApiError('NETWORK_ERROR', 'offline', 0))
+    m.sell.mockRejectedValueOnce(new ApiError('VALIDATION_ERROR', 'bad', 422))
     const t = await mount()
     await sellOne(t)
     // iOS drops an Alert raised while a Modal is still dismissing: close first, alert after.
@@ -328,6 +347,95 @@ describe('SellScreen — selling', () => {
     expect(m.sell).toHaveBeenCalledTimes(2)
     expect(m.sell.mock.calls[1]![0]).toBe(m.sell.mock.calls[0]![0])
     expect(text(t)).toContain('1 marked sold')
+  })
+})
+
+// F-047 T7: offline confirm queues the bill; offline lookup reads the cached catalog.
+describe('SellScreen — offline', () => {
+  it('a network failure queues the bill under its bill id and shows the queued state (no Undo)', async () => {
+    m.sell.mockRejectedValueOnce(new ApiError('NETWORK_ERROR', 'offline', 0))
+    const t = await mount()
+    await sellOne(t)
+    const sentId = m.sell.mock.calls[0]![0]
+    expect(m.enqueue).toHaveBeenCalledWith(
+      sentId,
+      [{ product_id: 'p1', size: 'FREE', quantity: 1 }],
+      { p1: 'Pink suit' },
+    )
+    expect(text(t)).toContain('Saved on this phone')
+    expect(text(t)).toContain('Undo is available only after it syncs')
+    expect(has(t, 'sell-undo')).toBe(false)
+    expect(m.showError).not.toHaveBeenCalled()
+  })
+
+  it('a 4xx is never queued', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout'] })
+    m.sell.mockRejectedValueOnce(new ApiError('FORBIDDEN', 'no', 403))
+    const t = await mount()
+    await sellOne(t)
+    expect(m.enqueue).not.toHaveBeenCalled()
+    expect(text(t)).not.toContain('Saved on this phone')
+  })
+
+  it('if the bill cannot be saved on the phone it says so and keeps the bill', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout'] })
+    m.sell.mockRejectedValueOnce(new ApiError('NETWORK_ERROR', 'offline', 0))
+    m.enqueue.mockResolvedValueOnce(false)
+    const t = await mount()
+    await sellOne(t)
+    await act(async () => {
+      vi.advanceTimersByTime(500)
+    })
+    expect(text(t)).not.toContain('Saved on this phone')
+    expect(text(t)).toContain('Pink suit')
+    expect(m.showError).toHaveBeenCalledTimes(1)
+  })
+
+  it('New bill after a queued bill starts clean with a fresh bill id', async () => {
+    m.sell.mockRejectedValueOnce(new ApiError('NETWORK_ERROR', 'offline', 0))
+    const t = await mount()
+    await sellOne(t)
+    const queuedId = m.sell.mock.calls[0]![0]
+    await press(t, 'sell-new-bill')
+    expect(text(t)).not.toContain('Pink suit')
+    await sellOne(t)
+    expect(m.sell.mock.calls[1]![0]).not.toBe(queuedId)
+  })
+
+  it('offline: a SKU in the cached catalog is added without a network call', async () => {
+    m.online.value = false
+    m.cached.entries = [[['products', 'list'], { data: [p1] }]]
+    const t = await mount()
+    await scan('LS0001')
+    expect(m.list).not.toHaveBeenCalled()
+    expect(text(t)).toContain('Pink suit')
+  })
+
+  it('offline: a SKU not in the cache is not added as "not found" — it says the phone cannot look it up', async () => {
+    m.online.value = false
+    const t = await mount()
+    await scan('LS0001')
+    expect(m.list).not.toHaveBeenCalled()
+    expect(text(t)).toContain('not in this phone')
+    expect(text(t)).not.toContain('not found')
+    expect(has(t, 'sell-open-confirm')).toBe(false)
+  })
+
+  it('online: a failed lookup falls back to the cached catalog', async () => {
+    m.list.mockRejectedValue(new ApiError('NETWORK_ERROR', 'offline', 0))
+    m.cached.entries = [[['products', 'list'], { data: [p1] }]]
+    const t = await mount()
+    await scan('LS0001')
+    expect(text(t)).toContain('Pink suit')
+    expect(m.showError).not.toHaveBeenCalled()
+  })
+
+  it('online: the network answer wins over a stale cached row', async () => {
+    m.cached.entries = [[['products', 'list'], { data: [{ ...p1, name: 'Stale name' }] }]]
+    const t = await mount()
+    await scan('LS0001')
+    expect(text(t)).toContain('Pink suit')
+    expect(text(t)).not.toContain('Stale name')
   })
 })
 
