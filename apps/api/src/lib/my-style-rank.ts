@@ -2,8 +2,8 @@
 // ordered scored items out. No DB, no clock (callers pass `now`), no AI — so a fallback can
 // never be mistaken for model output (RC-059). Weights live in @kanchuki/shared.
 import {
-  MY_STYLE_DEFAULT_RADIUS_KM,
   KIDS_AGE_GROUPS,
+  MY_STYLE_DEFAULT_RADIUS_KM,
   MY_STYLE_DIVERSITY,
   MY_STYLE_FIT,
   MY_STYLE_FRESH_DAYS,
