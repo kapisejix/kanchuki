@@ -37,6 +37,21 @@ export function addAudience(pick: AudiencePick | null, categoryNames: string[]):
   )
 }
 
+/**
+ * Catalog import: detect-items returns the AI's audience in `tags`. Seeds the review row's pick
+ * from it; null when the AI gave none, so the keyword guess in `addAudience` still applies.
+ */
+export function audienceFromTags(tags: {
+  audience?: ProductAudienceValue | null
+  kids_age_group?: KidsAgeGroupValue | null
+}): AudiencePick | null {
+  if (!tags.audience) return null
+  return {
+    audience: tags.audience,
+    kids_age_group: isKidsAudience(tags.audience) ? (tags.kids_age_group ?? null) : null,
+  }
+}
+
 const chipClass =(on: boolean) =>
   `px-3.5 min-h-[44px] justify-center rounded-2xl border ${
     on ? 'bg-spaceCadet-900 border-spaceCadet-900' : 'bg-white border-lavender-200'

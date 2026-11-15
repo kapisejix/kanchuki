@@ -36,7 +36,7 @@ import { apiMessage, showError, logError } from '../../src/lib/errors'
 import { useTheme } from '../../src/lib/theme'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { KeyboardScreen } from '../../src/components/KeyboardScreen'
-import { AudienceChips, addAudience, type AudiencePick } from '../../src/components/product-detail/AudienceChips'
+import { AudienceChips, addAudience, audienceFromTags, type AudiencePick } from '../../src/components/product-detail/AudienceChips'
 
 // ─── Types ────────────────────────────────────────────────────────
 
@@ -190,7 +190,7 @@ export default function CatalogImportScreen() {
         merged.map((item) => ({
           original: item,
           approved: true,
-          audience: null,
+          audience: audienceFromTags(item.tags),
           edits: {
             product_name: item.tags.product_name ?? '',
             subtype: item.tags.subtype ?? '',
@@ -262,7 +262,7 @@ export default function CatalogImportScreen() {
         result.data.items.map((item) => ({
           original: item,
           approved: true,
-          audience: null,
+          audience: audienceFromTags(item.tags),
           edits: {
             product_name: item.tags.product_name ?? '',
             subtype: item.tags.subtype ?? '',

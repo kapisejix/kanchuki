@@ -1,7 +1,11 @@
 import { describe, it, expect, vi } from 'vitest'
 import { act } from 'react-test-renderer'
 import { render } from '../../src/test/__mocks__/testing-library'
-import { AudienceChips, addAudience } from '../../src/components/product-detail/AudienceChips'
+import {
+  AudienceChips,
+  addAudience,
+  audienceFromTags,
+} from '../../src/components/product-detail/AudienceChips'
 
 // "Who is it for?": five audience chips; age chips only for the kids audiences.
 const mount = (audience: any, ageGroup: any, onChange = vi.fn()) => ({
@@ -23,6 +27,26 @@ describe('addAudience', () => {
   it('a retailer pick wins over the guess, even a cleared one', () => {
     expect(addAudience({ audience: 'MEN', kids_age_group: null }, ['Kurti']).audience).toBe('MEN')
     expect(addAudience({ audience: null, kids_age_group: null }, ['Kurti']).audience).toBeNull()
+  })
+})
+
+// Catalog import: detect-items already returns the AI's audience; the review row starts from it.
+describe('audienceFromTags', () => {
+  it('seeds the pick from the AI audience and age', () => {
+    expect(audienceFromTags({ audience: 'GIRLS', kids_age_group: 'AGE_3_5' })).toEqual({
+      audience: 'GIRLS',
+      kids_age_group: 'AGE_3_5',
+    })
+  })
+  it('drops an age that does not belong to a non-kids audience', () => {
+    expect(audienceFromTags({ audience: 'WOMEN', kids_age_group: 'AGE_3_5' })).toEqual({
+      audience: 'WOMEN',
+      kids_age_group: null,
+    })
+  })
+  it('is null (keyword guess stays) when the AI gave no audience', () => {
+    expect(audienceFromTags({})).toBeNull()
+    expect(audienceFromTags({ audience: null })).toBeNull()
   })
 })
 

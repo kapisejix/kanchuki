@@ -26,6 +26,8 @@ export type CatalogDetectedItem = {
     design_number_visible: string | null
     is_catalog_image: boolean
     search_tags: string[]
+    audience?: ProductAudienceValue | null
+    kids_age_group?: KidsAgeGroupValue | null
   }
 }
 
