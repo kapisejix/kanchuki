@@ -8,6 +8,9 @@ import {
   lineState,
   MAX_BILL_LINES,
   newBillId,
+  settleSell,
+  describeFailures,
+  findInCachedLists,
   type SellProduct,
   type BillState,
 } from './sell-bill'
@@ -162,5 +165,75 @@ describe('newBillId', () => {
     const b = newBillId()
     expect(a).not.toBe(b)
     expect(a).toMatch(/^[A-Za-z0-9_-]{1,64}$/)
+  })
+})
+
+// F-047 T7: shared by the sell screen and the offline replay.
+describe('settleSell', () => {
+  const sent = [
+    { product_id: 'p1', size: 'M', quantity: 1 },
+    { product_id: 'p2', size: 'FREE', quantity: 1 },
+  ]
+
+  it('keeps the server rows as they are', () => {
+    const rows = [
+      { product_id: 'p1', size: 'M', ok: true },
+      { product_id: 'p2', size: 'FREE', ok: true },
+    ]
+    expect(settleSell(sent, rows)).toEqual(rows)
+  })
+
+  it('adds NOT_APPLIED for a sent line the server returned no row for', () => {
+    const out = settleSell(sent, [{ product_id: 'p1', size: 'M', ok: true }])
+    expect(out).toContainEqual({ product_id: 'p2', size: 'FREE', ok: false, error: 'NOT_APPLIED' })
+    expect(out).toHaveLength(2)
+  })
+})
+
+describe('describeFailures', () => {
+  it('names each failed line with a plain reason, skips ok lines', () => {
+    const out = describeFailures(
+      [
+        { product_id: 'p1', size: 'M', ok: true },
+        { product_id: 'p2', size: 'L', ok: false, error: 'INSUFFICIENT_STOCK' },
+        { product_id: 'p3', size: 'L', ok: false, error: 'NOT_APPLIED' },
+        { product_id: 'p4', size: 'L', ok: false, error: 'WEIRD' },
+      ],
+      { p2: 'Red kurti' },
+    )
+    expect(out).toEqual([
+      'Red kurti: Not enough stock',
+      'p3: Not sold: scan it again',
+      'p4: Could not update',
+    ])
+  })
+})
+
+// F-047 T7: offline lookup reads whatever product lists the catalog screens already cached.
+describe('findInCachedLists', () => {
+  const a = prod({ id: 'a', sku: 'LS0001' })
+  const b = prod({ id: 'b', sku: 'LS0002' })
+
+  it('finds a product in a plain list response', () => {
+    expect(findInCachedLists([[['products', 'list'], { data: [a, b] }]], 'LS0002')?.id).toBe('b')
+  })
+
+  it('finds a product in an infinite-query page', () => {
+    const entries: [unknown, unknown][] = [[['products', 'list'], { pages: [{ data: [a] }, { data: [b] }] }]]
+    expect(findInCachedLists(entries, 'LS0002')?.id).toBe('b')
+  })
+
+  it('matches the SKU case-insensitively and ignores spaces', () => {
+    expect(findInCachedLists([[['products'], { data: [a] }]], ' ls0001 ')?.id).toBe('a')
+  })
+
+  it('returns null on a miss and on shapes it does not know (never throws)', () => {
+    const entries: [unknown, unknown][] = [
+      [['products', 'x'], undefined],
+      [['products', 'y'], 'junk'],
+      [['products', 'z'], { data: 'nope' }],
+      [['products', 'w'], { data: [null, { sku: null }] }],
+    ]
+    expect(findInCachedLists(entries, 'LS0001')).toBeNull()
   })
 })
