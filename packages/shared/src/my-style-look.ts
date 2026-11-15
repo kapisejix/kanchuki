@@ -133,7 +133,7 @@ export const KIDS_KEYWORDS = [
   'child',
   'boy',
   'girl',
-  'frock',
+  // ponytail: no 'frock'. "Frock suit" is women's ethnic wear; kids frocks carry girl/kid.
 ] as const;
 
 export function isKidsProduct(p: LookProduct): boolean {

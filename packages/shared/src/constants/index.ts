@@ -611,8 +611,7 @@ export function demographicForCategory(
   // A retailer-set audience beats the keyword guess below.
   if (audience) return AUDIENCE_DEMOGRAPHIC[audience];
   const s = `${category ?? ''} ${name ?? ''}`.toLowerCase();
-  const kid =
-    /\b(kid|kids|kid'?s|child|children|toddler|infant|baby)\b/.test(s) || /\bfrock\b/.test(s);
+  const kid = /\b(kid|kids|kid'?s|child|children|toddler|infant|baby)\b/.test(s);
   const teen = /\b(teen|teens|teenage|teenager|junior)\b/.test(s);
   const girl = /\b(girl|girls|girl'?s)\b/.test(s);
   const boy = /\b(boy|boys|boy'?s)\b/.test(s);

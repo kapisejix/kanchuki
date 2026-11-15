@@ -28,6 +28,10 @@ describe('audienceForText', () => {
     expect(audienceForText('Saree')).toBe('WOMEN');
     expect(audienceForText('Ladies Suit')).toBe('WOMEN');
   });
+  it('does not treat a "Frock suit" (women\'s ethnic wear) as kids', () => {
+    expect(audienceForText('Ladies', 'Frock suit', 'Anarkali suit')).toBe('WOMEN');
+    expect(demographicForCategory('Ladies', 'Frock suit')).toBe('womens');
+  });
   it('returns null when unsure', () => {
     expect(audienceForText('Other')).toBeNull();
     expect(audienceForText('Dupatta')).toBeNull();
