@@ -70,8 +70,13 @@ async function timedFetch(url: string, init: RequestInit, ms: number, outer?: Ab
   }
 }
 
+/** "1 December": the day the monthly photo-read allowance starts over (counters reset by calendar month). */
+export function resetDay(now = new Date()): string {
+  const next = new Date(now.getFullYear(), now.getMonth() + 1, 1)
+  return `1 ${next.toLocaleString('en-IN', { month: 'long' })}`
+}
+
 const START_ERRORS: Record<number, string> = {
-  402: "You've reached this month's limit for photo reads. It resets next month.",
   409: 'Your last photo is still being read. Please wait a moment.',
   503: 'Photo reading is not available right now. Please try later.',
   404: 'Photo reading is switched off for now. Please try later.',
@@ -106,6 +111,12 @@ export async function startAnalysis(
       signal,
     )
     if (res.status === 401) return { kind: 'unauthorized' }
+    if (res.status === 402) {
+      return {
+        kind: 'error',
+        message: `You've used this month's limit of photo reads. It starts over on ${resetDay()}. You can still browse, filter and take the quick quiz.`,
+      }
+    }
     if (!res.ok) return { kind: 'error', message: START_ERRORS[res.status] ?? GENERIC }
     const json = (await res.json().catch(() => null)) as { data?: { job_id?: string } } | null
     const jobId = json?.data?.job_id

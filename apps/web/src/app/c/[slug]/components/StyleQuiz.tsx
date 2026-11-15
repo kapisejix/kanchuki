@@ -43,13 +43,15 @@ const QUESTIONS = [
 
 interface Props {
   storeSlug: string
-  onComplete?: () => void
+  /** `onAccount`: the answers were saved to the shopper's account (not just this device). */
+  onComplete?: (onAccount: boolean) => void
 }
 
 export function StyleQuiz({ storeSlug, onComplete }: Props) {
   const [step, setStep] = useState(0)
   const [answers, setAnswers] = useState<Record<string, string[]>>({})
   const [done, setDone] = useState(false)
+  const [saving, setSaving] = useState(false)
 
   const q = QUESTIONS[step]!
   const currentAnswers = answers[q.key] ?? []
@@ -74,22 +76,34 @@ export function StyleQuiz({ storeSlug, onComplete }: Props) {
   // "quiz done" marker CollectionView reads. A signed-in shopper also gets the
   // raw answers PATCHed to their passport — the API owns the label mapping.
   // 401 / network error / AbortError leave the localStorage copy standing (RC-014).
-  const finish = useCallback((saved: Record<string, string[]>) => {
+  // The PATCH is awaited before `onComplete` runs: a caller that refetches on completion
+  // (My Style's feed) must see the saved answers, not race the write. `onComplete(true)`
+  // means the account really has them; `false` = skipped, signed out or the save failed,
+  // so only this device remembers.
+  const finish = useCallback(async (saved: Record<string, string[]>) => {
     if (finishing.current) return
     finishing.current = true
     try {
       localStorage.setItem(`kanchuki_quiz_${storeSlug}`, JSON.stringify(saved))
     } catch {}
+    let onAccount = false
     if (Object.keys(saved).length > 0) {
-      fetch('/api/passport/style-quiz', {
-        method: 'PATCH',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(saved),
-      }).catch(() => {})
+      setSaving(true)
+      try {
+        const res = await fetch('/api/passport/style-quiz', {
+          method: 'PATCH',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(saved),
+          signal: AbortSignal.timeout(10_000),
+        })
+        onAccount = res.ok
+      } catch {
+        // offline / timeout / abort: the localStorage copy stands (RC-014)
+      }
     }
     setDone(true)
-    onComplete?.()
+    onComplete?.(onAccount)
   }, [storeSlug, onComplete])
 
   const handleNext = useCallback(() => {
@@ -168,13 +182,13 @@ export function StyleQuiz({ storeSlug, onComplete }: Props) {
         )}
         <button
           onClick={handleNext}
-          disabled={currentAnswers.length === 0}
+          disabled={currentAnswers.length === 0 || saving}
           className="flex-1 bg-cyan-600 disabled:bg-gray-200 text-white text-xs font-semibold py-2.5 rounded-xl flex items-center justify-center gap-1 transition-colors"
         >
           {step === QUESTIONS.length - 1 ? (
             <>
               <Sparkles size={14} />
-              Save My Style
+              {saving ? 'Saving…' : 'Save My Style'}
             </>
           ) : (
             <>

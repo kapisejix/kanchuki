@@ -25,6 +25,7 @@ import { CardSkeleton, LookPanel, type LookView } from './LookPanel'
 import { PaletteCard } from './PaletteCard'
 import { ShortlistBar, useEnquiry } from './ShortlistBar'
 import { StyleCard } from './StyleCard'
+import { TasteCard } from './TasteCard'
 import {
   type FeedCard,
   type FeedMeta,
@@ -32,6 +33,7 @@ import {
   type FeedTab,
   LOGIN_HREF,
   type StyleProfile,
+  type TasteSummary,
   describeGarment,
   fetchFeed,
   fetchLook,
@@ -107,6 +109,10 @@ export default function MyStylePage() {
   // Kept across refetches so the palette card does not flash away while the feed reloads.
   const [styleProfile, setStyleProfile] = useState<StyleProfile | null>(null)
   const [kids, setKids] = useState<{ who: string; age: string } | null>(null)
+  // The quick quiz's saved answers, kept across refetches like the palette. `quizNote` says so
+  // when the save did not reach the account (signed out / offline), instead of staying silent.
+  const [taste, setTaste] = useState<TasteSummary | null>(null)
+  const [quizNote, setQuizNote] = useState('')
   // Bumped to refetch with unchanged filters (retry, quiz saved).
   const [nonce, setNonce] = useState(0)
   const [view, setView] = useState<View>({ kind: 'loading' })
@@ -176,6 +182,8 @@ export default function MyStylePage() {
         limit: 12,
         ...(budget ? { budget_max: Number(budget) } : {}),
         ...(size ? { size } : {}),
+        // "For my child" shows kids' wear only; without it the adult feed leaves it out.
+        ...(kids ? { kids: true } : {}),
         ...(tab === 'occasion' ? (tabOccasion ? { occasion: tabOccasion } : {}) : occasion ? { occasion } : {}),
         ...(where ? { ...where, radius_km: radius } : {}),
         ...(similar ? { similar } : {}),
@@ -186,6 +194,7 @@ export default function MyStylePage() {
         setView(r)
         if (r.kind === 'ok') {
           setStyleProfile(r.meta.style_profile ?? null)
+          setTaste(r.meta.taste ?? null)
           setTabs(r.meta.tabs)
           // The tab just lost its data (festival ended, trend retired): fall back to the feed.
           const t = r.meta.tabs
@@ -200,7 +209,7 @@ export default function MyStylePage() {
         if (!ctrl.signal.aborted) setView({ kind: 'error' })
       })
     return () => ctrl.abort()
-  }, [sort, tab, tabOccasion, page, budget, size, occasion, where, radius, similar, nonce])
+  }, [sort, tab, tabOccasion, page, budget, size, occasion, kids, where, radius, similar, nonce])
 
   useEffect(() => {
     if (tab !== 'look' || !lookAnchor) return
@@ -347,7 +356,10 @@ export default function MyStylePage() {
             Shopping for: {kids.who}, {kids.age}{' '}
             <button
               type="button"
-              onClick={() => setKids(null)}
+              onClick={() => {
+                setKids(null)
+                setPage(1)
+              }}
               className="min-h-9 px-3 rounded-full underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-500/50"
             >
               Clear
@@ -358,12 +370,21 @@ export default function MyStylePage() {
           <div className="mt-3">
             <StyleQuiz
               storeSlug="my-style"
-              onComplete={() => {
+              onComplete={(onAccount) => {
+                // Only after the save finished (StyleQuiz awaits it), so the refetch sees it.
                 setShowQuiz(false)
+                setQuizNote(
+                  onAccount ? '' : 'We could not save your answers to your account, so they will not change this feed. Please try again.',
+                )
                 setNonce((n) => n + 1)
               }}
             />
           </div>
+        )}
+        {quizNote && (
+          <p role="status" className="mt-3 rounded-2xl bg-fuchsia-500/10 px-3 py-2 text-xs font-semibold text-fuchsia-600">
+            {quizNote}
+          </p>
         )}
         {showKids && (
           <KidsForm
@@ -378,6 +399,17 @@ export default function MyStylePage() {
           />
         )}
       </section>
+
+      {taste && (
+        <TasteCard
+          taste={taste}
+          onChange={() => {
+            setQuizNote('')
+            setShowQuiz(true)
+            window.scrollTo(0, 0)
+          }}
+        />
+      )}
 
       {styleProfile && (
         <PaletteCard
@@ -471,21 +503,24 @@ export default function MyStylePage() {
       )}
 
       <section className="space-y-2" hidden={tab === 'look'} aria-label="Sort and filter">
-        {/* One scrolling chip bar; it bleeds to the screen edge on a phone. */}
-        <div className="-mx-4 px-4 flex items-center gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <div className={`${SEGMENTED} shrink-0`} role="group" aria-label="Sort">
+        {/* Sort on its own full-width row, Near me + Filters wrapping on the next. Nothing
+            scrolls sideways, so no chip can sit off-screen (it was one overflow-x row whose
+            last chips were clipped at phone width). */}
+        <div className="space-y-2">
+          <div className={SEGMENTED} role="group" aria-label="Sort">
             {SORTS.map((s) => (
               <button
                 key={s.value}
                 type="button"
                 aria-pressed={sort === s.value}
                 onClick={() => reset(setSort)(s.value)}
-                className={segment(sort === s.value)}
+                className={`${segment(sort === s.value)} flex-1`}
               >
                 {s.label}
               </button>
             ))}
           </div>
+          <div className="flex flex-wrap items-center gap-2">
           <button type="button" onClick={nearMe} className={chip(Boolean(where))}>
             <LocateFixed aria-hidden className={`h-4 w-4 ${where ? 'text-fuchsia-400' : 'text-heliotrope-500'}`} />
             Near me
@@ -508,6 +543,7 @@ export default function MyStylePage() {
           ) : (
             filterControls(false)
           )}
+          </div>
         </div>
         {geoDenied && (
           <p className="text-xs text-heliotrope-500 px-1 flex items-center gap-1.5">
