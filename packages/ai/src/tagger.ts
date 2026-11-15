@@ -1,5 +1,12 @@
 import { createHash } from 'node:crypto';
-import { PRODUCT_OCCASIONS, normalizeOccasions } from '@kanchuki/shared';
+import {
+  KIDS_AGE_GROUPS,
+  PRODUCT_AUDIENCES,
+  PRODUCT_OCCASIONS,
+  asAgeGroup,
+  asAudience,
+  normalizeOccasions,
+} from '@kanchuki/shared';
 import type { AiTagResult } from '@kanchuki/shared';
 import { runVisionAsk, runVisionExtract } from './providers.js';
 import type { AiJsonSchema, ProviderUsedInfo } from './providers.js';
@@ -54,6 +61,18 @@ const EXTRACT_SCHEMA: AiJsonSchema = {
       product_type: {
         type: 'string',
         enum: ['Unstitched', 'Semi-Stitched', 'Readymade', 'N/A'],
+      },
+      audience: {
+        type: 'string',
+        enum: [...PRODUCT_AUDIENCES],
+        description:
+          'Who the garment is for: WOMEN, MEN, BOYS, GIRLS, or KIDS_UNISEX for children. ' +
+          'Omit if unsure (e.g. a dupatta or a unisex adult piece).',
+      },
+      kids_age_group: {
+        type: 'string',
+        enum: [...KIDS_AGE_GROUPS],
+        description: 'Only for children’s wear: the closest age band. Omit otherwise.',
       },
       primary_color: {
         type: 'string',
@@ -245,6 +264,9 @@ export async function tagProductImages(
     fabrics: (raw.fabrics as string[]) ?? [],
     // Not every provider honours the schema enum, so re-validate here.
     occasions: normalizeOccasions(raw.occasions),
+    // Same: a provider may ignore the enum, so anything unknown becomes null (never written).
+    audience: asAudience(raw.audience),
+    kids_age_group: asAgeGroup(raw.kids_age_group),
     price_range_estimate: nullable(raw.price_range_estimate),
     design_number_visible: nullable(raw.design_number_visible),
     is_catalog_image: (raw.is_catalog_image as boolean) ?? false,

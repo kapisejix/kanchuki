@@ -7,7 +7,13 @@ import {
   reserveAiCredits,
 } from '@kanchuki/ai';
 import { prisma, withRetry } from '@kanchuki/db';
-import { PLAN_LIMITS, SIZE_OPTIONS } from '@kanchuki/shared';
+import {
+  PLAN_LIMITS,
+  SIZE_OPTIONS,
+  asAgeGroup,
+  asAudience,
+  normalizeAudience,
+} from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { addTaggingJob } from '../jobs/index.js';
@@ -83,6 +89,9 @@ const BulkCreateProductsSchema = z.object({
         fabrics: z.array(z.string().max(100)).max(10).optional(),
         search_tags: z.array(z.string()).optional(),
         sizes: z.array(z.enum(SIZE_OPTIONS)).optional(),
+        // Parsed leniently (asAudience): one item's bad value must not fail the whole import.
+        audience: z.unknown().optional(),
+        kids_age_group: z.unknown().optional(),
         price_min: z.number().int().nullable().optional(),
         price_max: z.number().int().nullable().optional(),
         section_id: z.string().nullable().optional(),
@@ -106,6 +115,12 @@ const UploadUrlSchema = z.object({
 });
 
 // ─── Helpers ──────────────────────────────────────────────────────
+
+/** Columns for an item's audience pick; an unknown value leaves both unset. */
+function audienceFields(audience: unknown, age: unknown) {
+  const a = asAudience(audience);
+  return a ? normalizeAudience(a, asAgeGroup(age) ?? undefined, null) : {};
+}
 
 function randHex(length: number): string {
   return randomBytes(length).toString('hex');
@@ -425,6 +440,7 @@ export const catalogImportRoutes: FastifyPluginAsync = async (server) => {
           fabrics: item.fabrics ?? undefined,
           search_tags: item.search_tags ?? undefined,
           sizes: item.sizes ?? undefined,
+          ...audienceFields(item.audience, item.kids_age_group),
           price_min: item.price_min ?? undefined,
           price_max: item.price_max ?? undefined,
           section_id: resolveSectionId(item.section_id),

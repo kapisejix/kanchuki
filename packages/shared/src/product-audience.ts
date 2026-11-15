@@ -63,6 +63,37 @@ export function audienceForText(
   return null;
 }
 
+/** Anything that is not a known audience (a provider's "junk", the string "null") becomes null. */
+export function asAudience(v: unknown): ProductAudienceValue | null {
+  return (PRODUCT_AUDIENCES as readonly unknown[]).includes(v) ? (v as ProductAudienceValue) : null;
+}
+
+export function asAgeGroup(v: unknown): KidsAgeGroupValue | null {
+  return (KIDS_AGE_GROUPS as readonly unknown[]).includes(v) ? (v as KidsAgeGroupValue) : null;
+}
+
+/**
+ * The columns to write for a create or update. `undefined` = field not sent (left alone);
+ * `null` = clear. The age is kept only while the audience (sent, else `current`, the stored
+ * one) is a kids value, so an age never outlives its audience.
+ */
+export function normalizeAudience(
+  audience: ProductAudienceValue | null | undefined,
+  age: KidsAgeGroupValue | null | undefined,
+  current: ProductAudienceValue | null,
+): { audience?: ProductAudienceValue | null; kids_age_group?: KidsAgeGroupValue | null } {
+  const out: { audience?: ProductAudienceValue | null; kids_age_group?: KidsAgeGroupValue | null } =
+    {};
+  if (audience !== undefined) out.audience = audience;
+  const effective = audience !== undefined ? audience : current;
+  if (!isKidsAudience(effective)) {
+    if (audience !== undefined || age !== undefined) out.kids_age_group = null;
+  } else if (age !== undefined) {
+    out.kids_age_group = age;
+  }
+  return out;
+}
+
 /** The audiences a "For my child" Girl/Boy pick may match; unisex matches both. */
 export function kidsAudiencesFor(who: 'Girl' | 'Boy'): ProductAudienceValue[] {
   return who === 'Girl' ? ['GIRLS', 'KIDS_UNISEX'] : ['BOYS', 'KIDS_UNISEX'];

@@ -6,9 +6,12 @@ import {
   KIDS_AGE_GROUPS,
   PRODUCT_AUDIENCES,
   ageGroupFromLabel,
+  asAgeGroup,
+  asAudience,
   audienceForText,
   isKidsAudience,
   kidsAudiencesFor,
+  normalizeAudience,
 } from './product-audience.js';
 
 describe('audienceForText', () => {
@@ -53,6 +56,50 @@ describe('audience helpers', () => {
   it('labels cover every value', () => {
     for (const a of PRODUCT_AUDIENCES) expect(AUDIENCE_LABELS[a]).toBeTruthy();
     for (const g of KIDS_AGE_GROUPS) expect(AGE_GROUP_LABELS[g]).toBeTruthy();
+  });
+});
+
+describe('asAudience / asAgeGroup', () => {
+  it('accepts enum values and nulls everything else', () => {
+    expect(asAudience('GIRLS')).toBe('GIRLS');
+    expect(asAudience('junk')).toBeNull();
+    expect(asAudience(undefined)).toBeNull();
+    expect(asAudience('null')).toBeNull();
+    expect(asAgeGroup('AGE_3_5')).toBe('AGE_3_5');
+    expect(asAgeGroup('3-5')).toBeNull();
+  });
+});
+
+describe('normalizeAudience', () => {
+  it('leaves both fields untouched when neither is sent', () => {
+    expect(normalizeAudience(undefined, undefined, 'GIRLS')).toEqual({});
+  });
+  it('keeps an age with a kids audience', () => {
+    expect(normalizeAudience('GIRLS', 'AGE_3_5', null)).toEqual({
+      audience: 'GIRLS',
+      kids_age_group: 'AGE_3_5',
+    });
+  });
+  it('drops the age when the audience is not a kids value', () => {
+    expect(normalizeAudience('WOMEN', 'AGE_3_5', null)).toEqual({
+      audience: 'WOMEN',
+      kids_age_group: null,
+    });
+  });
+  it('clears the stored age when the audience changes to an adult one or null', () => {
+    expect(normalizeAudience('MEN', undefined, 'GIRLS')).toEqual({
+      audience: 'MEN',
+      kids_age_group: null,
+    });
+    expect(normalizeAudience(null, undefined, 'GIRLS')).toEqual({
+      audience: null,
+      kids_age_group: null,
+    });
+  });
+  it('judges an age-only update against the stored audience', () => {
+    expect(normalizeAudience(undefined, 'AGE_6_8', 'BOYS')).toEqual({ kids_age_group: 'AGE_6_8' });
+    expect(normalizeAudience(undefined, 'AGE_6_8', 'WOMEN')).toEqual({ kids_age_group: null });
+    expect(normalizeAudience(undefined, 'AGE_6_8', null)).toEqual({ kids_age_group: null });
   });
 });
 

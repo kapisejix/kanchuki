@@ -117,6 +117,52 @@ describe('tagProductImages', () => {
     expect(schema.required).not.toContain('occasions');
   });
 
+  it('keeps a valid audience + age band, offers both enums, and does not require them', async () => {
+    mockCreate.mockResolvedValue(
+      toolUseResponse({
+        category: 'Kids Ethnic Wear',
+        primary_color: 'Pink',
+        audience: 'GIRLS',
+        kids_age_group: 'AGE_3_5',
+        search_tags: [],
+        is_catalog_image: false,
+      }),
+    );
+    const result = await tagProductImages([
+      { buffer: Buffer.from('front'), mediaType: 'image/jpeg' },
+    ]);
+    expect(result.audience).toBe('GIRLS');
+    expect(result.kids_age_group).toBe('AGE_3_5');
+    const schema = mockCreate.mock.calls[0]![0].tools[0].input_schema;
+    expect(schema.properties.audience.enum).toEqual([
+      'WOMEN',
+      'MEN',
+      'BOYS',
+      'GIRLS',
+      'KIDS_UNISEX',
+    ]);
+    expect(schema.required).not.toContain('audience');
+    expect(schema.required).not.toContain('kids_age_group');
+  });
+
+  it('turns an unknown or "null" audience / age into null (a provider that ignores the enum)', async () => {
+    mockCreate.mockResolvedValue(
+      toolUseResponse({
+        category: 'Saree',
+        primary_color: 'Red',
+        audience: 'junk',
+        kids_age_group: 'null',
+        search_tags: [],
+        is_catalog_image: false,
+      }),
+    );
+    const result = await tagProductImages([
+      { buffer: Buffer.from('front'), mediaType: 'image/jpeg' },
+    ]);
+    expect(result.audience).toBeNull();
+    expect(result.kids_age_group).toBeNull();
+  });
+
   it('returns [] occasions when the reply omits them', async () => {
     mockCreate.mockResolvedValue(
       toolUseResponse({

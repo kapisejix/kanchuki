@@ -230,6 +230,92 @@ describe('handleTagProduct', () => {
     expect(mockUpdateProduct.mock.calls[0]?.[0].data.occasions).toEqual(['Wedding', 'Festive']);
   });
 
+  it('fills audience + age band while the product has none', async () => {
+    mockFindUniqueProduct.mockResolvedValue({
+      name: null,
+      sku: null,
+      audience: null,
+      kids_age_group: null,
+    });
+    mockTagProductImageUrls.mockResolvedValue({
+      ...fakeTags,
+      audience: 'GIRLS',
+      kids_age_group: 'AGE_3_5',
+    });
+
+    await handleTagProduct(baseData);
+
+    expect(mockUpdateProduct.mock.calls[0]?.[0].data).toMatchObject({
+      audience: 'GIRLS',
+      kids_age_group: 'AGE_3_5',
+    });
+  });
+
+  it('never overwrites a retailer-set audience on re-tag', async () => {
+    mockFindUniqueProduct.mockResolvedValue({
+      name: null,
+      sku: null,
+      audience: 'MEN',
+      kids_age_group: null,
+    });
+    mockTagProductImageUrls.mockResolvedValue({
+      ...fakeTags,
+      audience: 'GIRLS',
+      kids_age_group: 'AGE_3_5',
+    });
+
+    await handleTagProduct(baseData);
+
+    const data = mockUpdateProduct.mock.calls[0]?.[0].data;
+    expect(data).not.toHaveProperty('audience');
+    expect(data).not.toHaveProperty('kids_age_group');
+  });
+
+  it('fills only the age band when the retailer set a kids audience but no age', async () => {
+    mockFindUniqueProduct.mockResolvedValue({
+      name: null,
+      sku: null,
+      audience: 'BOYS',
+      kids_age_group: null,
+    });
+    mockTagProductImageUrls.mockResolvedValue({
+      ...fakeTags,
+      audience: 'GIRLS',
+      kids_age_group: 'AGE_6_8',
+    });
+
+    await handleTagProduct(baseData);
+
+    const data = mockUpdateProduct.mock.calls[0]?.[0].data;
+    expect(data).not.toHaveProperty('audience');
+    expect(data.kids_age_group).toBe('AGE_6_8');
+  });
+
+  it('writes no audience when the tagger abstains', async () => {
+    mockFindUniqueProduct.mockResolvedValue({ name: null, sku: null, audience: null });
+    mockTagProductImageUrls.mockResolvedValue({ ...fakeTags, audience: null });
+
+    await handleTagProduct(baseData);
+
+    expect(mockUpdateProduct.mock.calls[0]?.[0].data).not.toHaveProperty('audience');
+  });
+
+  it('keeps no age band when the tagged audience is an adult one', async () => {
+    mockFindUniqueProduct.mockResolvedValue({ name: null, sku: null, audience: null });
+    mockTagProductImageUrls.mockResolvedValue({
+      ...fakeTags,
+      audience: 'WOMEN',
+      kids_age_group: 'AGE_3_5',
+    });
+
+    await handleTagProduct(baseData);
+
+    expect(mockUpdateProduct.mock.calls[0]?.[0].data).toMatchObject({
+      audience: 'WOMEN',
+      kids_age_group: null,
+    });
+  });
+
   it('never overwrites existing occasions on re-tag', async () => {
     mockFindUniqueProduct.mockResolvedValue({ name: null, sku: null, occasions: ['Casual'] });
     mockTagProductImageUrls.mockResolvedValue({ ...fakeTags, occasions: ['Wedding'] });
