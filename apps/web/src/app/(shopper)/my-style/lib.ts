@@ -17,6 +17,14 @@ export interface StyleProfile {
   palette: { good: string[]; avoid: string[] } | null
 }
 
+export interface TasteSummary {
+  colors: string[]
+  occasions: string[]
+  fabrics: string[]
+  /** Paise. */
+  budget_max: number | null
+}
+
 export interface FeedCard {
   id: string
   name: string | null
@@ -34,6 +42,8 @@ export interface FeedMeta {
   location_scope: 'radius' | 'city' | 'nationwide'
   rationale_source: 'none'
   style_profile: StyleProfile | null
+  /** What the quick quiz saved (canonical names). Null until the quiz has been answered. */
+  taste?: TasteSummary | null
   /** Set only on a find-similar feed: which signal ranked it and how many had an embedding. */
   similar?: {
     source: 'embedding' | 'attributes'
@@ -57,6 +67,8 @@ export interface FeedRequest {
   limit: number
   occasion?: string
   budget_max?: number
+  /** "For my child": only kids' wear. Absent = the adult feed, which leaves kids' wear out. */
+  kids?: boolean
   size?: string
   lat?: number
   lng?: number

@@ -6,6 +6,7 @@
 import Fastify from 'fastify';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { errorHandler } from '../../../plugins/error-handler.js';
+import { type Cond, matchesAnd } from './where-eval.js';
 
 const { mockSession, mockFindMany, mockFindFirst, mockPalette } = vi.hoisted(() => ({
   mockSession: vi.fn(),
@@ -100,7 +101,8 @@ interface FindWhere {
   deleted_at: null;
   status: string;
   retailer: { is_suspended: boolean; deleted_at: null; public_slug: { not: null } };
-  AND?: { id: { not: string }; OR: Contains[] }[];
+  // The audience clause (adults/kids, evaluated by matchesAnd) and the slot clause (has `id`).
+  AND?: (Cond | { id: { not: string }; OR: Contains[] })[];
 }
 
 const live = (p: Row, w: FindWhere) =>
@@ -114,10 +116,12 @@ const hasText = (v: string | null, c?: { contains: string }) =>
   c !== undefined && (v ?? '').toLowerCase().includes(c.contains.toLowerCase());
 
 function fakeFindMany({ where }: { where: FindWhere }) {
-  const extra = where.AND?.[0];
+  const extra = where.AND?.find((c): c is { id: { not: string }; OR: Contains[] } => 'id' in c);
+  const audience = where.AND?.filter((c) => !('id' in c)) as Cond[] | undefined;
   const out = DB.filter(
     (p) =>
       live(p, where) &&
+      matchesAnd(p, audience) &&
       (extra === undefined ||
         (p.id !== extra.id.not &&
           extra.OR.some((c) => hasText(p.category, c.category) || hasText(p.subtype, c.subtype)))),

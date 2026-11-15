@@ -12,6 +12,30 @@
 
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
+## RC-170 — The quick quiz saved in a fire-and-forget `fetch` and reported "done" before the write finished, so My Style refetched stale answers, closed the quiz before it could say "saved", and showed nothing back
+
+- **Component:** `apps/web/src/app/c/[slug]/components/StyleQuiz.tsx` (`finish`), `apps/web/src/app/(shopper)/my-style/page.tsx` (`onComplete`), `apps/api/src/routes/public/public-my-style.ts` (`meta`).
+- **Symptom:** reported 2026-11-15. "Take the quick quiz" saved, but nothing showed what was saved and the feed did not visibly change.
+- **Root cause:** three things in one chain. (1) `finish` called `fetch(PATCH).catch(() => {})` and then `onComplete()` immediately, so the page's refetch raced the write and could read the old answers, and a failed save was invisible (RC-030 shape). (2) My Style's `onComplete` closed the quiz at once, so the component's own "Style Profile Saved!" card never rendered. (3) The feed never returned what the account holds, so the page had nothing to show back. The ranker did use `pref_colors/occasions/fabrics` and `budget_max`: the saved answers were real, only unseen.
+- **Fix:** `finish` awaits the PATCH (10 s timeout) and calls `onComplete(onAccount)`; the page refetches only then, and shows a status line when the save did not reach the account. Feed `meta.taste` returns the saved colours / occasions / fabrics / budget (null before the quiz) and a new "Your style" card renders it with a Change action. No migration.
+- **Proof:** `redesign.test.tsx` (refetch waits for the save, failure message, card from meta, hidden before the quiz), `public-my-style.test.ts` (`meta.taste` null / filled). Not verified: no browser or device check; web tests pass only with NODE_OPTIONS=--no-experimental-webstorage (Node 26 `localStorage` clash, same on a clean tree); not deployed.
+
+## RC-169 — My Style had no adult/kids split: kids' wear (free-text categories "Kids Ethnic Wear", "New Born", "Kids") showed in the adult feed
+
+- **Component:** `apps/api/src/lib/my-style-candidates.ts`, `apps/api/src/routes/public/public-my-style.ts`, `packages/shared/src/my-style-look.ts`; web `page.tsx`, `lib.ts`.
+- **Symptom:** reported 2026-11-15, two kids' sets in the adult feed.
+- **Root cause:** a rule with no producer. The candidate query had no notion of audience and the only kids logic was the shopper's own "For my child" form, which sends occasion + budget only. `products.category` is free text and there is no demographic column, so nothing could say "this is kids' wear" at the query. (Prod read 2026-11-15: 74 "Kids Ethnic Wear", 6 "New Born", 3 "Kids".)
+- **Fix (no DB column):** `KIDS_KEYWORDS` + `isKidsProduct` in `@kanchuki/shared`; `loadMyStyleCandidates({ audience })` ANDs `adultsWhere` (default) or `kidsWhere` into the SQL. Each keyword is "null, or not containing it" per field, because SQL `NOT (x ILIKE ..)` is NULL for a NULL column and would drop every untagged product. Feed body `kids: boolean`; "For my child" sends `kids: true` (kids only), Clear drops it. Complete the look is adults.
+- **Proof:** `my-style-kids.test.ts` (9), `public-my-style.test.ts` (adult feed keeps NULL-category products and drops kids; `kids: true` returns only kids; the double evaluates the clauses with SQL NULL semantics via `where-eval.ts`). Not verified: no browser or device check; web tests pass only with NODE_OPTIONS=--no-experimental-webstorage (Node 26 `localStorage` clash, same on a clean tree); not deployed. Keyword match, so a kids' piece tagged "Ladies" with no kids word still shows; a product whose category says "girl" in another sense is hidden from adults. Not mutation-tested.
+
+## RC-168 — The My Style card photo frame yielded to its image's own height, so one tall photo stretched its card far past its row neighbour
+
+- **Component:** `apps/web/src/app/(shopper)/my-style/StyleCard.tsx`, `StyleCardActions.tsx`; `page.tsx` (sort/filter row).
+- **Symptom:** reported 2026-11-15 on Android: left card ~870 px tall, right ~520 px, a large white gap in the shorter card (screenshot); "Near me" / "Filters" clipped; "Complete the look" wrapped onto two lines of plain text.
+- **Root cause:** `aspect-[3/4]` on a box with `min-height: auto` and a `h-full` image: an aspect-ratio box only holds its ratio while nothing inside is taller, so the photo's intrinsic height won. The chip row was one `overflow-x-auto` strip (Sort + Near me + Filters wider than a phone), so the last chips sat off-screen. The look action was a text button sized for one row.
+- **Fix:** 4:5 frame with `overflow-hidden` and an `absolute inset-0` `object-cover` image; name clamped to two lines (`min-h-10`); Sort on its own full-width row and Near me / Filters wrap beneath it; "Complete the look" is an outlined 44 px single-line button under the Heart + Enquire row.
+- **Proof:** `redesign.test.tsx` pins the frame classes, the clamp, the button and the absence of an `overflow-x-auto` row (class assertions, not a rendered layout). Not verified: no browser or device check; web tests pass only with NODE_OPTIONS=--no-experimental-webstorage (Node 26 `localStorage` clash, same on a clean tree); not deployed. Layout never seen at 360 px.
+
 ## RC-167 — My Style "Find similar" only re-ranked the feed, so a photo of one garment returned every nearby product, best guess first
 
 - **Component:** `apps/api/src/routes/public/public-my-style.ts` (`POST /v1/public/my-style/feed`, find-similar block), `apps/api/src/lib/my-style-similar.ts`, `apps/api/src/lib/my-style-rank.ts` (`fit`), `MY_STYLE_SIMILAR` in `packages/shared/src/my-style-garment.ts`; web `apps/web/src/app/(shopper)/my-style/page.tsx`.

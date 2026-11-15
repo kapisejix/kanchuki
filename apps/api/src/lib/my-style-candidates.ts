@@ -1,6 +1,7 @@
 // F-045 My Style: the candidate query shared by /feed and /complete-look. SQL narrows to
 // live, in-stock, public-storefront products near the shopper; callers rank in memory.
 import { type Prisma, prisma } from '@kanchuki/db';
+import { KIDS_KEYWORDS } from '@kanchuki/shared';
 import { getBoundingBox, haversineDistance } from './geo.js';
 import type { RankCandidate } from './my-style-rank.js';
 
@@ -17,9 +18,27 @@ export interface CandidateQuery {
   size?: string; // uppercase
   undertone: string | null;
   depth: string | null;
+  /** 'adults' (default) leaves kids' wear out; 'kids' shows only kids' wear ("For my child"). */
+  audience?: 'adults' | 'kids';
   /** AND-ed into the product filter (e.g. a complement slot). */
   extraWhere?: Prisma.ProductWhereInput;
 }
+
+// SQL `NOT (x ILIKE ..)` is NULL for a NULL column, which would drop products with no
+// subtype; each keyword is therefore "null, or not containing it" on both fields.
+export const adultsWhere: Prisma.ProductWhereInput = {
+  AND: KIDS_KEYWORDS.flatMap((k) =>
+    (['category', 'subtype'] as const).map((f) => ({
+      OR: [{ [f]: null }, { NOT: { [f]: { contains: k, mode: 'insensitive' as const } } }],
+    })),
+  ),
+};
+export const kidsWhere: Prisma.ProductWhereInput = {
+  OR: KIDS_KEYWORDS.flatMap((k) => [
+    { category: { contains: k, mode: 'insensitive' as const } },
+    { subtype: { contains: k, mode: 'insensitive' as const } },
+  ]),
+};
 
 export async function loadMyStyleCandidates(q: CandidateQuery) {
   const { origin, city, radiusKm, budgetMax, size } = q;
@@ -55,7 +74,10 @@ export async function loadMyStyleCandidates(q: CandidateQuery) {
       ...(budgetMax ? { price_min: { lte: budgetMax } } : {}),
       // Unsized garments (sarees, unstitched) have no sizes and must not vanish.
       ...(size ? { OR: [{ sizes: { has: size } }, { sizes: { isEmpty: true } }] } : {}),
-      ...(q.extraWhere ? { AND: [q.extraWhere] } : {}),
+      AND: [
+        q.audience === 'kids' ? kidsWhere : adultsWhere,
+        ...(q.extraWhere ? [q.extraWhere] : []),
+      ],
     },
     orderBy: { created_at: 'desc' },
     take: CANDIDATE_CAP,

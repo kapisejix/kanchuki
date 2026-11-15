@@ -4,7 +4,6 @@
 'use client'
 
 import { Heart, MessageCircle, Sparkles } from 'lucide-react'
-import { BTN_TEXT } from '../ui'
 import type { FeedCard } from './lib'
 
 interface Props {
@@ -55,8 +54,14 @@ export function StyleCardActions({ card, saved, full, busy, onToggle, onEnquire,
         </button>
       </div>
       {onLook && (
-        <button type="button" onClick={onLook} className={`${BTN_TEXT.replace('text-sm', 'text-xs')} w-full mt-1`}>
-          <Sparkles aria-hidden className="h-3.5 w-3.5" />
+        // A real outlined button, one line (nowrap), 44px target. Two rows in all: the
+        // primary pair on top, this secondary action under it.
+        <button
+          type="button"
+          onClick={onLook}
+          className={`mt-2 h-11 w-full px-2 inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-2xl border border-lavender-200 bg-lavender-50 text-xs font-semibold text-spaceCadet-900 transition-colors hover:bg-lavender-100 ${FOCUS}`}
+        >
+          <Sparkles aria-hidden className="h-3.5 w-3.5 shrink-0 text-fuchsia-600" />
           Complete the look
         </button>
       )}
