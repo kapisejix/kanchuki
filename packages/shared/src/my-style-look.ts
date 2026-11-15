@@ -118,3 +118,25 @@ export function complementFamilies(family: string | null): string[] {
 
 /** Items shown per slot. */
 export const LOOK_SLOT_LIMIT = 6;
+
+// ─── Kids' wear (adult feed vs "For my child") ────────────────────────────────
+// `products.category` is free text ("Kids Ethnic Wear", "New Born", "Kids"), and there is no
+// demographic column, so kids' wear is a keyword match on category + subtype. The adult feed
+// leaves these out; they appear only when the shopper uses "For my child".
+export const KIDS_KEYWORDS = [
+  'kid',
+  'new born',
+  'newborn',
+  'baby',
+  'infant',
+  'toddler',
+  'child',
+  'boy',
+  'girl',
+  'frock',
+] as const;
+
+export function isKidsProduct(p: LookProduct): boolean {
+  const t = `${p.category ?? ''} ${p.subtype ?? ''}`.toLowerCase();
+  return KIDS_KEYWORDS.some((k) => t.includes(k));
+}

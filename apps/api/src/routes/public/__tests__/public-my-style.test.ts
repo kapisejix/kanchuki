@@ -7,6 +7,7 @@
 import Fastify from 'fastify';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { errorHandler } from '../../../plugins/error-handler.js';
+import { type Cond, matchesAnd } from './where-eval.js';
 
 const { mockSession, mockFindMany, mockPalette, mockEmbedDesc, mockSims, mockTrends, mockFests } =
   vi.hoisted(() => ({
@@ -128,11 +129,12 @@ interface Where {
   OR?: { sizes: { has?: string; isEmpty?: boolean } }[];
 }
 
-// Evaluates only the clauses these tests rely on.
-function fakeFindMany({ where, take }: { where: Where; take: number }) {
+// Evaluates only the clauses these tests rely on (the audience clause via the shared helper).
+function fakeFindMany({ where, take }: { where: Where & { AND?: Cond[] }; take: number }) {
   const r = where.retailer;
   const out = DB.filter(
     (p) =>
+      matchesAnd(p, where.AND) &&
       p.deleted_at === where.deleted_at &&
       p.status === where.status &&
       p.retailer.is_suspended === r.is_suspended &&
@@ -223,6 +225,54 @@ describe('candidate eligibility', () => {
       row('del', store('6'), { deleted_at: new Date() }),
     ];
     expect(ids(await feed())).toEqual(['live']);
+  });
+});
+
+describe("kids' wear (adult feed vs For my child)", () => {
+  const s = store('1');
+  const mixed = () => [
+    row('suit', s, { category: 'Ladies Suit', subtype: 'Anarkali' } as Partial<Row>),
+    row('nulls', s), // category and subtype both NULL: still an adult candidate
+    row('kids', s, { category: 'Kids Ethnic Wear', subtype: 'Kurta Set' } as Partial<Row>),
+    row('newborn', s, { category: 'New Born', subtype: null } as Partial<Row>),
+    row('girls', s, { category: 'Ladies', subtype: 'Girls Frock' } as Partial<Row>),
+  ];
+
+  it('the default adult feed leaves kids wear out and keeps untagged products', async () => {
+    DB = mixed();
+    expect(ids(await feed()).sort()).toEqual(['nulls', 'suit']);
+  });
+
+  it('kids: true returns only kids wear', async () => {
+    DB = mixed();
+    expect(ids(await feed({ kids: true })).sort()).toEqual(['girls', 'kids', 'newborn']);
+  });
+
+  it('rejects a non-boolean kids flag', async () => {
+    expect((await feed({ kids: 'yes' })).statusCode).toBe(422);
+  });
+});
+
+describe('meta.taste (what the quick quiz saved)', () => {
+  it('is null before the quiz', async () => {
+    expect((await feed()).json().meta.taste).toBeNull();
+  });
+
+  it('returns the saved colours, occasions, fabrics and budget', async () => {
+    mockSession.mockResolvedValue(
+      account({
+        pref_colors: ['red'],
+        pref_occasions: ['party wear'],
+        pref_fabrics: ['cotton'],
+        budget_max: 150000,
+      }),
+    );
+    expect((await feed()).json().meta.taste).toEqual({
+      colors: ['red'],
+      occasions: ['party wear'],
+      fabrics: ['cotton'],
+      budget_max: 150000,
+    });
   });
 });
 

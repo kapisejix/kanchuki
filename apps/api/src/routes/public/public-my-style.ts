@@ -60,6 +60,8 @@ const BodySchema = z
     radius_km: z.number().positive().max(500).default(MY_STYLE_DEFAULT_RADIUS_KM),
     occasion: z.string().trim().min(1).max(60).optional(), // a boost, not a filter: see below
     budget_max: z.number().int().positive().optional(), // paise
+    // "For my child": only kids' wear. Default (false) = adult feed, kids' wear left out.
+    kids: z.boolean().default(false),
     size: z.string().trim().min(1).max(10).optional(),
     page: z.number().int().min(1).max(50).default(1),
     limit: z.number().int().min(1).max(30).default(12),
@@ -138,6 +140,7 @@ export const publicMyStyleRoutes: FastifyPluginAsync = async (server) => {
         size: (b.size ?? account.usual_size)?.toUpperCase(),
         undertone: account.skin_undertone,
         depth: account.skin_depth,
+        audience: b.kids ? 'kids' : 'adults',
       });
 
       // Find similar: a 0..1 score per candidate. Embedding where a product has one, attribute
@@ -304,6 +307,20 @@ export const publicMyStyleRoutes: FastifyPluginAsync = async (server) => {
           truncated: rows.length === CANDIDATE_CAP,
           // Null for an ordinary feed.
           similar,
+          // What the quick quiz saved, so the page can show it back and the shopper can see
+          // why the feed changed. Null until the quiz has been answered.
+          taste:
+            account.pref_colors.length +
+              account.pref_occasions.length +
+              account.pref_fabrics.length >
+              0 || account.budget_max
+              ? {
+                  colors: account.pref_colors,
+                  occasions: account.pref_occasions,
+                  fabrics: account.pref_fabrics,
+                  budget_max: account.budget_max ?? null,
+                }
+              : null,
           // What the palette card shows (PR-7). Null until a photo has been analysed.
           style_profile:
             account.skin_undertone && account.skin_depth
