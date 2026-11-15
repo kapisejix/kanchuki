@@ -142,6 +142,13 @@ async function sellLine(
   } catch (err) {
     if (err instanceof LineFailure) return { ...base, ok: false, error: err.code };
     if (isUniqueViolation(err)) {
+      // The Redis key is only a fast path (it expires, and fails open): an undone bill id is spent
+      // in Postgres too, so a replayed line of an undone bill is never reported as sold (T8).
+      const prior = await prisma.productSale.findFirst({
+        where: { retailer_id: retailerId, bill_id: billId, product_id, size },
+        select: { undone_at: true },
+      });
+      if (prior?.undone_at) return { ...base, ok: false, error: 'BILL_UNDONE', undone: true };
       const state = (await currentState([product_id])).get(product_id);
       return { ...base, ok: true, replayed: true, ...state };
     }

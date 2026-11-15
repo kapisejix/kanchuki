@@ -112,6 +112,10 @@ vi.mock('@kanchuki/db', () => ({
     productSale: {
       findMany: async ({ where }: { where: { retailer_id: string; bill_id: string } }) =>
         db.sales.filter((s) => s.retailer_id === where.retailer_id && s.bill_id === where.bill_id),
+      findFirst: async ({ where }: { where: Partial<Sale> }) =>
+        db.sales.find((s) =>
+          (Object.keys(where) as (keyof Sale)[]).every((k) => s[k] === where[k]),
+        ) ?? null,
     },
     product: {
       findMany: async ({ where }: { where: { id: { in: string[] } } }) =>
@@ -336,6 +340,23 @@ describe('POST /products/sell', () => {
     const again = await sell({ client_bill_id: BILL, lines: [line('sized', 'L', 2)] });
     expect(again.json().data.lines[0]).toMatchObject({ ok: true, replayed: true });
     expect(db.stock.find((s) => s.size === 'L')?.quantity).toBe(1);
+    expect(db.sales).toHaveLength(1);
+  });
+
+  it('T8: with Redis down, a replay of an UNDONE bill reports BILL_UNDONE, never ok:true', async () => {
+    m.claim.mockResolvedValue({ isNew: true, degradedReason: 'redis-unavailable' });
+    await sell({ client_bill_id: BILL, lines: [line('sized', 'L', 2)] });
+    (db.sales[0] as Sale & { undone_at?: Date }).undone_at = new Date();
+    db.stock.find((s) => s.size === 'L')!.quantity = 3; // as if Undo restored it
+    const again = await sell({ client_bill_id: BILL, lines: [line('sized', 'L', 2)] });
+    expect(again.json().data.lines[0]).toMatchObject({
+      product_id: 'sized',
+      size: 'L',
+      ok: false,
+      error: 'BILL_UNDONE',
+      undone: true,
+    });
+    expect(db.stock.find((s) => s.size === 'L')?.quantity).toBe(3);
     expect(db.sales).toHaveLength(1);
   });
 

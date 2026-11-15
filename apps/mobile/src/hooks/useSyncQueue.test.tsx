@@ -88,6 +88,13 @@ describe('useSyncQueue replay', () => {
     expect(dequeue).not.toHaveBeenCalled()
   })
 
+  it('T8: keeps a mutation on a 401 (session not ready at app start)', async () => {
+    queue.items = [item('a')]
+    updateStatus.mockRejectedValue(new ApiError('UNAUTHORIZED', 'expired', 401))
+    await reconnect()
+    expect(dequeue).not.toHaveBeenCalled()
+  })
+
   it('keeps a mutation on a network failure (status 0)', async () => {
     queue.items = [item('a')]
     updateStatus.mockRejectedValue(new ApiError('NETWORK_ERROR', 'offline', 0))
@@ -188,6 +195,23 @@ describe('useSyncQueue sell replay', () => {
     await sellReconnect()
     expect(dequeueSell).not.toHaveBeenCalled()
     expect(showError).not.toHaveBeenCalled()
+  })
+
+  // T8: the first request may still be committing (timeout, then queued); dropping the bill would
+  // tell the retailer "not sold" about a sale the server then records.
+  it('keeps a bill on 409 BILL_IN_PROGRESS (the first request is still running)', async () => {
+    sellQueue.items = [bill('bill-1')]
+    sell.mockRejectedValue(new ApiError('BILL_IN_PROGRESS', 'still being processed', 409))
+    await sellReconnect()
+    expect(dequeueSell).not.toHaveBeenCalled()
+    expect(showError).not.toHaveBeenCalled()
+  })
+
+  it('still drops a bill on any other 409', async () => {
+    sellQueue.items = [bill('bill-1')]
+    sell.mockRejectedValue(new ApiError('CONFLICT', 'nope', 409))
+    await sellReconnect()
+    expect(dequeueSell).toHaveBeenCalledWith('bill-1')
   })
 
   it('names the articles of a bill it had to drop, so the sale can be re-entered', async () => {
