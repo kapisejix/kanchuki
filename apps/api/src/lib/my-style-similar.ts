@@ -76,6 +76,20 @@ export function combineSimilarity(attrs: number, cosine: number | null): number 
   return clamp01(embeddingShare * e + (1 - embeddingShare) * attrs);
 }
 
+/**
+ * Find-similar is a filter. Strict category gate (a saree photo never returns a kurti; a
+ * product with no category cannot be shown to match) plus a minimum similarity. 'Other' has no
+ * category to gate on, so only the score applies.
+ */
+export function isSimilarMatch(
+  g: GarmentDescriptor,
+  productCategory: string | null,
+  similarity: number,
+): boolean {
+  if (g.category !== 'Other' && !eq(productCategory, g.category)) return false;
+  return similarity >= MY_STYLE_SIMILAR.minSimilarity;
+}
+
 export function __resetSimilarCache(): void {
   cache.clear();
 }

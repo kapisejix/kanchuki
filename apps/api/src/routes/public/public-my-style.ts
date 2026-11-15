@@ -36,6 +36,7 @@ import {
   combineSimilarity,
   embedDescriptor,
   embeddingSimilarities,
+  isSimilarMatch,
 } from '../../lib/my-style-similar.js';
 import {
   type FestivalRow,
@@ -144,8 +145,13 @@ export const publicMyStyleRoutes: FastifyPluginAsync = async (server) => {
       // response says which, so a degraded result is not passed off as a semantic match.
       const garment = b.similar ? parseGarmentDescriptor(b.similar) : null;
       let similarity: Map<string, number> | null = null;
-      let similar: { source: 'embedding' | 'attributes'; embedded: number; total: number } | null =
-        null;
+      let similar: {
+        source: 'embedding' | 'attributes';
+        embedded: number;
+        total: number;
+        matched: number;
+      } | null = null;
+      let matchedIds: Set<string> | null = null;
       if (garment) {
         let cosines = new Map<string, number>();
         const vec = await embedDescriptor(garment);
@@ -174,17 +180,26 @@ export const publicMyStyleRoutes: FastifyPluginAsync = async (server) => {
             ),
           ]),
         );
+        // Filter, not just re-rank: strict category gate + minimum similarity.
+        matchedIds = new Set(
+          inRange
+            .filter((p) => isSimilarMatch(garment, p.category, similarity?.get(p.id) ?? 0))
+            .map((p) => p.id),
+        );
         similar = {
           source: cosines.size > 0 ? 'embedding' : 'attributes',
           embedded: cosines.size,
           total: inRange.length,
+          matched: matchedIds.size,
         };
       }
 
-      const candidates: RankCandidate[] = inRange.map((p) => ({
-        ...toRankCandidate(p),
-        ...(similarity ? { similarity: similarity.get(p.id) ?? 0 } : {}),
-      }));
+      const candidates: RankCandidate[] = inRange
+        .filter((p) => !matchedIds || matchedIds.has(p.id))
+        .map((p) => ({
+          ...toRankCandidate(p),
+          ...(similarity ? { similarity: similarity.get(p.id) ?? 0 } : {}),
+        }));
 
       // Trends and the running festival (PR-10). Tabs are a convenience: if these reads
       // fail the feed still answers, with the extra tabs hidden, and the failure is logged.
@@ -245,6 +260,12 @@ export const publicMyStyleRoutes: FastifyPluginAsync = async (server) => {
         b.sort,
         now,
       );
+      // Find similar on the default sort: closest to the photo first; the ranker's order only
+      // breaks ties (Array.sort is stable).
+      if (similarity && b.sort === 'best') {
+        const sim = (id: string) => similarity?.get(id) ?? 0;
+        ranked = [...ranked].sort((x, y) => sim(y.id) - sim(x.id));
+      }
       // Occasion tab: tagged matches first, everything else after in ranked order. The count
       // lets the page say so honestly when no product carries the tag.
       let occasionMatches: number | null = null;

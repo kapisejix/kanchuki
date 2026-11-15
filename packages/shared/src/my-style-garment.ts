@@ -41,12 +41,16 @@ export interface GarmentDescriptor {
  *    (a product with no embedding uses attribute overlap alone).
  *  - cosLo/cosHi: cosine range mapped onto 0..1; short-text embeddings of related items sit
  *    well below 1.
+ *  - minSimilarity: find-similar is a filter, not just a sort. Below this 0..1 score a product
+ *    is not shown. With attributes alone a same-category product in another colour scores
+ *    ~0.57, so 0.6 needs a colour (or equivalent) match.
  */
 export const MY_STYLE_SIMILAR = {
   fitShare: 0.5,
   embeddingShare: 0.5,
   cosLo: 0.25,
   cosHi: 0.75,
+  minSimilarity: 0.6,
 } as const;
 
 const oneOf = <T extends readonly string[]>(list: T, v: unknown): v is T[number] =>

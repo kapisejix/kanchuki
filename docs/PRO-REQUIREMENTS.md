@@ -4387,6 +4387,8 @@ Owner / manager photographs the customer once from an enquiry card and gets a sw
 
 **Spec:** `docs/tasks/pending/my-style.md` (decisions D1–D6 §0, PR map §6, test plan §7). Supersedes F-039 MID; independent of F-040 customer try-on (which is OFF, F-044 E6).
 
+> **Update 2026-11-15 (RC-167, branch `fix/my-style-find-similar-filter`, not merged):** "Find similar" is a filter, not a re-rank. Only products in the photo's category (strict gate; `Other` skips it) with similarity ≥ `MY_STYLE_SIMILAR.minSimilarity` (0.6) are shown, closest first; `meta.similar.matched` counts them and the page says "No close match nearby" when it is 0. Untagged products (no colour/category) are hidden by design. Not browser/device-verified; threshold untuned.
+
 Signed-in customer opens `/my-style` (customer web only), gives a selfie / a garment screenshot / a short form (kids: form or AI Stylist text only, never a photo), and gets in-stock articles ranked **best-match first** across stores (sort: Best match · Nearest · Price), then enquires per store. **Enquire only — no online purchase for the next 3–5 months (owner decision D6); online purchase is a later phase and nothing for it is built.** Photos are never stored. Kanchuki pays AI cost; per-customer monthly limit is admin-editable.
 
 | Phase | PRs | Status |

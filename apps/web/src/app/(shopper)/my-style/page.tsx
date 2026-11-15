@@ -657,7 +657,9 @@ function Results({
     return (
       <Notice icon={SearchX}>
         <p>
-          {tab === 'festival'
+          {meta.similar
+            ? 'No close match nearby. Try a wider distance, or another photo.'
+            : tab === 'festival'
             ? 'No festival pieces near you yet. Try a wider distance.'
             : tab === 'trending'
               ? 'Nothing trending near you right now. Try a wider distance.'
