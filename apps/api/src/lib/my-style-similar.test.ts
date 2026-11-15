@@ -26,7 +26,34 @@ import {
   descriptorText,
   embedDescriptor,
   embeddingSimilarities,
+  isSimilarMatch,
 } from './my-style-similar.js';
+
+describe('isSimilarMatch (strict category gate + minimum)', () => {
+  const kurti: GarmentDescriptor = {
+    category: 'Kurti',
+    color_family: 'yellow',
+    embellishments: [],
+  };
+  it('rejects another category however high the score', () => {
+    expect(isSimilarMatch(kurti, 'Saree', 1)).toBe(false);
+  });
+  it('rejects a product with no category', () => {
+    expect(isSimilarMatch(kurti, null, 1)).toBe(false);
+  });
+  it('compares category case-insensitively', () => {
+    expect(isSimilarMatch(kurti, ' kurti ', 0.9)).toBe(true);
+  });
+  it('rejects the right category below the minimum, accepts at it', () => {
+    expect(isSimilarMatch(kurti, 'Kurti', 0.59)).toBe(false);
+    expect(isSimilarMatch(kurti, 'Kurti', 0.6)).toBe(true);
+  });
+  it("'Other' has nothing to gate on, so only the score applies", () => {
+    const other: GarmentDescriptor = { ...kurti, category: 'Other' };
+    expect(isSimilarMatch(other, 'Saree', 0.8)).toBe(true);
+    expect(isSimilarMatch(other, 'Saree', 0.3)).toBe(false);
+  });
+});
 
 const G: GarmentDescriptor = {
   category: 'Kurti',

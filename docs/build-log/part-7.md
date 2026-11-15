@@ -463,3 +463,12 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Changed | `'AI_CUSTOM_TEMPLATE'` added to the API allowlist, the web `FeatureKey` union and the feature list (label "AI Custom Designs"). No migration. The key still fails closed (no row = OFF) and the quota still needs `plan_limits` rows (Admin → Plan Limits, METERED). |
 | Verification | Local only (CI blocked by billing): API `tsc` clean, API vitest `src/routes/admin` 461 passed, web `tsc` clean. Not browser-tested. `biome check` on `plan-features/page.tsx` already failed on `main` (5 errors: import order, formatting, `Infinity`, an unused variable, a literal key); left alone on purpose because `--write` reformats the whole file (225 lines) and two errors need manual fixes. |
 | Not verified | Grid not opened in a browser; no toggle saved; `plan_features` / `plan_limits` rows for `AI_CUSTOM_TEMPLATE` still not set (owner step); no real FLUX call. |
+
+## 2026-11-15 — My Style "Find similar" now filters, not just re-ranks (RC-164; branch `fix/my-style-find-similar-filter`)
+
+| What | Detail |
+|---|---|
+| Found | Owner report: Find Similar showed every catalog product, not only pieces like the uploaded garment photo. Code read: the similarity score was blended into `fit` (`0.5·base + 0.5·similarity`) and no candidate was ever removed, so `meta.total` was the whole range. |
+| Changed | `isSimilarMatch()` in `lib/my-style-similar.ts`: strict category gate (a different or missing category never matches; `Other` has no category to gate on) plus `MY_STYLE_SIMILAR.minSimilarity = 0.6` in `@kanchuki/shared`. The feed route ranks only passing products and, on the default sort, orders by similarity first (ranker order breaks ties). `meta.similar` gains `matched`. Web: `FeedMeta.similar.matched` type; empty state reads "No close match nearby. Try a wider distance, or another photo." No migration, no new dependency. |
+| Tests | 5 new unit tests (`my-style-similar.test.ts`), 5 new/changed route tests (`public-my-style.test.ts`). API `src/lib` + `src/routes/public` 1132 passed, API and web `tsc` clean, web find-similar page tests pass. |
+| Not verified | Not opened in a browser or on a device; no real Vision provider or real catalog run. 0.6 is an untuned guess; untagged products (no colour or category) are hidden from find-similar on purpose. Web `shortlist` / multi-store enquiry tests fail with `reading 'clear'` (shortlist fails identically on a clean tree); unrelated, not fixed. Needs a `packages/shared` rebuild locally (stale gitignored `dist`). |

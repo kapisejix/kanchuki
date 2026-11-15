@@ -35,7 +35,13 @@ export interface FeedMeta {
   rationale_source: 'none'
   style_profile: StyleProfile | null
   /** Set only on a find-similar feed: which signal ranked it and how many had an embedding. */
-  similar?: { source: 'embedding' | 'attributes'; embedded: number; total: number } | null
+  similar?: {
+    source: 'embedding' | 'attributes'
+    embedded: number
+    total: number
+    /** How many passed the category gate + minimum similarity (the feed shows only these). */
+    matched: number
+  } | null
   /** Which extra tabs have something behind them. Absent = hide Festival and Trending. */
   tabs?: { festival: { name: string } | null; trending: boolean }
   /** Occasion tab only: how many products carry the picked tag (null on other tabs). */

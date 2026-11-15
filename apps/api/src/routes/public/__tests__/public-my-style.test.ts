@@ -392,8 +392,45 @@ describe('find similar (PR-9)', () => {
     mockEmbedDesc.mockResolvedValue(null); // embeddings unavailable
     const res = await feed({ similar: GARMENT });
     expect(res.statusCode).toBe(200);
-    expect(ids(res)[0]).toBe('kurti');
-    expect(res.json().meta.similar).toEqual({ source: 'attributes', embedded: 0, total: 2 });
+    // Strict category gate: the saree is not shown at all, not merely ranked lower.
+    expect(ids(res)).toEqual(['kurti']);
+    expect(res.json().meta.similar).toEqual({
+      source: 'attributes',
+      embedded: 0,
+      total: 2,
+      matched: 1,
+    });
+  });
+
+  it('category gate is strict even when the colour matches exactly', async () => {
+    DB = [row('saree', s, { color_family: 'yellow', ...({ category: 'Saree' } as object) })];
+    mockEmbedDesc.mockResolvedValue(null);
+    const res = await feed({ similar: GARMENT });
+    expect(ids(res)).toEqual([]);
+    expect(res.json().meta.total).toBe(0);
+    expect(res.json().meta.similar.matched).toBe(0);
+  });
+
+  it('a product with no category never matches', async () => {
+    DB = [row('nocat', s, { color_family: 'yellow' })];
+    mockEmbedDesc.mockResolvedValue(null);
+    expect(ids(await feed({ similar: GARMENT }))).toEqual([]);
+  });
+
+  it('same category but a different colour is below the minimum and hidden', async () => {
+    DB = [kurti('blue', { color_family: 'blue' }), kurti('yellow', { color_family: 'yellow' })];
+    mockEmbedDesc.mockResolvedValue(null);
+    expect(ids(await feed({ similar: GARMENT }))).toEqual(['yellow']);
+  });
+
+  it('closest to the photo comes first on the default sort', async () => {
+    const withWork = { color_family: 'yellow', ...({ embellishments: ['Zari Work'] } as object) };
+    DB = [kurti('plain', { color_family: 'yellow' }), kurti('zari', withWork)];
+    mockEmbedDesc.mockResolvedValue(null);
+    const res = await feed({
+      similar: { ...GARMENT, embellishments: ['Zari Work'] },
+    });
+    expect(ids(res)).toEqual(['zari', 'plain']);
   });
 
   it('uses embeddings where they exist and says how many', async () => {
@@ -401,8 +438,14 @@ describe('find similar (PR-9)', () => {
     DB = [kurti('a', { color_family: 'blue' }), kurti('b', { color_family: 'blue' })];
     mockSims.mockResolvedValue(new Map([['b', 0.95]])); // b is the closer vector
     const res = await feed({ similar: GARMENT });
-    expect(ids(res)[0]).toBe('b');
-    expect(res.json().meta.similar).toEqual({ source: 'embedding', embedded: 1, total: 2 });
+    // Only b clears the minimum: a has no vector and a blue-vs-yellow attribute score alone.
+    expect(ids(res)).toEqual(['b']);
+    expect(res.json().meta.similar).toEqual({
+      source: 'embedding',
+      embedded: 1,
+      total: 2,
+      matched: 1,
+    });
     expect(mockSims).toHaveBeenCalledWith([0.1, 0.2], ['a', 'b']);
   });
 
@@ -417,8 +460,8 @@ describe('find similar (PR-9)', () => {
 
   it('similarity does not widen the candidate set: suspended and deleted still excluded', async () => {
     DB = [
-      kurti('ok'),
-      kurti('gone', { deleted_at: new Date() }),
+      kurti('ok', { color_family: 'yellow' }),
+      kurti('gone', { color_family: 'yellow', deleted_at: new Date() }),
       row('susp', store('x', { is_suspended: true }), ...([{ category: 'Kurti' }] as never[])),
     ];
     expect(ids(await feed({ similar: GARMENT }))).toEqual(['ok']);
