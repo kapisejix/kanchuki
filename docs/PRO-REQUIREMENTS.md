@@ -4400,6 +4400,8 @@ Signed-in customer opens `/my-style` (customer web only), gives a selfie / a gar
 
 ---
 
+**2026-11-15 redesign + fixes (RC-168/169/170, branch `fix/my-style-redesign-and-fixes`, not merged, not device-tested):** cards use one 4:5 frame; Sort has its own row and Near me / Filters wrap; "Complete the look" is a real button. The adult feed leaves kids' wear out (keyword match on category + subtype, no new column); "For my child" shows kids' wear only. The quick quiz save is awaited and a "Your style" card shows what is saved (`meta.taste`). The photo-read limit (3 / month, shared by selfie and Find similar) is unchanged; its refusal now says when it resets.
+
 ## 43. F-046 Retailer staff push notifications (F-044 Release 3) — 🟨 SLICES 1–3 MERGED 2026-10-19, BUILT, NOT DEVICE-TESTED
 
 **Spec:** `docs/tasks/pending/staff-push-notifications.md` (decisions, slice notes, owner steps). Parent: F-044 §41. Separate from F-036 (customer web push).
