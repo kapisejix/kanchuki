@@ -20,6 +20,8 @@
 // client's field ordering into a rejected request (same reasoning as try-on).
 import multipart from '@fastify/multipart';
 import { hasConfiguredVisionProvider } from '@kanchuki/ai';
+import { prisma } from '@kanchuki/db';
+import { MY_STYLE_MEASUREMENT_RANGES } from '@kanchuki/shared';
 import { createId } from '@paralleldrive/cuid2';
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
@@ -27,11 +29,14 @@ import { addMyStyleAnalyzeJob } from '../../jobs/index.js';
 import { CUSTOMER_STYLE_ANALYSIS } from '../../lib/features.js';
 import { completeAnalysis, getAnalysis, startAnalysis } from '../../lib/my-style-analysis.js';
 import {
+  hasLiveBodyConsent,
   hasLiveMyStyleConsent,
+  recordBodyConsent,
   recordMyStyleConsent,
+  withdrawBodyConsent,
   withdrawMyStyleConsent,
 } from '../../lib/my-style-consent.js';
-import { isCurrentMyStyleConsent } from '../../lib/notice-versions.js';
+import { isCurrentMyStyleBodyConsent, isCurrentMyStyleConsent } from '../../lib/notice-versions.js';
 import {
   checkCustomerQuota,
   refundCustomerJobQuota,
@@ -55,6 +60,31 @@ const QuerySchema = z.object({
   // 'garment' = find-similar (PR-9): the photo is of a garment, not of the shopper.
   mode: z.enum(['selfie', 'garment']).default('selfie'),
 });
+
+// Self-entered centimetres (spec step 2). Whole numbers inside the shared ranges; null clears one
+// field; .strict() so an unknown key (a weight, say) is a 422, never silently stored or ignored.
+const cm = (field: keyof typeof MY_STYLE_MEASUREMENT_RANGES) =>
+  z
+    .number()
+    .int()
+    .min(MY_STYLE_MEASUREMENT_RANGES[field].min)
+    .max(MY_STYLE_MEASUREMENT_RANGES[field].max)
+    .nullable()
+    .optional();
+const MeasurementsSchema = z
+  .object({
+    height_cm: cm('height_cm'),
+    bust_cm: cm('bust_cm'),
+    waist_cm: cm('waist_cm'),
+    hip_cm: cm('hip_cm'),
+    // Consent plumbing, not a measurement: the version of the measurements notice the shopper saw.
+    consent_version: z.string().min(1).optional(),
+  })
+  .strict()
+  .refine(
+    (b) => Object.entries(b).some(([k, v]) => k !== 'consent_version' && v !== undefined),
+    'Send at least one measurement',
+  );
 
 function unauthorized(reply: FastifyReply) {
   return reply
@@ -199,6 +229,58 @@ export const publicMyStyleAnalyzeRoutes: FastifyPluginAsync = async (server) => 
         ...(state.reason ? { reason: state.reason } : {}),
       },
     };
+  });
+
+  // ─── POST /measurements ───────────────────────────────────────
+  // Shopper-only data, never shown to a store. Not behind the photo kill-switch (no photo).
+  // Cleared by /profile/clear and by account erasure through STYLE_PROFILE_CLEARED.
+  server.post(
+    '/measurements',
+    { config: { rateLimit: { max: 20, timeWindow: 60 * 1000 } } },
+    async (request, reply) => {
+      reply.header('Cache-Control', 'private, no-store');
+      const session = await sessionFor(request);
+      if (!session) return unauthorized(reply);
+
+      const parsed = MeasurementsSchema.safeParse(request.body);
+      if (!parsed.success) {
+        throw validationError(
+          parsed.error.issues[0]?.message ?? 'Invalid measurements',
+          'measurements',
+        );
+      }
+      const { consent_version, ...measurements } = parsed.data;
+      // Consent, server-side: body data has its own notice, separate from the photo's.
+      const accountId = session.customer_account_id;
+      const ctx = { ip: request.ip, userAgent: request.headers['user-agent'] };
+      if (!(await hasLiveBodyConsent(accountId))) {
+        if (!isCurrentMyStyleBodyConsent(consent_version)) {
+          throw validationError(
+            'Please read and accept how your measurements are used before saving.',
+            'consent_version',
+          );
+        }
+        await recordBodyConsent(accountId, ctx);
+      }
+      await prisma.customerAccount.update({
+        where: { id: accountId },
+        data: { ...measurements, measurements_at: new Date() },
+      });
+      return { data: { measurements } };
+    },
+  );
+
+  // ─── POST /measurements/withdraw ──────────────────────────────
+  // Not behind any switch: removing what we hold must always work. 200 with a body (RC-045).
+  server.post('/measurements/withdraw', async (request, reply) => {
+    reply.header('Cache-Control', 'private, no-store');
+    const session = await sessionFor(request);
+    if (!session) return unauthorized(reply);
+    await withdrawBodyConsent(session.customer_account_id, {
+      ip: request.ip,
+      userAgent: request.headers['user-agent'],
+    });
+    return { data: { ok: true } };
   });
 
   // ─── POST /profile/clear ──────────────────────────────────────

@@ -62,6 +62,7 @@ import {
   getAnalysis,
   startAnalysis,
 } from '../../../lib/my-style-analysis.js';
+import { STYLE_PROFILE_CLEARED } from '../../../lib/my-style-consent.js';
 import { tryOnPhotoCount } from '../../../lib/tryon-photo-store.js';
 
 // The photo store is process-global and has no reset; count relative to the test's start.
@@ -404,7 +405,7 @@ describe('POST /profile/clear', () => {
     });
     expect(mockAccountUpdate).toHaveBeenCalledWith({
       where: { id: ACCT },
-      data: { skin_undertone: null, skin_depth: null, body_frame: null, style_profile_at: null },
+      data: { ...STYLE_PROFILE_CLEARED },
     });
     expect((await getAnalysis('mystyle_a'))?.status).toBe('cancelled');
   });

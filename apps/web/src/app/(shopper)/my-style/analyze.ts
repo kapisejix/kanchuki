@@ -206,3 +206,39 @@ export async function clearProfile(): Promise<'ok' | 'unauthorized' | 'error'> {
     return 'error'
   }
 }
+
+/** Save self-entered centimetres. A field set to null removes it. Only {data:{measurements}} counts as saved. */
+export async function saveMeasurements(
+  body: Partial<Record<'height_cm' | 'bust_cm' | 'waist_cm' | 'hip_cm', number | null>> & {
+    consent_version?: string
+  },
+): Promise<'ok' | 'unauthorized' | 'invalid' | 'error'> {
+  try {
+    const res = await timedFetch(
+      `${BASE}/measurements`,
+      { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) },
+      START_TIMEOUT_MS,
+    )
+    if (res.status === 401) return 'unauthorized'
+    if (res.status === 422) return 'invalid'
+    if (!res.ok) return 'error'
+    const json = (await res.json().catch(() => null)) as { data?: { measurements?: unknown } } | null
+    return json?.data?.measurements ? 'ok' : 'error'
+  } catch {
+    return 'error'
+  }
+}
+
+/** "Remove my measurements": deletes the numbers and ends the measurements consent. Only {data:{ok:true}} counts. */
+export async function withdrawMeasurements(): Promise<'ok' | 'unauthorized' | 'error'> {
+  try {
+    const res = await timedFetch(`${BASE}/measurements/withdraw`, { method: 'POST' }, START_TIMEOUT_MS)
+    if (res.status === 401) return 'unauthorized'
+    if (!res.ok) return 'error'
+    const json = (await res.json().catch(() => null)) as { data?: { ok?: boolean } } | null
+    return json?.data?.ok === true ? 'ok' : 'error'
+  } catch {
+    return 'error'
+  }
+}
+
