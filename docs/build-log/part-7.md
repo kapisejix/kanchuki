@@ -564,3 +564,13 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Tests | 3 new `PaletteCard` tests (2 red first), 1 new API test, 2 API expectations updated; web my-style 145 passed, API `public-my-style` 65 passed; both tsc clean. |
 | Not verified | No browser check; date shown in IST; web biome differs from the repo style (pre-existing). Spec: `docs/tasks/pending/my-style-body-profile.md` (lands with PR #280). |
 
+## 2026-11-16 — Add-on / try-on pack GST invoices (RC-173; PRs #293, #294)
+
+| Item | Detail |
+|---|---|
+| Change (#293, `9e2383a6`) | `/addon-callback` splits the GST-inclusive `amount_inr` (`computeInclusiveGst`; CGST+SGST intra-state, IGST otherwise), allocates a gap-free `KAN/YY-YY/NNNNNN` number inside the claim + credit transaction, queues the PDF. Job handles `addon_purchase_id`; backfill sweep re-queues packs with a number but no PDF. Migration 163: nine nullable columns on `quota_addon_purchases`. |
+| Change (#294, `0eaab4ce`) | Admin + retailer GST summary / monthly / by-retailer / transactions and invoice lists merge completed packs (`completed_at`); rows carry `kind`; retailer + admin PDF routes fall back to the pack, scoped to the caller. `lib/addon-gst-report.ts`. |
+| Why not `subscription_payments` | Referral qualify/accrue and the commission tracker count every `success` row as a subscription month. |
+| Tests | New: `generate-gst-invoice.test.ts`, `addon-gst-reports.test.ts`, GST-helper and callback cases (red first). API routes + lib + jobs 3172 passed; tsc clean; biome no errors. |
+| Owner steps | Migration 163 applied 2026-11-16 (nine columns read back). Still owed: platform GST profile filled; create try-on packs at 236 / 472 / 944 (field is GST-inclusive); tick `VIRTUAL_TRY_ON_V2` for one plan after the RunPod steps in `docs/runbooks/tryon-launch-owner-steps.md`; smoke test (real Razorpay pack, quota up, invoice number + PDF, replay callback -> no second invoice). |
+| Not verified | Mock Postgres only; no CI ran (minutes used up); live Railway build not confirmed (auth expired, `/health` ok); no real Razorpay/R2; mobile/web invoice screens untouched and not checked for `kind`. Pre-163 completed purchases have no invoice. |
