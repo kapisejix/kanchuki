@@ -31,6 +31,21 @@ export const MY_STYLE_FIT = {
  */
 export const MY_STYLE_KIDS_AGE = { exact: 0.1, adjacent: 0.05 } as const;
 
+/**
+ * Body frame (from the photo read): added on top of the fit parts, like the kids age boost.
+ * A product whose keywords include one of the frame's silhouettes gets `boost`. Boost only,
+ * never a filter, and `average` has no list (neutral). The lists are styling guesses, NOT
+ * reviewed by the owner or a stylist: review before launch (docs/tasks/pending/my-style-body-profile.md §6).
+ */
+export const MY_STYLE_FRAME = {
+  boost: 0.05,
+  silhouettes: {
+    curvy: ['anarkali', 'a-line', 'empire', 'fit and flare'],
+    petite: ['straight', 'short kurti', 'cropped', 'ankle length'],
+    tall: ['maxi', 'gown', 'palazzo', 'long kurti', 'flared'],
+  } as Readonly<Record<string, readonly string[]>>,
+} as const;
+
 /** Best-match only: at most `perStore` items per store inside the first `window` results. */
 export const MY_STYLE_DIVERSITY = { perStore: 3, window: 12 } as const;
 

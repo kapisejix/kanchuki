@@ -11,7 +11,9 @@ const all = ['S', 'M', 'L'];
 
 describe('suggestSize', () => {
   it('picks the size whose ranges contain every measurement', () => {
-    expect(suggestSize({ bust_cm: 87, waist_cm: 69, hip_cm: 93 }, chart, all)).toEqual({ size: 'M' });
+    expect(suggestSize({ bust_cm: 87, waist_cm: 69, hip_cm: 93 }, chart, all)).toEqual({
+      size: 'M',
+    });
   });
 
   it('when the dimensions disagree, takes the larger size and says it is between', () => {

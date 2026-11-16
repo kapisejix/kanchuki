@@ -21,6 +21,15 @@
 - **Proof:** `passport-data.test.ts` (red first: every derived column is nulled on delete); the existing clear test now pins the shared object. API `src/routes/public` + `src/lib/my-style` 530 passed, tsc clean.
 - **Not verified / limits:** mock Postgres only. Accounts deleted before this fix still hold the old derived columns (anonymised phone, no name); no sweep was written or run. Migration 161 adds the measurement columns and is NOT applied: apply it before deploying code that reads them (RC-160).
 
+## RC-171 — My Style read a body frame from the photo, stored it and displayed it, but the ranker never read it
+
+- **Component:** `apps/api/src/lib/my-style-rank.ts`, `apps/api/src/routes/public/public-my-style.ts`, `packages/shared/src/my-style-weights.ts`.
+- **Symptom:** found 2026-11-16 while answering the owner's question "does My Style use height/body shape". A shopper's analysed `frame` (petite/average/tall/curvy) changed nothing in the suggestions.
+- **Root cause:** `body_frame` was written by the analyze job and returned in `meta.style_profile`, but `RankProfile` had no frame field, so no score component read it. The collection step succeeded while doing nothing (RC-030 shape).
+- **Fix:** `RankProfile.frame`, `frameBoost()` in `fit` (+0.05 when a product keyword is one of the frame's silhouettes, boost only, `average` neutral), table `MY_STYLE_FRAME` in shared; the feed passes `account.body_frame` (not in the kids flow, whose frame is the parent's, not the child's).
+- **Proof:** 4 tests in `my-style-rank.test.ts`, one red first. API `src/lib` + `src/routes/public` 1164 passed (an earlier run showed 2 failures that did not reproduce; cause not found), tsc clean, biome clean.
+- **Not verified / limits:** the silhouette lists are styling guesses, not reviewed by the owner or a stylist; keywords match whole strings, so a subtype spelled differently does not match; no real products or photos tried; not browser-tested; complete-the-look does not use frame.
+
 ## RC-170 — The quick quiz saved in a fire-and-forget `fetch` and reported "done" before the write finished, so My Style refetched stale answers, closed the quiz before it could say "saved", and showed nothing back
 
 - **Component:** `apps/web/src/app/c/[slug]/components/StyleQuiz.tsx` (`finish`), `apps/web/src/app/(shopper)/my-style/page.tsx` (`onComplete`), `apps/api/src/routes/public/public-my-style.ts` (`meta`).

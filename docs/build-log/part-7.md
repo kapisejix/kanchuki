@@ -545,3 +545,13 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | NOT built (so the feature is dormant) | **No retailer UI to enter a size chart** (mobile product form, needs an EAS build); stock is not checked (only the sizes the retailer lists); enquiry opt-in to share the size with a store; "complete the look" cards carry no size label. Until a retailer can enter a chart no card will show a size. |
 | Not verified | No browser or device check; mock Postgres only; the rounding rule (a gap rounds up, between = smallest..largest needed) is mine and unreviewed by a tailor or the owner. |
 
+## 2026-11-16 — My Style body frame wired into ranking (RC-171; branch `feat/my-style-frame-ranking`)
+
+| Item | Detail |
+|---|---|
+| Finding | The owner asked whether My Style uses height/weight/body shape. Code read: the photo read returns three enums (undertone, depth, frame); no height or weight. `frame` was stored and shown but not read by the ranker. |
+| Change | `MY_STYLE_FRAME` (shared) + `frameBoost` in `fit` (+0.05, boost only, `average` neutral); feed passes `account.body_frame` outside the kids flow. |
+| Tests | 4 in `my-style-rank.test.ts` (one red first); API lib + public routes 1164 passed; tsc and biome clean. |
+| Not verified | Silhouette keyword lists are unreviewed guesses; no real products/photos; no browser check; complete-the-look unchanged. |
+| Spec | `docs/tasks/pending/my-style-body-profile.md` (self-entered measurements, size charts, stored-photo decision, scan options). Not approved, nothing built from it. |
+

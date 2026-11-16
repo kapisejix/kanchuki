@@ -273,6 +273,7 @@ export const publicMyStyleRoutes: FastifyPluginAsync = async (server) => {
           radiusKm: b.radius_km,
           trends: rankTrends,
           ...(b.kids && b.kids_age ? { kidsAge: b.kids_age } : {}),
+          ...(!b.kids && account.body_frame ? { frame: account.body_frame } : {}),
         },
         b.sort,
         now,

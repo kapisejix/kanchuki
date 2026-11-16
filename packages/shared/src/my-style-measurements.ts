@@ -47,8 +47,8 @@ export const MY_STYLE_BODY_CONSENT = {
       text: 'Only to suggest sizes in My Style. Never to train AI models.',
     },
   ],
-  withdrawal: 'You can remove them any time. Removing them deletes the numbers and ends this consent.',
+  withdrawal:
+    'You can remove them any time. Removing them deletes the numbers and ends this consent.',
   acceptLabel: 'I agree, save my measurements',
   declineLabel: 'Not now',
 } as const;
-
