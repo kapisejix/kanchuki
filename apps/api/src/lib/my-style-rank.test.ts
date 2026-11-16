@@ -337,4 +337,27 @@ describe('body frame (a rank boost, never a filter)', () => {
       10,
     );
   });
+
+  // Real subtypes are phrases ("straight cut kurti", "short kurti set"), so a listed silhouette
+  // must count when it appears as whole words inside a keyword, not only as the whole keyword.
+  it('counts a silhouette that appears as whole words inside a longer keyword', () => {
+    const petite = profile({ frame: 'petite' });
+    const phrase = cand('p', { keywords: ['straight cut kurti'] });
+    const none = cand('n', { keywords: ['kurta set'] });
+    expect(scoreOf(phrase, petite)).toBeGreaterThan(scoreOf(none, petite));
+    const shortSet = cand('s', { keywords: ['short kurti set'] });
+    expect(scoreOf(shortSet, petite)).toBeGreaterThan(scoreOf(none, petite));
+  });
+
+  it('does not count a silhouette that is only part of a word', () => {
+    const tall = profile({ frame: 'tall' });
+    const inside = cand('x', { keywords: ['maxine', 'gowns'] });
+    const none = cand('n', { keywords: ['kurta set'] });
+    expect(scoreOf(inside, tall)).toBeCloseTo(scoreOf(none, tall), 10);
+  });
+
+  it('matches a hyphenated silhouette inside a phrase', () => {
+    const phrase = cand('a', { keywords: ['a-line kurti'] });
+    expect(scoreOf(phrase, curvy)).toBeGreaterThan(scoreOf(other, curvy));
+  });
 });

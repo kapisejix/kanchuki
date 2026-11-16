@@ -70,11 +70,23 @@ function ageBoost(c: RankCandidate, p: RankProfile): number {
   return gap === 0 ? MY_STYLE_KIDS_AGE.exact : gap === 1 ? MY_STYLE_KIDS_AGE.adjacent : 0;
 }
 
+// One regex per frame: a listed silhouette counts when it appears as whole words inside a keyword
+// ("straight cut kurti" hits "straight"; "maxine" does not hit "maxi"). Real subtypes are
+// phrases, so an exact-string match fired on ~3% of the live catalog.
+const FRAME_RX: Readonly<Record<string, RegExp>> = Object.fromEntries(
+  Object.entries(MY_STYLE_FRAME.silhouettes).map(([frame, terms]) => [
+    frame,
+    new RegExp(
+      `(^|[^a-z0-9])(${terms.map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})($|[^a-z0-9])`,
+    ),
+  ]),
+);
+
 // A product whose keywords include one of the frame's silhouettes gets `boost`; unknown or
 // "average" frames have no list, so nothing happens.
 function frameBoost(c: RankCandidate, p: RankProfile): number {
-  const list = p.frame ? MY_STYLE_FRAME.silhouettes[p.frame] : undefined;
-  return list?.some((s) => c.keywords.includes(s)) ? MY_STYLE_FRAME.boost : 0;
+  const rx = p.frame ? FRAME_RX[p.frame] : undefined;
+  return rx && c.keywords.some((k) => rx.test(k)) ? MY_STYLE_FRAME.boost : 0;
 }
 
 function fit(c: RankCandidate, p: RankProfile): number {
