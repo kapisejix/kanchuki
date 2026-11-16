@@ -467,6 +467,63 @@ describe('ranking + paging', () => {
     expect((await feed()).json().meta.style_profile.saved_at).toBe('2026-11-12T10:00:00.000Z');
   });
 
+  describe('suggested size (spec step 4)', () => {
+    const chart = {
+      S: { bust: [80, 84] },
+      M: { bust: [85, 89] },
+      L: { bust: [90, 94] },
+    };
+    const withChart = (id: string, over: Record<string, unknown> = {}) =>
+      row(id, store('1'), {
+        sizes: ['S', 'M', 'L'],
+        ...({ size_chart: chart, ...over } as object),
+      });
+    const sizeOf = async (id = 'a') =>
+      (await feed()).json().data.find((d: { id: string }) => d.id === id)?.suggested_size;
+
+    it('labels a card from the shopper own measurements and the product chart', async () => {
+      DB = [withChart('a')];
+      mockSession.mockResolvedValue(account({ bust_cm: 87 }));
+      expect(await sizeOf()).toEqual({ size: 'M' });
+    });
+
+    it('says "between" when the dimensions disagree', async () => {
+      DB = [
+        withChart('a', {
+          size_chart: {
+            S: { bust: [80, 84], hip: [86, 90] },
+            M: { bust: [85, 89], hip: [91, 95] },
+            L: { bust: [90, 94], hip: [96, 100] },
+          },
+        }),
+      ];
+      mockSession.mockResolvedValue(account({ bust_cm: 87, hip_cm: 98 }));
+      expect(await sizeOf()).toEqual({ size: 'L', between: ['M', 'L'] });
+    });
+
+    it('is null without measurements', async () => {
+      DB = [withChart('a')];
+      expect(await sizeOf()).toBeNull();
+    });
+
+    it('is null for a product with no chart, and for an invalid stored chart', async () => {
+      DB = [
+        withChart('a', { size_chart: null }),
+        withChart('b', { size_chart: { M: { bust: [1, 2] } } }),
+      ];
+      mockSession.mockResolvedValue(account({ bust_cm: 87 }));
+      expect(await sizeOf('a')).toBeNull();
+      expect(await sizeOf('b')).toBeNull();
+    });
+
+    it('never reorders or removes anything: the same ids with and without measurements', async () => {
+      DB = [withChart('a'), withChart('b', { size_chart: null })];
+      const without = ids(await feed());
+      mockSession.mockResolvedValue(account({ bust_cm: 87 }));
+      expect(ids(await feed())).toEqual(without);
+    });
+  });
+
   it('meta.style_profile has palette null when no active palette row matches', async () => {
     mockSession.mockResolvedValue(account({ skin_undertone: 'cool', skin_depth: 'deep' }));
     expect((await feed()).json().meta.style_profile).toEqual({

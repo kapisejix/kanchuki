@@ -54,6 +54,13 @@ export function StyleCard({ card: c, saved, full, busy, onToggle, onEnquire, onL
             .filter(Boolean)
             .join(' · ')}
         </p>
+        {c.suggested_size && (
+          <p data-testid="suggested-size" className="text-xs font-semibold text-fuchsia-600 mt-1">
+            Your size: {c.suggested_size.size}
+            {c.suggested_size.between ? ` (between ${c.suggested_size.between[0]} and ${c.suggested_size.between[1]})` : ''}
+            <span className="font-normal text-heliotrope-500"> · approx.</span>
+          </p>
+        )}
         <div className="mt-auto">
           <StyleCardActions
             card={c}

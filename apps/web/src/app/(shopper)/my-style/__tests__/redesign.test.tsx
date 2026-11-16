@@ -181,3 +181,31 @@ describe('photo-read limit message (problem 5)', () => {
     expect(resetDay(new Date(2026, 11, 31))).toBe('1 January');
   });
 });
+
+// Spec step 4: a size label from the shopper's own measurements. A label only: approximate, and
+// absent when the API sent none.
+describe('suggested size on the card', () => {
+  const props = { saved: false, full: false, busy: false, onToggle: vi.fn(), onEnquire: vi.fn() };
+
+  it('shows "Your size: M"', () => {
+    render(<StyleCard card={card({ suggested_size: { size: 'M' } }) as never} {...props} />);
+    expect(screen.getByText(/Your size: M/)).toBeTruthy();
+  });
+
+  it('says so when two sizes are in play, and that it is approximate', () => {
+    render(
+      <StyleCard card={card({ suggested_size: { size: 'L', between: ['M', 'L'] } }) as never} {...props} />,
+    );
+    const t = screen.getByTestId('suggested-size').textContent!;
+    expect(t).toMatch(/Your size: L/);
+    expect(t).toMatch(/between M and L/);
+    expect(t).toMatch(/approx/i);
+  });
+
+  it('shows nothing when there is no suggestion', () => {
+    render(<StyleCard card={card({ suggested_size: null }) as never} {...props} />);
+    expect(screen.queryByTestId('suggested-size')).toBeNull();
+    render(<StyleCard card={card() as never} {...props} />);
+    expect(screen.queryByTestId('suggested-size')).toBeNull();
+  });
+});

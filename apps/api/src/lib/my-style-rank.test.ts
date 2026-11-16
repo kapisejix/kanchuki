@@ -307,3 +307,34 @@ describe('find similar (PR-9)', () => {
     expect(ids(out).indexOf('other')).toBeLessThan(5);
   });
 });
+
+// RC-171: the photo read returns a body frame and it was stored and displayed but never read
+// by the ranker (a field that succeeds while doing nothing, RC-030 shape).
+describe('body frame (a rank boost, never a filter)', () => {
+  const match = cand('m', { keywords: ['anarkali'] });
+  const other = cand('o', { keywords: ['straight kurta'] });
+  const curvy = profile({ frame: 'curvy' });
+
+  it('lifts a silhouette listed for the frame above one that is not', () => {
+    expect(scoreOf(match, curvy)).toBeGreaterThan(scoreOf(other, curvy));
+  });
+
+  it('changes nothing without a frame, or for the neutral "average" frame', () => {
+    expect(scoreOf(match, profile())).toBeCloseTo(scoreOf(other, profile()), 10);
+    expect(scoreOf(match, profile({ frame: 'average' }))).toBeCloseTo(
+      scoreOf(other, profile({ frame: 'average' })),
+      10,
+    );
+  });
+
+  it('is a boost only: a non-matching product stays in the result', () => {
+    expect(ids(rankProducts([match, other], curvy, 'best', NOW)).sort()).toEqual(['m', 'o']);
+  });
+
+  it('ignores an unknown frame value', () => {
+    expect(scoreOf(match, profile({ frame: 'bogus' }))).toBeCloseTo(
+      scoreOf(other, profile({ frame: 'bogus' })),
+      10,
+    );
+  });
+});

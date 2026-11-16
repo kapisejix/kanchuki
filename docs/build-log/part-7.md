@@ -511,6 +511,50 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Follow-up (2026-11-15, after merge) | PR #275 merged to `main` (`7d174fc8`) after CI 5/5 on `cee57331`; Railway deploy not confirmed by me. Bulk-onboard (`apps/mobile/app/product/bulk-onboard.tsx`) `handleSaveBatch` now spreads `addAudience(audienceFromTags(item.original.tags), [category])` into each row sent to `bulkCreateProducts`, like catalog-import; the API already accepts `audience`/`kids_age_group`. Branch `feat/bulk-onboard-audience`. Source-pin test in `bulk-onboard-screen.test.tsx` (red first), mobile `__tests__/product` 99 passed, `tsc` clean, lint 0 errors. Not device-tested, no real-model tagging run. Real-model tagging results and age-boost weight tuning are still open (need owner data and real use). |
 | Deploy evidence (2026-11-16, Railway CLI read-only) | API service `supportive-love`, web `magnificent-liberation`. Deployments for #276 (`a616b300`) and #277 (`0968787a`) are SKIPPED, `skippedReason` "No changes to watched files". The `7d174fc8` deployments are REMOVED, replaced 15:37 on 2026-11-15 by a SUCCESS deployment with no commit hash on each service. Likely a redeploy of the `7d174fc8` build; not proven, owner to confirm in the Railway dashboard. |
 
+## 2026-11-16 — My Style self-entered measurements (spec step 2; RC-172; branch `feat/my-style-measurements`)
+
+| Item | Detail |
+|---|---|
+| Migration | `161_my_style_measurements`: `height_cm`, `bust_cm`, `waist_cm`, `hip_cm` (CHECK ranges), `measurements_at` on `customer_accounts`. Additive, nullable. **NOT applied; owner applies it BEFORE deploying this code (RC-160).** No weight column. |
+| API | `POST /v1/public/my-style/measurements` (session required, 20/min, whole cm in shared ranges, null clears a field, unknown key or empty body is 422, never cached); feed `meta.measurements`. Shared: `my-style-measurements.ts` (ranges, `feetInchesToCm`). |
+| Erasure fix (RC-172) | `POST /passport/delete` never nulled the photo-derived profile. One `STYLE_PROFILE_CLEARED` now backs erasure, "Clear my data" and the job compensation; export includes profile + measurements. |
+| Web | `MeasurementsCard` on `/my-style`: cm or ft/in height, "How to measure", shopper-only notice, save only on API confirm, remove in one tap, double-tap guard; proxy allows `measurements`. |
+| Tests | New route test (11), `passport-data` delete test (red first), `MeasurementsCard` tests (7; written before the component, not run red); API public + my-style lib 530 passed; web my-style 149 passed; both tsc clean. |
+| Not verified | No browser check; mock Postgres only; migration unapplied; consent: entering and saving is the affirmative act with an on-card notice, no separate consent event (owner to confirm that is enough for DPDP); measurements are not used for any size suggestion yet (steps 3-4 of the spec). |
+
+## 2026-11-16 — My Style measurements: separate consent step (owner decision; same branch `feat/my-style-measurements`)
+
+| Item | Detail |
+|---|---|
+| Decision | Owner chose a separate consent step for measurements (instead of saving with an on-card notice). |
+| Consent | New purpose `MY_STYLE_BODY`: copy `MY_STYLE_BODY_CONSENT` (version `mystyle-body-1.0`, shared), events `MY_STYLE_BODY_CONSENTED` / `MY_STYLE_BODY_CONSENT_WITHDRAWN` in `consent_events` (`kind` is a plain string, no migration). Independent of the photo consent: a live photo grant does not unlock saving. |
+| API | `POST /measurements` needs a live grant or the current `consent_version` (else 422); records the grant, then saves. New `POST /measurements/withdraw` logs the withdrawal and nulls the five columns. "Clear my data" also logs a body withdrawal when one was live. |
+| Web | `MeasurementsCard` shows the notice first (title, intro, three points, withdrawal line, accept/decline); fields appear only after "I agree"; a shopper with saved measurements is not asked again; "Remove my measurements" calls withdraw and reports failure honestly. |
+| Tests | API route test 18 (consent cases added; one test-helper URL bug of mine fixed); API public + lib 1179 passed; web my-style 154 passed; tsc and biome clean. Red-first run observed for the API consent cases (4 failed before); the web consent tests were written before the code but not run red. |
+| Not verified | No browser check; mock Postgres only; the notice wording is mine, not reviewed by legal; the grant event stores a hashed IP and user agent like the other consents. |
+
+## 2026-11-16 — My Style size match (spec steps 3-4; branch `feat/my-style-size-match`, stacked on `feat/my-style-measurements`)
+
+| Item | Detail |
+|---|---|
+| Migration | `162_product_size_chart`: `products.size_chart` JSONB, nullable. **NOT applied; owner applies it BEFORE deploying this code (RC-160).** Needs 161 too (stacked). |
+| Shared | `my-style-size.ts`: `parseSizeChart` (validates a chart: known sizes, bust/waist/hip only, whole cm in range, min <= max) and `suggestSize` (per dimension the smallest listed size whose upper bound covers the body; the largest of those wins; "between" when dimensions disagree; null for no chart, no overlapping measurement, or a body above the largest size). |
+| API | `size_chart` accepted and validated on product create/update (422 on a bad chart, `null` clears via `Prisma.DbNull`, omitted leaves it alone). Feed cards carry `suggested_size` (`{size, between?}` or null); label only, never filters or reorders. |
+| Web | Card line "Your size: M (between M and L) · approx." |
+| Tests | shared 17; products-size-chart 10; feed 5 new; API products 256 and public 436 passed; web my-style 157 passed; tsc clean. Shared and API tests red first; the web card tests were written in the same pass as the code. |
+| NOT built (so the feature is dormant) | **No retailer UI to enter a size chart** (mobile product form, needs an EAS build); stock is not checked (only the sizes the retailer lists); enquiry opt-in to share the size with a store; "complete the look" cards carry no size label. Until a retailer can enter a chart no card will show a size. |
+| Not verified | No browser or device check; mock Postgres only; the rounding rule (a gap rounds up, between = smallest..largest needed) is mine and unreviewed by a tailor or the owner. |
+
+## 2026-11-16 — My Style body frame wired into ranking (RC-171; branch `feat/my-style-frame-ranking`)
+
+| Item | Detail |
+|---|---|
+| Finding | The owner asked whether My Style uses height/weight/body shape. Code read: the photo read returns three enums (undertone, depth, frame); no height or weight. `frame` was stored and shown but not read by the ranker. |
+| Change | `MY_STYLE_FRAME` (shared) + `frameBoost` in `fit` (+0.05, boost only, `average` neutral); feed passes `account.body_frame` outside the kids flow. |
+| Tests | 4 in `my-style-rank.test.ts` (one red first); API lib + public routes 1164 passed; tsc and biome clean. |
+| Not verified | Silhouette keyword lists are unreviewed guesses; no real products/photos; no browser check; complete-the-look unchanged. |
+| Spec | `docs/tasks/pending/my-style-body-profile.md` (self-entered measurements, size charts, stored-photo decision, scan options). Not approved, nothing built from it. |
+
 ## 2026-11-16 — My Style profile-age note (spec step 1; branch `feat/my-style-profile-age`)
 
 | Item | Detail |

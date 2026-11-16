@@ -6,6 +6,7 @@ import {
   MY_STYLE_DEFAULT_RADIUS_KM,
   MY_STYLE_DIVERSITY,
   MY_STYLE_FIT,
+  MY_STYLE_FRAME,
   MY_STYLE_FRESH_DAYS,
   MY_STYLE_KIDS_AGE,
   MY_STYLE_SIMILAR,
@@ -44,6 +45,8 @@ export interface RankProfile {
   trends: readonly { match_keywords: readonly string[]; boost: number }[];
   /** "For my child": the child's age band (a KidsAgeGroup). Boosts, never filters. */
   kidsAge?: string;
+  /** The shopper's body frame (petite/average/tall/curvy). Boosts, never filters. */
+  frame?: string;
 }
 
 export interface RankedItem {
@@ -67,6 +70,13 @@ function ageBoost(c: RankCandidate, p: RankProfile): number {
   return gap === 0 ? MY_STYLE_KIDS_AGE.exact : gap === 1 ? MY_STYLE_KIDS_AGE.adjacent : 0;
 }
 
+// A product whose keywords include one of the frame's silhouettes gets `boost`; unknown or
+// "average" frames have no list, so nothing happens.
+function frameBoost(c: RankCandidate, p: RankProfile): number {
+  const list = p.frame ? MY_STYLE_FRAME.silhouettes[p.frame] : undefined;
+  return list?.some((s) => c.keywords.includes(s)) ? MY_STYLE_FRAME.boost : 0;
+}
+
 function fit(c: RankCandidate, p: RankProfile): number {
   const family = c.color_family?.toLowerCase() ?? null;
   const palette =
@@ -85,7 +95,8 @@ function fit(c: RankCandidate, p: RankProfile): number {
       MY_STYLE_FIT.occasion * hit(c.occasions, lower(p.occasions)) +
       MY_STYLE_FIT.prefColor * (family && lower(p.colorFamilies).has(family) ? 1 : 0) +
       MY_STYLE_FIT.prefFabric * hit(c.fabrics, lower(p.fabrics)) +
-      ageBoost(c, p),
+      ageBoost(c, p) +
+      frameBoost(c, p),
   );
   // Find similar: the garment the shopper showed us takes over part of `fit`. Absent =
   // an ordinary feed, unchanged.
