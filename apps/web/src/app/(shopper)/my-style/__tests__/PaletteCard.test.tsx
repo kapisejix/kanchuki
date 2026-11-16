@@ -88,4 +88,35 @@ describe('PaletteCard', () => {
     expect(onCleared).not.toHaveBeenCalled()
     expect(screen.getByRole('link', { name: /sign in/i })).toBeTruthy()
   })
+
+  // Step 1 of docs/tasks/pending/my-style-body-profile.md (D2): a neutral once-a-year note.
+  // It must never push the shopper away from deleting (consent is as easy to withdraw as to give).
+  describe('profile age note', () => {
+    afterEach(() => vi.useRealTimers())
+    const at = (saved_at: string | null, now = '2026-11-20T00:00:00Z') => {
+      vi.useFakeTimers({ toFake: ['Date'] })
+      vi.setSystemTime(new Date(now))
+      return setup({ ...profile, saved_at })
+    }
+
+    it('shows the saved date and says an update is only needed about once a year', () => {
+      at('2026-11-12T10:00:00Z')
+      const note = screen.getByTestId('profile-age').textContent!
+      expect(note).toMatch(/12 Nov 2026/)
+      expect(note).toMatch(/once a year/i)
+      expect(note).toMatch(/delete it any time/i)
+    })
+
+    it('after 12 months invites an update without forcing one', () => {
+      at('2025-11-01T00:00:00Z')
+      expect(screen.getByTestId('profile-age').textContent).toMatch(/over a year/i)
+      expect(clear).not.toHaveBeenCalled()
+      expect(screen.getByRole('button', { name: /clear my data/i })).toBeTruthy()
+    })
+
+    it('shows no note when the save date is unknown', () => {
+      at(null)
+      expect(screen.queryByTestId('profile-age')).toBeNull()
+    })
+  })
 })

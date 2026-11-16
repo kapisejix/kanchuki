@@ -14,6 +14,8 @@ export interface StyleProfile {
   undertone: string
   depth: string
   frame: string | null
+  /** ISO time the profile was saved (CustomerAccount.style_profile_at). */
+  saved_at?: string | null
   palette: { good: string[]; avoid: string[] } | null
 }
 

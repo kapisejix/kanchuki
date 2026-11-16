@@ -334,6 +334,7 @@ export const publicMyStyleRoutes: FastifyPluginAsync = async (server) => {
                   undertone: account.skin_undertone,
                   depth: account.skin_depth,
                   frame: account.body_frame ?? null,
+                  saved_at: account.style_profile_at?.toISOString() ?? null,
                   palette: palette
                     ? { good: palette.good_families, avoid: palette.avoid_families }
                     : null,
