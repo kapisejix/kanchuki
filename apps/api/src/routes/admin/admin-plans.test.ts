@@ -209,6 +209,35 @@ describe('TRY_ON_GENERATION is settable from the admin panel', () => {
 
 // ─── GET /plan-limits/customer ─────────────────────────────────────
 
+describe('PUT /plan-features accepts the admin-togglable keys', () => {
+  it.each(['GOOGLE_BUSINESS_PROFILE', 'AI_CUSTOM_TEMPLATE'])(
+    '%s passes validation (a rejected enum is 422)',
+    async (feature_key) => {
+      const app = await build();
+      const res = await app.inject({
+        method: 'PUT',
+        url: '/plan-features',
+        headers: JSON_HEADERS,
+        payload: { plan: 'PRO', feature_key, enabled: true },
+      });
+      expect(res.statusCode).not.toBe(422);
+      await app.close();
+    },
+  );
+
+  it('still rejects a key that is not in the allowlist', async () => {
+    const app = await build();
+    const res = await app.inject({
+      method: 'PUT',
+      url: '/plan-features',
+      headers: JSON_HEADERS,
+      payload: { plan: 'PRO', feature_key: 'NOT_A_FEATURE', enabled: true },
+    });
+    expect(res.statusCode).toBe(422);
+    await app.close();
+  });
+});
+
 describe('GET /plan-limits/customer', () => {
   it('returns an entry for an UNSET resource rather than omitting it', async () => {
     // The failure this pins: `findMany` alone returns only the rows that exist,
