@@ -59,15 +59,15 @@ const FEATURES: { key: FeatureKey; label: string; description: string }[] = [
 // Prices are NOT here — they come live from plan_pricing (Admin → Plan Pricing).
 const PLAN_LABELS: Record<Plan, { name: string; color: string }> = {
   STARTER: { name: 'Starter', color: 'border-gray-200 bg-gray-50/50' },
-  GROWTH: { name: 'Growth', color: 'border-teal-200 bg-teal-50/30' },
-  PRO: { name: 'Pro', color: 'border-amber-200 bg-amber-50/30' },
+  GROWTH: { name: 'Growth', color: 'border-cyan-200 bg-cyan-50/30' },
+  PRO: { name: 'Pro', color: 'border-blue-200 bg-blue-50/30' },
 }
 
-// Tier accents: neutral -> teal -> gold (gold matches the Black & Gold brand; no purple/pink gradient).
+// Tier accents use the admin theme (gray + cyan/blue, same as the Sidebar): gray -> cyan -> cyan-to-blue.
 const PLAN_ACCENT: Record<Plan, string> = {
   STARTER: 'from-gray-400 to-gray-500',
-  GROWTH: 'from-teal-500 to-teal-600',
-  PRO: 'from-amber-400 to-amber-600',
+  GROWTH: 'from-cyan-400 to-cyan-500',
+  PRO: 'from-cyan-500 to-blue-600',
 }
 
 // ─── Page ──────────────────────────────────────────────────────────────
@@ -205,7 +205,7 @@ export default function PlanFeaturesPage() {
                   <th
                     key={plan}
                     className={`text-center px-4 py-4 text-xs font-semibold uppercase tracking-wider border-l border-gray-100 ${
-                      plan === 'GROWTH' ? 'text-teal-700' : plan === 'PRO' ? 'text-amber-700' : 'text-gray-500'
+                      plan === 'GROWTH' ? 'text-cyan-600' : plan === 'PRO' ? 'text-blue-700' : 'text-gray-500'
                     }`}
                   >
                     <div className="flex flex-col items-center gap-0.5">
