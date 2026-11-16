@@ -21,12 +21,16 @@ const m = vi.hoisted(() => ({
   razorpay: vi.fn(),
   hasFeature: vi.fn(),
   sentry: vi.fn(),
+  gstProfile: vi.fn(),
+  allocate: vi.fn(),
+  enqueueInvoice: vi.fn(),
+  invoiceUpdate: vi.fn(),
 }));
 
 vi.mock('@sentry/node', () => ({ init: vi.fn(), captureException: m.sentry }));
 
 const txClient = () => ({
-  quotaAddonPurchase: { updateMany: m.purchaseUpdateMany },
+  quotaAddonPurchase: { updateMany: m.purchaseUpdateMany, update: m.invoiceUpdate },
   usageCounter: { upsert: m.usageUpsert },
 });
 
@@ -45,6 +49,7 @@ vi.mock('@kanchuki/db', () => ({
     planLimit: { findUnique: m.planLimitFindUnique },
     usageCounter: { upsert: m.usageUpsert },
     auditLog: { create: m.auditCreate },
+    platformGstProfile: { findUnique: m.gstProfile },
     $transaction: (ops: unknown) =>
       typeof ops === 'function' ? ops(txClient()) : Promise.all(ops as unknown[]),
   },
@@ -57,6 +62,10 @@ vi.mock('./billing-helpers.js', async () => {
 });
 
 vi.mock('../../lib/features.js', () => ({ hasFeatureForPlan: m.hasFeature }));
+vi.mock('../../lib/gst-invoice-number.js', () => ({ allocateInvoiceNumber: m.allocate }));
+vi.mock('../../jobs/generate-gst-invoice.js', () => ({
+  addGenerateGstInvoiceJob: m.enqueueInvoice,
+}));
 
 import { errorHandler } from '../../plugins/error-handler.js';
 import { billingAddonRoutes } from './billing-addons.js';
@@ -101,6 +110,10 @@ beforeEach(() => {
   m.auditCreate.mockResolvedValue({});
   m.packFindFirst.mockResolvedValue(PACK);
   m.packFindMany.mockResolvedValue([PACK]);
+  // add-on callback also allocates a GST invoice number and queues the PDF
+  m.allocate.mockResolvedValue('KAN/26-27/000001');
+  m.enqueueInvoice.mockResolvedValue(undefined);
+  m.invoiceUpdate.mockResolvedValue({});
 });
 
 function checkout(app: Awaited<ReturnType<typeof buildApp>>, body: unknown) {
@@ -410,5 +423,98 @@ describe('removed one-time order routes (T1.8 F5)', () => {
     const res = await app.inject({ method: 'POST', url, payload });
     expect(res.statusCode).toBe(404);
     expect(m.razorpay).not.toHaveBeenCalled();
+  });
+});
+
+describe('GET /addon-callback - GST invoice (add-on packs are taxable supplies)', () => {
+  const link = 'plink_1';
+  const pay = 'pay_1';
+  const sig = createHmac('sha256', 'rzp_test_key_secret')
+    .update(`${link}||paid|${pay}`)
+    .digest('hex');
+  const url = `/v1/billing/addon-callback?razorpay_payment_id=${pay}&razorpay_payment_link_id=${link}&razorpay_signature=${sig}&razorpay_payment_link_status=paid`;
+  const purchase = {
+    id: 'purchase_1',
+    retailer_id: RETAILER_ID,
+    resource_type: 'TRY_ON_GENERATION',
+    quantity: 25,
+    amount_inr: 23600,
+  };
+
+  beforeEach(() => {
+    m.purchaseFindFirst.mockResolvedValue(purchase);
+    m.razorpay.mockResolvedValue({ amount: 23600, status: 'captured' });
+    m.purchaseUpdateMany.mockResolvedValue({ count: 1 });
+    m.usageUpsert.mockResolvedValue({});
+    m.allocate.mockResolvedValue('KAN/26-27/000001');
+    m.invoiceUpdate.mockResolvedValue({});
+    m.enqueueInvoice.mockResolvedValue(undefined);
+    m.gstProfile.mockResolvedValue({ state_code: '27', invoice_prefix: 'KAN' });
+  });
+
+  it('inter-state: writes base/IGST/number on the purchase and queues the PDF', async () => {
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url });
+    expect(res.headers.location).toContain('status=success');
+    expect(m.allocate).toHaveBeenCalledOnce();
+    const data = m.invoiceUpdate.mock.calls[0]?.[0].data;
+    expect(m.invoiceUpdate.mock.calls[0]?.[0].where).toEqual({ id: 'purchase_1' });
+    expect(data).toMatchObject({
+      gst_invoice_number: 'KAN/26-27/000001',
+      amount_excluding_gst: 20000,
+      gst_amount: 3600,
+      igst_amount: 3600,
+      gst_rate: 0.18,
+      sac_code: '998314',
+    });
+    expect(data.cgst_amount).toBeNull();
+    expect(m.enqueueInvoice).toHaveBeenCalledWith({ addon_purchase_id: 'purchase_1' });
+  });
+
+  it('intra-state (buyer state = seller state): CGST + SGST', async () => {
+    m.retailerFindUnique.mockResolvedValue({
+      phone: '+919999999999',
+      shop_name: 'Test Shop',
+      plan: 'GROWTH',
+      state: 'Maharashtra',
+    });
+    const app = await buildApp();
+    await app.inject({ method: 'GET', url });
+    const data = m.invoiceUpdate.mock.calls[0]?.[0].data;
+    expect(data.cgst_amount).toBe(1800);
+    expect(data.sgst_amount).toBe(1800);
+    expect(data.igst_amount).toBeNull();
+    expect(data.place_of_supply).toBe('27-Maharashtra');
+  });
+
+  it('replayed callback (claim lost): no number burned, no second PDF', async () => {
+    m.purchaseUpdateMany.mockResolvedValue({ count: 0 });
+    const app = await buildApp();
+    await app.inject({ method: 'GET', url });
+    expect(m.allocate).not.toHaveBeenCalled();
+    expect(m.invoiceUpdate).not.toHaveBeenCalled();
+    expect(m.enqueueInvoice).not.toHaveBeenCalled();
+  });
+
+  it('failed credit: nothing is invoiced or queued (the txn rolls back)', async () => {
+    m.usageUpsert.mockRejectedValue(new Error('db down'));
+    const app = await buildApp();
+    await app.inject({ method: 'GET', url });
+    expect(m.enqueueInvoice).not.toHaveBeenCalled();
+  });
+
+  it('an unlimited plan takes no credit but is still invoiced (money was taken)', async () => {
+    m.planLimitFindUnique.mockResolvedValue({ limit_per_period: -1, period: 'MONTH' });
+    const app = await buildApp();
+    await app.inject({ method: 'GET', url });
+    expect(m.usageUpsert).not.toHaveBeenCalled();
+    expect(m.enqueueInvoice).toHaveBeenCalledOnce();
+  });
+
+  it('a queue failure never fails the callback (sweep re-queues it)', async () => {
+    m.enqueueInvoice.mockRejectedValue(new Error('redis down'));
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url });
+    expect(res.headers.location).toContain('status=success');
   });
 });

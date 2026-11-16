@@ -32,6 +32,31 @@ export interface GstBreakdown {
  *                          Null/undefined → inter-state (IGST).
  * @returns GstBreakdown with all tax components in paise.
  */
+/**
+ * Split a GST-INCLUSIVE gross (add-on packs: the admin enters the all-in price)
+ * into base + GST. base = round(gross * 100 / 118); GST is the remainder, so
+ * base + gst === gross exactly (the invoice must reconcile to what Razorpay
+ * charged). Reuses computeSubscriptionGst for the CGST/SGST/IGST split.
+ */
+export function computeInclusiveGst({
+  grossPaise,
+  buyerStateCode,
+  sellerStateCode,
+}: {
+  grossPaise: number;
+  buyerStateCode?: string | null;
+  sellerStateCode?: string | null;
+}): GstBreakdown {
+  const basePaise = Math.round((grossPaise * 100) / (100 + GST_RATE * 100));
+  const split = computeSubscriptionGst({ basePaise, buyerStateCode, sellerStateCode });
+  const gstTotal = grossPaise - basePaise;
+  if (gstTotal === split.gstTotal) return split;
+  // 1-paise rounding drift: the remainder goes to GST so the invoice sums to the charge.
+  if (split.igst > 0) return { ...split, gstTotal, gross: grossPaise, igst: gstTotal };
+  const cgst = Math.floor(gstTotal / 2);
+  return { ...split, gstTotal, gross: grossPaise, cgst, sgst: gstTotal - cgst };
+}
+
 export function computeSubscriptionGst({
   basePaise,
   buyerStateCode,

@@ -1668,8 +1668,19 @@ model QuotaAddonPurchase {
   razorpay_order_id   String?
   razorpay_payment_id String?
 
-  gst_amount         Int?
-  gst_invoice_number String?
+  // GST invoice (migration 163). amount_inr is the GST-INCLUSIVE gross charged;
+  // these are written in the same txn that flips PENDING -> COMPLETED.
+  gst_amount           Int?
+  gst_invoice_number   String?
+  amount_excluding_gst Int?
+  gst_rate             Decimal?  @db.Decimal(4, 4)
+  cgst_amount          Int?
+  sgst_amount          Int?
+  igst_amount          Int?
+  place_of_supply      String?
+  sac_code             String?
+  invoice_r2_key       String? // private R2 object, served via presigned URL only
+  invoice_generated_at DateTime?
 
   created_at   DateTime  @default(now())
   completed_at DateTime?
