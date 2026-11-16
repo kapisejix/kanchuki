@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { GST_RATE, SAC_CODE, computeSubscriptionGst } from './gst.js';
+import { GST_RATE, SAC_CODE, computeInclusiveGst, computeSubscriptionGst } from './gst.js';
 
 describe('computeSubscriptionGst', () => {
   // Worked example from spec: base ₹4,999 = 499900 paise, intra-state
@@ -137,5 +137,37 @@ describe('computeSubscriptionGst', () => {
     expect(result.igst).toBe(269982);
     expect(result.cgst).toBe(0);
     expect(result.sgst).toBe(0);
+  });
+});
+
+describe('computeInclusiveGst (add-on packs: price is GST-inclusive)', () => {
+  it('splits a GST-inclusive gross into base + GST (Rs 236 -> 200 + 36)', () => {
+    const r = computeInclusiveGst({ grossPaise: 23600 });
+    expect(r.basePaise).toBe(20000);
+    expect(r.gstTotal).toBe(3600);
+    expect(r.gross).toBe(23600);
+    expect(r.igst).toBe(3600); // no state codes -> inter-state
+    expect(r.cgst).toBe(0);
+    expect(r.rate).toBe(GST_RATE);
+    expect(r.sac).toBe(SAC_CODE);
+  });
+
+  it('intra-state: CGST + SGST sum to the GST total', () => {
+    const r = computeInclusiveGst({
+      grossPaise: 47200,
+      buyerStateCode: '27',
+      sellerStateCode: '27',
+    });
+    expect(r.basePaise).toBe(40000);
+    expect(r.cgst + r.sgst).toBe(r.gstTotal);
+    expect(r.igst).toBe(0);
+  });
+
+  it('always reconciles: base + gst === gross, for awkward amounts too', () => {
+    for (const gross of [9900, 39900, 23601, 1, 118, 94400]) {
+      const r = computeInclusiveGst({ grossPaise: gross });
+      expect(r.basePaise + r.gstTotal).toBe(gross);
+      expect(r.gross).toBe(gross);
+    }
   });
 });

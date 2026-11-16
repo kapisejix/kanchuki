@@ -126,6 +126,8 @@ async function buildApp() {
 beforeEach(() => {
   vi.clearAllMocks();
   mockQuotaAddonPurchaseUpdateMany.mockResolvedValue({ count: 1 });
+  // The add-on callback allocates a GST invoice number inside its txn (gst_invoice_sequences).
+  mockQueryRaw.mockResolvedValue([{ last_number: 1 }]);
 });
 
 // ─── GET /v1/billing/addon-pricing ───────────────────────────────

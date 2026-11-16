@@ -4,9 +4,17 @@ import { ADDON_PRICING } from '@kanchuki/shared';
 import * as Sentry from '@sentry/node';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
+import { addGenerateGstInvoiceJob } from '../../jobs/generate-gst-invoice.js';
 import { hasFeatureForPlan } from '../../lib/features.js';
+import { allocateInvoiceNumber } from '../../lib/gst-invoice-number.js';
+import { computeInclusiveGst } from '../../lib/gst.js';
 import { notFound, validationError } from '../../plugins/error-handler.js';
-import { getEffectiveLimit, razorpay, verifyPaymentLinkSignature } from './billing-helpers.js';
+import {
+  getEffectiveLimit,
+  razorpay,
+  resolveStateCode,
+  verifyPaymentLinkSignature,
+} from './billing-helpers.js';
 // The callback credits only a limited resource (limit !== -1, row exists); a pack
 // bought otherwise would take payment and credit nothing.
 async function canCredit(retailerId: string, plan: SubscriptionPlan): Promise<boolean> {
@@ -312,6 +320,19 @@ export const billingAddonRoutes: FastifyPluginAsync = async (server) => {
           ? new Date(now.getFullYear(), now.getMonth(), 1)
           : new Date(0);
     const shouldCredit = !!effective && effective.limit !== -1;
+
+    // GST split for the invoice. amount_inr is the GST-INCLUSIVE gross charged.
+    const [buyer, gstProfile] = await Promise.all([
+      prisma.retailer.findUnique({ where: { id: purchase.retailer_id }, select: { state: true } }),
+      prisma.platformGstProfile.findUnique({ where: { id: 'singleton' } }),
+    ]);
+    const buyerStateCode = buyer?.state ? resolveStateCode(buyer.state) : null;
+    const gst = computeInclusiveGst({
+      grossPaise: purchase.amount_inr,
+      buyerStateCode,
+      sellerStateCode: gstProfile?.state_code ?? null,
+    });
+
     let claimed: boolean;
     try {
       claimed = await prisma.$transaction(async (tx) => {
@@ -338,6 +359,29 @@ export const billingAddonRoutes: FastifyPluginAsync = async (server) => {
             update: { count: { decrement: purchase.quantity } },
           });
         }
+        // The pack was paid for whether or not it credited anything, so it is always
+        // invoiced. The number is allocated INSIDE this txn: a rollback burns none.
+        const invoiceNo = await allocateInvoiceNumber(
+          gstProfile?.invoice_prefix ?? 'KAN',
+          new Date(),
+          tx,
+        );
+        await tx.quotaAddonPurchase.update({
+          where: { id: purchase.id },
+          data: {
+            gst_invoice_number: invoiceNo,
+            amount_excluding_gst: gst.basePaise,
+            gst_amount: gst.gstTotal,
+            gst_rate: gst.rate,
+            cgst_amount: gst.cgst || null,
+            sgst_amount: gst.sgst || null,
+            igst_amount: gst.igst || null,
+            sac_code: gst.sac,
+            place_of_supply: buyerStateCode
+              ? `${buyerStateCode}-${buyer?.state}`
+              : (buyer?.state ?? null),
+          },
+        });
         return true;
       });
     } catch (err) {
@@ -360,6 +404,12 @@ export const billingAddonRoutes: FastifyPluginAsync = async (server) => {
         `${process.env.WEB_URL ?? 'http://localhost:3000'}/billing/addon-success?status=success`,
       );
     }
+
+    // PDF is async and never blocks the callback; the hourly invoice sweep re-queues
+    // any purchase that has a number but no PDF yet.
+    addGenerateGstInvoiceJob({ addon_purchase_id: purchase.id }).catch((err) => {
+      request.log.error({ err, purchase_id: purchase.id }, 'Failed to enqueue add-on GST invoice');
+    });
 
     request.log.info(
       {
