@@ -2,7 +2,26 @@
 
 **Purpose:** one task per session. Each session reads this file first, does its task, then **updates this file** (status, what shipped, gotchas, the next prompt) before it ends.
 **Spec:** `docs/tasks/pending/my-style.md` (decisions D1-D6 in §0, PR map in §6, tests §7, RC rules §8, skills §9).
-**Last updated:** 2026-10-24. **Superseded:** PR-1 to PR-10b are all merged (see `my-style.md` status and `docs/build-log/part-6.md`). Only PR-11 (gated) is open. The board and "Next prompt" below are the 2026-10-17 snapshot, kept for history; do not paste the prompt.
+**Last updated:** 2026-11-16. **Superseded:** PR-1 to PR-10b are all merged (see `my-style.md` status and `docs/build-log/part-6.md`). Only PR-11 (gated) is open. The board and "Next prompt" below are the 2026-10-17 snapshot, kept for history; do not paste the prompt. Current work is the **2026-11-16 body-profile track** in the next section.
+
+## 2026-11-16 body-profile track (read this first)
+
+**Spec:** `docs/tasks/pending/my-style-body-profile.md`. **Detail:** `docs/build-log/part-7.md` (2026-11-16 entries), RC-171 and RC-172 in `docs/root-cause/root-cause issues.md`.
+
+| PR | Scope | State |
+|---|---|---|
+| #280 | RC-171: photo-read `body_frame` now boosts ranking (`MY_STYLE_FRAME` + `frameBoost`, +0.05, boost only) + the spec | MERGED |
+| #281 | Spec step 1: profile-age note on the palette card (`saved_at` in `meta.style_profile`) | MERGED |
+| #282 | Spec step 2: self-entered measurements, separate consent step, RC-172 erasure fix (migration 161) | MERGED |
+| #283 | Owner-run sweep for accounts deleted before the RC-172 fix (`apps/api/scripts/sweep-deleted-account-style.ts`) | MERGED, **script not run** |
+| #284 | Spec steps 3-4: retailer size chart + suggested size on cards (migration 162) | MERGED |
+
+- Verified 2026-11-16 before merge: API `tsc` clean, API tests pass, all 5 CI jobs green on #280 and #281. Not verified: any browser or device check of measurements, consent step, size chart or suggested size.
+- Migrations 161 and 162: owner said "applied" in session; I did not read the prod tables back.
+- Frame silhouette keyword lists (`MY_STYLE_FRAME`) are unreviewed styling guesses.
+- Owner-only: run the #283 sweep (dry-run first) to null the photo-derived columns on accounts deleted before the fix.
+- `main` lint was red after #282/#284 (two unformatted shared files); fixed by a format-only commit inside #280.
+- Local web test run shows 18 failures (`shortlist`, `entries`, `enquiry`: `localStorage.clear` undefined). They fail the same on plain `main`; CI `unit-web` passes. After pulling, rebuild `packages/shared` (`pnpm --filter @kanchuki/shared build`) or `tsc` reports missing exports.
 
 ## How to run a session
 
