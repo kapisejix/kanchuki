@@ -884,6 +884,8 @@ Migration `111_backend_role_rls_policies` replaces the accident with an explicit
 
 `apps/api/src/jobs/purge-rls-policy.test.ts` re-derives the required set from `schema.prisma`, the migration history and both purge jobs, and fails if migration 111's array drifts from it in **either** direction — a missing entry means a sweep that silently does nothing, a stale one is the RC-029 failure returning. `purge-rls-live.test.ts` is the executed proof (opt-in, `PURGE_RLS_TEST_DATABASE_URL`): it runs the same `CREATE POLICY` statement the migration runs against scratch tables and shows (a) no policy → row survives silently, (b) `FOR DELETE` → row *still* survives, (c) migration 111's policy → the row goes.
 
+**`_prisma_migrations` is the one table this does not cover.** It has RLS on, zero policies and owner `postgres`; `kanchuki_migrator` holds the table grants but neither ownership nor `BYPASSRLS`, so its `SELECT` returns zero rows (read 2026-11-16: `prisma migrate status` as the migrator listed all 163 migrations unapplied; prod holds 111 rows) and its `INSERT` would be refused. Prisma reads "zero rows" as "nothing applied". If migration history is ever needed for tooling, the options are a `FOR ALL` policy for `kanchuki_migrator` on this table (the migration 111 pattern) or running Prisma as the owner; both are production changes for a human to decide. Until then the table is informational only, migrations are applied by hand, and `prisma migrate deploy` must not be run.
+
 ### 19.2 Layer 2 — DB triggers (belt-and-suspenders)
 
 ```sql
@@ -1001,11 +1003,16 @@ If the migration only *added* something, roll forward with a corrective migratio
    ```bash
    DATABASE_URL="$DATABASE_URL_MIGRATOR" npx prisma migrate deploy
    ```
-   ⚠️ Migrations 083–089 and 063/104–117 were applied **by hand from the Supabase SQL
-   Editor**, so `_prisma_migrations` has **zero rows** for them. `migrate deploy` may try to
-   re-apply them. Check `docs/database/` and the migration files' own idempotency before
-   running it against a restored DB; when unsure, apply the missing ones by hand and insert
-   the `_prisma_migrations` rows to reconcile.
+   ⚠️ **Do not run `prisma migrate deploy` as `kanchuki_migrator` against prod or a restored
+   copy.** `_prisma_migrations` has RLS enabled with **no policies**, and the migrator is not
+   its owner (`postgres`) and does not bypass RLS, so to the migrator the history is empty:
+   `prisma migrate status` run as the migrator on 2026-11-16 listed **all 163** migrations as
+   unapplied although prod has 111 recorded rows, so `deploy` would replay from
+   `000_baseline`. Separately, 57 migrations (049–058, 060–062, 064–081, 127, 139–162) have
+   no history row at all (objects checked read-only on 2026-11-16 exist in prod), and
+   083–089 and 063/104–117 were also applied by hand. Apply missing migrations **by hand**
+   from the Supabase SQL Editor (human only). Never run `migrate deploy` or
+   `migrate resolve` without a human-reviewed plan. See §19.1 (RC-030 subsection).
 5. **(CLI)** Verify: `curl https://api.kanchuki.app/health` → `{"status":"ok"}`.
 
 ##### 2b. PITR (point-in-time) restore
