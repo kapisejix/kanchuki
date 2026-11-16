@@ -401,6 +401,16 @@ POST /billing/subscription   # Start subscription (redirect to Razorpay)
 POST /billing/webhook        # Razorpay webhook (internal, validated)
 GET  /billing/invoices       # List invoices
 GET  /billing/invoices/:id   # Download GST invoice (PDF)
+GET  /billing/try-on-packs   # Active try-on packs the plan may buy ([] unless VIRTUAL_TRY_ON_V2 + limited quota); owner only
+POST /billing/addon-checkout # Razorpay payment link for a pack ({resource_type, pack_index | pack_id}); price is GST-inclusive
+GET  /billing/addon-callback # Razorpay redirect (no JWT, signature-verified): credits quota once and issues the GST invoice (RC-173)
+# Invoices: rows from subscriptions and add-on packs, newest first; each row carries kind: 'subscription' | 'addon'.
+GET  /retailers/me/invoices           # own invoices
+GET  /retailers/me/invoices/:id/pdf   # presigned 5-min URL; id may be a subscription payment or a pack purchase (own retailer only)
+GET  /admin/invoices[/:retailer_id]   # admin lists (subscriptions + packs)
+GET  /admin/invoices/:retailer_id/:id/pdf
+GET  /growth/gst/{summary,monthly,transactions}              # retailer GST report, packs included
+GET  /admin/gst/{summary,monthly,by-retailer,transactions}   # admin GST report, packs included (add-ons dated by completed_at)
 ```
 
 ---

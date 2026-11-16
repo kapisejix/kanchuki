@@ -564,3 +564,14 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Tests | 3 new `PaletteCard` tests (2 red first), 1 new API test, 2 API expectations updated; web my-style 145 passed, API `public-my-style` 65 passed; both tsc clean. |
 | Not verified | No browser check; date shown in IST; web biome differs from the repo style (pre-existing). Spec: `docs/tasks/pending/my-style-body-profile.md` (lands with PR #280). |
 
+## 2026-11-16 — Add-on / try-on pack GST invoices (RC-173; PRs #293, #294)
+
+| Item | Detail |
+|---|---|
+| Change (#293, `9e2383a6`) | `/addon-callback` splits the GST-inclusive `amount_inr` (`computeInclusiveGst`; CGST+SGST intra-state, IGST otherwise), allocates a gap-free `KAN/YY-YY/NNNNNN` number inside the claim + credit transaction, queues the PDF. Job handles `addon_purchase_id`; backfill sweep re-queues packs with a number but no PDF. Migration 163: nine nullable columns on `quota_addon_purchases`. |
+| Change (#294, `0eaab4ce`) | Admin + retailer GST summary / monthly / by-retailer / transactions and invoice lists merge completed packs (`completed_at`); rows carry `kind`; retailer + admin PDF routes fall back to the pack, scoped to the caller. `lib/addon-gst-report.ts`. |
+| Why not `subscription_payments` | Referral qualify/accrue and the commission tracker count every `success` row as a subscription month. |
+| Tests | New: `generate-gst-invoice.test.ts`, `addon-gst-reports.test.ts`, GST-helper and callback cases (red first). API routes + lib + jobs 3172 passed; tsc clean; biome no errors. |
+| Owner steps | Done: migration 163 applied 2026-11-16 (nine columns read back); platform GST profile exists (state 04, prefix KAN, GSTIN set). Still owed: create try-on packs at 236 / 472 / 944 (field is GST-inclusive); tick `VIRTUAL_TRY_ON_V2` for one plan after the RunPod steps in `docs/runbooks/tryon-launch-owner-steps.md`; smoke test (real Razorpay pack, quota up, invoice number + PDF, replay callback -> no second invoice). |
+| Verified 2026-11-16 | Verified 2026-11-16 (read-only): CI and the "Deploy to Railway" workflow succeeded on both merge commits (`deploy-api` ran, web/vtone skipped); the live revision itself was not read from Railway (MCP auth expired), `/health` ok with `schema: ok`. Prod Postgres accepted the new aggregate / group-by SQL and the `COMPLETED` enum value (0 rows). `quota_addon_purchases`, `subscription_payments` and `gst_invoice_sequences` are all empty, so no GST invoice of any kind has ever been issued in prod: the invoice allocator, callback transaction and PDF job have never run against real Postgres, Razorpay or R2. Platform GST profile exists (singleton, state_code 04, prefix KAN, GSTIN set). No try-on packs and no `VIRTUAL_TRY_ON_V2` row exist. |
+| Not verified | A real purchase end to end; mobile/web invoice screens (untouched, `kind` unchecked); the live Railway revision. |

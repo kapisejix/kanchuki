@@ -122,6 +122,16 @@ Migration `119` seeded `plan_limits` rows for all three plans with **placeholder
 
 ---
 
+## Part 6b — Try-on packs (top-ups), added 2026-11-16
+
+State read 2026-11-16 (read-only): **no try-on pack exists**, no `VIRTUAL_TRY_ON_V2` row exists, and the platform GST profile **is** filled in (singleton, state_code 04, prefix KAN, GSTIN set).
+
+1. **Admin → Resource Packs → "In-store Try-on (GST-inclusive price)".** The price field is GST-**inclusive**. The decided packs are 25 / 50 / 100 try-ons at ₹200 / ₹400 / ₹800 ex-GST, so enter **₹236 / ₹472 / ₹944**. Typing 200 would absorb the GST. Set them active.
+2. **Expiry:** a pack credit expires at **month-end** (it decrements the current month's usage counter; no carry-over). Say "valid this calendar month" in any pack copy.
+3. **GST invoice:** every purchase now issues a GST invoice (number from the shared `KAN/YY-YY` sequence, PDF in R2, listed in the retailer's invoices and the admin GST report as `kind: 'addon'`). Migration 163 must be applied (it is, 2026-11-16). No invoice of any kind has been issued in prod yet, so the first real purchase is the first proof.
+4. **Smoke test before widening:** buy one pack with a real Razorpay payment, then confirm (a) quota went up, (b) `quota_addon_purchases` has the invoice number and GST split, (c) the PDF opens from the retailer's invoices, (d) the admin GST report counts it, (e) replaying the callback URL issues no second invoice.
+5. A pack only shows (and only sells) when the retailer's plan has `VIRTUAL_TRY_ON_V2` **and** a limited try-on quota.
+
 ## Part 7 — Re-run the regression checklist, then smoke-test
 
 **Before:** `docs/root-cause/README.md` → *Pre-production regression checklist*. Re-test every RC, with attention to the rows this branch touches (RC-026 passport preferences, RC-027 studio engines, RC-025 storefront view/proxy).
