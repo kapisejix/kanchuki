@@ -10,6 +10,19 @@ import { BTN_SECONDARY, CARD, IconTile } from '../ui'
 import { clearProfile } from './analyze'
 import { LOGIN_HREF, type StyleProfile } from './lib'
 
+const YEAR_MS = 365 * 86_400_000
+
+// Neutral by design (spec D2): says when it was saved and that an update is only needed about
+// once a year. It never discourages deleting, which stays one tap below.
+function ageNote(savedAt: string | null | undefined): string | null {
+  const d = savedAt ? new Date(savedAt) : null
+  if (!d || Number.isNaN(d.getTime())) return null
+  const on = d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' })
+  return Date.now() - d.getTime() > YEAR_MS
+    ? `Saved on ${on}. It is over a year old, so you may want to update it. You can delete it any time.`
+    : `Saved on ${on}. You only need to update it about once a year, or whenever you like. You can delete it any time.`
+}
+
 type Status = 'idle' | 'clearing' | 'error' | 'signin'
 
 export function PaletteCard({
@@ -68,6 +81,12 @@ export function PaletteCard({
       ) : (
         <p className="text-sm text-heliotrope-500 mt-3">
           Your look is saved. Colour suggestions will appear here soon.
+        </p>
+      )}
+
+      {ageNote(profile.saved_at) && (
+        <p data-testid="profile-age" className="text-xs text-heliotrope-500 mt-4">
+          {ageNote(profile.saved_at)}
         </p>
       )}
 

@@ -555,3 +555,12 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Not verified | Silhouette keyword lists are unreviewed guesses; no real products/photos; no browser check; complete-the-look unchanged. |
 | Spec | `docs/tasks/pending/my-style-body-profile.md` (self-entered measurements, size charts, stored-photo decision, scan options). Not approved, nothing built from it. |
 
+## 2026-11-16 — My Style profile-age note (spec step 1; branch `feat/my-style-profile-age`)
+
+| Item | Detail |
+|---|---|
+| Change | `meta.style_profile.saved_at` (from `CustomerAccount.style_profile_at`) and a note on the palette card: saved date, "only need to update it about once a year, or whenever you like", "You can delete it any time"; over 12 months: "over a year old, so you may want to update it". No migration. |
+| Wording rule | Neutral on purpose: it never discourages deleting (consent is as easy to withdraw as to give). Delete stays one tap. The photo is still not stored; the note describes the saved profile. |
+| Tests | 3 new `PaletteCard` tests (2 red first), 1 new API test, 2 API expectations updated; web my-style 145 passed, API `public-my-style` 65 passed; both tsc clean. |
+| Not verified | No browser check; date shown in IST; web biome differs from the repo style (pre-existing). Spec: `docs/tasks/pending/my-style-body-profile.md` (lands with PR #280). |
+

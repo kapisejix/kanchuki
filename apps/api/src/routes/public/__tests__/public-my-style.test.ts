@@ -451,8 +451,20 @@ describe('ranking + paging', () => {
       undertone: 'warm',
       depth: 'medium',
       frame: 'tall',
+      saved_at: null,
       palette: { good: ['maroon'], avoid: ['yellow'] },
     });
+  });
+
+  it('meta.style_profile carries the save time so the card can say how old it is', async () => {
+    mockSession.mockResolvedValue(
+      account({
+        skin_undertone: 'warm',
+        skin_depth: 'medium',
+        style_profile_at: new Date('2026-11-12T10:00:00Z'),
+      }),
+    );
+    expect((await feed()).json().meta.style_profile.saved_at).toBe('2026-11-12T10:00:00.000Z');
   });
 
   describe('suggested size (spec step 4)', () => {
@@ -518,6 +530,7 @@ describe('ranking + paging', () => {
       undertone: 'cool',
       depth: 'deep',
       frame: null,
+      saved_at: null,
       palette: null,
     });
   });
