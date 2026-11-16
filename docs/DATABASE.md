@@ -806,6 +806,16 @@ model AuditLog {
 
 ---
 
+### Add-on pack GST invoice columns (migration 163, applied 2026-11-16 by the owner; RC-173)
+
+Pack / add-on sales (`quota_addon_purchases`) are taxable supplies and now get a GST invoice. Nine nullable columns were added: `amount_excluding_gst`, `gst_rate DECIMAL(4,4)`, `cgst_amount`, `sgst_amount`, `igst_amount`, `place_of_supply`, `sac_code`, `invoice_r2_key`, `invoice_generated_at`. `gst_amount` and `gst_invoice_number` already existed (unused until now). Read back via Supabase MCP 2026-11-16: all nine present. No new table, grant or RLS change.
+
+- `amount_inr` is the **GST-inclusive gross** charged. The callback splits it (`computeInclusiveGst`, CGST+SGST intra-state / IGST otherwise, SAC 998314, 18%).
+- Writer: `GET /v1/billing/addon-callback`, in the same transaction as the PENDING -> COMPLETED claim and the quota credit; the invoice number comes from `gst_invoice_sequences` (shared gap-free `KAN/YY-YY/NNNNNN` sequence with subscriptions) allocated inside that transaction, so a rollback burns no number. PDF: job `generate-gst-invoice` with `addon_purchase_id`; hourly backfill re-queues COMPLETED rows with a number and no PDF.
+- Readers: `admin-gst`, `growth-gst`, `admin-invoices`, `retailers-invoices` merge this table with `subscription_payments` (add-ons dated by `completed_at`).
+- **Never write a pack sale to `subscription_payments`:** `referral-qualify`, `referral-accrue` and the commission tracker count every `success` row there as a subscription month.
+- Prod state 2026-11-16: `quota_addon_purchases`, `subscription_payments` and `gst_invoice_sequences` are all empty (no invoice has ever been issued).
+
 ### Product audience (migration 160, owner applies)
 
 `products.audience` (`ProductAudience`: WOMEN, MEN, BOYS, GIRLS, KIDS_UNISEX) and `products.kids_age_group`

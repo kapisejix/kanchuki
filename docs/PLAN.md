@@ -15,7 +15,7 @@
 | **0 — MVP** | Photo upload + AI tagging, catalog with rack/shelf location, customer preferences, WhatsApp collection links, customer mobile web, in-store AI search, bulk onboarding, settings + quotas, offline mode | ✅ built |
 | **S — Security & admin control** | Backup DB, admin SQL console, audit log, deployment gates, operations center, plan feature matrix, suspension, deletion vault, DB guardrails (F-013–F-017) | ✅ built |
 | **0.5 — Internal team** | Team login, territories, support-ticket routing, manager reports, staff mode in the Expo app, F-018/F-019/F-020, admin theme | ✅ built — only the 10-retailer pilot (operational) is left |
-| **I — GST invoicing** | Subscription GST invoices (CGST/SGST/IGST, gap-free numbers, PDF in R2), GST reports | ✅ built for subscriptions. The original order-invoice design (HSN master, per-order ledger) died with checkout |
+| **I — GST invoicing** | Subscription GST invoices (CGST/SGST/IGST, gap-free numbers, PDF in R2), GST reports | ✅ built for subscriptions and, since 2026-11-16 (RC-173, #293/#294), for add-on / try-on pack purchases. The original order-invoice design (HSN master, per-order ledger) died with checkout |
 | **II — WhatsApp native catalog sync** | Meta Catalog API client, BullMQ sync engine, webhook, retailer settings, admin monitor | ✅ built 2026-08-18 |
 | **Growth** | India Retailer Growth Engine, social publishing + composer, marketing enablement, AI Studio, customer profile P2, shopper passport, customer PWA Phase A, engagement log | ✅ built (details: PRO-REQUIREMENTS §3.3–3.5) |
 | **Launch** | Play Store approval, 12-retailer pilot, launch-readiness items | 🟨 in progress — `tasks/pending/launch-readiness.md` |
@@ -69,7 +69,7 @@ Explicitly deferred (no evidence of need): multi-region DB, sharding, separate r
 | AI tagging working | 80 % tag accuracy on a 50-image test set | ✅ |
 | Collection link live | Customer opens a link on mobile and enquires | ✅ |
 | Backup + query console + deploy gates | Backup restorable from admin; read-only SQL; deploys only from GitHub `main` | ✅ |
-| GST invoicing live | Every subscription payment has a GST invoice PDF | ✅ |
+| GST invoicing live | Every subscription payment and every add-on / try-on pack purchase has a GST invoice PDF | ✅ built (no invoice issued in prod yet; the first real purchase is the proof) |
 | WhatsApp catalog sync live | Products sync to the native WhatsApp catalog | ✅ |
 | Play Store approval | Retailer app live on Play | 🟨 in review |
 | MVP beta | 10–12 pilot retailers giving real feedback | 🔴 |

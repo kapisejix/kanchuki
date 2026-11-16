@@ -877,6 +877,7 @@ All Indian retail software must support GST invoicing. Kanchuki must:
 - 14-day free trial (Growth features), no credit card
 - Auto-renewal with advance notice
 - GST invoice generated for every subscription payment — CGST/SGST for intra-state, IGST for inter-state. SAC 998314, flat 18%, computed from the ex-GST base (never gross ÷ 1.18). `place_of_supply` stored coded (`"27-Maharashtra"`)
+- GST invoice also generated for every add-on / try-on pack purchase (2026-11-16, RC-173): the pack price is GST-**inclusive**, split into base + 18% (`computeInclusiveGst`), number from the same gap-free sequence, stored on `quota_addon_purchases` (migration 163) and never on `subscription_payments`; admin + retailer GST reports and invoice list/download include packs (`kind: 'addon'`). Pack credit expires at month-end.
 - Invoice numbers gap-free per financial year (`KAN/YY-YY/NNNNNN`) — allocated in the same DB transaction that records the payment (`INSERT … ON CONFLICT`), so a rollback or a redelivered `subscription.charged` webhook never burns a number
 - Invoice PDF stored in R2 under a random-UUID key; retailer/admin download routes hand back a 300-second presigned URL (no permanent public link). If the platform GST profile (`PUT /admin/gst-profile`) is unset when a charge lands, PDF generation retries and a daily `backfill-gst-invoices` job fills the gap once it is configured
 - Currency: INR only
