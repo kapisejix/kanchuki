@@ -14,6 +14,23 @@ import { type ConsentRequestContext, consentContext } from './tryon-consent.js';
 
 const MY_STYLE = PURPOSE_CONSENTS.MY_STYLE;
 
+/**
+ * Every account column My Style derives or collects, nulled together: by "Clear my data", by the
+ * analysis job's compensation, and by account erasure (POST /passport/delete). One list, because
+ * erasure kept its own and missed the photo-derived columns (RC-172).
+ */
+export const STYLE_PROFILE_CLEARED = {
+  skin_undertone: null,
+  skin_depth: null,
+  body_frame: null,
+  style_profile_at: null,
+  height_cm: null,
+  bust_cm: null,
+  waist_cm: null,
+  hip_cm: null,
+  measurements_at: null,
+} as const;
+
 export async function hasLiveMyStyleConsent(customerAccountId: string): Promise<boolean> {
   const latest = await prisma.consentEvent.findFirst({
     where: {
@@ -68,6 +85,6 @@ export async function withdrawMyStyleConsent(
 export async function clearStyleProfile(customerAccountId: string): Promise<void> {
   await prisma.customerAccount.update({
     where: { id: customerAccountId },
-    data: { skin_undertone: null, skin_depth: null, body_frame: null, style_profile_at: null },
+    data: { ...STYLE_PROFILE_CLEARED },
   });
 }

@@ -2,6 +2,7 @@
 import { randomBytes } from 'node:crypto';
 import { prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
+import { STYLE_PROFILE_CLEARED } from '../../../lib/my-style-consent.js';
 import {
   COOKIE_DOMAIN,
   COOKIE_NAME,
@@ -49,6 +50,15 @@ export const passportDataRoutes: FastifyPluginAsync = async (server) => {
         city: true,
         state: true,
         usual_size: true,
+        skin_undertone: true,
+        skin_depth: true,
+        body_frame: true,
+        style_profile_at: true,
+        height_cm: true,
+        bust_cm: true,
+        waist_cm: true,
+        hip_cm: true,
+        measurements_at: true,
         pref_colors: true,
         pref_styles: true,
         pref_fabrics: true,
@@ -156,6 +166,7 @@ export const passportDataRoutes: FastifyPluginAsync = async (server) => {
         budget_min: null,
         budget_max: null,
         notes: null,
+        ...STYLE_PROFILE_CLEARED,
       },
     });
 

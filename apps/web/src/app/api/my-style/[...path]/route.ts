@@ -8,7 +8,7 @@ import { API_URL as apiUrl } from '@/lib/apiUrl';
 // Every my-style subpath the browser may reach, per verb. A path missing here
 // answers 404 and a verb with no handler answers 405, so keep both in step with
 // the screens that call them (RC-026).
-const POST_PATHS = ['feed', 'enquire', 'analyze', 'profile/clear'];
+const POST_PATHS = ['feed', 'enquire', 'analyze', 'profile/clear', 'measurements'];
 // Poll: analyze/<jobId>. Job ids are `mystyle_<cuid2>`; the strict pattern keeps
 // `..`, slashes and spaces out of the upstream URL.
 // complete-look?anchor=<id>: the anchor rides in the query, validated by the API.

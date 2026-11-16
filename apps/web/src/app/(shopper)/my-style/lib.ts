@@ -17,6 +17,15 @@ export interface StyleProfile {
   palette: { good: string[]; avoid: string[] } | null
 }
 
+/** Self-entered centimetres (spec step 2). Shopper-only. */
+export interface Measurements {
+  height_cm: number | null
+  bust_cm: number | null
+  waist_cm: number | null
+  hip_cm: number | null
+  saved_at?: string | null
+}
+
 export interface TasteSummary {
   colors: string[]
   occasions: string[]
@@ -42,6 +51,7 @@ export interface FeedMeta {
   location_scope: 'radius' | 'city' | 'nationwide'
   rationale_source: 'none'
   style_profile: StyleProfile | null
+  measurements?: Measurements | null
   /** What the quick quiz saved (canonical names). Null until the quiz has been answered. */
   taste?: TasteSummary | null
   /** Set only on a find-similar feed: which signal ranked it and how many had an embedding. */

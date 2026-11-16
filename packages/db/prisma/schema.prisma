@@ -2959,6 +2959,14 @@ model CustomerAccount {
   body_frame       String? // petite | average | tall | curvy
   style_profile_at DateTime?
 
+  // F-045 My Style — self-entered measurements (spec my-style-body-profile.md §3). Shopper-only;
+  // cleared with the profile above. Ranges pinned by CHECKs in 161. No weight, on purpose.
+  height_cm       Int?
+  bust_cm         Int?
+  waist_cm        Int?
+  hip_cm          Int?
+  measurements_at DateTime?
+
   // Personalization toggle — when false, behavioral writes (view/favorite/
   // search) are suppressed and the preference vector is frozen/cleared.
   profiling_enabled Boolean @default(true)
