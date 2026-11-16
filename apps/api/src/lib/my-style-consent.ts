@@ -13,6 +13,7 @@ import { PURPOSE_CONSENTS } from './notice-versions.js';
 import { type ConsentRequestContext, consentContext } from './tryon-consent.js';
 
 const MY_STYLE = PURPOSE_CONSENTS.MY_STYLE;
+const BODY = PURPOSE_CONSENTS.MY_STYLE_BODY;
 
 /**
  * Every account column My Style derives or collects, nulled together: by "Clear my data", by the
@@ -77,6 +78,17 @@ export async function withdrawMyStyleConsent(
       ...consentContext(ctx),
     },
   });
+  // "Clear my data" also deletes the measurements (STYLE_PROFILE_CLEARED), so their consent ends too.
+  if (await hasLiveBodyConsent(customerAccountId)) {
+    await prisma.consentEvent.create({
+      data: {
+        customer_account_id: customerAccountId,
+        kind: BODY.withdrawn_kind,
+        notice_version: BODY.version,
+        ...consentContext(ctx),
+      },
+    });
+  }
   await clearStyleProfile(customerAccountId);
   await cancelInflightAnalysis(customerAccountId);
 }
@@ -86,5 +98,61 @@ export async function clearStyleProfile(customerAccountId: string): Promise<void
   await prisma.customerAccount.update({
     where: { id: customerAccountId },
     data: { ...STYLE_PROFILE_CLEARED },
+  });
+}
+
+// ─── Measurements consent (separate from the photo consent) ─────────────────────────────
+
+export async function hasLiveBodyConsent(customerAccountId: string): Promise<boolean> {
+  const latest = await prisma.consentEvent.findFirst({
+    where: {
+      customer_account_id: customerAccountId,
+      kind: { in: [BODY.granted_kind, BODY.withdrawn_kind] },
+    },
+    orderBy: { created_at: 'desc' },
+    select: { kind: true },
+  });
+  return latest?.kind === BODY.granted_kind;
+}
+
+/** Record a grant. The caller has already verified the CURRENT notice version was sent. */
+export async function recordBodyConsent(
+  customerAccountId: string,
+  ctx: ConsentRequestContext,
+): Promise<void> {
+  await prisma.consentEvent.create({
+    data: {
+      customer_account_id: customerAccountId,
+      kind: BODY.granted_kind,
+      notice_version: BODY.version,
+      ...consentContext(ctx),
+    },
+  });
+}
+
+const MEASUREMENTS_CLEARED = {
+  height_cm: null,
+  bust_cm: null,
+  waist_cm: null,
+  hip_cm: null,
+  measurements_at: null,
+} as const;
+
+/** Withdraw the measurements consent and delete the numbers (UPDATE = NULL, RC-049). */
+export async function withdrawBodyConsent(
+  customerAccountId: string,
+  ctx: ConsentRequestContext,
+): Promise<void> {
+  await prisma.consentEvent.create({
+    data: {
+      customer_account_id: customerAccountId,
+      kind: BODY.withdrawn_kind,
+      notice_version: BODY.version,
+      ...consentContext(ctx),
+    },
+  });
+  await prisma.customerAccount.update({
+    where: { id: customerAccountId },
+    data: { ...MEASUREMENTS_CLEARED },
   });
 }

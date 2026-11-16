@@ -522,3 +522,14 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Tests | New route test (11), `passport-data` delete test (red first), `MeasurementsCard` tests (7; written before the component, not run red); API public + my-style lib 530 passed; web my-style 149 passed; both tsc clean. |
 | Not verified | No browser check; mock Postgres only; migration unapplied; consent: entering and saving is the affirmative act with an on-card notice, no separate consent event (owner to confirm that is enough for DPDP); measurements are not used for any size suggestion yet (steps 3-4 of the spec). |
 
+## 2026-11-16 — My Style measurements: separate consent step (owner decision; same branch `feat/my-style-measurements`)
+
+| Item | Detail |
+|---|---|
+| Decision | Owner chose a separate consent step for measurements (instead of saving with an on-card notice). |
+| Consent | New purpose `MY_STYLE_BODY`: copy `MY_STYLE_BODY_CONSENT` (version `mystyle-body-1.0`, shared), events `MY_STYLE_BODY_CONSENTED` / `MY_STYLE_BODY_CONSENT_WITHDRAWN` in `consent_events` (`kind` is a plain string, no migration). Independent of the photo consent: a live photo grant does not unlock saving. |
+| API | `POST /measurements` needs a live grant or the current `consent_version` (else 422); records the grant, then saves. New `POST /measurements/withdraw` logs the withdrawal and nulls the five columns. "Clear my data" also logs a body withdrawal when one was live. |
+| Web | `MeasurementsCard` shows the notice first (title, intro, three points, withdrawal line, accept/decline); fields appear only after "I agree"; a shopper with saved measurements is not asked again; "Remove my measurements" calls withdraw and reports failure honestly. |
+| Tests | API route test 18 (consent cases added; one test-helper URL bug of mine fixed); API public + lib 1179 passed; web my-style 154 passed; tsc and biome clean. Red-first run observed for the API consent cases (4 failed before); the web consent tests were written before the code but not run red. |
+| Not verified | No browser check; mock Postgres only; the notice wording is mine, not reviewed by legal; the grant event stores a hashed IP and user agent like the other consents. |
+

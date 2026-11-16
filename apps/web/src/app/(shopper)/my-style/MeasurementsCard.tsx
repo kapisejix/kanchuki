@@ -3,11 +3,16 @@
 // Spec step 2: self-entered measurements. Shopper-only (never shown to a store), saved to the
 // account, removable in one tap. There is deliberately no weight field. "Saved" is only
 // reported when the API confirms it (RC-060).
-import { MY_STYLE_MEASUREMENT_RANGES, feetInchesToCm, inMeasurementRange } from '@kanchuki/shared'
+import {
+  MY_STYLE_BODY_CONSENT,
+  MY_STYLE_MEASUREMENT_RANGES,
+  feetInchesToCm,
+  inMeasurementRange,
+} from '@kanchuki/shared'
 import { Ruler, Trash2 } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { BTN_SECONDARY, CARD, IconTile } from '../ui'
-import { saveMeasurements } from './analyze'
+import { saveMeasurements, withdrawMeasurements } from './analyze'
 import type { Measurements } from './lib'
 
 type Field = 'height_cm' | 'bust_cm' | 'waist_cm' | 'hip_cm'
@@ -38,6 +43,9 @@ export function MeasurementsCard({
   const [inches, setInches] = useState('')
   const [msg, setMsg] = useState<{ kind: 'error' | 'ok'; text: string } | null>(null)
   const [busy, setBusy] = useState(false)
+  // Saved measurements imply a live consent (they cannot be stored without one), so only a
+  // shopper with none meets the consent step.
+  const [step, setStep] = useState<'consent' | 'declined' | 'form'>(initial ? 'form' : 'consent')
   const busyRef = useRef(false) // sync guard: two taps can land before state commits (RC-015)
 
   async function run(body: Parameters<typeof saveMeasurements>[0], okText: string) {
@@ -87,16 +95,74 @@ export function MeasurementsCard({
       setMsg({ kind: 'error', text: 'Enter at least one measurement.' })
       return
     }
-    void run(body, 'Saved. We will use it to suggest sizes.')
+    void run(
+      { ...body, consent_version: MY_STYLE_BODY_CONSENT.version },
+      'Saved. We will use it to suggest sizes.',
+    )
   }
 
-  function remove() {
-    setVals({ height_cm: '', bust_cm: '', waist_cm: '', hip_cm: '' })
-    setFeet('')
-    setInches('')
-    void run(
-      { height_cm: null, bust_cm: null, waist_cm: null, hip_cm: null },
-      'Your measurements were removed.',
+  async function remove() {
+    if (busyRef.current) return
+    busyRef.current = true
+    setBusy(true)
+    const r = await withdrawMeasurements()
+    busyRef.current = false
+    setBusy(false)
+    if (r === 'ok') {
+      setVals({ height_cm: '', bust_cm: '', waist_cm: '', hip_cm: '' })
+      setFeet('')
+      setInches('')
+      setMsg({ kind: 'ok', text: 'Your measurements were removed.' })
+      onSaved()
+    } else {
+      setMsg({
+        kind: 'error',
+        text:
+          r === 'unauthorized'
+            ? 'Your session ended. Please sign in again.'
+            : 'We could not remove your measurements. Please try again.',
+      })
+    }
+  }
+
+  if (step !== 'form') {
+    return (
+      <section className={`${CARD} p-5`}>
+        <div className="flex items-center gap-3">
+          <IconTile icon={Ruler} />
+          <h2 className="text-base font-bold text-spaceCadet-900">
+            {step === 'consent' ? MY_STYLE_BODY_CONSENT.title : 'Your measurements'}
+          </h2>
+        </div>
+        {step === 'consent' ? (
+          <>
+            <p className="text-sm text-heliotrope-500 mt-3">{MY_STYLE_BODY_CONSENT.intro}</p>
+            <ul className="mt-3 space-y-2 text-sm text-heliotrope-500">
+              {MY_STYLE_BODY_CONSENT.points.map((pt) => (
+                <li key={pt.label}>
+                  <span className="font-semibold text-spaceCadet-900">{pt.label}: </span>
+                  {pt.text}
+                </li>
+              ))}
+            </ul>
+            <p className="text-xs text-heliotrope-500 mt-3">{MY_STYLE_BODY_CONSENT.withdrawal}</p>
+            <div className="flex flex-wrap gap-2 mt-4">
+              <button type="button" onClick={() => setStep('form')} className={BTN_SECONDARY}>
+                {MY_STYLE_BODY_CONSENT.acceptLabel}
+              </button>
+              <button type="button" onClick={() => setStep('declined')} className={BTN_SECONDARY}>
+                {MY_STYLE_BODY_CONSENT.declineLabel}
+              </button>
+            </div>
+          </>
+        ) : (
+          <div className="mt-3">
+            <button type="button" onClick={() => setStep('consent')} className={BTN_SECONDARY}>
+              Add my measurements
+            </button>
+          </div>
+        )}
+      </section>
     )
   }
 
@@ -186,7 +252,7 @@ export function MeasurementsCard({
         {initial && (
           <button
             type="button"
-            onClick={remove}
+            onClick={() => void remove()}
             disabled={busy}
             className={BTN_SECONDARY.replace('text-spaceCadet-900', 'text-red-700')}
           >

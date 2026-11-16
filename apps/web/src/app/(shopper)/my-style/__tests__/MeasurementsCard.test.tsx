@@ -4,14 +4,21 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { MeasurementsCard } from '../MeasurementsCard'
-import { saveMeasurements } from '../analyze'
+import { MY_STYLE_BODY_CONSENT } from '@kanchuki/shared'
+import { saveMeasurements, withdrawMeasurements } from '../analyze'
 
-vi.mock('../analyze', () => ({ saveMeasurements: vi.fn() }))
+vi.mock('../analyze', () => ({ saveMeasurements: vi.fn(), withdrawMeasurements: vi.fn() }))
 const save = vi.mocked(saveMeasurements)
+const withdraw = vi.mocked(withdrawMeasurements)
 const onSaved = vi.fn()
 
-const setup = (initial = null as Parameters<typeof MeasurementsCard>[0]['initial']) =>
-  render(<MeasurementsCard initial={initial} onSaved={onSaved} />)
+// A shopper with no saved measurements meets the consent step first; accept it by default so the
+// form tests below stay about the form. The consent tests pass accept=false.
+const setup = (initial = null as Parameters<typeof MeasurementsCard>[0]['initial'], accept = true) => {
+  const r = render(<MeasurementsCard initial={initial} onSaved={onSaved} />)
+  if (!initial && accept) fireEvent.click(screen.getByRole('button', { name: MY_STYLE_BODY_CONSENT.acceptLabel }))
+  return r
+}
 const type = (label: RegExp, v: string) =>
   fireEvent.change(screen.getByLabelText(label), { target: { value: v } })
 
@@ -36,7 +43,13 @@ describe('MeasurementsCard', () => {
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /save measurements/i }))
     })
-    expect(save).toHaveBeenCalledWith({ height_cm: 163, bust_cm: 88, waist_cm: 72, hip_cm: 96 })
+    expect(save).toHaveBeenCalledWith({
+      height_cm: 163,
+      bust_cm: 88,
+      waist_cm: 72,
+      hip_cm: 96,
+      consent_version: MY_STYLE_BODY_CONSENT.version,
+    })
     expect(onSaved).toHaveBeenCalledTimes(1)
   })
 
@@ -49,7 +62,10 @@ describe('MeasurementsCard', () => {
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /save measurements/i }))
     })
-    expect(save).toHaveBeenCalledWith({ height_cm: 163 })
+    expect(save).toHaveBeenCalledWith({
+      height_cm: 163,
+      consent_version: MY_STYLE_BODY_CONSENT.version,
+    })
   })
 
   it('refuses an out-of-range value without calling the API', async () => {
@@ -84,12 +100,57 @@ describe('MeasurementsCard', () => {
     expect(save).toHaveBeenCalledTimes(1)
   })
 
-  it('remove clears all four fields on the server', async () => {
-    save.mockResolvedValue('ok')
+  it('remove withdraws the consent and deletes the numbers, and tells the page', async () => {
+    withdraw.mockResolvedValue('ok')
     setup({ height_cm: 163, bust_cm: 88, waist_cm: 72, hip_cm: 96, saved_at: '2026-11-12T10:00:00Z' })
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /remove my measurements/i }))
     })
-    expect(save).toHaveBeenCalledWith({ height_cm: null, bust_cm: null, waist_cm: null, hip_cm: null })
+    expect(withdraw).toHaveBeenCalledTimes(1)
+    expect(save).not.toHaveBeenCalled()
+    expect(onSaved).toHaveBeenCalledTimes(1)
+  })
+
+  it('a failed remove is reported and NOT shown as removed', async () => {
+    withdraw.mockResolvedValue('error')
+    setup({ height_cm: 163, bust_cm: null, waist_cm: null, hip_cm: null })
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /remove my measurements/i }))
+    })
+    expect(onSaved).not.toHaveBeenCalled()
+    expect(screen.getByRole('alert').textContent).toMatch(/could not remove/i)
+  })
+
+  describe('separate consent step', () => {
+    it('shows the measurements notice first and no input fields until the shopper agrees', () => {
+      setup(null, false)
+      expect(screen.getByText(MY_STYLE_BODY_CONSENT.title)).toBeTruthy()
+      expect(screen.getByText(MY_STYLE_BODY_CONSENT.intro)).toBeTruthy()
+      expect(screen.queryByLabelText(/height/i)).toBeNull()
+      expect(screen.queryByRole('button', { name: /save measurements/i })).toBeNull()
+    })
+
+    it('agreeing reveals the form; the save then carries the notice version', async () => {
+      save.mockResolvedValue('ok')
+      setup(null, false)
+      fireEvent.click(screen.getByRole('button', { name: MY_STYLE_BODY_CONSENT.acceptLabel }))
+      type(/bust/i, '88')
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /save measurements/i }))
+      })
+      expect(save).toHaveBeenCalledWith({ bust_cm: 88, consent_version: MY_STYLE_BODY_CONSENT.version })
+    })
+
+    it('not now leaves the form hidden', () => {
+      setup(null, false)
+      fireEvent.click(screen.getByRole('button', { name: MY_STYLE_BODY_CONSENT.declineLabel }))
+      expect(screen.queryByLabelText(/bust/i)).toBeNull()
+    })
+
+    it('a shopper who already has saved measurements is not asked again', () => {
+      setup({ height_cm: 163, bust_cm: null, waist_cm: null, hip_cm: null })
+      expect(screen.queryByText(MY_STYLE_BODY_CONSENT.title)).toBeNull()
+      expect(screen.getByLabelText(/height/i)).toBeTruthy()
+    })
   })
 })

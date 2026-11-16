@@ -29,11 +29,14 @@ import { addMyStyleAnalyzeJob } from '../../jobs/index.js';
 import { CUSTOMER_STYLE_ANALYSIS } from '../../lib/features.js';
 import { completeAnalysis, getAnalysis, startAnalysis } from '../../lib/my-style-analysis.js';
 import {
+  hasLiveBodyConsent,
   hasLiveMyStyleConsent,
+  recordBodyConsent,
   recordMyStyleConsent,
+  withdrawBodyConsent,
   withdrawMyStyleConsent,
 } from '../../lib/my-style-consent.js';
-import { isCurrentMyStyleConsent } from '../../lib/notice-versions.js';
+import { isCurrentMyStyleBodyConsent, isCurrentMyStyleConsent } from '../../lib/notice-versions.js';
 import {
   checkCustomerQuota,
   refundCustomerJobQuota,
@@ -74,9 +77,14 @@ const MeasurementsSchema = z
     bust_cm: cm('bust_cm'),
     waist_cm: cm('waist_cm'),
     hip_cm: cm('hip_cm'),
+    // Consent plumbing, not a measurement: the version of the measurements notice the shopper saw.
+    consent_version: z.string().min(1).optional(),
   })
   .strict()
-  .refine((b) => Object.values(b).some((v) => v !== undefined), 'Send at least one measurement');
+  .refine(
+    (b) => Object.entries(b).some(([k, v]) => k !== 'consent_version' && v !== undefined),
+    'Send at least one measurement',
+  );
 
 function unauthorized(reply: FastifyReply) {
   return reply
@@ -241,13 +249,39 @@ export const publicMyStyleAnalyzeRoutes: FastifyPluginAsync = async (server) => 
           'measurements',
         );
       }
+      const { consent_version, ...measurements } = parsed.data;
+      // Consent, server-side: body data has its own notice, separate from the photo's.
+      const accountId = session.customer_account_id;
+      const ctx = { ip: request.ip, userAgent: request.headers['user-agent'] };
+      if (!(await hasLiveBodyConsent(accountId))) {
+        if (!isCurrentMyStyleBodyConsent(consent_version)) {
+          throw validationError(
+            'Please read and accept how your measurements are used before saving.',
+            'consent_version',
+          );
+        }
+        await recordBodyConsent(accountId, ctx);
+      }
       await prisma.customerAccount.update({
-        where: { id: session.customer_account_id },
-        data: { ...parsed.data, measurements_at: new Date() },
+        where: { id: accountId },
+        data: { ...measurements, measurements_at: new Date() },
       });
-      return { data: { measurements: parsed.data } };
+      return { data: { measurements } };
     },
   );
+
+  // ─── POST /measurements/withdraw ──────────────────────────────
+  // Not behind any switch: removing what we hold must always work. 200 with a body (RC-045).
+  server.post('/measurements/withdraw', async (request, reply) => {
+    reply.header('Cache-Control', 'private, no-store');
+    const session = await sessionFor(request);
+    if (!session) return unauthorized(reply);
+    await withdrawBodyConsent(session.customer_account_id, {
+      ip: request.ip,
+      userAgent: request.headers['user-agent'],
+    });
+    return { data: { ok: true } };
+  });
 
   // ─── POST /profile/clear ──────────────────────────────────────
   // Deliberately NOT behind the kill-switch: switching analysis off must never stop
