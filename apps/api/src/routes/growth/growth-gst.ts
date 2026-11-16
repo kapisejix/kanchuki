@@ -7,6 +7,13 @@
 import { prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
+import {
+  type DateRange,
+  GST_SUM_SELECT,
+  addonWhere,
+  byDateDesc,
+  mergeSums,
+} from '../../lib/addon-gst-report.js';
 import { queryBool } from '../../lib/query-bool.js';
 
 export const growthGstRoutes: FastifyPluginAsync = async (server) => {
@@ -38,27 +45,26 @@ export const growthGstRoutes: FastifyPluginAsync = async (server) => {
       }
     }
 
-    const [result, invoicedCount] = await Promise.all([
+    // Add-on pack invoices live on quota_addon_purchases; same retailer, paid-date window.
+    const aWhere = addonWhere({ retailerId, range: where.created_at as DateRange });
+    const [subResult, subInvoiced, addonResult, addonInvoiced] = await Promise.all([
       prisma.subscriptionPayment.aggregate({
         where,
-        _sum: {
-          amount_excluding_gst: true,
-          gst_amount: true,
-          amount_inr: true,
-          cgst_amount: true,
-          sgst_amount: true,
-          igst_amount: true,
-        },
+        _sum: GST_SUM_SELECT,
         _count: true,
       }),
       prisma.subscriptionPayment.count({
         where: { ...where, gst_invoice_number: { not: null } },
       }),
+      prisma.quotaAddonPurchase.aggregate({ where: aWhere, _sum: GST_SUM_SELECT, _count: true }),
+      prisma.quotaAddonPurchase.count({ where: { ...aWhere, gst_invoice_number: { not: null } } }),
     ]);
+    const result = mergeSums(subResult, addonResult);
+    const invoicedCount = subInvoiced + addonInvoiced;
 
-    const subtotal = result._sum.amount_excluding_gst ?? 0;
-    const totalGst = result._sum.gst_amount ?? 0;
-    const totalSales = result._sum.amount_inr ?? 0;
+    const subtotal = result._sum?.amount_excluding_gst ?? 0;
+    const totalGst = result._sum?.gst_amount ?? 0;
+    const totalSales = result._sum?.amount_inr ?? 0;
     const totalOrders = result._count;
 
     return {
@@ -69,9 +75,9 @@ export const growthGstRoutes: FastifyPluginAsync = async (server) => {
         total_taxable: subtotal,
         total_gst: totalGst,
         total_sales: totalSales,
-        cgst: result._sum.cgst_amount ?? 0,
-        sgst: result._sum.sgst_amount ?? 0,
-        igst: result._sum.igst_amount ?? 0,
+        cgst: result._sum?.cgst_amount ?? 0,
+        sgst: result._sum?.sgst_amount ?? 0,
+        igst: result._sum?.igst_amount ?? 0,
       },
     };
   });
@@ -96,19 +102,24 @@ export const growthGstRoutes: FastifyPluginAsync = async (server) => {
       status: 'success',
     };
 
-    const monthlyData = await prisma.subscriptionPayment.groupBy({
-      by: ['created_at'],
-      where,
-      _sum: {
-        amount_excluding_gst: true,
-        gst_amount: true,
-        amount_inr: true,
-        cgst_amount: true,
-        sgst_amount: true,
-        igst_amount: true,
-      },
-      _count: true,
-    });
+    const [subMonthly, addonMonthly] = await Promise.all([
+      prisma.subscriptionPayment.groupBy({
+        by: ['created_at'],
+        where,
+        _sum: GST_SUM_SELECT,
+        _count: true,
+      }),
+      prisma.quotaAddonPurchase.groupBy({
+        by: ['completed_at'],
+        where: addonWhere({ retailerId, range: { gte: startOfYear, lt: endOfYear } }),
+        _sum: GST_SUM_SELECT,
+        _count: true,
+      }),
+    ]);
+    const monthlyData = [
+      ...subMonthly,
+      ...addonMonthly.map((r) => ({ ...r, created_at: r.completed_at as Date })),
+    ];
 
     const months: Record<
       number,
@@ -193,7 +204,13 @@ export const growthGstRoutes: FastifyPluginAsync = async (server) => {
     const limit = q.success && q.data.limit ? q.data.limit : 50;
     const skip = (page - 1) * limit;
 
-    const [payments, total] = await Promise.all([
+    // Two tables, one page: take skip+limit from each, merge newest-first, then slice.
+    const aWhere = addonWhere({
+      retailerId,
+      range: where.created_at as DateRange,
+      invoiced: q.success ? q.data.invoiced : undefined,
+    });
+    const [payments, addons, subTotal, addonTotal] = await Promise.all([
       prisma.subscriptionPayment.findMany({
         where,
         select: {
@@ -205,23 +222,52 @@ export const growthGstRoutes: FastifyPluginAsync = async (server) => {
           created_at: true,
         },
         orderBy: { created_at: 'desc' },
-        skip,
-        take: limit,
+        take: skip + limit,
+      }),
+      prisma.quotaAddonPurchase.findMany({
+        where: aWhere,
+        select: {
+          id: true,
+          amount_excluding_gst: true,
+          gst_amount: true,
+          amount_inr: true,
+          gst_invoice_number: true,
+          completed_at: true,
+        },
+        orderBy: { completed_at: 'desc' },
+        take: skip + limit,
       }),
       prisma.subscriptionPayment.count({ where }),
+      prisma.quotaAddonPurchase.count({ where: aWhere }),
     ]);
+    const total = subTotal + addonTotal;
+
+    const rows = [
+      ...payments.map((p) => ({
+        id: p.id,
+        kind: 'subscription' as const,
+        taxable: p.amount_excluding_gst ?? 0,
+        gst: p.gst_amount ?? 0,
+        total: p.amount_inr,
+        invoice_number: p.gst_invoice_number,
+        has_invoice: !!p.gst_invoice_number,
+        date: p.created_at as Date | null,
+      })),
+      ...addons.map((p) => ({
+        id: p.id,
+        kind: 'addon' as const,
+        taxable: p.amount_excluding_gst ?? 0,
+        gst: p.gst_amount ?? 0,
+        total: p.amount_inr,
+        invoice_number: p.gst_invoice_number,
+        has_invoice: !!p.gst_invoice_number,
+        date: p.completed_at,
+      })),
+    ].sort(byDateDesc((r) => r.date));
 
     return {
       data: {
-        transactions: payments.map((p) => ({
-          id: p.id,
-          taxable: p.amount_excluding_gst ?? 0,
-          gst: p.gst_amount ?? 0,
-          total: p.amount_inr,
-          invoice_number: p.gst_invoice_number,
-          has_invoice: !!p.gst_invoice_number,
-          date: p.created_at,
-        })),
+        transactions: rows.slice(skip, skip + limit),
         pagination: { page, limit, total, pages: Math.ceil(total / limit) },
       },
     };
