@@ -533,3 +533,15 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Tests | API route test 18 (consent cases added; one test-helper URL bug of mine fixed); API public + lib 1179 passed; web my-style 154 passed; tsc and biome clean. Red-first run observed for the API consent cases (4 failed before); the web consent tests were written before the code but not run red. |
 | Not verified | No browser check; mock Postgres only; the notice wording is mine, not reviewed by legal; the grant event stores a hashed IP and user agent like the other consents. |
 
+## 2026-11-16 — My Style size match (spec steps 3-4; branch `feat/my-style-size-match`, stacked on `feat/my-style-measurements`)
+
+| Item | Detail |
+|---|---|
+| Migration | `162_product_size_chart`: `products.size_chart` JSONB, nullable. **NOT applied; owner applies it BEFORE deploying this code (RC-160).** Needs 161 too (stacked). |
+| Shared | `my-style-size.ts`: `parseSizeChart` (validates a chart: known sizes, bust/waist/hip only, whole cm in range, min <= max) and `suggestSize` (per dimension the smallest listed size whose upper bound covers the body; the largest of those wins; "between" when dimensions disagree; null for no chart, no overlapping measurement, or a body above the largest size). |
+| API | `size_chart` accepted and validated on product create/update (422 on a bad chart, `null` clears via `Prisma.DbNull`, omitted leaves it alone). Feed cards carry `suggested_size` (`{size, between?}` or null); label only, never filters or reorders. |
+| Web | Card line "Your size: M (between M and L) · approx." |
+| Tests | shared 17; products-size-chart 10; feed 5 new; API products 256 and public 436 passed; web my-style 157 passed; tsc clean. Shared and API tests red first; the web card tests were written in the same pass as the code. |
+| NOT built (so the feature is dormant) | **No retailer UI to enter a size chart** (mobile product form, needs an EAS build); stock is not checked (only the sizes the retailer lists); enquiry opt-in to share the size with a store; "complete the look" cards carry no size label. Until a retailer can enter a chart no card will show a size. |
+| Not verified | No browser or device check; mock Postgres only; the rounding rule (a gap rounds up, between = smallest..largest needed) is mine and unreviewed by a tailor or the owner. |
+

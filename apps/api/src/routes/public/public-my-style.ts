@@ -21,6 +21,8 @@ import {
   matchesSlot,
   occasionTargets,
   parseGarmentDescriptor,
+  parseSizeChart,
+  suggestSize,
 } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
@@ -79,8 +81,14 @@ const BodySchema = z
   .refine((b) => (b.lat === undefined) === (b.lng === undefined), 'lat and lng go together');
 
 // One feed/complete-look card. Prices stay paise (RC-055).
-async function toCard(p: CandidateRow, distanceKm: number | null) {
+type Body = Parameters<typeof suggestSize>[0];
+
+async function toCard(p: CandidateRow, distanceKm: number | null, body?: Body | null) {
+  // Spec step 4: a label only. It never filters or reorders, and without measurements or a valid
+  // chart it is null (never a guess).
+  const chart = body ? parseSizeChart(p.size_chart) : null;
   return {
+    suggested_size: body ? suggestSize(body, chart, p.sizes) : null,
     ...(await toPublicProductSummary(p)),
     color_family: p.color_family,
     distance_km: distanceKm,
@@ -286,13 +294,22 @@ export const publicMyStyleRoutes: FastifyPluginAsync = async (server) => {
         ranked = promoteMatches(ranked, isMatch);
       }
 
+      // Only a shopper who saved measurements (which needs their consent) gets size labels.
+      const bodyMeasurements =
+        account.bust_cm || account.waist_cm || account.hip_cm
+          ? {
+              bust_cm: account.bust_cm,
+              waist_cm: account.waist_cm,
+              hip_cm: account.hip_cm,
+            }
+          : null;
       const byId = new Map(inRange.map((p) => [p.id, p]));
       const pageItems = ranked.slice((b.page - 1) * b.limit, b.page * b.limit);
       const data = await Promise.all(
         pageItems.map((item) => {
           const p = byId.get(item.id);
           if (!p) throw new Error(`my-style: ranked id ${item.id} not in candidates`);
-          return toCard(p, item.distance_km);
+          return toCard(p, item.distance_km, bodyMeasurements);
         }),
       );
 

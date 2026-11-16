@@ -34,7 +34,14 @@ export interface TasteSummary {
   budget_max: number | null
 }
 
+/** Spec step 4: from the shopper's measurements and the product's size chart. Approximate. */
+export interface SuggestedSize {
+  size: string
+  between?: [string, string]
+}
+
 export interface FeedCard {
+  suggested_size?: SuggestedSize | null
   id: string
   name: string | null
   price_min: number | null
