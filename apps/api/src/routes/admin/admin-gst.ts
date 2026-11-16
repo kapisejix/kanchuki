@@ -8,6 +8,14 @@
 import { prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
+import {
+  type DateRange,
+  GST_SUM_SELECT,
+  addonWhere,
+  byDateDesc,
+  mergeByRetailer,
+  mergeSums,
+} from '../../lib/addon-gst-report.js';
 import { queryBool } from '../../lib/query-bool.js';
 import { adminAuthPreHandler } from '../admin-auth.js';
 
@@ -40,26 +48,23 @@ export const adminGstRoutes: FastifyPluginAsync = async (server) => {
 
     where.status = 'success';
 
-    const result = await prisma.subscriptionPayment.aggregate({
-      where,
-      _sum: {
-        amount_excluding_gst: true,
-        gst_amount: true,
-        amount_inr: true,
-        cgst_amount: true,
-        sgst_amount: true,
-        igst_amount: true,
-      },
-      _count: true,
+    // Add-on pack invoices live on quota_addon_purchases; paid-date window.
+    const aWhere = addonWhere({
+      retailerId: q.success ? q.data.retailer_id : undefined,
+      range: where.created_at as DateRange,
     });
+    const [subResult, subInvoiced, addonResult, addonInvoiced] = await Promise.all([
+      prisma.subscriptionPayment.aggregate({ where, _sum: GST_SUM_SELECT, _count: true }),
+      prisma.subscriptionPayment.count({ where: { ...where, gst_invoice_number: { not: null } } }),
+      prisma.quotaAddonPurchase.aggregate({ where: aWhere, _sum: GST_SUM_SELECT, _count: true }),
+      prisma.quotaAddonPurchase.count({ where: { ...aWhere, gst_invoice_number: { not: null } } }),
+    ]);
+    const result = mergeSums(subResult, addonResult);
+    const invoicedCount = subInvoiced + addonInvoiced;
 
-    const invoicedCount = await prisma.subscriptionPayment.count({
-      where: { ...where, gst_invoice_number: { not: null } },
-    });
-
-    const subtotal = result._sum.amount_excluding_gst ?? 0;
-    const totalGst = result._sum.gst_amount ?? 0;
-    const totalSales = result._sum.amount_inr ?? 0;
+    const subtotal = result._sum?.amount_excluding_gst ?? 0;
+    const totalGst = result._sum?.gst_amount ?? 0;
+    const totalSales = result._sum?.amount_inr ?? 0;
     const totalOrders = result._count;
 
     return {
@@ -70,9 +75,9 @@ export const adminGstRoutes: FastifyPluginAsync = async (server) => {
         total_taxable: subtotal,
         total_gst: totalGst,
         total_sales: totalSales,
-        cgst: result._sum.cgst_amount ?? 0,
-        sgst: result._sum.sgst_amount ?? 0,
-        igst: result._sum.igst_amount ?? 0,
+        cgst: result._sum?.cgst_amount ?? 0,
+        sgst: result._sum?.sgst_amount ?? 0,
+        igst: result._sum?.igst_amount ?? 0,
       },
     };
   });
@@ -96,19 +101,27 @@ export const adminGstRoutes: FastifyPluginAsync = async (server) => {
     };
     if (q.success && q.data.retailer_id) where.retailer_id = q.data.retailer_id;
 
-    const monthlyData = await prisma.subscriptionPayment.groupBy({
-      by: ['created_at'],
-      where,
-      _sum: {
-        amount_excluding_gst: true,
-        gst_amount: true,
-        amount_inr: true,
-        cgst_amount: true,
-        sgst_amount: true,
-        igst_amount: true,
-      },
-      _count: true,
-    });
+    const [subMonthly, addonMonthly] = await Promise.all([
+      prisma.subscriptionPayment.groupBy({
+        by: ['created_at'],
+        where,
+        _sum: GST_SUM_SELECT,
+        _count: true,
+      }),
+      prisma.quotaAddonPurchase.groupBy({
+        by: ['completed_at'],
+        where: addonWhere({
+          retailerId: q.success ? q.data.retailer_id : undefined,
+          range: { gte: startOfYear, lt: endOfYear },
+        }),
+        _sum: GST_SUM_SELECT,
+        _count: true,
+      }),
+    ]);
+    const monthlyData = [
+      ...subMonthly,
+      ...addonMonthly.map((r) => ({ ...r, created_at: r.completed_at as Date })),
+    ];
 
     const months: Record<
       number,
@@ -183,21 +196,28 @@ export const adminGstRoutes: FastifyPluginAsync = async (server) => {
 
     const limit = q.success && q.data.limit ? q.data.limit : 20;
 
-    const byRetailer = await prisma.subscriptionPayment.groupBy({
-      by: ['retailer_id'],
-      where,
-      _sum: {
-        amount_excluding_gst: true,
-        gst_amount: true,
-        amount_inr: true,
-        cgst_amount: true,
-        sgst_amount: true,
-        igst_amount: true,
-      },
-      _count: true,
-      orderBy: { _sum: { gst_amount: 'desc' } },
-      take: limit,
-    });
+    // Pull a generous slice from each source, merge per retailer, THEN cut to `limit`: a
+    // retailer in the combined top N can sit outside either table's own top N.
+    // ponytail: 5000 per source; page properly if retailer count ever exceeds it.
+    const [subByRetailer, addonByRetailer] = await Promise.all([
+      prisma.subscriptionPayment.groupBy({
+        by: ['retailer_id'],
+        where,
+        _sum: GST_SUM_SELECT,
+        _count: true,
+        orderBy: { _sum: { gst_amount: 'desc' } },
+        take: 5000,
+      }),
+      prisma.quotaAddonPurchase.groupBy({
+        by: ['retailer_id'],
+        where: addonWhere({ range: where.created_at as DateRange }),
+        _sum: GST_SUM_SELECT,
+        _count: true,
+        orderBy: { _sum: { gst_amount: 'desc' } },
+        take: 5000,
+      }),
+    ]);
+    const byRetailer = mergeByRetailer(subByRetailer, addonByRetailer).slice(0, limit);
 
     const retailerIds = byRetailer.map((r) => r.retailer_id);
     const retailers = await prisma.retailer.findMany({
@@ -214,12 +234,12 @@ export const adminGstRoutes: FastifyPluginAsync = async (server) => {
         city: info?.city ?? '',
         gstin: info?.gstin ?? null,
         payments: r._count,
-        taxable: r._sum.amount_excluding_gst ?? 0,
-        gst: r._sum.gst_amount ?? 0,
-        cgst: r._sum.cgst_amount ?? 0,
-        sgst: r._sum.sgst_amount ?? 0,
-        igst: r._sum.igst_amount ?? 0,
-        sales: r._sum.amount_inr ?? 0,
+        taxable: r._sum?.amount_excluding_gst ?? 0,
+        gst: r._sum?.gst_amount ?? 0,
+        cgst: r._sum?.cgst_amount ?? 0,
+        sgst: r._sum?.sgst_amount ?? 0,
+        igst: r._sum?.igst_amount ?? 0,
+        sales: r._sum?.amount_inr ?? 0,
       };
     });
 
@@ -263,7 +283,13 @@ export const adminGstRoutes: FastifyPluginAsync = async (server) => {
     const limit = q.success && q.data.limit ? q.data.limit : 50;
     const skip = (page - 1) * limit;
 
-    const [payments, total] = await Promise.all([
+    // Two tables, one page: take skip+limit from each, merge newest-first, then slice.
+    const aWhere = addonWhere({
+      retailerId: q.success ? q.data.retailer_id : undefined,
+      range: where.created_at as DateRange,
+      invoiced: q.success ? q.data.invoiced : undefined,
+    });
+    const [payments, addons, subTotal, addonTotal] = await Promise.all([
       prisma.subscriptionPayment.findMany({
         where,
         include: {
@@ -272,25 +298,49 @@ export const adminGstRoutes: FastifyPluginAsync = async (server) => {
           },
         },
         orderBy: { created_at: 'desc' },
-        skip,
-        take: limit,
+        take: skip + limit,
+      }),
+      prisma.quotaAddonPurchase.findMany({
+        where: aWhere,
+        include: { retailer: { select: { id: true, shop_name: true, gstin: true } } },
+        orderBy: { completed_at: 'desc' },
+        take: skip + limit,
       }),
       prisma.subscriptionPayment.count({ where }),
+      prisma.quotaAddonPurchase.count({ where: aWhere }),
     ]);
+    const total = subTotal + addonTotal;
+
+    const rows = [
+      ...payments.map((p) => ({
+        id: p.id,
+        kind: 'subscription' as const,
+        retailer: p.subscription.retailer.shop_name,
+        gstin: p.subscription.retailer.gstin,
+        taxable: p.amount_excluding_gst ?? 0,
+        gst: p.gst_amount ?? 0,
+        total: p.amount_inr,
+        invoice_number: p.gst_invoice_number,
+        has_invoice: !!p.gst_invoice_number,
+        date: p.created_at as Date | null,
+      })),
+      ...addons.map((p) => ({
+        id: p.id,
+        kind: 'addon' as const,
+        retailer: p.retailer.shop_name,
+        gstin: p.retailer.gstin,
+        taxable: p.amount_excluding_gst ?? 0,
+        gst: p.gst_amount ?? 0,
+        total: p.amount_inr,
+        invoice_number: p.gst_invoice_number,
+        has_invoice: !!p.gst_invoice_number,
+        date: p.completed_at,
+      })),
+    ].sort(byDateDesc((r) => r.date));
 
     return {
       data: {
-        transactions: payments.map((p) => ({
-          id: p.id,
-          retailer: p.subscription.retailer.shop_name,
-          gstin: p.subscription.retailer.gstin,
-          taxable: p.amount_excluding_gst ?? 0,
-          gst: p.gst_amount ?? 0,
-          total: p.amount_inr,
-          invoice_number: p.gst_invoice_number,
-          has_invoice: !!p.gst_invoice_number,
-          date: p.created_at,
-        })),
+        transactions: rows.slice(skip, skip + limit),
         pagination: { page, limit, total, pages: Math.ceil(total / limit) },
       },
     };
