@@ -12,6 +12,15 @@
 
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
+## RC-172 — Account erasure kept its own list of columns and missed the photo-derived My Style profile; the export omitted it too
+
+- **Component:** `apps/api/src/routes/public/passport/passport-data.ts` (`POST /passport/delete`, `GET /passport/export`), `apps/api/src/lib/my-style-consent.ts`.
+- **Symptom:** found 2026-11-16 while adding self-entered measurements. A shopper who deleted their account kept `skin_undertone`, `skin_depth`, `body_frame` and `style_profile_at` on the anonymised row, and the data export did not list them. Only "Clear my data" (`profile/clear`) removed them.
+- **Root cause:** two hand-written lists of the same derived columns: `clearStyleProfile` (4 columns) and the erasure update (a different list that never included them). The F-045 columns were added after erasure was written and nothing tied the lists together (RC-031 / RC-034 shape).
+- **Fix:** one `STYLE_PROFILE_CLEARED` object in `my-style-consent.ts`, spread by `clearStyleProfile` and by the erasure update; the new measurement columns are in it, so erasure, "Clear my data" and the job's compensation cannot drift. The export now includes the style profile and measurements.
+- **Proof:** `passport-data.test.ts` (red first: every derived column is nulled on delete); the existing clear test now pins the shared object. API `src/routes/public` + `src/lib/my-style` 530 passed, tsc clean.
+- **Not verified / limits:** mock Postgres only. Accounts deleted before this fix still hold the old derived columns (anonymised phone, no name); no sweep was written or run. Migration 161 adds the measurement columns and is NOT applied: apply it before deploying code that reads them (RC-160).
+
 ## RC-171 — My Style read a body frame from the photo, stored it and displayed it, but the ranker never read it
 
 - **Component:** `apps/api/src/lib/my-style-rank.ts`, `apps/api/src/routes/public/public-my-style.ts`, `packages/shared/src/my-style-weights.ts`.

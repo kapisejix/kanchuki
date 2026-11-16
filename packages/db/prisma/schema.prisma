@@ -587,6 +587,9 @@ model Product {
 
   // Retailer-selected sizes available for this item (S, M, L, XL, XXL, XXXL)
   sizes String[] @default([])
+  // Retailer size chart (My Style step 3): cm ranges per size, e.g. {"M":{"bust":[85,89]}}.
+  // Shape validated by parseSizeChart in @kanchuki/shared. NULL = no chart, no size suggestion.
+  size_chart Json?
 
   // Indian fit flags (roadmap N) — blouse-piece / unstitched markers that
   // matter for sarees and unstitched suit sets, shown on the product page.
@@ -2958,6 +2961,14 @@ model CustomerAccount {
   skin_depth       String? // fair | medium | deep
   body_frame       String? // petite | average | tall | curvy
   style_profile_at DateTime?
+
+  // F-045 My Style — self-entered measurements (spec my-style-body-profile.md §3). Shopper-only;
+  // cleared with the profile above. Ranges pinned by CHECKs in 161. No weight, on purpose.
+  height_cm       Int?
+  bust_cm         Int?
+  waist_cm        Int?
+  hip_cm          Int?
+  measurements_at DateTime?
 
   // Personalization toggle — when false, behavioral writes (view/favorite/
   // search) are suppressed and the preference vector is frozen/cleared.

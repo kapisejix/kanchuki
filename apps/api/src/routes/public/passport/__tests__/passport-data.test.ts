@@ -81,3 +81,26 @@ describe('POST /passport/delete — reviews', () => {
     expect(m.srUpdateMany).not.toHaveBeenCalled();
   });
 });
+
+// RC-172: erasure anonymised the account but left the photo-derived profile on the row, and
+// the new self-entered measurements must go with it. One list of "derived columns" is shared
+// with "Clear my data", so the two cannot drift apart.
+describe('POST /passport/delete — style profile and measurements', () => {
+  it('nulls every derived column on the account', async () => {
+    await del();
+    const data = m.accountUpdate.mock.calls[0]![0].data;
+    for (const col of [
+      'skin_undertone',
+      'skin_depth',
+      'body_frame',
+      'style_profile_at',
+      'height_cm',
+      'bust_cm',
+      'waist_cm',
+      'hip_cm',
+      'measurements_at',
+    ]) {
+      expect(data, col).toHaveProperty(col, null);
+    }
+  });
+});

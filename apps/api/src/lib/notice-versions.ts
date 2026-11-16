@@ -1,6 +1,6 @@
 // DPDP notice version registry (Task 27).
 
-import { MY_STYLE_CONSENT, TRY_ON_CONSENT } from '@kanchuki/shared';
+import { MY_STYLE_BODY_CONSENT, MY_STYLE_CONSENT, TRY_ON_CONSENT } from '@kanchuki/shared';
 //
 // Every ConsentEvent write MUST reference a notice_version from this
 // registry. The version tracks which privacy notice text was shown to
@@ -56,6 +56,12 @@ export const PURPOSE_CONSENTS = {
     withdrawn_kind: 'MY_STYLE_PHOTO_CONSENT_WITHDRAWN',
     version: MY_STYLE_CONSENT.version,
   },
+  // F-045 My Style self-entered body measurements: a separate consent from the photo.
+  MY_STYLE_BODY: {
+    granted_kind: 'MY_STYLE_BODY_CONSENTED',
+    withdrawn_kind: 'MY_STYLE_BODY_CONSENT_WITHDRAWN',
+    version: MY_STYLE_BODY_CONSENT.version,
+  },
 } as const;
 
 /** The text for a purpose consent, for a server-rendered notice or an email. */
@@ -75,6 +81,11 @@ export function isCurrentTryOnConsent(version: string | undefined): boolean {
 /** Is this the CURRENT My Style photo consent text? Same reasoning as the try-on check. */
 export function isCurrentMyStyleConsent(version: string | undefined): boolean {
   return version !== undefined && version === PURPOSE_CONSENTS.MY_STYLE.version;
+}
+
+/** Is this the CURRENT My Style measurements consent text? */
+export function isCurrentMyStyleBodyConsent(version: string | undefined): boolean {
+  return version !== undefined && version === PURPOSE_CONSENTS.MY_STYLE_BODY.version;
 }
 
 /**

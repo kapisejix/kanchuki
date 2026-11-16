@@ -2,7 +2,13 @@
 // (scripts/check-route-size.sh split). Route modules import from here.
 import { getDownloadPresignedUrl } from '@kanchuki/ai';
 import { prisma } from '@kanchuki/db';
-import { KIDS_AGE_GROUPS, PRODUCT_AUDIENCES, SIZE_OPTIONS } from '@kanchuki/shared';
+import {
+  KIDS_AGE_GROUPS,
+  PRODUCT_AUDIENCES,
+  SIZE_OPTIONS,
+  type SizeChart,
+  parseSizeChart,
+} from '@kanchuki/shared';
 import { z } from 'zod';
 import { StockInputSchema } from '../../lib/product-stock.js';
 import { queryBool } from '../../lib/query-bool.js';
@@ -109,6 +115,11 @@ export const CreateProductSchema = z.object({
   fabrics: z.array(z.string().max(100)).max(10).optional(),
   search_tags: z.array(z.string().max(100)).max(20).optional(),
   sizes: z.array(z.enum(SIZE_OPTIONS)).max(SIZE_OPTIONS.length).optional(),
+  // Retailer size chart (cm ranges per size). null clears it. Validated by parseSizeChart.
+  size_chart: z
+    .custom<SizeChart>((v) => parseSizeChart(v) !== null, 'Invalid size chart')
+    .nullable()
+    .optional(),
   // Per-size stock. Omitted on create -> 1 unit per selected size (FREE if unsized).
   stock: StockInputSchema.optional(),
   section_id: z.string().optional(),

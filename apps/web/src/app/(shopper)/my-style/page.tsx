@@ -22,6 +22,7 @@ import { AnalyzeSheet } from './AnalyzeSheet'
 import type { AnalyzeMode } from './analyze'
 import { KidsForm } from './KidsForm'
 import { CardSkeleton, LookPanel, type LookView } from './LookPanel'
+import { MeasurementsCard } from './MeasurementsCard'
 import { PaletteCard } from './PaletteCard'
 import { ShortlistBar, useEnquiry } from './ShortlistBar'
 import { StyleCard } from './StyleCard'
@@ -32,6 +33,7 @@ import {
   type FeedSort,
   type FeedTab,
   LOGIN_HREF,
+  type Measurements,
   type StyleProfile,
   type TasteSummary,
   describeGarment,
@@ -108,6 +110,7 @@ export default function MyStylePage() {
   const [similar, setSimilar] = useState<GarmentDescriptor | null>(null)
   // Kept across refetches so the palette card does not flash away while the feed reloads.
   const [styleProfile, setStyleProfile] = useState<StyleProfile | null>(null)
+  const [measurements, setMeasurements] = useState<Measurements | null>(null)
   const [kids, setKids] = useState<{ who: string; age: string } | null>(null)
   // The quick quiz's saved answers, kept across refetches like the palette. `quizNote` says so
   // when the save did not reach the account (signed out / offline), instead of staying silent.
@@ -200,6 +203,7 @@ export default function MyStylePage() {
         setView(r)
         if (r.kind === 'ok') {
           setStyleProfile(r.meta.style_profile ?? null)
+          setMeasurements(r.meta.measurements ?? null)
           setTaste(r.meta.taste ?? null)
           setTabs(r.meta.tabs)
           // The tab just lost its data (festival ended, trend retired): fall back to the feed.
@@ -427,6 +431,13 @@ export default function MyStylePage() {
           }}
         />
       )}
+
+      {/* key: re-seed the fields from the server after a save or a "Clear my data". */}
+      <MeasurementsCard
+        key={measurements?.saved_at ?? 'none'}
+        initial={measurements}
+        onSaved={() => setNonce((n) => n + 1)}
+      />
 
       {similar && (
         <div className={`${CARD} p-4 flex items-start gap-3`}>
