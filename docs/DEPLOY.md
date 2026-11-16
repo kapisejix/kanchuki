@@ -312,7 +312,7 @@ For Railway to auto-deploy from GitHub:
 | DB connection refused | DATABASE_URL not set correctly | Use Railway PostgreSQL plugin's provided URL |
 | 502 Bad Gateway | Health check failing | Check `startCommand` in `railway.json` — ensure path is correct |
 | 502 Bad Gateway — **every** path (`/`, static assets, `/c/{slug}`), with `x-railway-fallback: true` in the response | **Service domain target port ≠ app's listening port** (see §Troubleshooting below) | `railway domain list --service <name>` to compare; `railway domain update --port <PORT> <domain-id> --service <name>` to fix |
-| Prisma schema mismatch | Migrations not run | Run `pnpm exec prisma migrate deploy` from the API service |
+| Prisma schema mismatch | A migration was not applied | Apply it **by hand** from the Supabase SQL Editor (human only). Do **not** run `prisma migrate deploy`: `_prisma_migrations` is invisible to `kanchuki_migrator` (RLS on, no policy), so it would replay every migration from `000_baseline`. See SECURITY.md §19.1 (RC-030 subsection) |
 | Changes not live after push to main | Railway not connected to GitHub, or someone deployed from local | Check Railway Deployments tab: "Deployed via GitHub" = good, "Deployed via CLI" = someone ran `railway up` locally. Fix: Railway Settings → Source → connect GitHub repo, enable auto-deploy. **NEVER run `railway up` from a local machine.** |
 | Stale code on production | Local `railway up` overwrote GitHub deploy | Railway Settings → Source → ensure GitHub is connected. Run `git log --oneline -1` on the machine to check if code is current. Deploy from GitHub only. |
 
