@@ -9,13 +9,14 @@ import { errorHandler } from '../../../plugins/error-handler.js';
 
 const m = vi.hoisted(() => ({
   retailerFind: vi.fn(),
+  retailerCount: vi.fn(),
   collectionFind: vi.fn(),
   rating: vi.fn(),
 }));
 
 vi.mock('@kanchuki/db', () => ({
   prisma: {
-    retailer: { findFirst: m.retailerFind },
+    retailer: { findFirst: m.retailerFind, count: m.retailerCount },
     collection: { findFirst: m.collectionFind },
   },
 }));
@@ -34,7 +35,15 @@ async function get() {
   return app.inject({ method: 'GET', url: '/v1/public/retailers/asha' });
 }
 
+const PLACE = {
+  rating: 4.6,
+  count: 123,
+  name: 'Asha Boutique',
+  address: 'Model Town, Ludhiana, Punjab, India',
+};
+
 const RETAILER = {
+  id: 'ret1',
   shop_name: 'Asha Boutique',
   city: 'Ludhiana',
   state: 'Punjab',
@@ -52,7 +61,8 @@ beforeEach(() => {
   vi.clearAllMocks();
   m.retailerFind.mockResolvedValue(RETAILER);
   m.collectionFind.mockResolvedValue(null);
-  m.rating.mockResolvedValue({ rating: 4.6, count: 123 });
+  m.retailerCount.mockResolvedValue(0);
+  m.rating.mockResolvedValue(PLACE);
 });
 
 describe('google_rating on the public store profile', () => {
@@ -92,6 +102,34 @@ describe('google_rating on the public store profile', () => {
     expect(res.json().data.suspended).toBe(true);
     expect(res.json().data.google_rating).toBeUndefined();
     expect(m.rating).not.toHaveBeenCalled();
+  });
+
+  // The retailer picks their own place id and Google proves no ownership, so a better-rated
+  // neighbour's place must not be shown as theirs (security review of 9084b63e).
+  it("someone else's place (name does not match the shop) → hidden", async () => {
+    m.rating.mockResolvedValue({ ...PLACE, name: 'Meera Sarees', address: 'Ludhiana, Punjab' });
+    const res = await get();
+    expect(res.json().data.google_rating).toBeNull();
+  });
+
+  it('the place is in another city than the shop → hidden', async () => {
+    m.rating.mockResolvedValue({ ...PLACE, address: 'Jaipur, Rajasthan' });
+    expect((await get()).json().data.google_rating).toBeNull();
+  });
+
+  it('another store claims the same place id → hidden for everyone who claims it', async () => {
+    m.retailerCount.mockResolvedValue(1);
+    expect((await get()).json().data.google_rating).toBeNull();
+    const where = m.retailerCount.mock.calls[0]?.[0].where;
+    expect(where).toMatchObject({ google_place_id: 'ChIJabc123', deleted_at: null });
+    expect(where.id).toEqual({ not: 'ret1' });
+  });
+
+  it('if the duplicate-claim check itself fails → hidden, never shown', async () => {
+    m.retailerCount.mockRejectedValue(new Error('db'));
+    const res = await get();
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data.google_rating).toBeNull();
   });
 
   it('never exposes the place id itself', async () => {

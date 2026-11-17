@@ -11,7 +11,8 @@ const TIMEOUT_MS = 8_000;
 export const DAILY_SEARCH_LIMIT = 30;
 
 export type PlaceHit = { place_id: string; name: string; address: string };
-export type PlaceRating = { rating: number; count: number };
+// name/address come back so the caller can check the place really is the shop (place-match.ts).
+export type PlaceRating = { rating: number; count: number; name: string; address: string };
 
 export function placesConfigured(): boolean {
   return !!process.env.GOOGLE_PLACES_API_KEY;
@@ -131,12 +132,19 @@ const RATING_OK_SEC = 3_600;
 const RATING_MISS_SEC = 300; // a failing/empty lookup is remembered so it is not retried per view
 
 function parseRating(data: unknown): PlaceRating | null {
-  const d = data as { rating?: unknown; userRatingCount?: unknown } | null;
+  const d = data as {
+    rating?: unknown;
+    userRatingCount?: unknown;
+    displayName?: { text?: unknown };
+    formattedAddress?: unknown;
+  } | null;
   const rating = d?.rating;
   const count = d?.userRatingCount;
   if (typeof rating !== 'number' || rating < 1 || rating > 5) return null;
   if (typeof count !== 'number' || !Number.isInteger(count) || count < 1) return null;
-  return { rating, count };
+  const name = typeof d?.displayName?.text === 'string' ? d.displayName.text : '';
+  const address = typeof d?.formattedAddress === 'string' ? d.formattedAddress : '';
+  return { rating, count, name, address };
 }
 
 async function ratingCacheGet(k: string): Promise<{ v: PlaceRating | null } | null> {
@@ -172,7 +180,7 @@ export async function getPlaceRating(placeId: string): Promise<PlaceRating | nul
         await call(
           `/places/${encodeURIComponent(placeId)}`,
           { method: 'GET' },
-          'rating,userRatingCount',
+          'rating,userRatingCount,displayName,formattedAddress',
         ),
       );
     } catch (err) {

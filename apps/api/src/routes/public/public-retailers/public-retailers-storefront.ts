@@ -2,6 +2,7 @@
 import { prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
 import { getPlaceRating } from '../../../lib/google-places.js';
+import { placeMatchesShop } from '../../../lib/place-match.js';
 import { withPublicCache } from '../../../lib/public-cache.js';
 import { notFound } from '../../../plugins/error-handler.js';
 export const publicRetailersStorefrontRoutes: FastifyPluginAsync = async (server) => {
@@ -16,6 +17,7 @@ export const publicRetailersStorefrontRoutes: FastifyPluginAsync = async (server
       const retailer = await prisma.retailer.findFirst({
         where: { public_slug: slug, deleted_at: null },
         select: {
+          id: true,
           shop_name: true,
           city: true,
           state: true,
@@ -59,8 +61,22 @@ export const publicRetailersStorefrontRoutes: FastifyPluginAsync = async (server
       // Google's own rating of the shop, shown only when Places answered (null = hide the badge).
       // A lookup failure must never break the profile, hence the catch; the place id itself
       // stays server-side.
+      // The retailer chose this place id themselves and Google proves no ownership, so a place
+      // that is not plausibly the shop (name/city) or that another store also claims is NOT
+      // shown: otherwise anyone could display a neighbour's better rating as their own.
       const placeId = retailer.google_place_id;
-      const rating = placeId ? await getPlaceRating(placeId).catch(() => null) : null;
+      let rating: Awaited<ReturnType<typeof getPlaceRating>> = null;
+      if (placeId) {
+        const place = await getPlaceRating(placeId).catch(() => null);
+        if (place && placeMatchesShop(place, retailer)) {
+          const claims = await prisma.retailer
+            .count({
+              where: { google_place_id: placeId, deleted_at: null, id: { not: retailer.id } },
+            })
+            .catch(() => 1); // cannot tell: hide
+          if (claims === 0) rating = place;
+        }
+      }
 
       return {
         data: {

@@ -39,11 +39,29 @@ describe('getPlaceRating', () => {
     expect(calls).toHaveLength(0);
   });
 
-  it('asks only for rating + userRatingCount and returns them', async () => {
-    stubGoogle({ status: 200, body: { rating: 4.6, userRatingCount: 123 } });
-    expect(await getPlaceRating('ChIJabc')).toEqual({ rating: 4.6, count: 123 });
+  it('asks for the rating plus the place name/address (to check it is the shop) and returns them', async () => {
+    stubGoogle({
+      status: 200,
+      body: {
+        rating: 4.6,
+        userRatingCount: 123,
+        displayName: { text: 'Asha Boutique' },
+        formattedAddress: 'Model Town, Ludhiana',
+      },
+    });
+    expect(await getPlaceRating('ChIJabc')).toEqual({
+      rating: 4.6,
+      count: 123,
+      name: 'Asha Boutique',
+      address: 'Model Town, Ludhiana',
+    });
     expect(calls[0]?.url).toContain('/places/ChIJabc');
-    expect(calls[0]?.mask).toBe('rating,userRatingCount');
+    expect(calls[0]?.mask).toBe('rating,userRatingCount,displayName,formattedAddress');
+  });
+
+  it('a place with no name/address still yields the rating with empty strings (the caller then hides it)', async () => {
+    stubGoogle({ status: 200, body: { rating: 4, userRatingCount: 3 } });
+    expect(await getPlaceRating('ChIJabc')).toEqual({ rating: 4, count: 3, name: '', address: '' });
   });
 
   it('encodes the place id in the path', async () => {
