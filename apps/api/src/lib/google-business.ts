@@ -159,6 +159,7 @@ async function post(url: string, form: Record<string, string>): Promise<Response
 let cached: { token: string; expiresAt: number } | null = null;
 export function __resetGbpTokenCache(): void {
   cached = null;
+  locationsCache = null;
 }
 
 async function accessToken(): Promise<string> {
@@ -266,13 +267,40 @@ export type GbpLocation = { account: string; location: string; title: string; ad
 /** Ids are the trailing segment of Google's resource names ("accounts/123" -> "123"). */
 const tail = (name: string) => name.split('/').pop() ?? name;
 
+// Audit #4: the admin picker and the link route each re-walked every account and location, and
+// Google's account endpoints have a low per-minute quota. One shared Google identity, so one cache.
+// ponytail: per-process, 5 min; a location added or removed in Google shows up within that window.
+const LOCATIONS_TTL_MS = 5 * 60_000;
+let locationsCache: { at: number; value: GbpLocation[] } | null = null;
+
+async function listAccountNames(): Promise<string[]> {
+  const names: string[] = [];
+  let pageToken = '';
+  do {
+    const q = new URLSearchParams({ pageSize: '20', ...(pageToken ? { pageToken } : {}) });
+    const res = await call<{ accounts?: { name: string }[]; nextPageToken?: string }>(
+      'GET',
+      `${ACCOUNTS_URL}/accounts?${q.toString()}`,
+    );
+    for (const a of res.accounts ?? []) names.push(a.name);
+    pageToken = res.nextPageToken ?? '';
+  } while (pageToken);
+  return names;
+}
+
 export async function listLocations(): Promise<GbpLocation[]> {
-  const accounts = await call<{ accounts?: { name: string }[] }>(
-    'GET',
-    `${ACCOUNTS_URL}/accounts?pageSize=20`,
-  );
+  if (locationsCache && Date.now() - locationsCache.at < LOCATIONS_TTL_MS) {
+    return locationsCache.value;
+  }
+  const value = await fetchLocations();
+  locationsCache = { at: Date.now(), value }; // only a complete walk is stored; errors throw above
+  return value;
+}
+
+async function fetchLocations(): Promise<GbpLocation[]> {
   const out: GbpLocation[] = [];
-  for (const acc of accounts.accounts ?? []) {
+  for (const accName of await listAccountNames()) {
+    const acc = { name: accName };
     let pageToken = '';
     do {
       const q = new URLSearchParams({

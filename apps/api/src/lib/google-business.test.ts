@@ -206,6 +206,59 @@ describe('replyToReview', () => {
   });
 });
 
+// Audit #4: accounts were read once with pageSize=20 and never paged, and every picker open and
+// every link re-walked all accounts and locations against Google's low per-minute quota.
+describe('listLocations', () => {
+  const locBody = (name: string) => ({ locations: [{ name: `locations/${name}`, title: name }] });
+  const handler = (c: FetchCall) => {
+    if (isToken(c)) return TOKEN_OK;
+    if (c.url.includes('/accounts?') && !c.url.includes('pageToken=t2')) {
+      return { status: 200, body: { accounts: [{ name: 'accounts/1' }], nextPageToken: 't2' } };
+    }
+    if (c.url.includes('/accounts?')) {
+      return { status: 200, body: { accounts: [{ name: 'accounts/2' }] } };
+    }
+    return { status: 200, body: locBody(c.url.includes('accounts/1/') ? 'locA' : 'locB') };
+  };
+  const googleCalls = () => calls.filter((c) => !isToken(c)).length;
+
+  it('follows the accounts page token instead of stopping at the first page', async () => {
+    stubFetch(handler);
+    const out = await gbp.listLocations();
+    expect(out.map((l) => `${l.account}/${l.location}`)).toEqual(['1/locA', '2/locB']);
+  });
+
+  it('a second call inside five minutes is served from memory, no Google call', async () => {
+    stubFetch(handler);
+    await gbp.listLocations();
+    const before = googleCalls();
+    await gbp.listLocations();
+    expect(googleCalls()).toBe(before);
+  });
+
+  it('refetches once the five minutes are up', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    try {
+      stubFetch(handler);
+      await gbp.listLocations();
+      const before = googleCalls();
+      vi.setSystemTime(Date.now() + 5 * 60_000 + 1);
+      await gbp.listLocations();
+      expect(googleCalls()).toBeGreaterThan(before);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('a failure is not cached: the next call asks Google again', async () => {
+    stubFetch((c) => (isToken(c) ? TOKEN_OK : { status: 403, body: {} }));
+    await gbp.listLocations().catch(() => {});
+    stubFetch(handler);
+    const out = await gbp.listLocations();
+    expect(out).toHaveLength(2);
+  });
+});
+
 describe('never creates a review for anyone', () => {
   it('exports no review-creating function and issues no POST to a reviews URL', async () => {
     const names = Object.keys(gbp);

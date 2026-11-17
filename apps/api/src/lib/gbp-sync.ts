@@ -5,14 +5,31 @@
 import { prisma } from '@kanchuki/db';
 import { GbpError, listReviews } from './google-business.js';
 
-const MAX_PAGES = 5; // 250 newest-updated reviews per run; older ones were synced earlier
+// On-demand and admin syncs read the 250 newest-updated reviews. The 6-hourly job passes
+// FULL_WALK_PAGES: 2000 reviews, i.e. 40 calls per link per run. ponytail: a shop past 2000 is never
+// "complete", so it keeps its stale rows; raise the number or go incremental if one ever appears.
+const MAX_PAGES = 5;
+export const FULL_WALK_PAGES = 40;
 export const STALE_AFTER_MS = 15 * 60_000;
 
 type LinkRef = { id: string; retailer_id: string; gbp_account_id: string; gbp_location_id: string };
 
-export type SyncResult = { ok: true; synced: number } | { ok: false; code: GbpError['code'] };
+/**
+ * `complete` is present only when the whole list was read (no page left, link unchanged) AND the
+ * number of reviews seen equals the total Google reports. It is the proof the caller needs before
+ * deleting rows Google no longer returns: every row with synced_at before `since` was not in it.
+ * Any doubt (no total, a mismatch, an empty glitch, the page cap) leaves it out, and nothing is culled.
+ */
+export type SyncResult =
+  | { ok: true; synced: number; complete?: { since: Date } }
+  | { ok: false; code: GbpError['code'] };
 
-export async function syncLink(link: LinkRef): Promise<SyncResult> {
+export async function syncLink(
+  link: LinkRef,
+  opts: { maxPages?: number } = {},
+): Promise<SyncResult> {
+  const maxPages = opts.maxPages ?? MAX_PAGES;
+  const since = new Date();
   // The link can be unlinked or re-pointed at another location while Google answers (seconds).
   // Every write below is conditioned on the link still being this exact one, so a stale sync
   // can neither revive an unlinked row nor file the old location's reviews under a new one.
@@ -27,7 +44,9 @@ export async function syncLink(link: LinkRef): Promise<SyncResult> {
     let pageToken: string | undefined;
     let avg: number | null = null;
     let total: number | null = null;
-    for (let page = 0; page < MAX_PAGES; page++) {
+    let seen = 0;
+    let finished = false;
+    for (let page = 0; page < maxPages; page++) {
       const res = await listReviews(link.gbp_account_id, link.gbp_location_id, pageToken);
       if ((await prisma.gbpLink.count({ where: stillThisLink })) === 0) {
         return { ok: true, synced }; // link changed under us: nothing of this run is ours to write
@@ -57,7 +76,11 @@ export async function syncLink(link: LinkRef): Promise<SyncResult> {
         });
         synced++;
       }
-      if (!res.nextPageToken) break;
+      seen += res.reviews.length;
+      if (!res.nextPageToken) {
+        finished = true;
+        break;
+      }
       pageToken = res.nextPageToken;
     }
     await prisma.gbpLink.updateMany({
@@ -70,7 +93,9 @@ export async function syncLink(link: LinkRef): Promise<SyncResult> {
         ...(total != null ? { review_count: total } : {}),
       },
     });
-    return { ok: true, synced };
+    return finished && total != null && seen === total
+      ? { ok: true, synced, complete: { since } }
+      : { ok: true, synced };
   } catch (err) {
     if (!(err instanceof GbpError)) throw err;
     // Here the only resource asked about is this link's location, so a 404 means it is gone
