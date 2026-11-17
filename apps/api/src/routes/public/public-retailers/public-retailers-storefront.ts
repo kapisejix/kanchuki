@@ -2,10 +2,12 @@
 import { prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
 import { getPlaceRating } from '../../../lib/google-places.js';
-import { placeMatchesShop } from '../../../lib/place-match.js';
+import { placeMatchesShop, placeNameWords } from '../../../lib/place-match.js';
 import { withPublicCache } from '../../../lib/public-cache.js';
 import { notFound } from '../../../plugins/error-handler.js';
-const MAX_CLAIMANTS = 10; // other stores claiming one place id that we are willing to inspect
+// Look-alike stores (same distinctive name word) claiming one place id that we will inspect;
+// past this the claim is too crowded to call and the badge stays hidden.
+const MAX_CLAIMANTS = 50;
 
 export const publicRetailersStorefrontRoutes: FastifyPluginAsync = async (server) => {
   // ─── GET /public/retailers/:slug ─────────────────────────────────
@@ -73,9 +75,24 @@ export const publicRetailersStorefrontRoutes: FastifyPluginAsync = async (server
       if (placeId) {
         const place = await getPlaceRating(placeId).catch(() => null);
         if (place && placeMatchesShop(place, retailer)) {
+          // Only look-alikes can make this ambiguous, so only they are fetched (in the DB): a
+          // rival cannot push the real match out of the page with non-matching claims.
+          const words = placeNameWords(place.name);
+          const lookAlike = words.length
+            ? {
+                OR: words.map((w) => ({
+                  shop_name: { contains: w, mode: 'insensitive' as const },
+                })),
+              }
+            : { shop_name: { equals: place.name, mode: 'insensitive' as const } };
           const others = await prisma.retailer
             .findMany({
-              where: { google_place_id: placeId, deleted_at: null, id: { not: retailer.id } },
+              where: {
+                google_place_id: placeId,
+                deleted_at: null,
+                id: { not: retailer.id },
+                ...lookAlike,
+              },
               select: { shop_name: true, city: true },
               take: MAX_CLAIMANTS,
             })

@@ -125,14 +125,28 @@ describe('google_rating on the public store profile', () => {
     expect(where.id).toEqual({ not: 'ret1' });
   });
 
+  it('only claimants that share a distinctive word with the place are fetched (non-matching padding never fills the page)', async () => {
+    await get();
+    const where = m.retailerFindMany.mock.calls[0]?.[0].where;
+    expect(where.OR).toEqual([{ shop_name: { contains: 'asha', mode: 'insensitive' } }]);
+  });
+
+  it('a place name made only of generic words fetches exact-name claimants only', async () => {
+    m.rating.mockResolvedValue({ ...PLACE, name: 'Fashion Store' });
+    m.retailerFind.mockResolvedValue({ ...RETAILER, shop_name: 'Fashion Store' });
+    await get();
+    const where = m.retailerFindMany.mock.calls[0]?.[0].where;
+    expect(where.shop_name).toEqual({ equals: 'Fashion Store', mode: 'insensitive' });
+  });
+
   it('a rival who merely pasted the same place id (name does not match) cannot hide the real shop', async () => {
     m.retailerFindMany.mockResolvedValue([{ shop_name: 'Rival Sarees', city: 'Ludhiana' }]);
     expect((await get()).json().data.google_rating).toMatchObject({ rating: 4.6, count: 123 });
   });
 
-  it('so many claimants that the check cannot see them all → hidden (a rival cannot pad the list to push the real match out)', async () => {
+  it('so many look-alike claimants that the check cannot see them all → hidden (genuinely ambiguous)', async () => {
     m.retailerFindMany.mockResolvedValue(
-      Array.from({ length: 10 }, (_, i) => ({ shop_name: `Rival ${i} Sarees`, city: 'Ludhiana' })),
+      Array.from({ length: 50 }, (_, i) => ({ shop_name: `Rival ${i} Sarees`, city: 'Ludhiana' })),
     );
     expect((await get()).json().data.google_rating).toBeNull();
   });

@@ -3,7 +3,17 @@
  * shop. Fail-safe: when in doubt the badge is hidden, never shown.
  */
 import { describe, expect, it } from 'vitest';
-import { placeMatchesShop } from './place-match.js';
+import { placeMatchesShop, placeNameWords } from './place-match.js';
+
+describe('placeNameWords (what a rival claimant must share to matter)', () => {
+  it('distinctive words only, lowercase, no generic shop words', () => {
+    expect(placeNameWords('Asha Fashion Boutique')).toEqual(['asha']);
+    expect(placeNameWords("Meera's Royal Sarees")).toEqual(['meera', 'royal']);
+  });
+  it('a name of only generic words has none (the caller then needs an exact name)', () => {
+    expect(placeNameWords('Fashion Store')).toEqual([]);
+  });
+});
 
 const place = (name: string, address: string) => ({ name, address });
 const shop = (shop_name: string, city: string | null = 'Ludhiana') => ({ shop_name, city });

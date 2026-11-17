@@ -52,6 +52,11 @@ const words = (s: string): string[] =>
     .split(/\s+/)
     .filter((w) => w.length >= 3);
 
+/** Distinctive (non-generic) words of a name: what another store must share to be a look-alike. */
+export function placeNameWords(name: string): string[] {
+  return words(name).filter((w) => !GENERIC.has(w));
+}
+
 export function placeMatchesShop(
   place: { name: string; address: string },
   shop: { shop_name: string; city: string | null },
