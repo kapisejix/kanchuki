@@ -4,6 +4,7 @@ export * from './embedder.js';
 export * from './r2.js';
 export * from './detector.js';
 export * from './campaign-assistant.js';
+export * from './review-reply.js';
 export * from './safe-fetch.js';
 export * from './image-quality.js';
 export * from './image-compress.js';
