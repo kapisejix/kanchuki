@@ -18,7 +18,7 @@ vi.mock('@kanchuki/db', () => ({
   prisma: { gbpLink: { findMany: m.findMany } },
   getPurgePrisma: () => ({ $executeRawUnsafe: m.purgeExec }),
 }));
-vi.mock('../instrument.js', () => ({ Sentry: { captureMessage: vi.fn() } }));
+vi.mock('../instrument.js', () => ({ Sentry: { captureMessage: vi.fn(), captureException: vi.fn() } }));
 vi.mock('../lib/features.js', () => ({ hasFeature: m.hasFeature }));
 vi.mock('../lib/gbp-sync.js', () => ({ syncLink: m.syncLink, FULL_WALK_PAGES: 40 }));
 vi.mock('../lib/google-business.js', () => ({
@@ -76,5 +76,47 @@ describe('handleGbpReviewSync: vanished reviews', () => {
     m.syncLink.mockResolvedValue({ ok: false, code: 'UNAVAILABLE' });
     await handleGbpReviewSync();
     expect(vanishCalls()).toHaveLength(0);
+  });
+});
+
+/** Audit minor A: a Google outage must not walk all 500 links, and one throw must not end the run. */
+describe('handleGbpReviewSync: outage and thrown errors', () => {
+  const links = (n: number) =>
+    Array.from({ length: n }, (_, i) => ({ ...LINK, id: `l${i}`, retailer_id: `r${i}` }));
+
+  it('stops after 5 consecutive UNAVAILABLE results instead of walking every link', async () => {
+    m.findMany.mockResolvedValue(links(8));
+    m.syncLink.mockResolvedValue({ ok: false, code: 'UNAVAILABLE' });
+    const res = await handleGbpReviewSync();
+    expect(m.syncLink).toHaveBeenCalledTimes(5);
+    expect(res).toMatchObject({ failed: 5, stoppedEarly: true });
+  });
+
+  it('a success in between resets the consecutive count', async () => {
+    m.findMany.mockResolvedValue(links(7));
+    const down = { ok: false, code: 'UNAVAILABLE' };
+    m.syncLink
+      .mockResolvedValueOnce(down)
+      .mockResolvedValueOnce(down)
+      .mockResolvedValueOnce(down)
+      .mockResolvedValueOnce(down)
+      .mockResolvedValueOnce({ ok: true, synced: 1 })
+      .mockResolvedValueOnce(down)
+      .mockResolvedValueOnce(down);
+    const res = await handleGbpReviewSync();
+    expect(m.syncLink).toHaveBeenCalledTimes(7);
+    expect(res).toMatchObject({ synced: 1, failed: 6, stoppedEarly: false });
+  });
+
+  it('a thrown error fails that link only: the rest still sync and the purge still runs', async () => {
+    m.findMany.mockResolvedValue(links(2));
+    m.syncLink
+      .mockRejectedValueOnce(new Error('db hiccup'))
+      .mockResolvedValueOnce({ ok: true, synced: 2 });
+    const res = await handleGbpReviewSync();
+    expect(res).toMatchObject({ synced: 2, failed: 1, stoppedEarly: false });
+    expect(
+      m.purgeExec.mock.calls.some((c) => String(c[0]).includes("status = 'UNLINKED'")),
+    ).toBe(true);
   });
 });
