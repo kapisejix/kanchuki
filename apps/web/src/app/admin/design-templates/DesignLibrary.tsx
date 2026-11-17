@@ -79,6 +79,21 @@ async function apiError(res: Response, fallback: string): Promise<string> {
   }
 }
 
+// An AI poster holds one product: derive slots (and pull layer indexes in) instead of trusting
+// whatever was stored or typed last.
+const effectiveSlots = (d: Draft) => (d.ai_prompt.trim() ? 1 : d.product_slots);
+const effectiveLayers = (d: Draft): DesignLayer[] =>
+  effectiveSlots(d) === 1
+    ? d.layers.map((l) => (l.type !== 'rect' && (l.index ?? 0) > 0 ? { ...l, index: 0 } : l))
+    : d.layers;
+
+// Bottom-third scrim sized to the chosen canvas so it always passes parseDesignSpec.
+const rectDefault = (format: DesignFormat): DesignLayer => {
+  const { w, h } = DESIGN_FORMATS[format];
+  const y = Math.round(h * 0.65);
+  return { type: 'rect', x: 0, y, w, h: h - y, color: '#000000', opacity: 0.5 };
+};
+
 const num = (v: string, fallback: number) => (v.trim() === '' || Number.isNaN(+v) ? fallback : +v);
 
 const INPUT = 'w-full rounded border border-gray-300 px-2 py-1 text-sm';
@@ -130,8 +145,8 @@ export default function DesignLibrary() {
           method: 'POST',
           body: JSON.stringify({
             format: draft.format,
-            product_slots: draft.product_slots,
-            spec: { layers: draft.layers },
+            product_slots: effectiveSlots(draft),
+            spec: { layers: effectiveLayers(draft) },
             background_key: draft.background_key,
           }),
         });
@@ -221,9 +236,9 @@ export default function DesignLibrary() {
         occasion: draft.occasion.trim() || null,
         ai_prompt: draft.ai_prompt.trim() || null,
         format: draft.format,
-        product_slots: draft.product_slots,
+        product_slots: effectiveSlots(draft),
         plans: draft.plans,
-        spec: { layers: draft.layers },
+        spec: { layers: effectiveLayers(draft) },
         background_key: draft.background_key,
       };
       const opts = await adminMutateOptions();
@@ -296,7 +311,10 @@ export default function DesignLibrary() {
                       <p className="font-medium text-gray-900">
                         {d.name}
                         {d.ai_prompt && (
-                          <span className="ml-2 rounded bg-purple-100 px-1.5 py-0.5 text-xs text-purple-800">
+                          <span
+                            aria-label="AI poster"
+                            className="ml-2 rounded bg-purple-100 px-1.5 py-0.5 text-xs text-purple-800"
+                          >
                             AI
                           </span>
                         )}
@@ -383,6 +401,7 @@ export default function DesignLibrary() {
                 <Field id="dt-ai" label="AI scene prompt">
                   <textarea
                     id="dt-ai"
+                    aria-describedby="dt-ai-hint"
                     className={INPUT}
                     rows={3}
                     value={draft.ai_prompt}
@@ -395,7 +414,7 @@ export default function DesignLibrary() {
                     }
                   />
                 </Field>
-                <p className="text-xs text-gray-500">
+                <p id="dt-ai-hint" className="text-xs text-gray-500">
                   Describe the setting and mood, and ask for empty space where the text sits. The
                   system adds the no-text and keep-garment rules itself.
                   {draft.ai_prompt.trim() && ' An AI poster holds one product, so it is set to 1.'}
@@ -541,18 +560,7 @@ export default function DesignLibrary() {
                     className="rounded border px-2 py-1 disabled:opacity-40"
                     onClick={() =>
                       patch({
-                        layers: [
-                          ...draft.layers,
-                          {
-                            type: 'rect',
-                            x: 0,
-                            y: 900,
-                            w: 1080,
-                            h: 450,
-                            color: '#000000',
-                            opacity: 0.5,
-                          },
-                        ],
+                        layers: [...draft.layers, rectDefault(draft.format)],
                       })
                     }
                   >
@@ -633,7 +641,7 @@ export default function DesignLibrary() {
                         id={`l${i}-idx`}
                         type="number"
                         min={0}
-                        max={draft.product_slots - 1}
+                        max={effectiveSlots(draft) - 1}
                         className={INPUT}
                         value={l.index ?? 0}
                         onChange={(e) => patchLayer(i, { index: num(e.target.value, 0) })}

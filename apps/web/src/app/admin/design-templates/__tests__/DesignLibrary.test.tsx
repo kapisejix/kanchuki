@@ -1,3 +1,4 @@
+import { DESIGN_FORMATS, type DesignFormat, parseDesignSpec } from '@kanchuki/shared';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import DesignLibrary from '../DesignLibrary';
@@ -98,5 +99,58 @@ describe('DesignLibrary AI poster + rect', () => {
     await openEdit('Plain');
     fireEvent.click(screen.getByText('+ Rect'));
     expect(screen.getByText('2. rect')).toBeTruthy();
+  });
+
+  it.each(Object.keys(DESIGN_FORMATS) as DesignFormat[])(
+    '+ Rect default fits the %s canvas',
+    async (format) => {
+      render(<DesignLibrary />);
+      await openEdit('Plain');
+      fireEvent.change(screen.getByLabelText('Format'), { target: { value: format } });
+      fireEvent.click(screen.getByText('+ Rect'));
+      fireEvent.click(screen.getByText('Save changes'));
+      await waitFor(() => expect(saved).not.toBeNull());
+      const layers = (saved?.body.spec as { layers: unknown[] }).layers;
+      expect(parseDesignSpec({ layers: [layers[1]] }, format, 1).ok).toBe(true);
+    },
+  );
+
+  it('saves product_slots 1 for a loaded AI design with 3 slots and clamps layer index', async () => {
+    DESIGNS.push({
+      ...base,
+      id: 'd3',
+      name: 'Legacy',
+      product_slots: 3,
+      ai_prompt: 'x',
+      spec: {
+        layers: [
+          {
+            type: 'text',
+            var: 'product_name',
+            index: 2,
+            x: 0,
+            y: 0,
+            size: 40,
+            font: 'sans',
+            color: '#000000',
+          },
+        ],
+      },
+    } as never);
+    render(<DesignLibrary />);
+    await openEdit('Legacy');
+    fireEvent.click(screen.getByText('Save changes'));
+    await waitFor(() => expect(saved).not.toBeNull());
+    DESIGNS.pop();
+    expect(saved?.body.product_slots).toBe(1);
+    expect((saved?.body.spec as { layers: { index: number }[] }).layers[0]?.index).toBe(0);
+  });
+
+  it('links badge and textarea accessibility attributes', async () => {
+    render(<DesignLibrary />);
+    await screen.findByLabelText('AI poster');
+    fireEvent.click(screen.getAllByText('Edit')[0] as HTMLElement);
+    const ta = screen.getByLabelText('AI scene prompt');
+    expect(document.getElementById(ta.getAttribute('aria-describedby') ?? 'none')).toBeTruthy();
   });
 });
