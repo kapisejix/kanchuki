@@ -12,7 +12,7 @@ import { compressImageToTarget, publicUrl, uploadBuffer } from '@kanchuki/ai';
 import { prisma } from '@kanchuki/db';
 import { PRODUCT_DEMOGRAPHICS, R2_PATHS, STUDIO_ENGINES } from '@kanchuki/shared';
 import { z } from 'zod';
-import { generateImageToVideo } from '../../lib/fal-video.js';
+import { generateImageToVideo, getVideoModel } from '../../lib/fal-video.js';
 import { detectGarmentPartsFromUrl } from '../../lib/garment-parts.js';
 import { runPhotoCleanup, serializePhotoCleanup } from '../../lib/photo-cleanup-runner.js';
 import {
@@ -415,16 +415,45 @@ export const adminPhotoCleanupRoutes: FastifyPluginAsync = async (server) => {
     };
   });
 
+  // ─── GET /admin/photo-cleanup/video-models ────────────────────────
+  // F-034 T4: the bench model list and its price source, straight from
+  // `video_models` (enabled or not: the bench tests a model before it is on).
+  server.get('/photo-cleanup/video-models', async () => {
+    const rows = await prisma.videoModel.findMany({
+      orderBy: { model_key: 'asc' },
+      select: {
+        model_key: true,
+        label: true,
+        endpoint: true,
+        price_usd_per_second: true,
+        price_usd_per_million_tokens: true,
+        notes: true,
+        enabled: true,
+        removal_date: true,
+      },
+    });
+    return {
+      data: rows.map((r) => ({
+        ...r,
+        price_usd_per_second:
+          r.price_usd_per_second == null ? null : Number(r.price_usd_per_second),
+        price_usd_per_million_tokens:
+          r.price_usd_per_million_tokens == null ? null : Number(r.price_usd_per_million_tokens),
+      })),
+    };
+  });
+
   // ─── POST /admin/photo-cleanup/image-to-video ─────────────────────
   // F-034 AI Promo Video test bench — the video sibling of /studio-shoot.
   // Synchronous, admin-only, no BullMQ / quota / ProductVideo row (this is a
   // test page; the retailer path in products-video-ai.ts is the async one).
-  // Photo URL in → Fal image→video → ffmpeg crop/trim → mp4 in R2 → url out.
+  // Photo URL in → Fal image→video → ffmpeg crop/trim → mp4 in R2 → url +
+  // what Fal bills for the clip (cost from the DB price) out.
   server.post('/photo-cleanup/image-to-video', async (request) => {
     const body = z
       .object({
         product_url: z.string().url(),
-        model: z.enum(['seedance', 'wan', 'kling_std', 'kling_pro', 'luma']),
+        model: z.string().min(1).max(100),
         // Free text on the bench; a curated studio_styles prompt on the
         // retailer side (Phase 2).
         motion_prompt: z.string().min(1).max(2000),
@@ -433,8 +462,11 @@ export const adminPhotoCleanupRoutes: FastifyPluginAsync = async (server) => {
       })
       .parse(request.body);
 
-    const mp4 = await generateImageToVideo(body.product_url, {
-      model: body.model,
+    const model = await getVideoModel(body.model);
+    if (!model) throw new AppError('NOT_FOUND', `Unknown video model: ${body.model}`, 404);
+
+    const { mp4, usage } = await generateImageToVideo(body.product_url, {
+      model,
       motionPrompt: body.motion_prompt,
       aspect: body.aspect,
       seconds: body.seconds,
@@ -442,7 +474,7 @@ export const adminPhotoCleanupRoutes: FastifyPluginAsync = async (server) => {
 
     const key = R2_PATHS.photoCleanupTest(`promo-${randomUUID()}.mp4`);
     await uploadBuffer(key, mp4, 'video/mp4');
-    return { data: { result_url: publicUrl(key) } };
+    return { data: { result_url: publicUrl(key), usage } };
   });
 
   // ─── GET /admin/photo-cleanup/tryon-results ────────────────────────

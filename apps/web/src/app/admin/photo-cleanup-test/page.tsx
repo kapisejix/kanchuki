@@ -114,17 +114,39 @@ type BenchRow = {
   ranAt: string;
 };
 
-// F-034 AI Promo Video bench — Fal image→video models (per-clip ₹ bands from
-// PRO-REQUIREMENTS §30; the exact band sits in fal-video.ts's VIDEO_MODELS).
-const VIDEO_MODELS = [
-  { value: 'seedance', label: 'Seedance (ByteDance) — ₹13–34' },
-  { value: 'wan', label: 'WAN 2.x (Alibaba) — ₹15–34' },
-  { value: 'kling_std', label: 'Kling 1.6 std — ₹21–30' },
-  { value: 'kling_pro', label: 'Kling Pro / 2.x — ₹42–85' },
-  { value: 'luma', label: 'Luma Ray 2 — ₹40–170' },
-] as const;
+// F-034 AI Promo Video bench — Fal image→video models come from the
+// `video_models` table (GET /admin/photo-cleanup/video-models), prices in USD
+// as Fal lists them. Nothing about models or prices is hardcoded here.
+type VideoModelRow = {
+  model_key: string;
+  label: string;
+  endpoint: string;
+  price_usd_per_second: number | null;
+  price_usd_per_million_tokens: number | null;
+  notes: string | null;
+  enabled: boolean;
+  removal_date: string | null;
+};
 
-type PromoModel = (typeof VIDEO_MODELS)[number]['value'];
+function videoModelLabel(m: VideoModelRow): string {
+  const price =
+    m.price_usd_per_second != null
+      ? `$${m.price_usd_per_second}/s`
+      : m.price_usd_per_million_tokens != null
+        ? `$${m.price_usd_per_million_tokens}/1M tokens`
+        : 'no price';
+  const off = m.enabled ? '' : ' · off for retailers';
+  const gone = m.removal_date ? ` · removed ${m.removal_date.slice(0, 10)}` : '';
+  return `${m.label} — ${price}${off}${gone}`;
+}
+
+type PromoUsage = {
+  billed_seconds: number | null;
+  tokens: number | null;
+  cost_usd: number | null;
+};
+
+type PromoModel = string;
 type PromoAspect = '9:16' | '16:9' | '1:1' | '4:5';
 type PromoSeconds = 5 | 6 | 8;
 
@@ -159,7 +181,7 @@ const PROMO_PRESETS: {
   {
     code: 'MOTION_PUSH_IN_SLOW',
     label: 'Slow Push-In (camera)',
-    model: 'kling_std',
+    model: 'kling_25_turbo_pro',
     aspect: '9:16',
     seconds: 5,
     prompt:
@@ -169,7 +191,7 @@ const PROMO_PRESETS: {
   {
     code: 'MOTION_PULL_BACK_REVEAL',
     label: 'Pull-Back Reveal (camera)',
-    model: 'kling_std',
+    model: 'kling_25_turbo_pro',
     aspect: '9:16',
     seconds: 6,
     prompt:
@@ -179,7 +201,7 @@ const PROMO_PRESETS: {
   {
     code: 'MOTION_SAREE_PALLU_SWAY',
     label: 'Pallu Sway (garment)',
-    model: 'kling_pro',
+    model: 'kling_26_pro',
     aspect: '9:16',
     seconds: 6,
     prompt:
@@ -189,7 +211,7 @@ const PROMO_PRESETS: {
   {
     code: 'MOTION_TWIRL_FLARE',
     label: 'Twirl Flare (garment)',
-    model: 'luma',
+    model: 'kling_26_pro',
     aspect: '9:16',
     seconds: 8,
     prompt:
@@ -199,7 +221,7 @@ const PROMO_PRESETS: {
   {
     code: 'MOTION_TURN_TO_CAMERA',
     label: 'Turn to Camera (action)',
-    model: 'kling_std',
+    model: 'kling_25_turbo_pro',
     aspect: '9:16',
     seconds: 5,
     prompt:
@@ -209,7 +231,7 @@ const PROMO_PRESETS: {
   {
     code: 'MOTION_BREEZE_AND_HAIR',
     label: 'Breeze + Hair (ambient)',
-    model: 'seedance',
+    model: 'seedance_1_pro_fast',
     aspect: '9:16',
     seconds: 5,
     prompt:
@@ -565,7 +587,8 @@ export default function PhotoCleanupTestPage() {
   };
 
   // AI Promo Video (F-034) — Fal image→video bench, sibling of studio shoot.
-  const [promoModel, setPromoModel] = useState<PromoModel>('kling_std');
+  const [videoModels, setVideoModels] = useState<VideoModelRow[]>([]);
+  const [promoModel, setPromoModel] = useState<PromoModel>('kling_25_turbo_pro');
   const [promoAspect, setPromoAspect] = useState<PromoAspect>('9:16');
   const [promoSeconds, setPromoSeconds] = useState<PromoSeconds>(5);
   const [promoPreset, setPromoPreset] = useState<string>(PROMO_PRESETS[0].code);
@@ -579,6 +602,7 @@ export default function PhotoCleanupTestPage() {
       model: PromoModel;
       aspect: PromoAspect;
       seconds: PromoSeconds;
+      usage: PromoUsage | null;
       ranAt: string;
     }[]
   >([]);
@@ -610,6 +634,7 @@ export default function PhotoCleanupTestPage() {
           model: promoModel,
           aspect: promoAspect,
           seconds: promoSeconds,
+          usage: json.data.usage ?? null,
           ranAt: new Date().toLocaleTimeString(),
         },
         ...prev,
@@ -625,6 +650,13 @@ export default function PhotoCleanupTestPage() {
   const sampleRef = useRef<HTMLInputElement>(null);
   const bgRef = useRef<HTMLInputElement>(null);
   const modelRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    fetch(`${API_URL}/v1/admin/photo-cleanup/video-models`, adminGetOptions())
+      .then((r) => r.json())
+      .then((json) => setVideoModels(json.data ?? []))
+      .catch(() => setError('Could not load video models'));
+  }, []);
 
   useEffect(() => {
     fetch(`${API_URL}/v1/admin/background-images`, adminGetOptions())
@@ -1606,9 +1638,9 @@ export default function PhotoCleanupTestPage() {
               onChange={(e) => setPromoModel(e.target.value as PromoModel)}
               className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2"
             >
-              {VIDEO_MODELS.map((m) => (
-                <option key={m.value} value={m.value}>
-                  {m.label}
+              {videoModels.map((m) => (
+                <option key={m.model_key} value={m.model_key}>
+                  {videoModelLabel(m)}
                 </option>
               ))}
             </select>
@@ -1732,6 +1764,8 @@ export default function PhotoCleanupTestPage() {
                 <div className="px-3 py-2 flex items-center justify-between gap-2 text-xs text-gray-500">
                   <span className="truncate">
                     {r.model} · {r.aspect} · {r.seconds}s
+                    {r.usage?.cost_usd != null && ` · $${r.usage.cost_usd}`}
+                    {r.usage?.tokens != null && ` · ${r.usage.tokens.toLocaleString()} tokens`}
                   </span>
                   <span>{r.ranAt}</span>
                 </div>
