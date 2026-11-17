@@ -306,7 +306,11 @@ describe('access token refresh (audit minor C)', () => {
           pending.push({
             bearer,
             resolve: (r) =>
-              res({ ok: r.status >= 200 && r.status < 300, status: r.status, json: async () => r.body }),
+              res({
+                ok: r.status >= 200 && r.status < 300,
+                status: r.status,
+                json: async () => r.body,
+              }),
           }),
         );
       }),

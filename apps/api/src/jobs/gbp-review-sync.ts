@@ -13,7 +13,7 @@ import { GBP_KEYS, gbpApiApproved, getGbpSetting } from '../lib/google-business.
 
 const GAP_MS = 200; // stay far under Google's ~300 requests/min once approved
 const MAX_CONSECUTIVE_UNAVAILABLE = 5;
-const PLATFORM_CODES =new Set(['NOT_APPROVED', 'TOKEN_REVOKED', 'NOT_CONNECTED']);
+const PLATFORM_CODES = new Set(['NOT_APPROVED', 'TOKEN_REVOKED', 'NOT_CONNECTED']);
 
 export type GbpSyncSummary =
   | { skipped: 'not_ready' }

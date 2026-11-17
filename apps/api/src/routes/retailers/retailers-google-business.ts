@@ -302,9 +302,8 @@ export const retailersGoogleBusinessRoutes: FastifyPluginAsync = async (server) 
     async (request) => {
       requireReplier(request);
       const body = ReplyBody.safeParse(request.body);
-      if (!body.success) throw validationError(
-          'Write a reply of up to about 4000 English or 1300 Hindi characters',
-        );
+      if (!body.success)
+        throw validationError('Write a reply of up to about 4000 English or 1300 Hindi characters');
       const { link, review } = await ownLinkedReview(request, request.params.id);
 
       const refund = await reserveQuota(request.retailerId, 'GBP_REVIEW_REPLY');

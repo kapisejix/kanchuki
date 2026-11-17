@@ -18,7 +18,9 @@ vi.mock('@kanchuki/db', () => ({
   prisma: { gbpLink: { findMany: m.findMany } },
   getPurgePrisma: () => ({ $executeRawUnsafe: m.purgeExec }),
 }));
-vi.mock('../instrument.js', () => ({ Sentry: { captureMessage: vi.fn(), captureException: vi.fn() } }));
+vi.mock('../instrument.js', () => ({
+  Sentry: { captureMessage: vi.fn(), captureException: vi.fn() },
+}));
 vi.mock('../lib/features.js', () => ({ hasFeature: m.hasFeature }));
 vi.mock('../lib/gbp-sync.js', () => ({ syncLink: m.syncLink, FULL_WALK_PAGES: 40 }));
 vi.mock('../lib/google-business.js', () => ({
@@ -115,8 +117,8 @@ describe('handleGbpReviewSync: outage and thrown errors', () => {
       .mockResolvedValueOnce({ ok: true, synced: 2 });
     const res = await handleGbpReviewSync();
     expect(res).toMatchObject({ synced: 2, failed: 1, stoppedEarly: false });
-    expect(
-      m.purgeExec.mock.calls.some((c) => String(c[0]).includes("status = 'UNLINKED'")),
-    ).toBe(true);
+    expect(m.purgeExec.mock.calls.some((c) => String(c[0]).includes("status = 'UNLINKED'"))).toBe(
+      true,
+    );
   });
 });
