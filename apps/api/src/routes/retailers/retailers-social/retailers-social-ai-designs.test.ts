@@ -40,7 +40,7 @@ vi.mock('@kanchuki/db', () => ({
 
 const { retailersSocialAiDesignsRoutes } = await import('./retailers-social-ai-designs.js');
 
-async function buildApp(staffRole: 'manager' | null = null) {
+async function buildApp(staffRole: 'manager' | null = null, delegate = false) {
   const app = Fastify();
   app.setErrorHandler(errorHandler);
   app.decorateRequest('retailerId', '');
@@ -50,6 +50,7 @@ async function buildApp(staffRole: 'manager' | null = null) {
   app.addHook('preHandler', async (request) => {
     request.retailerId = 'r1';
     (request as any).staffRole = staffRole;
+    if (delegate) (request as any).catalogDelegate = { team_member_id: 't1', ticket_id: 'k1' };
   });
   await app.register(retailersSocialAiDesignsRoutes, { prefix: '/v1/retailers' });
   return app;
@@ -258,5 +259,35 @@ describe('POST /me/ai-designs (poster)', () => {
     const res = await post(await buildApp(), poster);
     expect(res.statusCode).toBeGreaterThanOrEqual(500);
     expect(m.refund).toHaveBeenCalledWith(expect.any(String), 'AI_CUSTOM_TEMPLATE');
+  });
+});
+
+describe('POST /me/ai-designs (poster) gaps', () => {
+  const poster = { product_id: 'p1', template_id: 'd1' };
+
+  it('catalog delegate session -> 403, nothing reserved', async () => {
+    const res = await post(await buildApp(null, true), poster);
+    expect(res.statusCode).toBe(403);
+    expect(m.reserve).not.toHaveBeenCalled();
+  });
+
+  it('non-AI template (lookup returns null) -> 404, looked up by id + plan, no reserve', async () => {
+    m.poster.mockResolvedValue(null);
+    const res = await post(await buildApp(), { ...poster, template_id: 'plain1' });
+    expect(res.statusCode).toBe(404);
+    expect(m.poster).toHaveBeenCalledWith('plain1', 'PRO');
+    expect(m.reserve).not.toHaveBeenCalled();
+  });
+
+  it('a body with both template_id and prompt takes the poster path, prompt ignored', async () => {
+    const res = await post(await buildApp(), {
+      ...poster,
+      prompt: 'warm Diwali diyas with soft bokeh',
+    });
+    expect(res.statusCode).toBe(202);
+    expect(m.designCreate.mock.calls[0]?.[0].data.prompt).toBe('Poster: Diwali Gold');
+    expect(m.enqueue).toHaveBeenCalledWith(
+      expect.objectContaining({ template_id: 'd1', prompt: 'Poster: Diwali Gold' }),
+    );
   });
 });
