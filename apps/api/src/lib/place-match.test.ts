@@ -10,8 +10,8 @@ describe('placeNameWords (what a rival claimant must share to matter)', () => {
     expect(placeNameWords('Asha Fashion Boutique')).toEqual(['asha']);
     expect(placeNameWords("Meera's Royal Sarees")).toEqual(['meera', 'royal']);
   });
-  it('a name of only generic words has none (the caller then needs an exact name)', () => {
-    expect(placeNameWords('Fashion Store')).toEqual([]);
+  it('a name of only generic words falls back to ALL its words, so the DB pre-filter stays a superset of placeMatchesShop', () => {
+    expect(placeNameWords('Fashion Store')).toEqual(['fashion', 'store']);
   });
 });
 

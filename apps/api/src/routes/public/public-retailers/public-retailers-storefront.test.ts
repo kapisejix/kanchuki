@@ -131,12 +131,19 @@ describe('google_rating on the public store profile', () => {
     expect(where.OR).toEqual([{ shop_name: { contains: 'asha', mode: 'insensitive' } }]);
   });
 
-  it('a place name made only of generic words fetches exact-name claimants only', async () => {
+  it('a place name made only of generic words still pre-filters by word (a superset of the JS match, so "Fashion-Store." is not missed)', async () => {
     m.rating.mockResolvedValue({ ...PLACE, name: 'Fashion Store' });
     m.retailerFind.mockResolvedValue({ ...RETAILER, shop_name: 'Fashion Store' });
-    await get();
+    m.retailerFindMany.mockResolvedValue([{ shop_name: 'Fashion-Store.', city: 'Ludhiana' }]);
+    const res = await get();
     const where = m.retailerFindMany.mock.calls[0]?.[0].where;
-    expect(where.shop_name).toEqual({ equals: 'Fashion Store', mode: 'insensitive' });
+    expect(where.OR).toEqual([
+      { shop_name: { contains: 'fashion', mode: 'insensitive' } },
+      { shop_name: { contains: 'store', mode: 'insensitive' } },
+    ]);
+    expect(where.shop_name).toBeUndefined();
+    // that look-alike is then judged by the same matcher and makes the claim ambiguous
+    expect(res.json().data.google_rating).toBeNull();
   });
 
   it('a rival who merely pasted the same place id (name does not match) cannot hide the real shop', async () => {

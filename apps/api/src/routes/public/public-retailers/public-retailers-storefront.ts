@@ -78,13 +78,11 @@ export const publicRetailersStorefrontRoutes: FastifyPluginAsync = async (server
           // Only look-alikes can make this ambiguous, so only they are fetched (in the DB): a
           // rival cannot push the real match out of the page with non-matching claims.
           const words = placeNameWords(place.name);
-          const lookAlike = words.length
-            ? {
-                OR: words.map((w) => ({
-                  shop_name: { contains: w, mode: 'insensitive' as const },
-                })),
-              }
-            : { shop_name: { equals: place.name, mode: 'insensitive' as const } };
+          // placeNameWords is a superset of what placeMatchesShop accepts, so this filter can
+          // never drop a claimant the matcher below would have counted.
+          const lookAlike = {
+            OR: words.map((w) => ({ shop_name: { contains: w, mode: 'insensitive' as const } })),
+          };
           const others = await prisma.retailer
             .findMany({
               where: {

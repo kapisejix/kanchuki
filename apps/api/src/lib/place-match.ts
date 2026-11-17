@@ -52,9 +52,16 @@ const words = (s: string): string[] =>
     .split(/\s+/)
     .filter((w) => w.length >= 3);
 
-/** Distinctive (non-generic) words of a name: what another store must share to be a look-alike. */
+/**
+ * Words another store must contain to be a look-alike of this place name: its distinctive
+ * words, or all its words when it has none. Always a superset of what placeMatchesShop accepts
+ * (every matching shop name contains at least one of them), so a database pre-filter on these
+ * can never hide a claimant the matcher would have counted.
+ */
 export function placeNameWords(name: string): string[] {
-  return words(name).filter((w) => !GENERIC.has(w));
+  const all = words(name);
+  const distinctive = all.filter((w) => !GENERIC.has(w));
+  return distinctive.length > 0 ? distinctive : all;
 }
 
 export function placeMatchesShop(
