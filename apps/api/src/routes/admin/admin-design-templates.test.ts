@@ -170,6 +170,23 @@ describe('admin design-templates', () => {
     expect(mockCreate).not.toHaveBeenCalled();
   });
 
+  it('audit rows record which admin acted (actor_id)', async () => {
+    mockCreate.mockResolvedValueOnce({ id: 't1', name: 'X', format: 'PORTRAIT_4_5' });
+    const app = Fastify();
+    app.setErrorHandler(errorHandler);
+    app.addHook('onRequest', async (request) => {
+      request.adminId = 'admin@kanchuki.test';
+    });
+    await app.register(adminDesignTemplateRoutes);
+    await app.ready();
+    await app.inject({
+      method: 'POST',
+      url: '/design-templates',
+      payload: { name: 'X', spec: goodSpec },
+    });
+    expect(mockAudit.mock.calls[0]?.[0].data.actor_id).toBe('admin@kanchuki.test');
+  });
+
   it('POST blank ai_prompt becomes null', async () => {
     mockCreate.mockResolvedValueOnce({ id: 't1', name: 'X' });
     const app = await buildApp();

@@ -30,6 +30,14 @@ function ReviewRow({ review }: { review: GbpReview }) {
   const [text, setText] = useState(review.reply?.comment ?? '')
   const [draftSource, setDraftSource] = useState<'ai' | 'template' | null>(null)
 
+  // Every open starts from the CURRENT reply: an abandoned draft is gone, and a reply that changed
+  // on Google since the last open is never overwritten by a stale copy of the old text.
+  const openEditor = () => {
+    setText(review.reply?.comment ?? '')
+    setDraftSource(null)
+    setEditing(true)
+  }
+
   // The reply shows ONLY after the server (and Google) confirmed it — we refetch, not guess.
   const send = useMutation({
     mutationFn: () => googleBusinessApi.reply(review.id, text.trim()),
@@ -128,7 +136,7 @@ function ReviewRow({ review }: { review: GbpReview }) {
         </View>
       ) : (
         <AnimatedPressable
-          onPress={() => setEditing(true)}
+          onPress={openEditor}
           accessibilityRole="button"
           accessibilityLabel={review.reply ? 'Edit your reply' : 'Reply to this review'}
           className="mt-3 self-start py-2 min-h-[44px] justify-center"

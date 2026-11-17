@@ -121,7 +121,7 @@ function checkSpec(raw: unknown, format: DesignFormat, slots: number) {
 }
 
 const audit = (
-  request: { ip: string },
+  request: { ip: string; adminId?: string },
   action: string,
   id: string,
   metadata: Prisma.InputJsonValue,
@@ -129,6 +129,7 @@ const audit = (
   prisma.auditLog.create({
     data: {
       actor_type: 'admin',
+      actor_id: request.adminId ?? null,
       action,
       resource_type: 'DesignTemplate',
       resource_id: id,

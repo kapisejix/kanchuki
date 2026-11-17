@@ -199,6 +199,29 @@ describe('reviews + replies: owner and manager only', () => {
     });
   });
 
+  // Audit minor E: Google's limit is bytes, and Devanagari is 3 bytes per character.
+  it('refuses a Hindi reply over 4096 bytes with a 422 before calling Google', async () => {
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: `${base}/reviews/rev1/reply`,
+      payload: { comment: 'ध'.repeat(1400) },
+    });
+    expect(res.statusCode).toBe(422);
+    expect(m.reply).not.toHaveBeenCalled();
+  });
+
+  it('accepts a Hindi reply just under 4096 bytes', async () => {
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: `${base}/reviews/rev1/reply`,
+      payload: { comment: 'ध'.repeat(1365) },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(m.reply).toHaveBeenCalledTimes(1);
+  });
+
   it('an owner reply is audited as the owner', async () => {
     const app = await buildApp();
     await app.inject({

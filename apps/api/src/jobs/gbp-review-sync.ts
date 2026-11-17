@@ -12,6 +12,7 @@ import { FULL_WALK_PAGES, syncLink } from '../lib/gbp-sync.js';
 import { GBP_KEYS, gbpApiApproved, getGbpSetting } from '../lib/google-business.js';
 
 const GAP_MS = 200; // stay far under Google's ~300 requests/min once approved
+const MAX_CONSECUTIVE_UNAVAILABLE = 5;
 const PLATFORM_CODES = new Set(['NOT_APPROVED', 'TOKEN_REVOKED', 'NOT_CONNECTED']);
 
 export type GbpSyncSummary =
@@ -38,30 +39,52 @@ export async function handleGbpReviewSync(): Promise<GbpSyncSummary> {
   let synced = 0;
   let failed = 0;
   let stoppedEarly = false;
+  let unavailableRun = 0;
   for (const l of links) {
     if (!l.gbp_account_id || !l.gbp_location_id) continue;
     if (!(await hasFeature(l.retailer_id, 'GOOGLE_BUSINESS_PROFILE'))) continue;
-    const res = await syncLink(
-      {
-        id: l.id,
-        retailer_id: l.retailer_id,
-        gbp_account_id: l.gbp_account_id,
-        gbp_location_id: l.gbp_location_id,
-      },
-      { maxPages: FULL_WALK_PAGES },
-    );
-    if (res.ok) {
-      synced += res.synced;
-      if (res.complete) {
-        await deleteVanishedReviews(l.id, l.gbp_account_id, l.gbp_location_id, res.complete.since);
+    // One link's unexpected error (DB hiccup) fails that link only: the rest still sync and the
+    // purge below still runs.
+    try {
+      const res = await syncLink(
+        {
+          id: l.id,
+          retailer_id: l.retailer_id,
+          gbp_account_id: l.gbp_account_id,
+          gbp_location_id: l.gbp_location_id,
+        },
+        { maxPages: FULL_WALK_PAGES },
+      );
+      if (res.ok) {
+        unavailableRun = 0;
+        synced += res.synced;
+        if (res.complete) {
+          await deleteVanishedReviews(
+            l.id,
+            l.gbp_account_id,
+            l.gbp_location_id,
+            res.complete.since,
+          );
+        }
+      } else {
+        failed++;
+        if (PLATFORM_CODES.has(res.code)) {
+          Sentry.captureMessage(`gbp-review-sync stopped: ${res.code}`, 'warning');
+          stoppedEarly = true;
+          break;
+        }
+        // A Google outage would otherwise walk every link (2 tries x 10 s each) and mark every
+        // retailer's tab "could not load". Stop once it is clearly not one retailer's problem.
+        unavailableRun = res.code === 'UNAVAILABLE' ? unavailableRun + 1 : 0;
+        if (unavailableRun >= MAX_CONSECUTIVE_UNAVAILABLE) {
+          Sentry.captureMessage('gbp-review-sync stopped: Google unavailable', 'warning');
+          stoppedEarly = true;
+          break;
+        }
       }
-    } else {
+    } catch (err) {
       failed++;
-      if (PLATFORM_CODES.has(res.code)) {
-        Sentry.captureMessage(`gbp-review-sync stopped: ${res.code}`, 'warning');
-        stoppedEarly = true;
-        break;
-      }
+      Sentry.captureException(err);
     }
     await sleep(GAP_MS);
   }
