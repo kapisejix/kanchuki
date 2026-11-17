@@ -62,19 +62,23 @@ export const publicRetailersStorefrontRoutes: FastifyPluginAsync = async (server
       // A lookup failure must never break the profile, hence the catch; the place id itself
       // stays server-side.
       // The retailer chose this place id themselves and Google proves no ownership, so a place
-      // that is not plausibly the shop (name/city) or that another store also claims is NOT
-      // shown: otherwise anyone could display a neighbour's better rating as their own.
+      // that is not plausibly the shop (name/city) is NOT shown: otherwise anyone could display
+      // a neighbour's better rating as their own. If ANOTHER store that also plausibly is this
+      // place claims the same id, it is ambiguous and hidden for both. A rival whose own name
+      // does not match is ignored, so pasting someone's place id cannot hide their badge.
       const placeId = retailer.google_place_id;
       let rating: Awaited<ReturnType<typeof getPlaceRating>> = null;
       if (placeId) {
         const place = await getPlaceRating(placeId).catch(() => null);
         if (place && placeMatchesShop(place, retailer)) {
-          const claims = await prisma.retailer
-            .count({
+          const others = await prisma.retailer
+            .findMany({
               where: { google_place_id: placeId, deleted_at: null, id: { not: retailer.id } },
+              select: { shop_name: true, city: true },
+              take: 10,
             })
-            .catch(() => 1); // cannot tell: hide
-          if (claims === 0) rating = place;
+            .catch(() => null); // cannot tell: hide
+          if (others && !others.some((o) => placeMatchesShop(place, o))) rating = place;
         }
       }
 

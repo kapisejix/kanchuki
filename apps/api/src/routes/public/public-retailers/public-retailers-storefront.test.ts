@@ -9,14 +9,14 @@ import { errorHandler } from '../../../plugins/error-handler.js';
 
 const m = vi.hoisted(() => ({
   retailerFind: vi.fn(),
-  retailerCount: vi.fn(),
+  retailerFindMany: vi.fn(),
   collectionFind: vi.fn(),
   rating: vi.fn(),
 }));
 
 vi.mock('@kanchuki/db', () => ({
   prisma: {
-    retailer: { findFirst: m.retailerFind, count: m.retailerCount },
+    retailer: { findFirst: m.retailerFind, findMany: m.retailerFindMany },
     collection: { findFirst: m.collectionFind },
   },
 }));
@@ -61,7 +61,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   m.retailerFind.mockResolvedValue(RETAILER);
   m.collectionFind.mockResolvedValue(null);
-  m.retailerCount.mockResolvedValue(0);
+  m.retailerFindMany.mockResolvedValue([]);
   m.rating.mockResolvedValue(PLACE);
 });
 
@@ -117,16 +117,21 @@ describe('google_rating on the public store profile', () => {
     expect((await get()).json().data.google_rating).toBeNull();
   });
 
-  it('another store claims the same place id → hidden for everyone who claims it', async () => {
-    m.retailerCount.mockResolvedValue(1);
+  it('another store that ALSO plausibly is this place claims it → ambiguous, hidden for both', async () => {
+    m.retailerFindMany.mockResolvedValue([{ shop_name: 'Asha Boutique', city: 'Ludhiana' }]);
     expect((await get()).json().data.google_rating).toBeNull();
-    const where = m.retailerCount.mock.calls[0]?.[0].where;
+    const where = m.retailerFindMany.mock.calls[0]?.[0].where;
     expect(where).toMatchObject({ google_place_id: 'ChIJabc123', deleted_at: null });
     expect(where.id).toEqual({ not: 'ret1' });
   });
 
+  it('a rival who merely pasted the same place id (name does not match) cannot hide the real shop', async () => {
+    m.retailerFindMany.mockResolvedValue([{ shop_name: 'Rival Sarees', city: 'Ludhiana' }]);
+    expect((await get()).json().data.google_rating).toMatchObject({ rating: 4.6, count: 123 });
+  });
+
   it('if the duplicate-claim check itself fails → hidden, never shown', async () => {
-    m.retailerCount.mockRejectedValue(new Error('db'));
+    m.retailerFindMany.mockRejectedValue(new Error('db'));
     const res = await get();
     expect(res.statusCode).toBe(200);
     expect(res.json().data.google_rating).toBeNull();
