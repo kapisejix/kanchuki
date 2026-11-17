@@ -20,6 +20,7 @@ const {
   mockPublishFacebookCarousel,
   mockPublishInstagramCarousel,
   mockPublishInstagramPhoto,
+  mockPublishInstagramReel,
   mockClaimSocialPostId,
   mockTemplateFindFirst,
   mockTemplateUpdate,
@@ -55,6 +56,7 @@ const {
     mockPublishFacebookCarousel: vi.fn(),
     mockPublishInstagramCarousel: vi.fn(),
     mockPublishInstagramPhoto: vi.fn(),
+    mockPublishInstagramReel: vi.fn(),
     mockClaimSocialPostId: vi.fn(),
     mockTemplateFindFirst: vi.fn(),
     mockTemplateUpdate: vi.fn(),
@@ -87,6 +89,7 @@ vi.mock('../../../lib/meta-graph.js', () => ({
   publishLinkPost: mockPublishLink,
   publishFacebookCarousel: mockPublishFacebookCarousel,
   publishInstagramCarousel: mockPublishInstagramCarousel,
+  publishInstagramReel: mockPublishInstagramReel,
 }));
 
 vi.mock('./retailers-social-helpers.js', () => ({
@@ -187,6 +190,10 @@ beforeEach(() => {
   mockPublishInstagramPhoto.mockResolvedValue({
     postId: 'ig_post_1',
     permalink: 'https://www.instagram.com/p/Re4lSh0rtc0de/',
+  });
+  mockPublishInstagramReel.mockResolvedValue({
+    postId: 'ig_reel_1',
+    permalink: 'https://www.instagram.com/reel/R33lC0de/',
   });
   mockPostCreate.mockImplementation(async (args: { data: Record<string, unknown> }) => ({
     id: 'sp_1',
@@ -839,8 +846,8 @@ describe('idempotency hardening (finding 1, §12)', () => {
 //     error_message or the envelope. A Meta success + DB-write failure is
 //     recorded as a transient 500 (row write retried), NEVER as a FAILED row
 //     for a live post.
-// 5b. An IG video item posts as its product's primary photo — the recorded
-//     media snapshot must say photo (no silent substitution).
+// 5b. An IG video item posts as a Reel (F-034 T2; it used to post the primary
+//     photo) — the recorded media snapshot says what actually went out.
 describe('findings 3–5 (task doc §12)', () => {
   it('(3) IG single-photo stores the REAL permalink — never fabricated /p/<media-id>', async () => {
     mockAccountFindMany.mockResolvedValue([IG_ACCOUNT]);
@@ -968,44 +975,128 @@ describe('findings 3–5 (task doc §12)', () => {
     expect(mockPostCreate).toHaveBeenCalledTimes(2);
   });
 
-  it('(5b) IG video item posts the primary photo AND the media snapshot says photo, not video', async () => {
-    mockAccountFindMany.mockResolvedValue([IG_ACCOUNT]);
-    // Product has a main video + a primary photo. SINGLE_PRODUCT defaults to
-    // the video; IG's photo-only helper falls back to the primary photo.
-    mockProductFindMany.mockResolvedValue([
+  // F-034 Phase 2 T2 (docs/tasks/pending/ai-promo-video.md): an IG video item
+  // now posts as a Reel. It used to silently post the primary photo (5b).
+  describe('(5b) IG video item posts as a Reel', () => {
+    const VIDEO_PRODUCT = (source: string) =>
       productRow({
         photos: [{ id: 'ph_primary', url: 'https://cdn.example/hero.jpg', is_primary: true }],
-        videos: [{ id: 'v_1', public_url: 'https://cdn.example/clip.mp4', is_main: true }],
-      }),
-    ]);
-    const app = await buildApp();
-    const res = await app.inject({
-      method: 'POST',
-      url: '/v1/me/social/posts',
-      payload: captionPayload({
-        targets: ['ig_1'],
-        items: [{ product_id: 'p_1' }], // no photo/video → main video default
-      }),
+        videos: [{ id: 'v_1', public_url: 'https://cdn.example/clip.mp4', is_main: true, source }],
+      });
+    const VIDEO_MEDIA = [
+      { product_id: 'p_1', video_id: 'v_1', kind: 'video', url: 'https://cdn.example/clip.mp4' },
+    ];
+
+    it('publishes the main video as a Reel and records a video snapshot (never a substituted photo)', async () => {
+      mockAccountFindMany.mockResolvedValue([IG_ACCOUNT]);
+      mockProductFindMany.mockResolvedValue([VIDEO_PRODUCT('KEN_BURNS')]);
+      const app = await buildApp();
+      const res = await app.inject({
+        method: 'POST',
+        url: '/v1/me/social/posts',
+        payload: captionPayload({
+          targets: ['ig_1'],
+          items: [{ product_id: 'p_1' }], // no photo/video → main video default
+        }),
+      });
+      expect(res.statusCode).toBe(200);
+      // In-request wait is capped at 10 x 3 s = 30 s: the mobile client times a
+      // publish out at 60 s and targets publish one after another.
+      expect(mockPublishInstagramReel).toHaveBeenCalledWith(
+        'ig_user_55',
+        'dec:tok-ig',
+        'https://cdn.example/clip.mp4',
+        expect.any(String),
+        { isAiGenerated: false, pollAttempts: 10, pollDelayMs: 3000 },
+      );
+      expect(mockPublishInstagramPhoto).not.toHaveBeenCalled();
+      expect(res.json().data.results[0]).toMatchObject({
+        platform: 'INSTAGRAM',
+        status: 'POSTED',
+        external_post_url: 'https://www.instagram.com/reel/R33lC0de/',
+      });
+      expect(mockPostCreate.mock.calls[0]?.[0]?.data.media).toEqual(VIDEO_MEDIA);
     });
-    expect(res.statusCode).toBe(200);
-    expect(mockPublishInstagramPhoto).toHaveBeenCalledWith(
-      'ig_user_55',
-      'dec:tok-ig',
-      'https://cdn.example/hero.jpg',
-      expect.any(String),
-    );
-    // The recorded snapshot matches what actually went out — a photo.
-    const media = mockPostCreate.mock.calls[0]?.[0]?.data.media as
-      | Array<Record<string, string>>
-      | undefined;
-    expect(media).toEqual([
-      {
-        product_id: 'p_1',
-        photo_id: 'ph_primary',
-        kind: 'photo',
-        url: 'https://cdn.example/hero.jpg',
-      },
-    ]);
+
+    it('labels an AI-generated clip: isAiGenerated is true when the video source is AI_GEN', async () => {
+      mockAccountFindMany.mockResolvedValue([IG_ACCOUNT]);
+      mockProductFindMany.mockResolvedValue([VIDEO_PRODUCT('AI_GEN')]);
+      const app = await buildApp();
+      const res = await app.inject({
+        method: 'POST',
+        url: '/v1/me/social/posts',
+        payload: captionPayload({
+          targets: ['ig_1'],
+          items: [{ product_id: 'p_1', video_id: 'v_1' }],
+        }),
+      });
+      expect(res.statusCode).toBe(200);
+      expect(mockPublishInstagramReel.mock.calls[0]?.[4]).toMatchObject({ isAiGenerated: true });
+    });
+
+    it('a failed Reel is a FAILED row with the curated message — and does NOT fall back to the photo', async () => {
+      mockAccountFindMany.mockResolvedValue([IG_ACCOUNT]);
+      mockProductFindMany.mockResolvedValue([VIDEO_PRODUCT('KEN_BURNS')]);
+      mockPublishInstagramReel.mockRejectedValueOnce(
+        new MetaApiError(
+          'Instagram is still processing your media, so it was not posted. Please try again in a minute.',
+          400,
+          'INSTAGRAM_CONTAINER_TIMEOUT',
+        ),
+      );
+      const app = await buildApp();
+      const res = await app.inject({
+        method: 'POST',
+        url: '/v1/me/social/posts',
+        payload: captionPayload({ targets: ['ig_1'], items: [{ product_id: 'p_1' }] }),
+      });
+      expect(res.statusCode).toBe(400);
+      expect(res.json().error.results[0]).toMatchObject({
+        status: 'FAILED',
+        error_message:
+          'Instagram is still processing your media, so it was not posted. Please try again in a minute.',
+      });
+      // No silent substitution: the photo helper is never used as a fallback.
+      expect(mockPublishInstagramPhoto).not.toHaveBeenCalled();
+      const failed = mockPostCreate.mock.calls[0]?.[0]?.data;
+      expect(failed?.status).toBe('FAILED');
+      expect(failed?.media).toEqual(VIDEO_MEDIA);
+    });
+
+    it('an explicitly chosen photo on a product that has a video still posts the photo, not a Reel', async () => {
+      mockAccountFindMany.mockResolvedValue([IG_ACCOUNT]);
+      mockProductFindMany.mockResolvedValue([VIDEO_PRODUCT('KEN_BURNS')]);
+      const app = await buildApp();
+      const res = await app.inject({
+        method: 'POST',
+        url: '/v1/me/social/posts',
+        payload: captionPayload({
+          targets: ['ig_1'],
+          items: [{ product_id: 'p_1', photo_id: 'ph_primary' }],
+        }),
+      });
+      expect(res.statusCode).toBe(200);
+      expect(mockPublishInstagramReel).not.toHaveBeenCalled();
+      expect(mockPublishInstagramPhoto).toHaveBeenCalledTimes(1);
+    });
+
+    it('fans one video out to Facebook (video post) and Instagram (Reel) in the same request', async () => {
+      mockAccountFindMany.mockResolvedValue([FB_ACCOUNT, IG_ACCOUNT]);
+      mockProductFindMany.mockResolvedValue([VIDEO_PRODUCT('KEN_BURNS')]);
+      const app = await buildApp();
+      const res = await app.inject({
+        method: 'POST',
+        url: '/v1/me/social/posts',
+        payload: captionPayload({ targets: ['fb_1', 'ig_1'], items: [{ product_id: 'p_1' }] }),
+      });
+      expect(res.statusCode).toBe(200);
+      expect(mockPublishVideo).toHaveBeenCalledTimes(1);
+      expect(mockPublishInstagramReel).toHaveBeenCalledTimes(1);
+      expect(res.json().data.results.map((r: { status: string }) => r.status)).toEqual([
+        'POSTED',
+        'POSTED',
+      ]);
+    });
   });
 });
 

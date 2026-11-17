@@ -591,8 +591,95 @@ export async function publishInstagramCarousel(
   return { postId, permalink };
 }
 
+export interface PublishInstagramReelOptions {
+  /** Sends is_ai_generated=true → Instagram's "AI info" label (Meta changelog 2026-06-22). */
+  isAiGenerated?: boolean;
+  /** Also show the Reel on the profile grid. Default true. */
+  shareToFeed?: boolean;
+  /** Video processing is slower than photos. Default 60 attempts x 3 s. */
+  pollAttempts?: number;
+  pollDelayMs?: number;
+}
+
+/**
+ * Publish a Reel to an Instagram professional account (F-034 Phase 2 T1).
+ * Flow: create a REELS container from a public https `videoUrl`, poll until
+ * FINISHED, media_publish, best-effort permalink. Fail closed on the
+ * publish-critical steps (container ERROR / timeout / non-2xx throws
+ * MetaApiError and nothing is published); the permalink is fail-open — the
+ * post IS live, a permalink miss must not surface as a failure.
+ */
+export async function publishInstagramReel(
+  igUserId: string,
+  accessToken: string,
+  videoUrl: string,
+  caption: string,
+  opts: PublishInstagramReelOptions = {},
+): Promise<{ postId: string; permalink: string }> {
+  // Instagram fetches the video itself, so it must be a public https URL. Reject
+  // anything else before spending a Graph call (and before a bad URL is sent).
+  if (!/^https:\/\//i.test(videoUrl)) {
+    throw new MetaApiError(
+      'Instagram needs a public https video URL',
+      400,
+      'INSTAGRAM_VIDEO_URL_INVALID',
+    );
+  }
+
+  const params = new URLSearchParams({
+    access_token: accessToken,
+    media_type: 'REELS',
+    video_url: videoUrl,
+    // IG captions cap at 2,200 chars — clamp at the platform boundary.
+    caption: clampIgCaption(caption),
+    share_to_feed: String(opts.shareToFeed ?? true),
+  });
+  if (opts.isAiGenerated) params.set('is_ai_generated', 'true');
+
+  const res = await fetch(`${GRAPH_BASE}/${igUserId}/media?${params}`, { method: 'POST' });
+  const body = (await res.json()) as Record<string, unknown>;
+  if (!res.ok || typeof body.id !== 'string') {
+    throw new MetaApiError(
+      'Instagram rejected the Reel',
+      400,
+      'INSTAGRAM_CONTAINER_FAILED',
+      fbCodesFrom(body),
+    );
+  }
+  const containerId = body.id;
+  await ensureIgContainerReady(containerId, accessToken, body.status_code, {
+    attempts: opts.pollAttempts ?? 60,
+    delayMs: opts.pollDelayMs ?? 3000,
+  });
+
+  const publishRes = await fetch(
+    `${GRAPH_BASE}/${igUserId}/media_publish?${new URLSearchParams({
+      access_token: accessToken,
+      creation_id: containerId,
+    })}`,
+    { method: 'POST' },
+  );
+  const publishBody = (await publishRes.json()) as Record<string, unknown>;
+  if (!publishRes.ok || typeof publishBody.id !== 'string') {
+    throw new MetaApiError(
+      'Instagram rejected the Reel publish',
+      400,
+      'INSTAGRAM_PUBLISH_FAILED',
+      fbCodesFrom(publishBody),
+    );
+  }
+  const postId = publishBody.id;
+  // Permalink is presentational — fail-open (shared helper, finding 3).
+  return { postId, permalink: await fetchIgPermalink(postId, accessToken) };
+}
+
 const IG_POLL_ATTEMPTS = 10;
 const IG_POLL_DELAY_MS = 2000;
+
+interface IgPollOptions {
+  attempts: number;
+  delayMs: number;
+}
 
 /**
  * Ensure an IG container is ready to publish. A create response that already
@@ -604,12 +691,13 @@ async function ensureIgContainerReady(
   containerId: string,
   accessToken: string,
   initialStatusCode?: unknown,
+  poll: IgPollOptions = { attempts: IG_POLL_ATTEMPTS, delayMs: IG_POLL_DELAY_MS },
 ): Promise<void> {
   if (initialStatusCode === 'FINISHED') return;
   if (initialStatusCode === 'ERROR' || initialStatusCode === 'EXPIRED') {
     throw new MetaApiError('Instagram container failed', 400, 'INSTAGRAM_CONTAINER_FAILED');
   }
-  for (let attempt = 0; attempt < IG_POLL_ATTEMPTS; attempt++) {
+  for (let attempt = 0; attempt < poll.attempts; attempt++) {
     const res = await fetch(
       `${GRAPH_BASE}/${containerId}?${new URLSearchParams({
         access_token: accessToken,
@@ -629,11 +717,14 @@ async function ensureIgContainerReady(
       throw new MetaApiError('Instagram container failed', 400, 'INSTAGRAM_CONTAINER_FAILED');
     }
     // IN_PROGRESS (or a transient missing status) — poll again after a delay.
-    await new Promise((resolve) => setTimeout(resolve, IG_POLL_DELAY_MS));
+    await new Promise((resolve) => setTimeout(resolve, poll.delayMs));
   }
+  // Not published, and not necessarily broken: the container may just be slow.
+  // Its own code + a retailer-safe message so the composer can say "try again
+  // in a minute" (the message is shown verbatim — curated MetaApiError text).
   throw new MetaApiError(
-    'Instagram container did not finish in time',
+    'Instagram is still processing your media, so it was not posted. Please try again in a minute.',
     400,
-    'INSTAGRAM_CONTAINER_FAILED',
+    'INSTAGRAM_CONTAINER_TIMEOUT',
   );
 }
