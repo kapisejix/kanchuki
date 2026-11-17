@@ -6,14 +6,18 @@
 // fal-client.ts so the hot image path stays untouched.
 //
 // generateImageToVideo(photoUrl, opts) → a finished MP4 Buffer, cropped to the
-// requested aspect and trimmed to `seconds`. The caller uploads it to R2.
+// requested aspect and trimmed to `seconds`, plus what Fal will bill for it.
+// The caller uploads it to R2.
+//
+// Models and prices live in `video_models` / `plan_video_models` (migrations
+// 166 + 167, admin-managed). No price and no endpoint list in code (F-034 T4).
 import { execFile } from 'node:child_process';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { readCappedBuffer, ssrfSafeFetch } from '@kanchuki/ai';
-import { getSecret } from '@kanchuki/db';
+import { type SubscriptionPlan, getSecret, prisma } from '@kanchuki/db';
 import ffmpegPath from 'ffmpeg-static';
 import { AppError } from '../plugins/error-handler.js';
 
@@ -21,45 +25,57 @@ const execFileAsync = promisify(execFile);
 const FFMPEG_BIN = process.env.FFMPEG_BIN ?? (ffmpegPath as unknown as string) ?? 'ffmpeg';
 const FAL_BASE = 'https://queue.fal.run';
 
-export type VideoModelKey = 'seedance' | 'wan' | 'kling_std' | 'kling_pro' | 'luma';
 export type VideoAspect = '9:16' | '16:9' | '1:1' | '4:5';
 
-/**
- * Per-model config. `inrPerClip` is the current Fal price band for a 5s clip —
- * stored here (not hardcoded in credit-pack math) so it stays honest when Fal
- * changes prices. Endpoints per fal.ai/models on 2026-09-03; re-verify at
- * build time (the spec flags these as "confirm live").
- */
-export const VIDEO_MODELS: Record<
-  VideoModelKey,
-  { endpoint: string; inrPerClip: [number, number]; label: string }
-> = {
-  seedance: {
-    endpoint: 'fal-ai/bytedance/seedance/v1/lite/image-to-video',
-    inrPerClip: [13, 34],
-    label: 'Seedance (ByteDance)',
-  },
-  wan: {
-    endpoint: 'fal-ai/wan/v2.2/image-to-video',
-    inrPerClip: [15, 34],
-    label: 'WAN 2.2 (Alibaba)',
-  },
-  kling_std: {
-    endpoint: 'fal-ai/kling-video/v1.6/standard/image-to-video',
-    inrPerClip: [21, 30],
-    label: 'Kling 1.6 std',
-  },
-  kling_pro: {
-    endpoint: 'fal-ai/kling-video/v2/master/image-to-video',
-    inrPerClip: [42, 85],
-    label: 'Kling Pro 2.x',
-  },
-  luma: {
-    endpoint: 'fal-ai/luma-dream-machine/ray-2/image-to-video',
-    inrPerClip: [40, 170],
-    label: 'Luma Ray 2',
-  },
-};
+/** One `video_models` row, prices as numbers. */
+export interface VideoModelCfg {
+  model_key: string;
+  endpoint: string;
+  /** NULL = token-priced. */
+  price_usd_per_second: number | null;
+  /** Token-priced models only (migration 167). */
+  price_usd_per_million_tokens: number | null;
+}
+
+const MODEL_SELECT = {
+  model_key: true,
+  endpoint: true,
+  price_usd_per_second: true,
+  price_usd_per_million_tokens: true,
+} as const;
+
+function toCfg(r: {
+  model_key: string;
+  endpoint: string;
+  price_usd_per_second: unknown;
+  price_usd_per_million_tokens: unknown;
+}): VideoModelCfg {
+  const num = (v: unknown) => (v == null ? null : Number(v));
+  return {
+    model_key: r.model_key,
+    endpoint: r.endpoint,
+    price_usd_per_second: num(r.price_usd_per_second),
+    price_usd_per_million_tokens: num(r.price_usd_per_million_tokens),
+  };
+}
+
+/** Admin bench: any row, enabled or not, so a model can be tested before it is switched on. */
+export async function getVideoModel(modelKey: string): Promise<VideoModelCfg | null> {
+  const row = await prisma.videoModel.findUnique({
+    where: { model_key: modelKey },
+    select: MODEL_SELECT,
+  });
+  return row ? toCfg(row) : null;
+}
+
+/** Retailer path: the plan's model, only while it is enabled. null = feature unavailable. */
+export async function videoModelForPlan(plan: SubscriptionPlan): Promise<VideoModelCfg | null> {
+  const row = await prisma.planVideoModel.findUnique({
+    where: { plan },
+    select: { model: { select: { ...MODEL_SELECT, enabled: true } } },
+  });
+  return row?.model.enabled ? toCfg(row.model) : null;
+}
 
 // Target canvas per aspect. ffmpeg centre-crops the model output to the aspect
 // ratio then scales to these dims — so a model that ignores our aspect hint
@@ -79,33 +95,122 @@ async function resolveFalKey(): Promise<string | null> {
   return secret || process.env.FAL_API_KEY || process.env.FAL_KEY || null;
 }
 
-/** Fal duration knob per model — only 5 or 10 are broadly supported; ffmpeg
- *  trims to the exact requested `seconds` afterwards. */
-function buildFalInput(
-  model: VideoModelKey,
+/** Wan bills video seconds at 16 fps (fal.ai llms.txt, 2026-11-17). */
+const WAN_BILLING_FPS = 16;
+
+/**
+ * Fal input per model family, keyed on the endpoint (the DB row is the truth).
+ * Schemas from each endpoint's llms.txt on 2026-11-17. ffmpeg crops/trims
+ * afterwards, so an aspect a model cannot do falls back to the nearest one.
+ */
+export function buildFalInput(
+  endpoint: string,
   imageUrl: string,
   motionPrompt: string,
   aspect: VideoAspect,
   seconds: number,
 ): Record<string, unknown> {
-  const base: Record<string, unknown> = { image_url: imageUrl, prompt: motionPrompt };
-  const dur = seconds <= 5 ? '5' : '10';
-  switch (model) {
-    case 'luma':
-      return {
-        ...base,
-        aspect_ratio: aspect,
-        resolution: '720p',
-        duration: dur === '5' ? '5s' : '9s',
-      };
-    case 'wan':
-      // v2.2 image-to-video has no reliable duration knob — take its default
-      // and let ffmpeg trim.
-      return { ...base, aspect_ratio: aspect, resolution: '720p' };
-    default:
-      // seedance lite + both kling tiers
-      return { ...base, aspect_ratio: aspect, duration: dur };
+  if (endpoint.includes('/kling-video/')) {
+    // No aspect param: output follows the photo. 2.6 renames the image field and
+    // defaults generate_audio=true, which doubles the price; we strip audio anyway.
+    const v26 = endpoint.includes('/v2.6/');
+    return {
+      [v26 ? 'start_image_url' : 'image_url']: imageUrl,
+      prompt: motionPrompt,
+      duration: seconds <= 5 ? '5' : '10',
+      ...(v26 ? { generate_audio: false } : {}),
+    };
   }
+  if (endpoint.includes('/wan/')) {
+    // No duration param: length = num_frames / 16 (5 s -> 81 frames, the default).
+    return {
+      image_url: imageUrl,
+      prompt: motionPrompt,
+      resolution: '720p',
+      num_frames: seconds * WAN_BILLING_FPS + 1,
+      aspect_ratio: aspect === '4:5' ? '9:16' : aspect,
+    };
+  }
+  if (endpoint.includes('/seedance/')) {
+    // Default is 1080p (~2.25x the tokens of 720p); no 4:5, 3:4 is closest.
+    return {
+      image_url: imageUrl,
+      prompt: motionPrompt,
+      resolution: '720p',
+      duration: String(seconds),
+      aspect_ratio: aspect === '4:5' ? '3:4' : aspect,
+    };
+  }
+  throw new AppError('AI_VIDEO_FAILED', `No Fal input mapping for endpoint ${endpoint}`, 422);
+}
+
+/** Width, height, fps and duration of the clip Fal returned (before our crop). */
+export interface RawClipInfo {
+  width: number;
+  height: number;
+  fps: number;
+  seconds: number;
+}
+
+/** Parse ffmpeg's `-i` banner. null when any field is missing. */
+export function parseClipInfo(stderr: string): RawClipInfo | null {
+  const dur = /Duration: (\d+):(\d+):([\d.]+)/.exec(stderr);
+  const vid = /Video:.*?(\d{2,5})x(\d{2,5}).*?([\d.]+) fps/.exec(stderr);
+  if (!dur || !vid) return null;
+  return {
+    width: Number(vid[1]),
+    height: Number(vid[2]),
+    fps: Number(vid[3]),
+    seconds: Number(dur[1]) * 3600 + Number(dur[2]) * 60 + Number(dur[3]),
+  };
+}
+
+export interface ClipUsage {
+  /** Seconds Fal bills for a per-second model. */
+  billed_seconds: number | null;
+  /** Tokens Fal bills for a token-priced model (measured from the raw clip). */
+  tokens: number | null;
+  /** null when the DB has no price for the model or the clip could not be measured. */
+  cost_usd: number | null;
+  raw: RawClipInfo | null;
+}
+
+const round4 = (n: number) => Math.round(n * 10_000) / 10_000;
+
+/**
+ * What one clip costs, from the DB price. Per-second models are billed on the
+ * duration we asked for (Kling: "5"/"10"; Wan: num_frames / 16). Token-priced
+ * models (Seedance): tokens = h * w * fps * seconds / 1024, measured from the
+ * clip Fal returned because the response carries no usage.
+ */
+export function clipCost(
+  model: VideoModelCfg,
+  input: Record<string, unknown>,
+  raw: RawClipInfo | null,
+): ClipUsage {
+  if (model.price_usd_per_second != null) {
+    const billed =
+      typeof input.num_frames === 'number'
+        ? input.num_frames / WAN_BILLING_FPS
+        : Number(input.duration ?? raw?.seconds ?? Number.NaN);
+    const ok = Number.isFinite(billed);
+    return {
+      billed_seconds: ok ? billed : null,
+      tokens: null,
+      cost_usd: ok ? round4(billed * model.price_usd_per_second) : null,
+      raw,
+    };
+  }
+  const tokens = raw ? Math.round((raw.width * raw.height * raw.fps * raw.seconds) / 1024) : null;
+  return {
+    billed_seconds: null,
+    tokens,
+    cost_usd:
+      tokens != null && model.price_usd_per_million_tokens != null
+        ? round4((tokens / 1_000_000) * model.price_usd_per_million_tokens)
+        : null,
+    raw,
+  };
 }
 
 function extractVideoUrl(payload: unknown): string | null {
@@ -215,14 +320,14 @@ export async function cropTrimToAspect(
   inputBuf: Buffer,
   aspect: VideoAspect,
   seconds: number,
-): Promise<Buffer> {
+): Promise<{ mp4: Buffer; raw: RawClipInfo | null }> {
   const [w, h] = ASPECT_DIMS[aspect];
   const dir = await mkdtemp(join(tmpdir(), 'kanchuki-promo-vid-'));
   try {
     const inPath = join(dir, 'in.mp4');
     const outPath = join(dir, 'out.mp4');
     await writeFile(inPath, inputBuf);
-    await execFileAsync(FFMPEG_BIN, [
+    const { stderr } = await execFileAsync(FFMPEG_BIN, [
       '-y',
       '-i',
       inPath,
@@ -243,14 +348,15 @@ export async function cropTrimToAspect(
       '+faststart',
       outPath,
     ]);
-    return await readFile(outPath);
+    // The `-i` banner on stderr already describes the input clip: no extra probe.
+    return { mp4: await readFile(outPath), raw: parseClipInfo(stderr) };
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
 }
 
 export interface ImageToVideoOpts {
-  model: VideoModelKey;
+  model: VideoModelCfg;
   motionPrompt: string;
   aspect: VideoAspect;
   seconds: 5 | 6 | 8;
@@ -265,12 +371,15 @@ export interface ImageToVideoOpts {
 export async function generateImageToVideo(
   imageUrl: string,
   opts: ImageToVideoOpts,
-): Promise<Buffer> {
-  const cfg = VIDEO_MODELS[opts.model];
-  if (!cfg) throw new AppError('AI_VIDEO_FAILED', `Unknown video model: ${opts.model}`, 422);
-
-  const input = buildFalInput(opts.model, imageUrl, opts.motionPrompt, opts.aspect, opts.seconds);
-  const falVideoUrl = await runFalVideoTask(cfg.endpoint, input, opts.onProgress);
+): Promise<{ mp4: Buffer; usage: ClipUsage }> {
+  const input = buildFalInput(
+    opts.model.endpoint,
+    imageUrl,
+    opts.motionPrompt,
+    opts.aspect,
+    opts.seconds,
+  );
+  const falVideoUrl = await runFalVideoTask(opts.model.endpoint, input, opts.onProgress);
 
   const res = await ssrfSafeFetch(falVideoUrl);
   if (!res.ok) {
@@ -278,5 +387,6 @@ export async function generateImageToVideo(
   }
   const raw = await readCappedBuffer(res);
 
-  return cropTrimToAspect(raw, opts.aspect, opts.seconds);
+  const { mp4, raw: info } = await cropTrimToAspect(raw, opts.aspect, opts.seconds);
+  return { mp4, usage: clipCost(opts.model, input, info) };
 }

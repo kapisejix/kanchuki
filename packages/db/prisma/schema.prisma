@@ -3313,7 +3313,8 @@ model VideoModel {
   model_key            String           @id
   endpoint             String
   label                String
-  price_usd_per_second Decimal?         @db.Decimal(10, 4) // NULL = token-priced (see notes)
+  price_usd_per_second Decimal?         @db.Decimal(10, 4) // NULL = token-priced
+  price_usd_per_million_tokens Decimal? @db.Decimal(10, 4) // token-priced models only (167)
   notes                String?
   removal_date         DateTime?        @db.Date
   enabled              Boolean          @default(false)
