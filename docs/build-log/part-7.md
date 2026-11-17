@@ -587,3 +587,13 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Not on the page | The grid row for `AI_CUSTOM_TEMPLATE` is labelled **"AI Custom Designs"**, not the key name. |
 | Verified | CI green on #296 (build, e2e-web, migration-replay, quality, unit-web) and #297; `admin-plans.test.ts` 13/13 and web `tsc --noEmit` clean locally. |
 | Not verified | The deployed Admin → Plan Features page in a browser (new row, Pro header colour); that either feature is switched on in prod (no `plan_features` row read for either); a real Google call; a real FLUX call. Google Business stays dark until Google approves API access, the shared Google identity is connected and "API approved" is set. |
+
+## 2026-11-17 — AI poster styles (branch `feat/ai-poster-styles`, commits 56b282fe..05c13e75)
+
+| Item | Detail |
+|---|---|
+| Status | Built on branch `feat/ai-poster-styles`, NOT merged; migration 164 (`design_templates.ai_prompt`) NOT applied; nothing run against real FLUX; no device test; no browser check of the admin editor; EAS build needed. Local tests pass for the touched packages (counts not recorded). |
+| Built | `rect` scrim layer (shared parser + renderer); migration 164 `design_templates.ai_prompt` (SQL only; CHECKs length 1..600 and `product_slots = 1`); admin API accepts `ai_prompt`; retailer `GET /me/designs` returns only `ai: boolean`; AI styles refused by plain `/render` and the scheduler (`findPublishedDesign`), served by `findPublishedAiPoster`; `buildPosterPrompt` (admin text only, retailer text never in the prompt); `POST /me/ai-designs` poster body `{product_id, template_id, custom_text?, offer_text?}`; job poster branch (FLUX scene, then text rendered over it, refund on every non-READY exit); admin Design Library (AI scene prompt, AI badge, Rect layer); mobile design picker routes AI styles to `ai-design.tsx` poster mode. |
+| Owner steps | `docs/runbooks/ai-poster-styles-owner-steps.md` (apply 164 before the API deploy, create a style, device test per format). |
+| Not verified | FLUX Kontext may not leave empty space for the text; 9:16 and 1.91:1 crops versus the garment; the real Vision/FLUX provider was never called; admin editor not seen in a browser; no device run. |
+
