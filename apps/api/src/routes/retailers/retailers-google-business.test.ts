@@ -248,6 +248,12 @@ describe('GET /status', () => {
     const d = await status({ ...LINKED, location_title: 'Asha Boutique' });
     expect(d).toMatchObject({ state: 'LINKED', location_title: 'Asha Boutique', avg_rating: 4.5 });
     expect(d.manager_email).toBeUndefined();
+    expect(d.sync_failed).toBe(false);
+  });
+  it('a failing sync is reported (sync_failed), without leaking the raw error code', async () => {
+    const d = await status({ ...LINKED, review_count: null, last_error_code: 'UNAVAILABLE' });
+    expect(d.sync_failed).toBe(true);
+    expect(JSON.stringify(d)).not.toContain('UNAVAILABLE');
   });
 });
 
@@ -288,6 +294,19 @@ describe('GET /reviews — tenant isolation', () => {
       gbp_account_id: 'acc1',
       gbp_location_id: 'loc1',
     });
+  });
+
+  it('summary tells a never-synced / failing link apart from a real zero', async () => {
+    m.linkFind.mockResolvedValue({
+      ...LINKED,
+      review_count: null,
+      last_error_code: 'NOT_APPROVED',
+    });
+    const res = await (await buildApp()).inject({ method: 'GET', url: `${base}/reviews` });
+    expect(res.json().data.summary).toMatchObject({ review_count: null, sync_failed: true });
+    m.linkFind.mockResolvedValue({ ...LINKED, review_count: 0, last_error_code: null });
+    const ok = await (await buildApp()).inject({ method: 'GET', url: `${base}/reviews` });
+    expect(ok.json().data.summary).toMatchObject({ review_count: 0, sync_failed: false });
   });
 });
 
@@ -343,6 +362,25 @@ describe('POST /reviews/:id/reply', () => {
     expect(res.statusCode).toBe(502);
     expect(m.reviewUpdate).not.toHaveBeenCalled();
     expect(m.refund).toHaveBeenCalledTimes(1);
+  });
+
+  it('a review deleted on Google → 404 REVIEW_NOT_FOUND; the retailer keeps their Google tab', async () => {
+    m.reply.mockRejectedValue(new GbpError('NOT_FOUND', 'gone'));
+    const res = await reply(await buildApp());
+    expect(res.statusCode).toBe(404);
+    expect(res.json().error.code).toBe('REVIEW_NOT_FOUND');
+    expect(m.linkUpdate).not.toHaveBeenCalled();
+    expect(m.reviewUpdate).not.toHaveBeenCalled();
+    expect(m.refund).toHaveBeenCalledTimes(1);
+  });
+
+  it('Google accepted the reply but our own write fails → still 200, slot stays spent, no duplicate retry', async () => {
+    m.reviewUpdate.mockRejectedValue(new Error('db down'));
+    m.auditCreate.mockRejectedValue(new Error('db down'));
+    const res = await reply(await buildApp());
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data.reply.comment).toBe('Thank you!');
+    expect(m.refund).not.toHaveBeenCalled();
   });
 
   it('rejects an empty or oversize reply', async () => {

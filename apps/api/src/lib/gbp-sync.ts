@@ -73,16 +73,19 @@ export async function syncLink(link: LinkRef): Promise<SyncResult> {
     return { ok: true, synced };
   } catch (err) {
     if (!(err instanceof GbpError)) throw err;
+    // Here the only resource asked about is this link's location, so a 404 means it is gone
+    // or unreachable for our identity: the same retailer-visible state as a refusal.
+    const code = err.code === 'NOT_FOUND' ? 'NEEDS_ACCESS' : err.code;
     await prisma.gbpLink.updateMany({
       where: stillThisLink,
       data: {
-        last_error_code: err.code,
+        last_error_code: code,
         // Only a per-location refusal changes the retailer's state; platform-level
         // problems (not approved / token revoked / outage) must not flip every retailer.
-        ...(err.code === 'NEEDS_ACCESS' ? { status: 'NEEDS_ACCESS' as const } : {}),
+        ...(code === 'NEEDS_ACCESS' ? { status: 'NEEDS_ACCESS' as const } : {}),
       },
     });
-    return { ok: false, code: err.code };
+    return { ok: false, code };
   }
 }
 

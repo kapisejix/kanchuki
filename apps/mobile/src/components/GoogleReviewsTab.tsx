@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { ActivityIndicator, Text, TextInput, View } from 'react-native'
 import { type GbpReview, googleBusinessApi } from '../lib/api'
 import { showError } from '../lib/errors'
+import { gbpCountLabel, gbpEmptyNote } from '../lib/gbp-summary'
 import { AnimatedPressable } from './AnimatedPressable'
 
 const QUERY_KEY = ['google-business', 'reviews']
@@ -117,6 +118,12 @@ export function GoogleReviewsTab() {
     queryFn: ({ pageParam }) => googleBusinessApi.reviews(pageParam),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (last) => last.data.next_cursor ?? undefined,
+    // The first sync runs in the background after linking. Until it succeeds review_count is
+    // null; keep asking every 5 s, and stop once Google answered or the sync reported a failure.
+    refetchInterval: (query) => {
+      const s = query.state.data?.pages[0]?.data.summary
+      return s && s.review_count == null && !s.sync_failed ? 5000 : false
+    },
   })
 
   if (q.isLoading) return <ActivityIndicator color="#BB3F95" className="mt-6" />
@@ -143,17 +150,16 @@ export function GoogleReviewsTab() {
       <View className="bg-white rounded-2xl p-4 border border-lavender-200">
         <Text className="text-[11px] font-bold text-heliotrope-600">From Google</Text>
         <Text className="text-sm font-bold text-spaceCadet-900 mt-1">
-          {first?.summary.review_count ?? 0} reviews
-          {first?.summary.avg_rating != null
-            ? ` · ${first.summary.avg_rating.toFixed(1)} average`
-            : ''}
+          {gbpCountLabel(first?.summary ?? {})}
         </Text>
       </View>
 
       {reviews.length === 0 ? (
-        <Text className="text-xs text-heliotrope-500 text-center mt-4">
-          No Google reviews yet. They appear here as soon as they are synced.
-        </Text>
+        gbpEmptyNote(first?.summary ?? {}) && (
+          <Text className="text-xs text-heliotrope-500 text-center mt-4">
+            {gbpEmptyNote(first?.summary ?? {})}
+          </Text>
+        )
       ) : (
         reviews.map((r) => <ReviewRow key={r.id} review={r} />)
       )}

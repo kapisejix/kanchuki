@@ -8,6 +8,7 @@ import { AnimatedPressable } from '../../../src/components/AnimatedPressable'
 import { GradientButton } from '../../../src/components/GradientButton'
 import { googleBusinessApi } from '../../../src/lib/api'
 import { showError } from '../../../src/lib/errors'
+import { gbpCountLabel } from '../../../src/lib/gbp-summary'
 import { useScreenInsets } from '../../../src/lib/safe-area'
 
 // One screen, five honest states. Every state comes from the server (GET /status); this
@@ -114,8 +115,7 @@ export default function GoogleBusinessScreen() {
               Connected{status.location_title ? ` — ${status.location_title}` : ''}
             </Text>
             <Text className="text-xs text-heliotrope-500">
-              {status.review_count ?? 0} Google reviews
-              {status.avg_rating != null ? ` · ${status.avg_rating.toFixed(1)} average` : ''}
+              {gbpCountLabel(status)}
             </Text>
             <GradientButton
               label="See your Google reviews"

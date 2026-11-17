@@ -11,6 +11,7 @@ export type GbpStatus = {
   last_synced_at?: string | null
   avg_rating?: number | null
   review_count?: number | null
+  sync_failed?: boolean
   manager_email?: string | null
   steps?: string[]
 }
@@ -38,6 +39,7 @@ export const googleBusinessApi = {
           avg_rating: number | null
           review_count: number | null
           last_synced_at: string | null
+          sync_failed: boolean
         }
         reviews: GbpReview[]
         next_cursor: string | null

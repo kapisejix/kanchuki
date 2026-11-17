@@ -56,6 +56,8 @@ function gbpToAppError(err: GbpError): AppError {
         'Kanchuki no longer has access to your Google profile. Add us again as Manager.',
         409,
       );
+    case 'NOT_FOUND':
+      return new AppError('REVIEW_NOT_FOUND', 'This review is no longer on Google.', 404);
     case 'NOT_APPROVED':
     case 'NOT_CONNECTED':
       return new AppError('NOT_AVAILABLE', 'Google reviews are not available yet', 409);
@@ -84,6 +86,7 @@ export const retailersGoogleBusinessRoutes: FastifyPluginAsync = async (server) 
         last_synced_at: true,
         avg_rating: true,
         review_count: true,
+        last_error_code: true,
       },
     });
     const state: State =
@@ -97,6 +100,9 @@ export const retailersGoogleBusinessRoutes: FastifyPluginAsync = async (server) 
               last_synced_at: link?.last_synced_at ?? null,
               avg_rating: link?.avg_rating ?? null,
               review_count: link?.review_count ?? null,
+              // review_count stays null until a sync succeeds, so null + this flag = "not synced",
+              // never "0 reviews". The raw code stays server-side.
+              sync_failed: !!link?.last_error_code,
             }
           : {}),
         ...(state !== 'LINKED' ? { manager_email: await gbpManagerEmail(), steps: STEPS } : {}),
@@ -170,6 +176,7 @@ export const retailersGoogleBusinessRoutes: FastifyPluginAsync = async (server) 
         last_synced_at: true,
         avg_rating: true,
         review_count: true,
+        last_error_code: true,
       },
     });
     if (!link || link.status !== 'LINKED' || !link.gbp_account_id || !link.gbp_location_id) {
@@ -203,6 +210,7 @@ export const retailersGoogleBusinessRoutes: FastifyPluginAsync = async (server) 
           avg_rating: link.avg_rating,
           review_count: link.review_count,
           last_synced_at: link.last_synced_at,
+          sync_failed: !!link.last_error_code,
         },
         reviews: page.map((r) => ({
           id: r.id,
@@ -264,21 +272,32 @@ export const retailersGoogleBusinessRoutes: FastifyPluginAsync = async (server) 
         throw gbpToAppError(err);
       }
 
-      await prisma.gbpReview.update({
-        where: { id: review.id },
-        data: { reply_comment: confirmed.comment, reply_updated_at: confirmed.updatedAt },
-      });
-      await prisma.auditLog.create({
-        data: {
-          actor_type: 'retailer',
-          actor_id: request.retailerId,
-          action: 'reply',
-          resource_type: 'GbpReview',
-          resource_id: review.id,
-          metadata: { length: confirmed.comment.length },
-          ip_address: request.ip,
-        },
-      });
+      // The reply is already live on Google. A failure below must not become a 500: the retailer
+      // would retry and post it twice. The slot stays spent (it was used) and the next sync
+      // copies the reply into our row.
+      try {
+        await prisma.gbpReview.update({
+          where: { id: review.id },
+          data: { reply_comment: confirmed.comment, reply_updated_at: confirmed.updatedAt },
+        });
+      } catch (err) {
+        request.log.error({ err }, 'gbp reply posted on Google but not saved locally');
+      }
+      try {
+        await prisma.auditLog.create({
+          data: {
+            actor_type: 'retailer',
+            actor_id: request.retailerId,
+            action: 'reply',
+            resource_type: 'GbpReview',
+            resource_id: review.id,
+            metadata: { length: confirmed.comment.length },
+            ip_address: request.ip,
+          },
+        });
+      } catch (err) {
+        request.log.error({ err }, 'gbp reply posted on Google but audit row failed');
+      }
       return { data: { reply: { comment: confirmed.comment, updated_at: confirmed.updatedAt } } };
     },
   );
