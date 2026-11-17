@@ -1,8 +1,8 @@
 # AI Poster Styles — Owner Steps
 
-Spec: `docs/superpowers/specs/2026-11-17-ai-poster-styles-design.md`. Branch `feat/ai-poster-styles`.
+Spec: `docs/superpowers/specs/2026-11-17-ai-poster-styles-design.md`. Merged to `main` 2026-11-17 (PR #303, merge `c36a4e6e`).
 
-**Status: built on the branch, NOT merged, migration 164 NOT applied, nothing run against real FLUX, no device test, no browser check of the admin editor, EAS build needed.** Nothing below is confirmed to work; this is the checklist that finds out. The agent runs none of it (no migrations, no deploys, no prod env).
+**Status: merged, migration 164 applied by owner (owner's report, date not given, section 1 read-back not confirmed), nothing run against real FLUX, no device test, no browser check of the admin editor, EAS build needed.** Nothing below is confirmed to work; this is the checklist that finds out. The agent runs none of it (no migrations, no deploys, no prod env).
 
 ## 1. Before the API deploy: apply migration 164
 

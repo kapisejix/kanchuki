@@ -173,4 +173,4 @@ Look references (layout/mood only, not to copy): Visme Diwali sale posts, Kapwin
 
 ## AI poster styles (2026-11-17)
 
-Spec `docs/superpowers/specs/2026-11-17-ai-poster-styles-design.md`; owner steps `docs/runbooks/ai-poster-styles-owner-steps.md`. Built on branch `feat/ai-poster-styles`, NOT merged; migration 164 (`design_templates.ai_prompt`) NOT applied; nothing run against real FLUX; no device test; no browser check of the admin editor; EAS build needed. Unverified: whether FLUX leaves empty space for text, 9:16 / 1.91:1 crops, real provider.
+Spec `docs/superpowers/specs/2026-11-17-ai-poster-styles-design.md`; owner steps `docs/runbooks/ai-poster-styles-owner-steps.md`. Merged 2026-11-17 (PR #303); migration 164 (`design_templates.ai_prompt`) applied by owner (owner's report, date not given, not read back); nothing run against real FLUX; no device test; no browser check of the admin editor; EAS build needed. Unverified: whether FLUX leaves empty space for text, 9:16 / 1.91:1 crops, real provider.
