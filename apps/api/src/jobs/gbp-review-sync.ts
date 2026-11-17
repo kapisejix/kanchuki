@@ -8,7 +8,7 @@
 import { getPurgePrisma, prisma } from '@kanchuki/db';
 import { Sentry } from '../instrument.js';
 import { hasFeature } from '../lib/features.js';
-import { syncLink } from '../lib/gbp-sync.js';
+import { FULL_WALK_PAGES, syncLink } from '../lib/gbp-sync.js';
 import { GBP_KEYS, gbpApiApproved, getGbpSetting } from '../lib/google-business.js';
 
 const GAP_MS = 200; // stay far under Google's ~300 requests/min once approved
@@ -41,14 +41,20 @@ export async function handleGbpReviewSync(): Promise<GbpSyncSummary> {
   for (const l of links) {
     if (!l.gbp_account_id || !l.gbp_location_id) continue;
     if (!(await hasFeature(l.retailer_id, 'GOOGLE_BUSINESS_PROFILE'))) continue;
-    const res = await syncLink({
-      id: l.id,
-      retailer_id: l.retailer_id,
-      gbp_account_id: l.gbp_account_id,
-      gbp_location_id: l.gbp_location_id,
-    });
+    const res = await syncLink(
+      {
+        id: l.id,
+        retailer_id: l.retailer_id,
+        gbp_account_id: l.gbp_account_id,
+        gbp_location_id: l.gbp_location_id,
+      },
+      { maxPages: FULL_WALK_PAGES },
+    );
     if (res.ok) {
       synced += res.synced;
+      if (res.complete) {
+        await deleteVanishedReviews(l.id, l.gbp_account_id, l.gbp_location_id, res.complete.since);
+      }
     } else {
       failed++;
       if (PLATFORM_CODES.has(res.code)) {
@@ -62,6 +68,30 @@ export async function handleGbpReviewSync(): Promise<GbpSyncSummary> {
 
   await purgeOldReviews();
   return { links: links.length, synced, failed, stoppedEarly };
+}
+
+/**
+ * A review deleted on Google is simply absent from a complete walk, so its row was not touched
+ * (synced_at is stamped on every upsert) since the walk began. Conditioned on the link still
+ * being the same one, so a link unlinked or re-pointed while Google answered loses nothing.
+ */
+async function deleteVanishedReviews(
+  linkId: string,
+  account: string,
+  location: string,
+  since: Date,
+): Promise<void> {
+  await getPurgePrisma().$executeRawUnsafe(
+    `DELETE FROM gbp_reviews r USING gbp_links l
+      WHERE r.link_id = l.id AND l.id = $1
+        AND l.status IN ('LINKED', 'NEEDS_ACCESS')
+        AND l.gbp_account_id = $2 AND l.gbp_location_id = $3
+        AND r.synced_at < $4`,
+    linkId,
+    account,
+    location,
+    since,
+  );
 }
 
 /**
