@@ -159,11 +159,23 @@ async function post(url: string, form: Record<string, string>): Promise<Response
 let cached: { token: string; expiresAt: number } | null = null;
 export function __resetGbpTokenCache(): void {
   cached = null;
+  refreshing = null;
   locationsCache = null;
 }
 
-async function accessToken(): Promise<string> {
-  if (cached && cached.expiresAt > Date.now() + 30_000) return cached.token;
+// One refresh in flight at a time: concurrent callers at expiry share it instead of each POSTing
+// to Google's token endpoint.
+let refreshing: Promise<string> | null = null;
+
+function accessToken(): Promise<string> {
+  if (cached && cached.expiresAt > Date.now() + 30_000) return Promise.resolve(cached.token);
+  refreshing ??= refreshAccessToken().finally(() => {
+    refreshing = null;
+  });
+  return refreshing;
+}
+
+async function refreshAccessToken(): Promise<string> {
   const stored = await getGbpSetting(GBP_KEYS.refreshToken);
   if (!stored) throw new GbpError('NOT_CONNECTED', 'No Google account is connected');
   const c = await oauthClient();
@@ -237,11 +249,13 @@ async function call<T>(method: 'GET' | 'PUT', url: string, body?: unknown): Prom
   const attempts = method === 'GET' ? 2 : 1; // retry 5xx on reads only
   for (let i = 0; i < attempts; i++) {
     let res: Response;
+    let used: string | undefined;
     try {
+      used = await accessToken();
       res = await fetch(url, {
         method,
         headers: {
-          Authorization: `Bearer ${await accessToken()}`,
+          Authorization: `Bearer ${used}`,
           'Content-Type': 'application/json',
         },
         ...(body === undefined ? {} : { body: JSON.stringify(body) }),
@@ -254,7 +268,9 @@ async function call<T>(method: 'GET' | 'PUT', url: string, body?: unknown): Prom
     }
     if (res.ok) return (await res.json().catch(() => ({}))) as T;
     if (res.status >= 500 && i + 1 < attempts) continue;
-    if (res.status === 401) cached = null;
+    // Only drop the cache if it still holds the token that was rejected: a late 401 from an old
+    // token must not wipe one another request has just refreshed.
+    if (res.status === 401 && cached?.token === used) cached = null;
     throw classify(res.status, (await res.json().catch(() => ({}))) as GoogleErr);
   }
   throw new GbpError('UNAVAILABLE', 'Google did not respond');

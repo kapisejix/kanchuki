@@ -278,6 +278,74 @@ describe('never creates a review for anyone', () => {
   });
 });
 
+/**
+ * Audit minor C: concurrent callers each POSTed to Google's token endpoint, and a late 401 from an
+ * OLD token wiped a token another request had just refreshed, forcing yet another refresh.
+ */
+describe('access token refresh (audit minor C)', () => {
+  type Pending = { bearer: string; resolve: (r: { status: number; body: unknown }) => void };
+  let pending: Pending[];
+  let tokenPosts: number;
+
+  beforeEach(() => {
+    pending = [];
+    tokenPosts = 0;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((url: string, init?: RequestInit) => {
+        if (url.includes('oauth2.googleapis.com/token')) {
+          tokenPosts++;
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            json: async () => ({ access_token: `at_${tokenPosts}`, expires_in: 3600 }),
+          });
+        }
+        const bearer = String((init?.headers as Record<string, string>).Authorization);
+        return new Promise((res) =>
+          pending.push({
+            bearer,
+            resolve: (r) =>
+              res({ ok: r.status >= 200 && r.status < 300, status: r.status, json: async () => r.body }),
+          }),
+        );
+      }),
+    );
+  });
+
+  it('three concurrent callers share one token refresh', async () => {
+    const all = [gbp.listReviews('a', 'l'), gbp.listReviews('a', 'l'), gbp.listReviews('a', 'l')];
+    await vi.waitFor(() => expect(pending).toHaveLength(3));
+    expect(tokenPosts).toBe(1);
+    for (const p of pending) p.resolve({ status: 200, body: { reviews: [] } });
+    await Promise.all(all);
+  });
+
+  it('a late 401 from an old token does not wipe the fresh token', async () => {
+    const a = gbp.listReviews('a', 'l').catch(() => undefined);
+    const b = gbp.listReviews('a', 'l').catch(() => undefined);
+    await vi.waitFor(() => expect(pending).toHaveLength(2));
+    expect(pending.map((p) => p.bearer)).toEqual(['Bearer at_1', 'Bearer at_1']);
+
+    pending[0]?.resolve({ status: 401, body: {} }); // A: legitimately clears at_1
+    await a;
+    const c = gbp.listReviews('a', 'l'); // refreshes to at_2
+    await vi.waitFor(() => expect(pending).toHaveLength(3));
+    expect(pending[2]?.bearer).toBe('Bearer at_2');
+
+    pending[1]?.resolve({ status: 401, body: {} }); // B: late 401, still holding at_1
+    await b;
+    const d = gbp.listReviews('a', 'l'); // must reuse at_2, no third refresh
+    await vi.waitFor(() => expect(pending).toHaveLength(4));
+    expect(pending[3]?.bearer).toBe('Bearer at_2');
+    expect(tokenPosts).toBe(2);
+
+    pending[2]?.resolve({ status: 200, body: { reviews: [] } });
+    pending[3]?.resolve({ status: 200, body: { reviews: [] } });
+    await Promise.all([c, d]);
+  });
+});
+
 describe('connected email (audit minor B)', () => {
   it('a cleared (empty) stored email is "no email", so no wrong Manager address is shown', async () => {
     m.secrets.GBP_CONNECTED_EMAIL = '';
