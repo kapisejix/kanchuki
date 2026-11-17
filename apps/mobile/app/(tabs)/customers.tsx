@@ -1,10 +1,13 @@
 import { useState, useCallback, memo } from 'react'
-import { formatPrice } from '@kanchuki/shared'
-import { View, Text, FlatList, TextInput } from 'react-native'
+import { formatPrice, buildGoogleReviewUrl } from '@kanchuki/shared'
+import { View, Text, FlatList, TextInput, Linking, Alert } from 'react-native'
 import { router } from 'expo-router'
 import { useQuery } from '@tanstack/react-query'
-import { Plus, Search, ChevronRight, MapPin, Users } from 'lucide-react-native'
-import { customerApi } from '../../src/lib/api'
+import { Plus, Search, ChevronRight, MapPin, Users, Star } from 'lucide-react-native'
+import { customerApi, retailerApi } from '../../src/lib/api'
+import { useAuth } from '../../src/lib/auth-context'
+import { buildWhatsAppInviteUrl } from '../../src/lib/staff-invite'
+import { buildGoogleReviewAskMessage, canAskGoogleReview } from '../../src/lib/google-review-ask'
 import { useScreenInsets } from '../../src/lib/safe-area'
 import { CustomerListSkeleton } from '../../src/components/Skeleton'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
@@ -24,6 +27,7 @@ type Customer = {
   budget_min: number | null
   budget_max: number | null
   last_visit_at: string | null
+  consent_given?: boolean
 }
 
 // ── Memoized Customer Card ─────────────────────────────────────────
@@ -31,10 +35,33 @@ type Customer = {
 const CustomerCard = memo(function CustomerCard({
   item,
   onPress,
+  placeId,
+  shopName,
+  isOwner,
 }: {
   item: Customer
   onPress: () => void
+  placeId: string | null
+  shopName: string
+  isOwner: boolean
 }) {
+  const canAsk = canAskGoogleReview({
+    consentGiven: item.consent_given,
+    phone: item.phone,
+    isOwner,
+    placeId,
+  })
+  const askForReview = () => {
+    const url = buildWhatsAppInviteUrl(
+      item.phone,
+      buildGoogleReviewAskMessage({
+        customerName: item.name,
+        shopName,
+        reviewUrl: buildGoogleReviewUrl(placeId ?? ''),
+      }),
+    )
+    Linking.openURL(url).catch(() => Alert.alert('Could not open WhatsApp', 'Please check WhatsApp is installed.'))
+  }
   // Build a location string from available address fields
   const locationParts = [item.city, item.state].filter(Boolean)
   const locationStr = locationParts.length > 0 ? locationParts.join(', ') : null
@@ -102,6 +129,17 @@ const CustomerCard = memo(function CustomerCard({
         )}
       </View>
 
+      {canAsk && (
+        <AnimatedPressable
+          onPress={askForReview}
+          accessibilityRole="button"
+          accessibilityLabel={`Ask ${item.name} for a Google review`}
+          style={{ minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' }}
+        >
+          <Star size={18} color="#BB3F95" />
+        </AnimatedPressable>
+      )}
+
       <ChevronRight size={18} color="#928EB2" />
     </AnimatedPressable>
   )
@@ -120,13 +158,30 @@ export default function CustomersScreen() {
     gcTime: 300_000,
   })
 
+  const { staffRole } = useAuth()
+  const { data: meData } = useQuery({
+    queryKey: ['retailer', 'me'],
+    queryFn: () => retailerApi.getMe(),
+    staleTime: 300_000,
+  })
+  const me = (meData as { data: { google_place_id?: string | null; shop_name?: string | null } } | undefined)?.data
+  const placeId = me?.google_place_id ?? null
+  const shopName = me?.shop_name ?? 'our store'
+  const isOwner = staffRole === null
+
   const customers = ((data as { data: Customer[] } | undefined)?.data ?? [])
 
   const renderItem = useCallback(
     ({ item }: { item: Customer }) => (
-      <CustomerCard item={item} onPress={() => router.push(`/customer/${item.id}`)} />
+      <CustomerCard
+        item={item}
+        onPress={() => router.push(`/customer/${item.id}`)}
+        placeId={placeId}
+        shopName={shopName}
+        isOwner={isOwner}
+      />
     ),
-    [],
+    [placeId, shopName, isOwner],
   )
 
   const keyExtractor = useCallback((item: Customer) => item.id, [])
