@@ -127,7 +127,16 @@ function templateReply(stars: number, reviewerName: string | null): string {
     : `${hello}we are sorry your experience was not what you expected. Please visit or call the store so we can put it right.`;
 }
 
-const ReplyBody = z.object({ comment: z.string().trim().min(1).max(4096) });
+// Google caps a reply at 4096 BYTES; Devanagari is 3 bytes per character, so a character count
+// alone lets a long Hindi reply through to a Google 400 that reads as "try again" forever.
+const REPLY_MAX_BYTES = 4096;
+const ReplyBody = z.object({
+  comment: z
+    .string()
+    .trim()
+    .min(1)
+    .refine((s) => Buffer.byteLength(s, 'utf8') <= REPLY_MAX_BYTES),
+});
 const ReviewsQuery = z.object({ cursor: z.string().max(60).optional() });
 
 export const retailersGoogleBusinessRoutes: FastifyPluginAsync = async (server) => {
@@ -293,7 +302,9 @@ export const retailersGoogleBusinessRoutes: FastifyPluginAsync = async (server) 
     async (request) => {
       requireReplier(request);
       const body = ReplyBody.safeParse(request.body);
-      if (!body.success) throw validationError('Write a reply of 1 to 4096 characters');
+      if (!body.success) throw validationError(
+          'Write a reply of up to about 4000 English or 1300 Hindi characters',
+        );
       const { link, review } = await ownLinkedReview(request, request.params.id);
 
       const refund = await reserveQuota(request.retailerId, 'GBP_REVIEW_REPLY');
