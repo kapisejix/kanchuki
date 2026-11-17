@@ -114,7 +114,7 @@ export async function handleAiCustomDesign(data: AiCustomDesignJobData): Promise
 
     const result = await generateStudioImage(sourceUrl, {
       // Poster: admin prompt only. The retailer's typed text is rendered over the scene, never sent to the model.
-      prompt: poster?.ai_prompt ? buildPosterPrompt(poster.ai_prompt) : buildDesignPrompt(prompt),
+      prompt: poster ? buildPosterPrompt(poster.ai_prompt as string) : buildDesignPrompt(prompt),
       tab: 'PRODUCT',
       product: product
         ? {
@@ -139,7 +139,7 @@ export async function handleAiCustomDesign(data: AiCustomDesignJobData): Promise
     const key = `retailers/${retailer_id}/designs/${randomBytes(12).toString('hex')}.jpg`;
     // Only an overlay needs the retailer's logo; a missing/unreadable one falls back to the store-name pill.
     const logo =
-      overlay === 'logo_corner' && product?.retailer?.logo_r2_key
+      !poster && overlay === 'logo_corner' && product?.retailer?.logo_r2_key
         ? await downloadBuffer(product.retailer.logo_r2_key).catch(() => null)
         : null;
     const uploaded = await downloadCompressAndUpload(payload, key, Boolean(result.base64Data), {

@@ -14,6 +14,7 @@ const m = vi.hoisted(() => ({
   retailerFind: vi.fn(),
   findPoster: vi.fn(),
   render: vi.fn(),
+  downloadBuffer: vi.fn(),
 }));
 
 vi.mock('@kanchuki/db', () => ({
@@ -23,6 +24,10 @@ vi.mock('@kanchuki/db', () => ({
     retailer: { findUnique: m.retailerFind },
     aiCustomDesign: { update: m.designUpdate, updateMany: m.designUpdateMany },
   },
+}));
+vi.mock('@kanchuki/ai', async (orig) => ({
+  ...(await orig<typeof import('@kanchuki/ai')>()),
+  downloadBuffer: m.downloadBuffer,
 }));
 vi.mock('../lib/studio-shoot.js', () => ({
   generateStudioImage: m.generate,
@@ -210,6 +215,15 @@ describe('handleAiCustomDesign poster branch', () => {
     expect(sent).not.toContain('SECRET HEADLINE');
     expect(sent).not.toContain('FLAT 50 OFF');
     expect(sent).not.toContain('warm diyas');
+  });
+
+  it('poster mode never downloads the store logo', async () => {
+    m.productFind.mockResolvedValue({
+      name: 'Suit',
+      retailer: { shop_name: 'S', logo_r2_key: 'logo.png' },
+    });
+    await handleAiCustomDesign({ ...poster, overlay: 'logo_corner' });
+    expect(m.downloadBuffer).not.toHaveBeenCalled();
   });
 
   it('free-prompt job unchanged: no template lookup, no render', async () => {

@@ -55,8 +55,11 @@ const FONT_STACK: Record<DesignFont, string> = {
   sans: 'DejaVu Sans, Noto Sans Devanagari, Noto Sans, Arial, Helvetica, sans-serif',
 };
 
+// Control chars are stripped too (defence in depth: clean() already runs first) so a bad char can never make the rasterise throw.
 const esc = (s: string) =>
   s
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: stripping them is the point
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
