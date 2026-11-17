@@ -71,6 +71,24 @@ describe('DesignLibrary AI poster + rect', () => {
     expect(saved?.body.product_slots).toBe(1);
   });
 
+  it('hints that product image layers are not drawn on an AI poster', async () => {
+    const IMG = { type: 'image', var: 'product_image', x: 0, y: 0, w: 10, h: 10, fit: 'contain' };
+    DESIGNS.push({
+      ...base,
+      id: 'd3',
+      name: 'PosterImg',
+      ai_prompt: 'x',
+      spec: { layers: [IMG as never] },
+    });
+    try {
+      render(<DesignLibrary />);
+      await openEdit('PosterImg');
+      expect(await screen.findByText(/product image layer is not drawn/i)).toBeTruthy();
+    } finally {
+      DESIGNS.pop();
+    }
+  });
+
   it('sends null when the prompt is cleared', async () => {
     render(<DesignLibrary />);
     await openEdit('Poster');

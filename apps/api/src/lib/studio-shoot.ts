@@ -45,6 +45,7 @@ import {
 // V-Tone admin tool / spin-frame extraction).
 import { Redis } from 'ioredis';
 import { AppError } from '../plugins/error-handler.js';
+import { isUnsafePromptText } from './ai-custom-design.js';
 import {
   generateFalEdit,
   generateFashnTryon,
@@ -503,14 +504,24 @@ function buildStudioPromptContext(opts: {
   inputHasPerson?: boolean;
 }): StudioPromptContext {
   const { product } = opts;
+  // Retailer free text: strip control chars/quotes, cap length, and drop any value that is a
+  // link or an instruction/people/brand phrase (same check as the free-prompt path).
+  const clean = (v?: string | null): string => {
+    const s = v ? sanitizeGarmentText(v).replace(/[{}<>\\`]/g, '') : '';
+    return s && !isUnsafePromptText(s) ? s : '';
+  };
+  const cleanList = (vs?: string[]): string[] => (vs ?? []).map(clean).filter(Boolean);
+  const secondary = cleanList(product?.secondary_colors);
+  const embellishments = cleanList(product?.embellishments);
+  const primary = clean(product?.primary_color);
+  const fabric = clean(product?.fabric);
+  const pattern = clean(product?.pattern);
   const colorSpec = [
-    product?.primary_color ? `exact primary color is ${product.primary_color}` : '',
-    product?.secondary_colors?.length
-      ? `secondary colors are ${product.secondary_colors.join(', ')}`
-      : '',
-    product?.fabric ? `fabric: ${product.fabric}` : '',
-    product?.pattern ? `pattern: ${product.pattern}` : '',
-    product?.embellishments?.length ? `embellishments: ${product.embellishments.join(', ')}` : '',
+    primary ? `exact primary color is ${primary}` : '',
+    secondary.length ? `secondary colors are ${secondary.join(', ')}` : '',
+    fabric ? `fabric: ${fabric}` : '',
+    pattern ? `pattern: ${pattern}` : '',
+    embellishments.length ? `embellishments: ${embellishments.join(', ')}` : '',
   ]
     .filter(Boolean)
     .join(', ');

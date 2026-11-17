@@ -138,10 +138,19 @@ export const retailersSocialAiDesignsRoutes: FastifyPluginAsync = async (server)
           ...(poster ?? {}),
         });
       } catch (err) {
-        // No job will run, so the slot goes back now.
+        // No job will run, so the slot goes back now and the row must not stay PENDING (the poll
+        // would spin forever). Both are best-effort; the original error is what the caller sees.
         await refundJobQuota(id, 'AI_CUSTOM_TEMPLATE').catch((e) =>
           request.log.error({ err: e, job_id: id }, 'Failed to refund AI design quota'),
         );
+        await prisma.aiCustomDesign
+          .updateMany({
+            where: { id, retailer_id: retailerId, status: 'PENDING' },
+            data: { status: 'FAILED', error: 'The design could not be started. Please try again.' },
+          })
+          .catch((e) =>
+            request.log.error({ err: e, job_id: id }, 'Failed to mark AI design row failed'),
+          );
         throw err;
       }
       return reply.status(202).send({ data: { id, status: 'PENDING' } });

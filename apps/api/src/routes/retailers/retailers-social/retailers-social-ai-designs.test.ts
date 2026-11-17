@@ -11,6 +11,7 @@ const m = vi.hoisted(() => ({
   enqueue: vi.fn(),
   productFind: vi.fn(),
   designCreate: vi.fn(),
+  designUpdateMany: vi.fn(),
   designFindMany: vi.fn(),
   designFindFirst: vi.fn(),
   retailerFind: vi.fn(),
@@ -32,6 +33,7 @@ vi.mock('@kanchuki/db', () => ({
     retailer: { findUnique: m.retailerFind },
     aiCustomDesign: {
       create: m.designCreate,
+      updateMany: m.designUpdateMany,
       findMany: m.designFindMany,
       findFirst: m.designFindFirst,
     },
@@ -69,6 +71,7 @@ beforeEach(() => {
   m.refund.mockResolvedValue(undefined);
   m.enqueue.mockResolvedValue(undefined);
   m.designCreate.mockResolvedValue({});
+  m.designUpdateMany.mockResolvedValue({ count: 1 });
   m.retailerFind.mockResolvedValue({ plan: 'PRO' });
   m.poster.mockResolvedValue({ id: 'd1', name: 'Diwali Gold' });
   m.productFind.mockResolvedValue({ id: 'p1', photos: [{ id: 'ph1', is_primary: true }] });
@@ -171,6 +174,17 @@ describe('POST /me/ai-designs', () => {
     expect(res.statusCode).toBeGreaterThanOrEqual(500);
     expect(m.refund).toHaveBeenCalledTimes(1);
     expect(m.refund.mock.calls[0]?.[1]).toBe('AI_CUSTOM_TEMPLATE');
+  });
+
+  it('enqueue failure also fails the PENDING row so the poll does not spin forever', async () => {
+    m.enqueue.mockRejectedValue(new Error('redis down'));
+    await post(await buildApp(), ok);
+    expect(m.designUpdateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ retailer_id: 'r1', status: 'PENDING' }),
+        data: expect.objectContaining({ status: 'FAILED' }),
+      }),
+    );
   });
 
   it('a manager is refused (owner-only)', async () => {

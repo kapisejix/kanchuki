@@ -122,18 +122,16 @@ export async function handleAiCustomDesign(data: AiCustomDesignJobData): Promise
       // Poster: admin prompt only. The retailer's typed text is rendered over the scene, never sent to the model.
       prompt: posterPrompt ? buildPosterPrompt(posterPrompt) : buildDesignPrompt(prompt),
       tab: 'PRODUCT',
-      product: product
-        ? {
-            name: product.name,
-            category: product.category,
-            subtype: product.subtype,
-            primary_color: product.primary_color,
-            secondary_colors: product.secondary_colors,
-            fabric: product.fabric_estimate,
-            pattern: product.pattern,
-            embellishments: product.embellishments,
-          }
-        : undefined,
+      product: {
+        name: product.name,
+        category: product.category,
+        subtype: product.subtype,
+        primary_color: product.primary_color,
+        secondary_colors: product.secondary_colors,
+        fabric: product.fabric_estimate,
+        pattern: product.pattern,
+        embellishments: product.embellishments,
+      },
     });
     const payload = result.base64Data || result.sampleUrl;
     if (result.status !== 'ready' || !payload) {
@@ -145,7 +143,7 @@ export async function handleAiCustomDesign(data: AiCustomDesignJobData): Promise
     const key = `retailers/${retailer_id}/designs/${randomBytes(12).toString('hex')}.jpg`;
     // Only an overlay needs the retailer's logo; a missing/unreadable one falls back to the store-name pill.
     const logo =
-      !poster && overlay === 'logo_corner' && product?.retailer?.logo_r2_key
+      !poster && overlay === 'logo_corner' && product.retailer?.logo_r2_key
         ? await downloadBuffer(product.retailer.logo_r2_key).catch(() => null)
         : null;
     const uploaded = await downloadCompressAndUpload(payload, key, Boolean(result.base64Data), {
@@ -164,8 +162,8 @@ export async function handleAiCustomDesign(data: AiCustomDesignJobData): Promise
               format,
               overlay,
               slide: {
-                pricePaise: product?.price_min ?? null,
-                storeName: product?.retailer?.shop_name ?? '',
+                pricePaise: product.price_min ?? null,
+                storeName: product.retailer?.shop_name ?? '',
                 festival: null,
                 logo,
               },

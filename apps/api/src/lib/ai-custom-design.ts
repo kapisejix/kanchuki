@@ -15,6 +15,11 @@ const URL_LIKE = /(https?:|www\.|[a-z0-9-]+\.(com|in|net|org|io|app|co|me|shop|s
 const BLOCKED =
   /\b(celebrit(y|ies)|actor|actress|politician|bollywood|resembl\w*|look(s|ing)? like|in the style of|ignore (all|any|the|previous|above)|system prompt|instructions?|jailbreak|nude|naked|nsfw|logo of|brand logo|nike|adidas|gucci|zara)\b/i;
 
+/** True when text carries a link/handle or a people/brand/instruction-override phrase. */
+export function isUnsafePromptText(text: string): boolean {
+  return URL_LIKE.test(text) || BLOCKED.test(text);
+}
+
 export function sanitizeDesignPrompt(raw: unknown): PromptCheck {
   if (typeof raw !== 'string') return { ok: false, reason: 'Describe the design you want' };
   // Control chars and the characters that could close our wrapper or open a template.
