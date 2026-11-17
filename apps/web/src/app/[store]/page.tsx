@@ -4,6 +4,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { CollectionView } from '../c/[slug]/components/CollectionView';
 import { ContactGate } from './components/ContactGate';
+import type { GoogleRating } from './components/GoogleRatingBadge';
 import { buildStoreDescription, ldJson, localBusinessLd, storeOgImage } from './lib/store-seo';
 import { CATALOG_PAGE_SIZE } from '@/lib/catalog';
 
@@ -17,6 +18,8 @@ export interface RetailerProfile {
   logo_url: string | null;
   banner_url: string | null;
   storefront_slug: string | null;
+  // Google's own rating of the shop; null/absent when the API could not show an honest figure.
+  google_rating?: GoogleRating | null;
 }
 
 interface Props {
@@ -118,6 +121,7 @@ export default async function StoreProfilePage({ params }: Props) {
             slug={`all-${store}`}
             store={store}
             productsApiPath={`/api/${store}/products`}
+            googleRating={profile.google_rating}
           />
         ) : null}
       </ContactGate>

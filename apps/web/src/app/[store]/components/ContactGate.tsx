@@ -15,6 +15,7 @@ import {
   verifyOtpViaWidget,
   widgetErrorMessage,
 } from '@/lib/msg91-widget';
+import { type GoogleRating, GoogleRatingBadge } from './GoogleRatingBadge';
 import { PassportSheet } from './PassportSheet';
 
 // Detect in-app WebView (Paytm, GPay, Instagram, Google Lens) — these have
@@ -40,6 +41,7 @@ interface GateProfile {
   shop_name: string;
   city?: string | null;
   logo_url?: string | null;
+  google_rating?: GoogleRating | null;
 }
 
 interface Props {
@@ -411,6 +413,7 @@ export function ContactGate({ slug, profile, onSuccess, children }: Props) {
               {profile.city && (
                 <p className="text-xs text-[#6B4773] font-medium">{profile.city}</p>
               )}
+              <GoogleRatingBadge google={profile.google_rating} />
             </div>
           </div>
           <p className="text-xs text-[#6B4773] mb-5">

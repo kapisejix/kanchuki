@@ -1,6 +1,7 @@
 // public-retailers-storefront.ts — store profile + promotions + collections (split from apps/api/src/routes/public/public-retailers.ts — body byte-identical)
 import { prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
+import { getPlaceRating } from '../../../lib/google-places.js';
 import { withPublicCache } from '../../../lib/public-cache.js';
 import { notFound } from '../../../plugins/error-handler.js';
 export const publicRetailersStorefrontRoutes: FastifyPluginAsync = async (server) => {
@@ -25,6 +26,7 @@ export const publicRetailersStorefrontRoutes: FastifyPluginAsync = async (server
           banner_url: true,
           storefront_collection_id: true,
           is_suspended: true,
+          google_place_id: true,
         },
       });
       if (!retailer) throw notFound('Retailer');
@@ -54,6 +56,12 @@ export const publicRetailersStorefrontRoutes: FastifyPluginAsync = async (server
           })
         : null;
 
+      // Google's own rating of the shop, shown only when Places answered (null = hide the badge).
+      // A lookup failure must never break the profile, hence the catch; the place id itself
+      // stays server-side.
+      const placeId = retailer.google_place_id;
+      const rating = placeId ? await getPlaceRating(placeId).catch(() => null) : null;
+
       return {
         data: {
           shop_name: retailer.shop_name,
@@ -65,6 +73,14 @@ export const publicRetailersStorefrontRoutes: FastifyPluginAsync = async (server
           logo_url: retailer.logo_url ?? null,
           banner_url: retailer.banner_url ?? null,
           storefront_slug: storefront?.slug ?? null,
+          google_rating:
+            placeId && rating
+              ? {
+                  rating: rating.rating,
+                  count: rating.count,
+                  url: `https://www.google.com/maps/search/?api=1&query=Google&query_place_id=${encodeURIComponent(placeId)}`,
+                }
+              : null,
         },
       };
     });

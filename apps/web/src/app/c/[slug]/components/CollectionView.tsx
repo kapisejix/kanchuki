@@ -29,6 +29,7 @@ import {
   wishlistKey,
 } from '../lib/wishlist';
 import { trackPassportEvent } from '@/lib/passport-client';
+import { GoogleRatingBadge, type GoogleRating } from '../../../[store]/components/GoogleRatingBadge';
 import { FilterBar } from './FilterBar';
 import { CATALOG_PAGE_SIZE } from '@/lib/catalog';
 import { KanchukiBrandBar } from './KanchukiBrandBar';
@@ -69,9 +70,11 @@ interface Props {
   // this same component). See apps/web/src/app/api/c/[slug]/products and
   // apps/web/src/app/api/store/[slug]/categories/[categoryId]/products.
   productsApiPath: string;
+  // The shop's Google rating, only passed by the store root page (null/absent = no badge).
+  googleRating?: GoogleRating | null;
 }
 
-export function CollectionView({ collection, slug, store, productsApiPath }: Props) {
+export function CollectionView({ collection, slug, store, productsApiPath, googleRating }: Props) {
   // Canonical base path for this collection's sub-flows (cart/wishlist) and
   // their API proxies. store=null ⇒ legacy /c/{slug} form.
   const basePath = store ? `/${store}/${slug}` : `/c/${slug}`;
@@ -405,6 +408,7 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
                     </a>
                   )}
                 </div>
+                <GoogleRatingBadge google={googleRating} />
               </div>
             </div>
 
