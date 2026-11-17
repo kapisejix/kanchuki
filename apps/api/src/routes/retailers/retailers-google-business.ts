@@ -1,21 +1,25 @@
 // Google Business Profile reviews — retailer side
 // (docs/tasks/pending/google-business-profile-and-setup-checklist.md B5).
 //
-// Owner-only: no staff/support allowlist lists /me/google-business/* (deny-by-default) and
-// every handler also checks isRealOwner (RC-068). The retailer NEVER supplies a Google
+// Consent (`/request`) and unlink are owner-only. Reading reviews, drafting and posting a reply
+// are owner + manager (owner's decision 2026-11-17): the manager allowlist in plugins/auth.ts
+// lists exactly those four routes, and every handler re-checks the caller (requireReplier —
+// salespeople and delegated sessions are refused, RC-068). The retailer NEVER supplies a Google
 // account/location id — those come from gbp_links, which only admin routes can set — and a
 // review id is only ever resolved inside the caller's own link (tenant isolation).
 // Nothing reports success without Google confirming it (RC-056/058/060).
 
+import { generateReviewReplyDraft } from '@kanchuki/ai';
 import { prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
 import { z } from 'zod';
+import { reserveTaggingQuota } from '../../lib/ai-usage.js';
 import { hasFeature } from '../../lib/features.js';
 import { gbpAvailable } from '../../lib/gbp-availability.js';
 import { syncIfStale } from '../../lib/gbp-sync.js';
 import { GbpError, gbpManagerEmail, replyToReview } from '../../lib/google-business.js';
 import { reserveQuota } from '../../lib/quota.js';
-import { isRealOwner } from '../../plugins/auth.js';
+import { isDelegate, isRealOwner } from '../../plugins/auth.js';
 import {
   AppError,
   featureUnavailable,
@@ -37,6 +41,21 @@ const STEPS = [
 function requireOwner(request: FastifyRequest): void {
   if (!isRealOwner(request)) throw forbidden('Only the shop owner can do this');
 }
+
+/** Owner or a manager (any non-salesperson staff row). Never a salesperson or a delegated session. */
+function requireReplier(request: FastifyRequest): void {
+  const manager =
+    !!request.staffRole && request.staffRole !== 'salesperson' && !isDelegate(request);
+  if (!isRealOwner(request) && !manager) {
+    throw forbidden('Only the shop owner or a manager can do this');
+  }
+}
+
+/** Who did it, for the audit trail. */
+const actor = (request: FastifyRequest) => ({
+  by: isRealOwner(request) ? 'owner' : 'manager',
+  staff_id: request.staffId ?? null,
+});
 
 /** Plan lacks the feature → 402; platform not ready (no connection / not approved) → 409. */
 async function requireAvailable(retailerId: string): Promise<void> {
@@ -68,13 +87,53 @@ function gbpToAppError(err: GbpError): AppError {
   }
 }
 
+/**
+ * Gate + own link + own review, in the order every review route needs: feature/approval, then
+ * the caller's LINKED gbp_links row, then the review only inside that link (tenant isolation;
+ * a client-supplied id is never sent to Google).
+ */
+async function ownLinkedReview(request: FastifyRequest, reviewId: string) {
+  await requireAvailable(request.retailerId);
+  const link = await prisma.gbpLink.findUnique({
+    where: { retailer_id: request.retailerId },
+    select: { id: true, status: true, gbp_account_id: true, gbp_location_id: true },
+  });
+  if (!link || link.status !== 'LINKED' || !link.gbp_account_id || !link.gbp_location_id) {
+    throw new AppError('NOT_LINKED', 'Your Google profile is not linked yet', 409);
+  }
+  const review = await prisma.gbpReview.findFirst({
+    where: { id: reviewId, retailer_id: request.retailerId, link_id: link.id },
+    select: {
+      id: true,
+      google_review_id: true,
+      star_rating: true,
+      comment: true,
+      reviewer_name: true,
+    },
+  });
+  if (!review) throw notFound('Review');
+  return {
+    link: { ...link, gbp_account_id: link.gbp_account_id, gbp_location_id: link.gbp_location_id },
+    review,
+  };
+}
+
+/** Plain fallback when the AI cannot draft. No promises, no links. */
+function templateReply(stars: number, reviewerName: string | null): string {
+  const name = reviewerName?.trim().split(/\s+/)[0];
+  const hello = name ? `Hi ${name}, ` : '';
+  return stars >= 4
+    ? `${hello}thank you so much for your kind words. We are glad you liked it and hope to see you again soon!`
+    : `${hello}we are sorry your experience was not what you expected. Please visit or call the store so we can put it right.`;
+}
+
 const ReplyBody = z.object({ comment: z.string().trim().min(1).max(4096) });
 const ReviewsQuery = z.object({ cursor: z.string().max(60).optional() });
 
 export const retailersGoogleBusinessRoutes: FastifyPluginAsync = async (server) => {
   // ─── GET /me/google-business/status ─────────────────────────────
   server.get('/me/google-business/status', async (request) => {
-    requireOwner(request);
+    requireReplier(request);
     const available = await gbpAvailable(request.retailerId);
     if (!available) return { data: { state: 'UNAVAILABLE' as State } };
 
@@ -159,7 +218,7 @@ export const retailersGoogleBusinessRoutes: FastifyPluginAsync = async (server) 
 
   // ─── GET /me/google-business/reviews ────────────────────────────
   server.get('/me/google-business/reviews', async (request) => {
-    requireOwner(request);
+    requireReplier(request);
     await requireAvailable(request.retailerId);
     const q = ReviewsQuery.safeParse(request.query);
     if (!q.success) throw validationError('Invalid cursor');
@@ -232,23 +291,10 @@ export const retailersGoogleBusinessRoutes: FastifyPluginAsync = async (server) 
   server.post<{ Params: { id: string } }>(
     '/me/google-business/reviews/:id/reply',
     async (request) => {
-      requireOwner(request);
+      requireReplier(request);
       const body = ReplyBody.safeParse(request.body);
       if (!body.success) throw validationError('Write a reply of 1 to 4096 characters');
-      await requireAvailable(request.retailerId);
-
-      const link = await prisma.gbpLink.findUnique({
-        where: { retailer_id: request.retailerId },
-        select: { id: true, status: true, gbp_account_id: true, gbp_location_id: true },
-      });
-      if (!link || link.status !== 'LINKED' || !link.gbp_account_id || !link.gbp_location_id) {
-        throw new AppError('NOT_LINKED', 'Your Google profile is not linked yet', 409);
-      }
-      const review = await prisma.gbpReview.findFirst({
-        where: { id: request.params.id, retailer_id: request.retailerId, link_id: link.id },
-        select: { id: true, google_review_id: true },
-      });
-      if (!review) throw notFound('Review');
+      const { link, review } = await ownLinkedReview(request, request.params.id);
 
       const refund = await reserveQuota(request.retailerId, 'GBP_REVIEW_REPLY');
 
@@ -291,7 +337,7 @@ export const retailersGoogleBusinessRoutes: FastifyPluginAsync = async (server) 
             action: 'reply',
             resource_type: 'GbpReview',
             resource_id: review.id,
-            metadata: { length: confirmed.comment.length },
+            metadata: { length: confirmed.comment.length, ...actor(request) },
             ip_address: request.ip,
           },
         });
@@ -299,6 +345,43 @@ export const retailersGoogleBusinessRoutes: FastifyPluginAsync = async (server) 
         request.log.error({ err }, 'gbp reply posted on Google but audit row failed');
       }
       return { data: { reply: { comment: confirmed.comment, updated_at: confirmed.updatedAt } } };
+    },
+  );
+
+  // ─── POST /me/google-business/reviews/:id/draft-reply ───────────
+  // A DRAFT for the person to read, edit and post themselves: nothing goes to Google, no reply
+  // slot is spent. Same gates and the same own-link/own-review scoping as the reply route. If the
+  // AI is unavailable or the AI quota is spent it answers a plain template, labelled as one
+  // (never presented as AI output, RC-059).
+  server.post<{ Params: { id: string } }>(
+    '/me/google-business/reviews/:id/draft-reply',
+    async (request) => {
+      requireReplier(request);
+      const { review } = await ownLinkedReview(request, request.params.id);
+      const retailer = await prisma.retailer.findUnique({
+        where: { id: request.retailerId },
+        select: { shop_name: true },
+      });
+
+      try {
+        const quota = await reserveTaggingQuota(request.retailerId);
+        const text = await generateReviewReplyDraft({
+          storeName: retailer?.shop_name ?? undefined,
+          reviewerName: review.reviewer_name,
+          starRating: review.star_rating,
+          comment: review.comment,
+          onProviderUsed: quota.onProviderUsed,
+        }).finally(() => quota.settle());
+        return { data: { draft: text, source: 'ai' as const } };
+      } catch (err) {
+        request.log.warn({ err }, 'gbp reply draft: AI unavailable, using the template');
+        return {
+          data: {
+            draft: templateReply(review.star_rating, review.reviewer_name),
+            source: 'template' as const,
+          },
+        };
+      }
     },
   );
 
