@@ -100,6 +100,8 @@ export const PLAN_LIMIT_RESOURCE_TYPES = [
   'ACTIVE_SCHEDULE_PLAN',
   // T5 — AI custom-prompt social designs per month (METERED: no row = 0).
   'AI_CUSTOM_TEMPLATE',
+  // F-034 — AI promo video clips per month (METERED: no row = 0).
+  'AI_VIDEO',
 ] as const;
 
 export type PlanLimitResource = (typeof PLAN_LIMIT_RESOURCE_TYPES)[number];

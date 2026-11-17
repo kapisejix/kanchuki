@@ -20,6 +20,7 @@ type FeatureKey =
   | 'SOCIAL_SCHEDULER'
   // T5. Kept in step by hand with the API's admin-plans allowlist.
   | 'AI_CUSTOM_TEMPLATE'
+  | 'AI_PROMO_VIDEO'
   // Google Business Profile reviews (Part B). Kept in step by hand with the API's admin-plans allowlist.
   | 'GOOGLE_BUSINESS_PROFILE'
   | 'WHATSAPP_BUSINESS_API'
@@ -48,6 +49,7 @@ const FEATURES: { key: FeatureKey; label: string; description: string }[] = [
   { key: 'VIRTUAL_TRY_ON_V2', label: 'Virtual Try-On (CatVTON)', description: 'In-store + customer-web try-on via the RunPod engine (F-040)' },
   { key: 'SOCIAL_SCHEDULER', label: 'Social Post Scheduler', description: 'Daily auto-posted Facebook/Instagram carousels from a retailer-set plan (F-043)' },
   { key: 'AI_CUSTOM_TEMPLATE', label: 'AI Custom Designs', description: 'Retailer writes a prompt, AI makes a social design (T5); also needs an AI_CUSTOM_TEMPLATE limit in Plan Limits' },
+  { key: 'AI_PROMO_VIDEO', label: 'AI Promo Videos', description: 'Photo to short AI video for Reels (F-034); also needs an AI_VIDEO limit in Plan Limits and an enabled video model for the plan' },
   { key: 'GOOGLE_BUSINESS_PROFILE', label: 'Google Business Reviews', description: 'Read and reply to Google reviews from the app (Part B); also needs the Google connection + "API approved" in Admin → Google Business Profile' },
   { key: 'WHATSAPP_BUSINESS_API', label: 'WhatsApp Business API', description: 'Bring-your-own Meta credentials for bulk-send' },
   { key: 'CHECKOUT_CART', label: 'Shopping Cart / Checkout', description: 'Online checkout with Razorpay payments' },

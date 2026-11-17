@@ -2093,6 +2093,7 @@ enum AiProviderType {
   OPENAI_COMPAT
   GEMINI
   BFL // Black Forest Labs — FLUX Kontext studio shoots (F-032)
+  FAL // fal.ai image-to-video promo clips (F-034 T5)
 }
 
 model AiProviderConfig {
@@ -2143,6 +2144,8 @@ model AiUsageLog {
   // AI_TAGGING_CALL | AI_ITEM_DETECT | AI_COLOR_DETECT
   resource_type String
   credits_used  Int @default(1)
+  // F-034 T5 (migration 168): real USD cost per call where the provider bills in USD; NULL otherwise.
+  cost_usd      Decimal? @db.Decimal(10, 4)
 
   created_at DateTime @default(now())
 
