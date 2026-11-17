@@ -250,7 +250,7 @@ Part A needs **no migration**. Each file gets the 129-style header comment (gran
 | D4 | What "Ask Kanchuki team" means for Facebook/Instagram/WhatsApp (the team can't do these inside a session). | Call-back request; copy says so. Only GST / place id are doable in-session. |
 | D5 | Who on our side: links locations (B4), sees the checklist (C4). | Link = `SUPER_ADMIN` + `MARKETING_MANAGER`; connect identity = Super Admin only; checklist read-only for marketing + support managers. |
 | D6 | **"Payment setup"**: (a) F-038 referral payout account, shown only if the retailer has referral earnings; (b) active paid subscription; (c) exclude. Also name any "required API credential". | Exclude until you name one; (a) is the only real payment account the product holds. |
-| D7 | Replies: owner only, or manager too? (A reply is public speech under the shop's name.) | Owner only at launch. |
+| D7 | Replies: owner only, or manager too? (A reply is public speech under the shop's name.) | Owner only at launch. **Decided 2026-11-17 (owner): owner + manager.** Salesperson and delegates stay out; consent and unlink stay owner-only. |
 | D8 | Reply quota per month by plan (admin-editable after). | Starter 20 / Growth 100 / Pro 500, or feature off for Starter. |
 | D9 | Place-id search uses a paid Google API (cents per search, capped 30/day/retailer). Accept, or paste-only? | Accept. |
 | D10 | Onboarding: card inside step 2 vs a new step. | Inside step 2 (no renumbering). |

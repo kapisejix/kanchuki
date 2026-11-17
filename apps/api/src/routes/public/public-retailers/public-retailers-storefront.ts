@@ -1,8 +1,14 @@
 // public-retailers-storefront.ts — store profile + promotions + collections (split from apps/api/src/routes/public/public-retailers.ts — body byte-identical)
 import { prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
+import { getPlaceRating } from '../../../lib/google-places.js';
+import { placeMatchesShop, placeNameWords } from '../../../lib/place-match.js';
 import { withPublicCache } from '../../../lib/public-cache.js';
 import { notFound } from '../../../plugins/error-handler.js';
+// Look-alike stores (same distinctive name word) claiming one place id that we will inspect;
+// past this the claim is too crowded to call and the badge stays hidden.
+const MAX_CLAIMANTS = 50;
+
 export const publicRetailersStorefrontRoutes: FastifyPluginAsync = async (server) => {
   // ─── GET /public/retailers/:slug ─────────────────────────────────
   // QR profile page: no auth required. Storefront link only included if the
@@ -15,6 +21,7 @@ export const publicRetailersStorefrontRoutes: FastifyPluginAsync = async (server
       const retailer = await prisma.retailer.findFirst({
         where: { public_slug: slug, deleted_at: null },
         select: {
+          id: true,
           shop_name: true,
           city: true,
           state: true,
@@ -25,6 +32,7 @@ export const publicRetailersStorefrontRoutes: FastifyPluginAsync = async (server
           banner_url: true,
           storefront_collection_id: true,
           is_suspended: true,
+          google_place_id: true,
         },
       });
       if (!retailer) throw notFound('Retailer');
@@ -54,6 +62,51 @@ export const publicRetailersStorefrontRoutes: FastifyPluginAsync = async (server
           })
         : null;
 
+      // Google's own rating of the shop, shown only when Places answered (null = hide the badge).
+      // A lookup failure must never break the profile, hence the catch; the place id itself
+      // stays server-side.
+      // The retailer chose this place id themselves and Google proves no ownership, so a place
+      // that is not plausibly the shop (name/city) is NOT shown: otherwise anyone could display
+      // a neighbour's better rating as their own. If ANOTHER store that also plausibly is this
+      // place claims the same id, it is ambiguous and hidden for both. A rival whose own name
+      // does not match is ignored, so pasting someone's place id cannot hide their badge.
+      const placeId = retailer.google_place_id;
+      let rating: Awaited<ReturnType<typeof getPlaceRating>> = null;
+      if (placeId) {
+        const place = await getPlaceRating(placeId).catch(() => null);
+        if (place && placeMatchesShop(place, retailer)) {
+          // Only look-alikes can make this ambiguous, so only they are fetched (in the DB): a
+          // rival cannot push the real match out of the page with non-matching claims.
+          const words = placeNameWords(place.name);
+          // placeNameWords is a superset of what placeMatchesShop accepts, so this filter can
+          // never drop a claimant the matcher below would have counted.
+          const lookAlike = {
+            OR: words.map((w) => ({ shop_name: { contains: w, mode: 'insensitive' as const } })),
+          };
+          const others = await prisma.retailer
+            .findMany({
+              where: {
+                google_place_id: placeId,
+                deleted_at: null,
+                id: { not: retailer.id },
+                ...lookAlike,
+              },
+              select: { shop_name: true, city: true },
+              take: MAX_CLAIMANTS,
+            })
+            .catch(() => null); // cannot tell: hide
+          // A full page means there may be more we cannot see (a rival could pad the list with
+          // non-matching claims to push the real match out), so that also hides.
+          if (
+            others &&
+            others.length < MAX_CLAIMANTS &&
+            !others.some((o) => placeMatchesShop(place, o))
+          ) {
+            rating = place;
+          }
+        }
+      }
+
       return {
         data: {
           shop_name: retailer.shop_name,
@@ -65,6 +118,14 @@ export const publicRetailersStorefrontRoutes: FastifyPluginAsync = async (server
           logo_url: retailer.logo_url ?? null,
           banner_url: retailer.banner_url ?? null,
           storefront_slug: storefront?.slug ?? null,
+          google_rating:
+            placeId && rating
+              ? {
+                  rating: rating.rating,
+                  count: rating.count,
+                  url: `https://www.google.com/maps/search/?api=1&query=Google&query_place_id=${encodeURIComponent(placeId)}`,
+                }
+              : null,
         },
       };
     });

@@ -66,6 +66,17 @@ describe('syncLink', () => {
     expect(arg.data.status).toBe('LINKED');
   });
 
+  it('a location Google cannot find is a lost location: NEEDS_ACCESS, state flips', async () => {
+    m.count.mockResolvedValue(1);
+    const { GbpError } = await import('./google-business.js');
+    m.listReviews.mockRejectedValue(new GbpError('NOT_FOUND', 'gone'));
+    expect(await syncLink(link)).toEqual({ ok: false, code: 'NEEDS_ACCESS' });
+    expect(m.updateMany.mock.calls[0]?.[0].data).toMatchObject({
+      status: 'NEEDS_ACCESS',
+      last_error_code: 'NEEDS_ACCESS',
+    });
+  });
+
   it('writes nothing when the link was unlinked or re-pointed during the Google call', async () => {
     m.count.mockResolvedValue(0);
     expect(await syncLink(link)).toEqual({ ok: true, synced: 0 });

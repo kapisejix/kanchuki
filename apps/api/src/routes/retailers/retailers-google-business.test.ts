@@ -26,6 +26,9 @@ const m = vi.hoisted(() => ({
   reserve: vi.fn(),
   refund: vi.fn(),
   routeTicket: vi.fn(),
+  reserveTagging: vi.fn(),
+  settle: vi.fn(),
+  draft: vi.fn(),
 }));
 
 vi.mock('@kanchuki/db', () => ({
@@ -47,6 +50,8 @@ vi.mock('../../lib/features.js', () => ({ hasFeature: m.hasFeature }));
 vi.mock('../../lib/gbp-availability.js', () => ({ gbpAvailable: m.available }));
 vi.mock('../../lib/gbp-sync.js', () => ({ syncIfStale: m.sync }));
 vi.mock('../../lib/quota.js', () => ({ reserveQuota: m.reserve }));
+vi.mock('../../lib/ai-usage.js', () => ({ reserveTaggingQuota: m.reserveTagging }));
+vi.mock('@kanchuki/ai', () => ({ generateReviewReplyDraft: m.draft }));
 vi.mock('../team.js', () => ({ routeTicket: m.routeTicket }));
 vi.mock('../../lib/google-business.js', async (orig) => ({
   ...(await orig<typeof import('../../lib/google-business.js')>()),
@@ -57,16 +62,22 @@ vi.mock('../../lib/google-business.js', async (orig) => ({
 import { GbpError } from '../../lib/google-business.js';
 import { retailersGoogleBusinessRoutes } from './retailers-google-business.js';
 
-async function buildApp(opts: { retailerId?: string; staffRole?: string | null } = {}) {
+async function buildApp(
+  opts: { retailerId?: string; staffRole?: string | null; delegate?: boolean } = {},
+) {
   const app = Fastify();
   app.setErrorHandler(errorHandler);
   app.decorateRequest('retailerId', '');
   app.decorateRequest('staffRole', null);
+  app.decorateRequest('staffId', null);
   app.decorateRequest('catalogDelegate', null);
   app.decorateRequest('supportDelegate', null);
   app.addHook('preHandler', async (request) => {
     request.retailerId = opts.retailerId ?? 'ret1';
     request.staffRole = (opts.staffRole ?? null) as never;
+    request.staffId = opts.staffRole ? 'staff1' : null;
+    // A delegated session has staffRole null, exactly like an owner, but is not one.
+    if (opts.delegate) request.catalogDelegate = {} as never;
   });
   await app.register(retailersGoogleBusinessRoutes, { prefix: '/v1/retailers' });
   await app.ready();
@@ -106,23 +117,184 @@ beforeEach(() => {
   m.retailerFind.mockResolvedValue({ territory_id: null });
   m.ticketCreate.mockResolvedValue({ id: 't1', status: 'OPEN' });
   m.routeTicket.mockResolvedValue(null);
+  m.settle.mockResolvedValue(undefined);
+  m.reserveTagging.mockResolvedValue({ onProviderUsed: vi.fn(), settle: m.settle });
+  m.draft.mockResolvedValue('Thank you so much, we hope to see you again!');
+  m.reviewFindFirst.mockResolvedValue({
+    id: 'rev1',
+    google_review_id: 'g1',
+    star_rating: 5,
+    comment: 'Lovely suits',
+    reviewer_name: 'Priya Sharma',
+  });
   m.reply.mockResolvedValue({ comment: 'Thank you!', updatedAt: new Date('2026-10-05T00:00:00Z') });
 });
 
-describe('owner-only', () => {
+const payload = { consent: true, comment: 'hi' };
+
+describe('owner-only: consent and unlink never reach a manager', () => {
   it.each([
-    ['GET', `${base}/status`],
     ['POST', `${base}/request`],
-    ['GET', `${base}/reviews`],
-    ['POST', `${base}/reviews/rev1/reply`],
     ['DELETE', `${base}/link`],
   ] as const)('manager gets 403 on %s %s and nothing is touched', async (method, url) => {
     const app = await buildApp({ staffRole: 'manager' });
-    const res = await app.inject({ method, url, payload: { consent: true, comment: 'hi' } });
+    const res = await app.inject({ method, url, payload });
     expect(res.statusCode).toBe(403);
     expect(m.linkFind).not.toHaveBeenCalled();
-    expect(m.reply).not.toHaveBeenCalled();
     expect(m.linkUpsert).not.toHaveBeenCalled();
+    expect(m.linkUpdateMany).not.toHaveBeenCalled();
+  });
+});
+
+const REVIEW_ROUTES = [
+  ['GET', `${base}/status`],
+  ['GET', `${base}/reviews`],
+  ['POST', `${base}/reviews/rev1/reply`],
+  ['POST', `${base}/reviews/rev1/draft-reply`],
+] as const;
+
+describe('reviews + replies: owner and manager only', () => {
+  it.each(REVIEW_ROUTES)(
+    'a salesperson gets 403 on %s %s and nothing is touched',
+    async (method, url) => {
+      const app = await buildApp({ staffRole: 'salesperson' });
+      const res = await app.inject({ method, url, payload });
+      expect(res.statusCode).toBe(403);
+      expect(m.linkFind).not.toHaveBeenCalled();
+      expect(m.reply).not.toHaveBeenCalled();
+      expect(m.draft).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(REVIEW_ROUTES)(
+    'a delegated session (staffRole null, not an owner) gets 403 on %s %s',
+    async (method, url) => {
+      const app = await buildApp({ delegate: true });
+      const res = await app.inject({ method, url, payload });
+      expect(res.statusCode).toBe(403);
+      expect(m.linkFind).not.toHaveBeenCalled();
+      expect(m.reply).not.toHaveBeenCalled();
+      expect(m.draft).not.toHaveBeenCalled();
+    },
+  );
+
+  it('a manager can read status and reviews', async () => {
+    const app = await buildApp({ staffRole: 'manager' });
+    expect((await app.inject({ method: 'GET', url: `${base}/status` })).statusCode).toBe(200);
+    expect((await app.inject({ method: 'GET', url: `${base}/reviews` })).statusCode).toBe(200);
+  });
+
+  it('a manager can reply; the audit row says who', async () => {
+    const app = await buildApp({ staffRole: 'manager' });
+    const res = await app.inject({
+      method: 'POST',
+      url: `${base}/reviews/rev1/reply`,
+      payload: { comment: 'Thank you!' },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(m.reply).toHaveBeenCalledTimes(1);
+    expect(m.auditCreate.mock.calls[0]?.[0].data.metadata).toMatchObject({
+      by: 'manager',
+      staff_id: 'staff1',
+    });
+  });
+
+  it('an owner reply is audited as the owner', async () => {
+    const app = await buildApp();
+    await app.inject({
+      method: 'POST',
+      url: `${base}/reviews/rev1/reply`,
+      payload: { comment: 'Hi' },
+    });
+    expect(m.auditCreate.mock.calls[0]?.[0].data.metadata).toMatchObject({
+      by: 'owner',
+      staff_id: null,
+    });
+  });
+});
+
+describe('POST /reviews/:id/draft-reply', () => {
+  const draft = (app: App, id = 'rev1') =>
+    app.inject({ method: 'POST', url: `${base}/reviews/${id}/draft-reply` });
+
+  it('AI draft: returns text for the retailer to edit, posts NOTHING to Google, meters the call', async () => {
+    m.retailerFind.mockResolvedValue({ shop_name: 'Asha Boutique' });
+    const res = await draft(await buildApp({ staffRole: 'manager' }));
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data).toEqual({
+      draft: 'Thank you so much, we hope to see you again!',
+      source: 'ai',
+    });
+    expect(m.draft.mock.calls[0]?.[0]).toMatchObject({
+      storeName: 'Asha Boutique',
+      reviewerName: 'Priya Sharma',
+      starRating: 5,
+      comment: 'Lovely suits',
+    });
+    expect(m.reserveTagging).toHaveBeenCalledWith('ret1');
+    expect(m.settle).toHaveBeenCalledTimes(1);
+    expect(m.reply).not.toHaveBeenCalled();
+    expect(m.reviewUpdate).not.toHaveBeenCalled();
+    expect(m.reserve).not.toHaveBeenCalled(); // a draft does not spend a reply slot
+  });
+
+  it('is scoped to the caller: a review outside their own link is a 404 and the model is never called', async () => {
+    m.reviewFindFirst.mockResolvedValue(null);
+    const res = await draft(await buildApp({ retailerId: 'retA' }), 'someone-elses');
+    expect(res.statusCode).toBe(404);
+    expect(m.reviewFindFirst.mock.calls[0]?.[0].where).toMatchObject({
+      id: 'someone-elses',
+      retailer_id: 'retA',
+    });
+    expect(m.draft).not.toHaveBeenCalled();
+    expect(m.reserveTagging).not.toHaveBeenCalled();
+  });
+
+  it('feature off / not approved → refused like every other route, no AI spend', async () => {
+    m.available.mockResolvedValue(false);
+    const res = await draft(await buildApp());
+    expect(res.statusCode).toBe(409);
+    expect(m.draft).not.toHaveBeenCalled();
+  });
+
+  it('AI down → a plain template, honestly labelled; the quota is still settled', async () => {
+    m.retailerFind.mockResolvedValue({ shop_name: 'Asha Boutique' });
+    m.draft.mockRejectedValue(new Error('provider down'));
+    const res = await draft(await buildApp());
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data.source).toBe('template');
+    expect(res.json().data.draft).toContain('Priya');
+    expect(m.settle).toHaveBeenCalledTimes(1);
+  });
+
+  it('AI quota spent → the same template, no model call', async () => {
+    m.reserveTagging.mockRejectedValue(new Error('quota'));
+    const res = await draft(await buildApp());
+    expect(res.json().data.source).toBe('template');
+    expect(m.draft).not.toHaveBeenCalled();
+  });
+
+  it('the template apologises for a low rating and thanks for a high one', async () => {
+    m.draft.mockRejectedValue(new Error('down'));
+    m.reviewFindFirst.mockResolvedValue({
+      id: 'rev1',
+      google_review_id: 'g1',
+      star_rating: 2,
+      comment: 'Late',
+      reviewer_name: null,
+    });
+    const low = (await draft(await buildApp())).json().data.draft as string;
+    expect(low).toMatch(/sorry/i);
+    m.reviewFindFirst.mockResolvedValue({
+      id: 'rev1',
+      google_review_id: 'g1',
+      star_rating: 5,
+      comment: null,
+      reviewer_name: null,
+    });
+    const high = (await draft(await buildApp())).json().data.draft as string;
+    expect(high).toMatch(/thank/i);
+    expect(high).not.toMatch(/sorry/i);
   });
 });
 
@@ -248,6 +420,12 @@ describe('GET /status', () => {
     const d = await status({ ...LINKED, location_title: 'Asha Boutique' });
     expect(d).toMatchObject({ state: 'LINKED', location_title: 'Asha Boutique', avg_rating: 4.5 });
     expect(d.manager_email).toBeUndefined();
+    expect(d.sync_failed).toBe(false);
+  });
+  it('a failing sync is reported (sync_failed), without leaking the raw error code', async () => {
+    const d = await status({ ...LINKED, review_count: null, last_error_code: 'UNAVAILABLE' });
+    expect(d.sync_failed).toBe(true);
+    expect(JSON.stringify(d)).not.toContain('UNAVAILABLE');
   });
 });
 
@@ -288,6 +466,19 @@ describe('GET /reviews — tenant isolation', () => {
       gbp_account_id: 'acc1',
       gbp_location_id: 'loc1',
     });
+  });
+
+  it('summary tells a never-synced / failing link apart from a real zero', async () => {
+    m.linkFind.mockResolvedValue({
+      ...LINKED,
+      review_count: null,
+      last_error_code: 'NOT_APPROVED',
+    });
+    const res = await (await buildApp()).inject({ method: 'GET', url: `${base}/reviews` });
+    expect(res.json().data.summary).toMatchObject({ review_count: null, sync_failed: true });
+    m.linkFind.mockResolvedValue({ ...LINKED, review_count: 0, last_error_code: null });
+    const ok = await (await buildApp()).inject({ method: 'GET', url: `${base}/reviews` });
+    expect(ok.json().data.summary).toMatchObject({ review_count: 0, sync_failed: false });
   });
 });
 
@@ -343,6 +534,25 @@ describe('POST /reviews/:id/reply', () => {
     expect(res.statusCode).toBe(502);
     expect(m.reviewUpdate).not.toHaveBeenCalled();
     expect(m.refund).toHaveBeenCalledTimes(1);
+  });
+
+  it('a review deleted on Google → 404 REVIEW_NOT_FOUND; the retailer keeps their Google tab', async () => {
+    m.reply.mockRejectedValue(new GbpError('NOT_FOUND', 'gone'));
+    const res = await reply(await buildApp());
+    expect(res.statusCode).toBe(404);
+    expect(res.json().error.code).toBe('REVIEW_NOT_FOUND');
+    expect(m.linkUpdate).not.toHaveBeenCalled();
+    expect(m.reviewUpdate).not.toHaveBeenCalled();
+    expect(m.refund).toHaveBeenCalledTimes(1);
+  });
+
+  it('Google accepted the reply but our own write fails → still 200, slot stays spent, no duplicate retry', async () => {
+    m.reviewUpdate.mockRejectedValue(new Error('db down'));
+    m.auditCreate.mockRejectedValue(new Error('db down'));
+    const res = await reply(await buildApp());
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data.reply.comment).toBe('Thank you!');
+    expect(m.refund).not.toHaveBeenCalled();
   });
 
   it('rejects an empty or oversize reply', async () => {

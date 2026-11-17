@@ -28,6 +28,7 @@ export type GbpErrorCode =
   | 'NOT_CONNECTED' // no shared Google identity stored yet
   | 'NOT_APPROVED' // Google has not approved API access (quota 0 / API disabled)
   | 'NEEDS_ACCESS' // the shared identity can't see this location (retailer removed us)
+  | 'NOT_FOUND' // Google 404: the review (or location) no longer exists. Not a lost-access signal on its own
   | 'TOKEN_REVOKED' // refresh token no longer valid
   | 'UNAVAILABLE'; // 5xx / timeout / network
 
@@ -186,18 +187,49 @@ async function accessToken(): Promise<string> {
   return cached.token;
 }
 
-type GoogleErr = { error?: { status?: string; message?: string; code?: number } };
+type GoogleErr = {
+  error?: {
+    status?: string;
+    message?: string;
+    code?: number;
+    details?: { reason?: string; metadata?: Record<string, string> }[]; // google.rpc.ErrorInfo
+    errors?: { reason?: string }[]; // legacy v4 shape
+  };
+};
 
+// Order matters: platform-wide causes (API disabled, no approval, bad scope) must be ruled out
+// BEFORE a 403/404 is read as "this retailer's location is unreachable", because NEEDS_ACCESS
+// flips that one retailer's state and a platform cause would flip all of them.
+// ponytail: the quota-0 test (metadata quota_limit_value "0" or "limit 0" in the message) is
+// matched from memory of Google's error text; a missed match degrades to UNAVAILABLE (transient,
+// retried by the 6-hourly job), never to a wrong per-retailer state.
 function classify(status: number, body: GoogleErr): GbpError {
-  const s = body.error?.status;
-  if (s === 'RESOURCE_EXHAUSTED' || s === 'SERVICE_DISABLED' || status === 429) {
+  const e = body.error;
+  const s = e?.status;
+  const reasons = [...(e?.details ?? []), ...(e?.errors ?? [])].map((d) => d.reason);
+  const quotaZero =
+    (e?.details ?? []).some((d) => d.metadata?.quota_limit_value === '0') ||
+    /\blimit[:\s'"]*0\b(?![.\d])/i.test(e?.message ?? '');
+  const rateLimited = status === 429 || s === 'RESOURCE_EXHAUSTED';
+
+  if (
+    s === 'SERVICE_DISABLED' ||
+    reasons.includes('SERVICE_DISABLED') ||
+    (rateLimited && quotaZero)
+  ) {
     return new GbpError('NOT_APPROVED', 'Google has not approved Business Profile API access yet');
   }
-  if (status === 401) return new GbpError('TOKEN_REVOKED', 'The Google connection expired');
-  if (s === 'PERMISSION_DENIED' || status === 403 || status === 404) {
+  if (rateLimited)
+    return new GbpError('UNAVAILABLE', 'Google is rate limiting requests. Try again shortly.');
+  if (status === 401 || reasons.includes('ACCESS_TOKEN_SCOPE_INSUFFICIENT')) {
+    return new GbpError('TOKEN_REVOKED', 'The Google connection expired');
+  }
+  if (status === 404 || s === 'NOT_FOUND')
+    return new GbpError('NOT_FOUND', 'Google could not find it');
+  if (s === 'PERMISSION_DENIED' || status === 403) {
     return new GbpError('NEEDS_ACCESS', 'Kanchuki does not have access to this Google profile');
   }
-  return new GbpError('UNAVAILABLE', body.error?.message ?? 'Google request failed');
+  return new GbpError('UNAVAILABLE', e?.message ?? 'Google request failed');
 }
 
 async function call<T>(method: 'GET' | 'PUT', url: string, body?: unknown): Promise<T> {

@@ -1,6 +1,11 @@
 import type { FastifyRequest } from 'fastify';
 import { describe, expect, it } from 'vitest';
-import { maskPhoneForRequest, staffCanAccess, supportDelegateCanAccess } from './auth.js';
+import {
+  catalogDelegateCanAccess,
+  maskPhoneForRequest,
+  staffCanAccess,
+  supportDelegateCanAccess,
+} from './auth.js';
 
 describe('manager allowlist', () => {
   const m = (method: string, url: string) => staffCanAccess(method, url, 'manager');
@@ -46,6 +51,43 @@ describe('manager allowlist', () => {
   });
 });
 
+// A reply is public speech under the shop's name, but the owner chose (2026-11-17) to let a
+// manager handle reviews. Salespeople, delegates and every support scope still get nothing.
+describe('Google review replies: owner + manager only', () => {
+  const urls = [
+    ['GET', '/v1/retailers/me/google-business/status'],
+    ['GET', '/v1/retailers/me/google-business/reviews'],
+    ['POST', '/v1/retailers/me/google-business/reviews/:id/reply'],
+    ['POST', '/v1/retailers/me/google-business/reviews/:id/draft-reply'],
+  ] as const;
+  it('a manager reaches them', () => {
+    for (const [method, url] of urls) {
+      expect(staffCanAccess(method, url, 'manager'), `manager ${method} ${url}`).toBe(true);
+    }
+  });
+  it('a salesperson, the catalog delegate and every support scope do not', () => {
+    for (const [method, url] of urls) {
+      expect(staffCanAccess(method, url, 'salesperson'), `salesperson ${method} ${url}`).toBe(
+        false,
+      );
+      expect(catalogDelegateCanAccess(method, url), `catalog ${method} ${url}`).toBe(false);
+      for (const scope of ['DEMO', 'GROWTH', 'MAINTENANCE'] as const) {
+        expect(supportDelegateCanAccess(method, url, scope), `${scope} ${method} ${url}`).toBe(
+          false,
+        );
+      }
+    }
+  });
+  it('a manager cannot reach the consent / unlink routes', () => {
+    expect(staffCanAccess('POST', '/v1/retailers/me/google-business/request', 'manager')).toBe(
+      false,
+    );
+    expect(staffCanAccess('DELETE', '/v1/retailers/me/google-business/link', 'manager')).toBe(
+      false,
+    );
+  });
+});
+
 describe('Google listing routes are owner-only', () => {
   const urls = [
     ['PATCH', '/v1/retailers/reviews/google-place'],
@@ -54,10 +96,7 @@ describe('Google listing routes are owner-only', () => {
     ['POST', '/v1/retailers/me/setup-checklist/dismiss'],
     ['POST', '/v1/retailers/me/setup-checklist/restore'],
     ['POST', '/v1/retailers/me/setup-checklist/:item_key/ask'],
-    ['GET', '/v1/retailers/me/google-business/status'],
     ['POST', '/v1/retailers/me/google-business/request'],
-    ['GET', '/v1/retailers/me/google-business/reviews'],
-    ['POST', '/v1/retailers/me/google-business/reviews/:id/reply'],
     ['DELETE', '/v1/retailers/me/google-business/link'],
   ] as const;
   it('no staff role and no support scope reaches them', () => {

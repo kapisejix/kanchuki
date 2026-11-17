@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { ActivityIndicator, Text, TextInput, View } from 'react-native'
 import { type GbpReview, googleBusinessApi } from '../lib/api'
 import { showError } from '../lib/errors'
+import { gbpCountLabel, gbpEmptyNote } from '../lib/gbp-summary'
 import { AnimatedPressable } from './AnimatedPressable'
 
 const QUERY_KEY = ['google-business', 'reviews']
@@ -27,6 +28,7 @@ function ReviewRow({ review }: { review: GbpReview }) {
   const queryClient = useQueryClient()
   const [editing, setEditing] = useState(false)
   const [text, setText] = useState(review.reply?.comment ?? '')
+  const [draftSource, setDraftSource] = useState<'ai' | 'template' | null>(null)
 
   // The reply shows ONLY after the server (and Google) confirmed it — we refetch, not guess.
   const send = useMutation({
@@ -36,6 +38,16 @@ function ReviewRow({ review }: { review: GbpReview }) {
       void queryClient.invalidateQueries({ queryKey: QUERY_KEY })
     },
     onError: (e) => showError(e, 'Could not post your reply'),
+  })
+
+  // A draft only fills the box. Nothing is posted until the person taps "Post reply".
+  const draft = useMutation({
+    mutationFn: () => googleBusinessApi.draftReply(review.id),
+    onSuccess: (res) => {
+      setText(res.data.draft)
+      setDraftSource(res.data.source)
+    },
+    onError: (e) => showError(e, 'Could not suggest a reply'),
   })
 
   return (
@@ -69,6 +81,26 @@ function ReviewRow({ review }: { review: GbpReview }) {
             accessibilityLabel="Your reply to this review"
             className="bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3 text-sm text-spaceCadet-900 min-h-[80px]"
           />
+          {draftSource && (
+            <Text className="text-[11px] text-heliotrope-600">
+              {draftSource === 'template'
+                ? 'Standard reply (AI is not available right now). Please make it personal before posting.'
+                : 'Drafted by AI. Read it and change anything before posting.'}
+            </Text>
+          )}
+          <AnimatedPressable
+            onPress={() => draft.mutate()}
+            disabled={draft.isPending || send.isPending}
+            accessibilityRole="button"
+            accessibilityLabel="Suggest a reply with AI"
+            className="self-start py-2 min-h-[44px] justify-center"
+          >
+            {draft.isPending ? (
+              <ActivityIndicator size="small" color="#BB3F95" />
+            ) : (
+              <Text className="text-xs font-bold text-fuchsia-600">Suggest a reply</Text>
+            )}
+          </AnimatedPressable>
           <View className="flex-row items-center gap-3">
             <AnimatedPressable
               onPress={() => send.mutate()}
@@ -117,6 +149,12 @@ export function GoogleReviewsTab() {
     queryFn: ({ pageParam }) => googleBusinessApi.reviews(pageParam),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (last) => last.data.next_cursor ?? undefined,
+    // The first sync runs in the background after linking. Until it succeeds review_count is
+    // null; keep asking every 5 s, and stop once Google answered or the sync reported a failure.
+    refetchInterval: (query) => {
+      const s = query.state.data?.pages[0]?.data.summary
+      return s && s.review_count == null && !s.sync_failed ? 5000 : false
+    },
   })
 
   if (q.isLoading) return <ActivityIndicator color="#BB3F95" className="mt-6" />
@@ -143,17 +181,16 @@ export function GoogleReviewsTab() {
       <View className="bg-white rounded-2xl p-4 border border-lavender-200">
         <Text className="text-[11px] font-bold text-heliotrope-600">From Google</Text>
         <Text className="text-sm font-bold text-spaceCadet-900 mt-1">
-          {first?.summary.review_count ?? 0} reviews
-          {first?.summary.avg_rating != null
-            ? ` · ${first.summary.avg_rating.toFixed(1)} average`
-            : ''}
+          {gbpCountLabel(first?.summary ?? {})}
         </Text>
       </View>
 
       {reviews.length === 0 ? (
-        <Text className="text-xs text-heliotrope-500 text-center mt-4">
-          No Google reviews yet. They appear here as soon as they are synced.
-        </Text>
+        gbpEmptyNote(first?.summary ?? {}) && (
+          <Text className="text-xs text-heliotrope-500 text-center mt-4">
+            {gbpEmptyNote(first?.summary ?? {})}
+          </Text>
+        )
       ) : (
         reviews.map((r) => <ReviewRow key={r.id} review={r} />)
       )}

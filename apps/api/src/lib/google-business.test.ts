@@ -101,18 +101,62 @@ describe('error classification', () => {
     stubFetch((c) => (isToken(c) ? TOKEN_OK : { status, body: errBody }));
 
   it('quota 0 / API disabled → NOT_APPROVED', async () => {
-    failWith(429, { error: { status: 'RESOURCE_EXHAUSTED' } });
+    failWith(429, {
+      error: {
+        status: 'RESOURCE_EXHAUSTED',
+        details: [{ reason: 'RATE_LIMIT_EXCEEDED', metadata: { quota_limit_value: '0' } }],
+      },
+    });
+    await expectCode(gbp.listReviews('a', 'l'), 'NOT_APPROVED');
+    failWith(429, {
+      error: { status: 'RESOURCE_EXHAUSTED', message: "Quota exceeded for limit 'x' limit 0" },
+    });
     await expectCode(gbp.listReviews('a', 'l'), 'NOT_APPROVED');
     failWith(403, { error: { status: 'SERVICE_DISABLED' } });
-    gbp.__resetGbpTokenCache();
     await expectCode(gbp.listReviews('a', 'l'), 'NOT_APPROVED');
   });
 
-  it('permission denied / not found on a location → NEEDS_ACCESS', async () => {
+  it('API disabled reported as PERMISSION_DENIED + details reason → NOT_APPROVED, not NEEDS_ACCESS', async () => {
+    failWith(403, {
+      error: { status: 'PERMISSION_DENIED', details: [{ reason: 'SERVICE_DISABLED' }] },
+    });
+    await expectCode(gbp.listReviews('a', 'l'), 'NOT_APPROVED');
+    failWith(403, {
+      error: { status: 'PERMISSION_DENIED', errors: [{ reason: 'SERVICE_DISABLED' }] },
+    });
+    await expectCode(gbp.listReviews('a', 'l'), 'NOT_APPROVED');
+  });
+
+  it('an ordinary per-minute 429 is a transient outage, not "not approved"', async () => {
+    failWith(429, {
+      error: {
+        status: 'RESOURCE_EXHAUSTED',
+        message: 'Quota exceeded for requests per minute',
+        details: [{ metadata: { quota_limit_value: '300' } }],
+      },
+    });
+    await expectCode(gbp.listReviews('a', 'l'), 'UNAVAILABLE');
+    failWith(429, {});
+    await expectCode(gbp.listReviews('a', 'l'), 'UNAVAILABLE');
+  });
+
+  it('a token missing the business.manage scope is a platform problem, not a lost location', async () => {
+    failWith(403, {
+      error: {
+        status: 'PERMISSION_DENIED',
+        details: [{ reason: 'ACCESS_TOKEN_SCOPE_INSUFFICIENT' }],
+      },
+    });
+    await expectCode(gbp.listReviews('a', 'l'), 'TOKEN_REVOKED');
+  });
+
+  it('permission denied on a location → NEEDS_ACCESS; a missing resource → NOT_FOUND', async () => {
     failWith(403, { error: { status: 'PERMISSION_DENIED' } });
     await expectCode(gbp.listReviews('a', 'l'), 'NEEDS_ACCESS');
     failWith(404, {});
-    await expectCode(gbp.listReviews('a', 'l'), 'NEEDS_ACCESS');
+    await expectCode(gbp.listReviews('a', 'l'), 'NOT_FOUND');
+    failWith(404, { error: { status: 'NOT_FOUND' } });
+    await expectCode(gbp.replyToReview('a', 'l', 'gone', 'Thanks'), 'NOT_FOUND');
   });
 
   it('invalid_grant on refresh → TOKEN_REVOKED', async () => {

@@ -205,6 +205,12 @@ const MANAGER_ALLOWED_ROUTES: StaffRule[] = [
   { method: 'GET', path: '/v1/retailers/reviews/products', exact: true },
   { method: 'GET', path: '/v1/retailers/reviews/store', exact: true },
   { method: 'GET', path: '/v1/retailers/reviews/summary', exact: true },
+  // Google reviews (owner's decision 2026-11-17): a manager reads and answers them. Consent
+  // (`/request`) and unlink stay owner-only (not listed). The handlers re-check the caller too.
+  { method: 'GET', path: '/v1/retailers/me/google-business/status', exact: true },
+  { method: 'GET', path: '/v1/retailers/me/google-business/reviews', exact: true },
+  { method: 'POST', path: '/v1/retailers/me/google-business/reviews/:id/reply', exact: true },
+  { method: 'POST', path: '/v1/retailers/me/google-business/reviews/:id/draft-reply', exact: true },
   // Social: post + track only — connect/disconnect/callback stay owner-only.
   { method: 'POST', path: '/v1/retailers/me/social/posts', exact: true },
   { method: 'GET', path: '/v1/retailers/me/social/accounts' },
