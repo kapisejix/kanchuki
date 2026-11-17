@@ -83,7 +83,20 @@ export interface DesignImageLayer {
   index?: number;
 }
 
-export type DesignLayer = DesignTextLayer | DesignImageLayer;
+/** Flat colour block, e.g. a scrim behind text. */
+export interface DesignRectLayer {
+  type: 'rect';
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  /** `#RRGGBB` */
+  color: string;
+  /** 0–1 */
+  opacity: number;
+}
+
+export type DesignLayer = DesignTextLayer | DesignImageLayer | DesignRectLayer;
 
 export interface DesignSpec {
   layers: DesignLayer[];
@@ -111,6 +124,7 @@ interface Raw {
   format?: unknown;
   index?: unknown;
   fit?: unknown;
+  opacity?: unknown;
 }
 const isObj = (v: unknown): v is Raw => typeof v === 'object' && v !== null && !Array.isArray(v);
 const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
@@ -174,7 +188,32 @@ export function parseDesignSpec(
       continue;
     }
 
-    if (l.type !== 'text') return fail(`${at}: type must be text or image`);
+    if (l.type === 'rect') {
+      if (!isNum(l.w) || !isNum(l.h) || l.w < 8 || l.h < 8) {
+        return fail(`${at}: w and h must be numbers ≥ 8`);
+      }
+      if (l.x + l.w > cw || l.y + l.h > ch) {
+        return fail(`${at}: rect runs outside the canvas`);
+      }
+      if (typeof l.color !== 'string' || !HEX.test(l.color)) {
+        return fail(`${at}: color must be #RRGGBB`);
+      }
+      if (!isNum(l.opacity) || l.opacity < 0 || l.opacity > 1) {
+        return fail(`${at}: opacity must be 0–1`);
+      }
+      layers.push({
+        type: 'rect',
+        x: l.x,
+        y: l.y,
+        w: l.w,
+        h: l.h,
+        color: l.color,
+        opacity: l.opacity,
+      });
+      continue;
+    }
+
+    if (l.type !== 'text') return fail(`${at}: type must be text, image or rect`);
     if (!has(DESIGN_TEXT_VARS, l.var)) return fail(`${at}: unknown text variable`);
     if (!isNum(l.size) || l.size < 12 || l.size > 200) {
       return fail(`${at}: size must be 12–200`);
