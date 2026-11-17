@@ -44,7 +44,7 @@ export interface AiCustomDesignJobData {
 // Social posters get a bigger budget than the 80 KB catalog default (they are shown full-screen).
 const POSTER_BUDGET = { maxBytes: 450 * 1024, maxDimension: 2000, startQuality: 92 };
 
-const GENERIC_FAILURE = 'The design could not be made. Please try again.';
+export const GENERIC_FAILURE = 'The design could not be made. Please try again.';
 
 async function markFailed(id: string, retailerId: string, error: string): Promise<void> {
   try {

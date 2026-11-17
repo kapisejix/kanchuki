@@ -3,6 +3,7 @@ import { type Queue, Worker } from 'bullmq';
 import { reportJobFailure } from '../lib/job-failure.js';
 import { refundCustomerJobQuota, refundJobQuota } from '../lib/quota.js';
 import { STUDIO_SHOOT_CONCURRENCY } from '../lib/studio-shoot.js';
+import { handleAiCustomDesignSweep } from './ai-custom-design-sweep.js';
 import { handleAiCustomDesign } from './ai-custom-design.js';
 import type { AiCustomDesignJobData } from './ai-custom-design.js';
 import { handleAiSpendAlert } from './ai-spend-alert.js';
@@ -316,6 +317,8 @@ export async function startWorkers(): Promise<void> {
           return handleAiSpendAlert();
         case 'quota-reservation-sweep':
           return handleQuotaReservationSweep();
+        case 'ai-custom-design-sweep':
+          return handleAiCustomDesignSweep();
         case 'staged-upload-sweep':
           return handleStagedUploadSweep();
         case 'customer-new-arrivals-push':
@@ -548,6 +551,18 @@ export async function startWorkers(): Promise<void> {
     {},
     {
       repeat: { pattern: '40 * * * *' },
+      removeOnComplete: { count: 10 },
+      removeOnFail: { count: 10 },
+    },
+  );
+
+  // RC-102 follow-up: ai_custom_designs rows left PENDING past the same cutoff are failed so the
+  // poll stops waiting — hourly at :45. No `limit` (RC-062); idempotent.
+  await addCron(
+    'ai-custom-design-sweep',
+    {},
+    {
+      repeat: { pattern: '45 * * * *' },
       removeOnComplete: { count: 10 },
       removeOnFail: { count: 10 },
     },
