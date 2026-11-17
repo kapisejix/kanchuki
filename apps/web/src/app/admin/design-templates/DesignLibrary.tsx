@@ -832,6 +832,12 @@ export default function DesignLibrary() {
                 Rendering…
               </div>
             )}
+            {draft.ai_prompt.trim() && draft.layers.some((l) => l.type === 'image') && (
+              <p className="rounded bg-amber-50 px-2 py-1 text-xs text-amber-800">
+                A product image layer is not drawn on an AI poster: the AI scene already shows the
+                garment. The preview above still draws it.
+              </p>
+            )}
             <p className="text-xs text-gray-500">
               Hindi text may show as boxes until the Devanagari font is added to the API image.
             </p>
