@@ -1,5 +1,6 @@
 import { DESIGN_CUSTOM_MAX_LEN } from '@kanchuki/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useRef, useState } from 'react';
 import { ActivityIndicator, Image, ScrollView, Text, TextInput, View } from 'react-native';
@@ -39,14 +40,19 @@ function Chip({
   active,
   disabled,
   onPress,
-  primaryColor,
 }: {
   label: string;
   active: boolean;
   disabled?: boolean;
   onPress: () => void;
-  primaryColor: string;
 }) {
+  // Same look as the app's buttons: selected = signature gradient (GradientButton),
+  // not selected = white, 1px #E0E1F6 border, navy label (WhiteButton). 44pt touch target.
+  const body = (
+    <Text className="text-xs font-semibold" style={{ color: active ? '#ffffff' : '#231F48' }}>
+      {label}
+    </Text>
+  );
   return (
     <AnimatedPressable
       onPress={onPress}
@@ -54,15 +60,40 @@ function Chip({
       accessibilityRole="button"
       accessibilityState={{ selected: active, disabled: !!disabled }}
       accessibilityLabel={label}
-      className="mr-2 mb-2 rounded-full px-4 py-2"
-      style={{
-        backgroundColor: active ? primaryColor : '#ffffff',
-        opacity: disabled ? 0.4 : 1,
-      }}
+      className="mr-2 mb-2"
+      style={{ opacity: disabled ? 0.4 : 1 }}
     >
-      <Text className="text-xs font-semibold" style={{ color: active ? '#ffffff' : '#231F48' }}>
-        {label}
-      </Text>
+      {active ? (
+        <LinearGradient
+          colors={['#231F48', '#560A39']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={{
+            borderRadius: 16,
+            minHeight: 44,
+            paddingHorizontal: 16,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          {body}
+        </LinearGradient>
+      ) : (
+        <View
+          style={{
+            backgroundColor: '#FFFFFF',
+            borderWidth: 1,
+            borderColor: '#E0E1F6',
+            borderRadius: 16,
+            minHeight: 44,
+            paddingHorizontal: 16,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          {body}
+        </View>
+      )}
     </AnimatedPressable>
   );
 }
@@ -205,7 +236,6 @@ function AiDesignBody({ templateId }: { templateId?: string }) {
                   active={overlay === null && format === f.id}
                   disabled={overlay !== null}
                   onPress={() => setFormat(f.id)}
-                  primaryColor={primaryColor}
                 />
               ))}
             </View>
@@ -216,7 +246,6 @@ function AiDesignBody({ templateId }: { templateId?: string }) {
                   label={o.label}
                   active={overlay === o.id}
                   onPress={() => setOverlay(o.id)}
-                  primaryColor={primaryColor}
                 />
               ))}
             </View>
@@ -232,7 +261,7 @@ function AiDesignBody({ templateId }: { templateId?: string }) {
           <GradientButton
             label="Make AI design"
             onPress={() => create.mutate()}
-            loading={create.isPending || (waiting && !timedOut)}
+            loading={create.isPending}
             disabled={!product || (!poster && prompt.trim().length < 5) || jobId !== null}
           />
         </View>
@@ -319,7 +348,6 @@ function AiDesignBody({ templateId }: { templateId?: string }) {
                     label={d.prompt.length > 28 ? `${d.prompt.slice(0, 28)}…` : d.prompt}
                     active={prompt === d.prompt}
                     onPress={() => setPrompt(d.prompt)}
-                    primaryColor={primaryColor}
                   />
                 ) : null,
               )}

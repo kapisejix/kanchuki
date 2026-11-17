@@ -56,13 +56,15 @@ describe('schedule templates', () => {
     }
   });
 
+  // Five sequential image renders: ~1.2 s locally but over the 5 s default twice on the shared CI
+  // runner (2026-11-17), so this test gets its own 30 s budget. Logic unchanged.
   it('collage cover works for 1–4 photos and ignores extras', async () => {
     for (const n of [1, 2, 3, 4, 6]) {
       const out = await renderCollage(await Promise.all(Array.from({ length: n }, photo)), 'Anita');
       const meta = await sharp(out).metadata();
       expect([meta.width, meta.height]).toEqual([1080, 1350]);
     }
-  });
+  }, 30_000);
 
   it('normalizePhoto crops any ratio to 4:5', async () => {
     const meta = await sharp(await normalizePhoto(await photo())).metadata();
