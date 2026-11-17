@@ -7,12 +7,13 @@ vi.hoisted(() => {
   ;(globalThis as Record<string, unknown>).__DEV__ = true
 })
 
+import { useLocalSearchParams, router } from 'expo-router'
 import AiDesignScreen from '../../app/social/ai-design'
 
 const apiMock = vi.hoisted(() => ({
   aiDesignsApi: { create: vi.fn(), get: vi.fn(), list: vi.fn() },
 }))
-const ui = vi.hoisted(() => ({ pick: null as null | (() => void) }))
+const ui = vi.hoisted(() => ({ pick: null as null | (() => void), status: undefined as unknown }))
 
 vi.mock('../../src/lib/api', () => apiMock)
 vi.mock('../../src/lib/theme', () => ({ useTheme: () => ({ primaryColor: '#231F48' }) }))
@@ -34,7 +35,7 @@ vi.mock('@tanstack/react-query', () => ({
   useQuery: ({ queryKey }: { queryKey: unknown[] }) =>
     queryKey[1] === 'mine'
       ? { data: { data: [{ id: 'd1', prompt: 'warm diwali diyas', image_url: 'https://x/d1.jpg' }] } }
-      : { data: undefined, isError: false },
+      : { data: ui.status, isError: false },
   useQueryClient: () => ({ removeQueries: vi.fn() }),
 }))
 
@@ -61,6 +62,14 @@ const press = async (t: Tree, label: string) => {
     await h!.onPress()
   })
 }
+const typeField = async (t: Tree, label: string, value: string) => {
+  const n = find(t.toTree() as TreeNode, (x) => x.props?.accessibilityLabel === label && typeof x.props?.onChangeText === 'function')[0]
+  expect(n, label).toBeDefined()
+  await act(async () => {
+    ;(n!.props as unknown as { onChangeText: (v: string) => void }).onChangeText(value)
+  })
+}
+const hasLabel = (t: Tree, label: string) => find(t.toTree() as TreeNode, (x) => x.props?.accessibilityLabel === label).length > 0
 const typePrompt = async (t: Tree, value: string) => {
   const n = find(t.toTree() as TreeNode, (x) => x.props?.accessibilityLabel === 'Describe the design' && typeof x.props?.onChangeText === 'function')[0]
   await act(async () => {
@@ -83,6 +92,8 @@ const lastCreate = () => vi.mocked(apiMock.aiDesignsApi.create).mock.calls.at(-1
 
 beforeEach(() => {
   vi.clearAllMocks()
+  ui.status = undefined
+  vi.mocked(useLocalSearchParams).mockReturnValue({})
   vi.mocked(apiMock.aiDesignsApi.create).mockResolvedValue({ data: { id: 'j1', status: 'PENDING' } } as never)
 })
 afterEach(() => {
@@ -117,5 +128,51 @@ describe('AI design screen — finishing options', () => {
     await press(t, 'warm diwali diyas')
     await press(t, 'Make AI design')
     expect(lastCreate()).toMatchObject({ prompt: 'warm diwali diyas' })
+  })
+})
+
+describe('AI design screen — poster mode (template_id)', () => {
+  const mountPoster = async () => {
+    vi.mocked(useLocalSearchParams).mockReturnValue({ template_id: 't9' })
+    const t = render(<AiDesignScreen />)
+    mounted.push(t)
+    await act(async () => {})
+    await act(async () => {
+      ui.pick?.()
+    })
+    return t
+  }
+
+  it('sends the poster body and not prompt/format/overlay', async () => {
+    const t = await mountPoster()
+    expect(hasLabel(t, 'Describe the design')).toBe(false)
+    expect(byLabel(t, 'Story')).toBeUndefined()
+    await typeField(t, 'Headline text', 'Diwali Special')
+    await typeField(t, 'Offer text', 'Flat 20% off')
+    await press(t, 'Make AI design')
+    expect(lastCreate()).toEqual({ product_id: 'p1', template_id: 't9', custom_text: 'Diwali Special', offer_text: 'Flat 20% off' })
+  })
+
+  it('works with no headline/offer (product + template only)', async () => {
+    const t = await mountPoster()
+    await press(t, 'Make AI design')
+    expect(lastCreate()).toEqual({ product_id: 'p1', template_id: 't9' })
+  })
+
+  it('inputs are capped at 80 chars', async () => {
+    const t = await mountPoster()
+    const n = find(t.toTree() as TreeNode, (x) => x.props?.accessibilityLabel === 'Headline text')[0]
+    expect((n.props as unknown as { maxLength: number }).maxLength).toBe(80)
+  })
+
+  it('READY still shows Report AI content path and Post this design', async () => {
+    ui.status = { data: { id: 'j1', status: 'READY', image_url: 'https://x/r.jpg', error: null } }
+    const t = await mountPoster()
+    await act(async () => {})
+    // jobId is set only after create; start one
+    await press(t, 'Make AI design')
+    await act(async () => {})
+    await press(t, 'Post this design')
+    expect(router.push).toHaveBeenCalledWith({ pathname: '/social/create', params: { design_image: 'https://x/r.jpg' } })
   })
 })

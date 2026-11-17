@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useRef, useState } from 'react';
 import { ActivityIndicator, Image, ScrollView, Text, TextInput, View } from 'react-native';
 import { AnimatedPressable } from '../../src/components/AnimatedPressable';
@@ -70,6 +70,11 @@ export default function AiDesignScreen() {
   const { primaryColor } = useTheme();
   const queryClient = useQueryClient();
   const [product, setProduct] = useState<ComposeProduct | null>(null);
+  // Poster mode: an admin AI style was picked in the design picker; the server owns the prompt.
+  const { template_id: templateId } = useLocalSearchParams<{ template_id?: string }>();
+  const poster = !!templateId;
+  const [headline, setHeadline] = useState('');
+  const [offer, setOffer] = useState('');
   const [prompt, setPrompt] = useState('');
   const [format, setFormat] = useState<AiDesignFormat>('ORIGINAL');
   const [overlay, setOverlay] = useState<AiDesignOverlay | null>(null);
@@ -78,12 +83,21 @@ export default function AiDesignScreen() {
 
   const create = useMutation({
     mutationFn: () =>
-      aiDesignsApi.create({
-        product_id: (product as ComposeProduct).id,
-        prompt: prompt.trim(),
-        format,
-        overlay,
-      }),
+      aiDesignsApi.create(
+        poster
+          ? {
+              product_id: (product as ComposeProduct).id,
+              template_id: templateId as string,
+              ...(headline.trim() ? { custom_text: headline.trim() } : {}),
+              ...(offer.trim() ? { offer_text: offer.trim() } : {}),
+            }
+          : {
+              product_id: (product as ComposeProduct).id,
+              prompt: prompt.trim(),
+              format,
+              overlay,
+            },
+      ),
     onSuccess: (res) => {
       startedAt.current = Date.now();
       setJobId(res.data.id);
@@ -129,56 +143,82 @@ export default function AiDesignScreen() {
           selectedOrder={(id) => (product?.id === id ? 0 : null)}
         />
 
-        <Text className="text-sm font-bold mt-5 mb-2 text-sand-900">2. Describe the scene</Text>
-        <TextInput
-          value={prompt}
-          onChangeText={setPrompt}
-          maxLength={300}
-          multiline
-          placeholder="e.g. Warm Diwali evening, soft diya glow, festive bokeh"
-          accessibilityLabel="Describe the design"
-          className="rounded-xl bg-white px-3 py-3 text-sm min-h-[84px]"
-          style={{ textAlignVertical: 'top' }}
-        />
-        <Text className="text-[11px] text-sand-400 mt-1">
-          Describe a setting or mood. No links, brand names or people. The AI never draws text; add
-          a price or your logo below.
-        </Text>
+        {poster ? (
+          <>
+            <Text className="text-sm font-bold mt-5 mb-2 text-sand-900">2. Optional text</Text>
+            <TextInput
+              value={headline}
+              onChangeText={setHeadline}
+              maxLength={80}
+              placeholder="Headline (e.g. Diwali Special)"
+              accessibilityLabel="Headline text"
+              className="rounded-xl bg-white px-3 py-3 text-sm mb-2"
+            />
+            <TextInput
+              value={offer}
+              onChangeText={setOffer}
+              maxLength={80}
+              placeholder="Offer (e.g. Flat 20% off)"
+              accessibilityLabel="Offer text"
+              className="rounded-xl bg-white px-3 py-3 text-sm"
+            />
+          </>
+        ) : (
+          <>
+            <Text className="text-sm font-bold mt-5 mb-2 text-sand-900">2. Describe the scene</Text>
+            <TextInput
+              value={prompt}
+              onChangeText={setPrompt}
+              maxLength={300}
+              multiline
+              placeholder="e.g. Warm Diwali evening, soft diya glow, festive bokeh"
+              accessibilityLabel="Describe the design"
+              className="rounded-xl bg-white px-3 py-3 text-sm min-h-[84px]"
+              style={{ textAlignVertical: 'top' }}
+            />
+            <Text className="text-[11px] text-sand-400 mt-1">
+              Describe a setting or mood. No links, brand names or people. The AI never draws text;
+              add a price or your logo below.
+            </Text>
 
-        <Text className="text-sm font-bold mt-5 mb-2 text-sand-900">3. Finish (optional)</Text>
-        <View className="flex-row flex-wrap">
-          {FORMATS.map((f) => (
-            <Chip
-              key={f.id}
-              label={f.label}
-              active={overlay === null && format === f.id}
-              disabled={overlay !== null}
-              onPress={() => setFormat(f.id)}
-              primaryColor={primaryColor}
-            />
-          ))}
-        </View>
-        <View className="flex-row flex-wrap">
-          {OVERLAYS.map((o) => (
-            <Chip
-              key={o.label}
-              label={o.label}
-              active={overlay === o.id}
-              onPress={() => setOverlay(o.id)}
-              primaryColor={primaryColor}
-            />
-          ))}
-        </View>
-        {overlay !== null ? (
-          <Text className="text-[11px] text-sand-400">An overlay is drawn on a 4:5 picture.</Text>
-        ) : null}
+            <Text className="text-sm font-bold mt-5 mb-2 text-sand-900">3. Finish (optional)</Text>
+            <View className="flex-row flex-wrap">
+              {FORMATS.map((f) => (
+                <Chip
+                  key={f.id}
+                  label={f.label}
+                  active={overlay === null && format === f.id}
+                  disabled={overlay !== null}
+                  onPress={() => setFormat(f.id)}
+                  primaryColor={primaryColor}
+                />
+              ))}
+            </View>
+            <View className="flex-row flex-wrap">
+              {OVERLAYS.map((o) => (
+                <Chip
+                  key={o.label}
+                  label={o.label}
+                  active={overlay === o.id}
+                  onPress={() => setOverlay(o.id)}
+                  primaryColor={primaryColor}
+                />
+              ))}
+            </View>
+            {overlay !== null ? (
+              <Text className="text-[11px] text-sand-400">
+                An overlay is drawn on a 4:5 picture.
+              </Text>
+            ) : null}
+          </>
+        )}
 
         <View className="mt-4">
           <GradientButton
             label="Make AI design"
             onPress={() => create.mutate()}
             loading={create.isPending || (waiting && !timedOut)}
-            disabled={!product || prompt.trim().length < 5 || jobId !== null}
+            disabled={!product || (!poster && prompt.trim().length < 5) || jobId !== null}
           />
         </View>
 

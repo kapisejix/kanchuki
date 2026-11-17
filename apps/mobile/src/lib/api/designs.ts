@@ -12,6 +12,8 @@ export type DesignTemplateRow = {
   format: 'SQUARE' | 'PORTRAIT_4_5' | 'STORY_9_16' | string;
   product_slots: number;
   thumbnail_url: string | null;
+  /** AI poster style: generated via /ai-designs, never rendered by the plain /render route. */
+  ai: boolean;
 };
 
 export type RenderDesignInput = {
@@ -41,12 +43,16 @@ export type AiDesignFormat = 'ORIGINAL' | 'SQUARE' | 'PORTRAIT' | 'STORY' | 'LAN
 export type AiDesignOverlay = 'white_price' | 'new_arrival' | 'logo_corner';
 
 export const aiDesignsApi = {
-  create: (body: {
-    product_id: string;
-    prompt: string;
-    format?: AiDesignFormat;
-    overlay?: AiDesignOverlay | null;
-  }) =>
+  create: (
+    body:
+      | {
+          product_id: string;
+          prompt: string;
+          format?: AiDesignFormat;
+          overlay?: AiDesignOverlay | null;
+        }
+      | { product_id: string; template_id: string; custom_text?: string; offer_text?: string },
+  ) =>
     request<{ data: { id: string; status: 'PENDING' } }>('/v1/retailers/me/ai-designs', {
       method: 'POST',
       body: JSON.stringify(body),
