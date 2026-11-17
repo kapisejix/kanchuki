@@ -200,6 +200,11 @@ export async function renderDesign(input: DesignRenderInput): Promise<Buffer> {
       if (value) pendingText += textSvgFragment(layer, value, cw);
       continue;
     }
+    if (layer.type === 'rect') {
+      // SVG fragment joins pendingText so layer order is kept (same flush rules as text).
+      pendingText += `<rect x="${layer.x}" y="${layer.y}" width="${layer.w}" height="${layer.h}" fill="${layer.color}" fill-opacity="${layer.opacity}"/>`;
+      continue;
+    }
     const src =
       layer.var === 'shop_logo' ? input.shop.logo : input.products[layer.index ?? 0]?.image;
     if (!src) continue;
