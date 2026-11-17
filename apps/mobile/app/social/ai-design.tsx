@@ -67,11 +67,17 @@ function Chip({
 }
 
 export default function AiDesignScreen() {
+  const { template_id: raw } = useLocalSearchParams<{ template_id?: string | string[] }>();
+  const templateId = Array.isArray(raw) ? raw[0] : raw;
+  // key: a different template_id starts from clean state (job, headline, offer, prompt).
+  return <AiDesignBody key={templateId || 'free'} templateId={templateId || undefined} />;
+}
+
+function AiDesignBody({ templateId }: { templateId?: string }) {
   const { primaryColor } = useTheme();
   const queryClient = useQueryClient();
   const [product, setProduct] = useState<ComposeProduct | null>(null);
   // Poster mode: an admin AI style was picked in the design picker; the server owns the prompt.
-  const { template_id: templateId } = useLocalSearchParams<{ template_id?: string }>();
   const poster = !!templateId;
   const [headline, setHeadline] = useState('');
   const [offer, setOffer] = useState('');
@@ -133,8 +139,16 @@ export default function AiDesignScreen() {
 
   return (
     <KeyboardScreen className="flex-1 bg-ink-50">
-      <ScreenHeader title="AI design" subtitle="Describe the scene, we make the picture" />
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 48 }}>
+      <ScreenHeader
+        title="AI design"
+        subtitle={
+          poster ? 'Pick a product, we make the poster' : 'Describe the scene, we make the picture'
+        }
+      />
+      <ScrollView
+        contentContainerStyle={{ padding: 16, paddingBottom: 48 }}
+        keyboardShouldPersistTaps="handled"
+      >
         <Text className="text-sm font-bold mb-2 text-sand-900">1. Pick a product</Text>
         <ProductGridPicker
           maxItems={1}
@@ -268,7 +282,7 @@ export default function AiDesignScreen() {
           </View>
         ) : null}
 
-        {(mine.data?.data.length ?? 0) > 0 ? (
+        {!poster && (mine.data?.data.length ?? 0) > 0 ? (
           <View className="mt-6">
             <Text className="text-sm font-bold mb-2 text-sand-900">My AI designs</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
