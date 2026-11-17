@@ -41,6 +41,10 @@ export default function DesignPostScreen() {
   });
 
   const pick = (d: DesignTemplateRow) => {
+    if (d.ai) {
+      router.push({ pathname: '/social/ai-design' as never, params: { template_id: d.id } });
+      return;
+    }
     setDesign(d);
     setSelected([]);
     setPreview(null);
@@ -80,7 +84,7 @@ export default function DesignPostScreen() {
                 key={d.id}
                 onPress={() => pick(d)}
                 accessibilityRole="button"
-                accessibilityLabel={`Design ${d.name}`}
+                accessibilityLabel={d.ai ? `AI design ${d.name}` : `Design ${d.name}`}
                 accessibilityState={{ selected: design?.id === d.id }}
                 className="mr-3 w-28"
               >
@@ -97,6 +101,11 @@ export default function DesignPostScreen() {
                       className="h-full w-full"
                       resizeMode="contain"
                     />
+                  ) : null}
+                  {d.ai ? (
+                    <View className="absolute top-1 left-1 rounded-full bg-white px-2 py-0.5">
+                      <Text className="text-[10px] font-bold text-sand-900">AI</Text>
+                    </View>
                   ) : null}
                 </View>
                 <Text className="text-xs font-semibold mt-1 text-sand-900" numberOfLines={1}>

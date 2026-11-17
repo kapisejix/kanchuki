@@ -1,6 +1,7 @@
+import { DESIGN_CUSTOM_MAX_LEN } from '@kanchuki/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useRef, useState } from 'react';
 import { ActivityIndicator, Image, ScrollView, Text, TextInput, View } from 'react-native';
 import { AnimatedPressable } from '../../src/components/AnimatedPressable';
@@ -98,9 +99,20 @@ function Chip({
 }
 
 export default function AiDesignScreen() {
+  const { template_id: raw } = useLocalSearchParams<{ template_id?: string | string[] }>();
+  const templateId = Array.isArray(raw) ? raw[0] : raw;
+  // key: a different template_id starts from clean state (job, headline, offer, prompt).
+  return <AiDesignBody key={templateId || 'free'} templateId={templateId || undefined} />;
+}
+
+function AiDesignBody({ templateId }: { templateId?: string }) {
   const { primaryColor } = useTheme();
   const queryClient = useQueryClient();
   const [product, setProduct] = useState<ComposeProduct | null>(null);
+  // Poster mode: an admin AI style was picked in the design picker; the server owns the prompt.
+  const poster = !!templateId;
+  const [headline, setHeadline] = useState('');
+  const [offer, setOffer] = useState('');
   const [prompt, setPrompt] = useState('');
   const [format, setFormat] = useState<AiDesignFormat>('ORIGINAL');
   const [overlay, setOverlay] = useState<AiDesignOverlay | null>(null);
@@ -109,12 +121,21 @@ export default function AiDesignScreen() {
 
   const create = useMutation({
     mutationFn: () =>
-      aiDesignsApi.create({
-        product_id: (product as ComposeProduct).id,
-        prompt: prompt.trim(),
-        format,
-        overlay,
-      }),
+      aiDesignsApi.create(
+        poster
+          ? {
+              product_id: (product as ComposeProduct).id,
+              template_id: templateId as string,
+              ...(headline.trim() ? { custom_text: headline.trim() } : {}),
+              ...(offer.trim() ? { offer_text: offer.trim() } : {}),
+            }
+          : {
+              product_id: (product as ComposeProduct).id,
+              prompt: prompt.trim(),
+              format,
+              overlay,
+            },
+      ),
     onSuccess: (res) => {
       startedAt.current = Date.now();
       setJobId(res.data.id);
@@ -150,8 +171,16 @@ export default function AiDesignScreen() {
 
   return (
     <KeyboardScreen className="flex-1 bg-ink-50">
-      <ScreenHeader title="AI design" subtitle="Describe the scene, we make the picture" />
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 48 }}>
+      <ScreenHeader
+        title="AI design"
+        subtitle={
+          poster ? 'Pick a product, we make the poster' : 'Describe the scene, we make the picture'
+        }
+      />
+      <ScrollView
+        contentContainerStyle={{ padding: 16, paddingBottom: 48 }}
+        keyboardShouldPersistTaps="handled"
+      >
         <Text className="text-sm font-bold mb-2 text-sand-900">1. Pick a product</Text>
         <ProductGridPicker
           maxItems={1}
@@ -160,54 +189,80 @@ export default function AiDesignScreen() {
           selectedOrder={(id) => (product?.id === id ? 0 : null)}
         />
 
-        <Text className="text-sm font-bold mt-5 mb-2 text-sand-900">2. Describe the scene</Text>
-        <TextInput
-          value={prompt}
-          onChangeText={setPrompt}
-          maxLength={300}
-          multiline
-          placeholder="e.g. Warm Diwali evening, soft diya glow, festive bokeh"
-          accessibilityLabel="Describe the design"
-          className="rounded-xl bg-white px-3 py-3 text-sm min-h-[84px]"
-          style={{ textAlignVertical: 'top' }}
-        />
-        <Text className="text-[11px] text-sand-400 mt-1">
-          Describe a setting or mood. No links, brand names or people. The AI never draws text; add
-          a price or your logo below.
-        </Text>
+        {poster ? (
+          <>
+            <Text className="text-sm font-bold mt-5 mb-2 text-sand-900">2. Optional text</Text>
+            <TextInput
+              value={headline}
+              onChangeText={setHeadline}
+              maxLength={DESIGN_CUSTOM_MAX_LEN}
+              placeholder="Headline (e.g. Diwali Special)"
+              accessibilityLabel="Headline text"
+              className="rounded-xl bg-white px-3 py-3 text-sm mb-2"
+            />
+            <TextInput
+              value={offer}
+              onChangeText={setOffer}
+              maxLength={DESIGN_CUSTOM_MAX_LEN}
+              placeholder="Offer (e.g. Flat 20% off)"
+              accessibilityLabel="Offer text"
+              className="rounded-xl bg-white px-3 py-3 text-sm"
+            />
+          </>
+        ) : (
+          <>
+            <Text className="text-sm font-bold mt-5 mb-2 text-sand-900">2. Describe the scene</Text>
+            <TextInput
+              value={prompt}
+              onChangeText={setPrompt}
+              maxLength={300}
+              multiline
+              placeholder="e.g. Warm Diwali evening, soft diya glow, festive bokeh"
+              accessibilityLabel="Describe the design"
+              className="rounded-xl bg-white px-3 py-3 text-sm min-h-[84px]"
+              style={{ textAlignVertical: 'top' }}
+            />
+            <Text className="text-[11px] text-sand-400 mt-1">
+              Describe a setting or mood. No links, brand names or people. The AI never draws text;
+              add a price or your logo below.
+            </Text>
 
-        <Text className="text-sm font-bold mt-5 mb-2 text-sand-900">3. Finish (optional)</Text>
-        <View className="flex-row flex-wrap">
-          {FORMATS.map((f) => (
-            <Chip
-              key={f.id}
-              label={f.label}
-              active={overlay === null && format === f.id}
-              disabled={overlay !== null}
-              onPress={() => setFormat(f.id)}
-            />
-          ))}
-        </View>
-        <View className="flex-row flex-wrap">
-          {OVERLAYS.map((o) => (
-            <Chip
-              key={o.label}
-              label={o.label}
-              active={overlay === o.id}
-              onPress={() => setOverlay(o.id)}
-            />
-          ))}
-        </View>
-        {overlay !== null ? (
-          <Text className="text-[11px] text-sand-400">An overlay is drawn on a 4:5 picture.</Text>
-        ) : null}
+            <Text className="text-sm font-bold mt-5 mb-2 text-sand-900">3. Finish (optional)</Text>
+            <View className="flex-row flex-wrap">
+              {FORMATS.map((f) => (
+                <Chip
+                  key={f.id}
+                  label={f.label}
+                  active={overlay === null && format === f.id}
+                  disabled={overlay !== null}
+                  onPress={() => setFormat(f.id)}
+                />
+              ))}
+            </View>
+            <View className="flex-row flex-wrap">
+              {OVERLAYS.map((o) => (
+                <Chip
+                  key={o.label}
+                  label={o.label}
+                  active={overlay === o.id}
+                  onPress={() => setOverlay(o.id)}
+                />
+              ))}
+            </View>
+            {overlay !== null ? (
+              <Text className="text-[11px] text-sand-400">
+                An overlay is drawn on a 4:5 picture.
+              </Text>
+            ) : null}
+          </>
+        )}
 
         <View className="mt-4">
           <GradientButton
             label="Make AI design"
             onPress={() => create.mutate()}
             loading={create.isPending}
-            disabled={!product || prompt.trim().length < 5 || jobId !== null}
+            disabled={!product || (!poster && prompt.trim().length < 5) || jobId !== null}
           />
         </View>
 
@@ -257,7 +312,7 @@ export default function AiDesignScreen() {
           </View>
         ) : null}
 
-        {(mine.data?.data.length ?? 0) > 0 ? (
+        {!poster && (mine.data?.data.length ?? 0) > 0 ? (
           <View className="mt-6">
             <Text className="text-sm font-bold mb-2 text-sand-900">My AI designs</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -287,7 +342,7 @@ export default function AiDesignScreen() {
             </Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               {mine.data?.data.map((d) =>
-                d.image_url ? (
+                d.image_url && !d.prompt.startsWith('Poster: ') ? (
                   <Chip
                     key={d.id}
                     label={d.prompt.length > 28 ? `${d.prompt.slice(0, 28)}…` : d.prompt}

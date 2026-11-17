@@ -10,13 +10,15 @@
 // prompt hygiene, product + photo ownership, then the ATOMIC quota reserve (METERED: no plan_limits
 // row = 0). The model is never called in this request: the BullMQ job does it and hands the slot
 // back unless a READY row exists. The finished image feeds the existing composer IMAGE post.
+import type { AiDesignFormat, AiDesignOverlay } from '@kanchuki/ai';
 import { prisma } from '@kanchuki/db';
-import { AI_DESIGN_FORMATS, AI_DESIGN_OVERLAYS } from '@kanchuki/shared';
+import { AI_DESIGN_FORMATS, AI_DESIGN_OVERLAYS, DESIGN_CUSTOM_MAX_LEN } from '@kanchuki/shared';
 import { createId } from '@paralleldrive/cuid2';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { addAiCustomDesignJob } from '../../../jobs/index.js';
 import { sanitizeDesignPrompt } from '../../../lib/ai-custom-design.js';
+import { findPublishedAiPoster } from '../../../lib/design-post-render.js';
 import { hasFeature } from '../../../lib/features.js';
 import { checkQuota, refundJobQuota, reserveJobQuota } from '../../../lib/quota.js';
 import { isStudioShootConfigured } from '../../../lib/studio-shoot.js';
@@ -37,6 +39,14 @@ const bodySchema = z.object({
   overlay: z.enum(AI_DESIGN_OVERLAYS).nullish(),
 });
 
+// Poster request: typed text is only ever drawn by the renderer, never sent to a model (job, Task 8).
+const posterSchema = z.object({
+  product_id: z.string().min(1),
+  template_id: z.string().min(1),
+  custom_text: z.string().max(DESIGN_CUSTOM_MAX_LEN).optional(),
+  offer_text: z.string().max(DESIGN_CUSTOM_MAX_LEN).optional(),
+});
+
 export const retailersSocialAiDesignsRoutes: FastifyPluginAsync = async (server) => {
   const owner = (request: Parameters<typeof isRealOwner>[0]) => {
     if (!isRealOwner(request)) throw forbidden('Only the shop owner can make AI designs');
@@ -55,13 +65,47 @@ export const retailersSocialAiDesignsRoutes: FastifyPluginAsync = async (server)
         throw serviceUnavailable('AI designs are not available right now. Please try later.');
       }
 
-      const body = bodySchema.safeParse(request.body);
-      if (!body.success) throw validationError('Pick a product and describe the design');
-      const clean = sanitizeDesignPrompt(body.data.prompt);
-      if (!clean.ok) throw validationError(clean.reason, 'prompt');
+      const raw = (request.body ?? {}) as { template_id?: unknown };
+      // Poster request (admin-built AI design) vs the existing free-prompt request.
+      let prompt: string;
+      let format: AiDesignFormat = 'ORIGINAL';
+      let overlay: AiDesignOverlay | null = null;
+      let poster: { template_id: string; custom_text?: string; offer_text?: string } | null = null;
+      let productId: string;
+      if (raw.template_id !== undefined) {
+        const p = posterSchema.safeParse(request.body);
+        if (!p.success)
+          throw validationError(
+            `Pick a product and a design (text up to ${DESIGN_CUSTOM_MAX_LEN} characters)`,
+          );
+        const retailer = await prisma.retailer.findUnique({
+          where: { id: retailerId },
+          select: { plan: true },
+        });
+        if (!retailer) throw notFound('Retailer');
+        // Draft / hidden / wrong plan / non-AI all look the same: 404, before any spend.
+        const design = await findPublishedAiPoster(p.data.template_id, retailer.plan);
+        if (!design) throw notFound('Design');
+        prompt = `Poster: ${design.name}`;
+        productId = p.data.product_id;
+        poster = {
+          template_id: p.data.template_id,
+          custom_text: p.data.custom_text,
+          offer_text: p.data.offer_text,
+        };
+      } else {
+        const body = bodySchema.safeParse(request.body);
+        if (!body.success) throw validationError('Pick a product and describe the design');
+        const clean = sanitizeDesignPrompt(body.data.prompt);
+        if (!clean.ok) throw validationError(clean.reason, 'prompt');
+        prompt = clean.prompt;
+        format = body.data.format;
+        overlay = body.data.overlay ?? null;
+        productId = body.data.product_id;
+      }
 
       const product = await prisma.product.findFirst({
-        where: { id: body.data.product_id, retailer_id: retailerId, deleted_at: null },
+        where: { id: productId, retailer_id: retailerId, deleted_at: null },
         select: {
           id: true,
           photos: {
@@ -81,16 +125,17 @@ export const retailersSocialAiDesignsRoutes: FastifyPluginAsync = async (server)
       await reserveJobQuota(retailerId, 'AI_CUSTOM_TEMPLATE', id);
       try {
         await prisma.aiCustomDesign.create({
-          data: { id, retailer_id: retailerId, product_id: product.id, prompt: clean.prompt },
+          data: { id, retailer_id: retailerId, product_id: product.id, prompt },
         });
         await addAiCustomDesignJob({
           job_id: id,
           retailer_id: retailerId,
           product_id: product.id,
           photo_id: photo.id,
-          prompt: clean.prompt,
-          format: body.data.format,
-          overlay: body.data.overlay ?? null,
+          prompt,
+          format,
+          overlay,
+          ...(poster ?? {}),
         });
       } catch (err) {
         // No job will run, so the slot goes back now.

@@ -170,3 +170,7 @@ Look references (layout/mood only, not to copy): Visme Diwali sale posts, Kapwin
 - Tests: golden-image render per template, escaping/overflow cases, quota reserve/refund, route authz (retailer A cannot render with retailer B's product — RC-138/139 `assertOwnProducts` pattern).
 - Device acceptance (none run yet as of 2026-11-14): `docs/tasks/pending/design-templates-device-test.md` — retailer picker, scheduler design step, AI design.
 - Mobile `tsc` clean; **not device-tested until run on a real phone** (state this honestly in BUILD-LOG).
+
+## AI poster styles (2026-11-17)
+
+Spec `docs/superpowers/specs/2026-11-17-ai-poster-styles-design.md`; owner steps `docs/runbooks/ai-poster-styles-owner-steps.md`. Built on branch `feat/ai-poster-styles`, NOT merged; migration 164 (`design_templates.ai_prompt`) NOT applied; nothing run against real FLUX; no device test; no browser check of the admin editor; EAS build needed. Unverified: whether FLUX leaves empty space for text, 9:16 / 1.91:1 crops, real provider.

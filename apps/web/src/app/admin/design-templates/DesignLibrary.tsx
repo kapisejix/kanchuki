@@ -28,6 +28,7 @@ type Design = {
   status: Status;
   plans: string[];
   occasion: string | null;
+  ai_prompt: string | null;
   format: DesignFormat;
   product_slots: number;
   spec: { layers: DesignLayer[] };
@@ -41,6 +42,7 @@ type Draft = {
   id: string | null;
   name: string;
   occasion: string;
+  ai_prompt: string;
   format: DesignFormat;
   product_slots: number;
   plans: string[];
@@ -52,6 +54,7 @@ const blank = (): Draft => ({
   id: null,
   name: '',
   occasion: '',
+  ai_prompt: '',
   format: 'PORTRAIT_4_5',
   product_slots: 1,
   plans: [...PLANS],
@@ -75,6 +78,21 @@ async function apiError(res: Response, fallback: string): Promise<string> {
     return fallback;
   }
 }
+
+// An AI poster holds one product: derive slots (and pull layer indexes in) instead of trusting
+// whatever was stored or typed last.
+const effectiveSlots = (d: Draft) => (d.ai_prompt.trim() ? 1 : d.product_slots);
+const effectiveLayers = (d: Draft): DesignLayer[] =>
+  effectiveSlots(d) === 1
+    ? d.layers.map((l) => (l.type !== 'rect' && (l.index ?? 0) > 0 ? { ...l, index: 0 } : l))
+    : d.layers;
+
+// Bottom-third scrim sized to the chosen canvas so it always passes parseDesignSpec.
+const rectDefault = (format: DesignFormat): DesignLayer => {
+  const { w, h } = DESIGN_FORMATS[format];
+  const y = Math.round(h * 0.65);
+  return { type: 'rect', x: 0, y, w, h: h - y, color: '#000000', opacity: 0.5 };
+};
 
 const num = (v: string, fallback: number) => (v.trim() === '' || Number.isNaN(+v) ? fallback : +v);
 
@@ -127,8 +145,8 @@ export default function DesignLibrary() {
           method: 'POST',
           body: JSON.stringify({
             format: draft.format,
-            product_slots: draft.product_slots,
-            spec: { layers: draft.layers },
+            product_slots: effectiveSlots(draft),
+            spec: { layers: effectiveLayers(draft) },
             background_key: draft.background_key,
           }),
         });
@@ -169,6 +187,7 @@ export default function DesignLibrary() {
       id: d.id,
       name: d.name,
       occasion: d.occasion ?? '',
+      ai_prompt: d.ai_prompt ?? '',
       format: d.format,
       product_slots: d.product_slots,
       plans: d.plans,
@@ -215,10 +234,11 @@ export default function DesignLibrary() {
       const body = {
         name: draft.name,
         occasion: draft.occasion.trim() || null,
+        ai_prompt: draft.ai_prompt.trim() || null,
         format: draft.format,
-        product_slots: draft.product_slots,
+        product_slots: effectiveSlots(draft),
         plans: draft.plans,
-        spec: { layers: draft.layers },
+        spec: { layers: effectiveLayers(draft) },
         background_key: draft.background_key,
       };
       const opts = await adminMutateOptions();
@@ -288,7 +308,17 @@ export default function DesignLibrary() {
                 <li key={d.id} className="space-y-2 rounded-lg border border-gray-200 bg-white p-3">
                   <div className="flex items-start justify-between gap-2">
                     <div>
-                      <p className="font-medium text-gray-900">{d.name}</p>
+                      <p className="font-medium text-gray-900">
+                        {d.name}
+                        {d.ai_prompt && (
+                          <span
+                            aria-label="AI poster"
+                            className="ml-2 rounded bg-purple-100 px-1.5 py-0.5 text-xs text-purple-800"
+                          >
+                            AI
+                          </span>
+                        )}
+                      </p>
                       <p className="text-xs text-gray-500">
                         {d.format.replace(/_/g, ' ')} ·{d.product_slots} product
                         {d.product_slots > 1 ? 's' : ''}
@@ -367,6 +397,29 @@ export default function DesignLibrary() {
                   onChange={(e) => patch({ occasion: e.target.value })}
                 />
               </Field>
+              <div className="sm:col-span-2">
+                <Field id="dt-ai" label="AI scene prompt">
+                  <textarea
+                    id="dt-ai"
+                    aria-describedby="dt-ai-hint"
+                    className={INPUT}
+                    rows={3}
+                    value={draft.ai_prompt}
+                    maxLength={600}
+                    onChange={(e) =>
+                      patch({
+                        ai_prompt: e.target.value,
+                        ...(e.target.value.trim() ? { product_slots: 1 } : {}),
+                      })
+                    }
+                  />
+                </Field>
+                <p id="dt-ai-hint" className="text-xs text-gray-500">
+                  Describe the setting and mood, and ask for empty space where the text sits. The
+                  system adds the no-text and keep-garment rules itself.
+                  {draft.ai_prompt.trim() && ' An AI poster holds one product, so it is set to 1.'}
+                </p>
+              </div>
               <Field id="dt-format" label="Format">
                 <select
                   id="dt-format"
@@ -387,6 +440,7 @@ export default function DesignLibrary() {
                   type="number"
                   min={1}
                   max={DESIGN_MAX_PRODUCT_SLOTS}
+                  disabled={!!draft.ai_prompt.trim()}
                   className={INPUT}
                   value={draft.product_slots}
                   onChange={(e) =>
@@ -500,6 +554,18 @@ export default function DesignLibrary() {
                   >
                     + Image
                   </button>
+                  <button
+                    type="button"
+                    disabled={draft.layers.length >= DESIGN_MAX_LAYERS}
+                    className="rounded border px-2 py-1 disabled:opacity-40"
+                    onClick={() =>
+                      patch({
+                        layers: [...draft.layers, rectDefault(draft.format)],
+                      })
+                    }
+                  >
+                    + Rect
+                  </button>
                 </div>
               </div>
 
@@ -542,20 +608,22 @@ export default function DesignLibrary() {
                       </button>
                     </span>
                   </div>
-                  <Field id={`l${i}-var`} label="Shows">
-                    <select
-                      id={`l${i}-var`}
-                      className={INPUT}
-                      value={l.var}
-                      onChange={(e) => patchLayer(i, { var: e.target.value })}
-                    >
-                      {(l.type === 'text' ? DESIGN_TEXT_VARS : DESIGN_IMAGE_VARS).map((v) => (
-                        <option key={v} value={v}>
-                          {v}
-                        </option>
-                      ))}
-                    </select>
-                  </Field>
+                  {l.type !== 'rect' && (
+                    <Field id={`l${i}-var`} label="Shows">
+                      <select
+                        id={`l${i}-var`}
+                        className={INPUT}
+                        value={l.var}
+                        onChange={(e) => patchLayer(i, { var: e.target.value })}
+                      >
+                        {(l.type === 'text' ? DESIGN_TEXT_VARS : DESIGN_IMAGE_VARS).map((v) => (
+                          <option key={v} value={v}>
+                            {v}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+                  )}
                   {(['x', 'y'] as const).map((k) => (
                     <Field key={k} id={`l${i}-${k}`} label={k.toUpperCase()}>
                       <input
@@ -567,17 +635,19 @@ export default function DesignLibrary() {
                       />
                     </Field>
                   ))}
-                  <Field id={`l${i}-idx`} label="Product slot">
-                    <input
-                      id={`l${i}-idx`}
-                      type="number"
-                      min={0}
-                      max={draft.product_slots - 1}
-                      className={INPUT}
-                      value={l.index ?? 0}
-                      onChange={(e) => patchLayer(i, { index: num(e.target.value, 0) })}
-                    />
-                  </Field>
+                  {l.type !== 'rect' && (
+                    <Field id={`l${i}-idx`} label="Product slot">
+                      <input
+                        id={`l${i}-idx`}
+                        type="number"
+                        min={0}
+                        max={effectiveSlots(draft) - 1}
+                        className={INPUT}
+                        value={l.index ?? 0}
+                        onChange={(e) => patchLayer(i, { index: num(e.target.value, 0) })}
+                      />
+                    </Field>
+                  )}
                   {l.type === 'text' ? (
                     <>
                       <Field id={`l${i}-size`} label="Size">
@@ -681,17 +751,47 @@ export default function DesignLibrary() {
                           />
                         </Field>
                       ))}
-                      <Field id={`l${i}-fit`} label="Fit">
-                        <select
-                          id={`l${i}-fit`}
-                          className={INPUT}
-                          value={l.fit ?? 'contain'}
-                          onChange={(e) => patchLayer(i, { fit: e.target.value })}
-                        >
-                          <option>contain</option>
-                          <option>cover</option>
-                        </select>
-                      </Field>
+                      {l.type === 'image' ? (
+                        <Field id={`l${i}-fit`} label="Fit">
+                          <select
+                            id={`l${i}-fit`}
+                            className={INPUT}
+                            value={l.fit ?? 'contain'}
+                            onChange={(e) => patchLayer(i, { fit: e.target.value })}
+                          >
+                            <option>contain</option>
+                            <option>cover</option>
+                          </select>
+                        </Field>
+                      ) : (
+                        <>
+                          <Field id={`l${i}-rcolor`} label="Colour">
+                            <input
+                              id={`l${i}-rcolor`}
+                              type="color"
+                              className="h-8 w-full"
+                              value={l.color}
+                              onChange={(e) => patchLayer(i, { color: e.target.value })}
+                            />
+                          </Field>
+                          <Field id={`l${i}-opacity`} label="Opacity">
+                            <input
+                              id={`l${i}-opacity`}
+                              type="number"
+                              min={0}
+                              max={1}
+                              step={0.05}
+                              className={INPUT}
+                              value={l.opacity}
+                              onChange={(e) =>
+                                patchLayer(i, {
+                                  opacity: Math.min(1, Math.max(0, num(e.target.value, 1))),
+                                })
+                              }
+                            />
+                          </Field>
+                        </>
+                      )}
                     </>
                   )}
                 </div>

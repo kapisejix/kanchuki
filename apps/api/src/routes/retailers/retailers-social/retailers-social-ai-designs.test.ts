@@ -13,7 +13,10 @@ const m = vi.hoisted(() => ({
   designCreate: vi.fn(),
   designFindMany: vi.fn(),
   designFindFirst: vi.fn(),
+  retailerFind: vi.fn(),
+  poster: vi.fn(),
 }));
+vi.mock('../../../lib/design-post-render.js', () => ({ findPublishedAiPoster: m.poster }));
 
 vi.mock('../../../lib/features.js', () => ({ hasFeature: m.hasFeature }));
 vi.mock('../../../lib/studio-shoot.js', () => ({ isStudioShootConfigured: m.configured }));
@@ -26,6 +29,7 @@ vi.mock('../../../jobs/index.js', () => ({ addAiCustomDesignJob: m.enqueue }));
 vi.mock('@kanchuki/db', () => ({
   prisma: {
     product: { findFirst: m.productFind },
+    retailer: { findUnique: m.retailerFind },
     aiCustomDesign: {
       create: m.designCreate,
       findMany: m.designFindMany,
@@ -36,7 +40,7 @@ vi.mock('@kanchuki/db', () => ({
 
 const { retailersSocialAiDesignsRoutes } = await import('./retailers-social-ai-designs.js');
 
-async function buildApp(staffRole: 'manager' | null = null) {
+async function buildApp(staffRole: 'manager' | null = null, delegate = false) {
   const app = Fastify();
   app.setErrorHandler(errorHandler);
   app.decorateRequest('retailerId', '');
@@ -46,6 +50,7 @@ async function buildApp(staffRole: 'manager' | null = null) {
   app.addHook('preHandler', async (request) => {
     request.retailerId = 'r1';
     (request as any).staffRole = staffRole;
+    if (delegate) (request as any).catalogDelegate = { team_member_id: 't1', ticket_id: 'k1' };
   });
   await app.register(retailersSocialAiDesignsRoutes, { prefix: '/v1/retailers' });
   return app;
@@ -64,6 +69,8 @@ beforeEach(() => {
   m.refund.mockResolvedValue(undefined);
   m.enqueue.mockResolvedValue(undefined);
   m.designCreate.mockResolvedValue({});
+  m.retailerFind.mockResolvedValue({ plan: 'PRO' });
+  m.poster.mockResolvedValue({ id: 'd1', name: 'Diwali Gold' });
   m.productFind.mockResolvedValue({ id: 'p1', photos: [{ id: 'ph1', is_primary: true }] });
 });
 
@@ -190,5 +197,97 @@ describe('GET /me/ai-designs', () => {
     const poll = await app.inject({ method: 'GET', url: '/v1/retailers/me/ai-designs/zzz' });
     expect(poll.statusCode).toBe(404);
     expect(m.designFindFirst.mock.calls[0]?.[0].where).toEqual({ id: 'zzz', retailer_id: 'r1' });
+  });
+});
+
+describe('POST /me/ai-designs (poster)', () => {
+  const poster = {
+    product_id: 'p1',
+    template_id: 'd1',
+    custom_text: 'Hello',
+    offer_text: '20% off',
+  };
+
+  it('enqueues a job with template_id and the typed text; response leaks neither', async () => {
+    const res = await post(await buildApp(), poster);
+    expect(res.statusCode).toBe(202);
+    expect(m.poster).toHaveBeenCalledWith('d1', 'PRO');
+    const id = res.json().data.id as string;
+    expect(m.designCreate).toHaveBeenCalledWith({
+      data: { id, retailer_id: 'r1', product_id: 'p1', prompt: 'Poster: Diwali Gold' },
+    });
+    expect(m.enqueue).toHaveBeenCalledWith(
+      expect.objectContaining({
+        job_id: id,
+        photo_id: 'ph1',
+        template_id: 'd1',
+        custom_text: 'Hello',
+        offer_text: '20% off',
+      }),
+    );
+    expect(m.reserve).toHaveBeenCalledWith('r1', 'AI_CUSTOM_TEMPLATE', id);
+    expect(res.body).not.toContain('Hello');
+  });
+
+  it('draft/hidden/wrong-plan/non-AI template -> 404 and no quota reserved', async () => {
+    m.poster.mockResolvedValue(null);
+    const res = await post(await buildApp(), poster);
+    expect(res.statusCode).toBe(404);
+    expect(m.reserve).not.toHaveBeenCalled();
+    expect(m.enqueue).not.toHaveBeenCalled();
+  });
+
+  it('text over 80 chars -> validation error before any spend', async () => {
+    const res = await post(await buildApp(), { ...poster, custom_text: 'x'.repeat(81) });
+    expect(res.statusCode).toBe(422);
+    expect(m.reserve).not.toHaveBeenCalled();
+  });
+
+  it('manager -> 403', async () => {
+    expect((await post(await buildApp('manager'), poster)).statusCode).toBe(403);
+  });
+
+  it('quota exhausted -> error and no row', async () => {
+    m.reserve.mockRejectedValue(new AppError('PLAN_LIMIT_EXCEEDED', 'no', 402));
+    const res = await post(await buildApp(), poster);
+    expect(res.statusCode).toBe(402);
+    expect(m.designCreate).not.toHaveBeenCalled();
+  });
+
+  it('enqueue failure refunds the slot', async () => {
+    m.enqueue.mockRejectedValue(new Error('redis down'));
+    const res = await post(await buildApp(), poster);
+    expect(res.statusCode).toBeGreaterThanOrEqual(500);
+    expect(m.refund).toHaveBeenCalledWith(expect.any(String), 'AI_CUSTOM_TEMPLATE');
+  });
+});
+
+describe('POST /me/ai-designs (poster) gaps', () => {
+  const poster = { product_id: 'p1', template_id: 'd1' };
+
+  it('catalog delegate session -> 403, nothing reserved', async () => {
+    const res = await post(await buildApp(null, true), poster);
+    expect(res.statusCode).toBe(403);
+    expect(m.reserve).not.toHaveBeenCalled();
+  });
+
+  it('non-AI template (lookup returns null) -> 404, looked up by id + plan, no reserve', async () => {
+    m.poster.mockResolvedValue(null);
+    const res = await post(await buildApp(), { ...poster, template_id: 'plain1' });
+    expect(res.statusCode).toBe(404);
+    expect(m.poster).toHaveBeenCalledWith('plain1', 'PRO');
+    expect(m.reserve).not.toHaveBeenCalled();
+  });
+
+  it('a body with both template_id and prompt takes the poster path, prompt ignored', async () => {
+    const res = await post(await buildApp(), {
+      ...poster,
+      prompt: 'warm Diwali diyas with soft bokeh',
+    });
+    expect(res.statusCode).toBe(202);
+    expect(m.designCreate.mock.calls[0]?.[0].data.prompt).toBe('Poster: Diwali Gold');
+    expect(m.enqueue).toHaveBeenCalledWith(
+      expect.objectContaining({ template_id: 'd1', prompt: 'Poster: Diwali Gold' }),
+    );
   });
 });

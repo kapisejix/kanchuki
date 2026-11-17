@@ -90,3 +90,46 @@ describe('parseDesignSpec', () => {
     expect(bad(spec(text({ y: 500 })), 'LANDSCAPE_1_91_1')).toBeNull();
   });
 });
+
+describe('rect layer', () => {
+  const rect = (over: Record<string, unknown> = {}) => ({
+    type: 'rect',
+    x: 0,
+    y: 900,
+    w: 1080,
+    h: 450,
+    color: '#000000',
+    opacity: 0.5,
+    ...over,
+  });
+  it('accepts a rect layer and rebuilds only known fields', () => {
+    const r = parseDesignSpec(spec(rect({ evil: 1, var: 'price' })), 'PORTRAIT_4_5');
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.spec.layers[0]).toEqual({
+        type: 'rect',
+        x: 0,
+        y: 900,
+        w: 1080,
+        h: 450,
+        color: '#000000',
+        opacity: 0.5,
+      });
+    }
+  });
+  it('rejects rect outside the canvas', () => {
+    expect(bad(spec(rect({ w: 1081 })))).toMatch(/canvas/);
+    expect(bad(spec(rect({ h: 451 })))).toMatch(/canvas/);
+  });
+  it('rejects rect with bad colour', () => {
+    expect(bad(spec(rect({ color: 'red' })))).toMatch(/#RRGGBB/);
+  });
+  it('rejects opacity 1.5 and -0.1', () => {
+    expect(bad(spec(rect({ opacity: 1.5 })))).toMatch(/opacity/);
+    expect(bad(spec(rect({ opacity: -0.1 })))).toMatch(/opacity/);
+  });
+  it('rejects rect w or h below 8', () => {
+    expect(bad(spec(rect({ w: 7 })))).toMatch(/≥ 8/);
+    expect(bad(spec(rect({ h: 7 })))).toMatch(/≥ 8/);
+  });
+});

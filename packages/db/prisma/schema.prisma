@@ -2662,6 +2662,7 @@ model DesignTemplate {
   spec           Json               // { layers: [...] } — see packages/shared/src/design-template.ts
   background_key String?            // R2 key of the background art; null = plain white
   thumbnail_key  String?            // R2 key of the picker preview
+  ai_prompt      String?            // AI style: prompt that composes the product photo into a poster; NULL = layered design (migration 164, needs product_slots = 1)
   sort_order     Int                @default(0)
   usage_count    Int                @default(0)
   created_at     DateTime           @default(now())

@@ -136,6 +136,88 @@ describe('admin design-templates', () => {
     );
   });
 
+  it('POST stores ai_prompt', async () => {
+    mockCreate.mockResolvedValueOnce({ id: 't1', name: 'X' });
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/design-templates',
+      payload: { name: 'X', spec: goodSpec, ai_prompt: ' Soft pink festive ' },
+    });
+    expect(res.statusCode).toBe(201);
+    expect(mockCreate.mock.calls[0]?.[0].data.ai_prompt).toBe('Soft pink festive');
+  });
+
+  it('POST rejects ai_prompt over 600 chars', async () => {
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/design-templates',
+      payload: { name: 'X', spec: goodSpec, ai_prompt: 'a'.repeat(601) },
+    });
+    expect(res.statusCode).toBe(422);
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
+
+  it('POST rejects ai_prompt with product_slots 2', async () => {
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/design-templates',
+      payload: { name: 'X', spec: goodSpec, product_slots: 2, ai_prompt: 'p' },
+    });
+    expect(res.statusCode).toBe(422);
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
+
+  it('POST blank ai_prompt becomes null', async () => {
+    mockCreate.mockResolvedValueOnce({ id: 't1', name: 'X' });
+    const app = await buildApp();
+    await app.inject({
+      method: 'POST',
+      url: '/design-templates',
+      payload: { name: 'X', spec: goodSpec, ai_prompt: '   ' },
+    });
+    expect(mockCreate.mock.calls[0]?.[0].data.ai_prompt).toBeNull();
+  });
+
+  it('PUT can clear ai_prompt with null', async () => {
+    mockFindUnique.mockResolvedValueOnce({
+      id: 't1',
+      format: 'PORTRAIT_4_5',
+      product_slots: 1,
+      spec: goodSpec,
+      ai_prompt: 'old',
+    });
+    mockUpdate.mockResolvedValueOnce({ id: 't1' });
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'PUT',
+      url: '/design-templates/t1',
+      payload: { ai_prompt: null },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(mockUpdate.mock.calls[0]?.[0].data.ai_prompt).toBeNull();
+  });
+
+  it('PUT refuses product_slots 2 on a template that has an ai_prompt', async () => {
+    mockFindUnique.mockResolvedValueOnce({
+      id: 't1',
+      format: 'PORTRAIT_4_5',
+      product_slots: 1,
+      spec: goodSpec,
+      ai_prompt: 'old',
+    });
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'PUT',
+      url: '/design-templates/t1',
+      payload: { product_slots: 2 },
+    });
+    expect(res.statusCode).toBe(422);
+    expect(mockUpdate).not.toHaveBeenCalled();
+  });
+
   it('POST refuses a background key outside the design-template prefix', async () => {
     const app = await buildApp();
     const res = await app.inject({

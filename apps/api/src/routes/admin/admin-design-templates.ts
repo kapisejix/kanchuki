@@ -61,7 +61,20 @@ const Fields = {
   thumbnail_key: z.string().min(1).nullable(),
   plans: z.array(z.enum(PLANS)).max(3),
   sort_order: z.number().int().min(0),
+  // Blank = no AI prompt (plain design). Admin-only text, never sent to retailers.
+  ai_prompt: z
+    .string()
+    .trim()
+    .max(600)
+    .transform((v) => v || null)
+    .nullable(),
 };
+
+/** An AI poster is generated from exactly one product photo. */
+function checkAiSlots(prompt: string | null | undefined, slots: number) {
+  if (prompt && slots !== 1)
+    throw validationError('An AI poster holds one product', 'product_slots');
+}
 
 const CreateSchema = z.object({
   name: Fields.name,
@@ -75,6 +88,7 @@ const CreateSchema = z.object({
   // D5: free designs are for every plan, so that is the default (an empty list = nobody).
   plans: Fields.plans.default([...PLANS]),
   sort_order: Fields.sort_order.default(0),
+  ai_prompt: Fields.ai_prompt.optional(),
 });
 
 const UpdateSchema = z.object({
@@ -88,6 +102,7 @@ const UpdateSchema = z.object({
   thumbnail_key: Fields.thumbnail_key.optional(),
   plans: Fields.plans.optional(),
   sort_order: Fields.sort_order.optional(),
+  ai_prompt: Fields.ai_prompt.optional(),
 });
 
 type Row = NonNullable<Awaited<ReturnType<typeof prisma.designTemplate.findUnique>>>;
@@ -224,6 +239,7 @@ export const adminDesignTemplateRoutes: FastifyPluginAsync = async (server) => {
   server.post('/design-templates', async (request, reply) => {
     const body = CreateSchema.parse(request.body);
     const spec = checkSpec(body.spec, body.format, body.product_slots);
+    checkAiSlots(body.ai_prompt, body.product_slots);
     const row = await prisma.designTemplate.create({
       data: {
         name: body.name,
@@ -236,6 +252,7 @@ export const adminDesignTemplateRoutes: FastifyPluginAsync = async (server) => {
         thumbnail_key: body.thumbnail_key ? await verifyAsset(body.thumbnail_key) : null,
         plans: body.plans,
         sort_order: body.sort_order,
+        ai_prompt: body.ai_prompt ?? null,
       },
     });
     await audit(request, 'CREATE', row.id, { name: row.name, format: row.format });
@@ -251,11 +268,19 @@ export const adminDesignTemplateRoutes: FastifyPluginAsync = async (server) => {
     if (!existing) throw notFound('Design template');
 
     const data: Prisma.DesignTemplateUpdateInput = {};
-    for (const k of ['name', 'description', 'occasion', 'plans', 'sort_order'] as const) {
+    for (const k of [
+      'name',
+      'description',
+      'occasion',
+      'plans',
+      'sort_order',
+      'ai_prompt',
+    ] as const) {
       if (body[k] !== undefined) (data as Record<string, unknown>)[k] = body[k];
     }
     const format = body.format ?? existing.format;
     const slots = body.product_slots ?? existing.product_slots;
+    checkAiSlots(body.ai_prompt !== undefined ? body.ai_prompt : existing.ai_prompt, slots);
     if (body.format || body.product_slots || body.spec !== undefined) {
       data.format = format;
       data.product_slots = slots;

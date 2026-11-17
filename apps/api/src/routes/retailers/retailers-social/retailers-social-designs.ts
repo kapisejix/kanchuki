@@ -51,11 +51,14 @@ export const retailersSocialDesignsRoutes: FastifyPluginAsync = async (server) =
         format: true,
         product_slots: true,
         thumbnail_key: true,
+        ai_prompt: true,
       },
     });
     return {
-      data: rows.map(({ thumbnail_key, ...r }) => ({
+      // ai_prompt is admin-only text: the retailer gets only the boolean.
+      data: rows.map(({ thumbnail_key, ai_prompt, ...r }) => ({
         ...r,
+        ai: ai_prompt !== null,
         thumbnail_url: thumbnail_key ? publicUrl(thumbnail_key) : null,
       })),
     };

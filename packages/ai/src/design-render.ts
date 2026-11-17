@@ -55,8 +55,11 @@ const FONT_STACK: Record<DesignFont, string> = {
   sans: 'DejaVu Sans, Noto Sans Devanagari, Noto Sans, Arial, Helvetica, sans-serif',
 };
 
+// Control chars are stripped too (defence in depth: clean() already runs first) so a bad char can never make the rasterise throw.
 const esc = (s: string) =>
   s
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: stripping them is the point
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
@@ -198,6 +201,11 @@ export async function renderDesign(input: DesignRenderInput): Promise<Buffer> {
     if (layer.type === 'text') {
       const value = textValue(layer, input);
       if (value) pendingText += textSvgFragment(layer, value, cw);
+      continue;
+    }
+    if (layer.type === 'rect') {
+      // SVG fragment joins pendingText so layer order is kept (same flush rules as text).
+      pendingText += `<rect x="${layer.x}" y="${layer.y}" width="${layer.w}" height="${layer.h}" fill="${layer.color}" fill-opacity="${layer.opacity}"/>`;
       continue;
     }
     const src =

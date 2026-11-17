@@ -4439,6 +4439,8 @@ The owner, managers and salespeople get a push on their phone when a customer se
 
 ---
 
+**AI poster styles (2026-11-17):** Built on branch `feat/ai-poster-styles`, NOT merged; migration 164 (`design_templates.ai_prompt`) NOT applied; nothing run against real FLUX; no device test; no browser check of the admin editor; EAS build needed. Admin sets a scene prompt + rect scrim per style; the retailer types only a headline and offer. See `docs/runbooks/ai-poster-styles-owner-steps.md`.
+
 ## 45. F-047 Scan & Sell billing screen — ✅ BUILT + MERGED 2026-11-15 (T1–T8), OWNER DEVICE-TESTED (summary only)
 
 **Spec:** `docs/tasks/done/scan-billing-sell-screen.md` (owner decisions §10 final). Closes the "stale catalog after an in-shop sale" gap: one counter bill of several articles sold in one tap, stock decremented per size, Undo within 10 minutes, works offline.

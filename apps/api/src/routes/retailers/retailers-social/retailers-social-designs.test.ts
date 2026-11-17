@@ -113,6 +113,19 @@ describe('GET /me/designs', () => {
     expect(res.json().data[0]).not.toHaveProperty('thumbnail_key');
   });
 
+  it('returns ai:true for an AI row and never the ai_prompt text', async () => {
+    m.designFindMany.mockResolvedValue([
+      { id: 'a1', name: 'AI', thumbnail_key: null, ai_prompt: 'SECRET admin prompt' },
+      { id: 'd1', name: 'Plain', thumbnail_key: null, ai_prompt: null },
+    ]);
+    const res = await (await buildApp()).inject({ method: 'GET', url: '/v1/retailers/me/designs' });
+    const [ai, plain] = res.json().data;
+    expect(ai.ai).toBe(true);
+    expect(plain.ai).toBe(false);
+    expect(ai).not.toHaveProperty('ai_prompt');
+    expect(res.body).not.toContain('SECRET');
+  });
+
   it('refuses a manager', async () => {
     const res = await (await buildApp('manager')).inject({
       method: 'GET',
@@ -155,7 +168,17 @@ describe('POST /me/designs/:id/render', () => {
       id: 'd1',
       status: 'PUBLISHED',
       plans: { has: 'STARTER' },
+      ai_prompt: null,
     });
+    expect(m.renderDesign).not.toHaveBeenCalled();
+  });
+
+  it('answers 404 for an AI style id (the plain path never renders it)', async () => {
+    // The real query excludes ai_prompt != null, so the DB returns no row.
+    m.designFindFirst.mockResolvedValue(null);
+    const res = await render(await buildApp(), { product_ids: ['p1'] }, 'ai1');
+    expect(res.statusCode).toBe(404);
+    expect(m.designFindFirst.mock.calls[0]?.[0].where.ai_prompt).toBeNull();
     expect(m.renderDesign).not.toHaveBeenCalled();
   });
 

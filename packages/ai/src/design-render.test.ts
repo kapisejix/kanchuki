@@ -173,7 +173,9 @@ describe('renderDesign', () => {
 
   it('survives XML-special text, control characters and a hostile custom_text', async () => {
     const input = await base();
-    input.custom = { custom_text: `<svg onload="x">&amp;\u0000\u0007${'z'.repeat(500)}` };
+    input.custom = {
+      custom_text: `<svg onload="x">&amp;\u0000\u0007\u0008\u000B\u001F${'z'.repeat(500)}`,
+    };
     input.products[0] = {
       texts: { product_name: 'Saree </text><script>alert(1)</script> & "co"' },
       image: input.products[0]?.image ?? null,
@@ -268,4 +270,31 @@ describe('renderDesign', () => {
     expect(g1).toBeGreaterThan(150);
     expect(r2 + g2 + b2).toBeGreaterThan(700); // slot 2 not supplied -> still white
   }, 30_000);
+
+  it('rect layer darkens the pixels under it and text stays on top', async () => {
+    const input = await base();
+    input.spec = {
+      layers: [
+        { type: 'rect', x: 0, y: 0, w: 400, h: 400, color: '#000000', opacity: 0.5 },
+        { type: 'text', var: 'shop_name', x: 20, y: 20, size: 80, font: 'sans', color: '#ffffff' },
+      ],
+    };
+    const out = await renderDesign(input);
+    const [r, g, b] = await pixel(out, 380, 380);
+    expect(r).toBeGreaterThan(100);
+    expect(r).toBeLessThan(160);
+    expect(g).toBeLessThan(160);
+    expect(b).toBeLessThan(160);
+    const [ro, go, bo] = await pixel(out, 600, 600);
+    expect(ro + go + bo).toBeGreaterThan(740); // outside the rect: still white
+    // white text over the gray band is lighter than the band
+    const lightest = Math.max(
+      ...(await sharp(out)
+        .extract({ left: 20, top: 20, width: 380, height: 80 })
+        .greyscale()
+        .raw()
+        .toBuffer()),
+    );
+    expect(lightest).toBeGreaterThan(220);
+  });
 });

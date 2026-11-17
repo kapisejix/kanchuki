@@ -17,8 +17,9 @@ import {
   finishDesignImage,
 } from '@kanchuki/ai';
 import { prisma } from '@kanchuki/db';
-import { buildDesignPrompt } from '../lib/ai-custom-design.js';
+import { buildDesignPrompt, buildPosterPrompt } from '../lib/ai-custom-design.js';
 import { recordBflStudioUsage } from '../lib/ai-usage.js';
+import { findPublishedAiPoster, renderDesignJpeg } from '../lib/design-post-render.js';
 import { markJobQuotaSpent, refundJobQuota } from '../lib/quota.js';
 import { downloadCompressAndUpload, generateStudioImage } from '../lib/studio-shoot.js';
 import { studioSourceUrl } from './studio-shoot.js';
@@ -34,6 +35,10 @@ export interface AiCustomDesignJobData {
   format?: AiDesignFormat;
   /** Free price / badge / logo overlay from the built-in slide renderer (forces 4:5). */
   overlay?: AiDesignOverlay | null;
+  /** AI poster request (Task 8 job body): the admin design + the retailer's typed text. */
+  template_id?: string;
+  custom_text?: string;
+  offer_text?: string;
 }
 
 // Social posters get a bigger budget than the 80 KB catalog default (they are shown full-screen).
@@ -62,6 +67,9 @@ export async function handleAiCustomDesign(data: AiCustomDesignJobData): Promise
     prompt,
     format = 'ORIGINAL',
     overlay = null,
+    template_id,
+    custom_text,
+    offer_text,
   } = data;
   let spent = false;
   try {
@@ -74,8 +82,24 @@ export async function handleAiCustomDesign(data: AiCustomDesignJobData): Promise
       await markFailed(job_id, retailer_id, 'The product photo is no longer available.');
       return;
     }
+    // AI poster: re-resolve the design now (it may have been unpublished or the plan changed
+    // since the route queued us). Gone => no model call, the finally block refunds the slot.
+    let poster: NonNullable<Awaited<ReturnType<typeof findPublishedAiPoster>>> | null = null;
+    let posterPrompt: string | null = null;
+    if (template_id) {
+      const retailer = await prisma.retailer.findUnique({
+        where: { id: retailer_id },
+        select: { plan: true },
+      });
+      poster = retailer ? await findPublishedAiPoster(template_id, retailer.plan) : null;
+      if (!poster?.ai_prompt) {
+        await markFailed(job_id, retailer_id, 'This design is no longer available.');
+        return;
+      }
+      posterPrompt = poster.ai_prompt;
+    }
     const product = await prisma.product.findFirst({
-      where: { id: product_id, retailer_id },
+      where: { id: product_id, retailer_id, deleted_at: null },
       select: {
         name: true,
         category: true,
@@ -89,9 +113,14 @@ export async function handleAiCustomDesign(data: AiCustomDesignJobData): Promise
         retailer: { select: { shop_name: true, logo_r2_key: true } },
       },
     });
+    if (!product) {
+      await markFailed(job_id, retailer_id, 'The product is no longer available.');
+      return;
+    }
 
     const result = await generateStudioImage(sourceUrl, {
-      prompt: buildDesignPrompt(prompt),
+      // Poster: admin prompt only. The retailer's typed text is rendered over the scene, never sent to the model.
+      prompt: posterPrompt ? buildPosterPrompt(posterPrompt) : buildDesignPrompt(prompt),
       tab: 'PRODUCT',
       product: product
         ? {
@@ -116,22 +145,31 @@ export async function handleAiCustomDesign(data: AiCustomDesignJobData): Promise
     const key = `retailers/${retailer_id}/designs/${randomBytes(12).toString('hex')}.jpg`;
     // Only an overlay needs the retailer's logo; a missing/unreadable one falls back to the store-name pill.
     const logo =
-      overlay === 'logo_corner' && product?.retailer?.logo_r2_key
+      !poster && overlay === 'logo_corner' && product?.retailer?.logo_r2_key
         ? await downloadBuffer(product.retailer.logo_r2_key).catch(() => null)
         : null;
     const uploaded = await downloadCompressAndUpload(payload, key, Boolean(result.base64Data), {
       compress: POSTER_BUDGET,
       transform: (raw) =>
-        finishDesignImage(raw, {
-          format,
-          overlay,
-          slide: {
-            pricePaise: product?.price_min ?? null,
-            storeName: product?.retailer?.shop_name ?? '',
-            festival: null,
-            logo,
-          },
-        }),
+        poster
+          ? renderDesignJpeg({
+              retailerId: retailer_id,
+              design: poster,
+              productIds: [product_id],
+              custom: { custom_text, offer_text },
+              backgroundOverride: raw,
+              omitProductImages: true,
+            })
+          : finishDesignImage(raw, {
+              format,
+              overlay,
+              slide: {
+                pricePaise: product?.price_min ?? null,
+                storeName: product?.retailer?.shop_name ?? '',
+                festival: null,
+                logo,
+              },
+            }),
     });
 
     await prisma.aiCustomDesign.update({
@@ -141,6 +179,12 @@ export async function handleAiCustomDesign(data: AiCustomDesignJobData): Promise
     // READY is the durable trace of a paid result: settle the slot as spent. A failed mark is
     // logged, not fatal; the sweep sees the READY row and marks it spent instead of refunding.
     spent = true;
+    if (poster) {
+      // Counter only (same as schedule-render's bump): a failure never fails a paid result.
+      await prisma.designTemplate
+        .update({ where: { id: poster.id }, data: { usage_count: { increment: 1 } } })
+        .catch((err) => console.error('[ai-custom-design] usage_count bump failed:', err));
+    }
     await markJobQuotaSpent(job_id, 'AI_CUSTOM_TEMPLATE').catch((err) => {
       console.error(`[ai-custom-design] failed to mark quota spent for ${job_id}:`, err);
     });

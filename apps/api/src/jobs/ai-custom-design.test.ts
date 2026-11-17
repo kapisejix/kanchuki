@@ -11,14 +11,25 @@ const m = vi.hoisted(() => ({
   spent: vi.fn(),
   refund: vi.fn(),
   sourceUrl: vi.fn(),
+  retailerFind: vi.fn(),
+  findPoster: vi.fn(),
+  render: vi.fn(),
+  downloadBuffer: vi.fn(),
+  templateUpdate: vi.fn(),
 }));
 
 vi.mock('@kanchuki/db', () => ({
   prisma: {
     productPhoto: { findFirst: m.photoFind },
     product: { findFirst: m.productFind },
+    retailer: { findUnique: m.retailerFind },
+    designTemplate: { update: m.templateUpdate },
     aiCustomDesign: { update: m.designUpdate, updateMany: m.designUpdateMany },
   },
+}));
+vi.mock('@kanchuki/ai', async (orig) => ({
+  ...(await orig<typeof import('@kanchuki/ai')>()),
+  downloadBuffer: m.downloadBuffer,
 }));
 vi.mock('../lib/studio-shoot.js', () => ({
   generateStudioImage: m.generate,
@@ -26,6 +37,10 @@ vi.mock('../lib/studio-shoot.js', () => ({
 }));
 vi.mock('../lib/quota.js', () => ({ markJobQuotaSpent: m.spent, refundJobQuota: m.refund }));
 vi.mock('../lib/ai-usage.js', () => ({ recordBflStudioUsage: vi.fn() }));
+vi.mock('../lib/design-post-render.js', () => ({
+  findPublishedAiPoster: m.findPoster,
+  renderDesignJpeg: m.render,
+}));
 vi.mock('./studio-shoot.js', () => ({ studioSourceUrl: m.sourceUrl }));
 
 const { handleAiCustomDesign } = await import('./ai-custom-design.js');
@@ -51,6 +66,10 @@ beforeEach(() => {
     width: 1,
     height: 1,
   }));
+  m.retailerFind.mockResolvedValue({ plan: 'PRO' });
+  m.findPoster.mockResolvedValue({ id: 't1', ai_prompt: 'diwali poster scene' });
+  m.render.mockResolvedValue(Buffer.from('jpg'));
+  m.templateUpdate.mockResolvedValue({});
   m.designUpdate.mockResolvedValue({});
   m.designUpdateMany.mockResolvedValue({ count: 1 });
   m.spent.mockResolvedValue(undefined);
@@ -131,5 +150,114 @@ describe('handleAiCustomDesign', () => {
     m.spent.mockRejectedValue(new Error('db blip'));
     await expect(handleAiCustomDesign(data)).resolves.toBeUndefined();
     expect(m.refund).not.toHaveBeenCalled();
+  });
+});
+
+describe('handleAiCustomDesign poster branch', () => {
+  const poster = {
+    ...data,
+    template_id: 't1',
+    custom_text: 'SECRET HEADLINE',
+    offer_text: 'FLAT 50 OFF',
+  };
+
+  it('poster job: scene then render with backgroundOverride, row READY, slot spent', async () => {
+    await handleAiCustomDesign(poster);
+    expect(m.findPoster).toHaveBeenCalledWith('t1', 'PRO');
+    const opts = m.upload.mock.calls[0]?.[3];
+    expect(opts.compress.maxBytes).toBe(450 * 1024);
+    const raw = Buffer.from('scene');
+    await opts.transform(raw);
+    expect(m.render).toHaveBeenCalledWith(
+      expect.objectContaining({
+        retailerId: 'r1',
+        productIds: ['p1'],
+        backgroundOverride: raw,
+        omitProductImages: true,
+        custom: { custom_text: 'SECRET HEADLINE', offer_text: 'FLAT 50 OFF' },
+      }),
+    );
+    const key = m.upload.mock.calls[0]?.[1] as string;
+    expect(key).toMatch(/^retailers\/r1\/designs\/[a-f0-9]{24}\.jpg$/);
+    expect(m.designUpdate).toHaveBeenCalledWith({
+      where: { id: 'j1' },
+      data: { status: 'READY', image_key: key, image_url: `https://cdn/${key}`, error: null },
+    });
+    expect(m.spent).toHaveBeenCalledWith('j1', 'AI_CUSTOM_TEMPLATE');
+    expect(m.refund).not.toHaveBeenCalled();
+  });
+
+  it('template unpublished or ai_prompt cleared before run -> FAILED, refunded, model not called', async () => {
+    m.findPoster.mockResolvedValue(null);
+    await handleAiCustomDesign(poster);
+    expect(m.generate).not.toHaveBeenCalled();
+    expect(m.designUpdateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ status: 'FAILED' }) }),
+    );
+    expect(m.refund).toHaveBeenCalledWith('j1', 'AI_CUSTOM_TEMPLATE');
+    expect(m.spent).not.toHaveBeenCalled();
+  });
+
+  it('render throws after scene -> FAILED, refunded, error rethrown', async () => {
+    m.render.mockRejectedValue(new Error('boom'));
+    m.upload.mockImplementation(async (_p: string, _k: string, _b: boolean, o: any) => {
+      await o.transform(Buffer.from('scene'));
+    });
+    await expect(handleAiCustomDesign(poster)).rejects.toThrow('boom');
+    expect(m.designUpdate).not.toHaveBeenCalled();
+    expect(m.designUpdateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ status: 'FAILED' }) }),
+    );
+    expect(m.refund).toHaveBeenCalledWith('j1', 'AI_CUSTOM_TEMPLATE');
+  });
+
+  it('typed text is not in the prompt passed to generateStudioImage', async () => {
+    await handleAiCustomDesign(poster);
+    const sent = m.generate.mock.calls[0]?.[1].prompt as string;
+    expect(sent).toContain('diwali poster scene');
+    expect(sent).not.toContain('SECRET HEADLINE');
+    expect(sent).not.toContain('FLAT 50 OFF');
+    expect(sent).not.toContain('warm diyas');
+  });
+
+  it('poster mode never downloads the store logo', async () => {
+    m.productFind.mockResolvedValue({
+      name: 'Suit',
+      retailer: { shop_name: 'S', logo_r2_key: 'logo.png' },
+    });
+    await handleAiCustomDesign({ ...poster, overlay: 'logo_corner' });
+    expect(m.downloadBuffer).not.toHaveBeenCalled();
+  });
+
+  it('poster READY bumps the design usage_count', async () => {
+    await handleAiCustomDesign(poster);
+    expect(m.templateUpdate).toHaveBeenCalledWith({
+      where: { id: 't1' },
+      data: { usage_count: { increment: 1 } },
+    });
+  });
+
+  it('a failed usage bump does not fail the job', async () => {
+    m.templateUpdate.mockRejectedValue(new Error('db'));
+    await expect(handleAiCustomDesign(poster)).resolves.toBeUndefined();
+    expect(m.refund).not.toHaveBeenCalled();
+  });
+
+  it('product gone (soft-deleted): FAILED + refund, model never called', async () => {
+    m.productFind.mockResolvedValue(null);
+    await handleAiCustomDesign(data);
+    expect(m.productFind.mock.calls[0]?.[0].where).toMatchObject({ deleted_at: null });
+    expect(m.generate).not.toHaveBeenCalled();
+    expect(m.designUpdateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ status: 'FAILED' }) }),
+    );
+    expect(m.refund).toHaveBeenCalledWith('j1', 'AI_CUSTOM_TEMPLATE');
+  });
+
+  it('free-prompt job unchanged: no template lookup, no render', async () => {
+    await handleAiCustomDesign(data);
+    expect(m.findPoster).not.toHaveBeenCalled();
+    expect(m.render).not.toHaveBeenCalled();
+    expect(m.generate.mock.calls[0]?.[1].prompt).toContain('warm diyas');
   });
 });

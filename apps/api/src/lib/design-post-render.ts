@@ -30,10 +30,21 @@ export interface PublishedDesign {
   background_key: string | null;
 }
 
-/** PUBLISHED design visible to this plan, else null (draft / hidden / wrong plan look missing). */
+/**
+ * PUBLISHED design visible to this plan, else null (draft / hidden / wrong plan look missing).
+ * AI styles (ai_prompt set) are excluded: they render only through the AI poster path, never
+ * the plain renderer or the scheduler.
+ */
 export function findPublishedDesign(designId: string, plan: 'STARTER' | 'GROWTH' | 'PRO') {
   return prisma.designTemplate.findFirst({
-    where: { id: designId, status: 'PUBLISHED', plans: { has: plan } },
+    where: { id: designId, status: 'PUBLISHED', plans: { has: plan }, ai_prompt: null },
+  });
+}
+
+/** The AI-style counterpart: PUBLISHED, plan-allowed row whose ai_prompt is set. */
+export function findPublishedAiPoster(designId: string, plan: 'STARTER' | 'GROWTH' | 'PRO') {
+  return prisma.designTemplate.findFirst({
+    where: { id: designId, status: 'PUBLISHED', plans: { has: plan }, ai_prompt: { not: null } },
   });
 }
 
@@ -42,8 +53,12 @@ export async function renderDesignJpeg(args: {
   design: PublishedDesign;
   productIds: string[];
   custom?: { custom_text?: string; offer_text?: string };
+  /** AI poster path: an already-generated scene replaces design.background_key. */
+  backgroundOverride?: Buffer;
+  /** AI poster path: the garment is already in the scene, so no product photos are drawn. */
+  omitProductImages?: boolean;
 }): Promise<Buffer> {
-  const { retailerId, design, productIds, custom } = args;
+  const { retailerId, design, productIds, custom, backgroundOverride, omitProductImages } = args;
   const parsed = parseDesignSpec(design.spec, design.format as DesignFormat, design.product_slots);
   if (!parsed.ok) {
     throw new DesignRenderError('bad spec', 'This design is not available right now');
@@ -81,16 +96,16 @@ export async function renderDesignJpeg(args: {
     .filter((p): p is NonNullable<typeof p> => !!p);
   const photoKey = (p: (typeof ordered)[number]) =>
     (p.photos.find((x) => x.is_primary) ?? p.photos[0])?.r2_key;
-  if (ordered.length === 0 || ordered.some((p) => !photoKey(p))) {
+  if (ordered.length === 0 || (!omitProductImages && ordered.some((p) => !photoKey(p)))) {
     throw new DesignRenderError('no photo', 'Every product needs a photo to make a design');
   }
 
   const [background, logo, ...images] = await Promise.all([
-    design.background_key ? downloadBuffer(design.background_key) : Promise.resolve(null),
+    backgroundOverride ?? (design.background_key ? downloadBuffer(design.background_key) : null),
     retailer.logo_r2_key
       ? downloadBuffer(retailer.logo_r2_key).catch(() => null) // no logo → layer is skipped
       : Promise.resolve(null),
-    ...ordered.map((p) => downloadBuffer(photoKey(p) as string)),
+    ...(omitProductImages ? [] : ordered.map((p) => downloadBuffer(photoKey(p) as string))),
   ]);
   return renderDesign({
     format: design.format as DesignFormat,
