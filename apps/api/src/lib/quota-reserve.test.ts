@@ -176,7 +176,8 @@ describe('reserveQuota', () => {
     m.override.mockResolvedValue(null);
     m.retailerFind.mockResolvedValue({ plan: 'GROWTH' });
     m.planLimit.mockResolvedValue(null);
-    await reserveQuota('ret1', 'GBP_REVIEW_REPLY');
+    // AI_TAGGING_CALL is not METERED; GBP_REVIEW_REPLY is (audit #9) and fails closed instead.
+    await reserveQuota('ret1', 'AI_TAGGING_CALL');
     expect(m.exec).not.toHaveBeenCalled();
   });
 

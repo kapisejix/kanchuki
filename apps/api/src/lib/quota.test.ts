@@ -335,7 +335,13 @@ describe('getEnforcedQuota', () => {
 // H6-1: a resource that costs real money per call must fail CLOSED when no plan_limits row exists.
 // beforeEach already leaves override and plan_limits empty, i.e. the shipped default.
 describe('metered resources with no plan_limits row (H6-1)', () => {
-  const METERED = ['STUDIO_SHOOT', 'TRY_ON_GENERATION', 'BG_REMOVAL', 'IMAGE_CROP'] as const;
+  const METERED = [
+    'STUDIO_SHOOT',
+    'TRY_ON_GENERATION',
+    'BG_REMOVAL',
+    'IMAGE_CROP',
+    'GBP_REVIEW_REPLY', // audit #9: was unlimited until plan_limits rows were seeded
+  ] as const;
 
   it.each(METERED)('checkQuota(%s) is refused', async (resource) => {
     mockUsageCounterFindUnique.mockResolvedValue(null);
