@@ -173,7 +173,7 @@ describe('renderDesign', () => {
 
   it('survives XML-special text, control characters and a hostile custom_text', async () => {
     const input = await base();
-    input.custom = { custom_text: `<svg onload="x">&amp;\u0000\u0007${'z'.repeat(500)}` };
+    input.custom = { custom_text: `<svg onload="x">&amp;\u0000\00070008000B001F${'z'.repeat(500)}` };
     input.products[0] = {
       texts: { product_name: 'Saree </text><script>alert(1)</script> & "co"' },
       image: input.products[0]?.image ?? null,
