@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   MAX_DESIGN_PROMPT_CHARS,
   buildDesignPrompt,
+  buildPosterPrompt,
   sanitizeDesignPrompt,
 } from './ai-custom-design.js';
 
@@ -61,5 +62,19 @@ describe('buildDesignPrompt', () => {
     expect(p).toContain('warm diyas');
     expect(p).toMatch(/Keep the garment exactly/);
     expect(p).toMatch(/Do not draw any text, letters, numbers, prices/);
+  });
+});
+
+describe('buildPosterPrompt', () => {
+  it('has the no-text rule, keep-garment rule, centered instruction and the admin prompt', () => {
+    const p = buildPosterPrompt('marble table, soft light');
+    expect(p).toContain('marble table, soft light');
+    expect(p).toMatch(/Keep the garment exactly/);
+    expect(p).toMatch(/Do not draw any text, letters, numbers, prices/);
+    expect(p).toMatch(/Keep the garment centered with margin on all sides/);
+  });
+
+  it('takes no retailer text parameter', () => {
+    expect(buildPosterPrompt.length).toBe(1);
   });
 });
