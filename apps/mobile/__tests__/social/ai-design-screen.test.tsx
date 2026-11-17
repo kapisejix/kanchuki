@@ -27,8 +27,8 @@ vi.mock('../../src/components/social', async () => {
   }
 })
 vi.mock('@tanstack/react-query', () => ({
-  useMutation: (o: { mutationFn: () => unknown }) => ({
-    mutate: () => void o.mutationFn(),
+  useMutation: (o: { mutationFn: () => unknown; onSuccess?: (r: unknown) => void }) => ({
+    mutate: () => void Promise.resolve(o.mutationFn()).then((r) => o.onSuccess?.(r)),
     isPending: false,
   }),
   useQuery: ({ queryKey }: { queryKey: unknown[] }) =>
@@ -117,5 +117,56 @@ describe('AI design screen — finishing options', () => {
     await press(t, 'warm diwali diyas')
     await press(t, 'Make AI design')
     expect(lastCreate()).toMatchObject({ prompt: 'warm diwali diyas' })
+  })
+})
+
+// Only host elements, so a wrapper component and the element it renders count once.
+const isSpinner = (n: TreeNode) => {
+  const x = n as unknown as { nodeType?: string; type?: unknown }
+  return x.nodeType === 'host' && x.type === 'ActivityIndicator'
+}
+
+describe('AI design screen — waiting state', () => {
+  it('shows exactly one spinner while the design is being made', async () => {
+    const t = await mount()
+    expect(find(t.toTree() as TreeNode, isSpinner)).toHaveLength(0)
+    await press(t, 'Make AI design')
+    await act(async () => {})
+    expect(find(t.toTree() as TreeNode, isSpinner)).toHaveLength(1)
+  })
+})
+
+describe('AI design screen — finish chips look like app buttons', () => {
+  const styleOf = (n: TreeNode) => {
+    const s = (n.props as unknown as { style?: unknown }).style
+    return Object.assign({}, ...(Array.isArray(s) ? s.flat(3) : [s]).filter(Boolean)) as Record<string, unknown>
+  }
+
+  it('every finish chip has a 44pt touch target and a rounded 16 shape', async () => {
+    const t = await mount()
+    for (const label of ['Original', 'Square', 'None', 'Price strip']) {
+      const pressable = find(
+        t.toTree() as TreeNode,
+        (n) => n.props?.accessibilityLabel === label && typeof n.props?.onPress === 'function',
+      )[0]
+      const inner = find(pressable, (n) => styleOf(n).minHeight === 44)[0]
+      expect(inner, label).toBeDefined()
+      expect(styleOf(inner!).borderRadius, label).toBe(16)
+    }
+  })
+
+  it('an inactive chip is a white button with the app border, the active one has no white fill', async () => {
+    const t = await mount()
+    const inactive = find(
+      t.toTree() as TreeNode,
+      (n) => n.props?.accessibilityLabel === 'Square' && typeof n.props?.onPress === 'function',
+    )[0]
+    const white = find(inactive, (n) => styleOf(n).backgroundColor === '#FFFFFF')[0]
+    expect(styleOf(white!).borderColor).toBe('#E0E1F6')
+    const active = find(
+      t.toTree() as TreeNode,
+      (n) => n.props?.accessibilityLabel === 'Original' && typeof n.props?.onPress === 'function',
+    )[0]
+    expect(find(active, (n) => styleOf(n).backgroundColor === '#FFFFFF')).toHaveLength(0)
   })
 })
