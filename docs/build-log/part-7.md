@@ -597,3 +597,15 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Owner steps | `docs/runbooks/ai-poster-styles-owner-steps.md` (apply 164 before the API deploy, create a style, device test per format). |
 | Not verified | FLUX Kontext may not leave empty space for the text; 9:16 and 1.91:1 crops versus the garment; the real Vision/FLUX provider was never called; admin editor not seen in a browser; no device run. |
 
+
+## 2026-11-17 — Google reviews: audit fixes, store-page Google rating, manager replies + AI draft (branch `fix/gbp-audit-hardening`, not merged)
+
+| Item | Detail |
+|---|---|
+| Audit fixes (RC-174) | `classify` in `lib/google-business.ts` rules platform causes out before a 403/404 becomes a per-retailer verdict; a 404 is a new `NOT_FOUND`; plain 429 is transient; `sync_failed` on `/status` and `/reviews`; mobile `gbpCountLabel` never shows a missing count as zero; a reply live on Google no longer 500s if our own write fails. |
+| Store-page Google rating | `getPlaceRating` (Places API New, `rating,userRatingCount,displayName,formattedAddress`) cached 1 h / 5 min on a miss. `GET /public/retailers/:slug` returns `google_rating {rating,count,url}` or null; `GoogleRatingBadge` on the gate header and the catalog header. Hidden unless `GOOGLE_PLACES_API_KEY` is set. Shown only when `placeMatchesShop` (distinctive name word + the shop city in the address) passes and no other look-alike store claims the same place id (cap 50, fail closed). The place id never leaves the server. |
+| Manager replies | Owner decision 2026-11-17: status, reviews, reply and draft-reply routes are owner + manager (manager allowlist in `plugins/auth.ts`, handlers re-check via `requireReplier`; salesperson and delegates refused). Consent (`/request`) and unlink stay owner-only. Reply audit row records `by` and `staff_id`. |
+| AI draft | `POST /me/google-business/reviews/:id/draft-reply`, `generateReviewReplyDraft` in `packages/ai/src/review-reply.ts` (review text is untrusted: delimited, injection-resistant prompt, links stripped, 1000 chars max). Returns text to edit, posts nothing, spends no reply slot; metered as an AI tagging call. AI down or quota spent gives a labelled `source: 'template'`. Mobile: "Suggest a reply" in the reply box. |
+| Local runs | api 250 files / 3370 passed / 9 skipped, tsc clean; mobile 62 files / 703 passed, tsc clean; ai review-reply 9 passed; web badge 5 + affected suites passed, tsc clean. Local only, not CI. |
+| Not verified | Nothing ran against real Google (Places or GBP) or a real model. Google error shapes and the quota-0 text are from memory. Places caching terms vs the 1 h cache are unconfirmed (owner to check). A same-named shop in the same city can still show a neighbour's rating; the GBP link is the real ownership proof and is dark. Mobile needs an EAS build; no device or browser test. Not merged. |
+| Owner steps | Set `GOOGLE_PLACES_API_KEY` (Places API New, server key) to light the store-page rating; confirm the Places terms on caching ratings; seed `plan_limits` for `GBP_REVIEW_REPLY` (otherwise replies are unlimited). |
