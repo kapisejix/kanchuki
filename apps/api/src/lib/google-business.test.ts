@@ -277,3 +277,12 @@ describe('never creates a review for anyone', () => {
     expect(calls.filter((c) => c.method === 'POST' && c.url.includes('/reviews'))).toEqual([]);
   });
 });
+
+describe('connected email (audit minor B)', () => {
+  it('a cleared (empty) stored email is "no email", so no wrong Manager address is shown', async () => {
+    m.secrets.GBP_CONNECTED_EMAIL = '';
+    m.secrets.GBP_MANAGER_EMAIL = undefined;
+    expect(await gbp.gbpConnectedEmail()).toBeNull();
+    expect(await gbp.gbpManagerEmail()).toBeNull();
+  });
+});

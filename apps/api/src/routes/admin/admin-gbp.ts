@@ -98,7 +98,9 @@ export const adminGbpRoutes: FastifyPluginAsync = async (server) => {
         'Google Business Profile refresh token',
         refreshToken,
       );
-      if (email) await saveGbpSetting(GBP_KEYS.email, 'Google Business Profile account', email);
+      // No email in the id_token: store '' (read back as "none") rather than keep the PREVIOUS
+      // account's address, which retailers would be told to add as Manager.
+      await saveGbpSetting(GBP_KEYS.email, 'Google Business Profile account', email ?? '');
       __resetGbpTokenCache();
       await prisma.auditLog.create({
         data: {

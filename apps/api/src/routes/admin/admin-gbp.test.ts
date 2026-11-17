@@ -134,6 +134,23 @@ describe('credential routes are Super Admin only (the segment itself is standard
   });
 });
 
+// Audit minor B: reconnecting with an id_token that has no email must not leave the OLD account's
+// address as the "add this Manager" address shown to retailers.
+describe('callback without an email in the id_token', () => {
+  it('clears the stored connected email instead of keeping the previous account', async () => {
+    m.consumeState.mockResolvedValue('gbp-admin:admin@test');
+    m.exchangeCode.mockResolvedValue({ refreshToken: 'rt-new', email: null });
+    const res = await (await buildApp()).inject({
+      method: 'POST',
+      url: '/v1/admin/gbp/callback',
+      payload: { code: 'c', state: 's' },
+    });
+    expect(res.statusCode).toBe(200);
+    const emailSave = m.saveSetting.mock.calls.find((c) => c[0] === 'GBP_CONNECTED_EMAIL');
+    expect(emailSave?.[2]).toBe('');
+  });
+});
+
 describe('linking a retailer', () => {
   const link = (app: Awaited<ReturnType<typeof buildApp>>, body: Record<string, string> = LOC) =>
     app.inject({ method: 'POST', url: '/v1/admin/gbp/links/link1/link', payload: body });

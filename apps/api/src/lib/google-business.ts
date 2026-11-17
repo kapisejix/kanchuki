@@ -70,7 +70,7 @@ export async function gbpApiApproved(): Promise<boolean> {
 }
 
 export async function gbpConnectedEmail(): Promise<string | null> {
-  return (await getGbpSetting(GBP_KEYS.email)) ?? null;
+  return (await getGbpSetting(GBP_KEYS.email)) || null;
 }
 
 /** What retailers are told to add as Manager: an explicit address, else the connected one. */
