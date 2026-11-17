@@ -200,6 +200,8 @@ enum PlanFeatureKey {
   GOOGLE_BUSINESS_PROFILE
   // T5 — retailer-typed AI social design (migration 154). Fails CLOSED like every key.
   AI_CUSTOM_TEMPLATE
+  // F-034 Phase 2 — AI promo video (migration 165). Fails CLOSED like every key.
+  AI_PROMO_VIDEO
 }
 
 // ─── QUOTA & LIMITS (F-010) ──────────────────────────────────────
@@ -228,6 +230,8 @@ enum QuotaResourceType {
   GBP_REVIEW_REPLY
   // T5 — AI custom-prompt social designs per month (migration 154; METERED, no row = 0).
   AI_CUSTOM_TEMPLATE
+  // F-034 Phase 2 — AI promo videos per month (migration 165; METERED, no row = 0).
+  AI_VIDEO
 }
 
 enum QuotaPeriod {
@@ -1402,10 +1406,16 @@ model StudioStyle {
   thumbnail_r2_key String?
   sort_order       Int                @default(0)
   usage_count      Int                @default(0)
+  // F-034 Phase 2 (migration 165). VIDEO styles keep their motion prompt in `prompt`.
+  kind             String             @default("IMAGE") // IMAGE | VIDEO (CHECK in 165)
+  default_aspect   String? // 9:16 | 4:5 | 1:1
+  duration_sec     Int? // 1..8
+  no_person        Boolean            @default(false) // D11: only no_person VIDEO styles for kids products
   created_at       DateTime           @default(now())
   updated_at       DateTime           @updatedAt
 
   @@index([status])
+  @@index([kind, status])
   @@map("studio_styles")
 }
 
@@ -2195,6 +2205,7 @@ enum SocialPostStatus {
   FAILED
   SCHEDULED // added to the DB enum by migration 090; unused on SocialPost (scheduler has its own enums)
   DRAFT // same
+  PROCESSING // F-034 T2b (migration 165): Reel container still processing on Instagram
 }
 
 model SocialPost {
@@ -2515,6 +2526,7 @@ model Promotion {
 enum ProductVideoSource {
   UPLOAD
   KEN_BURNS
+  AI_GEN // F-034 Phase 2 (migration 165): AI promo clip; Instagram gets is_ai_generated=true
 }
 
 // Simple product video (roadmap Q) — 5-10s clip alongside photos.
@@ -2527,6 +2539,8 @@ model ProductVideo {
   duration_sec Int?
   is_main      Boolean            @default(false)
   source       ProductVideoSource @default(UPLOAD)
+  style_slug   String? // AI_GEN provenance, no FK (styles retire)
+  model_key    String? // AI_GEN provenance (video_models.model_key at generation time)
 
   created_at DateTime @default(now())
 
@@ -3290,4 +3304,32 @@ model AiContentReport {
   @@index([created_at])
   @@index([customer_account_id, created_at])
   @@map("ai_content_reports")
+}
+
+// ─── F-034 PHASE 2 — AI PROMO VIDEO MODELS (migration 166) ─────────
+// Platform-level. Replaces the hardcoded VIDEO_MODELS in apps/api/src/lib/fal-video.ts (T4).
+// No DELETE grant: retire a model with enabled = false. No rupees here: USD per second from Fal.
+model VideoModel {
+  model_key            String           @id
+  endpoint             String
+  label                String
+  price_usd_per_second Decimal?         @db.Decimal(10, 4) // NULL = token-priced (see notes)
+  notes                String?
+  removal_date         DateTime?        @db.Date
+  enabled              Boolean          @default(false)
+  created_at           DateTime         @default(now())
+  updated_at           DateTime         @updatedAt
+  plans                PlanVideoModel[]
+
+  @@map("video_models")
+}
+
+// One selected video model per plan. No row = feature unavailable for that plan.
+model PlanVideoModel {
+  plan       SubscriptionPlan @id
+  model_key  String
+  updated_at DateTime         @updatedAt
+  model      VideoModel       @relation(fields: [model_key], references: [model_key], onUpdate: Cascade, onDelete: Restrict)
+
+  @@map("plan_video_models")
 }
