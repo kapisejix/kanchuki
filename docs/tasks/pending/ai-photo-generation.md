@@ -637,6 +637,8 @@ Reference sheets (static, no build step, open with `file:///`): `docs/ai-studio/
 **Status: Phase 1 ✅ built (admin bench only). Phase 2 🔴 HARD-DEFERRED — owner decision 2026-09-03, admin-test-only.** Do not start Phase 2 until the owner bench-tests models × styles and says go.
 **Supersedes** F-032 Phase B ("Product video"). **Master spec:** `docs/PRO-REQUIREMENTS.md` §30.
 
+> ⚠️ **2026-11-17: Phase 2 is now planned in `docs/tasks/pending/ai-promo-video.md`** — that file wins over §7.2 and §7.4 below. Fal endpoints in §7.2 were re-verified and several are dead (Seedance lite and Kling 2.1 deprecated, Wan 2.2 removal 2027-01-04); §7.4's "check at route / increment on success" quota is replaced by reserve-at-enqueue (RC-102); migration numbers in §7.5 are void (next free is 165). Instagram Reels publishing is part of that plan.
+
 ### 7.1 What it is
 
 Product photo → 5–8 s clip (fabric sway, model turn, slow push-in) for Reels / Shorts / FB feed. Paid per clip (₹13–90), metered by a new `AI_VIDEO` quota + overage credit packs (reuses F-010 addon machinery). **Not F-033** — that is a deterministic ffmpeg Ken-Burns slideshow, no AI, no per-clip cost.

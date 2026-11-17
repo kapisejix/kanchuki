@@ -6,6 +6,7 @@ import {
   fetchIgPermalink,
   publishFacebookCarousel,
   publishInstagramCarousel,
+  publishInstagramReel,
 } from './meta-graph.js';
 
 // Create Post Composer v2 (docs/tasks/done/social-create-post-composer.md §6.2) —
@@ -290,6 +291,178 @@ describe('publishInstagramCarousel', () => {
     await publishInstagramCarousel(igId, token, images, caption);
 
     expect(nthUrl(2)).toContain(enc('caption', caption));
+  });
+});
+
+// F-034 Phase 2 T1 (docs/tasks/pending/ai-promo-video.md): Instagram Reels.
+// Same fetch-queue style as the carousel tests; `pollDelayMs: 0` keeps the
+// IN_PROGRESS poll from ever sleeping.
+describe('publishInstagramReel', () => {
+  const igId = 'ig_1';
+  const token = 'tok_ig';
+  const videoUrl = 'https://cdn.test/clip.mp4';
+  const caption = 'New arrivals ✨';
+  const fast = { pollDelayMs: 0 };
+
+  it('creates a REELS container, publishes it, and returns the permalink', async () => {
+    fetchMock
+      .mockResolvedValueOnce(ok({ id: 'reel_1', status_code: 'FINISHED' }))
+      .mockResolvedValueOnce(ok({ id: 'pub_9' }))
+      .mockResolvedValueOnce(ok({ permalink: 'https://www.instagram.com/reel/AbC/' }));
+
+    const result = await publishInstagramReel(igId, token, videoUrl, caption, fast);
+
+    expect(result).toEqual({ postId: 'pub_9', permalink: 'https://www.instagram.com/reel/AbC/' });
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+
+    const container = nthUrl(0);
+    expect(container).toContain(`/${igId}/media?access_token=${token}`);
+    expect(container).toContain('media_type=REELS');
+    expect(container).toContain('video_url=https%3A%2F%2Fcdn.test%2Fclip.mp4');
+    expect(container).toContain(enc('caption', caption));
+    expect(container).toContain('share_to_feed=true');
+    // The AI label is opt-in per call — never sent by default.
+    expect(container).not.toContain('is_ai_generated');
+
+    expect(nthUrl(1)).toContain(`/${igId}/media_publish?access_token=${token}`);
+    expect(nthUrl(1)).toContain('creation_id=reel_1');
+    expect(nthUrl(2)).toContain('/pub_9?');
+    expect(nthUrl(2)).toContain('fields=permalink');
+  });
+
+  it('sends is_ai_generated=true when the clip is AI-generated', async () => {
+    fetchMock
+      .mockResolvedValueOnce(ok({ id: 'reel_1', status_code: 'FINISHED' }))
+      .mockResolvedValueOnce(ok({ id: 'pub_9' }))
+      .mockResolvedValueOnce(ok({ permalink: '' }));
+
+    await publishInstagramReel(igId, token, videoUrl, caption, { ...fast, isAiGenerated: true });
+
+    expect(nthUrl(0)).toContain('is_ai_generated=true');
+  });
+
+  it('sends share_to_feed=false when asked', async () => {
+    fetchMock
+      .mockResolvedValueOnce(ok({ id: 'reel_1', status_code: 'FINISHED' }))
+      .mockResolvedValueOnce(ok({ id: 'pub_9' }))
+      .mockResolvedValueOnce(ok({ permalink: '' }));
+
+    await publishInstagramReel(igId, token, videoUrl, caption, { ...fast, shareToFeed: false });
+
+    expect(nthUrl(0)).toContain('share_to_feed=false');
+  });
+
+  it('polls a container reported IN_PROGRESS until FINISHED', async () => {
+    fetchMock
+      .mockResolvedValueOnce(ok({ id: 'reel_1', status_code: 'IN_PROGRESS' }))
+      .mockResolvedValueOnce(ok({ id: 'reel_1', status_code: 'IN_PROGRESS' })) // poll 1
+      .mockResolvedValueOnce(ok({ id: 'reel_1', status_code: 'FINISHED' })) // poll 2
+      .mockResolvedValueOnce(ok({ id: 'pub_9' }))
+      .mockResolvedValueOnce(ok({ permalink: '' }));
+
+    const result = await publishInstagramReel(igId, token, videoUrl, caption, fast);
+
+    expect(result.postId).toBe('pub_9');
+    // create(1) → poll(2) → poll(3) → publish(4) → permalink(5)
+    expect(fetchMock).toHaveBeenCalledTimes(5);
+    expect(nthUrl(1)).toContain(`/reel_1?access_token=${token}`);
+    expect(nthUrl(1)).toContain('fields=status_code');
+  });
+
+  it('throws INSTAGRAM_CONTAINER_FAILED and never publishes when processing ERRORs', async () => {
+    fetchMock
+      .mockResolvedValueOnce(ok({ id: 'reel_1', status_code: 'IN_PROGRESS' }))
+      .mockResolvedValueOnce(ok({ id: 'reel_1', status_code: 'ERROR' }));
+
+    const err = await publishInstagramReel(igId, token, videoUrl, caption, fast).catch(
+      (e: unknown) => e,
+    );
+
+    expect(err).toBeInstanceOf(MetaApiError);
+    expect((err as MetaApiError).code).toBe('INSTAGRAM_CONTAINER_FAILED');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('gives up after pollAttempts and never publishes a container that did not finish', async () => {
+    fetchMock
+      .mockResolvedValueOnce(ok({ id: 'reel_1', status_code: 'IN_PROGRESS' }))
+      .mockResolvedValue(ok({ id: 'reel_1', status_code: 'IN_PROGRESS' }));
+
+    const err = await publishInstagramReel(igId, token, videoUrl, caption, {
+      pollAttempts: 3,
+      pollDelayMs: 0,
+    }).catch((e: unknown) => e);
+
+    expect(err).toBeInstanceOf(MetaApiError);
+    // Its own code, so the route can tell a retailer "try again in a minute"
+    // instead of showing a generic failure. The Reel was NOT posted.
+    expect((err as MetaApiError).code).toBe('INSTAGRAM_CONTAINER_TIMEOUT');
+    expect((err as MetaApiError).message).toMatch(/try again/i);
+    // create(1) + 3 status polls; media_publish is never reached.
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+    expect(fetchMock.mock.calls.some((c) => String(c[0]).includes('media_publish'))).toBe(false);
+  });
+
+  it('throws INSTAGRAM_CONTAINER_FAILED when the container is rejected', async () => {
+    fetchMock.mockResolvedValueOnce(bad({ error: { message: 'bad video', code: 9004 } }));
+
+    const err = await publishInstagramReel(igId, token, videoUrl, caption, fast).catch(
+      (e: unknown) => e,
+    );
+
+    expect(err).toBeInstanceOf(MetaApiError);
+    expect((err as MetaApiError).code).toBe('INSTAGRAM_CONTAINER_FAILED');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('throws INSTAGRAM_PUBLISH_FAILED when media_publish rejects', async () => {
+    fetchMock
+      .mockResolvedValueOnce(ok({ id: 'reel_1', status_code: 'FINISHED' }))
+      .mockResolvedValueOnce(bad({ error: { message: 'not ready' } }));
+
+    const err = await publishInstagramReel(igId, token, videoUrl, caption, fast).catch(
+      (e: unknown) => e,
+    );
+
+    expect(err).toBeInstanceOf(MetaApiError);
+    expect((err as MetaApiError).code).toBe('INSTAGRAM_PUBLISH_FAILED');
+  });
+
+  it('returns the post id with an empty permalink when the permalink fetch fails (fail-open)', async () => {
+    fetchMock
+      .mockResolvedValueOnce(ok({ id: 'reel_1', status_code: 'FINISHED' }))
+      .mockResolvedValueOnce(ok({ id: 'pub_9' }))
+      .mockResolvedValueOnce(mockResponse({ error: {} }, false, 400));
+
+    const result = await publishInstagramReel(igId, token, videoUrl, caption, fast);
+
+    expect(result).toEqual({ postId: 'pub_9', permalink: '' });
+  });
+
+  it.each(['http://cdn.test/clip.mp4', '', 'cdn.test/clip.mp4', 'javascript:alert(1)'])(
+    'rejects a non-https video URL (%j) without calling the API',
+    async (url) => {
+      const err = await publishInstagramReel(igId, token, url, caption, fast).catch(
+        (e: unknown) => e,
+      );
+
+      expect(err).toBeInstanceOf(MetaApiError);
+      expect((err as MetaApiError).code).toBe('INSTAGRAM_VIDEO_URL_INVALID');
+      expect(fetchMock).not.toHaveBeenCalled();
+    },
+  );
+
+  it('clamps a caption past IG’s 2,200-char limit', async () => {
+    const over = 'x'.repeat(IG_CAPTION_LIMIT + 500);
+    fetchMock
+      .mockResolvedValueOnce(ok({ id: 'reel_1', status_code: 'FINISHED' }))
+      .mockResolvedValueOnce(ok({ id: 'pub_9' }))
+      .mockResolvedValueOnce(ok({ permalink: '' }));
+
+    await publishInstagramReel(igId, token, videoUrl, over, fast);
+
+    expect(nthUrl(0)).toContain(enc('caption', 'x'.repeat(IG_CAPTION_LIMIT)));
+    expect(nthUrl(0)).not.toContain(enc('caption', over));
   });
 });
 

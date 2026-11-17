@@ -28,6 +28,7 @@ import {
   MetaApiError,
   publishFacebookCarousel,
   publishInstagramCarousel,
+  publishInstagramReel,
   publishLinkPost,
   publishPhotoPost,
   publishVideoPost,
@@ -54,8 +55,18 @@ interface LoadedProduct {
   category: string | null;
   collectionSlug: string | null; // for product-link resolution
   photos: Array<{ id: string; url: string; is_primary: boolean }>;
-  videos: Array<{ id: string; public_url: string; is_main: boolean }>;
+  videos: Array<{ id: string; public_url: string; is_main: boolean; source: string }>;
 }
+
+// How long one Instagram Reel may be awaited INSIDE this request: 10 x 3 s =
+// 30 s. The mobile client times a publish out at 60 s and targets publish one
+// after another (a Facebook video target can run before it), so a longer wait
+// would show the retailer a timeout for a post that may still go out. A Reel
+// not ready by then is recorded as FAILED with a "try again" message — it was
+// NOT published (the container is never published unless it finished).
+// Finishing it in the background needs a PROCESSING post status (migration) —
+// docs/tasks/pending/ai-promo-video.md T2b.
+const IG_REEL_REQUEST_POLL = { pollAttempts: 10, pollDelayMs: 3000 } as const;
 
 export const retailersSocialFanoutRoutes: FastifyPluginAsync = async (server) => {
   server.post('/me/social/posts', { config: { rateLimit: PUBLISH_LIMIT } }, async (request) => {
@@ -116,7 +127,7 @@ export const retailersSocialFanoutRoutes: FastifyPluginAsync = async (server) =>
           },
           videos: {
             where: { retailer_id: request.retailerId },
-            select: { id: true, public_url: true, is_main: true },
+            select: { id: true, public_url: true, is_main: true, source: true },
           },
         },
       });
@@ -454,30 +465,46 @@ export const retailersSocialFanoutRoutes: FastifyPluginAsync = async (server) =>
             // Real permalink, fail-open — never fabricate /p/<media-id> (finding 3).
             externalPostUrl = permalink || null;
           } else {
-            // SINGLE_PRODUCT — IG photo helper is photo-only; a video item
-            // falls back to the product's primary photo.
+            // SINGLE_PRODUCT / IMAGE.
             const first = snapshots[0];
-            const photo =
-              first?.kind === 'photo'
-                ? first
-                : productFallbackPhoto(loadedProducts, first?.product_id);
-            if (!photo)
-              throw new MetaApiError('Instagram posts require a photo', 400, 'IG_PHOTO_REQUIRED');
-            // The recorded media snapshot says what actually went out: an IG
-            // video item posts as its primary photo — no silent substitution
-            // (finding 5b).
-            if (first?.kind !== 'photo') {
-              postedMedia = [{ ...photo }];
+            if (first?.kind === 'video') {
+              // F-034 T2: a video item posts as a Reel. It used to post the
+              // primary photo instead (finding 5b). No fallback now: a failed
+              // Reel is a FAILED row, never a silently different post. AI clips
+              // always carry Instagram's "AI info" label.
+              const clip = loadedProducts
+                .get(first.product_id ?? '')
+                ?.videos.find((v) => v.id === first.video_id);
+              const { postId, permalink } = await publishInstagramReel(
+                account.platform_account_id,
+                token,
+                first.url,
+                caption,
+                { isAiGenerated: clip?.source === 'AI_GEN', ...IG_REEL_REQUEST_POLL },
+              );
+              externalPostId = postId;
+              externalPostUrl = permalink || null;
+            } else {
+              const photo =
+                first?.kind === 'photo'
+                  ? first
+                  : productFallbackPhoto(loadedProducts, first?.product_id);
+              if (!photo)
+                throw new MetaApiError('Instagram posts require a photo', 400, 'IG_PHOTO_REQUIRED');
+              // The recorded media snapshot says what actually went out.
+              if (first?.kind !== 'photo') {
+                postedMedia = [{ ...photo }];
+              }
+              const { postId, permalink } = await publishInstagramPhoto(
+                account.platform_account_id,
+                token,
+                photo.url,
+                caption,
+              );
+              externalPostId = postId;
+              // Real permalink, fail-open — never fabricate /p/<media-id> (finding 3).
+              externalPostUrl = permalink || null;
             }
-            const { postId, permalink } = await publishInstagramPhoto(
-              account.platform_account_id,
-              token,
-              photo.url,
-              caption,
-            );
-            externalPostId = postId;
-            // Real permalink, fail-open — never fabricate /p/<media-id> (finding 3).
-            externalPostUrl = permalink || null;
           }
         } else {
           // FACEBOOK
