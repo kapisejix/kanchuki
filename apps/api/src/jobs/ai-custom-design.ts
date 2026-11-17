@@ -34,6 +34,10 @@ export interface AiCustomDesignJobData {
   format?: AiDesignFormat;
   /** Free price / badge / logo overlay from the built-in slide renderer (forces 4:5). */
   overlay?: AiDesignOverlay | null;
+  /** AI poster request (Task 8 job body): the admin design + the retailer's typed text. */
+  template_id?: string;
+  custom_text?: string;
+  offer_text?: string;
 }
 
 // Social posters get a bigger budget than the 80 KB catalog default (they are shown full-screen).
