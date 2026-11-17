@@ -5,6 +5,8 @@ import { getPlaceRating } from '../../../lib/google-places.js';
 import { placeMatchesShop } from '../../../lib/place-match.js';
 import { withPublicCache } from '../../../lib/public-cache.js';
 import { notFound } from '../../../plugins/error-handler.js';
+const MAX_CLAIMANTS = 10; // other stores claiming one place id that we are willing to inspect
+
 export const publicRetailersStorefrontRoutes: FastifyPluginAsync = async (server) => {
   // ─── GET /public/retailers/:slug ─────────────────────────────────
   // QR profile page: no auth required. Storefront link only included if the
@@ -75,10 +77,18 @@ export const publicRetailersStorefrontRoutes: FastifyPluginAsync = async (server
             .findMany({
               where: { google_place_id: placeId, deleted_at: null, id: { not: retailer.id } },
               select: { shop_name: true, city: true },
-              take: 10,
+              take: MAX_CLAIMANTS,
             })
             .catch(() => null); // cannot tell: hide
-          if (others && !others.some((o) => placeMatchesShop(place, o))) rating = place;
+          // A full page means there may be more we cannot see (a rival could pad the list with
+          // non-matching claims to push the real match out), so that also hides.
+          if (
+            others &&
+            others.length < MAX_CLAIMANTS &&
+            !others.some((o) => placeMatchesShop(place, o))
+          ) {
+            rating = place;
+          }
         }
       }
 

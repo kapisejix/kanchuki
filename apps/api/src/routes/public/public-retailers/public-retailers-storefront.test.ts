@@ -130,6 +130,13 @@ describe('google_rating on the public store profile', () => {
     expect((await get()).json().data.google_rating).toMatchObject({ rating: 4.6, count: 123 });
   });
 
+  it('so many claimants that the check cannot see them all → hidden (a rival cannot pad the list to push the real match out)', async () => {
+    m.retailerFindMany.mockResolvedValue(
+      Array.from({ length: 10 }, (_, i) => ({ shop_name: `Rival ${i} Sarees`, city: 'Ludhiana' })),
+    );
+    expect((await get()).json().data.google_rating).toBeNull();
+  });
+
   it('if the duplicate-claim check itself fails → hidden, never shown', async () => {
     m.retailerFindMany.mockRejectedValue(new Error('db'));
     const res = await get();
