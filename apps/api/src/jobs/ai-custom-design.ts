@@ -17,8 +17,9 @@ import {
   finishDesignImage,
 } from '@kanchuki/ai';
 import { prisma } from '@kanchuki/db';
-import { buildDesignPrompt } from '../lib/ai-custom-design.js';
+import { buildDesignPrompt, buildPosterPrompt } from '../lib/ai-custom-design.js';
 import { recordBflStudioUsage } from '../lib/ai-usage.js';
+import { findPublishedAiPoster, renderDesignJpeg } from '../lib/design-post-render.js';
 import { markJobQuotaSpent, refundJobQuota } from '../lib/quota.js';
 import { downloadCompressAndUpload, generateStudioImage } from '../lib/studio-shoot.js';
 import { studioSourceUrl } from './studio-shoot.js';
@@ -66,6 +67,9 @@ export async function handleAiCustomDesign(data: AiCustomDesignJobData): Promise
     prompt,
     format = 'ORIGINAL',
     overlay = null,
+    template_id,
+    custom_text,
+    offer_text,
   } = data;
   let spent = false;
   try {
@@ -77,6 +81,20 @@ export async function handleAiCustomDesign(data: AiCustomDesignJobData): Promise
     if (!photo || !sourceUrl) {
       await markFailed(job_id, retailer_id, 'The product photo is no longer available.');
       return;
+    }
+    // AI poster: re-resolve the design now (it may have been unpublished or the plan changed
+    // since the route queued us). Gone => no model call, the finally block refunds the slot.
+    let poster: NonNullable<Awaited<ReturnType<typeof findPublishedAiPoster>>> | null = null;
+    if (template_id) {
+      const retailer = await prisma.retailer.findUnique({
+        where: { id: retailer_id },
+        select: { plan: true },
+      });
+      poster = retailer ? await findPublishedAiPoster(template_id, retailer.plan) : null;
+      if (!poster?.ai_prompt) {
+        await markFailed(job_id, retailer_id, 'This design is no longer available.');
+        return;
+      }
     }
     const product = await prisma.product.findFirst({
       where: { id: product_id, retailer_id },
@@ -95,7 +113,8 @@ export async function handleAiCustomDesign(data: AiCustomDesignJobData): Promise
     });
 
     const result = await generateStudioImage(sourceUrl, {
-      prompt: buildDesignPrompt(prompt),
+      // Poster: admin prompt only. The retailer's typed text is rendered over the scene, never sent to the model.
+      prompt: poster?.ai_prompt ? buildPosterPrompt(poster.ai_prompt) : buildDesignPrompt(prompt),
       tab: 'PRODUCT',
       product: product
         ? {
@@ -126,16 +145,25 @@ export async function handleAiCustomDesign(data: AiCustomDesignJobData): Promise
     const uploaded = await downloadCompressAndUpload(payload, key, Boolean(result.base64Data), {
       compress: POSTER_BUDGET,
       transform: (raw) =>
-        finishDesignImage(raw, {
-          format,
-          overlay,
-          slide: {
-            pricePaise: product?.price_min ?? null,
-            storeName: product?.retailer?.shop_name ?? '',
-            festival: null,
-            logo,
-          },
-        }),
+        poster
+          ? renderDesignJpeg({
+              retailerId: retailer_id,
+              design: poster,
+              productIds: [product_id],
+              custom: { custom_text, offer_text },
+              backgroundOverride: raw,
+              omitProductImages: true,
+            })
+          : finishDesignImage(raw, {
+              format,
+              overlay,
+              slide: {
+                pricePaise: product?.price_min ?? null,
+                storeName: product?.retailer?.shop_name ?? '',
+                festival: null,
+                logo,
+              },
+            }),
     });
 
     await prisma.aiCustomDesign.update({
