@@ -26,6 +26,7 @@ export type StaffFeature =
   | 'enquiries.assign' // reassign an enquiry (owner + manager)
   | 'enquiries.tryon' // F-044 R2 in-store "Try on with customer" (owner + manager)
   | 'setup' // dashboard "Complete your profile" checklist (owner only)
+  | 'google.reviews' // read Google reviews, draft + post a reply (owner + manager)
 
 // 'manager' = manager (and any non-salesperson staff role) may; 'owner' =
 // only the retailer owner. catalog.view / customers.add / enquiries are
@@ -47,6 +48,7 @@ const ROLE_FEATURES: Record<
   'enquiries.assign': 'manager',
   'enquiries.tryon': 'manager',
   setup: 'owner',
+  'google.reviews': 'manager',
 }
 
 export function staffCan(role: string | null | undefined, feature: StaffFeature): boolean {

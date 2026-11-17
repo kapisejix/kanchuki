@@ -25,6 +25,8 @@ import { KeyboardScreen } from '../../src/components/KeyboardScreen'
 import { GoogleReviewsTab } from '../../src/components/GoogleReviewsTab'
 import { type GbpState, googleBusinessApi } from '../../src/lib/api/google-business'
 import { growthApi } from '../../src/lib/api/growth'
+import { useAuth } from '../../src/lib/auth-context'
+import { staffCan } from '../../src/lib/staff-can'
 
 // ─── Helpers ─────────────────────────────────────────────────────
 
@@ -72,10 +74,15 @@ export default function RatingsScreen() {
 
   // The Google tab exists only when the server says the profile is LINKED; the entry card
   // on the Summary tab shows for the in-between states. UNAVAILABLE shows neither.
+  // Owner + manager read and answer Google reviews; a salesperson never asks (the server would
+  // refuse). Only the owner sets it up, so only they see the setup card.
+  const { staffRole } = useAuth()
+  const canGoogleReviews = staffCan(staffRole, 'google.reviews')
   const { data: gbp } = useQuery({
     queryKey: ['google-business', 'status'],
     queryFn: () => googleBusinessApi.status(),
     retry: false,
+    enabled: canGoogleReviews,
   })
   const gbpState = gbp?.data.state
 
@@ -174,7 +181,10 @@ export default function RatingsScreen() {
           }
         >
           {tab === 'summary' && summary && (
-            <SummaryTab summary={summary} gbpState={gbpState} />
+            <SummaryTab
+              summary={summary}
+              gbpState={staffCan(staffRole, 'setup') ? gbpState : undefined}
+            />
           )}
           {tab === 'google' && gbpState === 'LINKED' && <GoogleReviewsTab />}
           {tab === 'product' && (

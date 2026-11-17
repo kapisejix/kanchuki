@@ -30,6 +30,11 @@ describe('staffCan mirrors the server allowlist', () => {
     expect(staffCan('manager', 'setup')).toBe(false)
     expect(staffCan('salesperson', 'setup')).toBe(false)
   })
+  it('Google reviews: owner + manager read and reply; a salesperson does not (mirrors the manager allowlist)', () => {
+    expect(staffCan(null, 'google.reviews')).toBe(true)
+    expect(staffCan('manager', 'google.reviews')).toBe(true)
+    expect(staffCan('salesperson', 'google.reviews')).toBe(false)
+  })
   it('salesperson gets view + add customer only', () => {
     expect(staffCan('salesperson', 'catalog.view')).toBe(true)
     expect(staffCan('salesperson', 'customers.add')).toBe(true)

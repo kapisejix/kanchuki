@@ -35,6 +35,32 @@ describe('gbpEmptyNote', () => {
   })
 })
 
+describe('AI draft of a reply + manager access (slice 3)', () => {
+  it('the client calls the draft route and sends no Google id', () => {
+    const src = read('src/lib/api/google-business.ts')
+    expect(src).toContain('draftReply')
+    expect(src).toContain('/draft-reply')
+  })
+
+  it('a draft only fills the text box: it never posts, and says whether it is AI or a template', () => {
+    const src = read('src/components/GoogleReviewsTab.tsx')
+    const draft = src.slice(src.indexOf('googleBusinessApi.draftReply'))
+    const onSuccess = draft.slice(draft.indexOf('onSuccess'), draft.indexOf('onError'))
+    expect(onSuccess).toContain('setText(')
+    expect(onSuccess).not.toContain('googleBusinessApi.reply')
+    expect(onSuccess).not.toContain('send.mutate')
+    expect(src).toMatch(/[sS]ource\s*===\s*'template'/)
+    expect(src).toMatch(/Suggest a reply/)
+  })
+
+  it('ratings screen only asks for Google status when the role may use it, and only the owner sees the setup card', () => {
+    const src = read('app/growth/ratings.tsx')
+    expect(src).toContain("staffCan(staffRole, 'google.reviews')")
+    expect(src).toMatch(/enabled:\s*canGoogleReviews/)
+    expect(src).toContain("staffCan(staffRole, 'setup')")
+  })
+})
+
 describe('screens use the helper instead of a hardcoded zero', () => {
   it('no "?? 0" review count left in the Google screens', () => {
     for (const f of [

@@ -28,6 +28,7 @@ function ReviewRow({ review }: { review: GbpReview }) {
   const queryClient = useQueryClient()
   const [editing, setEditing] = useState(false)
   const [text, setText] = useState(review.reply?.comment ?? '')
+  const [draftSource, setDraftSource] = useState<'ai' | 'template' | null>(null)
 
   // The reply shows ONLY after the server (and Google) confirmed it — we refetch, not guess.
   const send = useMutation({
@@ -37,6 +38,16 @@ function ReviewRow({ review }: { review: GbpReview }) {
       void queryClient.invalidateQueries({ queryKey: QUERY_KEY })
     },
     onError: (e) => showError(e, 'Could not post your reply'),
+  })
+
+  // A draft only fills the box. Nothing is posted until the person taps "Post reply".
+  const draft = useMutation({
+    mutationFn: () => googleBusinessApi.draftReply(review.id),
+    onSuccess: (res) => {
+      setText(res.data.draft)
+      setDraftSource(res.data.source)
+    },
+    onError: (e) => showError(e, 'Could not suggest a reply'),
   })
 
   return (
@@ -70,6 +81,26 @@ function ReviewRow({ review }: { review: GbpReview }) {
             accessibilityLabel="Your reply to this review"
             className="bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3 text-sm text-spaceCadet-900 min-h-[80px]"
           />
+          {draftSource && (
+            <Text className="text-[11px] text-heliotrope-600">
+              {draftSource === 'template'
+                ? 'Standard reply (AI is not available right now). Please make it personal before posting.'
+                : 'Drafted by AI. Read it and change anything before posting.'}
+            </Text>
+          )}
+          <AnimatedPressable
+            onPress={() => draft.mutate()}
+            disabled={draft.isPending || send.isPending}
+            accessibilityRole="button"
+            accessibilityLabel="Suggest a reply with AI"
+            className="self-start py-2 min-h-[44px] justify-center"
+          >
+            {draft.isPending ? (
+              <ActivityIndicator size="small" color="#BB3F95" />
+            ) : (
+              <Text className="text-xs font-bold text-fuchsia-600">Suggest a reply</Text>
+            )}
+          </AnimatedPressable>
           <View className="flex-row items-center gap-3">
             <AnimatedPressable
               onPress={() => send.mutate()}
