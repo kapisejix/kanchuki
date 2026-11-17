@@ -361,7 +361,8 @@ export default function ScheduleCalendarScreen() {
     enabled: styleTarget !== null,
     staleTime: 30_000,
   });
-  const designList = designsQuery.data?.data ?? [];
+  // AI styles are poster-only (ai-design.tsx); the scheduler's slide style 404s on them.
+  const designList = (designsQuery.data?.data ?? []).filter((d) => !d.ai);
   // Per-slide headline / offer line for the design's text layers (empty = layer skipped).
   const [headline, setHeadline] = useState('');
   const [offerLine, setOfferLine] = useState('');

@@ -1,3 +1,4 @@
+import { DESIGN_CUSTOM_MAX_LEN } from '@kanchuki/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useRef, useState } from 'react';
@@ -163,7 +164,7 @@ function AiDesignBody({ templateId }: { templateId?: string }) {
             <TextInput
               value={headline}
               onChangeText={setHeadline}
-              maxLength={80}
+              maxLength={DESIGN_CUSTOM_MAX_LEN}
               placeholder="Headline (e.g. Diwali Special)"
               accessibilityLabel="Headline text"
               className="rounded-xl bg-white px-3 py-3 text-sm mb-2"
@@ -171,7 +172,7 @@ function AiDesignBody({ templateId }: { templateId?: string }) {
             <TextInput
               value={offer}
               onChangeText={setOffer}
-              maxLength={80}
+              maxLength={DESIGN_CUSTOM_MAX_LEN}
               placeholder="Offer (e.g. Flat 20% off)"
               accessibilityLabel="Offer text"
               className="rounded-xl bg-white px-3 py-3 text-sm"
@@ -312,7 +313,7 @@ function AiDesignBody({ templateId }: { templateId?: string }) {
             </Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               {mine.data?.data.map((d) =>
-                d.image_url ? (
+                d.image_url && !d.prompt.startsWith('Poster: ') ? (
                   <Chip
                     key={d.id}
                     label={d.prompt.length > 28 ? `${d.prompt.slice(0, 28)}…` : d.prompt}

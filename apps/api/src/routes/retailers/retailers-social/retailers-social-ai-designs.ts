@@ -1,4 +1,3 @@
-import type { AiDesignFormat, AiDesignOverlay } from '@kanchuki/ai';
 // retailers-social-ai-designs.ts — T5 paid AI custom-prompt design
 // (docs/tasks/pending/admin-social-design-templates.md §5).
 //
@@ -11,6 +10,7 @@ import type { AiDesignFormat, AiDesignOverlay } from '@kanchuki/ai';
 // prompt hygiene, product + photo ownership, then the ATOMIC quota reserve (METERED: no plan_limits
 // row = 0). The model is never called in this request: the BullMQ job does it and hands the slot
 // back unless a READY row exists. The finished image feeds the existing composer IMAGE post.
+import type { AiDesignFormat, AiDesignOverlay } from '@kanchuki/ai';
 import { prisma } from '@kanchuki/db';
 import { AI_DESIGN_FORMATS, AI_DESIGN_OVERLAYS, DESIGN_CUSTOM_MAX_LEN } from '@kanchuki/shared';
 import { createId } from '@paralleldrive/cuid2';
@@ -75,7 +75,9 @@ export const retailersSocialAiDesignsRoutes: FastifyPluginAsync = async (server)
       if (raw.template_id !== undefined) {
         const p = posterSchema.safeParse(request.body);
         if (!p.success)
-          throw validationError('Pick a product and a design (text up to 80 characters)');
+          throw validationError(
+            `Pick a product and a design (text up to ${DESIGN_CUSTOM_MAX_LEN} characters)`,
+          );
         const retailer = await prisma.retailer.findUnique({
           where: { id: retailerId },
           select: { plan: true },

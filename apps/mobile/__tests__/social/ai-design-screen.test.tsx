@@ -42,7 +42,10 @@ vi.mock('@tanstack/react-query', () => ({
     queryKey[1] === 'mine'
       ? {
           data: {
-            data: [{ id: 'd1', prompt: 'warm diwali diyas', image_url: 'https://x/d1.jpg' }],
+            data: [
+              { id: 'd1', prompt: 'warm diwali diyas', image_url: 'https://x/d1.jpg' },
+              { id: 'd2', prompt: 'Poster: Diwali Special', image_url: 'https://x/d2.jpg' },
+            ],
           },
         }
       : { data: ui.status, isError: false },
@@ -161,6 +164,17 @@ describe('AI design screen — finishing options', () => {
     await press(t, 'warm diwali diyas');
     await press(t, 'Make AI design');
     expect(lastCreate()).toMatchObject({ prompt: 'warm diwali diyas' });
+  });
+});
+
+describe('AI design screen — reuse chips', () => {
+  it('skips poster rows (their prompt is not a reusable free prompt)', async () => {
+    const t = await mount();
+    const labels = find(t.toTree() as TreeNode, (n) => typeof n.props?.label === 'string').map(
+      (n) => n.props.label as string,
+    );
+    expect(labels).toContain('warm diwali diyas');
+    expect(labels.some((l) => l.startsWith('Poster: '))).toBe(false);
   });
 });
 

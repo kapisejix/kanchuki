@@ -41,7 +41,7 @@ Repeat per format: 4:5, 9:16, 1.91:1, square.
 - [ ] `usage_counters` for `AI_CUSTOM_TEMPLATE` went up by exactly 1.
 - [ ] Forced failure (e.g. temporarily bad provider key in a non-prod env, or cancel): quota is refunded, no stuck row.
 - [ ] "Report AI content" works on the result.
-- [ ] The plain (non-AI) designs and the scheduler still work and do not list AI styles in the scheduler.
+- [ ] The plain (non-AI) designs and the scheduler still work and the scheduler's style sheet (Your designs) does not list AI styles (they are poster-only, made from the design picker).
 
 ## Known unverified
 

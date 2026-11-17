@@ -85,6 +85,7 @@ export async function handleAiCustomDesign(data: AiCustomDesignJobData): Promise
     // AI poster: re-resolve the design now (it may have been unpublished or the plan changed
     // since the route queued us). Gone => no model call, the finally block refunds the slot.
     let poster: NonNullable<Awaited<ReturnType<typeof findPublishedAiPoster>>> | null = null;
+    let posterPrompt: string | null = null;
     if (template_id) {
       const retailer = await prisma.retailer.findUnique({
         where: { id: retailer_id },
@@ -95,9 +96,10 @@ export async function handleAiCustomDesign(data: AiCustomDesignJobData): Promise
         await markFailed(job_id, retailer_id, 'This design is no longer available.');
         return;
       }
+      posterPrompt = poster.ai_prompt;
     }
     const product = await prisma.product.findFirst({
-      where: { id: product_id, retailer_id },
+      where: { id: product_id, retailer_id, deleted_at: null },
       select: {
         name: true,
         category: true,
@@ -111,10 +113,14 @@ export async function handleAiCustomDesign(data: AiCustomDesignJobData): Promise
         retailer: { select: { shop_name: true, logo_r2_key: true } },
       },
     });
+    if (!product) {
+      await markFailed(job_id, retailer_id, 'The product is no longer available.');
+      return;
+    }
 
     const result = await generateStudioImage(sourceUrl, {
       // Poster: admin prompt only. The retailer's typed text is rendered over the scene, never sent to the model.
-      prompt: poster ? buildPosterPrompt(poster.ai_prompt as string) : buildDesignPrompt(prompt),
+      prompt: posterPrompt ? buildPosterPrompt(posterPrompt) : buildDesignPrompt(prompt),
       tab: 'PRODUCT',
       product: product
         ? {
@@ -173,6 +179,12 @@ export async function handleAiCustomDesign(data: AiCustomDesignJobData): Promise
     // READY is the durable trace of a paid result: settle the slot as spent. A failed mark is
     // logged, not fatal; the sweep sees the READY row and marks it spent instead of refunding.
     spent = true;
+    if (poster) {
+      // Counter only (same as schedule-render's bump): a failure never fails a paid result.
+      await prisma.designTemplate
+        .update({ where: { id: poster.id }, data: { usage_count: { increment: 1 } } })
+        .catch((err) => console.error('[ai-custom-design] usage_count bump failed:', err));
+    }
     await markJobQuotaSpent(job_id, 'AI_CUSTOM_TEMPLATE').catch((err) => {
       console.error(`[ai-custom-design] failed to mark quota spent for ${job_id}:`, err);
     });

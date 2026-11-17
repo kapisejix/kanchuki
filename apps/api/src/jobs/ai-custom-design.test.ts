@@ -15,6 +15,7 @@ const m = vi.hoisted(() => ({
   findPoster: vi.fn(),
   render: vi.fn(),
   downloadBuffer: vi.fn(),
+  templateUpdate: vi.fn(),
 }));
 
 vi.mock('@kanchuki/db', () => ({
@@ -22,6 +23,7 @@ vi.mock('@kanchuki/db', () => ({
     productPhoto: { findFirst: m.photoFind },
     product: { findFirst: m.productFind },
     retailer: { findUnique: m.retailerFind },
+    designTemplate: { update: m.templateUpdate },
     aiCustomDesign: { update: m.designUpdate, updateMany: m.designUpdateMany },
   },
 }));
@@ -67,6 +69,7 @@ beforeEach(() => {
   m.retailerFind.mockResolvedValue({ plan: 'PRO' });
   m.findPoster.mockResolvedValue({ id: 't1', ai_prompt: 'diwali poster scene' });
   m.render.mockResolvedValue(Buffer.from('jpg'));
+  m.templateUpdate.mockResolvedValue({});
   m.designUpdate.mockResolvedValue({});
   m.designUpdateMany.mockResolvedValue({ count: 1 });
   m.spent.mockResolvedValue(undefined);
@@ -224,6 +227,31 @@ describe('handleAiCustomDesign poster branch', () => {
     });
     await handleAiCustomDesign({ ...poster, overlay: 'logo_corner' });
     expect(m.downloadBuffer).not.toHaveBeenCalled();
+  });
+
+  it('poster READY bumps the design usage_count', async () => {
+    await handleAiCustomDesign(poster);
+    expect(m.templateUpdate).toHaveBeenCalledWith({
+      where: { id: 't1' },
+      data: { usage_count: { increment: 1 } },
+    });
+  });
+
+  it('a failed usage bump does not fail the job', async () => {
+    m.templateUpdate.mockRejectedValue(new Error('db'));
+    await expect(handleAiCustomDesign(poster)).resolves.toBeUndefined();
+    expect(m.refund).not.toHaveBeenCalled();
+  });
+
+  it('product gone (soft-deleted): FAILED + refund, model never called', async () => {
+    m.productFind.mockResolvedValue(null);
+    await handleAiCustomDesign(data);
+    expect(m.productFind.mock.calls[0]?.[0].where).toMatchObject({ deleted_at: null });
+    expect(m.generate).not.toHaveBeenCalled();
+    expect(m.designUpdateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ status: 'FAILED' }) }),
+    );
+    expect(m.refund).toHaveBeenCalledWith('j1', 'AI_CUSTOM_TEMPLATE');
   });
 
   it('free-prompt job unchanged: no template lookup, no render', async () => {
