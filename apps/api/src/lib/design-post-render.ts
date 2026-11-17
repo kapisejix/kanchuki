@@ -30,10 +30,21 @@ export interface PublishedDesign {
   background_key: string | null;
 }
 
-/** PUBLISHED design visible to this plan, else null (draft / hidden / wrong plan look missing). */
+/**
+ * PUBLISHED design visible to this plan, else null (draft / hidden / wrong plan look missing).
+ * AI styles (ai_prompt set) are excluded: they render only through the AI poster path, never
+ * the plain renderer or the scheduler.
+ */
 export function findPublishedDesign(designId: string, plan: 'STARTER' | 'GROWTH' | 'PRO') {
   return prisma.designTemplate.findFirst({
-    where: { id: designId, status: 'PUBLISHED', plans: { has: plan } },
+    where: { id: designId, status: 'PUBLISHED', plans: { has: plan }, ai_prompt: null },
+  });
+}
+
+/** The AI-style counterpart: PUBLISHED, plan-allowed row whose ai_prompt is set. */
+export function findPublishedAiPoster(designId: string, plan: 'STARTER' | 'GROWTH' | 'PRO') {
+  return prisma.designTemplate.findFirst({
+    where: { id: designId, status: 'PUBLISHED', plans: { has: plan }, ai_prompt: { not: null } },
   });
 }
 
