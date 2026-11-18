@@ -17,9 +17,9 @@
 - **Component:** `apps/api/src/lib/studio-shoot.ts` (`STATUS_KEY`, `setStudioJobStatus`, `getStudioJobStatus`), `jobs/studio-shoot.ts`, `jobs/generate-promo-video.ts`, `routes/products/products-studio.ts` (`GET .../studio-shoot/status`), `routes/products/products-video-ai.ts` (`GET /:id/promo-video/:jobId`).
 - **Symptom:** found 2026-11-18 by the F-034 T5 security review (deferred item L1); no report of it being used. Job ids are cuids, so it needs a leaked id (log line, screenshot), not a guess.
 - **Root cause:** both routes checked that the product/photo in the path was the caller's and then read status by the bare job id; the comment claimed this made the id a retailer-scoped handle, but nothing tied the id to the retailer. The status store had no owner.
-- **Fix:** branch `fix/studio-status-scope`: the key is `studio:job:<retailerId>:<jobId>` and both helpers take `retailerId` first, so an unscoped read cannot be written; jobs pass `retailer_id`, routes pass `request.retailerId`. No migration.
+- **Fix:** PR #319 (merged 2026-11-18 as `7554a986`, CI 5/5 green): the key is `studio:job:<retailerId>:<jobId>` and both helpers take `retailerId` first, so an unscoped read cannot be written; jobs pass `retailer_id`, routes pass `request.retailerId`. No migration.
 - **Proof:** route tests pin `getStudioJobStatus(<caller retailer>, 'job_1')`; replacing the retailer argument fails 3 tests. API 3503 passed, `tsc` clean, biome clean (3 known warnings).
-- **Not verified / limits:** mocked Redis only. Jobs in flight at deploy write the old key: they poll as `processing` until the DB fallback (photo `metadata.studio.job_id`, video `id = job_id`) answers `ready`; one that fails in that window shows `processing` until retried. Not merged.
+- **Not verified / limits:** mocked Redis only. Jobs in flight at deploy write the old key: they poll as `processing` until the DB fallback (photo `metadata.studio.job_id`, video `id = job_id`) answers `ready`; one that fails in that window shows `processing` until retried.
 
 ## RC-174 — The dark Google Business Profile client read every 403/404 as "this retailer lost access" and every 429 as "not approved", and the UI showed a failed or missing sync as "0 reviews"
 
