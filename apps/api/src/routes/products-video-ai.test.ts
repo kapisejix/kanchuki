@@ -19,6 +19,8 @@ const m = vi.hoisted(() => ({
   quotaStatus: vi.fn(),
   enqueue: vi.fn(),
   status: vi.fn(),
+  claim: vi.fn(),
+  release: vi.fn(),
 }));
 
 vi.mock('@kanchuki/db', () => ({
@@ -38,7 +40,12 @@ vi.mock('../lib/quota.js', () => ({
   getQuotaStatus: m.quotaStatus,
 }));
 vi.mock('../jobs/index.js', () => ({ addPromoVideoJob: m.enqueue }));
-vi.mock('../lib/studio-shoot.js', () => ({ getStudioJobStatus: m.status }));
+vi.mock('../lib/studio-shoot.js', () => ({
+  getStudioJobStatus: m.status,
+  claimPromoVideoSlot: m.claim,
+  releasePromoVideoSlot: m.release,
+  MAX_VIDEOS_PER_PRODUCT: 3,
+}));
 
 const R = 'retailer_1';
 
@@ -86,6 +93,8 @@ beforeEach(() => {
   m.reserve.mockResolvedValue(undefined);
   m.refund.mockResolvedValue(undefined);
   m.enqueue.mockResolvedValue(undefined);
+  m.claim.mockResolvedValue(true);
+  m.release.mockResolvedValue(undefined);
 });
 
 type App = Awaited<ReturnType<typeof buildApp>>;
@@ -212,6 +221,30 @@ describe('POST /products/:id/promo-video', () => {
     expect(res.statusCode).toBe(500);
     const jobId = m.reserve.mock.calls[0]?.[2];
     expect(m.refund).toHaveBeenCalledWith(jobId, 'AI_VIDEO');
+    expect(m.release).toHaveBeenCalledWith('p1', jobId);
+  });
+
+  it('L5: refuses with 409 while another AI clip is being made for the product', async () => {
+    m.claim.mockResolvedValue(false);
+    const res = await post(await buildApp());
+    expect(res.statusCode).toBe(409);
+    expect(res.json().error.code).toBe('VIDEO_IN_PROGRESS');
+    expectNothingSpent();
+  });
+
+  it('L5: frees the product slot when the quota reserve refuses', async () => {
+    m.reserve.mockRejectedValue(new Error('quota'));
+    const res = await post(await buildApp());
+    expect(res.statusCode).toBe(500);
+    const jobId = m.claim.mock.calls[0]?.[1];
+    expect(m.release).toHaveBeenCalledWith('p1', jobId);
+    expect(m.enqueue).not.toHaveBeenCalled();
+  });
+
+  it('L5: keeps the slot claimed on success (the job frees it)', async () => {
+    const res = await post(await buildApp());
+    expect(m.claim).toHaveBeenCalledWith('p1', res.json().data.job_id);
+    expect(m.release).not.toHaveBeenCalled();
   });
 
   it('uses the requested aspect over the style default', async () => {
