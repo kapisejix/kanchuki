@@ -12,6 +12,15 @@
 
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
+## RC-176 — The 3-videos-per-product cap counted only finished `product_videos` rows, and an AI promo clip's row lands only after Fal finishes (minutes), so concurrent requests all passed the check and paid Fal for clips past the cap
+
+- **Component:** `apps/api/src/lib/studio-shoot.ts` (`MAX_VIDEOS_PER_PRODUCT`, `claimPromoVideoSlot` / `releasePromoVideoSlot` / `promoVideoInFlight`), `routes/products/products-video-ai.ts` (`POST /:id/promo-video`), `jobs/generate-promo-video.ts`, `routes/growth/growth-videos.ts` (upload-url, confirm, Ken Burns generate).
+- **Symptom:** found 2026-11-18 by the F-034 T5 security review (deferred item L5); feature off, never seen live. N POSTs (or one POST per queued job) for one product within a clip's run all saw `count < 3`, and each job's own re-check before Fal also saw `< 3`, so a 4th and 5th clip were made and paid for.
+- **Root cause:** the cap read state that did not yet include work already started: the count was of rows, and the row is the last thing a job writes. The cap was also hand-copied 5 times (route, job, three `growth-videos` literals).
+- **Fix:** one in-flight AI clip per product. The route claims `promo-video:inflight:<productId>` (Redis `SET NX EX 900`, value = job id) before any quota is spent, answering 409 `VIDEO_IN_PROGRESS` when taken and freeing it if the reserve or enqueue fails; the job frees it in `finally` (delete only if it still holds it); manual upload and Ken Burns count it as a slot. One `MAX_VIDEOS_PER_PRODUCT` in the API (mobile keeps its own client copy).
+- **Proof:** 6 new tests; removing the claim, the job release or the in-flight count each fails tests (3 / 1 / 1). API 3509 passed, `tsc` clean, biome clean (3 known warnings).
+- **Not verified / limits:** mocked Redis only. Claim fails closed when Redis is down (the queue needs Redis anyway). Two simultaneous manual uploads can still both pass (no Fal cost). A job that outlives the 15 min TTL frees nothing it does not hold. Not merged.
+
 ## RC-175 — The AI Studio Shoot and promo-video job status lived under a global Redis key (`studio:job:<jobId>`), so the routes' ownership check guarded the URL path, not the job: a retailer holding another retailer's job id could read that job's status and output URL through any product of their own
 
 - **Component:** `apps/api/src/lib/studio-shoot.ts` (`STATUS_KEY`, `setStudioJobStatus`, `getStudioJobStatus`), `jobs/studio-shoot.ts`, `jobs/generate-promo-video.ts`, `routes/products/products-studio.ts` (`GET .../studio-shoot/status`), `routes/products/products-video-ai.ts` (`GET /:id/promo-video/:jobId`).
