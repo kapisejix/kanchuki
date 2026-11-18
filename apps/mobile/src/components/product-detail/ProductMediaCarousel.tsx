@@ -65,6 +65,13 @@ interface ProductMediaCarouselProps {
   originalPhoto: any
   studioQuota: { unlimited?: boolean; remaining?: number } | undefined
   ProductVideoSlide: React.ComponentType<{ url: string; width: number; height: number }>
+  /** F-034: "AI Video" pill. Omitted or `available: false` = pill hidden (no upsell for a feature nobody can buy). */
+  promoVideo?: {
+    available: boolean
+    running: boolean
+    quota: { remaining: number; unlimited: boolean } | undefined
+    onPress: () => void
+  }
 }
 
 export function ProductMediaCarousel({
@@ -99,6 +106,7 @@ export function ProductMediaCarousel({
   originalPhoto,
   studioQuota,
   ProductVideoSlide,
+  promoVideo,
 }: ProductMediaCarouselProps) {
   return (
     <View className="bg-white rounded-3xl mx-4 my-2 border border-lavender-200 shadow-sm overflow-hidden" style={{ elevation: 3 }}>
@@ -356,6 +364,34 @@ export function ProductMediaCarousel({
             </View>
           )}
         </AnimatedPressable>
+        {promoVideo?.available && (
+          <AnimatedPressable
+            onPress={promoVideo.onPress}
+            disabled={!originalPhoto}
+            accessibilityRole="button"
+            accessibilityLabel="Make an AI promo video"
+            accessibilityState={{ disabled: !originalPhoto }}
+            className="flex-1 bg-lavender-50 border border-lavender-200 py-2.5 rounded-2xl items-center justify-center relative"
+          >
+            <View className="items-center justify-center gap-1">
+              {promoVideo.running ? (
+                <ActivityIndicator size="small" color="#BB3F95" />
+              ) : (
+                <Clapperboard size={16} color="#BB3F95" />
+              )}
+              <Text className="text-spaceCadet-900 text-[10px] font-bold text-center">AI Video</Text>
+            </View>
+            {promoVideo.quota && !promoVideo.quota.unlimited && (
+              <View
+                className={`absolute -top-1.5 -right-1 px-1.5 py-0.5 rounded-full shadow-sm ${
+                  promoVideo.quota.remaining > 0 ? 'bg-fuchsia-600' : 'bg-red-600'
+                }`}
+              >
+                <Text className="text-[9px] font-bold text-white">{promoVideo.quota.remaining}</Text>
+              </View>
+            )}
+          </AnimatedPressable>
+        )}
       </View>
     </View>
   )
