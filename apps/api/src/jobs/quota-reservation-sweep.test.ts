@@ -8,6 +8,7 @@ const m = vi.hoisted(() => ({
   findMany: vi.fn(),
   photoRaw: vi.fn(),
   tryOnFind: vi.fn(),
+  videoFind: vi.fn(),
   refund: vi.fn(),
   refundCustomer: vi.fn(),
   spent: vi.fn(),
@@ -19,6 +20,7 @@ vi.mock('@kanchuki/db', () => ({
     quotaReservation: { findMany: m.findMany },
     $queryRaw: m.photoRaw,
     tryOnJob: { findUnique: m.tryOnFind },
+    productVideo: { findUnique: m.videoFind },
   },
 }));
 vi.mock('../lib/quota.js', () => ({
@@ -52,6 +54,20 @@ beforeEach(() => {
 });
 
 describe('handleQuotaReservationSweep', () => {
+  it('AI_VIDEO: a product_videos row with id = job id is spent, none is refunded', async () => {
+    m.findMany.mockResolvedValue([
+      retailerRow('made', 'AI_VIDEO'),
+      retailerRow('lost', 'AI_VIDEO'),
+    ]);
+    m.videoFind.mockImplementation(({ where }: { where: { id: string } }) =>
+      Promise.resolve(where.id === 'made' ? { id: 'made' } : null),
+    );
+    const res = await handleQuotaReservationSweep(NOW);
+    expect(m.spent).toHaveBeenCalledExactlyOnceWith('made', 'AI_VIDEO');
+    expect(m.refund).toHaveBeenCalledExactlyOnceWith('lost', 'AI_VIDEO');
+    expect(res).toEqual({ spent: 1, refunded: 1, failed: 0 });
+  });
+
   it('only reads RESERVED rows older than the cutoff', async () => {
     m.findMany.mockResolvedValue([]);
     await handleQuotaReservationSweep(NOW);

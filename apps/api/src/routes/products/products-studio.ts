@@ -59,7 +59,8 @@ export const productsStudioRoutes: FastifyPluginAsync = async (server) => {
       select: { plan: true },
     });
     const rows = await prisma.studioStyle.findMany({
-      where: { status: 'PUBLISHED', plans: { has: retailer.plan } },
+      // F-034: VIDEO styles share the table; they belong to the promo-video picker only.
+      where: { status: 'PUBLISHED', kind: 'IMAGE', plans: { has: retailer.plan } },
       orderBy: [{ sort_order: 'asc' }, { created_at: 'asc' }],
       select: {
         slug: true,
@@ -128,7 +129,7 @@ export const productsStudioRoutes: FastifyPluginAsync = async (server) => {
       // Resolve the style from the DB catalog (studio_styles). Only PUBLISHED
       // rows are usable; the retailer's plan must be in the row's `plans` array.
       const style = await prisma.studioStyle.findFirst({
-        where: { slug: body.data.template, status: 'PUBLISHED' },
+        where: { slug: body.data.template, status: 'PUBLISHED', kind: 'IMAGE' },
       });
       if (!style) throw validationError('Unknown or unavailable studio style.', 'template');
 

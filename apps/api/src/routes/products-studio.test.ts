@@ -148,6 +148,10 @@ describe('POST /products/:id/photos/:photoId/studio-shoot', () => {
     });
 
     expect(res.statusCode).toBe(202);
+    // F-034: a VIDEO style slug must never run as an image studio shoot.
+    expect(mockStyleFindFirst).toHaveBeenCalledWith({
+      where: { slug: 'runway', status: 'PUBLISHED', kind: 'IMAGE' },
+    });
     const data = res.json().data;
     expect(data.status).toBe('processing');
     expect(typeof data.job_id).toBe('string');
@@ -397,7 +401,9 @@ describe('GET /studio-styles', () => {
     expect(body.data[0].slug).toBe('pastel_gradient');
     expect(body.data[0]).not.toHaveProperty('prompt');
     expect(mockStyleFindMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { status: 'PUBLISHED', plans: { has: 'STARTER' } } }),
+      expect.objectContaining({
+        where: { status: 'PUBLISHED', kind: 'IMAGE', plans: { has: 'STARTER' } },
+      }),
     );
     await app.close();
   });

@@ -32,6 +32,7 @@ import {
 } from './generate-gst-invoice.js';
 import { handleGenerateKenBurnsVideo } from './generate-ken-burns-video.js';
 import type { KenBurnsVideoJobData } from './generate-ken-burns-video.js';
+import { type PromoVideoJobData, handlePromoVideo } from './generate-promo-video.js';
 import { handleMeasureR2Storage } from './measure-r2-storage.js';
 import { type MyStyleAnalyzeJobData, handleMyStyleAnalyze } from './my-style-analyze.js';
 import { handlePlanLapse } from './plan-lapse.js';
@@ -145,6 +146,16 @@ export async function addAiCustomDesignJob(data: AiCustomDesignJobData): Promise
   });
 }
 
+/** F-034 T5: AI promo video. Shares the STUDIO_SHOOT queue. attempts: 1 (BullMQ default)
+ *  because every attempt is a paid Fal clip. ponytail: a ~2-3 min clip holds a studio
+ *  worker slot; give it its own queue if videos start delaying studio shoots. */
+export async function addPromoVideoJob(data: PromoVideoJobData): Promise<void> {
+  await getStudioShootQueue().add('promo-video', data, {
+    removeOnComplete: { count: 100 },
+    removeOnFail: { count: 50 },
+  });
+}
+
 /** F-040: enqueue one try-on. The payload carries NO image bytes — the wearer's
  *  photo is handed over in-process via lib/tryon-photo-store.ts, so it never
  *  reaches Redis (T6). */
@@ -206,6 +217,10 @@ export async function startWorkers(): Promise<void> {
     async (job) => {
       if (job.name === 'ai-custom-design') {
         await handleAiCustomDesign(job.data as AiCustomDesignJobData);
+        return;
+      }
+      if (job.name === 'promo-video') {
+        await handlePromoVideo(job.data as PromoVideoJobData);
         return;
       }
       const data = job.data as StudioShootJobData;
@@ -653,8 +668,13 @@ export async function startWorkers(): Promise<void> {
     // idempotent, so a refund the handler already made is a no-op.
     const jobId = (job?.data as StudioShootJobData | undefined)?.job_id;
     if (jobId && stalledOut(err)) {
-      // The AI custom-design job rides this queue; its slot is a different resource.
-      const resource = job?.name === 'ai-custom-design' ? 'AI_CUSTOM_TEMPLATE' : 'STUDIO_SHOOT';
+      // The AI custom-design and promo-video jobs ride this queue; their slots are other resources.
+      const resource =
+        job?.name === 'ai-custom-design'
+          ? 'AI_CUSTOM_TEMPLATE'
+          : job?.name === 'promo-video'
+            ? 'AI_VIDEO'
+            : 'STUDIO_SHOOT';
       refundJobQuota(jobId, resource).catch((e) =>
         console.error(`[jobs] studio-shoot quota refund failed ${jobId}:`, e),
       );

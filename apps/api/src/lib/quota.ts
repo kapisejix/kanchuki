@@ -29,6 +29,7 @@ const METERED: ReadonlySet<QuotaResourceType> = new Set([
   'BG_REMOVAL',
   'IMAGE_CROP',
   'AI_CUSTOM_TEMPLATE', // T5: a FLUX generation per call
+  'AI_VIDEO', // F-034: a paid Fal image-to-video clip per call
   'GBP_REVIEW_REPLY', // audit #9: a reply is a real Google write; no row must not mean unlimited
 ]);
 const NO_ROW_METERED: { limit: number; period: QuotaPeriod } = { limit: 0, period: 'MONTH' };

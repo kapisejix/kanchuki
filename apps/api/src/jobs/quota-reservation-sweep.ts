@@ -9,6 +9,7 @@
 //   STUDIO_SHOOT         a product_photos row carrying metadata.studio.job_id
 //   TRY_ON_GENERATION    try_on_jobs.gpu_ms set (written on every path after the GPU ran,
 //                        including discarded / withdrawn / a failed result save) or status COMPLETED
+//   AI_VIDEO             a product_videos row whose id is the job id
 //   anything else        no durable trace (My Style state lives in Redis for 15 min) -> refund
 // Both settle calls are idempotent (UPDATE .. WHERE state = 'RESERVED'), so a job that finishes
 // between the read and the write is not double-counted.
@@ -45,6 +46,14 @@ async function producedResult(resource: QuotaResourceType, jobId: string): Promi
       select: { status: true },
     });
     return row?.status === 'READY';
+  }
+  if (resource === 'AI_VIDEO') {
+    // product_videos.id is the job id (F-034 T5); the row is written before mark-spent.
+    const row = await prisma.productVideo.findUnique({
+      where: { id: jobId },
+      select: { id: true },
+    });
+    return row !== null;
   }
   if (resource === 'TRY_ON_GENERATION') {
     const job = await prisma.tryOnJob.findUnique({

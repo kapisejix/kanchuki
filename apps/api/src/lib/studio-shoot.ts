@@ -1170,6 +1170,8 @@ export async function downloadCompressAndUpload(
 export interface StudioJobStatus {
   status: 'processing' | 'ready' | 'failed';
   photo_id?: string;
+  /** F-034 promo video jobs (same status store). */
+  video_id?: string;
   url?: string;
   error?: string;
   /** Progress percentage (0-100) */

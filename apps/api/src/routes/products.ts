@@ -11,6 +11,7 @@ import {
   productsTrashRoutes,
   productsTryOnRoutes,
   productsVariantsRoutes,
+  productsVideoAiRoutes,
 } from './products/index.js';
 
 export const productRoutes: FastifyPluginAsync = async (server) => {
@@ -30,6 +31,8 @@ export const productRoutes: FastifyPluginAsync = async (server) => {
   await server.register(productsAiRoutes);
   // products-studio — F-032 AI Studio Shoots
   await server.register(productsStudioRoutes);
+  // products-video-ai — F-034 T5 AI promo video
+  await server.register(productsVideoAiRoutes);
   // products-tryon — F-040 virtual try-on (dual-identity: retailer
   // Bearer or customer passport cookie; see plugins/auth.ts)
   await server.register(productsTryOnRoutes);

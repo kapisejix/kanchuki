@@ -354,6 +354,8 @@ export const adminPlansRoutes: FastifyPluginAsync = async (server) => {
           'SOCIAL_SCHEDULER',
           // T5 AI custom-prompt designs (fails closed: no row = OFF; also needs plan_limits rows).
           'AI_CUSTOM_TEMPLATE',
+          // F-034 AI promo video (fails closed; also needs an enabled plan_video_models row + AI_VIDEO limits).
+          'AI_PROMO_VIDEO',
           // Google Business Profile reviews (fails closed: no row = OFF; also needs the shared Google identity + API approved).
           'GOOGLE_BUSINESS_PROFILE',
           'WHATSAPP_BUSINESS_API',
