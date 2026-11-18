@@ -9,6 +9,7 @@ const read = (p: string) => readFileSync(join(__dirname, '..', p), 'utf8')
 
 const SURFACES: Record<string, string> = {
   'src/components/product-detail/ProductStudioModal.tsx': 'AI Studio Shoot',
+  'src/components/product-detail/ProductVideoModal.tsx': 'AI Promo Video',
   'app/product/try-on.tsx': 'Virtual try-on',
   'app/enquiry-try-on.tsx': 'Virtual try-on (in-store)',
   'app/social/create.tsx': 'AI caption',

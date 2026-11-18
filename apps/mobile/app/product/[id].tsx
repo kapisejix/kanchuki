@@ -34,6 +34,10 @@ import { ProductActionsBar } from '../../src/components/product-detail/ProductAc
 import { ProductStudioModal } from '../../src/components/product-detail/ProductStudioModal'
 import { useProductDetailForm } from '../../src/hooks/useProductDetailForm'
 import { useProductAiStudio } from '../../src/hooks/useProductAiStudio'
+import { useProductPromoVideo } from '../../src/hooks/useProductPromoVideo'
+import { useNetworkStatus } from '../../src/hooks/useNetworkStatus'
+import { ProductVideoModal } from '../../src/components/product-detail/ProductVideoModal'
+import { isKidsAudience } from '../../src/lib/promo-video'
 
 const SCREEN_WIDTH = Dimensions.get('window').width
 
@@ -241,6 +245,13 @@ export default function ProductDetailScreen() {
     setPhotoCacheBust,
   })
 
+  // F-034 AI promo video. D5: source = photo on screen when it is a real product
+  // photo (variant/original previews and videos are not), else the original photo.
+  const promoSource =
+    (product?.photos ?? []).find((p) => p.id === currentPhoto?.id) ?? studio.originalPhoto
+  const promo = useProductPromoVideo({ product, sourcePhotoId: promoSource?.id })
+  const { isOnline } = useNetworkStatus()
+
   if (isLoading || !product) {
     return <DetailScreenSkeleton />
   }
@@ -335,6 +346,12 @@ export default function ProductDetailScreen() {
           originalPhoto={studio.originalPhoto}
           studioQuota={studio.studioQuota}
           ProductVideoSlide={ProductVideoSlide}
+          promoVideo={{
+            available: promo.available,
+            running: promo.status === 'processing',
+            quota: promo.quota,
+            onPress: () => promo.setOpen(true),
+          }}
         />
 
         {/* Set as Main control */}
@@ -525,6 +542,30 @@ export default function ProductDetailScreen() {
         productCategory={product.category ?? undefined}
         productName={product.name ?? undefined}
         productId={product.id}
+      />
+
+      {/* F-034 AI Promo Video */}
+      <ProductVideoModal
+        visible={promo.open}
+        onClose={promo.close}
+        onStart={promo.start}
+        onRetry={promo.reset}
+        onPostToSocial={promo.postToSocial}
+        styles={promo.styles}
+        stylesLoading={promo.stylesLoading}
+        quota={promo.quota}
+        sourcePhotoUrl={promoSource?.url}
+        videoCount={studio.productVideos.length}
+        online={isOnline}
+        kids={isKidsAudience(product.audience)}
+        starting={promo.starting}
+        status={promo.status}
+        error={promo.error}
+        limitReached={promo.limitReached}
+        result={promo.result}
+        elapsedMs={promo.elapsedMs}
+        primaryColor={primaryColor}
+        colors={colors}
       />
     </KeyboardScreen>
   )

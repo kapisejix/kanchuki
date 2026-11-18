@@ -35,6 +35,18 @@ export interface UndoLineResult {
   status?: string;
 }
 
+export type PromoVideoAspect = '9:16' | '4:5' | '1:1';
+
+export interface PromoVideoStyle {
+  slug: string;
+  label: string;
+  description: string | null;
+  thumbnail_url: string | null;
+  default_aspect: string | null;
+  duration_sec: number | null;
+  no_person: boolean;
+}
+
 export const productApi = {
   getUploadUrl: (filename: string, contentType: string, sizeBytes: number) =>
     request<{
@@ -239,6 +251,43 @@ export const productApi = {
         etaMs?: number;
       };
     }>(`/v1/products/${productId}/photos/${photoId}/studio-shoot/status?job_id=${jobId}`, {
+      getCacheTtlMs: 0,
+      timeoutMs: 15_000,
+    }),
+
+  // ─── F-034: AI promo video (Fal image-to-video, async job) ─────────
+  /** Plan-filtered VIDEO styles for this product + whether the feature is on + AI_VIDEO quota. */
+  getPromoVideoStyles: (productId: string) =>
+    request<{
+      data: PromoVideoStyle[];
+      meta: {
+        available: boolean;
+        unavailable_reason: string | null;
+        quota: { used: number; limit: number; remaining: number; unlimited: boolean };
+      };
+    }>(`/v1/products/promo-video/styles?product_id=${encodeURIComponent(productId)}`, {
+      getCacheTtlMs: 0,
+    }),
+
+  /** Enqueue a promo clip. 202 with a job_id — poll getPromoVideoStatus. */
+  startPromoVideo: (
+    productId: string,
+    body: { photo_id: string; style_slug: string; aspect: PromoVideoAspect },
+  ) =>
+    request<{ data: { job_id: string; status: string } }>(
+      `/v1/products/${productId}/promo-video`,
+      { method: 'POST', body: JSON.stringify(body), timeoutMs: 15_000 },
+    ),
+
+  getPromoVideoStatus: (productId: string, jobId: string) =>
+    request<{
+      data: {
+        status: 'processing' | 'ready' | 'failed';
+        video_id?: string;
+        url?: string;
+        error?: string;
+      };
+    }>(`/v1/products/${productId}/promo-video/${encodeURIComponent(jobId)}`, {
       getCacheTtlMs: 0,
       timeoutMs: 15_000,
     }),
