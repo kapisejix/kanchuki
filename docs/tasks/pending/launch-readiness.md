@@ -22,7 +22,7 @@ Pilot: running on Railway with real retailers (20 rows). Public launch: **not re
 | `plan_limits` AI_CUSTOM_TEMPLATE | 100 / 200 / 300 | set |
 | `plan_limits` GBP_REVIEW_REPLY | 20 / 100 / 500 | set |
 | `plan_limits` AI_VIDEO | **none** | promo video refused for everyone (intended until the runbook) |
-| `plan_features` VIRTUAL_TRY_ON_V2 | **ON for all 3 plans** | docs (CLAUDE.md rows 95/101/116) say OFF. Owner: confirm try-on is meant to be live; no add-on packs exist |
+| `plan_features` VIRTUAL_TRY_ON_V2 | **ON for all 3 plans** | owner confirmed 2026-11-18: try-on is meant to be live (docs fixed). GPU keys set, 0 jobs ever run; next = runbook Parts 1–2 + first real try-on |
 | `plan_features` GOOGLE_BUSINESS_PROFILE | **ON for all 3 plans** | docs say no row = OFF. Still dark in practice until Admin → GBP "API approved" and Google API access (row 109) |
 | `plan_features` AI_CUSTOM_TEMPLATE | ON for all 3 plans | docs said "treated as OFF"; it is ON. No real FLUX run recorded |
 | `plan_features` AI_PROMO_VIDEO | no row (OFF) | intended |
@@ -97,7 +97,8 @@ Each was merged with local or CI tests only. Source: CLAUDE.md What's-Built rows
 - [ ] Play Console AI-generated content declaration (row 110)
 - [ ] Meta App Review (Instagram Reels + `pages_show_list` / `pages_read_engagement`)
 - [ ] Google: OAuth client + `business.manage` access for GBP reviews (row 109); Places caching terms (row 117)
-- [ ] Confirm the three `plan_features` surprises in the read-back table (VIRTUAL_TRY_ON_V2, GOOGLE_BUSINESS_PROFILE, AI_CUSTOM_TEMPLATE all ON)
+- [ ] Confirm the two remaining `plan_features` surprises in the read-back table (GOOGLE_BUSINESS_PROFILE, AI_CUSTOM_TEMPLATE ON); VIRTUAL_TRY_ON_V2 ON confirmed intended 2026-11-18
+- [ ] Try-on first real run: RunPod endpoint alive (runbook Parts 1–2), one in-store try-on on a device, then Part 7 smoke test (`docs/runbooks/tryon-launch-owner-steps.md`)
 
 ## Suggested order (2026-11-18)
 

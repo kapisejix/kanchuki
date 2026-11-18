@@ -7,6 +7,8 @@
 
 Everything here is **owner-only.** `CLAUDE.md`'s operational control policy forbids the AI agent from triggering deployments, running migrations, editing CI/CD config, or touching production secrets — so this is the human's checklist. The code half of F-040 is done and tested; nothing below is a code change except where it says so.
 
+**State read 2026-11-18 (read-only SQL + public page):** Part 3 done (`CATVTON_API_URL`, `RUNPOD_API_KEY` saved and active), Part 4 done (`kanchuki.app/privacy` shows "Last updated: September 26, 2026" with the try-on section), Part 5 done (`VIRTUAL_TRY_ON_V2` ON for all 3 plans — owner wants try-on live), Part 6 done (store limits 20/50/100, shopper limit 30/month). **Still open:** Parts 1–2 (RunPod template/workers, not readable by the agent), Part 6b (0 packs), Part 7 smoke test. `try_on_jobs` has **0 rows**: no try-on has ever run in prod, so the first real run is the first proof. Customer-web try-on stays off in code (`CUSTOMER_TRY_ON_ENABLED = false`, `apps/api/src/lib/features.ts`) until the owner asks. The multi-item enquiry try-on needs an EAS build (`expo-keep-awake`).
+
 **Prerequisite — ✅ DONE 2026-09-26:** migrations **118 → 119 → 120** were applied in that order (`118` try-on tables, `119` plan-limits seeds, `120` consent). Confirmed by the owner. Nothing below works without them.
 
 ---
