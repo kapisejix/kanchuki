@@ -208,6 +208,8 @@ The clip is one more slide in the existing gallery; **the interface recedes**. M
 
 ## 11. Open items (owner)
 
+Step-by-step checklist: `docs/runbooks/ai-promo-video-owner-steps.md`.
+
 1. T0 — Meta App Review resubmission (runbook).
 2. D4, D6 numbers, D8, kids-gating decision (§4, §9).
 3. Apply migrations 165 and 166 (T3).
