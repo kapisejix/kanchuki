@@ -12,6 +12,15 @@
 
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
+## RC-175 — The AI Studio Shoot and promo-video job status lived under a global Redis key (`studio:job:<jobId>`), so the routes' ownership check guarded the URL path, not the job: a retailer holding another retailer's job id could read that job's status and output URL through any product of their own
+
+- **Component:** `apps/api/src/lib/studio-shoot.ts` (`STATUS_KEY`, `setStudioJobStatus`, `getStudioJobStatus`), `jobs/studio-shoot.ts`, `jobs/generate-promo-video.ts`, `routes/products/products-studio.ts` (`GET .../studio-shoot/status`), `routes/products/products-video-ai.ts` (`GET /:id/promo-video/:jobId`).
+- **Symptom:** found 2026-11-18 by the F-034 T5 security review (deferred item L1); no report of it being used. Job ids are cuids, so it needs a leaked id (log line, screenshot), not a guess.
+- **Root cause:** both routes checked that the product/photo in the path was the caller's and then read status by the bare job id; the comment claimed this made the id a retailer-scoped handle, but nothing tied the id to the retailer. The status store had no owner.
+- **Fix:** branch `fix/studio-status-scope`: the key is `studio:job:<retailerId>:<jobId>` and both helpers take `retailerId` first, so an unscoped read cannot be written; jobs pass `retailer_id`, routes pass `request.retailerId`. No migration.
+- **Proof:** route tests pin `getStudioJobStatus(<caller retailer>, 'job_1')`; replacing the retailer argument fails 3 tests. API 3503 passed, `tsc` clean, biome clean (3 known warnings).
+- **Not verified / limits:** mocked Redis only. Jobs in flight at deploy write the old key: they poll as `processing` until the DB fallback (photo `metadata.studio.job_id`, video `id = job_id`) answers `ready`; one that fails in that window shows `processing` until retried. Not merged.
+
 ## RC-174 — The dark Google Business Profile client read every 403/404 as "this retailer lost access" and every 429 as "not approved", and the UI showed a failed or missing sync as "0 reviews"
 
 - **Component:** `apps/api/src/lib/google-business.ts` (`classify`), `gbp-sync.ts`, `routes/retailers/retailers-google-business.ts`; mobile `GoogleReviewsTab.tsx`, `growth/integrations/google-business.tsx`, new `lib/gbp-summary.ts`.

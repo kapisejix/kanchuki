@@ -102,6 +102,7 @@ describe('handlePromoVideo', () => {
     expect(m.spent).toHaveBeenCalledWith('job_1', 'AI_VIDEO');
     expect(m.refund).not.toHaveBeenCalled();
     expect(m.setStatus).toHaveBeenLastCalledWith(
+      'r1',
       'job_1',
       expect.objectContaining({ status: 'ready', video_id: 'job_1' }),
     );
@@ -135,6 +136,7 @@ describe('handlePromoVideo', () => {
     expect(m.generate).not.toHaveBeenCalled();
     expect(m.refund).toHaveBeenCalledWith('job_1', 'AI_VIDEO');
     expect(m.setStatus).toHaveBeenLastCalledWith(
+      'r1',
       'job_1',
       expect.objectContaining({ status: 'failed' }),
     );
@@ -145,7 +147,7 @@ describe('handlePromoVideo', () => {
     await expect(handlePromoVideo(DATA)).rejects.toThrow();
     expect(m.refund).toHaveBeenCalledWith('job_1', 'AI_VIDEO');
     expect(m.spent).not.toHaveBeenCalled();
-    const last = m.setStatus.mock.calls.at(-1)?.[1];
+    const last = m.setStatus.mock.calls.at(-1)?.[2];
     expect(last.status).toBe('failed');
     expect(last.error).not.toMatch(/secret|fal 500/);
   });
@@ -168,7 +170,7 @@ describe('handlePromoVideo', () => {
     expect(m.spent).toHaveBeenCalledWith('job_1', 'AI_VIDEO');
     expect(m.refund).not.toHaveBeenCalled();
     expect(m.usageCreate).toHaveBeenCalled();
-    const last = m.setStatus.mock.calls.at(-1)?.[1];
+    const last = m.setStatus.mock.calls.at(-1)?.[2];
     expect(last.status).toBe('failed');
     expect(last.error).not.toMatch(/cap|r2|db down/);
   });
@@ -180,6 +182,7 @@ describe('handlePromoVideo', () => {
     expect(m.spent).toHaveBeenCalledWith('job_1', 'AI_VIDEO');
     expect(m.refund).not.toHaveBeenCalled();
     expect(m.setStatus).toHaveBeenLastCalledWith(
+      'r1',
       'job_1',
       expect.objectContaining({ status: 'ready', video_id: 'job_1' }),
     );
@@ -192,6 +195,7 @@ describe('handlePromoVideo', () => {
       await handlePromoVideo(DATA);
       expect(m.generate).not.toHaveBeenCalled();
       expect(m.setStatus).toHaveBeenLastCalledWith(
+        'r1',
         'job_1',
         expect.objectContaining({ status: 'failed' }),
       );
@@ -199,13 +203,13 @@ describe('handlePromoVideo', () => {
   );
 
   it('a failed "ready" status write does not mark a live video as failed', async () => {
-    m.setStatus.mockImplementation(async (_id, s) => {
+    m.setStatus.mockImplementation(async (_r, _id, s) => {
       if (s.status === 'ready') throw new Error('redis down');
     });
     await expect(handlePromoVideo(DATA)).resolves.toBeUndefined();
     expect(m.spent).toHaveBeenCalled();
     expect(m.refund).not.toHaveBeenCalled();
-    expect(m.setStatus.mock.calls.some(([, s]) => s.status === 'failed')).toBe(false);
+    expect(m.setStatus.mock.calls.some(([, , s]) => s.status === 'failed')).toBe(false);
   });
 
   it('still logs the Fal cost when the upload fails after a paid clip', async () => {

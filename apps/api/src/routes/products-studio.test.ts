@@ -493,6 +493,8 @@ describe('GET /products/:id/photos/:photoId/studio-shoot/status', () => {
       photo_id: 'photo_new',
       url: 'https://r2.example/studio.jpg',
     });
+    // Status read is keyed by the caller's retailer: another retailer's job id finds nothing.
+    expect(mockGetStudioJobStatus).toHaveBeenCalledWith(RETAILER_ID, 'job_1');
     await app.close();
   });
 
@@ -552,6 +554,8 @@ describe('GET /products/:id/photos/:photoId/studio-shoot/status', () => {
       photo_id: 'photo_new',
       url: 'https://r2.example/studio.jpg',
     });
+    // Status read is keyed by the caller's retailer: another retailer's job id finds nothing.
+    expect(mockGetStudioJobStatus).toHaveBeenCalledWith(RETAILER_ID, 'job_1');
     await app.close();
   });
 

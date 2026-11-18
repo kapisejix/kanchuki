@@ -202,14 +202,14 @@ export const productsVideoAiRoutes: FastifyPluginAsync = async (server) => {
   // ─── GET /products/:id/promo-video/:jobId ──────────────────────────
   server.get('/:id/promo-video/:jobId', async (request) => {
     const { id, jobId } = request.params as { id: string; jobId: string };
-    // Product must be this retailer's: makes jobId an opaque, retailer-scoped handle.
+    // Product must be this retailer's; the status is keyed by retailer, so a foreign jobId reads nothing.
     const product = await prisma.product.findFirst({
       where: { id, retailer_id: request.retailerId },
       select: { id: true },
     });
     if (!product) throw notFound('Product');
 
-    const status = await getStudioJobStatus(jobId);
+    const status = await getStudioJobStatus(request.retailerId, jobId);
     if (status) return { data: status };
 
     // Redis expired or down: the job writes the video row with id = job_id (RC-063).

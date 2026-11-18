@@ -1180,7 +1180,8 @@ export interface StudioJobStatus {
   etaMs?: number;
 }
 
-const STATUS_KEY = (jobId: string) => `studio:job:${jobId}`;
+// Retailer in the key: a job id alone is not a credential, so a poll can only read its own retailer's status.
+const STATUS_KEY = (retailerId: string, jobId: string) => `studio:job:${retailerId}:${jobId}`;
 const STATUS_TTL_SEC = 60 * 30; // 30 min — far longer than a generation
 
 export interface StudioRedis {
@@ -1222,24 +1223,31 @@ function redisAvailable(): boolean {
 }
 
 /** Write the job status (best-effort — a Redis blip must not fail the job). */
-export async function setStudioJobStatus(jobId: string, status: StudioJobStatus): Promise<void> {
+export async function setStudioJobStatus(
+  retailerId: string,
+  jobId: string,
+  status: StudioJobStatus,
+): Promise<void> {
   if (!redisAvailable()) return;
   const redis = getStudioRedis();
   try {
     await awaitRedisReady(redis);
-    await redis.set(STATUS_KEY(jobId), JSON.stringify(status), 'EX', STATUS_TTL_SEC);
+    await redis.set(STATUS_KEY(retailerId, jobId), JSON.stringify(status), 'EX', STATUS_TTL_SEC);
   } catch (err) {
     console.error(`[studio-shoot] failed to write status for ${jobId}:`, err);
   }
 }
 
 /** Read the job status — returns null when absent/expired/Redis down. */
-export async function getStudioJobStatus(jobId: string): Promise<StudioJobStatus | null> {
+export async function getStudioJobStatus(
+  retailerId: string,
+  jobId: string,
+): Promise<StudioJobStatus | null> {
   if (!redisAvailable()) return null;
   const redis = getStudioRedis();
   try {
     await awaitRedisReady(redis);
-    const raw = await redis.get(STATUS_KEY(jobId));
+    const raw = await redis.get(STATUS_KEY(retailerId, jobId));
     return raw ? (JSON.parse(raw) as StudioJobStatus) : null;
   } catch {
     return null;
