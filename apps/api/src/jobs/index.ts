@@ -33,6 +33,11 @@ import {
 import { handleGenerateKenBurnsVideo } from './generate-ken-burns-video.js';
 import type { KenBurnsVideoJobData } from './generate-ken-burns-video.js';
 import { type PromoVideoJobData, handlePromoVideo } from './generate-promo-video.js';
+import {
+  type ReelFinishJobData,
+  failStuckReel,
+  handleInstagramReelFinish,
+} from './instagram-reel-finish.js';
 import { handleMeasureR2Storage } from './measure-r2-storage.js';
 import { type MyStyleAnalyzeJobData, handleMyStyleAnalyze } from './my-style-analyze.js';
 import { handlePlanLapse } from './plan-lapse.js';
@@ -338,6 +343,8 @@ export async function startWorkers(): Promise<void> {
           return handleStagedUploadSweep();
         case 'customer-new-arrivals-push':
           return handleNewArrivalsPush();
+        case 'instagram-reel-finish':
+          return handleInstagramReelFinish(job.data as ReelFinishJobData);
         default:
           throw new Error(`[jobs] unknown maintenance job: ${job.name}`);
       }
@@ -721,6 +728,12 @@ export async function startWorkers(): Promise<void> {
 
   maintenanceWorker.on('failed', (job, err) => {
     console.error(`[jobs] maintenance (${job?.name}) failed ${job?.id}:`, err.message);
+    // F-034 T2b: out of checks — the Reel never went out, so the row says FAILED.
+    if (job?.name === 'instagram-reel-finish' && job.attemptsMade >= (job.opts.attempts ?? 1)) {
+      failStuckReel(job.data as ReelFinishJobData).catch((e) =>
+        console.error('[jobs] instagram-reel-finish: could not mark FAILED:', e),
+      );
+    }
     reportJobFailure('maintenance', job, err);
   });
 }

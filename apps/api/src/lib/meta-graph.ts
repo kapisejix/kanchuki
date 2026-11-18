@@ -131,6 +131,9 @@ export class MetaApiError extends Error {
     public readonly status: number = 400,
     public readonly code?: string,
     public readonly fb?: MetaFbCodes,
+    /** F-034 T2b: set on INSTAGRAM_CONTAINER_TIMEOUT from a Reel — the container
+     * Instagram is still processing, so the caller can finish it in the background. */
+    public readonly containerId?: string,
   ) {
     super(message);
     this.name = 'MetaApiError';
@@ -647,11 +650,53 @@ export async function publishInstagramReel(
     );
   }
   const containerId = body.id;
-  await ensureIgContainerReady(containerId, accessToken, body.status_code, {
-    attempts: opts.pollAttempts ?? 60,
-    delayMs: opts.pollDelayMs ?? 3000,
-  });
+  try {
+    await ensureIgContainerReady(containerId, accessToken, body.status_code, {
+      attempts: opts.pollAttempts ?? 60,
+      delayMs: opts.pollDelayMs ?? 3000,
+    });
+  } catch (err) {
+    // T2b: a slow container is not a failure yet — hand its id back so the
+    // caller can finish the Reel in the background.
+    if (err instanceof MetaApiError && err.code === 'INSTAGRAM_CONTAINER_TIMEOUT') {
+      throw new MetaApiError(err.message, err.status, err.code, err.fb, containerId);
+    }
+    throw err;
+  }
+  return publishIgContainer(igUserId, accessToken, containerId);
+}
 
+/** One status read of an IG media container (F-034 T2b background finish).
+ * Returns Graph's `status_code` (FINISHED / IN_PROGRESS / ERROR / EXPIRED /
+ * PUBLISHED), or '' when Graph sends none. */
+export async function instagramContainerStatus(
+  containerId: string,
+  accessToken: string,
+): Promise<string> {
+  const res = await fetch(
+    `${GRAPH_BASE}/${containerId}?${new URLSearchParams({
+      access_token: accessToken,
+      fields: 'status_code',
+    })}`,
+  );
+  const body = (await res.json()) as Record<string, unknown>;
+  if (!res.ok) {
+    throw new MetaApiError(
+      'Instagram container status check failed',
+      400,
+      'INSTAGRAM_CONTAINER_FAILED',
+      fbCodesFrom(body),
+    );
+  }
+  return typeof body.status_code === 'string' ? body.status_code : '';
+}
+
+/** media_publish a finished Reel container, then a best-effort permalink. */
+export async function publishIgContainer(
+  igUserId: string,
+  accessToken: string,
+  containerId: string,
+): Promise<{ postId: string; permalink: string }> {
   const publishRes = await fetch(
     `${GRAPH_BASE}/${igUserId}/media_publish?${new URLSearchParams({
       access_token: accessToken,

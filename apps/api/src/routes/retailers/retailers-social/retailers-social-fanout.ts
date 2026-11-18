@@ -43,6 +43,7 @@ import {
   accountToken,
   createOrReconcilePost,
   createPostedRowWithRetry,
+  recordPendingReel,
   toResultRow,
 } from './retailers-social-fanout-rows.js';
 import { PUBLISH_LIMIT, assertPostShape, bodySchema } from './retailers-social-fanout-schema.js';
@@ -562,7 +563,7 @@ export const retailersSocialFanoutRoutes: FastifyPluginAsync = async (server) =>
         // same id — createOrReconcilePost loads and surfaces the existing FAILED
         // row instead of a second violation (which used to 500).
         const safeMessage = err instanceof MetaApiError ? err.message : GENERIC_PUBLISH_ERROR;
-        const { post, deduplicated } = await createOrReconcilePost({
+        const failedRow = {
           retailer_id: request.retailerId,
           social_account_id: account.id,
           platform: account.platform,
@@ -575,11 +576,28 @@ export const retailersSocialFanoutRoutes: FastifyPluginAsync = async (server) =>
           link_url: linkUrl,
           link_type: resolvedLinkType,
           client_post_id: body.client_post_id,
-          status: 'FAILED',
+          status: 'FAILED' as const,
           external_post_id: null,
           external_post_url: null,
           error_message: safeMessage,
-        });
+        };
+        // F-034 T2b: a Reel Instagram is still processing is not a failure yet —
+        // a PROCESSING row, finished in the background by `instagram-reel-finish`.
+        if (
+          err instanceof MetaApiError &&
+          err.code === 'INSTAGRAM_CONTAINER_TIMEOUT' &&
+          err.containerId
+        ) {
+          results.push(
+            await recordPendingReel(
+              { ...failedRow, status: 'PROCESSING', error_message: null },
+              err.containerId,
+              safeMessage,
+            ),
+          );
+          continue;
+        }
+        const { post, deduplicated } = await createOrReconcilePost(failedRow);
         results.push({
           social_account_id: account.id,
           platform: account.platform,
@@ -630,7 +648,10 @@ export const retailersSocialFanoutRoutes: FastifyPluginAsync = async (server) =>
     // T-9.6: count the template use once per publish that actually went out
     // (≥1 POSTED target). Idempotent retries return earlier so they never
     // double-count; an all-failed attempt posted nothing, so it doesn't count.
-    if (body.template_id && results.some((r) => r.status === 'POSTED')) {
+    if (
+      body.template_id &&
+      results.some((r) => r.status === 'POSTED' || r.status === 'PROCESSING')
+    ) {
       await prisma.postTemplate.update({
         where: { id: body.template_id },
         data: { usage_count: { increment: 1 } },

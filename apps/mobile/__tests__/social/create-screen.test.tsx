@@ -413,6 +413,21 @@ describe('social composer (T3.2-a #6)', () => {
     })
   })
 
+  describe('slow Reel (F-034 T2b)', () => {
+    it('a PROCESSING row reads as posting, counts as sent, and Done goes back', async () => {
+      vi.mocked(apiMock.socialApi.createPost).mockResolvedValueOnce({
+        data: { results: [{ social_account_id: 'ig1', platform: 'INSTAGRAM', status: 'PROCESSING', error_message: null }] },
+      } as never)
+      const t = await mount()
+      await pressLabel(t, 'pick p1')
+      await publish(t)
+      expect(text(t)).toContain('Posting…')
+      expect(text(t)).not.toContain('Could not post')
+      await pressLabel(t, 'Done')
+      expect(router.back).toHaveBeenCalledTimes(1)
+    })
+  })
+
   describe('deep links', () => {
     it('product_ids opens a Carousel with those products selected', async () => {
       vi.mocked(apiMock.productApi.get).mockImplementation(async (id: string) => detail(id) as never)

@@ -12,6 +12,7 @@
 // (finding 4), and the one wire format shared by fresh publishes, Redis dedupe
 // replays and P2002 reconciliations.
 import { decryptSecret, prisma } from '@kanchuki/db';
+import { getMaintenanceQueue } from '../../../jobs/queue.js';
 
 // Finding 4 (task doc §12): never persist a raw non-Meta error message. Only
 // MetaApiError carries a curated, user-safe message; DB/network errors
@@ -136,4 +137,48 @@ export async function createPostedRowWithRetry(
     }
   }
   throw lastErr;
+}
+
+/** F-034 T2b: how long the background job keeps checking a slow Reel —
+ * 30 checks, one a minute. Instagram containers expire after 24 h. */
+export const REEL_FINISH_ATTEMPTS = 30;
+const REEL_FINISH_DELAY_MS = 60_000;
+
+/**
+ * A Reel Instagram is still processing: write a PROCESSING row and queue
+ * `instagram-reel-finish` to publish it. If the job cannot be queued the row
+ * becomes FAILED with the curated timeout message, so it never sits in
+ * PROCESSING with nothing to finish it. A P2002 twin row is surfaced as-is
+ * and nothing is queued (the twin owns the outcome).
+ */
+export async function recordPendingReel(
+  draft: PostRowDraft,
+  containerId: string,
+  failMessage: string,
+): Promise<Record<string, unknown>> {
+  // The write returns the full SocialPost row; its declared type is the loose draft.
+  const { post: written, deduplicated } = await createPostedRowWithRetry(draft);
+  const post = written as unknown as Parameters<typeof toResultRow>[0];
+  if (deduplicated || post.status !== 'PROCESSING') return toResultRow(post, { deduplicated });
+  try {
+    await getMaintenanceQueue().add(
+      'instagram-reel-finish',
+      { socialPostId: post.id, containerId },
+      {
+        jobId: `reel-${post.id}`,
+        attempts: REEL_FINISH_ATTEMPTS,
+        backoff: { type: 'fixed', delay: REEL_FINISH_DELAY_MS },
+        delay: REEL_FINISH_DELAY_MS,
+        removeOnComplete: { count: 100 },
+        removeOnFail: { count: 100 },
+      },
+    );
+    return toResultRow(post, { deduplicated: false });
+  } catch {
+    const failed = await prisma.socialPost.update({
+      where: { id: post.id },
+      data: { status: 'FAILED', error_message: failMessage },
+    });
+    return toResultRow(failed, { deduplicated: false });
+  }
 }

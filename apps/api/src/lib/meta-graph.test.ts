@@ -4,7 +4,9 @@ import {
   MetaApiError,
   clampIgCaption,
   fetchIgPermalink,
+  instagramContainerStatus,
   publishFacebookCarousel,
+  publishIgContainer,
   publishInstagramCarousel,
   publishInstagramReel,
 } from './meta-graph.js';
@@ -403,6 +405,26 @@ describe('publishInstagramReel', () => {
     expect(fetchMock.mock.calls.some((c) => String(c[0]).includes('media_publish'))).toBe(false);
   });
 
+  it('a timeout carries the container id so the caller can finish the Reel later (T2b)', async () => {
+    fetchMock.mockResolvedValue(ok({ id: 'reel_1', status_code: 'IN_PROGRESS' }));
+
+    const err = await publishInstagramReel(igId, token, videoUrl, caption, {
+      pollAttempts: 1,
+      pollDelayMs: 0,
+    }).catch((e: unknown) => e);
+
+    expect((err as MetaApiError).code).toBe('INSTAGRAM_CONTAINER_TIMEOUT');
+    expect((err as MetaApiError).containerId).toBe('reel_1');
+  });
+
+  it('a rejected container carries no container id (nothing to finish)', async () => {
+    fetchMock.mockResolvedValueOnce(bad({ error: { message: 'bad video' } }));
+    const err = await publishInstagramReel(igId, token, videoUrl, caption, fast).catch(
+      (e: unknown) => e,
+    );
+    expect((err as MetaApiError).containerId).toBeUndefined();
+  });
+
   it('throws INSTAGRAM_CONTAINER_FAILED when the container is rejected', async () => {
     fetchMock.mockResolvedValueOnce(bad({ error: { message: 'bad video', code: 9004 } }));
 
@@ -516,5 +538,40 @@ describe('fetchIgPermalink', () => {
   it('fails open (\u2018\u2019) when the body has no permalink field', async () => {
     fetchMock.mockResolvedValueOnce(ok({ id: mediaId }));
     expect(await fetchIgPermalink(mediaId, token)).toBe('');
+  });
+});
+
+describe('instagramContainerStatus (F-034 T2b)', () => {
+  it('returns the container status_code from one Graph call', async () => {
+    fetchMock.mockResolvedValueOnce(ok({ status_code: 'IN_PROGRESS' }));
+    await expect(instagramContainerStatus('c_1', 'tok')).resolves.toBe('IN_PROGRESS');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(nthUrl(0)).toContain('/c_1?');
+    expect(nthUrl(0)).toContain('fields=status_code');
+  });
+
+  it('throws a MetaApiError when Graph rejects the status read', async () => {
+    fetchMock.mockResolvedValueOnce(bad({ error: { message: 'token expired' } }));
+    await expect(instagramContainerStatus('c_1', 'tok')).rejects.toBeInstanceOf(MetaApiError);
+  });
+});
+
+describe('publishIgContainer (F-034 T2b)', () => {
+  it('publishes a finished container and returns the permalink', async () => {
+    fetchMock
+      .mockResolvedValueOnce(ok({ id: 'pub_9' }))
+      .mockResolvedValueOnce(ok({ permalink: 'https://www.instagram.com/reel/AbC/' }));
+    await expect(publishIgContainer('ig_1', 'tok', 'c_1')).resolves.toEqual({
+      postId: 'pub_9',
+      permalink: 'https://www.instagram.com/reel/AbC/',
+    });
+    expect(nthUrl(0)).toContain('/ig_1/media_publish?');
+    expect(nthUrl(0)).toContain('creation_id=c_1');
+  });
+
+  it('throws INSTAGRAM_PUBLISH_FAILED when media_publish rejects', async () => {
+    fetchMock.mockResolvedValueOnce(bad({ error: { message: 'nope' } }));
+    const err = await publishIgContainer('ig_1', 'tok', 'c_1').catch((e: unknown) => e);
+    expect((err as MetaApiError).code).toBe('INSTAGRAM_PUBLISH_FAILED');
   });
 });
