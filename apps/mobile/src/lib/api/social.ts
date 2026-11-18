@@ -18,7 +18,8 @@ export interface SocialPostInfo {
   id: string
   post_type: 'SINGLE_PRODUCT' | 'COLLECTION_LINK' | 'CAROUSEL' | 'IMAGE'
   caption: string
-  status: 'POSTED' | 'FAILED'
+  /** PROCESSING: a slow Instagram Reel finished in the background (F-034 T2b). */
+  status: 'POSTED' | 'FAILED' | 'PROCESSING'
   external_post_url: string | null
   error_message: string | null
   product_ids: string[]
@@ -67,7 +68,8 @@ export interface CreateSocialPostInput {
 export interface SocialPostTargetResult {
   social_account_id: string
   platform: 'FACEBOOK' | 'INSTAGRAM'
-  status: 'POSTED' | 'FAILED'
+  /** PROCESSING: a slow Instagram Reel finished in the background (F-034 T2b). */
+  status: 'POSTED' | 'FAILED' | 'PROCESSING'
   external_post_url: string | null
   social_post_id: string
   error_message: string | null

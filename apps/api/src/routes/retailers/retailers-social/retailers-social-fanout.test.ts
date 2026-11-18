@@ -24,6 +24,7 @@ const {
   mockClaimSocialPostId,
   mockTemplateFindFirst,
   mockTemplateUpdate,
+  mockQueueAdd,
   MetaApiError,
 } = vi.hoisted(() => {
   // Mirror of the real meta-graph MetaApiError (curated platform-safe message
@@ -34,6 +35,8 @@ const {
       message: string,
       public readonly status: number = 400,
       public readonly code?: string,
+      public readonly fb?: unknown,
+      public readonly containerId?: string,
     ) {
       super(message);
       this.name = 'MetaApiError';
@@ -60,6 +63,7 @@ const {
     mockClaimSocialPostId: vi.fn(),
     mockTemplateFindFirst: vi.fn(),
     mockTemplateUpdate: vi.fn(),
+    mockQueueAdd: vi.fn(),
     MetaApiError,
   };
 });
@@ -94,6 +98,10 @@ vi.mock('../../../lib/meta-graph.js', () => ({
 
 vi.mock('./retailers-social-helpers.js', () => ({
   publishInstagramPhoto: mockPublishInstagramPhoto,
+}));
+
+vi.mock('../../../jobs/queue.js', () => ({
+  getMaintenanceQueue: () => ({ add: mockQueueAdd }),
 }));
 
 vi.mock('../../../lib/social-post-idempotency.js', () => ({
@@ -1061,6 +1069,80 @@ describe('findings 3–5 (task doc §12)', () => {
       const failed = mockPostCreate.mock.calls[0]?.[0]?.data;
       expect(failed?.status).toBe('FAILED');
       expect(failed?.media).toEqual(VIDEO_MEDIA);
+    });
+
+    it('a slow Reel (timeout with a container id) is a PROCESSING row finished in the background (T2b)', async () => {
+      mockAccountFindMany.mockResolvedValue([IG_ACCOUNT]);
+      mockProductFindMany.mockResolvedValue([VIDEO_PRODUCT('KEN_BURNS')]);
+      mockQueueAdd.mockResolvedValue({});
+      mockPublishInstagramReel.mockRejectedValueOnce(
+        new MetaApiError(
+          'still processing',
+          400,
+          'INSTAGRAM_CONTAINER_TIMEOUT',
+          undefined,
+          'cont_7',
+        ),
+      );
+      const app = await buildApp();
+      const res = await app.inject({
+        method: 'POST',
+        url: '/v1/me/social/posts',
+        payload: captionPayload({ targets: ['ig_1'], items: [{ product_id: 'p_1' }] }),
+      });
+      expect(res.statusCode).toBe(200);
+      expect(res.json().data.results[0]).toMatchObject({
+        status: 'PROCESSING',
+        error_message: null,
+      });
+      const row = mockPostCreate.mock.calls[0]?.[0]?.data;
+      expect(row?.status).toBe('PROCESSING');
+      expect(row?.external_post_id).toBeNull();
+      expect(row?.media).toEqual(VIDEO_MEDIA);
+      expect(mockQueueAdd).toHaveBeenCalledTimes(1);
+      expect(mockQueueAdd).toHaveBeenCalledWith(
+        'instagram-reel-finish',
+        { socialPostId: 'sp_1', containerId: 'cont_7' },
+        expect.objectContaining({ jobId: 'reel-sp_1', attempts: 30 }),
+      );
+      expect(mockPublishInstagramPhoto).not.toHaveBeenCalled();
+    });
+
+    it('a slow Reel whose background job cannot be queued becomes a FAILED row (never stuck PROCESSING)', async () => {
+      mockAccountFindMany.mockResolvedValue([IG_ACCOUNT]);
+      mockProductFindMany.mockResolvedValue([VIDEO_PRODUCT('KEN_BURNS')]);
+      mockQueueAdd.mockRejectedValueOnce(new Error('redis down'));
+      mockPostUpdate.mockImplementation(async (args: { data: Record<string, unknown> }) => ({
+        id: 'sp_1',
+        social_account_id: 'ig_1',
+        platform: 'INSTAGRAM',
+        external_post_url: null,
+        ...args.data,
+      }));
+      mockPublishInstagramReel.mockRejectedValueOnce(
+        new MetaApiError(
+          'still processing',
+          400,
+          'INSTAGRAM_CONTAINER_TIMEOUT',
+          undefined,
+          'cont_7',
+        ),
+      );
+      const app = await buildApp();
+      const res = await app.inject({
+        method: 'POST',
+        url: '/v1/me/social/posts',
+        payload: captionPayload({ targets: ['ig_1'], items: [{ product_id: 'p_1' }] }),
+      });
+      expect(res.statusCode).toBe(400);
+      expect(res.json().error.results[0]).toMatchObject({
+        status: 'FAILED',
+        error_message: 'still processing',
+      });
+      expect(mockPostUpdate).toHaveBeenCalledWith({
+        where: { id: 'sp_1' },
+        data: { status: 'FAILED', error_message: 'still processing' },
+      });
     });
 
     it('an explicitly chosen photo on a product that has a video still posts the photo, not a Reel', async () => {

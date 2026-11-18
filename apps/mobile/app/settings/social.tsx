@@ -324,6 +324,8 @@ function HistoryModal({
                         <Check size={12} color={colors.turmeric[600]} />
                         <Text className="text-[10px] font-semibold text-turmeric-600">Posted</Text>
                       </View>
+                    ) : post.status === 'PROCESSING' ? (
+                      <Text className="text-[10px] font-semibold text-sand-500">Posting…</Text>
                     ) : (
                       <Text className="text-[10px] font-semibold text-rust-600">Failed</Text>
                     )}

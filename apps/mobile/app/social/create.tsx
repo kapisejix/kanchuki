@@ -3,6 +3,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import {
   AlertCircle,
   CheckCircle2,
+  Clock,
   Images,
   Link2,
   Send,
@@ -1299,7 +1300,7 @@ export default function CreateSocialPostScreen() {
           // All-failed (error) keeps the composer open so the retailer can
           // fix and retry; a real publish closes back to where they came from.
           onDone={() =>
-            result.every((r) => r.status === 'POSTED') ? router.back() : setResult(null)
+            result.every((r) => r.status !== 'FAILED') ? router.back() : setResult(null)
           }
         />
       ) : null}
@@ -1322,7 +1323,8 @@ function ResultSheet({
 }) {
   const { colors } = useTheme();
   const { insets } = useScreenInsets();
-  const posted = results.filter((r) => r.status === 'POSTED').length;
+  // A PROCESSING Reel is on its way (F-034 T2b) — it counts as sent.
+  const posted = results.filter((r) => r.status !== 'FAILED').length;
   const nothingPosted = posted === 0;
 
   return (
@@ -1359,7 +1361,12 @@ function ResultSheet({
                     <Text className="text-sm font-bold text-sand-900" numberOfLines={1}>
                       {accountName(r.social_account_id)}
                     </Text>
-                    {r.status === 'POSTED' ? (
+                    {r.status === 'PROCESSING' ? (
+                      <Text className="text-[10px] text-sand-600" numberOfLines={2}>
+                        Posting… Instagram is still processing the video. It will show in post
+                        history.
+                      </Text>
+                    ) : r.status === 'POSTED' ? (
                       r.external_post_url ? (
                         <AnimatedPressable
                           onPress={() => void Linking.openURL(r.external_post_url!)}
@@ -1379,7 +1386,9 @@ function ResultSheet({
                       </Text>
                     )}
                   </View>
-                  {r.status === 'POSTED' ? (
+                  {r.status === 'PROCESSING' ? (
+                    <Clock size={18} color={colors.sand[500]} />
+                  ) : r.status === 'POSTED' ? (
                     <CheckCircle2 size={18} color="#22c55e" />
                   ) : (
                     <XCircle size={18} color={colors.rust[500]} />
