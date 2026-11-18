@@ -206,6 +206,8 @@ describe('admin access list completeness (RC-034)', () => {
       '/admin/database/query',
       '/admin/settings/theme',
       '/v1/admin/integrations',
+      '/v1/admin/video-models', // F-034 T6: per-clip Fal spend
+      '/v1/admin/video-models/plans/PRO',
     ]) {
       expect(isSuperAdminOnlyAdminPath(path), `${path} must require Super Admin`).toBe(true);
     }

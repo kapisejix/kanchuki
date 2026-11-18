@@ -6,6 +6,7 @@ import { Clapperboard, Save, Loader2, Trash2, Upload, ChevronDown, ChevronUp, Pl
 import Image from 'next/image'
 import { STUDIO_ENGINES } from '@kanchuki/shared'
 import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
+import { VIDEO_DEFAULTS, VideoFields, VideoModelsCard, type VideoFieldValues } from './video'
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
 
@@ -25,6 +26,10 @@ type StudioStyleRow = {
   sort_order: number
   usage_count: number
   created_at: string
+  kind: 'IMAGE' | 'VIDEO'
+  default_aspect: string | null
+  duration_sec: number | null
+  no_person: boolean
 }
 
 const PLANS = ['STARTER', 'GROWTH', 'PRO'] as const
@@ -45,6 +50,7 @@ export default function StudioStylesPage() {
   const [status, setStatus] = useState('')
   const [newFormOpen, setNewFormOpen] = useState(false)
   const [lightbox, setLightbox] = useState<{ url: string; label: string } | null>(null)
+  const [kindFilter, setKindFilter] = useState<'ALL' | 'IMAGE' | 'VIDEO'>('ALL')
 
   const load = useCallback(async () => {
     try {
@@ -57,8 +63,9 @@ export default function StudioStylesPage() {
 
   useEffect(() => { load() }, [load])
 
-  const productRows = rows.filter((r) => r.tab === 'PRODUCT').sort((a, b) => a.sort_order - b.sort_order)
-  const modelRows = rows.filter((r) => r.tab === 'MODEL').sort((a, b) => a.sort_order - b.sort_order)
+  const shown = rows.filter((r) => kindFilter === 'ALL' || r.kind === kindFilter)
+  const productRows = shown.filter((r) => r.tab === 'PRODUCT').sort((a, b) => a.sort_order - b.sort_order)
+  const modelRows = shown.filter((r) => r.tab === 'MODEL').sort((a, b) => a.sort_order - b.sort_order)
 
   if (loading) {
     return <div className="flex items-center justify-center py-24"><Loader2 size={24} className="animate-spin text-cyan-500" /></div>
@@ -83,6 +90,19 @@ export default function StudioStylesPage() {
             : 'bg-red-50/80 border-red-200 text-red-600'
         }`}>{status}</div>
       )}
+
+      {/* F-034 T6: promo video models (Super Admin only) */}
+      <VideoModelsCard setStatus={setStatus} />
+
+      {/* Kind filter */}
+      <div className="flex rounded-lg border border-gray-200 overflow-hidden w-fit" role="group" aria-label="Filter by kind">
+        {(['ALL', 'IMAGE', 'VIDEO'] as const).map((k) => (
+          <button key={k} onClick={() => setKindFilter(k)} aria-pressed={kindFilter === k}
+            className={`text-[11px] font-semibold px-3 py-1.5 transition-colors ${
+              kindFilter === k ? 'bg-gray-900 text-white' : 'bg-white text-gray-500 hover:bg-gray-50'
+            }`}>{k === 'ALL' ? 'All' : k === 'IMAGE' ? 'Image' : 'Video'}</button>
+        ))}
+      </div>
 
       {/* New Style Form */}
       <NewStyleForm onCreated={(row) => { setRows((prev) => [row, ...prev]); setNewFormOpen(false); setStatus(`✅ "${row.label}" created`) }} setStatus={setStatus} open={newFormOpen} onToggle={() => setNewFormOpen(!newFormOpen)} />
@@ -143,6 +163,14 @@ function StyleRow({ row, setRows, setStatus, setLightbox }: {
     status: row.status, plans: [...row.plans], engine: row.engine ?? '',
     audience: [...row.audience], sort_order: row.sort_order,
   })
+  const isVideo = row.kind === 'VIDEO'
+  const rowVideo: VideoFieldValues = {
+    default_aspect: row.default_aspect ?? VIDEO_DEFAULTS.default_aspect,
+    duration_sec: row.duration_sec ?? VIDEO_DEFAULTS.duration_sec,
+    no_person: row.no_person,
+  }
+  const [video, setVideo] = useState<VideoFieldValues>(rowVideo)
+  const videoChanged = isVideo && JSON.stringify(video) !== JSON.stringify(rowVideo)
   const [saving, setSaving] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -153,6 +181,7 @@ function StyleRow({ row, setRows, setStatus, setLightbox }: {
     || edit.engine !== (row.engine ?? '')
     || JSON.stringify(edit.audience.sort()) !== JSON.stringify([...row.audience].sort())
     || edit.sort_order !== row.sort_order
+    || videoChanged
 
   const save = async () => {
     setSaving(true); setStatus('')
@@ -166,6 +195,7 @@ function StyleRow({ row, setRows, setStatus, setLightbox }: {
       if (edit.engine !== (row.engine ?? '')) diff.engine = edit.engine || null
       if (JSON.stringify(edit.audience.sort()) !== JSON.stringify([...row.audience].sort())) diff.audience = edit.audience
       if (edit.sort_order !== row.sort_order) diff.sort_order = edit.sort_order
+      if (videoChanged) Object.assign(diff, video)
 
       if (Object.keys(diff).length === 0) { setSaving(false); return }
 
@@ -257,6 +287,11 @@ function StyleRow({ row, setRows, setStatus, setLightbox }: {
             <span className="text-[11px] font-mono text-gray-400">/{row.slug}</span>
             <span className="text-[10px] text-gray-300">·</span>
             <span className="text-[10px] text-gray-400">{row.usage_count} uses</span>
+            {isVideo && (
+              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">
+                VIDEO {row.default_aspect} · {row.duration_sec}s{row.no_person ? ' · no person' : ''}
+              </span>
+            )}
           </div>
         </div>
 
@@ -283,12 +318,12 @@ function StyleRow({ row, setRows, setStatus, setLightbox }: {
           ))}
         </div>
 
-        {/* Engine */}
-        <select value={edit.engine} onChange={(e) => setEdit((p) => ({ ...p, engine: e.target.value }))}
+        {/* Engine (image styles only; a VIDEO style uses the plan's video model) */}
+        {!isVideo && <select value={edit.engine} onChange={(e) => setEdit((p) => ({ ...p, engine: e.target.value }))}
           className="text-[10px] border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-gray-600 shrink-0 w-28">
           <option value="">— default —</option>
           {ENGINES.map((e) => <option key={e} value={e}>{e}</option>)}
-        </select>
+        </select>}
 
         {/* Sort order */}
         <input type="number" value={edit.sort_order} onChange={(e) => setEdit((p) => ({ ...p, sort_order: Number(e.target.value) }))}
@@ -327,10 +362,11 @@ function StyleRow({ row, setRows, setStatus, setLightbox }: {
                   className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2 mt-1 bg-white" />
               </div>
               <div>
-                <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Prompt</label>
+                <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">{isVideo ? 'Motion prompt' : 'Prompt'}</label>
                 <textarea value={edit.prompt} onChange={(e) => setEdit((p) => ({ ...p, prompt: e.target.value }))}
                   rows={4} className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2 mt-1 bg-white font-mono" />
               </div>
+              {isVideo && <VideoFields value={video} onChange={setVideo} />}
               {row.tab === 'MODEL' && (
                 <div>
                   <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Audience (demographics)</label>
@@ -366,6 +402,8 @@ function NewStyleForm({ onCreated, setStatus, open, onToggle }: {
   const [tab, setTab] = useState<'PRODUCT' | 'MODEL'>('MODEL')
   const [plans, setPlans] = useState<string[]>([])
   const [engine, setEngine] = useState('')
+  const [kind, setKind] = useState<'IMAGE' | 'VIDEO'>('IMAGE')
+  const [video, setVideo] = useState<VideoFieldValues>(VIDEO_DEFAULTS)
   const [audience, setAudience] = useState<string[]>([])
   const [sortOrder, setSortOrder] = useState(0)
   const [saving, setSaving] = useState(false)
@@ -380,15 +418,15 @@ function NewStyleForm({ onCreated, setStatus, open, onToggle }: {
       const res = await fetch(`${API_URL}/v1/admin/studio-styles`, {
         ...(await adminMutateOptions()), method: 'POST',
         body: JSON.stringify({
-          slug, label, description, prompt, tab, plans, engine: engine || null,
-          audience, sort_order: sortOrder,
+          slug, label, description, prompt, tab, plans, audience, sort_order: sortOrder, kind,
+          ...(kind === 'VIDEO' ? { ...video, engine: null } : { engine: engine || null }),
         }),
       })
       if (res.status === 409) { setSlugError('Slug already exists'); setSaving(false); return }
       if (!res.ok) throw new Error('Create failed')
       const { data } = await res.json()
       onCreated(data)
-      setSlug(''); setLabel(''); setDescription(''); setPrompt(''); setPlans([]); setEngine(''); setAudience([]); setSortOrder(0)
+      setSlug(''); setLabel(''); setDescription(''); setPrompt(''); setPlans([]); setEngine(''); setAudience([]); setSortOrder(0); setKind('IMAGE'); setVideo(VIDEO_DEFAULTS)
     } catch (err) {
       setStatus(`❌ ${err instanceof Error ? err.message : 'Create failed'}`)
     } finally { setSaving(false) }
@@ -426,7 +464,19 @@ function NewStyleForm({ onCreated, setStatus, open, onToggle }: {
                   className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2 mt-1 bg-white" />
               </div>
               <div>
-                <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Prompt</label>
+                <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Kind</label>
+                <div className="flex gap-2 mt-1 w-64">
+                  {(['IMAGE', 'VIDEO'] as const).map((k) => (
+                    <button key={k} onClick={() => setKind(k)} aria-pressed={kind === k}
+                      className={`flex-1 text-[10px] font-semibold py-1.5 rounded-lg border transition-colors ${
+                        kind === k ? 'bg-fuchsia-600 text-white border-fuchsia-600' : 'bg-white text-gray-500 border-gray-200'
+                      }`}>{k}</button>
+                  ))}
+                </div>
+              </div>
+              {kind === 'VIDEO' && <VideoFields value={video} onChange={setVideo} />}
+              <div>
+                <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">{kind === 'VIDEO' ? 'Motion prompt' : 'Prompt'}</label>
                 <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={5}
                   placeholder="Place this outfit on a graceful Indian fashion model against..."
                   className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2 mt-1 bg-white font-mono" />
@@ -443,6 +493,7 @@ function NewStyleForm({ onCreated, setStatus, open, onToggle }: {
                     ))}
                   </div>
                 </div>
+                {kind === 'IMAGE' ? (
                 <div>
                   <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Engine</label>
                   <select value={engine} onChange={(e) => setEngine(e.target.value)}
@@ -451,6 +502,7 @@ function NewStyleForm({ onCreated, setStatus, open, onToggle }: {
                     {ENGINES.map((e) => <option key={e} value={e}>{e}</option>)}
                   </select>
                 </div>
+                ) : <div />}
                 <div>
                   <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Sort order</label>
                   <input type="number" value={sortOrder} onChange={(e) => setSortOrder(Number(e.target.value))}

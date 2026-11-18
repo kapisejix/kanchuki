@@ -33,6 +33,34 @@ const SLUG = /^[a-z0-9_]{2,40}$/;
 const ENGINES = STUDIO_ENGINES;
 const DEMOS = ['womens', 'mens', 'teen_girl', 'teen_boy', 'kids_girl', 'kids_boy'] as const;
 const PLANS = ['STARTER', 'GROWTH', 'PRO'] as const;
+// F-034 T6: VIDEO styles (migration 165). The motion prompt lives in `prompt`.
+const KINDS = ['IMAGE', 'VIDEO'] as const;
+const ASPECTS = ['9:16', '4:5', '1:1'] as const;
+
+type VideoFields = {
+  kind: string;
+  engine?: string | null;
+  default_aspect?: string | null;
+  duration_sec?: number | null;
+  no_person?: boolean;
+};
+
+/** VIDEO needs aspect + duration and no image engine; IMAGE carries none of the video fields. */
+function checkKindFields(s: VideoFields) {
+  if (s.kind === 'VIDEO') {
+    if (!s.default_aspect)
+      throw validationError('VIDEO style needs default_aspect', 'default_aspect');
+    if (s.duration_sec == null)
+      throw validationError('VIDEO style needs duration_sec', 'duration_sec');
+    if (s.engine) throw validationError('VIDEO style cannot have an image engine', 'engine');
+    return;
+  }
+  if (s.default_aspect != null)
+    throw validationError('IMAGE style cannot have default_aspect', 'default_aspect');
+  if (s.duration_sec != null)
+    throw validationError('IMAGE style cannot have duration_sec', 'duration_sec');
+  if (s.no_person) throw validationError('no_person applies to VIDEO styles only', 'no_person');
+}
 
 const CreateSchema = z.object({
   slug: z.string().regex(SLUG, 'slug must be lowercase letters, digits, underscore (2-40 chars)'),
@@ -47,6 +75,10 @@ const CreateSchema = z.object({
   // thumbnail_url is never taken from the client: it is built from the verified key.
   thumbnail_r2_key: z.string().optional(),
   sort_order: z.number().int().min(0).default(0),
+  kind: z.enum(KINDS).default('IMAGE'),
+  default_aspect: z.enum(ASPECTS).nullable().optional(),
+  duration_sec: z.number().int().min(1).max(8).nullable().optional(),
+  no_person: z.boolean().default(false),
 });
 
 const PatchSchema = z.object({
@@ -61,7 +93,15 @@ const PatchSchema = z.object({
   audience: z.array(z.enum(DEMOS)).optional(),
   thumbnail_r2_key: z.string().nullable().optional(), // null clears the thumbnail
   sort_order: z.number().int().min(0).optional(),
+  kind: z.enum(KINDS).optional(), // accepted only if unchanged; else 422
+  default_aspect: z.enum(ASPECTS).nullable().optional(),
+  duration_sec: z.number().int().min(1).max(8).nullable().optional(),
+  no_person: z.boolean().optional(),
 });
+
+function stripUndefined<T extends object>(o: T): Partial<T> {
+  return Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined)) as Partial<T>;
+}
 
 export const adminStudioStylesRoutes: FastifyPluginAsync = async (server) => {
   server.addHook('preHandler', adminAuthPreHandler);
@@ -110,6 +150,7 @@ export const adminStudioStylesRoutes: FastifyPluginAsync = async (server) => {
   // ─── POST /admin/studio-styles ─────────────────────────────────
   server.post('/studio-styles', async (request, reply) => {
     const body = CreateSchema.parse(request.body);
+    checkKindFields(body);
     const dupe = await prisma.studioStyle.findFirst({ where: { slug: body.slug } });
     if (dupe) throw new AppError('CONFLICT', 'A style with this slug already exists.', 409);
     const thumb = body.thumbnail_r2_key ? await verifyThumb(body.thumbnail_r2_key) : null;
@@ -127,6 +168,10 @@ export const adminStudioStylesRoutes: FastifyPluginAsync = async (server) => {
         audience: body.audience,
         ...(thumb ? { thumbnail_url: thumb.url, thumbnail_r2_key: thumb.r2Key } : {}),
         sort_order: body.sort_order,
+        kind: body.kind,
+        default_aspect: body.default_aspect ?? null,
+        duration_sec: body.duration_sec ?? null,
+        no_person: body.no_person,
       },
     });
     await prisma.auditLog.create({
@@ -135,7 +180,7 @@ export const adminStudioStylesRoutes: FastifyPluginAsync = async (server) => {
         action: 'CREATE',
         resource_type: 'StudioStyle',
         resource_id: row.id,
-        metadata: { slug: row.slug, label: row.label, tab: row.tab },
+        metadata: { slug: row.slug, label: row.label, tab: row.tab, kind: row.kind },
         ip_address: request.ip,
       },
     });
@@ -151,6 +196,11 @@ export const adminStudioStylesRoutes: FastifyPluginAsync = async (server) => {
     if (body.slug !== undefined && body.slug !== existing.slug) {
       throw validationError('slug is immutable after creation', 'slug');
     }
+    if (body.kind !== undefined && body.kind !== existing.kind) {
+      throw validationError('kind is immutable after creation', 'kind');
+    }
+    // Validate the row as it will be after the patch, not the patch alone.
+    checkKindFields({ ...existing, ...stripUndefined(body), kind: existing.kind });
 
     const data: Record<string, unknown> = {};
     for (const k of [
@@ -162,6 +212,9 @@ export const adminStudioStylesRoutes: FastifyPluginAsync = async (server) => {
       'plans',
       'audience',
       'sort_order',
+      'default_aspect',
+      'duration_sec',
+      'no_person',
     ] as const) {
       if (body[k] !== undefined) data[k] = body[k];
     }
