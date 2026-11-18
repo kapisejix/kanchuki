@@ -17,6 +17,7 @@ type UsageRow = {
   resource_type: string
   calls: number
   credits_used: number
+  cost_usd: number | null // provider USD (migration 168); null = not recorded
 }
 
 type PlanLimitRow = { plan: string; resource_type: string; limit_per_period: number; period: string }
@@ -254,6 +255,7 @@ export default function AiUsagePage() {
                   <th className="px-4 py-3 font-medium">Resource</th>
                   <th className="px-4 py-3 font-medium text-right">Calls</th>
                   <th className="px-4 py-3 font-medium text-right">Credits</th>
+                  <th className="px-4 py-3 font-medium text-right">Spend (USD)</th>
                 </tr>
               </thead>
               <tbody>
@@ -275,6 +277,9 @@ export default function AiUsagePage() {
                     <td className="px-4 py-3 text-right text-gray-700">{r.calls.toLocaleString()}</td>
                     <td className="px-4 py-3 text-right font-semibold text-gray-900">
                       {r.credits_used.toLocaleString()}
+                    </td>
+                    <td className="px-4 py-3 text-right text-gray-700">
+                      {r.cost_usd == null ? '—' : `$${r.cost_usd.toFixed(2)}`}
                     </td>
                   </tr>
                 ))}

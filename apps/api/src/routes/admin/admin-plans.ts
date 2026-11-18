@@ -686,7 +686,7 @@ export const adminPlansRoutes: FastifyPluginAsync = async (server) => {
     const groups = await prisma.aiUsageLog.groupBy({
       by: ['retailer_id', 'provider_type', 'model_name', 'resource_type'],
       where,
-      _sum: { credits_used: true },
+      _sum: { credits_used: true, cost_usd: true },
       _count: { id: true },
       orderBy: { _sum: { credits_used: 'desc' } },
     });
@@ -712,6 +712,8 @@ export const adminPlansRoutes: FastifyPluginAsync = async (server) => {
         resource_type: g.resource_type,
         calls: g._count.id,
         credits_used: g._sum.credits_used ?? 0,
+        // Provider USD where the job recorded it (migration 168); null = not recorded.
+        cost_usd: g._sum.cost_usd == null ? null : Number(g._sum.cost_usd),
       })),
     };
   });

@@ -67,6 +67,7 @@ export const SUPER_ADMIN_ONLY_ADMIN_SEGMENTS = [
   'resource-packs',
   'referral', // T9 referral monitoring — leaderboard, payout trigger, irreversible clawback, payout-account entry (money)
   'referral-settings',
+  'video-models', // F-034 T6: which Fal video model each plan uses + enable (per-clip spend)
   // ── Tax and legal documents ──
   'gst-profile',
   'hsn-rules', // §6.11 keyword → HSN map used on WhatsApp catalog items (tax data)

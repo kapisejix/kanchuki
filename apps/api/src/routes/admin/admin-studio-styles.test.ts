@@ -191,4 +191,113 @@ describe('admin studio-styles', () => {
     expect(mockInspect).not.toHaveBeenCalled();
     expect(mockUpdate).not.toHaveBeenCalled();
   });
+
+  // ─── F-034 T6: VIDEO styles ───
+  const base = { label: 'V', description: 'd', prompt: 'slow pan', tab: 'PRODUCT' };
+  async function post(payload: Record<string, unknown>) {
+    mockFindFirst.mockResolvedValueOnce(null);
+    mockCreate.mockResolvedValueOnce({ id: 'v1', slug: payload.slug, kind: payload.kind });
+    const app = await buildApp();
+    return app.inject({ method: 'POST', url: '/studio-styles', payload });
+  }
+
+  it('POST VIDEO needs default_aspect and duration_sec', async () => {
+    expect((await post({ ...base, slug: 'v_a', kind: 'VIDEO', duration_sec: 5 })).statusCode).toBe(
+      422,
+    );
+    expect(
+      (await post({ ...base, slug: 'v_b', kind: 'VIDEO', default_aspect: '9:16' })).statusCode,
+    ).toBe(422);
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
+
+  it('POST VIDEO rejects an image engine and an out-of-range duration', async () => {
+    const v = { ...base, kind: 'VIDEO', default_aspect: '9:16', duration_sec: 5 };
+    expect((await post({ ...v, slug: 'v_c', engine: 'flux_kontext' })).statusCode).toBe(422);
+    expect((await post({ ...v, slug: 'v_d', duration_sec: 9 })).statusCode).toBeGreaterThanOrEqual(
+      400,
+    );
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
+
+  it('POST IMAGE rejects video-only fields', async () => {
+    expect((await post({ ...base, slug: 'i_a', default_aspect: '1:1' })).statusCode).toBe(422);
+    expect((await post({ ...base, slug: 'i_b', duration_sec: 4 })).statusCode).toBe(422);
+    expect((await post({ ...base, slug: 'i_c', no_person: true })).statusCode).toBe(422);
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
+
+  it('POST VIDEO creates with its fields', async () => {
+    const res = await post({
+      ...base,
+      slug: 'v_ok',
+      kind: 'VIDEO',
+      default_aspect: '4:5',
+      duration_sec: 5,
+      no_person: true,
+    });
+    expect(res.statusCode).toBe(201);
+    expect(mockCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        kind: 'VIDEO',
+        default_aspect: '4:5',
+        duration_sec: 5,
+        no_person: true,
+        engine: null,
+      }),
+    });
+  });
+
+  it('PATCH rejects changing kind', async () => {
+    mockFindUnique.mockResolvedValueOnce({ id: 's1', slug: 's', kind: 'IMAGE' });
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'PATCH',
+      url: '/studio-styles/s1',
+      payload: { kind: 'VIDEO' },
+    });
+    expect(res.statusCode).toBe(422);
+    expect(mockUpdate).not.toHaveBeenCalled();
+  });
+
+  it('PATCH validates the merged row: clearing a VIDEO aspect is refused', async () => {
+    mockFindUnique.mockResolvedValueOnce({
+      id: 'v1',
+      slug: 'v',
+      kind: 'VIDEO',
+      engine: null,
+      default_aspect: '9:16',
+      duration_sec: 5,
+      no_person: false,
+    });
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'PATCH',
+      url: '/studio-styles/v1',
+      payload: { default_aspect: null },
+    });
+    expect(res.statusCode).toBe(422);
+    expect(mockUpdate).not.toHaveBeenCalled();
+  });
+
+  it('PATCH updates VIDEO duration', async () => {
+    mockFindUnique.mockResolvedValueOnce({
+      id: 'v1',
+      slug: 'v',
+      kind: 'VIDEO',
+      engine: null,
+      default_aspect: '9:16',
+      duration_sec: 5,
+      no_person: false,
+    });
+    mockUpdate.mockResolvedValueOnce({ id: 'v1' });
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'PATCH',
+      url: '/studio-styles/v1',
+      payload: { duration_sec: 8 },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(mockUpdate).toHaveBeenCalledWith({ where: { id: 'v1' }, data: { duration_sec: 8 } });
+  });
 });

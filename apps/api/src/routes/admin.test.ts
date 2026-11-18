@@ -1294,7 +1294,15 @@ describe('Admin AI providers', () => {
         model_name: 'deepseek-chat',
         resource_type: 'AI_TAGGING_CALL',
         _count: { id: 4 },
-        _sum: { credits_used: 12 },
+        _sum: { credits_used: 12, cost_usd: { toString: () => '0.35' } },
+      },
+      {
+        retailer_id: 'retailer_1',
+        provider_type: 'CLAUDE',
+        model_name: 'claude',
+        resource_type: 'AI_TAGGING_CALL',
+        _count: { id: 1 },
+        _sum: { credits_used: 1, cost_usd: null },
       },
     ]);
     mockRetailerFindMany.mockResolvedValue([
@@ -1312,6 +1320,12 @@ describe('Admin AI providers', () => {
     expect(row.retailer_name).toBe('Test Shop');
     expect(row.calls).toBe(4);
     expect(row.credits_used).toBe(12);
+    // F-034 T6: provider USD spend (migration 168); null when the job did not record it.
+    expect(row.cost_usd).toBe(0.35);
+    expect(res.json().data[1].cost_usd).toBeNull();
+    expect(mockAiUsageGroupBy).toHaveBeenCalledWith(
+      expect.objectContaining({ _sum: { credits_used: true, cost_usd: true } }),
+    );
     await app.close();
   });
 });

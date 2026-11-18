@@ -352,7 +352,12 @@ export default function PlanLimitsPage() {
           <tbody>
             {RESOURCE_TYPES.map((resourceType) => (
               <tr key={resourceType} className="border-b border-gray-50">
-                <td className="px-3 py-3 font-mono text-xs text-gray-600 whitespace-nowrap">{resourceType}</td>
+                <td className="px-3 py-3 font-mono text-xs text-gray-600 whitespace-nowrap">
+                  {resourceType}
+                  {resourceType === 'AI_VIDEO' && (
+                    <p className="font-sans text-[10px] text-gray-400 whitespace-normal">No row = feature is off (metered)</p>
+                  )}
+                </td>
                 {PLANS.map((plan) => {
                   const cell = cellFor(plan, resourceType)
                   const k = key(plan, resourceType)

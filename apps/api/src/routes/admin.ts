@@ -52,6 +52,7 @@ import {
   adminStudioStylesRoutes,
   adminSurveyRoutes,
   adminTryOnUsageRoutes,
+  adminVideoModelsRoutes,
   adminWhatsAppCatalogRoutes,
 } from './admin/index.js';
 
@@ -202,6 +203,8 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
   await server.register(adminMediaRoutes);
   // admin-studio-styles — DB-backed AI Studio Shoot style catalog
   await server.register(adminStudioStylesRoutes);
+  // admin-video-models — F-034 T6 promo video models + per-plan pick (super-admin segment)
+  await server.register(adminVideoModelsRoutes);
   // admin-resource-packs — admin-managed addon packs (F-034 task 6.1)
   await server.register(adminResourcePacksRoutes);
   // admin-referral — retailer referral program terms (T2)
