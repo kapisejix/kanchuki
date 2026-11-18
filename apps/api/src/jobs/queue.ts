@@ -53,6 +53,13 @@ export function getMyStyleAnalyzeQueue(): Queue {
   return myStyleAnalyzeQueue;
 }
 
+let promoVideoQueue: Queue | null = null;
+
+export function getPromoVideoQueue(): Queue {
+  promoVideoQueue ??= new Queue(QUEUES.PROMO_VIDEO, { connection: getRedis() });
+  return promoVideoQueue;
+}
+
 let pushQueue: Queue | null = null;
 
 export function getPushQueue(): Queue {
