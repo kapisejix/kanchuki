@@ -281,6 +281,8 @@ const PRODUCT_DETAIL: PublicProductDetail = {
   search_tags: ['maroon', 'festive'],
   sizes: ['S', 'M', 'L', 'XL'],
   photos: [ALL_PRODUCTS[0].primary_photo_url],
+  // F-034 T7c: one clip (AI or uploaded look the same to the shopper, D8).
+  videos: [{ id: 'clip-e2e', url: 'https://cdn-e2e.r2.dev/clip-e2e.mp4', duration_sec: 6, is_main: true }],
   spin_frames: [],
   variants: [
     { color: 'Maroon', photo_url: null, status: 'AVAILABLE' },
@@ -315,6 +317,10 @@ async function mockBrowserNetwork(context: BrowserContext): Promise<void> {
   // (destination === 'image', CacheFirst) and served from cache on the offline
   // reload.
   await stubFixtureImages(context)
+  // Clip bytes: never decoded in this suite, only the element's attributes.
+  await context.route('**/clip-e2e.mp4', (route) =>
+    route.fulfill({ status: 200, contentType: 'video/mp4', body: '' }),
+  )
 }
 
 // Sentinel that only survives client-side navigation (wiped by a full reload)
@@ -396,6 +402,21 @@ test('collection page renders and interactions are client-side (no full reload)'
   await expect(page.getByText('Raw Silk')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Teal', exact: true })).toBeVisible()
   expect(loadCount).toBe(1)
+
+  // F-034 T7c: the clip plays muted, inline, looped, poster = main photo.
+  await page.getByRole('button', { name: 'Play video 1', exact: true }).click()
+  const clip = page.locator('video[src$="clip-e2e.mp4"]')
+  await expect(clip).toBeVisible()
+  expect(await clip.evaluate((v: HTMLVideoElement) => ({
+    muted: v.muted, loop: v.loop, playsInline: v.playsInline, preload: v.preload, poster: v.poster,
+  }))).toEqual({
+    muted: true, loop: true, playsInline: true, preload: 'metadata', poster: ALL_PRODUCTS[0].primary_photo_url,
+  })
+  const desktop = page.viewportSize()!
+  await page.setViewportSize({ width: 360, height: 780 })
+  await expect(clip).toBeVisible()
+  await page.screenshot({ path: 'test-results/t7c-sheet-video-360.png' })
+  await page.setViewportSize(desktop)
 
   // Close the sheet — back to the grid, still no reload
   await page.getByRole('button', { name: 'Close', exact: true }).click()

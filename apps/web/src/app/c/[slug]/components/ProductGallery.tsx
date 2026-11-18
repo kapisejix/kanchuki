@@ -145,7 +145,9 @@ export function ProductGallery({ photos, variants, videos, alt, isSold, isReserv
                       loop
                       playsInline
                       controls
-                      preload="metadata"
+                      // Inactive clips fetch nothing until reached (3G first paint).
+                      preload={i === index ? 'metadata' : 'none'}
+                      poster={slides[0]?.video ? undefined : slides[0]?.url}
                       aria-label={`${alt} video`}
                     />
                   ) : (
