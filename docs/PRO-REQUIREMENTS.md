@@ -2396,7 +2396,9 @@ exists and just needs a working schema under it.
 
 ---
 
-## 30. F-034 AI Image→Video for Social Promo (Reels / Shorts / Feed) — 🧪 PHASE 1 BUILT (admin bench); Phase 2 (retailer) 🔴 DEFERRED
+## 30. F-034 AI Image→Video for Social Promo (Reels / Shorts / Feed) — 🧪 PHASE 1 BUILT (admin bench); Phase 2 (retailer) 🟨 BUILT, OFF
+
+**Status 2026-11-18:** Phase 2 is built and merged (T1–T7c, PRs #309–#317); `docs/tasks/pending/ai-promo-video.md` wins over this section's Phase 2 detail. Off: all `video_models` disabled, no `plan_video_models` / `AI_VIDEO` `plan_limits` rows, no real Fal or Instagram call, Meta App Review pending. The 2026-09-03 text below is history.
 
 **Status 2026-09-03:** Phase 1 (admin test bench) is built — tasks 1–4 of
 `docs/tasks/ai-photo-generation.md` §7 (commits `17fe997`, `f57479c`) plus the task-6.1
