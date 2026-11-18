@@ -228,6 +228,8 @@ describe('GET /products/:id/promo-video/:jobId', () => {
     m.product.mockResolvedValue({ id: 'p1' });
     m.status.mockResolvedValue({ status: 'processing', progress: 40 });
     expect((await get()).json().data).toEqual({ status: 'processing', progress: 40 });
+    // Status read is keyed by the caller's retailer: another retailer's job id finds nothing.
+    expect(m.status).toHaveBeenCalledWith(R, 'job_1');
   });
 
   it('falls back to the video row whose id is the job id (RC-063)', async () => {

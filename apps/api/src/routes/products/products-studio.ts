@@ -255,8 +255,8 @@ export const productsStudioRoutes: FastifyPluginAsync = async (server) => {
     if (!q.success) throw validationError('job_id is required', 'job_id');
     const jobId = q.data.job_id;
 
-    // Photo must belong to this retailer (also makes job_id an opaque,
-    // retailer-scoped handle — can't probe other retailers' jobs).
+    // Photo must belong to this retailer. The status itself is keyed by
+    // retailer (getStudioJobStatus), so another retailer's job_id reads nothing.
     // Color-variant previews arrive as `variant-<id>` (same handle POST
     // accepts) and have no ProductPhoto row under that id — check the variant
     // instead or the poll 404s and the shoot looks failed.
@@ -278,7 +278,7 @@ export const productsStudioRoutes: FastifyPluginAsync = async (server) => {
       if (!photo) throw notFound('Product photo');
     }
 
-    const status = await getStudioJobStatus(jobId);
+    const status = await getStudioJobStatus(request.retailerId, jobId);
     if (status) return { data: status };
 
     // Redis status absent (expired / Redis blip after completion) — fall

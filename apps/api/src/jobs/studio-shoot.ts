@@ -83,7 +83,7 @@ export async function handleStudioShoot(data: StudioShootJobData): Promise<void>
   const ESTIMATED_TOTAL_TIME_MS = 25_000;
 
   // Set initial status
-  await setStudioJobStatus(job_id, {
+  await setStudioJobStatus(retailer_id, job_id, {
     status: 'processing',
     progress: 0,
     etaMs: ESTIMATED_TOTAL_TIME_MS,
@@ -100,7 +100,7 @@ export async function handleStudioShoot(data: StudioShootJobData): Promise<void>
       where: { id: photo_id, product_id, retailer_id },
     });
     if (!photo) {
-      await setStudioJobStatus(job_id, {
+      await setStudioJobStatus(retailer_id, job_id, {
         status: 'failed',
         error: 'Product photo not found. It may have been deleted.',
         progress: 0,
@@ -126,7 +126,7 @@ export async function handleStudioShoot(data: StudioShootJobData): Promise<void>
 
     const displayUrl = await studioSourceUrl(photo);
     if (!displayUrl) {
-      await setStudioJobStatus(job_id, {
+      await setStudioJobStatus(retailer_id, job_id, {
         status: 'failed',
         error: 'Could not resolve the source photo URL.',
         progress: 0,
@@ -145,7 +145,7 @@ export async function handleStudioShoot(data: StudioShootJobData): Promise<void>
       tab,
       engine,
       onProgress: (progressInfo) => {
-        setStudioJobStatus(job_id, {
+        setStudioJobStatus(retailer_id, job_id, {
           status: 'processing',
           progress: progressInfo.progress,
           etaMs: progressInfo.etaMs,
@@ -172,7 +172,7 @@ export async function handleStudioShoot(data: StudioShootJobData): Promise<void>
     // while `payload` narrows to `string` for downloadCompressAndUpload below.
     const payload = result.base64Data || result.sampleUrl;
     if (result.status !== 'ready' || !payload) {
-      await setStudioJobStatus(job_id, {
+      await setStudioJobStatus(retailer_id, job_id, {
         status: 'failed',
         error: result.error ?? 'The studio shoot could not be generated. Please try again.',
         progress: 0,
@@ -220,7 +220,7 @@ export async function handleStudioShoot(data: StudioShootJobData): Promise<void>
     });
 
     // 5. Status AFTER the DB row exists — ready means the photo is live.
-    await setStudioJobStatus(job_id, {
+    await setStudioJobStatus(retailer_id, job_id, {
       status: 'ready',
       photo_id: newPhoto.id,
       url: newPhoto.url,
@@ -240,7 +240,7 @@ export async function handleStudioShoot(data: StudioShootJobData): Promise<void>
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error(`[studio-shoot] job ${job_id} failed:`, err);
-    await setStudioJobStatus(job_id, {
+    await setStudioJobStatus(retailer_id, job_id, {
       status: 'failed',
       error: message || 'The studio shoot failed. Please try again.',
       progress: 0,

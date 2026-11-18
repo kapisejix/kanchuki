@@ -77,7 +77,7 @@ describe('handleStudioShoot — quota slot', () => {
     await handleStudioShoot(data);
     const spentAt = m.markSpent.mock.invocationCallOrder[0] as number;
     const readyAt = m.setStatus.mock.invocationCallOrder[
-      m.setStatus.mock.calls.findIndex(([, s]) => s.status === 'ready')
+      m.setStatus.mock.calls.findIndex(([, , s]) => s.status === 'ready')
     ] as number;
     expect(spentAt).toBeLessThan(readyAt);
   });
@@ -86,7 +86,11 @@ describe('handleStudioShoot — quota slot', () => {
     m.markSpent.mockRejectedValue(new Error('db down'));
     await expect(handleStudioShoot(data)).resolves.toBeUndefined();
     expect(m.refund).not.toHaveBeenCalled();
-    expect(m.setStatus).toHaveBeenCalledWith('job1', expect.objectContaining({ status: 'ready' }));
+    expect(m.setStatus).toHaveBeenCalledWith(
+      'r1',
+      'job1',
+      expect.objectContaining({ status: 'ready' }),
+    );
   });
 
   it('refunds when the source photo is gone (soft failure: handler returns)', async () => {

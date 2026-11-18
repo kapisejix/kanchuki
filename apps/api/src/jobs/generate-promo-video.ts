@@ -62,10 +62,10 @@ function recordFalVideoUsage(retailerId: string, modelKey: string, usage: ClipUs
 export async function handlePromoVideo(data: PromoVideoJobData): Promise<void> {
   const { job_id, retailer_id, product_id, photo_id } = data;
   const fail = (error = SAFE_ERROR) =>
-    setStudioJobStatus(job_id, { status: 'failed', error, progress: 0, etaMs: 0 });
+    setStudioJobStatus(retailer_id, job_id, { status: 'failed', error, progress: 0, etaMs: 0 });
   // Once the clip is live a status write must not turn it into "failed" (the retailer would pay again).
   const ready = (video: { id: string; public_url: string }) =>
-    setStudioJobStatus(job_id, {
+    setStudioJobStatus(retailer_id, job_id, {
       status: 'ready',
       video_id: video.id,
       url: video.public_url,
@@ -77,7 +77,11 @@ export async function handlePromoVideo(data: PromoVideoJobData): Promise<void> {
       console.error(`[promo-video] mark spent failed for ${job_id}:`, err),
     );
 
-  await setStudioJobStatus(job_id, { status: 'processing', progress: 0, etaMs: ESTIMATED_MS });
+  await setStudioJobStatus(retailer_id, job_id, {
+    status: 'processing',
+    progress: 0,
+    etaMs: ESTIMATED_MS,
+  });
 
   let spent = false;
   try {
@@ -142,7 +146,7 @@ export async function handlePromoVideo(data: PromoVideoJobData): Promise<void> {
       aspect: data.aspect,
       seconds: data.seconds,
       onProgress: (p) => {
-        setStudioJobStatus(job_id, { status: 'processing', ...p }).catch(() => {});
+        setStudioJobStatus(retailer_id, job_id, { status: 'processing', ...p }).catch(() => {});
       },
       // Fal has charged us from here: the slot is used even if our download/encode/upload fails.
       onFalComplete: async () => {
