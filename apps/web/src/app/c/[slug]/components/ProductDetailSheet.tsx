@@ -532,6 +532,7 @@ export function ProductDetailSheet({
               playsInline
               controls
               preload="metadata"
+              poster={photos[0] ?? product.primary_photo_url ?? undefined}
               aria-label={`${product.name ?? product.category ?? 'Product'} video`}
             />
           ) : (

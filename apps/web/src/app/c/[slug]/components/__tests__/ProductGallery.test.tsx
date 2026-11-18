@@ -64,11 +64,19 @@ describe('ProductGallery', () => {
     const videos = screen.getAllByLabelText('Kurta Set video') as HTMLVideoElement[];
     expect(videos).toHaveLength(2);
     expect(videos.every((video) => !video.autoplay)).toBe(true);
+    // F-034 T7c: poster = main photo (no black frame), inactive clips fetch nothing.
+    expect(videos.every((video) => video.getAttribute('poster') === PHOTOS[0])).toBe(true);
+    expect(videos.every((video) => video.getAttribute('preload') === 'none')).toBe(true);
 
     fireEvent.click(screen.getByRole('button', { name: 'Play video 1' }));
     const selected = screen.getAllByLabelText('Kurta Set video') as HTMLVideoElement[];
-    expect(selected.find((video) => video.getAttribute('src')?.endsWith('clip-1.mp4'))?.autoplay).toBe(true);
-    expect(selected.find((video) => video.getAttribute('src')?.endsWith('clip-2.mp4'))?.autoplay).toBe(false);
+    const clip1 = selected.find((video) => video.getAttribute('src')?.endsWith('clip-1.mp4'));
+    const clip2 = selected.find((video) => video.getAttribute('src')?.endsWith('clip-2.mp4'));
+    expect(clip1?.autoplay).toBe(true);
+    expect(clip1?.getAttribute('preload')).toBe('metadata');
+    expect(clip1?.muted).toBe(true);
+    expect(clip2?.autoplay).toBe(false);
+    expect(clip2?.getAttribute('preload')).toBe('none');
     expect(screen.queryByRole('button', { name: 'Close fullscreen photo' })).not.toBeInTheDocument();
   });
 
