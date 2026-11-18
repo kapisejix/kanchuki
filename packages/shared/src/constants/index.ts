@@ -810,6 +810,9 @@ export const QUEUES = {
   // the concurrency-1 MAINTENANCE lane (backups, compression) — a late "new enquiry"
   // ping defeats its purpose.
   PUSH: 'kanchuki-push',
+  // F-034 L6: AI promo video. Own queue so a 2-3 min paid Fal clip never holds a
+  // Studio Shoot worker slot.
+  PROMO_VIDEO: 'kanchuki-promo-video',
   // Cron-only, low-volume jobs share one queue — one Worker dispatches by job.name
   // instead of 4 separate Workers each holding their own duplicated Redis connection.
   MAINTENANCE: 'kanchuki-maintenance',

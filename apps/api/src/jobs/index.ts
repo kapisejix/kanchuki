@@ -48,6 +48,7 @@ import {
   getEmbeddingQueue,
   getMaintenanceQueue,
   getMyStyleAnalyzeQueue,
+  getPromoVideoQueue,
   getRedis,
   getStudioShootQueue,
   getTaggingQueue,
@@ -151,11 +152,10 @@ export async function addAiCustomDesignJob(data: AiCustomDesignJobData): Promise
   });
 }
 
-/** F-034 T5: AI promo video. Shares the STUDIO_SHOOT queue. attempts: 1 (BullMQ default)
- *  because every attempt is a paid Fal clip. ponytail: a ~2-3 min clip holds a studio
- *  worker slot; give it its own queue if videos start delaying studio shoots. */
+/** F-034 T5: AI promo video, on its own queue (L6). attempts: 1 (BullMQ default)
+ *  because every attempt is a paid Fal clip. */
 export async function addPromoVideoJob(data: PromoVideoJobData): Promise<void> {
-  await getStudioShootQueue().add('promo-video', data, {
+  await getPromoVideoQueue().add('promo-video', data, {
     removeOnComplete: { count: 100 },
     removeOnFail: { count: 50 },
   });
@@ -224,14 +224,17 @@ export async function startWorkers(): Promise<void> {
         await handleAiCustomDesign(job.data as AiCustomDesignJobData);
         return;
       }
-      if (job.name === 'promo-video') {
-        await handlePromoVideo(job.data as PromoVideoJobData);
-        return;
-      }
       const data = job.data as StudioShootJobData;
       await handleStudioShoot(data);
     },
     { connection: redis, concurrency: STUDIO_SHOOT_CONCURRENCY },
+  );
+
+  // ponytail: 2 parallel clips; raise once Fal spend and Railway memory are measured.
+  const promoVideoWorker = new Worker(
+    QUEUES.PROMO_VIDEO,
+    async (job) => handlePromoVideo(job.data as PromoVideoJobData),
+    { connection: redis, concurrency: 2 },
   );
 
   const tryOnWorker = new Worker(
@@ -675,13 +678,8 @@ export async function startWorkers(): Promise<void> {
     // idempotent, so a refund the handler already made is a no-op.
     const jobId = (job?.data as StudioShootJobData | undefined)?.job_id;
     if (jobId && stalledOut(err)) {
-      // The AI custom-design and promo-video jobs ride this queue; their slots are other resources.
-      const resource =
-        job?.name === 'ai-custom-design'
-          ? 'AI_CUSTOM_TEMPLATE'
-          : job?.name === 'promo-video'
-            ? 'AI_VIDEO'
-            : 'STUDIO_SHOOT';
+      // The AI custom-design job rides this queue; its slot is another resource.
+      const resource = job?.name === 'ai-custom-design' ? 'AI_CUSTOM_TEMPLATE' : 'STUDIO_SHOOT';
       refundJobQuota(jobId, resource).catch((e) =>
         console.error(`[jobs] studio-shoot quota refund failed ${jobId}:`, e),
       );
@@ -712,6 +710,18 @@ export async function startWorkers(): Promise<void> {
     if (jobId && stalledOut(err)) {
       refundCustomerJobQuota(jobId, 'STYLE_ANALYSIS').catch((e) =>
         console.error(`[jobs] my-style-analyze quota refund failed ${jobId}:`, e),
+      );
+    }
+  });
+
+  promoVideoWorker.on('failed', (job, err) => {
+    console.error(`[jobs] promo-video failed ${job?.id}:`, err.message);
+    reportJobFailure('promo-video', job, err);
+    // Stalled-out backup, same as studio-shoot: idempotent, and a SPENT slot is left alone.
+    const jobId = (job?.data as PromoVideoJobData | undefined)?.job_id;
+    if (jobId && stalledOut(err)) {
+      refundJobQuota(jobId, 'AI_VIDEO').catch((e) =>
+        console.error(`[jobs] promo-video quota refund failed ${jobId}:`, e),
       );
     }
   });

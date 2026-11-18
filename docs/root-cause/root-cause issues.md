@@ -19,7 +19,7 @@
 - **Root cause:** the cap read state that did not yet include work already started: the count was of rows, and the row is the last thing a job writes. The cap was also hand-copied 5 times (route, job, three `growth-videos` literals).
 - **Fix:** one in-flight AI clip per product. The route claims `promo-video:inflight:<productId>` (Redis `SET NX EX 900`, value = job id) before any quota is spent, answering 409 `VIDEO_IN_PROGRESS` when taken and freeing it if the reserve or enqueue fails; the job frees it in `finally` (delete only if it still holds it); manual upload and Ken Burns count it as a slot. One `MAX_VIDEOS_PER_PRODUCT` in the API (mobile keeps its own client copy).
 - **Proof:** 6 new tests; removing the claim, the job release or the in-flight count each fails tests (3 / 1 / 1). API 3509 passed, `tsc` clean, biome clean (3 known warnings).
-- **Not verified / limits:** mocked Redis only. Claim fails closed when Redis is down (the queue needs Redis anyway). Two simultaneous manual uploads can still both pass (no Fal cost). A job that outlives the 15 min TTL frees nothing it does not hold. Not merged.
+- **Not verified / limits:** mocked Redis only. Claim fails closed when Redis is down (the queue needs Redis anyway). Two simultaneous manual uploads can still both pass (no Fal cost). A job that outlives the 15 min TTL frees nothing it does not hold. Merged 2026-11-18 (PR #320 `6f198122`, CI 5/5 green).
 
 ## RC-175 — The AI Studio Shoot and promo-video job status lived under a global Redis key (`studio:job:<jobId>`), so the routes' ownership check guarded the URL path, not the job: a retailer holding another retailer's job id could read that job's status and output URL through any product of their own
 
