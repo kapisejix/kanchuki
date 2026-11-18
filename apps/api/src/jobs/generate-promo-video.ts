@@ -18,7 +18,11 @@ import {
   videoModelForPlan,
 } from '../lib/fal-video.js';
 import { markJobQuotaSpent, refundJobQuota } from '../lib/quota.js';
-import { setStudioJobStatus } from '../lib/studio-shoot.js';
+import {
+  MAX_VIDEOS_PER_PRODUCT,
+  releasePromoVideoSlot,
+  setStudioJobStatus,
+} from '../lib/studio-shoot.js';
 import { studioSourceUrl } from './studio-shoot.js';
 
 export interface PromoVideoJobData {
@@ -33,7 +37,6 @@ export interface PromoVideoJobData {
 }
 
 /** D4 cap, re-checked here: two jobs queued for one product can both pass the route. */
-const MAX_VIDEOS_PER_PRODUCT = 3;
 /** CLAUDE.md §5 cost budget: one tagging credit is ~$0.004 (~₹0.33). Lets the RC-081 daily
  *  credit alert see Fal spend. ponytail: fixed rate; read cost_usd directly if the alert moves to USD. */
 export const USD_PER_CREDIT = 0.004;
@@ -179,6 +182,7 @@ export async function handlePromoVideo(data: PromoVideoJobData): Promise<void> {
     await fail();
     throw err; // BullMQ marks it failed -> reportJobFailure (no retry: each attempt costs USD)
   } finally {
+    await releasePromoVideoSlot(product_id, job_id); // L5: the route claimed it; free it on every exit
     if (!spent) {
       await refundJobQuota(job_id, 'AI_VIDEO').catch((err) =>
         console.error(`[promo-video] refund failed for ${job_id}:`, err),

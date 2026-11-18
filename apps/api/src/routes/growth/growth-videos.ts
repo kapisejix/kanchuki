@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { handleGenerateKenBurnsVideo } from '../../jobs/generate-ken-burns-video.js';
 import { addKenBurnsVideoJob } from '../../jobs/index.js';
 import { hasFeature } from '../../lib/features.js';
+import { MAX_VIDEOS_PER_PRODUCT, promoVideoInFlight } from '../../lib/studio-shoot.js';
 import {
   UPLOAD_URL_RATE_LIMIT,
   VIDEO_KINDS,
@@ -37,7 +38,10 @@ export const growthVideoRoutes: FastifyPluginAsync = async (server) => {
       include: { _count: { select: { videos: true } } },
     });
     if (!product) throw notFound('Product');
-    if (product._count.videos >= 3) throw validationError('Maximum 3 videos per product');
+    // An AI clip being made for this product holds a slot too (L5).
+    if (product._count.videos + (await promoVideoInFlight(id)) >= MAX_VIDEOS_PER_PRODUCT) {
+      throw validationError(`Maximum ${MAX_VIDEOS_PER_PRODUCT} videos per product`);
+    }
 
     const body = z
       .object({
@@ -81,7 +85,10 @@ export const growthVideoRoutes: FastifyPluginAsync = async (server) => {
       include: { _count: { select: { videos: true } } },
     });
     if (!product) throw notFound('Product');
-    if (product._count.videos >= 3) throw validationError('Maximum 3 videos per product');
+    // An AI clip being made for this product holds a slot too (L5).
+    if (product._count.videos + (await promoVideoInFlight(id)) >= MAX_VIDEOS_PER_PRODUCT) {
+      throw validationError(`Maximum ${MAX_VIDEOS_PER_PRODUCT} videos per product`);
+    }
 
     const body = z
       .object({
@@ -137,7 +144,10 @@ export const growthVideoRoutes: FastifyPluginAsync = async (server) => {
       include: { _count: { select: { videos: true, photos: true } } },
     });
     if (!product) throw notFound('Product');
-    if (product._count.videos >= 3) throw validationError('Maximum 3 videos per product');
+    // An AI clip being made for this product holds a slot too (L5).
+    if (product._count.videos + (await promoVideoInFlight(id)) >= MAX_VIDEOS_PER_PRODUCT) {
+      throw validationError(`Maximum ${MAX_VIDEOS_PER_PRODUCT} videos per product`);
+    }
     if (product._count.photos < 2) {
       throw validationError('Add at least 2 photos before generating a video');
     }

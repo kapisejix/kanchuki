@@ -17,6 +17,7 @@ const m = vi.hoisted(() => ({
   setStatus: vi.fn(),
   videoFind: vi.fn(),
   slot: vi.fn(),
+  release: vi.fn(),
 }));
 
 vi.mock('@kanchuki/db', () => ({
@@ -38,7 +39,11 @@ vi.mock('../lib/fal-video.js', () => ({
   generateImageToVideo: m.generate,
 }));
 vi.mock('../lib/quota.js', () => ({ refundJobQuota: m.refund, markJobQuotaSpent: m.spent }));
-vi.mock('../lib/studio-shoot.js', () => ({ setStudioJobStatus: m.setStatus }));
+vi.mock('../lib/studio-shoot.js', () => ({
+  setStudioJobStatus: m.setStatus,
+  releasePromoVideoSlot: m.release,
+  MAX_VIDEOS_PER_PRODUCT: 3,
+}));
 vi.mock('./studio-shoot.js', () => ({ studioSourceUrl: async () => 'https://cdn/photo.jpg' }));
 
 const DATA: PromoVideoJobData = {
@@ -74,9 +79,32 @@ beforeEach(() => {
   m.refund.mockResolvedValue(undefined);
   m.spent.mockResolvedValue(undefined);
   m.setStatus.mockResolvedValue(undefined);
+  m.release.mockResolvedValue(undefined);
 });
 
 describe('handlePromoVideo', () => {
+  it('L5: frees the product slot on success, on an early fail and on a throw', async () => {
+    await handlePromoVideo(DATA);
+    expect(m.release).toHaveBeenLastCalledWith('p1', 'job_1');
+
+    m.release.mockClear();
+    m.product.mockResolvedValue(null);
+    await handlePromoVideo(DATA);
+    expect(m.release).toHaveBeenCalledWith('p1', 'job_1');
+
+    m.release.mockClear();
+    m.product.mockResolvedValue({ id: 'p1', _count: { videos: 0 } });
+    m.generate.mockRejectedValue(new Error('fal down'));
+    await expect(handlePromoVideo(DATA)).rejects.toThrow();
+    expect(m.release).toHaveBeenCalledWith('p1', 'job_1');
+  });
+
+  it('L5: the job still refuses a 4th video', async () => {
+    m.product.mockResolvedValue({ id: 'p1', _count: { videos: 3 } });
+    await handlePromoVideo(DATA);
+    expect(m.generate).not.toHaveBeenCalled();
+  });
+
   it('creates an AI_GEN video row keyed by the job id and keeps the slot spent', async () => {
     await handlePromoVideo(DATA);
     expect(m.generate).toHaveBeenCalledWith(

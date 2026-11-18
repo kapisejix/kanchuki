@@ -1238,6 +1238,56 @@ export async function setStudioJobStatus(
   }
 }
 
+// ─── Per-product video cap (F-034 L5) ─────────────────────────────
+// The cap counts product_videos rows, but an AI clip's row only lands after Fal
+// finishes (minutes). One in-flight AI clip per product, counted as a slot by
+// every video writer, keeps concurrent requests from overshooting the cap.
+export const MAX_VIDEOS_PER_PRODUCT = 3;
+const INFLIGHT_KEY = (productId: string) => `promo-video:inflight:${productId}`;
+// ponytail: TTL is only the backstop for a job that dies without its finally; a clip run is well under 15 min.
+const INFLIGHT_TTL_SEC = 60 * 15;
+
+/** Claim the product's one AI-clip slot. False when taken or Redis is down (fail closed). */
+export async function claimPromoVideoSlot(productId: string, jobId: string): Promise<boolean> {
+  if (!redisAvailable()) return true;
+  const redis = getStudioRedis();
+  try {
+    await awaitRedisReady(redis);
+    return (await redis.set(INFLIGHT_KEY(productId), jobId, 'EX', INFLIGHT_TTL_SEC, 'NX')) === 'OK';
+  } catch {
+    return false;
+  }
+}
+
+/** Free the slot, only if this job still holds it (best-effort; the TTL covers a miss). */
+export async function releasePromoVideoSlot(productId: string, jobId: string): Promise<void> {
+  if (!redisAvailable()) return;
+  const redis = getStudioRedis();
+  try {
+    await awaitRedisReady(redis);
+    await redis.eval(
+      "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) end return 0",
+      1,
+      INFLIGHT_KEY(productId),
+      jobId,
+    );
+  } catch (err) {
+    console.error(`[promo-video] failed to release slot for ${jobId}:`, err);
+  }
+}
+
+/** 1 while an AI clip is being made for the product, else 0 (0 when Redis is down). */
+export async function promoVideoInFlight(productId: string): Promise<number> {
+  if (!redisAvailable()) return 0;
+  const redis = getStudioRedis();
+  try {
+    await awaitRedisReady(redis);
+    return (await redis.exists(INFLIGHT_KEY(productId))) ? 1 : 0;
+  } catch {
+    return 0;
+  }
+}
+
 /** Read the job status — returns null when absent/expired/Redis down. */
 export async function getStudioJobStatus(
   retailerId: string,

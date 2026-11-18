@@ -15,6 +15,12 @@ const { mockPrisma } = vi.hoisted(() => ({
 
 vi.mock('@kanchuki/db', () => ({ prisma: mockPrisma }));
 
+const { mockInFlight } = vi.hoisted(() => ({ mockInFlight: vi.fn().mockResolvedValue(0) }));
+vi.mock('../../lib/studio-shoot.js', async (orig) => ({
+  ...(await orig<typeof import('../../lib/studio-shoot.js')>()),
+  promoVideoInFlight: mockInFlight,
+}));
+
 const { mockHasFeature } = vi.hoisted(() => ({
   mockHasFeature: vi.fn().mockResolvedValue(true),
 }));
@@ -116,6 +122,21 @@ describe('growthVideoRoutes', () => {
       await expect(handlers['POST /products/:id/video/generate']!(req, reply)).rejects.toThrow(
         'Maximum 3 videos per product',
       );
+    });
+
+    it('L5: an AI clip being made counts as a slot (2 videos + 1 in flight = full)', async () => {
+      mockPrisma.product.findFirst.mockResolvedValue({
+        id: 'prod-123',
+        retailer_id: 'ret-1',
+        _count: { videos: 2, photos: 4 },
+      });
+      mockInFlight.mockResolvedValueOnce(1);
+      const reply = { status: vi.fn().mockReturnThis(), send: vi.fn() };
+      const req = { retailerId: 'ret-1', params: { id: 'prod-123' } };
+      await expect(handlers['POST /products/:id/video/generate']!(req, reply)).rejects.toThrow(
+        'Maximum 3 videos per product',
+      );
+      expect(mockInFlight).toHaveBeenCalledWith('prod-123');
     });
   });
 

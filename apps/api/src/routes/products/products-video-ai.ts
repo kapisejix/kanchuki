@@ -14,7 +14,12 @@ import { addPromoVideoJob } from '../../jobs/index.js';
 import { type VideoAspect, videoModelForPlan } from '../../lib/fal-video.js';
 import { hasFeature } from '../../lib/features.js';
 import { getQuotaStatus, refundJobQuota, reserveJobQuota } from '../../lib/quota.js';
-import { getStudioJobStatus } from '../../lib/studio-shoot.js';
+import {
+  MAX_VIDEOS_PER_PRODUCT,
+  claimPromoVideoSlot,
+  getStudioJobStatus,
+  releasePromoVideoSlot,
+} from '../../lib/studio-shoot.js';
 import { isDelegate } from '../../plugins/auth.js';
 import {
   AppError,
@@ -25,7 +30,6 @@ import {
 } from '../../plugins/error-handler.js';
 
 /** D4: same cap as growth-videos.ts (uploads + Ken Burns + AI clips together). */
-export const MAX_VIDEOS_PER_PRODUCT = 3;
 const ASPECTS = ['9:16', '4:5', '1:1'] as const;
 const SECONDS = [5, 6, 8] as const;
 
@@ -176,7 +180,21 @@ export const productsVideoAiRoutes: FastifyPluginAsync = async (server) => {
 
       const defaultAspect = ASPECTS.find((a) => a === style.default_aspect) ?? '9:16';
       const jobId = createId();
-      await reserveJobQuota(request.retailerId, 'AI_VIDEO', jobId);
+      // L5: the clip's row lands only after Fal finishes, so the count above cannot see a clip in the
+      // making. One in-flight AI clip per product, claimed before any quota is spent.
+      if (!(await claimPromoVideoSlot(id, jobId))) {
+        throw new AppError(
+          'VIDEO_IN_PROGRESS',
+          'A video is already being made for this product. Try again when it is ready.',
+          409,
+        );
+      }
+      try {
+        await reserveJobQuota(request.retailerId, 'AI_VIDEO', jobId);
+      } catch (err) {
+        await releasePromoVideoSlot(id, jobId);
+        throw err;
+      }
       try {
         await addPromoVideoJob({
           job_id: jobId,
@@ -192,6 +210,7 @@ export const productsVideoAiRoutes: FastifyPluginAsync = async (server) => {
         await refundJobQuota(jobId, 'AI_VIDEO').catch((refundErr) => {
           request.log.error({ err: refundErr, job_id: jobId }, 'Failed to refund AI_VIDEO quota');
         });
+        await releasePromoVideoSlot(id, jobId);
         throw err;
       }
 
