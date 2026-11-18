@@ -6,7 +6,7 @@
 **Scope:** F-032 (AI Studio Shoots / Kontext + Gemini), F-034 (AI image→video for social promo), the photo-cleanup bench, and the current requirement: product-set completeness + Gemini/ChatGPT-parity output quality.
 **Owner of this file:** this is now the *only* spec for AI photo/video generation. The 5 files it replaces are listed in §13 and were deleted in the same change.
 
-**Status:** 🟡 **Mixed — pending, with a built core.** F-032 Phase A (FLUX Kontext studio shoots) and the admin bench are ✅ built; F-032 Phase B (product video) and F-034's retailer phase are 🔴 not built; the garment-conditioned engine rebuild (row 75, `vton_kontext` / `vton_gemini` / `gemini_image` + the forward/reversed bench A/B) is 🧪 **built but unmerged and never run against live providers**. Open owner actions: migrations `104`/`105`, and which engine the 8 MODEL `studio_styles` rows get. Verified against `CLAUDE.md` rows 60/75 on 2026-09-23 during the docs reorg.
+**Status:** 🟡 **Mixed — pending, with a built core.** F-032 Phase A (FLUX Kontext studio shoots) and the admin bench are ✅ built; F-032 Phase B (product video) is 🔴 not built; F-034 Phase 2 is built, off (`ai-promo-video.md`); the garment-conditioned engine rebuild (row 75, `vton_kontext` / `vton_gemini` / `gemini_image` + the forward/reversed bench A/B) is 🧪 **built but unmerged and never run against live providers**. Open owner actions: migrations `104`/`105`, and which engine the 8 MODEL `studio_styles` rows get. Verified against `CLAUDE.md` rows 60/75 on 2026-09-23 during the docs reorg.
 
 **Status legend used throughout**
 
@@ -63,7 +63,7 @@ The gap is **not mainly resolution or `image_size`** (an earlier draft over-weig
 | §4 | **What we are working on now** (uncommitted, 2026-09-18) |
 | §5 | Current requirements, R1–R8, with acceptance criteria and the one thing still blocking each |
 | §6 | The effects command library → curated-preset design |
-| §7 | F-034 AI Promo Video (Phase 1 built, Phase 2 deferred) + corrected migration numbers |
+| §7 | F-034 AI Promo Video (Phase 1 built; Phase 2 → `ai-promo-video.md`) + corrected migration numbers |
 | §8 | Cross-cutting: quota, cost, the 80 KB ceiling, verification protocol |
 | §9 | Findings from this merge — stale items, collisions, doc bugs |
 | §10 | Open decisions only the owner can settle |
@@ -155,12 +155,7 @@ The gap is **not mainly resolution or `image_size`** (an earlier draft over-weig
 | Task 3 — `AI Motion Styles.html` (16 presets) | ✅ done | `17fe997` | — |
 | Task 4 — admin "AI Promo Video" card | ✅ done | `f57479c` | **owner bench test = the gate for everything below** |
 | Task 6.1 — admin addon packs + `089_resource_packs` (applied) | ✅ done | `47748a4` | retailer-side billing switch |
-| Task 5 — `studio_styles.kind` + admin VIDEO CRUD + per-tier model map | 🔴 deferred | §7.4 | renumber migration to **≥106** first |
-| Task 6 — `AI_VIDEO` quota + plan_limits seeds | 🔴 deferred | §7.4 | — |
-| Task 7 — retailer routes + job + queue | 🔴 deferred | §7.4 | — |
-| Task 8 — mobile modal + entry points | 🔴 deferred | §7.4 | no F-034 mobile code exists |
-| Task 9 — Instagram Reels publish | 🔴 deferred | §7.4 | — |
-| Task 10 — docs sweep | 🔴 deferred | §7.4 | — |
+| Tasks 5–10 — retailer phase | ➡️ superseded | `ai-promo-video.md` | built there as T3–T8 (merged 2026-11-18, off) |
 
 ### G. Documentation
 
@@ -176,7 +171,7 @@ The gap is **not mainly resolution or `image_size`** (an earlier draft over-weig
 
 - **Built and live:** the image pipeline reaches the product photo; subtype in the prompt; 8-scene set; bench A/B; F-034 Phase 1 bench + admin addon packs; this doc merge.
 - **Built but not yet usable:** `garment-parts.ts` + audit tool (uncommitted, not wired).
-- **Waiting on the owner:** engine per row, compression ceiling, disclosure choice, F-034 bench sign-off.
+- **Waiting on the owner:** engine per row, compression ceiling, disclosure choice.
 - **Biggest correctness gap:** set completion (R1–R3) is designed and detected but not generating.
 - **Biggest quality gap:** the 69 KB ceiling (R5 5a) — nothing else in R5 matters until it's raised.
 
@@ -634,7 +629,7 @@ Reference sheets (static, no build step, open with `file:///`): `docs/ai-studio/
 
 ## §7 — F-034: AI Image→Video for Social Promo
 
-**Status: Phase 1 ✅ built (admin bench only). Phase 2 🔴 HARD-DEFERRED — owner decision 2026-09-03, admin-test-only.** Do not start Phase 2 until the owner bench-tests models × styles and says go.
+**Status: Phase 1 ✅ built (admin bench only). Phase 2 ✅ built, off, 2026-11-18 in `docs/tasks/pending/ai-promo-video.md` (that file wins).** The 2026-09-03 deferral below is history.
 **Supersedes** F-032 Phase B ("Product video"). **Master spec:** `docs/PRO-REQUIREMENTS.md` §30.
 
 > ⚠️ **2026-11-17: Phase 2 is now planned in `docs/tasks/pending/ai-promo-video.md`** — that file wins over §7.2 and §7.4 below. Fal endpoints in §7.2 were re-verified and several are dead (Seedance lite and Kling 2.1 deprecated, Wan 2.2 removal 2027-01-04); §7.4's "check at route / increment on success" quota is replaced by reserve-at-enqueue (RC-102); migration numbers in §7.5 are void (next free is 165). Instagram Reels publishing is part of that plan.
@@ -985,7 +980,7 @@ Changing this is a **storage + egress cost decision** for the owner, not a code 
 | 2 | **AI-completed component disclosure** (R6) | A strict gate / B complete + record / C complete + label | R1 shipping |
 | 3 | **Portrait enforcement** (R5 5b) | force 3:4 / 4:5 for garment scenes, or leave inherited | output quality |
 | 4 | **Engine per MODEL row** (R7) | Kontext (default, safe) vs `gemini_image` / `gemini_image_pro` per row | the whole quality call |
-| 5 | **F-034 Phase 2 go/no-go** after bench testing | 🔴 deferred since 2026-09-03 | video feature |
+| 5 | **F-034 Phase 2 go/no-go** after bench testing | ✅ go 2026-11-17; built, off (`ai-promo-video.md`) | video feature |
 | 6 | **Camera + light as real picker axes** (R4 step 1) | build now vs keep baked into scenes | effects library |
 | 7 | **Delete `AI Models and Scenes.hmtl`** (stale duplicate) | yes / keep | doc hygiene |
 | 8 | **Google Merchant Center push** (separate future feature — gives retailers free Google-hosted try-on without Kanchuki hosting anything) | worth scoping vs not | not blocking anything |
