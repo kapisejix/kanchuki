@@ -15,6 +15,8 @@ const m = vi.hoisted(() => ({
   refund: vi.fn(),
   spent: vi.fn(),
   setStatus: vi.fn(),
+  videoFind: vi.fn(),
+  slot: vi.fn(),
 }));
 
 vi.mock('@kanchuki/db', () => ({
@@ -22,7 +24,8 @@ vi.mock('@kanchuki/db', () => ({
     retailer: { findUniqueOrThrow: m.retailer },
     productPhoto: { findFirst: m.photo },
     product: { findFirst: m.product },
-    productVideo: { create: m.videoCreate },
+    productVideo: { create: m.videoCreate, findUnique: m.videoFind },
+    quotaReservation: { findFirst: m.slot },
     aiUsageLog: { create: m.usageCreate },
   },
 }));
@@ -49,6 +52,7 @@ const DATA: PromoVideoJobData = {
   seconds: 5,
 };
 const MODEL = { model_key: 'kling_2_6', endpoint: 'fal-ai/kling', price_usd_per_second: 0.07 };
+const USAGE = { billed_seconds: 5, tokens: null, cost_usd: 0.35, raw: null };
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -56,10 +60,14 @@ beforeEach(() => {
   m.modelForPlan.mockResolvedValue(MODEL);
   m.photo.mockResolvedValue({ id: 'ph1', url: 'https://cdn/photo.jpg', r2_key: 'k' });
   m.product.mockResolvedValue({ id: 'p1', _count: { videos: 0 } });
-  m.generate.mockResolvedValue({
-    mp4: Buffer.from('mp4'),
-    usage: { billed_seconds: 5, tokens: null, cost_usd: 0.35, raw: null },
+  // Real generateImageToVideo order: Fal done -> onFalComplete -> download/encode -> onUsage.
+  m.generate.mockImplementation(async (_url, opts) => {
+    await opts.onFalComplete?.();
+    opts.onUsage?.(USAGE);
+    return { mp4: Buffer.from('mp4'), usage: USAGE };
   });
+  m.videoFind.mockResolvedValue(null);
+  m.slot.mockResolvedValue({ state: 'RESERVED' });
   m.upload.mockResolvedValue(undefined);
   m.videoCreate.mockResolvedValue({ id: 'job_1', public_url: 'https://cdn/v.mp4' });
   m.usageCreate.mockResolvedValue({});
@@ -132,18 +140,72 @@ describe('handlePromoVideo', () => {
     );
   });
 
-  it.each([
-    ['Fal fails', () => m.generate.mockRejectedValue(new Error('fal 500 secret detail'))],
-    ['the upload fails', () => m.upload.mockRejectedValue(new Error('r2 down'))],
-    ['the row write fails', () => m.videoCreate.mockRejectedValue(new Error('db down'))],
-  ])('refunds and rethrows when %s, with a safe message', async (_n, arrange) => {
-    arrange();
+  it('refunds and rethrows when Fal itself fails, with a safe message', async () => {
+    m.generate.mockRejectedValue(new Error('fal 500 secret detail'));
     await expect(handlePromoVideo(DATA)).rejects.toThrow();
     expect(m.refund).toHaveBeenCalledWith('job_1', 'AI_VIDEO');
     expect(m.spent).not.toHaveBeenCalled();
     const last = m.setStatus.mock.calls.at(-1)?.[1];
     expect(last.status).toBe('failed');
-    expect(last.error).not.toMatch(/secret|fal 500|r2|db down/);
+    expect(last.error).not.toMatch(/secret|fal 500/);
+  });
+
+  it.each([
+    [
+      'the download/encode fails',
+      () =>
+        m.generate.mockImplementation(async (_u, opts) => {
+          await opts.onFalComplete?.();
+          opts.onUsage?.(USAGE);
+          throw new Error('Response exceeded cap');
+        }),
+    ],
+    ['the upload fails', () => m.upload.mockRejectedValue(new Error('r2 down'))],
+    ['the row write fails', () => m.videoCreate.mockRejectedValue(new Error('db down'))],
+  ])('keeps the slot spent (Fal billed) when %s after Fal finished', async (_n, arrange) => {
+    arrange();
+    await expect(handlePromoVideo(DATA)).rejects.toThrow();
+    expect(m.spent).toHaveBeenCalledWith('job_1', 'AI_VIDEO');
+    expect(m.refund).not.toHaveBeenCalled();
+    expect(m.usageCreate).toHaveBeenCalled();
+    const last = m.setStatus.mock.calls.at(-1)?.[1];
+    expect(last.status).toBe('failed');
+    expect(last.error).not.toMatch(/cap|r2|db down/);
+  });
+
+  it('a re-run of a stalled job whose video exists finishes without calling Fal', async () => {
+    m.videoFind.mockResolvedValue({ id: 'job_1', public_url: 'https://cdn/v.mp4' });
+    await handlePromoVideo(DATA);
+    expect(m.generate).not.toHaveBeenCalled();
+    expect(m.spent).toHaveBeenCalledWith('job_1', 'AI_VIDEO');
+    expect(m.refund).not.toHaveBeenCalled();
+    expect(m.setStatus).toHaveBeenLastCalledWith(
+      'job_1',
+      expect.objectContaining({ status: 'ready', video_id: 'job_1' }),
+    );
+  });
+
+  it.each(['SPENT', 'REFUNDED'])(
+    'a re-run whose slot is already %s never calls Fal again',
+    async (state) => {
+      m.slot.mockResolvedValue({ state });
+      await handlePromoVideo(DATA);
+      expect(m.generate).not.toHaveBeenCalled();
+      expect(m.setStatus).toHaveBeenLastCalledWith(
+        'job_1',
+        expect.objectContaining({ status: 'failed' }),
+      );
+    },
+  );
+
+  it('a failed "ready" status write does not mark a live video as failed', async () => {
+    m.setStatus.mockImplementation(async (_id, s) => {
+      if (s.status === 'ready') throw new Error('redis down');
+    });
+    await expect(handlePromoVideo(DATA)).resolves.toBeUndefined();
+    expect(m.spent).toHaveBeenCalled();
+    expect(m.refund).not.toHaveBeenCalled();
+    expect(m.setStatus.mock.calls.some(([, s]) => s.status === 'failed')).toBe(false);
   });
 
   it('still logs the Fal cost when the upload fails after a paid clip', async () => {

@@ -14,6 +14,7 @@ import {
   buildFalInput,
   clipCost,
   cropTrimToAspect,
+  falUrl,
   parseClipInfo,
 } from './fal-video.js';
 
@@ -77,6 +78,46 @@ describe('fal-video', () => {
     const info = await probe(mp4);
     expect(info).toMatch(/1080x1080/);
   }, 60_000);
+
+  it('refuses bytes that are not MP4 (demuxer pinned: no playlist/other-format sniffing)', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'fal-video-ts-'));
+    try {
+      const out = join(dir, 'src.ts');
+      await execFileAsync(FFMPEG, [
+        '-y',
+        '-f',
+        'lavfi',
+        '-i',
+        'testsrc=size=320x240:rate=25:duration=2',
+        '-c:v',
+        'mpeg2video',
+        '-f',
+        'mpegts',
+        out,
+      ]);
+      await expect(cropTrimToAspect(await readFile(out), '1:1', 1)).rejects.toThrow();
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  }, 60_000);
+});
+
+describe('falUrl', () => {
+  const FB = 'https://queue.fal.run/x/requests/1';
+  it.each([
+    ['https://queue.fal.run/x/requests/1/status', true],
+    ['https://fal.run/x', true],
+    ['https://evil.example/fal.run', false],
+    ['https://fal.run.evil.example/x', false],
+    ['https://evilfal.run/x', false],
+    ['http://queue.fal.run/x', false],
+    ['not a url', false],
+  ])('%s kept=%s (our API key goes with it)', (u, kept) => {
+    expect(falUrl(u, FB)).toBe(kept ? u : FB);
+  });
+  it('falls back when Fal sent nothing', () => {
+    expect(falUrl(undefined, FB)).toBe(FB);
+  });
 });
 
 // Endpoints as seeded by migration 166 (schemas read from llms.txt 2026-11-17).

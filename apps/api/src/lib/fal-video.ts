@@ -24,6 +24,23 @@ import { AppError } from '../plugins/error-handler.js';
 const execFileAsync = promisify(execFile);
 const FFMPEG_BIN = process.env.FFMPEG_BIN ?? (ffmpegPath as unknown as string) ?? 'ffmpeg';
 const FAL_BASE = 'https://queue.fal.run';
+/** A 10 s 1080p clip can pass the 25 MB photo cap; ffmpeg re-encodes it down anyway. */
+const MAX_CLIP_BYTES = 100 * 1024 * 1024;
+const FFMPEG_TIMEOUT_MS = 120_000;
+
+/** status_url / response_url from Fal's reply are fetched with our API key: Fal's own https hosts only. */
+export function falUrl(candidate: string | undefined, fallback: string): string {
+  if (!candidate) return fallback;
+  try {
+    const u = new URL(candidate);
+    if (u.protocol === 'https:' && (u.hostname === 'fal.run' || u.hostname.endsWith('.fal.run'))) {
+      return candidate;
+    }
+  } catch {
+    // unparseable: fall back
+  }
+  return fallback;
+}
 
 export type VideoAspect = '9:16' | '16:9' | '1:1' | '4:5';
 
@@ -269,8 +286,11 @@ async function runFalVideoTask(
   if (immediate) return immediate;
 
   const requestId = submit.request_id;
-  const statusUrl = submit.status_url || `${FAL_BASE}/${endpoint}/requests/${requestId}/status`;
-  const responseUrl = submit.response_url || `${FAL_BASE}/${endpoint}/requests/${requestId}`;
+  const statusUrl = falUrl(
+    submit.status_url,
+    `${FAL_BASE}/${endpoint}/requests/${requestId}/status`,
+  );
+  const responseUrl = falUrl(submit.response_url, `${FAL_BASE}/${endpoint}/requests/${requestId}`);
 
   const start = Date.now();
   const timeoutMs = 240_000; // video ≈ 60–180s
@@ -327,27 +347,37 @@ export async function cropTrimToAspect(
     const inPath = join(dir, 'in.mp4');
     const outPath = join(dir, 'out.mp4');
     await writeFile(inPath, inputBuf);
-    const { stderr } = await execFileAsync(FFMPEG_BIN, [
-      '-y',
-      '-i',
-      inPath,
-      '-t',
-      String(seconds),
-      '-vf',
-      `crop='min(iw,ih*${w}/${h})':'min(ih,iw*${h}/${w})',scale=${w}:${h},setsar=1`,
-      '-c:v',
-      'libx264',
-      '-crf',
-      '23',
-      '-preset',
-      'faster',
-      '-pix_fmt',
-      'yuv420p',
-      '-an',
-      '-movflags',
-      '+faststart',
-      outPath,
-    ]);
+    // Third-party bytes: pin the demuxer and allow only local file reads, so a playlist
+    // disguised as the clip cannot make ffmpeg open other files or URLs.
+    const { stderr } = await execFileAsync(
+      FFMPEG_BIN,
+      [
+        '-y',
+        '-protocol_whitelist',
+        'file',
+        '-f',
+        'mp4',
+        '-i',
+        inPath,
+        '-t',
+        String(seconds),
+        '-vf',
+        `crop='min(iw,ih*${w}/${h})':'min(ih,iw*${h}/${w})',scale=${w}:${h},setsar=1`,
+        '-c:v',
+        'libx264',
+        '-crf',
+        '23',
+        '-preset',
+        'faster',
+        '-pix_fmt',
+        'yuv420p',
+        '-an',
+        '-movflags',
+        '+faststart',
+        outPath,
+      ],
+      { timeout: FFMPEG_TIMEOUT_MS },
+    );
     // The `-i` banner on stderr already describes the input clip: no extra probe.
     return { mp4: await readFile(outPath), raw: parseClipInfo(stderr) };
   } finally {
@@ -361,6 +391,11 @@ export interface ImageToVideoOpts {
   aspect: VideoAspect;
   seconds: 5 | 6 | 8;
   onProgress?: (p: { progress: number; etaMs: number }) => void;
+  /** Fal has finished (and billed) the clip; awaited before we download it. */
+  onFalComplete?: () => Promise<void>;
+  /** Called once whenever Fal may have billed: after the clip (success or not), or on a poll
+   *  timeout (Fal keeps rendering). Cost is measured only when ffmpeg read the clip. */
+  onUsage?: (usage: ClipUsage) => void;
 }
 
 /**
@@ -379,14 +414,29 @@ export async function generateImageToVideo(
     opts.aspect,
     opts.seconds,
   );
-  const falVideoUrl = await runFalVideoTask(opts.model.endpoint, input, opts.onProgress);
-
-  const res = await ssrfSafeFetch(falVideoUrl);
-  if (!res.ok) {
-    throw new AppError('AI_VIDEO_FAILED', `Failed to fetch Fal video: ${res.status}`, 502);
+  let falVideoUrl: string;
+  try {
+    falVideoUrl = await runFalVideoTask(opts.model.endpoint, input, opts.onProgress);
+  } catch (err) {
+    // Our poll gave up but Fal does not stop: it still renders and bills the clip.
+    if (err instanceof AppError && err.status === 504) {
+      opts.onUsage?.(clipCost(opts.model, input, null));
+    }
+    throw err;
   }
-  const raw = await readCappedBuffer(res);
+  await opts.onFalComplete?.();
 
-  const { mp4, raw: info } = await cropTrimToAspect(raw, opts.aspect, opts.seconds);
-  return { mp4, usage: clipCost(opts.model, input, info) };
+  let info: RawClipInfo | null = null;
+  try {
+    const res = await ssrfSafeFetch(falVideoUrl, undefined, MAX_CLIP_BYTES);
+    if (!res.ok) {
+      throw new AppError('AI_VIDEO_FAILED', `Failed to fetch Fal video: ${res.status}`, 502);
+    }
+    const raw = await readCappedBuffer(res, MAX_CLIP_BYTES);
+    const out = await cropTrimToAspect(raw, opts.aspect, opts.seconds);
+    info = out.raw;
+    return { mp4: out.mp4, usage: clipCost(opts.model, input, info) };
+  } finally {
+    opts.onUsage?.(clipCost(opts.model, input, info));
+  }
 }

@@ -65,7 +65,11 @@ async function assertPublicHost(hostname: string): Promise<void> {
  * unless a threat model requires defending against an attacker who also
  * controls DNS TTLs in real time — upgrade if that changes.
  */
-export async function ssrfSafeFetch(inputUrl: string, init?: RequestInit): Promise<Response> {
+export async function ssrfSafeFetch(
+  inputUrl: string,
+  init?: RequestInit,
+  maxBytes = MAX_BYTES,
+): Promise<Response> {
   let currentUrl = inputUrl;
   for (let redirects = 0; ; redirects++) {
     const parsed = new URL(currentUrl);
@@ -96,14 +100,14 @@ export async function ssrfSafeFetch(inputUrl: string, init?: RequestInit): Promi
     }
 
     const contentLength = Number(res.headers?.get('content-length') ?? '0');
-    if (contentLength > MAX_BYTES) throw new Error(`Response too large: ${contentLength} bytes`);
+    if (contentLength > maxBytes) throw new Error(`Response too large: ${contentLength} bytes`);
 
     return res;
   }
 }
 
-/** Reads a Response body into a Buffer, enforcing MAX_BYTES even without a Content-Length header. */
-export async function readCappedBuffer(res: Response): Promise<Buffer> {
+/** Reads a Response body into a Buffer, enforcing the cap (default MAX_BYTES) even without a Content-Length header. */
+export async function readCappedBuffer(res: Response, maxBytes = MAX_BYTES): Promise<Buffer> {
   const reader = res.body?.getReader();
   if (!reader) return Buffer.from(await res.arrayBuffer());
   const chunks: Uint8Array[] = [];
@@ -112,9 +116,9 @@ export async function readCappedBuffer(res: Response): Promise<Buffer> {
     const { done, value } = await reader.read();
     if (done) break;
     total += value.byteLength;
-    if (total > MAX_BYTES) {
+    if (total > maxBytes) {
       await reader.cancel();
-      throw new Error(`Response exceeded ${MAX_BYTES} byte cap`);
+      throw new Error(`Response exceeded ${maxBytes} byte cap`);
     }
     chunks.push(value);
   }

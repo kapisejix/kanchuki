@@ -1,8 +1,8 @@
 // F-034 T5 — AI promo video job (studio queue, job name `promo-video`).
 // Spec: docs/tasks/pending/ai-promo-video.md §6.
 //
-// The route reserved an AI_VIDEO slot keyed by job_id. It stays spent only once the
-// product_videos row exists; every other exit hands it back in `finally` (RC-102).
+// The route reserved an AI_VIDEO slot keyed by job_id. It is spent the moment Fal reports the
+// clip done (Fal has billed us); every exit before that hands it back in `finally` (RC-102).
 // Fal's output URL is third-party: generateImageToVideo fetches it with ssrfSafeFetch +
 // readCappedBuffer and ffmpeg decodes and re-encodes it, so only our own H.264 bytes reach
 // R2, under a server-chosen key (no client key to verify, same as Ken Burns).
@@ -63,11 +63,46 @@ export async function handlePromoVideo(data: PromoVideoJobData): Promise<void> {
   const { job_id, retailer_id, product_id, photo_id } = data;
   const fail = (error = SAFE_ERROR) =>
     setStudioJobStatus(job_id, { status: 'failed', error, progress: 0, etaMs: 0 });
+  // Once the clip is live a status write must not turn it into "failed" (the retailer would pay again).
+  const ready = (video: { id: string; public_url: string }) =>
+    setStudioJobStatus(job_id, {
+      status: 'ready',
+      video_id: video.id,
+      url: video.public_url,
+      progress: 100,
+      etaMs: 0,
+    }).catch((err) => console.error(`[promo-video] ready status failed for ${job_id}:`, err));
+  const markSpent = () =>
+    markJobQuotaSpent(job_id, 'AI_VIDEO').catch((err) =>
+      console.error(`[promo-video] mark spent failed for ${job_id}:`, err),
+    );
 
   await setStudioJobStatus(job_id, { status: 'processing', progress: 0, etaMs: ESTIMATED_MS });
 
   let spent = false;
   try {
+    // BullMQ re-runs a stalled job (worker killed by a redeploy): never pay Fal twice for one slot.
+    const existing = await prisma.productVideo.findUnique({
+      where: { id: job_id },
+      select: { id: true, public_url: true },
+    });
+    if (existing) {
+      spent = true;
+      await markSpent();
+      await ready(existing);
+      return;
+    }
+    const slot = await prisma.quotaReservation.findFirst({
+      where: { job_id, resource_type: 'AI_VIDEO' },
+      select: { state: true },
+    });
+    if (slot && slot.state !== 'RESERVED') {
+      // ponytail: SPENT with no video row = the first run crashed after Fal billed; that slot is
+      // lost. Store Fal's clip URL on the job to resume the download if this shows up in practice.
+      await fail();
+      return;
+    }
+
     // Queue = trust boundary: re-check everything the route checked that can change.
     const retailer = await prisma.retailer.findUniqueOrThrow({
       where: { id: retailer_id },
@@ -101,7 +136,7 @@ export async function handlePromoVideo(data: PromoVideoJobData): Promise<void> {
       return;
     }
 
-    const { mp4, usage } = await generateImageToVideo(sourceUrl, {
+    const { mp4 } = await generateImageToVideo(sourceUrl, {
       model,
       motionPrompt: data.motion_prompt,
       aspect: data.aspect,
@@ -109,9 +144,13 @@ export async function handlePromoVideo(data: PromoVideoJobData): Promise<void> {
       onProgress: (p) => {
         setStudioJobStatus(job_id, { status: 'processing', ...p }).catch(() => {});
       },
+      // Fal has charged us from here: the slot is used even if our download/encode/upload fails.
+      onFalComplete: async () => {
+        spent = true;
+        await markSpent();
+      },
+      onUsage: (usage) => recordFalVideoUsage(retailer_id, model.model_key, usage),
     });
-    // Fal has charged us from here, whatever happens next.
-    recordFalVideoUsage(retailer_id, model.model_key, usage);
 
     const r2Key = R2_PATHS.productVideo(retailer_id, product_id, `ai-${job_id}.mp4`);
     await uploadBuffer(r2Key, mp4, 'video/mp4');
@@ -129,18 +168,7 @@ export async function handlePromoVideo(data: PromoVideoJobData): Promise<void> {
       },
     });
 
-    // Live from here: spent before the ready status so a sweep never refunds a visible clip.
-    spent = true;
-    await markJobQuotaSpent(job_id, 'AI_VIDEO').catch((err) =>
-      console.error(`[promo-video] mark spent failed for ${job_id}:`, err),
-    );
-    await setStudioJobStatus(job_id, {
-      status: 'ready',
-      video_id: video.id,
-      url: video.public_url,
-      progress: 100,
-      etaMs: 0,
-    });
+    await ready(video);
   } catch (err) {
     // Never log job.data or the photo URL; the provider's text stays out of the retailer's view.
     console.error(`[promo-video] job ${job_id} failed:`, err instanceof Error ? err.message : err);
