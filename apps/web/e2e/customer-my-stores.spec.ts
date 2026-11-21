@@ -201,6 +201,12 @@ test.beforeAll(async () => {
       return
     }
 
+    // /my-profile counts the wishlist for its Saved tile (RC-180).
+    if (path === '/v1/public/passport/wishlist' && req.method === 'GET') {
+      json(res, 200, { items: [] })
+      return
+    }
+
     // The nominee fields /my-profile reads on mount. GET is the half RC-026
     // did not cover: that fix added `preferences` to the proxy allowlist and a
     // PUT verb, and the stub below has answered the PUT ever since — but the
