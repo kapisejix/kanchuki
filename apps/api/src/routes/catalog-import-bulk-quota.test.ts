@@ -1,6 +1,4 @@
-// RC-102: bulk-create-products reserves items.length PRODUCT_UPLOAD slots up front with one
-// atomic reserveQuota, keeps them when every product is created, and hands them all back if
-// anything below the reservation throws (the old code charged only on success).
+// RC-178: bulk-create-products checks the shared live-product cap once for the whole batch.
 import Fastify from 'fastify';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -33,7 +31,8 @@ vi.mock('@kanchuki/db', () => ({
 }));
 vi.mock('../jobs/index.js', () => ({ addTaggingJob: m.addTaggingJob }));
 vi.mock('../lib/ai-usage.js', () => ({ recordAiUsage: vi.fn() }));
-vi.mock('../lib/quota.js', () => ({ checkQuota: vi.fn(), reserveQuota: m.reserve }));
+vi.mock('../lib/quota.js', () => ({ checkQuota: vi.fn() }));
+vi.mock('../lib/product-capacity.js', () => ({ assertProductCapacity: m.reserve }));
 vi.mock('../lib/sku.js', () => ({ createSkuSequencer: () => m.nextSku }));
 vi.mock('../lib/upload-guard.js', () => ({
   IMAGE_KINDS: [],
@@ -86,45 +85,26 @@ beforeEach(() => {
   m.auditCreate.mockResolvedValue(undefined);
 });
 
-describe('POST /catalog-import/bulk-create-products — PRODUCT_UPLOAD reservation', () => {
-  it('reserves the whole batch once and keeps it when every product is created', async () => {
+// RC-178: the batch is checked against the shared LIVE-product cap (assertProductCapacity),
+// not a lifetime counter and not the static PLAN_LIMITS; there is nothing to refund.
+describe('POST /catalog-import/bulk-create-products — live product cap', () => {
+  it('checks capacity once for the whole batch, then creates every product', async () => {
     const res = await post(3);
     expect(res.statusCode).toBe(201);
     expect(res.json().data.total_created).toBe(3);
-    expect(m.reserve).toHaveBeenCalledExactlyOnceWith(RETAILER_ID, 'PRODUCT_UPLOAD', 3);
-    expect(m.refund).not.toHaveBeenCalled();
+    expect(m.reserve).toHaveBeenCalledExactlyOnceWith(RETAILER_ID, 3);
   });
 
-  it('hands the whole reservation back when a product create throws', async () => {
-    m.productCreate.mockRejectedValue(new Error('db down'));
-    const res = await post(3);
-    expect(res.statusCode).toBe(500);
-    expect(m.reserve).toHaveBeenCalledTimes(1);
-    expect(m.refund).toHaveBeenCalledTimes(1);
-  });
-
-  it('hands it back when an uploaded photo does not verify (nothing was created)', async () => {
-    m.verifyUpload.mockRejectedValue(new Error('not yours'));
-    const res = await post(2);
-    expect(res.statusCode).toBe(500);
-    expect(m.productCreate).not.toHaveBeenCalled();
-    expect(m.refund).toHaveBeenCalledTimes(1);
-  });
-
-  it('a failing refund does not mask the original error', async () => {
-    m.productCreate.mockRejectedValue(new Error('db down'));
-    m.refund.mockRejectedValue(new Error('refund failed'));
-    const res = await post(1);
-    expect(res.statusCode).toBe(500);
-    expect(res.json().error.message).not.toContain('refund failed');
-  });
-
-  it('over quota: the 402 from reserveQuota stops before anything is verified or created', async () => {
-    m.reserve.mockRejectedValue(planLimitExceeded('product upload'));
+  it('over the cap: the 402 stops before anything is verified or created', async () => {
+    m.reserve.mockRejectedValue(planLimitExceeded('products'));
     const res = await post(2);
     expect(res.statusCode).toBe(402);
     expect(m.verifyUpload).not.toHaveBeenCalled();
     expect(m.productCreate).not.toHaveBeenCalled();
-    expect(m.refund).not.toHaveBeenCalled();
+  });
+
+  it('a create failure surfaces as an error (no counter left behind to leak)', async () => {
+    m.productCreate.mockRejectedValue(new Error('db down'));
+    expect((await post(1)).statusCode).toBe(500);
   });
 });

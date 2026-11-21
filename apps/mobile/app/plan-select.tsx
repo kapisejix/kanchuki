@@ -1,6 +1,5 @@
-import { formatPaiseShort, isPlanEnded } from '@kanchuki/shared';
+import { FREE_TIER_MAX_PRODUCTS, formatPaiseShort, isPlanEnded } from '@kanchuki/shared';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import {
@@ -13,19 +12,13 @@ import {
   Star,
   Zap,
 } from 'lucide-react-native';
-import {
-  ActivityIndicator,
-  Alert,
-  Linking,
-  ScrollView,
-  Text,
-  View,
-} from 'react-native';
-import { useScreenInsets } from '../src/lib/safe-area';
+import { useState } from 'react';
+import { ActivityIndicator, Alert, Linking, ScrollView, Text, View } from 'react-native';
 import { AnimatedPressable } from '../src/components/AnimatedPressable';
 import { GradientButton } from '../src/components/GradientButton';
 import { billingApi } from '../src/lib/api';
 import { apiMessage } from '../src/lib/errors';
+import { useScreenInsets } from '../src/lib/safe-area';
 import { useTheme } from '../src/lib/theme';
 import { WEB_URL } from '../src/lib/web-url';
 
@@ -44,7 +37,11 @@ function buildHighlights(limits?: {
 }): string[] {
   if (!limits) return [];
   const h: string[] = [];
-  h.push(limits.max_products == null ? 'Unlimited Products' : `${limits.max_products.toLocaleString('en-IN')} Products`);
+  h.push(
+    limits.max_products == null
+      ? 'Unlimited Products'
+      : `${limits.max_products.toLocaleString('en-IN')} Products`,
+  );
   h.push('Basic AI Tagging');
   h.push('WhatsApp Sharing');
   return h;
@@ -92,8 +89,10 @@ export default function PlanSelectScreen() {
   // picked a paid plan during their trial — tapping another plan skipped the
   // cancel-first flow entirely and created a second live Razorpay
   // subscription. Any non-cancelled row means "already has one".
-  const subscriptionRowStatus = (sub?.subscription as { status?: string } | null | undefined)?.status;
-  const hasLiveSubscription = subscriptionRowStatus === 'TRIAL' || subscriptionRowStatus === 'ACTIVE';
+  const subscriptionRowStatus = (sub?.subscription as { status?: string } | null | undefined)
+    ?.status;
+  const hasLiveSubscription =
+    subscriptionRowStatus === 'TRIAL' || subscriptionRowStatus === 'ACTIVE';
 
   const handleSelectPlan = async (plan: PlanKey) => {
     if (plan === currentPlan && !isCancelled) {
@@ -200,7 +199,9 @@ export default function PlanSelectScreen() {
           </View>
           {isTrial && sub?.trial_ends_at && (
             <Text className="text-[11px] text-heliotrope-500 mt-1 font-medium">
-              Free trial ends {new Date(sub.trial_ends_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+              {new Date(sub.trial_ends_at) < new Date()
+                ? `Free trial ended ${new Date(sub.trial_ends_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })} — you're on the free plan (up to ${FREE_TIER_MAX_PRODUCTS} products). Choose a plan to add more.`
+                : `Free trial ends ${new Date(sub.trial_ends_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}`}
             </Text>
           )}
           {isActive && (
@@ -209,8 +210,6 @@ export default function PlanSelectScreen() {
             </Text>
           )}
         </View>
-
-
 
         {isLoading ? (
           <View className="items-center py-10">
@@ -260,9 +259,7 @@ export default function PlanSelectScreen() {
               const Icon = meta.icon;
               const isCurrent = planKey === currentPlan && !isCancelled;
               const price = planData?.pricing.monthly ?? 0;
-              const priceDisplay = price > 0
-                ? formatPaiseShort(price)
-                : '—';
+              const priceDisplay = price > 0 ? formatPaiseShort(price) : '—';
               const highlights = buildHighlights(planData?.limits);
 
               return (

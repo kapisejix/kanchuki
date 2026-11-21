@@ -5,6 +5,7 @@ import { UNLIMITED, generateCollectionSlug } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { hardDeleteRetailer } from '../../jobs/purge-retailer-now.js';
+import { getProductCapacity } from '../../lib/product-capacity.js';
 import { buildStoreUrl } from '../../lib/store-urls.js';
 import { notFound, validationError } from '../../plugins/error-handler.js';
 
@@ -315,7 +316,16 @@ export const retailersSettingsRoutes: FastifyPluginAsync = async (server) => {
       };
     });
 
-    return { data: usage };
+    // RC-178: products are capped by LIVE count (lib/product-capacity), not the
+    // PRODUCT_UPLOAD counter, so show the number that is actually enforced.
+    const capacity = await getProductCapacity(retailerId);
+    const shown = usage.map((u) =>
+      u.resource_type === 'PRODUCT_UPLOAD'
+        ? { ...u, used: capacity.live, limit: capacity.cap, free_tier: capacity.freeTier }
+        : u,
+    );
+
+    return { data: shown };
   });
 
   // ─── DELETE /retailers/me ───────────────────────────────────────

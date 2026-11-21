@@ -44,6 +44,13 @@ export const UNLIMITED = 999999;
 /** `PLAN_LIMITS` value → something a DB int column / JSON can hold. */
 export const orUnlimited = (value: number): number => (Number.isFinite(value) ? value : UNLIMITED);
 
+/**
+ * Free tier (RC-177, owner decision 2026-11-18): once a trial or paid term has
+ * lapsed, the shop stays live but may hold at most this many live products until
+ * it pays. Read by the API capacity check and shown by the apps.
+ */
+export const FREE_TIER_MAX_PRODUCTS = 50;
+
 // ─── "Is this plan still live?" ───────────────────────────────────
 // RC-033: a CANCELLED term and a COMPLETED one are different events — churn
 // versus a term that ran its course — but every caller that asks "is this plan

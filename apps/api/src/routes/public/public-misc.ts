@@ -1,5 +1,6 @@
 // Auto-split from public.ts (scripts/check-route-size.sh) — route bodies verbatim.
 import { prisma } from '@kanchuki/db';
+import { PLAN_LIMITS, UNLIMITED, orUnlimited } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { withPublicCache } from '../../lib/public-cache.js';
@@ -49,12 +50,27 @@ export const publicMiscRoutes: FastifyPluginAsync = async (server) => {
       },
     },
     async () => {
-      const rows = await prisma.planPricing.findMany();
+      const [rows, uploadRows] = await Promise.all([
+        prisma.planPricing.findMany(),
+        prisma.planLimit.findMany({ where: { resource_type: 'PRODUCT_UPLOAD' } }),
+      ]);
       const byPlan = new Map(rows.map((r) => [r.plan, r]));
+      const uploadByPlan = new Map(uploadRows.map((r) => [r.plan, r.limit_per_period]));
+
+      // RC-179: the marketing pages showed product caps from the static PLAN_LIMITS
+      // (Pro "Unlimited") while the server enforced plan_limits (Pro 5,000). Same
+      // rule as lib/product-capacity: the smaller of the two; null = unlimited.
+      const maxProducts = (plan: Plan): number | null => {
+        const fromRow = uploadByPlan.get(plan);
+        const caps = [orUnlimited(PLAN_LIMITS[plan].max_products)];
+        if (fromRow !== undefined && fromRow !== -1) caps.push(fromRow);
+        const cap = Math.min(...caps);
+        return cap >= UNLIMITED ? null : cap;
+      };
 
       const data = PLANS.flatMap((plan) => {
         const row = byPlan.get(plan);
-        return row ? [{ plan, monthly: row.monthly_paise }] : [];
+        return row ? [{ plan, monthly: row.monthly_paise, max_products: maxProducts(plan) }] : [];
       });
 
       return { data };

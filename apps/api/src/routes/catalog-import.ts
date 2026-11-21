@@ -7,19 +7,14 @@ import {
   reserveAiCredits,
 } from '@kanchuki/ai';
 import { prisma, withRetry } from '@kanchuki/db';
-import {
-  PLAN_LIMITS,
-  SIZE_OPTIONS,
-  asAgeGroup,
-  asAudience,
-  normalizeAudience,
-} from '@kanchuki/shared';
+import { SIZE_OPTIONS, asAgeGroup, asAudience, normalizeAudience } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { addTaggingJob } from '../jobs/index.js';
 import { reserveTaggingQuota } from '../lib/ai-usage.js';
+import { assertProductCapacity } from '../lib/product-capacity.js';
 import { defaultStock } from '../lib/product-stock.js';
-import { checkQuota, reserveQuota } from '../lib/quota.js';
+import { checkQuota } from '../lib/quota.js';
 import { createSkuSequencer } from '../lib/sku.js';
 import {
   IMAGE_KINDS,
@@ -27,7 +22,7 @@ import {
   stagingKey,
   verifyUpload,
 } from '../lib/upload-guard.js';
-import { notFound, planLimitExceeded, validationError } from '../plugins/error-handler.js';
+import { notFound, validationError } from '../plugins/error-handler.js';
 
 // ─── Types ────────────────────────────────────────────────────────
 
@@ -345,7 +340,7 @@ export const catalogImportRoutes: FastifyPluginAsync = async (server) => {
     const { items, default_section_id } = parsed.data;
 
     // F-001d: resolve rack/shelf location + plan limits (retry on transient DB errors)
-    const { validSectionIds, retailer } = await withRetry(
+    const { validSectionIds } = await withRetry(
       async () => {
         const requestedSectionIds = [
           ...new Set(
@@ -386,112 +381,95 @@ export const catalogImportRoutes: FastifyPluginAsync = async (server) => {
       return candidate && validSectionIds.has(candidate) ? candidate : undefined;
     };
 
-    const limits = PLAN_LIMITS[retailer.plan as keyof typeof PLAN_LIMITS];
-    if (limits) {
-      const currentCount = retailer._count.products;
-      if (limits.max_products !== null && currentCount + items.length > limits.max_products) {
-        throw planLimitExceeded('products');
-      }
-    }
-    // F-010: real quota gate — seed-plan-limits.ts seeds a PRODUCT_UPLOAD row
-    // per plan. The PLAN_LIMITS check above stays authoritative for the exact
-    // per-retailer number; this is what RetailerLimitOverride/addons hook into.
-    // Reserved up front (RC-102) and handed back if anything below throws. Products a failed batch
-    // already created stay uncharged, exactly as before (the old increment only ran on success).
-    const refund = await reserveQuota(retailerId, 'PRODUCT_UPLOAD', items.length);
+    // RC-177/RC-178: same live-product cap as POST /products (this used to read
+    // the static PLAN_LIMITS and count soft-deleted rows).
+    await assertProductCapacity(retailerId, items.length);
     const created: Array<{ id: string; cropped_url: string }> = [];
-    try {
-      // Every photo must be this retailer's own detect-items output (catalog-import/<id>/),
-      // and its url is rebuilt from the key — never the client-sent cropped_url.
-      const cropUrls = new Map<string, string>();
-      await Promise.all(
-        [...new Set(items.map((i) => i.cropped_r2_key))].map(async (key) => {
-          const { url } = await verifyUpload({
-            retailerId,
-            r2Key: key,
-            allowed: IMAGE_KINDS,
-            maxBytes: 15 * 1024 * 1024,
-            prefix: `catalog-import/${retailerId}/`,
-          });
-          cropUrls.set(key, url);
-        }),
+    // Every photo must be this retailer's own detect-items output (catalog-import/<id>/),
+    // and its url is rebuilt from the key — never the client-sent cropped_url.
+    const cropUrls = new Map<string, string>();
+    await Promise.all(
+      [...new Set(items.map((i) => i.cropped_r2_key))].map(async (key) => {
+        const { url } = await verifyUpload({
+          retailerId,
+          r2Key: key,
+          allowed: IMAGE_KINDS,
+          maxBytes: 15 * 1024 * 1024,
+          prefix: `catalog-import/${retailerId}/`,
+        });
+        cropUrls.set(key, url);
+      }),
+    );
+
+    // Create products in parallel, 10 at a time
+
+    // Shares one count-per-prefix cache across the whole batch instead of a
+    // DB round trip per item (and avoids intra-batch SKU collisions when
+    // several items share a prefix, e.g. 5 kurtas in one import).
+    const nextSku = createSkuSequencer(retailerId);
+
+    const productData = await Promise.all(
+      items.map(async (item) => ({
+        retailer_id: retailerId,
+        status: 'AVAILABLE' as const,
+        category: item.category ?? undefined,
+        subtype: item.subtype ?? undefined,
+        name: item.product_name ?? undefined,
+        description: item.short_description ?? undefined,
+        sku: await nextSku(item.subtype ?? item.category),
+        primary_color: item.primary_color ?? undefined,
+        fabric_estimate: item.fabric_estimate ?? undefined,
+        pattern: item.pattern ?? undefined,
+        styles: item.styles ?? undefined,
+        fabrics: item.fabrics ?? undefined,
+        search_tags: item.search_tags ?? undefined,
+        sizes: item.sizes ?? undefined,
+        ...audienceFields(item.audience, item.kids_age_group),
+        price_min: item.price_min ?? undefined,
+        price_max: item.price_max ?? undefined,
+        section_id: resolveSectionId(item.section_id),
+        photos: {
+          create: {
+            retailer_id: retailerId,
+            is_primary: true,
+            r2_key: item.cropped_r2_key,
+            url: cropUrls.get(item.cropped_r2_key) as string,
+          },
+        },
+        // Stock starts at 1 per size; the retailer edits it later.
+        stock: {
+          create: defaultStock(item.sizes).map((row) => ({ ...row, retailer_id: retailerId })),
+        },
+      })),
+    );
+
+    for (let i = 0; i < productData.length; i += 10) {
+      const batch = productData.slice(i, i + 10);
+      const products = await Promise.all(
+        batch.map((data) =>
+          prisma.product.create({
+            data,
+            select: { id: true, photos: { take: 1, select: { url: true, r2_key: true } } },
+          }),
+        ),
       );
 
-      // Create products in parallel, 10 at a time
-
-      // Shares one count-per-prefix cache across the whole batch instead of a
-      // DB round trip per item (and avoids intra-batch SKU collisions when
-      // several items share a prefix, e.g. 5 kurtas in one import).
-      const nextSku = createSkuSequencer(retailerId);
-
-      const productData = await Promise.all(
-        items.map(async (item) => ({
-          retailer_id: retailerId,
-          status: 'AVAILABLE' as const,
-          category: item.category ?? undefined,
-          subtype: item.subtype ?? undefined,
-          name: item.product_name ?? undefined,
-          description: item.short_description ?? undefined,
-          sku: await nextSku(item.subtype ?? item.category),
-          primary_color: item.primary_color ?? undefined,
-          fabric_estimate: item.fabric_estimate ?? undefined,
-          pattern: item.pattern ?? undefined,
-          styles: item.styles ?? undefined,
-          fabrics: item.fabrics ?? undefined,
-          search_tags: item.search_tags ?? undefined,
-          sizes: item.sizes ?? undefined,
-          ...audienceFields(item.audience, item.kids_age_group),
-          price_min: item.price_min ?? undefined,
-          price_max: item.price_max ?? undefined,
-          section_id: resolveSectionId(item.section_id),
-          photos: {
-            create: {
-              retailer_id: retailerId,
-              is_primary: true,
-              r2_key: item.cropped_r2_key,
-              url: cropUrls.get(item.cropped_r2_key) as string,
-            },
-          },
-          // Stock starts at 1 per size; the retailer edits it later.
-          stock: {
-            create: defaultStock(item.sizes).map((row) => ({ ...row, retailer_id: retailerId })),
-          },
-        })),
-      );
-
-      for (let i = 0; i < productData.length; i += 10) {
-        const batch = productData.slice(i, i + 10);
-        const products = await Promise.all(
-          batch.map((data) =>
-            prisma.product.create({
-              data,
-              select: { id: true, photos: { take: 1, select: { url: true, r2_key: true } } },
-            }),
-          ),
-        );
-
-        for (const product of products) {
-          if (product.photos[0]) {
-            addTaggingJob({
-              product_id: product.id,
-              retailer_id: retailerId,
-              photo_url: product.photos[0].url,
-              r2_key: product.photos[0].r2_key,
-            }).catch((err: unknown) =>
-              request.log.warn({ err, productId: product.id }, 'Failed to queue AI tagging'),
-            );
-          }
-          created.push({
-            id: product.id,
-            cropped_url: product.photos[0]?.url ?? '',
-          });
+      for (const product of products) {
+        if (product.photos[0]) {
+          addTaggingJob({
+            product_id: product.id,
+            retailer_id: retailerId,
+            photo_url: product.photos[0].url,
+            r2_key: product.photos[0].r2_key,
+          }).catch((err: unknown) =>
+            request.log.warn({ err, productId: product.id }, 'Failed to queue AI tagging'),
+          );
         }
+        created.push({
+          id: product.id,
+          cropped_url: product.photos[0]?.url ?? '',
+        });
       }
-    } catch (err) {
-      await refund().catch((refundErr) => {
-        request.log.error({ err: refundErr }, 'Failed to refund product-upload quota');
-      });
-      throw err;
     }
 
     await prisma.auditLog.create({

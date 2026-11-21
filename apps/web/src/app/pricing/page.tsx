@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { PLAN_LIMITS, ADDON_PRICING } from '@kanchuki/shared'
 import { Navbar, Footer, Section, SectionHeader, AnimatedSection, FinalCta, PageHero } from '@/components/site/Chrome'
-import { getPlanPricing, rupees } from '@/lib/plan-pricing'
+import { getPlanPricing, rupees, type PlanPrices } from '@/lib/plan-pricing'
 import { PricingTable } from './PricingTable'
 
 // Live Starter price from plan_pricing; generic copy if the API is unavailable.
@@ -14,9 +14,10 @@ export async function generateMetadata(): Promise<Metadata> {
   }
 }
 
-// Numeric cells come from PLAN_LIMITS — the table billing enforces.
+// Numeric cells: products come from the API (the cap the server enforces, RC-179);
+// customers / links still from PLAN_LIMITS, which billing writes onto the retailer.
 const PLAN_ORDER = ['STARTER', 'GROWTH', 'PRO'] as const
-const limitRow = (label: string, key: 'max_products' | 'max_customers' | 'max_collection_links_per_month', suffix = '') => ({
+const limitRow = (label: string, key: 'max_customers' | 'max_collection_links_per_month', suffix = '') => ({
   label,
   values: PLAN_ORDER.map((p) => {
     const n: number = PLAN_LIMITS[p][key]
@@ -24,23 +25,29 @@ const limitRow = (label: string, key: 'max_products' | 'max_customers' | 'max_co
   }) as [string, string, string],
 })
 
-const ROWS: { label: string; values: [string, string, string] }[] = [
-  limitRow('Products', 'max_products'),
+const rowsFor = (pricing: PlanPrices | null): { label: string; values: [string, string, string] }[] => [
+  {
+    label: 'Products',
+    values: PLAN_ORDER.map((p) => {
+      if (!pricing) return '—'
+      const n = pricing[p].max_products
+      return n === null ? 'Unlimited' : n.toLocaleString('en-IN')
+    }) as [string, string, string],
+  },
   limitRow('Customers', 'max_customers'),
   limitRow('Collection links', 'max_collection_links_per_month', '/month'),
   { label: 'AI photo tagging', values: ['✅', '✅', '✅'] },
-  { label: 'AI photo cleanup & backgrounds', values: ['✅', '✅', '✅'] },
+  { label: 'One-tap background removal', values: ['—', '—', '✅'] },
   { label: 'Store page + QR code', values: ['✅', '✅', '✅'] },
   { label: 'Offline mode', values: ['✅', '✅', '✅'] },
   { label: 'AI search ("pink suit under ₹2000")', values: ['✅', '✅', '✅'] },
   { label: 'Customer preferences (colour / style / budget)', values: ['✅', '✅', '✅'] },
-  { label: 'WhatsApp automation', values: ['—', '—', '✅'] },
   { label: 'Multi-staff logins', values: ['—', '—', '✅'] },
   { label: 'Bulk onboarding (PDF / racks)', values: ['—', '✅', '✅'] },
 ]
 
 const oldWay = (from: string | null) => [
-  { label: 'Catalog photos', old: 'Photographer + editor, ₹2,000–5,000 per shoot', kanchuki: 'Included (AI cleanup)' },
+  { label: 'Catalog photos', old: 'Photographer + editor, ₹2,000–5,000 per shoot', kanchuki: 'Your phone camera + AI tags (Pro: background removal)' },
   { label: 'Writing product descriptions', old: 'Hours of typing or a hired assistant', kanchuki: 'Included (AI writes them)' },
   { label: 'A website', old: '₹10,000–50,000 + maintenance', kanchuki: 'Included (your store page + WhatsApp links)' },
   { label: 'Monthly cost', old: 'Easily ₹2,000+ with no results yet', kanchuki: from ? `From ${from}, results the same week` : 'Results the same week' },
@@ -87,7 +94,7 @@ export default async function PricingPage() {
           <AnimatedSection>
             <SectionHeader tag="Choose your plan" title="Every plan starts free for 14 days" />
           </AnimatedSection>
-          <PricingTable pricing={pricing} rows={ROWS} />
+          <PricingTable pricing={pricing} rows={rowsFor(pricing)} />
           <p className="text-center text-sm text-carbon/40 mt-8">14-day free trial · no credit card · UPI (GPay/PhonePe/PayTM), cards, netbanking · INR only · GST invoices.</p>
         </div>
       </Section>

@@ -22,7 +22,7 @@ import {
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import Link from 'next/link'
-import { getPlanPricing, type PlanPrices } from '@/lib/plan-pricing'
+import { getPlanPricing, productsLabel, type PlanPrices } from '@/lib/plan-pricing'
 import NearMeBar from '@/components/site/NearMeBar'
 import StoreCard from '@/components/site/StoreCard'
 import CategoryProductRows from '@/components/site/CategoryProductRows'
@@ -45,17 +45,17 @@ const PLANS: {
 }[] = [
   {
     name: 'Starter', planKey: 'STARTER',
-    features: ['500 products', 'Unlimited customers', '50 collection links/month', 'AI auto-tagging', 'Manual WhatsApp share'],
+    features: ['Unlimited customers', '50 collection links/month', 'AI auto-tagging', 'Manual WhatsApp share'],
     highlight: false, cta: 'Start Free Trial',
   },
   {
     name: 'Growth', planKey: 'GROWTH',
-    features: ['2,000 products', 'Unlimited customers', 'Unlimited collection links', 'Customer preferences', 'Priority support'],
+    features: ['Unlimited customers', 'Unlimited collection links', 'Customer preferences', 'Priority support'],
     highlight: true, cta: 'Start Free Trial',
   },
   {
     name: 'Pro', planKey: 'PRO',
-    features: ['Unlimited products', 'Unlimited customers', 'Unlimited collection links', 'WhatsApp automation', 'Multi-staff access', 'Campaign system', 'Dedicated support'],
+    features: ['Unlimited customers', 'Unlimited collection links', 'Multi-staff access', 'Campaign system', 'Dedicated support'],
     highlight: false, cta: 'Start Free Trial',
   },
 ]
@@ -444,7 +444,8 @@ function PricingSection() {
                   {monthly != null ? `₹${(monthly / 100).toLocaleString('en-IN')}/mo billed monthly` : 'Billed monthly'}
                 </div>
                 <ul className="space-y-3 mb-8">
-                  {plan.features.map((f) => (
+                  {/* RC-179: the product cap comes from the API (what the server enforces), never a hard-coded string. */}
+                  {(pricing ? [productsLabel(pricing[plan.planKey].max_products), ...plan.features] : plan.features).map((f) => (
                     <li key={f} className="flex items-start gap-2.5 text-sm">
                       <Check size={16} strokeWidth={1.5} className={`mt-0.5 shrink-0 ${plan.highlight ? 'text-volt' : 'text-cobalt-600'}`} />
                       <span className={plan.highlight ? 'text-cream/90' : 'text-carbon/70'}>{f}</span>

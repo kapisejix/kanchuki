@@ -6,11 +6,11 @@ import { z } from 'zod';
 import { maybeEnqueueFullSync, maybeEnqueueProductSync } from '../../jobs/catalog-sync.js';
 import { addEmbeddingJob, addTaggingJob } from '../../jobs/index.js';
 import { resolveColorFamily } from '../../lib/color-families.js';
+import { assertProductCapacity } from '../../lib/product-capacity.js';
 import { NEW_ARRIVAL_DAYS, isNewArrival } from '../../lib/product-flags.js';
 import { defaultStock, totalQuantity, writeStock, zeroStock } from '../../lib/product-stock.js';
-import { reserveQuota } from '../../lib/quota.js';
 import { IMAGE_KINDS, verifyUpload } from '../../lib/upload-guard.js';
-import { notFound, planLimitExceeded, validationError } from '../../plugins/error-handler.js';
+import { notFound, validationError } from '../../plugins/error-handler.js';
 import {
   CreateProductSchema,
   ListProductsQuerySchema,
@@ -31,23 +31,8 @@ export const productsCrudRoutes: FastifyPluginAsync = async (server) => {
   server.post('/', async (request, reply) => {
     const retailerId = request.retailerId;
 
-    const retailer = await prisma.retailer.findUniqueOrThrow({
-      where: { id: retailerId },
-      select: { max_products: true },
-    });
-    const currentCount = await prisma.product.count({
-      where: { retailer_id: retailerId, deleted_at: null },
-    });
-    if (currentCount >= retailer.max_products) {
-      throw planLimitExceeded('products');
-    }
-    // F-010: generalized quota gate — seed-plan-limits.ts seeds a real
-    // PRODUCT_UPLOAD row per plan (LIFETIME cap mirroring max_products), so
-    // this is live enforcement, not a no-op. Kept alongside the max_products
-    // check above (which stays authoritative for the exact number) since
-    // this is also what RetailerLimitOverride/addon purchases hook into.
-    // Reserved (RC-102) just before the create below, after validation, so an invalid body spends
-    // nothing; the create's failure path hands the slot back.
+    // RC-177/RC-178: live-product cap (plan, override, free tier) in one place.
+    await assertProductCapacity(retailerId);
 
     const body = CreateProductSchema.safeParse(request.body);
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
@@ -73,8 +58,6 @@ export const productsCrudRoutes: FastifyPluginAsync = async (server) => {
 
     await assertOwnRefs(retailerId, rest);
 
-    const refund = await reserveQuota(retailerId, 'PRODUCT_UPLOAD');
-
     let product: Awaited<ReturnType<typeof prisma.product.create>>;
     try {
       product = await prisma.product.create({
@@ -93,9 +76,6 @@ export const productsCrudRoutes: FastifyPluginAsync = async (server) => {
         include: { photos: true, section: { select: { name: true } } },
       });
     } catch (err) {
-      await refund().catch((refundErr) => {
-        request.log.error({ err: refundErr }, 'Failed to refund product-upload quota');
-      });
       if ((err as { code?: string } | null)?.code === 'P2002') {
         throw validationError('This SKU is already in use', 'sku');
       }

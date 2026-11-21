@@ -2,12 +2,13 @@ import type { Metadata } from 'next'
 import { Camera, Wand2, MessageCircle, Store, Heart, Package, ScanLine, WifiOff, Users } from 'lucide-react'
 import { Navbar, Footer, Section, SectionHeader, ColorCard, AnimatedSection, FinalCta, PageHero } from '@/components/site/Chrome'
 import { ACCENT_TEXT, ACCENT_SUBTLE } from '@/components/site/accents'
-import { PLAN_LIMITS } from '@kanchuki/shared'
 import { getPlanPricing, rupees } from '@/lib/plan-pricing'
 import { appLink } from '@/lib/deep-links'
 
 const perMonth = (p: { monthly: number } | undefined) => (p ? ` ${rupees(p.monthly)}/mo` : '')
-const count = (n: number) => (Number.isFinite(n) ? n.toLocaleString('en-IN') : 'unlimited')
+// RC-179: product caps come from the API (what the server enforces); undefined = API down.
+const count = (n: number | null | undefined) =>
+  n === undefined ? 'a set number of' : n === null ? 'unlimited' : n.toLocaleString('en-IN')
 
 export const metadata: Metadata = {
   title: 'For Retailers — AI Catalog & WhatsApp Selling for Clothing Stores | Kanchuki',
@@ -17,8 +18,8 @@ export const metadata: Metadata = {
 
 const FEATURES = [
   { icon: Camera, title: 'The catalog that writes itself', desc: 'Photograph a dress. AI adds category, subtype, colour, fabric and occasion, writes a short description, suggests a name, and generates an auto SKU. Edit anything it gets wrong — your picks always win.', accent: 'cobalt' as const },
-  { icon: Wand2, title: 'AI works in the background', desc: 'Click photos, set a price, tap save. While you go back to the shop floor, AI tags the product, cleans up the photo, and sets a good background. No loading screen to wait on.', accent: 'volt' as const },
-  { icon: Wand2, title: 'Photos that look like a big brand’s', desc: 'Background removal, auto-contrast backdrops (dark clothes get a light background and vice versa), rotate and retouch — no photographer needed.', accent: 'terracotta' as const },
+  { icon: Wand2, title: 'AI works in the background', desc: 'Click photos, set a price, tap save. While you go back to the shop floor, AI tags the product and writes its details. No loading screen to wait on.', accent: 'volt' as const },
+  { icon: Wand2, title: 'Clean, straight photos', desc: 'Rotate and crop before you save. On the Pro plan, remove the background in one tap — no photographer needed.', accent: 'terracotta' as const },
   { icon: MessageCircle, title: 'Sell on WhatsApp', desc: 'Select the pieces you want to show, get a collection link, share it on WhatsApp. Customers browse, favourite and tap Enquire to message you directly. No app for them, no website for you.', accent: 'iris' as const },
   { icon: Store, title: 'Your own store page', desc: 'Every shop gets a free storefront at its own link (e.g. kanchuki.app/store/your-shop) with your shop name, logo and categories, plus a store QR code you can print for the counter.', accent: 'moss' as const },
   { icon: Heart, title: 'Know your customers', desc: 'Save each customer’s colour, style, budget and occasions. Search your own racks in plain language: "pink cotton suit under ₹2000".', accent: 'mint' as const },
@@ -55,7 +56,7 @@ export default async function ForRetailersPage({
       <PageHero
         tag="For Retailers"
         title="Run your clothing shop online — from your phone, no website needed."
-        lead="You take a photo of a dress. Kanchuki writes the catalog entry, cleans the photo, and gives you a link to share on WhatsApp. Your customers browse it like a real store — and message you when they want something. Here's everything the app does for your shop."
+        lead="You take a photo of a dress. Kanchuki writes the catalog entry and gives you a link to share on WhatsApp. Your customers browse it like a real store — and message you when they want something. Here's everything the app does for your shop."
       />
 
       {refCode && (
@@ -69,9 +70,6 @@ export default async function ForRetailersPage({
               <p className="mt-3 font-display text-2xl font-semibold tracking-wide text-carbon">
                 {refCode}
               </p>
-              {/* ponytail: mobile onboarding does not read this param yet — the manual
-                  code field it already has (T4) works today; auto-prefilling from this
-                  deep link is apps/mobile work gated on an EAS build (board §5B.2). */}
               <a
                 href={appLink('onboarding', { ref: refCode })}
                 className="mt-5 inline-flex items-center justify-center bg-volt text-carbon font-semibold px-6 py-3 rounded-full hover:bg-volt-600 transition active:scale-[0.97]"
@@ -109,9 +107,9 @@ export default async function ForRetailersPage({
             <SectionHeader tag="Pricing" title="Pricing that fits a small shop" />
           </AnimatedSection>
           <ul className="space-y-3 text-carbon/70 text-sm sm:text-base leading-relaxed">
-            <li><strong className="text-carbon">Starter{perMonth(price?.STARTER)}</strong> — one shop, {count(PLAN_LIMITS.STARTER.max_products)} products, unlimited customers, AI tagging included.</li>
-            <li><strong className="text-carbon">Growth{perMonth(price?.GROWTH)}</strong> — {count(PLAN_LIMITS.GROWTH.max_products)} products, unlimited customers, unlimited links.</li>
-            <li><strong className="text-carbon">Pro{perMonth(price?.PRO)}</strong> — {count(PLAN_LIMITS.PRO.max_products)} products, WhatsApp automation, multi-staff, campaign system.</li>
+            <li><strong className="text-carbon">Starter{perMonth(price?.STARTER)}</strong> — one shop, {count(price?.STARTER.max_products)} products, unlimited customers, AI tagging included.</li>
+            <li><strong className="text-carbon">Growth{perMonth(price?.GROWTH)}</strong> — {count(price?.GROWTH.max_products)} products, unlimited customers, unlimited links.</li>
+            <li><strong className="text-carbon">Pro{perMonth(price?.PRO)}</strong> — {count(price?.PRO.max_products)} products, multi-staff, campaign system, one-tap background removal.</li>
           </ul>
           <p className="mt-6 text-sm text-carbon/50">14-day free trial, no credit card. UPI, cards, netbanking. GST invoices. Full details on <a href="/pricing" className="text-cobalt-600 font-medium hover:underline">the pricing page</a>.</p>
         </div>
