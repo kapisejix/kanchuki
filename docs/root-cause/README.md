@@ -9,7 +9,7 @@
 1. **Before editing any feature area, read `root-cause issues.md` for that area first.** Most entries in this tracker are *whole classes* of bug (a silent fallback, an unguarded `fetch`, a teardown that pruned destinations but not entry points). If you are touching that area, the same class is probably still reachable.
 2. **A shipped bug gets a new `RC-###` entry — one per ROOT CAUSE, not per symptom.** If one cause produced several visible symptoms, that is one entry with the symptoms listed under it.
 3. **Every entry needs all five parts:** Component → Commit → Symptom → Root cause → Fix → **Proof** (the test or command that fails without the fix). An entry with no proof is a claim, not a record.
-4. **Add the RC row to the tracker table in `CLAUDE.md`** and **reference the RC ID in the commit message** when you land the fix.
+4. **Add the RC row to the tracker table in `docs/PROJECT-MEMORY.md`** and **reference the RC ID in the commit message** when you land the fix.
 5. **Re-test every RC before a production release** — that is what the checklist below is for.
 
 **Format reminder:** append new entries at the TOP of `root-cause issues.md`. The `RC-###` ID is stable forever — never reuse or renumber one.
@@ -19,13 +19,13 @@
 Rule 4 is only worth having if the table can be *checked*, so both halves are one command each. Run from the repo root:
 
 ```bash
-# RC IDs that have a full entry but no row in the CLAUDE.md table  → must print nothing
+# RC IDs that have a full entry but no row in the docs/PROJECT-MEMORY.md table  → must print nothing
 comm -23 <(cat 'docs/root-cause/root-cause issues.md' 'docs/root-cause/root-cause issues (part 2, RC-030 and older).md' | grep -oE '^## RC-[0-9]+' | sed 's/## //' | sort -u) \
-         <(awk '/^\| RC-[0-9]+ \|/{print $2}' CLAUDE.md | sort -u)
+         <(awk '/^\| RC-[0-9]+ \|/{print $2}' docs/PROJECT-MEMORY.md | sort -u)
 
 # rows in the table that have no entry  → must print nothing
 comm -13 <(cat 'docs/root-cause/root-cause issues.md' 'docs/root-cause/root-cause issues (part 2, RC-030 and older).md' | grep -oE '^## RC-[0-9]+' | sed 's/## //' | sort -u) \
-         <(awk '/^\| RC-[0-9]+ \|/{print $2}' CLAUDE.md | sort -u)
+         <(awk '/^\| RC-[0-9]+ \|/{print $2}' docs/PROJECT-MEMORY.md | sort -u)
 ```
 
 The first command is the one that matters — it is what catches a fixed bug whose row was never added. It found `RC-037` on 2026-09-25, two days after that row should have landed: the entry existed, the commit message used the ID, and rule 4 was simply not followed.

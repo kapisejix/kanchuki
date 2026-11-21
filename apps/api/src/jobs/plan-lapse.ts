@@ -43,6 +43,24 @@ function lapsedWhere(now: Date): Prisma.RetailerWhereInput {
   };
 }
 
+// RC-177: the same rule as `lapsedWhere`, for one row already in memory. A lapsed
+// shop is on the free tier (FREE_TIER_MAX_PRODUCTS live products) until a payment
+// or an admin trial extension makes this false again — nothing is stored, so there
+// is nothing to restore. Keep the three branches in step with `lapsedWhere` above.
+export function isLapsed(
+  r: { plan_status: string; trial_ends_at: Date | null; plan_expires_at: Date | null },
+  now = new Date(),
+): boolean {
+  if (r.plan_status === 'TRIAL') return r.trial_ends_at !== null && r.trial_ends_at < now;
+  if (r.plan_status === 'ACTIVE') {
+    return (
+      r.plan_expires_at !== null &&
+      r.plan_expires_at < new Date(now.getTime() - ACTIVE_LAPSE_GRACE_MS)
+    );
+  }
+  return r.plan_expires_at === null || r.plan_expires_at < now;
+}
+
 export async function handlePlanLapse(now = new Date()): Promise<PlanLapseResult> {
   const where = lapsedWhere(now);
   const lapsed = await prisma.retailer.findMany({ where, select: { id: true, plan: true } });

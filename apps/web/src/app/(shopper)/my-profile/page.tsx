@@ -10,7 +10,7 @@ import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import {
   AlertTriangle, Check, ChevronRight, Database, Download, Eye, Heart, Loader2, MapPin,
-  MessageCircle, Phone, ShieldCheck, SlidersHorizontal, Sparkles, Trash2, UserRound,
+  Phone, ShieldCheck, SlidersHorizontal, Sparkles, Trash2, UserRound,
 } from 'lucide-react'
 import { getPassportSession, type PassportAccount } from '@/lib/passport-client'
 import { BTN_PRIMARY, BTN_SECONDARY, CARD, INPUT, ITEM, LIST, ROW_BTN, Section } from '../ui'
@@ -26,8 +26,8 @@ interface ProfileData {
     viewed_at: string
     retailer: { shop_name: string }
   }>
-  wishlist_count: number
-  enquiry_count: number
+  /** null = could not be read */
+  wishlist_count: number | null
 }
 
 // Fallback only — the live list comes from
@@ -103,12 +103,15 @@ export default function MyProfilePage() {
         credentials: 'include',
       })
       const rvData = rvRes.ok ? await rvRes.json() : { items: [] }
+      // RC-180: the Saved tile was a hard-coded 0. Count the real wishlist; a failed
+      // read shows "—", never a number we do not have.
+      const wlRes = await fetch('/api/passport/wishlist', { credentials: 'include' })
+      const wlData = wlRes.ok ? await wlRes.json() : null
 
       setProfile({
         account,
         recently_viewed: rvData.items ?? [],
-        wishlist_count: 0, // TODO: fetch from wishlist endpoint
-        enquiry_count: 0, // TODO: fetch from enquiries
+        wishlist_count: wlData ? (wlData.items ?? []).length : null,
       })
       // Initialize style chips from account preferences
       setSelectedStyles((account as any).pref_styles ?? [])
@@ -136,11 +139,20 @@ export default function MyProfilePage() {
     )
   }
 
+  // RC-180: this used to wait 500 ms and save nothing. A non-2xx resolves rather
+  // than throws, so check res.ok (RC-026).
   async function savePreferences() {
     setSaving(true)
     try {
-      // TODO: wire to PUT /passport/preferences endpoint
-      await new Promise((r) => setTimeout(r, 500)) // placeholder
+      const res = await fetch('/api/passport/preferences', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pref_styles: selectedStyles }),
+      })
+      if (!res.ok) throw new Error(`preferences update failed: ${res.status}`)
+      setStylesNotice('Saved.')
+    } catch {
+      alert('Could not save your style preferences. Please try again.')
     } finally {
       setSaving(false)
     }
@@ -252,8 +264,7 @@ export default function MyProfilePage() {
   const { account, recently_viewed } = profile
   const stats = [
     { label: 'Viewed', value: recently_viewed.length, icon: Eye },
-    { label: 'Saved', value: profile.wishlist_count, icon: Heart },
-    { label: 'Enquiries', value: profile.enquiry_count, icon: MessageCircle },
+    { label: 'Saved', value: profile.wishlist_count ?? '—', icon: Heart },
   ]
 
   return (
@@ -286,7 +297,7 @@ export default function MyProfilePage() {
               </p>
             </div>
           </div>
-          <dl className="grid grid-cols-3 gap-2 mt-5">
+          <dl className="grid grid-cols-2 gap-2 mt-5">
             {stats.map(({ label, value, icon: Icon }) => (
               <div key={label} className="flex flex-col-reverse rounded-2xl bg-lavender-50 border border-lavender-100 px-2 py-3 text-center">
                 <dt className="text-xs text-heliotrope-500">{label}</dt>

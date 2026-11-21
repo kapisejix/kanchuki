@@ -42,6 +42,7 @@ vi.mock('../../jobs/index.js', () => ({
 }));
 vi.mock('../../lib/color-families.js', () => ({ resolveColorFamily: vi.fn() }));
 vi.mock('../../lib/quota.js', () => ({ reserveQuota: m.reserve }));
+vi.mock('../../lib/product-capacity.js', () => ({ assertProductCapacity: vi.fn() }));
 vi.mock('../../lib/upload-guard.js', () => ({ IMAGE_KINDS: [], verifyUpload: m.verifyUpload }));
 vi.mock('../../lib/product-stock.js', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../lib/product-stock.js')>()),

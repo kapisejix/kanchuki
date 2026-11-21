@@ -23,14 +23,14 @@ const GROUPS: { tag: string; items: { q: string; a: string }[] }[] = [
     items: [
       { q: 'How does AI tagging work?', a: 'You photograph a dress. AI looks at the photo and adds the category, subtype, colour, fabric, and occasion, plus a short description and an auto SKU. You can edit anything it writes — your edits always win.' },
       { q: 'What if I have 3,000 SKUs from a supplier?', a: 'Use bulk onboarding: import the supplier PDF/catalog, or photograph your racks shelf-by-shelf. AI detects each item. No typing.' },
-      { q: 'My photos aren\'t professional. Is that okay?', a: 'Yes. AI cleans them — removes the background, picks a contrasting backdrop, fills hollow necklines. Clean catalog photos without a photographer.' },
+      { q: 'My photos aren\'t professional. Is that okay?', a: 'Yes. A clear phone photo in good light is enough — AI reads it and writes the details. You can rotate and crop before saving, and on the Pro plan remove the background in one tap.' },
       { q: 'Can I mark things SOLD or reserved?', a: 'Yes, with one tap — or scan the rack tag (works even offline).' },
     ],
   },
   {
     tag: 'Sharing & selling',
     items: [
-      { q: 'How do customers buy?', a: 'They browse, favourite, and tap Enquire — then message you directly on WhatsApp. Stores that connect checkout let customers pay online too (UPI, cards, netbanking).' },
+      { q: 'How do customers buy?', a: 'They browse, favourite, and tap Enquire — then message you directly on WhatsApp. The sale happens at your shop, the way it does today — Kanchuki takes no commission.' },
       { q: 'What is a collection link?', a: 'You pick products, tap share, and Kanchuki makes a WhatsApp link for that set — a festival collection, new arrivals, a sale. Send it to one customer or a whole group.' },
       { q: 'Do I get my own store page?', a: 'Yes — every shop gets a free store page at its own link (e.g. kanchuki.app/store/your-shop) plus a QR code you can print for the counter.' },
     ],

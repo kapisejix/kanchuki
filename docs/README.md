@@ -41,7 +41,7 @@ This file is the map. If you are looking for something and it is not listed here
 
 1. **New task** → add a file to `tasks/pending/`. Start it with a one-line `**Status:**` header.
 2. **Task finished** → move the file to `tasks/done/`, flip its `**Status:**` header, append the detail table to the latest `docs/build-log/part-N.md` (see `BUILD-LOG.md`'s Parts table), and update the row in `CLAUDE.md`'s What's-Built index.
-3. **Found a bug?** → fix it, then add a new `RC-###` entry to `root-cause/root-cause issues.md` (one entry per **root cause**, not per symptom), add its row to the RC table in `CLAUDE.md`, and reference the RC ID in the commit message.
+3. **Found a bug?** → fix it, then add a new `RC-###` entry to `root-cause/root-cause issues.md` (one entry per **root cause**, not per symptom), add its row to the RC table in `docs/PROJECT-MEMORY.md`, and reference the RC ID in the commit message.
 4. **Before editing any feature area** → read `root-cause/README.md` and its regression checklist for that area.
 5. **Old history snapshots (`references/history/`, git only) are never current truth.** They record what was believed at the time. Live status lives in `BUILD-LOG.md` + `CLAUDE.md`.
 6. **Feature status has one source of truth: the code.** Docs claim status; `git log` and the code decide. Stale status headers have repeatedly caused wrong reports — check the code.

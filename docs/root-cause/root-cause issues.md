@@ -12,6 +12,38 @@
 
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
+## RC-180 — `/my-profile` showed a save and a count it never had: "Save Preferences" waited 500 ms and wrote nothing, "Saved" and "Enquiries" were hard-coded `0`
+
+- **Component:** `apps/web/src/app/(shopper)/my-profile/page.tsx` (`savePreferences`, `loadProfile`, stats tiles).
+- **Symptom:** found 2026-11-18 by the after-launch review (`docs/marketing/after-launch/06` B8/B9). A shopper's style chips looked saved and were gone on reload; the profile always read 0 saved / 0 enquiries.
+- **Root cause:** placeholders shipped as UI (`// TODO` + `setTimeout`), RC-030/RC-058 shape: an action that succeeds while doing nothing. Enquiries carry only a typed phone, not the shopper account, so no truthful count exists.
+- **Fix:** `savePreferences` PUTs `pref_styles` to `/api/passport/preferences` and checks `res.ok` (RC-026); Saved = length of `GET /api/passport/wishlist` (a dash when it cannot be read); the Enquiries tile is removed.
+- **Proof:** 2 new tests in `my-profile/__tests__/page.test.tsx` (PUT body, wishlist count, no Enquiries tile); web `tsc` clean. Not browser-tested.
+
+## RC-179 — Marketing pages stated plan contents from hand-written strings and the static `PLAN_LIMITS`, not from what the server enforces or what the app still does
+
+- **Component:** `apps/web/src/app/{for-retailers,pricing,for-customers,faq,how-it-works,about}/page.tsx`, `app/sections/MarketingSections.tsx`, `lib/plan-pricing.ts`, API `routes/public/public-misc.ts` (`GET /public/pricing`).
+- **Symptom:** found 2026-11-18 (review B4-B7): "AI cleans the photo / auto-contrast backdrops / fills hollow necklines" (photos saved raw since 2026-10-09, ghost-mannequin removed 2026-10-24, background removal Pro-only); Pro "Unlimited products" (server: 5,000); "WhatsApp automation" (F-035 not built); "add to cart and pay online" (checkout removed 2026-08-31).
+- **Root cause:** product caps on the site came from `PLAN_LIMITS` while the server enforces `plan_limits`; feature claims were free text with nothing tying them to build status, so removals never reached the copy.
+- **Fix:** `GET /public/pricing` returns `max_products` per plan (same min rule as `lib/product-capacity`); pricing, home and for-retailers render it via `productsLabel`; false claims rewritten (Pro: one-tap background removal; the sale happens at the shop).
+- **Proof:** web marketing tests 175 passed, API 3515 passed, `tsc` clean in api/web. Copy not browser-checked; claims are still free text (no guard against the next removal).
+
+## RC-178 — The product cap was a LIFETIME `PRODUCT_UPLOAD` counter that never went down, and catalog-import kept its own copy of the cap against the static `PLAN_LIMITS`
+
+- **Component:** `apps/api/src/routes/products/products-crud.ts` (`POST /`), `routes/catalog-import.ts` (bulk create), `routes/retailers/retailers-settings.ts` (`GET /me/usage`), new `lib/product-capacity.ts`.
+- **Symptom:** found 2026-11-18 (review B2). `plan_limits.PRODUCT_UPLOAD` = 500 / 2,000 / 5,000 `LIFETIME`; delete, purge and sale never released a slot, so a Starter shop that had ever created 500 products was blocked for good with 50 live. Catalog-import also counted soft-deleted rows and ignored overrides.
+- **Root cause:** RC-102 moved the cap onto an atomic usage counter (right for paid AI calls) for a resource whose limit is a stock, not a flow; three readers each held their own rule.
+- **Fix:** one `getProductCapacity` / `assertProductCapacity`: live products (`deleted_at IS NULL`) against min(`max_products`, PRODUCT_UPLOAD plan row or override; period ignored), used by POST /products, bulk create and `/me/usage`. No refund path left to leak.
+- **Proof:** `lib/product-capacity.test.ts` (live count, cap edge, batch, min rule, unlimited) + rewritten route tests; API 3515 passed. **Limits:** count-then-create, so two concurrent creates can each take the last slot (no money involved). AI tagging credits are still LIFETIME in prod: owner changes `AI_TAGGING_CALL` period to MONTH in Admin -> Plan Limits (review B3, config only).
+
+## RC-177 — A lapsed trial or paid term only lowered `plan` to STARTER, so every expired shop kept Starter free forever with no boundary at all
+
+- **Component:** `apps/api/src/jobs/plan-lapse.ts` (`isLapsed`, new), `lib/product-capacity.ts`, `packages/shared` (`FREE_TIER_MAX_PRODUCTS`), `apps/mobile/app/plan-select.tsx`.
+- **Symptom:** prod read 2026-11-18: 16 of 19 `TRIAL` retailers past `trial_ends_at`, all still fully usable; a cancelled Starter subscriber the same. Mobile said "Free trial ends <past date>".
+- **Root cause:** RC-082 defined "lapsed" only as "drop to STARTER"; nothing below Starter existed, so lapsing a Starter shop changed nothing.
+- **Fix (owner decision 2026-11-18: free tier):** `isLapsed()` (same three branches as `lapsedWhere`) puts a lapsed shop on a free tier of `FREE_TIER_MAX_PRODUCTS` = 50 live products, enforced in `assertProductCapacity` (402 `FREE_TIER_LIMIT` with an upgrade message). Computed at read time, nothing stored, so a payment or an admin trial extension restores it with no extra write. Storefront, links and existing products stay live. Mobile shows "Free trial ended ... free plan (up to 50 products)".
+- **Proof:** `isLapsed` table tests + free-tier tests in `lib/product-capacity.test.ts`; mobile `tsc` clean, mobile tests 734 passed. **Limits:** only the product count is gated (other Starter features stay on, by the chosen option); `isLapsed` and `lapsedWhere` are two copies of one rule kept side by side; not device-tested, needs an EAS build for the mobile text.
+
 ## RC-176 — The 3-videos-per-product cap counted only finished `product_videos` rows, and an AI promo clip's row lands only after Fal finishes (minutes), so concurrent requests all passed the check and paid Fal for clips past the cap
 
 - **Component:** `apps/api/src/lib/studio-shoot.ts` (`MAX_VIDEOS_PER_PRODUCT`, `claimPromoVideoSlot` / `releasePromoVideoSlot` / `promoVideoInFlight`), `routes/products/products-video-ai.ts` (`POST /:id/promo-video`), `jobs/generate-promo-video.ts`, `routes/growth/growth-videos.ts` (upload-url, confirm, Ken Burns generate).

@@ -15,7 +15,7 @@ const CAN_DO = [
   { icon: Eye, title: 'Look at every angle', desc: 'Each product shows its photos, colour, fabric and sizes.', accent: 'volt' as const },
   { icon: Heart, title: 'Save what you like', desc: 'Tap the heart to favourite pieces and come back to them.', accent: 'iris' as const },
   { icon: MessageCircle, title: 'Ask the shop directly', desc: 'Every product has an Enquire button — message the owner about price, size, or availability.', accent: 'terracotta' as const },
-  { icon: ShoppingCart, title: 'Buy when checkout is on', desc: 'Some stores let you add to cart and pay online. If not, just enquire — the owner replies.', accent: 'moss' as const },
+  { icon: ShoppingCart, title: 'Buy at the shop', desc: 'Agree the price and size with the owner on WhatsApp, then pick it up or pay the shop directly. Kanchuki takes no commission.', accent: 'moss' as const },
 ]
 
 const STEPS = [
@@ -23,7 +23,7 @@ const STEPS = [
   'Tap a category or scroll to see everything.',
   'Tap a product to see its photos, colours, fabric and sizes.',
   'Favourite what you like, then tap Enquire to ask about it.',
-  'Checkout, if the store has it enabled — add to cart, pay by UPI/card/netbanking.',
+  'The owner replies on WhatsApp — agree the details and buy from the shop.',
 ]
 
 export default function ForCustomersPage() {

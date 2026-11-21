@@ -33,6 +33,7 @@ vi.mock('@kanchuki/db', () => ({
 vi.mock('../jobs/index.js', () => ({ addTaggingJob: m.addTaggingJob }));
 vi.mock('../lib/ai-usage.js', () => ({ recordAiUsage: vi.fn() }));
 vi.mock('../lib/quota.js', () => ({ checkQuota: vi.fn(), reserveQuota: m.reserve }));
+vi.mock('../lib/product-capacity.js', () => ({ assertProductCapacity: vi.fn() }));
 vi.mock('../lib/sku.js', () => ({ createSkuSequencer: () => m.nextSku }));
 vi.mock('../lib/upload-guard.js', () => ({
   IMAGE_KINDS: [],

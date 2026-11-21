@@ -18,7 +18,7 @@ const BELIEFS = [
 const BUILT = [
   'A photo-to-catalog AI that tags category, colour, fabric, occasion, description and SKU from a single photo.',
   'WhatsApp collection links and store pages that need no website.',
-  'Photo cleanup — background removal and auto-contrast backdrops.',
+  'One-tap background removal on the Pro plan.',
   'Offline-first mobile app built for budget Android phones and patchy networks.',
   'Admin control center — the platform protects store data, supports deletion, and follows India\'s data norms.',
 ]

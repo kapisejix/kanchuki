@@ -1,5 +1,3 @@
-// RC-102: POST /products takes its PRODUCT_UPLOAD slot with one atomic reserveQuota (not
-// checkQuota + a later incrementUsage). The slot is spent only if the product row is created.
 import Fastify from 'fastify';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -38,7 +36,7 @@ vi.mock('../../jobs/index.js', () => ({
   addTaggingJob: m.addTaggingJob,
 }));
 vi.mock('../../lib/color-families.js', () => ({ resolveColorFamily: vi.fn() }));
-vi.mock('../../lib/quota.js', () => ({ reserveQuota: m.reserve }));
+vi.mock('../../lib/product-capacity.js', () => ({ assertProductCapacity: m.reserve }));
 vi.mock('../../lib/upload-guard.js', () => ({ IMAGE_KINDS: [], verifyUpload: m.verifyUpload }));
 vi.mock('../../lib/product-stock.js', async (orig) => ({
   ...(await orig<typeof import('../../lib/product-stock.js')>()),
@@ -78,56 +76,32 @@ beforeEach(() => {
   m.addTaggingJob.mockResolvedValue(undefined);
 });
 
-describe('POST /products — PRODUCT_UPLOAD reservation', () => {
-  it('reserves once and keeps the slot when the product is created', async () => {
+// RC-178: POST /products checks the shared LIVE-product cap (assertProductCapacity), not a
+// lifetime PRODUCT_UPLOAD counter, so there is no slot to keep or hand back.
+describe('POST /products — live product cap', () => {
+  it('checks capacity once, then creates the product', async () => {
     const res = await post();
     expect(res.statusCode).toBe(201);
-    expect(m.reserve).toHaveBeenCalledExactlyOnceWith(RETAILER_ID, 'PRODUCT_UPLOAD');
-    expect(m.refund).not.toHaveBeenCalled();
+    expect(m.reserve).toHaveBeenCalledExactlyOnceWith(RETAILER_ID);
   });
 
-  it('hands the slot back when the create throws', async () => {
-    m.productCreate.mockRejectedValue(new Error('db down'));
-    const res = await post();
-    expect(res.statusCode).toBe(500);
-    expect(m.reserve).toHaveBeenCalledTimes(1);
-    expect(m.refund).toHaveBeenCalledTimes(1);
-  });
-
-  it('hands the slot back on a duplicate SKU (P2002)', async () => {
-    m.productCreate.mockRejectedValue(Object.assign(new Error('dup'), { code: 'P2002' }));
-    const res = await post();
-    expect(res.statusCode).toBe(422);
-    expect(m.refund).toHaveBeenCalledTimes(1);
-  });
-
-  it('a failing refund does not mask the create error', async () => {
-    m.productCreate.mockRejectedValue(Object.assign(new Error('dup'), { code: 'P2002' }));
-    m.refund.mockRejectedValue(new Error('refund failed'));
-    const res = await post();
-    expect(res.statusCode).toBe(422);
-  });
-
-  it('keeps the slot when only the stock write fails (the product exists)', async () => {
-    m.writeStock.mockRejectedValue(new Error('stock down'));
-    const res = await post();
-    expect(res.statusCode).toBe(201);
-    expect(m.refund).not.toHaveBeenCalled();
-  });
-
-  it('spends nothing on an invalid body or an upload that does not verify', async () => {
+  it('an invalid body or an upload that does not verify creates nothing', async () => {
     expect((await post({ photo_r2_key: '' })).statusCode).toBe(422);
     m.verifyUpload.mockRejectedValue(new Error('not yours'));
     expect((await post()).statusCode).toBe(500);
-    expect(m.reserve).not.toHaveBeenCalled();
+    expect(m.productCreate).not.toHaveBeenCalled();
   });
 
-  it('over quota: the 402 from reserveQuota stops the create', async () => {
+  it('over the cap: the 402 stops the create', async () => {
     const { planLimitExceeded } = await import('../../plugins/error-handler.js');
-    m.reserve.mockRejectedValue(planLimitExceeded('product upload'));
+    m.reserve.mockRejectedValue(planLimitExceeded('products'));
     const res = await post();
     expect(res.statusCode).toBe(402);
     expect(m.productCreate).not.toHaveBeenCalled();
-    expect(m.refund).not.toHaveBeenCalled();
+  });
+
+  it('a duplicate SKU is still a 422', async () => {
+    m.productCreate.mockRejectedValue(Object.assign(new Error('dup'), { code: 'P2002' }));
+    expect((await post()).statusCode).toBe(422);
   });
 });

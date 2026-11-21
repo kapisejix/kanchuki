@@ -2,7 +2,7 @@
 # Root-cause tracker guard — the command that re-derives the "owed" list
 #
 # Added 2026-09-26 (RC-046). The tracker already had two hand-written `comm`
-# checks in docs/root-cause/README.md for the entry<->CLAUDE.md-row invariant,
+# checks in docs/root-cause/README.md for the entry<->docs/PROJECT-MEMORY.md-row invariant,
 # but the section that listed "RC IDs referenced in commits with no entry yet"
 # (the owed list) was prose that nothing re-derived. It went stale: it listed
 # RC-028…RC-038 as owed for days after every one of those branches had merged
@@ -10,8 +10,8 @@
 # command that re-derives it.
 #
 # It checks four things (all must hold):
-#   1. every `## RC-###` entry has a row in the CLAUDE.md tracker table
-#   2. every CLAUDE.md row has an entry
+#   1. every `## RC-###` entry has a row in the docs/PROJECT-MEMORY.md tracker table
+#   2. every docs/PROJECT-MEMORY.md row has an entry
 #   3. the entry set is contiguous RC-001..RC-<max> (no gaps)
 #   4. the owed list is empty, and the README's owed section agrees with that
 #
@@ -38,7 +38,7 @@ RC_FILES=(
   "docs/root-cause/root-cause issues (part 2, RC-030 and older).md"
 )
 README="docs/root-cause/README.md"
-TABLE="CLAUDE.md"
+TABLE="docs/PROJECT-MEMORY.md"
 # The README's owed section must carry exactly this when the owed list is empty.
 MARKER='**Currently: none.**'
 
@@ -71,15 +71,15 @@ echo -e "${YELLOW}🔍 Root-cause tracker guard: re-deriving the ID sets...${NC}
 # ─── Check 1/2: entry <-> row, both directions ───────────────────────────────
 missing_rows="$(comm -23 <(printf '%s\n' "$ENTRIES") <(printf '%s\n' "$ROWS"))"
 if [ -n "$missing_rows" ]; then
-  echo -e "${RED}  ✖ entry with no CLAUDE.md tracker row:${NC}"
+  echo -e "${RED}  ✖ entry with no docs/PROJECT-MEMORY.md tracker row:${NC}"
   printf '%s\n' "$missing_rows" | sed 's/^/      /'
-  echo -e "${RED}    → add the row to the RC table in CLAUDE.md (rule 4).${NC}"
+  echo -e "${RED}    → add the row to the RC table in docs/PROJECT-MEMORY.md (rule 4).${NC}"
   HAS_ERROR=1
 fi
 
 orphan_rows="$(comm -13 <(printf '%s\n' "$ENTRIES") <(printf '%s\n' "$ROWS"))"
 if [ -n "$orphan_rows" ]; then
-  echo -e "${RED}  ✖ CLAUDE.md row with no entry:${NC}"
+  echo -e "${RED}  ✖ docs/PROJECT-MEMORY.md row with no entry:${NC}"
   printf '%s\n' "$orphan_rows" | sed 's/^/      /'
   echo -e "${RED}    → the row points at an entry that does not exist.${NC}"
   HAS_ERROR=1
@@ -113,7 +113,7 @@ else
   if [ -n "$owed" ]; then
     echo -e "${RED}  ✖ RC IDs named in commits with NO tracker entry (the owed list):${NC}"
     printf '%s\n' "$owed" | sed 's/^/      /'
-    echo -e "${RED}    → each ID above is spoken for. Add its entry + CLAUDE.md row${NC}"
+    echo -e "${RED}    → each ID above is spoken for. Add its entry + docs/PROJECT-MEMORY.md row${NC}"
     echo -e "${RED}      and list it in the README's owed section until it lands.${NC}"
     HAS_ERROR=1
   elif ! grep -qF "$MARKER" "$README"; then

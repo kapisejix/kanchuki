@@ -79,7 +79,7 @@ export default function HowItWorksPage() {
             <p>You never wait on a loading screen. After you save, the app quietly:</p>
             <ol className="list-decimal list-inside space-y-2 pl-2">
               <li>Tags the product (name, category, colour, fabric, occasion, description, SKU).</li>
-              <li>Cleans the photo — removes the background, sets an auto-contrast backdrop.</li>
+              <li>On the Pro plan, removes the background in one tap when you want it.</li>
               <li>Makes the catalog live.</li>
             </ol>
             <p>If you need to correct anything, edit it — AI never overwrites your changes.</p>
