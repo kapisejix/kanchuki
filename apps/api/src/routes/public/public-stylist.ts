@@ -9,6 +9,7 @@ import { formatPriceRange } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { Sentry } from '../../instrument.js';
+import { isLapsed } from '../../jobs/plan-lapse.js';
 import { withPublicCache } from '../../lib/public-cache.js';
 import { notFound, validationError } from '../../plugins/error-handler.js';
 
@@ -110,7 +111,13 @@ export const publicStylistRoutes: FastifyPluginAsync = async (server) => {
       // Find retailer
       const retailer = await prisma.retailer.findFirst({
         where: { public_slug: slug, deleted_at: null, is_suspended: false },
-        select: { id: true, shop_name: true },
+        select: {
+          id: true,
+          shop_name: true,
+          plan_status: true,
+          trial_ends_at: true,
+          plan_expires_at: true,
+        },
       });
       if (!retailer) throw notFound('Retailer');
 
@@ -371,10 +378,13 @@ export const publicStylistRoutes: FastifyPluginAsync = async (server) => {
 
       const fallback = (reason: string, err?: unknown) => {
         request.log.warn({ err, reason, retailer_id: retailer.id }, 'stylist fallback (no AI)');
-        Sentry.captureException(err ?? new Error(`stylist fallback: ${reason}`), {
-          tags: { feature: 'ai_stylist', fallback_reason: reason },
-          level: 'warning',
-        });
+        // A lapsed plan is an expected state, not an AI outage to alert on.
+        if (reason !== 'plan_ended') {
+          Sentry.captureException(err ?? new Error(`stylist fallback: ${reason}`), {
+            tags: { feature: 'ai_stylist', fallback_reason: reason },
+            level: 'warning',
+          });
+        }
         return reply.status(200).send({
           data: {
             fallback: true,
@@ -394,6 +404,8 @@ export const publicStylistRoutes: FastifyPluginAsync = async (server) => {
           },
         });
       };
+
+      if (isLapsed(retailer)) return fallback('plan_ended');
 
       // Call Claude for recommendations
       const anthropicKey = process.env.ANTHROPIC_API_KEY;

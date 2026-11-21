@@ -1,5 +1,6 @@
 import { embedProduct, formatVectorLiteral } from '@kanchuki/ai';
 import { prisma } from '@kanchuki/db';
+import { isAiBlocked } from '../lib/quota.js';
 import type { EmbeddingJobData } from './index.js';
 
 export async function handleGenerateEmbedding(data: EmbeddingJobData): Promise<void> {
@@ -23,6 +24,7 @@ export async function handleGenerateEmbedding(data: EmbeddingJobData): Promise<v
   });
 
   if (!product) return; // Product deleted before job ran — skip silently
+  if (await isAiBlocked(retailer_id)) return;
 
   const { embedding, input_hash } = await embedProduct(product);
 

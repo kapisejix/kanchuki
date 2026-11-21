@@ -12,6 +12,14 @@
 
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
+## RC-181 — A lapsed trial or paid term still ran paid AI, because the quota check only looked at plan limits
+
+- **Component:** `apps/api/src/lib/quota.ts` (`isAiBlocked`, `assertAiAllowed`, called from `checkQuota`, `reserveQuota`, `reserveJobQuota`), `jobs/tag-product.ts`, `jobs/generate-embedding.ts`, `routes/search.ts`, `routes/public/public-stylist.ts`.
+- **Symptom:** found 2026-11-21 after RC-177. A lapsed shop dropped to Starter and was capped on product count, but kept spending AI budget through its Starter quota, and embedding, semantic search and the public stylist had no plan check at all.
+- **Root cause:** RC-177 gated only product count. Quota answered "is there limit left", never "is this shop's term still live", and AI paths outside the quota layer had no shared gate.
+- **Fix:** metered AI resources are refused with 402 `AI_PLAN_ENDED` before the limit is read, so a row, override or -1 cannot reopen them. Tagging saves the error and does not retry, embedding skips, search uses text search, the stylist returns its non-AI fallback with no Sentry alert. Computed at read time, so paying or an admin trial extension restores AI.
+- **Proof:** new `lib/quota-lapsed-ai.test.ts`; API 3526 passed, 9 skipped; `tsc` and Biome clean. **Limits:** mocked DB only, no real Postgres or device test. Add-on pack purchase is not blocked for lapsed shops, and app screens may still show remaining AI quota.
+
 ## RC-180 — `/my-profile` showed a save and a count it never had: "Save Preferences" waited 500 ms and wrote nothing, "Saved" and "Enquiries" were hard-coded `0`
 
 - **Component:** `apps/web/src/app/(shopper)/my-profile/page.tsx` (`savePreferences`, `loadProfile`, stats tiles).
