@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { prisma } from '@kanchuki/db';
 import type { QuotaPeriod, QuotaResourceType } from '@kanchuki/db';
+import { isLapsed } from '../jobs/plan-lapse.js';
 import { AppError, planLimitExceeded } from '../plugins/error-handler.js';
 
 // F-010 (docs/PRO-REQUIREMENTS.md): one gate + one counter for every metered
@@ -33,6 +34,36 @@ const METERED: ReadonlySet<QuotaResourceType> = new Set([
   'GBP_REVIEW_REPLY', // audit #9: a reply is a real Google write; no row must not mean unlimited
 ]);
 const NO_ROW_METERED: { limit: number; period: QuotaPeriod } = { limit: 0, period: 'MONTH' };
+
+// Paid AI work a shop may not start once its trial or paid term has lapsed. Checked before the
+// limit, so a row, an override or an explicit -1 cannot reopen it; paying or an admin trial
+// extension does, because nothing is stored.
+const AI_RESOURCES: ReadonlySet<QuotaResourceType> = new Set([
+  'AI_TAGGING_CALL',
+  'STUDIO_SHOOT',
+  'TRY_ON_GENERATION',
+  'BG_REMOVAL',
+  'IMAGE_CROP',
+  'AI_CUSTOM_TEMPLATE',
+  'AI_VIDEO',
+]);
+
+export async function isAiBlocked(retailerId: string): Promise<boolean> {
+  const retailer = await prisma.retailer.findUniqueOrThrow({
+    where: { id: retailerId },
+    select: { plan_status: true, trial_ends_at: true, plan_expires_at: true },
+  });
+  return isLapsed(retailer);
+}
+
+async function assertAiAllowed(retailerId: string, resourceType: QuotaResourceType): Promise<void> {
+  if (!AI_RESOURCES.has(resourceType) || !(await isAiBlocked(retailerId))) return;
+  throw new AppError(
+    'AI_PLAN_ENDED',
+    'Your free trial or plan has ended, so AI features are off. Choose a plan to turn them back on.',
+    402,
+  );
+}
 
 export async function effectiveLimit(
   retailerId: string,
@@ -150,6 +181,7 @@ export async function checkQuota(
   resourceType: QuotaResourceType,
   amount = 1,
 ): Promise<void> {
+  await assertAiAllowed(retailerId, resourceType);
   const effective = await effectiveLimit(retailerId, resourceType);
   if (!effective || effective.limit === -1) return; // unlimited, or not yet configured
 
@@ -213,6 +245,7 @@ export async function reserveQuota(
   resourceType: QuotaResourceType,
   amount = 1,
 ): Promise<((give?: number) => Promise<void>) & { reserved: boolean }> {
+  await assertAiAllowed(retailerId, resourceType);
   const effective = await effectiveLimit(retailerId, resourceType);
   if (!effective || effective.limit === -1)
     return Object.assign(async () => {}, { reserved: false });
@@ -260,6 +293,7 @@ export async function reserveJobQuota(
   jobId: string,
   amount = 1,
 ): Promise<void> {
+  await assertAiAllowed(retailerId, resourceType);
   const effective = await effectiveLimit(retailerId, resourceType);
   if (!effective || effective.limit === -1) return;
   const limit = effective.limit;

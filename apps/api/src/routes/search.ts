@@ -5,6 +5,7 @@ import { extractBudgetFromQuery, normalizeSearchQuery } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { isNewArrival } from '../lib/product-flags.js';
+import { isAiBlocked } from '../lib/quota.js';
 import { validationError } from '../plugins/error-handler.js';
 
 const SearchSchema = z.object({
@@ -53,7 +54,8 @@ export const searchRoutes: FastifyPluginAsync = async (server) => {
       similarity?: number;
     }>;
 
-    if (embeddingCount > 0) {
+    // A lapsed shop keeps the plain text search in the else branch.
+    if (embeddingCount > 0 && !(await isAiBlocked(retailerId))) {
       // ── Semantic vector search ─────────────────────────────────
       const normalizedQuery = normalizeSearchQuery(query);
       const queryVector = await embedSearchQuery(normalizedQuery);

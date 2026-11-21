@@ -73,6 +73,7 @@ const served = (credits: number) => ({
 
 beforeEach(() => {
   vi.resetAllMocks();
+  m.retailerFind.mockResolvedValue({ plan: 'GROWTH' });
   rows.clear();
   m.exec.mockImplementation(fakeExec);
   m.upsert.mockResolvedValue({});

@@ -8,6 +8,7 @@ import { resolveAttributeNames } from '../lib/default-attributes.js';
 import { resolveCategoryId } from '../lib/default-categories.js';
 import { bumpPhotoUrlVersion, preserveOriginalPhoto } from '../lib/photo-cleanup.js';
 import { withUniqueSku } from '../lib/sku.js';
+import { AppError } from '../plugins/error-handler.js';
 import { maybeEnqueueProductSync } from './catalog-sync.js';
 import { addEmbeddingJob } from './index.js';
 import type { TaggingJobData } from './index.js';
@@ -195,6 +196,8 @@ export async function handleTagProduct(data: TaggingJobData): Promise<void> {
     } catch (persistErr) {
       console.error(`Failed to persist ai_tag_error for product ${product_id}:`, persistErr);
     }
+    // A lapsed plan will not fix itself on retry; the saved message tells the retailer why.
+    if (err instanceof AppError && err.code === 'AI_PLAN_ENDED') return;
     throw err; // re-throw so BullMQ records the failure and retries
   } finally {
     await quota?.settle();

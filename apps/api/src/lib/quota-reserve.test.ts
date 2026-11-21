@@ -109,6 +109,7 @@ const count = () => [...rows.values()].reduce((a, b) => a + b, 0);
 
 beforeEach(() => {
   vi.resetAllMocks();
+  m.retailerFind.mockResolvedValue({ plan: 'GROWTH' });
   rows.clear();
   reservations.clear();
   m.exec.mockImplementation(fakeExec);
