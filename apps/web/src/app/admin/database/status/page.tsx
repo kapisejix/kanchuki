@@ -68,6 +68,7 @@ type DatabaseStatusResponse = {
       connected: boolean
       record_count: number
       db_size: string | null
+      failed?: boolean
     }
     guardrails: {
       active: boolean
@@ -392,7 +393,7 @@ export default function DatabaseStatusPage() {
                 <AlertCircle size={16} className="mt-0.5 shrink-0" />
                 <span>
                   Backup status unavailable. R2 storage not configured — set
-                  {' '}<code className="text-[10px] font-mono">CLOUDFLARE_R2_*</code> env vars to enable backup monitoring.
+                  {' '}<code className="text-[10px] font-mono">R2_*</code> env vars to enable backup monitoring.
                 </span>
               </div>
             ) : (
@@ -461,7 +462,7 @@ export default function DatabaseStatusPage() {
                   ) : (
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gray-100 text-gray-500">
                       <WifiOff size={10} />
-                      Not Configured
+                      {status.vault.failed ? 'Failed' : 'Not Configured'}
                     </span>
                   )}
                 </div>
@@ -485,7 +486,9 @@ export default function DatabaseStatusPage() {
               <p className="text-[11px] text-gray-400 pt-2 border-t border-gray-100">
                 {status.vault.connected
                   ? `Vault DB is connected with ${status.vault.record_count} soft-delete records stored.`
-                  : 'Vault DB is not configured. Set VAULT_DATABASE_URL to enable deletion vault.'}
+                  : status.vault.failed
+                    ? 'Vault is configured but failing. Deletion snapshots may not be saved.'
+                    : 'Vault DB is not configured. Set VAULT_DATABASE_URL to enable deletion vault.'}
               </p>
             </div>
           </DbCard>
