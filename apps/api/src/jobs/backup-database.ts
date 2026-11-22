@@ -1,15 +1,12 @@
 /**
  * Phase S: Scheduled database backup job with integrity verification and alerts.
  *
- * Runs daily at 2 AM via BullMQ repeat schedule. Designed for the Railway runtime
- * where Docker/pg_dump is NOT available — it logs a warning if Docker isn't present
- * and relies on Supabase point-in-time recovery for the actual snapshot.
+ * Runs daily at 2 AM via BullMQ repeat schedule.
  *
  * The job:
  * 1. Checks if Docker + pg_dump are available (backup script path)
  * 2. If available: runs the full backup → R2 upload → integrity check
- * 3. If not available: logs a warning and creates a metadata-only audit entry
- * 4. On failure: creates an alert in audit_log + increments a failure counter
+ * 3. On failure: creates an alert in audit_log + increments a failure counter
  */
 
 import { execSync } from 'node:child_process';
@@ -76,16 +73,8 @@ export async function handleBackupDatabase(
 
   try {
     if (!hasBackupPrerequisites()) {
-      // Docker not available — this is expected in Railway runtime.
-      // Create a metadata-only audit entry and rely on Supabase PITR.
-      console.warn(
-        '[backup] Docker not available — backup script cannot run. Supabase PITR is the active backup mechanism.',
-      );
-      result.success = true; // Not a failure — expected in Railway
-      result.duration_seconds = (Date.now() - startTime) / 1000;
-
-      await logBackupAudit('SCHEDULED_BACKUP', result, null);
-      return result;
+      // The catch below logs this and raises the alert.
+      throw new Error('Backup prerequisites unavailable');
     }
 
     // Count tables for integrity verification

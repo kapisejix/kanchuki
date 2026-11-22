@@ -454,7 +454,7 @@ export default function DatabaseBackupPage() {
           <p className="text-sm text-gray-500">No backups found</p>
           <p className="text-xs text-gray-400 mt-1">
             Backups are stored in Cloudflare R2 under the <code className="text-gray-500 font-mono">backups/</code> prefix.
-            Run <code className="text-gray-500 font-mono">pnpm db:backup</code> from a machine with Docker to create the first backup.
+            Run <code className="text-gray-500 font-mono">pnpm db:backup:local</code> from a machine with Docker to create the first backup.
           </p>
           {canWrite && (
             <motion.button

@@ -25,7 +25,7 @@ export const adminBackupsRoutes: FastifyPluginAsync = async (server) => {
   //
   // Because pg_dump requires Docker (not available in the Railway runtime),
   // actual backup/restore execution happens via the CLI scripts:
-  //   pnpm db:backup
+  //   pnpm db:backup:local
   //   pnpm db:restore --backup-key <key>
   // The API endpoints manage listing, metadata, and audit logging.
 
@@ -165,7 +165,7 @@ export const adminBackupsRoutes: FastifyPluginAsync = async (server) => {
         },
         environment: {
           docker_available: false, // Always false in Railway runtime
-          backup_command: 'pnpm db:backup',
+          backup_command: 'pnpm db:backup:local',
           restore_command: 'pnpm db:restore --backup-key <key>',
         },
       },
@@ -188,7 +188,7 @@ export const adminBackupsRoutes: FastifyPluginAsync = async (server) => {
         metadata: {
           label: label ?? null,
           triggered_from: 'admin-ui',
-          note: 'Backup requires Docker runtime. Run the CLI script manually: pnpm db:backup',
+          note: 'Backup requires Docker runtime. Run the CLI script manually: pnpm db:backup:local',
         },
         ip_address: request.ip,
       },
@@ -201,10 +201,10 @@ export const adminBackupsRoutes: FastifyPluginAsync = async (server) => {
         status: 'logged',
         message: 'Backup request logged. Execute the backup via CLI:',
         commands: [
-          `pnpm db:backup${label ? ` --label "${label}"` : ''}`,
-          '# Or with custom env: npx tsx scripts/backup-database.ts',
+          `pnpm db:backup:local${label ? ` --label "${label}"` : ''}`,
+          '# Store the output file securely',
         ],
-        cli_command: `pnpm db:backup${label ? ` --label "${label}"` : ''}`,
+        cli_command: `pnpm db:backup:local${label ? ` --label "${label}"` : ''}`,
         audit_logged: true,
       },
     };

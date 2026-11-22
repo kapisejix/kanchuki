@@ -291,7 +291,7 @@ export const adminDataRoutes: FastifyPluginAsync = async (server) => {
   // Database Health Dashboard — shows primary DB stats, replica lag,
   // backup info, and vault DB status. All queries are read-only and
   // run against the primary or replica as appropriate.
-  server.get('/database/status', async (_request) => {
+  server.get('/database/status', async (request) => {
     // ── Primary DB stats ──────────────────────────────────────────
     interface DbStat {
       server_version: string;
@@ -406,14 +406,14 @@ export const adminDataRoutes: FastifyPluginAsync = async (server) => {
       // First try to read from the backup metadata if we have an S3 client
       const r2 = new S3Client({
         region: 'auto',
-        endpoint: `https://${process.env.CLOUDFLARE_R2_ACCOUNT_ID ?? ''}.r2.cloudflarestorage.com`,
+        endpoint: `https://${process.env.R2_ACCOUNT_ID ?? ''}.r2.cloudflarestorage.com`,
         credentials: {
-          accessKeyId: process.env.CLOUDFLARE_R2_ACCESS_KEY_ID ?? '',
-          secretAccessKey: process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY ?? '',
+          accessKeyId: process.env.R2_ACCESS_KEY_ID ?? '',
+          secretAccessKey: process.env.R2_SECRET_ACCESS_KEY ?? '',
         },
       });
 
-      const bucket = process.env.CLOUDFLARE_R2_BUCKET_NAME ?? 'kanchuki-backups';
+      const bucket = process.env.R2_BUCKET_NAME ?? 'kanchuki-prod';
 
       // TODO: MaxKeys=100 will under-report count/size if 100+ backup files exist.
       // Increase or implement pagination once the project has many backups.
@@ -455,7 +455,7 @@ export const adminDataRoutes: FastifyPluginAsync = async (server) => {
     }
 
     // ── Vault DB status ───────────────────────────────────────────
-    let vaultStatus: { connected: boolean; record_count: number } = {
+    let vaultStatus: { connected: boolean; record_count: number; failed?: boolean } = {
       connected: false,
       record_count: 0,
     };
@@ -466,8 +466,9 @@ export const adminDataRoutes: FastifyPluginAsync = async (server) => {
         const count = await vault.deletedRecord.count();
         vaultStatus = { connected: true, record_count: count };
       }
-    } catch {
-      vaultStatus = { connected: false, record_count: 0 };
+    } catch (err) {
+      request.log.error({ err }, 'Vault status check failed');
+      vaultStatus = { connected: false, record_count: 0, failed: true };
     }
 
     // ── Guardrail migration status ────────────────────────────────
@@ -476,12 +477,11 @@ export const adminDataRoutes: FastifyPluginAsync = async (server) => {
       const result = await prisma.$queryRawUnsafe<
         { trigger_name: string; event_manipulation: string; event_object_table: string }[]
       >(`
-        SELECT trigger_name, event_manipulation, event_object_table
+        SELECT DISTINCT trigger_name, event_manipulation, event_object_table
         FROM information_schema.triggers
-        WHERE trigger_name = 'prevent_hard_delete'
-        LIMIT 1
+        WHERE trigger_name LIKE 'guard_%_delete'
       `);
-      guardrailsActive = result.length > 0;
+      guardrailsActive = result.length === 8; // one guard per protected table (migration 037)
     } catch {
       guardrailsActive = false;
     }
