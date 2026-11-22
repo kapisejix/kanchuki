@@ -816,7 +816,7 @@ Pack / add-on sales (`quota_addon_purchases`) are taxable supplies and now get a
 - **Never write a pack sale to `subscription_payments`:** `referral-qualify`, `referral-accrue` and the commission tracker count every `success` row there as a subscription month.
 - Prod state 2026-11-16: `quota_addon_purchases`, `subscription_payments` and `gst_invoice_sequences` are all empty (no invoice has ever been issued).
 
-### GST invoice archive (migration 169, NOT applied; RC-183)
+### GST invoice archive (migration 169, applied by owner 2026-11-22; RC-183)
 
 `gst_invoice_archive` keeps issued invoices for 7 years after the retailer is deleted. Columns: source table/id/status, invoice number (unique), invoice date, amounts, GST split and rate, place of supply, SAC, buyer name, GSTIN, billing address, `invoice_r2_key` (NOT NULL), Razorpay ids, `archived_at`. No retailer id, phone, auth id or KYC data, and no FK.
 
