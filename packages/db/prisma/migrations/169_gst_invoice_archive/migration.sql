@@ -5,15 +5,16 @@
 -- from retailers. Each delete path now copies numbered invoices here in the same
 -- transaction. No phone, auth id or KYC data. No FK: rows must outlive the retailer.
 --
--- OWNER: review, then apply by hand as the migrator/owner role. Deploy this BEFORE the
+-- OWNER: review, then apply by hand as postgres (a table owner can disable the
+-- append-only trigger, so not kanchuki_migrator). Deploy this BEFORE the
 -- API code: without the table every retailer delete fails and rolls back.
 -- gst_invoice_sequences is untouched. Automatic 7-year expiry is not built.
 
 DO $$
 BEGIN
   -- An owner bypasses grants and can drop the trigger, so an app role must not own this.
-  IF current_user IN ('kanchuki_app', 'kanchuki_purge') THEN
-    RAISE EXCEPTION 'Apply migration 169 as the migrator/owner role, not %', current_user;
+  IF current_user IN ('kanchuki_app', 'kanchuki_purge', 'kanchuki_migrator') THEN
+    RAISE EXCEPTION 'Apply migration 169 as postgres, not %', current_user;
   END IF;
 END
 $$;

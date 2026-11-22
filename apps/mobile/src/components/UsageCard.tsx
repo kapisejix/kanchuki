@@ -84,7 +84,7 @@ export function UsageCard() {
             {isOver && (
               <View className="flex-row items-center gap-1 mt-1">
                 <AlertTriangle size={10} color="#dc2626" />
-                <Text className="text-[10px] text-red-600">Limit reached. Upgrade or contact support.</Text>
+                <Text className="text-[10px] text-red-600">Limit reached. Contact support for help.</Text>
               </View>
             )}
           </View>

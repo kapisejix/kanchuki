@@ -635,7 +635,7 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | L6 promo-video queue (PR #321, merged 2026-11-18 as `b44ab0d2`; CI 5/5 green) | T5 review item L6: AI promo-video jobs (2-3 min paid Fal clips) move off the Studio Shoot queue onto their own `kanchuki-promo-video` queue (`QUEUES.PROMO_VIDEO` in `@kanchuki/shared`), worker concurrency 2, own `failed` listener (`reportJobFailure` + AI_VIDEO refund on a stalled-out job). Source-pin test `src/jobs/promo-video-queue.test.ts`. Local: API 3512 passed, tsc clean, biome 3 pre-existing warnings. Promo jobs already on the studio queue at deploy would be orphaned (feature off, none expected). No real Fal call. |
 | T8 docs sweep (2026-11-18) | CLAUDE.md rows 60/118, PRO-REQUIREMENTS §30, PLAN.md, tasks/README, ai-photo-generation.md §7 (+ status, task table, decision #5), DATABASE.md 165–168 marked applied, spec §7 T7c/T8. Docs only. |
 
-## 2026-11-22 — Google Play Step 1 compliance, GST invoice archive, account-deletion fixes (branch `fix/play-step1-compliance`, NOT committed)
+## 2026-11-22 — Google Play Step 1 compliance, GST invoice archive, account-deletion fixes (branch `fix/play-step1-compliance`, committed locally, NOT pushed)
 
 | Item | Detail |
 |---|---|
@@ -646,3 +646,6 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Throwaway Postgres 17 (Docker, removed after) | Migration 169 applied as `postgres` and as `kanchuki_migrator`. Live archive test 3/3. Real archive SQL ran as `kanchuki_purge` for both invoice tables, on stub tables using the real column names. App and purge roles cannot UPDATE, DELETE or TRUNCATE; `anon`, `authenticated` and `service_role` have no access. If `kanchuki_migrator` owns the table it can disable the trigger, so apply as `postgres`. |
 | Not verified | Migration 169 not applied to any real environment or on the full schema. No real Razorpay or device run. |
 | Owner steps | Review and apply migration 169 BEFORE deploying this API code, or every retailer delete fails and rolls back. Try cancel on a `created` subscription in Razorpay test mode. Confirm the platform GST profile is set, or a retailer with a pending invoice PDF cannot be deleted. |
+| Upgrade wording (follow-up, owner approved) | 6 mobile messages and the 2 shared API plan messages no longer tell the user to upgrade. Web users also lose "Please upgrade". |
+| Migration 169 role guard (follow-up, owner approved) | Header and error now say apply as `postgres`; the guard also blocks `kanchuki_migrator`, replacing the earlier run as that role. Rechecked on throwaway Postgres 17: app, purge and migrator blocked, `postgres` applies, append-only and grants hold. Live archive test not rerun after this change. |
+| Follow-up local runs | Mobile 719 passed, tsc 0. API tsc 0. First full API run failed 1 test (15 s timeout in `silent-failures-guard.test.ts`); the file then passed 12/12 alone and the next full run passed 3550, 12 skipped. Cause not proven. Biome clean on `error-handler.ts`; the 6 mobile files show 11 errors and 4 warnings, same counts as before the edit. Web tests not run. |

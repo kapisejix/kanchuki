@@ -289,7 +289,7 @@ export default function GrowthHubScreen({ isTab = false }: { isTab?: boolean }) 
                 <View className="flex-row items-center gap-2 py-1">
                   <Megaphone size={18} color="#928EB2" />
                   <Text className="text-sm font-bold text-heliotrope-500">
-                    Campaigns unlock with a plan upgrade
+                    Campaigns are not included in your current plan
                   </Text>
                 </View>
               ) : campaigns.length === 0 ? (

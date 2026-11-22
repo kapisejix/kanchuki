@@ -157,8 +157,7 @@ export default function WhatsAppCatalogSettingsScreen() {
             </View>
             <Text className="text-sm font-bold text-sand-900 mb-1">Not on your plan</Text>
             <Text className="text-xs text-sand-400 text-center leading-5">
-              WhatsApp Catalog Sync is available on Growth and Pro plans. Upgrade to sync your
-              products into WhatsApp Business.
+              WhatsApp Catalog Sync is not included in your current plan.
             </Text>
           </View>
         ) : (
