@@ -1,20 +1,12 @@
 import { isPlanEnded } from '@kanchuki/shared';
 import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import { ChevronLeft, CreditCard, Globe, Mail } from 'lucide-react-native';
-// Plans & Billing — informational screen (Play Store compliance).
-//
-// In-app subscription/add-on purchases were removed from the Android build
-// for launch: Google Play policy requires Play Billing for digital goods sold
-// in-app, and the plan is to sell plans on the Kanchuki website instead.
-// This screen is read-only — it shows the retailer's current plan and points
-// them to the website for anything else. The old Razorpay purchase UI lives
-// in git history (and the server-side billing rails stay intact) so billing
-// can return later via web or Play Billing.
+import { ChevronLeft, CreditCard, Mail } from 'lucide-react-native';
+// Plans & Billing — read-only (Play Payments policy): no prices, purchase path,
+// or pointer to outside payment. Do not add any without Play Billing.
 import { Linking, ScrollView, Text, View } from 'react-native';
 import { useScreenInsets } from '../src/lib/safe-area';
 import { AnimatedPressable } from '../src/components/AnimatedPressable';
-import { GradientButton } from '../src/components/GradientButton';
 import { retailerApi } from '../src/lib/api';
 
 const SUPPORT_EMAIL = 'support@kanchuki.app';
@@ -79,44 +71,19 @@ export default function BillingScreen() {
           </View>
           <Text className="text-xs text-heliotrope-500 leading-relaxed font-medium">
             {isPlanEnded(status)
-              ? `Your ${me?.plan ?? 'Starter'} plan has ended — renew on the website to keep using your features.`
+              ? `Your ${me?.plan ?? 'Starter'} plan has ended.`
               : `You're on the ${statusLabel.toLowerCase()} ${me?.plan ?? 'Starter'} plan — keep using all your features.`}
           </Text>
         </View>
 
-        {/* Plans are managed on the website (Play Store compliance) */}
-        <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
-          <View
-            className="w-12 h-12 rounded-2xl items-center justify-center mb-3 bg-lavender-100 border border-lavender-200"
-          >
-            <Globe size={22} color="#BB3F95" />
-          </View>
-          <Text
-            style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-            className="text-base font-bold text-spaceCadet-900"
-          >
-            Manage plans on kanchuki.app
-          </Text>
-          <Text className="text-xs text-heliotrope-500 leading-relaxed mt-1.5 font-medium">
-            Plans, add-ons and billing are managed on the Kanchuki website. Sign in with your
-            store&apos;s phone number to upgrade your plan, switch billing period, or buy extra
-            units.
-          </Text>
-
-          <GradientButton
-            variant="web"
-            label="Manage my plan"
-            style={{ marginTop: 16 }}
-            onPress={() => router.push('/plan-select')}
-          />
-
+        <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm mb-10">
           <AnimatedPressable
             onPress={() =>
               void Linking.openURL(
                 `mailto:${SUPPORT_EMAIL}?subject=Plans%20%26%20Billing%20enquiry`,
               )
             }
-            className="mt-3 py-3 flex-row items-center justify-center gap-2"
+            className="py-1 flex-row items-center justify-center gap-2"
           >
             <Mail size={15} color="#6B4773" />
             <Text className="text-xs text-spaceCadet-900 font-medium">
@@ -125,9 +92,6 @@ export default function BillingScreen() {
           </AnimatedPressable>
         </View>
 
-        <Text className="text-xs text-heliotrope-400 text-center mt-6 mb-10">
-          Prices are ex-GST — 18% GST is added at checkout
-        </Text>
       </ScrollView>
     </View>
   );

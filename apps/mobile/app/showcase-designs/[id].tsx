@@ -15,6 +15,7 @@ import { useScreenInsets } from '../../src/lib/safe-area'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { KeyboardScreen } from '../../src/components/KeyboardScreen'
 import { GradientButton } from '../../src/components/GradientButton'
+import { META_SOCIAL_ENABLED } from '../../src/lib/meta-social';
 
 export default function ShowcaseDesignDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
@@ -249,6 +250,7 @@ export default function ShowcaseDesignDetailScreen() {
         )}
 
         {/* Post to social — reuses the Social Create-Post composer (Phase 6) */}
+{META_SOCIAL_ENABLED && (
         <AnimatedPressable
           onPress={() => router.push(`/social/create?design_id=${design.id}`)}
           className="flex-row items-center gap-3 bg-white px-4 py-3 rounded-2xl border border-lavender-200 shadow-sm"
@@ -261,6 +263,7 @@ export default function ShowcaseDesignDetailScreen() {
             <Text className="text-xs text-heliotrope-500 font-medium">Share this design with your followers</Text>
           </View>
         </AnimatedPressable>
+)}
 
         {editable && (
           <>

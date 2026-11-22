@@ -12,6 +12,22 @@
 
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
+## RC-184 — Deleting an account left its Razorpay subscription live, and self-delete logged the phone
+
+- **Component:** `apps/api/src/lib/retailer-delete-prep.ts`, `routes/retailers/retailers-settings.ts`, `routes/admin/admin-retailers/admin-retailers-list.ts`, `jobs/purge-soft-deleted.ts`.
+- **Symptom:** found in the 2026-11-22 Play compliance audit. A deleted retailer could keep being charged, with no account left to cancel from. `DELETE /retailers/me` also copied the phone into `audit_logs.metadata`, so it outlived the deletion.
+- **Root cause:** no delete path spoke to Razorpay. Local status could not be trusted either: `POST /billing/cancel` marks a row CANCELLED even when the Razorpay call failed.
+- **Fix:** before the vault snapshot, read every stored subscription id at Razorpay. Ended states count as success, anything else is cancelled immediately, and a failure returns 409 `SUBSCRIPTION_CANCEL_FAILED` with the account intact. 409 because the mobile app hides 5xx messages. Admin bulk delete goes one retailer at a time and audits only what was deleted. Phone removed from the audit metadata.
+- **Proof:** `lib/retailer-delete-prep.test.ts`, `routes/admin.test.ts`; API 3550 passed, 12 skipped. **Limits:** mocked Razorpay. Cancelling a subscription in `created` state is not confirmed by Razorpay's docs and must be tried in test mode. Old audit rows that already hold a phone are unchanged.
+
+## RC-183 — Every retailer delete path destroyed issued GST invoices
+
+- **Component:** `apps/api/src/lib/gst-invoice-archive.ts`, `jobs/purge-retailer-now.ts`, `jobs/purge-soft-deleted.ts`, `routes/admin/admin-gst.ts`, `routes/admin/admin-invoices.ts`, migration 169.
+- **Symptom:** found in the 2026-11-22 Play compliance audit. Self-delete, admin delete and the purge cron removed `subscription_payments` and `quota_addon_purchases`, against the 7-year retention rule.
+- **Root cause:** invoice rows FK to rows being deleted and hold no buyer name, GSTIN or address. Those were read live from `retailers`, so even a kept row would render as "Unknown Retailer".
+- **Fix:** append-only `gst_invoice_archive`, written in the same transaction before the delete. `invoice_r2_key` is NOT NULL, so a missing PDF is generated first and, if it still cannot be, the delete rolls back. Admin GST reports and invoices read live + archive; a row is in exactly one, so nothing double counts.
+- **Proof:** `lib/gst-invoice-archive.test.ts` (mocked), `routes/addon-gst-reports.test.ts`. `lib/gst-invoice-archive-live.test.ts` passed 3/3 on a throwaway Postgres 17, and the SQL, trigger and grants were checked there per role on stub tables with the real column names. **Limits:** migration 169 NOT applied to any real environment or run on the full schema. The table owner can disable the trigger, so apply as `postgres`, not `kanchuki_migrator`.
+
 ## RC-181 — A lapsed trial or paid term still ran paid AI, because the quota check only looked at plan limits
 
 - **Component:** `apps/api/src/lib/quota.ts` (`isAiBlocked`, `assertAiAllowed`, called from `checkQuota`, `reserveQuota`, `reserveJobQuota`), `jobs/tag-product.ts`, `jobs/generate-embedding.ts`, `routes/search.ts`, `routes/public/public-stylist.ts`.

@@ -5,6 +5,7 @@ import { Text, View } from 'react-native';
 import { scheduleApi } from '../../lib/api/schedule';
 import { useAuth } from '../../lib/auth-context';
 import { staffCan } from '../../lib/staff-can';
+import { META_SOCIAL_ENABLED } from '../../lib/meta-social';
 import { AnimatedPressable } from '../AnimatedPressable';
 
 /**
@@ -16,7 +17,7 @@ import { AnimatedPressable } from '../AnimatedPressable';
  */
 export function SchedulerBanner() {
   const { staffRole } = useAuth();
-  const allowed = staffCan(staffRole, 'social.schedule');
+  const allowed = META_SOCIAL_ENABLED && staffCan(staffRole, 'social.schedule');
   const { data } = useQuery({
     queryKey: ['social', 'schedule', 'status'],
     queryFn: () => scheduleApi.status(),

@@ -46,6 +46,7 @@ import {
   ThemeProvider,
   useTheme,
 } from "../src/lib/theme";
+import { CATALOG_UPLOAD_ENABLED } from "../src/lib/catalog-upload-flag";
 
 // Initialize Sentry crash reporting as early as possible — must run
 // before any component renders so it can capture startup crashes.
@@ -198,7 +199,6 @@ function AppShell() {
         <Stack.Protected guard={isAuthed && (!isTeamMember || inSupportSession)}>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="onboarding" options={{ headerShown: false }} />
-          <Stack.Screen name="plan-select" options={{ headerShown: false }} />
           <Stack.Screen name="ai-search" />
           <Stack.Screen name="analytics" />
           <Stack.Screen name="billing" />
@@ -236,7 +236,10 @@ function AppShell() {
           <Stack.Screen name="growth/integrations/whatsapp" />
           <Stack.Screen name="growth/ratings" />
           <Stack.Screen name="settings/index" />
-          <Stack.Screen name="settings/catalog-upload" />
+          {/* Route guard too, so a deep link cannot reach the in-app payment. */}
+          <Stack.Protected guard={CATALOG_UPLOAD_ENABLED}>
+            <Stack.Screen name="settings/catalog-upload" />
+          </Stack.Protected>
           <Stack.Screen name="settings/deleted-products" />
           <Stack.Screen name="settings/social" />
           <Stack.Screen name="settings/staff" />

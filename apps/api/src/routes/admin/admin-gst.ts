@@ -16,6 +16,12 @@ import {
   mergeByRetailer,
   mergeSums,
 } from '../../lib/addon-gst-report.js';
+import {
+  EMPTY_ARCHIVE_SUM,
+  archiveKind,
+  archiveWhere,
+  includeArchive,
+} from '../../lib/gst-invoice-archive.js';
 import { queryBool } from '../../lib/query-bool.js';
 import { adminAuthPreHandler } from '../admin-auth.js';
 
@@ -53,14 +59,21 @@ export const adminGstRoutes: FastifyPluginAsync = async (server) => {
       retailerId: q.success ? q.data.retailer_id : undefined,
       range: where.created_at as DateRange,
     });
-    const [subResult, subInvoiced, addonResult, addonInvoiced] = await Promise.all([
+    const [subResult, subInvoiced, addonResult, addonInvoiced, archived] = await Promise.all([
       prisma.subscriptionPayment.aggregate({ where, _sum: GST_SUM_SELECT, _count: true }),
       prisma.subscriptionPayment.count({ where: { ...where, gst_invoice_number: { not: null } } }),
       prisma.quotaAddonPurchase.aggregate({ where: aWhere, _sum: GST_SUM_SELECT, _count: true }),
       prisma.quotaAddonPurchase.count({ where: { ...aWhere, gst_invoice_number: { not: null } } }),
+      includeArchive({ retailerId: q.success ? q.data.retailer_id : undefined })
+        ? prisma.gstInvoiceArchive.aggregate({
+            where: archiveWhere({ range: where.created_at as DateRange }),
+            _sum: GST_SUM_SELECT,
+            _count: true,
+          })
+        : EMPTY_ARCHIVE_SUM,
     ]);
-    const result = mergeSums(subResult, addonResult);
-    const invoicedCount = subInvoiced + addonInvoiced;
+    const result = mergeSums(mergeSums(subResult, addonResult), archived);
+    const invoicedCount = subInvoiced + addonInvoiced + archived._count;
 
     const subtotal = result._sum?.amount_excluding_gst ?? 0;
     const totalGst = result._sum?.gst_amount ?? 0;
@@ -101,7 +114,7 @@ export const adminGstRoutes: FastifyPluginAsync = async (server) => {
     };
     if (q.success && q.data.retailer_id) where.retailer_id = q.data.retailer_id;
 
-    const [subMonthly, addonMonthly] = await Promise.all([
+    const [subMonthly, addonMonthly, archivedMonthly] = await Promise.all([
       prisma.subscriptionPayment.groupBy({
         by: ['created_at'],
         where,
@@ -117,10 +130,19 @@ export const adminGstRoutes: FastifyPluginAsync = async (server) => {
         _sum: GST_SUM_SELECT,
         _count: true,
       }),
+      includeArchive({ retailerId: q.success ? q.data.retailer_id : undefined })
+        ? prisma.gstInvoiceArchive.groupBy({
+            by: ['invoice_date'],
+            where: archiveWhere({ range: { gte: startOfYear, lt: endOfYear } }),
+            _sum: GST_SUM_SELECT,
+            _count: true,
+          })
+        : [],
     ]);
     const monthlyData = [
       ...subMonthly,
       ...addonMonthly.map((r) => ({ ...r, created_at: r.completed_at as Date })),
+      ...archivedMonthly.map((r) => ({ ...r, created_at: r.invoice_date })),
     ];
 
     const months: Record<
@@ -199,7 +221,7 @@ export const adminGstRoutes: FastifyPluginAsync = async (server) => {
     // Pull a generous slice from each source, merge per retailer, THEN cut to `limit`: a
     // retailer in the combined top N can sit outside either table's own top N.
     // ponytail: 5000 per source; page properly if retailer count ever exceeds it.
-    const [subByRetailer, addonByRetailer] = await Promise.all([
+    const [subByRetailer, addonByRetailer, archivedByBuyer] = await Promise.all([
       prisma.subscriptionPayment.groupBy({
         by: ['retailer_id'],
         where,
@@ -216,8 +238,23 @@ export const adminGstRoutes: FastifyPluginAsync = async (server) => {
         orderBy: { _sum: { gst_amount: 'desc' } },
         take: 5000,
       }),
+      prisma.gstInvoiceArchive.groupBy({
+        by: ['buyer_gstin', 'buyer_name'],
+        where: archiveWhere({ range: where.created_at as DateRange }),
+        _sum: GST_SUM_SELECT,
+        _count: true,
+        orderBy: { _sum: { gst_amount: 'desc' } },
+        take: 5000,
+      }),
     ]);
-    const byRetailer = mergeByRetailer(subByRetailer, addonByRetailer).slice(0, limit);
+    // Deleted retailers have no id left, so they group by the invoice's buyer.
+    const archivedKey = (r: { buyer_gstin: string | null; buyer_name: string }) =>
+      `archived:${r.buyer_gstin ?? r.buyer_name}`;
+    const archivedBuyers = new Map(archivedByBuyer.map((r) => [archivedKey(r), r]));
+    const byRetailer = mergeByRetailer(
+      mergeByRetailer(subByRetailer, addonByRetailer),
+      archivedByBuyer.map((r) => ({ retailer_id: archivedKey(r), _sum: r._sum, _count: r._count })),
+    ).slice(0, limit);
 
     const retailerIds = byRetailer.map((r) => r.retailer_id);
     const retailers = await prisma.retailer.findMany({
@@ -228,11 +265,12 @@ export const adminGstRoutes: FastifyPluginAsync = async (server) => {
 
     const result = byRetailer.map((r) => {
       const info = retailerMap.get(r.retailer_id);
+      const buyer = archivedBuyers.get(r.retailer_id);
       return {
         retailer_id: r.retailer_id,
-        shop_name: info?.shop_name ?? 'Unknown',
+        shop_name: info?.shop_name ?? buyer?.buyer_name ?? 'Unknown',
         city: info?.city ?? '',
-        gstin: info?.gstin ?? null,
+        gstin: info?.gstin ?? buyer?.buyer_gstin ?? null,
         payments: r._count,
         taxable: r._sum?.amount_excluding_gst ?? 0,
         gst: r._sum?.gst_amount ?? 0,
@@ -289,7 +327,12 @@ export const adminGstRoutes: FastifyPluginAsync = async (server) => {
       range: where.created_at as DateRange,
       invoiced: q.success ? q.data.invoiced : undefined,
     });
-    const [payments, addons, subTotal, addonTotal] = await Promise.all([
+    const withArchive = includeArchive({
+      retailerId: q.success ? q.data.retailer_id : undefined,
+      invoiced: q.success ? q.data.invoiced : undefined,
+    });
+    const arcWhere = archiveWhere({ range: where.created_at as DateRange });
+    const [payments, addons, subTotal, addonTotal, archived, archivedTotal] = await Promise.all([
       prisma.subscriptionPayment.findMany({
         where,
         include: {
@@ -308,8 +351,16 @@ export const adminGstRoutes: FastifyPluginAsync = async (server) => {
       }),
       prisma.subscriptionPayment.count({ where }),
       prisma.quotaAddonPurchase.count({ where: aWhere }),
+      withArchive
+        ? prisma.gstInvoiceArchive.findMany({
+            where: arcWhere,
+            orderBy: { invoice_date: 'desc' },
+            take: skip + limit,
+          })
+        : [],
+      withArchive ? prisma.gstInvoiceArchive.count({ where: arcWhere }) : 0,
     ]);
-    const total = subTotal + addonTotal;
+    const total = subTotal + addonTotal + archivedTotal;
 
     const rows = [
       ...payments.map((p) => ({
@@ -335,6 +386,18 @@ export const adminGstRoutes: FastifyPluginAsync = async (server) => {
         invoice_number: p.gst_invoice_number,
         has_invoice: !!p.gst_invoice_number,
         date: p.completed_at,
+      })),
+      ...archived.map((p) => ({
+        id: p.source_id,
+        kind: archiveKind(p.source_table),
+        retailer: p.buyer_name,
+        gstin: p.buyer_gstin,
+        taxable: p.amount_excluding_gst ?? 0,
+        gst: p.gst_amount ?? 0,
+        total: p.amount_inr,
+        invoice_number: p.invoice_number as string | null,
+        has_invoice: true,
+        date: p.invoice_date as Date | null,
       })),
     ].sort(byDateDesc((r) => r.date));
 

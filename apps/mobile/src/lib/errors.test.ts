@@ -38,7 +38,6 @@ describe('raw err.message on screens', () => {
   const root = resolve(__dirname, '../../app')
   const files = [
     'growth/aggregators.tsx',
-    'plan-select.tsx',
     'settings/index.tsx',
     'product/try-on.tsx',
     'settings/staff.tsx',
@@ -52,9 +51,8 @@ describe('raw err.message on screens', () => {
     expect(src).not.toMatch(/err\.status >= 400 && err\.status < 500/)
     expect(src).not.toMatch(/err instanceof ApiError \? err\.message/)
   })
-  it('bare catch{} in otp resend and try-on payment now reports through showError', () => {
+  it('bare catch{} in otp resend now reports through showError', () => {
     expect(readFileSync(resolve(root, 'auth/otp.tsx'), 'utf8')).toMatch(/showError\(err, 'Failed to resend OTP'\)/)
-    expect(readFileSync(resolve(root, 'enquiry-try-on.tsx'), 'utf8')).toMatch(/showError\(err, 'Please try again/)
   })
   // RC-114: apiMessage's own tests pass whatever onboarding does, so pin the three catches
   // (profile, GST, done) to showError; a constant Alert here swallows the 422 "invalid GSTIN".

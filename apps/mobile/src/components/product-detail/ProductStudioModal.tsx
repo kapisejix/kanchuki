@@ -15,6 +15,7 @@ import { productApi } from '../../lib/api'
 import { AnimatedPressable } from '../AnimatedPressable'
 import { GradientButton } from '../GradientButton'
 import { ReportAiContent } from '../ReportAiContent'
+import { META_SOCIAL_ENABLED } from '../../lib/meta-social';
 
 type StudioStatus = 'processing' | 'ready' | 'failed' | null
 
@@ -212,6 +213,7 @@ export function ProductStudioModal({
             />
             {/* R-7: post the studio shot straight to the social composer — the
                 photo row already exists, so this is a plain navigation. */}
+{META_SOCIAL_ENABLED && (
             <AnimatedPressable
               onPress={onPostToSocial}
               className="py-3 items-center rounded-xl border border-sand-200 flex-row justify-center gap-2"
@@ -221,6 +223,7 @@ export function ProductStudioModal({
               <Send size={15} color={colors.ink[800]} />
               <Text className="text-xs font-bold text-sand-600">Post to social</Text>
             </AnimatedPressable>
+)}
             <AnimatedPressable
               onPress={() => onUseResult(false)}
               className="py-3 items-center rounded-xl border border-sand-200"

@@ -816,6 +816,15 @@ Pack / add-on sales (`quota_addon_purchases`) are taxable supplies and now get a
 - **Never write a pack sale to `subscription_payments`:** `referral-qualify`, `referral-accrue` and the commission tracker count every `success` row there as a subscription month.
 - Prod state 2026-11-16: `quota_addon_purchases`, `subscription_payments` and `gst_invoice_sequences` are all empty (no invoice has ever been issued).
 
+### GST invoice archive (migration 169, NOT applied; RC-183)
+
+`gst_invoice_archive` keeps issued invoices for 7 years after the retailer is deleted. Columns: source table/id/status, invoice number (unique), invoice date, amounts, GST split and rate, place of supply, SAC, buyer name, GSTIN, billing address, `invoice_r2_key` (NOT NULL), Razorpay ids, `archived_at`. No retailer id, phone, auth id or KYC data, and no FK.
+
+- **Writer:** `archiveInvoicesSql` (`apps/api/src/lib/gst-invoice-archive.ts`), in the same transaction as the delete, on `hardDeleteRetailer` and `purge-soft-deleted`. No ON CONFLICT: any failure rolls the delete back.
+- **Append-only:** a trigger blocks UPDATE, DELETE and TRUNCATE for every role. Grants: SELECT for `kanchuki_app`, `kanchuki_purge` and `kanchuki_replica_reader`; INSERT for `kanchuki_purge` only. Apply as `postgres`, never an app role. A table owner can disable the trigger, so `kanchuki_migrator` should not own this table.
+- **Readers:** `admin-gst`, `admin-invoices`. Reports count only `success`/`COMPLETED` rows, so a refunded invoice stays stored but is not a sale. Archived PDFs download via `/admin/invoices/archived/:source_id/pdf`.
+- **Expiry:** not built. Removing rows after 7 years will need a deliberate migration.
+
 ### Product audience (migration 160, owner applies)
 
 `products.audience` (`ProductAudience`: WOMEN, MEN, BOYS, GIRLS, KIDS_UNISEX) and `products.kids_age_group`
@@ -928,7 +937,7 @@ nobody), `engine` (nullable string, one of the `StudioEngine` set),
 | Product photos | Retained while product active | Product.deleted_at marks removal |
 | Collection views | 90 days | Cron cleanup of old view records |
 | Audit logs | 3 years | Regulatory compliance |
-| Payment records | 7 years | GST/IT compliance |
+| Payment records | 7 years | GST/IT compliance. After account deletion, issued invoices live in `gst_invoice_archive` (migration 169) |
 | Soft-deleted records | 30 days then hard delete | Cron cleanup |
 | Deletion Vault records (F-016, planned) | Indefinite by default | Written at soft-delete time; hard-purge only via manual audited admin action, never automatic |
 

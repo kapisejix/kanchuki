@@ -1702,6 +1702,38 @@ model QuotaAddonPurchase {
   @@map("quota_addon_purchases")
 }
 
+// ─── GST INVOICE ARCHIVE (migration 169) ────────────────────────
+// Append-only, 7-year copy of issued invoices, written in the same transaction
+// that deletes the source row. No FK, phone, auth id or KYC data.
+model GstInvoiceArchive {
+  id                   String    @id @default(dbgenerated("gen_random_uuid()::text"))
+  source_table         String // subscription_payments | quota_addon_purchases
+  source_id            String
+  source_status        String // success | refunded | failed | COMPLETED
+  invoice_number       String    @unique
+  invoice_date         DateTime
+  amount_inr           Int // paise, GST-inclusive
+  amount_excluding_gst Int?
+  gst_amount           Int?
+  gst_rate             Decimal?  @db.Decimal(4, 4)
+  cgst_amount          Int?
+  sgst_amount          Int?
+  igst_amount          Int?
+  place_of_supply      String?
+  sac_code             String?
+  buyer_name           String
+  buyer_gstin          String?
+  buyer_address        String?
+  invoice_r2_key       String
+  razorpay_payment_id  String?
+  razorpay_order_id    String?
+  archived_at          DateTime  @default(now())
+
+  @@unique([source_table, source_id])
+  @@index([invoice_date])
+  @@map("gst_invoice_archive")
+}
+
 // ─── ADDON PACKS (F-034 task 6.1) ───────────────────────────────
 // Admin-managed overage packs, DB-backed — the admin adds / approves / assigns
 // packs per plan from the dashboard. resource_type is TEXT (not the enum) so a

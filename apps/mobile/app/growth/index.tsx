@@ -25,6 +25,7 @@ import { growthApi, retailerApi, type CampaignType } from '../../src/lib/api'
 import { ApiError } from '../../src/lib/api/client'
 import { SchedulerBanner } from '../../src/components/social/SchedulerBanner'
 import { MyStyleRankingNote } from '../../src/components/growth/MyStyleRankingNote'
+import { META_SOCIAL_ENABLED } from '../../src/lib/meta-social';
 
 const TYPE_LABEL: Record<CampaignType, string> = {
   FESTIVAL: 'Festival',
@@ -35,7 +36,7 @@ const TYPE_LABEL: Record<CampaignType, string> = {
 
 // Growth modules — marketing, store/catalog management and customer insight.
 // GST, Integrations and Marketplace Sync live under Settings (owner-only).
-const GROWTH_MODULES = [
+const ALL_GROWTH_MODULES = [
   { icon: Share2, label: 'Create Social Post', hint: 'Post to Facebook & Instagram', href: '/social/create?source=growth' as const },
   { icon: Wand2, label: 'Design a Post', hint: 'Festival & sale designs with your products', href: '/social/design' as const },
   { icon: Wand2, label: 'AI Design', hint: 'Describe a scene, AI makes the picture', href: '/social/ai-design' as const },
@@ -49,6 +50,11 @@ const GROWTH_MODULES = [
   { icon: Languages, label: 'AI Translate', hint: 'Hindi & regional descriptions', href: '/growth/translate' as const },
   { icon: Star, label: 'Ratings & Reviews', hint: 'Customer feedback & Google reviews', href: '/growth/ratings' as const },
 ]
+
+// Every /social/* module ends in the Meta composer.
+const GROWTH_MODULES = ALL_GROWTH_MODULES.filter(
+  (m) => META_SOCIAL_ENABLED || !m.href.startsWith('/social/'),
+)
 
 function isFeatureUnavailable(err: unknown): boolean {
   return err instanceof ApiError && err.code === 'FEATURE_UNAVAILABLE'

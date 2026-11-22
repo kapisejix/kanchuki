@@ -4,6 +4,7 @@ import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { hardDeleteRetailer } from '../../../jobs/purge-retailer-now.js';
 import { queryBool } from '../../../lib/query-bool.js';
+import { prepareRetailerDeletion } from '../../../lib/retailer-delete-prep.js';
 import { forbidden } from '../../../plugins/error-handler.js';
 import { adminAuthPreHandler } from '../../admin-auth.js';
 
@@ -173,57 +174,72 @@ export const adminRetailersListRoutes: FastifyPluginAsync = async (server) => {
       where: { retailer_id: { in: body.ids }, deleted_at: null },
     });
 
-    // F-016: vault snapshot BEFORE the hard delete — awaited (not
-    // fire-and-forget) since there's no soft-deleted row left as a fallback
-    // if this silently lost the race. vaultDelete() never throws.
-    await Promise.all([
-      ...retailersBefore.map((r) =>
-        vaultDelete({
-          source_table: 'retailers',
-          source_id: r.id,
-          retailer_id: r.id,
-          payload: r as unknown as Record<string, unknown>,
-          delete_reason: 'admin_hard_delete',
-          deleted_by: 'admin',
-        }),
-      ),
-      ...collectionsBefore.map((c) =>
-        vaultDelete({
-          source_table: 'collections',
-          source_id: c.id,
-          retailer_id: c.retailer_id,
-          payload: c as unknown as Record<string, unknown>,
-          delete_reason: 'admin_hard_delete',
-          deleted_by: 'admin',
-        }),
-      ),
-    ]);
-
-    for (const id of retailersBefore.map((r) => r.id)) {
-      await hardDeleteRetailer(id);
+    // One retailer at a time: a failed Razorpay cancel stops here, so no later
+    // retailer has its subscription cancelled without being deleted.
+    const deleted: typeof retailersBefore = [];
+    let failure: unknown;
+    for (const r of retailersBefore) {
+      try {
+        await prepareRetailerDeletion(r.id);
+        // F-016: vault snapshot BEFORE the hard delete — awaited (not
+        // fire-and-forget) since there's no soft-deleted row left as a fallback
+        // if this silently lost the race. vaultDelete() never throws.
+        await Promise.all([
+          vaultDelete({
+            source_table: 'retailers',
+            source_id: r.id,
+            retailer_id: r.id,
+            payload: r as unknown as Record<string, unknown>,
+            delete_reason: 'admin_hard_delete',
+            deleted_by: 'admin',
+          }),
+          ...collectionsBefore
+            .filter((c) => c.retailer_id === r.id)
+            .map((c) =>
+              vaultDelete({
+                source_table: 'collections',
+                source_id: c.id,
+                retailer_id: c.retailer_id,
+                payload: c as unknown as Record<string, unknown>,
+                delete_reason: 'admin_hard_delete',
+                deleted_by: 'admin',
+              }),
+            ),
+        ]);
+        await hardDeleteRetailer(r.id);
+        deleted.push(r);
+      } catch (err) {
+        request.log.error({ retailer_id: r.id, err }, 'Admin retailer delete stopped');
+        failure = err;
+        break;
+      }
     }
 
-    await prisma.auditLog.create({
-      data: {
-        actor_type: 'admin',
-        action: 'HARD_DELETE',
-        resource_type: 'Retailer',
-        metadata: {
-          count: retailersBefore.length,
-          before: retailersBefore.map((r) => ({
-            id: r.id,
-            shop_name: r.shop_name,
-            city: r.city,
-            plan: r.plan,
-            plan_status: r.plan_status,
-          })),
+    // Audit what really went, even when a later retailer failed.
+    if (deleted.length > 0) {
+      await prisma.auditLog.create({
+        data: {
+          actor_type: 'admin',
+          action: 'HARD_DELETE',
+          resource_type: 'Retailer',
+          metadata: {
+            count: deleted.length,
+            before: deleted.map((r) => ({
+              id: r.id,
+              shop_name: r.shop_name,
+              city: r.city,
+              plan: r.plan,
+              plan_status: r.plan_status,
+            })),
+          },
+          ip_address: request.ip,
         },
-        ip_address: request.ip,
-      },
-    });
+      });
+    }
+    if (failure) throw failure;
 
     request.log.info({ retailer_ids: body.ids }, 'Admin hard-deleted retailers');
-    return { data: { deleted: retailersBefore.length } };
+    return { data: { deleted: deleted.length } };
   });
 
   // ─── GET /admin/customers ───────────────────────────────────────

@@ -7,7 +7,6 @@
  */
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import * as LegacyFileSystem from 'expo-file-system/legacy';
-import { billingApi } from './api/billing';
 import { productApi } from './api/products';
 import { compressImageForUpload } from './compress-image';
 import { pollWithBackoff } from './polling';
@@ -46,21 +45,6 @@ export async function setSessionKeepAwake(on: boolean): Promise<void> {
 /** True only for a URI inside the app cache dir — never a gallery original. */
 export function isAppCacheUri(uri: string, cacheDir: string | null | undefined): boolean {
   return !!cacheDir && uri.startsWith(cacheDir);
-}
-
-/**
- * Top-up packs the admin has switched on for this plan (F-044 R2 T6). Any
- * failure (managers get 403, offline, flag off) is `[]` so the "Buy more
- * try-ons" button stays hidden.
- */
-export async function loadBuyablePacks(): Promise<
-  { id: string; label: string; pack_size: number; price_paise: number }[]
-> {
-  try {
-    return (await billingApi.tryOnPacks()).data;
-  } catch {
-    return [];
-  }
 }
 
 /** First `remaining` products run; the rest are skipped (quota pre-flight). */

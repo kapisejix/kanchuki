@@ -1,5 +1,7 @@
 import { deleteObject } from '@kanchuki/ai';
 import { getPurgePrisma } from '@kanchuki/db';
+import { archiveInvoicesSql } from '../lib/gst-invoice-archive.js';
+import { prepareRetailerDeletion } from '../lib/retailer-delete-prep.js';
 
 /**
  * Dedicated scoped-role client for hard deletes (SECURITY §19). The shared
@@ -159,9 +161,11 @@ async function purgeChildren(
   childFkColumn: string,
   parentTable: string,
   cutoff: Date,
+  archiveSql?: string, // runs in the same transaction, before the DELETE
 ): Promise<number> {
-  const [, result] = await db.$transaction([
+  const results = await db.$transaction([
     db.$executeRawUnsafe(`SET LOCAL app.allow_hard_delete = 'true';`),
+    ...(archiveSql ? [db.$executeRawUnsafe(archiveSql, cutoff)] : []),
     db.$executeRawUnsafe(
       `DELETE FROM "${childTable}"
        WHERE "${childFkColumn}" IN (
@@ -171,7 +175,7 @@ async function purgeChildren(
       cutoff,
     ),
   ]);
-  return result ?? 0;
+  return results.at(-1) ?? 0;
 }
 
 /** F-037 raw-event retention (owner-approved 2026-09-29). The nightly rollups
@@ -280,6 +284,7 @@ export async function handlePurgeSoftDeleted(): Promise<PurgeResult> {
     db.retailer.findMany({
       where: { deleted_at: { not: null, lt: cutoff } },
       select: {
+        id: true,
         logo_r2_key: true,
         banner_r2_key: true,
         kyc_gst_r2_key: true,
@@ -299,6 +304,12 @@ export async function handlePurgeSoftDeleted(): Promise<PurgeResult> {
     ]),
   ].filter((k): k is string => !!k);
 
+  // Cancel live subscriptions and finish pending invoice PDFs before any retailer
+  // row goes.
+  // ponytail: one failure stops today's retailer sweep and the job errors; skip per
+  // retailer if soft-deleted retailers ever become common.
+  for (const r of retailerAssets) await prepareRetailerDeletion(r.id);
+
   // Children with a retailer_id FK are deleted explicitly (the retailer row's
   // FK graph). product_categories/usage_counters cascade on retailer delete, so
   // they're handled by purgeTable below. The RESTRICT / NO-ACTION tables must
@@ -311,7 +322,12 @@ export async function handlePurgeSoftDeleted(): Promise<PurgeResult> {
   // subscription_payments FK-restricts subscriptions, so it must be gone
   // BEFORE subscriptions (children-before-parents; keep it out of the
   // parallel batch below to avoid a race).
-  await purgeChildren('subscription_payments', 'retailer_id', 'retailers', cutoff);
+  // GST invoices are archived in the same transaction as their delete.
+  const expired = 'IN (SELECT id FROM retailers WHERE deleted_at IS NOT NULL AND deleted_at < $1)';
+  const archiveSubs = archiveInvoicesSql('subscription_payments', expired);
+  const archiveAddons = archiveInvoicesSql('quota_addon_purchases', expired);
+  await purgeChildren('subscription_payments', 'retailer_id', 'retailers', cutoff, archiveSubs);
+  await purgeChildren('quota_addon_purchases', 'retailer_id', 'retailers', cutoff, archiveAddons);
   // Retailer referral program (migration 109) — RESTRICT FKs to retailers, so
   // these MUST go before the retailer row or `DELETE FROM retailers` throws an
   // FK violation and rolls the entire sweep back (the product_attributes /
@@ -339,7 +355,6 @@ export async function handlePurgeSoftDeleted(): Promise<PurgeResult> {
     // RESTRICT/NO-ACTION retailer FKs (children before parents).
     purgeChildren('subscriptions', 'retailer_id', 'retailers', cutoff),
     purgeChildren('support_tickets', 'retailer_id', 'retailers', cutoff),
-    purgeChildren('quota_addon_purchases', 'retailer_id', 'retailers', cutoff),
     purgeChildren('product_attributes', 'retailer_id', 'retailers', cutoff),
     purgeChildren('social_posts', 'retailer_id', 'retailers', cutoff),
     purgeChildren('social_accounts', 'retailer_id', 'retailers', cutoff),

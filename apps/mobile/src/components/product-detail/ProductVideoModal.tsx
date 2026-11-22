@@ -23,6 +23,7 @@ import { useSafeVideoPlayer } from '../../lib/safe-video-player'
 import { AnimatedPressable } from '../AnimatedPressable'
 import { GradientButton } from '../GradientButton'
 import { ReportAiContent } from '../ReportAiContent'
+import { META_SOCIAL_ENABLED } from '../../lib/meta-social';
 import type { PromoStatus } from '../../hooks/useProductPromoVideo'
 
 interface ProductVideoModalProps {
@@ -163,11 +164,13 @@ export function ProductVideoModal(props: ProductVideoModalProps) {
             AI-made promo clip. Your photo stays the main photo.
           </Text>
           <View className="w-full mt-4 gap-2">
+{META_SOCIAL_ENABLED && (
             <GradientButton
               label="Post to social"
               onPress={props.onPostToSocial}
               colors={[primaryColor, colors.ink[800]]}
             />
+)}
             {secondary('Keep in gallery', onClose)}
             <ReportAiContent feature="AI Promo Video" contentRef={props.result.videoId} />
           </View>

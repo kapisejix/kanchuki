@@ -11,6 +11,7 @@ import { showError } from '../../src/lib/errors'
 import { CollectionDetailSkeleton } from '../../src/components/Skeleton'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { GradientButton } from '../../src/components/GradientButton'
+import { META_SOCIAL_ENABLED } from '../../src/lib/meta-social';
 
 type CollectionDetail = {
   id: string
@@ -484,6 +485,7 @@ export default function CollectionDetailScreen() {
         <View className="flex-row gap-2">
           {/* Share to social — Create Post composer entry (R-8). The composer
               itself shows the connect-empty state when no accounts exist. */}
+{META_SOCIAL_ENABLED && (
           <AnimatedPressable
             onPress={() =>
               router.push(`/social/create?collection_id=${collection.id}&source=collection`)
@@ -494,6 +496,7 @@ export default function CollectionDetailScreen() {
           >
             <Share2 size={16} color="#231F48" />
           </AnimatedPressable>
+)}
           <AnimatedPressable
             onPress={() => setShowEditModal(true)}
             className="w-10 h-10 bg-lavender-100 border border-lavender-200 rounded-full items-center justify-center"
