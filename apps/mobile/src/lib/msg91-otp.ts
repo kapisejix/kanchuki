@@ -89,7 +89,13 @@ export function extractMsg91ReqId(response: unknown): string | undefined {
   const r = asRecord(response)
   if (!r) return undefined
   const data = asRecord(r.data) ?? asRecord(r.result)
-  return firstString(r.reqId, data?.reqId, r.req_id, data?.req_id)
+  // SDK sendOTP success is { type: 'success', message: '<reqId>' }. The format
+  // check keeps a plain status message from being mistaken for an id.
+  const messageId =
+    r.type === 'success' && typeof r.message === 'string' && /^[A-Za-z0-9]{16,}$/.test(r.message)
+      ? r.message
+      : undefined
+  return firstString(r.reqId, data?.reqId, r.req_id, data?.req_id, messageId)
 }
 
 /**
