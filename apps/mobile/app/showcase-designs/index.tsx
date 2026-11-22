@@ -240,7 +240,7 @@ export default function ShowcaseDesignsScreen() {
           <View className="bg-spaceCadet-900 rounded-2xl px-4 py-2.5 flex-row items-center gap-2 shadow-lg">
             <Sparkles size={14} color="#E0E1F6" />
             <Text className="text-white text-[11px] font-bold">
-              Design limit reached — delete one or upgrade your plan
+              Design limit reached. Delete a design to add a new one.
             </Text>
           </View>
         </View>

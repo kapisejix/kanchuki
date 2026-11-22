@@ -21,10 +21,8 @@ import { TRY_ON_CONSENT } from '@kanchuki/shared'
 
 const m = vi.hoisted(() => ({
   getTryOnQuota: vi.fn(),
-  addonCheckout: vi.fn(),
   runTryOnSession: vi.fn(),
   cleanupSession: vi.fn(),
-  loadBuyablePacks: vi.fn(),
   setSessionKeepAwake: vi.fn(),
   launchImageLibraryAsync: vi.fn(),
   requestPermission: vi.fn(),
@@ -34,7 +32,6 @@ const m = vi.hoisted(() => ({
 
 vi.mock('../../src/lib/api', () => ({
   productApi: { getTryOnQuota: m.getTryOnQuota },
-  billingApi: { addonCheckout: m.addonCheckout },
 }))
 // try-on-session's own imports (native / network modules) — only the pure fns are used for real.
 vi.mock('expo-keep-awake', () => ({ activateKeepAwakeAsync: vi.fn(), deactivateKeepAwake: vi.fn() }))
@@ -48,7 +45,6 @@ vi.mock('../../src/lib/try-on-session', async () => {
     ...actual, // planSession + shouldKeepAwake stay real
     runTryOnSession: m.runTryOnSession,
     cleanupSession: m.cleanupSession,
-    loadBuyablePacks: m.loadBuyablePacks,
     setSessionKeepAwake: m.setSessionKeepAwake,
   }
 })
@@ -128,11 +124,6 @@ const fireApp = (s: string) =>
 const PHOTO = 'file:///cache/wearer.jpg'
 const GALLERY = 'Choose a photo from the gallery'
 const quota = (remaining: number, unlimited = false) => ({ data: { remaining, unlimited } })
-const packs = [
-  { id: 'k1', label: '10 try-ons', pack_size: 10, price_paise: 9900 },
-  { id: 'k2', label: '25 try-ons', pack_size: 25, price_paise: 24950 },
-]
-
 let mounted: Tree[] = []
 async function mount(over: Record<string, string> = {}) {
   vi.mocked(useLocalSearchParams).mockReturnValue({
@@ -180,7 +171,6 @@ beforeEach(() => {
   }) as never)
   vi.spyOn(console, 'error').mockImplementation(() => {})
   m.getTryOnQuota.mockResolvedValue(quota(5))
-  m.loadBuyablePacks.mockResolvedValue([])
   m.cleanupSession.mockResolvedValue(undefined)
   m.launchImageLibraryAsync.mockResolvedValue({ canceled: false, assets: [{ uri: PHOTO }] })
   m.runTryOnSession.mockImplementation(async ({ products, onItem }: any) => {
@@ -244,13 +234,6 @@ describe('preflight: quota (RC-073)', () => {
     expect(byLabel(t, 'Continue to photo')).toBeUndefined()
     expect(byLabel(t, 'Red Suit')).toBeUndefined()
     expect(text(t)).not.toContain('Buy more try-ons')
-    t.unmount()
-    mounted = []
-    m.loadBuyablePacks.mockResolvedValue(packs)
-    const t2 = await mount()
-    expect(text(t2)).toContain('Valid for this month only.')
-    expect(byLabel(t2, 'Buy more try-ons: 10 try-ons - Rs 99')).toBeDefined()
-    expect(byLabel(t2, 'Buy more try-ons: 25 try-ons - Rs 249.50')).toBeDefined()
   })
 
   it.each([403, 404])('%s on the quota read says try-on is unavailable, with no Retry', async (status) => {
@@ -270,68 +253,6 @@ describe('preflight: quota (RC-073)', () => {
     expect(text(t)).toContain('3 try-ons · 5 left this month')
   })
 
-  it('returning from the payment page (AppState active) re-reads the balance, only in preflight', async () => {
-    const t = await mount()
-    expect(m.getTryOnQuota).toHaveBeenCalledTimes(1)
-    await fireApp('active')
-    expect(m.getTryOnQuota).toHaveBeenCalledTimes(2)
-    await press(t, 'Continue to photo')
-    await fireApp('active')
-    expect(m.getTryOnQuota).toHaveBeenCalledTimes(2)
-  })
-})
-
-describe('preflight: buy more (T6)', () => {
-  it('packs show when quota is short, not when it covers every product', async () => {
-    m.loadBuyablePacks.mockResolvedValue(packs)
-    m.getTryOnQuota.mockResolvedValue(quota(2))
-    expect(text(await mount())).toContain('Buy more try-ons: 10 try-ons - Rs 99')
-    mounted.forEach((x) => x.unmount())
-    mounted = []
-    m.getTryOnQuota.mockResolvedValue(quota(3))
-    expect(text(await mount())).not.toContain('Buy more try-ons')
-  })
-
-  it('opens the checkout URL for the tapped pack', async () => {
-    m.loadBuyablePacks.mockResolvedValue(packs)
-    m.getTryOnQuota.mockResolvedValue(quota(0))
-    m.addonCheckout.mockResolvedValue({ data: { checkout_url: 'https://pay/x' } })
-    const open = vi.spyOn(Linking, 'openURL').mockResolvedValue(true as never)
-    const t = await mount()
-    await press(t, 'Buy more try-ons: 25 try-ons - Rs 249.50')
-    expect(m.addonCheckout).toHaveBeenCalledWith('TRY_ON_GENERATION', undefined, 'k2')
-    expect(open).toHaveBeenCalledWith('https://pay/x')
-  })
-
-  it('a failed checkout shows the payment error and re-enables the button', async () => {
-    m.loadBuyablePacks.mockResolvedValue(packs)
-    m.getTryOnQuota.mockResolvedValue(quota(0))
-    m.addonCheckout.mockRejectedValue(new ApiError('X', 'gateway down', 500))
-    const alertSpy = vi.spyOn(Alert, 'alert').mockImplementation(() => {})
-    const t = await mount()
-    await press(t, 'Buy more try-ons: 10 try-ons - Rs 99')
-    expect(alertSpy).toHaveBeenCalledWith('Could not open payment', 'Please try again in a moment.', undefined)
-    expect(byLabel(t, 'Buy more try-ons: 10 try-ons - Rs 99')?.disabled).toBeFalsy()
-  })
-
-  it('a second tap in the same tick starts no second checkout (RC-015 shape)', async () => {
-    m.loadBuyablePacks.mockResolvedValue(packs)
-    m.getTryOnQuota.mockResolvedValue(quota(0))
-    let settle: (v: unknown) => void = () => {}
-    m.addonCheckout.mockImplementation(() => new Promise((r) => (settle = r)))
-    vi.spyOn(Linking, 'openURL').mockResolvedValue(true as never)
-    const t = await mount()
-    const btn = byLabel(t, 'Buy more try-ons: 10 try-ons - Rs 99')!
-    await act(async () => {
-      btn.onPress()
-      btn.onPress()
-    })
-    expect(m.addonCheckout).toHaveBeenCalledTimes(1)
-    await act(async () => {
-      settle({ data: { checkout_url: 'https://pay/x' } })
-      await new Promise((r) => setTimeout(r, 0))
-    })
-  })
 })
 
 describe('capture → consent → run → gallery', () => {

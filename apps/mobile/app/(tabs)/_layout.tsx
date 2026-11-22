@@ -9,6 +9,7 @@ import { retailerApi } from '../../src/lib/api'
 import { useAuth } from '../../src/lib/auth-context'
 import { staffCan } from '../../src/lib/staff-can'
 import { useTheme } from '../../src/lib/theme'
+import { META_SOCIAL_ENABLED } from '../../src/lib/meta-social';
 
 export default function TabsLayout() {
   const insets = useSafeAreaInsets()
@@ -23,7 +24,7 @@ export default function TabsLayout() {
   // Add (POST products). Collections is reachable from Home, not a tab.
   const canSeeGrowth = staffCan(staffRole, 'growth')
   const canSeeAdd = staffCan(staffRole, 'catalog.edit')
-  const canSeeSocial = staffCan(staffRole, 'social')
+  const canSeeSocial = META_SOCIAL_ENABLED && staffCan(staffRole, 'social')
 
   // Gate: retailer must finish the registration/onboarding form before the
   // dashboard renders — otherwise a dropped-off signup (or any later relaunch)

@@ -44,7 +44,7 @@ export function initSentry(): void {
     sessionTrackingIntervalMillis: 30_000,
 
     // Attach UI context on errors
-    attachScreenshot: true,
+    attachScreenshot: false,
     attachViewHierarchy: true,
 
     // Logs enabled for richer debugging context

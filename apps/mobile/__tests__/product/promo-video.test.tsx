@@ -27,6 +27,7 @@ vi.mock('../../src/lib/polling', () => ({ pollWithBackoff: () => () => {} }))
 vi.mock('../../src/lib/safe-video-player', () => ({ useSafeVideoPlayer: () => null }))
 vi.mock('expo-video', () => ({ VideoView: () => null }))
 vi.mock('../../src/components/ReportAiContent', () => ({ ReportAiContent: () => null }))
+vi.mock('../../src/lib/meta-social', () => ({ META_SOCIAL_ENABLED: true }))
 
 import { useProductPromoVideo } from '../../src/hooks/useProductPromoVideo'
 import { ProductVideoModal } from '../../src/components/product-detail/ProductVideoModal'

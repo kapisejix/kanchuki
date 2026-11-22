@@ -6,6 +6,7 @@ import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { hardDeleteRetailer } from '../../jobs/purge-retailer-now.js';
 import { getProductCapacity } from '../../lib/product-capacity.js';
+import { prepareRetailerDeletion } from '../../lib/retailer-delete-prep.js';
 import { buildStoreUrl } from '../../lib/store-urls.js';
 import { notFound, validationError } from '../../plugins/error-handler.js';
 
@@ -340,6 +341,9 @@ export const retailersSettingsRoutes: FastifyPluginAsync = async (server) => {
     });
     if (!existing) throw notFound('Retailer');
 
+    // Throws, leaving the account intact, if a live subscription cannot be cancelled.
+    await prepareRetailerDeletion(retailerId);
+
     // Vault snapshot before hard-delete (fire-and-forget, best-effort)
     vaultDelete({
       source_table: 'retailers',
@@ -362,7 +366,7 @@ export const retailersSettingsRoutes: FastifyPluginAsync = async (server) => {
         action: 'HARD_DELETE',
         resource_type: 'Retailer',
         resource_id: retailerId,
-        metadata: { hard_delete: true, phone: existing.phone },
+        metadata: { hard_delete: true },
         ip_address: request.ip,
       },
     });

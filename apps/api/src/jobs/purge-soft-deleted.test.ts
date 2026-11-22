@@ -45,6 +45,8 @@ vi.mock('@kanchuki/db', () => ({
   }),
 }));
 
+vi.mock('../lib/retailer-delete-prep.js', () => ({ prepareRetailerDeletion: vi.fn() }));
+
 import { handlePurgeSoftDeleted, pruneCustomerInteractions } from './purge-soft-deleted.js';
 
 /** Collapse the SQL's indentation so assertions read as one line. */
@@ -217,7 +219,8 @@ describe('handlePurgeSoftDeleted — sweep invariants', () => {
     // route the SET and the DELETE to different connections if they are not
     // in the same transaction — in which case the guardrail trigger fires and
     // the delete is refused.
-    const stmts = statements();
+    // Invoice archive INSERTs sit between the two, in the same transaction.
+    const stmts = statements().filter((s) => !s.startsWith('INSERT INTO gst_invoice_archive'));
     expect(stmts.length).toBeGreaterThan(0);
     expect(stmts.length % 2).toBe(0);
     stmts.forEach((sql, i) => {

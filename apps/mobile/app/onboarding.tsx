@@ -1,5 +1,4 @@
-import { formatPaiseShort } from '@kanchuki/shared';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import * as Location from 'expo-location';
@@ -7,12 +6,10 @@ import {
   Building2,
   CheckCircle2,
   ChevronLeft,
-  Crown,
   FileText,
   MapPin,
   QrCode,
   Sparkles,
-  Star,
   Truck,
   User,
   Zap,
@@ -33,7 +30,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AnimatedPressable } from '../src/components/AnimatedPressable';
 import { GooglePlaceField } from '../src/components/GooglePlaceField';
 import { GradientButton } from '../src/components/GradientButton';
-import { billingApi, retailerApi } from '../src/lib/api';
+import { retailerApi } from '../src/lib/api';
 import { showError } from '../src/lib/errors';
 import { resolveMapsLink } from '../src/lib/maps-link';
 import { showPinReview } from '../src/lib/pin-alert';
@@ -43,33 +40,12 @@ import {
   getCapturedReferralCode,
 } from '../src/lib/referral-capture';
 import { WEB_URL } from '../src/lib/web-url';
+import { CATALOG_UPLOAD_ENABLED } from '../src/lib/catalog-upload-flag';
 
 type Step = 1 | 2 | 3 | 4 | 5;
-type PaidPlanKey = 'STARTER' | 'GROWTH' | 'PRO';
 const TOTAL_STEPS = 5;
 
 const SPECIALIZATIONS = ['Women', 'Men', 'Kids'];
-
-// Presentation only — name/icon/colour. Prices + limits come from the
-// admin-editable plan_pricing table via GET /v1/billing/plans, never hardcoded.
-const PLAN_META: Record<PaidPlanKey, { name: string; icon: typeof Star; color: string }> = {
-  STARTER: { name: 'Starter', icon: Star, color: '#6B4773' },
-  GROWTH: { name: 'Growth', icon: Crown, color: '#7C3AED' },
-  PRO: { name: 'Pro', icon: Sparkles, color: '#BB3F95' },
-};
-
-function planFeatureLine(limits: {
-  max_products: number | null;
-  max_customers: number | null;
-}): string {
-  const parts: string[] = [
-    limits.max_products == null
-      ? 'Unlimited products'
-      : `${limits.max_products.toLocaleString('en-IN')} products`,
-  ];
-  parts.push('WhatsApp sharing');
-  return parts.join(' · ');
-}
 
 function slugify(text: string): string {
   return text
@@ -99,8 +75,8 @@ const STEP_META: Record<Step, { label: string; title: string; subtitle: string }
   },
   4: {
     label: 'Plan',
-    title: 'Choose Your Plan',
-    subtitle: 'Pick a plan to unlock Kanchuki features. Start with a free demo or choose a paid plan.',
+    title: 'Start Your Free Demo',
+    subtitle: 'Explore Kanchuki with full Pro access. No payment needed.',
   },
   5: {
     label: 'Done',
@@ -214,7 +190,7 @@ export default function OnboardingScreen() {
   const [resolvingLink, setResolvingLink] = useState(false);
   const [gstin, setGstin] = useState('');
   const [referralCode, setReferralCode] = useState('');
-  const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<string | null>('DEMO');
   const [consentGiven, setConsentGiven] = useState(false);
 
   // 5B.2: prefill (never submit) a code captured from a ?ref= app link. Only
@@ -224,13 +200,6 @@ export default function OnboardingScreen() {
       if (code) setReferralCode((current) => current || code);
     });
   }, []);
-
-  // Admin-editable plan pricing + limits (feature #49). Same query key/shape
-  // as plan-select.tsx so the two screens share one cache entry.
-  const { data: plansData, isLoading: plansLoading } = useQuery({
-    queryKey: ['billing', 'plans'],
-    queryFn: () => billingApi.getPlans(),
-  });
 
   const toggleSpec = (spec: string) => {
     setSelectedSpecs((prev) =>
@@ -306,18 +275,8 @@ export default function OnboardingScreen() {
       }
 
       if (step === 4) {
-        // Demo → demo_plan flag (grants PRO/TRIAL server-side). A paid pick is
-        // recorded as intent (retailer.plan); payment happens later in Settings.
-        const isDemo = selectedPlan === 'DEMO';
-        await retailerApi.updateOnboarding(
-          4,
-          undefined,
-          isDemo
-            ? { demo_plan: true }
-            : selectedPlan
-              ? { plan: selectedPlan as PaidPlanKey }
-              : undefined,
-        );
+        // Demo → demo_plan flag (grants PRO/TRIAL server-side).
+        await retailerApi.updateOnboarding(4, undefined, { demo_plan: true });
         goToStep(nextStep);
         return;
       }
@@ -909,90 +868,6 @@ export default function OnboardingScreen() {
               </View>
             </AnimatedPressable>
 
-            {/* Divider */}
-            <View className="flex-row items-center gap-3 mb-4">
-              <View className="flex-1 h-px bg-lavender-200" />
-              <Text className="text-[11px] text-heliotrope-400 font-bold uppercase tracking-wider">
-                or pick a plan
-              </Text>
-              <View className="flex-1 h-px bg-lavender-200" />
-            </View>
-
-            {/* Paid plans — price + features from admin-editable plan_pricing */}
-            {plansLoading ? (
-              <ActivityIndicator color="#BB3F95" className="py-6" />
-            ) : (
-              (['STARTER', 'GROWTH', 'PRO'] as PaidPlanKey[]).map((planKey) => {
-                const meta = PLAN_META[planKey];
-                const apiPlan = plansData?.data?.find((p) => p.plan === planKey);
-                const priceLabel = apiPlan
-                  ? `${formatPaiseShort(apiPlan.pricing.monthly)}/mo`
-                  : '—';
-                const features = apiPlan ? planFeatureLine(apiPlan.limits) : '';
-                const isSelected = selectedPlan === planKey;
-                const Icon = meta.icon;
-                return (
-                  <AnimatedPressable
-                    key={planKey}
-                    onPress={() => setSelectedPlan(planKey)}
-                    accessibilityLabel={`${meta.name} plan — ${priceLabel}`}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: isSelected }}
-                    className="w-full rounded-2xl p-4 mb-3 border-2 overflow-hidden"
-                    style={{
-                      backgroundColor: isSelected ? undefined : '#FAF9FE',
-                      borderColor: isSelected ? meta.color : '#E0E1F6',
-                    }}
-                  >
-                    {isSelected && (
-                      <LinearGradient
-                        colors={['#231F48', '#560A39']}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 1 }}
-                        style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-                      />
-                    )}
-                    <View className="flex-row items-center gap-3">
-                      <View
-                        className="w-10 h-10 rounded-xl items-center justify-center"
-                        style={{
-                          backgroundColor: isSelected ? `${meta.color}33` : '#F3EAFF',
-                        }}
-                      >
-                        <Icon size={20} color={isSelected ? meta.color : '#6B4773'} />
-                      </View>
-                      <View className="flex-1">
-                        <View className="flex-row items-center gap-2">
-                          <Text
-                            className="text-sm font-extrabold"
-                            style={{ color: isSelected ? '#FFFFFF' : '#231F48' }}
-                          >
-                            {meta.name}
-                          </Text>
-                          <Text
-                            className="text-xs font-bold"
-                            style={{ color: isSelected ? meta.color : '#928EB2' }}
-                          >
-                            {priceLabel}
-                          </Text>
-                        </View>
-                        <Text
-                          className="text-[11px] mt-0.5 font-medium"
-                          style={{ color: isSelected ? '#D4B8E8' : '#6B4773' }}
-                        >
-                          {features}
-                        </Text>
-                      </View>
-                      {isSelected ? (
-                        <CheckCircle2 size={20} color={meta.color} />
-                      ) : (
-                        <Text className="text-heliotrope-400 text-lg">○</Text>
-                      )}
-                    </View>
-                  </AnimatedPressable>
-                );
-              })
-            )}
           </View>
         );
 
@@ -1052,6 +927,7 @@ export default function OnboardingScreen() {
                 <Text className="text-heliotrope-400 text-base font-bold">→</Text>
               </AnimatedPressable>
 
+              {CATALOG_UPLOAD_ENABLED && (
               <AnimatedPressable
                 onPress={() => void handleGetCatalogHelp()}
                 className="flex-row items-center gap-3.5 bg-white border border-lavender-200 rounded-3xl p-4 shadow-sm"
@@ -1069,6 +945,7 @@ export default function OnboardingScreen() {
                 </View>
                 <Text className="text-heliotrope-400 text-base font-bold">→</Text>
               </AnimatedPressable>
+              )}
             </View>
           </View>
         );

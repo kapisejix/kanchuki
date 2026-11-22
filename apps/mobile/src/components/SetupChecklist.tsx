@@ -6,6 +6,7 @@ import { type SetupChecklistItem, retailerApi } from '../lib/api'
 import { useAuth } from '../lib/auth-context'
 import { showError } from '../lib/errors'
 import { staffCan } from '../lib/staff-can'
+import { META_SOCIAL_ENABLED } from '../lib/meta-social';
 import { AnimatedPressable } from './AnimatedPressable'
 
 type Key = SetupChecklistItem['key']
@@ -88,7 +89,9 @@ export function SetupChecklist() {
 
   // Keys this build has no copy for (added by a newer API) are ignored, not rendered: an
   // old build must never crash on a checklist item it does not know.
-  const items = data.data.items.filter((i) => i.key in COPY)
+  const items = data.data.items.filter(
+    (i) => i.key in COPY && (META_SOCIAL_ENABLED || (i.key !== 'facebook' && i.key !== 'instagram')),
+  )
   const open = items.filter((i) => i.status !== 'done' && !i.dismissed)
   const hidden = items.filter((i) => i.status !== 'done' && i.dismissed).length
   if (open.length === 0 && hidden === 0) return null

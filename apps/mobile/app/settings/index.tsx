@@ -64,6 +64,8 @@ import { getItem } from "../../src/lib/storage";
 import { useTheme } from "../../src/lib/theme";
 import { WEB_URL } from "../../src/lib/web-url";
 import { ReportProblem } from "../../src/components/ReportProblem";
+import { CATALOG_UPLOAD_ENABLED } from "../../src/lib/catalog-upload-flag";
+import { META_SOCIAL_ENABLED } from '../../src/lib/meta-social';
 
 type KycDocType = "gst" | "aadhar_front" | "aadhar_back";
 
@@ -1525,7 +1527,7 @@ export default function SettingsScreen() {
                 icon={<CreditCard size={18} color={colors.turmeric[500]} />}
                 label="Plans & Billing"
                 subtitle={`${retailer?.plan ?? "STARTER"} · ${retailer?.plan_status ?? "TRIAL"}`}
-                onPress={() => router.push("/plan-select")}
+                onPress={() => router.push("/billing")}
               />
 
               <SettingsRow
@@ -1602,7 +1604,7 @@ export default function SettingsScreen() {
             />
           )}
 
-          {!isStaff && (
+          {META_SOCIAL_ENABLED && !isStaff && (
             <SettingsRow
               icon={<Share2 size={18} color={primaryColor} />}
               label="Social Media"
@@ -1624,7 +1626,7 @@ export default function SettingsScreen() {
             <SettingsRow
               icon={<Plug size={18} color={primaryColor} />}
               label="Integrations"
-              subtitle="Facebook, Instagram & WhatsApp"
+              subtitle={META_SOCIAL_ENABLED ? "Facebook, Instagram & WhatsApp" : "WhatsApp & Google"}
               onPress={() => router.push("/growth/integrations")}
             />
           )}
@@ -1645,7 +1647,7 @@ export default function SettingsScreen() {
             onPress={() => router.push("/store-profile")}
           />
 
-          {!isStaff && (
+          {CATALOG_UPLOAD_ENABLED && !isStaff && (
             <SettingsRow
               icon={<Truck size={18} color={primaryColor} />}
               label="Catalog Upload Help"

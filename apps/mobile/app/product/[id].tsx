@@ -38,6 +38,7 @@ import { useProductPromoVideo } from '../../src/hooks/useProductPromoVideo'
 import { useNetworkStatus } from '../../src/hooks/useNetworkStatus'
 import { ProductVideoModal } from '../../src/components/product-detail/ProductVideoModal'
 import { isKidsAudience } from '../../src/lib/promo-video'
+import { META_SOCIAL_ENABLED } from '../../src/lib/meta-social';
 
 const SCREEN_WIDTH = Dimensions.get('window').width
 
@@ -281,6 +282,7 @@ export default function ProductDetailScreen() {
         <View className="flex-row items-center gap-2">
           {/* Share to social — Create Post composer entry (R-6). The composer
               itself shows the connect-empty state when no accounts exist. */}
+{META_SOCIAL_ENABLED && (
           <AnimatedPressable
             onPress={() =>
               router.push(`/social/create?product_id=${product.id}&source=catalog`)
@@ -292,6 +294,7 @@ export default function ProductDetailScreen() {
           >
             <Share2 size={18} color="#231F48" />
           </AnimatedPressable>
+)}
           {form.isDirty ? (
             <AnimatedPressable
               onPress={() => void form.handleSave(categories)}

@@ -15,7 +15,6 @@ import CustomerDetailScreen from '../../app/customer/[id]'
 import GstScreen from '../../app/growth/gst'
 import StaffScreen from '../../app/settings/staff'
 import SettingsScreen from '../../app/settings/index'
-import PlanSelectScreen from '../../app/plan-select'
 import BillingScreen from '../../app/billing'
 import OnboardingScreen from '../../app/onboarding'
 import EnquiriesScreen from '../../app/enquiries'
@@ -441,119 +440,6 @@ describe('RC-010 profile / logo save smoke', () => {
   })
 })
 
-describe('RC-011 switch plans smoke', () => {
-  it('renders the plan cards from billingApi.getPlans without crashing', () => {
-    setQuery(['billing', 'subscription'], {
-      data: { plan: 'PRO', plan_status: 'ACTIVE', trial_ends_at: null, subscription: { status: 'ACTIVE' } },
-    })
-    setQuery(['billing', 'plans'], {
-      data: [
-        { plan: 'STARTER', pricing: { monthly: 499900 }, limits: { max_products: 100, max_customers: 1000 } },
-        { plan: 'GROWTH', pricing: { monthly: 999900 }, limits: { max_products: 500, max_customers: 5000 } },
-        { plan: 'PRO', pricing: { monthly: 1499900 }, limits: { max_products: null, max_customers: null } },
-      ],
-    })
-
-    const tree = render(<PlanSelectScreen />)
-    const text = treeText(tree).join(' ')
-
-    expect(text).toContain('Choose Your Plan')
-    expect(text).toContain('Starter')
-    expect(text).toContain('Growth')
-    expect(text).toContain('Pro')
-    // Prices render from the DB-driven plan_pricing rows (₹4,999/₹9,999/₹14,999).
-    expect(text).toContain('₹4,999')
-    expect(text).toContain('₹9,999')
-    expect(text).toContain('₹14,999')
-  })
-})
-
-// T3.2-a #2: switch flow. A retailer with a live (TRIAL/ACTIVE) subscription
-// must cancel before subscribing, or Razorpay ends up with two live ones.
-describe('plan-select switch flow (T3.2-a #2)', () => {
-  const plans = [
-    { plan: 'STARTER', pricing: { monthly: 499900 }, limits: { max_products: 100, max_customers: 1000 } },
-    { plan: 'GROWTH', pricing: { monthly: 999900 }, limits: { max_products: 500, max_customers: 5000 } },
-    { plan: 'PRO', pricing: { monthly: 1499900 }, limits: { max_products: null, max_customers: null } },
-  ]
-  const seed = (plan: string, planStatus: string, rowStatus: string) => {
-    setQuery(['billing', 'subscription'], {
-      data: { plan, plan_status: planStatus, trial_ends_at: null, subscription: { status: rowStatus } },
-    })
-    setQuery(['billing', 'plans'], { data: plans })
-  }
-  type AlertButton = { text: string; onPress?: () => unknown }
-
-  /** Tap the Growth card; resolves the alert spy (switch flow) so the caller can press Continue. */
-  async function tapGrowth() {
-    const alertSpy = vi.spyOn(Alert, 'alert').mockImplementation(() => {})
-    const openSpy = vi.spyOn(Linking, 'openURL').mockResolvedValue(true)
-    const tree = render(<PlanSelectScreen />)
-    const card = findPressableByText(tree, 'Growth')
-    expect(card).toBeTruthy()
-    await act(async () => {
-      ;(card!.props.onPress as () => void)()
-    })
-    return { alertSpy, openSpy }
-  }
-  async function pressContinue(alertSpy: ReturnType<typeof vi.spyOn>) {
-    const call = alertSpy.mock.calls.find((c) => c[0] === 'Switch Plan')
-    expect(call).toBeDefined()
-    const cont = (call![2] as AlertButton[]).find((b) => b.text === 'Continue')
-    await act(async () => {
-      await cont!.onPress!()
-    })
-  }
-
-  it.each([
-    ['TRIAL', 'TRIAL', 'TRIAL', 'STARTER'],
-    ['ACTIVE', 'ACTIVE', 'ACTIVE', 'PRO'],
-  ])('%s row: asks first, then cancel runs before subscribe', async (_n, planStatus, rowStatus, current) => {
-    seed(current, planStatus, rowStatus)
-    vi.mocked(apiMock.billingApi.cancel).mockResolvedValue({ data: {} } as never)
-    vi.mocked(apiMock.billingApi.subscribe).mockResolvedValue({ data: { checkout_url: 'https://rzp.test/x' } } as never)
-
-    const { alertSpy, openSpy } = await tapGrowth()
-    expect(apiMock.billingApi.cancel).not.toHaveBeenCalled()
-    expect(apiMock.billingApi.subscribe).not.toHaveBeenCalled()
-
-    await pressContinue(alertSpy)
-    expect(apiMock.billingApi.cancel).toHaveBeenCalledTimes(1)
-    expect(apiMock.billingApi.subscribe).toHaveBeenCalledWith('GROWTH')
-    expect(vi.mocked(apiMock.billingApi.cancel).mock.invocationCallOrder[0]).toBeLessThan(
-      vi.mocked(apiMock.billingApi.subscribe).mock.invocationCallOrder[0],
-    )
-    expect(openSpy).toHaveBeenCalledWith('https://rzp.test/x')
-  })
-
-  it('CANCELLED row: subscribes directly, no cancel and no Switch Plan prompt', async () => {
-    seed('STARTER', 'CANCELLED', 'CANCELLED')
-    vi.mocked(apiMock.billingApi.subscribe).mockResolvedValue({ data: { checkout_url: 'https://rzp.test/y' } } as never)
-
-    const { alertSpy, openSpy } = await tapGrowth()
-
-    expect(apiMock.billingApi.subscribe).toHaveBeenCalledWith('GROWTH')
-    expect(apiMock.billingApi.cancel).not.toHaveBeenCalled()
-    expect(alertSpy.mock.calls.some((c) => c[0] === 'Switch Plan')).toBe(false)
-    expect(openSpy).toHaveBeenCalledWith('https://rzp.test/y')
-  })
-
-  it('cancel ok but subscribe fails: server reason shown, no retry, no rollback (known behaviour)', async () => {
-    seed('STARTER', 'TRIAL', 'TRIAL')
-    vi.mocked(apiMock.billingApi.cancel).mockResolvedValue({ data: {} } as never)
-    vi.mocked(apiMock.billingApi.subscribe).mockRejectedValue(new ApiError('BAD_PLAN', 'Plan unavailable right now', 400))
-
-    const { alertSpy } = await tapGrowth()
-    await pressContinue(alertSpy)
-
-    expect(apiMock.billingApi.cancel).toHaveBeenCalledTimes(1)
-    expect(apiMock.billingApi.subscribe).toHaveBeenCalledTimes(1)
-    const err = alertSpy.mock.calls.find((c) => c[0] === 'Error')
-    expect(err).toBeDefined()
-    expect(err![1]).toBe('Plan unavailable right now')
-  })
-})
-
 // T3.2-a #3: billing.tsx is a read-only status screen (Play Store compliance).
 // RC-033: an ended plan must not read as a free trial.
 describe('billing screen (T3.2-a #3)', () => {
@@ -573,7 +459,7 @@ describe('billing screen (T3.2-a #3)', () => {
 
     expect(text).toContain(`GROWTH Plan · ${label}`)
     if (ended) {
-      expect(text).toContain('has ended — renew on the website')
+      expect(text).toContain('plan has ended.')
       expect(text).not.toContain('keep using all your features')
     } else {
       expect(text).toContain('keep using all your features')
@@ -586,13 +472,12 @@ describe('billing screen (T3.2-a #3)', () => {
     expect(text).toContain('Starter Plan · Free trial')
   })
 
-  it('"Manage my plan" opens plan-select', async () => {
-    seedMe('PRO', 'ACTIVE')
-    const tree = render(<BillingScreen />)
-    await act(async () => {
-      ;(findPressableByText(tree, 'Manage my plan')!.props.onPress as () => void)()
-    })
-    expect(router.push).toHaveBeenCalledWith('/plan-select')
+  it('has no price, purchase path or pointer to outside payment (Play Payments policy)', () => {
+    seedMe('PRO', 'CANCELLED')
+    const text = treeText(render(<BillingScreen />)).join('').toLowerCase()
+    for (const banned of ['website', 'kanchuki.app/billing', 'upgrade', 'renew', 'checkout', '₹', 'manage my plan']) {
+      expect(text).not.toContain(banned)
+    }
   })
 
   it('support row opens the exact mailto', async () => {
@@ -634,16 +519,6 @@ describe('onboarding steps 1-4 (T3.2-a #4)', () => {
       await (findPressableByLabel(tree, label)!.props.onPress as () => unknown)()
     })
   }
-  const pressPrefix = async (tree: T, prefix: string) => {
-    const node = collectNodes(
-      tree.toTree() as TreeNode,
-      (n) => typeof n.props?.onPress === 'function' && String(n.props.accessibilityLabel ?? '').startsWith(prefix),
-    )[0]
-    expect(node).toBeTruthy()
-    await act(async () => {
-      await (node.props.onPress as () => unknown)()
-    })
-  }
   const disabled = (tree: T, label: string) => Boolean(findPressableByLabel(tree, label)!.props.disabled)
   const text = (tree: T) => treeText(tree).join('')
 
@@ -651,16 +526,7 @@ describe('onboarding steps 1-4 (T3.2-a #4)', () => {
   const ADDRESS = 'Shop no., building, street, area, landmark'
   const GSTIN = '15-digit GSTIN (e.g. 24AAAAA0000A1Z5)'
 
-  const mount = () => {
-    setQuery(['billing', 'plans'], {
-      data: [
-        { plan: 'STARTER', pricing: { monthly: 499900 }, limits: { max_products: 100, max_customers: 1000 } },
-        { plan: 'GROWTH', pricing: { monthly: 999900 }, limits: { max_products: 500, max_customers: 5000 } },
-        { plan: 'PRO', pricing: { monthly: 1499900 }, limits: { max_products: null, max_customers: null } },
-      ],
-    })
-    return render(<OnboardingScreen />)
-  }
+  const mount = () => render(<OnboardingScreen />)
   const toStep3 = async (tree: T) => {
     await typeInto(tree, SHOP, 'Radha Sarees')
     await press(tree, CONSENT)
@@ -691,21 +557,20 @@ describe('onboarding steps 1-4 (T3.2-a #4)', () => {
     expect(disabled(tree, NEXT[1])).toBe(true) // name but no consent
   })
 
-  it('steps 1-4 save then advance in order, ending with the picked plan', async () => {
+  it('steps 1-4 save then advance in order, ending on the Free Demo', async () => {
     const tree = mount()
     await toStep3(tree)
     expect(text(tree)).toContain('GST Details')
     await press(tree, NEXT[3])
-    expect(text(tree)).toContain('Choose Your Plan')
-    expect(disabled(tree, NEXT[4])).toBe(true) // no plan picked yet
-
-    await pressPrefix(tree, 'Growth plan')
-    expect(disabled(tree, NEXT[4])).toBe(false)
+    expect(text(tree)).toContain('Start Your Free Demo')
+    expect(text(tree)).not.toContain('₹')
+    expect(text(tree)).not.toContain('or pick a plan')
+    expect(disabled(tree, NEXT[4])).toBe(false) // Free Demo is the only option
     await press(tree, NEXT[4])
 
     const on = vi.mocked(apiMock.retailerApi.updateOnboarding).mock.calls
     expect(on.map((c) => c[0])).toEqual([1, 2, 3, 4])
-    expect(on[3]).toEqual([4, undefined, { plan: 'GROWTH' }])
+    expect(on[3]).toEqual([4, undefined, { demo_plan: true }])
     // each step saved its fields before recording progress
     const upd = vi.mocked(apiMock.retailerApi.update).mock.invocationCallOrder
     const onOrder = vi.mocked(apiMock.retailerApi.updateOnboarding).mock.invocationCallOrder
@@ -757,7 +622,6 @@ describe('onboarding steps 1-4 (T3.2-a #4)', () => {
     const toStep5 = async (tree: T) => {
       await toStep3(tree)
       await press(tree, NEXT[3])
-      await pressPrefix(tree, 'Growth plan')
       await press(tree, NEXT[4])
       // count only what step 5 does
       for (const fn of [api.update, api.updateOnboarding, api.getQrSlug, setQueryDataMock, invalidateMock, router.replace]) {
@@ -818,7 +682,6 @@ describe('onboarding steps 1-4 (T3.2-a #4)', () => {
 
     it.each([
       ['Create your store QR code', '/store-profile'],
-      ['Catalog Upload Help', '/settings/catalog-upload'],
     ])('%s saves first, then redirects to %s', async (label, target) => {
       const tree = mount()
       await toStep5(tree)
@@ -827,6 +690,12 @@ describe('onboarding steps 1-4 (T3.2-a #4)', () => {
       expect(vi.mocked(api.updateOnboarding).mock.calls).toEqual([[5, true]])
       await advance(1500)
       expect(router.replace).toHaveBeenCalledWith(target)
+    })
+
+    it('hides paid Catalog Upload Help from the Play build', async () => {
+      const tree = mount()
+      await toStep5(tree)
+      expect(findPressableByText(tree, 'Catalog Upload Help')).toBeUndefined()
     })
 
     it('a failed QR slug never blocks completing onboarding', async () => {
@@ -899,7 +768,7 @@ describe('onboarding steps 1-4 (T3.2-a #4)', () => {
       expect(router.replace).toHaveBeenCalledTimes(1)
     })
 
-    it.each(['Create your store QR code', 'Catalog Upload Help'])('two taps on %s in one tick save once', async (label) => {
+    it.each(['Create your store QR code'])('two taps on %s in one tick save once', async (label) => {
       const tree = mount()
       await toStep5(tree)
       const tap = findPressableByText(tree, label)!.props.onPress as () => unknown

@@ -24,7 +24,7 @@ export function forbidden(message = 'Access denied'): AppError {
 export function planLimitExceeded(resource: string): AppError {
   return new AppError(
     'PLAN_LIMIT_EXCEEDED',
-    `Your plan limit for ${resource} has been reached. Please upgrade.`,
+    `Your plan limit for ${resource} has been reached.`,
     402,
   );
 }
@@ -32,7 +32,7 @@ export function planLimitExceeded(resource: string): AppError {
 export function featureUnavailable(featureName: string): AppError {
   return new AppError(
     'FEATURE_UNAVAILABLE',
-    `"${featureName}" is not available on your current plan. Please upgrade to a plan that includes this feature.`,
+    `"${featureName}" is not available on your current plan.`,
     402,
   );
 }

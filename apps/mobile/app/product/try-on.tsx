@@ -120,7 +120,7 @@ export default function TryOnScreen() {
       })
     } catch (err) {
       if (err instanceof ApiError && err.code === 'PLAN_LIMIT_EXCEEDED') {
-        setError('You have used all your try-ons for this period. Upgrade your plan to continue.')
+        setError('You have used all your try-ons for this period.')
       } else if (err instanceof ApiError && err.code === 'CUSTOMER_LIMIT_EXCEEDED') {
         setError('This customer has reached their try-on limit for now.')
       } else if (err instanceof ApiError && err.status === 401) {

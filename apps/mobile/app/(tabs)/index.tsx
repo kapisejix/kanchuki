@@ -27,6 +27,7 @@ import { SchedulerBanner } from '../../src/components/social/SchedulerBanner';
 import { SetupChecklist } from '../../src/components/SetupChecklist';
 import { useScreenInsets } from '../../src/lib/safe-area';
 import { useUnreadEnquiries } from '../../src/lib/use-unread-enquiries';
+import { META_SOCIAL_ENABLED } from '../../src/lib/meta-social';
 
 type RankedProduct = {
   product: {
@@ -64,7 +65,7 @@ export default function HomeScreen() {
   const canCollections = staffCan(staffRole, 'collections');
   const canGrowth = staffCan(staffRole, 'growth');
   const canAnalytics = staffCan(staffRole, 'analytics');
-  const canSocial = staffCan(staffRole, 'social');
+  const canSocial = META_SOCIAL_ENABLED && staffCan(staffRole, 'social');
   const unreadEnquiries = useUnreadEnquiries();
   const { data: meData, isLoading: meLoading } = useQuery({
     queryKey: ['retailer', 'me'],

@@ -1,5 +1,6 @@
 import { deleteObject } from '@kanchuki/ai';
 import { getPurgePrisma, prisma } from '@kanchuki/db';
+import { archiveInvoicesSql } from '../lib/gst-invoice-archive.js';
 
 /**
  * Immediate, targeted hard-delete of one retailer and every row that FKs to
@@ -93,6 +94,10 @@ export async function hardDeleteRetailer(retailerId: string): Promise<void> {
     'DELETE FROM collection_products WHERE collection_id IN (SELECT id FROM collections WHERE retailer_id = $1);',
     'DELETE FROM collection_views WHERE collection_id IN (SELECT id FROM collections WHERE retailer_id = $1);',
     'DELETE FROM collection_enquiries WHERE collection_id IN (SELECT id FROM collections WHERE retailer_id = $1);',
+    // GST invoices survive the account: archived in this transaction, so a failed
+    // archive rolls the whole delete back. Callers run prepareRetailerDeletion() first.
+    archiveInvoicesSql('subscription_payments', '= $1'),
+    archiveInvoicesSql('quota_addon_purchases', '= $1'),
     'DELETE FROM subscription_payments WHERE retailer_id = $1;',
     'DELETE FROM collections WHERE retailer_id = $1;',
     'DELETE FROM customers WHERE retailer_id = $1;',

@@ -25,6 +25,7 @@ import { GradientButton } from '../../src/components/GradientButton'
 import { WhiteButton } from '../../src/components/WhiteButton'
 import { growthApi } from '../../src/lib/api/growth'
 import { retailerApi } from '../../src/lib/api/retailer'
+import { META_SOCIAL_ENABLED } from '../../src/lib/meta-social';
 
 type TabType = 'all' | 'social' | 'ads'
 
@@ -124,8 +125,10 @@ export default function IntegrationsScreen() {
               </Text>
             </View>
             <Text className="text-lavender-200 text-xs leading-relaxed mt-1 font-medium">
-              Publish catalog drops, lookbooks, and 6s photoshoot reels across Instagram, Facebook
-              and WhatsApp. Credentials are encrypted and securely stored.
+              {META_SOCIAL_ENABLED
+                ? 'Publish catalog drops, lookbooks, and 6s photoshoot reels across Instagram, Facebook and WhatsApp. '
+                : 'Connect WhatsApp and Google for your shop. '}
+              Credentials are encrypted and securely stored.
             </Text>
           </LinearGradient>
 
@@ -136,6 +139,7 @@ export default function IntegrationsScreen() {
                 Social Media Accounts
               </Text>
 
+              {META_SOCIAL_ENABLED && (<>
               {/* Instagram Business */}
               <IntegrationCard
                 brand="instagram"
@@ -184,6 +188,8 @@ export default function IntegrationsScreen() {
                 }}
               />
 
+              </>)}
+
               {/* WhatsApp Cloud API */}
               <IntegrationCard
                 brand="whatsapp"
@@ -216,6 +222,7 @@ export default function IntegrationsScreen() {
                 Ad Platforms & Local Search
               </Text>
 
+              {META_SOCIAL_ENABLED && (<>
               {/* Facebook Ads */}
               <IntegrationCard
                 brand="facebook-ads"
@@ -238,6 +245,8 @@ export default function IntegrationsScreen() {
                   ])
                 }}
               />
+
+              </>)}
 
               {/* Google Ads */}
               <IntegrationCard

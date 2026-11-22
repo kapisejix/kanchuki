@@ -1,11 +1,6 @@
 import { request } from './client';
 
-// Play Store compliance (2026-08-10): the in-app subscription/add-on purchase
-// UI was removed from the Android build (app/billing.tsx is now informational
-// only) because Google Play requires Play Billing for digital goods sold
-// in-app. This client is retained unused for the future billing flow, which
-// will live on the Kanchuki website — the server-side /v1/billing rails stay
-// intact. Delete this file only when that web billing is built and shipped.
+// Read-only on purpose (Play Payments policy): no subscribe, cancel or add-on checkout.
 export const billingApi = {
   getPlans: () =>
     request<{
@@ -29,46 +24,4 @@ export const billingApi = {
         subscription: unknown;
       };
     }>('/v1/billing/subscription', { getCacheTtlMs: 30_000 }),
-
-  // POST /billing/subscription creates a real Razorpay subscription — an
-  // external call that can take several seconds. The default 10s client
-  // timeout aborts it mid-flight and surfaces the misleading "Request timed
-  // out (/v1/billing/subscription)" error, so these get a generous budget.
-  subscribe: (plan: string) =>
-    request<{ data: { razorpay_subscription_id: string; checkout_url: string } }>(
-      '/v1/billing/subscription',
-      {
-        method: 'POST',
-        body: JSON.stringify({ plan }),
-        timeoutMs: 60_000,
-      },
-    ),
-
-  cancel: () =>
-    request<{ data: { plan_status: string; cancelled_at: string } }>('/v1/billing/cancel', {
-      method: 'POST',
-      timeoutMs: 60_000,
-    }),
-
-  /** F-010: Create a Razorpay Payment Link for an addon purchase */
-  addonCheckout: (resourceType: string, packIndex?: number, packId?: string) =>
-    request<{
-      data: {
-        checkout_url: string;
-        resource_type: string;
-        quantity: number;
-        label: string;
-        amount_paise: number;
-      };
-    }>('/v1/billing/addon-checkout', {
-      method: 'POST',
-      body: JSON.stringify({ resource_type: resourceType, pack_index: packIndex, pack_id: packId }),
-      timeoutMs: 60_000, // creates a real Razorpay payment link
-    }),
-
-  /** F-044 R2 T6: admin-enabled try-on top-up packs for this plan ([] = none). Owner only. */
-  tryOnPacks: () =>
-    request<{
-      data: { id: string; label: string; pack_size: number; price_paise: number }[];
-    }>('/v1/billing/try-on-packs'),
 };

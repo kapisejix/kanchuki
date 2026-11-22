@@ -446,9 +446,9 @@ export default function AnalyticsScreen() {
             />
             <GradientButton
               variant="web"
-              label="Manage Subscription & Billing"
+              label="View Plan"
               style={{ marginTop: 12 }}
-              onPress={() => router.push('/plan-select')}
+              onPress={() => router.push('/billing')}
             />
           </View>
         )}

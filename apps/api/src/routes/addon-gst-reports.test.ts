@@ -17,6 +17,11 @@ const m = vi.hoisted(() => ({
   addFindFirst: vi.fn(),
   retailerFindMany: vi.fn(),
   presign: vi.fn(),
+  arcAggregate: vi.fn(),
+  arcCount: vi.fn(),
+  arcGroupBy: vi.fn(),
+  arcFindMany: vi.fn(),
+  arcFindFirst: vi.fn(),
 }));
 
 vi.mock('@kanchuki/db', () => ({
@@ -36,6 +41,13 @@ vi.mock('@kanchuki/db', () => ({
       findFirst: m.addFindFirst,
     },
     retailer: { findMany: m.retailerFindMany },
+    gstInvoiceArchive: {
+      aggregate: m.arcAggregate,
+      count: m.arcCount,
+      groupBy: m.arcGroupBy,
+      findMany: m.arcFindMany,
+      findFirst: m.arcFindFirst,
+    },
   },
 }));
 vi.mock('@kanchuki/ai', () => ({ getDownloadPresignedUrl: m.presign }));
@@ -96,6 +108,81 @@ beforeEach(() => {
   m.addFindMany.mockResolvedValue([]);
   m.retailerFindMany.mockResolvedValue([]);
   m.presign.mockResolvedValue('https://r2.example/signed');
+  m.arcAggregate.mockResolvedValue({ _sum: null, _count: 0 });
+  m.arcCount.mockResolvedValue(0);
+  m.arcGroupBy.mockResolvedValue([]);
+  m.arcFindMany.mockResolvedValue([]);
+  m.arcFindFirst.mockResolvedValue(null);
+});
+
+describe('admin reports include archived invoices of deleted retailers', () => {
+  const archived = {
+    source_id: 's_gone',
+    source_table: 'subscription_payments',
+    source_status: 'success',
+    invoice_number: 'KAN/26-27/000009',
+    invoice_date: new Date('2026-11-20T00:00:00Z'),
+    amount_inr: 118000,
+    amount_excluding_gst: 100000,
+    gst_amount: 18000,
+    buyer_name: 'Closed Shop',
+    buyer_gstin: '27ABCDE1234F1Z5',
+  };
+
+  it('summary adds archived once, and only paid archived rows', async () => {
+    m.arcAggregate.mockResolvedValue(SUB_SUM);
+    const a = await app(adminGstRoutes, '/v1/admin');
+    const res = await a.inject({ method: 'GET', url: '/v1/admin/gst/summary' });
+    expect(res.json().data).toMatchObject({
+      total_orders: 3,
+      invoiced_orders: 3,
+      total_gst: 39600,
+    });
+    expect(m.arcAggregate.mock.calls[0]?.[0].where.source_status).toEqual({
+      in: ['success', 'COMPLETED'],
+    });
+  });
+
+  it('a one-retailer filter leaves the archive out', async () => {
+    const a = await app(adminGstRoutes, '/v1/admin');
+    await a.inject({ method: 'GET', url: '/v1/admin/gst/summary?retailer_id=r_1' });
+    expect(m.arcAggregate).not.toHaveBeenCalled();
+  });
+
+  it('transactions name the archived buyer, never "Unknown"', async () => {
+    m.arcFindMany.mockResolvedValue([archived]);
+    m.arcCount.mockResolvedValue(1);
+    m.subCount.mockResolvedValue(0);
+    m.addCount.mockResolvedValue(0);
+    const a = await app(adminGstRoutes, '/v1/admin');
+    const res = await a.inject({ method: 'GET', url: '/v1/admin/gst/transactions' });
+    expect(res.json().data.transactions[0]).toMatchObject({
+      id: 's_gone',
+      retailer: 'Closed Shop',
+      gstin: '27ABCDE1234F1Z5',
+      has_invoice: true,
+    });
+    expect(res.json().data.pagination.total).toBe(1);
+  });
+
+  it('by-retailer shows the archived buyer name', async () => {
+    m.arcGroupBy.mockResolvedValue([
+      { buyer_gstin: '27ABCDE1234F1Z5', buyer_name: 'Closed Shop', ...SUB_SUM },
+    ]);
+    const a = await app(adminGstRoutes, '/v1/admin');
+    const res = await a.inject({ method: 'GET', url: '/v1/admin/gst/by-retailer' });
+    expect(res.json().data[0]).toMatchObject({ shop_name: 'Closed Shop', gst: 18000 });
+  });
+
+  it('admin pdf falls back to the archive once the source row is gone', async () => {
+    m.subFindFirst.mockResolvedValue(null);
+    m.addFindFirst.mockResolvedValue(null);
+    m.arcFindFirst.mockResolvedValue({ invoice_r2_key: 'k/archived.pdf' });
+    const a = await app(adminInvoicesRoutes, '/v1/admin');
+    const res = await a.inject({ method: 'GET', url: '/v1/admin/invoices/archived/s_gone/pdf' });
+    expect(res.json().url).toBe('https://r2.example/signed');
+    expect(m.presign).toHaveBeenCalledWith('k/archived.pdf', 300);
+  });
 });
 
 describe('admin GET /gst/summary includes add-on packs', () => {

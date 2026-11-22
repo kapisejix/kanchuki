@@ -2,7 +2,7 @@ import { randomBytes } from 'node:crypto';
 import cookie from '@fastify/cookie';
 import Fastify from 'fastify';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { errorHandler } from '../plugins/error-handler.js';
+import { AppError, errorHandler } from '../plugins/error-handler.js';
 import { adminRoutes } from './admin.js';
 
 // ─── Mock Prisma (vi.hoisted to avoid Vitest hoisting TDZ issue) ─
@@ -43,6 +43,7 @@ const {
   mockDefaultAttributeUpdate,
   mockDefaultAttributeDelete,
   mockHardDeleteRetailer,
+  mockPrepareRetailerDeletion,
 } = vi.hoisted(() => ({
   mockRetailerFindUnique: vi.fn(),
   mockRetailerFindMany: vi.fn(),
@@ -82,12 +83,16 @@ const {
   mockDefaultAttributeUpdate: vi.fn(),
   mockDefaultAttributeDelete: vi.fn(),
   mockHardDeleteRetailer: vi.fn(),
+  mockPrepareRetailerDeletion: vi.fn(),
 }));
 
 // hardDeleteRetailer uses a separate scoped-role Prisma client
 // (getPurgePrisma(), not the mocked `prisma` above) — mock the job function
 // itself rather than trying to stub its raw-SQL internals.
 vi.mock('../jobs/purge-retailer-now.js', () => ({ hardDeleteRetailer: mockHardDeleteRetailer }));
+vi.mock('../lib/retailer-delete-prep.js', () => ({
+  prepareRetailerDeletion: mockPrepareRetailerDeletion,
+}));
 
 vi.mock('@kanchuki/db', () => ({
   vaultDelete: vi.fn(),
@@ -467,6 +472,35 @@ describe('DELETE /admin/retailers', () => {
         data: expect.objectContaining({ action: 'HARD_DELETE', resource_type: 'Retailer' }),
       }),
     );
+    await app.close();
+  });
+
+  it('a failed subscription cancel stops that delete and audits only what went', async () => {
+    mockRetailerFindMany.mockResolvedValue([
+      { id: 'retailer_1', shop_name: 'S1', city: 'C', plan: 'PRO', plan_status: 'ACTIVE' },
+      { id: 'retailer_2', shop_name: 'S2', city: 'C', plan: 'PRO', plan_status: 'ACTIVE' },
+    ]);
+    mockCollectionFindMany.mockResolvedValue([]);
+    mockHardDeleteRetailer.mockReset().mockResolvedValue(undefined);
+    mockAuditLogCreate.mockClear();
+    mockPrepareRetailerDeletion
+      .mockReset()
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new AppError('SUBSCRIPTION_CANCEL_FAILED', 'not cancelled', 409));
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'DELETE',
+      url: '/v1/admin/retailers',
+      headers: csrfHeaders(),
+      body: { ids: ['retailer_1', 'retailer_2'] },
+    });
+
+    expect(res.statusCode).toBe(409);
+    expect(mockHardDeleteRetailer).toHaveBeenCalledTimes(1);
+    expect(mockHardDeleteRetailer).toHaveBeenCalledWith('retailer_1');
+    expect(mockAuditLogCreate.mock.calls[0]?.[0].data.metadata.count).toBe(1);
+    mockPrepareRetailerDeletion.mockReset();
     await app.close();
   });
 

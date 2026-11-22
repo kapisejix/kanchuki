@@ -11,6 +11,7 @@ import {
   addonWhere,
   byDateDesc,
 } from '../../lib/addon-gst-report.js';
+import { archiveKind, includeArchive } from '../../lib/gst-invoice-archive.js';
 
 export const adminInvoicesRoutes: FastifyPluginAsync = async (server) => {
   // ── List all invoices (admin) ───────────────────────────────────
@@ -46,7 +47,8 @@ export const adminInvoicesRoutes: FastifyPluginAsync = async (server) => {
       // Two tables, one page: take offset+limit from each, merge, then slice.
       const take = offset + limit;
 
-      const [payments, addons, subTotal, addonTotal] = await Promise.all([
+      const withArchive = includeArchive({ retailerId: retailer_id });
+      const [payments, addons, subTotal, addonTotal, archived, archivedTotal] = await Promise.all([
         prisma.subscriptionPayment.findMany({
           where,
           orderBy: { paid_at: 'desc' },
@@ -76,16 +78,45 @@ export const adminInvoicesRoutes: FastifyPluginAsync = async (server) => {
         }),
         prisma.subscriptionPayment.count({ where }),
         prisma.quotaAddonPurchase.count({ where: aWhere }),
+        withArchive
+          ? prisma.gstInvoiceArchive.findMany({ orderBy: { invoice_date: 'desc' }, take })
+          : [],
+        withArchive ? prisma.gstInvoiceArchive.count() : 0,
       ]);
 
       const merged = [
         ...payments.map((p) => ({ ...p, kind: 'subscription' as const })),
         ...addons.map(addonInvoiceRow),
+        // retailer_id 'archived' keeps the /invoices/:retailer_id/:id/pdf link working.
+        ...archived.map((p) => ({
+          id: p.source_id,
+          retailer_id: 'archived',
+          amount_inr: p.amount_inr,
+          amount_excluding_gst: p.amount_excluding_gst,
+          gst_amount: p.gst_amount,
+          gst_rate: p.gst_rate,
+          cgst_amount: p.cgst_amount,
+          sgst_amount: p.sgst_amount,
+          igst_amount: p.igst_amount,
+          gst_invoice_number: p.invoice_number,
+          paid_at: p.invoice_date,
+          status: p.source_status === 'COMPLETED' ? 'success' : p.source_status,
+          place_of_supply: p.place_of_supply,
+          buyer_name: p.buyer_name,
+          buyer_gstin: p.buyer_gstin,
+          kind: archiveKind(p.source_table),
+          archived: true,
+        })),
       ]
         .sort(byDateDesc((r) => r.paid_at))
         .slice(offset, offset + limit);
 
-      return reply.send({ payments: merged, total: subTotal + addonTotal, limit, offset });
+      return reply.send({
+        payments: merged,
+        total: subTotal + addonTotal + archivedTotal,
+        limit,
+        offset,
+      });
     },
   );
 
@@ -167,14 +198,21 @@ export const adminInvoicesRoutes: FastifyPluginAsync = async (server) => {
         select: { invoice_r2_key: true },
       });
       // Not a subscription invoice: an add-on pack of the retailer in the URL.
-      const key = payment
-        ? payment.invoice_r2_key
-        : (
-            await prisma.quotaAddonPurchase.findFirst({
-              where: { id, retailer_id },
+      const addon = payment
+        ? null
+        : await prisma.quotaAddonPurchase.findFirst({
+            where: { id, retailer_id },
+            select: { invoice_r2_key: true },
+          });
+      // Neither: the retailer was deleted and the invoice lives in the archive.
+      const archived =
+        payment || addon
+          ? null
+          : await prisma.gstInvoiceArchive.findFirst({
+              where: { source_id: id },
               select: { invoice_r2_key: true },
-            })
-          )?.invoice_r2_key;
+            });
+      const key = payment?.invoice_r2_key ?? addon?.invoice_r2_key ?? archived?.invoice_r2_key;
 
       if (!key) {
         return reply.code(404).send({ error: 'Invoice not found or PDF not yet generated' });

@@ -104,7 +104,7 @@ export default function WhatsAppCloudConfigScreen() {
         {planBlocked && (
           <View className="bg-rose-50 border border-rose-200 rounded-2xl px-4 py-3 mb-4">
             <Text className="text-xs text-rose-700 font-bold">
-              WhatsApp Business API is not included in your current plan. Upgrade to connect it.
+              WhatsApp Business API is not included in your current plan.
             </Text>
           </View>
         )}
