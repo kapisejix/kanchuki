@@ -28,6 +28,14 @@
 - **Fix:** append-only `gst_invoice_archive`, written in the same transaction before the delete. `invoice_r2_key` is NOT NULL, so a missing PDF is generated first and, if it still cannot be, the delete rolls back. Admin GST reports and invoices read live + archive; a row is in exactly one, so nothing double counts.
 - **Proof:** `lib/gst-invoice-archive.test.ts` (mocked), `routes/addon-gst-reports.test.ts`. `lib/gst-invoice-archive-live.test.ts` passed 3/3 on a throwaway Postgres 17, and the SQL, trigger and grants were checked there per role on stub tables with the real column names. **Limits:** migration 169 NOT applied to any real environment or run on the full schema. The table owner can disable the trigger, so apply as `postgres`, not `kanchuki_migrator`.
 
+## RC-182 — Nightly backup reported success with no backup, and the admin database pages showed wrong or unsafe status
+
+- **Component:** `apps/api/src/jobs/backup-database.ts`, `routes/admin/admin-backups.ts`, `routes/admin/admin-data.ts` (`GET /database/status`), `apps/web/src/app/admin/database/backup/page.tsx`, `database/status/page.tsx`.
+- **Symptom:** found 2026-11-22. "Trigger Backup" created nothing and told the admin to run `pnpm db:backup`, which uploads an unencrypted dump to the R2 bucket. The status page read the wrong R2 variables, looked for a trigger name that does not exist, and showed a failing Vault as "Not Configured".
+- **Root cause:** without Docker the job set `success = true` and relied on Supabase PITR, which the Free plan does not have (RC-030/RC-058 shape: an action that succeeds while doing nothing). The status route was written against `CLOUDFLARE_R2_*` names and the function name `prevent_hard_delete` instead of the `guard_*_delete` triggers, and its catch blocks hid errors.
+- **Fix:** no Docker now records a failed backup and uses the existing failure alert. Admin pages show `pnpm db:backup:local` and say no backup was created. Status uses `R2_*`, requires all 8 guard triggers, and shows Vault as "Failed" on error.
+- **Proof:** API 3526 passed, 9 skipped; API and web `tsc` clean; Biome clean on the 3 API files and on every changed web line (older errors remain elsewhere in the 2 pages). **Limits:** no new test, and these pages have no tests. Not browser-tested or checked against prod. This does not create backups: real backups still need Supabase Pro or a separate encrypted job. Restore stays log-only.
+
 ## RC-181 — A lapsed trial or paid term still ran paid AI, because the quota check only looked at plan limits
 
 - **Component:** `apps/api/src/lib/quota.ts` (`isAiBlocked`, `assertAiAllowed`, called from `checkQuota`, `reserveQuota`, `reserveJobQuota`), `jobs/tag-product.ts`, `jobs/generate-embedding.ts`, `routes/search.ts`, `routes/public/public-stylist.ts`.
