@@ -696,4 +696,5 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Buttons | Owner approved rewording 9 labels on Translate, Videos and the integration screens, removing "Luxury", "Ken Burns" and "1-Click". |
 | Tests | Create Post test updated for `Posted`. Connect double-tap test updated for the new labels. |
 | Local runs | Mobile 722 passed, tsc 0, Android JS bundle exported. Biome on the 36 changed code files: 54 errors, same as `origin/main`. |
+| Biome cleanup | Owner asked to clear the 15 errors in the 7 reworded-label files. Imports and one test line are in one commit, formatting in another. Those 7 files now have 0 errors and 3 warnings, and use semicolons as `biome.jsonc` requires, unlike most other mobile files. Mobile 722 passed, tsc 0. |
 | Not verified | Not opened on a device or in Expo Go. Reaches phones only with a new app build. |
