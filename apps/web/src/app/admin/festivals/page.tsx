@@ -55,7 +55,7 @@ function periodBadge(f: Festival): { label: string; cls: string } {
   const start = new Date(f.starts_at).getTime()
   const end = new Date(f.ends_at).getTime()
   if (now >= start && now <= end) return { label: 'Active now', cls: 'bg-green-50 text-green-600 border-green-100' }
-  if (now < start) return { label: 'Upcoming', cls: 'bg-cyan-50 text-cyan-600 border-cyan-100' }
+  if (now < start) return { label: 'Upcoming', cls: 'bg-ink-50 text-ink-600 border-ink-100' }
   return { label: 'Past', cls: 'bg-gray-50 text-gray-400 border-gray-100' }
 }
 
@@ -118,7 +118,7 @@ export default function FestivalsPage() {
         <div>
           <div className="flex items-center gap-3 mb-1">
             <h1 className="text-2xl font-bold text-gray-900">Festivals</h1>
-            <CalendarDays size={20} className="text-cyan-500" />
+            <CalendarDays size={20} className="text-ink-500" />
           </div>
           <p className="text-sm text-gray-500 max-w-2xl">
             The campaign festival calendar — add state-wise / region-wise offers with exact
@@ -130,9 +130,8 @@ export default function FestivalsPage() {
             setEditing(null)
             setFormOpen(true)
           }}
-          whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.97 }}
-          className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow-lg shadow-cyan-500/25 flex items-center gap-2 shrink-0"
+          className="bg-ink-600 hover:bg-ink-500 text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow-lg flex items-center gap-2 shrink-0"
         >
           <Plus size={16} />
           Add Festival
@@ -151,7 +150,7 @@ export default function FestivalsPage() {
       {/* Festival table */}
       <motion.div
         variants={itemVariants}
-        className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 overflow-hidden"
+        className="bg-white rounded-2xl border border-gray-200/80 overflow-hidden"
       >
         {!festivals ? (
           <div className="p-12 text-center text-sm text-gray-400 animate-pulse">Loading…</div>
@@ -187,12 +186,12 @@ export default function FestivalsPage() {
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: i * 0.03 }}
-                      className="border-b border-gray-50 hover:bg-cyan-50/40 transition-colors"
+                      className="border-b border-gray-50 hover:bg-ink-50/40 transition-colors"
                     >
                       <td className="px-6 py-3.5">
                         <div className="flex items-center gap-2.5">
-                          <div className="w-9 h-9 rounded-xl bg-cyan-50 border border-cyan-100 flex items-center justify-center shrink-0">
-                            <CalendarDays size={16} className="text-cyan-500" />
+                          <div className="w-9 h-9 rounded-xl bg-ink-50 border border-ink-100 flex items-center justify-center shrink-0">
+                            <CalendarDays size={16} className="text-ink-500" />
                           </div>
                           <span className="font-semibold text-gray-900">{f.name}</span>
                         </div>
@@ -217,7 +216,7 @@ export default function FestivalsPage() {
                               setEditing(f)
                               setFormOpen(true)
                             }}
-                            className="p-2 text-gray-400 hover:text-cyan-600 hover:bg-cyan-50 rounded-lg transition-colors"
+                            className="p-2 text-gray-400 hover:text-ink-600 hover:bg-ink-50 rounded-lg transition-colors"
                             aria-label={`Edit ${f.name}`}
                           >
                             <Pencil size={15} />
@@ -315,7 +314,7 @@ function FestivalFormModal({
     <Sheet
       open
       onClose={onClose}
-      overlayClassName="z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+      overlayClassName="z-50 bg-black/60 flex items-center justify-center p-4"
       panelClassName="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 max-h-full overflow-y-auto"
       overlayAnimation={{ initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 } }}
       panelAnimation={{
@@ -328,7 +327,7 @@ function FestivalFormModal({
     >
         <div className="flex items-center justify-between mb-5">
           <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
-            <CalendarDays size={17} className="text-cyan-500" />
+            <CalendarDays size={17} className="text-ink-500" />
             {festival ? 'Edit Festival' : 'Add Festival'}
           </h3>
           <button onClick={onClose} className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg" aria-label="Close">
@@ -338,7 +337,7 @@ function FestivalFormModal({
 
         <div className="space-y-4">
           <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">
+            <label className="text-xs font-semibold text-gray-500 mb-1.5 block">
               Festival Name
             </label>
             <input
@@ -346,12 +345,12 @@ function FestivalFormModal({
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Diwali, Pongal, Wedding Season…"
               autoFocus
-              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-700 outline-none focus:border-cyan-400"
+              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-700 outline-none focus:border-ink-400"
             />
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">
+            <label className="text-xs font-semibold text-gray-500 mb-1.5 block">
               Region / State
             </label>
             <input
@@ -359,7 +358,7 @@ function FestivalFormModal({
               onChange={(e) => setRegion(e.target.value)}
               placeholder="PAN_INDIA or a state, e.g. TAMIL_NADU"
               list="festival-regions"
-              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-700 outline-none focus:border-cyan-400"
+              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-700 outline-none focus:border-ink-400"
             />
             <datalist id="festival-regions">
               {REGION_SUGGESTIONS.map((r) => (
@@ -375,18 +374,18 @@ function FestivalFormModal({
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">
+              <label className="text-xs font-semibold text-gray-500 mb-1.5 block">
                 Starts
               </label>
               <input
                 type="date"
                 value={startsAt}
                 onChange={(e) => setStartsAt(e.target.value)}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-700 outline-none focus:border-cyan-400"
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-700 outline-none focus:border-ink-400"
               />
             </div>
             <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">
+              <label className="text-xs font-semibold text-gray-500 mb-1.5 block">
                 Ends
               </label>
               <input
@@ -394,7 +393,7 @@ function FestivalFormModal({
                 value={endsAt}
                 min={startsAt}
                 onChange={(e) => setEndsAt(e.target.value)}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-700 outline-none focus:border-cyan-400"
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-700 outline-none focus:border-ink-400"
               />
             </div>
           </div>
@@ -409,9 +408,8 @@ function FestivalFormModal({
             <motion.button
               onClick={() => void submit()}
               disabled={!canSubmit}
-              whileHover={canSubmit ? { scale: 1.02 } : undefined}
               whileTap={canSubmit ? { scale: 0.98 } : undefined}
-              className="flex-1 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold py-3 rounded-xl shadow-lg shadow-cyan-500/25 flex items-center justify-center gap-2"
+              className="bg-ink-600 hover:bg-ink-500 flex-1 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold py-3 rounded-xl shadow-lg flex items-center justify-center gap-2"
             >
               {saving ? (
                 <>

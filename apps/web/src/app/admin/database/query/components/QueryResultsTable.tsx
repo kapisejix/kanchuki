@@ -51,7 +51,7 @@ export function QueryResultsTable({
 
   if (loading) {
     return (
-      <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-12 text-center shadow-sm">
+      <div className="bg-white rounded-2xl border border-gray-200/80 p-12 text-center shadow-sm">
         <div className="inline-block p-4 rounded-2xl bg-violet-50 text-violet-600 mb-3 animate-pulse">
           <Clock size={28} className="animate-spin" />
         </div>
@@ -63,7 +63,7 @@ export function QueryResultsTable({
 
   if (error) {
     return (
-      <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-red-200 p-6 shadow-sm">
+      <div className="bg-white rounded-2xl border border-red-200 p-6 shadow-sm">
         <div className="flex items-start gap-3">
           <div className="p-2.5 rounded-xl bg-red-50 text-red-600 border border-red-100 shrink-0">
             <AlertCircle size={20} />
@@ -81,7 +81,7 @@ export function QueryResultsTable({
 
   if (!result) {
     return (
-      <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-dashed border-gray-300 p-12 text-center shadow-sm">
+      <div className="bg-white rounded-2xl border border-dashed border-gray-300 p-12 text-center shadow-sm">
         <Layers size={32} className="mx-auto text-gray-300 mb-3" />
         <h4 className="text-sm font-semibold text-gray-700">No Query Executed Yet</h4>
         <p className="text-xs text-gray-400 mt-1">
@@ -92,7 +92,7 @@ export function QueryResultsTable({
   }
 
   return (
-    <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 shadow-sm overflow-hidden">
+    <div className="bg-white rounded-2xl border border-gray-200/80 shadow-sm overflow-hidden">
       {/* Table Header Bar */}
       <div className="px-5 py-3.5 border-b border-gray-200/80 bg-gray-50/50 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-4 text-xs text-gray-600">

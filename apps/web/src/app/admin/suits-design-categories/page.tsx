@@ -176,7 +176,7 @@ export default function SuitsDesignCategoriesPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
-        <Loader2 size={24} className="animate-spin text-cyan-500" />
+        <Loader2 size={24} className="animate-spin text-ink-500" />
       </div>
     )
   }
@@ -186,7 +186,7 @@ export default function SuitsDesignCategoriesPage() {
       <div>
         <div className="flex items-center gap-3 mb-1">
           <h1 className="text-2xl font-bold text-gray-900">Suits Design Categories</h1>
-          <Tags size={20} className="text-cyan-500" />
+          <Tags size={20} className="text-ink-500" />
         </div>
         <p className="text-sm text-gray-500">
           The category list behind the Suits Designs strips — and the rows that make
@@ -210,7 +210,7 @@ export default function SuitsDesignCategoriesPage() {
       )}
 
       {/* ─── Add-category row ─────────────────────────────────────── */}
-      <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-4 flex flex-wrap items-end gap-3">
+      <div className="bg-white rounded-2xl border border-gray-200/80 p-4 flex flex-wrap items-end gap-3">
         <div className="w-24">
           <label htmlFor="new-cat-sort" className="block text-xs font-medium text-gray-500 mb-1.5">
             Order
@@ -221,7 +221,7 @@ export default function SuitsDesignCategoriesPage() {
             value={newSort}
             placeholder={String(rows.length)}
             onChange={(e) => setNewSort(e.target.value)}
-            className="w-full px-2 py-2 text-sm border border-dashed border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
+            className="w-full px-2 py-2 text-sm border border-dashed border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-ink-500/30"
           />
         </div>
         <div className="flex-1 min-w-[220px]">
@@ -234,12 +234,12 @@ export default function SuitsDesignCategoriesPage() {
             placeholder="e.g. Lehenga"
             onChange={(e) => setNewName(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && void create()}
-            className="w-full px-3 py-2 text-sm border border-dashed border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
+            className="w-full px-3 py-2 text-sm border border-dashed border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-ink-500/30"
           />
         </div>
         <button
           onClick={create}
-          className="flex items-center gap-2 px-4 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-medium rounded-xl transition-colors"
+          className="flex items-center gap-2 px-4 py-2.5 bg-ink-600 hover:bg-ink-500 text-white text-sm font-medium rounded-xl transition-colors"
         >
           <Plus size={16} />
           Add category
@@ -252,21 +252,21 @@ export default function SuitsDesignCategoriesPage() {
           const d = draft(row)
           const slugDirty = d.name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') !== row.slug
           return (
-            <div key={row.id} className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 overflow-hidden">
+            <div key={row.id} className="bg-white rounded-2xl border border-gray-200/80 overflow-hidden">
               <div className="flex flex-wrap items-center gap-3 p-4">
                 <input
                   type="number"
                   value={d.sort_order}
                   onChange={(e) => patchDraft(row.id, { sort_order: Number(e.target.value) })}
                   aria-label={`Order for ${row.name}`}
-                  className="w-20 px-2 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
+                  className="w-20 px-2 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-ink-500/30"
                 />
                 <input
                   value={d.name}
                   onChange={(e) => patchDraft(row.id, { name: e.target.value })}
                   onKeyDown={(e) => e.key === 'Enter' && drafts[row.id] && void save(row.id)}
                   aria-label={`Name for ${row.name}`}
-                  className="flex-1 min-w-[180px] px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
+                  className="flex-1 min-w-[180px] px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-ink-500/30"
                 />
                 <code className="text-xs text-gray-400 bg-gray-50 border border-gray-100 rounded-lg px-2 py-1.5">
                   /{row.slug}
@@ -278,7 +278,7 @@ export default function SuitsDesignCategoriesPage() {
                 </code>
                 <button
                   onClick={() => toggleActive(row)}
-                  className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-full transition-all ${
+                  className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-full transition ${
                     row.is_active
                       ? 'bg-green-100 text-green-700 hover:bg-green-200'
                       : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
@@ -294,7 +294,7 @@ export default function SuitsDesignCategoriesPage() {
                   {drafts[row.id] && (
                     <button
                       onClick={() => save(row.id)}
-                      className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-cyan-600 hover:bg-cyan-500 rounded-xl transition-colors"
+                      className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-ink-600 hover:bg-ink-500 rounded-xl transition-colors"
                     >
                       <Save size={13} />
                       Save
@@ -318,7 +318,7 @@ export default function SuitsDesignCategoriesPage() {
 
               {/* Related multi-select */}
               <div className="flex flex-wrap items-center gap-2 px-4 pb-4 pt-1">
-                <span className="flex items-center gap-1 text-[11px] font-semibold text-gray-400 uppercase tracking-wide mr-1">
+                <span className="flex items-center gap-1 text-[11px] font-semibold text-gray-400 mr-1">
                   <Link2 size={12} />
                   Shows designs from
                 </span>
@@ -382,9 +382,9 @@ function RelatedPicker({
             type="button"
             onClick={() => toggle(c.id)}
             disabled={saving}
-            className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full transition-all disabled:opacity-60 ${
+            className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full transition disabled:opacity-60 ${
               on
-                ? 'bg-cyan-600 text-white hover:bg-cyan-500'
+                ? 'bg-ink-600 text-white hover:bg-ink-500'
                 : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
             }`}
             aria-pressed={on}
@@ -404,7 +404,7 @@ function RelatedPicker({
             setSaving(false)
           }}
           disabled={saving}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-cyan-600 hover:bg-cyan-500 rounded-full transition-colors disabled:opacity-60"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-ink-600 hover:bg-ink-500 rounded-full transition-colors disabled:opacity-60"
         >
           {saving ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />}
           Save links

@@ -249,7 +249,7 @@ export default function DeletionVaultPage() {
       <motion.div variants={itemVariants}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-red-500 to-rose-600 rounded-xl flex items-center justify-center shadow-lg shadow-red-500/20">
+            <div className="bg-red-600 w-10 h-10 rounded-xl flex items-center justify-center shadow-lg">
               <Archive size={20} className="text-white" />
             </div>
             <div>
@@ -263,9 +263,8 @@ export default function DeletionVaultPage() {
             <motion.button
               onClick={() => fetchEntries(true)}
               disabled={refreshing}
-              whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-all"
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition"
             >
               <RefreshCw size={13} className={refreshing ? 'animate-spin' : ''} />
               Refresh
@@ -276,10 +275,10 @@ export default function DeletionVaultPage() {
 
       {/* ── Filters ──────────────────────────────────────────────── */}
       <motion.div variants={itemVariants}>
-        <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-4 shadow-sm">
+        <div className="bg-white rounded-2xl border border-gray-200/80 p-4 shadow-sm">
           <div className="flex items-center gap-2 mb-3">
             <Filter size={13} className="text-gray-400" />
-            <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Filters</span>
+            <span className="text-xs font-semibold text-gray-500">Filters</span>
             {totalCount > 0 && (
               <span className="text-[10px] text-gray-400 font-normal">
                 ({totalCount.toLocaleString('en-IN')} total entries)
@@ -288,7 +287,6 @@ export default function DeletionVaultPage() {
             {hasFilters && (
               <motion.button
                 onClick={resetFilters}
-                whileHover={{ scale: 1.05 }}
                 className="ml-auto flex items-center gap-1 text-[10px] text-red-500 hover:text-red-600"
               >
                 <X size={11} />
@@ -404,9 +402,9 @@ export default function DeletionVaultPage() {
       {/* ── Vault Entries Table ─────────────────────────────────── */}
       {!loading && entries.length > 0 && vaultConfigured && (
         <motion.div variants={itemVariants} className="space-y-4">
-          <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 overflow-hidden shadow-lg">
+          <div className="bg-white rounded-2xl border border-gray-200/80 overflow-hidden shadow-lg">
             {/* Table header */}
-            <div className="flex items-center gap-4 px-5 py-3 bg-gray-50/80 border-b border-gray-200/80 text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
+            <div className="flex items-center gap-4 px-5 py-3 bg-gray-50/80 border-b border-gray-200/80 text-xs font-semibold text-gray-500">
               <div className="w-24 shrink-0">Table</div>
               <div className="flex-1 min-w-0">Record</div>
               <div className="w-28 text-right shrink-0 hidden sm:block">Deleted By</div>
@@ -499,7 +497,7 @@ export default function DeletionVaultPage() {
                     <div className="mt-3">
                       <div className="flex items-center gap-2 mb-2">
                         <Database size={12} className="text-gray-400" />
-                        <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
+                        <span className="text-xs font-semibold text-gray-500">
                           Snapshot Preview
                         </span>
                       </div>
@@ -545,9 +543,8 @@ export default function DeletionVaultPage() {
               <motion.button
                 onClick={() => fetchEntries(false, true)}
                 disabled={loadingMore}
-                whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-rose-600 bg-rose-50 border border-rose-200 rounded-lg hover:bg-rose-100 transition-all disabled:opacity-50"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-rose-600 bg-rose-50 border border-rose-200 rounded-lg hover:bg-rose-100 transition disabled:opacity-50"
               >
                 {loadingMore ? (
                   <Loader2 size={11} className="animate-spin" />

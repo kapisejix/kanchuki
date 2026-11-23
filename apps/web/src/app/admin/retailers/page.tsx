@@ -13,7 +13,6 @@ import {
   Users,
   Share2,
   Clock,
-  Sparkles,
   Star,
   Trash2,
 } from 'lucide-react'
@@ -183,7 +182,7 @@ function RetailersContent() {
     }
   }
 
-  const selectClass = "border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-400 transition-all"
+  const selectClass = "border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-ink-500/40 focus:border-ink-400 transition"
 
   return (
     <motion.div
@@ -195,12 +194,6 @@ function RetailersContent() {
       {/* Header */}
       <div className="flex items-center gap-3">
         <h1 className="text-2xl font-bold text-gray-900">Retailers</h1>
-        <motion.div
-          animate={{ rotate: [0, 10, -10, 0] }}
-          transition={{ duration: 2, repeat: Infinity, repeatDelay: 5 }}
-        >
-          <Sparkles size={18} className="text-cyan-500" />
-        </motion.div>
       </div>
       <p className="text-sm text-gray-500 -mt-4">
         {retailers.length > 0 ? `${retailers.length} retailers shown` : 'Browse all retailers on the platform'}
@@ -209,19 +202,19 @@ function RetailersContent() {
       {/* Filters */}
       <form onSubmit={applyFilters} className="flex flex-wrap gap-3">
         <div className="relative flex-1 min-w-[220px] group">
-          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-cyan-500 transition-colors" />
+          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-ink-500 transition-colors" />
           <input
             value={filters.search}
             onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value }))}
             placeholder="Search by shop name, city, or phone..."
-            className="w-full pl-10 pr-4 py-2.5 bg-white/80 backdrop-blur-sm border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-400 transition-all"
+            className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-ink-500/40 focus:border-ink-400 transition"
           />
         </div>
         <input
           value={filters.city}
           onChange={(e) => setFilters((f) => ({ ...f, city: e.target.value }))}
           placeholder="City"
-          className="w-36 px-3 py-2.5 bg-white/80 backdrop-blur-sm border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-400 transition-all"
+          className="w-36 px-3 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-ink-500/40 focus:border-ink-400 transition"
         />
         <select
           value={filters.state}
@@ -275,9 +268,8 @@ function RetailersContent() {
         </select>
         <motion.button
           type="submit"
-          whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
-          className="bg-gradient-to-r from-cyan-600 to-blue-600 text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:shadow-lg hover:shadow-cyan-500/25 transition-all"
+          className="bg-ink-600 text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:shadow-lg transition"
         >
           Filter
         </motion.button>
@@ -290,7 +282,7 @@ function RetailersContent() {
           <button
             onClick={bulkDelete}
             disabled={deleting}
-            className="flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-all disabled:opacity-60"
+            className="flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition disabled:opacity-60"
           >
             <Trash2 size={13} />
             {deleting ? 'Deleting...' : 'Delete selected'}
@@ -299,7 +291,7 @@ function RetailersContent() {
       )}
 
       {/* Table */}
-      <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 overflow-hidden">
+      <div className="bg-white rounded-2xl border border-gray-200/80 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -313,15 +305,15 @@ function RetailersContent() {
                     className="rounded border-gray-300"
                   />
                 </th>
-                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Shop</th>
-                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">City</th>
-                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">State</th>
-                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Plan</th>
-                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-4 py-3.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider"><Package size={14} className="inline" /> Products</th>
-                <th className="px-4 py-3.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider"><Users size={14} className="inline" /> Customers</th>
-                <th className="px-4 py-3.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider"><Share2 size={14} className="inline" /> Collec.</th>
-                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider"><Clock size={14} className="inline" /> Joined</th>
+                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500">Shop</th>
+                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500">City</th>
+                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500">State</th>
+                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500">Plan</th>
+                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500">Status</th>
+                <th className="px-4 py-3.5 text-center text-xs font-semibold text-gray-500"><Package size={14} className="inline" /> Products</th>
+                <th className="px-4 py-3.5 text-center text-xs font-semibold text-gray-500"><Users size={14} className="inline" /> Customers</th>
+                <th className="px-4 py-3.5 text-center text-xs font-semibold text-gray-500"><Share2 size={14} className="inline" /> Collec.</th>
+                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500"><Clock size={14} className="inline" /> Joined</th>
                 <th className="px-4 py-3.5" />
               </tr>
             </thead>
@@ -363,7 +355,6 @@ function RetailersContent() {
                     <motion.tr
                       key={r.id}
                       variants={rowVariants}
-                      whileHover={{ backgroundColor: 'rgba(6,182,212,0.03)', transition: { duration: 0.2 } }}
                       className="border-b border-gray-50 transition-colors"
                     >
                       <td className="px-4 py-3.5">
@@ -378,7 +369,7 @@ function RetailersContent() {
                       <td className="px-4 py-3.5">
                         <Link
                           href={`/admin/retailers/${r.id}`}
-                          className="font-medium text-gray-900 hover:text-cyan-600 transition-colors"
+                          className="font-medium text-gray-900 hover:text-ink-600 transition-colors"
                         >
                           <div>
                             <span className="font-semibold">{r.shop_name || 'Unnamed Store'}</span>
@@ -451,9 +442,8 @@ function RetailersContent() {
               <motion.button
                 onClick={handlePrev}
                 disabled={cursorHistory.length === 0}
-                whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-white/80 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-white/80 disabled:opacity-30 disabled:cursor-not-allowed transition"
                 aria-label="Previous page"
               >
                 <ChevronLeft size={16} />
@@ -464,9 +454,8 @@ function RetailersContent() {
               <motion.button
                 onClick={handleNext}
                 disabled={!hasMore}
-                whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-white/80 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-white/80 disabled:opacity-30 disabled:cursor-not-allowed transition"
                 aria-label="Next page"
               >
                 <ChevronRight size={16} />

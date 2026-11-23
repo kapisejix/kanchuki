@@ -140,7 +140,7 @@ export default function IntegrationsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
-        <Loader2 size={24} className="animate-spin text-cyan-500" />
+        <Loader2 size={24} className="animate-spin text-ink-500" />
       </div>
     )
   }
@@ -161,7 +161,7 @@ export default function IntegrationsPage() {
         <div>
           <div className="flex items-center gap-3 mb-1">
             <h1 className="text-2xl font-bold text-gray-900">Integrations</h1>
-            <KeyRound size={20} className="text-cyan-500" />
+            <KeyRound size={20} className="text-ink-500" />
           </div>
           <p className="text-sm text-gray-500">
             Third-party API keys and secrets, encrypted at rest (AES-256-GCM). Super admin only.
@@ -186,7 +186,7 @@ export default function IntegrationsPage() {
             onClick={() => setSelectedCategory('ALL')}
             className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
               selectedCategory === 'ALL'
-                ? 'bg-cyan-500 text-white shadow-xs'
+                ? 'bg-ink-500 text-white shadow-xs'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}
           >
@@ -198,7 +198,7 @@ export default function IntegrationsPage() {
               onClick={() => setSelectedCategory(cat)}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap ${
                 selectedCategory === cat
-                  ? 'bg-cyan-500 text-white shadow-xs'
+                  ? 'bg-ink-500 text-white shadow-xs'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
@@ -216,7 +216,7 @@ export default function IntegrationsPage() {
             placeholder="Search keys (e.g. FAL, Gemini, Flux)..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full px-3 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500/50 bg-white"
+            className="w-full px-3 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-ink-500/50 bg-white"
           />
         </div>
       </div>
@@ -241,7 +241,7 @@ export default function IntegrationsPage() {
         </div>
       ) : (
         displayedCategories.map((category) => (
-          <div key={category} className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-6">
+          <div key={category} className="bg-white rounded-2xl border border-gray-200/80 p-6">
             <h2 className="text-sm font-semibold text-gray-700 mb-4">{CATEGORY_LABELS[category] ?? category}</h2>
             <div className="space-y-3">
               {filteredRows
@@ -272,7 +272,7 @@ export default function IntegrationsPage() {
                       <button
                         onClick={() => void toggleActive(row)}
                         disabled={busy === row.key_name}
-                        className="p-1.5 text-gray-400 hover:text-cyan-600 disabled:opacity-50"
+                        className="p-1.5 text-gray-400 hover:text-ink-600 disabled:opacity-50"
                         aria-label={row.is_active ? 'Deactivate' : 'Activate'}
                         title={row.is_active ? 'Active — click to deactivate' : 'Inactive — click to activate'}
                       >
@@ -295,7 +295,7 @@ export default function IntegrationsPage() {
                           if (e.key === 'Enter') void save(row)
                         }}
                         placeholder={row.configured ? 'Rotate value…' : 'Paste value…'}
-                        className="w-52 px-2.5 py-1.5 pr-8 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                        className="w-52 px-2.5 py-1.5 pr-8 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-ink-500/50"
                       />
                       {drafts[row.key_name] ? (
                         <button
@@ -313,7 +313,7 @@ export default function IntegrationsPage() {
                     <button
                       onClick={() => void save(row)}
                       disabled={busy === row.key_name}
-                      className="p-1.5 text-gray-400 hover:text-cyan-600 disabled:opacity-50 transition-colors"
+                      className="p-1.5 text-gray-400 hover:text-ink-600 disabled:opacity-50 transition-colors"
                       aria-label={`Save ${row.label}`}
                     >
                       {busy === row.key_name ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}

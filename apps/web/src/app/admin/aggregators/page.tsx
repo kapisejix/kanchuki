@@ -160,14 +160,14 @@ export default function AggregatorsPage() {
       {/* Channel breakdown */}
       {stats && stats.by_channel.length > 0 && (
         <motion.div variants={itemVariants}>
-          <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2.5">
+          <h2 className="text-xs font-semibold text-gray-500 mb-2.5">
             By Marketplace
           </h2>
           <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
             {stats.by_channel.map((ch) => (
               <div
                 key={ch.channel}
-                className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200/80 p-4"
+                className="bg-white rounded-2xl border border-gray-200/80 p-4"
               >
                 <div className="flex items-center gap-2 mb-2">
                   <span className="text-lg">{CHANNEL_EMOJI[ch.channel] ?? '🔗'}</span>
@@ -198,7 +198,7 @@ export default function AggregatorsPage() {
       {/* Connections table */}
       <motion.div
         variants={itemVariants}
-        className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 overflow-hidden"
+        className="bg-white rounded-2xl border border-gray-200/80 overflow-hidden"
       >
         {!syncs ? (
           <div className="p-12 text-center text-sm text-gray-400 animate-pulse">Loading…</div>
@@ -329,14 +329,13 @@ function StatsCard({
   return (
     <motion.div
       variants={itemVariants}
-      whileHover={{ y: -2 }}
-      className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200/80 p-5"
+      className="bg-white rounded-2xl border border-gray-200/80 p-5"
     >
       <div className="flex items-center gap-3 mb-2">
         <div className={`w-9 h-9 rounded-xl ${c.bg} border flex items-center justify-center`}>
           <Icon size={17} className={c.icon} />
         </div>
-        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{label}</span>
+        <span className="text-xs font-semibold text-gray-500 uppercase">{label}</span>
       </div>
       <p className="text-2xl font-bold text-gray-900 tabular-nums">{value}</p>
     </motion.div>
@@ -352,7 +351,7 @@ function DetailModal({ sync, onClose }: { sync: ChannelSync; onClose: () => void
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4"
       onClick={onClose}
     >
       <motion.div

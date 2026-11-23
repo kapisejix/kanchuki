@@ -83,7 +83,7 @@ export default function AiCustomDesignsPage() {
       {rows && rows.length > 0 ? (
         <div className="mt-4 overflow-x-auto">
           <table className="w-full text-left text-sm">
-            <thead className="border-b border-gray-200 text-xs uppercase text-gray-500">
+            <thead className="border-b border-gray-200 text-xs text-gray-500">
               <tr>
                 <th className="py-2 pr-4">When</th>
                 <th className="py-2 pr-4">Shop</th>

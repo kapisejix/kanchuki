@@ -215,7 +215,7 @@ export default function SuitsDesignsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
-        <Loader2 size={24} className="animate-spin text-cyan-500" />
+        <Loader2 size={24} className="animate-spin text-ink-500" />
       </div>
     )
   }
@@ -225,7 +225,7 @@ export default function SuitsDesignsPage() {
       <div>
         <div className="flex items-center gap-3 mb-1">
           <h1 className="text-2xl font-bold text-gray-900">Suits Designs</h1>
-          <Sparkles size={20} className="text-cyan-500" />
+          <Sparkles size={20} className="text-ink-500" />
         </div>
         <p className="text-sm text-gray-500">
           Suits-design library shown on storefront product pages under &ldquo;Related
@@ -247,7 +247,7 @@ export default function SuitsDesignsPage() {
         </div>
       )}
 
-      <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-6">
+      <div className="bg-white rounded-2xl border border-gray-200/80 p-6">
         <div className="flex flex-wrap items-end gap-4">
           <div className="flex-1 min-w-[220px]">
             <label htmlFor="design-category" className="block text-xs font-medium text-gray-500 mb-1.5">
@@ -257,7 +257,7 @@ export default function SuitsDesignsPage() {
               id="design-category"
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
+              className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-ink-500/30"
             >
               {categories.length === 0 && <option value="">No categories — seed migration first</option>}
               {categories.map((c) => (
@@ -277,14 +277,14 @@ export default function SuitsDesignsPage() {
               onChange={(e) => setDesignName(e.target.value)}
               placeholder={suggesting ? 'Detecting name…' : 'e.g. Anarkali Suit — Maroon'}
               disabled={suggesting}
-              className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 bg-white text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/30 disabled:opacity-60"
+              className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 bg-white text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-ink-500/30 disabled:opacity-60"
             />
             {(suggesting || detectedColor) && (
               <div className="flex items-center gap-1.5 mt-1.5">
                 {suggesting ? (
-                  <Loader2 size={12} className="animate-spin text-cyan-500" />
+                  <Loader2 size={12} className="animate-spin text-ink-500" />
                 ) : (
-                  <Sparkles size={12} className="text-cyan-500" />
+                  <Sparkles size={12} className="text-ink-500" />
                 )}
                 <span className="text-xs text-gray-500">
                   {suggesting
@@ -305,7 +305,7 @@ export default function SuitsDesignsPage() {
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={uploading || categories.length === 0}
-              className="flex items-center gap-2 px-4 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-medium rounded-xl disabled:opacity-60 transition-colors"
+              className="flex items-center gap-2 px-4 py-2.5 bg-ink-600 hover:bg-ink-500 text-white text-sm font-medium rounded-xl disabled:opacity-60 transition-colors"
             >
               {uploading ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
               {uploading ? (suggesting ? 'Detecting name…' : 'Watermarking…') : 'Upload design'}
@@ -334,7 +334,7 @@ export default function SuitsDesignsPage() {
                   if (opt.key !== 'retailer') setOwnerId(null)
                 }}
                 className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
-                  scope === opt.key ? 'bg-cyan-600 text-white' : 'text-gray-500 hover:text-gray-800'
+                  scope === opt.key ? 'bg-ink-600 text-white' : 'text-gray-500 hover:text-gray-800'
                 }`}
               >
                 {opt.label}
@@ -372,7 +372,7 @@ export default function SuitsDesignsPage() {
         {rows.map((row) => (
           <div
             key={row.id}
-            className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 overflow-hidden"
+            className="bg-white rounded-2xl border border-gray-200/80 overflow-hidden"
           >
             <button
               type="button"
@@ -401,7 +401,7 @@ export default function SuitsDesignsPage() {
                   <button
                     onClick={() => toggleActive(row)}
                     className={`p-1.5 rounded-lg transition-colors ${
-                      row.is_active ? 'text-cyan-600 hover:bg-cyan-50' : 'text-gray-400 hover:bg-gray-50'
+                      row.is_active ? 'text-ink-600 hover:bg-ink-50' : 'text-gray-400 hover:bg-gray-50'
                     }`}
                     aria-label={row.is_active ? `Deactivate ${row.name ?? 'design'}` : `Activate ${row.name ?? 'design'}`}
                   >

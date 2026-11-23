@@ -189,12 +189,12 @@ function AccountForm({
   };
 
   const inputCls =
-    'w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500/50';
+    'w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-ink-500/50';
 
   return (
     <div className="space-y-3">
       {loading ? (
-        <Loader2 size={16} className="animate-spin text-cyan-500" />
+        <Loader2 size={16} className="animate-spin text-ink-500" />
       ) : (
         <>
           {existing && (
@@ -269,7 +269,7 @@ function AccountForm({
             type="button"
             onClick={save}
             disabled={saving}
-            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-cyan-600 hover:bg-cyan-700 disabled:opacity-50 rounded-lg transition-colors"
+            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-ink-600 hover:bg-ink-700 disabled:opacity-50 rounded-lg transition-colors"
           >
             {saving ? <Loader2 size={14} className="animate-spin" /> : <Landmark size={14} />}
             Save payout account
@@ -360,7 +360,7 @@ function ReferrerDetail({ row, onDone }: { row: LeaderRow; onDone: () => void })
         </div>
         <div className="bg-gray-50 rounded-xl py-3">
           <p className="text-[11px] text-gray-500">Unsettled</p>
-          <p className="text-sm font-bold text-cyan-700">{inr(row.unsettled_paise)}</p>
+          <p className="text-sm font-bold text-ink-700">{inr(row.unsettled_paise)}</p>
         </div>
       </div>
 
@@ -372,7 +372,7 @@ function ReferrerDetail({ row, onDone }: { row: LeaderRow; onDone: () => void })
             <span>{convError}</span>
           </div>
         )}
-        {!convError && conversions === null && <Loader2 size={16} className="animate-spin text-cyan-500" />}
+        {!convError && conversions === null && <Loader2 size={16} className="animate-spin text-ink-500" />}
         {conversions !== null && conversions.length === 0 && (
           <p className="text-xs text-gray-400">No conversions recorded.</p>
         )}
@@ -514,7 +514,7 @@ export default function ReferralMonitorPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
-        <Loader2 size={24} className="animate-spin text-cyan-500" />
+        <Loader2 size={24} className="animate-spin text-ink-500" />
       </div>
     );
   }
@@ -529,7 +529,7 @@ export default function ReferralMonitorPage() {
         <div>
           <div className="flex items-center gap-3 mb-1">
             <h1 className="text-2xl font-bold text-gray-900">Referral Monitor</h1>
-            <Gift size={20} className="text-cyan-500" />
+            <Gift size={20} className="text-ink-500" />
           </div>
           <p className="text-sm text-gray-500">
             Earnings, unsettled balances and payouts for the retailer affiliate program. Unsettled
@@ -556,7 +556,7 @@ export default function ReferralMonitorPage() {
             type="button"
             onClick={() => setConfirmTrigger(true)}
             disabled={triggering}
-            className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-cyan-600 hover:bg-cyan-700 disabled:opacity-50 rounded-lg transition-colors"
+            className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-ink-600 hover:bg-ink-700 disabled:opacity-50 rounded-lg transition-colors"
           >
             {triggering ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
             Run payouts now
@@ -584,7 +584,7 @@ export default function ReferralMonitorPage() {
               type="button"
               onClick={() => void triggerPayouts()}
               disabled={triggering}
-              className="px-3 py-1.5 text-xs font-medium text-white bg-amber-600 hover:bg-amber-700 disabled:opacity-50 rounded-lg"
+              className="px-3 py-1.5 text-xs font-medium text-white bg-amber-700 hover:bg-amber-800 disabled:opacity-50 rounded-lg"
             >
               {triggering ? 'Running…' : 'Confirm run'}
             </button>
@@ -620,7 +620,7 @@ export default function ReferralMonitorPage() {
             { label: 'Committed to payouts', value: inr(overview.paid_out_paise), sub: `${overview.payout_batches_in_flight} live batches` },
             { label: 'Unsettled', value: inr(overview.unsettled_paise), sub: 'available for the next run' },
           ].map((card) => (
-            <div key={card.label} className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-4">
+            <div key={card.label} className="bg-white rounded-2xl border border-gray-200/80 p-4">
               <p className="text-xs text-gray-500 mb-1">{card.label}</p>
               <p className="text-lg font-bold text-gray-900">{card.value}</p>
               <p className="text-[11px] text-gray-400 mt-0.5">{card.sub}</p>
@@ -630,7 +630,7 @@ export default function ReferralMonitorPage() {
       )}
 
       {/* ── Leaderboard ────────────────────────────────────────── */}
-      <section className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 overflow-hidden">
+      <section className="bg-white rounded-2xl border border-gray-200/80 overflow-hidden">
         <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-gray-900">Leaderboard</h2>
           <p className="text-[11px] text-gray-400">
@@ -645,7 +645,7 @@ export default function ReferralMonitorPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-[11px] uppercase tracking-wide text-gray-400 border-b border-gray-100">
+                <tr className="text-left text-[11px] text-gray-400 border-b border-gray-100">
                   <th className="px-5 py-2.5 font-medium">#</th>
                   <th className="px-3 py-2.5 font-medium">Shop</th>
                   <th className="px-3 py-2.5 font-medium">Code</th>
@@ -660,7 +660,7 @@ export default function ReferralMonitorPage() {
                   <tr
                     key={r.referrer_id}
                     onClick={() => setDetailId(r.referrer_id)}
-                    className={`cursor-pointer hover:bg-cyan-50/40 transition-colors ${detailId === r.referrer_id ? 'bg-cyan-50/60' : ''}`}
+                    className={`cursor-pointer hover:bg-ink-50/40 transition-colors ${detailId === r.referrer_id ? 'bg-ink-50/60' : ''}`}
                   >
                     <td className="px-5 py-3 text-gray-400">{i + 1}</td>
                     <td className="px-3 py-3 text-gray-900 font-medium max-w-[220px] truncate">{r.shop_name}</td>
@@ -668,7 +668,7 @@ export default function ReferralMonitorPage() {
                     <td className="px-3 py-3 text-right text-gray-600">{r.conversions_total}</td>
                     <td className="px-3 py-3 text-right text-gray-900">{inr(r.commission_accrued_paise)}</td>
                     <td className="px-3 py-3 text-right text-gray-600">{inr(r.paid_out_paise)}</td>
-                    <td className="px-3 py-3 text-right font-semibold text-cyan-700">{inr(r.unsettled_paise)}</td>
+                    <td className="px-3 py-3 text-right font-semibold text-ink-700">{inr(r.unsettled_paise)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -682,7 +682,7 @@ export default function ReferralMonitorPage() {
         <motion.section
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-5 space-y-4"
+          className="bg-white rounded-2xl border border-gray-200/80 p-5 space-y-4"
         >
           <div className="flex items-start justify-between gap-3">
             <div>

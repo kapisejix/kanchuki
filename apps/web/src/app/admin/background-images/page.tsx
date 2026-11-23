@@ -80,7 +80,7 @@ export default function BackgroundImagesPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
-        <Loader2 size={24} className="animate-spin text-cyan-500" />
+        <Loader2 size={24} className="animate-spin text-ink-500" />
       </div>
     )
   }
@@ -90,7 +90,7 @@ export default function BackgroundImagesPage() {
       <div>
         <div className="flex items-center gap-3 mb-1">
           <h1 className="text-2xl font-bold text-gray-900">Background Images</h1>
-          <ImageIcon size={20} className="text-cyan-500" />
+          <ImageIcon size={20} className="text-ink-500" />
         </div>
         <p className="text-sm text-gray-500">
           F-011: curated backdrops retailers can pick for their product photos and 360° spin.
@@ -116,7 +116,7 @@ export default function BackgroundImagesPage() {
         {rows.map((row) => (
           <div
             key={row.id}
-            className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 overflow-hidden"
+            className="bg-white rounded-2xl border border-gray-200/80 overflow-hidden"
           >
             <button
               type="button"
@@ -138,7 +138,7 @@ export default function BackgroundImagesPage() {
                   <button
                     onClick={() => toggleActive(row)}
                     className={`p-1.5 rounded-lg transition-colors ${
-                      row.is_active ? 'text-cyan-600 hover:bg-cyan-50' : 'text-gray-400 hover:bg-gray-50'
+                      row.is_active ? 'text-ink-600 hover:bg-ink-50' : 'text-gray-400 hover:bg-gray-50'
                     }`}
                     aria-label={row.is_active ? 'Deactivate' : 'Activate'}
                   >

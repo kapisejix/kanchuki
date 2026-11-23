@@ -258,7 +258,7 @@ export default function PlanLimitsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
-        <Loader2 size={24} className="animate-spin text-cyan-500" />
+        <Loader2 size={24} className="animate-spin text-ink-500" />
       </div>
     )
   }
@@ -268,7 +268,7 @@ export default function PlanLimitsPage() {
       <div>
         <div className="flex items-center gap-3 mb-1">
           <h1 className="text-2xl font-bold text-gray-900">Plan Limits &amp; Pricing</h1>
-          <Gauge size={20} className="text-cyan-500" />
+          <Gauge size={20} className="text-ink-500" />
         </div>
         <p className="text-sm text-gray-500">
           Quota per plan/resource (F-010). Blank = unlimited — no row means checkQuota() never blocks it.
@@ -288,9 +288,9 @@ export default function PlanLimitsPage() {
         </div>
       )}
 
-      <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-6 overflow-x-auto">
+      <div className="bg-white rounded-2xl border border-gray-200/80 p-6 overflow-x-auto">
         <div className="flex items-center gap-2 mb-4">
-          <IndianRupee size={16} className="text-cyan-500" />
+          <IndianRupee size={16} className="text-ink-500" />
           <h2 className="text-sm font-semibold text-gray-900">Plan Pricing</h2>
         </div>
         <p className="text-xs text-gray-500 mb-4">
@@ -317,7 +317,7 @@ export default function PlanLimitsPage() {
                     onChange={(e) =>
                       setPriceCells((prev) => ({ ...prev, [plan]: { ...prev[plan], monthly: e.target.value } }))
                     }
-                    className="w-24 px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                    className="w-24 px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-ink-500/50"
                   />
                 </td>
 
@@ -325,7 +325,7 @@ export default function PlanLimitsPage() {
                   <button
                     onClick={() => savePrice(plan)}
                     disabled={savingPrice === plan}
-                    className="p-1.5 text-gray-400 hover:text-cyan-600 disabled:opacity-50 transition-colors"
+                    className="p-1.5 text-gray-400 hover:text-ink-600 disabled:opacity-50 transition-colors"
                     aria-label={`Save ${plan} pricing`}
                   >
                     {savingPrice === plan ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
@@ -337,7 +337,7 @@ export default function PlanLimitsPage() {
         </table>
       </div>
 
-      <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-6 overflow-x-auto">
+      <div className="bg-white rounded-2xl border border-gray-200/80 p-6 overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-100">
@@ -369,12 +369,12 @@ export default function PlanLimitsPage() {
                           value={cell.limit_per_period}
                           onChange={(e) => updateCell(plan, resourceType, { limit_per_period: e.target.value })}
                           placeholder="unlimited"
-                          className="w-20 px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                          className="w-20 px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-ink-500/50"
                         />
                         <select
                           value={cell.period}
                           onChange={(e) => updateCell(plan, resourceType, { period: e.target.value as Period })}
-                          className="px-1.5 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                          className="px-1.5 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-ink-500/50"
                         >
                           {PERIODS.map((p) => (
                             <option key={p} value={p}>
@@ -385,7 +385,7 @@ export default function PlanLimitsPage() {
                         <button
                           onClick={() => save(plan, resourceType)}
                           disabled={saving === k}
-                          className="p-1.5 text-gray-400 hover:text-cyan-600 disabled:opacity-50 transition-colors"
+                          className="p-1.5 text-gray-400 hover:text-ink-600 disabled:opacity-50 transition-colors"
                           aria-label={`Save ${plan} ${resourceType}`}
                         >
                           {saving === k ? (
@@ -404,9 +404,9 @@ export default function PlanLimitsPage() {
         </table>
       </div>
 
-      <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-6 overflow-x-auto">
+      <div className="bg-white rounded-2xl border border-gray-200/80 p-6 overflow-x-auto">
         <div className="flex items-center gap-2 mb-4">
-          <Users size={16} className="text-cyan-500" />
+          <Users size={16} className="text-ink-500" />
           <h2 className="text-sm font-semibold text-gray-900">Customer Limits</h2>
         </div>
         <p className="text-xs text-gray-500 mb-4">
@@ -441,7 +441,7 @@ export default function PlanLimitsPage() {
                           unseeded resource fails open, so "blank" here means
                           no cap in force, not a cap of zero. */}
                       {!row.configured && (
-                        <span className="ml-2 text-[10px] uppercase tracking-wide text-amber-600">
+                        <span className="ml-2 text-xs text-amber-600">
                           not set
                         </span>
                       )}
@@ -458,7 +458,7 @@ export default function PlanLimitsPage() {
                         }
                         placeholder="unlimited"
                         aria-label={`${row.resource_type} per-shopper limit`}
-                        className="w-24 px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                        className="w-24 px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-ink-500/50"
                       />
                     </td>
                     <td className="px-3 py-2">
@@ -471,7 +471,7 @@ export default function PlanLimitsPage() {
                           }))
                         }
                         aria-label={`${row.resource_type} period`}
-                        className="px-1.5 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                        className="px-1.5 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-ink-500/50"
                       >
                         {PERIODS.map((p) => (
                           <option key={p} value={p}>
@@ -484,7 +484,7 @@ export default function PlanLimitsPage() {
                       <button
                         onClick={() => saveCustomer(row.resource_type)}
                         disabled={savingCustomer === row.resource_type}
-                        className="p-1.5 text-gray-400 hover:text-cyan-600 disabled:opacity-50 transition-colors"
+                        className="p-1.5 text-gray-400 hover:text-ink-600 disabled:opacity-50 transition-colors"
                         aria-label={`Save customer ${row.resource_type}`}
                       >
                         {savingCustomer === row.resource_type ? (

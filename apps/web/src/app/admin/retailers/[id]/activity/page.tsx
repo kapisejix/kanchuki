@@ -150,11 +150,11 @@ export default function RetailerActivityPage() {
       <div className="flex items-center gap-3">
         <Link
           href={`/admin/retailers/${id}`}
-          className="p-2 rounded-xl text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all"
+          className="p-2 rounded-xl text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition"
         >
           <ArrowLeft size={20} />
         </Link>
-        <div className="p-2.5 bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl shadow-lg shadow-amber-500/20">
+        <div className="bg-amber-600 p-2.5 rounded-xl shadow-lg">
           <Activity size={20} className="text-white" />
         </div>
         <div>
@@ -162,14 +162,14 @@ export default function RetailerActivityPage() {
             <h1 className="text-xl font-bold text-gray-900">Activity Timeline</h1>
             <span className="text-xs text-gray-400 font-mono">#{total} entries</span>
           </div>
-          <Link href={`/admin/retailers/${id}`} className="text-sm text-cyan-600 hover:text-cyan-700 font-medium">
+          <Link href={`/admin/retailers/${id}`} className="text-sm text-ink-600 hover:text-ink-700 font-medium">
             {retailerName || 'Retailer'} →
           </Link>
         </div>
       </div>
 
       {/* Activity list */}
-      <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 overflow-hidden">
+      <div className="bg-white rounded-2xl border border-gray-200/80 overflow-hidden">
         {loading && logs.length === 0 ? (
           <div className="space-y-1 p-4">
             {[...Array(5)].map((_, i) => (
@@ -258,7 +258,7 @@ export default function RetailerActivityPage() {
               <button
                 onClick={handlePrev}
                 disabled={cursorHistory.length === 0}
-                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-white/80 disabled:opacity-30 transition-all"
+                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-white/80 disabled:opacity-30 transition"
               >
                 <ChevronLeft size={16} />
               </button>
@@ -266,7 +266,7 @@ export default function RetailerActivityPage() {
               <button
                 onClick={handleNext}
                 disabled={!hasMore}
-                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-white/80 disabled:opacity-30 transition-all"
+                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-white/80 disabled:opacity-30 transition"
               >
                 <ChevronRight size={16} />
               </button>

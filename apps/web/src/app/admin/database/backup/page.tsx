@@ -257,7 +257,7 @@ export default function DatabaseBackupPage() {
       <motion.div variants={itemVariants}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20">
+            <div className="bg-green-600 w-10 h-10 rounded-xl flex items-center justify-center shadow-lg">
               <HardDrive size={20} className="text-white" />
             </div>
             <div>
@@ -271,9 +271,8 @@ export default function DatabaseBackupPage() {
             <motion.button
               onClick={() => fetchBackups(true)}
               disabled={refreshing}
-              whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-all"
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition"
             >
               <RefreshCw size={13} className={refreshing ? 'animate-spin' : ''} />
               Refresh
@@ -282,9 +281,8 @@ export default function DatabaseBackupPage() {
               <motion.button
                 onClick={handleTriggerBackup}
                 disabled={triggering}
-                whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 rounded-xl transition-all disabled:opacity-50 shadow-lg shadow-emerald-500/20"
+                className="bg-green-700 hover:bg-green-800 flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white rounded-xl transition disabled:opacity-50 shadow-lg"
               >
                 {triggering ? (
                   <Loader2 size={14} className="animate-spin" />
@@ -366,7 +364,6 @@ export default function DatabaseBackupPage() {
                       </code>
                       <motion.button
                         onClick={() => copyToClipboard(cmd.replace(/^#.*$/, '').trim())}
-                        whileHover={{ scale: 1.05 }}
                         className="p-1.5 text-emerald-500 hover:text-emerald-600 shrink-0"
                         title="Copy command"
                       >
@@ -413,7 +410,6 @@ export default function DatabaseBackupPage() {
                   </code>
                   <motion.button
                     onClick={() => copyToClipboard(restoreResult)}
-                    whileHover={{ scale: 1.05 }}
                     className="p-1.5 text-amber-500 hover:text-amber-600 shrink-0"
                     title="Copy command"
                   >
@@ -460,9 +456,8 @@ export default function DatabaseBackupPage() {
             <motion.button
               onClick={handleTriggerBackup}
               disabled={triggering}
-              whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 rounded-xl transition-all shadow-lg shadow-emerald-500/20"
+              className="bg-green-700 hover:bg-green-800 mt-4 inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white rounded-xl transition shadow-lg"
             >
               <Upload size={14} />
               Trigger Backup
@@ -474,9 +469,9 @@ export default function DatabaseBackupPage() {
       {/* ── Backup Table ────────────────────────────────────────── */}
       {!loading && backups.length > 0 && (
         <motion.div variants={itemVariants} className="space-y-4">
-          <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 overflow-hidden shadow-lg">
+          <div className="bg-white rounded-2xl border border-gray-200/80 overflow-hidden shadow-lg">
             {/* Table header */}
-            <div className="flex items-center gap-4 px-5 py-3 bg-gray-50/80 border-b border-gray-200/80 text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
+            <div className="flex items-center gap-4 px-5 py-3 bg-gray-50/80 border-b border-gray-200/80 text-xs font-semibold text-gray-500">
               <div className="flex-1 min-w-0">Backup</div>
               <div className="w-20 text-right shrink-0">Size</div>
               <div className="w-28 text-right shrink-0 hidden sm:block">Age</div>
@@ -520,9 +515,8 @@ export default function DatabaseBackupPage() {
                       <motion.button
                         onClick={(e) => { e.stopPropagation(); handleRestore(backup.key) }}
                         disabled={restoringKey === backup.key}
-                        whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.98 }}
-                        className="flex items-center gap-1 px-2.5 py-1.5 text-[10px] font-medium text-amber-600 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-all disabled:opacity-40"
+                        className="flex items-center gap-1 px-2.5 py-1.5 text-[10px] font-medium text-amber-600 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition disabled:opacity-40"
                         title="Restore from this backup"
                       >
                         {restoringKey === backup.key ? (
@@ -586,8 +580,7 @@ export default function DatabaseBackupPage() {
                         <motion.button
                           onClick={() => handleRestore(backup.key)}
                           disabled={restoringKey === backup.key}
-                          whileHover={{ scale: 1.02 }}
-                          className="flex items-center gap-1 px-3 py-1.5 text-[10px] font-medium text-amber-600 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-all disabled:opacity-40"
+                          className="flex items-center gap-1 px-3 py-1.5 text-[10px] font-medium text-amber-600 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition disabled:opacity-40"
                         >
                           <Download size={11} />
                           Restore
@@ -615,10 +608,10 @@ export default function DatabaseBackupPage() {
       {/* ── Environment Info ─────────────────────────────────────── */}
       {environment && (
         <motion.div variants={itemVariants}>
-          <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200/80 p-5">
+          <div className="bg-white rounded-2xl border border-gray-200/80 p-5">
             <div className="flex items-center gap-2 mb-3">
               <Terminal size={14} className="text-gray-400" />
-              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              <span className="text-xs font-semibold text-gray-500">
                 CLI Commands (for Docker-enabled machines)
               </span>
             </div>
@@ -629,7 +622,6 @@ export default function DatabaseBackupPage() {
                 </code>
                 <motion.button
                   onClick={() => copyToClipboard(environment.backup_command)}
-                  whileHover={{ scale: 1.05 }}
                   className="p-1.5 text-gray-400 hover:text-gray-600 shrink-0"
                   title="Copy backup command"
                 >
@@ -642,7 +634,6 @@ export default function DatabaseBackupPage() {
                 </code>
                 <motion.button
                   onClick={() => copyToClipboard(environment.restore_command)}
-                  whileHover={{ scale: 1.05 }}
                   className="p-1.5 text-gray-400 hover:text-gray-600 shrink-0"
                   title="Copy restore command"
                 >
@@ -683,13 +674,6 @@ function SummaryCard({
   value: string | number
   color: 'emerald' | 'blue' | 'amber' | 'gray'
 }) {
-  const colorMap = {
-    emerald: 'from-emerald-500/10 to-transparent border-emerald-100',
-    blue: 'from-blue-500/10 to-transparent border-blue-100',
-    amber: 'from-amber-500/10 to-transparent border-amber-100',
-    gray: 'from-gray-500/10 to-transparent border-gray-100',
-  }
-
   const iconColorMap = {
     emerald: 'text-emerald-500',
     blue: 'text-blue-500',
@@ -700,12 +684,11 @@ function SummaryCard({
   return (
     <motion.div
       variants={itemVariants}
-      className="relative bg-white/80 backdrop-blur-sm rounded-xl border border-gray-200/80 p-4 overflow-hidden"
+      className="relative bg-white rounded-xl border border-gray-200/80 p-4 overflow-hidden"
     >
-      <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${colorMap[color]} opacity-50`} />
       <div className="flex items-center gap-2 mb-2">
         <Icon size={14} className={iconColorMap[color]} />
-        <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">{label}</span>
+        <span className="text-[10px] font-semibold text-gray-500 uppercase">{label}</span>
       </div>
       <div className="text-base font-bold text-gray-900">
         {typeof value === 'number' ? value.toLocaleString('en-IN') : value}

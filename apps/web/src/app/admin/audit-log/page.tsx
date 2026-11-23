@@ -114,48 +114,48 @@ function FilterBar({
   loading: boolean
 }) {
   return (
-    <motion.div variants={itemVariants} className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-4 sm:p-5">
+    <motion.div variants={itemVariants} className="bg-white rounded-2xl border border-gray-200/80 p-4 sm:p-5">
       <div className="flex items-center gap-2 mb-3">
         <Filter size={15} className="text-gray-400" />
-        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Filters</span>
+        <span className="text-xs font-semibold text-gray-500">Filters</span>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
         <input
           placeholder="Action (contains)"
           value={filters.action ?? ''}
           onChange={(e) => onChange('action', e.target.value)}
-          className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/30 focus:border-cyan-400 transition-all"
+          className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-ink-500/30 focus:border-ink-400 transition"
         />
         <input
           placeholder="Actor type"
           value={filters.actor_type ?? ''}
           onChange={(e) => onChange('actor_type', e.target.value)}
-          className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/30 focus:border-cyan-400 transition-all"
+          className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-ink-500/30 focus:border-ink-400 transition"
         />
         <input
           placeholder="Resource type"
           value={filters.resource_type ?? ''}
           onChange={(e) => onChange('resource_type', e.target.value)}
-          className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/30 focus:border-cyan-400 transition-all"
+          className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-ink-500/30 focus:border-ink-400 transition"
         />
         <input
           placeholder="IP address"
           value={filters.ip_address ?? ''}
           onChange={(e) => onChange('ip_address', e.target.value)}
-          className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/30 focus:border-cyan-400 transition-all"
+          className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-ink-500/30 focus:border-ink-400 transition"
         />
         <input
           type="date"
           value={filters.date_from ?? ''}
           onChange={(e) => onChange('date_from', e.target.value)}
-          className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-cyan-500/30 focus:border-cyan-400 transition-all"
+          className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-ink-500/30 focus:border-ink-400 transition"
           title="From date"
         />
         <input
           type="date"
           value={filters.date_to ?? ''}
           onChange={(e) => onChange('date_to', e.target.value)}
-          className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-cyan-500/30 focus:border-cyan-400 transition-all"
+          className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-ink-500/30 focus:border-ink-400 transition"
           title="To date"
         />
       </div>
@@ -164,9 +164,8 @@ function FilterBar({
           <motion.button
             onClick={onSearch}
             disabled={loading}
-            whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            className="flex items-center gap-1.5 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold px-4 py-2 rounded-xl transition-all disabled:opacity-60"
+            className="flex items-center gap-1.5 bg-ink-600 hover:bg-ink-500 text-white text-xs font-semibold px-4 py-2 rounded-xl transition disabled:opacity-60"
           >
             {loading ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} />}
             {loading ? 'Searching...' : 'Search'}
@@ -175,7 +174,6 @@ function FilterBar({
         </div>
         <motion.button
           onClick={onClear}
-          whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
         >
@@ -194,7 +192,7 @@ function AuditLogRow({ entry }: { entry: AuditLogEntry }) {
   return (
     <motion.div
       variants={itemVariants}
-      className="bg-white/80 backdrop-blur-sm rounded-xl border border-gray-200/80 overflow-hidden transition-all hover:shadow-sm"
+      className="bg-white rounded-xl border border-gray-200/80 overflow-hidden transition hover:shadow-sm"
     >
       {/* Main row (always visible) */}
       <button
@@ -426,7 +424,7 @@ export default function AuditLogPage() {
       <motion.div variants={itemVariants}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-cyan-500/20">
+            <div className="bg-ink-600 w-10 h-10 rounded-xl flex items-center justify-center shadow-lg">
               <History size={20} className="text-white" />
             </div>
             <div>
@@ -440,9 +438,8 @@ export default function AuditLogPage() {
             <motion.button
               onClick={() => fetchLogs(currentCursor)}
               disabled={loading}
-              whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-all"
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition"
             >
               <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
               Refresh
@@ -450,9 +447,8 @@ export default function AuditLogPage() {
             <motion.button
               onClick={exportToCsv}
               disabled={logs.length === 0}
-              whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-all disabled:opacity-40"
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition disabled:opacity-40"
             >
               <Download size={13} />
               CSV
@@ -530,9 +526,8 @@ export default function AuditLogPage() {
           <motion.button
             onClick={handlePrev}
             disabled={cursorStack.length === 0 || loading}
-            whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            className="flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-all disabled:opacity-40"
+            className="flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition disabled:opacity-40"
           >
             <ArrowLeft size={14} />
             Previous
@@ -540,9 +535,8 @@ export default function AuditLogPage() {
           <motion.button
             onClick={handleNext}
             disabled={!pagination?.has_more || loading}
-            whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            className="flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-all disabled:opacity-40"
+            className="flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition disabled:opacity-40"
           >
             Next
             <ArrowRight size={14} />

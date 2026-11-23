@@ -317,7 +317,7 @@ LIMIT 20;`)
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-950 to-slate-900 text-gray-100 p-6 md:p-8">
+    <div className="bg-gray-900 min-h-screen text-gray-100 p-6 md:p-8">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Top Header */}
         <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-gray-800">
@@ -370,7 +370,7 @@ LIMIT 20;`)
 
         {/* Sample Queries Bar */}
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide mr-1">
+          <span className="text-xs font-semibold text-gray-400 mr-1">
             Templates:
           </span>
           {SAMPLE_QUERIES.map((sample) => (
@@ -423,9 +423,9 @@ LIMIT 20;`)
           {/* Editor & Results Area */}
           <div className={showSchema ? 'lg:col-span-8 space-y-6' : 'lg:col-span-12 space-y-6'}>
             {/* Query Editor Box */}
-            <div className="bg-gray-800/60 backdrop-blur-xl rounded-2xl border border-gray-700/60 p-5 shadow-sm space-y-4">
+            <div className="bg-gray-800/60 rounded-2xl border border-gray-700/60 p-5 shadow-sm space-y-4">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-gray-300 uppercase tracking-wide">
+                <span className="text-xs font-bold text-gray-300">
                   SQL Editor (Monaco)
                 </span>
                 <div className="flex items-center gap-2">

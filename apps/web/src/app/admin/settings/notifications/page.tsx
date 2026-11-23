@@ -147,11 +147,11 @@ export default function NotificationsSettingsPage() {
   }) => (
     <button
       onClick={() => setExpandedSection(expandedSection === id ? null : id)}
-      className="w-full flex items-center justify-between px-5 py-4 bg-white/50 hover:bg-white/80 rounded-xl border border-gray-200/60 transition-all cursor-pointer"
+      className="w-full flex items-center justify-between px-5 py-4 bg-white/50 hover:bg-white/80 rounded-xl border border-gray-200/60 transition cursor-pointer"
     >
       <div className="flex items-center gap-3">
-        <div className="w-9 h-9 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-xl flex items-center justify-center">
-          <Icon size={18} className="text-cyan-600" />
+        <div className="bg-gray-100 w-9 h-9 rounded-xl flex items-center justify-center">
+          <Icon size={18} className="text-ink-600" />
         </div>
         <div className="text-left">
           <p className="text-sm font-semibold text-gray-800">{title}</p>
@@ -167,7 +167,7 @@ export default function NotificationsSettingsPage() {
       {/* Header */}
       <motion.div variants={itemVariants} className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl flex items-center justify-center shadow-lg shadow-amber-500/20">
+          <div className="bg-amber-600 w-10 h-10 rounded-xl flex items-center justify-center shadow-lg">
             <Bell size={20} className="text-white" />
           </div>
           <div>
@@ -180,18 +180,16 @@ export default function NotificationsSettingsPage() {
         <div className="flex items-center gap-2">
           <motion.button
             onClick={loadPrefs}
-            whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            className="p-2 text-gray-400 hover:text-cyan-600 hover:bg-cyan-50 rounded-xl transition-all"
+            className="p-2 text-gray-400 hover:text-ink-600 hover:bg-ink-50 rounded-xl transition"
           >
             <RefreshCw size={16} />
           </motion.button>
           <motion.button
             onClick={handleSave}
             disabled={saving || !prefs}
-            whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white text-sm font-semibold rounded-xl transition-all shadow-lg shadow-amber-500/25 disabled:opacity-60"
+            className="bg-amber-700 hover:bg-amber-800 flex items-center gap-1.5 px-4 py-2 text-white text-sm font-semibold rounded-xl transition shadow-lg disabled:opacity-60"
           >
             {saving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
             {saving ? 'Saving...' : 'Save'}
@@ -290,7 +288,7 @@ export default function NotificationsSettingsPage() {
           </motion.div>
 
           {/* Backup Alerts Section */}
-          <motion.div variants={itemVariants} className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 overflow-hidden shadow-lg">
+          <motion.div variants={itemVariants} className="bg-white rounded-2xl border border-gray-200/80 overflow-hidden shadow-lg">
             <SectionHeader id="backup" title="Backup Failure Alerts" icon={HardDrive} description="Get notified when database backups fail" />
 
             <AnimatePresence>
@@ -321,18 +319,18 @@ export default function NotificationsSettingsPage() {
                           }
                           className="sr-only peer"
                         />
-                        <div className="w-10 h-5.5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-amber-500/30 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500" />
+                        <div className="w-10 h-5.5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-amber-500/30 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition peer-checked:bg-amber-500" />
                       </label>
                     </div>
 
                     {/* Channels */}
                     {prefs.backup_failure.enabled && (
                       <div>
-                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Notification Channels</p>
+                        <p className="text-xs font-semibold text-gray-500 mb-2">Notification Channels</p>
                         <div className="flex gap-3">
                           <button
                             onClick={() => toggleChannel('admin_bell')}
-                            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium transition-all cursor-pointer ${
+                            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium transition cursor-pointer ${
                               prefs.backup_failure.channels.includes('admin_bell')
                                 ? 'bg-amber-50 border-amber-200 text-amber-700'
                                 : 'bg-gray-50 border-gray-200 text-gray-400 hover:border-gray-300'
@@ -343,7 +341,7 @@ export default function NotificationsSettingsPage() {
                           </button>
                           <button
                             onClick={() => toggleChannel('email')}
-                            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium transition-all cursor-pointer ${
+                            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium transition cursor-pointer ${
                               prefs.backup_failure.channels.includes('email')
                                 ? 'bg-amber-50 border-amber-200 text-amber-700'
                                 : 'bg-gray-50 border-gray-200 text-gray-400 hover:border-gray-300'
@@ -378,7 +376,7 @@ export default function NotificationsSettingsPage() {
                             }
                             className="sr-only peer"
                           />
-                          <div className="w-10 h-5.5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-amber-500/30 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500" />
+                          <div className="w-10 h-5.5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-amber-500/30 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition peer-checked:bg-amber-500" />
                         </label>
                       </div>
                       {prefs.consecutive_failures.enabled && (
@@ -394,7 +392,7 @@ export default function NotificationsSettingsPage() {
                                     consecutive_failures: { ...prefs.consecutive_failures, threshold: n },
                                   })
                                 }
-                                className={`w-9 h-9 rounded-lg text-xs font-medium border transition-all cursor-pointer ${
+                                className={`w-9 h-9 rounded-lg text-xs font-medium border transition cursor-pointer ${
                                   prefs.consecutive_failures.threshold === n
                                     ? 'bg-amber-50 border-amber-200 text-amber-700'
                                     : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'
@@ -430,7 +428,7 @@ export default function NotificationsSettingsPage() {
                           }
                           className="sr-only peer"
                         />
-                        <div className="w-10 h-5.5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-amber-500/30 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500" />
+                        <div className="w-10 h-5.5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-amber-500/30 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition peer-checked:bg-amber-500" />
                       </label>
                     </div>
                   </div>
@@ -440,10 +438,10 @@ export default function NotificationsSettingsPage() {
           </motion.div>
 
           {/* Test Notification */}
-          <motion.div variants={itemVariants} className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-5 shadow-lg">
+          <motion.div variants={itemVariants} className="bg-white rounded-2xl border border-gray-200/80 p-5 shadow-lg">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 bg-gradient-to-br from-blue-500/20 to-indigo-500/20 rounded-xl flex items-center justify-center">
+                <div className="bg-gray-100 w-9 h-9 rounded-xl flex items-center justify-center">
                   <Send size={16} className="text-blue-600" />
                 </div>
                 <div>
@@ -454,9 +452,8 @@ export default function NotificationsSettingsPage() {
               <motion.button
                 onClick={handleTest}
                 disabled={testing}
-                whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-400 hover:to-indigo-400 text-white text-sm font-semibold rounded-xl transition-all shadow-lg shadow-blue-500/25 disabled:opacity-60"
+                className="bg-ink-600 hover:bg-ink-500 flex items-center gap-1.5 px-4 py-2 text-white text-sm font-semibold rounded-xl transition shadow-lg disabled:opacity-60"
               >
                 {testing ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
                 {testing ? 'Sending...' : 'Send Test'}

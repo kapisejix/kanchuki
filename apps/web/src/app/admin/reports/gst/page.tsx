@@ -216,7 +216,7 @@ export default function GstReportPage() {
                       <div key={m.month} className="flex-1 flex flex-col items-center gap-1">
                         <span className="text-xs text-gray-500">{m.gst > 0 ? fmtINR(m.gst) : ''}</span>
                         <div
-                          className={`w-full rounded-t transition-all ${m.gst > 0 ? 'bg-emerald-400 hover:bg-emerald-500' : 'bg-gray-100'}`}
+                          className={`w-full rounded-t transition ${m.gst > 0 ? 'bg-emerald-400 hover:bg-emerald-500' : 'bg-gray-100'}`}
                           style={{ height: `${Math.max(height, 2)}%` }}
                           title={`${m.month_name}: ${fmtINR(m.gst)} GST`}
                         />

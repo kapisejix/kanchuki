@@ -191,7 +191,7 @@ export default function CommissionPage() {
       <motion.div variants={itemVariants}>
         <div className="flex items-center gap-3 mb-1">
           <h1 className="text-2xl font-bold text-gray-900">Commission</h1>
-          <Percent size={20} className="text-cyan-500" />
+          <Percent size={20} className="text-ink-500" />
         </div>
         <p className="text-sm text-gray-500">
           3% of each month&apos;s total payments — track the pool and what you spend from it.
@@ -331,7 +331,7 @@ function MonthlySummaryTab({
   onOpenMonth: (period: string) => void
 }) {
   return (
-    <motion.div variants={itemVariants} className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 overflow-hidden">
+    <motion.div variants={itemVariants} className="bg-white rounded-2xl border border-gray-200/80 overflow-hidden">
       <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
         <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
           <ReceiptText size={16} className="text-gray-400" />
@@ -358,9 +358,9 @@ function MonthlySummaryTab({
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: i * 0.04 }}
                 onClick={() => onOpenMonth(row.period)}
-                className="border-b border-gray-50 hover:bg-cyan-50/40 cursor-pointer transition-colors group"
+                className="border-b border-gray-50 hover:bg-ink-50/40 cursor-pointer transition-colors group"
               >
-                <td className="px-6 py-3.5 font-semibold text-gray-900 group-hover:text-cyan-700">
+                <td className="px-6 py-3.5 font-semibold text-gray-900 group-hover:text-ink-700">
                   {fmtMonth(row.period)}
                   {row.expense_count > 0 && (
                     <span className="ml-2 text-[10px] font-medium text-gray-400 bg-gray-100 rounded-full px-2 py-0.5">
@@ -426,8 +426,8 @@ function ExpenditureTab({
               onClick={() => onMonthChange(p)}
               className={`text-xs font-medium rounded-full px-3 py-1.5 border transition-colors ${
                 p === month
-                  ? 'bg-cyan-600 text-white border-cyan-600'
-                  : 'bg-white/80 text-gray-500 border-gray-200 hover:border-cyan-300 hover:text-cyan-700'
+                  ? 'bg-ink-600 text-white border-ink-600'
+                  : 'bg-white/80 text-gray-500 border-gray-200 hover:border-ink-300 hover:text-ink-700'
               }`}
             >
               {fmtMonth(p).split(' ')[0]} {fmtMonth(p).split(' ')[1]}
@@ -438,9 +438,8 @@ function ExpenditureTab({
           <ExportMenu onExport={onExport} />
           <motion.button
             onClick={onAdd}
-            whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.97 }}
-            className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow-lg shadow-cyan-500/25 flex items-center gap-2"
+            className="bg-ink-600 hover:bg-ink-500 text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow-lg flex items-center gap-2"
           >
             <Plus size={16} />
             Add Expense
@@ -464,7 +463,7 @@ function ExpenditureTab({
       )}
 
       {/* Expense grid */}
-      <motion.div variants={itemVariants} className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 overflow-hidden">
+      <motion.div variants={itemVariants} className="bg-white rounded-2xl border border-gray-200/80 overflow-hidden">
         <div className="px-6 py-5 border-b border-gray-100">
           <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
             <NotebookPen size={16} className="text-gray-400" />
@@ -493,7 +492,7 @@ function ExpenditureTab({
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.03 }}
                 onClick={() => onRowClick(expense)}
-                className="w-full flex items-center gap-4 px-6 py-4 text-left hover:bg-cyan-50/40 transition-colors group"
+                className="w-full flex items-center gap-4 px-6 py-4 text-left hover:bg-ink-50/40 transition-colors group"
               >
                 <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center shrink-0">
                   <Tag size={17} className="text-amber-500" />
@@ -544,9 +543,8 @@ function ExportMenu({ onExport }: { onExport: (months: number) => void }) {
     <div ref={ref} className="relative">
       <motion.button
         onClick={() => setOpen((v) => !v)}
-        whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.97 }}
-        className="bg-white/80 border border-gray-200/80 hover:border-cyan-300 hover:text-cyan-700 text-gray-600 text-sm font-semibold px-4 py-2.5 rounded-xl flex items-center gap-2 transition-colors"
+        className="bg-white/80 border border-gray-200/80 hover:border-ink-300 hover:text-ink-700 text-gray-600 text-sm font-semibold px-4 py-2.5 rounded-xl flex items-center gap-2 transition-colors"
       >
         <Download size={16} />
         Export CSV
@@ -562,7 +560,7 @@ function ExportMenu({ onExport }: { onExport: (months: number) => void }) {
             transition={{ duration: 0.15 }}
             className="absolute right-0 top-full mt-2 w-48 bg-white border border-gray-200 rounded-xl shadow-2xl py-1.5 z-40"
           >
-            <p className="px-4 pt-1.5 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-widest">
+            <p className="px-4 pt-1.5 pb-1 text-xs font-semibold text-gray-400">
               Expenditure range
             </p>
             {EXPORT_RANGES.map((r) => (
@@ -572,7 +570,7 @@ function ExportMenu({ onExport }: { onExport: (months: number) => void }) {
                   setOpen(false)
                   onExport(r.months)
                 }}
-                className="w-full text-left px-4 py-2 text-sm text-gray-600 hover:bg-cyan-50 hover:text-cyan-700 transition-colors"
+                className="w-full text-left px-4 py-2 text-sm text-gray-600 hover:bg-ink-50 hover:text-ink-700 transition-colors"
               >
                 {r.label}
               </button>
@@ -640,7 +638,7 @@ function AddExpenseModal({
     <Sheet
       open
       onClose={onClose}
-      overlayClassName="z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+      overlayClassName="z-50 bg-black/60 flex items-center justify-center p-4"
       panelClassName="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 max-h-full overflow-y-auto"
       overlayAnimation={{ initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 } }}
       panelAnimation={{
@@ -653,7 +651,7 @@ function AddExpenseModal({
     >
         <div className="flex items-center justify-between mb-5">
           <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
-            <Plus size={17} className="text-cyan-500" />
+            <Plus size={17} className="text-ink-500" />
             Add Expense
           </h3>
           <button onClick={onClose} className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg" aria-label="Close">
@@ -663,13 +661,13 @@ function AddExpenseModal({
 
         <div className="space-y-4">
           <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">
+            <label className="text-xs font-semibold text-gray-500 mb-1.5 block">
               Commission Month
             </label>
             <select
               value={period}
               onChange={(e) => setPeriod(e.target.value)}
-              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-700 bg-white outline-none focus:border-cyan-400"
+              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-700 bg-white outline-none focus:border-ink-400"
             >
               {monthOptions.map((p) => (
                 <option key={p} value={p}>
@@ -680,7 +678,7 @@ function AddExpenseModal({
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">
+            <label className="text-xs font-semibold text-gray-500 mb-1.5 block">
               Amount (₹)
             </label>
             <div className="relative">
@@ -691,25 +689,25 @@ function AddExpenseModal({
                 inputMode="decimal"
                 placeholder="0.00"
                 autoFocus
-                className="w-full border border-gray-200 rounded-xl pl-8 pr-3 py-2.5 text-sm font-semibold text-gray-900 outline-none focus:border-cyan-400 tabular-nums"
+                className="w-full border border-gray-200 rounded-xl pl-8 pr-3 py-2.5 text-sm font-semibold text-gray-900 outline-none focus:border-ink-400 tabular-nums"
               />
             </div>
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">
+            <label className="text-xs font-semibold text-gray-500 mb-1.5 block">
               Where / Category
             </label>
             <input
               value={category}
               onChange={(e) => setCategory(e.target.value)}
               placeholder="e.g. Instagram ads, Travel, Software, Staff…"
-              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-700 outline-none focus:border-cyan-400"
+              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-700 outline-none focus:border-ink-400"
             />
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">
+            <label className="text-xs font-semibold text-gray-500 mb-1.5 block">
               Date
             </label>
             <input
@@ -717,12 +715,12 @@ function AddExpenseModal({
               value={date}
               max={istDate(new Date().toISOString())}
               onChange={(e) => setDate(e.target.value)}
-              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-700 outline-none focus:border-cyan-400"
+              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-700 outline-none focus:border-ink-400"
             />
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">
+            <label className="text-xs font-semibold text-gray-500 mb-1.5 block">
               Notes / Explanation
             </label>
             <textarea
@@ -730,7 +728,7 @@ function AddExpenseModal({
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Why was this spent? Add detail for your records…"
               rows={3}
-              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-700 outline-none focus:border-cyan-400 resize-none"
+              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-700 outline-none focus:border-ink-400 resize-none"
             />
           </div>
 
@@ -744,9 +742,8 @@ function AddExpenseModal({
             <motion.button
               onClick={() => void submit()}
               disabled={!canSubmit}
-              whileHover={canSubmit ? { scale: 1.02 } : undefined}
               whileTap={canSubmit ? { scale: 0.98 } : undefined}
-              className="flex-1 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold py-3 rounded-xl shadow-lg shadow-cyan-500/25 flex items-center justify-center gap-2"
+              className="bg-ink-600 hover:bg-ink-500 flex-1 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold py-3 rounded-xl shadow-lg flex items-center justify-center gap-2"
             >
               {saving ? (
                 <>
@@ -854,7 +851,7 @@ function ExpenseDetailModal({
     <Sheet
       open
       onClose={onClose}
-      overlayClassName="z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+      overlayClassName="z-50 bg-black/60 flex items-center justify-center p-4"
       panelClassName={`bg-white rounded-2xl shadow-2xl w-full p-6 max-h-full overflow-y-auto ${editing ? 'max-w-md' : 'max-w-sm'}`}
       overlayAnimation={{ initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 } }}
       panelAnimation={{
@@ -870,7 +867,7 @@ function ExpenseDetailModal({
           <>
             <div className="flex items-center justify-between mb-5">
               <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
-                <Pencil size={16} className="text-cyan-500" />
+                <Pencil size={16} className="text-ink-500" />
                 Edit Expense
               </h3>
               <button
@@ -884,13 +881,13 @@ function ExpenseDetailModal({
 
             <div className="space-y-4">
               <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">
+                <label className="text-xs font-semibold text-gray-500 mb-1.5 block">
                   Commission Month
                 </label>
                 <select
                   value={period}
                   onChange={(e) => setPeriod(e.target.value)}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-700 bg-white outline-none focus:border-cyan-400"
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-700 bg-white outline-none focus:border-ink-400"
                 >
                   {monthOptions.map((p) => (
                     <option key={p} value={p}>
@@ -901,7 +898,7 @@ function ExpenseDetailModal({
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">
+                <label className="text-xs font-semibold text-gray-500 mb-1.5 block">
                   Amount (₹)
                 </label>
                 <div className="relative">
@@ -910,43 +907,43 @@ function ExpenseDetailModal({
                     value={amountRs}
                     onChange={(e) => setAmountRs(e.target.value.replace(/[^\d.]/g, ''))}
                     inputMode="decimal"
-                    className="w-full border border-gray-200 rounded-xl pl-8 pr-3 py-2.5 text-sm font-semibold text-gray-900 outline-none focus:border-cyan-400 tabular-nums"
+                    className="w-full border border-gray-200 rounded-xl pl-8 pr-3 py-2.5 text-sm font-semibold text-gray-900 outline-none focus:border-ink-400 tabular-nums"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">
+                <label className="text-xs font-semibold text-gray-500 mb-1.5 block">
                   Where / Category
                 </label>
                 <input
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-700 outline-none focus:border-cyan-400"
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-700 outline-none focus:border-ink-400"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">
+                <label className="text-xs font-semibold text-gray-500 mb-1.5 block">
                   Date
                 </label>
                 <input
                   type="date"
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-700 outline-none focus:border-cyan-400"
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-700 outline-none focus:border-ink-400"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">
+                <label className="text-xs font-semibold text-gray-500 mb-1.5 block">
                   Notes / Explanation
                 </label>
                 <textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   rows={3}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-700 outline-none focus:border-cyan-400 resize-none"
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-700 outline-none focus:border-ink-400 resize-none"
                 />
               </div>
 
@@ -960,9 +957,8 @@ function ExpenseDetailModal({
                 <motion.button
                   onClick={() => void save()}
                   disabled={!canSave}
-                  whileHover={canSave ? { scale: 1.02 } : undefined}
                   whileTap={canSave ? { scale: 0.98 } : undefined}
-                  className="flex-1 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold py-3 rounded-xl shadow-lg shadow-cyan-500/25 flex items-center justify-center gap-2"
+                  className="bg-ink-600 hover:bg-ink-500 flex-1 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold py-3 rounded-xl shadow-lg flex items-center justify-center gap-2"
                 >
                   {saving ? (
                     <>
@@ -1024,9 +1020,8 @@ function ExpenseDetailModal({
             <div className="mt-5 pt-4 border-t border-gray-100 space-y-2">
               <motion.button
                 onClick={startEdit}
-                whileHover={{ scale: 1.01 }}
                 whileTap={{ scale: 0.98 }}
-                className="w-full flex items-center justify-center gap-2 bg-cyan-50 hover:bg-cyan-100 text-cyan-700 text-sm font-semibold py-2.5 rounded-xl transition-colors"
+                className="w-full flex items-center justify-center gap-2 bg-ink-50 hover:bg-ink-100 text-ink-700 text-sm font-semibold py-2.5 rounded-xl transition-colors"
               >
                 <Pencil size={15} />
                 Edit expense
@@ -1079,22 +1074,20 @@ function SummaryCard({
   color: 'blue' | 'green' | 'amber' | 'purple' | 'red'
 }) {
   const colorMap = {
-    blue: { bg: 'bg-blue-50 border-blue-100', text: 'text-blue-600', icon: 'text-blue-500', top: 'from-blue-500/20 to-transparent' },
-    green: { bg: 'bg-green-50 border-green-100', text: 'text-green-600', icon: 'text-green-500', top: 'from-green-500/20 to-transparent' },
-    amber: { bg: 'bg-amber-50 border-amber-100', text: 'text-amber-600', icon: 'text-amber-500', top: 'from-amber-500/20 to-transparent' },
-    purple: { bg: 'bg-purple-50 border-purple-100', text: 'text-purple-600', icon: 'text-purple-500', top: 'from-purple-500/20 to-transparent' },
-    red: { bg: 'bg-red-50 border-red-100', text: 'text-red-600', icon: 'text-red-500', top: 'from-red-500/20 to-transparent' },
+    blue: { bg: 'bg-blue-50 border-blue-100', text: 'text-blue-600', icon: 'text-blue-500', top: 'bg-gray-100' },
+    green: { bg: 'bg-green-50 border-green-100', text: 'text-green-600', icon: 'text-green-500', top: 'bg-gray-100' },
+    amber: { bg: 'bg-amber-50 border-amber-100', text: 'text-amber-600', icon: 'text-amber-500', top: 'bg-gray-100' },
+    purple: { bg: 'bg-purple-50 border-purple-100', text: 'text-purple-600', icon: 'text-purple-500', top: 'bg-gray-100' },
+    red: { bg: 'bg-red-50 border-red-100', text: 'text-red-600', icon: 'text-red-500', top: 'bg-gray-100' },
   }
   const c = colorMap[color]
   return (
     <motion.div
       variants={itemVariants}
-      whileHover={{ y: -3, boxShadow: '0 12px 24px -8px rgba(0,0,0,0.1)' }}
-      className="relative bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200/80 p-5 transition-all overflow-hidden"
+      className="relative bg-white rounded-2xl border border-gray-200/80 p-5 transition overflow-hidden"
     >
-      <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${c.top}`} />
       <div className="flex items-start justify-between mb-2 relative">
-        <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest">{label}</span>
+        <span className="text-[10px] font-semibold text-gray-500 uppercase">{label}</span>
         <div className={`w-9 h-9 rounded-xl flex items-center justify-center border ${c.bg} ${c.icon}`}>
           <Icon size={17} />
         </div>
@@ -1109,14 +1102,14 @@ function MiniStat({ label, value, color, warning }: { label: string; value: stri
   return (
     <motion.div
       variants={itemVariants}
-      className="relative bg-white/80 backdrop-blur-sm rounded-xl border border-gray-200/80 p-4"
+      className="relative bg-white rounded-xl border border-gray-200/80 p-4"
     >
       {warning && (
         <div className="absolute top-2.5 right-2.5 text-red-400">
           <AlertTriangle size={14} />
         </div>
       )}
-      <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest mb-1.5">{label}</p>
+      <p className="text-[10px] font-semibold text-gray-500 uppercase mb-1.5">{label}</p>
       <p className={`text-lg font-bold tabular-nums ${color}`}>{value}</p>
     </motion.div>
   )
@@ -1136,16 +1129,15 @@ function TabButton({
   return (
     <motion.button
       onClick={onClick}
-      whileHover={{ scale: 1.02 }}
       whileTap={{ scale: 0.97 }}
       className={`relative flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
-        active ? 'text-cyan-700' : 'text-gray-500 hover:text-gray-700'
+        active ? 'text-ink-700' : 'text-gray-500 hover:text-gray-700'
       }`}
     >
       {active && (
         <motion.span
           layoutId="commission-tab"
-          className="absolute inset-0 bg-cyan-50 border border-cyan-200 rounded-xl"
+          className="absolute inset-0 bg-ink-50 border border-ink-200 rounded-xl"
           transition={{ type: 'spring', stiffness: 350, damping: 30 }}
         />
       )}

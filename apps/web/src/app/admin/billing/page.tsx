@@ -129,7 +129,7 @@ export default function BillingPage() {
       <motion.div variants={itemVariants}>
         <div className="flex items-center gap-3 mb-1">
           <h1 className="text-2xl font-bold text-gray-900">Billing</h1>
-          <CreditCard size={20} className="text-cyan-500" />
+          <CreditCard size={20} className="text-ink-500" />
         </div>
         <p className="text-sm text-gray-500">Revenue, subscriptions, and billing configuration</p>
       </motion.div>
@@ -167,7 +167,7 @@ export default function BillingPage() {
       </motion.div>
 
       {/* Razorpay setup */}
-      <motion.div variants={itemVariants} className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-6 hover:shadow-lg transition-shadow">
+      <motion.div variants={itemVariants} className="bg-white rounded-2xl border border-gray-200/80 p-6 hover:shadow-lg transition-shadow">
         <h2 className="text-sm font-semibold text-gray-900 mb-1">Razorpay Plans</h2>
         <p className="text-xs text-gray-500 mb-4">
           Create the 3 Razorpay monthly billing plans after configuring RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET.
@@ -177,9 +177,8 @@ export default function BillingPage() {
           <motion.button
             onClick={setupRazorpayPlans}
             disabled={setupLoading}
-            whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-all shadow-lg shadow-cyan-500/25 disabled:opacity-60 flex items-center gap-2"
+            className="bg-ink-600 hover:bg-ink-500 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition shadow-lg disabled:opacity-60 flex items-center gap-2"
           >
             {setupLoading ? (
               <>
@@ -214,7 +213,7 @@ export default function BillingPage() {
       </motion.div>
 
       {/* Pricing reference */}
-      <motion.div variants={itemVariants} className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-6 hover:shadow-lg transition-shadow">
+      <motion.div variants={itemVariants} className="bg-white rounded-2xl border border-gray-200/80 p-6 hover:shadow-lg transition-shadow">
         <h2 className="text-sm font-semibold text-gray-900 mb-4">Pricing Reference</h2>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -262,23 +261,14 @@ function RevenueCard({
   subtext: string
   color: 'green' | 'blue' | 'amber' | 'purple'
 }) {
-  const colorMap = {
-    green: 'from-green-500/20 via-green-500/5 to-transparent',
-    blue: 'from-blue-500/20 via-blue-500/5 to-transparent',
-    amber: 'from-amber-500/20 via-amber-500/5 to-transparent',
-    purple: 'from-purple-500/20 via-purple-500/5 to-transparent',
-  }
-
   return (
     <motion.div
       variants={itemVariants}
-      whileHover={{ y: -3, boxShadow: '0 12px 24px -8px rgba(0,0,0,0.1)' }}
-      className="relative bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200/80 p-5 transition-all overflow-hidden"
+      className="relative bg-white rounded-2xl border border-gray-200/80 p-5 transition overflow-hidden"
     >
-      <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${colorMap[color]}`} />
       <div className="flex items-center gap-2 mb-2">
         <Icon size={16} className={`${color === 'green' ? 'text-green-500' : color === 'blue' ? 'text-blue-500' : color === 'amber' ? 'text-amber-500' : 'text-purple-500'}`} />
-        <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest">{label}</span>
+        <span className="text-[10px] font-semibold text-gray-500 uppercase">{label}</span>
       </div>
       <div className="text-2xl font-bold text-gray-900">{value}</div>
       <div className="text-xs text-gray-400 mt-1">{subtext}</div>

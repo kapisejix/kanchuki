@@ -198,7 +198,7 @@ export default function ResourcePacksPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
-        <Loader2 size={24} className="animate-spin text-cyan-500" />
+        <Loader2 size={24} className="animate-spin text-ink-500" />
       </div>
     )
   }
@@ -208,7 +208,7 @@ export default function ResourcePacksPage() {
       <div>
         <div className="flex items-center gap-3 mb-1">
           <h1 className="text-2xl font-bold text-gray-900">Addon Packs</h1>
-          <Layers size={20} className="text-cyan-500" />
+          <Layers size={20} className="text-ink-500" />
         </div>
         <p className="text-sm text-gray-500">
           Admin-managed overage packs (F-034). You add, approve, price and assign packs per plan — nothing is
@@ -229,10 +229,10 @@ export default function ResourcePacksPage() {
       )}
 
       {/* ── Add / Edit form ───────────────────────────────────────── */}
-      <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-6">
+      <div className="bg-white rounded-2xl border border-gray-200/80 p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            {editingId ? <Pencil size={16} className="text-cyan-500" /> : <Plus size={16} className="text-cyan-500" />}
+            {editingId ? <Pencil size={16} className="text-ink-500" /> : <Plus size={16} className="text-ink-500" />}
             <h2 className="text-sm font-semibold text-gray-900">{editingId ? 'Edit pack' : 'Add a pack'}</h2>
           </div>
           {editingId && (
@@ -248,7 +248,7 @@ export default function ResourcePacksPage() {
             <select
               value={form.resource_type}
               onChange={(e) => patch({ resource_type: e.target.value as ResourceType })}
-              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-ink-500/50"
             >
               {RESOURCE_TYPES.map((r) => (
                 <option key={r.value} value={r.value}>
@@ -263,7 +263,7 @@ export default function ResourcePacksPage() {
               value={form.label}
               onChange={(e) => patch({ label: e.target.value })}
               placeholder="20 promo videos"
-              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-ink-500/50"
             />
           </div>
           <div>
@@ -274,7 +274,7 @@ export default function ResourcePacksPage() {
               value={form.pack_size}
               onChange={(e) => patch({ pack_size: e.target.value })}
               placeholder="20"
-              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-ink-500/50"
             />
           </div>
           <div>
@@ -283,7 +283,7 @@ export default function ResourcePacksPage() {
               value={form.unit_label}
               onChange={(e) => patch({ unit_label: e.target.value })}
               placeholder="videos"
-              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-ink-500/50"
             />
           </div>
           <div>
@@ -295,7 +295,7 @@ export default function ResourcePacksPage() {
               value={form.price}
               onChange={(e) => patch({ price: e.target.value })}
               placeholder="599"
-              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-ink-500/50"
             />
           </div>
           <div>
@@ -305,7 +305,7 @@ export default function ResourcePacksPage() {
               min={0}
               value={form.sort_order}
               onChange={(e) => patch({ sort_order: e.target.value })}
-              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-ink-500/50"
             />
           </div>
         </div>
@@ -329,7 +329,7 @@ export default function ResourcePacksPage() {
                           : form.plans.filter((x) => x !== p),
                       })
                     }
-                    className="accent-cyan-600"
+                    className="accent-ink-600"
                   />
                   {p}
                 </label>
@@ -342,7 +342,7 @@ export default function ResourcePacksPage() {
               type="checkbox"
               checked={form.is_active}
               onChange={(e) => patch({ is_active: e.target.checked })}
-              className="accent-cyan-600"
+              className="accent-ink-600"
             />
             Active (approved — visible at checkout)
           </label>
@@ -350,7 +350,7 @@ export default function ResourcePacksPage() {
           <button
             onClick={save}
             disabled={saving}
-            className="ml-auto inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-cyan-600 hover:bg-cyan-700 disabled:opacity-50 rounded-lg transition-colors"
+            className="ml-auto inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-ink-600 hover:bg-ink-700 disabled:opacity-50 rounded-lg transition-colors"
           >
             {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
             {editingId ? 'Save changes' : 'Add pack'}
@@ -359,7 +359,7 @@ export default function ResourcePacksPage() {
       </div>
 
       {/* ── Packs table ──────────────────────────────────────────── */}
-      <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-6 overflow-x-auto">
+      <div className="bg-white rounded-2xl border border-gray-200/80 p-6 overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-100">
@@ -395,7 +395,7 @@ export default function ResourcePacksPage() {
                   ) : (
                     <span className="flex gap-1">
                       {row.plans.map((p) => (
-                        <span key={p} className="px-1.5 py-0.5 text-[10px] font-mono rounded bg-cyan-50 text-cyan-700">
+                        <span key={p} className="px-1.5 py-0.5 text-[10px] font-mono rounded bg-ink-50 text-ink-700">
                           {p}
                         </span>
                       ))}
@@ -419,7 +419,7 @@ export default function ResourcePacksPage() {
                   <div className="flex items-center justify-end gap-1">
                     <button
                       onClick={() => startEdit(row)}
-                      className="p-1.5 text-gray-400 hover:text-cyan-600 transition-colors"
+                      className="p-1.5 text-gray-400 hover:text-ink-600 transition-colors"
                       aria-label={`Edit ${row.label}`}
                     >
                       <Pencil size={14} />

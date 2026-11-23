@@ -43,7 +43,7 @@ function Spark({ values, color }: { values: number[]; color: string }) {
 function Stat({ label, value, hint }: { label: string; value: string; hint: string }) {
   return (
     <div className="bg-white rounded-2xl border border-gray-200 p-4">
-      <p className="text-xs uppercase tracking-wide text-gray-500">{label}</p>
+      <p className="text-xs uppercase text-gray-500">{label}</p>
       <p className="text-2xl font-semibold text-gray-900 mt-1">{value}</p>
       <p className="text-[11px] text-gray-400 mt-1">{hint}</p>
     </div>
@@ -144,7 +144,7 @@ export default function ServerMemoryPage() {
 
           <div className="bg-white rounded-2xl border border-gray-200 overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="text-left text-xs text-gray-500 uppercase">
+              <thead className="text-left text-xs text-gray-500">
                 <tr>
                   <th className="p-3">Time</th>
                   <th className="p-3">RSS</th>

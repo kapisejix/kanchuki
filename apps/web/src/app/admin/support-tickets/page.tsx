@@ -11,7 +11,6 @@ import {
   Phone,
   Store,
   UserCheck,
-  Sparkles,
   ChevronRight,
   Loader2,
   X,
@@ -167,10 +166,10 @@ function TicketDetailPanel({
     >
       <div className="sticky top-0 bg-white border-b border-gray-100 px-5 py-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Ticket size={16} className="text-cyan-500" />
+          <Ticket size={16} className="text-ink-500" />
           <span className="text-sm font-bold text-gray-900">Ticket Detail</span>
         </div>
-        <button onClick={onClose} className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all cursor-pointer">
+        <button onClick={onClose} className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition cursor-pointer">
           <X size={16} />
         </button>
       </div>
@@ -200,7 +199,7 @@ function TicketDetailPanel({
               <button
                 key={s}
                 onClick={() => setStatus(s)}
-                className={`text-xs font-medium px-3 py-1.5 rounded-lg border transition-all cursor-pointer ${
+                className={`text-xs font-medium px-3 py-1.5 rounded-lg border transition cursor-pointer ${
                   status === s
                     ? STATUS_COLORS[s]
                     : 'border-gray-200 text-gray-400 hover:border-gray-300 hover:text-gray-600'
@@ -218,7 +217,7 @@ function TicketDetailPanel({
           <select
             value={assignedTo}
             onChange={(e) => setAssignedTo(e.target.value)}
-            className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-400 transition-all"
+            className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-ink-500/40 focus:border-ink-400 transition"
           >
             <option value="">Unassigned (pool)</option>
             {supportMembers.map((m) => (
@@ -260,7 +259,7 @@ function TicketDetailPanel({
                   value={quotedPrice}
                   onChange={(e) => setQuotedPrice(e.target.value)}
                   placeholder="e.g. 2999"
-                  className="w-full pl-9 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-400 transition-all"
+                  className="w-full pl-9 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-ink-500/40 focus:border-ink-400 transition"
                 />
               </div>
               {ticket.paid_at && (
@@ -300,12 +299,12 @@ function TicketDetailPanel({
                   type="datetime-local"
                   value={newSlot}
                   onChange={(e) => setNewSlot(e.target.value)}
-                  className="flex-1 px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-400 transition-all"
+                  className="flex-1 px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-ink-500/40 focus:border-ink-400 transition"
                 />
                 <button
                   onClick={addSlot}
                   disabled={!newSlot || slots.length >= 10}
-                  className="px-3 rounded-xl border border-gray-200 text-gray-500 hover:text-cyan-600 hover:border-cyan-300 disabled:opacity-40 cursor-pointer"
+                  className="px-3 rounded-xl border border-gray-200 text-gray-500 hover:text-ink-600 hover:border-ink-300 disabled:opacity-40 cursor-pointer"
                 >
                   <Plus size={16} />
                 </button>
@@ -322,7 +321,7 @@ function TicketDetailPanel({
             onChange={(e) => setNote(e.target.value)}
             rows={4}
             placeholder="Add a note about this ticket..."
-            className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-400 transition-all resize-none"
+            className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-ink-500/40 focus:border-ink-400 transition resize-none"
           />
         </div>
 
@@ -339,7 +338,7 @@ function TicketDetailPanel({
         <button
           onClick={handleSave}
           disabled={saving}
-          className="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-all shadow-lg shadow-cyan-500/25 disabled:opacity-60 flex items-center justify-center gap-2 cursor-pointer"
+          className="bg-ink-600 hover:bg-ink-500 w-full text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition shadow-lg disabled:opacity-60 flex items-center justify-center gap-2 cursor-pointer"
         >
           {saving ? (
             <>
@@ -424,7 +423,7 @@ export default function SupportTicketsPage() {
     return true
   })
 
-  const selectClass = "border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-400 transition-all"
+  const selectClass = "border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-ink-500/40 focus:border-ink-400 transition"
 
   return (
     <motion.div
@@ -438,12 +437,6 @@ export default function SupportTicketsPage() {
         <div>
           <div className="flex items-center gap-3 mb-1">
             <h1 className="text-2xl font-bold text-gray-900">Support Tickets</h1>
-            <motion.div
-              animate={{ rotate: [0, 10, -10, 0] }}
-              transition={{ duration: 2, repeat: Infinity, repeatDelay: 5 }}
-            >
-              <Sparkles size={18} className="text-cyan-500" />
-            </motion.div>
           </div>
           <p className="text-sm text-gray-500">Manage retailer support requests and field agent tasks</p>
         </div>
@@ -451,9 +444,8 @@ export default function SupportTicketsPage() {
           <motion.button
             onClick={handleRouteAll}
             disabled={routing}
-            whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="flex items-center gap-1.5 px-4 py-2.5 bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-400 hover:to-indigo-400 text-white text-sm font-semibold rounded-xl transition-all shadow-lg shadow-purple-500/25 disabled:opacity-60 cursor-pointer"
+            className="bg-ink-600 hover:bg-ink-500 flex items-center gap-1.5 px-4 py-2.5 text-white text-sm font-semibold rounded-xl transition shadow-lg disabled:opacity-60 cursor-pointer"
             title="Route all unassigned tickets"
           >
             {routing ? (
@@ -465,9 +457,8 @@ export default function SupportTicketsPage() {
           </motion.button>
           <motion.button
             onClick={loadData}
-            whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="p-2.5 text-gray-400 hover:text-cyan-600 hover:bg-cyan-50 rounded-xl transition-all cursor-pointer"
+            className="p-2.5 text-gray-400 hover:text-ink-600 hover:bg-ink-50 rounded-xl transition cursor-pointer"
             title="Refresh"
           >
             <RefreshCw size={18} />
@@ -483,24 +474,24 @@ export default function SupportTicketsPage() {
           animate="visible"
           className="grid grid-cols-2 sm:grid-cols-6 gap-3"
         >
-          <TicketStatsCard icon={AlertCircle} label="Open" value={stats.open} color="amber" />
-          <TicketStatsCard icon={UserCheck} label="Assigned" value={stats.assigned} color="blue" />
-          <TicketStatsCard icon={CheckCircle2} label="Resolved" value={stats.resolved} color="green" />
-          <TicketStatsCard icon={X} label="Closed" value={stats.closed} color="gray" />
-          <TicketStatsCard icon={Ticket} label="Total" value={stats.total} color="cyan" />
-          <TicketStatsCard icon={MapPin} label="Visit Req." value={stats.requires_visit} color="purple" />
+          <TicketStatsCard icon={AlertCircle} label="Open" value={stats.open} />
+          <TicketStatsCard icon={UserCheck} label="Assigned" value={stats.assigned} />
+          <TicketStatsCard icon={CheckCircle2} label="Resolved" value={stats.resolved} />
+          <TicketStatsCard icon={X} label="Closed" value={stats.closed} />
+          <TicketStatsCard icon={Ticket} label="Total" value={stats.total} />
+          <TicketStatsCard icon={MapPin} label="Visit Req." value={stats.requires_visit} />
         </motion.div>
       )}
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3">
         <div className="relative flex-1 min-w-[220px] group">
-          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-cyan-500 transition-colors" />
+          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-ink-500 transition-colors" />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by shop name, city, or phone..."
-            className="w-full pl-10 pr-4 py-2.5 bg-white/80 backdrop-blur-sm border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-400 transition-all"
+            className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-ink-500/40 focus:border-ink-400 transition"
           />
         </div>
         <select
@@ -528,18 +519,18 @@ export default function SupportTicketsPage() {
       {/* Main area: table + detail panel */}
       <div className="flex gap-0 sm:gap-4">
         {/* Table */}
-        <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 overflow-hidden flex-1 min-w-0">
+        <div className="bg-white rounded-2xl border border-gray-200/80 overflow-hidden flex-1 min-w-0">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50/80">
-                  <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Retailer</th>
-                  <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Assigned To</th>
-                  <th className="px-4 py-3.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Type</th>
-                  <th className="px-4 py-3.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Route</th>
-                  <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Created</th>
-                  <th className="px-4 py-3.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider" />
+                  <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500">Retailer</th>
+                  <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500">Status</th>
+                  <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500">Assigned To</th>
+                  <th className="px-4 py-3.5 text-center text-xs font-semibold text-gray-500">Type</th>
+                  <th className="px-4 py-3.5 text-center text-xs font-semibold text-gray-500">Route</th>
+                  <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500">Created</th>
+                  <th className="px-4 py-3.5 text-right text-xs font-semibold text-gray-500" />
                 </tr>
               </thead>
               <motion.tbody
@@ -576,10 +567,9 @@ export default function SupportTicketsPage() {
                     <motion.tr
                       key={t.id}
                       variants={rowVariants}
-                      whileHover={{ backgroundColor: 'rgba(6,182,212,0.03)', transition: { duration: 0.2 } }}
                       onClick={() => setSelectedTicket(t)}
                       className={`border-b border-gray-50 transition-colors cursor-pointer ${
-                        selectedTicket?.id === t.id ? 'bg-cyan-50/50' : ''
+                        selectedTicket?.id === t.id ? 'bg-ink-50/50' : ''
                       }`}
                     >
                       <td className="px-4 py-3.5">
@@ -592,7 +582,7 @@ export default function SupportTicketsPage() {
                               </span>
                             )}
                             {t.setup_item && (
-                              <span className="shrink-0 text-[10px] font-medium text-cyan-700 bg-cyan-50 border border-cyan-200 px-1.5 py-0.5 rounded-full">
+                              <span className="shrink-0 text-[10px] font-medium text-ink-700 bg-ink-50 border border-ink-200 px-1.5 py-0.5 rounded-full">
                                 Setup: {t.setup_item.replace(/_/g, ' ')}
                               </span>
                             )}
@@ -622,7 +612,7 @@ export default function SupportTicketsPage() {
                             Visit
                           </span>
                         ) : t.assigned_to ? (
-                          <span className="inline-flex items-center gap-1 text-xs text-cyan-600 bg-cyan-50 px-2 py-0.5 rounded-full">
+                          <span className="inline-flex items-center gap-1 text-xs text-ink-600 bg-ink-50 px-2 py-0.5 rounded-full">
                             <Navigation size={11} />
                             Pool
                           </span>
@@ -680,32 +670,19 @@ function TicketStatsCard({
   icon: Icon,
   label,
   value,
-  color,
 }: {
   icon: LucideIcon
   label: string
   value: number
-  color: 'amber' | 'blue' | 'green' | 'gray' | 'cyan' | 'purple'
 }) {
-  const colorMap = {
-    amber: 'from-amber-500/20 to-transparent',
-    blue: 'from-blue-500/20 to-transparent',
-    green: 'from-green-500/20 to-transparent',
-    gray: 'from-gray-500/20 to-transparent',
-    cyan: 'from-cyan-500/20 to-transparent',
-    purple: 'from-purple-500/20 to-transparent',
-  }
-
   return (
     <motion.div
       variants={rowVariants}
-      whileHover={{ y: -2 }}
-      className="relative bg-white/80 backdrop-blur-sm rounded-xl border border-gray-200/80 p-4 transition-all hover:shadow-md overflow-hidden"
+      className="relative bg-white rounded-xl border border-gray-200/80 p-4 transition hover:shadow-md overflow-hidden"
     >
-      <div className={`absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r ${colorMap[color]}`} />
       <div className="flex items-center gap-2 mb-1.5">
         <Icon size={14} className="text-gray-400" />
-        <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest">{label}</span>
+        <span className="text-[10px] font-semibold text-gray-500 uppercase">{label}</span>
       </div>
       <div className="text-xl font-bold text-gray-900">{value}</div>
     </motion.div>

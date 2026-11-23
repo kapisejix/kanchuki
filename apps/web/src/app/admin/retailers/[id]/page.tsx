@@ -286,7 +286,7 @@ export default function RetailerDetailPage() {
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center py-16">
         <Store size={48} className="mx-auto text-gray-300 mb-3" />
         <p className="text-gray-500 text-sm">{error || 'Retailer not found'}</p>
-        <Link href="/admin/retailers" className="text-cyan-600 text-sm mt-3 inline-block hover:underline font-medium">
+        <Link href="/admin/retailers" className="text-ink-600 text-sm mt-3 inline-block hover:underline font-medium">
           ← Back to retailers
         </Link>
       </motion.div>
@@ -318,7 +318,7 @@ export default function RetailerDetailPage() {
         <div className="flex items-center gap-3">
           <Link
             href="/admin/retailers"
-            className="p-2 rounded-xl text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all"
+            className="p-2 rounded-xl text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition"
           >
             <ArrowLeft size={20} />
           </Link>
@@ -354,7 +354,7 @@ export default function RetailerDetailPage() {
               actionErr
                 ? 'bg-red-50/80 border-red-200 text-red-700'
                 : 'bg-green-50/80 border-green-200 text-green-700'
-            } backdrop-blur border text-sm rounded-xl px-4 py-3 flex items-center gap-2`}
+            } border text-sm rounded-xl px-4 py-3 flex items-center gap-2`}
           >
             {actionErr ? <AlertTriangle size={16} /> : <BadgeCheck size={16} />}
             {actionMsg}
@@ -366,7 +366,7 @@ export default function RetailerDetailPage() {
         {/* Left column */}
         <motion.div variants={itemVariants} className="lg:col-span-2 space-y-6">
           {/* Profile card */}
-          <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-6 hover:shadow-lg transition-shadow">
+          <div className="bg-white rounded-2xl border border-gray-200/80 p-6 hover:shadow-lg transition-shadow">
             <h2 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
               <Store size={16} className="text-gray-400" /> Profile
             </h2>
@@ -389,7 +389,7 @@ export default function RetailerDetailPage() {
           </div>
 
           {/* KYC card */}
-          <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-6 hover:shadow-lg transition-shadow">
+          <div className="bg-white rounded-2xl border border-gray-200/80 p-6 hover:shadow-lg transition-shadow">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
                 <Shield size={16} className="text-gray-400" /> KYC Verification
@@ -426,7 +426,7 @@ export default function RetailerDetailPage() {
 
           {/* Recent products */}
           {retailer.recent_products.length > 0 && (
-            <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-6 hover:shadow-lg transition-shadow">
+            <div className="bg-white rounded-2xl border border-gray-200/80 p-6 hover:shadow-lg transition-shadow">
               <h2 className="text-sm font-semibold text-gray-900 mb-4">Recent Products</h2>
               <div className="space-y-1">
                 {retailer.recent_products.map((p, i) => (
@@ -438,7 +438,7 @@ export default function RetailerDetailPage() {
                     className="flex items-center justify-between py-2.5 px-3 rounded-xl hover:bg-gray-50/80 transition-colors"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-2 h-2 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500" />
+                      <div className="bg-ink-600 w-2 h-2 rounded-full" />
                       <div>
                         <span className="text-sm text-gray-700 font-medium">{p.name || 'Untitled'}</span>
                         <span className="text-xs text-gray-400 ml-2">
@@ -467,7 +467,7 @@ export default function RetailerDetailPage() {
         {/* Right column */}
         <motion.div variants={itemVariants} className="space-y-6">
           {/* Subscription card */}
-          <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-6 hover:shadow-lg transition-shadow">
+          <div className="bg-white rounded-2xl border border-gray-200/80 p-6 hover:shadow-lg transition-shadow">
             <h2 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
               <IndianRupee size={16} className="text-gray-400" /> Subscription
             </h2>
@@ -507,7 +507,7 @@ export default function RetailerDetailPage() {
 
             {/* F-015: Suspend/Unsuspend */}
             <div className="space-y-3">
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Account</label>
+              <label className="text-xs font-semibold text-gray-500">Account</label>
               {isSuspended ? (
                 <motion.button
                   onClick={async () => {
@@ -532,18 +532,16 @@ export default function RetailerDetailPage() {
                     }
                   }}
                   disabled={actionLoading}
-                  whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  className="w-full bg-green-500 hover:bg-green-400 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-all disabled:opacity-60"
+                  className="w-full bg-green-500 hover:bg-green-400 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition disabled:opacity-60"
                 >
                   {actionLoading ? 'Unsuspending...' : '🔓 Unsuspend Account'}
                 </motion.button>
               ) : (
                 <motion.button
                   onClick={() => { setShowSuspendDialog(true); setSuspendReasonInput('') }}
-                  whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  className="w-full bg-red-500 hover:bg-red-400 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-all"
+                  className="w-full bg-red-500 hover:bg-red-400 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition"
                 >
                   🚫 Suspend Account
                 </motion.button>
@@ -561,7 +559,7 @@ export default function RetailerDetailPage() {
                 !showDeleteDialog ? (
                   <button
                     onClick={() => { setShowDeleteDialog(true); setDeleteConfirmInput(''); setActionMsg(''); setActionErr(false) }}
-                    className="w-full mt-1 border border-red-300 text-red-700 hover:bg-red-50 text-sm font-semibold px-4 py-2.5 rounded-xl transition-all"
+                    className="w-full mt-1 border border-red-300 text-red-700 hover:bg-red-50 text-sm font-semibold px-4 py-2.5 rounded-xl transition"
                   >
                     🗑️ Delete Store Permanently
                   </button>
@@ -621,7 +619,7 @@ export default function RetailerDetailPage() {
             {/* Store-directory pin — featured stores sort to the top of
                 /stores and the homepage teaser (public-stores.ts orderBy). */}
             <div className="space-y-3">
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Store Directory</label>
+              <label className="text-xs font-semibold text-gray-500">Store Directory</label>
               {isFeatured ? (
                 <motion.button
                   onClick={async () => {
@@ -645,9 +643,8 @@ export default function RetailerDetailPage() {
                     }
                   }}
                   disabled={actionLoading}
-                  whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  className="w-full bg-amber-400 hover:bg-amber-300 text-amber-950 text-sm font-semibold px-4 py-2.5 rounded-xl transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+                  className="w-full bg-amber-400 hover:bg-amber-300 text-amber-950 text-sm font-semibold px-4 py-2.5 rounded-xl transition disabled:opacity-60 flex items-center justify-center gap-2"
                 >
                   <Star size={14} className="fill-amber-900/20" />
                   {actionLoading ? 'Unpinning...' : '★ Pinned — click to unpin'}
@@ -675,9 +672,8 @@ export default function RetailerDetailPage() {
                     }
                   }}
                   disabled={actionLoading}
-                  whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  className="w-full bg-gray-50 hover:bg-amber-50 text-gray-700 hover:text-amber-700 border border-gray-200 hover:border-amber-300 text-sm font-semibold px-4 py-2.5 rounded-xl transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+                  className="w-full bg-gray-50 hover:bg-amber-50 text-gray-700 hover:text-amber-700 border border-gray-200 hover:border-amber-300 text-sm font-semibold px-4 py-2.5 rounded-xl transition disabled:opacity-60 flex items-center justify-center gap-2"
                 >
                   <Star size={14} strokeWidth={1.5} className="text-gray-400" />
                   Pin to store directory
@@ -701,7 +697,7 @@ export default function RetailerDetailPage() {
               <Sheet
                 open
                 onClose={() => setShowSuspendDialog(false)}
-                overlayClassName="z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm"
+                overlayClassName="z-50 flex items-center justify-center bg-black/30"
                 panelClassName="bg-white rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl border border-gray-200 space-y-4 max-h-full overflow-y-auto"
                 overlayAnimation={{ initial: { opacity: 0 }, animate: { opacity: 1 } }}
                 panelAnimation={{ initial: { scale: 0.95, opacity: 0 }, animate: { scale: 1, opacity: 1 } }}
@@ -721,7 +717,7 @@ export default function RetailerDetailPage() {
                   <div className="flex gap-2">
                     <button
                       onClick={() => setShowSuspendDialog(false)}
-                      className="flex-1 bg-gray-100 text-gray-600 text-sm font-medium py-2.5 rounded-xl hover:bg-gray-200 transition-all"
+                      className="flex-1 bg-gray-100 text-gray-600 text-sm font-medium py-2.5 rounded-xl hover:bg-gray-200 transition"
                     >
                       Cancel
                     </button>
@@ -748,7 +744,7 @@ export default function RetailerDetailPage() {
                         }
                       }}
                       disabled={actionLoading || !suspendReasonInput.trim()}
-                      className="flex-1 bg-red-500 hover:bg-red-400 text-white text-sm font-semibold py-2.5 rounded-xl disabled:opacity-50 transition-all"
+                      className="flex-1 bg-red-500 hover:bg-red-400 text-white text-sm font-semibold py-2.5 rounded-xl disabled:opacity-50 transition"
                     >
                       {actionLoading ? 'Suspending...' : 'Confirm Suspension'}
                     </button>
@@ -760,12 +756,12 @@ export default function RetailerDetailPage() {
 
             {/* Extend trial */}
             <div className="space-y-3">
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Extend Trial</label>
+              <label className="text-xs font-semibold text-gray-500">Extend Trial</label>
               <div className="flex gap-2">
                 <select
                   value={extendDays}
                   onChange={(e) => setExtendDays(Number(e.target.value))}
-                  className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-cyan-500/40"
+                  className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-ink-500/40"
                 >
                   <option value={7}>7 days</option>
                   <option value={14}>14 days</option>
@@ -776,9 +772,8 @@ export default function RetailerDetailPage() {
                 <motion.button
                   onClick={extendTrial}
                   disabled={actionLoading}
-                  whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-white text-sm font-semibold px-4 py-2 rounded-xl transition-all shadow-lg shadow-amber-500/20 disabled:opacity-60"
+                  className="bg-amber-700 hover:bg-amber-800 text-white text-sm font-semibold px-4 py-2 rounded-xl transition shadow-lg disabled:opacity-60"
                 >
                   Extend
                 </motion.button>
@@ -789,25 +784,24 @@ export default function RetailerDetailPage() {
 
             {/* Change plan */}
             <div className="space-y-3">
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Change Plan</label>
+              <label className="text-xs font-semibold text-gray-500">Change Plan</label>
               <div className="flex flex-col gap-2">
                 {(['STARTER', 'GROWTH', 'PRO'] as const).map((plan, i) => (
                   <motion.button
                     key={plan}
                     onClick={() => changePlan(plan)}
                     disabled={retailer.plan === plan || actionLoading}
-                    whileHover={retailer.plan !== plan ? { scale: 1.01, x: 2 } : undefined}
                     whileTap={retailer.plan !== plan ? { scale: 0.99 } : undefined}
-                    className={`text-left px-3 py-2.5 rounded-xl text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+                    className={`text-left px-3 py-2.5 rounded-xl text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed ${
                       retailer.plan === plan
-                        ? 'bg-gradient-to-r from-cyan-50 to-blue-50 text-cyan-700 border border-cyan-200'
+                        ? 'bg-gray-50 text-ink-700 border border-ink-200'
                         : 'bg-gray-50/80 text-gray-700 hover:bg-gray-100/80 border border-gray-200 hover:border-gray-300'
                     }`}
                   >
                     <div className="flex items-center justify-between">
                       <span>{planLabel(plan)}</span>
                       {retailer.plan === plan && (
-                        <span className="text-[10px] font-medium text-cyan-600 bg-cyan-100/50 px-1.5 py-0.5 rounded-full">
+                        <span className="text-[10px] font-medium text-ink-600 bg-ink-100/50 px-1.5 py-0.5 rounded-full">
                           Current
                         </span>
                       )}
@@ -819,7 +813,7 @@ export default function RetailerDetailPage() {
           </div>
 
           {/* Limits card */}
-          <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-6 hover:shadow-lg transition-shadow">
+          <div className="bg-white rounded-2xl border border-gray-200/80 p-6 hover:shadow-lg transition-shadow">
             <h2 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
               <BadgeCheck size={16} className="text-gray-400" /> Plan Limits
             </h2>
@@ -831,16 +825,15 @@ export default function RetailerDetailPage() {
           </div>
 
           {/* F-010: Overrides card */}
-          <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-6 hover:shadow-lg transition-shadow">
+          <div className="bg-white rounded-2xl border border-gray-200/80 p-6 hover:shadow-lg transition-shadow">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
                 <Sliders size={16} className="text-gray-400" /> Overrides
               </h2>
               <motion.button
                 onClick={() => setShowOverrideForm(true)}
-                whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="p-1.5 text-gray-400 hover:text-cyan-600 hover:bg-cyan-50 rounded-lg transition-all"
+                className="p-1.5 text-gray-400 hover:text-ink-600 hover:bg-ink-50 rounded-lg transition"
                 aria-label="Add override"
               >
                 <Plus size={16} />
@@ -888,7 +881,7 @@ export default function RetailerDetailPage() {
                 <select
                   value={overrideForm.resource_type}
                   onChange={(e) => setOverrideForm({ ...overrideForm, resource_type: e.target.value })}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/40"
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ink-500/40"
                 >
                   {['PRODUCT_UPLOAD', 'AI_TAGGING_CALL', 'IMAGE_CROP', 'BG_REMOVAL', 'API_REQUEST'].map((rt) => (
                     <option key={rt} value={rt}>{rt}</option>
@@ -900,12 +893,12 @@ export default function RetailerDetailPage() {
                     value={overrideForm.limit_per_period}
                     onChange={(e) => setOverrideForm({ ...overrideForm, limit_per_period: e.target.value })}
                     placeholder="Limit (-1 = unlimited)"
-                    className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/40"
+                    className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ink-500/40"
                   />
                   <select
                     value={overrideForm.period}
                     onChange={(e) => setOverrideForm({ ...overrideForm, period: e.target.value })}
-                    className="border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/40"
+                    className="border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ink-500/40"
                   >
                     {['DAY', 'MONTH', 'LIFETIME'].map((p) => (
                       <option key={p} value={p}>{p}</option>
@@ -917,19 +910,19 @@ export default function RetailerDetailPage() {
                   value={overrideForm.reason}
                   onChange={(e) => setOverrideForm({ ...overrideForm, reason: e.target.value })}
                   placeholder="Reason (optional)"
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/40"
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ink-500/40"
                 />
                 <div className="flex gap-2">
                   <button
                     onClick={() => { setShowOverrideForm(false); setOverrideForm({ resource_type: 'PRODUCT_UPLOAD', limit_per_period: '', period: 'MONTH', reason: '' }) }}
-                    className="flex-1 bg-gray-100 text-gray-600 text-sm font-medium py-2 rounded-xl hover:bg-gray-200 transition-all"
+                    className="flex-1 bg-gray-100 text-gray-600 text-sm font-medium py-2 rounded-xl hover:bg-gray-200 transition"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={saveOverride}
                     disabled={overrideSaving || !overrideForm.limit_per_period}
-                    className="flex-1 bg-gradient-to-r from-cyan-600 to-blue-600 text-white text-sm font-semibold py-2 rounded-xl hover:shadow-lg hover:shadow-cyan-500/20 disabled:opacity-60 transition-all"
+                    className="bg-ink-600 flex-1 text-white text-sm font-semibold py-2 rounded-xl hover:shadow-lg disabled:opacity-60 transition"
                   >
                     {overrideSaving ? 'Saving...' : 'Save'}
                   </button>
@@ -968,7 +961,7 @@ function KycDocLink({ label, url }: { label: string; url: string | null }) {
           href={safeHttpUrl(url)}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center gap-1 text-cyan-600 hover:text-cyan-700 text-xs font-medium"
+          className="flex items-center gap-1 text-ink-600 hover:text-ink-700 text-xs font-medium"
         >
           View <ExternalLink size={12} />
         </a>
@@ -983,8 +976,7 @@ function MiniStat({ icon: Icon, label, value, max }: { icon: LucideIcon; label: 
   const pct = max && typeof value === 'number' ? Math.min(Math.round((value / max) * 100), 100) : null
   return (
     <motion.div
-      whileHover={{ y: -2 }}
-      className="bg-white/80 backdrop-blur-sm rounded-xl border border-gray-200/80 p-3.5 transition-all hover:shadow-md"
+      className="bg-white rounded-xl border border-gray-200/80 p-3.5 transition hover:shadow-md"
     >
       <div className="flex items-center gap-1.5 mb-2">
         <Icon size={13} className="text-gray-400" />
@@ -997,7 +989,7 @@ function MiniStat({ icon: Icon, label, value, max }: { icon: LucideIcon; label: 
             initial={{ width: 0 }}
             animate={{ width: `${Math.max(pct, 3)}%` }}
             transition={{ duration: 0.8, ease: 'easeOut' }}
-            className={`h-full rounded-full ${pct > 80 ? 'bg-amber-500' : pct > 50 ? 'bg-cyan-500' : 'bg-green-500'}`}
+            className={`h-full rounded-full ${pct > 80 ? 'bg-amber-500' : pct > 50 ? 'bg-ink-500' : 'bg-green-500'}`}
           />
         </div>
       )}
@@ -1019,7 +1011,7 @@ function LimitRow({ label, current, max }: { label: string; current: number; max
             initial={{ width: 0 }}
             animate={{ width: `${Math.max(pct, 2)}%` }}
             transition={{ duration: 0.8, ease: 'easeOut' }}
-            className={`h-full rounded-full ${pct > 80 ? 'bg-amber-500' : pct > 50 ? 'bg-cyan-500' : 'bg-green-500'}`}
+            className={`h-full rounded-full ${pct > 80 ? 'bg-amber-500' : pct > 50 ? 'bg-ink-500' : 'bg-green-500'}`}
           />
         </div>
       )}

@@ -110,7 +110,7 @@ export default function DefaultAttributesPage() {
       <div>
         <div className="flex items-center gap-3 mb-1">
           <h1 className="text-2xl font-bold text-gray-900">Default Attributes</h1>
-          <Tags size={20} className="text-cyan-500" />
+          <Tags size={20} className="text-ink-500" />
         </div>
         <p className="text-sm text-gray-500">
           Global template for the Style/Fabric taxonomy, copied into every new retailer&apos;s own list at
@@ -122,11 +122,11 @@ export default function DefaultAttributesPage() {
         </p>
       </div>
 
-      <div className="flex items-start gap-2 bg-cyan-50/80 border border-cyan-200/80 rounded-xl px-4 py-3 text-xs text-cyan-800">
+      <div className="flex items-start gap-2 bg-ink-50/80 border border-ink-200/80 rounded-xl px-4 py-3 text-xs text-ink-800">
         <Sparkles size={14} className="shrink-0 mt-0.5" />
         <span>
           Category has its own dedicated template (Default Categories) since it drives a real
-          <code className="mx-1 px-1 bg-cyan-100 rounded">category_id</code>
+          <code className="mx-1 px-1 bg-ink-100 rounded">category_id</code>
           foreign key. Style/Fabric are soft-matched name lists instead — no FK.
         </span>
       </div>
@@ -138,7 +138,7 @@ export default function DefaultAttributesPage() {
             onClick={() => setKind(k.value)}
             className={`px-4 py-2 text-sm font-medium rounded-xl transition-colors ${
               kind === k.value
-                ? 'bg-cyan-600 text-white'
+                ? 'bg-ink-600 text-white'
                 : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
             }`}
           >
@@ -161,10 +161,10 @@ export default function DefaultAttributesPage() {
 
       {loading ? (
         <div className="flex items-center justify-center py-24">
-          <Loader2 size={24} className="animate-spin text-cyan-500" />
+          <Loader2 size={24} className="animate-spin text-ink-500" />
         </div>
       ) : (
-        <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-6 overflow-x-auto">
+        <div className="bg-white rounded-2xl border border-gray-200/80 p-6 overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100">
@@ -182,14 +182,14 @@ export default function DefaultAttributesPage() {
                       type="number"
                       value={attr.sort_order}
                       onChange={(e) => update(attr.id, { sort_order: Number(e.target.value) })}
-                      className="w-20 px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                      className="w-20 px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-ink-500/50"
                     />
                   </td>
                   <td className="px-3 py-2">
                     <input
                       value={attr.name}
                       onChange={(e) => update(attr.id, { name: e.target.value })}
-                      className="w-full min-w-[180px] px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                      className="w-full min-w-[180px] px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-ink-500/50"
                     />
                   </td>
                   <td className="px-3 py-2">
@@ -198,7 +198,7 @@ export default function DefaultAttributesPage() {
                         update(attr.id, { is_active: !attr.is_active })
                         void save({ ...attr, is_active: !attr.is_active })
                       }}
-                      className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full transition-all cursor-pointer ${
+                      className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full transition cursor-pointer ${
                         attr.is_active
                           ? 'bg-green-100 text-green-700 hover:bg-green-200'
                           : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
@@ -213,7 +213,7 @@ export default function DefaultAttributesPage() {
                       <button
                         onClick={() => save(attr)}
                         disabled={saving === attr.id}
-                        className="p-1.5 text-gray-400 hover:text-cyan-600 disabled:opacity-50 transition-colors"
+                        className="p-1.5 text-gray-400 hover:text-ink-600 disabled:opacity-50 transition-colors"
                         aria-label="Save attribute"
                       >
                         {saving === attr.id ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
@@ -237,7 +237,7 @@ export default function DefaultAttributesPage() {
                     value={newSort}
                     placeholder="order"
                     onChange={(e) => setNewSort(e.target.value)}
-                    className="w-20 px-2 py-1.5 text-sm border border-dashed border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                    className="w-20 px-2 py-1.5 text-sm border border-dashed border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-ink-500/50"
                   />
                 </td>
                 <td className="px-3 py-2">
@@ -245,7 +245,7 @@ export default function DefaultAttributesPage() {
                     value={newName}
                     placeholder={`New ${kind.toLowerCase()} value`}
                     onChange={(e) => setNewName(e.target.value)}
-                    className="w-full min-w-[180px] px-2 py-1.5 text-sm border border-dashed border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                    className="w-full min-w-[180px] px-2 py-1.5 text-sm border border-dashed border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-ink-500/50"
                   />
                 </td>
                 <td className="px-3 py-2" />
@@ -253,7 +253,7 @@ export default function DefaultAttributesPage() {
                   <button
                     onClick={create}
                     disabled={saving === 'new'}
-                    className="p-1.5 text-gray-400 hover:text-cyan-600 disabled:opacity-50 transition-colors"
+                    className="p-1.5 text-gray-400 hover:text-ink-600 disabled:opacity-50 transition-colors"
                     aria-label="Add attribute"
                   >
                     {saving === 'new' ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}

@@ -60,7 +60,7 @@ function StatCard({ icon: Icon, label, value, sub, color }: {
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-5"
+      className="bg-white rounded-2xl border border-gray-200/80 p-5"
     >
       <div className="flex items-center gap-3 mb-3">
         <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${color}`}>
@@ -100,7 +100,7 @@ export default function AddonPurchasesPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
-        <Loader2 size={24} className="animate-spin text-cyan-500" />
+        <Loader2 size={24} className="animate-spin text-ink-500" />
       </div>
     )
   }
@@ -121,7 +121,7 @@ export default function AddonPurchasesPage() {
       <div>
         <div className="flex items-center gap-3 mb-1">
           <h1 className="text-2xl font-bold text-gray-900">Addon Purchases</h1>
-          <ShoppingCart size={20} className="text-cyan-500" />
+          <ShoppingCart size={20} className="text-ink-500" />
         </div>
         <p className="text-sm text-gray-500">
           Self-serve overage purchases from retailers (F-010 Phase 3). Last 90 days shown.
@@ -135,37 +135,37 @@ export default function AddonPurchasesPage() {
           label="Total Revenue"
           value={formatInr(summary.total_revenue_inr)}
           sub="All-time addon purchases"
-          color="bg-gradient-to-br from-emerald-500 to-green-600"
+          color="bg-green-600"
         />
         <StatCard
           icon={ShoppingCart}
           label="Total Purchases"
           value={summary.total_purchases.toLocaleString('en-IN')}
           sub="Completed transactions"
-          color="bg-gradient-to-br from-cyan-500 to-blue-600"
+          color="bg-ink-600"
         />
         <StatCard
           icon={TrendingUp}
           label="Top Resource"
           value={resource_breakdown[0]?.resource_type?.replace(/_/g, ' ') ?? 'N/A'}
           sub={resource_breakdown[0] ? formatInr(resource_breakdown[0].total_revenue_inr) : ''}
-          color="bg-gradient-to-br from-violet-500 to-purple-600"
+          color="bg-ink-600"
         />
         <StatCard
           icon={Users}
           label="Buying Retailers"
           value={top_buyers.length.toLocaleString('en-IN')}
           sub="Unique retailers who purchased addons"
-          color="bg-gradient-to-br from-amber-500 to-orange-600"
+          color="bg-amber-600"
         />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Resource breakdown */}
         <div className="lg:col-span-1">
-          <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-5">
+          <div className="bg-white rounded-2xl border border-gray-200/80 p-5">
             <h2 className="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2">
-              <Package size={16} className="text-cyan-500" />
+              <Package size={16} className="text-ink-500" />
               By Resource Type
             </h2>
             <div className="space-y-3">
@@ -182,7 +182,7 @@ export default function AddonPurchasesPage() {
                       <motion.div
                         initial={{ width: 0 }}
                         animate={{ width: `${(r.total_revenue_inr / Math.max(...resource_breakdown.map((x) => x.total_revenue_inr))) * 100}%` }}
-                        className="h-full bg-gradient-to-r from-cyan-400 to-blue-500 rounded-full"
+                        className="bg-ink-600 h-full rounded-full"
                       />
                     </div>
                     <span className="text-[10px] text-gray-400 w-12 text-right">{r.purchase_count}×</span>
@@ -195,9 +195,9 @@ export default function AddonPurchasesPage() {
 
         {/* Top buyers */}
         <div className="lg:col-span-2">
-          <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-5">
+          <div className="bg-white rounded-2xl border border-gray-200/80 p-5">
             <h2 className="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2">
-              <Users size={16} className="text-cyan-500" />
+              <Users size={16} className="text-ink-500" />
               Top Buyers
             </h2>
             {top_buyers.length === 0 ? (
@@ -225,7 +225,7 @@ export default function AddonPurchasesPage() {
                         <td className="px-2 py-2.5">
                           <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${
                             buyer.retailer?.plan === 'PRO' ? 'bg-purple-100 text-purple-700' :
-                            buyer.retailer?.plan === 'GROWTH' ? 'bg-cyan-100 text-cyan-700' :
+                            buyer.retailer?.plan === 'GROWTH' ? 'bg-ink-100 text-ink-700' :
                             'bg-gray-100 text-gray-600'
                           }`}>
                             {buyer.retailer?.plan ?? '-'}
@@ -247,7 +247,7 @@ export default function AddonPurchasesPage() {
       </div>
 
       {/* Recent purchases */}
-      <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-5">
+      <div className="bg-white rounded-2xl border border-gray-200/80 p-5">
         <h2 className="text-sm font-bold text-gray-700 mb-4">Recent Purchases</h2>
         {recent_purchases.length === 0 ? (
           <p className="text-sm text-gray-400 text-center py-8">No purchases in the last 90 days</p>

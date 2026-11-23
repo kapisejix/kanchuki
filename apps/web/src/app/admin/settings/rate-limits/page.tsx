@@ -109,10 +109,9 @@ export default function RateLimitsPage() {
         </div>
         <div className="flex items-center gap-3">
           <motion.button
-            whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={loadLimits}
-            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm text-gray-600 hover:text-gray-800 transition-all"
+            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm text-gray-600 hover:text-gray-800 transition"
           >
             <RefreshCw size={14} />
             Reset
@@ -121,11 +120,10 @@ export default function RateLimitsPage() {
             <motion.button
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={handleSave}
               disabled={saving}
-              className="flex items-center gap-2 px-5 py-2 bg-cyan-600 hover:bg-cyan-700 text-white text-sm font-medium rounded-xl transition-all disabled:opacity-50 shadow-lg shadow-cyan-500/25"
+              className="flex items-center gap-2 px-5 py-2 bg-ink-600 hover:bg-ink-700 text-white text-sm font-medium rounded-xl transition disabled:opacity-50 shadow-lg"
             >
               {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
               Save Changes
@@ -152,11 +150,11 @@ export default function RateLimitsPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-100 bg-gray-50/50">
-              <th className="text-left px-5 py-3 font-semibold text-gray-600 text-xs uppercase tracking-wider">Endpoint</th>
-              <th className="text-left px-5 py-3 font-semibold text-gray-600 text-xs uppercase tracking-wider">Description</th>
-              <th className="text-right px-5 py-3 font-semibold text-gray-600 text-xs uppercase tracking-wider">Window</th>
-              <th className="text-right px-5 py-3 font-semibold text-gray-600 text-xs uppercase tracking-wider">Max Requests</th>
-              <th className="text-right px-5 py-3 font-semibold text-gray-600 text-xs uppercase tracking-wider">Rate</th>
+              <th className="text-left px-5 py-3 font-semibold text-gray-600 text-xs">Endpoint</th>
+              <th className="text-left px-5 py-3 font-semibold text-gray-600 text-xs">Description</th>
+              <th className="text-right px-5 py-3 font-semibold text-gray-600 text-xs">Window</th>
+              <th className="text-right px-5 py-3 font-semibold text-gray-600 text-xs">Max Requests</th>
+              <th className="text-right px-5 py-3 font-semibold text-gray-600 text-xs">Rate</th>
             </tr>
           </thead>
           <tbody>
@@ -169,18 +167,18 @@ export default function RateLimitsPage() {
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: i * 0.03 }}
-                  className={`border-b border-gray-50 last:border-0 ${isEdited ? 'bg-cyan-50/50' : ''}`}
+                  className={`border-b border-gray-50 last:border-0 ${isEdited ? 'bg-ink-50/50' : ''}`}
                 >
                   <td className="px-5 py-4">
                     <code className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-md font-mono">{key}</code>
-                    {isEdited && <span className="ml-2 text-[10px] text-cyan-600 font-medium">Edited</span>}
+                    {isEdited && <span className="ml-2 text-[10px] text-ink-600 font-medium">Edited</span>}
                   </td>
                   <td className="px-5 py-4 text-gray-500 text-xs">{entry.description}</td>
                   <td className="px-5 py-4 text-right">
                     <select
                       value={entry.window_ms}
                       onChange={(e) => updateLimit(key, 'window_ms', Number(e.target.value))}
-                      className="px-2 py-1.5 bg-white border border-gray-200 rounded-lg text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                      className="px-2 py-1.5 bg-white border border-gray-200 rounded-lg text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-ink-500/50"
                     >
                       <option value={60000}>1 min</option>
                       <option value={300000}>5 min</option>
@@ -196,7 +194,7 @@ export default function RateLimitsPage() {
                       max={10000}
                       value={entry.max_requests}
                       onChange={(e) => updateLimit(key, 'max_requests', Math.max(1, Number(e.target.value)))}
-                      className="w-20 px-2 py-1.5 bg-white border border-gray-200 rounded-lg text-xs text-gray-700 text-right focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                      className="w-20 px-2 py-1.5 bg-white border border-gray-200 rounded-lg text-xs text-gray-700 text-right focus:outline-none focus:ring-2 focus:ring-ink-500/50"
                     />
                   </td>
                   <td className="px-5 py-4 text-right text-xs text-gray-400 font-mono">

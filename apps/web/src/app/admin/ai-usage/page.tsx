@@ -125,7 +125,7 @@ export default function AiUsagePage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
-        <Loader2 size={24} className="animate-spin text-cyan-500" />
+        <Loader2 size={24} className="animate-spin text-ink-500" />
       </div>
     )
   }
@@ -151,7 +151,7 @@ export default function AiUsagePage() {
       <div>
         <div className="flex items-center gap-3 mb-1">
           <h1 className="text-2xl font-bold text-gray-900">AI Usage</h1>
-          <BarChart3 size={20} className="text-cyan-500" />
+          <BarChart3 size={20} className="text-ink-500" />
         </div>
         <p className="text-sm text-gray-500">
           Per-retailer × per-model AI consumption (weighted credits). Shows exactly which AI served
@@ -161,28 +161,28 @@ export default function AiUsagePage() {
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-4">
+        <div className="bg-white rounded-2xl border border-gray-200/80 p-4">
           <p className="text-xs text-gray-500 font-medium">Total credits used</p>
           <p className="text-2xl font-bold text-gray-900 mt-1">{totalCredits.toLocaleString()}</p>
         </div>
-        <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-4">
+        <div className="bg-white rounded-2xl border border-gray-200/80 p-4">
           <p className="text-xs text-gray-500 font-medium">Total AI calls</p>
           <p className="text-2xl font-bold text-gray-900 mt-1">{totalCalls.toLocaleString()}</p>
         </div>
-        <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-4">
+        <div className="bg-white rounded-2xl border border-gray-200/80 p-4">
           <p className="text-xs text-gray-500 font-medium">Retailers with usage</p>
           <p className="text-2xl font-bold text-gray-900 mt-1">
             {new Set(rows.map((r) => r.retailer_id)).size}
           </p>
         </div>
-        <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-4">
+        <div className="bg-white rounded-2xl border border-gray-200/80 p-4">
           <p className="text-xs text-gray-500 font-medium">Estimated cost (all time)</p>
           <p className="text-2xl font-bold text-gray-900 mt-1">{inr(totalCost)}</p>
         </div>
       </div>
 
       {rollups.length > 0 && (
-        <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 overflow-hidden">
+        <div className="bg-white rounded-2xl border border-gray-200/80 overflow-hidden">
           <div className="p-4 border-b border-gray-100">
             <h2 className="text-sm font-semibold text-gray-900">Per retailer</h2>
             <p className="text-xs text-gray-500 mt-0.5">
@@ -227,7 +227,7 @@ export default function AiUsagePage() {
         </div>
       )}
 
-      <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 overflow-hidden">
+      <div className="bg-white rounded-2xl border border-gray-200/80 overflow-hidden">
         <div className="p-4 border-b border-gray-100">
           <input
             value={search}
@@ -236,7 +236,7 @@ export default function AiUsagePage() {
               setDetailPage(1)
             }}
             placeholder="Filter by retailer, city, model…"
-            className="w-full sm:w-80 px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+            className="w-full sm:w-80 px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-ink-500/50"
           />
         </div>
 

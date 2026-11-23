@@ -1,7 +1,7 @@
 'use client';
 
 import { adminGetOptions } from '@/lib/admin-fetch';
-import { Activity, ArrowRight } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
@@ -30,34 +30,31 @@ export function ServerMemoryCard() {
   }, []);
 
   if (!now) return null;
+  const rows = [
+    ['RSS (billed)', now.rss_mb],
+    ['JS heap used', now.heap_used_mb],
+    ['Native / other', now.native_other_mb],
+  ] as const;
+
   return (
-    <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-6 hover:shadow-lg transition-shadow">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
-          <Activity size={16} className="text-gray-400" />
-          API Server Memory
-        </h2>
+    <section className="min-w-0 rounded-xl border border-gray-200 bg-white p-6 lg:flex-1">
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="text-sm font-medium text-gray-900">API server memory</h2>
         <Link
           href="/admin/server-memory"
-          className="text-xs text-gray-500 hover:text-gray-900 flex items-center gap-1"
+          className="flex items-center gap-1 rounded text-xs text-gray-500 transition-colors hover:text-gray-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-600"
         >
-          Details <ArrowRight size={12} />
+          Details <ArrowRight size={12} strokeWidth={1.5} />
         </Link>
       </div>
-      <div className="grid grid-cols-3 gap-3 text-center">
-        <div>
-          <p className="text-xl font-semibold text-gray-900">{now.rss_mb} MB</p>
-          <p className="text-[11px] text-gray-500">RSS (billed)</p>
-        </div>
-        <div>
-          <p className="text-xl font-semibold text-gray-900">{now.heap_used_mb} MB</p>
-          <p className="text-[11px] text-gray-500">JS heap used</p>
-        </div>
-        <div>
-          <p className="text-xl font-semibold text-gray-900">{now.native_other_mb} MB</p>
-          <p className="text-[11px] text-gray-500">Native / other</p>
-        </div>
-      </div>
-    </div>
+      <dl className="grid grid-cols-3 gap-4">
+        {rows.map(([label, value]) => (
+          <div key={label}>
+            <dt className="text-xs text-gray-500">{label}</dt>
+            <dd className="mt-1 text-lg font-medium tabular-nums text-gray-900">{value} MB</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
   );
 }

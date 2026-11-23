@@ -193,7 +193,7 @@ export default function DatabaseStatusPage() {
       <motion.div variants={itemVariants}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
+            <div className="bg-ink-600 w-10 h-10 rounded-xl flex items-center justify-center shadow-lg">
               <Activity size={20} className="text-white" />
             </div>
             <div>
@@ -206,9 +206,8 @@ export default function DatabaseStatusPage() {
           <motion.button
             onClick={() => fetchStatus(true)}
             disabled={refreshing}
-            whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-all"
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition"
           >
             <RefreshCw size={13} className={refreshing ? 'animate-spin' : ''} />
             Refresh
@@ -253,7 +252,6 @@ export default function DatabaseStatusPage() {
           <DbCard
             title="Primary Database"
             icon={Server}
-            gradient="from-blue-500/10 to-transparent"
             iconColor="text-blue-500"
             borderAccent="border-blue-100"
           >
@@ -336,7 +334,6 @@ export default function DatabaseStatusPage() {
           <DbCard
             title="Read Replica"
             icon={Layers}
-            gradient="from-violet-500/10 to-transparent"
             iconColor="text-violet-500"
             borderAccent="border-violet-100"
           >
@@ -384,7 +381,6 @@ export default function DatabaseStatusPage() {
           <DbCard
             title="Backup Status"
             icon={HardDrive}
-            gradient="from-emerald-500/10 to-transparent"
             iconColor="text-emerald-500"
             borderAccent="border-emerald-100"
           >
@@ -450,7 +446,6 @@ export default function DatabaseStatusPage() {
           <DbCard
             title="Deletion Vault (F-016)"
             icon={Archive}
-            gradient="from-amber-500/10 to-transparent"
             iconColor="text-amber-500"
             borderAccent="border-amber-100"
           >
@@ -497,7 +492,6 @@ export default function DatabaseStatusPage() {
           <DbCard
             title="DB Guardrails (F-017)"
             icon={Shield}
-            gradient="from-red-500/10 to-transparent"
             iconColor="text-red-500"
             borderAccent="border-red-100"
           >
@@ -555,9 +549,8 @@ export default function DatabaseStatusPage() {
           <p className="text-sm text-gray-500">Unable to load database status</p>
           <motion.button
             onClick={() => fetchStatus()}
-            whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-gradient-to-r from-blue-500 to-cyan-600 rounded-xl shadow-lg shadow-blue-500/20"
+            className="bg-ink-600 mt-4 inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white rounded-xl shadow-lg"
           >
             <RefreshCw size={14} />
             Retry
@@ -580,14 +573,12 @@ export default function DatabaseStatusPage() {
 function DbCard({
   title,
   icon: Icon,
-  gradient,
   iconColor,
   borderAccent,
   children,
 }: {
   title: string
   icon: LucideIcon
-  gradient: string
   iconColor: string
   borderAccent: string
   children: React.ReactNode
@@ -595,9 +586,8 @@ function DbCard({
   return (
     <motion.div
       variants={itemVariants}
-      className={`relative bg-white/80 backdrop-blur-sm rounded-2xl border ${borderAccent} border-opacity-50 p-6 overflow-hidden shadow-sm hover:shadow-md transition-shadow`}
+      className={`relative bg-white rounded-2xl border ${borderAccent} border-opacity-50 p-6 overflow-hidden shadow-sm hover:shadow-md transition-shadow`}
     >
-      <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${gradient} opacity-60`} />
       <div className="flex items-center gap-2 mb-4">
         <Icon size={18} className={iconColor} />
         <h2 className="text-sm font-semibold text-gray-800">{title}</h2>
@@ -637,7 +627,7 @@ function MetricTile({
         <div className={`p-1 rounded-lg ${iconBg} bg-opacity-50`}>
           <Icon size={12} className={iconBg.split(' ')[0]} />
         </div>
-        <span className="text-[10px] font-medium text-gray-500 uppercase tracking-wider">
+        <span className="text-[10px] font-medium text-gray-500 uppercase">
           {label}
         </span>
       </div>

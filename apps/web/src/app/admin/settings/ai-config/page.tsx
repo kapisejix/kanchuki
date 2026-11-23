@@ -96,11 +96,10 @@ export default function AiConfigPage() {
           <p className="text-sm text-gray-500">Select AI models and parameters per operation type</p>
         </div>
         <motion.button
-          whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           onClick={handleSave}
           disabled={saving}
-          className="flex items-center gap-2 px-5 py-2 bg-cyan-600 hover:bg-cyan-700 text-white text-sm font-medium rounded-xl transition-all disabled:opacity-50 shadow-lg shadow-cyan-500/25"
+          className="flex items-center gap-2 px-5 py-2 bg-ink-600 hover:bg-ink-700 text-white text-sm font-medium rounded-xl transition disabled:opacity-50 shadow-lg"
         >
           {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
           Save Changes
@@ -146,7 +145,7 @@ export default function AiConfigPage() {
                   type="text"
                   value={entry.model}
                   onChange={(e) => updateConfig(key, 'model', e.target.value)}
-                  className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs text-gray-700 font-mono focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                  className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs text-gray-700 font-mono focus:outline-none focus:ring-2 focus:ring-ink-500/50"
                 />
               </div>
               <div>
@@ -159,7 +158,7 @@ export default function AiConfigPage() {
                     step={0.05}
                     value={entry.temperature}
                     onChange={(e) => updateConfig(key, 'temperature', Number.parseFloat(e.target.value))}
-                    className="flex-1 accent-cyan-500"
+                    className="flex-1 accent-ink-500"
                   />
                   <span className="text-xs font-mono text-gray-600 w-8 text-right">{entry.temperature.toFixed(2)}</span>
                 </div>
@@ -173,7 +172,7 @@ export default function AiConfigPage() {
                   step={100}
                   value={entry.max_tokens}
                   onChange={(e) => updateConfig(key, 'max_tokens', Number(e.target.value))}
-                  className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                  className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-ink-500/50"
                 />
               </div>
               <div>
@@ -185,7 +184,7 @@ export default function AiConfigPage() {
                   step={1000}
                   value={entry.timeout_ms}
                   onChange={(e) => updateConfig(key, 'timeout_ms', Number(e.target.value))}
-                  className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                  className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-ink-500/50"
                 />
               </div>
             </div>

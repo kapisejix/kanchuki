@@ -260,7 +260,7 @@ export default function StorageReportPage() {
         <div>
           <div className="flex items-center gap-3 mb-1">
             <h1 className="text-2xl font-bold text-gray-900">Storage Report</h1>
-            <DatabaseBackup size={20} className="text-cyan-500" />
+            <DatabaseBackup size={20} className="text-ink-500" />
           </div>
           <p className="text-sm text-gray-500">
             Daily R2 compression savings — read from the{' '}
@@ -272,10 +272,9 @@ export default function StorageReportPage() {
           <motion.button
             onClick={runNow}
             disabled={running || polling}
-            whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             title="Enqueue the compression pass immediately (runs in the maintenance worker)"
-            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-cyan-600 hover:bg-cyan-500 rounded-xl transition-colors disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-ink-600 hover:bg-ink-500 rounded-xl transition-colors disabled:opacity-50"
           >
             {running ? <Loader2 size={13} className="animate-spin" /> : <Zap size={13} />}
             Run compression now
@@ -283,9 +282,8 @@ export default function StorageReportPage() {
           <motion.button
             onClick={load}
             disabled={loading}
-            whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-all"
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition"
           >
             <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
             Refresh
@@ -301,17 +299,17 @@ export default function StorageReportPage() {
       )}
 
       {queuedMsg && (
-        <div className="flex items-center gap-2 bg-cyan-50 border border-cyan-200 text-cyan-700 text-sm rounded-xl px-4 py-3">
+        <div className="flex items-center gap-2 bg-ink-50 border border-ink-200 text-ink-700 text-sm rounded-xl px-4 py-3">
           <Zap size={15} className="shrink-0" />
           <span>{queuedMsg}</span>
         </div>
       )}
 
       {/* Live R2 storage — measure-r2-storage job totals */}
-      <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 overflow-hidden">
+      <div className="bg-white rounded-2xl border border-gray-200/80 overflow-hidden">
         <div className="p-4 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <Gauge size={16} className="text-cyan-500" />
+            <Gauge size={16} className="text-ink-500" />
             <h2 className="text-sm font-semibold text-gray-700">Live R2 storage</h2>
             {measurement && (
               <span className="text-[10px] text-gray-400">
@@ -322,10 +320,9 @@ export default function StorageReportPage() {
           <motion.button
             onClick={reMeasure}
             disabled={measuring || polling}
-            whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             title="List the bucket and recompute live storage totals"
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-all disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition disabled:opacity-50"
           >
             {measuring ? <Loader2 size={13} className="animate-spin" /> : <RotateCcw size={13} />}
             Re-measure
@@ -366,7 +363,7 @@ export default function StorageReportPage() {
 
             {measurement.by_prefix.length > 0 && (
               <div className="mt-4">
-                <p className="text-[10px] uppercase tracking-wide text-gray-400 font-medium mb-1">
+                <p className="text-xs text-gray-400 font-medium mb-1">
                   Top prefixes by storage
                 </p>
                 <div className="max-h-40 overflow-y-auto rounded-lg border border-gray-100">
@@ -417,7 +414,7 @@ export default function StorageReportPage() {
       {/* Summary cards */}
       {!loading && summary && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-4">
+          <div className="bg-white rounded-2xl border border-gray-200/80 p-4">
             <div className="flex items-center gap-2 text-xs text-gray-500 font-medium">
               <TrendingDown size={13} className="text-emerald-500" />
               Total saved
@@ -432,9 +429,9 @@ export default function StorageReportPage() {
             </p>
           </div>
 
-          <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-4">
+          <div className="bg-white rounded-2xl border border-gray-200/80 p-4">
             <div className="flex items-center gap-2 text-xs text-gray-500 font-medium">
-              <FileImage size={13} className="text-cyan-500" />
+              <FileImage size={13} className="text-ink-500" />
               Images compressed
             </div>
             <p className="text-2xl font-bold text-gray-900 mt-1">
@@ -445,7 +442,7 @@ export default function StorageReportPage() {
             </p>
           </div>
 
-          <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-4">
+          <div className="bg-white rounded-2xl border border-gray-200/80 p-4">
             <div className="flex items-center gap-2 text-xs text-gray-500 font-medium">
               <HardDrive size={13} className="text-amber-500" />
               Runs
@@ -458,7 +455,7 @@ export default function StorageReportPage() {
             </p>
           </div>
 
-          <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-4">
+          <div className="bg-white rounded-2xl border border-gray-200/80 p-4">
             <div className="flex items-center gap-2 text-xs text-gray-500 font-medium">
               <Clock size={13} className="text-blue-500" />
               Last run
@@ -490,7 +487,7 @@ export default function StorageReportPage() {
       )}
 
       {/* Runs table */}
-      <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 overflow-hidden">
+      <div className="bg-white rounded-2xl border border-gray-200/80 overflow-hidden">
         <div className="p-4 border-b border-gray-100 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-gray-700">Daily runs</h2>
           <span className="text-[10px] text-gray-400">Newest first · up to 120 runs</span>
@@ -498,7 +495,7 @@ export default function StorageReportPage() {
 
         {loading ? (
           <div className="flex items-center justify-center py-24">
-            <Loader2 size={24} className="animate-spin text-cyan-500" />
+            <Loader2 size={24} className="animate-spin text-ink-500" />
           </div>
         ) : runs.length === 0 ? (
           <div className="p-12 text-center">

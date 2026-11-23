@@ -36,7 +36,7 @@ export function TypeBadge({ type, maxLen }: { type: string | null; maxLen: numbe
     numeric: 'text-rose-600 bg-rose-50 border-rose-200',
     'double precision': 'text-rose-600 bg-rose-50 border-rose-200',
     real: 'text-rose-600 bg-rose-50 border-rose-200',
-    uuid: 'text-cyan-600 bg-cyan-50 border-cyan-200',
+    uuid: 'text-gray-200 bg-gray-200 border-gray-200',
     jsonb: 'text-violet-600 bg-violet-50 border-violet-200',
     json: 'text-violet-600 bg-violet-50 border-violet-200',
   }
@@ -76,7 +76,7 @@ export function SchemaBrowser({
   onRefresh,
 }: SchemaBrowserProps) {
   return (
-    <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-5 shadow-sm">
+    <div className="bg-white rounded-2xl border border-gray-200/80 p-5 shadow-sm">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <div className="p-2 rounded-xl bg-violet-50 text-violet-600 border border-violet-100">

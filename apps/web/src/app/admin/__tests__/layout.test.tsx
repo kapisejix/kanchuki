@@ -214,7 +214,7 @@ describe('AdminLayout auth/session check', () => {
     // The active group button switches from Overview (when /admin) to
     // Retailers & Network (when /admin/retailers)
     const groupButton = (label: string) => screen.getByRole('button', { name: label })
-    expect(groupButton('Retailers & Network')).toHaveClass('text-cyan-400')
+    expect(groupButton('Retailers & Network')).toHaveClass('text-white')
     expect(groupButton('Overview')).toHaveClass('text-gray-400')
     // The layout stayed mounted, so the session check did NOT re-run
     expect(sessionFetchCount(fetchMock)).toBe(1)

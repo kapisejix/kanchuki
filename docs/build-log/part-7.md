@@ -650,3 +650,15 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Upgrade wording (follow-up, owner approved) | 6 mobile messages and the 2 shared API plan messages no longer tell the user to upgrade. Web users also lose "Please upgrade". |
 | Migration 169 role guard (follow-up, owner approved) | Header and error now say apply as `postgres`; the guard also blocks `kanchuki_migrator`, replacing the earlier run as that role. Rechecked on throwaway Postgres 17: app, purge and migrator blocked, `postgres` applies, append-only and grants hold. Live archive test not rerun after this change. |
 | Follow-up local runs | Mobile 719 passed, tsc 0. API tsc 0. First full API run failed 1 test (15 s timeout in `silent-failures-guard.test.ts`); the file then passed 12/12 alone and the next full run passed 3550, 12 skipped. Cause not proven. Biome clean on `error-handler.ts`; the 6 mobile files show 11 errors and 4 warnings, same counts as before the edit. Web tests not run. |
+
+## 2026-11-23 — Admin panel design cleanup (branch `design/admin-unslop`)
+
+| Area | Change |
+|---|---|
+| Dashboard | Ledger-style stats, commission pool with double rule, retailer funnel on a shared scale in brand navy. Same data and section order. |
+| Shell | Orbs, glass, glows and spring motion removed. Solid sidebar and header. |
+| Bugs fixed | Phone content no longer offset 240px. Sidebar groups open by keyboard and tap, Esc closes. Funnel draws no bar for zero. |
+| Sweep | Admin pages: gradients, blur, `transition-all`, hover lifts, looping icons and most uppercase labels removed. Cyan replaced by brand navy; status colors kept. |
+| Left alone | 10 preview-style files (theme, studio styles, photo cleanup, post and design templates), 22 emoji lines in 3 files, 146 `font-bold` uses. Login footer wording unchanged by owner decision. |
+| Local runs | Web 779 passed, tsc 0, admin browser tests 6/6. No new Biome errors in the categories compared. |
+| Not verified | Viewed with mock data only: dashboard, login, Operations, Settings, Retailers. Other admin pages not opened. |

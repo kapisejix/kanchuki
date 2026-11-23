@@ -100,7 +100,7 @@ export default function DeploymentsPage() {
           <select
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
-            className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+            className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-ink-500/50"
           >
             <option value="">All statuses</option>
             <option value="success">Success</option>
@@ -110,10 +110,9 @@ export default function DeploymentsPage() {
             <option value="rolled_back">Rolled Back</option>
           </select>
           <motion.button
-            whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={() => loadDeployments(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm text-gray-600 hover:text-gray-800 hover:border-gray-300 transition-all"
+            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm text-gray-600 hover:text-gray-800 hover:border-gray-300 transition"
           >
             <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
             Refresh
@@ -180,11 +179,10 @@ export default function DeploymentsPage() {
       {hasMore && (
         <div className="text-center">
           <motion.button
-            whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={() => loadDeployments(false)}
             disabled={loading}
-            className="px-6 py-2 bg-white border border-gray-200 rounded-xl text-sm text-gray-600 hover:border-gray-300 transition-all disabled:opacity-50"
+            className="px-6 py-2 bg-white border border-gray-200 rounded-xl text-sm text-gray-600 hover:border-gray-300 transition disabled:opacity-50"
           >
             {loading ? <Loader2 size={14} className="animate-spin inline mr-2" /> : null}
             Load more

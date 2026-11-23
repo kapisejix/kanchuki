@@ -240,7 +240,7 @@ export default function AiProvidersPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
-        <Loader2 size={24} className="animate-spin text-cyan-500" />
+        <Loader2 size={24} className="animate-spin text-ink-500" />
       </div>
     )
   }
@@ -251,7 +251,7 @@ export default function AiProvidersPage() {
         <div>
           <div className="flex items-center gap-3 mb-1">
             <h1 className="text-2xl font-bold text-gray-900">AI Providers</h1>
-            <Bot size={20} className="text-cyan-500" />
+            <Bot size={20} className="text-ink-500" />
           </div>
           <p className="text-sm text-gray-500">
             Models the AI tagging engine tries, in priority order (1 = first). When a provider is
@@ -262,9 +262,8 @@ export default function AiProvidersPage() {
         </div>
         <motion.button
           onClick={openCreate}
-          whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
-          className="flex items-center gap-2 px-4 py-2.5 bg-cyan-500 text-white rounded-xl text-sm font-medium shadow-lg shadow-cyan-500/20 shrink-0"
+          className="flex items-center gap-2 px-4 py-2.5 bg-ink-500 text-white rounded-xl text-sm font-medium shadow-lg shrink-0"
         >
           <Plus size={16} /> Add model
         </motion.button>
@@ -296,7 +295,7 @@ export default function AiProvidersPage() {
       )}
 
       {rows.length === 0 && (
-        <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-10 text-center">
+        <div className="bg-white rounded-2xl border border-gray-200/80 p-10 text-center">
           <Bot size={32} className="mx-auto text-gray-300 mb-3" />
           <p className="text-gray-500 text-sm">
             No AI providers configured. Add a model to enable AI tagging — or make sure the legacy
@@ -313,7 +312,7 @@ export default function AiProvidersPage() {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.03 }}
-            className={`bg-white/80 backdrop-blur-xl rounded-2xl border p-4 ${
+            className={`bg-white rounded-2xl border p-4 ${
               row.is_active ? 'border-gray-200/80' : 'border-gray-100 opacity-60'
             }`}
           >
@@ -323,7 +322,7 @@ export default function AiProvidersPage() {
                 <button
                   onClick={() => reorder(row.id, -1)}
                   disabled={index === 0 || busy}
-                  className="p-0.5 text-gray-300 hover:text-cyan-600 disabled:opacity-30 transition-colors"
+                  className="p-0.5 text-gray-300 hover:text-ink-600 disabled:opacity-30 transition-colors"
                   aria-label={`Move ${row.label} up`}
                 >
                   <ArrowUp size={14} />
@@ -332,7 +331,7 @@ export default function AiProvidersPage() {
                 <button
                   onClick={() => reorder(row.id, 1)}
                   disabled={index === rows.length - 1 || busy}
-                  className="p-0.5 text-gray-300 hover:text-cyan-600 disabled:opacity-30 transition-colors"
+                  className="p-0.5 text-gray-300 hover:text-ink-600 disabled:opacity-30 transition-colors"
                   aria-label={`Move ${row.label} down`}
                 >
                   <ArrowDown size={14} />
@@ -378,7 +377,7 @@ export default function AiProvidersPage() {
               <button
                 onClick={() => openEdit(row)}
                 disabled={busy}
-                className="p-2 rounded-xl text-gray-400 hover:text-cyan-600 hover:bg-cyan-50 transition-colors disabled:opacity-50"
+                className="p-2 rounded-xl text-gray-400 hover:text-ink-600 hover:bg-ink-50 transition-colors disabled:opacity-50"
                 aria-label={`Edit ${row.label}`}
               >
                 <Edit3 size={16} />
@@ -403,7 +402,7 @@ export default function AiProvidersPage() {
         <Sheet
           open
           onClose={() => setShowForm(false)}
-          overlayClassName="z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+          overlayClassName="z-50 flex items-center justify-center p-4 bg-black/40"
           panelClassName="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 max-h-full overflow-y-auto"
           panelAnimation={{ initial: { opacity: 0, scale: 0.96 }, animate: { opacity: 1, scale: 1 } }}
           ariaLabel={editing ? 'Edit AI provider' : 'Add AI provider'}
@@ -427,7 +426,7 @@ export default function AiProvidersPage() {
                 <select
                   value={form.provider_type}
                   onChange={(e) => setForm({ ...form, provider_type: e.target.value as ProviderType })}
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-ink-500/50"
                 >
                   {(Object.keys(TYPE_LABELS) as ProviderType[]).map((t) => (
                     <option key={t} value={t}>
@@ -450,7 +449,7 @@ export default function AiProvidersPage() {
                   value={form.label}
                   onChange={(e) => setForm({ ...form, label: e.target.value })}
                   placeholder="e.g. Claude Sonnet"
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-ink-500/50"
                 />
               </div>
 
@@ -461,7 +460,7 @@ export default function AiProvidersPage() {
                     value={form.model_name}
                     onChange={(e) => setForm({ ...form, model_name: e.target.value })}
                     placeholder="e.g. claude-sonnet-4-5"
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-ink-500/50"
                   />
                   {form.model_name.trim() &&
                     classifyVisionModel(form.model_name) === 'text-only' && (
@@ -479,7 +478,7 @@ export default function AiProvidersPage() {
                     value={form.lite_model_name}
                     onChange={(e) => setForm({ ...form, lite_model_name: e.target.value })}
                     placeholder="e.g. claude-haiku"
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-ink-500/50"
                   />
                   {form.lite_model_name.trim() &&
                     classifyVisionModel(form.lite_model_name) === 'text-only' && (
@@ -500,7 +499,7 @@ export default function AiProvidersPage() {
                     value={form.base_url}
                     onChange={(e) => setForm({ ...form, base_url: e.target.value })}
                     placeholder="https://openrouter.ai/api/v1"
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-ink-500/50"
                   />
                 </div>
               )}
@@ -514,7 +513,7 @@ export default function AiProvidersPage() {
                     value={form.api_key_name}
                     onChange={(e) => setForm({ ...form, api_key_name: e.target.value })}
                     placeholder="OPENROUTER_API_KEY"
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl font-mono focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl font-mono focus:outline-none focus:ring-2 focus:ring-ink-500/50"
                   />
                   <p className="text-[11px] text-gray-400 mt-1">
                     Stored via Admin → Integrations, or as a .env var of the same name.
@@ -529,7 +528,7 @@ export default function AiProvidersPage() {
                     onChange={(e) => setForm({ ...form, credits_per_call: e.target.value })}
                     type="number"
                     min={1}
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-ink-500/50"
                   />
                   <p className="text-[11px] text-gray-400 mt-1">
                     1 = cheapest model. Expensive models cost more AI quota per call.
@@ -552,7 +551,7 @@ export default function AiProvidersPage() {
                 <button
                   onClick={saveForm}
                   disabled={busy}
-                  className="flex items-center gap-2 px-4 py-2 text-sm bg-cyan-500 text-white rounded-xl hover:bg-cyan-600 disabled:opacity-50 transition-colors"
+                  className="flex items-center gap-2 px-4 py-2 text-sm bg-ink-500 text-white rounded-xl hover:bg-ink-600 disabled:opacity-50 transition-colors"
                 >
                   {busy ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
                   {editing ? 'Save changes' : 'Add provider'}
