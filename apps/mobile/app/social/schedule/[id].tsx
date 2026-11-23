@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
-import { ChevronLeft, Images, RefreshCw, Sparkles, Wand2, X } from 'lucide-react-native';
+import { ChevronLeft, Images, RefreshCw, Wand2, X } from 'lucide-react-native';
 import { useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -111,13 +111,13 @@ function PostCard({
   });
 
   return (
-    <View className="bg-white rounded-3xl p-4 border border-lavender-200">
+    <View className="bg-white rounded-2xl p-4 border border-lavender-200">
       <View className="flex-row items-center justify-between mb-2">
-        <Text className="text-sm font-bold text-spaceCadet-900">
+        <Text className="text-sm font-semibold text-spaceCadet-900">
           {formatIst(post.scheduled_at, false)}
         </Text>
         <Text
-          className={`text-[11px] font-bold ${
+          className={`text-[11px] font-semibold ${
             post.status === 'FAILED' || post.status === 'MISSED'
               ? 'text-red-600'
               : post.status === 'POSTED'
@@ -163,13 +163,13 @@ function PostCard({
                     </AnimatedPressable>
                   ) : null}
                 </View>
-                <Text className="text-[10px] text-spaceCadet-900 mt-1" numberOfLines={1}>
+                <Text className="text-[11px] text-spaceCadet-900 mt-1" numberOfLines={1}>
                   {item.product?.name ?? 'Product'}
                 </Text>
                 {item.image_level === 'TEMPLATE' ? (
                   <View className="flex-row items-center gap-1">
-                    <Sparkles size={10} color="#A21CAF" />
-                    <Text className="text-[10px] font-bold text-fuchsia-700 flex-shrink" numberOfLines={1}>
+                    <Wand2 size={12} color="#6B4773" />
+                    <Text className="text-[11px] font-medium text-heliotrope-600 flex-shrink" numberOfLines={1}>
                       {templateLabel(item.template_id) ?? designName(item.template_id) ?? 'Styled'}
                     </Text>
                   </View>
@@ -196,7 +196,7 @@ function PostCard({
                       onPress={() => onStyle('item', item.id)}
                       className="px-1.5 py-1 rounded-lg bg-lavender-100"
                     >
-                      <Wand2 size={12} color="#BB3F95" />
+                      <Wand2 size={12} color="#6B4773" />
                     </AnimatedPressable>
                     <AnimatedPressable
                       accessibilityLabel="Swap this product"
@@ -239,7 +239,7 @@ function PostCard({
           <WhiteButton
             compact
             label={ai.isPending ? 'Writing…' : 'AI caption'}
-            icon={<Sparkles size={14} color={WHITE_BUTTON_INK} />}
+            icon={<Wand2 size={14} color={WHITE_BUTTON_INK} />}
             disabled={ai.isPending}
             onPress={() => ai.mutate()}
           />
@@ -412,8 +412,8 @@ export default function ScheduleCalendarScreen() {
           </AnimatedPressable>
           <View className="flex-1">
             <Text
-              style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-              className="text-xl font-bold text-spaceCadet-900"
+              style={{ fontFamily: 'Marcellus_400Regular' }}
+              className="text-xl text-spaceCadet-900"
             >
               {plan?.status === 'DRAFT' ? 'Review calendar' : 'Calendar'}
             </Text>
@@ -433,7 +433,7 @@ export default function ScheduleCalendarScreen() {
 
       {isLoading ? (
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator color="#BB3F95" />
+          <ActivityIndicator color="#6B4773" />
         </View>
       ) : isError || !plan ? (
         <View className="flex-1 items-center justify-center p-8 gap-3">
@@ -452,8 +452,8 @@ export default function ScheduleCalendarScreen() {
               <Text className="text-xs font-semibold text-red-600">{plan.pause_reason}</Text>
             ) : null}
             {canPlan && plan.status !== 'ENDED' ? (
-              <View className="bg-white rounded-3xl p-4 border border-lavender-200 gap-3">
-                <Text className="text-xs font-bold text-spaceCadet-900">Photo styles</Text>
+              <View className="bg-white rounded-2xl p-4 border border-lavender-200 gap-3">
+                <Text className="text-xs font-semibold text-spaceCadet-900">Photo styles</Text>
                 <View className="flex-row flex-wrap gap-2">
                   <GradientButton
                     variant="web"
@@ -478,7 +478,7 @@ export default function ScheduleCalendarScreen() {
                     }`}
                   >
                     <Text
-                      className={`text-xs font-bold ${
+                      className={`text-xs font-semibold ${
                         plan.cover_style === 'collage_cover' ? 'text-white' : 'text-spaceCadet-900'
                       }`}
                     >
@@ -508,7 +508,7 @@ export default function ScheduleCalendarScreen() {
                         }`}
                       >
                         <Text
-                          className={`text-xs font-bold ${on ? 'text-white' : 'text-spaceCadet-900'}`}
+                          className={`text-xs font-semibold ${on ? 'text-white' : 'text-spaceCadet-900'}`}
                         >
                           {t.label}
                         </Text>
@@ -520,7 +520,7 @@ export default function ScheduleCalendarScreen() {
             ) : null}
             {days.map(([day, posts]) => (
               <View key={day} className="gap-3">
-                <Text className="text-xs font-bold text-heliotrope-500 uppercase">
+                <Text className="text-xs font-semibold text-heliotrope-500">
                   {formatIst(posts[0]?.scheduled_at as string).split(' · ')[0]}
                 </Text>
                 {posts.map((p) => (
@@ -587,7 +587,7 @@ export default function ScheduleCalendarScreen() {
             style={{ paddingBottom: screenPaddingBottom }}
           >
             <View className="flex-row items-center justify-between mb-1">
-              <Text className="text-base font-bold text-spaceCadet-900">
+              <Text className="text-base font-semibold text-spaceCadet-900">
                 {styleTarget?.scope === 'item'
                   ? 'Style this photo'
                   : styleTarget?.scope === 'post'
@@ -605,7 +605,7 @@ export default function ScheduleCalendarScreen() {
             </View>
             {style.isPending ? (
               <View className="items-center py-6 gap-2">
-                <ActivityIndicator color="#BB3F95" />
+                <ActivityIndicator color="#6B4773" />
                 <Text className="text-xs text-heliotrope-500">
                   {styleTarget?.scope === 'item' ? 'Rendering your photo…' : 'Applying…'}
                 </Text>
@@ -619,12 +619,12 @@ export default function ScheduleCalendarScreen() {
                     onPress={() => style.mutate(t.id)}
                     className="px-4 py-3 rounded-2xl border border-lavender-200"
                   >
-                    <Text className="text-sm font-bold text-spaceCadet-900">{t.label}</Text>
+                    <Text className="text-sm font-semibold text-spaceCadet-900">{t.label}</Text>
                   </AnimatedPressable>
                 ))}
                 {designList.length > 0 ? (
                   <>
-                    <Text className="text-xs font-bold text-heliotrope-500 mt-1">Your designs</Text>
+                    <Text className="text-xs font-semibold text-heliotrope-500 mt-1">Your designs</Text>
                     <TextInput
                       value={headline}
                       onChangeText={setHeadline}
@@ -655,7 +655,7 @@ export default function ScheduleCalendarScreen() {
                         }
                         className="px-4 py-3 rounded-2xl border border-lavender-200"
                       >
-                        <Text className="text-sm font-bold text-spaceCadet-900">{d.name}</Text>
+                        <Text className="text-sm font-semibold text-spaceCadet-900">{d.name}</Text>
                         {d.occasion ? (
                           <Text className="text-[11px] text-heliotrope-500">{d.occasion}</Text>
                         ) : null}
@@ -672,7 +672,7 @@ export default function ScheduleCalendarScreen() {
                       pool.length === 0 ? 'opacity-40' : ''
                     }`}
                   >
-                    <Text className="text-sm font-bold text-spaceCadet-900">
+                    <Text className="text-sm font-semibold text-spaceCadet-900">
                       Rotate through my pool
                       {pool.length === 0 ? ' (pick styles first)' : ` (${pool.length})`}
                     </Text>
@@ -683,7 +683,7 @@ export default function ScheduleCalendarScreen() {
                   onPress={() => style.mutate(null)}
                   className="px-4 py-3 rounded-2xl bg-lavender-100"
                 >
-                  <Text className="text-sm font-bold text-spaceCadet-900">Original photo</Text>
+                  <Text className="text-sm font-semibold text-spaceCadet-900">Original photo</Text>
                 </AnimatedPressable>
               </>
             )}
@@ -698,7 +698,7 @@ export default function ScheduleCalendarScreen() {
       >
         <View className="flex-1 bg-[#F8F7FC]" style={{ paddingTop: headerPaddingTop }}>
           <View className="flex-row items-center justify-between px-5 pb-3">
-            <Text className="text-lg font-bold text-spaceCadet-900">Swap product</Text>
+            <Text className="text-lg font-semibold text-spaceCadet-900">Swap product</Text>
             <AnimatedPressable
               accessibilityLabel="Close"
               accessibilityRole="button"

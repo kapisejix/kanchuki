@@ -152,7 +152,7 @@ export function ProductGridPicker({
                   {isSelected ? (
                     <View className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-ink-600 items-center justify-center">
                       {order !== null && maxItems > 1 ? (
-                        <Text className="text-white text-[11px] font-bold">{order + 1}</Text>
+                        <Text className="text-white text-[11px] font-semibold">{order + 1}</Text>
                       ) : (
                         <Check size={13} color="#fff" />
                       )}
@@ -163,7 +163,7 @@ export function ProductGridPicker({
                   <Text className="text-[11px] font-semibold text-sand-900" numberOfLines={1}>
                     {item.name ?? item.sku ?? 'Untitled'}
                   </Text>
-                  <Text className="text-[10px] text-sand-500" numberOfLines={1}>
+                  <Text className="text-[11px] text-sand-500" numberOfLines={1}>
                     {formatPriceRange(item.price_min, item.price_max)}
                   </Text>
                 </View>

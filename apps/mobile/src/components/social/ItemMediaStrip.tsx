@@ -76,13 +76,13 @@ export function ItemMediaStrip({
   return (
     <View>
       <View className="flex-row items-center mb-2">
-        <Text className="text-xs font-bold text-sand-900 flex-1" numberOfLines={1}>
+        <Text className="text-xs font-semibold text-sand-900 flex-1" numberOfLines={1}>
           {product.name ?? 'Untitled product'}
         </Text>
         {selection?.kind === 'video' ? (
-          <Text className="text-[10px] font-semibold text-ink-600">Video selected</Text>
+          <Text className="text-[11px] font-semibold text-ink-600">Video selected</Text>
         ) : (
-          <Text className="text-[10px] text-sand-400">Tap to change photo</Text>
+          <Text className="text-[11px] text-sand-400">Tap to change photo</Text>
         )}
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>

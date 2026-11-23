@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { router } from 'expo-router'
 import * as ImagePicker from 'expo-image-picker'
-import { ChevronLeft, ChevronRight, Clapperboard, Sparkles, Star, Trash2, Upload, Search } from 'lucide-react-native'
+import { ChevronLeft, ChevronRight, Clapperboard, Star, Trash2, Upload, Search } from 'lucide-react-native'
 import { useState, useEffect, useRef } from 'react'
 import { ActivityIndicator, Alert, ScrollView, Text, TextInput, View } from 'react-native'
 import { useScreenInsets } from '../../src/lib/safe-area'
@@ -188,8 +188,8 @@ export default function VideosScreen() {
             <ChevronLeft size={20} color="#231F48" />
           </AnimatedPressable>
           <Text
-            style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-            className="text-xl font-bold text-spaceCadet-900 flex-1"
+            style={{ fontFamily: 'Marcellus_400Regular' }}
+            className="text-xl text-spaceCadet-900 flex-1"
           >
             {picked ? picked.name ?? 'Product' : 'Reels & Video Showcase'}
           </Text>
@@ -200,23 +200,23 @@ export default function VideosScreen() {
         <View className="flex-1">
           {/* Search */}
           <View className="bg-white border-b border-lavender-200 px-5 py-3 flex-row items-center gap-2.5">
-            <Search size={16} color="#928EB2" />
+            <Search size={16} color="#6B4773" />
             <TextInput
               value={search}
               onChangeText={setSearch}
               placeholder="Search design name or SKU…"
               placeholderTextColor="#928EB2"
-              className="flex-1 text-sm font-bold text-spaceCadet-900"
+              className="flex-1 text-sm font-semibold text-spaceCadet-900"
             />
           </View>
           <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: screenPaddingBottom }}>
             {productsQuery.isLoading ? (
               <View className="items-center py-10">
-                <ActivityIndicator color="#BB3F95" />
+                <ActivityIndicator color="#6B4773" />
               </View>
             ) : products.length === 0 ? (
               <View className="items-center py-10">
-                <Clapperboard size={32} color="#BB3F95" />
+                <Clapperboard size={32} color="#6B4773" />
                 <Text className="text-xs text-heliotrope-500 mt-3 text-center max-w-[260px] font-medium">
                   No available products found. Videos are added per product — pick one to start.
                 </Text>
@@ -228,24 +228,23 @@ export default function VideosScreen() {
                     key={p.id}
                     onPress={() => setPicked({ id: p.id, name: p.name, sku: p.sku })}
                     accessibilityRole="button"
-                    className="bg-white rounded-3xl p-4 border border-lavender-200 flex-row items-center shadow-sm"
+                    className="bg-white rounded-2xl p-4 border border-lavender-200 flex-row items-center"
                   >
-                    <View
-                      className="w-10 h-10 rounded-2xl items-center justify-center mr-3 bg-lavender-100 border border-lavender-200"
+                    <View className="w-6 items-center justify-center mr-3"
                     >
-                      <Clapperboard size={18} color="#BB3F95" />
+                      <Clapperboard size={18} color="#6B4773" />
                     </View>
                     <View className="flex-1 mr-2">
                       <Text
-                        style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-                        className="text-base font-bold text-spaceCadet-900"
+                        style={{ fontFamily: 'Marcellus_400Regular' }}
+                        className="text-base text-spaceCadet-900"
                         numberOfLines={1}
                       >
                         {p.name ?? 'Unnamed design'}
                       </Text>
                       {p.sku ? <Text className="text-xs text-heliotrope-500 font-medium mt-0.5">{p.sku}</Text> : null}
                     </View>
-                    <ChevronRight size={16} color="#928EB2" />
+                    <ChevronRight size={16} color="#6B4773" />
                   </AnimatedPressable>
                 ))}
               </View>
@@ -256,23 +255,23 @@ export default function VideosScreen() {
         <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: screenPaddingBottom }}>
           {videosQuery.isLoading ? (
             <View className="items-center py-10">
-              <ActivityIndicator color="#BB3F95" />
+              <ActivityIndicator color="#6B4773" />
             </View>
           ) : (
             <>
               {videos.length > 0 && (
-                <Text className="text-xs font-bold text-heliotrope-500 uppercase tracking-wider px-1 mb-2.5">
+                <Text className="text-xs font-semibold text-heliotrope-500 px-1 mb-2.5">
                   {videos.length} of 3 video clips
                 </Text>
               )}
               <View className="gap-3 mb-4">
                 {videos.map((v) => (
-                  <View key={v.id} className="bg-white rounded-3xl p-4 border border-lavender-200 shadow-sm">
+                  <View key={v.id} className="bg-white rounded-2xl p-4 border border-lavender-200">
                     <View className="flex-row items-center gap-2">
                       {v.is_main && (
                         <View className="flex-row items-center gap-1 bg-fuchsia-500/10 rounded-full px-2.5 py-1 border border-fuchsia-500/20">
-                          <Star size={11} color="#BB3F95" />
-                          <Text className="text-[10px] font-bold text-fuchsia-700">Primary Showcase</Text>
+                          <Star size={11} color="#6B4773" />
+                          <Text className="text-[11px] font-semibold text-fuchsia-700">Primary Showcase</Text>
                         </View>
                       )}
                       <Text className="text-xs text-heliotrope-500 font-medium flex-1">
@@ -285,7 +284,7 @@ export default function VideosScreen() {
                         accessibilityRole="button"
                         className="bg-lavender-100 rounded-full px-3 py-1 border border-lavender-200"
                       >
-                        <Text className="text-[10px] font-bold text-spaceCadet-900">
+                        <Text className="text-[11px] font-semibold text-spaceCadet-900">
                           Set primary
                         </Text>
                       </AnimatedPressable>
@@ -302,7 +301,7 @@ export default function VideosScreen() {
                 ))}
               </View>
               {videos.length >= 3 ? (
-                <View className="bg-lavender-50 border border-lavender-200 rounded-3xl p-4">
+                <View className="bg-lavender-50 border border-lavender-200 rounded-2xl p-4">
                   <Text className="text-xs font-medium text-heliotrope-500 text-center">
                     Maximum 3 video clips per product reached.
                   </Text>
@@ -317,10 +316,10 @@ export default function VideosScreen() {
                     icon={<Upload size={16} color="white" />}
                   />
                   {generating ? (
-                    <View className="bg-white border border-lavender-200 rounded-3xl p-4 mt-3 shadow-sm">
+                    <View className="bg-white border border-lavender-200 rounded-2xl p-4 mt-3">
                       <View className="flex-row items-center gap-2">
-                        <ActivityIndicator size="small" color="#BB3F95" />
-                        <Text className="text-xs text-spaceCadet-900 flex-1 font-bold">
+                        <ActivityIndicator size="small" color="#6B4773" />
+                        <Text className="text-xs text-spaceCadet-900 flex-1 font-semibold">
                           {videoProgress >= 100
                             ? 'Video ready! 100%'
                             : videoProgress > 0
@@ -328,7 +327,7 @@ export default function VideosScreen() {
                               : 'Creating 6s cinematic video...'}
                         </Text>
                         {videoEtaMs > 0 && videoProgress < 100 && (
-                          <Text className="text-[10px] text-heliotrope-400 font-medium">
+                          <Text className="text-[11px] text-heliotrope-500 font-medium">
                             ~{Math.ceil(videoEtaMs / 1000)}s left
                           </Text>
                         )}
@@ -347,14 +346,14 @@ export default function VideosScreen() {
                     <WhiteButton
                       style={{ marginTop: 12 }}
                       label="Generate 6s Ken Burns video from photos"
-                      icon={<Sparkles size={14} color={WHITE_BUTTON_INK} />}
+                      icon={<Clapperboard size={14} color={WHITE_BUTTON_INK} />}
                       disabled={generate.isPending}
                       onPress={() => generate.mutate()}
                     />
                   )}
                 </>
               )}
-              <Text className="text-[11px] text-heliotrope-400 text-center mt-3.5 leading-relaxed font-medium">
+              <Text className="text-[11px] text-heliotrope-500 text-center mt-3.5 leading-relaxed font-medium">
                 5–10 second clips (max 50MB, MP4 preferred). Featured on your customer web & mobile boutique storefront.
               </Text>
             </>

@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { router } from 'expo-router'
-import { LinearGradient } from 'expo-linear-gradient'
 import {
   ArrowRight,
   ChevronLeft,
@@ -58,8 +57,8 @@ export default function IntegrationsScreen() {
             <ChevronLeft size={20} color="#231F48" />
           </AnimatedPressable>
           <Text
-            style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-            className="text-xl font-bold text-spaceCadet-900 flex-1"
+            style={{ fontFamily: 'Marcellus_400Regular' }}
+            className="text-xl text-spaceCadet-900 flex-1"
           >
             Social & Marketing Channels
           </Text>
@@ -81,12 +80,12 @@ export default function IntegrationsScreen() {
                 onPress={() => setActiveTab(tab.key)}
                 className={`px-3.5 py-2 rounded-full border ${
                   active
-                    ? 'bg-spaceCadet-900 border-spaceCadet-900 shadow-sm'
+                    ? 'bg-spaceCadet-900 border-spaceCadet-900'
                     : 'bg-lavender-50 border-lavender-200'
                 }`}
               >
                 <Text
-                  className={`text-xs font-bold ${
+                  className={`text-xs font-semibold ${
                     active ? 'text-white' : 'text-spaceCadet-900'
                   }`}
                 >
@@ -100,7 +99,7 @@ export default function IntegrationsScreen() {
 
       {isLoading ? (
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator color="#BB3F95" />
+          <ActivityIndicator color="#6B4773" />
         </View>
       ) : (
         <ScrollView
@@ -109,34 +108,29 @@ export default function IntegrationsScreen() {
           refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} />}
         >
           {/* Hero Banner */}
-          <LinearGradient
-            colors={['#231F48', '#560A39']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            className="rounded-3xl p-5 mb-4 shadow-sm"
-          >
+          <View className="bg-white rounded-2xl p-5 mb-4 border border-lavender-200">
             <View className="flex-row items-center gap-2 mb-1.5">
-              <Share2 size={18} color="#BB3F95" />
+              <Share2 size={18} color="#6B4773" />
               <Text
-                style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-                className="text-white text-base font-bold"
+                style={{ fontFamily: 'Marcellus_400Regular' }}
+                className="text-spaceCadet-900 text-base"
               >
-                Omnichannel Social & Ads Sync
+                Social and ad accounts
               </Text>
             </View>
-            <Text className="text-lavender-200 text-xs leading-relaxed mt-1 font-medium">
+            <Text className="text-heliotrope-500 text-xs leading-relaxed mt-1 font-medium">
               {META_SOCIAL_ENABLED
                 ? 'Publish catalog drops, lookbooks, and 6s photoshoot reels across Instagram, Facebook and WhatsApp. '
                 : 'Connect WhatsApp and Google for your shop. '}
               Credentials are encrypted and securely stored.
             </Text>
-          </LinearGradient>
+          </View>
 
           {/* Social Media Accounts Section */}
           {(activeTab === 'all' || activeTab === 'social') && (
             <View className="mb-4">
-              <Text className="text-xs font-bold text-heliotrope-500 uppercase tracking-wider px-1 mb-2.5">
-                Social Media Accounts
+              <Text className="text-xs font-semibold text-heliotrope-500 px-1 mb-2.5">
+                Social media accounts
               </Text>
 
               {META_SOCIAL_ENABLED && (<>
@@ -218,8 +212,8 @@ export default function IntegrationsScreen() {
           {/* Ad & Search Discovery Section */}
           {(activeTab === 'all' || activeTab === 'ads') && (
             <View>
-              <Text className="text-xs font-bold text-heliotrope-500 uppercase tracking-wider px-1 mb-2.5">
-                Ad Platforms & Local Search
+              <Text className="text-xs font-semibold text-heliotrope-500 px-1 mb-2.5">
+                Ad platforms and local search
               </Text>
 
               {META_SOCIAL_ENABLED && (<>
@@ -227,7 +221,7 @@ export default function IntegrationsScreen() {
               <IntegrationCard
                 brand="facebook-ads"
                 title="Facebook Local Awareness Ads"
-                subtitle="Create local luxury ad campaigns across Instagram & Facebook"
+                subtitle="Create local ad campaigns across Instagram & Facebook"
                 configured={data?.facebook_ads.configured ?? false}
                 configuredAt={data?.facebook_ads.configured_at ?? null}
                 onConfigure={() => router.push('/growth/integrations/fb-ads' as any)}
@@ -300,26 +294,26 @@ function IntegrationCard({
   onDisconnect: () => void
 }) {
   return (
-    <View className="bg-white rounded-3xl border border-lavender-200 p-4 mb-3.5 shadow-sm">
+    <View className="bg-white rounded-2xl border border-lavender-200 p-4 mb-3.5">
       <View className="flex-row items-start gap-3">
         <BrandIcon brand={brand} size={48} />
         <View className="flex-1">
           <View className="flex-row items-center gap-2 mb-1">
             <Text
-              style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-              className="text-base font-bold text-spaceCadet-900 flex-1"
+              style={{ fontFamily: 'Marcellus_400Regular' }}
+              className="text-base text-spaceCadet-900 flex-1"
             >
               {title}
             </Text>
             {configured ? (
               <View className="flex-row items-center gap-1 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
                 <CheckCircle size={11} color="#16a34a" />
-                <Text className="text-[10px] font-bold text-emerald-700">Linked</Text>
+                <Text className="text-[11px] font-semibold text-emerald-700">Linked</Text>
               </View>
             ) : (
               <View className="flex-row items-center gap-1 bg-lavender-100 px-2 py-0.5 rounded-full">
-                <XCircle size={11} color="#928EB2" />
-                <Text className="text-[10px] font-bold text-heliotrope-400">Not Linked</Text>
+                <XCircle size={11} color="#6B4773" />
+                <Text className="text-[11px] font-semibold text-heliotrope-500">Not Linked</Text>
               </View>
             )}
           </View>
@@ -328,11 +322,11 @@ function IntegrationCard({
             <View className="flex-row items-center gap-2 mb-2.5">
               {metaLabel && (
                 <View className="bg-fuchsia-500/10 border border-fuchsia-500/20 px-2.5 py-0.5 rounded-full">
-                  <Text className="text-[10px] font-bold text-fuchsia-700">{metaLabel}</Text>
+                  <Text className="text-[11px] font-semibold text-fuchsia-700">{metaLabel}</Text>
                 </View>
               )}
               {configuredAt && (
-                <Text className="text-[10px] text-heliotrope-400 font-medium">
+                <Text className="text-[11px] text-heliotrope-500 font-medium">
                   Connected {new Date(configuredAt).toLocaleDateString('en-IN')}
                 </Text>
               )}

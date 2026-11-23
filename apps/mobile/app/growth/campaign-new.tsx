@@ -127,10 +127,10 @@ function Section({
   children: React.ReactNode
 }) {
   return (
-    <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
+    <View className="bg-white rounded-2xl p-5 border border-lavender-200">
       <Text
-        style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-        className="text-base font-bold text-spaceCadet-900 mb-3.5"
+        style={{ fontFamily: 'Marcellus_400Regular' }}
+        className="text-base text-spaceCadet-900 mb-3.5"
       >
         {title}
       </Text>
@@ -140,7 +140,7 @@ function Section({
 }
 
 function Label({ text }: { text: string }) {
-  return <Text className="text-xs font-bold text-heliotrope-500 uppercase tracking-wider mb-1.5 mt-3">{text}</Text>
+  return <Text className="text-xs font-semibold text-heliotrope-500 mb-1.5 mt-3">{text}</Text>
 }
 
 function Chip({
@@ -160,11 +160,11 @@ function Chip({
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
       className={`px-4 py-2 rounded-2xl border ${
-        active ? 'bg-spaceCadet-900 border-spaceCadet-900 shadow-sm' : 'border-lavender-200 bg-lavender-50'
+        active ? 'bg-spaceCadet-900 border-spaceCadet-900' : 'border-lavender-200 bg-lavender-50'
       }`}
       style={active && color ? { backgroundColor: color, borderColor: color } : undefined}
     >
-      <Text className={`text-xs font-bold ${active ? 'text-white' : 'text-spaceCadet-900'}`}>
+      <Text className={`text-xs font-semibold ${active ? 'text-white' : 'text-spaceCadet-900'}`}>
         {label}
       </Text>
     </AnimatedPressable>
@@ -190,7 +190,7 @@ function InlineToggle({
       className="flex-row items-center justify-between py-2.5"
     >
       <View className="flex-1 pr-3">
-        <Text className="text-sm font-bold text-spaceCadet-900">{label}</Text>
+        <Text className="text-sm font-semibold text-spaceCadet-900">{label}</Text>
         <Text className="text-xs text-heliotrope-500 mt-0.5 font-medium">{hint}</Text>
       </View>
       <View
@@ -497,8 +497,8 @@ export default function CampaignFormScreen() {
             )}
           </AnimatedPressable>
           <Text
-            style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-            className="text-xl font-bold text-spaceCadet-900"
+            style={{ fontFamily: 'Marcellus_400Regular' }}
+            className="text-xl text-spaceCadet-900"
           >
             {isEdit ? 'Edit Campaign' : 'New Campaign'}
           </Text>
@@ -564,7 +564,7 @@ export default function CampaignFormScreen() {
               onChangeText={setName}
               placeholder="e.g. Diwali collection blast"
               placeholderTextColor="#928EB2"
-              className="text-sm font-bold text-spaceCadet-900 bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3"
+              className="text-sm font-semibold text-spaceCadet-900 bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3"
               maxLength={120}
             />
           </Section>
@@ -574,8 +574,8 @@ export default function CampaignFormScreen() {
             <Section title="WhatsApp Message Draft">
               {campaignTemplates.length > 0 ? (
                 <>
-                  <Text className="text-xs font-bold text-heliotrope-500 uppercase tracking-wider mb-2">
-                    Team Templates
+                  <Text className="text-xs font-semibold text-heliotrope-500 mb-2">
+                    Team templates
                   </Text>
                   <TemplatePicker
                     templates={campaignTemplates}
@@ -585,8 +585,8 @@ export default function CampaignFormScreen() {
                   />
                 </>
               ) : null}
-              <Text className="text-xs font-bold text-heliotrope-500 uppercase tracking-wider mb-2 mt-3">
-                Quick Templates
+              <Text className="text-xs font-semibold text-heliotrope-500 mb-2 mt-3">
+                Quick templates
               </Text>
               <View className="flex-row flex-wrap gap-2 mb-3.5">
                 {MESSAGE_TEMPLATES[type].map((t) => (
@@ -600,7 +600,7 @@ export default function CampaignFormScreen() {
                     accessibilityRole="button"
                     className="px-3.5 py-2 rounded-2xl border border-lavender-200 bg-lavender-50"
                   >
-                    <Text className="text-xs font-bold text-spaceCadet-900">{t.label}</Text>
+                    <Text className="text-xs font-semibold text-spaceCadet-900">{t.label}</Text>
                   </AnimatedPressable>
                 ))}
               </View>
@@ -617,7 +617,7 @@ export default function CampaignFormScreen() {
                 selection={messageSelection}
                 placeholder="Write the WhatsApp message…"
                 placeholderTextColor="#928EB2"
-                className="text-sm font-bold text-spaceCadet-900 bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3 min-h-[105px]"
+                className="text-sm font-semibold text-spaceCadet-900 bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3 min-h-[105px]"
                 multiline
                 maxLength={2000}
                 textAlignVertical="top"
@@ -634,13 +634,13 @@ export default function CampaignFormScreen() {
                     accessibilityLabel={`Insert ${p.token}`}
                     className="px-3 py-1.5 rounded-xl bg-lavender-100 border border-lavender-200"
                   >
-                    <Text className="text-xs font-bold text-fuchsia-700">{p.token}</Text>
+                    <Text className="text-xs font-semibold text-fuchsia-700">{p.token}</Text>
                   </AnimatedPressable>
                 ))}
               </View>
               <View className="mt-3.5 bg-lavender-50 rounded-2xl p-3.5 border border-lavender-200">
-                <Text className="text-[10px] font-bold text-heliotrope-500 uppercase tracking-wider mb-1">
-                  Message Preview
+                <Text className="text-[11px] font-semibold text-heliotrope-500 mb-1">
+                  Message preview
                 </Text>
                 <Text className="text-xs text-spaceCadet-900 leading-relaxed font-medium">
                   {message.trim()
@@ -659,8 +659,8 @@ export default function CampaignFormScreen() {
                 accessibilityState={{ selected: showTranslate }}
                 className="flex-row items-center justify-center gap-2 mt-3 border border-dashed border-fuchsia-400 bg-fuchsia-500/5 rounded-2xl py-2.5"
               >
-                <Languages size={15} color="#BB3F95" />
-                <Text className="text-fuchsia-800 text-xs font-bold">
+                <Languages size={15} color="#6B4773" />
+                <Text className="text-fuchsia-800 text-xs font-semibold">
                   {showTranslate ? 'Hide AI Translate' : 'AI Translate to a regional language'}
                 </Text>
               </AnimatedPressable>
@@ -686,7 +686,7 @@ export default function CampaignFormScreen() {
                           }`}
                         >
                           <Text
-                            className={`text-xs font-bold ${active ? 'text-white' : 'text-spaceCadet-900'}`}
+                            className={`text-xs font-semibold ${active ? 'text-white' : 'text-spaceCadet-900'}`}
                           >
                             {l.label}
                           </Text>
@@ -725,11 +725,11 @@ export default function CampaignFormScreen() {
                         className="flex-row items-center justify-center gap-1.5 mt-3 bg-spaceCadet-900 rounded-xl py-2.5"
                       >
                         <Check size={14} color="white" />
-                        <Text className="text-white text-xs font-bold">Replace message with this</Text>
+                        <Text className="text-white text-xs font-semibold">Replace message with this</Text>
                       </AnimatedPressable>
                     </View>
                   )}
-                  <Text className="text-[11px] text-heliotrope-400 font-medium mt-2 leading-relaxed">
+                  <Text className="text-[11px] text-heliotrope-500 font-medium mt-2 leading-relaxed">
                     {'{{placeholders}}'} are preserved. Your original stays until you tap Replace.
                   </Text>
                 </View>
@@ -747,13 +747,13 @@ export default function CampaignFormScreen() {
                     { key: 'B' as const, state: abB, set: setAbB },
                   ]
                 ).map(({ key, state, set }) => (
-                  <View key={key} className="bg-lavender-50 rounded-3xl p-4 border border-lavender-200">
+                  <View key={key} className="bg-lavender-50 rounded-2xl p-4 border border-lavender-200">
                     <View className="flex-row items-center justify-between mb-2.5">
                       <View className="flex-row items-center gap-2 flex-1">
                         <View
                           className="w-7 h-7 rounded-full items-center justify-center bg-fuchsia-600"
                         >
-                          <Text className="text-xs font-bold text-white">
+                          <Text className="text-xs font-semibold text-white">
                             {key}
                           </Text>
                         </View>
@@ -762,7 +762,7 @@ export default function CampaignFormScreen() {
                           onChangeText={(v) => set({ ...state, label: v })}
                           placeholder={`Variant ${key} label`}
                           placeholderTextColor="#928EB2"
-                          className="text-xs font-bold text-spaceCadet-900 bg-white rounded-xl px-3 py-2 border border-lavender-200 flex-1"
+                          className="text-xs font-semibold text-spaceCadet-900 bg-white rounded-xl px-3 py-2 border border-lavender-200 flex-1"
                           maxLength={40}
                         />
                       </View>
@@ -772,13 +772,13 @@ export default function CampaignFormScreen() {
                       onChangeText={(v) => set({ ...state, message: v })}
                       placeholder="Message text…"
                       placeholderTextColor="#928EB2"
-                      className="text-sm font-bold text-spaceCadet-900 bg-white rounded-2xl px-3.5 py-3 min-h-[75px] border border-lavender-200"
+                      className="text-sm font-semibold text-spaceCadet-900 bg-white rounded-2xl px-3.5 py-3 min-h-[75px] border border-lavender-200"
                       multiline
                       maxLength={2000}
                       textAlignVertical="top"
                     />
                     <View className="flex-row items-center gap-2 mt-2.5">
-                      <Text className="text-xs font-bold text-heliotrope-500">Send to</Text>
+                      <Text className="text-xs font-semibold text-heliotrope-500">Send to</Text>
                       <TextInput
                         value={state.pct}
                         onChangeText={(v) => set({ ...state, pct: v.replace(/\D/g, '') })}
@@ -786,21 +786,21 @@ export default function CampaignFormScreen() {
                         placeholderTextColor="#928EB2"
                         keyboardType="number-pad"
                         maxLength={3}
-                        className="text-xs font-bold text-spaceCadet-900 bg-white rounded-xl px-3 py-1.5 border border-lavender-200 w-16 text-center"
+                        className="text-xs font-semibold text-spaceCadet-900 bg-white rounded-xl px-3 py-1.5 border border-lavender-200 w-16 text-center"
                       />
-                      <Text className="text-xs font-bold text-heliotrope-500">% of audience</Text>
+                      <Text className="text-xs font-semibold text-heliotrope-500">% of audience</Text>
                     </View>
 
                     {/* Collection A/B — per-variant product set + stagger */}
                     <View className="flex-row items-center justify-between mt-3 pt-2.5 border-t border-lavender-200">
-                      <Text className="text-xs font-bold text-spaceCadet-900">Collection Products</Text>
+                      <Text className="text-xs font-semibold text-spaceCadet-900">Collection Products</Text>
                       <AnimatedPressable
                         onPress={() => openPicker(key)}
                         accessibilityRole="button"
                         accessibilityLabel={`Pick products for variant ${key}`}
                         className="bg-white border border-lavender-200 rounded-xl px-3 py-1.5"
                       >
-                        <Text className="text-xs font-bold text-fuchsia-700">
+                        <Text className="text-xs font-semibold text-fuchsia-700">
                           {state.products.length > 0
                             ? `${state.products.length} selected · Edit`
                             : 'Pick products'}
@@ -808,7 +808,7 @@ export default function CampaignFormScreen() {
                       </AnimatedPressable>
                     </View>
                     <View className="flex-row items-center gap-2 mt-2">
-                      <Text className="text-xs font-bold text-heliotrope-500">Send after</Text>
+                      <Text className="text-xs font-semibold text-heliotrope-500">Send after</Text>
                       <TextInput
                         value={state.delay}
                         onChangeText={(v) => set({ ...state, delay: v.replace(/\D/g, '') })}
@@ -816,15 +816,15 @@ export default function CampaignFormScreen() {
                         placeholderTextColor="#928EB2"
                         keyboardType="number-pad"
                         maxLength={4}
-                        className="text-xs font-bold text-spaceCadet-900 bg-white rounded-xl px-3 py-1.5 border border-lavender-200 w-16 text-center"
+                        className="text-xs font-semibold text-spaceCadet-900 bg-white rounded-xl px-3 py-1.5 border border-lavender-200 w-16 text-center"
                       />
-                      <Text className="text-xs font-bold text-heliotrope-500">min (stagger delay)</Text>
+                      <Text className="text-xs font-semibold text-heliotrope-500">min (stagger delay)</Text>
                     </View>
                   </View>
                 ))}
                 <View className="flex-row items-center justify-between px-1">
                   <Text className="text-xs text-heliotrope-500 font-medium">Split must total 100%</Text>
-                  <Text className="text-xs font-bold text-spaceCadet-900">
+                  <Text className="text-xs font-semibold text-spaceCadet-900">
                     {((parseInt(abA.pct, 10) || 0) + (parseInt(abB.pct, 10) || 0))}%
                   </Text>
                 </View>
@@ -845,8 +845,8 @@ export default function CampaignFormScreen() {
                 style={{ paddingTop: headerPaddingTop }}
               >
                 <Text
-                  style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-                  className="text-lg font-bold text-spaceCadet-900"
+                  style={{ fontFamily: 'Marcellus_400Regular' }}
+                  className="text-lg text-spaceCadet-900"
                 >
                   Variant {variantPicker} · Products
                 </Text>
@@ -861,7 +861,7 @@ export default function CampaignFormScreen() {
                 </Text>
                 {pickerProductsQuery.isLoading ? (
                   <View className="items-center py-10">
-                    <ActivityIndicator color="#BB3F95" />
+                    <ActivityIndicator color="#6B4773" />
                   </View>
                 ) : pickerProducts.length === 0 ? (
                   <Text className="text-sm text-heliotrope-500 text-center py-10 font-medium">
@@ -885,7 +885,7 @@ export default function CampaignFormScreen() {
                           accessibilityRole="button"
                           accessibilityState={{ selected }}
                           className={`flex-row items-center bg-white rounded-2xl p-3.5 border ${
-                            selected ? 'border-fuchsia-600 shadow-sm' : 'border-lavender-200'
+                            selected ? 'border-fuchsia-600' : 'border-lavender-200'
                           }`}
                         >
                           <View
@@ -893,16 +893,16 @@ export default function CampaignFormScreen() {
                               selected ? 'bg-fuchsia-600 border-fuchsia-600' : 'border-lavender-300'
                             }`}
                           >
-                            {selected && <Text className="text-white text-xs font-bold">✓</Text>}
+                            {selected && <Check size={14} color="#FFFFFF" />}
                           </View>
                           <Text
-                            className={`text-sm flex-1 ${selected ? 'font-bold text-spaceCadet-900' : 'text-heliotrope-500 font-medium'}`}
+                            className={`text-sm flex-1 ${selected ? 'font-semibold text-spaceCadet-900' : 'text-heliotrope-500 font-medium'}`}
                             numberOfLines={1}
                           >
                             {p.category ?? 'Product'}
                           </Text>
                           {selected && (
-                            <Text className="text-xs font-bold text-fuchsia-700">
+                            <Text className="text-xs font-semibold text-fuchsia-700">
                               #{[...pickerSelection].indexOf(p.id) + 1}
                             </Text>
                           )}
@@ -945,7 +945,7 @@ export default function CampaignFormScreen() {
                         placeholderTextColor="#928EB2"
                         keyboardType="number-pad"
                         maxLength={4}
-                        className="text-xs font-bold text-spaceCadet-900 bg-lavender-50 rounded-2xl px-3 py-2 border border-lavender-200 w-24"
+                        className="text-xs font-semibold text-spaceCadet-900 bg-lavender-50 rounded-2xl px-3 py-2 border border-lavender-200 w-24"
                       />
                     </View>
                     <Text className="text-xs text-heliotrope-500 mt-1.5 font-medium">
@@ -960,7 +960,7 @@ export default function CampaignFormScreen() {
                   onChangeText={setColorsStr}
                   placeholder="pink, black, navy blue"
                   placeholderTextColor="#928EB2"
-                  className="text-sm font-bold text-spaceCadet-900 bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3"
+                  className="text-sm font-semibold text-spaceCadet-900 bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3"
                 />
 
                 <Label text="Prefers styles (comma separated)" />
@@ -969,7 +969,7 @@ export default function CampaignFormScreen() {
                   onChangeText={setStylesStr}
                   placeholder="saree, suit, kurti"
                   placeholderTextColor="#928EB2"
-                  className="text-sm font-bold text-spaceCadet-900 bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3"
+                  className="text-sm font-semibold text-spaceCadet-900 bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3"
                 />
 
                 <Label text="Prefers fabrics (comma separated)" />
@@ -978,7 +978,7 @@ export default function CampaignFormScreen() {
                   onChangeText={setFabricsStr}
                   placeholder="cotton, silk, georgette"
                   placeholderTextColor="#928EB2"
-                  className="text-sm font-bold text-spaceCadet-900 bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3"
+                  className="text-sm font-semibold text-spaceCadet-900 bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3"
                 />
 
                 <View className="flex-row gap-3">
@@ -990,7 +990,7 @@ export default function CampaignFormScreen() {
                       placeholder="2000"
                       placeholderTextColor="#928EB2"
                       keyboardType="decimal-pad"
-                      className="text-sm font-bold text-spaceCadet-900 bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3"
+                      className="text-sm font-semibold text-spaceCadet-900 bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3"
                     />
                   </View>
                   <View className="flex-1">
@@ -1001,7 +1001,7 @@ export default function CampaignFormScreen() {
                       placeholder="5000"
                       placeholderTextColor="#928EB2"
                       keyboardType="decimal-pad"
-                      className="text-sm font-bold text-spaceCadet-900 bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3"
+                      className="text-sm font-semibold text-spaceCadet-900 bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3"
                     />
                   </View>
                 </View>

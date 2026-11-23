@@ -19,7 +19,7 @@ function Row({ label, value }: { label: string; value: string }) {
   return (
     <View className="flex-row justify-between py-1.5">
       <Text className="text-xs text-heliotrope-500 font-medium">{label}</Text>
-      <Text className="text-xs font-bold text-spaceCadet-900">{value}</Text>
+      <Text className="text-xs font-semibold text-spaceCadet-900">{value}</Text>
     </View>
   );
 }
@@ -43,11 +43,11 @@ function PlatformCard({
   const tokenBad = p.token.state !== 'OK';
 
   return (
-    <View className="bg-white rounded-3xl p-5 border border-lavender-200">
+    <View className="bg-white rounded-2xl p-5 border border-lavender-200">
       <View className="flex-row items-center gap-3 mb-3">
         <BrandIcon brand={p.platform === 'FACEBOOK' ? 'facebook' : 'instagram'} size={40} />
         <View className="flex-1">
-          <Text className="text-base font-bold text-spaceCadet-900" numberOfLines={1}>
+          <Text className="text-base font-semibold text-spaceCadet-900" numberOfLines={1}>
             {p.account_name}
           </Text>
           <Text
@@ -158,8 +158,8 @@ export default function SchedulerHomeScreen() {
             <ChevronLeft size={20} color="#231F48" />
           </AnimatedPressable>
           <Text
-            style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-            className="text-xl font-bold text-spaceCadet-900"
+            style={{ fontFamily: 'Marcellus_400Regular' }}
+            className="text-xl text-spaceCadet-900"
           >
             Post Scheduler
           </Text>
@@ -174,7 +174,7 @@ export default function SchedulerHomeScreen() {
         </View>
       ) : isLoading ? (
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator color="#BB3F95" />
+          <ActivityIndicator color="#6B4773" />
         </View>
       ) : isError || !s ? (
         <View className="flex-1 items-center justify-center p-8 gap-3">
@@ -192,9 +192,9 @@ export default function SchedulerHomeScreen() {
           }
         >
           {s.platforms.length === 0 ? (
-            <View className="bg-white rounded-3xl p-6 border border-lavender-200 items-center">
-              <CalendarClock size={28} color="#BB3F95" />
-              <Text className="text-base font-bold text-spaceCadet-900 mt-3">
+            <View className="bg-white rounded-2xl p-6 border border-lavender-200 items-center">
+              <CalendarClock size={28} color="#6B4773" />
+              <Text className="text-base font-semibold text-spaceCadet-900 mt-3">
                 Connect Facebook or Instagram first
               </Text>
               <Text className="text-xs text-heliotrope-500 text-center mt-1.5">
@@ -222,8 +222,8 @@ export default function SchedulerHomeScreen() {
             ))
           )}
 
-          <View className="bg-white rounded-3xl p-5 border border-lavender-200">
-            <Text className="text-sm font-bold text-spaceCadet-900 mb-1">Your allowance</Text>
+          <View className="bg-white rounded-2xl p-5 border border-lavender-200">
+            <Text className="text-sm font-semibold text-spaceCadet-900 mb-1">Your allowance</Text>
             <Row
               label="Scheduled posts this month"
               value={
@@ -264,14 +264,14 @@ export default function SchedulerHomeScreen() {
             ) : null}
           </View>
 
-          <View className="bg-white rounded-3xl p-5 border border-lavender-200">
-            <Text className="text-sm font-bold text-spaceCadet-900 mb-2">Recent problems</Text>
+          <View className="bg-white rounded-2xl p-5 border border-lavender-200">
+            <Text className="text-sm font-semibold text-spaceCadet-900 mb-2">Recent problems</Text>
             {s.failures.length === 0 ? (
               <Text className="text-xs text-heliotrope-500">Nothing needs attention.</Text>
             ) : (
               s.failures.map((f) => (
                 <View key={f.id} className="py-2.5 border-t border-lavender-100">
-                  <Text className="text-xs font-bold text-spaceCadet-900">
+                  <Text className="text-xs font-semibold text-spaceCadet-900">
                     {f.platform === 'FACEBOOK' ? 'Facebook' : 'Instagram'} ·{' '}
                     {f.status === 'MISSED' ? 'Missed' : 'Failed'} · {formatIst(f.scheduled_at)}
                   </Text>

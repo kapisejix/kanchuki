@@ -46,7 +46,7 @@ export default function GoogleAdsConfigScreen() {
     onSuccess: () => {
       setSaving(false)
       void queryClient.invalidateQueries({ queryKey: ['growth', 'integrations'] })
-      Alert.alert('Connected!', 'Google Ads is now connected.', [
+      Alert.alert('Connected', 'Google Ads is now connected.', [
         { text: 'OK', onPress: () => router.back() },
       ])
     },
@@ -75,8 +75,8 @@ export default function GoogleAdsConfigScreen() {
             <ChevronLeft size={20} color="#231F48" />
           </AnimatedPressable>
           <Text
-            style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-            className="text-xl font-bold text-spaceCadet-900"
+            style={{ fontFamily: 'Marcellus_400Regular' }}
+            className="text-xl text-spaceCadet-900"
           >
             Google Ads & LSA
           </Text>
@@ -86,7 +86,7 @@ export default function GoogleAdsConfigScreen() {
       <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: screenPaddingBottom }}>
         <Text className="text-xs text-heliotrope-500 mb-4 leading-relaxed font-medium">
           Connect your Google Ads account to manage Local Service Ads campaigns
-          and reach customers searching for luxury boutique clothing nearby.
+          and reach customers searching for boutique clothing nearby.
         </Text>
 
         <View className="mb-4 pb-1">
@@ -103,7 +103,7 @@ export default function GoogleAdsConfigScreen() {
           onChangeText={setCustomerId}
           placeholder="XXX-XXX-XXXX"
           placeholderTextColor="#928EB2"
-          className="bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3 text-sm font-bold text-spaceCadet-900 mb-4"
+          className="bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3 text-sm font-semibold text-spaceCadet-900 mb-4"
         />
 
         <Label text="Developer Token" />
@@ -112,7 +112,7 @@ export default function GoogleAdsConfigScreen() {
           onChangeText={setDeveloperToken}
           placeholder="Your Google Ads developer token"
           placeholderTextColor="#928EB2"
-          className="bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3 text-sm font-bold text-spaceCadet-900 mb-4"
+          className="bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3 text-sm font-semibold text-spaceCadet-900 mb-4"
           secureTextEntry
         />
 
@@ -122,14 +122,14 @@ export default function GoogleAdsConfigScreen() {
           onChangeText={setRefreshToken}
           placeholder="OAuth2 refresh token"
           placeholderTextColor="#928EB2"
-          className="bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3 text-sm font-bold text-spaceCadet-900 mb-4"
+          className="bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3 text-sm font-semibold text-spaceCadet-900 mb-4"
           secureTextEntry
         />
 
         {testResult === 'success' && (
           <View className="flex-row items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-2xl px-4 py-3 mb-4">
             <CheckCircle size={16} color="#16a34a" />
-            <Text className="text-xs font-bold text-emerald-700">Connection successful!</Text>
+            <Text className="text-xs font-semibold text-emerald-700">Connection successful</Text>
           </View>
         )}
         {testResult === 'error' && (
@@ -168,6 +168,6 @@ export default function GoogleAdsConfigScreen() {
 
 function Label({ text }: { text: string }) {
   return (
-    <Text className="text-xs font-bold text-heliotrope-500 uppercase tracking-wider mb-1.5">{text}</Text>
+    <Text className="text-xs font-semibold text-heliotrope-500 mb-1.5">{text}</Text>
   )
 }

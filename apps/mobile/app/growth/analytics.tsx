@@ -24,10 +24,10 @@ import { growthApi, type SeasonalAnalytics, type SeasonalPeriod } from '../../sr
 
 function Section({ icon, title, children }: { icon: React.ReactNode; title: string; children: React.ReactNode }) {
   return (
-    <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
+    <View className="bg-white rounded-2xl p-5 border border-lavender-200">
       <View className="flex-row items-center gap-2 mb-3.5">
         {icon}
-        <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider">{title}</Text>
+        <Text className="text-xs font-semibold text-spaceCadet-900">{title}</Text>
       </View>
       {children}
     </View>
@@ -49,7 +49,7 @@ function OpenRateRow({
   return (
     <View className="mb-3">
       <View className="flex-row items-center justify-between mb-1.5">
-        <Text className="text-xs font-bold text-spaceCadet-900 flex-1 mr-2" numberOfLines={1}>
+        <Text className="text-xs font-semibold text-spaceCadet-900 flex-1 mr-2" numberOfLines={1}>
           {label}
         </Text>
         <Text className="text-[11px] text-heliotrope-500 font-medium">
@@ -78,7 +78,7 @@ function SeasonalSection({ data, loading, period, onPeriodChange }: {
   onPeriodChange: (p: SeasonalPeriod) => void
 }) {
   return (
-    <Section icon={<Calendar size={16} color="#BB3F95" />} title="Seasonal comparison">
+    <Section icon={<Calendar size={16} color="#6B4773" />} title="Seasonal comparison">
       {/* Period toggle */}
       <View className="flex-row bg-lavender-100 rounded-2xl p-1 mb-4 border border-lavender-200">
         {([
@@ -96,7 +96,7 @@ function SeasonalSection({ data, loading, period, onPeriodChange }: {
                 active ? 'bg-spaceCadet-900 shadow-sm' : 'bg-transparent'
               }`}
             >
-              <Text className={`text-xs font-bold ${active ? 'text-white' : 'text-spaceCadet-900'}`}>
+              <Text className={`text-xs font-semibold ${active ? 'text-white' : 'text-spaceCadet-900'}`}>
                 {p.label}
               </Text>
             </AnimatedPressable>
@@ -106,16 +106,16 @@ function SeasonalSection({ data, loading, period, onPeriodChange }: {
 
       {loading ? (
         <View className="items-center py-6">
-          <ActivityIndicator color="#BB3F95" />
+          <ActivityIndicator color="#6B4773" />
         </View>
       ) : !data || data.categories.length === 0 ? (
-        <Empty text="Run festival or promotion campaigns to unlock seasonal insights." />
+        <Empty text="Run festival or promotion campaigns to see seasonal insights." />
       ) : (
         <>
           {/* Summary badge */}
           {data.summary.biggestSwing && (
             <View className="bg-fuchsia-500/10 rounded-2xl p-3.5 mb-3.5 border border-fuchsia-500/20">
-              <Text className="text-xs font-bold text-fuchsia-800">
+              <Text className="text-xs font-semibold text-fuchsia-800">
                 Biggest swing: {data.summary.biggestSwing.category}{' '}
                 ({data.summary.biggestSwing.metric})
                 {' '}{data.summary.biggestSwing.deltaPct > 0 ? '+' : ''}{data.summary.biggestSwing.deltaPct}%
@@ -125,11 +125,11 @@ function SeasonalSection({ data, loading, period, onPeriodChange }: {
 
           {/* Period labels */}
           <View className="flex-row justify-between mb-2">
-            <Text className="text-[10px] font-bold text-heliotrope-500 uppercase tracking-wider">
+            <Text className="text-[11px] font-semibold text-heliotrope-500">
               {data.period.label}
             </Text>
             {data.comparePeriod && (
-              <Text className="text-[10px] font-bold text-heliotrope-500 uppercase tracking-wider">
+              <Text className="text-[11px] font-semibold text-heliotrope-500">
                 {data.comparePeriod.label}
               </Text>
             )}
@@ -139,7 +139,7 @@ function SeasonalSection({ data, loading, period, onPeriodChange }: {
           {data.categories.slice(0, 8).map((cat) => (
             <View key={cat.category} className="mb-3">
               <View className="flex-row items-center justify-between mb-1.5">
-                <Text className="text-xs font-bold text-spaceCadet-900 flex-1 mr-2" numberOfLines={1}>
+                <Text className="text-xs font-semibold text-spaceCadet-900 flex-1 mr-2" numberOfLines={1}>
                   {cat.category}
                 </Text>
                 <View className="flex-row items-center gap-2">
@@ -147,7 +147,7 @@ function SeasonalSection({ data, loading, period, onPeriodChange }: {
                     {cat.current.opens} opens
                   </Text>
                   {data.comparePeriod && (
-                    <Text className="text-[11px] text-spaceCadet-900 font-bold">
+                    <Text className="text-[11px] text-spaceCadet-900 font-semibold">
                       {cat.deltaPct.opens > 0 ? '+' : ''}{cat.deltaPct.opens}%
                     </Text>
                   )}
@@ -166,7 +166,7 @@ function SeasonalSection({ data, loading, period, onPeriodChange }: {
           ))}
 
           {data.categories.length > 8 && (
-            <Text className="text-[10px] text-heliotrope-500 text-center mt-1 font-medium">
+            <Text className="text-[11px] text-heliotrope-500 text-center mt-1 font-medium">
               +{data.categories.length - 8} more categories
             </Text>
           )}
@@ -220,8 +220,8 @@ export default function GrowthAnalyticsScreen() {
           </AnimatedPressable>
           <View className="flex-1">
             <Text
-              style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-              className="text-xl font-bold text-spaceCadet-900"
+              style={{ fontFamily: 'Marcellus_400Regular' }}
+              className="text-xl text-spaceCadet-900"
             >
               Campaign Analytics
             </Text>
@@ -232,7 +232,7 @@ export default function GrowthAnalyticsScreen() {
 
       {isLoading || !stats ? (
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator color="#BB3F95" />
+          <ActivityIndicator color="#6B4773" />
         </View>
       ) : (
         <ScrollView
@@ -242,7 +242,7 @@ export default function GrowthAnalyticsScreen() {
         >
           <View className="gap-4">
             {/* Campaigns overview */}
-            <Section icon={<Megaphone size={16} color="#BB3F95" />} title="Campaigns">
+            <Section icon={<Megaphone size={16} color="#6B4773" />} title="Campaigns">
               {stats.total_campaigns === 0 ? (
                 <Empty text="No campaigns yet — create one from the growth hub." />
               ) : (
@@ -252,7 +252,7 @@ export default function GrowthAnalyticsScreen() {
                   ))}
                   {Object.keys(stats.by_festival).length > 0 && (
                     <>
-                      <Text className="text-[10px] font-bold text-spaceCadet-900 uppercase tracking-wider mt-2 mb-2">
+                      <Text className="text-[11px] font-semibold text-spaceCadet-900 mt-2 mb-2">
                         By festival
                       </Text>
                       {Object.entries(stats.by_festival).map(([festival, v]) => (
@@ -272,11 +272,11 @@ export default function GrowthAnalyticsScreen() {
 
             {/* A/B variant results — roadmap S */}
             {stats.by_variant.length > 0 && (
-              <Section icon={<Trophy size={16} color="#BB3F95" />} title="A/B winners">
+              <Section icon={<Trophy size={16} color="#6B4773" />} title="A/B winners">
                 <View className="gap-3">
                   {stats.by_variant.map((ab) => (
                     <View key={ab.campaign_id} className="bg-lavender-50 rounded-2xl p-4 border border-lavender-200">
-                      <Text className="text-xs font-bold text-spaceCadet-900 mb-2.5" numberOfLines={1}>
+                      <Text className="text-xs font-semibold text-spaceCadet-900 mb-2.5" numberOfLines={1}>
                         {ab.campaign_name}
                       </Text>
                       {ab.variants.map((v) => (
@@ -284,7 +284,7 @@ export default function GrowthAnalyticsScreen() {
                           <Text className="text-xs text-spaceCadet-900 font-medium flex-1 mr-2" numberOfLines={1}>
                             {v.label}
                           </Text>
-                          <Text className="text-xs font-bold text-spaceCadet-900">
+                          <Text className="text-xs font-semibold text-spaceCadet-900">
                             {v.sent} sent · {Math.round(v.open_rate * 100)}% open
                           </Text>
                         </View>
@@ -292,11 +292,11 @@ export default function GrowthAnalyticsScreen() {
                       <View className="flex-row items-center gap-1.5 mt-2 pt-2 border-t border-lavender-200">
                         {ab.significance.reliable && ab.significance.winner ? (
                           <>
-                            <Trophy size={13} color="#BB3F95" />
-                            <Text className="text-xs font-bold text-fuchsia-700">
+                            <Trophy size={13} color="#6B4773" />
+                            <Text className="text-xs font-semibold text-fuchsia-700">
                               {ab.significance.winner} is winning
                             </Text>
-                            <Text className="text-[10px] text-heliotrope-500 font-medium">
+                            <Text className="text-[11px] text-heliotrope-500 font-medium">
                               (p = {ab.significance.p_value})
                             </Text>
                           </>
@@ -315,14 +315,14 @@ export default function GrowthAnalyticsScreen() {
             )}
 
             {/* Segments */}
-            <Section icon={<Users size={16} color="#BB3F95" />} title="By customer segment">
+            <Section icon={<Users size={16} color="#6B4773" />} title="By customer segment">
               <OpenRateRow label="VIP (spent ≥ ₹2,000)" sent={stats.by_segment.VIP?.sent ?? 0} opened={stats.by_segment.VIP?.opened ?? 0} barColor="#BB3F95" />
               <OpenRateRow label="Regular" sent={stats.by_segment.REGULAR?.sent ?? 0} opened={stats.by_segment.REGULAR?.opened ?? 0} barColor="#231F48" />
               <OpenRateRow label="Never purchased" sent={stats.by_segment.NEVER_PURCHASED?.sent ?? 0} opened={stats.by_segment.NEVER_PURCHASED?.opened ?? 0} barColor="#560A39" />
             </Section>
 
             {/* Hour of day */}
-            <Section icon={<Clock size={16} color="#BB3F95" />} title="Opens by hour of day">
+            <Section icon={<Clock size={16} color="#6B4773" />} title="Opens by hour of day">
               {stats.by_hour.length === 0 ? (
                 <Empty text="No opens tracked yet (opens count when customers open the link)." />
               ) : (
@@ -336,7 +336,7 @@ export default function GrowthAnalyticsScreen() {
                           backgroundColor: '#BB3F95',
                         }}
                       />
-                      <Text className="text-[9px] font-bold text-heliotrope-500 mt-1">{h.hour}:00</Text>
+                      <Text className="text-[11px] font-semibold text-heliotrope-500 mt-1">{h.hour}:00</Text>
                     </View>
                   ))}
                 </View>
@@ -344,14 +344,14 @@ export default function GrowthAnalyticsScreen() {
             </Section>
 
             {/* Categories */}
-            <Section icon={<BarChart3 size={16} color="#BB3F95" />} title="Categories · last 30 days">
+            <Section icon={<BarChart3 size={16} color="#6B4773" />} title="Categories · last 30 days">
               {stats.by_category.length === 0 ? (
                 <Empty text="No views or enquiries in the last 30 days." />
               ) : (
                 stats.by_category.slice(0, 6).map((c) => (
                   <View key={c.category} className="mb-3">
                     <View className="flex-row items-center justify-between mb-1.5">
-                      <Text className="text-xs font-bold text-spaceCadet-900 flex-1 mr-2" numberOfLines={1}>
+                      <Text className="text-xs font-semibold text-spaceCadet-900 flex-1 mr-2" numberOfLines={1}>
                         {c.category}
                       </Text>
                       <Text className="text-[11px] text-heliotrope-500 font-medium">
@@ -373,37 +373,37 @@ export default function GrowthAnalyticsScreen() {
             </Section>
 
             {/* Video vs photo */}
-            <Section icon={<Film size={16} color="#BB3F95" />} title="Video vs photo · last 30 days">
+            <Section icon={<Film size={16} color="#6B4773" />} title="Video vs photo · last 30 days">
               <View className="flex-row gap-3">
                 <View className="flex-1 bg-lavender-50 rounded-2xl p-4 border border-lavender-200">
                   <View className="flex-row items-center gap-1.5 mb-1.5">
-                    <Film size={14} color="#BB3F95" />
-                    <Text className="text-xs font-bold text-spaceCadet-900">With video</Text>
+                    <Film size={14} color="#6B4773" />
+                    <Text className="text-xs font-semibold text-spaceCadet-900">With video</Text>
                   </View>
                   <Text
-                    style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-                    className="text-xl font-bold text-spaceCadet-900"
+                    style={{ fontFamily: 'Marcellus_400Regular' }}
+                    className="text-xl text-spaceCadet-900"
                   >
                     {stats.video_vs_photo.video.enquiries}
                   </Text>
-                  <Text className="text-[10px] text-heliotrope-500 font-medium">enquiries</Text>
-                  <Text className="text-[10px] text-heliotrope-500 mt-0.5 font-medium">
+                  <Text className="text-[11px] text-heliotrope-500 font-medium">enquiries</Text>
+                  <Text className="text-[11px] text-heliotrope-500 mt-0.5 font-medium">
                     {stats.video_vs_photo.video.views} views
                   </Text>
                 </View>
                 <View className="flex-1 bg-lavender-50 rounded-2xl p-4 border border-lavender-200">
                   <View className="flex-row items-center gap-1.5 mb-1.5">
                     <ImageIcon size={14} color="#6B4773" />
-                    <Text className="text-xs font-bold text-spaceCadet-900">Photo only</Text>
+                    <Text className="text-xs font-semibold text-spaceCadet-900">Photo only</Text>
                   </View>
                   <Text
-                    style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-                    className="text-xl font-bold text-spaceCadet-900"
+                    style={{ fontFamily: 'Marcellus_400Regular' }}
+                    className="text-xl text-spaceCadet-900"
                   >
                     {stats.video_vs_photo.photo.enquiries}
                   </Text>
-                  <Text className="text-[10px] text-heliotrope-500 font-medium">enquiries</Text>
-                  <Text className="text-[10px] text-heliotrope-500 mt-0.5 font-medium">
+                  <Text className="text-[11px] text-heliotrope-500 font-medium">enquiries</Text>
+                  <Text className="text-[11px] text-heliotrope-500 mt-0.5 font-medium">
                     {stats.video_vs_photo.photo.views} views
                   </Text>
                 </View>
@@ -423,7 +423,7 @@ export default function GrowthAnalyticsScreen() {
             />
 
             <View className="flex-row items-center gap-1.5 justify-center pt-2">
-              <TrendingUp size={14} color="#BB3F95" />
+              <TrendingUp size={14} color="#6B4773" />
               <Text className="text-xs text-heliotrope-500 font-medium">
                 Analytics refresh on pull.
               </Text>

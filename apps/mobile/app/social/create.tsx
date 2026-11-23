@@ -911,11 +911,11 @@ export default function CreateSocialPostScreen() {
 
   const sectionTitle = (step: string, title: string, hint?: string) => (
     <View className="flex-row items-center mb-2 mt-5 px-1">
-      <Text className="text-[10px] font-bold text-ink-600 bg-ink-600/10 rounded-full w-5 h-5 text-center leading-5 mr-2 overflow-hidden">
+      <Text className="text-[11px] font-semibold text-ink-600 bg-ink-600/10 rounded-full w-5 h-5 text-center leading-5 mr-2 overflow-hidden">
         {step}
       </Text>
-      <Text className="text-sm font-bold text-sand-900">{title}</Text>
-      {hint ? <Text className="text-[10px] text-sand-400 ml-2 flex-1">{hint}</Text> : null}
+      <Text className="text-sm font-semibold text-sand-900">{title}</Text>
+      {hint ? <Text className="text-[11px] text-sand-400 ml-2 flex-1">{hint}</Text> : null}
     </View>
   );
 
@@ -930,10 +930,10 @@ export default function CreateSocialPostScreen() {
         <ActivityIndicator color={primaryColor} className="py-16" />
       ) : accounts.length === 0 ? (
         <View className="flex-1 px-6 items-center justify-center">
-          <View className="w-16 h-16 rounded-3xl bg-sand-100 items-center justify-center mb-4">
+          <View className="w-16 h-16 rounded-2xl bg-sand-100 items-center justify-center mb-4">
             <ShareIcon />
           </View>
-          <Text className="text-base font-bold text-sand-900 mb-1.5 text-center">
+          <Text className="text-base font-semibold text-sand-900 mb-1.5 text-center">
             No social accounts connected
           </Text>
           <Text className="text-xs text-sand-400 text-center mb-6 leading-5">
@@ -988,10 +988,10 @@ export default function CreateSocialPostScreen() {
                         />
                       </View>
                       <View className="px-4 py-3">
-                        <Text className="text-sm font-bold text-sand-900" numberOfLines={1}>
+                        <Text className="text-sm font-semibold text-sand-900" numberOfLines={1}>
                           {designPost.name || 'Design'}
                         </Text>
-                        <Text className="text-[10px] text-sand-400 mt-0.5">
+                        <Text className="text-[11px] text-sand-400 mt-0.5">
                           This watermarked photo will be shared as a standalone post.
                         </Text>
                       </View>
@@ -1031,7 +1031,7 @@ export default function CreateSocialPostScreen() {
                             <Text className="text-sm font-semibold text-sand-900" numberOfLines={1}>
                               {c.title}
                             </Text>
-                            <Text className="text-[10px] text-sand-400">
+                            <Text className="text-[11px] text-sand-400">
                               {c.product_count} {c.product_count === 1 ? 'product' : 'products'}
                             </Text>
                           </View>
@@ -1078,12 +1078,12 @@ export default function CreateSocialPostScreen() {
                             }`}
                           >
                             <Text
-                              className={`text-xs font-bold ${active ? 'text-white' : 'text-sand-800'}`}
+                              className={`text-xs font-semibold ${active ? 'text-white' : 'text-sand-800'}`}
                             >
                               {opt.label}
                             </Text>
                             <Text
-                              className={`text-[10px] mt-0.5 ${active ? 'text-white/70' : 'text-sand-400'}`}
+                              className={`text-[11px] mt-0.5 ${active ? 'text-white/70' : 'text-sand-400'}`}
                             >
                               {opt.hint}
                             </Text>
@@ -1092,7 +1092,7 @@ export default function CreateSocialPostScreen() {
                       })}
                     </View>
                     {collectionFormat === 'carousel' && !collectionDetailQuery.isLoading ? (
-                      <Text className="text-[10px] text-sand-400 mt-1.5 px-1">
+                      <Text className="text-[11px] text-sand-400 mt-1.5 px-1">
                         {collectionCarouselItems.length > 0
                           ? `${collectionCarouselItems.length} product ${
                               collectionCarouselItems.length === 1 ? 'photo' : 'photos'
@@ -1235,9 +1235,9 @@ export default function CreateSocialPostScreen() {
               />
               <View className="flex-row items-center justify-between mt-1">
                 {suggestingCaption ? (
-                  <Text className="text-[10px] text-lavender-600">Writing with AI…</Text>
+                  <Text className="text-[11px] text-heliotrope-500">Writing with AI…</Text>
                 ) : (
-                  <Text className="text-[10px] text-sand-400">
+                  <Text className="text-[11px] text-sand-400">
                     {lastAiFill.current === caption && caption.length > 0
                       ? 'AI suggestion — edit freely'
                       : caption.length === 0
@@ -1245,7 +1245,7 @@ export default function CreateSocialPostScreen() {
                         : 'Your caption — no auto-fill at publish'}
                   </Text>
                 )}
-                <Text className="text-[10px] text-sand-400">{caption.length}/2200</Text>
+                <Text className="text-[11px] text-sand-400">{caption.length}/2200</Text>
               </View>
               {lastAiFill.current === caption && caption.length > 0 && (
                 <ReportAiContent feature="AI caption" />
@@ -1280,7 +1280,7 @@ export default function CreateSocialPostScreen() {
               linkLabel={linkLabel}
               linkUrl={previewLinkUrl}
             />
-            <Text className="text-[10px] text-sand-400 text-center mt-3 px-6 leading-4">
+            <Text className="text-[11px] text-sand-400 text-center mt-3 px-6 leading-4">
               Preview is approximate — Kanchuki builds the final post and link server-side before
               publishing.
             </Text>
@@ -1351,11 +1351,11 @@ function ResultSheet({
           className="bg-white rounded-t-3xl w-full p-5"
           style={{ paddingBottom: Math.max(insets.bottom, 16) }}
         >
-          <Text className="text-lg font-bold text-sand-900 mb-1">
+          <Text className="text-lg font-semibold text-sand-900 mb-1">
             {nothingPosted
               ? 'Could not post'
               : posted === results.length
-                ? 'Posted!'
+                ? 'Posted'
                 : 'Post finished'}
           </Text>
           <Text className="text-xs text-sand-500 mb-4">
@@ -1375,11 +1375,11 @@ function ResultSheet({
                     <BrandIcon brand={isIg ? 'instagram' : 'facebook'} size={36} />
                   </View>
                   <View className="flex-1">
-                    <Text className="text-sm font-bold text-sand-900" numberOfLines={1}>
+                    <Text className="text-sm font-semibold text-sand-900" numberOfLines={1}>
                       {accountName(r.social_account_id)}
                     </Text>
                     {r.status === 'PROCESSING' ? (
-                      <Text className="text-[10px] text-sand-600" numberOfLines={2}>
+                      <Text className="text-[11px] text-sand-600" numberOfLines={2}>
                         Posting… Instagram is still processing the video. It will show in post
                         history.
                       </Text>
@@ -1398,7 +1398,7 @@ function ResultSheet({
                         <Text className="text-[11px] text-turmeric-700 font-semibold">Posted</Text>
                       )
                     ) : (
-                      <Text className="text-[10px] text-rust-600" numberOfLines={2}>
+                      <Text className="text-[11px] text-rust-600" numberOfLines={2}>
                         {r.error_message ?? 'Failed to publish'}
                       </Text>
                     )}

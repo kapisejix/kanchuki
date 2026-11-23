@@ -16,10 +16,10 @@ function Section({
   children,
 }: { icon: React.ReactNode; title: string; children: React.ReactNode }) {
   return (
-    <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
+    <View className="bg-white rounded-2xl p-5 border border-lavender-200">
       <View className="flex-row items-center gap-2 mb-3.5">
         {icon}
-        <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider">
+        <Text className="text-xs font-semibold text-spaceCadet-900">
           {title}
         </Text>
       </View>
@@ -35,8 +35,8 @@ function StatTile({ icon, label, value }: { icon: React.ReactNode; label: string
       style={{ width: '48.5%' }}
     >
       {icon}
-      <Text className="text-lg font-bold text-spaceCadet-900">{value.toLocaleString('en-IN')}</Text>
-      <Text className="text-[10px] text-heliotrope-500 font-medium uppercase tracking-wider">
+      <Text className="text-lg font-semibold text-spaceCadet-900">{value.toLocaleString('en-IN')}</Text>
+      <Text className="text-[11px] text-heliotrope-500 font-medium">
         {label}
       </Text>
     </View>
@@ -58,17 +58,17 @@ function TopList({
   if (entries.length === 0) {
     return (
       <View className="mb-3">
-        <Text className="text-[10px] font-bold text-spaceCadet-900 uppercase tracking-wider mb-1.5">
+        <Text className="text-[11px] font-semibold text-spaceCadet-900 mb-1.5">
           {title}
         </Text>
-        <Text className="text-xs text-heliotrope-400">No data in range</Text>
+        <Text className="text-xs text-heliotrope-500">No data in range</Text>
       </View>
     );
   }
   const max = Math.max(1, ...entries.map((e) => e.count));
   return (
     <View className="mb-3">
-      <Text className="text-[10px] font-bold text-spaceCadet-900 uppercase tracking-wider mb-1.5">
+      <Text className="text-[11px] font-semibold text-spaceCadet-900 mb-1.5">
         {title}
       </Text>
       {entries.slice(0, 5).map((e) => {
@@ -91,7 +91,7 @@ function TopList({
                   <Text className="text-xs text-spaceCadet-900" numberOfLines={1}>
                     {p?.name ?? 'Unnamed / removed product'}
                   </Text>
-                  <Text className="text-[10px] text-heliotrope-400" numberOfLines={1}>
+                  <Text className="text-[11px] text-heliotrope-500" numberOfLines={1}>
                     {p?.sku ? `SKU ${p.sku}` : 'No SKU'}
                   </Text>
                 </View>
@@ -151,8 +151,8 @@ export default function GrowthEngagementScreen() {
           </AnimatedPressable>
           <View className="flex-1">
             <Text
-              style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-              className="text-xl font-bold text-spaceCadet-900"
+              style={{ fontFamily: 'Marcellus_400Regular' }}
+              className="text-xl text-spaceCadet-900"
             >
               Customer Engagement
             </Text>
@@ -165,7 +165,7 @@ export default function GrowthEngagementScreen() {
 
       {isLoading || !view ? (
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator color="#BB3F95" />
+          <ActivityIndicator color="#6B4773" />
         </View>
       ) : (
         <ScrollView
@@ -178,30 +178,30 @@ export default function GrowthEngagementScreen() {
           <View className="gap-4">
             <View className="flex-row flex-wrap justify-between gap-y-2">
               <StatTile
-                icon={<Eye size={16} color="#BB3F95" />}
+                icon={<Eye size={16} color="#6B4773" />}
                 label="Views"
                 value={view.totals.view_count}
               />
               <StatTile
-                icon={<Search size={16} color="#BB3F95" />}
+                icon={<Search size={16} color="#6B4773" />}
                 label="Searches"
                 value={view.totals.search_count}
               />
               <StatTile
-                icon={<Heart size={16} color="#BB3F95" />}
+                icon={<Heart size={16} color="#6B4773" />}
                 label="Favorites"
                 value={view.totals.favorite_count}
               />
               <StatTile
-                icon={<MessageSquare size={16} color="#BB3F95" />}
+                icon={<MessageSquare size={16} color="#6B4773" />}
                 label="Enquiries"
                 value={view.totals.enquiry_count}
               />
             </View>
 
             {isEmpty ? (
-              <View className="bg-white rounded-3xl p-5 border border-lavender-200 items-center">
-                <Text className="text-sm font-bold text-spaceCadet-900 mb-1">
+              <View className="bg-white rounded-2xl p-5 border border-lavender-200 items-center">
+                <Text className="text-sm font-semibold text-spaceCadet-900 mb-1">
                   No activity yet
                 </Text>
                 <Text className="text-xs text-heliotrope-500 text-center">
@@ -211,9 +211,9 @@ export default function GrowthEngagementScreen() {
               </View>
             ) : (
               <>
-            <Section icon={<TrendingUp size={16} color="#BB3F95" />} title="Dwell time trend">
+            <Section icon={<TrendingUp size={16} color="#6B4773" />} title="Dwell time trend">
               {view.dwell_trend.length === 0 ? (
-                <Text className="text-xs text-heliotrope-400">No data yet</Text>
+                <Text className="text-xs text-heliotrope-500">No data yet</Text>
               ) : (
                 <View className="flex-row items-end gap-1" style={{ height: 96 }}>
                   {view.dwell_trend.map((d) => (
@@ -230,14 +230,14 @@ export default function GrowthEngagementScreen() {
               )}
             </Section>
 
-            <Section icon={<TrendingUp size={16} color="#BB3F95" />} title="Conversion funnel">
+            <Section icon={<TrendingUp size={16} color="#6B4773" />} title="Conversion funnel">
               <Text className="text-xs text-spaceCadet-900">
                 {view.funnel.view_count} viewed → {view.funnel.view_to_favorite_pct}% favorited →{' '}
                 {view.funnel.view_to_enquiry_pct}% enquired
               </Text>
             </Section>
 
-            <Section icon={<TrendingUp size={16} color="#BB3F95" />} title="What's working">
+            <Section icon={<TrendingUp size={16} color="#6B4773" />} title="What's working">
               <TopList
                 title="Top viewed products"
                 entries={view.top_products}

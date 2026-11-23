@@ -136,8 +136,8 @@ export default function AggregatorsScreen() {
               <ChevronLeft size={20} color="#231F48" />
             </AnimatedPressable>
             <Text
-              style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-              className="text-xl font-bold text-spaceCadet-900"
+              style={{ fontFamily: 'Marcellus_400Regular' }}
+              className="text-xl text-spaceCadet-900"
             >
               Marketplace Sync
             </Text>
@@ -146,7 +146,7 @@ export default function AggregatorsScreen() {
             onPress={() => setConnecting(true)}
             accessibilityLabel="Connect channel"
             accessibilityRole="button"
-            className="w-10 h-10 rounded-2xl items-center justify-center bg-fuchsia-600 shadow-sm"
+            className="w-10 h-10 rounded-2xl items-center justify-center bg-spaceCadet-900"
           >
             <Plus size={20} color="white" />
           </AnimatedPressable>
@@ -155,19 +155,19 @@ export default function AggregatorsScreen() {
 
       {isLoading ? (
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator color="#BB3F95" />
+          <ActivityIndicator color="#6B4773" />
         </View>
       ) : syncs.length === 0 && !connecting ? (
         <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 24 }}>
           <View className="items-center">
             <View
-              className="w-16 h-16 rounded-3xl items-center justify-center mb-4 bg-lavender-100 border border-lavender-200"
+              className="w-16 h-16 rounded-2xl items-center justify-center mb-4 bg-lavender-100 border border-lavender-200"
             >
-              <Link2 size={28} color="#BB3F95" />
+              <Link2 size={28} color="#6B4773" />
             </View>
             <Text
-              style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-              className="text-xl font-bold text-spaceCadet-900"
+              style={{ fontFamily: 'Marcellus_400Regular' }}
+              className="text-xl text-spaceCadet-900"
             >
               No channels connected
             </Text>
@@ -190,7 +190,7 @@ export default function AggregatorsScreen() {
             {syncs.map((s) => {
               const st = STATUS_LABELS[s.status] ?? STATUS_LABELS.DISCONNECTED
               return (
-                <View key={s.id} className="bg-white rounded-3xl p-4 border border-lavender-200 shadow-sm">
+                <View key={s.id} className="bg-white rounded-2xl p-4 border border-lavender-200">
                   <View className="flex-row items-center justify-between mb-2.5">
                     <View className="flex-row items-center gap-3 flex-1 mr-2">
                       <View
@@ -203,8 +203,8 @@ export default function AggregatorsScreen() {
                       </View>
                       <View className="flex-1">
                         <Text
-                          style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-                          className="text-base font-bold text-spaceCadet-900"
+                          style={{ fontFamily: 'Marcellus_400Regular' }}
+                          className="text-base text-spaceCadet-900"
                           numberOfLines={1}
                         >
                           {CHANNEL_LABELS[s.channel]}
@@ -216,7 +216,7 @@ export default function AggregatorsScreen() {
                     </View>
                     <View className="flex-row items-center gap-1">
                       <View className={`rounded-full px-2.5 py-0.5 border ${st.bg} ${st.border}`}>
-                        <Text className={`text-[10px] font-bold ${st.text}`}>
+                        <Text className={`text-[11px] font-semibold ${st.text}`}>
                           {st.label}
                         </Text>
                       </View>
@@ -233,7 +233,7 @@ export default function AggregatorsScreen() {
                   ) : null}
 
                   <View className="flex-row items-center gap-2 pt-2 border-t border-lavender-100">
-                    <Text className="text-xs text-heliotrope-400 font-medium">
+                    <Text className="text-xs text-heliotrope-500 font-medium">
                       Last sync: {fmtDate(s.last_synced_at)}
                     </Text>
                     <View className="ml-auto flex-row items-center gap-3">
@@ -243,7 +243,7 @@ export default function AggregatorsScreen() {
                           accessibilityRole="button"
                           hitSlop={8}
                         >
-                          <ExternalLink size={16} color="#928EB2" />
+                          <ExternalLink size={16} color="#6B4773" />
                         </AnimatedPressable>
                       ) : null}
                       <AnimatedPressable
@@ -252,7 +252,7 @@ export default function AggregatorsScreen() {
                         accessibilityRole="button"
                         hitSlop={8}
                       >
-                        <RefreshCw size={16} color="#BB3F95" />
+                        <RefreshCw size={16} color="#6B4773" />
                       </AnimatedPressable>
                       <AnimatedPressable
                         onPress={() => confirmDisconnect(s)}
@@ -346,14 +346,14 @@ function ConnectChannelModal({
     >
       <View className="bg-white rounded-t-3xl w-full px-5 pt-6 pb-8 border-t border-lavender-200">
         <Text
-          style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-          className="text-xl font-bold text-spaceCadet-900 mb-5"
+          style={{ fontFamily: 'Marcellus_400Regular' }}
+          className="text-xl text-spaceCadet-900 mb-5"
         >
           Connect Marketplace
         </Text>
 
         {/* Channel picker */}
-        <Text className="text-xs font-bold text-heliotrope-500 uppercase tracking-wider mb-1.5">Marketplace Channel</Text>
+        <Text className="text-xs font-semibold text-heliotrope-500 mb-1.5">Marketplace channel</Text>
         <View className="flex-row flex-wrap gap-2 mb-4">
           {CHANNELS.map((c) => {
             const active = channel === c.value
@@ -362,7 +362,7 @@ function ConnectChannelModal({
                 key={c.value}
                 onPress={() => setChannel(c.value)}
                 className={`flex-row items-center gap-1.5 py-2 px-3.5 rounded-full border ${
-                  active ? 'bg-spaceCadet-900 border-spaceCadet-900 shadow-sm' : 'bg-lavender-50 border-lavender-200'
+                  active ? 'bg-spaceCadet-900 border-spaceCadet-900' : 'bg-lavender-50 border-lavender-200'
                 }`}
               >
                 {(() => {
@@ -370,7 +370,7 @@ function ConnectChannelModal({
                   return <Icon size={14} color={active ? '#FFFFFF' : '#231F48'} />
                 })()}
                 <Text
-                  className={`text-xs font-bold ${active ? 'text-white' : 'text-spaceCadet-900'}`}
+                  className={`text-xs font-semibold ${active ? 'text-white' : 'text-spaceCadet-900'}`}
                 >
                   {c.label}
                 </Text>
@@ -380,45 +380,45 @@ function ConnectChannelModal({
         </View>
 
         {/* API Key */}
-        <Text className="text-xs font-bold text-heliotrope-500 uppercase tracking-wider mb-1.5">API Key *</Text>
+        <Text className="text-xs font-semibold text-heliotrope-500 mb-1.5">API key *</Text>
         <TextInput
           value={apiKey}
           onChangeText={setApiKey}
           placeholder="Your marketplace API key"
           placeholderTextColor="#928EB2"
-          className="bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3 text-sm font-bold text-spaceCadet-900 mb-4"
+          className="bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3 text-sm font-semibold text-spaceCadet-900 mb-4"
           secureTextEntry
         />
 
         {/* API Secret */}
-        <Text className="text-xs font-bold text-heliotrope-500 uppercase tracking-wider mb-1.5">API Secret (optional)</Text>
+        <Text className="text-xs font-semibold text-heliotrope-500 mb-1.5">API secret (optional)</Text>
         <TextInput
           value={apiSecret}
           onChangeText={setApiSecret}
           placeholder="Your marketplace API secret"
           placeholderTextColor="#928EB2"
-          className="bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3 text-sm font-bold text-spaceCadet-900 mb-4"
+          className="bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3 text-sm font-semibold text-spaceCadet-900 mb-4"
           secureTextEntry
         />
 
         {/* Shop ID */}
-        <Text className="text-xs font-bold text-heliotrope-500 uppercase tracking-wider mb-1.5">Seller / Shop ID</Text>
+        <Text className="text-xs font-semibold text-heliotrope-500 mb-1.5">Seller / shop ID</Text>
         <TextInput
           value={shopId}
           onChangeText={setShopId}
           placeholder="e.g. seller_abc123"
           placeholderTextColor="#928EB2"
-          className="bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3 text-sm font-bold text-spaceCadet-900 mb-4"
+          className="bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3 text-sm font-semibold text-spaceCadet-900 mb-4"
         />
 
         {/* Shop URL */}
-        <Text className="text-xs font-bold text-heliotrope-500 uppercase tracking-wider mb-1.5">Shop Storefront URL (optional)</Text>
+        <Text className="text-xs font-semibold text-heliotrope-500 mb-1.5">Shop storefront URL (optional)</Text>
         <TextInput
           value={shopUrl}
           onChangeText={setShopUrl}
           placeholder="https://meesho.com/myshop"
           placeholderTextColor="#928EB2"
-          className="bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3 text-sm font-bold text-spaceCadet-900 mb-4"
+          className="bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3 text-sm font-semibold text-spaceCadet-900 mb-4"
           autoCapitalize="none"
           keyboardType="url"
         />

@@ -45,7 +45,7 @@ export default function FbAdsConfigScreen() {
     onSuccess: () => {
       setSaving(false)
       void queryClient.invalidateQueries({ queryKey: ['growth', 'integrations'] })
-      Alert.alert('Connected!', 'Facebook Ads is now connected.', [
+      Alert.alert('Connected', 'Facebook Ads is now connected.', [
         { text: 'OK', onPress: () => router.back() },
       ])
     },
@@ -74,8 +74,8 @@ export default function FbAdsConfigScreen() {
             <ChevronLeft size={20} color="#231F48" />
           </AnimatedPressable>
           <Text
-            style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-            className="text-xl font-bold text-spaceCadet-900"
+            style={{ fontFamily: 'Marcellus_400Regular' }}
+            className="text-xl text-spaceCadet-900"
           >
             Facebook & Meta Ads
           </Text>
@@ -102,7 +102,7 @@ export default function FbAdsConfigScreen() {
           onChangeText={setAccessToken}
           placeholder="Long-lived Business token"
           placeholderTextColor="#928EB2"
-          className="bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3 text-sm font-bold text-spaceCadet-900 mb-4"
+          className="bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3 text-sm font-semibold text-spaceCadet-900 mb-4"
           secureTextEntry
           autoCapitalize="none"
           autoCorrect={false}
@@ -114,7 +114,7 @@ export default function FbAdsConfigScreen() {
           onChangeText={setAdAccountId}
           placeholder="act_123456789"
           placeholderTextColor="#928EB2"
-          className="bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3 text-sm font-bold text-spaceCadet-900 mb-4"
+          className="bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3 text-sm font-semibold text-spaceCadet-900 mb-4"
           autoCapitalize="none"
           autoCorrect={false}
         />
@@ -125,16 +125,16 @@ export default function FbAdsConfigScreen() {
           onChangeText={setPageId}
           placeholder="Facebook Page ID for ad creative"
           placeholderTextColor="#928EB2"
-          className="bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3 text-sm font-bold text-spaceCadet-900 mb-4"
+          className="bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3 text-sm font-semibold text-spaceCadet-900 mb-4"
           autoCapitalize="none"
           autoCorrect={false}
         />
 
         {testResult && (
           <View className={`rounded-2xl px-4 py-3 mb-4 border ${testResult.connected ? 'bg-emerald-50 border-emerald-200' : 'bg-rose-50 border-rose-200'}`}>
-            <Text className={`text-xs font-bold ${testResult.connected ? 'text-emerald-700' : 'text-rose-700'}`}>
+            <Text className={`text-xs font-semibold ${testResult.connected ? 'text-emerald-700' : 'text-rose-700'}`}>
               {testResult.connected
-                ? `Connected! Account: ${testResult.account_name ?? 'Verified'}`
+                ? `Connected. Account: ${testResult.account_name ?? 'Verified'}`
                 : 'Connection failed. Check your credentials.'}
             </Text>
           </View>
@@ -171,6 +171,6 @@ export default function FbAdsConfigScreen() {
 
 function Label({ text }: { text: string }) {
   return (
-    <Text className="text-xs font-bold text-heliotrope-500 uppercase tracking-wider mb-1.5">{text}</Text>
+    <Text className="text-xs font-semibold text-heliotrope-500 mb-1.5">{text}</Text>
   )
 }
