@@ -37,7 +37,7 @@ export function SavedQueries({
   }
 
   return (
-    <div className="fixed inset-y-0 right-0 w-96 bg-white/95 backdrop-blur-2xl border-l border-gray-200 shadow-2xl z-50 flex flex-col">
+    <div className="fixed inset-y-0 right-0 w-96 bg-white border-l border-gray-200 shadow-2xl z-50 flex flex-col">
       {/* Header */}
       <div className="p-4 border-b border-gray-200 flex items-center justify-between">
         <div className="flex items-center gap-2">

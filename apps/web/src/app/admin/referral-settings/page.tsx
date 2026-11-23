@@ -220,7 +220,7 @@ export default function ReferralSettingsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
-        <Loader2 size={24} className="animate-spin text-cyan-500" />
+        <Loader2 size={24} className="animate-spin text-ink-500" />
       </div>
     );
   }
@@ -248,7 +248,7 @@ export default function ReferralSettingsPage() {
       <div>
         <div className="flex items-center gap-3 mb-1">
           <h1 className="text-2xl font-bold text-gray-900">Referral Program</h1>
-          <Handshake size={20} className="text-cyan-500" />
+          <Handshake size={20} className="text-ink-500" />
         </div>
         <p className="text-sm text-gray-500">
           Terms for the retailer → retailer affiliate program. These values are the single source of
@@ -271,7 +271,7 @@ export default function ReferralSettingsPage() {
       )}
 
       {/* ── Commission & qualifying ──────────────────────────────── */}
-      <section className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-6 space-y-4">
+      <section className="bg-white rounded-2xl border border-gray-200/80 p-6 space-y-4">
         <h2 className="text-sm font-semibold text-gray-900">Commission</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <label className="block">
@@ -284,7 +284,7 @@ export default function ReferralSettingsPage() {
               max={100}
               value={draft.commission_pct}
               onChange={(e) => patch({ commission_pct: e.target.value })}
-              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-ink-500/50"
             />
             <span className="block text-[11px] text-gray-400 mt-1">
               Per paid invoice, for the duration below.
@@ -299,7 +299,7 @@ export default function ReferralSettingsPage() {
                 max={120}
                 value={draft.duration_months}
                 onChange={(e) => patch({ duration_months: e.target.value })}
-                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-ink-500/50"
               />
               <span className="text-xs text-gray-500 whitespace-nowrap">months</span>
             </div>
@@ -316,7 +316,7 @@ export default function ReferralSettingsPage() {
                 max={365}
                 value={draft.qualify_days}
                 onChange={(e) => patch({ qualify_days: e.target.value })}
-                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-ink-500/50"
               />
               <span className="text-xs text-gray-500 whitespace-nowrap">days</span>
             </div>
@@ -329,7 +329,7 @@ export default function ReferralSettingsPage() {
       </section>
 
       {/* ── Referred store bonus ─────────────────────────────────── */}
-      <section className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-6 space-y-4">
+      <section className="bg-white rounded-2xl border border-gray-200/80 p-6 space-y-4">
         <h2 className="text-sm font-semibold text-gray-900">Referred store bonus</h2>
         <p className="text-xs text-gray-500 -mt-2">
           What the new retailer gets for signing up via someone&apos;s code.
@@ -353,7 +353,7 @@ export default function ReferralSettingsPage() {
                         : '',
                 });
               }}
-              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-ink-500/50"
             >
               {/* The stored value first when it is one the code cannot honour,
                   so the select shows what is actually in the database rather
@@ -386,7 +386,7 @@ export default function ReferralSettingsPage() {
               value={draft.referred_bonus_value}
               onChange={(e) => patch({ referred_bonus_value: e.target.value })}
               placeholder={unit.placeholder}
-              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500/50 disabled:bg-gray-50 disabled:text-gray-400"
+              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-ink-500/50 disabled:bg-gray-50 disabled:text-gray-400"
             />
             <span className="block text-[11px] text-gray-400 mt-1">
               {bonusOff
@@ -400,7 +400,7 @@ export default function ReferralSettingsPage() {
       </section>
 
       {/* ── Payouts & second tier ────────────────────────────────── */}
-      <section className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-6 space-y-4">
+      <section className="bg-white rounded-2xl border border-gray-200/80 p-6 space-y-4">
         <h2 className="text-sm font-semibold text-gray-900">Payouts</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <label className="block">
@@ -413,7 +413,7 @@ export default function ReferralSettingsPage() {
               step="0.01"
               value={draft.payout_min_amount}
               onChange={(e) => patch({ payout_min_amount: e.target.value })}
-              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-ink-500/50"
             />
             <span className="block text-[11px] text-gray-400 mt-1">
               Balances below this carry over to the next cycle. Currently{' '}
@@ -425,7 +425,7 @@ export default function ReferralSettingsPage() {
             <select
               value={draft.payout_cadence}
               onChange={(e) => patch({ payout_cadence: e.target.value as Cadence })}
-              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-ink-500/50"
             >
               {CADENCES.map((c) => (
                 <option key={c.value} value={c.value}>
@@ -450,7 +450,7 @@ export default function ReferralSettingsPage() {
                   second_tier_pct: e.target.checked ? draft.second_tier_pct : '',
                 })
               }
-              className="accent-cyan-600"
+              className="accent-ink-600"
             />
             Pay a second tier (sub-referrals)
           </label>
@@ -465,7 +465,7 @@ export default function ReferralSettingsPage() {
                 max={100}
                 value={draft.second_tier_pct}
                 onChange={(e) => patch({ second_tier_pct: e.target.value })}
-                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-ink-500/50"
               />
               <span className="block text-[11px] text-gray-400 mt-1">
                 Required while this is on — the save is rejected without it.
@@ -487,7 +487,7 @@ export default function ReferralSettingsPage() {
           type="button"
           onClick={save}
           disabled={saving}
-          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-cyan-600 hover:bg-cyan-700 disabled:opacity-50 rounded-lg transition-colors"
+          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-ink-600 hover:bg-ink-700 disabled:opacity-50 rounded-lg transition-colors"
         >
           {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
           Save changes

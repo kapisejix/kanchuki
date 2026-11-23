@@ -98,7 +98,7 @@ export default function DefaultCategoriesPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
-        <Loader2 size={24} className="animate-spin text-cyan-500" />
+        <Loader2 size={24} className="animate-spin text-ink-500" />
       </div>
     )
   }
@@ -108,7 +108,7 @@ export default function DefaultCategoriesPage() {
       <div>
         <div className="flex items-center gap-3 mb-1">
           <h1 className="text-2xl font-bold text-gray-900">Default Categories</h1>
-          <LayoutGrid size={20} className="text-cyan-500" />
+          <LayoutGrid size={20} className="text-ink-500" />
         </div>
         <p className="text-sm text-gray-500">
           F-024 — the global template copied into every new retailer&apos;s Shop-By-Categories at signup. AI
@@ -119,7 +119,7 @@ export default function DefaultCategoriesPage() {
         </p>
       </div>
 
-      <div className="flex items-start gap-2 bg-cyan-50/80 border border-cyan-200/80 rounded-xl px-4 py-3 text-xs text-cyan-800">
+      <div className="flex items-start gap-2 bg-ink-50/80 border border-ink-200/80 rounded-xl px-4 py-3 text-xs text-ink-800">
         <Sparkles size={14} className="shrink-0 mt-0.5" />
         <span>
           AI auto-assignment matches the tagger&apos;s free-text category (e.g. &quot;Saree&quot;) against the
@@ -140,7 +140,7 @@ export default function DefaultCategoriesPage() {
         </div>
       )}
 
-      <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-6 overflow-x-auto">
+      <div className="bg-white rounded-2xl border border-gray-200/80 p-6 overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-100">
@@ -158,14 +158,14 @@ export default function DefaultCategoriesPage() {
                     type="number"
                     value={cat.sort_order}
                     onChange={(e) => update(cat.id, { sort_order: Number(e.target.value) })}
-                    className="w-20 px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                    className="w-20 px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-ink-500/50"
                   />
                 </td>
                 <td className="px-3 py-2">
                   <input
                     value={cat.name}
                     onChange={(e) => update(cat.id, { name: e.target.value })}
-                    className="w-full min-w-[180px] px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                    className="w-full min-w-[180px] px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-ink-500/50"
                   />
                 </td>
                 <td className="px-3 py-2">
@@ -174,7 +174,7 @@ export default function DefaultCategoriesPage() {
                       update(cat.id, { is_active: !cat.is_active })
                       void save({ ...cat, is_active: !cat.is_active })
                     }}
-                    className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full transition-all cursor-pointer ${
+                    className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full transition cursor-pointer ${
                       cat.is_active
                         ? 'bg-green-100 text-green-700 hover:bg-green-200'
                         : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
@@ -189,7 +189,7 @@ export default function DefaultCategoriesPage() {
                     <button
                       onClick={() => save(cat)}
                       disabled={saving === cat.id}
-                      className="p-1.5 text-gray-400 hover:text-cyan-600 disabled:opacity-50 transition-colors"
+                      className="p-1.5 text-gray-400 hover:text-ink-600 disabled:opacity-50 transition-colors"
                       aria-label="Save category"
                     >
                       {saving === cat.id ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
@@ -213,7 +213,7 @@ export default function DefaultCategoriesPage() {
                   value={newSort}
                   placeholder="order"
                   onChange={(e) => setNewSort(e.target.value)}
-                  className="w-20 px-2 py-1.5 text-sm border border-dashed border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                  className="w-20 px-2 py-1.5 text-sm border border-dashed border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-ink-500/50"
                 />
               </td>
               <td className="px-3 py-2">
@@ -221,7 +221,7 @@ export default function DefaultCategoriesPage() {
                   value={newName}
                   placeholder="New category name"
                   onChange={(e) => setNewName(e.target.value)}
-                  className="w-full min-w-[180px] px-2 py-1.5 text-sm border border-dashed border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                  className="w-full min-w-[180px] px-2 py-1.5 text-sm border border-dashed border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-ink-500/50"
                 />
               </td>
               <td className="px-3 py-2" />
@@ -229,7 +229,7 @@ export default function DefaultCategoriesPage() {
                 <button
                   onClick={create}
                   disabled={saving === 'new'}
-                  className="p-1.5 text-gray-400 hover:text-cyan-600 disabled:opacity-50 transition-colors"
+                  className="p-1.5 text-gray-400 hover:text-ink-600 disabled:opacity-50 transition-colors"
                   aria-label="Add category"
                 >
                   {saving === 'new' ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}

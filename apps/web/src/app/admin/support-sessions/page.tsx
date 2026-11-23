@@ -125,7 +125,7 @@ export default function SupportSessionsPage() {
         <div className="bg-white rounded-2xl border border-gray-200 overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-left text-xs uppercase tracking-wide text-gray-500 border-b border-gray-100">
+              <tr className="text-left text-xs text-gray-500 border-b border-gray-100">
                 <th className="px-4 py-3">Retailer</th>
                 <th className="px-4 py-3">Staff</th>
                 <th className="px-4 py-3">Scope</th>

@@ -81,7 +81,7 @@ export default function MyStyleAdminPage() {
       <div>
         <div className="mb-1 flex items-center gap-3">
           <h1 className="text-2xl font-bold text-gray-900">My Style</h1>
-          <Palette size={20} className="text-cyan-500" />
+          <Palette size={20} className="text-ink-500" />
         </div>
         <p className="text-sm text-gray-500">
           Colour names, skin-tone palettes and trend boosts behind the shopper My Style feed.
@@ -111,7 +111,7 @@ export default function MyStyleAdminPage() {
 
 function Status({ error, ready }: { error: string | null; ready: boolean }) {
   if (error) return <p className="text-sm text-red-600">{error}</p>
-  if (!ready) return <Loader2 size={20} className="animate-spin text-cyan-500" />
+  if (!ready) return <Loader2 size={20} className="animate-spin text-ink-500" />
   return null
 }
 
@@ -362,7 +362,7 @@ function UsageTab() {
                 <div
                   key={d.day}
                   title={`${d.day}: ${d.count} (${inr(d.cost_paise)})`}
-                  className="flex-1 rounded-t bg-cyan-500"
+                  className="flex-1 rounded-t bg-ink-500"
                   style={{ height: `${d.count === 0 ? 1 : Math.max(4, (d.count / max) * 100)}%`, opacity: d.count === 0 ? 0.25 : 1 }}
                 />
               ))}

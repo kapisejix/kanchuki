@@ -99,7 +99,7 @@ export default function DeploymentGatePage() {
     return (
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center justify-center py-24">
         <div className="flex flex-col items-center gap-3">
-          <Loader2 size={24} className="animate-spin text-cyan-500" />
+          <Loader2 size={24} className="animate-spin text-ink-500" />
           <p className="text-sm text-gray-400">Checking deployment gates...</p>
         </div>
       </motion.div>
@@ -125,9 +125,8 @@ export default function DeploymentGatePage() {
         <div className="flex items-center gap-2">
           <motion.button
             onClick={() => setShowHistory(!showHistory)}
-            whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-all"
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition"
           >
             <History size={13} />
             History
@@ -135,9 +134,8 @@ export default function DeploymentGatePage() {
           <motion.button
             onClick={() => loadData(true)}
             disabled={refreshing}
-            whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-all"
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition"
           >
             <RefreshCw size={13} className={refreshing ? 'animate-spin' : ''} />
             Re-check
@@ -219,7 +217,7 @@ export default function DeploymentGatePage() {
               <motion.div
                 key={gate.name}
                 variants={itemVariants}
-                className={`bg-white/80 backdrop-blur-sm rounded-2xl border p-5 transition-all hover:shadow-md ${
+                className={`bg-white rounded-2xl border p-5 transition hover:shadow-md ${
                   gate.passed ? 'border-gray-200/80' : 'border-rose-200/80 bg-rose-50/30'
                 }`}
               >
@@ -267,7 +265,7 @@ export default function DeploymentGatePage() {
             exit={{ opacity: 0, height: 0 }}
             className="overflow-hidden"
           >
-            <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-5">
+            <div className="bg-white rounded-2xl border border-gray-200/80 p-5">
               <h2 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
                 <History size={16} className="text-gray-400" />
                 Gate Check History

@@ -200,7 +200,7 @@ export default function DiscoveryPage() {
       {/* Stores near a pincode / city, within a radius */}
       <motion.div
         variants={itemVariants}
-        className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200/80 p-4 space-y-3"
+        className="bg-white rounded-2xl border border-gray-200/80 p-4 space-y-3"
       >
         <p className="text-sm font-semibold text-gray-900">Find stores near a pincode or city</p>
         <form
@@ -276,9 +276,9 @@ export default function DiscoveryPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.03 }}
             onClick={() => setSelectedId(r.id === selectedId ? null : r.id)}
-            className={`bg-white/80 backdrop-blur-sm rounded-2xl border p-5 cursor-pointer transition-all ${
+            className={`bg-white rounded-2xl border p-5 cursor-pointer transition ${
               r.id === selectedId
-                ? 'border-emerald-400 shadow-lg shadow-emerald-500/10'
+                ? 'border-emerald-400 shadow-lg'
                 : 'border-gray-200/80 hover:border-emerald-200'
             }`}
           >
@@ -384,14 +384,13 @@ function StatsCard({
   return (
     <motion.div
       variants={itemVariants}
-      whileHover={{ y: -2 }}
-      className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200/80 p-5"
+      className="bg-white rounded-2xl border border-gray-200/80 p-5"
     >
       <div className="flex items-center gap-3 mb-2">
         <div className={`w-9 h-9 rounded-xl ${c.bg} border flex items-center justify-center`}>
           <Icon size={17} className={c.icon} />
         </div>
-        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{label}</span>
+        <span className="text-xs font-semibold text-gray-500 uppercase">{label}</span>
       </div>
       <p className="text-2xl font-bold text-gray-900 tabular-nums">{value}</p>
     </motion.div>

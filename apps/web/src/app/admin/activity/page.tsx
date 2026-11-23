@@ -152,7 +152,7 @@ export default function ActivityFeedPage() {
     >
       {/* Header */}
       <div className="flex items-center gap-3">
-        <div className="p-2.5 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl shadow-lg shadow-cyan-500/20">
+        <div className="bg-ink-600 p-2.5 rounded-xl shadow-lg">
           <Activity size={20} className="text-white" />
         </div>
         <div>
@@ -166,7 +166,7 @@ export default function ActivityFeedPage() {
         <motion.div
           initial={{ opacity: 0, y: -10, scale: 0.98 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
-          className="bg-red-50/80 backdrop-blur border border-red-200 rounded-2xl p-4"
+          className="bg-red-50/80 border border-red-200 rounded-2xl p-4"
         >
           <div className="flex items-center gap-2 mb-3">
             <AlertTriangle size={16} className="text-red-500" />
@@ -191,18 +191,18 @@ export default function ActivityFeedPage() {
       {/* Filters */}
       <form onSubmit={applyFilters} className="flex flex-wrap gap-3">
         <div className="relative flex-1 min-w-[200px] group">
-          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-cyan-500 transition-colors" />
+          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-ink-500 transition-colors" />
           <input
             value={filters.action}
             onChange={(e) => setFilters((f) => ({ ...f, action: e.target.value }))}
             placeholder="Filter by action (e.g. CREATE, DELETE)..."
-            className="w-full pl-10 pr-4 py-2.5 bg-white/80 backdrop-blur-sm border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/40"
+            className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-ink-500/40"
           />
         </div>
         <select
           value={filters.resource_type}
           onChange={(e) => setFilters((f) => ({ ...f, resource_type: e.target.value }))}
-          className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-cyan-500/40"
+          className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-ink-500/40"
         >
           <option value="">All Resources</option>
           <option value="Retailer">Retailer</option>
@@ -218,16 +218,15 @@ export default function ActivityFeedPage() {
         </select>
         <motion.button
           type="submit"
-          whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
-          className="bg-gradient-to-r from-cyan-600 to-blue-600 text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:shadow-lg hover:shadow-cyan-500/25 transition-all"
+          className="bg-ink-600 text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:shadow-lg transition"
         >
           Filter
         </motion.button>
       </form>
 
       {/* Activity list */}
-      <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 overflow-hidden">
+      <div className="bg-white rounded-2xl border border-gray-200/80 overflow-hidden">
         {loading ? (
           <div className="space-y-1 p-4">
             {[...Array(5)].map((_, i) => (
@@ -313,7 +312,7 @@ export default function ActivityFeedPage() {
               <button
                 onClick={handlePrev}
                 disabled={cursorHistory.length === 0}
-                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-white/80 disabled:opacity-30 transition-all"
+                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-white/80 disabled:opacity-30 transition"
                 aria-label="Previous page"
               >
                 <ChevronLeft size={16} />
@@ -322,7 +321,7 @@ export default function ActivityFeedPage() {
               <button
                 onClick={handleNext}
                 disabled={!hasMore}
-                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-white/80 disabled:opacity-30 transition-all"
+                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-white/80 disabled:opacity-30 transition"
                 aria-label="Next page"
               >
                 <ChevronRight size={16} />

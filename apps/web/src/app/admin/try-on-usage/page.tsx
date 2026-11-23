@@ -53,7 +53,7 @@ export default function TryOnUsagePage() {
       <div>
         <div className="flex items-center gap-3 mb-1">
           <h1 className="text-2xl font-bold text-gray-900">Try-On GPU Usage</h1>
-          <Cpu size={20} className="text-cyan-500" />
+          <Cpu size={20} className="text-ink-500" />
         </div>
         <p className="text-sm text-gray-500">
           GPU time per finished try-on. Failed jobs are counted but add 0 ms. Try-ons includes pending and discarded jobs; the average is over rows with a recorded GPU time. Days are UTC.
@@ -90,7 +90,7 @@ export default function TryOnUsagePage() {
 
       {loading ? (
         <div className="flex items-center justify-center py-24">
-          <Loader2 size={24} className="animate-spin text-cyan-500" />
+          <Loader2 size={24} className="animate-spin text-ink-500" />
         </div>
       ) : error || !data ? (
         <p className="text-sm text-red-600">{error ?? 'No data'}</p>

@@ -114,7 +114,7 @@ export default function OperationsPage() {
         {!loading && (
           <Link
             href="/admin/operations/deployments"
-            className="text-xs text-cyan-600 hover:text-cyan-700 font-medium flex items-center gap-1"
+            className="text-xs text-ink-600 hover:text-ink-700 font-medium flex items-center gap-1"
           >
             View all deployments <ArrowRight size={12} />
           </Link>
@@ -148,7 +148,6 @@ export default function OperationsPage() {
           description="Review and approve/reject pending operations"
           href="/admin/operations/pending"
           icon={Clock}
-          color="from-amber-500 to-amber-600"
           count={counts?.pending_count ?? null}
           countLabel="pending"
           countColor="amber"
@@ -158,7 +157,6 @@ export default function OperationsPage() {
           description="View deployment history and gate status"
           href="/admin/operations/deployments"
           icon={GitBranch}
-          color="from-blue-500 to-blue-600"
           count={counts?.deployment_totals.last24h ?? null}
           countLabel="last 24h"
           countColor="blue"
@@ -168,7 +166,6 @@ export default function OperationsPage() {
           description="Check pre-deployment conditions and gate status"
           href="/admin/operations/gate"
           icon={Activity}
-          color="from-emerald-500 to-emerald-600"
           count={counts?.gate_status ? (counts.gate_status.all_passed ? 0 : 1) : null}
           countLabel={counts?.gate_status?.all_passed ? 'all clear' : 'blocked'}
           countColor={counts?.gate_status?.all_passed ? 'green' : 'red'}
@@ -177,7 +174,7 @@ export default function OperationsPage() {
 
       {/* Quick activity feed */}
       {counts && counts.recent_activity.length > 0 && (
-        <motion.div variants={itemVariants} className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-5">
+        <motion.div variants={itemVariants} className="bg-white rounded-2xl border border-gray-200/80 p-5">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
               <Activity size={16} className="text-gray-400" />
@@ -185,7 +182,7 @@ export default function OperationsPage() {
             </h2>
             <Link
               href="/admin/operations/pending"
-              className="text-xs text-cyan-600 hover:text-cyan-700 font-medium"
+              className="text-xs text-ink-600 hover:text-ink-700 font-medium"
             >
               View all
             </Link>
@@ -202,7 +199,7 @@ export default function OperationsPage() {
                 </div>
                 <Link
                   href="/admin/operations/pending"
-                  className="text-[10px] text-cyan-600 hover:text-cyan-700 font-medium shrink-0"
+                  className="text-[10px] text-ink-600 hover:text-ink-700 font-medium shrink-0"
                 >
                   Review
                 </Link>
@@ -217,7 +214,7 @@ export default function OperationsPage() {
         <motion.div variants={itemVariants}>
           <Link
             href="/admin/operations/gate"
-            className={`block rounded-2xl border p-5 transition-all hover:shadow-md ${
+            className={`block rounded-2xl border p-5 transition hover:shadow-md ${
               counts.gate_status.all_passed
                 ? 'bg-emerald-50/80 border-emerald-200'
                 : 'bg-amber-50/80 border-amber-200'
@@ -252,15 +249,14 @@ export default function OperationsPage() {
       <motion.div variants={itemVariants}>
         <Link
           href="/admin/settings"
-          className="group block bg-gradient-to-r from-purple-500 to-purple-600 rounded-2xl p-6 text-white hover:shadow-xl transition-all relative overflow-hidden"
+          className="group block rounded-xl border border-gray-200 bg-white p-6 transition-colors hover:border-gray-300 hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-600"
         >
-          <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/10 to-transparent" />
           <div className="flex items-start justify-between mb-4 relative">
-            <Shield size={28} className="text-white/70" />
-            <ArrowRight size={18} className="text-white/40 group-hover:text-white group-hover:translate-x-1 transition-all" />
+            <Shield size={18} strokeWidth={1.5} className="text-gray-500" />
+            <ArrowRight size={16} strokeWidth={1.5} className="text-gray-400 transition-colors group-hover:text-gray-900" />
           </div>
-          <h3 className="font-semibold text-lg mb-1 relative">Platform Settings</h3>
-          <p className="text-sm text-white/70 relative">Configure rate limits, AI models, notifications, and other platform settings</p>
+          <h3 className="text-sm font-medium text-gray-900 mb-1">Platform Settings</h3>
+          <p className="text-xs text-gray-500">Configure rate limits, AI models, notifications, and other platform settings</p>
         </Link>
       </motion.div>
     </motion.div>
@@ -274,7 +270,6 @@ function OperationCard({
   description,
   href,
   icon: Icon,
-  color,
   count,
   countLabel,
   countColor,
@@ -283,7 +278,6 @@ function OperationCard({
   description: string
   href: string
   icon: LucideIcon
-  color: string
   count: number | null
   countLabel: string
   countColor: string
@@ -296,28 +290,26 @@ function OperationCard({
   }[countColor]
 
   return (
-    <motion.div variants={itemVariants} whileHover={{ y: -4, scale: 1.01 }}>
+    <motion.div variants={itemVariants}>
       <Link
         href={href}
-        className={`group block bg-gradient-to-r ${color} rounded-2xl p-6 text-white hover:shadow-xl transition-all relative overflow-hidden`}
+        className="group block rounded-xl border border-gray-200 bg-white p-6 transition-colors hover:border-gray-300 hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-600"
       >
-        <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-
         <div className="flex items-start justify-between mb-4 relative">
-          <Icon size={28} className="text-white/70" />
+          <Icon size={18} strokeWidth={1.5} className="text-gray-500" />
           <div className="flex items-center gap-2">
             {count !== null && (
-              <span className={`text-xs font-bold px-2 py-1 rounded-full ${countBgColor}`}>
+              <span className={`text-xs font-medium tabular-nums px-2 py-0.5 rounded ${countBgColor}`}>
                 {count}
               </span>
             )}
-            <ArrowRight size={18} className="text-white/40 group-hover:text-white group-hover:translate-x-1 transition-all" />
+            <ArrowRight size={16} strokeWidth={1.5} className="text-gray-400 transition-colors group-hover:text-gray-900" />
           </div>
         </div>
-        <h3 className="font-semibold text-lg mb-1 relative">{title}</h3>
-        <p className="text-sm text-white/70 relative">{description}</p>
+        <h3 className="text-sm font-medium text-gray-900 mb-1">{title}</h3>
+        <p className="text-xs text-gray-500">{description}</p>
         {count !== null && (
-          <p className="text-[10px] text-white/50 mt-2 relative">{count} {countLabel}</p>
+          <p className="text-xs text-gray-500 mt-2">{count} {countLabel}</p>
         )}
       </Link>
     </motion.div>

@@ -83,7 +83,7 @@ export default function AiContentReportsPage() {
   }
 
   const selectClass =
-    'border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-cyan-500/40'
+    'border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-ink-500/40'
 
   return (
     <div className="space-y-6">
@@ -100,7 +100,7 @@ export default function AiContentReportsPage() {
         <button
           type="button"
           onClick={() => void load()}
-          className="p-2.5 text-gray-400 hover:text-cyan-600 hover:bg-cyan-50 rounded-xl"
+          className="p-2.5 text-gray-400 hover:text-ink-600 hover:bg-ink-50 rounded-xl"
           title="Refresh"
         >
           <RefreshCw size={18} />

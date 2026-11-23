@@ -141,7 +141,7 @@ export default function CatalogUploadTiersPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
-        <Loader2 size={24} className="animate-spin text-cyan-500" />
+        <Loader2 size={24} className="animate-spin text-ink-500" />
       </div>
     )
   }
@@ -151,7 +151,7 @@ export default function CatalogUploadTiersPage() {
       <div>
         <div className="flex items-center gap-3 mb-1">
           <h1 className="text-2xl font-bold text-gray-900">Catalog Upload Price Tiers</h1>
-          <Package size={20} className="text-cyan-500" />
+          <Package size={20} className="text-ink-500" />
         </div>
         <p className="text-sm text-gray-500">
           F-019 — item-count-to-price tiers for the paid on-site catalog upload service. Edited here, no
@@ -174,8 +174,8 @@ export default function CatalogUploadTiersPage() {
 
       {/* Limited-time free offer — auto-enforced by the quoting route */}
       <div
-        className={`bg-white/80 backdrop-blur-xl rounded-2xl border p-6 ${
-          promoActive ? 'border-green-300/80 shadow-lg shadow-green-500/10' : 'border-gray-200/80'
+        className={`bg-white rounded-2xl border p-6 ${
+          promoActive ? 'border-green-300/80 shadow-lg' : 'border-gray-200/80'
         }`}
       >
         <div className="flex items-start justify-between gap-4 mb-4">
@@ -197,7 +197,7 @@ export default function CatalogUploadTiersPage() {
           </div>
           {!promoLoading && (
             <span
-              className={`text-[10px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full ${
+              className={`text-[10px] font-bold uppercase px-2.5 py-1 rounded-full ${
                 promoActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
               }`}
             >
@@ -214,7 +214,7 @@ export default function CatalogUploadTiersPage() {
               value={promo.free_item_limit}
               onChange={(e) => setPromo((p) => ({ ...p, free_item_limit: e.target.value }))}
               placeholder="e.g. 500"
-              className="w-32 px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-400 transition-all"
+              className="w-32 px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-ink-500/40 focus:border-ink-400 transition"
             />
             <p className="text-[10px] text-gray-400 mt-1">Empty = offer disabled</p>
           </div>
@@ -227,17 +227,17 @@ export default function CatalogUploadTiersPage() {
               type="datetime-local"
               value={promo.expires_at}
               onChange={(e) => setPromo((p) => ({ ...p, expires_at: e.target.value }))}
-              className="w-56 px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-400 transition-all"
+              className="w-56 px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-ink-500/40 focus:border-ink-400 transition"
             />
             <p className="text-[10px] text-gray-400 mt-1">Empty = runs until cleared</p>
           </div>
           <button
             onClick={savePromo}
             disabled={promoSaving}
-            className={`text-sm font-semibold px-5 py-2.5 rounded-xl transition-all flex items-center gap-2 disabled:opacity-60 ${
+            className={`text-sm font-semibold px-5 py-2.5 rounded-xl transition flex items-center gap-2 disabled:opacity-60 ${
               promoActive
-                ? 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white shadow-lg shadow-green-500/25'
-                : 'bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white shadow-lg shadow-cyan-500/25'
+                ? 'bg-green-700 hover:bg-green-800 text-white shadow-lg'
+                : 'bg-ink-600 hover:bg-ink-500 text-white shadow-lg'
             }`}
           >
             {promoSaving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
@@ -255,7 +255,7 @@ export default function CatalogUploadTiersPage() {
         </div>
       </div>
 
-      <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-6 overflow-x-auto">
+      <div className="bg-white rounded-2xl border border-gray-200/80 p-6 overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-100">
@@ -273,7 +273,7 @@ export default function CatalogUploadTiersPage() {
                     type="number"
                     value={tier.min_items}
                     onChange={(e) => updateTier(tier.id, { min_items: Number(e.target.value) })}
-                    className="w-24 px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                    className="w-24 px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-ink-500/50"
                   />
                 </td>
                 <td className="px-3 py-2">
@@ -284,7 +284,7 @@ export default function CatalogUploadTiersPage() {
                     onChange={(e) =>
                       updateTier(tier.id, { max_items: e.target.value ? Number(e.target.value) : null })
                     }
-                    className="w-28 px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                    className="w-28 px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-ink-500/50"
                   />
                 </td>
                 <td className="px-3 py-2">
@@ -292,7 +292,7 @@ export default function CatalogUploadTiersPage() {
                     type="number"
                     value={tier.price_inr}
                     onChange={(e) => updateTier(tier.id, { price_inr: Number(e.target.value) })}
-                    className="w-28 px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                    className="w-28 px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-ink-500/50"
                   />
                 </td>
                 <td className="px-3 py-2">
@@ -300,7 +300,7 @@ export default function CatalogUploadTiersPage() {
                     <button
                       onClick={() => save(tier)}
                       disabled={saving === tier.id}
-                      className="p-1.5 text-gray-400 hover:text-cyan-600 disabled:opacity-50 transition-colors"
+                      className="p-1.5 text-gray-400 hover:text-ink-600 disabled:opacity-50 transition-colors"
                       aria-label="Save tier"
                     >
                       {saving === tier.id ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
@@ -324,7 +324,7 @@ export default function CatalogUploadTiersPage() {
                   value={newTier.min_items}
                   placeholder="min"
                   onChange={(e) => setNewTier((p) => ({ ...p, min_items: e.target.value }))}
-                  className="w-24 px-2 py-1.5 text-sm border border-dashed border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                  className="w-24 px-2 py-1.5 text-sm border border-dashed border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-ink-500/50"
                 />
               </td>
               <td className="px-3 py-2">
@@ -333,7 +333,7 @@ export default function CatalogUploadTiersPage() {
                   value={newTier.max_items}
                   placeholder="open-ended"
                   onChange={(e) => setNewTier((p) => ({ ...p, max_items: e.target.value }))}
-                  className="w-28 px-2 py-1.5 text-sm border border-dashed border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                  className="w-28 px-2 py-1.5 text-sm border border-dashed border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-ink-500/50"
                 />
               </td>
               <td className="px-3 py-2">
@@ -342,14 +342,14 @@ export default function CatalogUploadTiersPage() {
                   value={newTier.price_inr}
                   placeholder="price"
                   onChange={(e) => setNewTier((p) => ({ ...p, price_inr: e.target.value }))}
-                  className="w-28 px-2 py-1.5 text-sm border border-dashed border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                  className="w-28 px-2 py-1.5 text-sm border border-dashed border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-ink-500/50"
                 />
               </td>
               <td className="px-3 py-2">
                 <button
                   onClick={create}
                   disabled={saving === 'new'}
-                  className="p-1.5 text-gray-400 hover:text-cyan-600 disabled:opacity-50 transition-colors"
+                  className="p-1.5 text-gray-400 hover:text-ink-600 disabled:opacity-50 transition-colors"
                   aria-label="Add tier"
                 >
                   {saving === 'new' ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}

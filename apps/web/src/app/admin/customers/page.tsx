@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { Users, Search, ChevronRight, ChevronLeft, Store, Ruler, Sparkles, Ban, CheckCircle } from 'lucide-react'
+import { Users, Search, ChevronRight, ChevronLeft, Store, Ruler, Ban, CheckCircle } from 'lucide-react'
 import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
 import { Sheet } from '@/components/Sheet'
 
@@ -94,9 +94,6 @@ export default function CustomersPage() {
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }} className="space-y-6">
       <div className="flex items-center gap-3">
         <h1 className="text-2xl font-bold text-gray-900">Customers</h1>
-        <motion.div animate={{ rotate: [0, 10, -10, 0] }} transition={{ duration: 2, repeat: Infinity, repeatDelay: 5 }}>
-          <Sparkles size={18} className="text-cyan-500" />
-        </motion.div>
       </div>
       <p className="text-sm text-gray-500 -mt-4">
         {customers.length > 0 ? `${customers.length} customers shown` : 'Browse all customers across every retailer'}
@@ -104,37 +101,36 @@ export default function CustomersPage() {
 
       <form onSubmit={handleSearch} className="flex gap-3">
         <div className="relative flex-1 group">
-          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-cyan-500 transition-colors" />
+          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-ink-500 transition-colors" />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by name or phone..."
-            className="w-full pl-10 pr-4 py-2.5 bg-white/80 backdrop-blur-sm border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-400 transition-all"
+            className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-ink-500/40 focus:border-ink-400 transition"
           />
         </div>
         <motion.button
           type="submit"
-          whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
-          className="bg-gradient-to-r from-cyan-600 to-blue-600 text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:shadow-lg hover:shadow-cyan-500/25 transition-all"
+          className="bg-ink-600 text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:shadow-lg transition"
         >
           Search
         </motion.button>
       </form>
 
-      <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 overflow-hidden">
+      <div className="bg-white rounded-2xl border border-gray-200/80 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50/80">
-                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Name</th>
-                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Phone</th>
-                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Gender</th>
-                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider"><Store size={14} className="inline" /> Retailer</th>
-                <th className="px-4 py-3.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider"><Ruler size={14} className="inline" /> Measurements</th>
-                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Consent</th>
-                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Added</th>
+                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500">Name</th>
+                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500">Phone</th>
+                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500">Gender</th>
+                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500"><Store size={14} className="inline" /> Retailer</th>
+                <th className="px-4 py-3.5 text-center text-xs font-semibold text-gray-500"><Ruler size={14} className="inline" /> Measurements</th>
+                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500">Consent</th>
+                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500">Status</th>
+                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500">Added</th>
                 <th className="px-4 py-3.5" />
               </tr>
             </thead>
@@ -162,7 +158,6 @@ export default function CustomersPage() {
                   <motion.tr
                     key={c.id}
                     variants={rowVariants}
-                    whileHover={{ backgroundColor: 'rgba(6,182,212,0.03)', transition: { duration: 0.2 } }}
                     className="border-b border-gray-50 transition-colors"
                   >
                     <td className="px-4 py-3.5 font-medium text-gray-900">
@@ -176,7 +171,7 @@ export default function CustomersPage() {
                     <td className="px-4 py-3.5 text-gray-600">{c.phone}</td>
                     <td className="px-4 py-3.5 text-gray-600">{c.gender ?? '—'}</td>
                     <td className="px-4 py-3.5">
-                      <Link href={`/admin/retailers/${c.retailer.id}`} className="text-gray-700 hover:text-cyan-600 transition-colors">
+                      <Link href={`/admin/retailers/${c.retailer.id}`} className="text-gray-700 hover:text-ink-600 transition-colors">
                         {c.retailer.shop_name}
                       </Link>
                       <span className="block text-xs text-gray-400">{c.retailer.city}</span>
@@ -217,7 +212,7 @@ export default function CustomersPage() {
                             }
                           }}
                           disabled={actionLoading}
-                          className="flex items-center gap-1 text-xs font-medium text-green-600 hover:text-green-700 px-2 py-1 rounded-lg hover:bg-green-50 transition-all disabled:opacity-60"
+                          className="flex items-center gap-1 text-xs font-medium text-green-600 hover:text-green-700 px-2 py-1 rounded-lg hover:bg-green-50 transition disabled:opacity-60"
                         >
                           <CheckCircle size={13} />
                           Unblock
@@ -225,7 +220,7 @@ export default function CustomersPage() {
                       ) : (
                         <motion.button
                           onClick={() => { setBlockDialog({ customer: c }); setBlockReason('') }}
-                          className="flex items-center gap-1 text-xs font-medium text-red-500 hover:text-red-600 px-2 py-1 rounded-lg hover:bg-red-50 transition-all"
+                          className="flex items-center gap-1 text-xs font-medium text-red-500 hover:text-red-600 px-2 py-1 rounded-lg hover:bg-red-50 transition"
                         >
                           <Ban size={13} />
                           Block
@@ -248,9 +243,8 @@ export default function CustomersPage() {
               <motion.button
                 onClick={handlePrev}
                 disabled={cursorHistory.length === 0}
-                whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-white/80 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-white/80 disabled:opacity-30 disabled:cursor-not-allowed transition"
                 aria-label="Previous page"
               >
                 <ChevronLeft size={16} />
@@ -259,9 +253,8 @@ export default function CustomersPage() {
               <motion.button
                 onClick={handleNext}
                 disabled={!hasMore}
-                whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-white/80 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-white/80 disabled:opacity-30 disabled:cursor-not-allowed transition"
                 aria-label="Next page"
               >
                 <ChevronRight size={16} />
@@ -276,7 +269,7 @@ export default function CustomersPage() {
         <Sheet
           open
           onClose={() => setBlockDialog(null)}
-          overlayClassName="z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm"
+          overlayClassName="z-50 flex items-center justify-center bg-black/30"
           panelClassName="bg-white rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl border border-gray-200 space-y-4 max-h-full overflow-y-auto"
           overlayAnimation={{ initial: { opacity: 0 }, animate: { opacity: 1 } }}
           panelAnimation={{ initial: { scale: 0.95, opacity: 0 }, animate: { scale: 1, opacity: 1 } }}
@@ -296,7 +289,7 @@ export default function CustomersPage() {
             <div className="flex gap-2">
               <button
                 onClick={() => setBlockDialog(null)}
-                className="flex-1 bg-gray-100 text-gray-600 text-sm font-medium py-2.5 rounded-xl hover:bg-gray-200 transition-all"
+                className="flex-1 bg-gray-100 text-gray-600 text-sm font-medium py-2.5 rounded-xl hover:bg-gray-200 transition"
               >
                 Cancel
               </button>
@@ -323,7 +316,7 @@ export default function CustomersPage() {
                   }
                 }}
                 disabled={actionLoading || !blockReason.trim()}
-                className="flex-1 bg-red-500 hover:bg-red-400 text-white text-sm font-semibold py-2.5 rounded-xl disabled:opacity-50 transition-all"
+                className="flex-1 bg-red-500 hover:bg-red-400 text-white text-sm font-semibold py-2.5 rounded-xl disabled:opacity-50 transition"
               >
                 {actionLoading ? 'Blocking...' : 'Confirm Block'}
               </button>

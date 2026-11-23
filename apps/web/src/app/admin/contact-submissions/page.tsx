@@ -143,7 +143,7 @@ export default function ContactSubmissionsPage() {
       <motion.div variants={itemVariants}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl shadow-lg shadow-cyan-500/20">
+            <div className="bg-ink-600 p-2.5 rounded-xl shadow-lg">
               <Mail size={20} className="text-white" />
             </div>
             <div>
@@ -156,9 +156,8 @@ export default function ContactSubmissionsPage() {
           <motion.button
             onClick={() => load(cursor ?? undefined)}
             disabled={loading}
-            whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-all disabled:opacity-40"
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition disabled:opacity-40"
           >
             <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
             Refresh
@@ -167,15 +166,15 @@ export default function ContactSubmissionsPage() {
       </motion.div>
 
       {/* Topic filter */}
-      <motion.div variants={itemVariants} className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-4">
+      <motion.div variants={itemVariants} className="bg-white rounded-2xl border border-gray-200/80 p-4">
         <div className="flex items-center gap-3 flex-wrap">
-          <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Topic</span>
+          <span className="text-xs font-semibold text-gray-500">Topic</span>
           <div className="flex flex-wrap gap-2">
             <button
               onClick={() => handleTopicChange('')}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+              className={`px-3 py-1.5 rounded-full text-xs font-medium border transition ${
                 topic === ''
-                  ? 'bg-cyan-600 text-white border-cyan-600'
+                  ? 'bg-ink-600 text-white border-ink-600'
                   : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
               }`}
             >
@@ -185,9 +184,9 @@ export default function ContactSubmissionsPage() {
               <button
                 key={t}
                 onClick={() => handleTopicChange(t)}
-                className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                className={`px-3 py-1.5 rounded-full text-xs font-medium border transition ${
                   topic === t
-                    ? 'bg-cyan-600 text-white border-cyan-600'
+                    ? 'bg-ink-600 text-white border-ink-600'
                     : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
                 }`}
               >
@@ -258,12 +257,12 @@ export default function ContactSubmissionsPage() {
             <motion.div
               key={m.id}
               variants={itemVariants}
-              className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200/80 overflow-hidden transition-all hover:shadow-sm"
+              className="bg-white rounded-2xl border border-gray-200/80 overflow-hidden transition hover:shadow-sm"
             >
               <div className="p-5">
                 {/* From row */}
                 <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 shrink-0 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full flex items-center justify-center text-white text-sm font-bold">
+                  <div className="bg-ink-600 w-10 h-10 shrink-0 rounded-full flex items-center justify-center text-white text-sm font-bold">
                     {initials(m.name)}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -296,7 +295,7 @@ export default function ContactSubmissionsPage() {
 
                 {/* Message body */}
                 <div className="mt-3 bg-gray-50 rounded-xl border border-gray-100 p-4">
-                  <div className="flex items-center gap-1.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-400 mb-2">
                     <MessageSquare size={11} />
                     Message
                   </div>
@@ -327,9 +326,8 @@ export default function ContactSubmissionsPage() {
           <motion.button
             onClick={handlePrev}
             disabled={cursorStack.length === 0}
-            whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            className="flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-all disabled:opacity-40"
+            className="flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition disabled:opacity-40"
           >
             <ArrowLeft size={14} />
             Previous
@@ -338,9 +336,8 @@ export default function ContactSubmissionsPage() {
           <motion.button
             onClick={handleNext}
             disabled={!hasMore}
-            whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            className="flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-all disabled:opacity-40"
+            className="flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition disabled:opacity-40"
           >
             Next
             <ArrowRight size={14} />

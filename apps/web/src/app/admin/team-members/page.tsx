@@ -70,7 +70,7 @@ const ROLE_COLORS: Record<TeamRole, string> = {
   SUPER_ADMIN: 'bg-purple-100 text-purple-700 border-purple-200',
   ADMIN: 'bg-indigo-100 text-indigo-700 border-indigo-200',
   MARKETING_MANAGER: 'bg-blue-100 text-blue-700 border-blue-200',
-  MARKETING_AGENT: 'bg-cyan-100 text-cyan-700 border-cyan-200',
+  MARKETING_AGENT: 'bg-ink-100 text-ink-700 border-ink-200',
   SUPPORT_MANAGER: 'bg-amber-100 text-amber-700 border-amber-200',
   SUPPORT_AGENT: 'bg-green-100 text-green-700 border-green-200',
 }
@@ -196,7 +196,7 @@ function MemberModal({
         <Sheet
           open
           onClose={onClose}
-          overlayClassName="z-50 flex items-start justify-center p-4 bg-black/50 backdrop-blur-sm sm:pt-10"
+          overlayClassName="z-50 flex items-start justify-center p-4 bg-black/50 sm:pt-10"
           panelClassName="w-full max-w-lg max-h-full sm:max-h-[85vh] bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-y-auto"
           overlayAnimation={{ initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 } }}
           panelAnimation={{
@@ -209,7 +209,7 @@ function MemberModal({
         >
             <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between z-10">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl flex items-center justify-center">
+                <div className="bg-ink-600 w-9 h-9 rounded-xl flex items-center justify-center">
                   {editMember ? <UserCog size={18} className="text-white" /> : <UserPlus size={18} className="text-white" />}
                 </div>
                 <div>
@@ -242,7 +242,7 @@ function MemberModal({
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       placeholder="Rahul Sharma"
-                      className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-400 transition-all"
+                      className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-ink-500/40 focus:border-ink-400 transition"
                     />
                   </div>
 
@@ -254,15 +254,15 @@ function MemberModal({
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="rahul@kanchuki.app"
-                        className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-400 transition-all"
+                        className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-ink-500/40 focus:border-ink-400 transition"
                       />
                     </div>
                   </div>
 
-                  <div className="bg-cyan-50 border border-cyan-200/70 rounded-xl p-3.5 flex items-start gap-2.5">
-                    <Sparkles size={16} className="text-cyan-600 mt-0.5 shrink-0" />
-                    <div className="text-xs text-cyan-950 leading-relaxed">
-                      <span className="font-semibold text-cyan-900">Automated Credentials &amp; OTP:</span> A secure temporary password and login instructions will be sent automatically to this email. The member can also log in directly using mobile OTP.
+                  <div className="bg-ink-50 border border-ink-200/70 rounded-xl p-3.5 flex items-start gap-2.5">
+                    <Sparkles size={16} className="text-ink-600 mt-0.5 shrink-0" />
+                    <div className="text-xs text-ink-900 leading-relaxed">
+                      <span className="font-semibold text-ink-900">Automated Credentials &amp; OTP:</span> A secure temporary password and login instructions will be sent automatically to this email. The member can also log in directly using mobile OTP.
                     </div>
                   </div>
                 </>
@@ -281,7 +281,7 @@ function MemberModal({
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="10-digit mobile number"
                   inputMode="tel"
-                  className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-400 transition-all"
+                  className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-ink-500/40 focus:border-ink-400 transition"
                 />
               </div>
 
@@ -292,14 +292,14 @@ function MemberModal({
                   <select
                     value={role}
                     onChange={(e) => setRole(e.target.value as TeamRole)}
-                    className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-400 transition-all"
+                    className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-ink-500/40 focus:border-ink-400 transition"
                   >
                     {Object.entries(ROLE_LABELS).map(([key, label]) => (
                       <option key={key} value={key}>{label}</option>
                     ))}
                   </select>
                   <div className="mt-2 p-2.5 bg-gray-50 border border-gray-200/80 rounded-xl text-xs text-gray-600 flex items-start gap-2">
-                    <Shield size={14} className="text-cyan-600 mt-0.5 shrink-0" />
+                    <Shield size={14} className="text-ink-600 mt-0.5 shrink-0" />
                     <span>{ROLE_DESCRIPTIONS[role]}</span>
                   </div>
                 </div>
@@ -313,7 +313,7 @@ function MemberModal({
                   value={maxRetailers}
                   onChange={(e) => setMaxRetailers(e.target.value)}
                   placeholder="Unlimited"
-                  className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-400 transition-all"
+                  className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-ink-500/40 focus:border-ink-400 transition"
                 />
               </div>
 
@@ -360,14 +360,14 @@ function MemberModal({
             <div className="sticky bottom-0 bg-gray-50/80 border-t border-gray-100 px-6 py-4 flex items-center justify-end gap-3">
               <button
                 onClick={onClose}
-                className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-200/80 rounded-xl transition-all"
+                className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-200/80 rounded-xl transition"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-all shadow-lg shadow-cyan-500/25 disabled:opacity-60 flex items-center gap-2"
+                className="bg-ink-600 hover:bg-ink-500 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition shadow-lg disabled:opacity-60 flex items-center gap-2"
               >
                 {saving ? (
                   <>
@@ -525,7 +525,7 @@ export default function TeamMembersPage() {
     overCapacity: members.filter((m) => m.over_capacity).length,
   }
 
-  const selectClass = "border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-400 transition-all"
+  const selectClass = "border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-ink-500/40 focus:border-ink-400 transition"
 
   return (
     <motion.div
@@ -539,20 +539,13 @@ export default function TeamMembersPage() {
         <div>
           <div className="flex items-center gap-3 mb-1">
             <h1 className="text-2xl font-bold text-gray-900">Team Members</h1>
-            <motion.div
-              animate={{ rotate: [0, 10, -10, 0] }}
-              transition={{ duration: 2, repeat: Infinity, repeatDelay: 5 }}
-            >
-              <Sparkles size={18} className="text-cyan-500" />
-            </motion.div>
           </div>
           <p className="text-sm text-gray-500">Manage field agents, managers, and support staff</p>
         </div>
         <motion.button
           onClick={handleAdd}
-          whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
-          className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-all shadow-lg shadow-cyan-500/25 flex items-center gap-2"
+          className="bg-ink-600 hover:bg-ink-500 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition shadow-lg flex items-center gap-2"
         >
           <UserPlus size={16} />
           Add Member
@@ -561,15 +554,14 @@ export default function TeamMembersPage() {
 
       {/* Stats cards */}
       <motion.div variants={containerVariants} initial="hidden" animate="visible" className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-        <StatsCard icon={Users} label="Total" value={stats.total} color="blue" />
-        <StatsCard icon={Check} label="Active" value={stats.active} color="green" />
-        <StatsCard icon={UserCog} label="Managers" value={stats.managers} color="amber" />
-        <StatsCard icon={Shield} label="Agents" value={stats.agents} color="cyan" />
+        <StatsCard icon={Users} label="Total" value={stats.total} />
+        <StatsCard icon={Check} label="Active" value={stats.active} />
+        <StatsCard icon={UserCog} label="Managers" value={stats.managers} />
+        <StatsCard icon={Shield} label="Agents" value={stats.agents} />
         <StatsCard
           icon={AlertCircle}
           label="Over Capacity"
           value={stats.overCapacity}
-          color="red"
           pulse={stats.overCapacity > 0}
         />
       </motion.div>
@@ -577,12 +569,12 @@ export default function TeamMembersPage() {
       {/* Filters */}
       <div className="flex flex-wrap gap-3">
         <div className="relative flex-1 min-w-[220px] group">
-          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-cyan-500 transition-colors" />
+          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-ink-500 transition-colors" />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by name or email..."
-            className="w-full pl-10 pr-4 py-2.5 bg-white/80 backdrop-blur-sm border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-400 transition-all"
+            className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-ink-500/40 focus:border-ink-400 transition"
           />
         </div>
         <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} className={selectClass}>
@@ -594,18 +586,18 @@ export default function TeamMembersPage() {
       </div>
 
       {/* Table */}
-      <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 overflow-hidden">
+      <div className="bg-white rounded-2xl border border-gray-200/80 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50/80">
-                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Member</th>
-                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Role</th>
-                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Territories</th>
-                <th className="px-4 py-3.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Retailers</th>
-                <th className="px-4 py-3.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Capacity</th>
-                <th className="px-4 py-3.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-4 py-3.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
+                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500">Member</th>
+                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500">Role</th>
+                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500">Territories</th>
+                <th className="px-4 py-3.5 text-center text-xs font-semibold text-gray-500">Retailers</th>
+                <th className="px-4 py-3.5 text-center text-xs font-semibold text-gray-500">Capacity</th>
+                <th className="px-4 py-3.5 text-center text-xs font-semibold text-gray-500">Status</th>
+                <th className="px-4 py-3.5 text-right text-xs font-semibold text-gray-500">Actions</th>
               </tr>
             </thead>
             <motion.tbody
@@ -642,7 +634,6 @@ export default function TeamMembersPage() {
                   <motion.tr
                     key={m.id}
                     variants={rowVariants}
-                    whileHover={{ backgroundColor: 'rgba(6,182,212,0.03)', transition: { duration: 0.2 } }}
                     className="border-b border-gray-50 transition-colors"
                   >
                     <td className="px-4 py-3.5">
@@ -650,7 +641,7 @@ export default function TeamMembersPage() {
                         <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm ${
                           m.role === 'SUPER_ADMIN' ? 'bg-purple-100 text-purple-700' :
                           m.role.includes('MANAGER') ? 'bg-blue-100 text-blue-700' :
-                          'bg-cyan-100 text-cyan-700'
+                          'bg-ink-100 text-ink-700'
                         }`}>
                           {m.name.charAt(0).toUpperCase()}
                         </div>
@@ -712,7 +703,7 @@ export default function TeamMembersPage() {
                     <td className="px-4 py-3.5 text-center">
                       <button
                         onClick={() => toggleActive(m)}
-                        className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full transition-all cursor-pointer ${
+                        className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full transition cursor-pointer ${
                           m.is_active
                             ? 'bg-green-100 text-green-700 hover:bg-green-200'
                             : 'bg-gray-100 text-gray-400 hover:bg-red-50 hover:text-red-500'
@@ -726,9 +717,8 @@ export default function TeamMembersPage() {
                       <div className="flex items-center justify-end gap-1">
                         <motion.button
                           onClick={() => handleEdit(m)}
-                          whileHover={{ scale: 1.05 }}
                           whileTap={{ scale: 0.95 }}
-                          className="p-1.5 text-gray-400 hover:text-cyan-600 hover:bg-cyan-50 rounded-lg transition-all"
+                          className="p-1.5 text-gray-400 hover:text-ink-600 hover:bg-ink-50 rounded-lg transition"
                           title="Edit member"
                         >
                           <UserCog size={15} />
@@ -737,9 +727,8 @@ export default function TeamMembersPage() {
                           <motion.button
                             onClick={() => resetPassword(m)}
                             disabled={resettingId === m.id}
-                            whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
-                            className="p-1.5 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all disabled:opacity-40"
+                            className="p-1.5 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition disabled:opacity-40"
                             title="Generate new password"
                             aria-label={`Generate new password for ${m.email}`}
                           >
@@ -779,7 +768,7 @@ export default function TeamMembersPage() {
           <Sheet
             open
             onClose={() => setRevealed(null)}
-            overlayClassName="z-50 flex items-start justify-center p-4 bg-black/50 backdrop-blur-sm sm:pt-10"
+            overlayClassName="z-50 flex items-start justify-center p-4 bg-black/50 sm:pt-10"
             panelClassName="w-full max-w-md max-h-full bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-y-auto"
             overlayAnimation={{ initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 } }}
             panelAnimation={{
@@ -792,7 +781,7 @@ export default function TeamMembersPage() {
           >
             <div className="p-6 space-y-4">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl flex items-center justify-center">
+                <div className="bg-amber-600 w-9 h-9 rounded-xl flex items-center justify-center">
                   <KeyRound size={18} className="text-white" />
                 </div>
                 <div>
@@ -822,7 +811,7 @@ export default function TeamMembersPage() {
                 </button>
                 <button
                   onClick={() => setRevealed(null)}
-                  className="px-4 py-2 text-xs font-semibold text-white bg-gradient-to-r from-cyan-500 to-blue-600 rounded-xl"
+                  className="bg-ink-600 px-4 py-2 text-xs font-semibold text-white rounded-xl"
                 >
                   Done
                 </button>
@@ -841,35 +830,21 @@ function StatsCard({
   icon: Icon,
   label,
   value,
-  color,
   pulse,
 }: {
   icon: LucideIcon
   label: string
   value: number
-  color: 'blue' | 'green' | 'amber' | 'cyan' | 'red'
   pulse?: boolean
 }) {
-  const colorMap = {
-    blue: 'from-blue-500/20 to-transparent',
-    green: 'from-green-500/20 to-transparent',
-    amber: 'from-amber-500/20 to-transparent',
-    cyan: 'from-cyan-500/20 to-transparent',
-    red: 'from-red-500/20 to-transparent',
-    purple: 'from-purple-500/20 to-transparent',
-    gray: 'from-gray-500/20 to-transparent',
-  }
-
   return (
     <motion.div
       variants={rowVariants}
-      whileHover={{ y: -2 }}
-      className="relative bg-white/80 backdrop-blur-sm rounded-xl border border-gray-200/80 p-4 transition-all hover:shadow-md overflow-hidden"
+      className="relative bg-white rounded-xl border border-gray-200/80 p-4 transition hover:shadow-md overflow-hidden"
     >
-      <div className={`absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r ${colorMap[color]}`} />
       <div className="flex items-center gap-2 mb-1.5">
         <Icon size={14} className={`${pulse ? 'text-red-500 animate-pulse' : 'text-gray-400'}`} />
-        <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest">{label}</span>
+        <span className="text-[10px] font-semibold text-gray-500 uppercase">{label}</span>
       </div>
       <div className={`text-xl font-bold ${pulse ? 'text-red-600' : 'text-gray-900'}`}>
         {value}

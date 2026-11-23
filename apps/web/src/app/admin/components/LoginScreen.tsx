@@ -7,7 +7,6 @@ import {
   Mail,
   Lock,
   Loader2,
-  Sparkles,
   AlertCircle,
   Eye,
   EyeOff,
@@ -279,58 +278,23 @@ export function LoginScreen({ onLogin }: { onLogin: (token: string, role?: strin
 
   return (
     <div className="relative min-h-screen flex items-center justify-center px-4 overflow-hidden bg-gray-950">
-      {/* Grid pattern overlay */}
-      <div
-        className="absolute inset-0 opacity-[0.03]"
-        style={{
-          backgroundImage:
-            'linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)',
-          backgroundSize: '64px 64px',
-        }}
-      />
-
       <motion.div
         key={shakeKey}
-        initial={{ opacity: 0, y: 30, scale: 0.96 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
         className="relative w-full max-w-sm"
       >
-        {/* Glow behind card */}
-        <div className="absolute -inset-4 bg-gradient-to-r from-cyan-500/20 via-blue-500/10 to-cyan-500/20 rounded-3xl blur-2xl opacity-70" />
-
         {/* Login card */}
-        <div className="relative bg-white/5 backdrop-blur-2xl rounded-3xl p-7 sm:p-9 border border-white/[0.08] shadow-2xl">
-          {/* Decorative top gradient line */}
-          <div className="absolute top-0 left-8 right-8 h-px bg-gradient-to-r from-transparent via-cyan-400/50 to-transparent" />
-
+        <div className="relative bg-gray-900 rounded-2xl p-6 sm:p-8 border border-white/[0.08]">
           {/* Logo */}
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ delay: 0.2, type: 'spring', stiffness: 200, damping: 15 }}
-            className="flex items-center justify-center mb-6"
-          >
-            <div className="relative">
-              <div className="w-14 h-14 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-xl shadow-cyan-500/30">
-                <Shield size={26} className="text-white" />
-              </div>
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}
-                className="absolute -inset-1 rounded-2xl border border-cyan-400/20"
-              />
-            </div>
-          </motion.div>
+          <div className="mb-6 flex h-10 w-10 items-center justify-center rounded-lg bg-white text-base font-semibold text-gray-950">
+            K
+          </div>
 
           {/* Header */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.35, duration: 0.5 }}
-            className="text-center mb-6"
-          >
-            <h1 className="text-xl font-bold text-white mb-1">
+          <div className="mb-6">
+            <h1 className="text-xl font-medium text-white mb-1">
               {flow === 'login' ? 'Admin & Team Portal' : 'Reset Password'}
             </h1>
             <p className="text-xs text-gray-400">
@@ -338,11 +302,11 @@ export function LoginScreen({ onLogin }: { onLogin: (token: string, role?: strin
                 ? 'Sign in with Password or Instant Mobile OTP'
                 : 'Enter your email to receive a verification code'}
             </p>
-          </motion.div>
+          </div>
 
           {/* Dual Tabs (Password vs OTP) */}
           {flow === 'login' && (
-            <div className="flex bg-white/5 p-1 rounded-xl mb-5 border border-white/5">
+            <div className="flex bg-white/5 p-1 rounded-lg mb-5 border border-white/5">
               <button
                 type="button"
                 onClick={() => {
@@ -350,9 +314,9 @@ export function LoginScreen({ onLogin }: { onLogin: (token: string, role?: strin
                   setError('')
                   setSuccessMsg('')
                 }}
-                className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-colors flex items-center justify-center gap-1.5 ${
                   tab === 'password'
-                    ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 shadow-sm'
+                    ? 'bg-white/10 text-white'
                     : 'text-gray-400 hover:text-gray-200'
                 }`}
               >
@@ -366,9 +330,9 @@ export function LoginScreen({ onLogin }: { onLogin: (token: string, role?: strin
                   setError('')
                   setSuccessMsg('')
                 }}
-                className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-colors flex items-center justify-center gap-1.5 ${
                   tab === 'otp'
-                    ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 shadow-sm'
+                    ? 'bg-white/10 text-white'
                     : 'text-gray-400 hover:text-gray-200'
                 }`}
               >
@@ -387,7 +351,7 @@ export function LoginScreen({ onLogin }: { onLogin: (token: string, role?: strin
                 animate={{ opacity: 1, y: 0, height: 'auto' }}
                 exit={{ opacity: 0, y: -5, height: 0 }}
                 transition={{ duration: 0.2 }}
-                className="flex items-center gap-2 bg-red-500/10 border border-red-500/20 text-red-400 text-xs rounded-xl px-3.5 py-2.5 mb-4"
+                className="flex items-center gap-2 bg-red-500/10 border border-red-500/20 text-red-400 text-xs rounded-lg px-3.5 py-2.5 mb-4"
               >
                 <AlertCircle size={14} className="shrink-0" />
                 <span>{error}</span>
@@ -399,7 +363,7 @@ export function LoginScreen({ onLogin }: { onLogin: (token: string, role?: strin
                 animate={{ opacity: 1, y: 0, height: 'auto' }}
                 exit={{ opacity: 0, y: -5, height: 0 }}
                 transition={{ duration: 0.2 }}
-                className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs rounded-xl px-3.5 py-2.5 mb-4"
+                className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs rounded-lg px-3.5 py-2.5 mb-4"
               >
                 <CheckCircle2 size={14} className="shrink-0" />
                 <span>{successMsg}</span>
@@ -415,7 +379,7 @@ export function LoginScreen({ onLogin }: { onLogin: (token: string, role?: strin
                 <div className="relative">
                   <Mail
                     size={16}
-                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-cyan-400 transition-colors"
+                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-gray-200 transition-colors"
                   />
                   <input
                     ref={emailRef}
@@ -423,7 +387,7 @@ export function LoginScreen({ onLogin }: { onLogin: (token: string, role?: strin
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="admin@kanchuki.app"
-                    className="w-full pl-10 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/50 transition-all"
+                    className="w-full pl-10 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-white/30 focus:border-white/30 transition-colors"
                     autoComplete="email"
                     disabled={loading}
                     required
@@ -442,7 +406,7 @@ export function LoginScreen({ onLogin }: { onLogin: (token: string, role?: strin
                       setError('')
                       setSuccessMsg('')
                     }}
-                    className="text-[11px] text-cyan-400 hover:text-cyan-300 transition-colors"
+                    className="text-[11px] text-gray-300 hover:text-white transition-colors"
                   >
                     Forgot password?
                   </button>
@@ -450,14 +414,14 @@ export function LoginScreen({ onLogin }: { onLogin: (token: string, role?: strin
                 <div className="relative">
                   <Lock
                     size={16}
-                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-cyan-400 transition-colors"
+                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-gray-200 transition-colors"
                   />
                   <input
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Enter password"
-                    className="w-full pl-10 pr-10 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/50 transition-all"
+                    className="w-full pl-10 pr-10 py-2.5 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-white/30 focus:border-white/30 transition-colors"
                     autoComplete="current-password"
                     disabled={loading}
                     required
@@ -476,9 +440,8 @@ export function LoginScreen({ onLogin }: { onLogin: (token: string, role?: strin
               <motion.button
                 type="submit"
                 disabled={loading}
-                whileHover={{ scale: 1.01 }}
                 whileTap={{ scale: 0.98 }}
-                className="relative w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-semibold py-2.5 rounded-xl transition-all shadow-lg shadow-cyan-500/25 hover:shadow-cyan-500/40 disabled:opacity-60 disabled:cursor-not-allowed overflow-hidden group text-sm mt-2"
+                className="relative w-full bg-white hover:bg-gray-200 text-gray-950 font-medium py-2.5 rounded-lg transition-colors disabled:opacity-60 disabled:cursor-not-allowed text-sm mt-2"
               >
                 <span className="relative flex items-center justify-center gap-2">
                   {loading ? (
@@ -488,7 +451,6 @@ export function LoginScreen({ onLogin }: { onLogin: (token: string, role?: strin
                     </>
                   ) : (
                     <>
-                      <Sparkles size={16} />
                       Sign In with Password
                     </>
                   )}
@@ -509,14 +471,14 @@ export function LoginScreen({ onLogin }: { onLogin: (token: string, role?: strin
                     <div className="relative">
                       <Smartphone
                         size={16}
-                        className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-cyan-400 transition-colors"
+                        className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-gray-200 transition-colors"
                       />
                       <input
                         type="text"
                         value={identifier}
                         onChange={(e) => setIdentifier(e.target.value)}
                         placeholder="10-digit phone or email"
-                        className="w-full pl-10 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/50 transition-all"
+                        className="w-full pl-10 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-white/30 focus:border-white/30 transition-colors"
                         disabled={loading}
                         required
                       />
@@ -526,9 +488,8 @@ export function LoginScreen({ onLogin }: { onLogin: (token: string, role?: strin
                   <motion.button
                     type="submit"
                     disabled={loading || identifier.trim().length < 3}
-                    whileHover={{ scale: 1.01 }}
                     whileTap={{ scale: 0.98 }}
-                    className="relative w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-semibold py-2.5 rounded-xl transition-all shadow-lg shadow-cyan-500/25 hover:shadow-cyan-500/40 disabled:opacity-60 disabled:cursor-not-allowed overflow-hidden group text-sm"
+                    className="relative w-full bg-white hover:bg-gray-200 text-gray-950 font-medium py-2.5 rounded-lg transition-colors disabled:opacity-60 disabled:cursor-not-allowed text-sm"
                   >
                     <span className="relative flex items-center justify-center gap-2">
                       {loading ? (
@@ -538,7 +499,6 @@ export function LoginScreen({ onLogin }: { onLogin: (token: string, role?: strin
                         </>
                       ) : (
                         <>
-                          <Sparkles size={16} />
                           Send Sign-In OTP
                         </>
                       )}
@@ -559,7 +519,7 @@ export function LoginScreen({ onLogin }: { onLogin: (token: string, role?: strin
                           setOtpCode('')
                           setError('')
                         }}
-                        className="text-[11px] text-cyan-400 hover:text-cyan-300"
+                        className="text-[11px] text-gray-300 hover:text-white"
                       >
                         Change
                       </button>
@@ -567,7 +527,7 @@ export function LoginScreen({ onLogin }: { onLogin: (token: string, role?: strin
                     <div className="relative">
                       <KeyRound
                         size={16}
-                        className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-cyan-400 transition-colors"
+                        className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-gray-200 transition-colors"
                       />
                       <input
                         type="text"
@@ -575,7 +535,7 @@ export function LoginScreen({ onLogin }: { onLogin: (token: string, role?: strin
                         onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                         placeholder="6-digit OTP code"
                         maxLength={6}
-                        className="w-full pl-10 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-base text-white tracking-widest placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/50 transition-all font-mono"
+                        className="w-full pl-10 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-base text-white tracking-widest placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-white/30 focus:border-white/30 transition-colors font-mono"
                         autoFocus
                         disabled={loading}
                         required
@@ -586,9 +546,8 @@ export function LoginScreen({ onLogin }: { onLogin: (token: string, role?: strin
                   <motion.button
                     type="submit"
                     disabled={loading || otpCode.length !== 6}
-                    whileHover={{ scale: 1.01 }}
                     whileTap={{ scale: 0.98 }}
-                    className="relative w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-semibold py-2.5 rounded-xl transition-all shadow-lg shadow-cyan-500/25 hover:shadow-cyan-500/40 disabled:opacity-60 disabled:cursor-not-allowed overflow-hidden group text-sm"
+                    className="relative w-full bg-white hover:bg-gray-200 text-gray-950 font-medium py-2.5 rounded-lg transition-colors disabled:opacity-60 disabled:cursor-not-allowed text-sm"
                   >
                     <span className="relative flex items-center justify-center gap-2">
                       {loading ? (
@@ -598,7 +557,6 @@ export function LoginScreen({ onLogin }: { onLogin: (token: string, role?: strin
                         </>
                       ) : (
                         <>
-                          <Sparkles size={16} />
                           Verify &amp; Sign In
                         </>
                       )}
@@ -619,14 +577,14 @@ export function LoginScreen({ onLogin }: { onLogin: (token: string, role?: strin
                 <div className="relative">
                   <Mail
                     size={16}
-                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-cyan-400 transition-colors"
+                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-gray-200 transition-colors"
                   />
                   <input
                     type="email"
                     value={resetEmail}
                     onChange={(e) => setResetEmail(e.target.value)}
                     placeholder="name@kanchuki.app"
-                    className="w-full pl-10 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/50 transition-all"
+                    className="w-full pl-10 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-white/30 focus:border-white/30 transition-colors"
                     autoFocus
                     disabled={loading}
                     required
@@ -637,9 +595,8 @@ export function LoginScreen({ onLogin }: { onLogin: (token: string, role?: strin
               <motion.button
                 type="submit"
                 disabled={loading || !resetEmail.includes('@')}
-                whileHover={{ scale: 1.01 }}
                 whileTap={{ scale: 0.98 }}
-                className="relative w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-semibold py-2.5 rounded-xl transition-all shadow-lg shadow-cyan-500/25 hover:shadow-cyan-500/40 disabled:opacity-60 text-sm"
+                className="relative w-full bg-white hover:bg-gray-200 text-gray-950 font-medium py-2.5 rounded-lg transition-colors disabled:opacity-60 disabled:cursor-not-allowed text-sm"
               >
                 {loading ? 'Sending code...' : 'Send Reset Code'}
               </motion.button>
@@ -668,7 +625,7 @@ export function LoginScreen({ onLogin }: { onLogin: (token: string, role?: strin
                 <div className="relative">
                   <KeyRound
                     size={16}
-                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-cyan-400 transition-colors"
+                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-gray-200 transition-colors"
                   />
                   <input
                     type="text"
@@ -676,7 +633,7 @@ export function LoginScreen({ onLogin }: { onLogin: (token: string, role?: strin
                     onChange={(e) => setResetCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                     placeholder="Enter code"
                     maxLength={6}
-                    className="w-full pl-10 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 font-mono tracking-widest"
+                    className="w-full pl-10 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-white/30 font-mono tracking-widest"
                     autoFocus
                     disabled={loading || resetSuccess}
                     required
@@ -691,14 +648,14 @@ export function LoginScreen({ onLogin }: { onLogin: (token: string, role?: strin
                 <div className="relative">
                   <Lock
                     size={16}
-                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-cyan-400 transition-colors"
+                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-gray-200 transition-colors"
                   />
                   <input
                     type="password"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     placeholder="Min 8 characters"
-                    className="w-full pl-10 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                    className="w-full pl-10 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-white/30"
                     disabled={loading || resetSuccess}
                     required
                   />
@@ -708,9 +665,8 @@ export function LoginScreen({ onLogin }: { onLogin: (token: string, role?: strin
               <motion.button
                 type="submit"
                 disabled={loading || resetCode.length !== 6 || newPassword.length < 8 || resetSuccess}
-                whileHover={{ scale: 1.01 }}
                 whileTap={{ scale: 0.98 }}
-                className="relative w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-semibold py-2.5 rounded-xl transition-all shadow-lg shadow-cyan-500/25 hover:shadow-cyan-500/40 disabled:opacity-60 text-sm"
+                className="relative w-full bg-white hover:bg-gray-200 text-gray-950 font-medium py-2.5 rounded-lg transition-colors disabled:opacity-60 disabled:cursor-not-allowed text-sm"
               >
                 {loading ? 'Updating password...' : 'Update Password & Sign In'}
               </motion.button>

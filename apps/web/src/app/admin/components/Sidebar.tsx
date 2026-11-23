@@ -59,12 +59,14 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 type Leaf = { label: string; href: string; icon: LucideIcon; superAdminOnly?: boolean };
 type Group = { label: string; icon: LucideIcon; superAdminOnly?: boolean; children: Leaf[] };
 type NavItem = Leaf | Group | { separator: true };
+
+const FLYOUT_WIDTH = 224;
 
 const NAV_ITEMS: NavItem[] = [
   {
@@ -283,6 +285,9 @@ export function Sidebar({
     null,
   );
 
+  const focusFlyout = useRef(false);
+  const flyoutTrigger = useRef<HTMLButtonElement | null>(null);
+
   const handleLogout = () => {
     // Clearing sessionStorage alone is not enough — the layout keeps its
     // `authed` state, so the dashboard would stay mounted. onLogout tells the
@@ -334,6 +339,21 @@ export function Sidebar({
       return true;
     });
 
+  // Hover opens a group for mouse users. Click/tap and Enter open it too, so
+  // touch and keyboard can reach every page; keyboard focus moves into the flyout
+  // because it is portalled to <body> and is otherwise out of tab order.
+  const openFlyout = (label: string, row: HTMLElement) => {
+    const rect = row.getBoundingClientRect();
+    setOpenGroup({
+      label,
+      top: rect.top,
+      left: Math.max(8, Math.min(rect.right, window.innerWidth - FLYOUT_WIDTH - 8)),
+    });
+  };
+
+  const focusRing =
+    'focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-white/60';
+
   return (
     <>
       {/* Mobile overlay */}
@@ -343,49 +363,38 @@ export function Sidebar({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
+            transition={{ duration: 0.16 }}
+            className="fixed inset-0 bg-black/60 z-40 lg:hidden"
             onClick={onMobileClose}
           />
         )}
       </AnimatePresence>
 
       {/* Sidebar */}
-      <motion.aside
-        animate={{ width: collapsed ? 64 : 240 }}
-        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-        className={`fixed top-0 left-0 z-50 h-full bg-gray-950/90 backdrop-blur-xl border-r border-white/[0.06] flex flex-col ${
-          mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
-        } transition-transform duration-300`}
+      <aside
+        className={`fixed top-0 left-0 z-50 flex h-full w-60 flex-col border-r border-white/[0.08] bg-gray-950 transition-transform duration-200 ease-out ${
+          collapsed ? 'lg:w-16' : ''
+        } ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
       >
         {/* Logo */}
-        <div className="h-16 flex items-center justify-center border-b border-white/[0.06] shrink-0">
-          <Link href="/admin" className="flex items-center gap-2.5 group px-3">
-            <motion.div
-              whileHover={{ scale: 1.05, rotate: -5 }}
-              className="w-9 h-9 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl flex items-center justify-center shrink-0 shadow-lg shadow-cyan-500/20"
-            >
-              <span className="text-white font-bold text-sm">K</span>
-            </motion.div>
-            <AnimatePresence>
-              {!collapsed && (
-                <motion.span
-                  initial={{ opacity: 0, width: 0 }}
-                  animate={{ opacity: 1, width: 'auto' }}
-                  exit={{ opacity: 0, width: 0 }}
-                  className="font-bold text-white text-sm truncate overflow-hidden whitespace-nowrap"
-                >
-                  Kanchuki Admin
-                </motion.span>
-              )}
-            </AnimatePresence>
+        <div className="flex h-16 shrink-0 items-center border-b border-white/[0.08] px-4">
+          <Link href="/admin" className={`flex items-center gap-2 rounded-md ${focusRing}`}>
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-white text-sm font-semibold text-gray-950">
+              K
+            </span>
+            {!collapsed && (
+              <span className="truncate whitespace-nowrap text-sm font-medium text-white">
+                Kanchuki Admin
+              </span>
+            )}
           </Link>
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 py-4 px-2 space-y-1 overflow-y-auto">
+        <nav className="flex-1 space-y-0.5 overflow-y-auto px-2 py-4">
           {filteredNavItems.map((item, index) => {
             if ('separator' in item) {
-              return <div key={`sep-${index}`} className="my-2 border-t border-white/[0.06]" />;
+              return <div key={`sep-${index}`} className="my-2 border-t border-white/[0.08]" />;
             }
 
             if ('children' in item) {
@@ -396,33 +405,33 @@ export function Sidebar({
                 <div
                   key={item.label}
                   className="relative"
-                  onMouseEnter={(e) =>
-                    setOpenGroup({
-                      label: item.label,
-                      top: e.currentTarget.getBoundingClientRect().top,
-                      left: e.currentTarget.getBoundingClientRect().right,
-                    })
-                  }
+                  onMouseEnter={(e) => openFlyout(item.label, e.currentTarget)}
                   onMouseLeave={() => setOpenGroup(null)}
                 >
                   <button
                     type="button"
-                    className={`relative flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-medium transition-all group ${
-                      isGroupActive ? 'text-cyan-400' : 'text-gray-400 hover:text-gray-200'
+                    aria-label={item.label}
+                    aria-haspopup="true"
+                    aria-expanded={isOpen}
+                    onClick={(e) => {
+                      // detail === 0 means the click came from the keyboard.
+                      if (e.detail === 0) {
+                        focusFlyout.current = true;
+                        flyoutTrigger.current = e.currentTarget;
+                      }
+                      openFlyout(item.label, e.currentTarget.parentElement as HTMLElement);
+                    }}
+                    className={`flex h-9 w-full items-center gap-2 rounded-lg px-3 text-sm transition-colors ${focusRing} ${
+                      isGroupActive
+                        ? 'bg-white/[0.08] text-white'
+                        : 'text-gray-400 hover:bg-white/[0.04] hover:text-gray-200'
                     }`}
                   >
-                    <item.icon
-                      size={20}
-                      className={`shrink-0 relative z-10 transition-colors ${
-                        isGroupActive ? 'text-cyan-400' : 'text-gray-500 group-hover:text-gray-300'
-                      }`}
-                    />
+                    <item.icon size={16} strokeWidth={1.5} className="shrink-0" />
                     {!collapsed && (
                       <>
-                        <span className="relative z-10 whitespace-nowrap flex-1 text-left">
-                          {item.label}
-                        </span>
-                        <ChevronRight size={14} className="relative z-10 shrink-0 text-gray-600" />
+                        <span className="flex-1 whitespace-nowrap text-left">{item.label}</span>
+                        <ChevronRight size={16} strokeWidth={1.5} className="shrink-0 text-gray-500" />
                       </>
                     )}
                   </button>
@@ -431,6 +440,12 @@ export function Sidebar({
                     openGroup &&
                     createPortal(
                       <div
+                        ref={(el) => {
+                          if (el && focusFlyout.current) {
+                            focusFlyout.current = false;
+                            el.querySelector('a')?.focus();
+                          }
+                        }}
                         // Flush against the trigger (no gap) so the pointer never leaves the
                         // hover zone on the way in; clamped + scrollable so tall groups
                         // (Settings & Operations) can't run off the bottom of the viewport.
@@ -441,11 +456,23 @@ export function Sidebar({
                             Math.min(openGroup.top, window.innerHeight - 8 - (item.children.length * 36 + 16)),
                           ),
                           left: openGroup.left,
+                          width: FLYOUT_WIDTH,
                           maxHeight: 'calc(100vh - 16px)',
                         }}
-                        className="w-56 overflow-y-auto bg-gray-900 border border-white/[0.08] rounded-xl shadow-2xl py-2 z-50"
+                        className="z-50 overflow-y-auto rounded-lg border border-white/[0.08] bg-gray-900 p-1 shadow-lg"
                         onMouseEnter={() => setOpenGroup(openGroup)}
                         onMouseLeave={() => setOpenGroup(null)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Escape') {
+                            setOpenGroup(null);
+                            flyoutTrigger.current?.focus();
+                          }
+                        }}
+                        onBlur={(e) => {
+                          if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+                            setOpenGroup(null);
+                          }
+                        }}
                       >
                         {item.children.map((child) => {
                           const childActive = isLinkActive(child.href);
@@ -453,17 +480,18 @@ export function Sidebar({
                             <Link
                               key={child.href}
                               href={child.href}
+                              aria-current={childActive ? 'page' : undefined}
                               onClick={() => {
                                 onMobileClose();
                                 setOpenGroup(null);
                               }}
-                              className={`flex items-center gap-3 px-3 py-2 text-sm font-medium transition-colors ${
+                              className={`flex h-9 items-center gap-2 rounded-md px-3 text-sm transition-colors ${focusRing} ${
                                 childActive
-                                  ? 'text-cyan-400 bg-cyan-500/10'
-                                  : 'text-gray-400 hover:text-gray-200 hover:bg-white/[0.04]'
+                                  ? 'bg-white/[0.08] text-white'
+                                  : 'text-gray-400 hover:bg-white/[0.04] hover:text-gray-200'
                               }`}
                             >
-                              <child.icon size={16} className="shrink-0" />
+                              <child.icon size={16} strokeWidth={1.5} className="shrink-0" />
                               <span className="whitespace-nowrap">{child.label}</span>
                             </Link>
                           );
@@ -478,121 +506,63 @@ export function Sidebar({
             const isActive = isLinkActive(item.href);
 
             return (
-              <motion.div
+              <Link
                 key={item.href}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.05, type: 'spring', stiffness: 200, damping: 20 }}
+                href={item.href}
+                onClick={onMobileClose}
+                aria-current={isActive ? 'page' : undefined}
+                className={`flex h-9 items-center gap-2 rounded-lg px-3 text-sm transition-colors ${focusRing} ${
+                  isActive
+                    ? 'bg-white/[0.08] text-white'
+                    : 'text-gray-400 hover:bg-white/[0.04] hover:text-gray-200'
+                }`}
               >
-                <Link
-                  href={item.href}
-                  onClick={onMobileClose}
-                  className="relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all group"
-                >
-                  {isActive && (
-                    <motion.div
-                      layoutId="sidebar-active"
-                      className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 to-transparent rounded-xl border border-cyan-500/10"
-                      transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                    />
-                  )}
-                  {isActive && (
-                    <motion.div
-                      layoutId="sidebar-indicator"
-                      className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 bg-cyan-400 rounded-full"
-                      transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                    />
-                  )}
-                  <item.icon
-                    size={20}
-                    className={`shrink-0 relative z-10 transition-colors ${
-                      isActive ? 'text-cyan-400' : 'text-gray-500 group-hover:text-gray-300'
-                    }`}
-                  />
-                  <AnimatePresence>
-                    {!collapsed && (
-                      <motion.span
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className={`relative z-10 whitespace-nowrap ${
-                          isActive ? 'text-cyan-400' : 'text-gray-400 group-hover:text-gray-200'
-                        }`}
-                      >
-                        {item.label}
-                      </motion.span>
-                    )}
-                  </AnimatePresence>
-                </Link>
-              </motion.div>
+                <item.icon size={16} strokeWidth={1.5} className="shrink-0" />
+                {!collapsed && <span className="whitespace-nowrap">{item.label}</span>}
+              </Link>
             );
           })}
         </nav>
 
         {/* Bottom section */}
-        <div className="border-t border-white/[0.06] p-2 space-y-1">
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-xl"
-          >
-            <div className="w-8 h-8 bg-gradient-to-br from-cyan-400 to-blue-500 rounded-full flex items-center justify-center shrink-0">
-              <Shield size={14} className="text-white" />
+        <div className="space-y-0.5 border-t border-white/[0.08] p-2">
+          <div className="flex h-12 items-center gap-2 px-2">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/[0.08] text-gray-300">
+              <Shield size={16} strokeWidth={1.5} />
             </div>
-            <AnimatePresence>
-              {!collapsed && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="overflow-hidden"
-                >
-                  <p className="text-xs font-medium text-gray-300 truncate">Admin</p>
-                  <p className="text-[10px] text-gray-500 truncate">Platform Manager</p>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </motion.div>
+            {!collapsed && (
+              <div className="overflow-hidden">
+                <p className="truncate text-xs font-medium text-gray-200">Admin</p>
+                <p className="truncate text-xs text-gray-500">Platform manager</p>
+              </div>
+            )}
+          </div>
 
-          <motion.button
+          <button
+            type="button"
             onClick={handleLogout}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-medium text-gray-500 hover:text-red-400 hover:bg-red-500/5 transition-all group"
+            aria-label="Sign out"
+            className={`flex h-9 w-full items-center gap-2 rounded-lg px-3 text-sm text-gray-400 transition-colors hover:bg-white/[0.04] hover:text-gray-200 ${focusRing}`}
           >
-            <LogOut size={20} className="shrink-0 group-hover:rotate-12 transition-transform" />
-            <AnimatePresence>
-              {!collapsed && (
-                <motion.span
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="whitespace-nowrap"
-                >
-                  Sign out
-                </motion.span>
-              )}
-            </AnimatePresence>
-          </motion.button>
+            <LogOut size={16} strokeWidth={1.5} className="shrink-0" />
+            {!collapsed && <span className="whitespace-nowrap">Sign out</span>}
+          </button>
         </div>
 
         {/* Collapse toggle */}
-        <motion.button
+        <button
+          type="button"
           onClick={onToggle}
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.9 }}
-          className="hidden lg:flex absolute -right-3 top-20 w-6 h-6 bg-gray-800 border border-white/[0.08] rounded-full items-center justify-center text-gray-400 hover:text-white hover:border-white/20 shadow-lg transition-all z-10"
+          className="absolute -right-3 top-20 z-10 hidden h-6 w-6 items-center justify-center rounded-full border border-white/[0.08] bg-gray-800 text-gray-400 transition-colors hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/60 lg:flex"
           aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
-          <motion.div
-            animate={{ rotate: collapsed ? 180 : 0 }}
-            transition={{ type: 'spring', stiffness: 200, damping: 20 }}
-          >
-            <ChevronLeft size={14} />
-          </motion.div>
-        </motion.button>
-      </motion.aside>
+          <ChevronLeft
+            size={14}
+            strokeWidth={1.5}
+            className={`transition-transform duration-150 ${collapsed ? 'rotate-180' : ''}`}
+          />
+        </button>
+      </aside>
     </>
   );
 }

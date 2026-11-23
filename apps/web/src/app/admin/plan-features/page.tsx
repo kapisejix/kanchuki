@@ -64,15 +64,15 @@ const FEATURES: { key: FeatureKey; label: string; description: string }[] = [
 // Prices are NOT here — they come live from plan_pricing (Admin → Plan Pricing).
 const PLAN_LABELS: Record<Plan, { name: string; color: string }> = {
   STARTER: { name: 'Starter', color: 'border-gray-200 bg-gray-50/50' },
-  GROWTH: { name: 'Growth', color: 'border-cyan-200 bg-cyan-50/30' },
+  GROWTH: { name: 'Growth', color: 'border-ink-200 bg-ink-50/30' },
   PRO: { name: 'Pro', color: 'border-blue-200 bg-blue-50/30' },
 }
 
 // Tier accents use the admin theme (gray + cyan/blue, same as the Sidebar): gray -> cyan -> cyan-to-blue.
 const PLAN_ACCENT: Record<Plan, string> = {
-  STARTER: 'from-gray-400 to-gray-500',
-  GROWTH: 'from-cyan-400 to-cyan-500',
-  PRO: 'from-cyan-500 to-blue-600',
+  STARTER: 'bg-gray-400',
+  GROWTH: 'bg-ink-600',
+  PRO: 'bg-ink-600',
 }
 
 // ─── Page ──────────────────────────────────────────────────────────────
@@ -153,7 +153,7 @@ export default function PlanFeaturesPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
-        <Loader2 size={24} className="animate-spin text-cyan-500" />
+        <Loader2 size={24} className="animate-spin text-ink-500" />
       </div>
     )
   }
@@ -168,12 +168,6 @@ export default function PlanFeaturesPage() {
       <div>
         <div className="flex items-center gap-3 mb-1">
           <h1 className="text-2xl font-bold text-gray-900">Plan Features</h1>
-          <motion.div
-            animate={{ rotate: [0, 10, -10, 0], scale: [1, 1.1, 1.1, 1] }}
-            transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
-          >
-            <Sparkles size={20} className="text-cyan-500" />
-          </motion.div>
         </div>
         <p className="text-sm text-gray-500">
           Boolean feature flags per plan tier (F-013). <strong>Fails closed</strong> — a feature with no row is OFF by default.
@@ -198,19 +192,19 @@ export default function PlanFeaturesPage() {
       )}
 
       {/* Feature grid */}
-      <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 overflow-hidden">
+      <div className="bg-white rounded-2xl border border-gray-200/80 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100">
-                <th className="text-left px-5 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider w-[280px]">
+                <th className="text-left px-5 py-4 text-xs font-semibold text-gray-500 w-[280px]">
                   Feature
                 </th>
                 {PLANS.map((plan) => (
                   <th
                     key={plan}
-                    className={`text-center px-4 py-4 text-xs font-semibold uppercase tracking-wider border-l border-gray-100 ${
-                      plan === 'GROWTH' ? 'text-cyan-600' : plan === 'PRO' ? 'text-blue-700' : 'text-gray-500'
+                    className={`text-center px-4 py-4 text-xs font-semibold border-l border-gray-100 ${
+                      plan === 'GROWTH' ? 'text-ink-600' : plan === 'PRO' ? 'text-blue-700' : 'text-gray-500'
                     }`}
                   >
                     <div className="flex flex-col items-center gap-0.5">
@@ -246,17 +240,16 @@ export default function PlanFeaturesPage() {
                         <div className="flex items-center justify-center gap-2">
                           <motion.button
                             onClick={() => toggle(plan, feature.key)}
-                            whileHover={{ scale: 1.1 }}
                             whileTap={{ scale: 0.9 }}
-                            className={`p-1.5 rounded-lg transition-all ${
+                            className={`p-1.5 rounded-lg transition ${
                               enabled
-                                ? 'text-cyan-600 hover:bg-cyan-50'
+                                ? 'text-ink-600 hover:bg-ink-50'
                                 : 'text-gray-300 hover:text-gray-400 hover:bg-gray-100'
                             }`}
                             aria-label={`Toggle ${feature.label} for ${plan}`}
                           >
                             {enabled ? (
-                              <CheckSquare size={20} className="text-cyan-600" />
+                              <CheckSquare size={20} className="text-ink-600" />
                             ) : (
                               <Square size={20} />
                             )}
@@ -265,11 +258,10 @@ export default function PlanFeaturesPage() {
                           <motion.button
                             onClick={() => save(plan, feature.key)}
                             disabled={isSaving}
-                            whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
-                            className={`p-1.5 rounded-lg transition-all ${
+                            className={`p-1.5 rounded-lg transition ${
                               enabled
-                                ? 'text-cyan-600 hover:bg-cyan-50'
+                                ? 'text-ink-600 hover:bg-ink-50'
                                 : 'text-gray-300 hover:text-gray-400 hover:bg-gray-100'
                             } disabled:opacity-50`}
                             aria-label={`Save ${feature.label} for ${plan}`}
@@ -289,7 +281,7 @@ export default function PlanFeaturesPage() {
                             animate={{ scale: 1 }}
                             className="mt-1"
                           >
-                            <div className={`inline-flex h-1.5 w-12 rounded-full bg-gradient-to-r ${PLAN_ACCENT[plan]}`} />
+                            <div className={`inline-flex h-1.5 w-12 rounded-full ${PLAN_ACCENT[plan]}`} />
                           </motion.div>
                         )}
                         {!enabled && (

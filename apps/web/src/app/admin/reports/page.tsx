@@ -9,7 +9,6 @@ import {
   TrendingUp,
   AlertTriangle,
   CheckCircle2,
-  Sparkles,
   Store,
   UserCheck,
   RefreshCw,
@@ -74,7 +73,6 @@ function AgentRow({
   return (
     <motion.tr
       variants={itemVariants}
-      whileHover={{ backgroundColor: 'rgba(6,182,212,0.03)', transition: { duration: 0.2 } }}
       className="border-b border-gray-50 transition-colors"
     >
       <td className="px-4 py-3.5">
@@ -84,7 +82,7 @@ function AgentRow({
           }`}>
             #{index + 1}
           </span>
-          <div className="w-8 h-8 bg-gradient-to-br from-cyan-400 to-blue-500 rounded-lg flex items-center justify-center text-white font-bold text-xs">
+          <div className="bg-ink-600 w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-xs">
             {agent.name.charAt(0).toUpperCase()}
           </div>
           <div className="min-w-0">
@@ -186,9 +184,9 @@ export default function ReportsPage() {
   const totalRetailersManaged = agents.reduce((sum, a) => sum + a.retailer_count, 0)
 
   const tabClass = (tab: string) =>
-    `px-4 py-2.5 text-sm font-semibold rounded-xl transition-all cursor-pointer ${
+    `px-4 py-2.5 text-sm font-semibold rounded-xl transition cursor-pointer ${
       activeTab === tab
-        ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg shadow-cyan-500/25'
+        ? 'bg-ink-600 text-white shadow-lg'
         : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100/80'
     }`
 
@@ -196,7 +194,7 @@ export default function ReportsPage() {
     return (
       <div className="flex items-center justify-center py-24">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-2 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin" />
+          <div className="w-8 h-8 border-2 border-ink-500/30 border-t-ink-500 rounded-full animate-spin" />
           <p className="text-sm text-gray-400">Loading reports...</p>
         </div>
       </div>
@@ -215,20 +213,13 @@ export default function ReportsPage() {
         <div>
           <div className="flex items-center gap-3 mb-1">
             <h1 className="text-2xl font-bold text-gray-900">Manager Reports</h1>
-            <motion.div
-              animate={{ rotate: [0, 10, -10, 0] }}
-              transition={{ duration: 2, repeat: Infinity, repeatDelay: 5 }}
-            >
-              <Sparkles size={18} className="text-cyan-500" />
-            </motion.div>
           </div>
           <p className="text-sm text-gray-500">Agent performance, coverage gaps, and activation funnel</p>
         </div>
         <motion.button
           onClick={loadData}
-          whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
-          className="p-2.5 text-gray-400 hover:text-cyan-600 hover:bg-cyan-50 rounded-xl transition-all cursor-pointer"
+          className="p-2.5 text-gray-400 hover:text-ink-600 hover:bg-ink-50 rounded-xl transition cursor-pointer"
           title="Refresh"
         >
           <RefreshCw size={18} />
@@ -238,15 +229,15 @@ export default function ReportsPage() {
       {/* Summary banner */}
       <motion.div variants={containerVariants} initial="hidden" animate="visible">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <SummaryCard icon={Users} label="Total Agents" value={agents.length} color="blue" />
-          <SummaryCard icon={CheckCircle2} label="Avg Activation" value={`${avgActivation}%`} color="green" />
-          <SummaryCard icon={Store} label="Retailers Managed" value={totalRetailersManaged} color="cyan" />
-          <SummaryCard icon={MapPin} label="Coverage Gaps" value={gaps.total_gaps} color="amber" pulse={gaps.total_gaps > 0} />
+          <SummaryCard icon={Users} label="Total Agents" value={agents.length} />
+          <SummaryCard icon={CheckCircle2} label="Avg Activation" value={`${avgActivation}%`} />
+          <SummaryCard icon={Store} label="Retailers Managed" value={totalRetailersManaged} />
+          <SummaryCard icon={MapPin} label="Coverage Gaps" value={gaps.total_gaps} pulse={gaps.total_gaps > 0} />
         </div>
       </motion.div>
 
       {/* Tab navigation */}
-      <div className="flex items-center gap-2 bg-white/60 backdrop-blur-sm border border-gray-200/80 rounded-xl p-1.5 w-fit">
+      <div className="flex items-center gap-2 bg-white border border-gray-200/80 rounded-xl p-1.5 w-fit">
         <button onClick={() => setActiveTab('agents')} className={tabClass('agents')}>
           <div className="flex items-center gap-2">
             <Users size={15} />
@@ -275,18 +266,18 @@ export default function ReportsPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
         >
-          <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 overflow-hidden">
+          <div className="bg-white rounded-2xl border border-gray-200/80 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-100 bg-gray-50/80">
-                    <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Agent</th>
-                    <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Territories</th>
-                    <th className="px-4 py-3.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Retailers</th>
-                    <th className="px-4 py-3.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Activation Rate</th>
-                    <th className="px-4 py-3.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Active</th>
-                    <th className="px-4 py-3.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Capacity</th>
-                    <th className="px-4 py-3.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider" />
+                    <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500">Agent</th>
+                    <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500">Territories</th>
+                    <th className="px-4 py-3.5 text-center text-xs font-semibold text-gray-500">Retailers</th>
+                    <th className="px-4 py-3.5 text-center text-xs font-semibold text-gray-500">Activation Rate</th>
+                    <th className="px-4 py-3.5 text-center text-xs font-semibold text-gray-500">Active</th>
+                    <th className="px-4 py-3.5 text-center text-xs font-semibold text-gray-500">Capacity</th>
+                    <th className="px-4 py-3.5 text-right text-xs font-semibold text-gray-500" />
                   </tr>
                 </thead>
                 <motion.tbody variants={containerVariants} initial="hidden" animate="visible">
@@ -322,7 +313,7 @@ export default function ReportsPage() {
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-12 text-center"
+              className="bg-white rounded-2xl border border-gray-200/80 p-12 text-center"
             >
               <CheckCircle2 size={48} className="mx-auto mb-4 text-green-400" />
               <h3 className="text-lg font-bold text-gray-900 mb-1">No Coverage Gaps</h3>
@@ -349,7 +340,7 @@ export default function ReportsPage() {
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: i * 0.05 }}
-                    className="bg-white/80 backdrop-blur-sm rounded-xl border border-gray-200/80 p-4 flex items-center justify-between hover:shadow-md transition-all"
+                    className="bg-white rounded-xl border border-gray-200/80 p-4 flex items-center justify-between hover:shadow-md transition"
                   >
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center">
@@ -381,7 +372,7 @@ export default function ReportsPage() {
           className="space-y-6"
         >
           {/* Funnel visualization */}
-          <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-6">
+          <div className="bg-white rounded-2xl border border-gray-200/80 p-6">
             <h2 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
               <Activity size={16} className="text-gray-400" />
               Retailer Activation Funnel
@@ -391,31 +382,31 @@ export default function ReportsPage() {
                 label="Total Retailers"
                 value={activation.total_retailers}
                 pct={100}
-                color="from-blue-400 to-blue-500"
+                color="bg-ink-600"
               />
               <FunnelBar
                 label="Onboarding Completed"
                 value={activation.onboarding_completed}
                 pct={activation.total_retailers > 0 ? Math.round((activation.onboarding_completed / activation.total_retailers) * 100) : 0}
-                color="from-cyan-400 to-cyan-500"
+                color="bg-ink-600"
               />
               <FunnelBar
                 label="On Trial"
                 value={activation.trial}
                 pct={activation.total_retailers > 0 ? Math.round((activation.trial / activation.total_retailers) * 100) : 0}
-                color="from-amber-400 to-amber-500"
+                color="bg-amber-600"
               />
               <FunnelBar
                 label="Active Subscriptions"
                 value={activation.active_subscription}
                 pct={activation.total_retailers > 0 ? Math.round((activation.active_subscription / activation.total_retailers) * 100) : 0}
-                color="from-green-400 to-green-500"
+                color="bg-green-600"
               />
               <FunnelBar
                 label="Cancelled"
                 value={activation.cancelled}
                 pct={activation.total_retailers > 0 ? Math.round((activation.cancelled / activation.total_retailers) * 100) : 0}
-                color="from-red-400 to-red-500"
+                color="bg-red-600"
               />
             </div>
           </div>
@@ -424,11 +415,11 @@ export default function ReportsPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <motion.div
               variants={itemVariants}
-              className="bg-white/80 backdrop-blur-sm rounded-xl border border-gray-200/80 p-5 hover:shadow-md transition-all"
+              className="bg-white rounded-xl border border-gray-200/80 p-5 hover:shadow-md transition"
             >
               <div className="flex items-center gap-2 mb-3">
-                <CheckCircle2 size={16} className="text-cyan-500" />
-                <span className="text-xs font-semibold text-gray-500 uppercase tracking-widest">Onboarding Rate</span>
+                <CheckCircle2 size={16} className="text-ink-500" />
+                <span className="text-xs font-semibold text-gray-500">Onboarding Rate</span>
               </div>
               <div className="flex items-end gap-2">
                 <span className="text-3xl font-bold text-gray-900">{activation.onboarding_rate}%</span>
@@ -440,11 +431,11 @@ export default function ReportsPage() {
 
             <motion.div
               variants={itemVariants}
-              className="bg-white/80 backdrop-blur-sm rounded-xl border border-gray-200/80 p-5 hover:shadow-md transition-all"
+              className="bg-white rounded-xl border border-gray-200/80 p-5 hover:shadow-md transition"
             >
               <div className="flex items-center gap-2 mb-3">
                 <TrendingUp size={16} className="text-green-500" />
-                <span className="text-xs font-semibold text-gray-500 uppercase tracking-widest">Trial → Active Rate</span>
+                <span className="text-xs font-semibold text-gray-500">Trial → Active Rate</span>
               </div>
               <div className="flex items-end gap-2">
                 <span className="text-3xl font-bold text-gray-900">{activation.trial_to_active_rate}%</span>
@@ -466,32 +457,21 @@ function SummaryCard({
   icon: Icon,
   label,
   value,
-  color,
   pulse,
 }: {
   icon: LucideIcon
   label: string
   value: string | number
-  color: 'blue' | 'green' | 'cyan' | 'amber'
   pulse?: boolean
 }) {
-  const colorMap = {
-    blue: 'from-blue-500/20 to-transparent',
-    green: 'from-green-500/20 to-transparent',
-    cyan: 'from-cyan-500/20 to-transparent',
-    amber: 'from-amber-500/20 to-transparent',
-  }
-
   return (
     <motion.div
       variants={itemVariants}
-      whileHover={{ y: -2 }}
-      className="relative bg-white/80 backdrop-blur-sm rounded-xl border border-gray-200/80 p-4 transition-all hover:shadow-md overflow-hidden"
+      className="relative bg-white rounded-xl border border-gray-200/80 p-4 transition hover:shadow-md overflow-hidden"
     >
-      <div className={`absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r ${colorMap[color]}`} />
       <div className="flex items-center gap-2 mb-1.5">
         <Icon size={14} className={pulse ? 'text-amber-500 animate-pulse' : 'text-gray-400'} />
-        <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest">{label}</span>
+        <span className="text-[10px] font-semibold text-gray-500 uppercase">{label}</span>
       </div>
       <div className={`text-xl font-bold ${pulse ? 'text-amber-600' : 'text-gray-900'}`}>
         {typeof value === 'number' ? value.toLocaleString('en-IN') : value}
@@ -519,7 +499,7 @@ function FunnelBar({
           initial={{ width: 0 }}
           animate={{ width: `${Math.max(pct, 2)}%` }}
           transition={{ duration: 1, delay: 0.2, ease: 'easeOut' }}
-          className={`h-full rounded-full bg-gradient-to-r ${color}`}
+          className={`h-full rounded-full ${color}`}
         />
       </div>
       <span className="text-sm font-semibold text-gray-900 w-16 text-right">

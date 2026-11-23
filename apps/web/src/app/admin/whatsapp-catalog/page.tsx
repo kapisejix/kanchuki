@@ -154,7 +154,7 @@ export default function WhatsAppCatalogPage() {
       <motion.div variants={itemVariants}>
         <div className="flex items-center gap-3 mb-1">
           <h1 className="text-2xl font-bold text-gray-900">WhatsApp Catalog</h1>
-          <MessageCircle size={20} className="text-cyan-500" />
+          <MessageCircle size={20} className="text-ink-500" />
         </div>
         <p className="text-sm text-gray-500">
           Product catalog sync to WhatsApp Business native catalogs — per-retailer health, history and manual sync.
@@ -214,7 +214,7 @@ export default function WhatsAppCatalogPage() {
           {/* Retailer table (G1/G2) */}
           <motion.div
             variants={itemVariants}
-            className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 overflow-hidden"
+            className="bg-white rounded-2xl border border-gray-200/80 overflow-hidden"
           >
             <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
               <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
@@ -223,7 +223,7 @@ export default function WhatsAppCatalogPage() {
               </h2>
               <button
                 onClick={() => void load()}
-                className="text-xs font-medium text-gray-400 hover:text-cyan-600 transition-colors flex items-center gap-1.5"
+                className="text-xs font-medium text-gray-400 hover:text-ink-600 transition-colors flex items-center gap-1.5"
               >
                 <RefreshCw size={13} />
                 Refresh
@@ -259,15 +259,15 @@ export default function WhatsAppCatalogPage() {
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: i * 0.03 }}
                         onClick={() => setDetail(r)}
-                        className="border-b border-gray-50 hover:bg-cyan-50/40 cursor-pointer transition-colors group"
+                        className="border-b border-gray-50 hover:bg-ink-50/40 cursor-pointer transition-colors group"
                       >
                         <td className="px-6 py-3.5">
                           <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-xl bg-cyan-50 border border-cyan-100 flex items-center justify-center shrink-0">
-                              <Store size={16} className="text-cyan-500" />
+                            <div className="w-9 h-9 rounded-xl bg-ink-50 border border-ink-100 flex items-center justify-center shrink-0">
+                              <Store size={16} className="text-ink-500" />
                             </div>
                             <div className="min-w-0">
-                              <p className="font-semibold text-gray-900 truncate group-hover:text-cyan-700">
+                              <p className="font-semibold text-gray-900 truncate group-hover:text-ink-700">
                                 {r.shop_name}
                               </p>
                               <p className="text-xs text-gray-400 flex items-center gap-1.5 mt-0.5">
@@ -321,19 +321,18 @@ export default function WhatsAppCatalogPage() {
                             <motion.button
                               onClick={() => void triggerSync(r)}
                               disabled={!r.configured || syncingId === r.retailer_id}
-                              whileHover={r.configured ? { scale: 1.04 } : undefined}
                               whileTap={r.configured ? { scale: 0.96 } : undefined}
                               title={r.configured ? 'Force a full sync now' : 'Retailer has no WhatsApp API connection'}
-                              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border border-cyan-200 text-cyan-700 hover:bg-cyan-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border border-ink-200 text-ink-700 hover:bg-ink-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                             >
                               {syncingId === r.retailer_id ? (
-                                <div className="w-3.5 h-3.5 border-2 border-cyan-200 border-t-cyan-600 rounded-full animate-spin" />
+                                <div className="w-3.5 h-3.5 border-2 border-ink-200 border-t-ink-600 rounded-full animate-spin" />
                               ) : (
                                 <Zap size={13} />
                               )}
                               Sync now
                             </motion.button>
-                            <ChevronRight size={16} className="text-gray-300 group-hover:text-cyan-400 transition-colors" />
+                            <ChevronRight size={16} className="text-gray-300 group-hover:text-ink-400 transition-colors" />
                           </div>
                         </td>
                       </motion.tr>
@@ -389,22 +388,20 @@ function HealthCard({
   color: 'blue' | 'green' | 'amber' | 'purple' | 'red'
 }) {
   const colorMap = {
-    blue: { bg: 'bg-blue-50 border-blue-100', text: 'text-blue-600', icon: 'text-blue-500', top: 'from-blue-500/20 to-transparent' },
-    green: { bg: 'bg-green-50 border-green-100', text: 'text-green-600', icon: 'text-green-500', top: 'from-green-500/20 to-transparent' },
-    amber: { bg: 'bg-amber-50 border-amber-100', text: 'text-amber-600', icon: 'text-amber-500', top: 'from-amber-500/20 to-transparent' },
-    purple: { bg: 'bg-purple-50 border-purple-100', text: 'text-purple-600', icon: 'text-purple-500', top: 'from-purple-500/20 to-transparent' },
-    red: { bg: 'bg-red-50 border-red-100', text: 'text-red-600', icon: 'text-red-500', top: 'from-red-500/20 to-transparent' },
+    blue: { bg: 'bg-blue-50 border-blue-100', text: 'text-blue-600', icon: 'text-blue-500', top: 'bg-gray-100' },
+    green: { bg: 'bg-green-50 border-green-100', text: 'text-green-600', icon: 'text-green-500', top: 'bg-gray-100' },
+    amber: { bg: 'bg-amber-50 border-amber-100', text: 'text-amber-600', icon: 'text-amber-500', top: 'bg-gray-100' },
+    purple: { bg: 'bg-purple-50 border-purple-100', text: 'text-purple-600', icon: 'text-purple-500', top: 'bg-gray-100' },
+    red: { bg: 'bg-red-50 border-red-100', text: 'text-red-600', icon: 'text-red-500', top: 'bg-gray-100' },
   }
   const c = colorMap[color]
   return (
     <motion.div
       variants={itemVariants}
-      whileHover={{ y: -3, boxShadow: '0 12px 24px -8px rgba(0,0,0,0.1)' }}
-      className="relative bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200/80 p-5 transition-all overflow-hidden"
+      className="relative bg-white rounded-2xl border border-gray-200/80 p-5 transition overflow-hidden"
     >
-      <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${c.top}`} />
       <div className="flex items-start justify-between mb-2 relative">
-        <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest">{label}</span>
+        <span className="text-[10px] font-semibold text-gray-500 uppercase">{label}</span>
         <div className={`w-9 h-9 rounded-xl flex items-center justify-center border ${c.bg} ${c.icon}`}>
           <Icon size={17} />
         </div>
@@ -473,7 +470,7 @@ function RetailerDetailModal({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4"
       onClick={onClose}
     >
       <motion.div
@@ -488,8 +485,8 @@ function RetailerDetailModal({
         <div className="px-6 py-5 border-b border-gray-100 flex items-start justify-between">
           <div>
             <div className="flex items-center gap-2.5">
-              <div className="w-10 h-10 rounded-xl bg-cyan-50 border border-cyan-100 flex items-center justify-center">
-                <Store size={18} className="text-cyan-500" />
+              <div className="w-10 h-10 rounded-xl bg-ink-50 border border-ink-100 flex items-center justify-center">
+                <Store size={18} className="text-ink-500" />
               </div>
               <div>
                 <h3 className="text-base font-bold text-gray-900">{retailer.shop_name}</h3>
@@ -526,9 +523,8 @@ function RetailerDetailModal({
           <motion.button
             onClick={() => void syncNow()}
             disabled={!retailer.configured || syncing}
-            whileHover={retailer.configured ? { scale: 1.03 } : undefined}
             whileTap={retailer.configured ? { scale: 0.97 } : undefined}
-            className="ml-auto flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg bg-gradient-to-r from-cyan-600 to-blue-600 text-white disabled:opacity-40 disabled:cursor-not-allowed shadow shadow-cyan-500/25"
+            className="bg-ink-600 ml-auto flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg text-white disabled:opacity-40 disabled:cursor-not-allowed shadow"
           >
             {syncing ? (
               <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -573,7 +569,7 @@ function RetailerDetailModal({
                       {log.error_message && <p className="text-xs text-red-500 mt-1">{log.error_message}</p>}
                     </div>
                     <span
-                      className={`text-[10px] font-bold uppercase tracking-wide rounded-full px-2 py-1 ${
+                      className={`text-[10px] font-bold uppercase rounded-full px-2 py-1 ${
                         log.status === 'SUCCESS'
                           ? 'bg-green-50 text-green-600'
                           : log.status === 'FAILED'
@@ -656,16 +652,15 @@ function TabButton({
   return (
     <motion.button
       onClick={onClick}
-      whileHover={{ scale: 1.02 }}
       whileTap={{ scale: 0.97 }}
       className={`relative flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${
-        active ? 'text-cyan-700' : 'text-gray-500 hover:text-gray-700'
+        active ? 'text-ink-700' : 'text-gray-500 hover:text-gray-700'
       }`}
     >
       {active && (
         <motion.span
           layoutId="catalog-detail-tab"
-          className="absolute inset-0 bg-cyan-50 border border-cyan-200 rounded-xl"
+          className="absolute inset-0 bg-ink-50 border border-ink-200 rounded-xl"
           transition={{ type: 'spring', stiffness: 350, damping: 30 }}
         />
       )}

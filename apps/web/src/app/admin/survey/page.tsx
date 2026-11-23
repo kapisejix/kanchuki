@@ -90,7 +90,7 @@ export default function SurveySubmissionsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl shadow-lg shadow-amber-500/20">
+          <div className="bg-amber-600 p-2.5 rounded-xl shadow-lg">
             <ClipboardList size={20} className="text-white" />
           </div>
           <div>
@@ -128,7 +128,7 @@ export default function SurveySubmissionsPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-xs text-gray-400 uppercase tracking-wider border-b border-gray-100">
+                <tr className="text-left text-xs text-gray-400 border-b border-gray-100">
                   <th className="px-4 py-2">Store</th>
                   <th className="px-4 py-2">Owner</th>
                   <th className="px-4 py-2">City</th>
@@ -216,7 +216,7 @@ export default function SurveySubmissionsPage() {
             <div className="space-y-5">
               {SECTIONS.map((section) => (
                 <div key={section.title.en}>
-                  <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">{section.title.en}</h3>
+                  <h3 className="text-xs font-semibold text-gray-400 uppercase mb-2">{section.title.en}</h3>
                   <div className="space-y-2 bg-gray-50 rounded-xl border border-gray-100 p-3">
                     {section.questions.map((q) => (
                       <div key={q.name} className="text-sm">

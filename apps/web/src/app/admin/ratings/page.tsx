@@ -202,7 +202,7 @@ export default function AdminRatingsPage() {
           <select
             value={filters.type}
             onChange={(e) => { setFilters((f) => ({ ...f, type: e.target.value as typeof f.type })); setPage(1) }}
-            className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-cyan-400"
+            className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-ink-400"
           >
             <option value="all">All Types</option>
             <option value="product">Product Reviews</option>
@@ -212,7 +212,7 @@ export default function AdminRatingsPage() {
           <select
             value={filters.flagged}
             onChange={(e) => { setFilters((f) => ({ ...f, flagged: e.target.value })); setPage(1) }}
-            className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-cyan-400"
+            className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-ink-400"
           >
             <option value="">All Flags</option>
             <option value="true">Flagged Only</option>
@@ -222,7 +222,7 @@ export default function AdminRatingsPage() {
           <select
             value={filters.hidden}
             onChange={(e) => { setFilters((f) => ({ ...f, hidden: e.target.value })); setPage(1) }}
-            className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-cyan-400"
+            className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-ink-400"
           >
             <option value="">All Visibility</option>
             <option value="true">Hidden Only</option>
@@ -232,7 +232,7 @@ export default function AdminRatingsPage() {
           <select
             value={filters.min_rating}
             onChange={(e) => { setFilters((f) => ({ ...f, min_rating: e.target.value })); setPage(1) }}
-            className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-cyan-400"
+            className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-ink-400"
           >
             <option value="">Min Rating</option>
             <option value="1">1+ Stars</option>
@@ -245,7 +245,7 @@ export default function AdminRatingsPage() {
           <select
             value={filters.max_rating}
             onChange={(e) => { setFilters((f) => ({ ...f, max_rating: e.target.value })); setPage(1) }}
-            className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-cyan-400"
+            className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-ink-400"
           >
             <option value="">Max Rating</option>
             <option value="1">1 Star</option>
@@ -261,7 +261,7 @@ export default function AdminRatingsPage() {
       <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
         {loading ? (
           <div className="p-8 text-center">
-            <div className="w-8 h-8 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto" />
+            <div className="w-8 h-8 border-2 border-ink-500 border-t-transparent rounded-full animate-spin mx-auto" />
             <p className="text-sm text-gray-500 mt-3">Loading reviews...</p>
           </div>
         ) : reviews.length === 0 ? (
@@ -373,12 +373,12 @@ function ReviewRow({
               )}
             </span>
             {review.is_flagged && (
-              <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-orange-50 text-orange-600 flex items-center gap-1">
+              <span className="text-xs font-bold px-1.5 py-0.5 rounded bg-orange-50 text-orange-600 flex items-center gap-1">
                 <AlertTriangle size={9} /> Flagged
               </span>
             )}
             {review.is_hidden && (
-              <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-red-50 text-red-600 flex items-center gap-1">
+              <span className="text-xs font-bold px-1.5 py-0.5 rounded bg-red-50 text-red-600 flex items-center gap-1">
                 <EyeOff size={9} /> Hidden
               </span>
             )}
