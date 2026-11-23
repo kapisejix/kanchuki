@@ -1,5 +1,4 @@
 import { useRef, useState } from 'react'
-import { LinearGradient } from 'expo-linear-gradient'
 import { View, Text, TextInput, ScrollView, ActivityIndicator, Share, Alert, Linking } from 'react-native'
 import * as Sharing from 'expo-sharing'
 import { router } from 'expo-router'
@@ -172,12 +171,12 @@ export default function StoreProfileScreen() {
         >
           <X size={20} color="#231F48" />
         </AnimatedPressable>
-        <Text className="text-lg font-bold text-spaceCadet-900 font-marcellus">Store QR Code</Text>
+        <Text className="text-lg text-spaceCadet-900 font-marcellus">Store QR Code</Text>
         <View className="w-10" />
       </View>
 
       <View className="items-center px-6 mb-6">
-        <View className="bg-white rounded-3xl p-6 border border-lavender-200 shadow-sm items-center w-full max-w-sm">
+        <View className="bg-white rounded-2xl p-6 border border-lavender-200 items-center w-full max-w-sm">
           {hasQr ? (
             qrError ? (
               <View className="w-56 h-56 items-center justify-center px-4">
@@ -186,12 +185,12 @@ export default function StoreProfileScreen() {
                   onPress={() => void refetchQr()}
                   className="bg-spaceCadet-900 rounded-full px-5 py-2.5"
                 >
-                  <Text className="text-white font-bold text-xs uppercase tracking-wider">Retry</Text>
+                  <Text className="text-white font-semibold text-xs uppercase tracking-wider">Retry</Text>
                 </AnimatedPressable>
               </View>
             ) : qrLoading || !qr ? (
               <View className="w-56 h-56 items-center justify-center">
-                <ActivityIndicator color="#BB3F95" />
+                <ActivityIndicator color="#6B4773" />
               </View>
             ) : (
               <View className="p-2 bg-white rounded-2xl border border-lavender-200">
@@ -200,11 +199,11 @@ export default function StoreProfileScreen() {
             )
           ) : (
             <View className="w-56 items-center justify-center px-2 py-4">
-              <Text className="text-base font-bold text-spaceCadet-900 font-marcellus text-center mb-1">
+              <Text className="text-base text-spaceCadet-900 font-marcellus text-center mb-1">
                 No QR code yet
               </Text>
               <Text className="text-xs text-heliotrope-500 text-center mb-5 px-2">
-                Generate one to let customers scan straight into your luxury catalog.
+                Generate one to let customers scan straight into your catalog.
               </Text>
               <View className="w-full">
                 <GradientButton variant="web"
@@ -224,7 +223,7 @@ export default function StoreProfileScreen() {
         {hasQr && qr && !confirmingDelete && (
           <View className="w-full max-w-sm mt-4 gap-3">
             <AnimatedPressable onPress={() => void Linking.openURL(qr.profile_url)}>
-              <Text className="text-xs text-fuchsia-600 font-bold underline text-center">
+              <Text className="text-xs text-fuchsia-600 font-semibold underline text-center">
                 {qr.profile_url}
               </Text>
             </AnimatedPressable>
@@ -256,17 +255,17 @@ export default function StoreProfileScreen() {
             The DELETE endpoint is never reachable without this confirmation. */}
         {hasQr && confirmingDelete && (
           <View className="w-full bg-white rounded-2xl border border-rust-300 p-4 mt-4">
-            <Text className="text-sm font-bold text-sand-900 mb-1">Delete QR code?</Text>
-            <Text className="text-xs text-sand-500 mb-3 leading-4">
+            <Text className="text-sm font-semibold text-spaceCadet-900 mb-1">Delete QR code?</Text>
+            <Text className="text-xs text-heliotrope-500 mb-3 leading-4">
               Your store link and any printed QR will stop working. This can&apos;t be undone — type{' '}
-              <Text className="font-semibold text-sand-900">{me?.shop_name}</Text> to confirm.
+              <Text className="font-semibold text-spaceCadet-900">{me?.shop_name}</Text> to confirm.
             </Text>
             <TextInput
               value={deleteConfirmText}
               onChangeText={setDeleteConfirmText}
               placeholder={me?.shop_name ?? 'Your shop name'}
               placeholderTextColor={colors.sand[400]}
-              className="bg-sand-50 border border-sand-200 rounded-xl px-3 py-2.5 text-sm text-sand-900 mb-3"
+              className="bg-lavender-50 border border-lavender-200 rounded-xl px-3 py-2.5 text-sm text-spaceCadet-900 mb-3"
             />
             <View className="flex-row gap-3">
               <View className="flex-1">
@@ -292,16 +291,16 @@ export default function StoreProfileScreen() {
       </View>
 
       <View className="px-4">
-        <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-2">
+        <Text className="text-xs font-semibold text-heliotrope-500 mb-2">
           Catalog shown after scan
         </Text>
-        <Text className="text-xs text-sand-400 mb-3">
+        <Text className="text-xs text-heliotrope-500 mb-3">
           Pick which collection opens once a visitor fills the contact form
         </Text>
 
         {collections.length === 0 ? (
-          <View className="bg-white rounded-2xl p-4 border border-sand-100">
-            <Text className="text-sm text-sand-500">
+          <View className="bg-white rounded-2xl p-4 border border-lavender-200">
+            <Text className="text-sm text-heliotrope-500">
               No active collections yet — create one from the Collections tab first.
             </Text>
           </View>
@@ -315,24 +314,15 @@ export default function StoreProfileScreen() {
                   onPress={() => setStorefront.mutate(c.id)}
                   disabled={setStorefront.isPending}
                   className={`flex-row items-center justify-between rounded-2xl p-4 border overflow-hidden ${
-                    isSelected ? 'border-fuchsia-500' : 'bg-white border-sand-100'
+                    isSelected ? 'bg-lavender-100 border-spaceCadet-900' : 'bg-white border-lavender-200'
                   }`}
-                  style={isSelected ? { backgroundColor: undefined } : undefined}
                 >
-                  {isSelected && (
-                    <LinearGradient
-                      colors={['#231F48', '#560A39']}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                      style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-                    />
-                  )}
-                  <View style={{ zIndex: 1 }}>
-                    <Text className="text-sm font-semibold" style={{ color: isSelected ? '#FFFFFF' : '#1a1a2e' }}>{c.title}</Text>
-                    <Text className="text-xs mt-0.5" style={{ color: isSelected ? '#D4B8E8' : '#999' }}>{c.product_count} products</Text>
+                  <View>
+                    <Text className="text-sm font-semibold text-spaceCadet-900">{c.title}</Text>
+                    <Text className="text-xs mt-0.5 text-heliotrope-500">{c.product_count} products</Text>
                   </View>
                   {isSelected && (
-                    <View className="w-6 h-6 rounded-full bg-white/20 items-center justify-center" style={{ zIndex: 1 }}>
+                    <View className="w-6 h-6 rounded-full bg-spaceCadet-900 items-center justify-center">
                       <Check size={14} color="white" />
                     </View>
                   )}

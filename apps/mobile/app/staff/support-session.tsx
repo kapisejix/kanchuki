@@ -132,17 +132,17 @@ export default function SupportSessionScreen() {
       {waiting ? (
         <View className="flex-1 items-center justify-center px-8">
           <ActivityIndicator color={primaryColor} />
-          <Text className="text-sand-900 text-base font-bold mt-4 text-center">
+          <Text className="text-spaceCadet-900 text-base font-semibold mt-4 text-center">
             Waiting for {waiting.shop}
           </Text>
-          <Text className="text-sand-500 text-sm mt-2 text-center">
+          <Text className="text-heliotrope-500 text-sm mt-2 text-center">
             They will see an Approve / Deny prompt the next time Kanchuki is open.
           </Text>
           <AnimatedPressable
             onPress={() => void handleCancel()}
             className="mt-6 bg-sand-100 px-5 py-3 rounded-xl"
           >
-            <Text className="text-sand-700 text-sm font-bold">Cancel request</Text>
+            <Text className="text-heliotrope-600 text-sm font-semibold">Cancel request</Text>
           </AnimatedPressable>
         </View>
       ) : (
@@ -150,7 +150,7 @@ export default function SupportSessionScreen() {
           className="flex-1 px-4"
           contentContainerStyle={{ paddingTop: 12, paddingBottom: screenPaddingBottom }}
         >
-          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-2">
+          <Text className="text-xs font-semibold text-heliotrope-500 mb-2">
             What do you need to do?
           </Text>
           <View className="gap-2 mb-5">
@@ -161,25 +161,25 @@ export default function SupportSessionScreen() {
                 accessibilityRole="button"
                 accessibilityState={{ selected: scope === s.key }}
                 className={`rounded-2xl p-4 border ${
-                  scope === s.key ? 'border-ink-600 bg-ink-50' : 'border-sand-100 bg-white'
+                  scope === s.key ? 'border-ink-600 bg-ink-50' : 'border-lavender-200 bg-white'
                 }`}
               >
                 <View className="flex-row items-center gap-2">
                   <ShieldCheck size={16} color={primaryColor} />
-                  <Text className="text-sm font-bold text-sand-900">{s.label}</Text>
+                  <Text className="text-sm font-semibold text-spaceCadet-900">{s.label}</Text>
                 </View>
-                <Text className="text-xs text-sand-500 mt-1">{s.blurb}</Text>
+                <Text className="text-xs text-heliotrope-500 mt-1">{s.blurb}</Text>
               </AnimatedPressable>
             ))}
           </View>
 
-          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-2">
+          <Text className="text-xs font-semibold text-heliotrope-500 mb-2">
             Retailer
           </Text>
           {isLoading ? (
             <ActivityIndicator color={primaryColor} className="mt-6" />
           ) : retailers.length === 0 ? (
-            <Text className="text-sand-400 text-sm text-center py-10">
+            <Text className="text-heliotrope-500 text-sm text-center py-10">
               No retailers in your territory.
             </Text>
           ) : (
@@ -189,17 +189,17 @@ export default function SupportSessionScreen() {
                   key={r.id}
                   onPress={() => void handleStart(r)}
                   disabled={starting !== null}
-                  className="bg-white rounded-2xl p-4 border border-sand-100 flex-row items-center gap-3"
+                  className="bg-white rounded-2xl p-4 border border-lavender-200 flex-row items-center gap-3"
                 >
                   <Store size={18} color={primaryColor} />
                   <View className="flex-1">
-                    <Text className="text-sm font-semibold text-sand-900">{r.shop_name}</Text>
-                    <Text className="text-xs text-sand-400 mt-0.5">{r.city}</Text>
+                    <Text className="text-sm font-semibold text-spaceCadet-900">{r.shop_name}</Text>
+                    <Text className="text-xs text-heliotrope-500 mt-0.5">{r.city}</Text>
                   </View>
                   {starting === r.id ? (
                     <ActivityIndicator color={primaryColor} size="small" />
                   ) : (
-                    <Text className="text-xs font-bold text-ink-600">Request</Text>
+                    <Text className="text-xs font-semibold text-ink-600">Request</Text>
                   )}
                 </AnimatedPressable>
               ))}

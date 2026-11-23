@@ -24,7 +24,7 @@ const TYPE_LABEL = Object.fromEntries(TYPES.map((t) => [t.value, t.label]));
 
 const STATUS_STYLE: Record<SupportTicket['status'], { label: string; bg: string; text: string }> = {
   OPEN: { label: 'Waiting for a team member', bg: 'bg-amber-100', text: 'text-amber-800' },
-  ASSIGNED: { label: 'Assigned', bg: 'bg-fuchsia-100', text: 'text-fuchsia-800' },
+  ASSIGNED: { label: 'Assigned', bg: 'bg-lavender-100', text: 'text-heliotrope-600' },
   RESOLVED: { label: 'Resolved', bg: 'bg-emerald-100', text: 'text-emerald-800' },
   CLOSED: { label: 'Closed', bg: 'bg-lavender-100', text: 'text-heliotrope-600' },
 };
@@ -36,13 +36,13 @@ function formatDate(iso: string) {
 function TicketRow({ t }: { t: SupportTicket }) {
   const s = STATUS_STYLE[t.status];
   return (
-    <View className="bg-white rounded-3xl p-4 border border-lavender-200">
+    <View className="bg-white rounded-2xl p-4 border border-lavender-200">
       <View className="flex-row items-center justify-between gap-2">
-        <Text className="text-sm font-bold text-spaceCadet-900 flex-1">
+        <Text className="text-sm font-semibold text-spaceCadet-900 flex-1">
           {TYPE_LABEL[t.ticket_type] ?? 'Support'}
         </Text>
         <View className={`rounded-full px-2.5 py-0.5 ${s.bg}`}>
-          <Text className={`text-[10px] font-bold ${s.text}`}>{s.label}</Text>
+          <Text className={`text-[11px] font-semibold ${s.text}`}>{s.label}</Text>
         </View>
       </View>
       {t.note ? (
@@ -107,8 +107,8 @@ export default function HelpSupportScreen() {
               <ChevronLeft size={20} color="#231F48" />
             </AnimatedPressable>
             <Text
-              style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-              className="text-xl font-bold text-spaceCadet-900"
+              style={{ fontFamily: 'Marcellus_400Regular' }}
+              className="text-xl text-spaceCadet-900"
             >
               Help & Support
             </Text>
@@ -121,10 +121,10 @@ export default function HelpSupportScreen() {
           contentContainerStyle={{ paddingBottom: screenPaddingBottom, gap: 16 }}
           refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} />}
         >
-          <View className="bg-white rounded-3xl p-5 border border-lavender-200">
+          <View className="bg-white rounded-2xl p-5 border border-lavender-200">
             <View className="flex-row items-center gap-2 mb-1">
-              <LifeBuoy size={18} color="#BB3F95" />
-              <Text className="text-base font-bold text-spaceCadet-900">Raise a ticket</Text>
+              <LifeBuoy size={18} color="#6B4773" />
+              <Text className="text-base font-semibold text-spaceCadet-900">Raise a ticket</Text>
             </View>
             <Text className="text-xs text-heliotrope-500 mb-3 leading-5">
               Tell us what you need. A Kanchuki team member will pick it up. Raising a ticket does not
@@ -144,7 +144,7 @@ export default function HelpSupportScreen() {
                       active ? 'bg-spaceCadet-900 border-spaceCadet-900' : 'bg-lavender-50 border-lavender-200'
                     }`}
                   >
-                    <Text className={`text-xs font-bold ${active ? 'text-white' : 'text-spaceCadet-900'}`}>
+                    <Text className={`text-xs font-semibold ${active ? 'text-white' : 'text-spaceCadet-900'}`}>
                       {t.label}
                     </Text>
                   </AnimatedPressable>
@@ -192,11 +192,11 @@ export default function HelpSupportScreen() {
           </View>
 
           <View>
-            <Text className="text-xs font-bold text-heliotrope-500 uppercase tracking-wider px-1 mb-2">
+            <Text className="text-xs font-semibold text-heliotrope-500 px-1 mb-2">
               My tickets
             </Text>
             {isLoading ? (
-              <ActivityIndicator color="#BB3F95" className="py-6" />
+              <ActivityIndicator color="#6B4773" className="py-6" />
             ) : tickets.length === 0 ? (
               <Text className="text-xs text-heliotrope-500 px-1">No tickets yet.</Text>
             ) : (

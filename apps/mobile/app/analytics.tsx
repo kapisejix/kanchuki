@@ -79,19 +79,19 @@ const StatCard = memo(function StatCard({
   onPress?: () => void
 }) {
   const content = (
-    <View className="flex-1 bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm min-w-[48%]">
+    <View className="flex-1 bg-white rounded-2xl p-5 border border-lavender-200 min-w-[48%]">
       <View className="flex-row items-center gap-2 mb-3">
-        <View className="w-10 h-10 rounded-2xl items-center justify-center bg-lavender-100 border border-lavender-200">
+        <View className="w-6 h-6 justify-center">
           {icon}
         </View>
       </View>
       <Text
-        style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-        className="text-2xl font-bold text-spaceCadet-900"
+        style={{ fontFamily: 'Marcellus_400Regular' }}
+        className="text-2xl text-spaceCadet-900"
       >
         {value}
       </Text>
-      <Text className="text-xs font-bold text-spaceCadet-900 mt-1 uppercase tracking-wider">{label}</Text>
+      <Text className="text-xs font-semibold text-spaceCadet-900 mt-1">{label}</Text>
       {subtitle && <Text className="text-[11px] text-heliotrope-500 mt-0.5 font-medium">{subtitle}</Text>}
     </View>
   )
@@ -120,7 +120,7 @@ function MiniBarChart({
         const height = Math.max((d.value / max) * 70, d.value > 0 ? 8 : 3)
         return (
           <View key={i} className="flex-1 items-center gap-1.5">
-            <Text className="text-[10px] text-heliotrope-500 font-bold">
+            <Text className="text-[11px] text-heliotrope-500 font-semibold">
               {d.value > 0 ? d.value : ''}
             </Text>
             <View
@@ -130,7 +130,7 @@ function MiniBarChart({
                 backgroundColor: d.value > 0 ? color : '#E0E1F6',
               }}
             />
-            <Text className="text-[10px] text-heliotrope-500 font-bold">{d.label}</Text>
+            <Text className="text-[11px] text-heliotrope-500 font-semibold">{d.label}</Text>
           </View>
         )
       })}
@@ -146,19 +146,19 @@ function CategoryBreakdown({
   data: { category: string; count: number }[]
 }) {
   const CHART_COLORS = [
-    '#BB3F95',
     '#231F48',
     '#560A39',
     '#6B4773',
-    '#845EC2',
-    '#D65CB3',
+    '#5E7196',
+    '#928EB2',
+    '#C8CAEE',
   ]
   const total = data.reduce((s, d) => s + d.count, 0)
   if (total === 0) return null
 
   return (
-    <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
-      <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider mb-4">
+    <View className="bg-white rounded-2xl p-5 border border-lavender-200">
+      <Text className="text-xs font-semibold text-spaceCadet-900 mb-4">
         Products by Category
       </Text>
       {data.slice(0, 6).map((d, i) => {
@@ -169,10 +169,10 @@ function CategoryBreakdown({
               className="w-3 h-3 rounded-full"
               style={{ backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }}
             />
-            <Text className="flex-1 text-sm font-bold text-spaceCadet-900">{d.category}</Text>
+            <Text className="flex-1 text-sm font-semibold text-spaceCadet-900">{d.category}</Text>
             <Text
-              style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-              className="text-xs font-bold text-spaceCadet-900"
+              style={{ fontFamily: 'Marcellus_400Regular' }}
+              className="text-xs text-spaceCadet-900"
             >
               {d.count} ({pct}%)
             </Text>
@@ -202,12 +202,12 @@ const CollectionCard = memo(function CollectionCard({
   return (
     <AnimatedPressable
       onPress={() => router.push({ pathname: '/collection/[id]', params: { id: item.id } })}
-      className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm"
+      className="bg-white rounded-2xl p-5 border border-lavender-200"
     >
       <View className="flex-row items-start justify-between mb-3">
         <Text
-          style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-          className="text-base font-bold text-spaceCadet-900 flex-1 mr-2"
+          style={{ fontFamily: 'Marcellus_400Regular' }}
+          className="text-base text-spaceCadet-900 flex-1 mr-2"
           numberOfLines={1}
         >
           {item.title}
@@ -215,13 +215,13 @@ const CollectionCard = memo(function CollectionCard({
         <View
           className={`px-3 py-1 rounded-full border ${
             item.status === 'ACTIVE'
-              ? 'bg-fuchsia-500/15 border-fuchsia-500/30'
+              ? 'bg-lavender-100 border-lavender-200'
               : 'bg-lavender-100 border-lavender-200'
           }`}
         >
           <Text
-            className={`text-[10px] font-bold ${
-              item.status === 'ACTIVE' ? 'text-fuchsia-700' : 'text-heliotrope-500'
+            className={`text-[11px] font-semibold ${
+              item.status === 'ACTIVE' ? 'text-heliotrope-600' : 'text-heliotrope-500'
             }`}
           >
             {item.status}
@@ -231,20 +231,20 @@ const CollectionCard = memo(function CollectionCard({
 
       <View className="flex-row gap-4 pt-2 border-t border-lavender-200">
         <View className="flex-row items-center gap-1.5">
-          <Eye size={14} color="#BB3F95" />
-          <Text className="text-xs font-bold text-spaceCadet-900">{item.view_count}</Text>
+          <Eye size={14} color="#6B4773" />
+          <Text className="text-xs font-semibold text-spaceCadet-900">{item.view_count}</Text>
         </View>
         <View className="flex-row items-center gap-1.5">
-          <MessageCircle size={14} color="#BB3F95" />
-          <Text className="text-xs font-bold text-spaceCadet-900">{item.enquiry_count}</Text>
+          <MessageCircle size={14} color="#6B4773" />
+          <Text className="text-xs font-semibold text-spaceCadet-900">{item.enquiry_count}</Text>
         </View>
         <View className="flex-row items-center gap-1.5">
-          <Heart size={14} color="#BB3F95" />
-          <Text className="text-xs font-bold text-spaceCadet-900">{item.favorite_count}</Text>
+          <Heart size={14} color="#6B4773" />
+          <Text className="text-xs font-semibold text-spaceCadet-900">{item.favorite_count}</Text>
         </View>
         <View className="flex-row items-center gap-1.5">
-          <Package size={14} color="#BB3F95" />
-          <Text className="text-xs font-bold text-spaceCadet-900">{item.product_count}</Text>
+          <Package size={14} color="#6B4773" />
+          <Text className="text-xs font-semibold text-spaceCadet-900">{item.product_count}</Text>
         </View>
       </View>
     </AnimatedPressable>
@@ -266,17 +266,17 @@ function PlanUsageBar({
   return (
     <View className="mb-3">
       <View className="flex-row justify-between items-center mb-1.5">
-        <Text className="text-xs font-bold text-spaceCadet-900">{label}</Text>
+        <Text className="text-xs font-semibold text-spaceCadet-900">{label}</Text>
         <Text
-          style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-          className="text-xs font-bold text-spaceCadet-900"
+          style={{ fontFamily: 'Marcellus_400Regular' }}
+          className="text-xs text-spaceCadet-900"
         >
           {current} / {max >= UNLIMITED ? '∞' : max.toLocaleString('en-IN')}
         </Text>
       </View>
       <View className="h-2 bg-lavender-100 rounded-full overflow-hidden border border-lavender-200">
         <View
-          className="h-full rounded-full bg-fuchsia-600"
+          className="h-full rounded-full bg-spaceCadet-900"
           style={{ width: `${Math.min(pct, 100)}%` }}
         />
       </View>
@@ -319,8 +319,8 @@ export default function AnalyticsScreen() {
         style={{ paddingTop: headerPaddingTop }}
       >
         <Text
-          style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-          className="text-2xl font-bold text-spaceCadet-900"
+          style={{ fontFamily: 'Marcellus_400Regular' }}
+          className="text-2xl text-spaceCadet-900"
         >
           Store Analytics
         </Text>
@@ -333,19 +333,19 @@ export default function AnalyticsScreen() {
         {/* Overview Stats */}
         <View className="flex-row flex-wrap gap-3">
           <StatCard
-            icon={<Eye size={20} color="#BB3F95" />}
+            icon={<Eye size={20} color="#6B4773" />}
             label="Total Views"
             value={totalViews.toLocaleString('en-IN')}
             subtitle="Across all collections"
           />
           <StatCard
-            icon={<MessageCircle size={20} color="#BB3F95" />}
+            icon={<MessageCircle size={20} color="#6B4773" />}
             label="Enquiries"
             value={totalEnquiries.toLocaleString('en-IN')}
             subtitle="WhatsApp leads"
           />
           <StatCard
-            icon={<Package size={20} color="#BB3F95" />}
+            icon={<Package size={20} color="#6B4773" />}
             label="Available SKUs"
             value={
               (analytics?.status_breakdown
@@ -354,7 +354,7 @@ export default function AnalyticsScreen() {
             }
           />
           <StatCard
-            icon={<BarChart3 size={20} color="#BB3F95" />}
+            icon={<BarChart3 size={20} color="#6B4773" />}
             label="Total Products"
             value={
               (analytics?.status_breakdown
@@ -364,12 +364,12 @@ export default function AnalyticsScreen() {
         </View>
 
         {/* Daily Trend Chart */}
-        <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
+        <View className="bg-white rounded-2xl p-5 border border-lavender-200">
           <View className="flex-row items-center justify-between mb-3">
-            <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider">
+            <Text className="text-xs font-semibold text-spaceCadet-900">
               Daily Views (7 Days)
             </Text>
-            <TrendingUp size={16} color="#BB3F95" />
+            <TrendingUp size={16} color="#6B4773" />
           </View>
           <MiniBarChart
             data={trends.map((d) => ({
@@ -377,7 +377,7 @@ export default function AnalyticsScreen() {
               value: d.views,
             }))}
             maxValue={maxViews}
-            color="#BB3F95"
+            color="#231F48"
           />
           {totalViews === 0 && (
             <Text className="text-xs text-heliotrope-500 font-medium text-center mt-3">
@@ -388,12 +388,12 @@ export default function AnalyticsScreen() {
 
         {/* Daily Enquiries Chart */}
         {trends.some((d) => d.enquiries > 0) && (
-          <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
+          <View className="bg-white rounded-2xl p-5 border border-lavender-200">
             <View className="flex-row items-center justify-between mb-3">
-              <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider">
+              <Text className="text-xs font-semibold text-spaceCadet-900">
                 Daily Enquiries
               </Text>
-              <MessageCircle size={16} color="#BB3F95" />
+              <MessageCircle size={16} color="#6B4773" />
             </View>
             <MiniBarChart
               data={trends.map((d) => ({
@@ -413,20 +413,20 @@ export default function AnalyticsScreen() {
 
         {/* Plan Usage */}
         {analytics?.plan && (
-          <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
+          <View className="bg-white rounded-2xl p-5 border border-lavender-200">
             <View className="flex-row items-center justify-between mb-4">
-              <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider">
+              <Text className="text-xs font-semibold text-spaceCadet-900">
                 Plan Usage & Limits
               </Text>
               <View className="flex-row items-center gap-1.5">
-                <Store size={14} color="#BB3F95" />
-                <Text className="text-xs text-spaceCadet-900 font-bold">
+                <Store size={14} color="#6B4773" />
+                <Text className="text-xs text-spaceCadet-900 font-semibold">
                   {analytics.plan.plan}
                 </Text>
                 <View
-                  className="px-2.5 py-0.5 rounded-full bg-fuchsia-500/15 border border-fuchsia-500/30"
+                  className="px-2.5 py-0.5 rounded-full bg-lavender-100 border border-lavender-200"
                 >
-                  <Text className="text-[10px] font-bold text-fuchsia-700">
+                  <Text className="text-[11px] font-semibold text-heliotrope-600">
                     {analytics.plan.plan_status}
                   </Text>
                 </View>
@@ -456,7 +456,7 @@ export default function AnalyticsScreen() {
         {/* Recent Collections */}
         {(analytics?.recent_collections?.length ?? 0) > 0 && (
           <View className="gap-3">
-            <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider px-1">
+            <Text className="text-xs font-semibold text-spaceCadet-900 px-1">
               Recent Collections
             </Text>
             {analytics!.recent_collections.map((c) => (

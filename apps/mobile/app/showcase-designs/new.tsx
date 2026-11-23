@@ -3,7 +3,7 @@ import { View, Text, TextInput, ActivityIndicator, Image, ScrollView } from 'rea
 import { Stack, router } from 'expo-router'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as ImagePicker from 'expo-image-picker'
-import { ImagePlus, Check, Droplet, Sparkles } from 'lucide-react-native'
+import { ImagePlus, Check, Droplet } from 'lucide-react-native'
 import {
   showcaseDesignsApi,
   uploadImageToR2,
@@ -101,10 +101,10 @@ export default function NewShowcaseDesignScreen() {
           <AnimatedPressable
             onPress={() => void handlePickImage()}
             disabled={uploading}
-            className="w-44 h-56 rounded-3xl bg-white border border-lavender-200 items-center justify-center overflow-hidden shadow-sm border-dashed"
+            className="w-44 h-56 rounded-2xl bg-white border border-lavender-200 items-center justify-center overflow-hidden border-dashed"
           >
             {uploading ? (
-              <ActivityIndicator color="#BB3F95" />
+              <ActivityIndicator color="#6B4773" />
             ) : photoUri ? (
               <Image source={{ uri: photoUri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
             ) : (
@@ -116,7 +116,7 @@ export default function NewShowcaseDesignScreen() {
           </AnimatedPressable>
           <View className="flex-row items-center gap-1.5 mt-2.5 bg-lavender-100 px-3 py-1.5 rounded-full border border-lavender-200">
             <Droplet size={12} color="#6B4773" />
-            <Text className="text-[11px] text-heliotrope-600 font-bold">
+            <Text className="text-[11px] text-heliotrope-600 font-semibold">
               A light store watermark is added automatically
             </Text>
           </View>
@@ -124,7 +124,7 @@ export default function NewShowcaseDesignScreen() {
 
         {/* Category (DB chips, required) */}
         <View>
-          <Text className="text-xs font-bold text-heliotrope-600 uppercase tracking-wide mb-2">Category *</Text>
+          <Text className="text-xs font-semibold text-heliotrope-600 mb-2">Category *</Text>
           <View className="flex-row flex-wrap gap-2">
             {categories.map((cat) => {
               const selected = categoryId === cat.id
@@ -139,7 +139,7 @@ export default function NewShowcaseDesignScreen() {
                   }`}
                 >
                   {selected && <Check size={12} color="white" />}
-                  <Text className={`text-xs font-bold ${selected ? 'text-white' : 'text-spaceCadet-900'}`}>
+                  <Text className={`text-xs font-semibold ${selected ? 'text-white' : 'text-spaceCadet-900'}`}>
                     {cat.name}
                   </Text>
                 </AnimatedPressable>
@@ -155,7 +155,7 @@ export default function NewShowcaseDesignScreen() {
 
         {/* Name (optional) — AI auto-suggested when the photo is added */}
         <View>
-          <Text className="text-xs font-bold text-heliotrope-600 uppercase tracking-wide mb-1.5">
+          <Text className="text-xs font-semibold text-heliotrope-600 mb-1.5">
             Name (optional)
           </Text>
           <TextInput
@@ -165,22 +165,22 @@ export default function NewShowcaseDesignScreen() {
               suggesting ? 'Detecting name…' : 'e.g. Anarkali floor-length'
             }
             placeholderTextColor="#928EB2"
-            className="bg-white px-4 py-3 rounded-2xl text-sm font-bold text-spaceCadet-900 border border-lavender-200"
+            className="bg-white px-4 py-3 rounded-2xl text-sm font-semibold text-spaceCadet-900 border border-lavender-200"
             maxLength={150}
             editable={!suggesting}
           />
           <View className="flex-row items-center gap-2 mt-1.5">
             {suggesting ? (
               <View className="flex-row items-center gap-1.5">
-                <ActivityIndicator size={12} color="#BB3F95" />
+                <ActivityIndicator size={12} color="#6B4773" />
                 <Text className="text-[11px] text-heliotrope-500 font-medium">
                   Auto-detecting name &amp; color…
                 </Text>
               </View>
             ) : detectedColor ? (
               <View className="flex-row items-center gap-1.5 bg-lavender-100 px-2.5 py-1 rounded-full border border-lavender-200">
-                <Sparkles size={12} color="#6B4773" />
-                <Text className="text-[11px] text-heliotrope-600 font-bold">
+                <Droplet size={12} color="#6B4773" />
+                <Text className="text-[11px] text-heliotrope-600 font-semibold">
                   Detected color: {detectedColor}
                 </Text>
               </View>

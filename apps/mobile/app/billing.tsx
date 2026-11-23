@@ -50,8 +50,8 @@ export default function BillingScreen() {
           <ChevronLeft size={20} color="#231F48" />
         </AnimatedPressable>
         <Text
-          style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-          className="text-lg font-bold text-spaceCadet-900 ml-3"
+          style={{ fontFamily: 'Marcellus_400Regular' }}
+          className="text-lg text-spaceCadet-900 ml-3"
         >
           Plans & Billing
         </Text>
@@ -62,10 +62,10 @@ export default function BillingScreen() {
         contentContainerStyle={{ paddingBottom: screenPaddingBottom }}
       >
         {/* Current plan (read-only) */}
-        <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm mb-4">
+        <View className="bg-white rounded-2xl p-5 border border-lavender-200 mb-4">
           <View className="flex-row items-center gap-2 mb-2">
-            <CreditCard size={18} color="#BB3F95" />
-            <Text className="font-bold text-sm text-spaceCadet-900">
+            <CreditCard size={18} color="#6B4773" />
+            <Text className="font-semibold text-sm text-spaceCadet-900">
               {me?.plan ?? 'Starter'} Plan · {statusLabel}
             </Text>
           </View>
@@ -76,7 +76,7 @@ export default function BillingScreen() {
           </Text>
         </View>
 
-        <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm mb-10">
+        <View className="bg-white rounded-2xl p-5 border border-lavender-200 mb-10">
           <AnimatedPressable
             onPress={() =>
               void Linking.openURL(

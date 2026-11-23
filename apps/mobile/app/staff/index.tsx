@@ -79,7 +79,7 @@ export default function StaffDashboard() {
     : 0
 
   return (
-    <View className="flex-1 bg-ink-50">
+    <View className="flex-1 bg-[#F8F7FC]">
       {/* Header */}
       <View
         className="bg-ink-700 px-4 pb-6 rounded-b-3xl"
@@ -88,13 +88,13 @@ export default function StaffDashboard() {
         <View className="flex-row items-center justify-between mb-4">
           <View className="flex-row items-center gap-3">
             <View className="w-11 h-11 rounded-2xl bg-white/15 items-center justify-center">
-              <Text className="text-white font-bold text-base">
+              <Text className="text-white font-semibold text-base">
                 {displayName.charAt(0).toUpperCase()}
               </Text>
             </View>
             <View className="flex-1">
               <Text className="text-ink-100 text-xs">Staff Dashboard</Text>
-              <Text className="text-white text-lg font-bold mt-0.5">{displayName}</Text>
+              <Text className="text-white text-lg font-semibold mt-0.5">{displayName}</Text>
               <View className="flex-row items-center gap-1.5 mt-0.5">
                 <MapPin size={11} color={colors.dangerTint} />
                 <Text className="text-ink-200 text-xs flex-1" numberOfLines={1}>
@@ -116,7 +116,7 @@ export default function StaffDashboard() {
         {/* Role badge */}
         <View className="flex-row items-center gap-2">
           <View className="bg-white/20 px-3 py-1 rounded-full">
-            <Text className="text-white text-xs font-medium uppercase tracking-wide">
+            <Text className="text-white text-xs font-medium capitalize">
               {displayRole.replace('_', ' ')}
             </Text>
           </View>
@@ -138,7 +138,7 @@ export default function StaffDashboard() {
         {isLoading ? (
           <View className="items-center py-16">
             <ActivityIndicator size="large" color={primaryColor} />
-            <Text className="text-sand-400 text-sm mt-3">Loading...</Text>
+            <Text className="text-heliotrope-500 text-sm mt-3">Loading...</Text>
           </View>
         ) : (
           <>
@@ -148,26 +148,23 @@ export default function StaffDashboard() {
                 icon={<Store size={18} color={primaryColor} />}
                 label="Retailers"
                 value={retailers.length}
-                accent={colors.ink[50]}
               />
               <StatCard
                 icon={<Ticket size={18} color={colors.turmeric[500]} />}
                 label="Active Tickets"
                 value={totalTickets}
-                accent={colors.turmeric[50]}
               />
               <StatCard
                 icon={<Package size={18} color={colors.danger} />}
                 label="Open Issues"
                 value={ticketStats?.open ?? 0}
-                accent={colors.dangerSurface}
                 pulse={ticketStats && ticketStats.open > 0}
               />
             </View>
 
             {/* Quick actions */}
             <View className="px-4 pt-5">
-              <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-3">
+              <Text className="text-xs font-semibold text-heliotrope-500 mb-3">
                 Quick Actions
               </Text>
               <View className="flex-row gap-3">
@@ -184,24 +181,24 @@ export default function StaffDashboard() {
                   onPress={() => {
                     // Scroll to retailers section — for now just a visual cue
                   }}
-                  className="flex-1 bg-white rounded-2xl p-4 border border-sand-100"
+                  className="flex-1 bg-white rounded-2xl p-4 border border-lavender-200"
                 >
                   <Users size={24} color={primaryColor} />
-                  <Text className="text-sand-900 font-semibold text-sm mt-2">View Retailers</Text>
-                  <Text className="text-sand-400 text-xs mt-0.5">{retailers.length} in territory</Text>
+                  <Text className="text-spaceCadet-900 font-semibold text-sm mt-2">View Retailers</Text>
+                  <Text className="text-heliotrope-500 text-xs mt-0.5">{retailers.length} in territory</Text>
                 </AnimatedPressable>
               </View>
 
               <AnimatedPressable
                 onPress={() => router.push('/staff/catalog-tickets')}
-                className="mt-3 flex-row items-center gap-3 bg-white rounded-2xl p-4 border border-sand-100"
+                className="mt-3 flex-row items-center gap-3 bg-white rounded-2xl p-4 border border-lavender-200"
               >
-                <View className="w-10 h-10 rounded-xl bg-ink-50 items-center justify-center">
+                <View className="w-6 items-center justify-center">
                   <Package size={20} color={primaryColor} />
                 </View>
                 <View className="flex-1">
-                  <Text className="text-sand-900 font-semibold text-sm">Catalog Upload Jobs</Text>
-                  <Text className="text-sand-400 text-xs mt-0.5">
+                  <Text className="text-spaceCadet-900 font-semibold text-sm">Catalog Upload Jobs</Text>
+                  <Text className="text-heliotrope-500 text-xs mt-0.5">
                     Confirmed on-site visits assigned to you
                   </Text>
                 </View>
@@ -210,14 +207,14 @@ export default function StaffDashboard() {
 
               <AnimatedPressable
                 onPress={() => router.push('/staff/support-session')}
-                className="mt-3 flex-row items-center gap-3 bg-white rounded-2xl p-4 border border-sand-100"
+                className="mt-3 flex-row items-center gap-3 bg-white rounded-2xl p-4 border border-lavender-200"
               >
-                <View className="w-10 h-10 rounded-xl bg-ink-50 items-center justify-center">
+                <View className="w-6 items-center justify-center">
                   <Store size={20} color={primaryColor} />
                 </View>
                 <View className="flex-1">
-                  <Text className="text-sand-900 font-semibold text-sm">Support Session</Text>
-                  <Text className="text-sand-400 text-xs mt-0.5">
+                  <Text className="text-spaceCadet-900 font-semibold text-sm">Support Session</Text>
+                  <Text className="text-heliotrope-500 text-xs mt-0.5">
                     Demo, grow or fix a retailer&apos;s account (needs their approval)
                   </Text>
                 </View>
@@ -243,7 +240,7 @@ export default function StaffDashboard() {
             {/* Retailers in territory */}
             <View className="px-4 pt-5">
               <View className="flex-row items-center justify-between mb-3">
-                <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide">
+                <Text className="text-xs font-semibold text-heliotrope-500">
                   Retailers in Territory
                 </Text>
                 {retailers.length > 5 && (
@@ -254,9 +251,9 @@ export default function StaffDashboard() {
               </View>
 
               {retailers.length === 0 ? (
-                <View className="bg-white rounded-2xl p-8 border border-sand-100 items-center">
+                <View className="bg-white rounded-2xl p-8 border border-lavender-200 items-center">
                   <Store size={40} color={colors.sand[300]} />
-                  <Text className="text-sand-400 text-sm mt-4 text-center">
+                  <Text className="text-heliotrope-500 text-sm mt-4 text-center">
                     No retailers in your territory yet.{'\n'}Tap &quot;New Retailer&quot; to get started.
                   </Text>
                 </View>
@@ -265,29 +262,29 @@ export default function StaffDashboard() {
                   {retailers.slice(0, 10).map((r) => (
                     <AnimatedPressable
                       key={r.id}
-                      className="bg-white rounded-2xl p-4 border border-sand-100 flex-row items-center"
+                      className="bg-white rounded-2xl p-4 border border-lavender-200 flex-row items-center"
                     >
                       <View className="w-10 h-10 rounded-xl bg-ink-100 items-center justify-center mr-3">
-                        <Text className="text-ink-700 font-bold text-sm">
+                        <Text className="text-ink-700 font-semibold text-sm">
                           {r.shop_name.charAt(0).toUpperCase()}
                         </Text>
                       </View>
                       <View className="flex-1">
-                        <Text className="text-sm font-semibold text-sand-900">{r.shop_name}</Text>
+                        <Text className="text-sm font-semibold text-spaceCadet-900">{r.shop_name}</Text>
                         <View className="flex-row items-center gap-3 mt-1">
                           <View className="flex-row items-center gap-1">
                             <MapPin size={11} color={colors.sand[400]} />
-                            <Text className="text-xs text-sand-400">{r.city}</Text>
+                            <Text className="text-xs text-heliotrope-500">{r.city}</Text>
                           </View>
                           <View className="flex-row items-center gap-1">
                             <Phone size={11} color={colors.sand[400]} />
-                            <Text className="text-xs text-sand-400">{r.phone}</Text>
+                            <Text className="text-xs text-heliotrope-500">{r.phone}</Text>
                           </View>
                         </View>
                       </View>
                       <View className="items-end gap-1">
                         <StatusBadge status={r.plan_status} />
-                        <Text className="text-[10px] text-sand-400">
+                        <Text className="text-[11px] text-heliotrope-500">
                           {new Date(r.created_at).toLocaleDateString('en-IN', {
                             day: '2-digit', month: 'short',
                           })}
@@ -303,10 +300,10 @@ export default function StaffDashboard() {
             {/* Ticket summary */}
             {ticketStats && (
               <View className="px-4 pt-5">
-                <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-3">
+                <Text className="text-xs font-semibold text-heliotrope-500 mb-3">
                   Support Tickets
                 </Text>
-                <View className="bg-white rounded-2xl p-4 border border-sand-100">
+                <View className="bg-white rounded-2xl p-4 border border-lavender-200">
                   <View className="flex-row justify-between mb-3">
                     <TicketStat label="Open" value={ticketStats.open} color="amber" />
                     <TicketStat label="Assigned" value={ticketStats.assigned} color="blue" />
@@ -333,23 +330,22 @@ export default function StaffDashboard() {
 // ─── Sub-components ─────────────────────────────────────────────
 
 function StatCard({
-  icon, label, value, accent, pulse,
+  icon, label, value, pulse,
 }: {
   icon: React.ReactNode
   label: string
   value: number
-  accent: string
   pulse?: boolean
 }) {
   return (
-    <View className="flex-1 bg-white rounded-2xl p-4 border border-sand-100">
-      <View className="w-8 h-8 rounded-xl items-center justify-center mb-2" style={{ backgroundColor: accent }}>
+    <View className="flex-1 bg-white rounded-2xl p-4 border border-lavender-200">
+      <View className="w-6 h-6 justify-center mb-2">
         {icon}
       </View>
-      <Text className={`text-xl font-bold ${pulse ? 'text-turmeric-600' : 'text-sand-900'}`}>
+      <Text className={`text-xl font-semibold ${pulse ? 'text-turmeric-600' : 'text-spaceCadet-900'}`}>
         {value.toLocaleString('en-IN')}
       </Text>
-      <Text className="text-xs text-sand-500 mt-0.5">{label}</Text>
+      <Text className="text-xs text-heliotrope-500 mt-0.5">{label}</Text>
     </View>
   )
 }
@@ -359,16 +355,16 @@ function TicketStat({ label, value, color }: { label: string; value: number; col
     amber: { bg: 'bg-turmeric-100', text: 'text-turmeric-700' },
     blue: { bg: 'bg-ink-100', text: 'text-ink-700' },
     green: { bg: 'bg-turmeric-100', text: 'text-turmeric-700' },
-    gray: { bg: 'bg-sand-100', text: 'text-sand-500' },
+    gray: { bg: 'bg-sand-100', text: 'text-heliotrope-500' },
   }
   const c = colorMap[color] ?? colorMap.gray
 
   return (
     <View className="items-center">
       <View className={`w-8 h-8 rounded-lg ${c.bg} items-center justify-center mb-1`}>
-        <Text className={`text-sm font-bold ${c.text}`}>{value}</Text>
+        <Text className={`text-sm font-semibold ${c.text}`}>{value}</Text>
       </View>
-      <Text className="text-[10px] text-sand-400">{label}</Text>
+      <Text className="text-[11px] text-heliotrope-500">{label}</Text>
     </View>
   )
 }
@@ -378,13 +374,13 @@ function StatusBadge({ status }: { status: string }) {
     TRIAL: { bg: 'bg-turmeric-100', text: 'text-turmeric-700' },
     ACTIVE: { bg: 'bg-turmeric-100', text: 'text-turmeric-700' },
     PAST_DUE: { bg: 'bg-rust-100', text: 'text-rust-700' },
-    CANCELLED: { bg: 'bg-sand-100', text: 'text-sand-500' },
+    CANCELLED: { bg: 'bg-sand-100', text: 'text-heliotrope-500' },
   }
-  const c = colorMap[status] ?? { bg: 'bg-sand-100', text: 'text-sand-500' }
+  const c = colorMap[status] ?? { bg: 'bg-sand-100', text: 'text-heliotrope-500' }
 
   return (
     <View className={`${c.bg} px-2 py-0.5 rounded-full`}>
-      <Text className={`text-[10px] font-semibold ${c.text}`}>{status}</Text>
+      <Text className={`text-[11px] font-semibold ${c.text}`}>{status}</Text>
     </View>
   )
 }
