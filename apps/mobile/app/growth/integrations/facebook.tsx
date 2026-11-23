@@ -4,12 +4,11 @@ import { router } from 'expo-router';
 import { CheckCircle2, ChevronLeft, Lock, RefreshCw, Zap } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, Text, View } from 'react-native';
-import { useScreenInsets } from '../../../src/lib/safe-area';
 import { AnimatedPressable } from '../../../src/components/AnimatedPressable';
 import { BrandIcon } from '../../../src/components/BrandIcon';
 import { DangerButton } from '../../../src/components/DangerButton';
 import { GradientButton } from '../../../src/components/GradientButton';
-import { WhiteButton, WHITE_BUTTON_INK } from '../../../src/components/WhiteButton';
+import { WHITE_BUTTON_INK, WhiteButton } from '../../../src/components/WhiteButton';
 import { type SocialAccountInfo, socialApi } from '../../../src/lib/api/social';
 import { showError } from '../../../src/lib/errors';
 import {
@@ -17,6 +16,7 @@ import {
   FacebookAuthUnavailable,
   loginWithFacebook,
 } from '../../../src/lib/facebook-auth';
+import { useScreenInsets } from '../../../src/lib/safe-area';
 
 const ACCOUNTS_KEY = ['social', 'accounts'];
 

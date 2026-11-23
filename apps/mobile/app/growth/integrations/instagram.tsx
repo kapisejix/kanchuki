@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import * as Linking from 'expo-linking'
 import { router } from 'expo-router'
 import {
   CheckCircle2,
@@ -7,19 +7,18 @@ import {
   Lock,
   Zap,
 } from 'lucide-react-native'
+import { useEffect, useRef, useState } from 'react'
 import {
   Alert,
   ScrollView,
   Text,
   View,
 } from 'react-native'
-import * as Linking from 'expo-linking'
-import { useScreenInsets } from '../../../src/lib/safe-area'
-import { KeyboardScreen } from '../../../src/components/KeyboardScreen'
 import { AnimatedPressable } from '../../../src/components/AnimatedPressable'
 import { BrandIcon } from '../../../src/components/BrandIcon'
 import { DangerButton } from '../../../src/components/DangerButton'
 import { GradientButton } from '../../../src/components/GradientButton'
+import { KeyboardScreen } from '../../../src/components/KeyboardScreen'
 import { growthApi } from '../../../src/lib/api/growth'
 import { socialApi } from '../../../src/lib/api/social'
 import { showError } from '../../../src/lib/errors'
@@ -28,6 +27,7 @@ import {
   FacebookAuthUnavailable,
   loginWithFacebook,
 } from '../../../src/lib/facebook-auth'
+import { useScreenInsets } from '../../../src/lib/safe-area'
 
 export default function InstagramConfigScreen() {
   const { headerPaddingTop, screenPaddingBottom } = useScreenInsets()

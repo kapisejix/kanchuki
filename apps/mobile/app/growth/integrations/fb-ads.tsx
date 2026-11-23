@@ -1,25 +1,25 @@
-import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { router } from 'expo-router'
 import {
   ChevronLeft,
   ExternalLink,
 } from 'lucide-react-native'
+import { useState } from 'react'
 import {
   Alert,
+  Linking,
   ScrollView,
   Text,
   TextInput,
   View,
-  Linking,
 } from 'react-native'
-import { useScreenInsets } from '../../../src/lib/safe-area'
-import { KeyboardScreen } from '../../../src/components/KeyboardScreen'
 import { AnimatedPressable } from '../../../src/components/AnimatedPressable'
 import { GradientButton } from '../../../src/components/GradientButton'
-import { WhiteButton, WHITE_BUTTON_INK } from '../../../src/components/WhiteButton'
+import { KeyboardScreen } from '../../../src/components/KeyboardScreen'
+import { WHITE_BUTTON_INK, WhiteButton } from '../../../src/components/WhiteButton'
 import { growthApi } from '../../../src/lib/api/growth'
 import { showError } from '../../../src/lib/errors'
+import { useScreenInsets } from '../../../src/lib/safe-area'
 
 export default function FbAdsConfigScreen() {
   const { headerPaddingTop, screenPaddingBottom } = useScreenInsets()

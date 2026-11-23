@@ -1,7 +1,7 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { act } from 'react-test-renderer'
 import { Alert } from 'react-native'
+import { act } from 'react-test-renderer'
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { render } from '../../src/test/__mocks__/testing-library'
 
 // RC-132 — growth/integrations/facebook.tsx and instagram.tsx: two connect taps in one
@@ -89,7 +89,7 @@ describe.each([
     // connected:false keeps the Connect button on screen (a real connect swaps it for Disconnect)
     m.connectWithToken.mockResolvedValue({ data: { connected: false } })
     let settle: (v: string) => void = () => {}
-    m.loginWithFacebook.mockImplementation(() => new Promise((r) => (settle = r)))
+    m.loginWithFacebook.mockImplementation(() => new Promise((r) => { settle = r }))
     const t = render(<Screen />)
     mounted.push(t)
     const btn = byLabel(t, label)

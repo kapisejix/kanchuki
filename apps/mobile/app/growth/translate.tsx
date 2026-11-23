@@ -12,14 +12,14 @@ import {
 } from 'lucide-react-native'
 import { useState } from 'react'
 import { ActivityIndicator, ScrollView, Text, TextInput, View } from 'react-native'
-import { useScreenInsets } from '../../src/lib/safe-area'
-import { KeyboardScreen } from '../../src/components/KeyboardScreen'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { GradientButton } from '../../src/components/GradientButton'
+import { KeyboardScreen } from '../../src/components/KeyboardScreen'
 import { WHITE_BUTTON_INK, WhiteButton } from '../../src/components/WhiteButton'
 import { productApi } from '../../src/lib/api'
-import { growthApi, TRANSLATE_LANGUAGES, type TranslateLanguage, type TranslateResult } from '../../src/lib/api/growth'
+import { TRANSLATE_LANGUAGES, type TranslateLanguage, type TranslateResult, growthApi } from '../../src/lib/api/growth'
 import { showError } from '../../src/lib/errors'
+import { useScreenInsets } from '../../src/lib/safe-area'
 
 type PickedItem = { id: string; name: string | null; message?: string | null }
 
