@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { previewCover, previewTargets } from './post-preview';
+import { previewCover, previewLinkLine, previewTargets } from './post-preview';
 
 // RC-061: the composer preview said "Your store" whatever Page was selected,
 // and showed no image when the post's media was a video.
@@ -23,6 +23,22 @@ describe('previewTargets', () => {
 
   it('no targets → no cards', () => {
     expect(previewTargets(accounts, [])).toEqual([]);
+  });
+});
+
+describe('previewLinkLine', () => {
+  const url = 'https://kanchuki.app/shop';
+
+  it('shows the link the server will append', () => {
+    expect(previewLinkLine('New arrival', url)).toBe(url);
+  });
+
+  it('does not repeat a link already in the caption', () => {
+    expect(previewLinkLine(`Shop: ${url}`, url)).toBeNull();
+  });
+
+  it('no link → nothing to show', () => {
+    expect(previewLinkLine('New arrival', null)).toBeNull();
   });
 });
 

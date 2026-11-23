@@ -1,8 +1,9 @@
 import { formatPriceRange } from '@kanchuki/shared';
 import { useQuery } from '@tanstack/react-query';
+import { Image } from 'expo-image';
 import { Check, RefreshCw, Search } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, Image, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, FlatList, Text, TextInput, View } from 'react-native';
 import { productApi } from '../../lib/api';
 import { useTheme } from '../../lib/theme';
 import { AnimatedPressable } from '../AnimatedPressable';
@@ -143,8 +144,9 @@ export function ProductGridPicker({
                   {item.primary_photo_url ? (
                     <Image
                       source={{ uri: item.primary_photo_url }}
-                      className="w-full h-full"
-                      resizeMode="cover"
+                      style={{ width: '100%', height: '100%' }}
+                      contentFit="cover"
+                      cachePolicy="memory-disk"
                     />
                   ) : null}
                   {isSelected ? (

@@ -662,3 +662,12 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Left alone | 10 preview-style files (theme, studio styles, photo cleanup, post and design templates), 22 emoji lines in 3 files, 146 `font-bold` uses. Login footer wording unchanged by owner decision. |
 | Local runs | Web 779 passed, tsc 0, admin browser tests 6/6. No new Biome errors in the categories compared. |
 | Not verified | Viewed with mock data only: dashboard, login, Operations, Settings, Retailers. Other admin pages not opened. |
+
+## 2026-11-23 — Social post preview matches the published post (branch `fix/social-post-preview`)
+
+| Area | Change |
+|---|---|
+| Preview | Shows the link the server appends to the caption, skips it when the caption already has it, and shows no link for a design post. A product link stays a label because the server picks its collection. |
+| Photos | Preview keeps the photo's real shape. Preview, media strip and product picker use `expo-image` with memory and disk cache. |
+| Local runs | Mobile 722 passed, tsc 0. Biome on the 6 files: 7 errors and 2 warnings, same as `origin/main`. |
+| Not verified | Not opened on a device or in Expo Go. Reaches phones only with a new app build. |

@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
+import { Image } from 'expo-image'
 import { Check, Play } from 'lucide-react-native'
-import { ActivityIndicator, Image, ScrollView, Text, View } from 'react-native'
+import { ActivityIndicator, ScrollView, Text, View } from 'react-native'
 import type { ProductDetail } from '@kanchuki/shared'
 import { productApi } from '../../lib/api'
 import { useTheme } from '../../lib/theme'
@@ -99,7 +100,12 @@ export function ItemMediaStrip({
                 active ? 'border-ink-600' : 'border-sand-100'
               }`}
             >
-              <Image source={{ uri: media.url }} className="w-full h-full" resizeMode="cover" />
+              <Image
+                source={{ uri: media.url }}
+                style={{ width: '100%', height: '100%' }}
+                contentFit="cover"
+                cachePolicy="memory-disk"
+              />
               {media.kind === 'video' ? (
                 <View className="absolute inset-0 items-center justify-center bg-black/30">
                   <Play size={20} color="#fff" fill="#fff" />

@@ -658,12 +658,28 @@ export default function CreateSocialPostScreen() {
   // ── Link label for preview (client-side only — the API resolves the
   //    authoritative URL per R-11) ───────────────────────────────────
   const linkLabel = useMemo(() => {
+    // A design post is sent without a link.
+    if (postType === 'IMAGE') return '';
     if (postType === 'COLLECTION_LINK') return collectionLink?.title ?? '';
     if (linkType === 'collection') return linkCollection?.title ?? '';
     if (linkType === 'storefront') return 'Your store page';
     if (linkType === 'product') return selected[0]?.name ? `Product: ${selected[0].name}` : '';
     return '';
   }, [postType, collectionLink, linkType, linkCollection, selected]);
+
+  // The URL the server appends to the caption. A product link stays null: the
+  // server picks which collection it goes through, so the app can't know it.
+  const previewLinkUrl = useMemo(() => {
+    if (postType === 'IMAGE') return null;
+    if (postType === 'COLLECTION_LINK') {
+      return collectionFormat === 'carousel' ? (collectionLink?.url ?? null) : null;
+    }
+    if (linkType === 'collection') return linkCollection?.url ?? null;
+    if (linkType === 'storefront' && profile?.public_slug) {
+      return `${WEB_URL}/${profile.public_slug}`;
+    }
+    return null;
+  }, [postType, collectionFormat, collectionLink, linkType, linkCollection, profile]);
 
   // ── Template caption prefill (T-9.6) ──────────────────────────────
   // Values resolved client-side for display; unresolved tokens stay raw and
@@ -1262,6 +1278,7 @@ export default function CreateSocialPostScreen() {
               media={previewMedia}
               caption={caption}
               linkLabel={linkLabel}
+              linkUrl={previewLinkUrl}
             />
             <Text className="text-[10px] text-sand-400 text-center mt-3 px-6 leading-4">
               Preview is approximate — Kanchuki builds the final post and link server-side before
