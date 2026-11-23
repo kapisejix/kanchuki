@@ -1,40 +1,29 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { router } from 'expo-router'
-import {
-  CheckCircle,
-  ChevronLeft,
-  ExternalLink,
-} from 'lucide-react-native'
-import { useState } from 'react'
-import {
-  Alert,
-  Linking,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from 'react-native'
-import { AnimatedPressable } from '../../../src/components/AnimatedPressable'
-import { GradientButton } from '../../../src/components/GradientButton'
-import { KeyboardScreen } from '../../../src/components/KeyboardScreen'
-import { WHITE_BUTTON_INK, WhiteButton } from '../../../src/components/WhiteButton'
-import { growthApi } from '../../../src/lib/api/growth'
-import { showError } from '../../../src/lib/errors'
-import { useScreenInsets } from '../../../src/lib/safe-area'
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { router } from 'expo-router';
+import { CheckCircle, ChevronLeft, ExternalLink } from 'lucide-react-native';
+import { useState } from 'react';
+import { Alert, Linking, ScrollView, Text, TextInput, View } from 'react-native';
+import { AnimatedPressable } from '../../../src/components/AnimatedPressable';
+import { GradientButton } from '../../../src/components/GradientButton';
+import { KeyboardScreen } from '../../../src/components/KeyboardScreen';
+import { WHITE_BUTTON_INK, WhiteButton } from '../../../src/components/WhiteButton';
+import { growthApi } from '../../../src/lib/api/growth';
+import { showError } from '../../../src/lib/errors';
+import { useScreenInsets } from '../../../src/lib/safe-area';
 
 export default function GoogleAdsConfigScreen() {
-  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets()
-  const queryClient = useQueryClient()
+  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets();
+  const queryClient = useQueryClient();
 
-  const [refreshToken, setRefreshToken] = useState('')
-  const [customerId, setCustomerId] = useState('')
-  const [developerToken, setDeveloperToken] = useState('')
-  const [saving, setSaving] = useState(false)
-  const [testing, setTesting] = useState(false)
-  const [testResult, setTestResult] = useState<'success' | 'error' | null>(null)
-  const [error] = useState('')
+  const [refreshToken, setRefreshToken] = useState('');
+  const [customerId, setCustomerId] = useState('');
+  const [developerToken, setDeveloperToken] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<'success' | 'error' | null>(null);
+  const [error] = useState('');
 
-  const canSave = refreshToken.trim() && customerId.trim() && developerToken.trim() && !saving
+  const canSave = refreshToken.trim() && customerId.trim() && developerToken.trim() && !saving;
 
   const saveMutation = useMutation({
     mutationFn: () =>
@@ -44,21 +33,33 @@ export default function GoogleAdsConfigScreen() {
         developer_token: developerToken.trim(),
       }),
     onSuccess: () => {
-      setSaving(false)
-      void queryClient.invalidateQueries({ queryKey: ['growth', 'integrations'] })
+      setSaving(false);
+      void queryClient.invalidateQueries({ queryKey: ['growth', 'integrations'] });
       Alert.alert('Connected', 'Google Ads is now connected.', [
         { text: 'OK', onPress: () => router.back() },
-      ])
+      ]);
     },
-    onError: (err) => { setSaving(false); showError(err, 'Failed to save Google Ads credentials') },
-  })
+    onError: (err) => {
+      setSaving(false);
+      showError(err, 'Failed to save Google Ads credentials');
+    },
+  });
 
   const testMutation = useMutation({
     mutationFn: () => growthApi.testGoogleAds(),
-    onMutate: () => { setTesting(true); setTestResult(null) },
-    onSuccess: (res) => { setTesting(false); setTestResult(res.data.connected ? 'success' : 'error') },
-    onError: () => { setTesting(false); setTestResult('error') },
-  })
+    onMutate: () => {
+      setTesting(true);
+      setTestResult(null);
+    },
+    onSuccess: (res) => {
+      setTesting(false);
+      setTestResult(res.data.connected ? 'success' : 'error');
+    },
+    onError: () => {
+      setTesting(false);
+      setTestResult('error');
+    },
+  });
 
   return (
     <KeyboardScreen className="flex-1 bg-[#F8F7FC]">
@@ -83,17 +84,22 @@ export default function GoogleAdsConfigScreen() {
         </View>
       </View>
 
-      <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: screenPaddingBottom }}>
+      <ScrollView
+        className="flex-1 px-4 pt-4"
+        contentContainerStyle={{ paddingBottom: screenPaddingBottom }}
+      >
         <Text className="text-xs text-heliotrope-500 mb-4 leading-relaxed font-medium">
-          Connect your Google Ads account to manage Local Service Ads campaigns
-          and reach customers searching for boutique clothing nearby.
+          Connect your Google Ads account to manage Local Service Ads campaigns and reach customers
+          searching for boutique clothing nearby.
         </Text>
 
         <View className="mb-4 pb-1">
           <WhiteButton
             label="How to get Google Ads API credentials"
             icon={<ExternalLink size={14} color={WHITE_BUTTON_INK} />}
-            onPress={() => void Linking.openURL('https://developers.google.com/google-ads/api/docs/start')}
+            onPress={() =>
+              void Linking.openURL('https://developers.google.com/google-ads/api/docs/start')
+            }
           />
         </View>
 
@@ -134,7 +140,9 @@ export default function GoogleAdsConfigScreen() {
         )}
         {testResult === 'error' && (
           <View className="bg-rose-50 border border-rose-200 rounded-2xl px-3.5 py-2.5 mb-4">
-            <Text className="text-xs text-rose-700 font-semibold">Connection failed. Check your credentials.</Text>
+            <Text className="text-xs text-rose-700 font-semibold">
+              Connection failed. Check your credentials.
+            </Text>
           </View>
         )}
 
@@ -149,7 +157,10 @@ export default function GoogleAdsConfigScreen() {
             <GradientButton
               variant="web"
               label={saving ? 'Saving…' : 'Save & Connect'}
-              onPress={() => { setSaving(true); void saveMutation.mutate() }}
+              onPress={() => {
+                setSaving(true);
+                void saveMutation.mutate();
+              }}
               disabled={!canSave}
             />
           </View>
@@ -163,11 +174,9 @@ export default function GoogleAdsConfigScreen() {
         </View>
       </ScrollView>
     </KeyboardScreen>
-  )
+  );
 }
 
 function Label({ text }: { text: string }) {
-  return (
-    <Text className="text-xs font-semibold text-heliotrope-500 mb-1.5">{text}</Text>
-  )
+  return <Text className="text-xs font-semibold text-heliotrope-500 mb-1.5">{text}</Text>;
 }

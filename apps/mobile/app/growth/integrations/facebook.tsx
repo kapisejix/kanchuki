@@ -169,7 +169,10 @@ export default function FacebookConfigScreen() {
         </View>
       </View>
 
-      <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: screenPaddingBottom }}>
+      <ScrollView
+        className="flex-1 px-4 pt-4"
+        contentContainerStyle={{ paddingBottom: screenPaddingBottom }}
+      >
         <View className="bg-white rounded-2xl p-5 border border-lavender-200 mb-4">
           <View className="flex-row items-center justify-between mb-3">
             <View className="flex-row items-center gap-2.5">
@@ -202,7 +205,9 @@ export default function FacebookConfigScreen() {
             <View className="bg-lavender-50 rounded-2xl p-4 border border-lavender-200 gap-2 mb-3">
               <View className="flex-row items-center justify-between">
                 <Text className="text-xs font-semibold text-heliotrope-500">Linked page</Text>
-                <Text className="text-sm font-semibold text-[#1877F2]">{fbAccount?.account_name}</Text>
+                <Text className="text-sm font-semibold text-[#1877F2]">
+                  {fbAccount?.account_name}
+                </Text>
               </View>
               {fbAccount?.account_id ? (
                 <View className="flex-row items-center justify-between">

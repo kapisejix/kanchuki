@@ -1,39 +1,32 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { router } from 'expo-router'
-import {
-  ChevronLeft,
-  ExternalLink,
-} from 'lucide-react-native'
-import { useState } from 'react'
-import {
-  Alert,
-  Linking,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from 'react-native'
-import { AnimatedPressable } from '../../../src/components/AnimatedPressable'
-import { GradientButton } from '../../../src/components/GradientButton'
-import { KeyboardScreen } from '../../../src/components/KeyboardScreen'
-import { WHITE_BUTTON_INK, WhiteButton } from '../../../src/components/WhiteButton'
-import { growthApi } from '../../../src/lib/api/growth'
-import { showError } from '../../../src/lib/errors'
-import { useScreenInsets } from '../../../src/lib/safe-area'
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { router } from 'expo-router';
+import { ChevronLeft, ExternalLink } from 'lucide-react-native';
+import { useState } from 'react';
+import { Alert, Linking, ScrollView, Text, TextInput, View } from 'react-native';
+import { AnimatedPressable } from '../../../src/components/AnimatedPressable';
+import { GradientButton } from '../../../src/components/GradientButton';
+import { KeyboardScreen } from '../../../src/components/KeyboardScreen';
+import { WHITE_BUTTON_INK, WhiteButton } from '../../../src/components/WhiteButton';
+import { growthApi } from '../../../src/lib/api/growth';
+import { showError } from '../../../src/lib/errors';
+import { useScreenInsets } from '../../../src/lib/safe-area';
 
 export default function FbAdsConfigScreen() {
-  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets()
-  const queryClient = useQueryClient()
+  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets();
+  const queryClient = useQueryClient();
 
-  const [accessToken, setAccessToken] = useState('')
-  const [adAccountId, setAdAccountId] = useState('')
-  const [pageId, setPageId] = useState('')
-  const [saving, setSaving] = useState(false)
-  const [testing, setTesting] = useState(false)
-  const [testResult, setTestResult] = useState<{ connected: boolean; account_name?: string } | null>(null)
-  const [error] = useState('')
+  const [accessToken, setAccessToken] = useState('');
+  const [adAccountId, setAdAccountId] = useState('');
+  const [pageId, setPageId] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{
+    connected: boolean;
+    account_name?: string;
+  } | null>(null);
+  const [error] = useState('');
 
-  const canSave = accessToken.trim() && adAccountId.trim() && pageId.trim() && !saving
+  const canSave = accessToken.trim() && adAccountId.trim() && pageId.trim() && !saving;
 
   const saveMutation = useMutation({
     mutationFn: () =>
@@ -43,21 +36,33 @@ export default function FbAdsConfigScreen() {
         page_id: pageId.trim(),
       }),
     onSuccess: () => {
-      setSaving(false)
-      void queryClient.invalidateQueries({ queryKey: ['growth', 'integrations'] })
+      setSaving(false);
+      void queryClient.invalidateQueries({ queryKey: ['growth', 'integrations'] });
       Alert.alert('Connected', 'Facebook Ads is now connected.', [
         { text: 'OK', onPress: () => router.back() },
-      ])
+      ]);
     },
-    onError: (err) => { setSaving(false); showError(err, 'Failed to save Facebook Ads credentials') },
-  })
+    onError: (err) => {
+      setSaving(false);
+      showError(err, 'Failed to save Facebook Ads credentials');
+    },
+  });
 
   const testMutation = useMutation({
     mutationFn: () => growthApi.testFbAds(),
-    onMutate: () => { setTesting(true); setTestResult(null) },
-    onSuccess: (res) => { setTesting(false); setTestResult(res.data) },
-    onError: () => { setTesting(false); setTestResult({ connected: false }) },
-  })
+    onMutate: () => {
+      setTesting(true);
+      setTestResult(null);
+    },
+    onSuccess: (res) => {
+      setTesting(false);
+      setTestResult(res.data);
+    },
+    onError: () => {
+      setTesting(false);
+      setTestResult({ connected: false });
+    },
+  });
 
   return (
     <KeyboardScreen className="flex-1 bg-[#F8F7FC]">
@@ -82,17 +87,24 @@ export default function FbAdsConfigScreen() {
         </View>
       </View>
 
-      <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: screenPaddingBottom }}>
+      <ScrollView
+        className="flex-1 px-4 pt-4"
+        contentContainerStyle={{ paddingBottom: screenPaddingBottom }}
+      >
         <Text className="text-xs text-heliotrope-500 mb-4 leading-relaxed font-medium">
-          Connect your Facebook Ads account to create local awareness campaigns
-          that reach shoppers near your boutique.
+          Connect your Facebook Ads account to create local awareness campaigns that reach shoppers
+          near your boutique.
         </Text>
 
         <View className="mb-4 pb-1">
           <WhiteButton
             label="How to get Facebook Ads API credentials"
             icon={<ExternalLink size={14} color={WHITE_BUTTON_INK} />}
-            onPress={() => void Linking.openURL('https://www.facebook.com/business/learn/how-to-create-facebook-ads')}
+            onPress={() =>
+              void Linking.openURL(
+                'https://www.facebook.com/business/learn/how-to-create-facebook-ads',
+              )
+            }
           />
         </View>
 
@@ -131,8 +143,12 @@ export default function FbAdsConfigScreen() {
         />
 
         {testResult && (
-          <View className={`rounded-2xl px-4 py-3 mb-4 border ${testResult.connected ? 'bg-emerald-50 border-emerald-200' : 'bg-rose-50 border-rose-200'}`}>
-            <Text className={`text-xs font-semibold ${testResult.connected ? 'text-emerald-700' : 'text-rose-700'}`}>
+          <View
+            className={`rounded-2xl px-4 py-3 mb-4 border ${testResult.connected ? 'bg-emerald-50 border-emerald-200' : 'bg-rose-50 border-rose-200'}`}
+          >
+            <Text
+              className={`text-xs font-semibold ${testResult.connected ? 'text-emerald-700' : 'text-rose-700'}`}
+            >
               {testResult.connected
                 ? `Connected. Account: ${testResult.account_name ?? 'Verified'}`
                 : 'Connection failed. Check your credentials.'}
@@ -151,7 +167,10 @@ export default function FbAdsConfigScreen() {
             <GradientButton
               variant="web"
               label={saving ? 'Saving…' : 'Save & Connect'}
-              onPress={() => { setSaving(true); void saveMutation.mutate() }}
+              onPress={() => {
+                setSaving(true);
+                void saveMutation.mutate();
+              }}
               disabled={!canSave}
             />
           </View>
@@ -166,11 +185,9 @@ export default function FbAdsConfigScreen() {
         </View>
       </ScrollView>
     </KeyboardScreen>
-  )
+  );
 }
 
 function Label({ text }: { text: string }) {
-  return (
-    <Text className="text-xs font-semibold text-heliotrope-500 mb-1.5">{text}</Text>
-  )
+  return <Text className="text-xs font-semibold text-heliotrope-500 mb-1.5">{text}</Text>;
 }
