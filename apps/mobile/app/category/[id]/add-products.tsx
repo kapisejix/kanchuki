@@ -100,7 +100,6 @@ export default function AddProductsToCategoryScreen() {
                 elevation={isSelected ? 3 : 1}
                 imageHeight={150}
                 style={isSelected ? { borderWidth: 2, borderColor: '#BB3F95' } : undefined}
-                placeholderIcon="📷"
                 footer={
                   <View className="p-3">
                     <Text

@@ -21,6 +21,7 @@ import {
 import { showError } from '../../src/lib/errors'
 import { setItem, deleteItem } from '../../src/lib/storage'
 import { emitAuthChange } from '../../src/lib/auth-events'
+import { ChevronLeft } from 'lucide-react-native'
 import { GradientButton } from '../../src/components/GradientButton'
 import {
   extractMsg91AccessToken,
@@ -338,10 +339,10 @@ export default function OtpScreen() {
             accessibilityLabel="Go back"
             accessibilityRole="button"
           >
-            <Text className="text-spaceCadet-900 text-base font-bold">←</Text>
+            <ChevronLeft size={20} color="#231F48" />
           </Pressable>
 
-          <Text className="text-3xl font-bold text-spaceCadet-900 font-marcellus">Enter OTP</Text>
+          <Text className="text-3xl text-spaceCadet-900 font-marcellus">Enter OTP</Text>
           <Text className="text-heliotrope-500 text-sm mt-2">
             {invite_token
               ? `Verification code sent to ${masked || 'your number'}`
@@ -370,11 +371,11 @@ export default function OtpScreen() {
                       key={i}
                       className="w-12 h-14 rounded-2xl border-2 items-center justify-center"
                       style={{
-                        borderColor: active ? '#BB3F95' : filled ? '#D65CB3' : '#E0E1F6',
+                        borderColor: active ? '#BB3F95' : filled ? '#C8CAEE' : '#E0E1F6',
                         backgroundColor: active ? '#F2F1FA' : '#FFFFFF',
                       }}
                     >
-                      <Text className="text-2xl font-bold text-spaceCadet-900">
+                      <Text className="text-2xl font-semibold text-spaceCadet-900">
                         {otp[i] ?? ''}
                       </Text>
                     </View>
@@ -433,12 +434,12 @@ export default function OtpScreen() {
           {/* Resend */}
           <View className="flex-row justify-center mt-6">
             {resendTimer > 0 ? (
-              <Text className="text-heliotrope-400 text-xs font-medium">
+              <Text className="text-heliotrope-500 text-xs font-medium">
                 Resend OTP in {resendTimer}s
               </Text>
             ) : (
               <Pressable onPress={() => void handleResend()} disabled={resending}>
-                <Text className="text-fuchsia-600 text-xs font-bold uppercase tracking-wider">
+                <Text className="text-fuchsia-600 text-xs font-semibold">
                   {resending ? 'Sending...' : 'Resend OTP'}
                 </Text>
               </Pressable>

@@ -671,3 +671,15 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Photos | Preview keeps the photo's real shape. Preview, media strip and product picker use `expo-image` with memory and disk cache. |
 | Local runs | Mobile 722 passed, tsc 0. Biome on the 6 files: 7 errors and 2 warnings, same as `origin/main`. |
 | Not verified | Not opened on a device or in Expo Go. Reaches phones only with a new app build. |
+
+## 2026-11-23 — Mobile design cleanup, Task 1 (branch `design/mobile-unslop-task-1`)
+
+| Area | Change |
+|---|---|
+| Direction | `docs/tasks/pending/mobile-unslop.md` holds the direction, rules, open owner decisions and the 81-screen checklist. |
+| Shared | `ProductCard` loses a heart that did nothing and its emoji placeholders. `ScreenHeader`, `UsageCard`, `SetupChecklist` and the tab bar use the new type and quieter color. The three shared buttons are unchanged (`button-styles.md`). |
+| Screens | Auth, join, onboarding, Home, Catalog, Category, Collections, Customers. Fake-bold Marcellus, 9-10px uppercase labels, emoji, sparkles, greetings, colored glows and hype copy removed. |
+| Bug fixed | `heliotrope-400` and `spaceCadet-600` are not Tailwind tokens, so that text lost its intended color. Replaced with real tokens. |
+| Tests | ProductCard snapshots updated. Onboarding smoke test updated for 3 sentence-case headings. |
+| Local runs | Mobile 722 passed, tsc 0, Android JS bundle exported. Biome on the 18 changed code files: 36 errors, same as `origin/main`. |
+| Not verified | Not opened on a device or in Expo Go. Reaches phones only with a new app build. |

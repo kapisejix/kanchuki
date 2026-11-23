@@ -9,7 +9,6 @@ import {
   FileText,
   MapPin,
   QrCode,
-  Sparkles,
   Truck,
   User,
   Zap,
@@ -60,28 +59,28 @@ function slugify(text: string): string {
 const STEP_META: Record<Step, { label: string; title: string; subtitle: string }> = {
   1: {
     label: 'Shop',
-    title: 'Setup Your Shop',
+    title: 'Set up your shop',
     subtitle: 'Digitize your catalog and create your custom WhatsApp store URL.',
   },
   2: {
     label: 'Location',
-    title: 'Shop Location',
+    title: 'Shop location',
     subtitle: 'Add your shop address so local customers can easily discover and visit your store.',
   },
   3: {
     label: 'GST',
-    title: 'GST Details',
+    title: 'GST details',
     subtitle: 'Optional — add your GSTIN now to enable automatic GST invoice generation.',
   },
   4: {
     label: 'Plan',
-    title: 'Start Your Free Demo',
+    title: 'Start your free demo',
     subtitle: 'Explore Kanchuki with full Pro access. No payment needed.',
   },
   5: {
     label: 'Done',
-    title: "You're All Set!",
-    subtitle: 'Your digital luxury catalog is ready. Start adding products or create your store QR.',
+    title: "You're all set",
+    subtitle: 'Your catalog is ready. Add products or create your store QR.',
   },
 };
 
@@ -119,38 +118,27 @@ function StepIndicator({
               <View
                 className={`w-7 h-7 rounded-full items-center justify-center border overflow-hidden ${
                   isActive
-                    ? 'border-transparent shadow-sm'
+                    ? 'bg-spaceCadet-900 border-spaceCadet-900'
                     : isPast
                       ? 'bg-fuchsia-500 border-fuchsia-500'
                       : 'bg-white border-lavender-200'
                 }`}
               >
-                {isActive ? (
-                  <LinearGradient
-                    colors={['#231F48', '#560A39']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={{ width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}
-                  >
-                    <Text className="text-[11px] font-extrabold text-white">{s}</Text>
-                  </LinearGradient>
-                ) : (
-                  <Text
-                    className={`text-[11px] font-extrabold ${
-                      isPast ? 'text-white' : 'text-heliotrope-500'
-                    }`}
-                  >
-                    {isPast ? '✓' : s}
-                  </Text>
-                )}
+                <Text
+                  className={`text-[11px] font-semibold ${
+                    isActive || isPast ? 'text-white' : 'text-heliotrope-500'
+                  }`}
+                >
+                  {isPast ? '✓' : s}
+                </Text>
               </View>
               <Text
                 className={`text-xs ${
                   isActive
-                    ? 'text-spaceCadet-900 font-extrabold'
+                    ? 'text-spaceCadet-900 font-semibold'
                     : isPast
-                      ? 'text-heliotrope-700 font-bold'
-                      : 'text-heliotrope-400 font-medium'
+                      ? 'text-heliotrope-700 font-semibold'
+                      : 'text-heliotrope-500 font-medium'
                 }`}
               >
                 {STEP_META[s].label}
@@ -440,7 +428,7 @@ export default function OnboardingScreen() {
           <View className="space-y-4">
             {/* Field 1: Shop Name */}
             <View>
-              <Text className="text-[11px] uppercase tracking-wider text-heliotrope-600 font-bold mb-1.5">
+              <Text className="text-[11px] text-heliotrope-600 font-semibold mb-1.5">
                 Shop Name <Text className="text-fuchsia-500">*</Text>
               </Text>
               <View className="flex-row items-center bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3.5 gap-2.5">
@@ -450,7 +438,7 @@ export default function OnboardingScreen() {
                   onChangeText={setShopName}
                   placeholder="e.g. Radha Sarees & Bridal"
                   placeholderTextColor="#928EB2"
-                  className="flex-1 text-sm font-bold text-spaceCadet-900"
+                  className="flex-1 text-sm font-semibold text-spaceCadet-900"
                   maxLength={200}
                   autoFocus
                 />
@@ -459,7 +447,7 @@ export default function OnboardingScreen() {
 
             {/* Field 2: Owner Name */}
             <View className="mt-3">
-              <Text className="text-[11px] uppercase tracking-wider text-heliotrope-600 font-bold mb-1.5">
+              <Text className="text-[11px] text-heliotrope-600 font-semibold mb-1.5">
                 Owner / Manager Name
               </Text>
               <View className="flex-row items-center bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3.5 gap-2.5">
@@ -469,7 +457,7 @@ export default function OnboardingScreen() {
                   onChangeText={setOwnerName}
                   placeholder="e.g. Suresh Kumar Verma"
                   placeholderTextColor="#928EB2"
-                  className="flex-1 text-sm font-bold text-spaceCadet-900"
+                  className="flex-1 text-sm font-semibold text-spaceCadet-900"
                   maxLength={200}
                 />
               </View>
@@ -478,7 +466,7 @@ export default function OnboardingScreen() {
             {/* Field 3: Primary Clothing Category — hidden from onboarding for now */}
             {false && (
             <View className="mt-3">
-              <Text className="text-[11px] uppercase tracking-wider text-heliotrope-600 font-bold mb-2">
+              <Text className="text-[11px] text-heliotrope-600 font-semibold mb-2">
                 Primary Specialization
               </Text>
               <View className="flex-row flex-wrap gap-2">
@@ -517,12 +505,12 @@ export default function OnboardingScreen() {
 
             {/* Field 4: Storefront Subdomain URL */}
             <View className="mt-3">
-              <Text className="text-[11px] uppercase tracking-wider text-heliotrope-600 font-bold mb-1.5">
+              <Text className="text-[11px] text-heliotrope-600 font-semibold mb-1.5">
                 Your Store Web Link
               </Text>
               <View className="flex-row items-center p-3 bg-lavender-100/70 border border-lavender-200 rounded-2xl">
                 <Text className="text-xs text-heliotrope-500 font-medium mr-1">kanchuki.app/</Text>
-                <Text className="text-xs text-fuchsia-600 font-bold">
+                <Text className="text-xs text-fuchsia-600 font-semibold">
                   {slugify(shopName) || 'your-shop-name'}
                 </Text>
                 <View className="ml-auto">
@@ -533,7 +521,7 @@ export default function OnboardingScreen() {
 
             {/* Field 5: Referral Code */}
             <View className="mt-3">
-              <Text className="text-[11px] uppercase tracking-wider text-heliotrope-600 font-bold mb-1.5">
+              <Text className="text-[11px] text-heliotrope-600 font-semibold mb-1.5">
                 Referral Code (Optional)
               </Text>
               <View className="flex-row items-center bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3.5 gap-2.5">
@@ -542,7 +530,7 @@ export default function OnboardingScreen() {
                   onChangeText={(t) => setReferralCode(t.toUpperCase())}
                   placeholder="Referred by a Kanchuki agent?"
                   placeholderTextColor="#928EB2"
-                  className="flex-1 text-sm font-bold text-spaceCadet-900 tracking-wider"
+                  className="flex-1 text-sm font-semibold text-spaceCadet-900 tracking-wider"
                   autoCapitalize="characters"
                   maxLength={20}
                 />
@@ -579,14 +567,14 @@ export default function OnboardingScreen() {
                 <Text className="flex-1 text-[11px] text-heliotrope-600 leading-relaxed font-medium">
                   I agree to the{' '}
                   <Text
-                    className="font-bold text-fuchsia-600 underline"
+                    className="font-semibold text-fuchsia-600 underline"
                     onPress={() => void Linking.openURL(`${WEB_URL}/terms`)}
                   >
                     Terms of Service
                   </Text>{' '}
                   and{' '}
                   <Text
-                    className="font-bold text-fuchsia-600 underline"
+                    className="font-semibold text-fuchsia-600 underline"
                     onPress={() => void Linking.openURL(`${WEB_URL}/privacy`)}
                   >
                     Privacy Policy
@@ -602,7 +590,7 @@ export default function OnboardingScreen() {
         return (
           <View className="space-y-4">
             <View>
-              <Text className="text-[11px] uppercase tracking-wider text-heliotrope-600 font-bold mb-1.5">
+              <Text className="text-[11px] text-heliotrope-600 font-semibold mb-1.5">
                 Shop Address / Street <Text className="text-fuchsia-500">*</Text>
               </Text>
               <View className="bg-lavender-50 border border-lavender-200 rounded-2xl p-3.5">
@@ -611,7 +599,7 @@ export default function OnboardingScreen() {
                   onChangeText={setShopAddress}
                   placeholder="Shop no., building, street, area, landmark"
                   placeholderTextColor="#928EB2"
-                  className="text-sm font-bold text-spaceCadet-900"
+                  className="text-sm font-semibold text-spaceCadet-900"
                   style={{ minHeight: 70, textAlignVertical: 'top' }}
                   multiline
                   maxLength={300}
@@ -621,7 +609,7 @@ export default function OnboardingScreen() {
             </View>
 
             <View className="mt-3">
-              <Text className="text-[11px] uppercase tracking-wider text-heliotrope-600 font-bold mb-1.5">
+              <Text className="text-[11px] text-heliotrope-600 font-semibold mb-1.5">
                 City <Text className="text-fuchsia-500">*</Text>
               </Text>
               <View className="flex-row items-center bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3.5 gap-2.5">
@@ -631,7 +619,7 @@ export default function OnboardingScreen() {
                   onChangeText={setCity}
                   placeholder="e.g. Surat / Jaipur / Delhi"
                   placeholderTextColor="#928EB2"
-                  className="flex-1 text-sm font-bold text-spaceCadet-900"
+                  className="flex-1 text-sm font-semibold text-spaceCadet-900"
                   maxLength={100}
                 />
               </View>
@@ -639,7 +627,7 @@ export default function OnboardingScreen() {
 
             <View className="flex-row gap-3 mt-3">
               <View className="flex-1">
-                <Text className="text-[11px] uppercase tracking-wider text-heliotrope-600 font-bold mb-1.5">
+                <Text className="text-[11px] text-heliotrope-600 font-semibold mb-1.5">
                   District
                 </Text>
                 <View className="bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3.5">
@@ -648,14 +636,14 @@ export default function OnboardingScreen() {
                     onChangeText={setDistrict}
                     placeholder="e.g. Surat"
                     placeholderTextColor="#928EB2"
-                    className="text-sm font-bold text-spaceCadet-900"
+                    className="text-sm font-semibold text-spaceCadet-900"
                     maxLength={100}
                   />
                 </View>
               </View>
 
               <View className="flex-1">
-                <Text className="text-[11px] uppercase tracking-wider text-heliotrope-600 font-bold mb-1.5">
+                <Text className="text-[11px] text-heliotrope-600 font-semibold mb-1.5">
                   State
                 </Text>
                 <View className="bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3.5">
@@ -664,7 +652,7 @@ export default function OnboardingScreen() {
                     onChangeText={setState}
                     placeholder="e.g. Gujarat"
                     placeholderTextColor="#928EB2"
-                    className="text-sm font-bold text-spaceCadet-900"
+                    className="text-sm font-semibold text-spaceCadet-900"
                     maxLength={100}
                   />
                 </View>
@@ -672,7 +660,7 @@ export default function OnboardingScreen() {
             </View>
 
             <View className="mt-3">
-              <Text className="text-[11px] uppercase tracking-wider text-heliotrope-600 font-bold mb-1.5">
+              <Text className="text-[11px] text-heliotrope-600 font-semibold mb-1.5">
                 Pincode / Zipcode
               </Text>
               <View className="bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3.5">
@@ -682,7 +670,7 @@ export default function OnboardingScreen() {
                   placeholder="6-digit pincode (e.g. 395002)"
                   keyboardType="number-pad"
                   placeholderTextColor="#928EB2"
-                  className="text-sm font-bold text-spaceCadet-900"
+                  className="text-sm font-semibold text-spaceCadet-900"
                   maxLength={6}
                 />
               </View>
@@ -696,12 +684,10 @@ export default function OnboardingScreen() {
               accessibilityRole="button"
               className="flex-row items-center gap-3 bg-white border border-lavender-200 rounded-2xl p-4 mt-3"
             >
-              <View className="w-10 h-10 rounded-xl bg-fuchsia-500/10 border border-fuchsia-500/20 items-center justify-center">
-                <MapPin size={20} color="#BB3F95" />
-              </View>
+              <MapPin size={18} color="#5A3962" />
               <View className="flex-1">
-                <Text className="text-sm font-bold text-spaceCadet-900">
-                  {latitude ? '📍 Location Saved' : 'Get Location from Map'}
+                <Text className="text-sm font-semibold text-spaceCadet-900">
+                  {latitude ? 'Location saved' : 'Get location from map'}
                 </Text>
                 <Text className="text-[11px] text-heliotrope-500 mt-0.5 font-medium">
                   {latitude
@@ -712,9 +698,9 @@ export default function OnboardingScreen() {
               {locating ? (
                 <ActivityIndicator size="small" color="#BB3F95" />
               ) : latitude ? (
-                <Text className="text-fuchsia-600 text-xs font-bold">✓</Text>
+                <Text className="text-fuchsia-600 text-xs font-semibold">✓</Text>
               ) : (
-                <Text className="text-heliotrope-400 text-lg">→</Text>
+                <Text className="text-heliotrope-500 text-lg">→</Text>
               )}
             </AnimatedPressable>
 
@@ -728,7 +714,7 @@ export default function OnboardingScreen() {
                 autoCapitalize="none"
                 autoCorrect={false}
                 keyboardType="url"
-                className="flex-1 bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3 text-sm font-bold text-spaceCadet-900"
+                className="flex-1 bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3 text-sm font-semibold text-spaceCadet-900"
               />
               <AnimatedPressable
                 onPress={() => void handleUseMapsLink()}
@@ -741,7 +727,7 @@ export default function OnboardingScreen() {
                 {resolvingLink ? (
                   <ActivityIndicator size="small" color="#fff" />
                 ) : (
-                  <Text className="text-white text-sm font-bold">Use</Text>
+                  <Text className="text-white text-sm font-semibold">Use</Text>
                 )}
               </AnimatedPressable>
             </View>
@@ -753,7 +739,7 @@ export default function OnboardingScreen() {
 
             {/* Store Tip Box */}
             <View className="bg-lavender-50 border border-lavender-200 rounded-2xl p-3.5 mt-2 flex-row items-start gap-2.5">
-              <Text className="text-sm">📍</Text>
+              <MapPin size={16} color="#5A3962" />
               <Text className="flex-1 text-[11px] text-heliotrope-600 leading-relaxed font-medium">
                 Your shop location will appear on your customer store links so visitors can get directions.
               </Text>
@@ -765,7 +751,7 @@ export default function OnboardingScreen() {
         return (
           <View className="space-y-4">
             <View>
-              <Text className="text-[11px] uppercase tracking-wider text-heliotrope-600 font-bold mb-1.5">
+              <Text className="text-[11px] text-heliotrope-600 font-semibold mb-1.5">
                 GSTIN (Optional)
               </Text>
               <View className="flex-row items-center bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3.5 gap-2.5">
@@ -776,7 +762,7 @@ export default function OnboardingScreen() {
                   placeholder="15-digit GSTIN (e.g. 24AAAAA0000A1Z5)"
                   placeholderTextColor="#928EB2"
                   autoCapitalize="characters"
-                  className="flex-1 text-sm font-bold text-spaceCadet-900 tracking-wider"
+                  className="flex-1 text-sm font-semibold text-spaceCadet-900 tracking-wider"
                   maxLength={15}
                   autoFocus
                 />
@@ -794,18 +780,15 @@ export default function OnboardingScreen() {
               accessibilityRole="button"
               className="items-center justify-center py-2.5"
             >
-              <Text className="text-xs font-bold text-fuchsia-600 uppercase tracking-wider">
+              <Text className="text-sm font-semibold text-fuchsia-600">
                 Skip — I don&apos;t have a GST number
               </Text>
             </AnimatedPressable>
 
             <View className="bg-lavender-100/70 border border-lavender-200 rounded-2xl p-4 mt-2">
-              <View className="flex-row items-center gap-2 mb-1">
-                <Sparkles size={14} color="#BB3F95" />
-                <Text className="text-spaceCadet-900 text-xs font-bold uppercase tracking-wider">
-                  Automatic GST Invoicing
-                </Text>
-              </View>
+              <Text className="text-spaceCadet-900 text-xs font-semibold mb-1">
+                Automatic GST invoicing
+              </Text>
               <Text className="text-heliotrope-600 text-xs leading-relaxed font-medium">
                 When a customer orders a product via your store link, Kanchuki generates an itemized
                 GST invoice automatically.
@@ -825,45 +808,37 @@ export default function OnboardingScreen() {
               accessibilityState={{ selected: selectedPlan === 'DEMO' }}
               className="w-full rounded-2xl p-4 mb-4 border-2 overflow-hidden"
               style={{
-                backgroundColor: selectedPlan === 'DEMO' ? undefined : '#FAF9FE',
-                borderColor: selectedPlan === 'DEMO' ? '#BB3F95' : '#E0E1F6',
+                backgroundColor: selectedPlan === 'DEMO' ? '#231F48' : '#FAF9FE',
+                borderColor: selectedPlan === 'DEMO' ? '#231F48' : '#E0E1F6',
               }}
             >
-              {selectedPlan === 'DEMO' && (
-                <LinearGradient
-                  colors={['#231F48', '#560A39']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-                />
-              )}
-              <View className="flex-row items-center gap-3">
+                            <View className="flex-row items-center gap-3">
                 <View
                   className="w-12 h-12 rounded-xl items-center justify-center"
                   style={{
-                    backgroundColor: selectedPlan === 'DEMO' ? 'rgba(187,63,149,0.2)' : '#F3EAFF',
+                    backgroundColor: selectedPlan === 'DEMO' ? 'rgba(255,255,255,0.12)' : '#F2F1FA',
                   }}
                 >
-                  <Zap size={24} color={selectedPlan === 'DEMO' ? '#BB3F95' : '#6B4773'} />
+                  <Zap size={20} color={selectedPlan === 'DEMO' ? '#FFFFFF' : '#6B4773'} />
                 </View>
                 <View className="flex-1">
                   <Text
-                    className="text-sm font-extrabold"
+                    className="text-sm font-semibold"
                     style={{ color: selectedPlan === 'DEMO' ? '#FFFFFF' : '#231F48' }}
                   >
                     Start Free Demo
                   </Text>
                   <Text
                     className="text-xs mt-0.5 font-medium"
-                    style={{ color: selectedPlan === 'DEMO' ? '#D4B8E8' : '#6B4773' }}
+                    style={{ color: selectedPlan === 'DEMO' ? '#E0E1F6' : '#6B4773' }}
                   >
-                    Full Pro access · No payment needed · Try everything
+                    Full Pro access · No payment needed
                   </Text>
                 </View>
                 {selectedPlan === 'DEMO' ? (
-                  <CheckCircle2 size={22} color="#BB3F95" />
+                  <CheckCircle2 size={20} color="#FFFFFF" />
                 ) : (
-                  <Text className="text-heliotrope-400 text-lg">○</Text>
+                  <Text className="text-heliotrope-500 text-lg">○</Text>
                 )}
               </View>
             </AnimatedPressable>
@@ -878,18 +853,16 @@ export default function OnboardingScreen() {
               colors={['#231F48', '#560A39']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
-              className="w-full rounded-3xl p-6 items-center shadow-lg mb-5"
+              className="w-full rounded-2xl p-6 items-center shadow-lg mb-5"
             >
-              <View className="w-14 h-14 rounded-2xl bg-white/10 items-center justify-center mb-3 border border-white/20">
-                <Sparkles size={28} color="#BB3F95" />
-              </View>
-              <Text className="text-2xl font-extrabold text-white font-marcellus text-center">
-                You&apos;re All Set!
+              <CheckCircle2 size={28} color="#FFFFFF" style={{ marginBottom: 12 }} />
+              <Text className="text-3xl text-white font-marcellus text-center">
+                You&apos;re all set
               </Text>
               <Text className="text-xs text-lavender-200 mt-1 text-center font-medium">
                 {selectedPlan === 'DEMO'
-                  ? 'Demo Pro access activated — explore every feature!'
-                  : 'Your digital luxury catalog is ready to receive customers.'}
+                  ? 'Demo Pro access is active'
+                  : 'Your catalog is ready for customers'}
               </Text>
             </LinearGradient>
 
@@ -904,46 +877,46 @@ export default function OnboardingScreen() {
             {selectedPlan && (
               <View className="items-center mt-2 mb-1">
                 <Text className="text-[11px] text-heliotrope-500 font-medium">
-                  {selectedPlan === 'DEMO' ? '🎭 Demo Pro' : `⭐ ${selectedPlan.charAt(0) + selectedPlan.slice(1).toLowerCase()} Plan`}
+                  {selectedPlan === 'DEMO' ? 'Demo Pro' : `${selectedPlan.charAt(0) + selectedPlan.slice(1).toLowerCase()} plan`}
                 </Text>
               </View>
             )}
 
               <AnimatedPressable
                 onPress={() => void handleCreateStoreQr()}
-                className="flex-row items-center gap-3.5 bg-white border border-lavender-200 rounded-3xl p-4 shadow-sm"
+                className="flex-row items-center gap-3.5 bg-white border border-lavender-200 rounded-2xl p-4 shadow-sm"
               >
                 <View className="w-10 h-10 rounded-2xl bg-lavender-100 items-center justify-center border border-lavender-200">
                   <QrCode size={20} color="#231F48" />
                 </View>
                 <View className="flex-1">
-                  <Text className="text-spaceCadet-900 text-xs font-bold uppercase tracking-wider">
+                  <Text className="text-spaceCadet-900 text-xs font-semibold">
                     Create your store QR code
                   </Text>
                   <Text className="text-heliotrope-500 text-[11px] mt-0.5 font-medium">
-                    Customers scan to open your luxury catalog
+                    Customers scan to open your catalog
                   </Text>
                 </View>
-                <Text className="text-heliotrope-400 text-base font-bold">→</Text>
+                <Text className="text-heliotrope-500 text-base font-semibold">→</Text>
               </AnimatedPressable>
 
               {CATALOG_UPLOAD_ENABLED && (
               <AnimatedPressable
                 onPress={() => void handleGetCatalogHelp()}
-                className="flex-row items-center gap-3.5 bg-white border border-lavender-200 rounded-3xl p-4 shadow-sm"
+                className="flex-row items-center gap-3.5 bg-white border border-lavender-200 rounded-2xl p-4 shadow-sm"
               >
                 <View className="w-10 h-10 rounded-2xl bg-lavender-100 items-center justify-center border border-lavender-200">
-                  <Truck size={20} color="#BB3F95" />
+                  <Truck size={20} color="#231F48" />
                 </View>
                 <View className="flex-1">
-                  <Text className="text-spaceCadet-900 text-xs font-bold uppercase tracking-wider">
+                  <Text className="text-spaceCadet-900 text-xs font-semibold">
                     Catalog Upload Help
                   </Text>
                   <Text className="text-heliotrope-500 text-[11px] mt-0.5 font-medium">
                     A team member adds your inventory for you
                   </Text>
                 </View>
-                <Text className="text-heliotrope-400 text-base font-bold">→</Text>
+                <Text className="text-heliotrope-500 text-base font-semibold">→</Text>
               </AnimatedPressable>
               )}
             </View>
@@ -973,7 +946,7 @@ export default function OnboardingScreen() {
               </AnimatedPressable>
             )}
           </View>
-          <Text className="text-base font-bold text-spaceCadet-900 font-marcellus">
+          <Text className="text-base text-spaceCadet-900 font-marcellus">
             {STEP_META[step].title}
           </Text>
           <View className="w-10" />
@@ -999,17 +972,12 @@ export default function OnboardingScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Screen Title in Marcellus */}
-        <View className="mb-4">
-          <Text className="text-2xl font-extrabold text-spaceCadet-900 font-marcellus">
-            {STEP_META[step].title}
-          </Text>
-          <Text className="text-xs text-heliotrope-500 mt-0.5 font-medium">
-            {STEP_META[step].subtitle}
-          </Text>
-        </View>
+        <Text className="text-sm text-heliotrope-600 leading-5 mb-4">
+          {STEP_META[step].subtitle}
+        </Text>
 
         {/* Form Container Card */}
-        <View className="bg-white border border-lavender-200 rounded-3xl p-5 shadow-sm w-full">
+        <View className="bg-white border border-lavender-200 rounded-2xl p-5 shadow-sm w-full">
           {/* key={step}: each step's subtree is a different shape; without a
               stable key React diffs step 1's fields against step 2's and
               react-native-css-interop's dev upgrade-warning path could fire
@@ -1030,7 +998,7 @@ export default function OnboardingScreen() {
             <GradientButton variant="web"
               label={
                 showConfetti
-                  ? "🎉 You're in!"
+                  ? "You're in"
                   : step === 1
                     ? 'Save & Proceed to Location'
                     : step === 2

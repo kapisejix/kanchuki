@@ -134,25 +134,24 @@ export default function PhoneScreen() {
 
           {/* Headline in Marcellus font */}
           <Text
-            style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-            className="text-lg font-bold text-spaceCadet-900 text-center tracking-tight mb-1"
+            style={{ fontFamily: 'Marcellus_400Regular' }}
+            className="text-2xl text-spaceCadet-900 text-center mb-2"
           >
-            Aap ki <Text style={{ color: '#BB3F95' }}>Dukan</Text>,{' '}
-            <Text style={{ color: '#560A39' }}>AI</Text> ki Takat
+            Aap ki Dukan, AI ki Takat
           </Text>
 
           {/* Descriptive text in normal font */}
-          <Text className="text-xs text-heliotrope-600 text-center leading-relaxed font-medium max-w-xs mb-6">
-            AI-powered digital catalog, instant WhatsApp storefront, and seamless billing for ethnic fashion retailers.
+          <Text className="text-sm text-heliotrope-600 text-center leading-5 max-w-xs mb-6">
+            Digital catalog, WhatsApp storefront and billing for ethnic fashion retailers
           </Text>
 
           {/* Phone input card */}
-          <View className="w-full bg-white border border-lavender-200 rounded-3xl p-4 shadow-sm mb-4">
-            <Text className="text-[11px] font-bold text-heliotrope-600 uppercase tracking-wider mb-1.5">
-              Mobile Number
+          <View className="w-full bg-white border border-lavender-200 rounded-2xl p-4 shadow-sm mb-4">
+            <Text className="text-[11px] font-semibold text-heliotrope-600 mb-1.5">
+              Mobile number
             </Text>
             <View className="flex-row items-center bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3.5 gap-3">
-              <Text className="text-sm font-bold text-tyrian-800">+91</Text>
+              <Text className="text-sm font-semibold text-tyrian-800">+91</Text>
               <View className="w-px h-4 bg-lavender-300" />
               <TextInput
                 value={phone}
@@ -161,7 +160,7 @@ export default function PhoneScreen() {
                 placeholderTextColor="#928EB2"
                 keyboardType="phone-pad"
                 maxLength={15}
-                className="flex-1 text-sm text-spaceCadet-900 font-bold"
+                className="flex-1 text-sm text-spaceCadet-900 font-semibold"
                 autoFocus
                 returnKeyType="done"
                 onSubmitEditing={() => void handleSend()}
@@ -202,14 +201,14 @@ export default function PhoneScreen() {
           <Text className="text-center text-[11px] text-heliotrope-500 px-4 leading-4 font-medium">
             By continuing, you agree to our{' '}
             <Text
-              className="font-bold text-fuchsia-600 underline"
+              className="font-semibold text-fuchsia-600 underline"
               onPress={() => void Linking.openURL(`${WEB_URL}/terms`)}
             >
               Terms of Service
             </Text>{' '}
             and{' '}
             <Text
-              className="font-bold text-fuchsia-600 underline"
+              className="font-semibold text-fuchsia-600 underline"
               onPress={() => void Linking.openURL(`${WEB_URL}/privacy`)}
             >
               Privacy Policy

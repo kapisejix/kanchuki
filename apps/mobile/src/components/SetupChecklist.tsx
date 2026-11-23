@@ -107,9 +107,9 @@ export function SetupChecklist() {
     )
 
   return (
-    <View className="mx-5 mb-3 bg-white rounded-3xl border border-lavender-200 p-4 gap-3">
+    <View className="mx-5 mb-3 bg-white rounded-2xl border border-lavender-200 p-4 gap-3">
       {open.length > 0 && (
-        <Text className="text-sm font-extrabold text-spaceCadet-900">
+        <Text className="text-sm font-semibold text-spaceCadet-900">
           Complete your profile · {open.length} left
         </Text>
       )}
@@ -118,7 +118,7 @@ export function SetupChecklist() {
         <View key={item.key} className="border border-lavender-200 rounded-2xl p-3">
           <View className="flex-row items-start justify-between gap-2">
             <View className="flex-1">
-              <Text className="text-sm font-bold text-spaceCadet-900">{COPY[item.key].title}</Text>
+              <Text className="text-sm font-semibold text-spaceCadet-900">{COPY[item.key].title}</Text>
               <Text className="text-[11px] text-heliotrope-500 mt-0.5 font-medium">
                 {item.status === 'requested'
                   ? 'Requested — our team will call you'
@@ -143,7 +143,7 @@ export function SetupChecklist() {
               accessibilityLabel={`Set up ${COPY[item.key].title} myself`}
               className="bg-spaceCadet-900 px-4 py-2.5 rounded-xl min-h-[44px] justify-center"
             >
-              <Text className="text-white text-xs font-bold">Set it up myself</Text>
+              <Text className="text-white text-xs font-semibold">Set it up myself</Text>
             </AnimatedPressable>
             {item.can_ask && (
               <AnimatedPressable
@@ -153,7 +153,7 @@ export function SetupChecklist() {
                 accessibilityLabel={`Ask Kanchuki team to help with ${COPY[item.key].title}`}
                 className="px-2 py-2.5 min-h-[44px] justify-center"
               >
-                <Text className="text-fuchsia-600 text-xs font-bold">Ask Kanchuki team</Text>
+                <Text className="text-fuchsia-600 text-xs font-semibold">Ask Kanchuki team</Text>
               </AnimatedPressable>
             )}
           </View>
@@ -167,7 +167,7 @@ export function SetupChecklist() {
           accessibilityLabel="Show hidden profile items"
           className="self-start py-1.5 min-h-[44px] justify-center"
         >
-          <Text className="text-xs font-bold text-heliotrope-600">Show {hidden} hidden</Text>
+          <Text className="text-xs font-semibold text-heliotrope-600">Show {hidden} hidden</Text>
         </AnimatedPressable>
       )}
     </View>

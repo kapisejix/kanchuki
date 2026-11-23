@@ -128,18 +128,11 @@ export default function HomeScreen() {
       <View className="px-5 pt-4 pb-3 flex-row items-center justify-between">
         <View className="flex-row items-center gap-3">
           <View
-            className="w-10 h-10 rounded-2xl bg-tyrian-800 border border-fuchsia-500/30 items-center justify-center shadow-md"
-            style={{
-              shadowColor: '#BB3F95',
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.15,
-              shadowRadius: 6,
-              elevation: 3,
-            }}
+            className="w-10 h-10 rounded-2xl bg-lavender-100 border border-lavender-200 items-center justify-center"
           >
             <Text
-              style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-              className="text-lavender-200 font-bold text-sm"
+              style={{ fontFamily: 'Marcellus_400Regular' }}
+              className="text-spaceCadet-900 text-sm"
             >
               {(me?.shop_name ?? 'R').slice(0, 2).toUpperCase()}
             </Text>
@@ -149,16 +142,14 @@ export default function HomeScreen() {
               style={{
                 fontFamily: 'Marcellus_400Regular',
                 fontSize: 16,
-                lineHeight: 24,
-                letterSpacing: 0.32,
-                fontWeight: '800',
+                lineHeight: 24
               }}
-              className="text-base leading-6 tracking-[0.02em] font-extrabold text-spaceCadet-900 font-marcellus"
+              className="text-base leading-6 text-spaceCadet-900"
             >
               {me?.shop_name || 'Your Store'}
             </Text>
-            <Text className="text-[10px] uppercase tracking-wider text-fuchsia-600 font-extrabold">
-              {me?.city ? `${me.city.toUpperCase()} • ` : ''}{me?.plan ?? 'PRO STORE'}
+            <Text className="text-xs text-heliotrope-500">
+              {me?.city ? `${me.city} · ` : ''}{me?.plan ?? 'PRO STORE'}
             </Text>
           </View>
         </View>
@@ -168,7 +159,7 @@ export default function HomeScreen() {
           className="w-9 h-9 rounded-2xl bg-white border border-lavender-200 items-center justify-center shadow-sm"
           accessibilityLabel="Open settings"
         >
-          <Settings size={16} color="#560A39" />
+          <Settings size={18} color="#231F48" />
         </AnimatedPressable>
       </View>
 
@@ -185,29 +176,24 @@ export default function HomeScreen() {
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={{
-            borderRadius: 28,
+            borderRadius: 16,
             padding: 20,
-            shadowColor: '#231F48',
-            shadowOffset: { width: 0, height: 8 },
-            shadowOpacity: 0.28,
-            shadowRadius: 18,
-            elevation: 8,
           }}
         >
           <View className="flex-row justify-between items-start mb-2">
-            <Text className="text-[10px] uppercase tracking-wider font-extrabold text-lavender-200/80">
-              Active Catalog Overview
+            <Text className="text-xs text-lavender-200">
+              Catalog overview
             </Text>
           </View>
 
           <View className="flex-row items-baseline gap-2 mb-1">
             <Text
-              style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-              className="text-3xl font-extrabold text-white tracking-tight"
+              style={{ fontFamily: 'Marcellus_400Regular' }}
+              className="text-4xl text-white"
             >
               {stats?.views_this_month ?? 0}
             </Text>
-            <Text className="text-xs text-lavender-200/80 font-medium">Customer Views</Text>
+            <Text className="text-xs text-lavender-200">customer views this month</Text>
           </View>
 
           <View
@@ -221,19 +207,19 @@ export default function HomeScreen() {
             }}
           >
             <View style={{ flex: 1 }}>
-              <Text className="text-[9px] text-lavender-200/70 font-extrabold uppercase tracking-wider block">
-                WHATSAPP ENQUIRIES
+              <Text className="text-xs text-lavender-200">
+                WhatsApp enquiries
               </Text>
-              <Text className="text-white font-extrabold text-sm mt-0.5">
-                {stats?.enquiries_this_month ?? 0} Sent
+              <Text className="text-white font-semibold text-sm mt-0.5">
+                {stats?.enquiries_this_month ?? 0} sent
               </Text>
             </View>
             <View style={{ flex: 1 }}>
-              <Text className="text-[9px] text-lavender-200/70 font-extrabold uppercase tracking-wider block">
-                ACTIVE PRODUCTS
+              <Text className="text-xs text-lavender-200">
+                Active products
               </Text>
-              <Text className="text-white font-extrabold text-sm mt-0.5">
-                {stats?.total_products_available ?? 0} in Stock
+              <Text className="text-white font-semibold text-sm mt-0.5">
+                {stats?.total_products_available ?? 0} in stock
               </Text>
             </View>
           </View>
@@ -245,44 +231,40 @@ export default function HomeScreen() {
 
       {/* ── Quick Tools ── */}
       <View className="px-4 pt-2 pb-2">
-        <Text className="text-[11px] font-extrabold text-heliotrope-600 uppercase tracking-wider mb-2 px-1">
-          Quick Tools
+        <Text className="text-sm font-semibold text-spaceCadet-900 mb-2 px-1">
+          Quick tools
         </Text>
         <View className="gap-3">
           <View className="flex-row gap-3">
             <QuickAction
-              icon={<Package size={20} color="#BB3F95" />}
+              icon={<Package size={18} color="#5A3962" />}
               label="Active Products"
               sublabel={`${stats?.total_products_available ?? 0} in stock`}
               onPress={() => router.push('/catalog')}
-              accent="#E0E1F6"
             />
             <QuickAction
-              icon={<QrCode size={20} color="#560A39" />}
+              icon={<QrCode size={18} color="#5A3962" />}
               label="Store QR Code"
               sublabel="Scan to view catalog"
               onPress={() => router.push('/store-profile')}
-              accent="#E0E1F6"
             />
           </View>
           {(canSocial || canAnalytics) && (
             <View className="flex-row gap-3">
               {canSocial && (
                 <QuickAction
-                  icon={<MessageCircle size={20} color="#BB3F95" />}
+                  icon={<MessageCircle size={18} color="#5A3962" />}
                   label="Social Media"
                   sublabel="Connect & post"
                   onPress={() => router.push('/growth/integrations')}
-                  accent="#E0E1F6"
                 />
               )}
               {canAnalytics && (
                 <QuickAction
-                  icon={<BarChart3 size={20} color="#560A39" />}
+                  icon={<BarChart3 size={18} color="#5A3962" />}
                   label="Analytics"
                   sublabel="Views, enquiries & stats"
                   onPress={() => router.push('/analytics')}
-                  accent="#E0E1F6"
                 />
               )}
             </View>
@@ -304,22 +286,20 @@ export default function HomeScreen() {
       {/* Trending products */}
       {(stats?.top_viewed_products?.length ?? 0) > 0 && (
         <View className="px-4 py-2">
-          <Text className="text-[11px] font-bold text-heliotrope-600 uppercase tracking-wider mb-2.5 px-1">
-            Trending Products
+          <Text className="text-sm font-semibold text-spaceCadet-900 mb-2 px-1">
+            Trending products
           </Text>
           <View className="gap-2.5">
             {stats!.top_viewed_products.map((r) => (
               <AnimatedPressable
                 key={r.product.id}
                 onPress={() => router.push(`/product/${r.product.id}`)}
-                className="bg-white rounded-3xl p-3.5 border border-lavender-200 flex-row items-center justify-between shadow-sm"
+                className="bg-white rounded-2xl p-3.5 border border-lavender-200 flex-row items-center justify-between shadow-sm"
               >
-                <Text className="text-xs font-bold text-spaceCadet-900 font-marcellus">
+                <Text className="text-xs text-spaceCadet-900 font-marcellus">
                   {r.product.category ?? 'Product'} · {r.product.primary_color ?? '—'}
                 </Text>
-                <View className="px-2.5 py-1 rounded-xl bg-fuchsia-500/10 border border-fuchsia-500/20">
-                  <Text className="text-[11px] font-bold text-fuchsia-600">{r.count} views</Text>
-                </View>
+                <Text className="text-xs text-heliotrope-500">{r.count} views</Text>
               </AnimatedPressable>
             ))}
           </View>
@@ -328,70 +308,57 @@ export default function HomeScreen() {
 
       {/* ── Catalog & Products ── */}
       <View className="px-4 pt-4">
-        <View className="flex-row items-center gap-2 mb-3">
-          <View className="w-6 h-6 rounded-lg items-center justify-center bg-fuchsia-500/15">
-            <Package size={14} color="#BB3F95" />
-          </View>
-          <Text className="text-[11px] font-bold text-heliotrope-600 uppercase tracking-wider">
-            Catalog & Products
-          </Text>
-        </View>
+        <Text className="text-sm font-semibold text-spaceCadet-900 mb-2 px-1">Catalog & products</Text>
         <View className="gap-3">
           <View className="flex-row gap-3">
             {canEditCatalog && (
               <QuickAction
-                icon={<Camera size={20} color="#BB3F95" />}
+                icon={<Camera size={18} color="#5A3962" />}
                 label="Add Product"
                 sublabel="Photo + AI tagging"
                 onPress={() => router.push('/product/add')}
-                accent="#E0E1F6"
               />
             )}
             <QuickAction
-              icon={<FolderKanban size={20} color="#560A39" />}
+              icon={<FolderKanban size={18} color="#5A3962" />}
               label={`${categories.length} ${categories.length === 1 ? 'Category' : 'Categories'}`}
               sublabel="Manage categories"
               onPress={() => router.push('/category')}
-              accent="#E0E1F6"
             />
           </View>
           <View className="flex-row gap-3">
             {canEditCatalog && (
               <QuickAction
-                icon={<PackagePlus size={20} color="#BB3F95" />}
+                icon={<PackagePlus size={18} color="#5A3962" />}
                 label="Bulk Onboard"
                 sublabel="Rack-by-rack upload"
                 onPress={() => router.push('/product/bulk-onboard')}
-                accent="#E0E1F6"
               />
             )}
             {canCollections && (
               <QuickAction
-                icon={<Link2 size={20} color="#560A39" />}
+                icon={<Link2 size={18} color="#5A3962" />}
                 label="New Collection"
                 sublabel="Share on WhatsApp"
                 onPress={() => router.push('/collection/new')}
-                accent="#E0E1F6"
               />
             )}
           </View>
           {/* F-044 E3 — every role (D2); E4-lite badge = NEW count. */}
           <View className="flex-row gap-3">
             <QuickAction
-              icon={<MessageCircle size={20} color="#BB3F95" />}
+              icon={<MessageCircle size={18} color="#5A3962" />}
               label="Enquiries"
               sublabel="Customer picks inbox"
               onPress={() => router.push('/enquiries')}
-              accent="#E0E1F6"
               badge={unreadEnquiries}
             />
             {/* F-047 Scan & Sell — every role the server allows (owner, manager, salesperson), so no staffCan gate. */}
             <QuickAction
-              icon={<ScanLine size={20} color="#560A39" />}
+              icon={<ScanLine size={18} color="#5A3962" />}
               label="Sell items"
               sublabel="Scan and mark sold"
               onPress={() => router.push('/product/sell')}
-              accent="#E0E1F6"
             />
           </View>
           {/* Suits Designs — retailer entry hidden by owner decision
@@ -400,11 +367,10 @@ export default function HomeScreen() {
               to re-enable retailer uploads. */}
           {/* <View className="flex-row gap-3">
             <QuickAction
-              icon={<Image size={20} color="#BB3F95" />}
+              icon={<Image size={18} color="#5A3962" />}
               label="Suits Designs"
               sublabel="Design photos for your store"
               onPress={() => router.push('/showcase-designs')}
-              accent="#E0E1F6"
             />
           </View> */}
         </View>
@@ -412,31 +378,22 @@ export default function HomeScreen() {
 
       {/* ── Growth & Marketing ── */}
       <View className="px-4 pt-5">
-        <View className="flex-row items-center gap-2 mb-3">
-          <View className="w-6 h-6 rounded-lg items-center justify-center bg-fuchsia-500/15">
-            <Megaphone size={14} color="#BB3F95" />
-          </View>
-          <Text className="text-[11px] font-bold text-heliotrope-600 uppercase tracking-wider">
-            Growth & Marketing
-          </Text>
-        </View>
+        <Text className="text-sm font-semibold text-spaceCadet-900 mb-2 px-1">Growth & marketing</Text>
         <View className="flex-row gap-3">
           {canGrowth && (
             <QuickAction
-              icon={<Megaphone size={20} color="#BB3F95" />}
+              icon={<Megaphone size={18} color="#5A3962" />}
               label="Growth Tools"
               sublabel="AI Campaigns · Referrals"
               onPress={() => router.push('/growth')}
-              accent="#E0E1F6"
             />
           )}
           {canAnalytics && (
             <QuickAction
-              icon={<BarChart3 size={20} color="#BB3F95" />}
+              icon={<BarChart3 size={18} color="#5A3962" />}
               label="Analytics"
               sublabel="Views, enquiries & stats"
               onPress={() => router.push('/analytics')}
-              accent="#E0E1F6"
             />
           )}
         </View>
@@ -444,21 +401,13 @@ export default function HomeScreen() {
 
       {/* ── Settings ── */}
       <View className="px-4 pt-5 pb-2">
-        <View className="flex-row items-center gap-2 mb-3">
-          <View className="w-6 h-6 rounded-lg items-center justify-center bg-fuchsia-500/15">
-            <Settings size={14} color="#BB3F95" />
-          </View>
-          <Text className="text-[11px] font-bold text-heliotrope-600 uppercase tracking-wider">
-            Settings
-          </Text>
-        </View>
+        <Text className="text-sm font-semibold text-spaceCadet-900 mb-2 px-1">Settings</Text>
         <View className="flex-row gap-3">
           <QuickAction
-            icon={<Settings size={20} color="#560A39" />}
+            icon={<Settings size={18} color="#5A3962" />}
             label="Settings"
             sublabel="Store Profile · Staff · Sync"
             onPress={() => router.push('/settings')}
-            accent="#E0E1F6"
           />
           <View className="flex-1" />
         </View>
@@ -475,47 +424,28 @@ function QuickAction({
   label,
   sublabel,
   onPress,
-  accent,
   badge = 0,
 }: {
   icon: React.ReactNode;
   label: string;
   sublabel: string;
   onPress: () => void;
-  accent: string;
   badge?: number;
 }) {
   return (
     <AnimatedPressable
       onPress={onPress}
-      className="flex-1 bg-white rounded-3xl p-4 border border-lavender-200 shadow-sm"
-      style={{
-        shadowColor: '#231F48',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.05,
-        shadowRadius: 10,
-        elevation: 2,
-      }}
+      className="flex-1 bg-white rounded-2xl p-4 border border-lavender-200"
     >
-      <View
-        className="w-10 h-10 rounded-2xl items-center justify-center mb-2.5"
-        style={{ backgroundColor: accent }}
-      >
-        {icon}
-      </View>
-      <Text
-        style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-        className="text-xs font-bold text-spaceCadet-900"
-      >
-        {label}
-      </Text>
-      <Text className="text-[10px] text-heliotrope-500 mt-0.5 font-medium">{sublabel}</Text>
+      <View className="mb-2">{icon}</View>
+      <Text className="text-[13px] font-semibold text-spaceCadet-900">{label}</Text>
+      <Text className="text-xs text-heliotrope-500 mt-0.5">{sublabel}</Text>
       {badge > 0 && (
         <View
           className="absolute top-3 right-3 min-w-[20px] h-5 px-1.5 rounded-full bg-fuchsia-600 items-center justify-center"
           accessibilityLabel={`${badge} new`}
         >
-          <Text className="text-[10px] font-bold text-white">{badge > 99 ? '99+' : badge}</Text>
+          <Text className="text-[11px] font-semibold text-white">{badge > 99 ? '99+' : badge}</Text>
         </View>
       )}
     </AnimatedPressable>

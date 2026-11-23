@@ -20,7 +20,7 @@
 import React, { memo, useState, useEffect } from 'react'
 import { View, Text, type ViewStyle } from 'react-native'
 import { Image } from 'expo-image'
-import { Heart } from 'lucide-react-native'
+import { Heart, ImageOff, Package } from 'lucide-react-native'
 import { AnimatedPressable } from './AnimatedPressable'
 
 // iOS shadow (Android keeps its own `elevation` prop, RN can't share one style key for both).
@@ -62,8 +62,6 @@ export interface ProductCardProps {
   imageHeight?: number
   /** Optional: Enable image caching policy */
   cachePolicy?: 'memory-disk' | 'memory' | 'disk'
-  /** Optional: Placeholder icon shown when no image URL */
-  placeholderIcon?: string
   /** Optional: Favorite action callback */
   onFavorite?: () => void
   /** Optional: Whether card is currently favorited */
@@ -84,7 +82,6 @@ const ProductCard = memo(function ProductCard({
   selected,
   imageHeight,
   cachePolicy = 'memory-disk',
-  placeholderIcon = '📦',
   onFavorite,
   isFavorite,
 }: ProductCardProps) {
@@ -122,17 +119,17 @@ const ProductCard = memo(function ProductCard({
             />
           ) : (
             <View className="w-full h-full items-center justify-center bg-lavender-50">
-              <Text className="text-heliotrope-400 text-3xl">{imageError ? '⚠️' : placeholderIcon}</Text>
+              {imageError ? <ImageOff size={24} color="#6B4773" /> : <Package size={24} color="#6B4773" />}
               {imageError && (
-                <Text className="text-heliotrope-500 text-[10px] mt-1">Image error</Text>
+                <Text className="text-heliotrope-500 text-[11px] mt-1">Image error</Text>
               )}
             </View>
           )}
 
           {/* Status badge (top-left) */}
           {statusBadge && (
-            <View className="absolute top-2.5 left-2.5 bg-tyrian-800/90 px-2.5 py-0.5 rounded-full shadow-sm">
-              <Text className="text-white text-[10px] font-bold uppercase tracking-wider">{statusBadge}</Text>
+            <View className="absolute top-2 left-2 bg-spaceCadet-900/90 px-2 py-0.5 rounded-md">
+              <Text className="text-white text-[11px] font-medium">{statusBadge.charAt(0) + statusBadge.slice(1).toLowerCase()}</Text>
             </View>
           )}
 
@@ -157,7 +154,7 @@ const ProductCard = memo(function ProductCard({
           )}
 
           {/* Floating favorite heart / action button (Point 9 Discovery Spec) */}
-          {onFavorite ? (
+          {onFavorite && (
             <AnimatedPressable
               onPress={onFavorite}
               className="w-8 h-8 rounded-full bg-white/95 items-center justify-center absolute bottom-3 right-3 shadow-md border border-lavender-200"
@@ -169,23 +166,12 @@ const ProductCard = memo(function ProductCard({
                 fill={isFavorite ? "#BB3F95" : "transparent"}
               />
             </AnimatedPressable>
-          ) : (
-            <View
-              className="w-8 h-8 rounded-full bg-white/95 items-center justify-center absolute bottom-3 right-3 shadow-md border border-lavender-200"
-              style={{ elevation: 3 }}
-            >
-              <Heart
-                size={16}
-                color={isFavorite ? "#BB3F95" : "#231F48"}
-                fill={isFavorite ? "#BB3F95" : "transparent"}
-              />
-            </View>
           )}
 
           {/* Selected checkmark overlay */}
           {selected && (
             <View className="absolute top-2.5 right-2.5 w-6 h-6 bg-fuchsia-600 rounded-full items-center justify-center shadow-sm">
-              <Text className="text-white text-xs font-bold">✓</Text>
+              <Text className="text-white text-xs font-semibold">✓</Text>
             </View>
           )}
         </View>

@@ -97,10 +97,8 @@ export default function TabsLayout() {
         },
         headerStyle: { backgroundColor: '#F8F7FC' },
         headerTitleStyle: {
-          fontWeight: '800',
           fontSize: 16,
           lineHeight: 24,
-          letterSpacing: 0.32,
           fontFamily: 'Marcellus_400Regular',
         },
         headerShadowVisible: false,
@@ -161,9 +159,9 @@ export default function TabsLayout() {
                     backgroundColor: '#BB3F95',
                     justifyContent: 'center',
                     alignItems: 'center',
-                    shadowColor: '#BB3F95',
+                    shadowColor: '#231F48',
                     shadowOffset: { width: 0, height: 4 },
-                    shadowOpacity: 0.35,
+                    shadowOpacity: 0.18,
                     shadowRadius: 8,
                     elevation: 8,
                     borderWidth: 4,
@@ -183,7 +181,7 @@ export default function TabsLayout() {
         options={{
           href: canSeeGrowth ? undefined : null,
           title: 'Growth',
-          tabBarIcon: ({ color, size }) => <TrendingUp color={color} size={size} />,
+          tabBarIcon: ({ color, size }) => <TrendingUp color={color} size={size} strokeWidth={1.8} />,
           headerShown: false,
         }}
       />

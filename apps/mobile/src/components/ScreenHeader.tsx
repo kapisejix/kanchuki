@@ -39,8 +39,8 @@ export function ScreenHeader({ title, subtitle, right, onBack, children }: Scree
         </AnimatedPressable>
         <View className="flex-1">
           <Text
-            style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-            className="text-xl font-bold text-spaceCadet-900"
+            style={{ fontFamily: 'Marcellus_400Regular' }}
+            className="text-xl text-spaceCadet-900"
           >
             {title}
           </Text>

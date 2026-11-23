@@ -560,9 +560,9 @@ describe('onboarding steps 1-4 (T3.2-a #4)', () => {
   it('steps 1-4 save then advance in order, ending on the Free Demo', async () => {
     const tree = mount()
     await toStep3(tree)
-    expect(text(tree)).toContain('GST Details')
+    expect(text(tree)).toContain('GST details')
     await press(tree, NEXT[3])
-    expect(text(tree)).toContain('Start Your Free Demo')
+    expect(text(tree)).toContain('Start your free demo')
     expect(text(tree)).not.toContain('₹')
     expect(text(tree)).not.toContain('or pick a plan')
     expect(disabled(tree, NEXT[4])).toBe(false) // Free Demo is the only option
@@ -576,7 +576,7 @@ describe('onboarding steps 1-4 (T3.2-a #4)', () => {
     const onOrder = vi.mocked(apiMock.retailerApi.updateOnboarding).mock.invocationCallOrder
     expect(upd[0]).toBeLessThan(onOrder[0])
     expect(upd[1]).toBeLessThan(onOrder[1])
-    expect(text(tree)).toContain("You're All Set!")
+    expect(text(tree)).toContain("You're all set")
   })
 
   it('Free Demo sends demo_plan, not a paid plan', async () => {
@@ -602,7 +602,7 @@ describe('onboarding steps 1-4 (T3.2-a #4)', () => {
     expect(err).toBeDefined()
     expect(err![1]).toBe('Invalid GSTIN')
     expect(vi.mocked(apiMock.retailerApi.updateOnboarding).mock.calls.map((c) => c[0])).toEqual([1, 2])
-    expect(text(tree)).toContain('GST Details')
+    expect(text(tree)).toContain('GST details')
   })
 
   it('an empty GSTIN is optional: no gstin save, progress still recorded', async () => {

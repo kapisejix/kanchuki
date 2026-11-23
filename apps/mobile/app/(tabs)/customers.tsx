@@ -72,13 +72,13 @@ const CustomerCard = memo(function CustomerCard({
   return (
     <AnimatedPressable
       onPress={onPress}
-      className="bg-white rounded-3xl p-4 border border-lavender-200 shadow-sm flex-row items-center gap-3.5"
+      className="bg-white rounded-2xl p-4 border border-lavender-200 shadow-sm flex-row items-center gap-3.5"
     >
       {/* Avatar */}
-      <View className="w-12 h-12 rounded-2xl bg-[#560A39] items-center justify-center flex-shrink-0 border border-[#BB3F95]/30">
+      <View className="w-12 h-12 rounded-xl bg-lavender-100 items-center justify-center flex-shrink-0">
         <Text
-          style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-          className="text-[#E0E1F6] font-bold text-lg"
+          style={{ fontFamily: 'Marcellus_400Regular' }}
+          className="text-spaceCadet-900 text-lg"
         >
           {item.name.charAt(0).toUpperCase()}
         </Text>
@@ -89,11 +89,9 @@ const CustomerCard = memo(function CustomerCard({
           style={{
             fontFamily: 'Marcellus_400Regular',
             fontSize: 16,
-            lineHeight: 24,
-            letterSpacing: 0.32,
-            fontWeight: '800',
+            lineHeight: 24
           }}
-          className="text-base leading-6 tracking-[0.02em] font-extrabold text-spaceCadet-900 font-marcellus"
+          className="text-base leading-6 text-spaceCadet-900"
         >
           {item.name}
         </Text>
@@ -116,13 +114,13 @@ const CustomerCard = memo(function CustomerCard({
         {prefSummary.length > 0 && (
           <View className="flex-row flex-wrap gap-1 mt-2">
             {prefSummary.slice(0, 3).map((tag) => (
-              <View key={tag} className="bg-lavender-100 px-2.5 py-0.5 rounded-full border border-lavender-200">
-                <Text className="text-spaceCadet-900 font-bold text-[11px]">{tag}</Text>
+              <View key={tag} className="bg-lavender-100 px-2 py-0.5 rounded-md">
+                <Text className="text-spaceCadet-900 font-medium text-[11px]">{tag}</Text>
               </View>
             ))}
             {!!item.budget_max && (
-              <View className="bg-fuchsia-500/15 px-2.5 py-0.5 rounded-full border border-fuchsia-500/30">
-                <Text className="text-fuchsia-700 font-bold text-[11px]">≤{formatPrice(item.budget_max)}</Text>
+              <View className="bg-lavender-100 px-2 py-0.5 rounded-md">
+                <Text className="text-spaceCadet-900 font-medium text-[11px]">≤{formatPrice(item.budget_max)}</Text>
               </View>
             )}
           </View>
@@ -136,7 +134,7 @@ const CustomerCard = memo(function CustomerCard({
           accessibilityLabel={`Ask ${item.name} for a Google review`}
           style={{ minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' }}
         >
-          <Star size={18} color="#BB3F95" />
+          <Star size={18} color="#6B4773" />
         </AnimatedPressable>
       )}
 
@@ -193,12 +191,12 @@ export default function CustomersScreen() {
           <Text className="text-heliotrope-500 text-sm font-medium">No customers found</Text>
         ) : (
           <>
-            <View className="w-16 h-16 bg-lavender-100 rounded-3xl items-center justify-center mb-4 border border-lavender-200">
-              <Users size={28} color="#BB3F95" />
+            <View className="w-16 h-16 bg-lavender-100 rounded-2xl items-center justify-center mb-4 border border-lavender-200">
+              <Users size={24} color="#5A3962" />
             </View>
             <Text
-              style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-              className="text-spaceCadet-900 text-lg font-bold text-center"
+              style={{ fontFamily: 'Marcellus_400Regular' }}
+              className="text-spaceCadet-900 text-lg text-center"
             >
               No customers yet
             </Text>
@@ -228,9 +226,9 @@ export default function CustomersScreen() {
           <TextInput
             value={search}
             onChangeText={setSearch}
-            placeholder="Search by name or phone..."
+            placeholder="Search name or phone"
             placeholderTextColor="#928EB2"
-            className="flex-1 text-sm font-bold text-spaceCadet-900"
+            className="flex-1 text-sm font-semibold text-spaceCadet-900"
           />
         </View>
       </View>
