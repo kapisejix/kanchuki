@@ -25,6 +25,14 @@ export function previewTargets(
 }
 
 /**
+ * The URL line the published caption ends with. Mirrors the fan-out, which
+ * appends the resolved link unless the caption already contains it.
+ */
+export function previewLinkLine(caption: string, linkUrl: string | null): string | null {
+  return linkUrl && !caption.includes(linkUrl) ? linkUrl : null;
+}
+
+/**
  * The image the preview shows for the first media item. A video (the default
  * for a single product with a Ken Burns clip) has no image URL of its own, so
  * it shows the product photo as its poster — it used to show nothing (RC-061).

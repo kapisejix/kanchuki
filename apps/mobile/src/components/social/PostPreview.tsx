@@ -1,8 +1,10 @@
+import { Image } from 'expo-image'
 import { Facebook, Globe, Instagram, Link2, Play } from 'lucide-react-native'
-import { Image, Text, View } from 'react-native'
+import { useState } from 'react'
+import { Text, View } from 'react-native'
 import type { SocialPostComposeType } from '../../lib/api/social'
 import { useTheme } from '../../lib/theme'
-import { previewCover, type PreviewTarget } from './post-preview'
+import { previewCover, previewLinkLine, type PreviewTarget } from './post-preview'
 import type { ComposeMedia } from './types'
 
 const PLATFORM_META: Record<'FACEBOOK' | 'INSTAGRAM', { label: string; bg: string }> = {
@@ -22,6 +24,7 @@ export function PostPreview({
   media,
   caption,
   linkLabel,
+  linkUrl,
 }: {
   targets: PreviewTarget[]
   postType: SocialPostComposeType
@@ -30,11 +33,17 @@ export function PostPreview({
   caption: string
   /** Human label of the attached link ('' when none). */
   linkLabel: string
+  /** URL the server appends to the caption; null when unknown or not appended. */
+  linkUrl: string | null
 }) {
   const { colors } = useTheme()
+  // Real shape of the loaded photo, so the preview does not crop it.
+  const [loaded, setLoaded] = useState<{ url: string; aspect: number } | null>(null)
   if (targets.length === 0) return null
 
   const cover = previewCover(media)
+  const coverAspect = loaded && loaded.url === cover?.url ? loaded.aspect : 4 / 3
+  const linkLine = previewLinkLine(caption, linkUrl)
   // Link card only when there is no photo to show — a collection link with a
   // cover photo, or the Photo carousel format, renders its media like any post.
   const isLinkOnly = postType === 'COLLECTION_LINK' && !cover
@@ -78,7 +87,18 @@ export function PostPreview({
               </View>
             ) : cover ? (
               <View className="mx-4 rounded-xl overflow-hidden bg-sand-100 mb-1">
-                <Image source={{ uri: cover.url }} className="w-full aspect-[4/3]" resizeMode="cover" />
+                <Image
+                  source={{ uri: cover.url }}
+                  style={{ width: '100%', aspectRatio: coverAspect }}
+                  contentFit="cover"
+                  cachePolicy="memory-disk"
+                  onLoad={(e) => {
+                    const { width, height } = e.source
+                    if (width > 0 && height > 0) {
+                      setLoaded({ url: cover.url, aspect: width / height })
+                    }
+                  }}
+                />
                 {cover.isVideo ? (
                   <View className="absolute inset-0 items-center justify-center">
                     <View className="w-10 h-10 rounded-full bg-black/60 items-center justify-center">
@@ -107,12 +127,17 @@ export function PostPreview({
                   ? caption
                   : 'Your caption will appear here — add one below or leave it blank for an auto-filled one.'}
               </Text>
+              {linkLine ? (
+                <Text className="text-xs leading-5 text-sand-800 mt-2" numberOfLines={2}>
+                  {linkLine}
+                </Text>
+              ) : null}
               {isIg && !isLinkOnly && linkLabel ? (
                 <Text className="text-[10px] text-sand-400 mt-1">
                   Link text only — Instagram captions have no clickable links.
                 </Text>
               ) : null}
-              {!isIg && linkLabel ? (
+              {!isIg && linkLabel && !linkUrl ? (
                 <View className="mt-1.5 flex-row items-center gap-1.5 bg-sand-50 rounded-lg border border-sand-100 px-2.5 py-1.5 self-start">
                   <Link2 size={11} color={colors.sand[500]} />
                   <Text className="text-[10px] font-semibold text-sand-600">{linkLabel}</Text>
