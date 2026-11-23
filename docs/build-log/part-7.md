@@ -693,5 +693,6 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Decoration | Emoji, sparkles, icon tiles, the AI search gradient hero and colored stat icons removed. |
 | Bug fixed | `sand-950` and `heliotrope-400` are not Tailwind tokens. Replaced with real tokens. |
 | Kept | Owner-approved uppercase button labels. Logic, API calls, navigation, validation, prices and permissions unchanged. |
-| Local runs | Mobile 722 passed, tsc 0, Android JS bundle exported. Biome on the 18 changed code files: 44 errors, same per file and rule as `origin/main`. |
-| Not verified | Not opened on a device or in Expo Go. Reaches phones only with a new app build. |
+| Local runs | Mobile 722 passed, tsc 0, Android JS bundle exported. Biome on the 18 changed code files: 0 errors (was 44: 36 format and import order, 8 lint). |
+| Logic check | AST comparison with `origin/main`, ignoring styles and text: only icons, wrappers, copy and same-behavior lint fixes differ. No dark text added on camera screens. All 610 color classes resolve. |
+| Not verified | Real rendering and spacing. No Android emulator on the dev machine and the app root does not run on Expo web. Needs the owner's Expo Go check. Reaches phones only with a new app build. |

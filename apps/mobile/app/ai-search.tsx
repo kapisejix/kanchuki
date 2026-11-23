@@ -1,65 +1,58 @@
-import { formatPaiseShort } from '@kanchuki/shared'
-import { useMutation } from '@tanstack/react-query'
-import { router } from 'expo-router'
-import { ChevronLeft, Image as ImageIcon, Mic, Search } from 'lucide-react-native'
-import { useState } from 'react'
-import {
-  ActivityIndicator,
-  Image,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from 'react-native'
-import { useScreenInsets } from '../src/lib/safe-area'
-import { AnimatedPressable } from '../src/components/AnimatedPressable'
-import { productApi } from '../src/lib/api'
-import { showError } from '../src/lib/errors'
+import { formatPaiseShort } from '@kanchuki/shared';
+import { useMutation } from '@tanstack/react-query';
+import { router } from 'expo-router';
+import { ChevronLeft, Image as ImageIcon, Mic, Search } from 'lucide-react-native';
+import { useState } from 'react';
+import { ActivityIndicator, Image, ScrollView, Text, TextInput, View } from 'react-native';
+import { AnimatedPressable } from '../src/components/AnimatedPressable';
+import { productApi } from '../src/lib/api';
+import { showError } from '../src/lib/errors';
+import { useScreenInsets } from '../src/lib/safe-area';
 
 type SearchResult = {
-  id: string
-  category: string | null
-  primary_color: string | null
-  price_min: number | null
-  price_max: number | null
-  status: string
-  primary_photo_url: string | null
-  is_new_arrival: boolean
-  similarity?: number
-}
+  id: string;
+  category: string | null;
+  primary_color: string | null;
+  price_min: number | null;
+  price_max: number | null;
+  status: string;
+  primary_photo_url: string | null;
+  is_new_arrival: boolean;
+  similarity?: number;
+};
 
 type Interpretation = {
-  detected_colors?: string[]
-  detected_fabrics?: string[]
-  detected_budget_max?: number | null
-}
+  detected_colors?: string[];
+  detected_fabrics?: string[];
+  detected_budget_max?: number | null;
+};
 
 const EXAMPLE_QUERIES = [
   'pink cotton suit under 2000',
   'लाल साड़ी silk',
   'neela kurta for men',
   'navy lehenga',
-]
+];
 
 export default function AiSearchScreen() {
-  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets()
-  const [query, setQuery] = useState('')
-  const [submitted, setSubmitted] = useState('')
+  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets();
+  const [query, setQuery] = useState('');
+  const [submitted, setSubmitted] = useState('');
 
   const search = useMutation({
     mutationFn: (q: string) => productApi.search(q, undefined, 24),
     onError: (err) => showError(err, 'Search failed — try a simpler phrase'),
-  })
+  });
 
-  const results = (search.data?.data ?? []) as unknown as SearchResult[]
-  const interpretation = (search.data?.query_interpretation ?? {}) as Interpretation
+  const results = (search.data?.data ?? []) as unknown as SearchResult[];
+  const interpretation = (search.data?.query_interpretation ?? {}) as Interpretation;
 
   const runSearch = (q: string) => {
-    const trimmed = q.trim()
-    if (!trimmed) return
-    setSubmitted(trimmed)
-    search.mutate(trimmed)
-  }
+    const trimmed = q.trim();
+    if (!trimmed) return;
+    setSubmitted(trimmed);
+    search.mutate(trimmed);
+  };
 
   return (
     <View className="flex-1 bg-[#F8F7FC]">
@@ -112,11 +105,15 @@ export default function AiSearchScreen() {
           )}
         </View>
         <Text className="text-[11px] text-heliotrope-500 font-medium mt-2 flex-row items-center">
-          <Mic size={11} color="#BB3F95" /> Speak in Hindi, Hinglish, or English via your keyboard mic.
+          <Mic size={11} color="#BB3F95" /> Speak in Hindi, Hinglish, or English via your keyboard
+          mic.
         </Text>
       </View>
 
-      <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: screenPaddingBottom }}>
+      <ScrollView
+        className="flex-1 px-4 pt-4"
+        contentContainerStyle={{ paddingBottom: screenPaddingBottom }}
+      >
         {submitted === '' ? (
           <View>
             {/* Hero */}
@@ -142,15 +139,13 @@ export default function AiSearchScreen() {
                 <AnimatedPressable
                   key={q}
                   onPress={() => {
-                    setQuery(q)
-                    runSearch(q)
+                    setQuery(q);
+                    runSearch(q);
                   }}
                   accessibilityRole="button"
                   className="bg-white rounded-2xl p-4 border border-lavender-200 flex-row items-center shadow-sm"
                 >
-                  <View
-                    className="w-10 h-10 rounded-2xl items-center justify-center mr-3 bg-lavender-100 border border-lavender-200"
-                  >
+                  <View className="w-10 h-10 rounded-2xl items-center justify-center mr-3 bg-lavender-100 border border-lavender-200">
                     <Search size={16} color="#BB3F95" />
                   </View>
                   <Text className="text-sm font-semibold text-spaceCadet-900 flex-1">{q}</Text>
@@ -163,12 +158,18 @@ export default function AiSearchScreen() {
             {/* Interpretation chips */}
             <View className="flex-row flex-wrap gap-1.5 mb-3.5">
               {(interpretation.detected_colors ?? []).map((c) => (
-                <View key={`c-${c}`} className="bg-fuchsia-500/10 border border-fuchsia-500/20 px-3 py-1 rounded-full">
+                <View
+                  key={`c-${c}`}
+                  className="bg-fuchsia-500/10 border border-fuchsia-500/20 px-3 py-1 rounded-full"
+                >
                   <Text className="text-xs font-semibold text-fuchsia-700">{c}</Text>
                 </View>
               ))}
               {(interpretation.detected_fabrics ?? []).map((f) => (
-                <View key={`f-${f}`} className="bg-lavender-100 border border-lavender-200 px-3 py-1 rounded-full">
+                <View
+                  key={`f-${f}`}
+                  className="bg-lavender-100 border border-lavender-200 px-3 py-1 rounded-full"
+                >
                   <Text className="text-xs font-semibold text-spaceCadet-900">{f}</Text>
                 </View>
               ))}
@@ -184,7 +185,9 @@ export default function AiSearchScreen() {
             {search.isPending ? (
               <View className="items-center py-16">
                 <ActivityIndicator color="#BB3F95" />
-                <Text className="text-xs text-heliotrope-500 font-medium mt-3">Searching boutique catalog…</Text>
+                <Text className="text-xs text-heliotrope-500 font-medium mt-3">
+                  Searching boutique catalog…
+                </Text>
               </View>
             ) : results.length === 0 ? (
               <View className="items-center py-16">
@@ -246,5 +249,5 @@ export default function AiSearchScreen() {
         )}
       </ScrollView>
     </View>
-  )
+  );
 }

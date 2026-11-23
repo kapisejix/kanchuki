@@ -1,32 +1,25 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useQueryClient } from '@tanstack/react-query';
+import { Image } from 'expo-image';
+import * as ImageManipulator from 'expo-image-manipulator';
+import * as ImagePicker from 'expo-image-picker';
+import { router, useLocalSearchParams } from 'expo-router';
+import { AlertTriangle, Camera, Check, FileText, Plus, X } from 'lucide-react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, ScrollView, Text, TextInput, View } from 'react-native';
+import { AnimatedPressable } from '../../src/components/AnimatedPressable';
+import { GradientButton } from '../../src/components/GradientButton';
+import { KeyboardScreen } from '../../src/components/KeyboardScreen';
+import { addAudience, audienceFromTags } from '../../src/components/product-detail/AudienceChips';
 import {
-  View,
-  Text,
-  ScrollView,
-  ActivityIndicator,
-  TextInput,
-  Alert,
-} from 'react-native'
-import { router, useLocalSearchParams } from 'expo-router'
-import * as ImagePicker from 'expo-image-picker'
-import * as ImageManipulator from 'expo-image-manipulator'
-import { Image } from 'expo-image'
-import { useQueryClient } from '@tanstack/react-query'
-import { X, Check, Camera, AlertTriangle, FileText, Plus } from 'lucide-react-native'
-import { useScreenInsets } from '../../src/lib/safe-area'
-import {
+  type CatalogDetectedItem,
   catalogImportApi,
+  prepareImageForUpload,
   retailerApi,
   uploadImageToR2,
-  prepareImageForUpload,
-  type CatalogDetectedItem,
-} from '../../src/lib/api'
-import { apiMessage, showError, logError } from '../../src/lib/errors'
-import { useTheme } from '../../src/lib/theme'
-import { AnimatedPressable } from '../../src/components/AnimatedPressable'
-import { KeyboardScreen } from '../../src/components/KeyboardScreen'
-import { GradientButton } from '../../src/components/GradientButton'
-import { addAudience, audienceFromTags } from '../../src/components/product-detail/AudienceChips'
+} from '../../src/lib/api';
+import { apiMessage, logError, showError } from '../../src/lib/errors';
+import { useScreenInsets } from '../../src/lib/safe-area';
+import { useTheme } from '../../src/lib/theme';
 
 // F-001d: guided bulk onboarding — Path A (rack/shelf batch capture).
 // Reuses the same detect/tag/crop pipeline as F-001c/F-001b (catalog-import.ts);
@@ -35,35 +28,35 @@ import { addAudience, audienceFromTags } from '../../src/components/product-deta
 
 // ─── Types ────────────────────────────────────────────────────────
 
-type Section = { id: string; name: string; type: string }
+type Section = { id: string; name: string; type: string };
 
-type Step = 'location' | 'uploading' | 'detecting' | 'reviewing' | 'saving'
+type Step = 'location' | 'uploading' | 'detecting' | 'reviewing' | 'saving';
 
 type ReviewItem = {
-  original: CatalogDetectedItem
-  approved: boolean
-  sectionId: string | null
-}
+  original: CatalogDetectedItem;
+  approved: boolean;
+  sectionId: string | null;
+};
 
 export default function BulkOnboardScreen() {
-  const { primaryColor, colors } = useTheme()
-  const { insets, headerPaddingTop } = useScreenInsets()
-  const queryClient = useQueryClient()
-  const params = useLocalSearchParams<{ target?: string }>()
-  const target = params.target ? Number(params.target) : null
+  const { primaryColor, colors } = useTheme();
+  const { insets, headerPaddingTop } = useScreenInsets();
+  const queryClient = useQueryClient();
+  const params = useLocalSearchParams<{ target?: string }>();
+  const target = params.target ? Number(params.target) : null;
 
-  const [step, setStep] = useState<Step>('location')
-  const [sections, setSections] = useState<Section[]>([])
-  const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null)
-  const [newSectionName, setNewSectionName] = useState('')
-  const [addingSection, setAddingSection] = useState(false)
+  const [step, setStep] = useState<Step>('location');
+  const [sections, setSections] = useState<Section[]>([]);
+  const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null);
+  const [newSectionName, setNewSectionName] = useState('');
+  const [addingSection, setAddingSection] = useState(false);
 
-  const [baselineCount, setBaselineCount] = useState(0)
-  const [sessionCreated, setSessionCreated] = useState(0)
+  const [baselineCount, setBaselineCount] = useState(0);
+  const [sessionCreated, setSessionCreated] = useState(0);
 
-  const [sourceUrl, setSourceUrl] = useState('')
-  const [items, setItems] = useState<ReviewItem[]>([])
-  const [error, setError] = useState<string | null>(null)
+  const [sourceUrl, setSourceUrl] = useState('');
+  const [items, setItems] = useState<ReviewItem[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   // ── Load sections + baseline catalog count once ────────────────
 
@@ -72,98 +65,114 @@ export default function BulkOnboardScreen() {
       .getSections()
       .then((res) => setSections(res.data as Section[]))
       .catch((err) =>
-        setError(apiMessage(err, 'Could not load your racks. Go back and reopen this screen to retry.')),
-      )
+        setError(
+          apiMessage(err, 'Could not load your racks. Go back and reopen this screen to retry.'),
+        ),
+      );
     retailerApi
       .getStats()
       .then((res) => {
-        const stats = res.data as { total_products_available?: number }
-        setBaselineCount(stats.total_products_available ?? 0)
+        const stats = res.data as { total_products_available?: number };
+        setBaselineCount(stats.total_products_available ?? 0);
       })
       .catch((err) =>
-        setError(apiMessage(err, 'Could not load your catalogue count, so the number below may be low.')),
-      )
-  }, [])
+        setError(
+          apiMessage(err, 'Could not load your catalogue count, so the number below may be low.'),
+        ),
+      );
+  }, []);
 
   // ── Create a new rack/shelf inline ──────────────────────────────
 
   const handleCreateSection = useCallback(async () => {
-    const name = newSectionName.trim()
-    if (!name) return
+    const name = newSectionName.trim();
+    if (!name) return;
     try {
-      const res = await retailerApi.createSection({ name, type: 'rack' })
-      setSections((prev) => [...prev, res.data as Section])
-      setSelectedSectionId(res.data.id)
-      setNewSectionName('')
-      setAddingSection(false)
+      const res = await retailerApi.createSection({ name, type: 'rack' });
+      setSections((prev) => [...prev, res.data as Section]);
+      setSelectedSectionId(res.data.id);
+      setNewSectionName('');
+      setAddingSection(false);
     } catch (err) {
-      showError(err, 'Try again.', 'Could not add location')
+      showError(err, 'Try again.', 'Could not add location');
     }
-  }, [newSectionName])
+  }, [newSectionName]);
 
   // ── Capture + upload + detect one rack photo ────────────────────
 
-  const runPhoto = useCallback(async (uri: string) => {
-    setStep('uploading')
-    setError(null)
-    try {
-      const compressed = await ImageManipulator.manipulateAsync(
-        uri,
-        [{ resize: { width: 1400 } }],
-        { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG },
-      )
-      const prep = await prepareImageForUpload(compressed.uri, 'image/jpeg')
-      const uploadResult = await catalogImportApi.getUploadUrl('rack-photo.jpg', 'image/jpeg', prep.size)
-      const info = uploadResult.data
-      await uploadImageToR2(prep.uri, info.upload_url, 'image/jpeg', undefined, undefined, { compress: false })
-      setSourceUrl(info.public_url)
+  const runPhoto = useCallback(
+    async (uri: string) => {
+      setStep('uploading');
+      setError(null);
+      try {
+        const compressed = await ImageManipulator.manipulateAsync(
+          uri,
+          [{ resize: { width: 1400 } }],
+          { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG },
+        );
+        const prep = await prepareImageForUpload(compressed.uri, 'image/jpeg');
+        const uploadResult = await catalogImportApi.getUploadUrl(
+          'rack-photo.jpg',
+          'image/jpeg',
+          prep.size,
+        );
+        const info = uploadResult.data;
+        await uploadImageToR2(prep.uri, info.upload_url, 'image/jpeg', undefined, undefined, {
+          compress: false,
+        });
+        setSourceUrl(info.public_url);
 
-      setStep('detecting')
-      const detected = await catalogImportApi.detectItems(info.public_url)
-      setItems(
-        detected.data.items.map((item) => ({
-          original: item,
-          approved: true,
-          sectionId: selectedSectionId,
-        })),
-      )
-      setStep('reviewing')
-    } catch (err) {
-      logError(err)
-      setError(apiMessage(err, 'Something went wrong. Try again.'))
-      setStep('location')
-    }
-  }, [selectedSectionId])
+        setStep('detecting');
+        const detected = await catalogImportApi.detectItems(info.public_url);
+        setItems(
+          detected.data.items.map((item) => ({
+            original: item,
+            approved: true,
+            sectionId: selectedSectionId,
+          })),
+        );
+        setStep('reviewing');
+      } catch (err) {
+        logError(err);
+        setError(apiMessage(err, 'Something went wrong. Try again.'));
+        setStep('location');
+      }
+    },
+    [selectedSectionId],
+  );
 
   const handleCapturePhoto = useCallback(async () => {
     try {
-      const result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 0.85 })
-      if (result.canceled || !result.assets[0]) return
-      await runPhoto(result.assets[0].uri)
+      const result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 0.85 });
+      if (result.canceled || !result.assets[0]) return;
+      await runPhoto(result.assets[0].uri);
     } catch (err) {
-      showError(err, 'Could not take that photo.', 'Camera Error')
+      showError(err, 'Could not take that photo.', 'Camera Error');
     }
-  }, [runPhoto])
+  }, [runPhoto]);
 
   const handlePickPhoto = useCallback(async () => {
     try {
-      const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.85 })
-      if (result.canceled || !result.assets[0]) return
-      await runPhoto(result.assets[0].uri)
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        quality: 0.85,
+      });
+      if (result.canceled || !result.assets[0]) return;
+      await runPhoto(result.assets[0].uri);
     } catch (err) {
-      showError(err, 'Could not pick that photo.', 'Photo Error')
+      showError(err, 'Could not pick that photo.', 'Photo Error');
     }
-  }, [runPhoto])
+  }, [runPhoto]);
 
   // ── Save this photo's approved items, then loop back ────────────
 
   const handleSaveBatch = useCallback(async () => {
-    const approved = items.filter((i) => i.approved)
+    const approved = items.filter((i) => i.approved);
     if (approved.length === 0) {
-      Alert.alert('No items selected', 'Approve at least one item to save.')
-      return
+      Alert.alert('No items selected', 'Approve at least one item to save.');
+      return;
     }
-    setStep('saving')
+    setStep('saving');
     try {
       const result = await catalogImportApi.bulkCreateProducts(
         approved.map((item) => ({
@@ -179,37 +188,38 @@ export default function BulkOnboardScreen() {
           section_id: item.sectionId,
         })),
         selectedSectionId,
-      )
-      setSessionCreated((n) => n + result.data.total_created)
-      void queryClient.invalidateQueries({ queryKey: ['products'] })
-      void queryClient.invalidateQueries({ queryKey: ['retailer', 'stats'] })
-      setItems([])
-      setSourceUrl('')
-      setStep('location')
+      );
+      setSessionCreated((n) => n + result.data.total_created);
+      void queryClient.invalidateQueries({ queryKey: ['products'] });
+      void queryClient.invalidateQueries({ queryKey: ['retailer', 'stats'] });
+      setItems([]);
+      setSourceUrl('');
+      setStep('location');
     } catch (err) {
-      setStep('reviewing')
-      showError(err, 'Could not save products.', 'Save failed')
+      setStep('reviewing');
+      showError(err, 'Could not save products.', 'Save failed');
     }
-  }, [items, selectedSectionId, queryClient])
+  }, [items, selectedSectionId, queryClient]);
 
   const toggleApproval = (index: number) =>
-    setItems((prev) => prev.map((it, i) => (i === index ? { ...it, approved: !it.approved } : it)))
+    setItems((prev) => prev.map((it, i) => (i === index ? { ...it, approved: !it.approved } : it)));
 
   const cycleItemSection = (index: number) => {
-    if (sections.length === 0) return
+    if (sections.length === 0) return;
     setItems((prev) =>
       prev.map((it, i) => {
-        if (i !== index) return it
-        const currentIdx = sections.findIndex((s) => s.id === it.sectionId)
-        const next = sections[(currentIdx + 1) % sections.length]!
-        return { ...it, sectionId: next.id }
+        if (i !== index) return it;
+        const currentIdx = sections.findIndex((s) => s.id === it.sectionId);
+        const next = sections[(currentIdx + 1) % sections.length]!;
+        return { ...it, sectionId: next.id };
       }),
-    )
-  }
+    );
+  };
 
-  const sectionName = (id: string | null) => sections.find((s) => s.id === id)?.name ?? 'No location'
-  const catalogued = baselineCount + sessionCreated
-  const approvedCount = items.filter((i) => i.approved).length
+  const sectionName = (id: string | null) =>
+    sections.find((s) => s.id === id)?.name ?? 'No location';
+  const catalogued = baselineCount + sessionCreated;
+  const approvedCount = items.filter((i) => i.approved).length;
 
   // ── Render: location + photo picker step ────────────────────────
 
@@ -217,7 +227,9 @@ export default function BulkOnboardScreen() {
     <ScrollView className="flex-1 px-4 pt-6" contentContainerStyle={{ paddingBottom: 140 }}>
       <View className="items-center gap-3">
         <Camera size={32} color="#6B4773" />
-        <Text className="text-lg font-semibold text-spaceCadet-900 text-center">Bulk onboarding</Text>
+        <Text className="text-lg font-semibold text-spaceCadet-900 text-center">
+          Bulk onboarding
+        </Text>
         <Text className="text-heliotrope-500 text-sm text-center px-6 leading-5">
           Photograph one rack/shelf at a time — AI splits it into individual products.
         </Text>
@@ -247,10 +259,16 @@ export default function BulkOnboardScreen() {
             key={s.id}
             onPress={() => setSelectedSectionId(s.id)}
             className={`px-4 py-2.5 rounded-xl border-2 ${
-              selectedSectionId === s.id ? 'bg-ink-600 border-ink-600' : 'bg-white border-lavender-200'
+              selectedSectionId === s.id
+                ? 'bg-ink-600 border-ink-600'
+                : 'bg-white border-lavender-200'
             }`}
           >
-            <Text className={selectedSectionId === s.id ? 'text-white font-medium' : 'text-heliotrope-600'}>
+            <Text
+              className={
+                selectedSectionId === s.id ? 'text-white font-medium' : 'text-heliotrope-600'
+              }
+            >
               {s.name}
             </Text>
           </AnimatedPressable>
@@ -305,7 +323,7 @@ export default function BulkOnboardScreen() {
         <Text className="text-heliotrope-500 text-sm">Restocking from a supplier PDF instead?</Text>
       </AnimatedPressable>
     </ScrollView>
-  )
+  );
 
   // ── Render: progress ─────────────────────────────────────────────
 
@@ -314,14 +332,18 @@ export default function BulkOnboardScreen() {
       <ActivityIndicator size="large" color={primaryColor} className="mb-4" />
       <Text className="text-lg font-semibold text-spaceCadet-900 text-center">{label}</Text>
     </View>
-  )
+  );
 
   // ── Render: review ────────────────────────────────────────────────
 
   const renderReview = () => (
     <>
       <View className="bg-white px-4 py-3 border-b border-lavender-200">
-        <Image source={{ uri: sourceUrl }} className="w-full h-32 rounded-xl bg-sand-100" contentFit="contain" />
+        <Image
+          source={{ uri: sourceUrl }}
+          className="w-full h-32 rounded-xl bg-sand-100"
+          contentFit="contain"
+        />
       </View>
       <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: 160 }}>
         <Text className="text-sm font-semibold text-heliotrope-600 mb-3">
@@ -342,7 +364,9 @@ export default function BulkOnboardScreen() {
                 contentFit="cover"
               />
               <View className="flex-1 justify-center gap-1">
-                <Text className="text-sm font-semibold text-spaceCadet-900">{item.original.description}</Text>
+                <Text className="text-sm font-semibold text-spaceCadet-900">
+                  {item.original.description}
+                </Text>
                 {item.original.tags.category && (
                   <Text className="text-xs bg-lavender-50 text-ink-700 px-2 py-0.5 rounded-full self-start">
                     {item.original.tags.category}
@@ -366,18 +390,24 @@ export default function BulkOnboardScreen() {
           </View>
         ))}
         {items.length === 0 && (
-          <Text className="text-heliotrope-500 text-sm text-center py-12">No garments detected. Try a different photo.</Text>
+          <Text className="text-heliotrope-500 text-sm text-center py-12">
+            No garments detected. Try a different photo.
+          </Text>
         )}
       </ScrollView>
-      <View className="bg-white border-t border-lavender-200 px-4 pt-4" style={{ paddingBottom: 16 + insets.bottom }}>
-        <GradientButton variant="web"
+      <View
+        className="bg-white border-t border-lavender-200 px-4 pt-4"
+        style={{ paddingBottom: 16 + insets.bottom }}
+      >
+        <GradientButton
+          variant="web"
           label={`Save ${approvedCount} & photograph next rack`}
           onPress={() => void handleSaveBatch()}
           disabled={approvedCount === 0}
         />
       </View>
     </>
-  )
+  );
 
   const stepTitles: Record<Step, string> = {
     location: 'Bulk Onboarding',
@@ -385,7 +415,7 @@ export default function BulkOnboardScreen() {
     detecting: 'Analyzing rack photo...',
     reviewing: `Review (${items.length})`,
     saving: 'Saving products...',
-  }
+  };
 
   return (
     <KeyboardScreen className="flex-1 bg-lavender-50">
@@ -410,5 +440,5 @@ export default function BulkOnboardScreen() {
       {step === 'reviewing' && renderReview()}
       {step === 'saving' && renderProgress('Creating products...')}
     </KeyboardScreen>
-  )
+  );
 }

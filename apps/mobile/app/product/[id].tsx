@@ -1,53 +1,53 @@
-import React, { useState, useRef, useCallback } from 'react'
+import type { ProductDetail } from '@kanchuki/shared';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Image } from 'expo-image';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { VideoView } from 'expo-video';
+import { Camera, ChevronLeft, Clapperboard, Share2, Star } from 'lucide-react-native';
+import React, { useState, useRef, useCallback } from 'react';
 import {
-  View,
-  Text,
-  ScrollView,
-  Dimensions,
-  Modal,
   ActivityIndicator,
+  Dimensions,
   Linking,
-} from 'react-native'
-import { router, useLocalSearchParams, useFocusEffect } from 'expo-router'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Image } from 'expo-image'
-import { VideoView } from 'expo-video'
-import { useScreenInsets } from '../../src/lib/safe-area'
-import { Camera, ChevronLeft, Clapperboard, Share2, Star } from 'lucide-react-native'
-import Gallery, { type GalleryRef } from 'react-native-awesome-gallery'
-import type { ProductDetail } from '@kanchuki/shared'
+  Modal,
+  ScrollView,
+  Text,
+  View,
+} from 'react-native';
+import Gallery, { type GalleryRef } from 'react-native-awesome-gallery';
+import { useScreenInsets } from '../../src/lib/safe-area';
 
-import { productApi, categoryApi, productAttributeApi, retailerApi } from '../../src/lib/api'
-import { WEB_URL } from '../../src/lib/web-url'
-import { DetailScreenSkeleton } from '../../src/components/Skeleton'
-import { useTheme } from '../../src/lib/theme'
-import { useSafeVideoPlayer } from '../../src/lib/safe-video-player'
-import { AnimatedPressable } from '../../src/components/AnimatedPressable'
-import { KeyboardScreen } from '../../src/components/KeyboardScreen'
-import { WHITE_BUTTON_INK, WhiteButton } from '../../src/components/WhiteButton'
-import { SkuTagModal } from '../../src/components/product-detail/SkuTagModal'
-import { ProductMediaCarousel } from '../../src/components/product-detail/ProductMediaCarousel'
-import { ProductPhotoControls } from '../../src/components/product-detail/ProductPhotoControls'
-import { ProductAttributesForm } from '../../src/components/product-detail/ProductAttributesForm'
-import { ProductAiReviewSection } from '../../src/components/product-detail/ProductAiReviewSection'
-import { ProductActionsBar } from '../../src/components/product-detail/ProductActionsBar'
-import { ProductStudioModal } from '../../src/components/product-detail/ProductStudioModal'
-import { useProductDetailForm } from '../../src/hooks/useProductDetailForm'
-import { useProductAiStudio } from '../../src/hooks/useProductAiStudio'
-import { useProductPromoVideo } from '../../src/hooks/useProductPromoVideo'
-import { useNetworkStatus } from '../../src/hooks/useNetworkStatus'
-import { ProductVideoModal } from '../../src/components/product-detail/ProductVideoModal'
-import { isKidsAudience } from '../../src/lib/promo-video'
+import { AnimatedPressable } from '../../src/components/AnimatedPressable';
+import { KeyboardScreen } from '../../src/components/KeyboardScreen';
+import { DetailScreenSkeleton } from '../../src/components/Skeleton';
+import { WHITE_BUTTON_INK, WhiteButton } from '../../src/components/WhiteButton';
+import { ProductActionsBar } from '../../src/components/product-detail/ProductActionsBar';
+import { ProductAiReviewSection } from '../../src/components/product-detail/ProductAiReviewSection';
+import { ProductAttributesForm } from '../../src/components/product-detail/ProductAttributesForm';
+import { ProductMediaCarousel } from '../../src/components/product-detail/ProductMediaCarousel';
+import { ProductPhotoControls } from '../../src/components/product-detail/ProductPhotoControls';
+import { ProductStudioModal } from '../../src/components/product-detail/ProductStudioModal';
+import { ProductVideoModal } from '../../src/components/product-detail/ProductVideoModal';
+import { SkuTagModal } from '../../src/components/product-detail/SkuTagModal';
+import { useNetworkStatus } from '../../src/hooks/useNetworkStatus';
+import { useProductAiStudio } from '../../src/hooks/useProductAiStudio';
+import { useProductDetailForm } from '../../src/hooks/useProductDetailForm';
+import { useProductPromoVideo } from '../../src/hooks/useProductPromoVideo';
+import { categoryApi, productApi, productAttributeApi, retailerApi } from '../../src/lib/api';
 import { META_SOCIAL_ENABLED } from '../../src/lib/meta-social';
+import { isKidsAudience } from '../../src/lib/promo-video';
+import { useSafeVideoPlayer } from '../../src/lib/safe-video-player';
+import { useTheme } from '../../src/lib/theme';
+import { WEB_URL } from '../../src/lib/web-url';
 
-const SCREEN_WIDTH = Dimensions.get('window').width
+const SCREEN_WIDTH = Dimensions.get('window').width;
 
 function ProductVideoSlide({ url, width, height }: { url: string; width: number; height: number }) {
   const player = useSafeVideoPlayer(url, (p) => {
-    p.loop = true
-    p.muted = false
-    p.play()
-  })
+    p.loop = true;
+    p.muted = false;
+    p.play();
+  });
 
   if (!player) {
     return (
@@ -58,7 +58,7 @@ function ProductVideoSlide({ url, width, height }: { url: string; width: number;
         <Clapperboard size={40} color="white" />
         <Text className="text-white text-xs mt-2 font-medium">Product Video (6s)</Text>
       </View>
-    )
+    );
   }
 
   return (
@@ -73,108 +73,108 @@ function ProductVideoSlide({ url, width, height }: { url: string; width: number;
         contentFit="contain"
       />
     </View>
-  )
+  );
 }
 
 export default function ProductDetailScreen() {
-  const { primaryColor, colors } = useTheme()
-  const { insets, headerPaddingTop } = useScreenInsets()
-  const { id } = useLocalSearchParams<{ id: string }>()
-  const queryClient = useQueryClient()
+  const { primaryColor, colors } = useTheme();
+  const { insets, headerPaddingTop } = useScreenInsets();
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const queryClient = useQueryClient();
 
   // Invalidate cache on focus
   useFocusEffect(
     useCallback(() => {
-      void queryClient.invalidateQueries({ queryKey: ['products', id] })
+      void queryClient.invalidateQueries({ queryKey: ['products', id] });
     }, [id, queryClient]),
-  )
+  );
 
   const { data, isLoading } = useQuery({
     queryKey: ['products', id],
     queryFn: () => productApi.get(id),
     refetchInterval: (query) => {
-      const p = (query.state.data as { data: ProductDetail } | undefined)?.data
-      if (!p) return 3_000
-      if (!p.ai_tagged && !p.ai_tag_error) return 3_000
-      return false
+      const p = (query.state.data as { data: ProductDetail } | undefined)?.data;
+      if (!p) return 3_000;
+      if (!p.ai_tagged && !p.ai_tag_error) return 3_000;
+      return false;
     },
-  })
-  const product = data?.data
+  });
+  const product = data?.data;
 
   // Retailer profile — for the "Ask for Review" WhatsApp link (needs the store slug).
   const { data: meData } = useQuery({
     queryKey: ['retailer', 'me'],
     queryFn: () => retailerApi.getMe(),
-  })
-  const me = (meData as { data?: Record<string, any> } | undefined)?.data
-  const publicSlug: string | null = me?.public_slug ?? null
+  });
+  const me = (meData as { data?: Record<string, any> } | undefined)?.data;
+  const publicSlug: string | null = me?.public_slug ?? null;
   // F-040 — the in-store try-on entry point shows only when the plan
   // carries VIRTUAL_TRY_ON_V2. `features` comes from GET /retailers/me and
   // fails closed (absent => hidden). The route re-checks server-side.
   const tryOnEnabled: boolean = Array.isArray(me?.features)
     ? me.features.includes('VIRTUAL_TRY_ON_V2')
-    : false
+    : false;
 
   const askForReview = () => {
-    if (!publicSlug || !product) return
-    const reviewUrl = `${WEB_URL}/${publicSlug}/all-${publicSlug}/product/${product.id}?review=1`
-    const shopName = me?.shop_name ?? 'our store'
-    const itemName = product.name ?? product.category ?? 'your purchase'
-    const msg = `Hi! Thanks for shopping with ${shopName}. Please rate your "${itemName}" here: ${reviewUrl}`
+    if (!publicSlug || !product) return;
+    const reviewUrl = `${WEB_URL}/${publicSlug}/all-${publicSlug}/product/${product.id}?review=1`;
+    const shopName = me?.shop_name ?? 'our store';
+    const itemName = product.name ?? product.category ?? 'your purchase';
+    const msg = `Hi! Thanks for shopping with ${shopName}. Please rate your "${itemName}" here: ${reviewUrl}`;
     void Linking.openURL(`whatsapp://send?text=${encodeURIComponent(msg)}`).catch(() =>
       Linking.openURL(`https://wa.me/?text=${encodeURIComponent(msg)}`),
-    )
-  }
+    );
+  };
 
   // Fetch categories and taxonomy attributes
   const { data: categoriesData } = useQuery({
     queryKey: ['categories'],
     queryFn: () => categoryApi.list(),
-  })
-  const categories = categoriesData?.data ?? []
+  });
+  const categories = categoriesData?.data ?? [];
 
   const { data: stylesData } = useQuery({
     queryKey: ['product-attributes', 'STYLE'],
     queryFn: () => productAttributeApi.list('STYLE'),
-  })
-  const availableStyles = stylesData?.data ?? []
+  });
+  const availableStyles = stylesData?.data ?? [];
 
   const { data: fabricsData } = useQuery({
     queryKey: ['product-attributes', 'FABRIC'],
     queryFn: () => productAttributeApi.list('FABRIC'),
-  })
-  const availableFabrics = fabricsData?.data ?? []
+  });
+  const availableFabrics = fabricsData?.data ?? [];
 
   // Gallery & Carousel layout state
-  const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(0)
-  const [carouselWidth, setCarouselWidth] = useState(SCREEN_WIDTH)
-  const [fullscreenOpen, setFullscreenOpen] = useState(false)
-  const [skuTagOpen, setSkuTagOpen] = useState(false)
-  const [imageErrors, setImageErrors] = useState<Set<string>>(new Set())
-  const [photoCacheBust, setPhotoCacheBust] = useState<Record<string, number>>({})
+  const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(0);
+  const [carouselWidth, setCarouselWidth] = useState(SCREEN_WIDTH);
+  const [fullscreenOpen, setFullscreenOpen] = useState(false);
+  const [skuTagOpen, setSkuTagOpen] = useState(false);
+  const [imageErrors, setImageErrors] = useState<Set<string>>(new Set());
+  const [photoCacheBust, setPhotoCacheBust] = useState<Record<string, number>>({});
 
-  const galleryRef = useRef<GalleryRef>(null)
+  const galleryRef = useRef<GalleryRef>(null);
 
   // Build display photos array (photos + variants + original + video)
   const displayPhotos = React.useMemo(() => {
-    if (!product) return []
+    if (!product) return [];
     const items: {
-      id: string
-      url: string
-      is_primary: boolean
-      is_variant_preview?: boolean
-      is_original_preview?: boolean
-      variant_color?: string
-      is_video?: boolean
-      video_duration?: number | null
-    }[] = []
+      id: string;
+      url: string;
+      is_primary: boolean;
+      is_variant_preview?: boolean;
+      is_original_preview?: boolean;
+      variant_color?: string;
+      is_video?: boolean;
+      video_duration?: number | null;
+    }[] = [];
 
     for (const photo of product.photos) {
       items.push({
         id: photo.id,
         url: photo.url,
         is_primary: photo.is_primary,
-      })
+      });
     }
 
     for (const v of product.variants) {
@@ -188,7 +188,7 @@ export default function ProductDetailScreen() {
           is_primary: false,
           is_variant_preview: true,
           variant_color: v.color,
-        })
+        });
       }
     }
 
@@ -200,40 +200,40 @@ export default function ProductDetailScreen() {
           is_primary: false,
           is_video: true,
           video_duration: video.duration_sec,
-        })
+        });
       }
     }
 
-    return items
-  }, [product])
+    return items;
+  }, [product]);
 
-  const currentPhoto = displayPhotos[selectedPhotoIndex]
-  const currentPhotoIsVariant = currentPhoto?.is_variant_preview ?? false
-  const currentPhotoIsOriginal = currentPhoto?.is_original_preview ?? false
+  const currentPhoto = displayPhotos[selectedPhotoIndex];
+  const currentPhotoIsVariant = currentPhoto?.is_variant_preview ?? false;
+  const currentPhotoIsOriginal = currentPhoto?.is_original_preview ?? false;
 
   const displayUrl = useCallback(
     (photo: { id: string; url: string }) => {
-      const bust = photoCacheBust[photo.id]
-      return bust ? `${photo.url}?t=${bust}` : photo.url
+      const bust = photoCacheBust[photo.id];
+      return bust ? `${photo.url}?t=${bust}` : photo.url;
     },
     [photoCacheBust],
-  )
+  );
 
   const goToPhoto = useCallback(
     (index: number) => {
-      const clamped = Math.max(0, Math.min(index, displayPhotos.length - 1))
-      setSelectedPhotoIndex(clamped)
-      galleryRef.current?.setIndex(clamped, true)
+      const clamped = Math.max(0, Math.min(index, displayPhotos.length - 1));
+      setSelectedPhotoIndex(clamped);
+      galleryRef.current?.setIndex(clamped, true);
     },
     [displayPhotos.length],
-  )
+  );
 
   // Form hook
   const form = useProductDetailForm({
     product,
     selectedPhotoIndex,
     displayPhotos,
-  })
+  });
 
   // AI Studio hook
   const studio = useProductAiStudio({
@@ -244,17 +244,17 @@ export default function ProductDetailScreen() {
     selectedPhotoIndex,
     setSelectedPhotoIndex,
     setPhotoCacheBust,
-  })
+  });
 
   // F-034 AI promo video. D5: source = photo on screen when it is a real product
   // photo (variant/original previews and videos are not), else the original photo.
   const promoSource =
-    (product?.photos ?? []).find((p) => p.id === currentPhoto?.id) ?? studio.originalPhoto
-  const promo = useProductPromoVideo({ product, sourcePhotoId: promoSource?.id })
-  const { isOnline } = useNetworkStatus()
+    (product?.photos ?? []).find((p) => p.id === currentPhoto?.id) ?? studio.originalPhoto;
+  const promo = useProductPromoVideo({ product, sourcePhotoId: promoSource?.id });
+  const { isOnline } = useNetworkStatus();
 
   if (isLoading || !product) {
-    return <DetailScreenSkeleton />
+    return <DetailScreenSkeleton />;
   }
 
   return (
@@ -282,19 +282,17 @@ export default function ProductDetailScreen() {
         <View className="flex-row items-center gap-2">
           {/* Share to social — Create Post composer entry (R-6). The composer
               itself shows the connect-empty state when no accounts exist. */}
-{META_SOCIAL_ENABLED && (
-          <AnimatedPressable
-            onPress={() =>
-              router.push(`/social/create?product_id=${product.id}&source=catalog`)
-            }
-            className="w-10 h-10 rounded-full bg-lavender-100 items-center justify-center border border-lavender-200"
-            hitSlop={8}
-            accessibilityLabel="Post product to social media"
-            accessibilityRole="button"
-          >
-            <Share2 size={18} color="#231F48" />
-          </AnimatedPressable>
-)}
+          {META_SOCIAL_ENABLED && (
+            <AnimatedPressable
+              onPress={() => router.push(`/social/create?product_id=${product.id}&source=catalog`)}
+              className="w-10 h-10 rounded-full bg-lavender-100 items-center justify-center border border-lavender-200"
+              hitSlop={8}
+              accessibilityLabel="Post product to social media"
+              accessibilityRole="button"
+            >
+              <Share2 size={18} color="#231F48" />
+            </AnimatedPressable>
+          )}
           {form.isDirty ? (
             <AnimatedPressable
               onPress={() => void form.handleSave(categories)}
@@ -571,5 +569,5 @@ export default function ProductDetailScreen() {
         colors={colors}
       />
     </KeyboardScreen>
-  )
+  );
 }

@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { TRY_ON_CONSENT } from '@kanchuki/shared';
+import { CameraView, useCameraPermissions } from 'expo-camera';
+import { Image } from 'expo-image';
+import * as ImagePicker from 'expo-image-picker';
+import { router, useLocalSearchParams } from 'expo-router';
+import { Camera, Check, ImagePlus, RotateCcw, Square, X } from 'lucide-react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -6,30 +12,24 @@ import {
   BackHandler,
   FlatList,
   Text,
-  useWindowDimensions,
   View,
-} from 'react-native'
-import { router, useLocalSearchParams } from 'expo-router'
-import { CameraView, useCameraPermissions } from 'expo-camera'
-import * as ImagePicker from 'expo-image-picker'
-import { Image } from 'expo-image'
-import { Camera, Check, ImagePlus, RotateCcw, Square, X } from 'lucide-react-native'
-import { TRY_ON_CONSENT } from '@kanchuki/shared'
+  useWindowDimensions,
+} from 'react-native';
 
-import { productApi } from '../src/lib/api'
-import { useScreenInsets } from '../src/lib/safe-area'
+import { AnimatedPressable } from '../src/components/AnimatedPressable';
+import { GradientButton } from '../src/components/GradientButton';
+import { ReportAiContent } from '../src/components/ReportAiContent';
+import { TryOnConsent } from '../src/components/TryOnConsent';
+import { productApi } from '../src/lib/api';
+import { useScreenInsets } from '../src/lib/safe-area';
 import {
+  type SessionItem,
   cleanupSession,
   planSession,
   runTryOnSession,
   setSessionKeepAwake,
   shouldKeepAwake,
-  type SessionItem,
-} from '../src/lib/try-on-session'
-import { GradientButton } from '../src/components/GradientButton'
-import { AnimatedPressable } from '../src/components/AnimatedPressable'
-import { TryOnConsent } from '../src/components/TryOnConsent'
-import { ReportAiContent } from '../src/components/ReportAiContent'
+} from '../src/lib/try-on-session';
 
 // F-044 R2 — "Try on with customer": one wearer photo, N products from an
 // enquiry, results shown to the customer on this phone only. The wearer photo
@@ -38,206 +38,210 @@ import { ReportAiContent } from '../src/components/ReportAiContent'
 // names only — never the customer's phone or name.
 //
 // Keep-awake is held while running / showing results (see the effect below).
-type Step = 'preflight' | 'capture' | 'consent' | 'running' | 'gallery'
-type Product = { id: string; name: string }
+type Step = 'preflight' | 'capture' | 'consent' | 'running' | 'gallery';
+type Product = { id: string; name: string };
 
 export default function EnquiryTryOnScreen() {
-  const { insets } = useScreenInsets()
-  const { width } = useWindowDimensions()
-  const params = useLocalSearchParams<{ productIds?: string; productNames?: string }>()
+  const { insets } = useScreenInsets();
+  const { width } = useWindowDimensions();
+  const params = useLocalSearchParams<{ productIds?: string; productNames?: string }>();
 
   const products = useMemo<Product[]>(() => {
-    const ids = (params.productIds ?? '').split(',').filter(Boolean)
-    let names: unknown = []
+    const ids = (params.productIds ?? '').split(',').filter(Boolean);
+    let names: unknown = [];
     try {
-      names = JSON.parse(params.productNames ?? '[]')
+      names = JSON.parse(params.productNames ?? '[]');
     } catch {
-      names = []
+      names = [];
     }
     return ids.map((id, i) => ({
       id,
       name: Array.isArray(names) && typeof names[i] === 'string' ? (names[i] as string) : 'Product',
-    }))
-  }, [params.productIds, params.productNames])
+    }));
+  }, [params.productIds, params.productNames]);
 
-  const [step, setStep] = useState<Step>('preflight')
-  const [remaining, setRemaining] = useState<number | null>(null)
-  const [quotaError, setQuotaError] = useState(false)
+  const [step, setStep] = useState<Step>('preflight');
+  const [remaining, setRemaining] = useState<number | null>(null);
+  const [quotaError, setQuotaError] = useState(false);
   // 403/404 on the quota read = this role (catalog / support delegate) or this
   // store cannot use try-on at all; Retry can never succeed, so say so instead.
-  const [unavailable, setUnavailable] = useState(false)
-  const [selected, setSelected] = useState<string[]>([])
-  const [photoUri, setPhotoUri] = useState<string | null>(null)
-  const [items, setItems] = useState<SessionItem[]>([])
-  const [permission, requestPermission] = useCameraPermissions()
-  const cameraRef = useRef<CameraView>(null)
+  const [unavailable, setUnavailable] = useState(false);
+  const [selected, setSelected] = useState<string[]>([]);
+  const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const [items, setItems] = useState<SessionItem[]>([]);
+  const [permission, requestPermission] = useCameraPermissions();
+  const cameraRef = useRef<CameraView>(null);
 
   // Everything exit() must delete, kept in refs so the unmount/AppState/back
   // handlers (registered once) always see the latest values.
-  const photoUris = useRef<string[]>([])
-  const jobIds = useRef(new Set<string>())
-  const abort = useRef(new AbortController())
-  const exited = useRef(false)
-  const picking = useRef(false) // gallery picker / permission dialog can background the app
-  const runningRef = useRef(false) // sync double-tap guard (RC-015)
-  const itemsRef = useRef<SessionItem[]>([])
-  const stepRef = useRef<Step>('preflight')
-  stepRef.current = step
+  const photoUris = useRef<string[]>([]);
+  const jobIds = useRef(new Set<string>());
+  const abort = useRef(new AbortController());
+  const exited = useRef(false);
+  const picking = useRef(false); // gallery picker / permission dialog can background the app
+  const runningRef = useRef(false); // sync double-tap guard (RC-015)
+  const itemsRef = useRef<SessionItem[]>([]);
+  const stepRef = useRef<Step>('preflight');
+  stepRef.current = step;
 
   // Screen stays on while a session runs or results show; always released on
   // step change / unmount. Failures are swallowed inside setSessionKeepAwake.
-  const awake = shouldKeepAwake(step)
+  const awake = shouldKeepAwake(step);
   useEffect(() => {
-    if (!awake) return
-    void setSessionKeepAwake(true)
+    if (!awake) return;
+    void setSessionKeepAwake(true);
     return () => {
-      void setSessionKeepAwake(false)
-    }
-  }, [awake])
+      void setSessionKeepAwake(false);
+    };
+  }, [awake]);
 
   const loadQuota = useCallback(async () => {
     try {
-      const { data } = await productApi.getTryOnQuota()
-      const left = data.unlimited ? products.length : Math.max(0, data.remaining)
-      setRemaining(left)
-      setQuotaError(false)
-      setSelected(planSession(products, left).run.map((p) => p.id))
-      return left
+      const { data } = await productApi.getTryOnQuota();
+      const left = data.unlimited ? products.length : Math.max(0, data.remaining);
+      setRemaining(left);
+      setQuotaError(false);
+      setSelected(planSession(products, left).run.map((p) => p.id));
+      return left;
     } catch (err) {
-      const status = (err as { status?: number }).status
-      if (status === 403 || status === 404) setUnavailable(true)
-      else setQuotaError(true)
-      return null
+      const status = (err as { status?: number }).status;
+      if (status === 403 || status === 404) setUnavailable(true);
+      else setQuotaError(true);
+      return null;
     }
-  }, [products])
+  }, [products]);
 
   useEffect(() => {
-    void loadQuota()
-  }, [loadQuota])
+    void loadQuota();
+  }, [loadQuota]);
 
   // Idempotent: abort first, delete files + discard results, clear image cache.
   const exit = useCallback(async () => {
-    if (exited.current) return
-    exited.current = true
-    abort.current.abort()
-    await cleanupSession({ photoUris: photoUris.current, jobIds: [...jobIds.current] })
+    if (exited.current) return;
+    exited.current = true;
+    abort.current.abort();
+    await cleanupSession({ photoUris: photoUris.current, jobIds: [...jobIds.current] });
     try {
-      await Image.clearDiskCache()
-      await Image.clearMemoryCache()
+      await Image.clearDiskCache();
+      await Image.clearMemoryCache();
     } catch {
       // best effort
     }
-  }, [])
+  }, []);
 
   const leave = useCallback(() => {
-    router.back()
-    void exit()
-  }, [exit])
+    router.back();
+    void exit();
+  }, [exit]);
 
   const close = useCallback(() => {
-    const hasResults = stepRef.current === 'running' || itemsRef.current.some((i) => i.state === 'ready')
-    if (!hasResults) return leave()
+    const hasResults =
+      stepRef.current === 'running' || itemsRef.current.some((i) => i.state === 'ready');
+    if (!hasResults) return leave();
     Alert.alert('Leave try-on?', 'Pictures are deleted when you leave.', [
       { text: 'Stay', style: 'cancel' },
       { text: 'Leave', style: 'destructive', onPress: leave },
-    ])
-  }, [leave])
+    ]);
+  }, [leave]);
 
   // Unmount, hardware back, and app-to-background all funnel into exit().
   useEffect(() => {
     // StrictMode re-runs effects: start each setup from a live state.
-    exited.current = false
-    abort.current = new AbortController()
+    exited.current = false;
+    abort.current = new AbortController();
     const back = BackHandler.addEventListener('hardwareBackPress', () => {
-      close()
-      return true
-    })
+      close();
+      return true;
+    });
     const appState = AppState.addEventListener('change', (s) => {
       // Nothing to clean unless a photo or results exist.
       const hasData =
-        photoUris.current.length > 0 || jobIds.current.size > 0 || itemsRef.current.length > 0
-      if (s === 'background' && !picking.current && !exited.current && hasData) leave()
-    })
+        photoUris.current.length > 0 || jobIds.current.size > 0 || itemsRef.current.length > 0;
+      if (s === 'background' && !picking.current && !exited.current && hasData) leave();
+    });
     return () => {
-      back.remove()
-      appState.remove()
-      void exit()
-    }
-  }, [close, leave, exit])
+      back.remove();
+      appState.remove();
+      void exit();
+    };
+  }, [close, leave, exit]);
 
   const trackPhoto = (uri: string) => {
     if (exited.current) {
       // Arrived after exit (e.g. compress finished late): delete right away.
-      void cleanupSession({ photoUris: [uri], jobIds: [] })
-      return
+      void cleanupSession({ photoUris: [uri], jobIds: [] });
+      return;
     }
-    if (!photoUris.current.includes(uri)) photoUris.current.push(uri)
-  }
+    if (!photoUris.current.includes(uri)) photoUris.current.push(uri);
+  };
 
   const takePhoto = (uri: string) => {
-    trackPhoto(uri)
-    setPhotoUri(uri)
-    setStep('consent')
-  }
+    trackPhoto(uri);
+    setPhotoUri(uri);
+    setStep('consent');
+  };
 
   const handleCapture = async () => {
-    const photo = await cameraRef.current?.takePictureAsync({ quality: 0.85 })
-    if (photo?.uri) takePhoto(photo.uri)
-  }
+    const photo = await cameraRef.current?.takePictureAsync({ quality: 0.85 });
+    if (photo?.uri) takePhoto(photo.uri);
+  };
 
   const askCamera = async () => {
-    picking.current = true
+    picking.current = true;
     try {
-      await requestPermission()
+      await requestPermission();
     } finally {
-      picking.current = false
+      picking.current = false;
     }
-  }
+  };
 
   const handlePickFromGallery = async () => {
-    picking.current = true
+    picking.current = true;
     try {
-      const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.85 })
-      if (!r.canceled && r.assets[0]) takePhoto(r.assets[0].uri)
+      const r = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        quality: 0.85,
+      });
+      if (!r.canceled && r.assets[0]) takePhoto(r.assets[0].uri);
     } finally {
-      picking.current = false
+      picking.current = false;
     }
-  }
+  };
 
   // Decline: delete the photo (cleanup only touches app-cache URIs), back to
   // capture, zero API calls.
   const decline = () => {
     if (photoUri) {
-      photoUris.current = photoUris.current.filter((u) => u !== photoUri)
-      void cleanupSession({ photoUris: [photoUri], jobIds: [] })
+      photoUris.current = photoUris.current.filter((u) => u !== photoUri);
+      void cleanupSession({ photoUris: [photoUri], jobIds: [] });
     }
-    setPhotoUri(null)
-    setStep('capture')
-  }
+    setPhotoUri(null);
+    setStep('capture');
+  };
 
   const onItem = useCallback((i: SessionItem) => {
     if (i.jobId) {
-      jobIds.current.add(i.jobId)
+      jobIds.current.add(i.jobId);
       if (exited.current) {
         // Created after exit cleanup ran: discard this id right away.
-        void cleanupSession({ photoUris: [], jobIds: [i.jobId] })
+        void cleanupSession({ photoUris: [], jobIds: [i.jobId] });
       }
     }
-    if (exited.current) return
-    const next = [...itemsRef.current]
-    const idx = next.findIndex((x) => x.productId === i.productId)
-    if (idx >= 0) next[idx] = i
-    else next.push(i)
-    itemsRef.current = next
-    setItems(next)
-  }, [])
+    if (exited.current) return;
+    const next = [...itemsRef.current];
+    const idx = next.findIndex((x) => x.productId === i.productId);
+    if (idx >= 0) next[idx] = i;
+    else next.push(i);
+    itemsRef.current = next;
+    setItems(next);
+  }, []);
 
   const run = useCallback(
     async (list: Product[]) => {
-      if (!photoUri || list.length === 0 || runningRef.current) return
-      runningRef.current = true
+      if (!photoUri || list.length === 0 || runningRef.current) return;
+      runningRef.current = true;
       try {
-        setStep('running')
+        setStep('running');
         await runTryOnSession({
           products: list,
           photoUri,
@@ -245,16 +249,16 @@ export default function EnquiryTryOnScreen() {
           onItem,
           signal: abort.current.signal,
           onCompressed: trackPhoto,
-        })
-        if (exited.current) return
-        setStep('gallery')
-        void loadQuota()
+        });
+        if (exited.current) return;
+        setStep('gallery');
+        void loadQuota();
       } finally {
-        runningRef.current = false
+        runningRef.current = false;
       }
     },
     [photoUri, onItem, loadQuota],
-  )
+  );
 
   const toggle = (id: string) =>
     setSelected((cur) =>
@@ -263,20 +267,25 @@ export default function EnquiryTryOnScreen() {
         : cur.length < (remaining ?? 0)
           ? [...cur, id]
           : cur,
-    )
+    );
 
   const retry = (productId: string) => {
-    const p = products.find((x) => x.id === productId)
-    if (p) void run([p])
-  }
+    const p = products.find((x) => x.id === productId);
+    if (p) void run([p]);
+  };
 
   return (
-    <View className="flex-1 bg-black" style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}>
+    <View
+      className="flex-1 bg-black"
+      style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}
+    >
       <View className="flex-row items-center justify-between px-4 py-3">
         <View className="flex-1">
           <Text className="text-white text-sm font-semibold">Try on with customer</Text>
           {remaining != null && step !== 'preflight' && (
-            <Text className="text-white/60 text-xs mt-0.5">{remaining} try-ons left this month</Text>
+            <Text className="text-white/60 text-xs mt-0.5">
+              {remaining} try-ons left this month
+            </Text>
           )}
         </View>
         <AnimatedPressable
@@ -298,7 +307,9 @@ export default function EnquiryTryOnScreen() {
               </Text>
             ) : quotaError ? (
               <View className="items-center mt-10">
-                <Text className="text-white text-sm text-center">Could not check your try-on balance.</Text>
+                <Text className="text-white text-sm text-center">
+                  Could not check your try-on balance.
+                </Text>
                 <View className="mt-4 w-full">
                   <GradientButton variant="web" label="Retry" onPress={() => void loadQuota()} />
                 </View>
@@ -315,7 +326,8 @@ export default function EnquiryTryOnScreen() {
           ) : (
             <>
               <Text className="text-white text-base font-semibold">
-                {products.length} {products.length === 1 ? 'try-on' : 'try-ons'} · {remaining} left this month
+                {products.length} {products.length === 1 ? 'try-on' : 'try-ons'} · {remaining} left
+                this month
               </Text>
               {remaining < products.length && (
                 <Text className="text-white/60 text-xs mt-1">
@@ -324,7 +336,7 @@ export default function EnquiryTryOnScreen() {
               )}
               <View className="mt-4 gap-2">
                 {products.map((p) => {
-                  const on = selected.includes(p.id)
+                  const on = selected.includes(p.id);
                   return (
                     <AnimatedPressable
                       key={p.id}
@@ -339,7 +351,7 @@ export default function EnquiryTryOnScreen() {
                         {p.name}
                       </Text>
                     </AnimatedPressable>
-                  )
+                  );
                 })}
               </View>
               <View className="mt-5">
@@ -366,7 +378,11 @@ export default function EnquiryTryOnScreen() {
                 Camera access is needed to photograph the customer.
               </Text>
               <View className="mt-4 w-full">
-                <GradientButton variant="web" label="Allow camera" onPress={() => void askCamera()} />
+                <GradientButton
+                  variant="web"
+                  label="Allow camera"
+                  onPress={() => void askCamera()}
+                />
               </View>
             </View>
           )}
@@ -410,12 +426,13 @@ export default function EnquiryTryOnScreen() {
       {step === 'running' && (
         <View className="flex-1 px-5 pt-4">
           <Text className="text-white text-base font-semibold">Making the pictures…</Text>
-          <Text className="text-white/60 text-xs mt-1">
-            About a minute. Keep this screen open.
-          </Text>
+          <Text className="text-white/60 text-xs mt-1">About a minute. Keep this screen open.</Text>
           <View className="mt-4 gap-2">
             {items.map((i) => (
-              <View key={i.productId} className="flex-row items-center gap-3 p-3 rounded-2xl bg-white/10">
+              <View
+                key={i.productId}
+                className="flex-row items-center gap-3 p-3 rounded-2xl bg-white/10"
+              >
                 {i.state === 'running' || i.state === 'queued' ? (
                   <ActivityIndicator color="#fff" size="small" />
                 ) : i.state === 'ready' ? (
@@ -494,5 +511,5 @@ export default function EnquiryTryOnScreen() {
         </View>
       )}
     </View>
-  )
+  );
 }

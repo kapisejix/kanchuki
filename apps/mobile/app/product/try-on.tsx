@@ -1,20 +1,20 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { ActivityIndicator, Share, Text, View } from 'react-native'
-import { router, useLocalSearchParams } from 'expo-router'
-import { CameraView, useCameraPermissions } from 'expo-camera'
-import * as ImagePicker from 'expo-image-picker'
-import { Image } from 'expo-image'
-import { Camera, ImagePlus, RotateCcw, Share2, X } from 'lucide-react-native'
-import { TRY_ON_CONSENT } from '@kanchuki/shared'
+import { TRY_ON_CONSENT } from '@kanchuki/shared';
+import { CameraView, useCameraPermissions } from 'expo-camera';
+import { Image } from 'expo-image';
+import * as ImagePicker from 'expo-image-picker';
+import { router, useLocalSearchParams } from 'expo-router';
+import { Camera, ImagePlus, RotateCcw, Share2, X } from 'lucide-react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Share, Text, View } from 'react-native';
 
-import { productApi, ApiError } from '../../src/lib/api'
-import { apiMessage } from '../../src/lib/errors'
-import { pollWithBackoff } from '../../src/lib/polling'
-import { useScreenInsets } from '../../src/lib/safe-area'
-import { GradientButton } from '../../src/components/GradientButton'
-import { AnimatedPressable } from '../../src/components/AnimatedPressable'
-import { TryOnConsent } from '../../src/components/TryOnConsent'
-import { ReportAiContent } from '../../src/components/ReportAiContent'
+import { AnimatedPressable } from '../../src/components/AnimatedPressable';
+import { GradientButton } from '../../src/components/GradientButton';
+import { ReportAiContent } from '../../src/components/ReportAiContent';
+import { TryOnConsent } from '../../src/components/TryOnConsent';
+import { ApiError, productApi } from '../../src/lib/api';
+import { apiMessage } from '../../src/lib/errors';
+import { pollWithBackoff } from '../../src/lib/polling';
+import { useScreenInsets } from '../../src/lib/safe-area';
 
 // F-040 — in-store virtual try-on (retailer app).
 //
@@ -24,82 +24,82 @@ import { ReportAiContent } from '../../src/components/ReportAiContent'
 // try-on with no version, so this screen is what satisfies that gate. The whole
 // entry point is hidden unless the retailer's plan has VIRTUAL_TRY_ON_V2, but
 // that is a convenience: the route 404s without the flag regardless.
-type Step = 'capture' | 'consent' | 'processing' | 'result'
+type Step = 'capture' | 'consent' | 'processing' | 'result';
 
 export default function TryOnScreen() {
-  const { insets } = useScreenInsets()
+  const { insets } = useScreenInsets();
   const params = useLocalSearchParams<{
-    productId: string
-    productName?: string
-    photo?: string
-  }>()
-  const productId = params.productId
+    productId: string;
+    productName?: string;
+    photo?: string;
+  }>();
+  const productId = params.productId;
 
-  const [step, setStep] = useState<Step>('capture')
-  const [photoUri, setPhotoUri] = useState<string | null>(null)
-  const [resultUrl, setResultUrl] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [permission, requestPermission] = useCameraPermissions()
-  const cameraRef = useRef<CameraView>(null)
+  const [step, setStep] = useState<Step>('capture');
+  const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const [resultUrl, setResultUrl] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [permission, requestPermission] = useCameraPermissions();
+  const cameraRef = useRef<CameraView>(null);
   // Kept in a ref so the poll effect can clear it on unmount without needing
   // the job id to be state (the effect below owns the whole lifecycle).
-  const stopPollRef = useRef<(() => void) | null>(null)
+  const stopPollRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     return () => {
-      stopPollRef.current?.()
-    }
-  }, [])
+      stopPollRef.current?.();
+    };
+  }, []);
 
   const handleCapture = async () => {
-    if (!cameraRef.current) return
-    const photo = await cameraRef.current.takePictureAsync({ quality: 0.85 })
-    if (!photo?.uri) return
-    setPhotoUri(photo.uri)
-    setStep('consent')
-  }
+    if (!cameraRef.current) return;
+    const photo = await cameraRef.current.takePictureAsync({ quality: 0.85 });
+    if (!photo?.uri) return;
+    setPhotoUri(photo.uri);
+    setStep('consent');
+  };
 
   const handlePickFromGallery = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       quality: 0.85,
-    })
-    if (result.canceled || !result.assets[0]) return
-    setPhotoUri(result.assets[0].uri)
-    setStep('consent')
-  }
+    });
+    if (result.canceled || !result.assets[0]) return;
+    setPhotoUri(result.assets[0].uri);
+    setStep('consent');
+  };
 
   // Runs only after the consent screen's accept — the version sent here is the
   // one the customer just read, and it is what the API records.
   const handleAccept = useCallback(async () => {
-    if (!photoUri) return
-    setError(null)
-    setStep('processing')
+    if (!photoUri) return;
+    setError(null);
+    setStep('processing');
 
     try {
-      const { data } = await productApi.startTryOn(productId, TRY_ON_CONSENT.version, photoUri)
+      const { data } = await productApi.startTryOn(productId, TRY_ON_CONSENT.version, photoUri);
       stopPollRef.current = pollWithBackoff({
         onPoll: async () => {
           try {
-            const status = await productApi.getTryOnStatus(productId, data.job_id)
+            const status = await productApi.getTryOnStatus(productId, data.job_id);
             if (status.data.status === 'ready' && status.data.url) {
-              setResultUrl(status.data.url)
-              setStep('result')
-              return true
+              setResultUrl(status.data.url);
+              setStep('result');
+              return true;
             }
             if (status.data.status === 'failed') {
-              setError(status.data.error ?? 'The try-on could not be generated. Please try again.')
-              setStep('result')
-              return true
+              setError(status.data.error ?? 'The try-on could not be generated. Please try again.');
+              setStep('result');
+              return true;
             }
             if (status.data.status === 'withdrawn') {
               // The shopper took their consent back mid-run and the stored
               // image was deleted. Terminal — do not keep polling.
-              setError('This try-on was withdrawn and its picture deleted.')
-              setStep('result')
-              return true
+              setError('This try-on was withdrawn and its picture deleted.');
+              setStep('result');
+              return true;
             }
-            return false
+            return false;
           } catch (err) {
             // A lapsed session is terminal, not transient: every retry re-sends
             // the same dead token and comes back 401. Swallowed by the generic
@@ -108,21 +108,21 @@ export default function TryOnScreen() {
             // routing to /auth/phone — the same shape the web sheet had, fixed
             // the same way: keyed on the status, never quoting the message.
             if (err instanceof ApiError && err.status === 401) {
-              setError('Your sign-in has expired. Sign in again to continue.')
-              setStep('result')
-              return true
+              setError('Your sign-in has expired. Sign in again to continue.');
+              setStep('result');
+              return true;
             }
             // Anything else IS transient — keep polling rather than failing a
             // job that may still be running.
-            return false
+            return false;
           }
         },
-      })
+      });
     } catch (err) {
       if (err instanceof ApiError && err.code === 'PLAN_LIMIT_EXCEEDED') {
-        setError('You have used all your try-ons for this period.')
+        setError('You have used all your try-ons for this period.');
       } else if (err instanceof ApiError && err.code === 'CUSTOMER_LIMIT_EXCEEDED') {
-        setError('This customer has reached their try-on limit for now.')
+        setError('This customer has reached their try-on limit for now.');
       } else if (err instanceof ApiError && err.status === 401) {
         // Keyed on the STATUS, not the message, because the API words a 401
         // three different ways: 'Missing Bearer token' and 'Invalid or expired
@@ -135,35 +135,38 @@ export default function TryOnScreen() {
         // spent its one refresh and, failing that, is routing to /auth/phone.
         // So this screen only has to say what happened without quoting the
         // server.
-        setError('Your sign-in has expired. Sign in again to continue.')
+        setError('Your sign-in has expired. Sign in again to continue.');
       } else {
-        setError(apiMessage(err, 'Could not start the try-on. Please try again.'))
+        setError(apiMessage(err, 'Could not start the try-on. Please try again.'));
       }
-      setStep('result')
+      setStep('result');
     }
-  }, [photoUri, productId])
+  }, [photoUri, productId]);
 
   const handleShare = async () => {
-    if (!resultUrl) return
-    await Share.share({ message: resultUrl }).catch(() => undefined)
-  }
+    if (!resultUrl) return;
+    await Share.share({ message: resultUrl }).catch(() => undefined);
+  };
 
   const reset = () => {
-    stopPollRef.current?.()
-    stopPollRef.current = null
-    setPhotoUri(null)
-    setResultUrl(null)
-    setError(null)
-    setStep('capture')
-  }
+    stopPollRef.current?.();
+    stopPollRef.current = null;
+    setPhotoUri(null);
+    setResultUrl(null);
+    setError(null);
+    setStep('capture');
+  };
 
   const close = () => {
-    stopPollRef.current?.()
-    router.back()
-  }
+    stopPollRef.current?.();
+    router.back();
+  };
 
   return (
-    <View className="flex-1 bg-black" style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}>
+    <View
+      className="flex-1 bg-black"
+      style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}
+    >
       {/* Header — a plain close + the product name, over the camera view. */}
       <View className="flex-row items-center justify-between px-4 py-3">
         <View className="flex-1">
@@ -197,7 +200,11 @@ export default function TryOnScreen() {
                 Camera access is needed to photograph the customer.
               </Text>
               <View className="mt-4 w-full">
-                <GradientButton variant="web" label="Allow camera" onPress={() => void requestPermission()} />
+                <GradientButton
+                  variant="web"
+                  label="Allow camera"
+                  onPress={() => void requestPermission()}
+                />
               </View>
             </View>
           )}
@@ -229,19 +236,14 @@ export default function TryOnScreen() {
 
       {step === 'consent' && (
         <View className="flex-1 bg-white rounded-t-3xl overflow-hidden">
-          <TryOnConsent
-            onAccept={() => void handleAccept()}
-            onDecline={reset}
-          />
+          <TryOnConsent onAccept={() => void handleAccept()} onDecline={reset} />
         </View>
       )}
 
       {step === 'processing' && (
         <View className="flex-1 items-center justify-center px-8">
           <ActivityIndicator size="large" color="#fff" />
-          <Text className="text-white text-base font-semibold mt-4">
-            Making the picture…
-          </Text>
+          <Text className="text-white text-base font-semibold mt-4">Making the picture…</Text>
           <Text className="text-white/60 text-xs text-center mt-2">
             This usually takes 20–60 seconds. Keep this screen open.
           </Text>
@@ -259,14 +261,16 @@ export default function TryOnScreen() {
               />
               <View className="flex-row gap-3 mt-4 w-full">
                 <View className="flex-1">
-                  <GradientButton variant="web"
+                  <GradientButton
+                    variant="web"
                     label="Share"
                     icon={<Share2 size={16} color="#fff" />}
                     onPress={() => void handleShare()}
                   />
                 </View>
                 <View className="flex-1">
-                  <GradientButton variant="web"
+                  <GradientButton
+                    variant="web"
                     label="Try another"
                     icon={<RotateCcw size={16} color="#fff" />}
                     onPress={reset}
@@ -288,5 +292,5 @@ export default function TryOnScreen() {
         </View>
       )}
     </View>
-  )
+  );
 }
