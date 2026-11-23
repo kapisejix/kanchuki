@@ -167,7 +167,7 @@ export default function TryOnScreen() {
       {/* Header — a plain close + the product name, over the camera view. */}
       <View className="flex-row items-center justify-between px-4 py-3">
         <View className="flex-1">
-          <Text className="text-white text-sm font-bold" numberOfLines={1}>
+          <Text className="text-white text-sm font-semibold" numberOfLines={1}>
             {params.productName ?? 'Virtual Try-On'}
           </Text>
           {step === 'capture' && (

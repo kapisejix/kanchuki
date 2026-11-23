@@ -53,7 +53,7 @@ function ProductVideoSlide({ url, width, height }: { url: string; width: number;
     return (
       <View
         style={{ width, height }}
-        className="w-full h-full bg-sand-950 items-center justify-center relative"
+        className="w-full h-full bg-spaceCadet-950 items-center justify-center relative"
       >
         <Clapperboard size={40} color="white" />
         <Text className="text-white text-xs mt-2 font-medium">Product Video (6s)</Text>
@@ -64,7 +64,7 @@ function ProductVideoSlide({ url, width, height }: { url: string; width: number;
   return (
     <View
       style={{ width, height }}
-      className="w-full h-full bg-sand-950 items-center justify-center relative"
+      className="w-full h-full bg-spaceCadet-950 items-center justify-center relative"
     >
       <VideoView
         style={{ width: '100%', height: '100%' }}
@@ -274,8 +274,8 @@ export default function ProductDetailScreen() {
           <ChevronLeft size={20} color="#231F48" />
         </AnimatedPressable>
         <Text
-          style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-          className="text-base font-bold text-spaceCadet-900"
+          style={{ fontFamily: 'Marcellus_400Regular' }}
+          className="text-base text-spaceCadet-900"
         >
           Product Details
         </Text>

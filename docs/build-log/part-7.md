@@ -683,3 +683,15 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Tests | ProductCard snapshots updated. Onboarding smoke test updated for 3 sentence-case headings. |
 | Local runs | Mobile 722 passed, tsc 0, Android JS bundle exported. Biome on the 18 changed code files: 36 errors, same as `origin/main`. |
 | Not verified | Not opened on a device or in Expo Go. Reaches phones only with a new app build. |
+
+## 2026-11-23 — Mobile design cleanup, Task 2 (branch `design/mobile-unslop-task-2`)
+
+| Area | Change |
+|---|---|
+| Screens | 18 of 20 changed: product, category, collection, customer, enquiries, enquiry try-on and AI search. `product/scan` and `product/[id]/add-photos` had nothing to fix. |
+| Type and color | Fake-bold Marcellus, uppercase field labels and 9-10px text removed. Off-palette grey text and borders moved to the Royal Orchid tokens. Admin theme variables kept. |
+| Decoration | Emoji, sparkles, icon tiles, the AI search gradient hero and colored stat icons removed. |
+| Bug fixed | `sand-950` and `heliotrope-400` are not Tailwind tokens. Replaced with real tokens. |
+| Kept | Owner-approved uppercase button labels. Logic, API calls, navigation, validation, prices and permissions unchanged. |
+| Local runs | Mobile 722 passed, tsc 0, Android JS bundle exported. Biome on the 18 changed code files: 44 errors, same per file and rule as `origin/main`. |
+| Not verified | Not opened on a device or in Expo Go. Reaches phones only with a new app build. |

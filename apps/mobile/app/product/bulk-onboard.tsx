@@ -12,7 +12,7 @@ import * as ImagePicker from 'expo-image-picker'
 import * as ImageManipulator from 'expo-image-manipulator'
 import { Image } from 'expo-image'
 import { useQueryClient } from '@tanstack/react-query'
-import { X, Check, Sparkles, Camera, AlertTriangle, FileText, Plus } from 'lucide-react-native'
+import { X, Check, Camera, AlertTriangle, FileText, Plus } from 'lucide-react-native'
 import { useScreenInsets } from '../../src/lib/safe-area'
 import {
   catalogImportApi,
@@ -216,17 +216,15 @@ export default function BulkOnboardScreen() {
   const renderLocationStep = () => (
     <ScrollView className="flex-1 px-4 pt-6" contentContainerStyle={{ paddingBottom: 140 }}>
       <View className="items-center gap-3">
-        <View className="w-20 h-20 bg-ink-100 rounded-3xl items-center justify-center">
-          <Sparkles size={36} color={primaryColor} />
-        </View>
-        <Text className="text-lg font-bold text-sand-900 text-center">Bulk onboarding</Text>
-        <Text className="text-sand-500 text-sm text-center px-6 leading-5">
+        <Camera size={32} color="#6B4773" />
+        <Text className="text-lg font-semibold text-spaceCadet-900 text-center">Bulk onboarding</Text>
+        <Text className="text-heliotrope-500 text-sm text-center px-6 leading-5">
           Photograph one rack/shelf at a time — AI splits it into individual products.
         </Text>
       </View>
 
-      <View className="bg-ink-50 rounded-2xl p-4 mt-6 items-center">
-        <Text className="text-2xl font-bold text-ink-800">
+      <View className="bg-lavender-50 rounded-2xl p-4 mt-6 items-center">
+        <Text className="text-2xl font-semibold text-ink-800">
           {catalogued}
           {target ? ` / ${target}` : ''}
         </Text>
@@ -240,7 +238,7 @@ export default function BulkOnboardScreen() {
         </View>
       )}
 
-      <Text className="text-sm font-semibold text-sand-700 mt-6 mb-2">
+      <Text className="text-sm font-semibold text-heliotrope-600 mt-6 mb-2">
         Which rack/shelf is this photo?
       </Text>
       <View className="flex-row flex-wrap gap-2">
@@ -249,10 +247,10 @@ export default function BulkOnboardScreen() {
             key={s.id}
             onPress={() => setSelectedSectionId(s.id)}
             className={`px-4 py-2.5 rounded-xl border-2 ${
-              selectedSectionId === s.id ? 'bg-ink-600 border-ink-600' : 'bg-white border-sand-200'
+              selectedSectionId === s.id ? 'bg-ink-600 border-ink-600' : 'bg-white border-lavender-200'
             }`}
           >
-            <Text className={selectedSectionId === s.id ? 'text-white font-medium' : 'text-sand-700'}>
+            <Text className={selectedSectionId === s.id ? 'text-white font-medium' : 'text-heliotrope-600'}>
               {s.name}
             </Text>
           </AnimatedPressable>
@@ -272,7 +270,7 @@ export default function BulkOnboardScreen() {
             value={newSectionName}
             onChangeText={setNewSectionName}
             placeholder="e.g. Rack A"
-            className="flex-1 bg-sand-50 border border-sand-200 rounded-xl px-3 py-2.5 text-sm"
+            className="flex-1 bg-lavender-50 border border-lavender-200 rounded-xl px-3 py-2.5 text-sm"
             autoFocus
           />
           <AnimatedPressable
@@ -289,14 +287,14 @@ export default function BulkOnboardScreen() {
         className="bg-ink-600 rounded-2xl p-4 flex-row items-center justify-center gap-2 mt-8"
       >
         <Camera size={20} color="white" />
-        <Text className="text-white font-bold text-base">Photograph this rack</Text>
+        <Text className="text-white font-semibold text-base">Photograph this rack</Text>
       </AnimatedPressable>
 
       <AnimatedPressable
         onPress={() => void handlePickPhoto()}
-        className="border-2 border-sand-200 rounded-2xl p-4 items-center mt-3"
+        className="border-2 border-lavender-200 rounded-2xl p-4 items-center mt-3"
       >
-        <Text className="text-sand-700 font-semibold text-sm">Choose from gallery</Text>
+        <Text className="text-heliotrope-600 font-semibold text-sm">Choose from gallery</Text>
       </AnimatedPressable>
 
       <AnimatedPressable
@@ -304,7 +302,7 @@ export default function BulkOnboardScreen() {
         className="flex-row items-center justify-center gap-2 mt-4 py-2"
       >
         <FileText size={16} color={colors.sand[600]} />
-        <Text className="text-sand-500 text-sm">Restocking from a supplier PDF instead?</Text>
+        <Text className="text-heliotrope-500 text-sm">Restocking from a supplier PDF instead?</Text>
       </AnimatedPressable>
     </ScrollView>
   )
@@ -314,7 +312,7 @@ export default function BulkOnboardScreen() {
   const renderProgress = (label: string) => (
     <View className="flex-1 items-center justify-center px-8">
       <ActivityIndicator size="large" color={primaryColor} className="mb-4" />
-      <Text className="text-lg font-bold text-sand-900 text-center">{label}</Text>
+      <Text className="text-lg font-semibold text-spaceCadet-900 text-center">{label}</Text>
     </View>
   )
 
@@ -322,11 +320,11 @@ export default function BulkOnboardScreen() {
 
   const renderReview = () => (
     <>
-      <View className="bg-white px-4 py-3 border-b border-sand-100">
+      <View className="bg-white px-4 py-3 border-b border-lavender-200">
         <Image source={{ uri: sourceUrl }} className="w-full h-32 rounded-xl bg-sand-100" contentFit="contain" />
       </View>
       <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: 160 }}>
-        <Text className="text-sm font-semibold text-sand-700 mb-3">
+        <Text className="text-sm font-semibold text-heliotrope-600 mb-3">
           AI detected {items.length} item{items.length !== 1 ? 's' : ''} — location defaults to{' '}
           {sectionName(selectedSectionId)}, tap the location chip to override.
         </Text>
@@ -334,7 +332,7 @@ export default function BulkOnboardScreen() {
           <View
             key={`${item.original.description}-${index}`}
             className={`bg-white rounded-2xl border mb-3 overflow-hidden ${
-              item.approved ? 'border-turmeric-200' : 'border-sand-200 opacity-60'
+              item.approved ? 'border-turmeric-200' : 'border-lavender-200 opacity-60'
             }`}
           >
             <View className="flex-row p-3 gap-3">
@@ -344,22 +342,22 @@ export default function BulkOnboardScreen() {
                 contentFit="cover"
               />
               <View className="flex-1 justify-center gap-1">
-                <Text className="text-sm font-semibold text-sand-900">{item.original.description}</Text>
+                <Text className="text-sm font-semibold text-spaceCadet-900">{item.original.description}</Text>
                 {item.original.tags.category && (
-                  <Text className="text-xs bg-ink-50 text-ink-700 px-2 py-0.5 rounded-full self-start">
+                  <Text className="text-xs bg-lavender-50 text-ink-700 px-2 py-0.5 rounded-full self-start">
                     {item.original.tags.category}
                   </Text>
                 )}
                 <AnimatedPressable onPress={() => cycleItemSection(index)} className="mt-1">
-                  <Text className="text-xs text-sand-500">
-                    📍 {sectionName(item.sectionId)} {sections.length > 1 ? '(tap to change)' : ''}
+                  <Text className="text-xs text-heliotrope-500">
+                    {sectionName(item.sectionId)} {sections.length > 1 ? '(tap to change)' : ''}
                   </Text>
                 </AnimatedPressable>
               </View>
               <AnimatedPressable
                 onPress={() => toggleApproval(index)}
                 className={`w-9 h-9 rounded-full items-center justify-center border-2 ${
-                  item.approved ? 'bg-turmeric-500 border-turmeric-500' : 'border-sand-300'
+                  item.approved ? 'bg-turmeric-500 border-turmeric-500' : 'border-lavender-300'
                 }`}
               >
                 {item.approved && <Check size={18} color="white" />}
@@ -368,10 +366,10 @@ export default function BulkOnboardScreen() {
           </View>
         ))}
         {items.length === 0 && (
-          <Text className="text-sand-400 text-sm text-center py-12">No garments detected. Try a different photo.</Text>
+          <Text className="text-heliotrope-500 text-sm text-center py-12">No garments detected. Try a different photo.</Text>
         )}
       </ScrollView>
-      <View className="bg-white border-t border-sand-100 px-4 pt-4" style={{ paddingBottom: 16 + insets.bottom }}>
+      <View className="bg-white border-t border-lavender-200 px-4 pt-4" style={{ paddingBottom: 16 + insets.bottom }}>
         <GradientButton variant="web"
           label={`Save ${approvedCount} & photograph next rack`}
           onPress={() => void handleSaveBatch()}
@@ -390,9 +388,9 @@ export default function BulkOnboardScreen() {
   }
 
   return (
-    <KeyboardScreen className="flex-1 bg-sand-50">
+    <KeyboardScreen className="flex-1 bg-lavender-50">
       <View
-        className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-sand-100"
+        className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-lavender-200"
         style={{ paddingTop: headerPaddingTop }}
       >
         <AnimatedPressable
@@ -402,7 +400,7 @@ export default function BulkOnboardScreen() {
         >
           <X size={22} color={colors.sand[700]} />
         </AnimatedPressable>
-        <Text className="text-base font-bold text-sand-900">{stepTitles[step]}</Text>
+        <Text className="text-base font-semibold text-spaceCadet-900">{stepTitles[step]}</Text>
         <View className="w-6" />
       </View>
 

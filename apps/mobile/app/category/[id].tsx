@@ -95,11 +95,11 @@ function EditCategoryModal({
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <KeyboardScreen className="flex-1 bg-black/50 justify-center px-6">
-        <View className="bg-white rounded-3xl w-full p-6 gap-4 border border-lavender-200 shadow-lg">
+        <View className="bg-white rounded-2xl w-full p-6 gap-4 border border-lavender-200">
           <View className="flex-row items-center justify-between">
             <Text
-              style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-              className="text-lg font-bold text-spaceCadet-900"
+              style={{ fontFamily: 'Marcellus_400Regular' }}
+              className="text-lg text-spaceCadet-900"
             >
               Edit Category
             </Text>
@@ -122,17 +122,17 @@ function EditCategoryModal({
                 <ImagePlus size={22} color="#6B4773" />
               )}
             </AnimatedPressable>
-            <Text className="text-[10px] text-heliotrope-500 mt-1.5 font-medium">Tap to change photo</Text>
+            <Text className="text-[11px] text-heliotrope-500 mt-1.5 font-medium">Tap to change photo</Text>
           </View>
 
           <View>
-            <Text className="text-xs font-bold text-heliotrope-600 uppercase tracking-wide mb-1.5">
+            <Text className="text-xs font-semibold text-heliotrope-600 mb-1.5">
               Category Name
             </Text>
             <TextInput
               value={name}
               onChangeText={setName}
-              className="bg-lavender-50 px-4 py-3 rounded-2xl text-sm font-bold text-spaceCadet-900 border border-lavender-200"
+              className="bg-lavender-50 px-4 py-3 rounded-2xl text-sm font-semibold text-spaceCadet-900 border border-lavender-200"
               maxLength={100}
             />
           </View>
@@ -202,13 +202,13 @@ export default function CategoryDetailScreen() {
     return (
       <View className="flex-1 items-center justify-center p-6 bg-[#F8F7FC]">
         <Text
-          style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-          className="text-lg font-bold text-spaceCadet-900"
+          style={{ fontFamily: 'Marcellus_400Regular' }}
+          className="text-lg text-spaceCadet-900"
         >
           Category not found
         </Text>
         <AnimatedPressable onPress={() => router.back()} className="mt-4 px-6 py-2.5 rounded-full bg-spaceCadet-900">
-          <Text className="text-white font-bold text-xs">Go Back</Text>
+          <Text className="text-white font-semibold text-xs">Go Back</Text>
         </AnimatedPressable>
       </View>
     )
@@ -232,8 +232,8 @@ export default function CategoryDetailScreen() {
         </AnimatedPressable>
 
         <Text
-          style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-          className="text-lg font-bold text-spaceCadet-900 truncate max-w-[200px]"
+          style={{ fontFamily: 'Marcellus_400Regular' }}
+          className="text-lg text-spaceCadet-900 truncate max-w-[200px]"
           numberOfLines={1}
         >
           {category.name}
@@ -268,8 +268,8 @@ export default function CategoryDetailScreen() {
         </View>
         <View className="flex-1">
           <Text
-            style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-            className="text-base font-bold text-spaceCadet-900"
+            style={{ fontFamily: 'Marcellus_400Regular' }}
+            className="text-base text-spaceCadet-900"
           >
             {category.name}
           </Text>
@@ -296,11 +296,11 @@ export default function CategoryDetailScreen() {
               statusBadge={item.status !== 'AVAILABLE' ? item.status : null}
               footer={
                 <View className="gap-0.5">
-                  <Text className="text-xs font-bold text-spaceCadet-900 truncate" numberOfLines={1}>
+                  <Text className="text-xs font-semibold text-spaceCadet-900 truncate" numberOfLines={1}>
                     {item.category ?? 'Product'}
                     {item.primary_color ? ` · ${item.primary_color}` : ''}
                   </Text>
-                  <Text className="text-xs font-extrabold text-spaceCadet-900 mt-0.5">
+                  <Text className="text-xs font-semibold text-spaceCadet-900 mt-0.5">
                     {formatPriceRange(item.price_min, item.price_max)}
                   </Text>
                 </View>
@@ -322,7 +322,7 @@ export default function CategoryDetailScreen() {
         style={{
           shadowColor: '#231F48',
           shadowOffset: { width: 0, height: 6 },
-          shadowOpacity: 0.35,
+          shadowOpacity: 0.18,
           shadowRadius: 10,
           elevation: 6,
         }}

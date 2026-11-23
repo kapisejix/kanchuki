@@ -72,8 +72,8 @@ export default function AddCustomerScreen() {
           <X size={20} color="#231F48" />
         </AnimatedPressable>
         <Text
-          style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-          className="text-base font-bold text-spaceCadet-900"
+          style={{ fontFamily: 'Marcellus_400Regular' }}
+          className="text-base text-spaceCadet-900"
         >
           New Customer
         </Text>
@@ -81,8 +81,8 @@ export default function AddCustomerScreen() {
       </View>
 
       <View className="px-4 py-4 gap-4">
-        <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
-          <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider mb-2">
+        <View className="bg-white rounded-2xl p-5 border border-lavender-200 shadow-sm">
+          <Text className="text-xs font-semibold text-spaceCadet-900 mb-2">
             Full Name *
           </Text>
           <TextInput
@@ -90,13 +90,13 @@ export default function AddCustomerScreen() {
             onChangeText={setName}
             placeholder="Customer name (e.g. Priya Sharma)"
             placeholderTextColor="#928EB2"
-            className="text-sm font-bold text-spaceCadet-900 bg-lavender-50 rounded-2xl border border-lavender-200 px-4 py-3"
+            className="text-sm font-semibold text-spaceCadet-900 bg-lavender-50 rounded-2xl border border-lavender-200 px-4 py-3"
             autoFocus
           />
         </View>
 
-        <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
-          <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider mb-2">
+        <View className="bg-white rounded-2xl p-5 border border-lavender-200 shadow-sm">
+          <Text className="text-xs font-semibold text-spaceCadet-900 mb-2">
             Mobile Number *
           </Text>
           <TextInput
@@ -106,7 +106,7 @@ export default function AddCustomerScreen() {
             placeholderTextColor="#928EB2"
             keyboardType="phone-pad"
             maxLength={15}
-            className="text-sm font-bold text-spaceCadet-900 bg-lavender-50 rounded-2xl border border-lavender-200 px-4 py-3"
+            className="text-sm font-semibold text-spaceCadet-900 bg-lavender-50 rounded-2xl border border-lavender-200 px-4 py-3"
           />
           {showPhoneError ? (
             <Text className="text-xs font-medium text-red-600 mt-2">
@@ -115,8 +115,8 @@ export default function AddCustomerScreen() {
           ) : null}
         </View>
 
-        <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
-          <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider mb-2">
+        <View className="bg-white rounded-2xl p-5 border border-lavender-200 shadow-sm">
+          <Text className="text-xs font-semibold text-spaceCadet-900 mb-2">
             Email Address (optional)
           </Text>
           <TextInput
@@ -127,15 +127,15 @@ export default function AddCustomerScreen() {
             keyboardType="email-address"
             autoCapitalize="none"
             autoCorrect={false}
-            className="text-sm font-bold text-spaceCadet-900 bg-lavender-50 rounded-2xl border border-lavender-200 px-4 py-3"
+            className="text-sm font-semibold text-spaceCadet-900 bg-lavender-50 rounded-2xl border border-lavender-200 px-4 py-3"
           />
         </View>
 
         {/* Address section */}
-        <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
+        <View className="bg-white rounded-2xl p-5 border border-lavender-200 shadow-sm">
           <View className="flex-row items-center gap-1.5 mb-3">
             <MapPin size={15} color="#BB3F95" />
-            <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider">
+            <Text className="text-xs font-semibold text-spaceCadet-900">
               Address (optional)
             </Text>
           </View>
@@ -144,7 +144,7 @@ export default function AddCustomerScreen() {
             onChangeText={setAddressLine1}
             placeholder="Street address or landmark"
             placeholderTextColor="#928EB2"
-            className="text-sm font-bold text-spaceCadet-900 mb-3 bg-lavender-50 rounded-2xl border border-lavender-200 px-4 py-3"
+            className="text-sm font-semibold text-spaceCadet-900 mb-3 bg-lavender-50 rounded-2xl border border-lavender-200 px-4 py-3"
           />
           <View className="flex-row gap-3">
             <TextInput
@@ -152,14 +152,14 @@ export default function AddCustomerScreen() {
               onChangeText={setCity}
               placeholder="City"
               placeholderTextColor="#928EB2"
-              className="flex-1 text-sm font-bold text-spaceCadet-900 bg-lavender-50 rounded-2xl border border-lavender-200 px-4 py-3"
+              className="flex-1 text-sm font-semibold text-spaceCadet-900 bg-lavender-50 rounded-2xl border border-lavender-200 px-4 py-3"
             />
             <TextInput
               value={state}
               onChangeText={setState}
               placeholder="State"
               placeholderTextColor="#928EB2"
-              className="flex-1 text-sm font-bold text-spaceCadet-900 bg-lavender-50 rounded-2xl border border-lavender-200 px-4 py-3"
+              className="flex-1 text-sm font-semibold text-spaceCadet-900 bg-lavender-50 rounded-2xl border border-lavender-200 px-4 py-3"
             />
           </View>
         </View>
@@ -168,17 +168,17 @@ export default function AddCustomerScreen() {
           onPress={() => setConsent((v) => !v)}
           accessibilityRole="button"
           accessibilityState={{ selected: consent }}
-          className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm flex-row items-start gap-3"
+          className="bg-white rounded-2xl p-5 border border-lavender-200 shadow-sm flex-row items-start gap-3"
         >
           <View
             className={`w-6 h-6 rounded-lg border items-center justify-center mt-0.5 ${
               consent ? 'bg-fuchsia-600 border-fuchsia-600' : 'bg-lavender-50 border-lavender-300'
             }`}
           >
-            {consent ? <Text className="text-white text-xs font-bold">✓</Text> : null}
+            {consent ? <Text className="text-white text-xs font-semibold">✓</Text> : null}
           </View>
           <View className="flex-1">
-            <Text className="text-sm font-bold text-spaceCadet-900">
+            <Text className="text-sm font-semibold text-spaceCadet-900">
               Customer agreed to receive offers & updates on WhatsApp
             </Text>
             <Text className="text-xs text-heliotrope-500 font-medium mt-1 leading-relaxed">

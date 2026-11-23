@@ -97,10 +97,10 @@ const BillRow = memo(function BillRow({
         <View className="w-12 h-12 rounded-xl bg-sand-100" />
       )}
       <View className="flex-1 mx-3">
-        <Text className="text-sm font-semibold text-sand-900" numberOfLines={1}>
+        <Text className="text-sm font-semibold text-spaceCadet-900" numberOfLines={1}>
           {p?.name ?? line.sku}
         </Text>
-        <Text className="text-xs text-sand-600">
+        <Text className="text-xs text-heliotrope-600">
           {line.sku}
           {state === 'sold_out' ? '' : ` · ${sizeLabel(line.size)}`}
         </Text>
@@ -123,7 +123,7 @@ const BillRow = memo(function BillRow({
             >
               <Minus size={16} color="#231F48" />
             </AnimatedPressable>
-            <Text className="w-6 text-center text-sm font-bold text-sand-900">{line.qty}</Text>
+            <Text className="w-6 text-center text-sm font-semibold text-spaceCadet-900">{line.qty}</Text>
             <AnimatedPressable
               testID={`sell-inc-${line.key}`}
               onPress={() => dispatch({ type: 'inc', key: line.key })}
@@ -134,7 +134,7 @@ const BillRow = memo(function BillRow({
               <Plus size={16} color="#231F48" />
             </AnimatedPressable>
           </View>
-          <Text className="w-20 text-right text-sm text-sand-900">
+          <Text className="w-20 text-right text-sm text-spaceCadet-900">
             {inrFromPaise((p?.price_min ?? 0) * line.qty)}
           </Text>
           {remove}
@@ -340,7 +340,7 @@ export default function SellScreen() {
       >
         <X size={18} color="#231F48" />
       </AnimatedPressable>
-      <Text className="flex-1 text-center text-lg font-bold text-sand-900">Sell items</Text>
+      <Text className="flex-1 text-center text-lg font-semibold text-spaceCadet-900">Sell items</Text>
       <View className="w-11" />
     </View>
   )
@@ -350,11 +350,11 @@ export default function SellScreen() {
       <View className="flex-1 bg-white">
         {header}
         <View className="flex-1 px-6 pt-6">
-          <Text className="text-2xl font-bold text-sand-900">Saved on this phone</Text>
-          <Text className="text-base text-sand-900 mt-2">
+          <Text className="text-2xl font-semibold text-spaceCadet-900">Saved on this phone</Text>
+          <Text className="text-base text-spaceCadet-900 mt-2">
             {items(queuedUnits)} will be marked sold automatically once this phone can reach the server. Your catalog does not show it yet.
           </Text>
-          <Text className="text-sm text-sand-600 mt-2">
+          <Text className="text-sm text-heliotrope-600 mt-2">
             Undo is available only after it syncs. If an article cannot be sold then, you will be told which one.
           </Text>
         </View>
@@ -365,7 +365,7 @@ export default function SellScreen() {
             className="flex-1 border border-lavender-300 rounded-2xl py-3.5 items-center bg-white"
             accessibilityLabel="Start a new bill"
           >
-            <Text className="text-sm font-bold text-sand-900">New bill</Text>
+            <Text className="text-sm font-semibold text-spaceCadet-900">New bill</Text>
           </AnimatedPressable>
           <AnimatedPressable
             testID="sell-done"
@@ -373,7 +373,7 @@ export default function SellScreen() {
             className="flex-1 bg-ink-600 rounded-2xl py-3.5 items-center"
             accessibilityLabel="Done"
           >
-            <Text className="text-sm font-bold text-white">Done</Text>
+            <Text className="text-sm font-semibold text-white">Done</Text>
           </AnimatedPressable>
         </View>
       </View>
@@ -399,17 +399,17 @@ export default function SellScreen() {
       <View className="flex-1 bg-white">
         {header}
         <View className="flex-1 px-6 pt-6">
-          <Text className="text-2xl font-bold text-sand-900">
+          <Text className="text-2xl font-semibold text-spaceCadet-900">
             {soldUnits > 0 ? `${soldUnits} marked sold` : 'Nothing was marked sold'}
           </Text>
           {soldUnits > 0 && undone === null && (
-            <Text className="text-sm text-sand-600 mt-1">Your catalog is updated.</Text>
+            <Text className="text-sm text-heliotrope-600 mt-1">Your catalog is updated.</Text>
           )}
-          {undone === 'done' && <Text className="text-base font-semibold text-sand-900 mt-2">Bill undone. Stock restored.</Text>}
-          {undone === 'already' && <Text className="text-base font-semibold text-sand-900 mt-2">Already undone.</Text>}
+          {undone === 'done' && <Text className="text-base font-semibold text-spaceCadet-900 mt-2">Bill undone. Stock restored.</Text>}
+          {undone === 'already' && <Text className="text-base font-semibold text-spaceCadet-900 mt-2">Already undone.</Text>}
           {failed.length > 0 && (
             <View className="mt-4 rounded-2xl bg-red-50 p-4">
-              <Text className="text-sm font-bold text-red-700 mb-1">
+              <Text className="text-sm font-semibold text-red-700 mb-1">
                 {failed.length === 1 ? '1 item could not be updated' : `${failed.length} items could not be updated`}
               </Text>
               {failed.map((l) => (
@@ -427,13 +427,13 @@ export default function SellScreen() {
               className="mt-6 border border-lavender-300 rounded-2xl py-3 items-center bg-white"
               accessibilityLabel="Undo this bill"
             >
-              <Text className="text-sm font-bold text-sand-900">
+              <Text className="text-sm font-semibold text-spaceCadet-900">
                 {result.replayed ? 'Undo this bill' : `Undo this bill (${mm}:${ss} left)`}
               </Text>
             </AnimatedPressable>
           )}
           {soldUnits > 0 && undone === null && !windowOpen && (
-            <Text className="mt-6 text-sm text-sand-600">Undo window has passed.</Text>
+            <Text className="mt-6 text-sm text-heliotrope-600">Undo window has passed.</Text>
           )}
         </View>
         <View className="flex-row gap-3 px-4" style={{ paddingBottom: insets.bottom + 12 }}>
@@ -443,7 +443,7 @@ export default function SellScreen() {
             className="flex-1 border border-lavender-300 rounded-2xl py-3.5 items-center bg-white"
             accessibilityLabel="Start a new bill"
           >
-            <Text className="text-sm font-bold text-sand-900">New bill</Text>
+            <Text className="text-sm font-semibold text-spaceCadet-900">New bill</Text>
           </AnimatedPressable>
           <AnimatedPressable
             testID="sell-done"
@@ -451,7 +451,7 @@ export default function SellScreen() {
             className="flex-1 bg-ink-600 rounded-2xl py-3.5 items-center"
             accessibilityLabel="Done"
           >
-            <Text className="text-sm font-bold text-white">Done</Text>
+            <Text className="text-sm font-semibold text-white">Done</Text>
           </AnimatedPressable>
         </View>
       </View>
@@ -473,7 +473,7 @@ export default function SellScreen() {
         />
       </View>
       {notice !== '' && (
-        <Text className="px-4 py-1.5 text-xs text-sand-600" accessibilityLiveRegion="polite">
+        <Text className="px-4 py-1.5 text-xs text-heliotrope-600" accessibilityLiveRegion="polite">
           {notice}
         </Text>
       )}
@@ -482,7 +482,7 @@ export default function SellScreen() {
         keyExtractor={(l) => l.key}
         renderItem={({ item }) => <BillRow line={item} dispatch={dispatch} />}
         ListEmptyComponent={
-          <Text className="text-center text-sm text-sand-600 px-6 py-8">
+          <Text className="text-center text-sm text-heliotrope-600 px-6 py-8">
             Scan each article’s SKU tag, or type the SKU, to add it to this bill.
           </Text>
         }
@@ -493,17 +493,17 @@ export default function SellScreen() {
       {sellCount > 0 && (
         <View className="px-4 pt-3 border-t border-lavender-100 bg-white" style={{ paddingBottom: insets.bottom + 12 }}>
           <View className="flex-row justify-between mb-2">
-            <Text className="text-sm text-sand-600">{items(sellCount)}</Text>
-            <Text className="text-sm font-semibold text-sand-900">Total {inrFromPaise(billTotalPaise(bill))}</Text>
+            <Text className="text-sm text-heliotrope-600">{items(sellCount)}</Text>
+            <Text className="text-sm font-semibold text-spaceCadet-900">Total {inrFromPaise(billTotalPaise(bill))}</Text>
           </View>
           <AnimatedPressable
             testID="sell-open-confirm"
             onPress={() => canConfirm(bill) && setConfirmOpen(true)}
             disabled={!canConfirm(bill)}
-            className={`rounded-2xl py-3.5 items-center ${canConfirm(bill) ? 'bg-ink-600' : 'bg-sand-300'}`}
+            className={`rounded-2xl py-3.5 items-center ${canConfirm(bill) ? 'bg-ink-600' : 'bg-lavender-300'}`}
             accessibilityLabel={`Mark ${items(sellCount)} sold`}
           >
-            <Text className="text-sm font-bold text-white">Mark {items(sellCount)} sold</Text>
+            <Text className="text-sm font-semibold text-white">Mark {items(sellCount)} sold</Text>
           </AnimatedPressable>
         </View>
       )}
@@ -512,8 +512,8 @@ export default function SellScreen() {
         <Modal transparent animationType="fade" visible onRequestClose={() => dispatch({ type: 'remove', key: pending.key })}>
           <View className="flex-1 bg-black/50 justify-end">
             <View className="bg-white rounded-t-3xl p-5" style={{ paddingBottom: insets.bottom + 16 }}>
-              <Text className="text-base font-bold text-sand-900">Which size was sold?</Text>
-              <Text className="text-xs text-sand-600 mb-3">{pending.product?.name ?? pending.sku}</Text>
+              <Text className="text-base font-semibold text-spaceCadet-900">Which size was sold?</Text>
+              <Text className="text-xs text-heliotrope-600 mb-3">{pending.product?.name ?? pending.sku}</Text>
               <View className="flex-row flex-wrap gap-2">
                 {sizes.map((size) => (
                   <AnimatedPressable
@@ -523,7 +523,7 @@ export default function SellScreen() {
                     className="min-w-[56px] h-12 px-4 rounded-2xl border border-lavender-300 items-center justify-center"
                     accessibilityLabel={`Size ${size}, ${pending.product ? stockFor(pending.product, size) : 0} in stock`}
                   >
-                    <Text className="text-sm font-bold text-sand-900">{size}</Text>
+                    <Text className="text-sm font-semibold text-spaceCadet-900">{size}</Text>
                   </AnimatedPressable>
                 ))}
               </View>
@@ -533,7 +533,7 @@ export default function SellScreen() {
                 className="mt-4 py-3 items-center"
                 accessibilityLabel="Cancel, do not add this item"
               >
-                <Text className="text-sm font-semibold text-sand-600">Cancel</Text>
+                <Text className="text-sm font-semibold text-heliotrope-600">Cancel</Text>
               </AnimatedPressable>
             </View>
           </View>
@@ -544,10 +544,10 @@ export default function SellScreen() {
         <Modal transparent animationType="fade" visible onRequestClose={() => !submitting && setConfirmOpen(false)}>
           <View className="flex-1 bg-black/50 justify-end">
             <View className="bg-white rounded-t-3xl p-5" style={{ paddingBottom: insets.bottom + 16 }}>
-              <Text className="text-base font-bold text-sand-900">
+              <Text className="text-base font-semibold text-spaceCadet-900">
                 Mark {sellCount} {sellCount === 1 ? 'article' : 'articles'} as sold?
               </Text>
-              <Text className="text-sm text-sand-600 mt-1 mb-4">This updates your catalog.</Text>
+              <Text className="text-sm text-heliotrope-600 mt-1 mb-4">This updates your catalog.</Text>
               <View className="flex-row gap-3">
                 <AnimatedPressable
                   testID="sell-cancel"
@@ -556,7 +556,7 @@ export default function SellScreen() {
                   className="flex-1 border border-lavender-300 rounded-2xl py-3.5 items-center"
                   accessibilityLabel="Cancel"
                 >
-                  <Text className="text-sm font-bold text-sand-900">Cancel</Text>
+                  <Text className="text-sm font-semibold text-spaceCadet-900">Cancel</Text>
                 </AnimatedPressable>
                 <AnimatedPressable
                   testID="sell-confirm"
@@ -565,7 +565,7 @@ export default function SellScreen() {
                   className="flex-1 bg-ink-600 rounded-2xl py-3.5 items-center"
                   accessibilityLabel="Confirm: mark as sold"
                 >
-                  <Text className="text-sm font-bold text-white">{submitting ? 'Saving…' : 'Confirm'}</Text>
+                  <Text className="text-sm font-semibold text-white">{submitting ? 'Saving…' : 'Confirm'}</Text>
                 </AnimatedPressable>
               </View>
             </View>

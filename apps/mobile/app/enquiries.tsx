@@ -3,7 +3,7 @@
 // staff (server-side); replies happen in WhatsApp on the shared Business number (D1-A).
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { router } from 'expo-router'
-import { ChevronLeft, Shirt, Sparkles } from 'lucide-react-native'
+import { ChevronLeft, Shirt } from 'lucide-react-native'
 import { useRef, useState } from 'react'
 import { ActivityIndicator, Alert, FlatList, Image, RefreshControl, Text, View } from 'react-native'
 import { AnimatedPressable } from '../src/components/AnimatedPressable'
@@ -64,9 +64,9 @@ export default function EnquiriesScreen() {
   }
 
   const renderItem = ({ item: e }: { item: Enquiry }) => (
-    <View className="bg-white rounded-3xl p-4 border border-lavender-200 shadow-sm mb-3">
+    <View className="bg-white rounded-2xl p-4 border border-lavender-200 shadow-sm mb-3">
       <View className="flex-row justify-between items-center">
-        <Text className="text-sm font-bold text-spaceCadet-900 flex-1" numberOfLines={1}>
+        <Text className="text-sm font-semibold text-spaceCadet-900 flex-1" numberOfLines={1}>
           {e.customer_name ?? e.customer_phone ?? 'Customer'}
         </Text>
         <Text className="text-xs text-heliotrope-500">
@@ -98,7 +98,7 @@ export default function EnquiriesScreen() {
                   <Shirt size={18} color="#928EB2" />
                 </View>
               )}
-              <Text className="text-[10px] text-spaceCadet-900 mt-1" numberOfLines={1}>
+              <Text className="text-[11px] text-spaceCadet-900 mt-1" numberOfLines={1}>
                 {p.name ?? 'Product'}
               </Text>
             </AnimatedPressable>
@@ -122,8 +122,8 @@ export default function EnquiriesScreen() {
           accessibilityRole="button"
           accessibilityLabel="Try on with customer"
         >
-          <Sparkles size={14} color="#fff" />
-          <Text className="text-xs font-bold text-white">Try on with customer</Text>
+          <Shirt size={14} color="#fff" />
+          <Text className="text-xs font-semibold text-white">Try on with customer</Text>
         </AnimatedPressable>
       )}
 
@@ -139,7 +139,7 @@ export default function EnquiriesScreen() {
             accessibilityRole="button"
             accessibilityLabel="Take this enquiry"
           >
-            <Text className="text-xs font-bold text-white">Take</Text>
+            <Text className="text-xs font-semibold text-white">Take</Text>
           </AnimatedPressable>
         )}
         {canAssign && assignees.length > 0 && (
@@ -149,7 +149,7 @@ export default function EnquiriesScreen() {
             accessibilityRole="button"
             accessibilityLabel="Reassign"
           >
-            <Text className="text-xs font-bold text-heliotrope-600">Reassign</Text>
+            <Text className="text-xs font-semibold text-heliotrope-600">Reassign</Text>
           </AnimatedPressable>
         )}
       </View>
@@ -199,7 +199,7 @@ export default function EnquiriesScreen() {
           )
         })}
         {e.status === 'NEW' && (
-          <Text className="text-xs font-bold text-heliotrope-600 self-center ml-auto">New</Text>
+          <Text className="text-xs font-semibold text-heliotrope-600 self-center ml-auto">New</Text>
         )}
       </View>
     </View>
@@ -216,7 +216,7 @@ export default function EnquiriesScreen() {
         >
           <ChevronLeft size={20} color="#231F48" />
         </AnimatedPressable>
-        <Text className="text-lg font-bold text-spaceCadet-900 font-marcellus">Enquiries</Text>
+        <Text className="text-lg font-semibold text-spaceCadet-900 font-marcellus">Enquiries</Text>
         <View className="w-10" />
       </View>
       {isLoading ? (

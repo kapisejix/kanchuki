@@ -147,7 +147,7 @@ export default function AddColorVariantScreen() {
         </View>
 
         <View className="flex-1 items-center justify-center">
-          <View className="w-72 h-80 border-2 border-white/50 rounded-3xl" />
+          <View className="w-72 h-80 border-2 border-white/50 rounded-2xl" />
           <Text className="text-white/70 text-xs mt-4">AI will auto-detect the color and save it</Text>
         </View>
 
@@ -222,7 +222,7 @@ export default function AddColorVariantScreen() {
           className="absolute bottom-0 left-0 right-0 bg-black/90 px-6 pt-5 gap-3"
           style={{ paddingBottom: Math.max(24, 20 + insets.bottom) }}
         >
-          <Text className="text-white text-xs font-semibold uppercase tracking-wide">
+          <Text className="text-white text-xs font-semibold">
             Enter Color Name
           </Text>
           <TextInput

@@ -23,7 +23,7 @@ import * as ImageManipulator from 'expo-image-manipulator'
 import { File } from 'expo-file-system'
 import { Image } from 'expo-image'
 import { useScreenInsets } from '../../src/lib/safe-area'
-import { X, ImagePlus, Check, Sparkles } from 'lucide-react-native'
+import { X, ImagePlus, Check } from 'lucide-react-native'
 import {
   productApi,
   categoryApi,
@@ -615,7 +615,7 @@ export default function AddProductScreen() {
             (the cheapest lever in the whole pipeline: a better raw photo needs
             less AI cleanup). */}
         <View className="flex-1 items-center justify-center">
-          <View className="w-64 h-96 border-2 border-white/40 rounded-3xl" />
+          <View className="w-64 h-96 border-2 border-white/40 rounded-2xl" />
           <Text className="text-white/60 text-sm mt-4 px-8 text-center">
             {captureMode === 'scan'
               ? 'Pan slowly over the product'
@@ -680,7 +680,7 @@ export default function AddProductScreen() {
               {proShots.map((uri, idx) => (
                 <View key={uri} className="w-14 h-14 rounded-lg overflow-hidden border-2 border-white/70">
                   <Image source={{ uri }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
-                  <Text className="absolute bottom-0 right-0 bg-black/70 text-white text-[9px] px-1 rounded-tl">
+                  <Text className="absolute bottom-0 right-0 bg-black/70 text-white text-[11px] px-1 rounded-tl">
                     {idx + 1}
                   </Text>
                 </View>
@@ -773,7 +773,7 @@ export default function AddProductScreen() {
                   />
                   {isBest && (
                     <View className="absolute top-1.5 left-1.5 bg-ink-500 px-2 py-0.5 rounded-full">
-                      <Text className="text-white text-[9px] font-bold">Best</Text>
+                      <Text className="text-white text-[11px] font-semibold">Best</Text>
                     </View>
                   )}
                   <View
@@ -856,7 +856,7 @@ export default function AddProductScreen() {
                   />
                   {isBest && (
                     <View className="absolute top-1.5 left-1.5 bg-ink-500 px-2 py-0.5 rounded-full">
-                      <Text className="text-white text-[9px] font-bold">Best</Text>
+                      <Text className="text-white text-[11px] font-semibold">Best</Text>
                     </View>
                   )}
                   <View
@@ -864,7 +864,7 @@ export default function AddProductScreen() {
                   >
                     {isSelected && <Check size={14} color="white" />}
                   </View>
-                  <Text className="absolute bottom-1 left-1 bg-black/60 text-white text-[9px] px-1 rounded">
+                  <Text className="absolute bottom-1 left-1 bg-black/60 text-white text-[11px] px-1 rounded">
                     {idx + 1}
                   </Text>
                 </AnimatedPressable>
@@ -894,7 +894,7 @@ export default function AddProductScreen() {
 
   if (step === 'pro_options') {
     return (
-      <View className="flex-1 bg-ink-50">
+      <View className="flex-1 bg-lavender-50">
         <ScreenHeader
           title="Photo Settings"
           onBack={() => setStep('pro_review')}
@@ -910,10 +910,10 @@ export default function AddProductScreen() {
         <ScrollView className="flex-1">
           <View className="px-4 py-4 gap-4">
             {/* AI hanger/mannequin removal */}
-            <View className="bg-white rounded-2xl p-4 border border-sand-100 flex-row items-center justify-between">
+            <View className="bg-white rounded-2xl p-4 border border-lavender-200 flex-row items-center justify-between">
               <View className="flex-1 pr-3">
-                <Text className="text-sm font-semibold text-sand-900">Remove hanger / mannequin</Text>
-                <Text className="text-xs text-sand-500 mt-0.5">
+                <Text className="text-sm font-semibold text-spaceCadet-900">Remove hanger / mannequin</Text>
+                <Text className="text-xs text-heliotrope-500 mt-0.5">
                   AI removes the stand, hook or hanger where it touches the garment — best for shots taken on a hanger or mannequin bust.
                 </Text>
               </View>
@@ -921,17 +921,17 @@ export default function AddProductScreen() {
             </View>
 
             {/* Tight-crop to garment */}
-            <View className="bg-white rounded-2xl p-4 border border-sand-100 flex-row items-center justify-between">
+            <View className="bg-white rounded-2xl p-4 border border-lavender-200 flex-row items-center justify-between">
               <View className="flex-1 pr-3">
-                <Text className="text-sm font-semibold text-sand-900">Crop to garment</Text>
-                <Text className="text-xs text-sand-500 mt-0.5">
+                <Text className="text-sm font-semibold text-spaceCadet-900">Crop to garment</Text>
+                <Text className="text-xs text-heliotrope-500 mt-0.5">
                   Frames the garment edge-to-edge and drops dead space / watermarks from the final catalog shot.
                 </Text>
               </View>
               <Switch value={proTightCrop} onValueChange={setProTightCrop} />
             </View>
 
-            <Text className="text-xs text-center text-sand-400 px-4">
+            <Text className="text-xs text-center text-heliotrope-500 px-4">
               {proSelected.length} photo{proSelected.length === 1 ? '' : 's'} will be cleaned — the sharpest becomes the main photo.
             </Text>
           </View>
@@ -955,10 +955,10 @@ export default function AddProductScreen() {
     }
 
     return (
-      <View className="flex-1 bg-ink-50 items-center justify-center px-8" style={{ paddingTop: insets.top + 24 }}>
+      <View className="flex-1 bg-lavender-50 items-center justify-center px-8" style={{ paddingTop: insets.top + 24 }}>
         <AnimatedPressable
           onPress={cancelPro}
-          className="absolute left-4 w-10 h-10 bg-white rounded-full border border-sand-200 items-center justify-center"
+          className="absolute left-4 w-10 h-10 bg-white rounded-full border border-lavender-200 items-center justify-center"
           style={{ top: insets.top + 8 }}
           accessibilityLabel="Cancel photo processing"
           accessibilityRole="button"
@@ -967,11 +967,11 @@ export default function AddProductScreen() {
           <X size={20} color={colors.sand[700]} />
         </AnimatedPressable>
         <ActivityIndicator size="large" color={colors.ink[600]} />
-        <Text className="text-sand-900 text-base font-semibold mt-6 text-center">
+        <Text className="text-spaceCadet-900 text-base font-semibold mt-6 text-center">
           Creating professional photos
         </Text>
-        <Text className="text-sand-500 text-sm mt-2 text-center">{proStatus}</Text>
-        <Text className="text-sand-400 text-xs mt-4 text-center px-6">
+        <Text className="text-heliotrope-500 text-sm mt-2 text-center">{proStatus}</Text>
+        <Text className="text-heliotrope-500 text-xs mt-4 text-center px-6">
           Keep this screen open — AI background removal{proRemoveHardware ? ', hanger removal' : ''} takes about a minute per photo.
         </Text>
       </View>
@@ -1036,7 +1036,7 @@ export default function AddProductScreen() {
     // 'padding' on both platforms: Expo 54 Android is edge-to-edge, so the window
     // no longer resizes for the keyboard and the shared 'height' default left the
     // Price/Notes fields behind it. (Try Android 'height' again if this double-pads.)
-    <KeyboardScreen className="flex-1 bg-ink-50" behavior="padding">
+    <KeyboardScreen className="flex-1 bg-lavender-50" behavior="padding">
       {/* Header — fixed outside the scroll area so back/save stay reachable */}
       <ScreenHeader
         title="Product Details"
@@ -1066,8 +1066,8 @@ export default function AddProductScreen() {
         )}
 
         {/* Price */}
-        <View className="bg-white rounded-2xl p-4 border border-sand-100">
-          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-2">
+        <View className="bg-white rounded-2xl p-4 border border-lavender-200">
+          <Text className="text-xs font-semibold text-heliotrope-500 mb-2">
             Price (₹)
           </Text>
           <TextInput
@@ -1075,33 +1075,33 @@ export default function AddProductScreen() {
             onChangeText={setPrice}
             placeholder="e.g. 1500"
             keyboardType="numeric"
-            className="text-lg font-bold text-sand-900"
+            className="text-lg font-semibold text-spaceCadet-900"
             placeholderTextColor={colors.sand[400]}
           />
         </View>
 
         {/* Store location */}
-        <View className="bg-white rounded-2xl p-4 border border-sand-100">
-          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-2">
+        <View className="bg-white rounded-2xl p-4 border border-lavender-200">
+          <Text className="text-xs font-semibold text-heliotrope-500 mb-2">
             Store Location
           </Text>
           <TextInput
             value={location}
             onChangeText={setLocation}
             placeholder="e.g. Rack B · Shelf 3 · Stack 2"
-            className="text-sm text-sand-900"
+            className="text-sm text-spaceCadet-900"
             placeholderTextColor={colors.sand[400]}
           />
         </View>
 
         {/* Categories (Retailer-curated merchandising groups - multi-select, New Arrivals auto-selected) */}
-        <View className="bg-white rounded-2xl p-4 border border-sand-100">
+        <View className="bg-white rounded-2xl p-4 border border-lavender-200">
           <View className="flex-row items-center justify-between mb-3">
             <View>
-              <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide">
+              <Text className="text-xs font-semibold text-heliotrope-500">
                 Categories (Multi-Select)
               </Text>
-              <Text className="text-[11px] text-sand-400 mt-0.5">
+              <Text className="text-[11px] text-heliotrope-500 mt-0.5">
                 New Arrivals auto-checked (21 days) · Choose category below
               </Text>
             </View>
@@ -1110,19 +1110,18 @@ export default function AddProductScreen() {
             </AnimatedPressable>
           </View>
           {categories.length === 0 ? (
-            <Text className="text-xs text-sand-400">
+            <Text className="text-xs text-heliotrope-500">
               No categories yet — tap + New to create one.
             </Text>
           ) : (
             <View className="flex-row flex-wrap gap-2">
               {/* Auto-selected New Arrivals pill */}
               <View className="px-3.5 py-1.5 rounded-full border bg-fuchsia-50 border-fuchsia-300 flex-row items-center gap-1.5">
-                <Sparkles size={13} color="#BB3F95" />
-                <Text className="text-xs font-bold text-fuchsia-800">
+                <Text className="text-xs font-semibold text-fuchsia-800">
                   New Arrivals
                 </Text>
                 <View className="px-1.5 py-0.5 rounded-full bg-fuchsia-200">
-                  <Text className="text-[9px] font-extrabold text-fuchsia-900">Auto 21d</Text>
+                  <Text className="text-[11px] font-semibold text-fuchsia-900">Auto 21d</Text>
                 </View>
               </View>
 
@@ -1139,11 +1138,11 @@ export default function AddProductScreen() {
                     accessibilityRole="button"
                     accessibilityState={{ selected }}
                     className={`px-3.5 py-1.5 rounded-full border flex-row items-center gap-1.5 ${
-                      selected ? 'bg-spaceCadet-900 border-spaceCadet-900' : 'bg-white border-sand-200'
+                      selected ? 'bg-spaceCadet-900 border-spaceCadet-900' : 'bg-white border-lavender-200'
                     }`}
                   >
                     {selected && <Check size={12} color="white" />}
-                    <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-sand-600'}`}>
+                    <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-heliotrope-600'}`}>
                       {cat.name}
                     </Text>
                   </AnimatedPressable>
@@ -1154,8 +1153,8 @@ export default function AddProductScreen() {
         </View>
 
         {/* Who is it for? */}
-        <View className="bg-white rounded-2xl p-4 border border-sand-100">
-          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-3">
+        <View className="bg-white rounded-2xl p-4 border border-lavender-200">
+          <Text className="text-xs font-semibold text-heliotrope-500 mb-3">
             Who is it for?
           </Text>
           <AudienceChips
@@ -1166,8 +1165,8 @@ export default function AddProductScreen() {
         </View>
 
         {/* Sizes */}
-        <View className="bg-white rounded-2xl p-4 border border-sand-100">
-          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-3">
+        <View className="bg-white rounded-2xl p-4 border border-lavender-200">
+          <Text className="text-xs font-semibold text-heliotrope-500 mb-3">
             Sizes
           </Text>
           <View className="flex-row flex-wrap gap-2">
@@ -1184,11 +1183,11 @@ export default function AddProductScreen() {
                   accessibilityRole="button"
                   accessibilityState={{ selected }}
                   className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 ${
-                    selected ? 'bg-ink-600 border-ink-600' : 'bg-white border-sand-200'
+                    selected ? 'bg-ink-600 border-ink-600' : 'bg-white border-lavender-200'
                   }`}
                 >
                   {selected && <Check size={12} color="white" />}
-                  <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-sand-600'}`}>
+                  <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-heliotrope-600'}`}>
                     {size}
                   </Text>
                 </AnimatedPressable>
@@ -1198,8 +1197,8 @@ export default function AddProductScreen() {
         </View>
 
         {/* Stock per size (defaults to 1; edit later) */}
-        <View className="bg-white rounded-2xl p-4 border border-sand-100">
-          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-3">
+        <View className="bg-white rounded-2xl p-4 border border-lavender-200">
+          <Text className="text-xs font-semibold text-heliotrope-500 mb-3">
             Stock
           </Text>
           <StockEditor
@@ -1210,8 +1209,8 @@ export default function AddProductScreen() {
         </View>
 
         {/* Style tags (dynamic, DB-backed — multi-select) */}
-        <View className="bg-white rounded-2xl p-4 border border-sand-100">
-          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-3">
+        <View className="bg-white rounded-2xl p-4 border border-lavender-200">
+          <Text className="text-xs font-semibold text-heliotrope-500 mb-3">
             Style
           </Text>
           <View className="flex-row flex-wrap gap-2">
@@ -1228,11 +1227,11 @@ export default function AddProductScreen() {
                   accessibilityRole="button"
                   accessibilityState={{ selected }}
                   className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 ${
-                    selected ? 'bg-ink-600 border-ink-600' : 'bg-white border-sand-200'
+                    selected ? 'bg-ink-600 border-ink-600' : 'bg-white border-lavender-200'
                   }`}
                 >
                   {selected && <Check size={12} color="white" />}
-                  <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-sand-600'}`}>
+                  <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-heliotrope-600'}`}>
                     {s.name}
                   </Text>
                 </AnimatedPressable>
@@ -1242,8 +1241,8 @@ export default function AddProductScreen() {
         </View>
 
         {/* Fabric tags (dynamic, DB-backed — multi-select) */}
-        <View className="bg-white rounded-2xl p-4 border border-sand-100">
-          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-3">
+        <View className="bg-white rounded-2xl p-4 border border-lavender-200">
+          <Text className="text-xs font-semibold text-heliotrope-500 mb-3">
             Fabric
           </Text>
           <View className="flex-row flex-wrap gap-2">
@@ -1260,11 +1259,11 @@ export default function AddProductScreen() {
                   accessibilityRole="button"
                   accessibilityState={{ selected }}
                   className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 ${
-                    selected ? 'bg-ink-600 border-ink-600' : 'bg-white border-sand-200'
+                    selected ? 'bg-ink-600 border-ink-600' : 'bg-white border-lavender-200'
                   }`}
                 >
                   {selected && <Check size={12} color="white" />}
-                  <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-sand-600'}`}>
+                  <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-heliotrope-600'}`}>
                     {f.name}
                   </Text>
                 </AnimatedPressable>
@@ -1274,8 +1273,8 @@ export default function AddProductScreen() {
         </View>
 
         {/* Notes */}
-        <View className="bg-white rounded-2xl p-4 border border-sand-100">
-          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-2">
+        <View className="bg-white rounded-2xl p-4 border border-lavender-200">
+          <Text className="text-xs font-semibold text-heliotrope-500 mb-2">
             Notes (private)
           </Text>
           <TextInput
@@ -1284,12 +1283,12 @@ export default function AddProductScreen() {
             placeholder="Any additional notes for your staff..."
             multiline
             numberOfLines={2}
-            className="text-sm text-sand-900"
+            className="text-sm text-spaceCadet-900"
             placeholderTextColor={colors.sand[400]}
           />
         </View>
 
-        <Text className="text-xs text-center text-sand-400 px-4">
+        <Text className="text-xs text-center text-heliotrope-500 px-4">
           AI will auto-fill category, color, fabric and pick the best background after you save
         </Text>
       </View>

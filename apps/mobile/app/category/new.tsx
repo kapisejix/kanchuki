@@ -90,7 +90,7 @@ export default function NewCategoryScreen() {
           <AnimatedPressable
             onPress={() => void handlePickImage()}
             disabled={uploading}
-            className="w-28 h-28 rounded-3xl bg-white border border-lavender-200 items-center justify-center overflow-hidden shadow-sm"
+            className="w-28 h-28 rounded-2xl bg-white border border-lavender-200 items-center justify-center overflow-hidden shadow-sm"
           >
             {uploading ? (
               <ActivityIndicator color="#BB3F95" />
@@ -111,11 +111,9 @@ export default function NewCategoryScreen() {
             onPress={() => setShowProductPicker(true)}
             className="flex-row items-center gap-3 bg-white px-4 py-3 rounded-2xl border border-lavender-200 shadow-sm"
           >
-            <View className="w-10 h-10 rounded-xl items-center justify-center bg-fuchsia-500/15">
-              <Package size={18} color="#BB3F95" />
-            </View>
+            <Package size={18} color="#6B4773" />
             <View className="flex-1">
-              <Text className="text-sm font-bold text-spaceCadet-900">Choose from product photos</Text>
+              <Text className="text-sm font-semibold text-spaceCadet-900">Choose from product photos</Text>
               <Text className="text-xs text-heliotrope-500 font-medium">Reuse an existing product&apos;s image as the category cover</Text>
             </View>
           </AnimatedPressable>
@@ -131,8 +129,8 @@ export default function NewCategoryScreen() {
           <View className="flex-1 bg-[#F8F7FC]">
             <View className="flex-row items-center justify-between px-4 py-3.5 border-b border-lavender-200 bg-white">
               <Text
-                style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-                className="text-base font-bold text-spaceCadet-900"
+                style={{ fontFamily: 'Marcellus_400Regular' }}
+                className="text-base text-spaceCadet-900"
               >
                 Select a Product
               </Text>
@@ -167,7 +165,7 @@ export default function NewCategoryScreen() {
                       </View>
                     )}
                     <View className="flex-1 min-w-0">
-                      <Text className="text-sm font-bold text-spaceCadet-900 truncate" numberOfLines={1}>{item.name ?? 'Unnamed'}</Text>
+                      <Text className="text-sm font-semibold text-spaceCadet-900 truncate" numberOfLines={1}>{item.name ?? 'Unnamed'}</Text>
                       <Text className="text-xs text-heliotrope-500 font-medium truncate" numberOfLines={1}>{item.category ?? 'No category'}</Text>
                     </View>
                   </AnimatedPressable>
@@ -187,8 +185,8 @@ export default function NewCategoryScreen() {
           <View className="flex-1 bg-[#F8F7FC]">
             <View className="flex-row items-center justify-between px-4 py-3.5 border-b border-lavender-200 bg-white">
               <Text
-                style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-                className="text-base font-bold text-spaceCadet-900 truncate flex-1"
+                style={{ fontFamily: 'Marcellus_400Regular' }}
+                className="text-base text-spaceCadet-900 truncate flex-1"
                 numberOfLines={1}
               >
                 {selectedProductName}
@@ -232,7 +230,7 @@ export default function NewCategoryScreen() {
         </Modal>
 
         <View>
-          <Text className="text-xs font-bold text-heliotrope-600 uppercase tracking-wide mb-1.5">
+          <Text className="text-xs font-semibold text-heliotrope-600 mb-1.5">
             Category Name
           </Text>
           <TextInput
@@ -240,13 +238,13 @@ export default function NewCategoryScreen() {
             onChangeText={setName}
             placeholder="e.g. Wedding Sarees"
             placeholderTextColor="#928EB2"
-            className="bg-white px-4 py-3 rounded-2xl text-sm font-bold text-spaceCadet-900 border border-lavender-200"
+            className="bg-white px-4 py-3 rounded-2xl text-sm font-semibold text-spaceCadet-900 border border-lavender-200"
             maxLength={100}
           />
         </View>
 
         <View>
-          <Text className="text-xs font-bold text-heliotrope-600 uppercase tracking-wide mb-1.5">
+          <Text className="text-xs font-semibold text-heliotrope-600 mb-1.5">
             Suggestions
           </Text>
           <View className="flex-row flex-wrap gap-2">
@@ -263,7 +261,7 @@ export default function NewCategoryScreen() {
                   }`}
                 >
                   {selected && <Check size={12} color="white" />}
-                  <Text className={`text-xs font-bold ${selected ? 'text-white' : 'text-spaceCadet-900'}`}>
+                  <Text className={`text-xs font-semibold ${selected ? 'text-white' : 'text-spaceCadet-900'}`}>
                     {cat}
                   </Text>
                 </AnimatedPressable>

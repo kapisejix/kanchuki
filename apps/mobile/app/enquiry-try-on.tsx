@@ -274,7 +274,7 @@ export default function EnquiryTryOnScreen() {
     <View className="flex-1 bg-black" style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}>
       <View className="flex-row items-center justify-between px-4 py-3">
         <View className="flex-1">
-          <Text className="text-white text-sm font-bold">Try on with customer</Text>
+          <Text className="text-white text-sm font-semibold">Try on with customer</Text>
           {remaining != null && step !== 'preflight' && (
             <Text className="text-white/60 text-xs mt-0.5">{remaining} try-ons left this month</Text>
           )}
@@ -447,7 +447,7 @@ export default function EnquiryTryOnScreen() {
             showsHorizontalScrollIndicator={false}
             renderItem={({ item: i }) => (
               <View style={{ width }} className="flex-1 px-5 items-center justify-center">
-                <Text className="text-white text-sm font-bold mb-3" numberOfLines={1}>
+                <Text className="text-white text-sm font-semibold mb-3" numberOfLines={1}>
                   {i.name}
                 </Text>
                 {i.state === 'ready' && i.url ? (

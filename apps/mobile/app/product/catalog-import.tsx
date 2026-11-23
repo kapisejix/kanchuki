@@ -17,7 +17,6 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   X,
   Check,
-  Sparkles,
   Edit3,
   Save,
   ImagePlus,
@@ -428,13 +427,11 @@ export default function CatalogImportScreen() {
         contentContainerStyle={{ paddingBottom: 120 }}
       >
         <View className="items-center pt-8 gap-4">
-          <View className="w-20 h-20 bg-ink-100 rounded-3xl items-center justify-center">
-            <Sparkles size={36} color={primaryColor} />
-          </View>
-          <Text className="text-lg font-bold text-sand-900 text-center">
+          <ImagePlus size={32} color="#6B4773" />
+          <Text className="text-lg font-semibold text-spaceCadet-900 text-center">
             Import products from photos
           </Text>
-          <Text className="text-sand-500 text-sm text-center px-8 leading-5">
+          <Text className="text-heliotrope-500 text-sm text-center px-8 leading-5">
             Upload a catalog photo (rack shot, catalog page with multiple
             designs) or a PDF catalog. AI detects each garment, crops, and
             tags it.
@@ -457,21 +454,19 @@ export default function CatalogImportScreen() {
         {/* Option cards */}
         <AnimatedPressable
           onPress={() => void handlePickPhoto()}
-          className="bg-white rounded-2xl border border-sand-100 p-4 flex-row items-center gap-4 mt-6"
+          className="bg-white rounded-2xl border border-lavender-200 p-4 flex-row items-center gap-4 mt-6"
         >
-          <View className="w-14 h-14 bg-ink-50 rounded-2xl items-center justify-center">
-            <ImagePlus size={28} color={primaryColor} />
-          </View>
+          <ImagePlus size={24} color="#6B4773" />
           <View className="flex-1">
-            <Text className="text-base font-bold text-sand-900">
+            <Text className="text-base font-semibold text-spaceCadet-900">
               Catalog Photo
             </Text>
-            <Text className="text-xs text-sand-500 mt-0.5">
+            <Text className="text-xs text-heliotrope-500 mt-0.5">
               Rack shot, catalog page, or multi-product display photo — pick
               several pages at once, then choose which products to import
             </Text>
           </View>
-          <Text className="text-sand-300">→</Text>
+          <Text className="text-heliotrope-500">→</Text>
         </AnimatedPressable>
 
         <AnimatedPressable
@@ -483,30 +478,28 @@ export default function CatalogImportScreen() {
                 'then upload the page images using the "Catalog Photo" option.',
             )
           }}
-          className="bg-white rounded-2xl border border-sand-100 p-4 flex-row items-center gap-4"
+          className="bg-white rounded-2xl border border-lavender-200 p-4 flex-row items-center gap-4"
         >
-          <View className="w-14 h-14 bg-turmeric-50 rounded-2xl items-center justify-center">
-            <FileText size={28} color={colors.turmeric[600]} />
-          </View>
+          <FileText size={24} color="#6B4773" />
           <View className="flex-1">
-            <Text className="text-base font-bold text-sand-900">
+            <Text className="text-base font-semibold text-spaceCadet-900">
               PDF Catalog
             </Text>
-            <Text className="text-xs text-sand-500 mt-0.5">
+            <Text className="text-xs text-heliotrope-500 mt-0.5">
               Manufacturer/wholesaler PDF catalog
             </Text>
           </View>
-          <Text className="text-sand-300">→</Text>
+          <Text className="text-heliotrope-500">→</Text>
         </AnimatedPressable>
       </ScrollView>
 
       {/* Tip */}
       <View
-        className="bg-white border-t border-sand-100 px-4 pt-4"
+        className="bg-white border-t border-lavender-200 px-4 pt-4"
         style={{ paddingBottom: 16 + insets.bottom }}
       >
-        <Text className="text-xs text-sand-400 text-center leading-5">
-          💡 Tip: For best results, use a well-lit, front-facing photo with
+        <Text className="text-xs text-heliotrope-500 text-center leading-5">
+          Tip: For best results, use a well-lit, front-facing photo with
           garments clearly separated.
         </Text>
       </View>
@@ -517,14 +510,11 @@ export default function CatalogImportScreen() {
 
   const renderProgressStep = (label: string, sublabel: string) => (
     <View className="flex-1 items-center justify-center px-8">
-      <View className="w-20 h-20 bg-ink-100 rounded-3xl items-center justify-center mb-6">
-        <Sparkles size={36} color={primaryColor} />
-      </View>
       <ActivityIndicator size="large" color={primaryColor} className="mb-4" />
-      <Text className="text-lg font-bold text-sand-900 text-center">
+      <Text className="text-lg font-semibold text-spaceCadet-900 text-center">
         {label}
       </Text>
-      <Text className="text-sand-500 text-sm text-center mt-2 leading-5">
+      <Text className="text-heliotrope-500 text-sm text-center mt-2 leading-5">
         {sublabel}
       </Text>
     </View>
@@ -535,8 +525,8 @@ export default function CatalogImportScreen() {
   const renderReviewStep = () => (
     <>
       {/* Source image preview */}
-      <View className="bg-white px-4 py-3 border-b border-sand-100">
-        <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-2">
+      <View className="bg-white px-4 py-3 border-b border-lavender-200">
+        <Text className="text-xs font-semibold text-heliotrope-500 mb-2">
           Source Photo
         </Text>
         <Image
@@ -552,7 +542,7 @@ export default function CatalogImportScreen() {
         contentContainerStyle={{ paddingBottom: 180 }}
       >
         <View className="flex-row items-center justify-between mb-3">
-          <Text className="text-sm font-semibold text-sand-700">
+          <Text className="text-sm font-semibold text-heliotrope-600">
             AI detected {items.length} item
             {items.length !== 1 ? 's' : ''}
           </Text>
@@ -570,10 +560,10 @@ export default function CatalogImportScreen() {
         </View>
 
         {/* Ask once per batch — most catalogs don't list sizes */}
-        <View className="bg-white rounded-2xl border border-sand-100 p-3 mb-3 flex-row items-center justify-between">
+        <View className="bg-white rounded-2xl border border-lavender-200 p-3 mb-3 flex-row items-center justify-between">
           <View className="flex-1 pr-3">
-            <Text className="text-sm font-semibold text-sand-900">Add sizes?</Text>
-            <Text className="text-xs text-sand-500 mt-0.5">
+            <Text className="text-sm font-semibold text-spaceCadet-900">Add sizes?</Text>
+            <Text className="text-xs text-heliotrope-500 mt-0.5">
               Turn on to pick S/M/L/XL/XXL/XXXL for each item below. Leave off if the catalog doesn&apos;t list sizes.
             </Text>
           </View>
@@ -584,7 +574,7 @@ export default function CatalogImportScreen() {
           <View
             key={`${item.original.description}-${index}`}
             className={`bg-white rounded-2xl border mb-3 overflow-hidden ${
-              item.approved ? 'border-turmeric-200' : 'border-sand-200 opacity-60'
+              item.approved ? 'border-turmeric-200' : 'border-lavender-200 opacity-60'
             }`}
           >
             {/* Item header */}
@@ -595,21 +585,21 @@ export default function CatalogImportScreen() {
                 contentFit="cover"
               />
               <View className="flex-1 justify-center gap-0.5">
-                <Text className="text-sm font-semibold text-sand-900">
+                <Text className="text-sm font-semibold text-spaceCadet-900">
                   {item.original.description}
                 </Text>
                 {item.original.tags.category && (
                   <View className="flex-row flex-wrap gap-1 mt-1">
-                    <Text className="text-xs bg-ink-50 text-ink-700 px-2 py-0.5 rounded-full">
+                    <Text className="text-xs bg-lavender-50 text-ink-700 px-2 py-0.5 rounded-full">
                       {item.original.tags.category}
                     </Text>
                     {item.original.tags.subtype && (
-                      <Text className="text-xs bg-turmeric-50 text-turmeric-700 px-2 py-0.5 rounded-full">
+                      <Text className="text-xs bg-lavender-100 text-heliotrope-600 px-2 py-0.5 rounded-full">
                         {item.original.tags.subtype}
                       </Text>
                     )}
                     {item.original.tags.primary_color && (
-                      <Text className="text-xs bg-sand-100 text-sand-600 px-2 py-0.5 rounded-full">
+                      <Text className="text-xs bg-sand-100 text-heliotrope-600 px-2 py-0.5 rounded-full">
                         {item.original.tags.primary_color}
                       </Text>
                     )}
@@ -621,7 +611,7 @@ export default function CatalogImportScreen() {
                     {item.original.tags.style.map((s) => (
                       <Text
                         key={`style-${s}`}
-                        className="text-xs bg-turmeric-50 text-turmeric-700 px-2 py-0.5 rounded-full"
+                        className="text-xs bg-lavender-100 text-heliotrope-600 px-2 py-0.5 rounded-full"
                       >
                         {s}
                       </Text>
@@ -629,7 +619,7 @@ export default function CatalogImportScreen() {
                     {item.original.tags.fabrics.map((f) => (
                       <Text
                         key={`fabric-${f}`}
-                        className="text-xs bg-ink-50 text-ink-700 px-2 py-0.5 rounded-full"
+                        className="text-xs bg-lavender-50 text-ink-700 px-2 py-0.5 rounded-full"
                       >
                         {f}
                       </Text>
@@ -637,7 +627,7 @@ export default function CatalogImportScreen() {
                   </View>
                 )}
                 {item.original.tags.fabric_estimate && (
-                  <Text className="text-xs text-sand-400 mt-1">
+                  <Text className="text-xs text-heliotrope-500 mt-1">
                     {item.original.tags.fabric_estimate}
                     {item.original.tags.pattern
                       ? ` · ${item.original.tags.pattern}`
@@ -650,7 +640,7 @@ export default function CatalogImportScreen() {
                 className={`w-9 h-9 rounded-full items-center justify-center border-2 ${
                   item.approved
                     ? 'bg-turmeric-500 border-turmeric-500'
-                    : 'border-sand-300'
+                    : 'border-lavender-300'
                 }`}
               >
                 {item.approved && <Check size={18} color="white" />}
@@ -659,7 +649,7 @@ export default function CatalogImportScreen() {
 
             {/* Expandable editor */}
             {editingIndex === index && (
-              <View className="px-3 pb-3 gap-2.5 border-t border-sand-100 pt-3">
+              <View className="px-3 pb-3 gap-2.5 border-t border-lavender-200 pt-3">
                 <EditField
                   label="Name"
                   value={item.edits.product_name}
@@ -681,7 +671,7 @@ export default function CatalogImportScreen() {
                   onChange={(v) => updateEdit(index, 'category', v)}
                 />
                 <View>
-                  <Text className="text-xs font-medium text-sand-500 mb-1">Who is it for?</Text>
+                  <Text className="text-xs font-medium text-heliotrope-500 mb-1">Who is it for?</Text>
                   <AudienceChips
                     audience={audienceOf(item).audience}
                     ageGroup={audienceOf(item).kids_age_group}
@@ -696,7 +686,7 @@ export default function CatalogImportScreen() {
                   onChange={(v) => updateEdit(index, 'primary_color', v)}
                 />
                 <View>
-                  <Text className="text-xs font-medium text-sand-500 mb-1">Style</Text>
+                  <Text className="text-xs font-medium text-heliotrope-500 mb-1">Style</Text>
                   <View className="flex-row flex-wrap gap-2">
                     {styleOptions.map((s) => {
                       const selected = item.edits.styles.includes(s.name)
@@ -707,12 +697,12 @@ export default function CatalogImportScreen() {
                           accessibilityRole="button"
                           accessibilityState={{ selected }}
                           className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 ${
-                            selected ? 'bg-ink-600 border-ink-600' : 'bg-white border-sand-200'
+                            selected ? 'bg-ink-600 border-ink-600' : 'bg-white border-lavender-200'
                           }`}
                         >
                           {selected && <Check size={12} color="white" />}
                           <Text
-                            className={`text-xs font-medium ${selected ? 'text-white' : 'text-sand-600'}`}
+                            className={`text-xs font-medium ${selected ? 'text-white' : 'text-heliotrope-600'}`}
                           >
                             {s.name}
                           </Text>
@@ -722,7 +712,7 @@ export default function CatalogImportScreen() {
                   </View>
                 </View>
                 <View>
-                  <Text className="text-xs font-medium text-sand-500 mb-1">Fabric</Text>
+                  <Text className="text-xs font-medium text-heliotrope-500 mb-1">Fabric</Text>
                   <View className="flex-row flex-wrap gap-2">
                     {fabricOptions.map((f) => {
                       const selected = item.edits.fabrics.includes(f.name)
@@ -733,12 +723,12 @@ export default function CatalogImportScreen() {
                           accessibilityRole="button"
                           accessibilityState={{ selected }}
                           className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 ${
-                            selected ? 'bg-ink-600 border-ink-600' : 'bg-white border-sand-200'
+                            selected ? 'bg-ink-600 border-ink-600' : 'bg-white border-lavender-200'
                           }`}
                         >
                           {selected && <Check size={12} color="white" />}
                           <Text
-                            className={`text-xs font-medium ${selected ? 'text-white' : 'text-sand-600'}`}
+                            className={`text-xs font-medium ${selected ? 'text-white' : 'text-heliotrope-600'}`}
                           >
                             {f.name}
                           </Text>
@@ -765,7 +755,7 @@ export default function CatalogImportScreen() {
                 />
                 {wantSizes && (
                   <View>
-                    <Text className="text-xs font-medium text-sand-500 mb-1">Sizes</Text>
+                    <Text className="text-xs font-medium text-heliotrope-500 mb-1">Sizes</Text>
                     <View className="flex-row flex-wrap gap-2">
                       {SIZE_OPTIONS.map((size) => {
                         const selected = item.edits.sizes.includes(size)
@@ -776,11 +766,11 @@ export default function CatalogImportScreen() {
                             accessibilityRole="button"
                             accessibilityState={{ selected }}
                             className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 ${
-                              selected ? 'bg-ink-600 border-ink-600' : 'bg-white border-sand-200'
+                              selected ? 'bg-ink-600 border-ink-600' : 'bg-white border-lavender-200'
                             }`}
                           >
                             {selected && <Check size={12} color="white" />}
-                            <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-sand-600'}`}>
+                            <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-heliotrope-600'}`}>
                               {size}
                             </Text>
                           </AnimatedPressable>
@@ -793,7 +783,7 @@ export default function CatalogImportScreen() {
                   onPress={() => setEditingIndex(null)}
                   className="bg-sand-100 py-2.5 rounded-xl items-center mt-1"
                 >
-                  <Text className="text-sm text-sand-600 font-medium">
+                  <Text className="text-sm text-heliotrope-600 font-medium">
                     Done Editing
                   </Text>
                 </AnimatedPressable>
@@ -803,10 +793,10 @@ export default function CatalogImportScreen() {
             {editingIndex !== index && (
               <AnimatedPressable
                 onPress={() => setEditingIndex(index)}
-                className="border-t border-sand-100 py-2.5 flex-row items-center justify-center gap-1.5"
+                className="border-t border-lavender-200 py-2.5 flex-row items-center justify-center gap-1.5"
               >
                 <Edit3 size={14} color={colors.sand[600]} />
-                <Text className="text-xs text-sand-500 font-medium">
+                <Text className="text-xs text-heliotrope-500 font-medium">
                   Edit details
                 </Text>
               </AnimatedPressable>
@@ -816,7 +806,7 @@ export default function CatalogImportScreen() {
 
         {items.length === 0 && !error && (
           <View className="items-center py-12">
-            <Text className="text-sand-400 text-sm">
+            <Text className="text-heliotrope-500 text-sm">
               No garments detected. Try a different photo.
             </Text>
           </View>
@@ -825,7 +815,7 @@ export default function CatalogImportScreen() {
 
       {/* Save bar */}
       <View
-        className="bg-white border-t border-sand-100 px-4 pt-4"
+        className="bg-white border-t border-lavender-200 px-4 pt-4"
         style={{ paddingBottom: 16 + insets.bottom }}
       >
         <AnimatedPressable
@@ -834,11 +824,11 @@ export default function CatalogImportScreen() {
           className={`py-4 rounded-2xl items-center flex-row justify-center gap-2 ${
             items.filter((i) => i.approved).length > 0
               ? 'bg-ink-600'
-              : 'bg-sand-200'
+              : 'bg-lavender-200'
           }`}
         >
           <Save size={18} color="white" />
-          <Text className="text-white font-bold text-base">
+          <Text className="text-white font-semibold text-base">
             Save {items.filter((i) => i.approved).length} Product
             {items.filter((i) => i.approved).length !== 1 ? 's' : ''}
           </Text>
@@ -852,10 +842,10 @@ export default function CatalogImportScreen() {
   const renderSavingStep = () => (
     <View className="flex-1 items-center justify-center px-8">
       <ActivityIndicator size="large" color={primaryColor} className="mb-4" />
-      <Text className="text-lg font-bold text-sand-900 text-center">
+      <Text className="text-lg font-semibold text-spaceCadet-900 text-center">
         Creating products...
       </Text>
-      <Text className="text-sand-500 text-sm text-center mt-2">
+      <Text className="text-heliotrope-500 text-sm text-center mt-2">
         AI tagging will continue in the background
       </Text>
     </View>
@@ -866,18 +856,20 @@ export default function CatalogImportScreen() {
   const renderDoneStep = () =>
     batchResult && (
       <View className="flex-1 items-center justify-center px-8">
-        <View className="w-24 h-24 bg-turmeric-100 rounded-3xl items-center justify-center mb-6">
-          <Text className="text-5xl">
-            {batchResult.created === batchResult.requested ? '🎉' : '⚠️'}
-          </Text>
+        <View className="mb-6">
+          {batchResult.created === batchResult.requested ? (
+            <Check size={40} color="#231F48" />
+          ) : (
+            <AlertTriangle size={40} color="#B45309" />
+          )}
         </View>
 
-        <Text className="text-2xl font-bold text-sand-900 text-center">
+        <Text className="text-2xl font-semibold text-spaceCadet-900 text-center">
           {batchResult.created === batchResult.requested
-            ? 'All items imported!'
+            ? 'All items imported'
             : 'Import complete with errors'}
         </Text>
-        <Text className="text-sand-500 text-base mt-2 text-center leading-5">
+        <Text className="text-heliotrope-500 text-base mt-2 text-center leading-5">
           {batchResult.created} of {batchResult.requested} items saved.
           {'\n'}AI is tagging them in the background.
         </Text>
@@ -891,7 +883,7 @@ export default function CatalogImportScreen() {
             }}
             className="py-4 rounded-2xl items-center bg-ink-600"
           >
-            <Text className="text-white font-bold">View Catalog</Text>
+            <Text className="text-white font-semibold">View Catalog</Text>
           </AnimatedPressable>
           <AnimatedPressable
             onPress={() => {
@@ -900,9 +892,9 @@ export default function CatalogImportScreen() {
               setError(null)
               setStep('source')
             }}
-            className="py-4 rounded-2xl items-center border-2 border-sand-200"
+            className="py-4 rounded-2xl items-center border-2 border-lavender-200"
           >
-            <Text className="text-sand-700 font-semibold">
+            <Text className="text-heliotrope-600 font-semibold">
               Import Another Photo
             </Text>
           </AnimatedPressable>
@@ -922,10 +914,10 @@ export default function CatalogImportScreen() {
   }
 
   return (
-    <KeyboardScreen className="flex-1 bg-sand-50">
+    <KeyboardScreen className="flex-1 bg-lavender-50">
       {/* Header */}
       <View
-        className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-sand-100"
+        className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-lavender-200"
         style={{ paddingTop: headerPaddingTop }}
       >
         <AnimatedPressable
@@ -941,7 +933,7 @@ export default function CatalogImportScreen() {
         >
           <X size={22} color={colors.sand[700]} />
         </AnimatedPressable>
-        <Text className="text-base font-bold text-sand-900">
+        <Text className="text-base font-semibold text-spaceCadet-900">
           {stepTitles[step]}
         </Text>
         <View className="w-6" />
@@ -978,11 +970,11 @@ function EditField({
   const { colors } = useTheme()
   return (
     <View>
-      <Text className="text-xs font-medium text-sand-500 mb-1">{label}</Text>
+      <Text className="text-xs font-medium text-heliotrope-500 mb-1">{label}</Text>
       <TextInput
         value={value}
         onChangeText={onChange}
-        className="bg-sand-50 border border-sand-200 rounded-xl px-3 py-2.5 text-sm text-sand-900"
+        className="bg-lavender-50 border border-lavender-200 rounded-xl px-3 py-2.5 text-sm text-spaceCadet-900"
         placeholderTextColor={colors.sand[400]}
         keyboardType={keyboardType}
       />

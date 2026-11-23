@@ -73,8 +73,8 @@ export default function AddProductsToCategoryScreen() {
           <ChevronLeft size={20} color="#231F48" />
         </AnimatedPressable>
         <Text
-          style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-          className="text-xl font-bold text-spaceCadet-900 ml-3"
+          style={{ fontFamily: 'Marcellus_400Regular' }}
+          className="text-xl text-spaceCadet-900 ml-3"
         >
           Add Products to Category
         </Text>
@@ -103,13 +103,13 @@ export default function AddProductsToCategoryScreen() {
                 footer={
                   <View className="p-3">
                     <Text
-                      style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-                      className="text-xs font-bold text-spaceCadet-900"
+                      style={{ fontFamily: 'Marcellus_400Regular' }}
+                      className="text-xs text-spaceCadet-900"
                       numberOfLines={1}
                     >
                       {item.category ?? 'Design'} · {item.primary_color ?? '—'}
                     </Text>
-                    <Text className="text-xs font-bold text-spaceCadet-900 mt-1">
+                    <Text className="text-xs font-semibold text-spaceCadet-900 mt-1">
                       {formatPriceRange(item.price_min, item.price_max)}
                     </Text>
                   </View>
@@ -118,7 +118,7 @@ export default function AddProductsToCategoryScreen() {
             )
           }}
           ListEmptyComponent={
-            <Text className="text-heliotrope-400 text-xs font-medium text-center mt-16">
+            <Text className="text-heliotrope-500 text-xs font-medium text-center mt-16">
               No available products. Add products to your catalog first.
             </Text>
           }

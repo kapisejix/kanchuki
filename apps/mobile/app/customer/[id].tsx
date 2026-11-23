@@ -171,14 +171,8 @@ export default function CustomerDetailScreen() {
           <X size={20} color="#231F48" />
         </AnimatedPressable>
         <Text
-          style={{
-            fontFamily: 'Marcellus_400Regular',
-            fontSize: 16,
-            lineHeight: 24,
-            letterSpacing: 0.32,
-            fontWeight: '800',
-          }}
-          className="text-base leading-6 tracking-[0.02em] font-extrabold text-spaceCadet-900 font-marcellus"
+          style={{ fontFamily: 'Marcellus_400Regular', fontSize: 16, lineHeight: 24 }}
+          className="text-base leading-6 text-spaceCadet-900"
         >
           Customer Profile
         </Text>
@@ -197,12 +191,12 @@ export default function CustomerDetailScreen() {
 
       <View className="px-4 py-4 gap-4">
         {/* Identity */}
-        <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
+        <View className="bg-white rounded-2xl p-5 border border-lavender-200 shadow-sm">
           <View className="flex-row items-center gap-3.5 mb-4">
             <View className="w-14 h-14 rounded-2xl bg-[#560A39] items-center justify-center border border-[#BB3F95]/30 flex-shrink-0">
               <Text
-                style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-                className="text-[#E0E1F6] font-bold text-xl"
+                style={{ fontFamily: 'Marcellus_400Regular' }}
+                className="text-[#E0E1F6] text-xl"
               >
                 {name.charAt(0).toUpperCase() || '?'}
               </Text>
@@ -212,8 +206,8 @@ export default function CustomerDetailScreen() {
                 value={name}
                 onChangeText={setName}
                 placeholder="Customer name"
-                style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-                className="text-lg font-bold text-spaceCadet-900"
+                style={{ fontFamily: 'Marcellus_400Regular' }}
+                className="text-lg text-spaceCadet-900"
                 placeholderTextColor="#928EB2"
               />
               <Text className="text-xs text-heliotrope-500 mt-0.5 font-medium">{customer.phone}</Text>
@@ -237,7 +231,7 @@ export default function CustomerDetailScreen() {
               onChangeText={setAddressLine1}
               placeholder="Shop/Home address (optional)"
               placeholderTextColor="#928EB2"
-              className="text-sm font-bold text-spaceCadet-900 bg-lavender-50 rounded-2xl border border-lavender-200 px-4 py-3"
+              className="text-sm font-semibold text-spaceCadet-900 bg-lavender-50 rounded-2xl border border-lavender-200 px-4 py-3"
             />
             <View className="flex-row gap-3">
               <TextInput
@@ -245,14 +239,14 @@ export default function CustomerDetailScreen() {
                 onChangeText={setCity}
                 placeholder="City"
                 placeholderTextColor="#928EB2"
-                className="flex-1 text-sm font-bold text-spaceCadet-900 bg-lavender-50 rounded-2xl border border-lavender-200 px-4 py-3"
+                className="flex-1 text-sm font-semibold text-spaceCadet-900 bg-lavender-50 rounded-2xl border border-lavender-200 px-4 py-3"
               />
               <TextInput
                 value={state}
                 onChangeText={setState}
                 placeholder="State"
                 placeholderTextColor="#928EB2"
-                className="flex-1 text-sm font-bold text-spaceCadet-900 bg-lavender-50 rounded-2xl border border-lavender-200 px-4 py-3"
+                className="flex-1 text-sm font-semibold text-spaceCadet-900 bg-lavender-50 rounded-2xl border border-lavender-200 px-4 py-3"
               />
             </View>
           </View>
@@ -269,10 +263,10 @@ export default function CustomerDetailScreen() {
                 consent ? 'bg-fuchsia-600 border-fuchsia-600' : 'bg-lavender-50 border-lavender-300'
               }`}
             >
-              {consent ? <Text className="text-white text-xs font-bold">✓</Text> : null}
+              {consent ? <Text className="text-white text-xs font-semibold">✓</Text> : null}
             </View>
             <View className="flex-1">
-              <Text className="text-sm font-bold text-spaceCadet-900">
+              <Text className="text-sm font-semibold text-spaceCadet-900">
                 Agreed to WhatsApp offers & updates
               </Text>
               <Text className="text-xs text-heliotrope-500 font-medium mt-0.5 leading-relaxed">
@@ -284,29 +278,29 @@ export default function CustomerDetailScreen() {
 
         {/* Purchase summary */}
         <View className="flex-row gap-3">
-          <View className="flex-1 bg-white rounded-3xl p-4 border border-lavender-200 shadow-sm items-center">
+          <View className="flex-1 bg-white rounded-2xl p-4 border border-lavender-200 shadow-sm items-center">
             <Text
-              style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-              className="text-2xl font-bold text-spaceCadet-900"
+              style={{ fontFamily: 'Marcellus_400Regular' }}
+              className="text-2xl text-spaceCadet-900"
             >
               {customer.total_purchases ?? 0}
             </Text>
-            <Text className="text-xs text-heliotrope-500 font-bold uppercase tracking-wider mt-0.5">Purchases</Text>
+            <Text className="text-xs text-heliotrope-500 font-semibold mt-0.5">Purchases</Text>
           </View>
-          <View className="flex-1 bg-white rounded-3xl p-4 border border-lavender-200 shadow-sm items-center">
+          <View className="flex-1 bg-white rounded-2xl p-4 border border-lavender-200 shadow-sm items-center">
             <Text
-              style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-              className="text-2xl font-bold text-spaceCadet-900"
+              style={{ fontFamily: 'Marcellus_400Regular' }}
+              className="text-2xl text-spaceCadet-900"
             >
               {formatPrice(customer.total_spent ?? 0)}
             </Text>
-            <Text className="text-xs text-heliotrope-500 font-bold uppercase tracking-wider mt-0.5">Total Spent</Text>
+            <Text className="text-xs text-heliotrope-500 font-semibold mt-0.5">Total Spent</Text>
           </View>
         </View>
 
         {/* Preferred colors — free text */}
-        <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
-          <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider mb-3">
+        <View className="bg-white rounded-2xl p-5 border border-lavender-200 shadow-sm">
+          <Text className="text-xs font-semibold text-spaceCadet-900 mb-3">
             Preferred Colors
           </Text>
           <View className="flex-row flex-wrap gap-2 mb-3">
@@ -318,7 +312,7 @@ export default function CustomerDetailScreen() {
                 accessibilityLabel={`Remove ${c}`}
                 accessibilityRole="button"
               >
-                <Text className="text-white text-xs font-bold">{c}</Text>
+                <Text className="text-white text-xs font-semibold">{c}</Text>
                 <X size={12} color="white" />
               </AnimatedPressable>
             ))}
@@ -330,7 +324,7 @@ export default function CustomerDetailScreen() {
               onSubmitEditing={addColor}
               placeholder="e.g. Rani Pink, Maroon, Mustard"
               placeholderTextColor="#928EB2"
-              className="flex-1 bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3 text-sm font-bold text-spaceCadet-900"
+              className="flex-1 bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3 text-sm font-semibold text-spaceCadet-900"
             />
             <AnimatedPressable
               onPress={addColor}
@@ -344,8 +338,8 @@ export default function CustomerDetailScreen() {
         </View>
 
         {/* Preferred styles */}
-        <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
-          <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider mb-3">
+        <View className="bg-white rounded-2xl p-5 border border-lavender-200 shadow-sm">
+          <Text className="text-xs font-semibold text-spaceCadet-900 mb-3">
             Preferred Style
           </Text>
           <View className="flex-row flex-wrap gap-2">
@@ -362,7 +356,7 @@ export default function CustomerDetailScreen() {
                   }`}
                 >
                   {selected && <Check size={12} color="white" />}
-                  <Text className={`text-xs font-bold ${selected ? 'text-white' : 'text-spaceCadet-900'}`}>{s.name}</Text>
+                  <Text className={`text-xs font-semibold ${selected ? 'text-white' : 'text-spaceCadet-900'}`}>{s.name}</Text>
                 </AnimatedPressable>
               )
             })}
@@ -370,8 +364,8 @@ export default function CustomerDetailScreen() {
         </View>
 
         {/* Preferred fabrics */}
-        <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
-          <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider mb-3">
+        <View className="bg-white rounded-2xl p-5 border border-lavender-200 shadow-sm">
+          <Text className="text-xs font-semibold text-spaceCadet-900 mb-3">
             Preferred Fabrics
           </Text>
           <View className="flex-row flex-wrap gap-2">
@@ -388,7 +382,7 @@ export default function CustomerDetailScreen() {
                   }`}
                 >
                   {selected && <Check size={12} color="white" />}
-                  <Text className={`text-xs font-bold ${selected ? 'text-white' : 'text-spaceCadet-900'}`}>{f.name}</Text>
+                  <Text className={`text-xs font-semibold ${selected ? 'text-white' : 'text-spaceCadet-900'}`}>{f.name}</Text>
                 </AnimatedPressable>
               )
             })}
@@ -396,8 +390,8 @@ export default function CustomerDetailScreen() {
         </View>
 
         {/* Usual size — roadmap N quick capture */}
-        <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
-          <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider mb-1">
+        <View className="bg-white rounded-2xl p-5 border border-lavender-200 shadow-sm">
+          <Text className="text-xs font-semibold text-spaceCadet-900 mb-1">
             Usual Size
           </Text>
           <Text className="text-[11px] text-heliotrope-500 font-medium mb-3">
@@ -418,7 +412,7 @@ export default function CustomerDetailScreen() {
                       : 'bg-white border-lavender-200'
                   }`}
                 >
-                  <Text className={`text-xs font-bold ${selected ? 'text-white' : 'text-spaceCadet-900'}`}>
+                  <Text className={`text-xs font-semibold ${selected ? 'text-white' : 'text-spaceCadet-900'}`}>
                     {s}
                   </Text>
                 </AnimatedPressable>
@@ -428,8 +422,8 @@ export default function CustomerDetailScreen() {
         </View>
 
         {/* Budget */}
-        <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
-          <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider mb-2.5">
+        <View className="bg-white rounded-2xl p-5 border border-lavender-200 shadow-sm">
+          <Text className="text-xs font-semibold text-spaceCadet-900 mb-2.5">
             Budget Range (₹)
           </Text>
           <View className="flex-row gap-3">
@@ -439,7 +433,7 @@ export default function CustomerDetailScreen() {
               placeholder="Min"
               keyboardType="numeric"
               placeholderTextColor="#928EB2"
-              className="flex-1 bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3 text-sm font-bold text-spaceCadet-900"
+              className="flex-1 bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3 text-sm font-semibold text-spaceCadet-900"
             />
             <TextInput
               value={budgetMax}
@@ -447,14 +441,14 @@ export default function CustomerDetailScreen() {
               placeholder="Max"
               keyboardType="numeric"
               placeholderTextColor="#928EB2"
-              className="flex-1 bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3 text-sm font-bold text-spaceCadet-900"
+              className="flex-1 bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3 text-sm font-semibold text-spaceCadet-900"
             />
           </View>
         </View>
 
         {/* Notes */}
-        <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
-          <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider mb-2">
+        <View className="bg-white rounded-2xl p-5 border border-lavender-200 shadow-sm">
+          <Text className="text-xs font-semibold text-spaceCadet-900 mb-2">
             Store Notes (private)
           </Text>
           <TextInput
@@ -463,7 +457,7 @@ export default function CustomerDetailScreen() {
             placeholder={`e.g. "likes bright colors", "buying for daughter's wedding"`}
             multiline
             numberOfLines={3}
-            className="text-sm font-bold text-spaceCadet-900 bg-lavender-50 rounded-2xl border border-lavender-200 px-4 py-3"
+            className="text-sm font-semibold text-spaceCadet-900 bg-lavender-50 rounded-2xl border border-lavender-200 px-4 py-3"
             placeholderTextColor="#928EB2"
           />
         </View>

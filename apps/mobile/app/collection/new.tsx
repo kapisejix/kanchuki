@@ -87,8 +87,8 @@ export default function NewCollectionScreen() {
           <ChevronLeft size={20} color="#231F48" />
         </AnimatedPressable>
         <Text
-          style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-          className="text-base font-bold text-spaceCadet-900 ml-3"
+          style={{ fontFamily: 'Marcellus_400Regular' }}
+          className="text-base text-spaceCadet-900 ml-3"
         >
           New Collection
         </Text>
@@ -100,7 +100,7 @@ export default function NewCollectionScreen() {
             onChangeText={setTitle}
             placeholder="Collection title (e.g. Wedding Specials)"
             placeholderTextColor="#928EB2"
-            className="bg-lavender-50 rounded-2xl px-4 py-3 text-sm font-bold text-spaceCadet-900 border border-lavender-200"
+            className="bg-lavender-50 rounded-2xl px-4 py-3 text-sm font-semibold text-spaceCadet-900 border border-lavender-200"
             maxLength={200}
           />
           <View className="flex-row gap-2.5">
@@ -119,7 +119,7 @@ export default function NewCollectionScreen() {
                   }`}
                 >
                   <Text
-                    className={`text-xs font-bold text-center ${
+                    className={`text-xs font-semibold text-center ${
                       active ? 'text-white' : 'text-spaceCadet-900'
                     }`}
                   >
@@ -157,8 +157,8 @@ export default function NewCollectionScreen() {
                         {item.category ?? 'Product'} · {item.primary_color ?? '—'}
                       </Text>
                       <Text
-                        style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-                        className="text-xs font-bold text-spaceCadet-900"
+                        style={{ fontFamily: 'Marcellus_400Regular' }}
+                        className="text-xs text-spaceCadet-900"
                       >
                         {formatPriceRange(item.price_min, item.price_max)}
                       </Text>

@@ -220,7 +220,7 @@ export default function BulkImportScreen() {
   const StatusIcon = ({ status }: { status: ImportStatus }) => {
     switch (status.state) {
       case 'pending':
-        return <Text className="text-sand-300 text-base">⏳</Text>
+        return <View className="w-[18px] h-[18px] rounded-full border border-lavender-300" />
       case 'uploading':
         return <ActivityIndicator size="small" color={primaryColor} />
       case 'creating':
@@ -235,7 +235,7 @@ export default function BulkImportScreen() {
   const StatusLabel = ({ status }: { status: ImportStatus }) => {
     switch (status.state) {
       case 'pending':
-        return <Text className="text-xs text-sand-400">Pending</Text>
+        return <Text className="text-xs text-heliotrope-500">Pending</Text>
       case 'uploading':
         return <Text className="text-xs text-ink-600 font-medium">Uploading...</Text>
       case 'creating':
@@ -254,16 +254,16 @@ export default function BulkImportScreen() {
   // ── Render ────────────────────────────────────────────────────
 
   return (
-    <View className="flex-1 bg-ink-50">
+    <View className="flex-1 bg-lavender-50">
       {/* Header */}
       <View
-        className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-sand-100"
+        className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-lavender-200"
         style={{ paddingTop: headerPaddingTop }}
       >
         <AnimatedPressable onPress={() => (step === 'importing' ? null : router.back())} disabled={step === 'importing'} accessibilityLabel="Close" accessibilityRole="button">
           <X size={22} color={step === 'importing' ? colors.sand[300] : colors.sand[700]} />
         </AnimatedPressable>
-        <Text className="text-base font-bold text-sand-900">
+        <Text className="text-base font-semibold text-spaceCadet-900">
           {step === 'pick' && 'Bulk Import'}
           {step === 'importing' && 'Importing...'}
           {step === 'done' && 'Import Complete'}
@@ -277,13 +277,11 @@ export default function BulkImportScreen() {
           <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: 120 }}>
             {photos.length === 0 ? (
               <View className="items-center pt-20 gap-4">
-                <View className="w-20 h-20 bg-ink-100 rounded-3xl items-center justify-center">
-                  <Camera size={36} color={primaryColor} />
-                </View>
-                <Text className="text-lg font-bold text-sand-900 text-center">
+                <Camera size={32} color="#6B4773" />
+                <Text className="text-lg font-semibold text-spaceCadet-900 text-center">
                   Import products in bulk
                 </Text>
-                <Text className="text-sand-500 text-sm text-center px-8 leading-5">
+                <Text className="text-heliotrope-500 text-sm text-center px-8 leading-5">
                   Select up to {MAX_BATCH_SIZE} photos from your gallery. AI will tag each product
                   automatically in the background.
                 </Text>
@@ -298,7 +296,7 @@ export default function BulkImportScreen() {
             ) : (
               <>
                 <View className="flex-row justify-between items-center mb-4">
-                  <Text className="text-sm font-semibold text-sand-700">
+                  <Text className="text-sm font-semibold text-heliotrope-600">
                     {photos.length} photo{photos.length !== 1 ? 's' : ''} selected
                   </Text>
                   <AnimatedPressable
@@ -315,13 +313,13 @@ export default function BulkImportScreen() {
                     <View key={`${photo.localUri}-${i}`} className="relative">
                       <Image
                         source={{ uri: photo.thumbUri }}
-                        className="w-[30%] aspect-square rounded-xl bg-sand-200"
+                        className="w-[30%] aspect-square rounded-xl bg-lavender-200"
                         contentFit="cover"
                         style={{ width: (Dimensions.get('window').width - 48 - 6) / 3 }}
                       />
                       <AnimatedPressable
                         onPress={() => removePhoto(i)}
-                        className="absolute -top-2 -right-2 w-6 h-6 bg-sand-900/70 rounded-full items-center justify-center"
+                        className="absolute -top-2 -right-2 w-6 h-6 bg-spaceCadet-900/70 rounded-full items-center justify-center"
                         hitSlop={8}
                         accessibilityLabel="Remove photo"
                         accessibilityRole="button"
@@ -337,7 +335,7 @@ export default function BulkImportScreen() {
 
           {/* Bottom bar */}
           <View
-            className="bg-white border-t border-sand-100 px-4 pt-4"
+            className="bg-white border-t border-lavender-200 px-4 pt-4"
             style={{ paddingBottom: 16 + insets.bottom }}
           >
             <GradientButton variant="web"
@@ -353,12 +351,12 @@ export default function BulkImportScreen() {
       {step === 'importing' && (
         <View className="flex-1 px-4 pt-4">
           {/* Overall progress */}
-          <View className="bg-white rounded-2xl p-4 border border-sand-100 mb-4">
+          <View className="bg-white rounded-2xl p-4 border border-lavender-200 mb-4">
             <View className="flex-row items-center justify-between mb-2">
-              <Text className="text-sm font-semibold text-sand-900">
+              <Text className="text-sm font-semibold text-spaceCadet-900">
                 Importing {total} product{total !== 1 ? 's' : ''}
               </Text>
-              <Text className="text-sm text-sand-500">
+              <Text className="text-sm text-heliotrope-500">
                 {completed + failed}/{total}
               </Text>
             </View>
@@ -369,7 +367,7 @@ export default function BulkImportScreen() {
                 style={{ width: `${((completed + failed) / total) * 100}%` }}
               />
             </View>
-            <Text className="text-xs text-sand-400 mt-2">
+            <Text className="text-xs text-heliotrope-500 mt-2">
               {completed} succeeded{failed > 0 ? ` · ${failed} failed` : ''} · AI tagging runs in background
             </Text>
           </View>
@@ -381,14 +379,14 @@ export default function BulkImportScreen() {
             renderItem={({ item, index }) => {
               const status = statuses[index] ?? { state: 'pending' as const }
               return (
-                <View className="flex-row items-center gap-3 py-3 border-b border-sand-100">
+                <View className="flex-row items-center gap-3 py-3 border-b border-lavender-200">
                   <Image
                     source={{ uri: item.thumbUri }}
-                    className="w-10 h-10 rounded-lg bg-sand-200"
+                    className="w-10 h-10 rounded-lg bg-lavender-200"
                     contentFit="cover"
                   />
                   <View className="flex-1">
-                    <Text className="text-sm text-sand-700 truncate">
+                    <Text className="text-sm text-heliotrope-600 truncate">
                       Photo {index + 1}
                     </Text>
                     <StatusLabel status={status} />
@@ -403,11 +401,11 @@ export default function BulkImportScreen() {
           {/* Auto-advance spinner when complete */}
           {completed + failed === total && total > 0 && (
             <View
-              className="bg-white border-t border-sand-100 px-0 pt-6 items-center gap-2"
+              className="bg-white border-t border-lavender-200 px-0 pt-6 items-center gap-2"
               style={{ paddingBottom: 24 + insets.bottom }}
             >
               <ActivityIndicator size="small" color={primaryColor} />
-              <Text className="text-sm text-sand-500">Finalizing...</Text>
+              <Text className="text-sm text-heliotrope-500">Finalizing...</Text>
             </View>
           )}
         </View>
@@ -415,14 +413,14 @@ export default function BulkImportScreen() {
 
       {step === 'done' && (
         <View className="flex-1 items-center justify-center px-8">
-          <View className="w-24 h-24 bg-turmeric-100 rounded-3xl items-center justify-center mb-6">
-            <Text className="text-5xl">{failed > 0 ? '⚠️' : '🎉'}</Text>
+          <View className="mb-6">
+            {failed > 0 ? <AlertTriangle size={40} color="#B45309" /> : <Check size={40} color="#231F48" />}
           </View>
 
-          <Text className="text-2xl font-bold text-sand-900 text-center">
-            {failed > 0 ? 'Import complete with errors' : 'All products imported!'}
+          <Text className="text-2xl font-semibold text-spaceCadet-900 text-center">
+            {failed > 0 ? 'Import complete with errors' : 'All products imported'}
           </Text>
-          <Text className="text-sand-500 text-base mt-2 text-center leading-5">
+          <Text className="text-heliotrope-500 text-base mt-2 text-center leading-5">
             {completed} product{completed !== 1 ? 's' : ''} added
             {failed > 0 ? ` · ${failed} failed` : ''}.
             {'\n'}AI is tagging them in the background.
@@ -432,10 +430,10 @@ export default function BulkImportScreen() {
             {failed > 0 && (
               <AnimatedPressable
                 onPress={() => handleRetry()}
-                className="py-4 rounded-2xl items-center border-2 border-sand-200 flex-row justify-center gap-2"
+                className="py-4 rounded-2xl items-center border-2 border-lavender-200 flex-row justify-center gap-2"
               >
                 <AlertTriangle size={18} color={colors.sand[700]} />
-                <Text className="text-sand-700 font-semibold">Retry Failed ({failed})</Text>
+                <Text className="text-heliotrope-600 font-semibold">Retry Failed ({failed})</Text>
               </AnimatedPressable>
             )}
             <AnimatedPressable
@@ -446,7 +444,7 @@ export default function BulkImportScreen() {
               }}
               className="py-4 rounded-2xl items-center bg-ink-600"
             >
-              <Text className="text-white font-bold">View Catalog</Text>
+              <Text className="text-white font-semibold">View Catalog</Text>
             </AnimatedPressable>
           </View>
         </View>
