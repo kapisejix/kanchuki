@@ -90,7 +90,7 @@ Left alone on purpose:
 
 - Campaign message templates keep their emoji because customers receive that text.
 - `PostPreview` is unchanged because it must match the published post.
-- The `Generate Luxury Description` button on `growth/translate` keeps its label under the button-text rule. Owner decides whether to reword it.
+- Owner approved rewording 9 button labels on Translate, Videos and the integration screens (2026-11-23).
 - `social/ai-design` keeps its own gradient button, which matches `GradientButton`.
 - `settings/social` still says `Connected!`. Task 4 should change it and its test together.
 

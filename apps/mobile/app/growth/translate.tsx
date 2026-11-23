@@ -359,12 +359,12 @@ export default function TranslateScreen() {
             variant="web"
             label={
               translate.isPending
-                ? 'Writing Translation…'
+                ? 'Writing…'
                 : resultText
-                  ? 'Regenerate Translation'
+                  ? 'Write again'
                   : mode === 'description'
-                    ? 'Generate Luxury Description'
-                    : 'Translate Broadcast'
+                    ? 'Write description'
+                    : 'Translate message'
             }
             onPress={() => {
               if (mode === 'message' && !messageInput.trim()) {

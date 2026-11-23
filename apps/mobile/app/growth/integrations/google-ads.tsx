@@ -155,7 +155,7 @@ export default function GoogleAdsConfigScreen() {
           </View>
           <View className="flex-1">
             <WhiteButton
-              label={testing ? 'Testing…' : 'Test Connection'}
+              label={testing ? 'Testing…' : 'Test connection'}
               disabled={testing || !canSave}
               onPress={() => void testMutation.mutate()}
             />

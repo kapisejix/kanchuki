@@ -345,7 +345,7 @@ export default function VideosScreen() {
                   ) : (
                     <WhiteButton
                       style={{ marginTop: 12 }}
-                      label="Generate 6s Ken Burns video from photos"
+                      label="Make 6-second video"
                       icon={<Clapperboard size={14} color={WHITE_BUTTON_INK} />}
                       disabled={generate.isPending}
                       onPress={() => generate.mutate()}

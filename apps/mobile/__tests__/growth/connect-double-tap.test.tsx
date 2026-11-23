@@ -82,8 +82,8 @@ afterEach(() => {
 })
 
 describe.each([
-  ['facebook', FacebookConfigScreen, '1-Click Connect Facebook Page'],
-  ['instagram', InstagramConfigScreen, '1-Click Connect Instagram'],
+  ['facebook', FacebookConfigScreen, 'Connect Facebook Page'],
+  ['instagram', InstagramConfigScreen, 'Connect Instagram'],
 ])('%s connect', (_name, Screen, label) => {
   it('a second tap in the same tick starts no second login, and the guard is released after', async () => {
     // connected:false keeps the Connect button on screen (a real connect swaps it for Disconnect)

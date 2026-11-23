@@ -157,7 +157,7 @@ export default function FbAdsConfigScreen() {
           </View>
           <View className="flex-1">
             <WhiteButton
-              label="Test Connection"
+              label="Test connection"
               loading={testing}
               disabled={!canSave}
               onPress={() => void testMutation.mutate()}

@@ -215,7 +215,7 @@ export default function FacebookConfigScreen() {
               <View className="flex-row gap-3 mt-2 pt-3 pb-2 border-t border-lavender-200">
                 <View className="flex-1">
                   <WhiteButton
-                    label="Verify Status"
+                    label="Verify status"
                     icon={<RefreshCw size={14} color={WHITE_BUTTON_INK} />}
                     loading={isRefetching}
                     onPress={() => void refetch()}
@@ -233,7 +233,7 @@ export default function FacebookConfigScreen() {
           ) : (
             <GradientButton
               variant="web"
-              label="1-Click Connect Facebook Page"
+              label="Connect Facebook Page"
               icon={<Zap size={16} color="white" strokeWidth={2.5} />}
               loading={connecting}
               onPress={() => void handleConnect()}

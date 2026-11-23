@@ -258,7 +258,7 @@ export default function InstagramConfigScreen() {
           ) : (
             <GradientButton
               variant="web"
-              label="1-Click Connect Instagram"
+              label="Connect Instagram"
               icon={<Zap size={16} color="white" strokeWidth={2.5} />}
               loading={connecting}
               onPress={() => void handleOneClickConnect()}

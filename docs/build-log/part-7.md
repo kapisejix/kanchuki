@@ -692,7 +692,8 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Panels | Growth and Inventory keep one navy-to-plum figure panel. Integrations and Translate banners had no key number, so they are plain cards. |
 | Shared | `MyStyleRankingNote`, `ItemMediaStrip`, `PostTypePicker`, `ProductGridPicker`, `SchedulerBanner`, `TargetChecklist` and `TemplatePicker` restyled. `PostPreview` unchanged. |
 | Bug fixed | `heliotrope-400`, `spaceCadet-700` and `lavender-600` are not Tailwind tokens, so that text lost its intended color. Replaced with real tokens. |
-| Left alone | Campaign message templates keep emoji because customers receive them. The `Generate Luxury Description` button label awaits an owner decision. |
-| Tests | Create Post test updated for `Posted`. |
+| Left alone | Campaign message templates keep emoji because customers receive them. |
+| Buttons | Owner approved rewording 9 labels on Translate, Videos and the integration screens, removing "Luxury", "Ken Burns" and "1-Click". |
+| Tests | Create Post test updated for `Posted`. Connect double-tap test updated for the new labels. |
 | Local runs | Mobile 722 passed, tsc 0, Android JS bundle exported. Biome on the 36 changed code files: 54 errors, same as `origin/main`. |
 | Not verified | Not opened on a device or in Expo Go. Reaches phones only with a new app build. |
