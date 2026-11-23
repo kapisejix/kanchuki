@@ -25,35 +25,18 @@ exports[`ProductCard > renders placeholder when imageUrl is null > no-image-plac
         className="w-full h-full items-center justify-center bg-lavender-50"
         ref={null}
       >
-        <Text
-          className="text-heliotrope-400 text-3xl"
-          ref={null}
-        >
-          📦
-        </Text>
-      </View>
-      <View
-        className="w-8 h-8 rounded-full bg-white/95 items-center justify-center absolute bottom-3 right-3 shadow-md border border-lavender-200"
-        ref={null}
-        style={
-          {
-            "elevation": 3,
-          }
-        }
-      >
         <View
-          fill="transparent"
-          testID="lucide-Heart"
+          testID="lucide-Package"
         >
           <Text
             style={
               {
-                "color": "#231F48",
-                "fontSize": 16,
+                "color": "#6B4773",
+                "fontSize": 24,
               }
             }
           >
-            Heart
+            Package
           </Text>
         </View>
       </View>
@@ -129,36 +112,11 @@ exports[`ProductCard > renders selected state with checkmark overlay > selected-
         </Text>
       </View>
       <View
-        className="w-8 h-8 rounded-full bg-white/95 items-center justify-center absolute bottom-3 right-3 shadow-md border border-lavender-200"
-        ref={null}
-        style={
-          {
-            "elevation": 3,
-          }
-        }
-      >
-        <View
-          fill="transparent"
-          testID="lucide-Heart"
-        >
-          <Text
-            style={
-              {
-                "color": "#231F48",
-                "fontSize": 16,
-              }
-            }
-          >
-            Heart
-          </Text>
-        </View>
-      </View>
-      <View
         className="absolute top-2.5 right-2.5 w-6 h-6 bg-fuchsia-600 rounded-full items-center justify-center shadow-sm"
         ref={null}
       >
         <Text
-          className="text-white text-xs font-bold"
+          className="text-white text-xs font-semibold"
           ref={null}
         >
           ✓
@@ -239,31 +197,6 @@ exports[`ProductCard > renders with AI tagging indicator dot > with-ai-dot 1`] =
         className="absolute top-2.5 right-2.5 w-2.5 h-2.5 rounded-full bg-fuchsia-500 border border-white"
         ref={null}
       />
-      <View
-        className="w-8 h-8 rounded-full bg-white/95 items-center justify-center absolute bottom-3 right-3 shadow-md border border-lavender-200"
-        ref={null}
-        style={
-          {
-            "elevation": 3,
-          }
-        }
-      >
-        <View
-          fill="transparent"
-          testID="lucide-Heart"
-        >
-          <Text
-            style={
-              {
-                "color": "#231F48",
-                "fontSize": 16,
-              }
-            }
-          >
-            Heart
-          </Text>
-        </View>
-      </View>
     </View>
     <View
       className="px-2 pt-2.5 pb-1.5"
@@ -336,40 +269,15 @@ exports[`ProductCard > renders with a status badge > with-status-badge 1`] = `
         </Text>
       </View>
       <View
-        className="absolute top-2.5 left-2.5 bg-tyrian-800/90 px-2.5 py-0.5 rounded-full shadow-sm"
+        className="absolute top-2 left-2 bg-spaceCadet-900/90 px-2 py-0.5 rounded-md"
         ref={null}
       >
         <Text
-          className="text-white text-[10px] font-bold uppercase tracking-wider"
+          className="text-white text-[11px] font-medium"
           ref={null}
         >
-          SOLD
+          Sold
         </Text>
-      </View>
-      <View
-        className="w-8 h-8 rounded-full bg-white/95 items-center justify-center absolute bottom-3 right-3 shadow-md border border-lavender-200"
-        ref={null}
-        style={
-          {
-            "elevation": 3,
-          }
-        }
-      >
-        <View
-          fill="transparent"
-          testID="lucide-Heart"
-        >
-          <Text
-            style={
-              {
-                "color": "#231F48",
-                "fontSize": 16,
-              }
-            }
-          >
-            Heart
-          </Text>
-        </View>
       </View>
     </View>
     <View
@@ -443,14 +351,14 @@ exports[`ProductCard > renders with all props combined > all-props-combined 1`] 
         </Text>
       </View>
       <View
-        className="absolute top-2.5 left-2.5 bg-tyrian-800/90 px-2.5 py-0.5 rounded-full shadow-sm"
+        className="absolute top-2 left-2 bg-spaceCadet-900/90 px-2 py-0.5 rounded-md"
         ref={null}
       >
         <Text
-          className="text-white text-[10px] font-bold uppercase tracking-wider"
+          className="text-white text-[11px] font-medium"
           ref={null}
         >
-          RESERVED
+          Reserved
         </Text>
       </View>
       <View
@@ -458,36 +366,11 @@ exports[`ProductCard > renders with all props combined > all-props-combined 1`] 
         ref={null}
       />
       <View
-        className="w-8 h-8 rounded-full bg-white/95 items-center justify-center absolute bottom-3 right-3 shadow-md border border-lavender-200"
-        ref={null}
-        style={
-          {
-            "elevation": 3,
-          }
-        }
-      >
-        <View
-          fill="transparent"
-          testID="lucide-Heart"
-        >
-          <Text
-            style={
-              {
-                "color": "#231F48",
-                "fontSize": 16,
-              }
-            }
-          >
-            Heart
-          </Text>
-        </View>
-      </View>
-      <View
         className="absolute top-2.5 right-2.5 w-6 h-6 bg-fuchsia-600 rounded-full items-center justify-center shadow-sm"
         ref={null}
       >
         <Text
-          className="text-white text-xs font-bold"
+          className="text-white text-xs font-semibold"
           ref={null}
         >
           ✓
@@ -564,31 +447,6 @@ exports[`ProductCard > renders with an image URL > with-image-url 1`] = `
           https://cdn.example.com/product.jpg
         </Text>
       </View>
-      <View
-        className="w-8 h-8 rounded-full bg-white/95 items-center justify-center absolute bottom-3 right-3 shadow-md border border-lavender-200"
-        ref={null}
-        style={
-          {
-            "elevation": 3,
-          }
-        }
-      >
-        <View
-          fill="transparent"
-          testID="lucide-Heart"
-        >
-          <Text
-            style={
-              {
-                "color": "#231F48",
-                "fontSize": 16,
-              }
-            }
-          >
-            Heart
-          </Text>
-        </View>
-      </View>
     </View>
     <View
       className="px-2 pt-2.5 pb-1.5"
@@ -640,35 +498,18 @@ exports[`ProductCard > renders with custom height and placeholder icon > custom-
         className="w-full h-full items-center justify-center bg-lavender-50"
         ref={null}
       >
-        <Text
-          className="text-heliotrope-400 text-3xl"
-          ref={null}
-        >
-          👕
-        </Text>
-      </View>
-      <View
-        className="w-8 h-8 rounded-full bg-white/95 items-center justify-center absolute bottom-3 right-3 shadow-md border border-lavender-200"
-        ref={null}
-        style={
-          {
-            "elevation": 3,
-          }
-        }
-      >
         <View
-          fill="transparent"
-          testID="lucide-Heart"
+          testID="lucide-Package"
         >
           <Text
             style={
               {
-                "color": "#231F48",
-                "fontSize": 16,
+                "color": "#6B4773",
+                "fontSize": 24,
               }
             }
           >
-            Heart
+            Package
           </Text>
         </View>
       </View>

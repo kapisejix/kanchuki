@@ -87,16 +87,16 @@ function EditCollectionModal({
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <KeyboardScreen>
       <View className="flex-1 bg-black/50 items-center justify-center px-6">
-        <View className="bg-white rounded-3xl w-full p-6 gap-4 border border-lavender-200 shadow-xl">
+        <View className="bg-white rounded-2xl w-full p-6 gap-4 border border-lavender-200 shadow-xl">
           <Text
-            style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-            className="text-lg font-bold text-spaceCadet-900"
+            style={{ fontFamily: 'Marcellus_400Regular' }}
+            className="text-lg text-spaceCadet-900"
           >
             Edit Collection
           </Text>
 
           <View>
-            <Text className="text-xs font-bold text-heliotrope-600 uppercase tracking-wide mb-1.5">
+            <Text className="text-xs font-semibold text-heliotrope-600 mb-1.5">
               Title
             </Text>
             <TextInput
@@ -104,13 +104,13 @@ function EditCollectionModal({
               onChangeText={setTitle}
               placeholder="Collection name"
               placeholderTextColor="#928EB2"
-              className="bg-lavender-50 px-4 py-3 rounded-2xl text-sm font-bold text-spaceCadet-900 border border-lavender-200"
+              className="bg-lavender-50 px-4 py-3 rounded-2xl text-sm font-semibold text-spaceCadet-900 border border-lavender-200"
               autoFocus
             />
           </View>
 
           <View>
-            <Text className="text-xs font-bold text-heliotrope-600 uppercase tracking-wide mb-1.5">
+            <Text className="text-xs font-semibold text-heliotrope-600 mb-1.5">
               Expires in (days)
             </Text>
             <TextInput
@@ -119,7 +119,7 @@ function EditCollectionModal({
               placeholder="30"
               placeholderTextColor="#928EB2"
               keyboardType="numeric"
-              className="bg-lavender-50 px-4 py-3 rounded-2xl text-sm font-bold text-spaceCadet-900 border border-lavender-200"
+              className="bg-lavender-50 px-4 py-3 rounded-2xl text-sm font-semibold text-spaceCadet-900 border border-lavender-200"
             />
           </View>
 
@@ -163,21 +163,14 @@ const CollectionCard = memo(function CollectionCard({
   return (
     <AnimatedPressable
       onPress={onPress}
-      className="bg-white rounded-3xl p-4 border border-lavender-200 shadow-sm"
-      style={{
-        shadowColor: '#231F48',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.06,
-        shadowRadius: 10,
-        elevation: 2,
-      }}
+      className="bg-white rounded-2xl p-4 border border-lavender-200 shadow-sm"
     >
       {/* Title + status */}
       <View className="flex-row items-start justify-between mb-2">
         <View className="flex-1 mr-3">
           <Text
-            style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-            className="text-base font-bold text-spaceCadet-900"
+            style={{ fontFamily: 'Marcellus_400Regular' }}
+            className="text-base text-spaceCadet-900"
           >
             {item.title}
           </Text>
@@ -186,18 +179,14 @@ const CollectionCard = memo(function CollectionCard({
           </Text>
         </View>
         <View
-          className={`px-2.5 py-0.5 rounded-full border ${
-            item.status === 'ACTIVE'
-              ? 'bg-fuchsia-500/10 border-fuchsia-500/30'
-              : 'bg-lavender-100 border-lavender-200'
-          }`}
+          className="px-2 py-0.5 rounded-md bg-lavender-100"
         >
           <Text
-            className={`text-[10px] font-bold uppercase tracking-wider ${
-              item.status === 'ACTIVE' ? 'text-fuchsia-600' : 'text-heliotrope-500'
+            className={`text-[11px] font-medium ${
+              item.status === 'ACTIVE' ? 'text-spaceCadet-900' : 'text-heliotrope-500'
             }`}
           >
-            {item.status}
+            {item.status.charAt(0) + item.status.slice(1).toLowerCase()}
           </Text>
         </View>
       </View>
@@ -205,15 +194,15 @@ const CollectionCard = memo(function CollectionCard({
       {/* Stats row */}
       <View className="flex-row gap-4 mb-3.5 py-2 px-3 bg-lavender-50 rounded-2xl border border-lavender-200/60">
         <View className="flex-row items-center gap-1.5">
-          <Eye size={13} color="#BB3F95" />
-          <Text className="text-xs font-bold text-spaceCadet-900">{item.view_count} views</Text>
+          <Eye size={14} color="#6B4773" />
+          <Text className="text-xs text-spaceCadet-900">{item.view_count} views</Text>
         </View>
         <View className="flex-row items-center gap-1.5">
-          <MessageCircle size={13} color="#BB3F95" />
-          <Text className="text-xs font-bold text-spaceCadet-900">{item.enquiry_count} enquiries</Text>
+          <MessageCircle size={14} color="#6B4773" />
+          <Text className="text-xs text-spaceCadet-900">{item.enquiry_count} enquiries</Text>
         </View>
         <View className="flex-row items-center gap-1.5">
-          <Clock size={13} color="#6B4773" />
+          <Clock size={14} color="#6B4773" />
           <Text className="text-xs font-medium text-heliotrope-500">{daysUntil(item.expires_at)}</Text>
         </View>
       </View>
@@ -226,7 +215,7 @@ const CollectionCard = memo(function CollectionCard({
           className="flex-row items-center justify-center gap-2 bg-fuchsia-600 py-2.5 rounded-2xl border border-fuchsia-600 mb-2"
         >
           <Send size={14} color="white" />
-          <Text className="text-white text-xs font-bold uppercase tracking-wider">Share on WhatsApp</Text>
+          <Text className="text-white text-xs font-semibold">Share on WhatsApp</Text>
         </AnimatedPressable>
       )}
 
@@ -239,7 +228,7 @@ const CollectionCard = memo(function CollectionCard({
             className="flex-1 flex-row items-center justify-center gap-2 bg-spaceCadet-900 py-2.5 rounded-2xl border border-spaceCadet-900"
           >
             <Link2 size={14} color="#E0E1F6" />
-            <Text className="text-white text-xs font-bold uppercase tracking-wider">Share Link</Text>
+            <Text className="text-white text-xs font-semibold">Share Link</Text>
           </AnimatedPressable>
         )}
 
@@ -354,12 +343,12 @@ export default function CollectionsScreen() {
   const listEmpty = useCallback(
     () => (
       <View className="items-center py-16 px-8">
-        <View className="w-16 h-16 bg-lavender-100 rounded-3xl items-center justify-center mb-4 border border-lavender-200 shadow-sm">
-          <Link2 size={28} color="#BB3F95" />
+        <View className="w-16 h-16 bg-lavender-100 rounded-2xl items-center justify-center mb-4 border border-lavender-200 shadow-sm">
+          <Link2 size={24} color="#5A3962" />
         </View>
         <Text
-          style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-          className="text-spaceCadet-900 text-lg font-bold text-center"
+          style={{ fontFamily: 'Marcellus_400Regular' }}
+          className="text-spaceCadet-900 text-lg text-center"
         >
           No collections yet
         </Text>
@@ -388,15 +377,15 @@ export default function CollectionsScreen() {
           {retailerProfile?.logo_url ? (
             <Image source={{ uri: retailerProfile.logo_url }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
           ) : (
-            <Text className="font-bold text-spaceCadet-900 font-marcellus text-sm">
+            <Text className="text-spaceCadet-900 font-marcellus text-sm">
               {(retailerProfile?.shop_name ?? 'K').slice(0, 2).toUpperCase()}
             </Text>
           )}
         </View>
         <View>
-          <Text className="text-sm font-bold text-spaceCadet-900">Hi, {retailerProfile?.shop_name ?? 'Store'}!</Text>
-          <Text className="text-[10px] uppercase tracking-wider text-heliotrope-500 font-bold">
-            {retailerProfile?.city ?? 'Collections'} • {collections.length} {collections.length === 1 ? 'Collection' : 'Collections'}
+          <Text className="text-base text-spaceCadet-900 font-marcellus">{retailerProfile?.shop_name ?? 'Store'}</Text>
+          <Text className="text-xs text-heliotrope-500">
+            {retailerProfile?.city ?? 'Collections'} · {collections.length} {collections.length === 1 ? 'collection' : 'collections'}
           </Text>
         </View>
       </View>
@@ -422,9 +411,9 @@ export default function CollectionsScreen() {
         onPress={() => router.push('/collection/new')}
         className="absolute bottom-6 right-5 w-14 h-14 bg-fuchsia-600 rounded-full items-center justify-center shadow-lg border border-white/20"
         style={{
-          shadowColor: '#BB3F95',
+          shadowColor: '#231F48',
           shadowOffset: { width: 0, height: 6 },
-          shadowOpacity: 0.45,
+          shadowOpacity: 0.18,
           shadowRadius: 10,
           elevation: 6,
         }}

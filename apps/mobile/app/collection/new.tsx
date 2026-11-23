@@ -151,7 +151,6 @@ export default function NewCollectionScreen() {
                   elevation={isSelected ? 4 : 1}
                   imageHeight={144}
                   style={isSelected ? { borderWidth: 2, borderColor: '#BB3F95' } : undefined}
-                  placeholderIcon="📷"
                   footer={
                     <View className="p-2 gap-0.5">
                       <Text className="text-xs font-semibold text-spaceCadet-900 truncate" numberOfLines={1}>

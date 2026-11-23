@@ -105,7 +105,7 @@ export default function JoinScreen() {
       }}
     >
       <View>
-        <Text className="text-3xl font-bold text-spaceCadet-900 font-marcellus mt-4">
+        <Text className="text-3xl text-spaceCadet-900 font-marcellus mt-4">
           Join your store
         </Text>
 
@@ -117,8 +117,8 @@ export default function JoinScreen() {
 
         {state.kind === 'ready' && (
           <View className="mt-8">
-            <View className="bg-white rounded-3xl p-6 border border-lavender-200">
-              <Text className="text-2xl font-bold text-spaceCadet-900">
+            <View className="bg-white rounded-2xl p-6 border border-lavender-200">
+              <Text className="text-2xl font-semibold text-spaceCadet-900">
                 {state.info.member_name}
               </Text>
               <Text className="text-heliotrope-600 text-base mt-1">
@@ -126,7 +126,7 @@ export default function JoinScreen() {
                 {state.info.role === 'manager' ? 'Manager' : 'Team member'}
               </Text>
               <View className="mt-5 bg-lavender-50 rounded-2xl p-4">
-                <Text className="text-xs font-semibold text-heliotrope-500 uppercase tracking-wider">
+                <Text className="text-xs font-semibold text-heliotrope-500">
                   Verification
                 </Text>
                 <Text className="text-sm text-spaceCadet-800 mt-2">
@@ -138,33 +138,33 @@ export default function JoinScreen() {
         )}
 
         {state.kind === 'used' && (
-          <View className="mt-8 bg-white rounded-3xl p-6 border border-lavender-200">
-            <Text className="text-xl font-bold text-spaceCadet-900">
+          <View className="mt-8 bg-white rounded-2xl p-6 border border-lavender-200">
+            <Text className="text-xl font-semibold text-spaceCadet-900">
               You&apos;ve already joined
             </Text>
-            <Text className="text-sm text-spaceCadet-600 mt-2 leading-relaxed">
+            <Text className="text-sm text-heliotrope-600 mt-2 leading-relaxed">
               Just log in with your phone number to open the app.
             </Text>
           </View>
         )}
 
         {state.kind === 'error' && (
-          <View className="mt-8 bg-white rounded-3xl p-6 border border-lavender-200">
-            <Text className="text-xl font-bold text-spaceCadet-900">
+          <View className="mt-8 bg-white rounded-2xl p-6 border border-lavender-200">
+            <Text className="text-xl font-semibold text-spaceCadet-900">
               Couldn&apos;t check this invite
             </Text>
-            <Text className="text-sm text-spaceCadet-600 mt-2 leading-relaxed">
+            <Text className="text-sm text-heliotrope-600 mt-2 leading-relaxed">
               Check your connection and try again.
             </Text>
           </View>
         )}
 
         {state.kind === 'dead' && (
-          <View className="mt-8 bg-white rounded-3xl p-6 border border-lavender-200">
-            <Text className="text-xl font-bold text-spaceCadet-900">
+          <View className="mt-8 bg-white rounded-2xl p-6 border border-lavender-200">
+            <Text className="text-xl font-semibold text-spaceCadet-900">
               This invite link is no longer valid
             </Text>
-            <Text className="text-sm text-spaceCadet-600 mt-2 leading-relaxed">
+            <Text className="text-sm text-heliotrope-600 mt-2 leading-relaxed">
               Ask the store owner to send you a new one.
             </Text>
           </View>

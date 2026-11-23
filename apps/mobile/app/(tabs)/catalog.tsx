@@ -71,7 +71,7 @@ function ChipRow({
   if (options.length === 0) return null
   return (
     <View className="mb-3">
-      <Text className="text-[11px] font-bold text-heliotrope-600 uppercase tracking-wider mb-1.5">{label}</Text>
+      <Text className="text-[11px] font-semibold text-heliotrope-600 mb-1.5">{label}</Text>
       <View className="flex-row flex-wrap gap-2">
         <AnimatedPressable
           onPress={() => onSelect(null)}
@@ -79,7 +79,7 @@ function ChipRow({
             selected === null ? 'bg-spaceCadet-900 border-spaceCadet-900' : 'bg-white border-lavender-200'
           }`}
         >
-          <Text className={`text-xs font-bold ${selected === null ? 'text-white' : 'text-spaceCadet-900'}`}>
+          <Text className={`text-xs font-semibold ${selected === null ? 'text-white' : 'text-spaceCadet-900'}`}>
             All
           </Text>
         </AnimatedPressable>
@@ -91,7 +91,7 @@ function ChipRow({
               selected === opt ? 'bg-spaceCadet-900 border-spaceCadet-900' : 'bg-white border-lavender-200'
             }`}
           >
-            <Text className={`text-xs font-bold ${selected === opt ? 'text-white' : 'text-spaceCadet-900'}`}>
+            <Text className={`text-xs font-semibold ${selected === opt ? 'text-white' : 'text-spaceCadet-900'}`}>
               {opt}
             </Text>
           </AnimatedPressable>
@@ -135,13 +135,13 @@ const CatalogCard = memo(function CatalogCard({
             {product.category ?? 'Product'}
             {product.primary_color ? ` · ${product.primary_color}` : ''}
           </Text>
-          <Text className="text-sm font-bold text-spaceCadet-900 font-marcellus">
+          <Text className="text-sm text-spaceCadet-900 font-marcellus">
             {formatPriceRange(product.price_min, product.price_max)}
           </Text>
           {product.total_quantity != null && (
             <Text
               className={`text-[11px] font-semibold ${
-                product.total_quantity <= 2 ? 'text-red-600' : 'text-heliotrope-400'
+                product.total_quantity <= 2 ? 'text-red-600' : 'text-heliotrope-500'
               }`}
             >
               {product.total_quantity <= 2 ? `Low stock: ${product.total_quantity}` : `Stock: ${product.total_quantity}`}
@@ -150,7 +150,7 @@ const CatalogCard = memo(function CatalogCard({
           {product.section && (
             <View className="flex-row items-center gap-1">
               <MapPin size={10} color="#6B4773" />
-              <Text className="text-[11px] text-heliotrope-400" numberOfLines={1}>{product.section.name}</Text>
+              <Text className="text-[11px] text-heliotrope-500" numberOfLines={1}>{product.section.name}</Text>
             </View>
           )}
           {product.status === 'AVAILABLE' && (
@@ -380,12 +380,12 @@ export default function CatalogScreen() {
           </>
         ) : (
           <>
-            <View className="w-16 h-16 bg-lavender-100 rounded-3xl items-center justify-center mb-4 border border-lavender-200 shadow-sm">
-              <Camera size={28} color="#BB3F95" />
+            <View className="w-16 h-16 bg-lavender-100 rounded-2xl items-center justify-center mb-4 border border-lavender-200 shadow-sm">
+              <Camera size={24} color="#5A3962" />
             </View>
             <Text
-              style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-              className="text-spaceCadet-900 text-lg font-bold text-center"
+              style={{ fontFamily: 'Marcellus_400Regular' }}
+              className="text-spaceCadet-900 text-lg text-center"
             >
               No products yet
             </Text>
@@ -421,17 +421,17 @@ export default function CatalogScreen() {
                 resizeMode="cover"
               />
             ) : (
-              <Text className="font-bold text-spaceCadet-900 font-marcellus text-sm">
+              <Text className="text-spaceCadet-900 font-marcellus text-sm">
                 {(retailerProfile?.shop_name ?? 'K').slice(0, 2).toUpperCase()}
               </Text>
             )}
           </View>
           <View>
-            <Text className="text-sm font-bold text-spaceCadet-900">
-              Hi, {retailerProfile?.shop_name ?? 'Store'}!
+            <Text className="text-base text-spaceCadet-900 font-marcellus">
+              {retailerProfile?.shop_name ?? 'Store'}
             </Text>
-            <Text className="text-[10px] uppercase tracking-wider text-heliotrope-500 font-bold">
-              {retailerProfile?.city ?? 'Catalog'} • {products.length} Products
+            <Text className="text-xs text-heliotrope-500">
+              {retailerProfile?.city ?? 'Catalog'} · {products.length} products
             </Text>
           </View>
         </View>
@@ -476,7 +476,7 @@ export default function CatalogScreen() {
             <SlidersHorizontal size={18} color={activeFilterCount > 0 ? 'white' : '#231F48'} />
             {activeFilterCount > 0 && (
               <View className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-fuchsia-600 items-center justify-center shadow-sm">
-                <Text className="text-white text-[9px] font-extrabold">{activeFilterCount}</Text>
+                <Text className="text-white text-[11px] font-semibold">{activeFilterCount}</Text>
               </View>
             )}
           </AnimatedPressable>
@@ -526,11 +526,11 @@ export default function CatalogScreen() {
               </View>
 
               {(categoryImages.length > 0 || showFilters || waSyncStatusByProduct.size > 0) && (
-                <View className="bg-white rounded-3xl px-4 py-3.5 border border-lavender-200 shadow-sm">
+                <View className="bg-white rounded-2xl px-4 py-3.5 border border-lavender-200 shadow-sm">
                   {/* WhatsApp sync status legend */}
                   {waSyncStatusByProduct.size > 0 && (
                     <View className="flex-row items-center gap-3 mb-2.5">
-                      <Text className="text-[10px] font-extrabold text-heliotrope-500 uppercase tracking-wide">
+                      <Text className="text-[11px] font-semibold text-heliotrope-500">
                         WhatsApp sync
                       </Text>
                       <LegendDot color="#059669" label="Synced" />
@@ -552,7 +552,7 @@ export default function CatalogScreen() {
                               style={{ width: 68 }}
                             >
                               <View
-                                className={`w-16 h-16 rounded-3xl overflow-hidden bg-lavender-100 border-2 ${
+                                className={`w-16 h-16 rounded-2xl overflow-hidden bg-lavender-100 border-2 ${
                                   isActive ? 'border-fuchsia-500' : 'border-lavender-200'
                                 }`}
                               >
@@ -565,7 +565,7 @@ export default function CatalogScreen() {
                                 )}
                               </View>
                               <Text
-                                className={`text-[10px] text-center font-bold ${isActive ? 'text-fuchsia-600' : 'text-spaceCadet-900'}`}
+                                className={`text-[11px] text-center font-semibold ${isActive ? 'text-fuchsia-600' : 'text-spaceCadet-900'}`}
                                 numberOfLines={1}
                               >
                                 {category}
@@ -581,11 +581,11 @@ export default function CatalogScreen() {
                 {showFilters && (
                   <View className={categoryImages.length > 0 ? 'mt-3 pt-3 border-t border-lavender-200' : ''}>
                     <View className="flex-row items-center justify-between mb-2">
-                      <Text className="text-xs font-bold text-heliotrope-600 uppercase tracking-wide">Filters</Text>
+                      <Text className="text-xs font-semibold text-heliotrope-600">Filters</Text>
                       <View className="flex-row items-center gap-3">
                         {activeFilterCount > 0 && (
                           <AnimatedPressable onPress={clearFilters}>
-                            <Text className="text-fuchsia-600 text-xs font-bold">Clear all</Text>
+                            <Text className="text-fuchsia-600 text-xs font-semibold">Clear all</Text>
                           </AnimatedPressable>
                         )}
                         <AnimatedPressable onPress={() => setShowFilters(false)} accessibilityLabel="Close filters" accessibilityRole="button">
@@ -602,16 +602,16 @@ export default function CatalogScreen() {
                     <ChipRow label="Color" options={colorOptions} selected={filterColor} onSelect={setFilterColor} />
                     {/* New Arrivals — derived flag, auto-expires at 30 days */}
                     <View className="mb-2.5">
-                      <Text className="text-xs font-bold text-heliotrope-600 mb-1.5 uppercase tracking-wide">Age</Text>
+                      <Text className="text-xs font-semibold text-heliotrope-600 mb-1.5">Age</Text>
                       <AnimatedPressable
                         onPress={() => setFilterNewArrival((v) => !v)}
                         className={`px-3.5 py-1.5 rounded-full border flex-row items-center gap-1 self-start ${
                           filterNewArrival ? 'bg-spaceCadet-900 border-spaceCadet-900' : 'bg-white border-lavender-200'
                         }`}
                       >
-                        {filterNewArrival && <Text className="text-white text-xs font-bold">✓ </Text>}
-                        <Text className={`text-xs font-bold ${filterNewArrival ? 'text-white' : 'text-spaceCadet-900'}`}>
-                          New Arrivals (30d)
+                        {filterNewArrival && <Text className="text-white text-xs font-semibold">✓ </Text>}
+                        <Text className={`text-xs font-semibold ${filterNewArrival ? 'text-white' : 'text-spaceCadet-900'}`}>
+                          New arrivals (30d)
                         </Text>
                       </AnimatedPressable>
                     </View>
@@ -631,7 +631,7 @@ export default function CatalogScreen() {
       {/* Selection action bar — appears only while items are selected */}
       {selectionMode && (
         <View
-          className="absolute bottom-4 left-4 right-4 bg-spaceCadet-900 rounded-3xl px-5 py-3.5 flex-row items-center justify-between shadow-lg border border-white/20"
+          className="absolute bottom-4 left-4 right-4 bg-spaceCadet-900 rounded-2xl px-5 py-3.5 flex-row items-center justify-between shadow-lg border border-white/20"
           style={{
             shadowColor: '#231F48',
             shadowOffset: { width: 0, height: 6 },
@@ -642,9 +642,9 @@ export default function CatalogScreen() {
           }}
         >
           <AnimatedPressable onPress={clearSelection} disabled={deleting}>
-            <Text className="text-lavender-200 text-xs font-bold uppercase tracking-wider">Cancel</Text>
+            <Text className="text-lavender-200 text-xs font-semibold">Cancel</Text>
           </AnimatedPressable>
-          <Text className="text-white text-sm font-bold font-marcellus">
+          <Text className="text-white text-sm font-marcellus">
             {selectedIds.size > 0 ? `${selectedIds.size} Selected` : 'Tap products to select'}
           </Text>
           <DangerButton
@@ -665,7 +665,7 @@ function LegendDot({ color, label }: { color: string; label: string }) {
   return (
     <View className="flex-row items-center gap-1">
       <View className="w-2 h-2 rounded-full border border-white" style={{ backgroundColor: color }} />
-      <Text className="text-[10px] text-sand-500">{label}</Text>
+      <Text className="text-[11px] text-heliotrope-500">{label}</Text>
     </View>
   )
 }

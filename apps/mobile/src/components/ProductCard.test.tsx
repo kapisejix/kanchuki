@@ -86,7 +86,6 @@ describe('ProductCard', () => {
         onPress={() => {}}
         footer={sampleFooter}
         imageHeight={144}
-        placeholderIcon="👕"
       />,
     )
     expect(tree.toJSON()).toMatchSnapshot('custom-height-placeholder')

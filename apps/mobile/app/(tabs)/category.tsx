@@ -36,15 +36,15 @@ export default function CategoryListScreen() {
             {retailerProfile?.logo_url ? (
               <Image source={{ uri: retailerProfile.logo_url }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
             ) : (
-              <Text className="font-bold text-spaceCadet-900 font-marcellus text-sm">
+              <Text className="text-spaceCadet-900 font-marcellus text-sm">
                 {(retailerProfile?.shop_name ?? 'K').slice(0, 2).toUpperCase()}
               </Text>
             )}
           </View>
           <View>
-            <Text className="text-sm font-bold text-spaceCadet-900">Hi, {retailerProfile?.shop_name ?? 'Store'}!</Text>
-            <Text className="text-[10px] uppercase tracking-wider text-heliotrope-500 font-bold">
-              {retailerProfile?.city ?? 'Categories'} • {categories.length} {categories.length === 1 ? 'Category' : 'Categories'}
+            <Text className="text-base text-spaceCadet-900 font-marcellus">{retailerProfile?.shop_name ?? 'Store'}</Text>
+            <Text className="text-xs text-heliotrope-500">
+              {retailerProfile?.city ?? 'Categories'} · {categories.length} {categories.length === 1 ? 'category' : 'categories'}
             </Text>
           </View>
         </View>
@@ -63,17 +63,10 @@ export default function CategoryListScreen() {
           renderItem={({ item }: { item: ProductCategory }) => (
             <AnimatedPressable
               onPress={() => router.push(`/category/${item.id}`)}
-              className="flex-1 bg-white rounded-[28px] overflow-hidden border border-lavender-200 shadow-sm"
-              style={{
-                shadowColor: '#231F48',
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.08,
-                shadowRadius: 10,
-                elevation: 3,
-              }}
+              className="flex-1 bg-white rounded-2xl overflow-hidden border border-lavender-200 shadow-sm"
             >
               <View className="p-1.5">
-                <View className="w-full aspect-[4/3] bg-lavender-100 rounded-[22px] overflow-hidden relative">
+                <View className="w-full aspect-[4/3] bg-lavender-100 rounded-xl overflow-hidden relative">
                   {item.image_url ? (
                     <Image
                       source={{ uri: item.image_url }}
@@ -86,32 +79,30 @@ export default function CategoryListScreen() {
                       <FolderKanban size={32} color="#6B4773" />
                     </View>
                   )}
-                  <View className="absolute top-2.5 right-2.5 px-2.5 py-0.5 rounded-full bg-spaceCadet-900/85 backdrop-blur-md shadow-sm">
-                    <Text className="text-[10px] font-bold text-white uppercase tracking-wider">
-                      {item.product_count} {item.product_count === 1 ? 'Item' : 'Items'}
+                  <View className="absolute top-2 right-2 px-2 py-0.5 rounded-md bg-spaceCadet-900/85">
+                    <Text className="text-[11px] font-medium text-white">
+                      {item.product_count} {item.product_count === 1 ? 'item' : 'items'}
                     </Text>
                   </View>
                 </View>
               </View>
 
               <View className="px-3.5 pb-3.5 pt-1 bg-white">
-                <Text className="text-sm font-bold text-spaceCadet-900 font-marcellus truncate" numberOfLines={1}>
+                <Text className="text-sm text-spaceCadet-900 font-marcellus truncate" numberOfLines={1}>
                   {item.name}
                 </Text>
-                <Text className="text-[11px] text-fuchsia-600 font-bold mt-0.5">
-                  Browse collection →
-                </Text>
+                <Text className="text-xs text-heliotrope-500 mt-0.5">Browse collection</Text>
               </View>
             </AnimatedPressable>
           )}
           ListEmptyComponent={
             <View className="items-center py-16 px-6">
-              <View className="w-16 h-16 rounded-3xl bg-lavender-100 items-center justify-center mb-4 border border-lavender-200">
+              <View className="w-16 h-16 rounded-2xl bg-lavender-100 items-center justify-center mb-4 border border-lavender-200">
                 <FolderKanban size={28} color="#6B4773" />
               </View>
-              <Text className="text-base font-bold text-spaceCadet-900 font-marcellus">No categories yet</Text>
+              <Text className="text-base text-spaceCadet-900 font-marcellus">No categories yet</Text>
               <Text className="text-xs text-heliotrope-500 mt-1 text-center mb-6">
-                Organize your catalog into luxury collections for easy browsing.
+                Group your products so they are easy to browse
               </Text>
               <View className="w-full max-w-xs">
                 <GradientButton variant="web"
@@ -129,9 +120,9 @@ export default function CategoryListScreen() {
         onPress={() => router.push('/category/new')}
         className="absolute bottom-24 right-6 w-14 h-14 bg-fuchsia-600 rounded-full items-center justify-center shadow-lg border border-white/20"
         style={{
-          shadowColor: '#BB3F95',
+          shadowColor: '#231F48',
           shadowOffset: { width: 0, height: 6 },
-          shadowOpacity: 0.45,
+          shadowOpacity: 0.18,
           shadowRadius: 10,
           elevation: 6,
         }}
